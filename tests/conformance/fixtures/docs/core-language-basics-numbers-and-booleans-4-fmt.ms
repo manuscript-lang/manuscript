@@ -1,9 +1,9 @@
 # conform: tags=decimal,formatter,interpolation,modules,parser,stdlib-decimal,stdlib-numbers,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=documentation/core-language/basics/numbers-and-booleans.md:114
-import Decimal from "@std/decimal.ms"
-import NumberError from "@std/math.ms"
-import expect_equal from "@std/test.ms"
+import Decimal from "@std/math/decimal.ms"
+import NumberError from "@std/math/math.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn amount_text() Result[String, NumberError]:
     let subtotal = 19.99d * 3d

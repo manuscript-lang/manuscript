@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/crypto.ms`. Symbols are `msrt_crypto_<function>`; fallible functions
+//! C ABI shims for `@std/crypto.ms`. Symbols are `msstd_crypto_<function>`; fallible functions
 //! return a `CryptoError` status (0 ok, 1 InvalidInput, 5 Unsupported, 6 AuthenticationFailed)
 //! and write the ok value through `out` only on success. `alg` is the `HashAlgorithm` case index.
 use crate::{Alg, CryptoFail, Hasher, asym};
@@ -50,15 +50,15 @@ fn alg_or_fault(index: i64) -> Alg {
 }
 
 native! {
-    fn msrt_crypto_digest(alg: i64, data: &[u8]) -> out Vec<u8> {
+    fn msstd_crypto_digest(alg: i64, data: &[u8]) -> out Vec<u8> {
         crate::digest(alg_or_fault(alg), data)
     }
 
-    fn msrt_crypto_hmac(alg_index: i64, key: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptoFail> {
+    fn msstd_crypto_hmac(alg_index: i64, key: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptoFail> {
         Ok(crate::hmac(alg(alg_index)?, key, data))
     }
 
-    fn msrt_crypto_derive_key(
+    fn msstd_crypto_derive_key(
         alg_index: i64,
         password: &[u8],
         salt: &[u8],
@@ -68,7 +68,7 @@ native! {
         Ok(crate::derive_key(alg(alg_index)?, password, salt, iterations, length)?)
     }
 
-    fn msrt_crypto_hkdf(
+    fn msstd_crypto_hkdf(
         alg_index: i64,
         secret: &[u8],
         salt: &[u8],
@@ -78,11 +78,11 @@ native! {
         Ok(crate::hkdf(alg(alg_index)?, secret, salt, info, length)?)
     }
 
-    fn msrt_crypto_constant_time_equal(left: &[u8], right: &[u8]) -> bool {
+    fn msstd_crypto_constant_time_equal(left: &[u8], right: &[u8]) -> bool {
         crate::constant_time_equal(left, right)
     }
 
-    fn msrt_crypto_seal(
+    fn msstd_crypto_seal(
         key: &[u8],
         nonce: &[u8],
         data: &[u8],
@@ -91,7 +91,7 @@ native! {
         crate::seal(key, nonce, data, aad)
     }
 
-    fn msrt_crypto_open(
+    fn msstd_crypto_open(
         key: &[u8],
         nonce: &[u8],
         data: &[u8],
@@ -100,11 +100,11 @@ native! {
         crate::open(key, nonce, data, aad)
     }
 
-    fn msrt_crypto_aes_ctr(key: &[u8], iv: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptoFail> {
+    fn msstd_crypto_aes_ctr(key: &[u8], iv: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptoFail> {
         crate::aes_ctr(key, iv, data)
     }
 
-    fn msrt_crypto_aes_cbc_encrypt(
+    fn msstd_crypto_aes_cbc_encrypt(
         key: &[u8],
         iv: &[u8],
         data: &[u8],
@@ -112,7 +112,7 @@ native! {
         crate::aes_cbc_encrypt(key, iv, data)
     }
 
-    fn msrt_crypto_aes_cbc_decrypt(
+    fn msstd_crypto_aes_cbc_decrypt(
         key: &[u8],
         iv: &[u8],
         data: &[u8],
@@ -120,57 +120,57 @@ native! {
         crate::aes_cbc_decrypt(key, iv, data)
     }
 
-    fn msrt_crypto_sign(seed: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptoFail> {
+    fn msstd_crypto_sign(seed: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptoFail> {
         crate::ed25519_sign(seed, data)
     }
 
-    fn msrt_crypto_public_key(seed: &[u8]) -> Result<Vec<u8>, CryptoFail> {
+    fn msstd_crypto_public_key(seed: &[u8]) -> Result<Vec<u8>, CryptoFail> {
         crate::ed25519_public_key(seed)
     }
 
-    fn msrt_crypto_verify(key: &[u8], data: &[u8], signature: &[u8]) -> bool {
+    fn msstd_crypto_verify(key: &[u8], data: &[u8], signature: &[u8]) -> bool {
         crate::ed25519_verify(key, data, signature)
     }
 
-    fn msrt_crypto_hasher_new(alg: i64) -> Object<Hasher> {
+    fn msstd_crypto_hasher_new(alg: i64) -> Object<Hasher> {
         Object(Hasher::new(alg_or_fault(alg)))
     }
 
-    fn msrt_crypto_hmac_hasher_new(alg: i64, key: &[u8]) -> Object<Hasher> {
+    fn msstd_crypto_hmac_hasher_new(alg: i64, key: &[u8]) -> Object<Hasher> {
         Object(Hasher::new_hmac(alg_or_fault(alg), key))
     }
 
-    fn msrt_crypto_hasher_update(h: ObjMut<Hasher>, data: &[u8]) -> () {
+    fn msstd_crypto_hasher_update(h: ObjMut<Hasher>, data: &[u8]) -> () {
         h.0.update(data);
     }
 
-    fn msrt_crypto_hasher_finish(h: ObjMut<Hasher>) -> out Vec<u8> {
+    fn msstd_crypto_hasher_finish(h: ObjMut<Hasher>) -> out Vec<u8> {
         h.0.finish()
     }
 
     // ---- asymmetric ----
 
-    fn msrt_crypto_ecdsa_generate(curve: i64) -> Result<Vec<u8>, CryptoFail> {
+    fn msstd_crypto_ecdsa_generate(curve: i64) -> Result<Vec<u8>, CryptoFail> {
         let curve = asym::Curve::from_index(curve).ok_or(CryptoFail::InvalidInput)?;
         asym::ecdsa_generate(curve)
     }
 
-    fn msrt_crypto_public_key_der(key: &[u8]) -> Result<Vec<u8>, CryptoFail> {
+    fn msstd_crypto_public_key_der(key: &[u8]) -> Result<Vec<u8>, CryptoFail> {
         asym::public_key_der(key)
     }
 
-    fn msrt_crypto_ecdh_shared_secret(
+    fn msstd_crypto_ecdh_shared_secret(
         private_key: &[u8],
         peer: &[u8],
     ) -> Result<Vec<u8>, CryptoFail> {
         asym::ecdh_shared_secret(private_key, peer)
     }
 
-    fn msrt_crypto_rsa_generate(bits: i64) -> Result<Vec<u8>, CryptoFail> {
+    fn msstd_crypto_rsa_generate(bits: i64) -> Result<Vec<u8>, CryptoFail> {
         asym::rsa_generate(bits)
     }
 
-    fn msrt_crypto_ecdsa_sign(
+    fn msstd_crypto_ecdsa_sign(
         private_key: &[u8],
         alg_index: i64,
         data: &[u8],
@@ -178,7 +178,7 @@ native! {
         asym::ecdsa_sign(private_key, alg(alg_index)?, data)
     }
 
-    fn msrt_crypto_rsa_sign(
+    fn msstd_crypto_rsa_sign(
         private_key: &[u8],
         alg_index: i64,
         data: &[u8],
@@ -186,7 +186,7 @@ native! {
         asym::rsa_sign(private_key, alg(alg_index)?, data)
     }
 
-    fn msrt_crypto_rsa_sign_pss(
+    fn msstd_crypto_rsa_sign_pss(
         private_key: &[u8],
         alg_index: i64,
         data: &[u8],
@@ -194,7 +194,7 @@ native! {
         asym::rsa_sign_pss(private_key, alg(alg_index)?, data)
     }
 
-    fn msrt_crypto_rsa_encrypt(
+    fn msstd_crypto_rsa_encrypt(
         private_key: &[u8],
         alg_index: i64,
         data: &[u8],
@@ -202,7 +202,7 @@ native! {
         asym::rsa_encrypt(private_key, alg(alg_index)?, data)
     }
 
-    fn msrt_crypto_rsa_decrypt(
+    fn msstd_crypto_rsa_decrypt(
         private_key: &[u8],
         alg_index: i64,
         data: &[u8],
@@ -210,7 +210,7 @@ native! {
         asym::rsa_decrypt(private_key, alg(alg_index)?, data)
     }
 
-    fn msrt_crypto_ecdsa_verify(
+    fn msstd_crypto_ecdsa_verify(
         public_key: &[u8],
         alg_index: i64,
         data: &[u8],
@@ -219,7 +219,7 @@ native! {
         alg(alg_index).is_ok_and(|a| asym::ecdsa_verify(public_key, a, data, signature))
     }
 
-    fn msrt_crypto_rsa_verify(
+    fn msstd_crypto_rsa_verify(
         public_key: &[u8],
         alg_index: i64,
         data: &[u8],
@@ -228,7 +228,7 @@ native! {
         alg(alg_index).is_ok_and(|a| asym::rsa_verify(public_key, a, data, signature))
     }
 
-    fn msrt_crypto_rsa_verify_pss(
+    fn msstd_crypto_rsa_verify_pss(
         public_key: &[u8],
         alg_index: i64,
         data: &[u8],
@@ -273,13 +273,13 @@ mod tests {
         let whole = bytes(b"hello world");
         // SAFETY: handles and buffers are live for the calls below.
         unsafe {
-            let h = msrt_crypto_hmac_hasher_new(3, &key);
-            msrt_crypto_hasher_update(h, &a);
-            msrt_crypto_hasher_update(h, &b);
+            let h = msstd_crypto_hmac_hasher_new(3, &key);
+            msstd_crypto_hasher_update(h, &a);
+            msstd_crypto_hasher_update(h, &b);
             let mut got = core::mem::MaybeUninit::<VecVal>::uninit();
-            msrt_crypto_hasher_finish(h, got.as_mut_ptr());
+            msstd_crypto_hasher_finish(h, got.as_mut_ptr());
             let mut want = core::mem::MaybeUninit::<VecVal>::uninit();
-            assert_eq!(msrt_crypto_hmac(3, &key, &whole, want.as_mut_ptr()), 0);
+            assert_eq!(msstd_crypto_hmac(3, &key, &whole, want.as_mut_ptr()), 0);
             assert_eq!(read(&got.assume_init()), read(&want.assume_init()));
             ms_rt::obj::msrt_release(h.cast());
         }
@@ -293,23 +293,23 @@ mod tests {
         let mut sig = core::mem::MaybeUninit::<VecVal>::uninit();
         // SAFETY: buffers are live and initialised by the calls that fill them.
         unsafe {
-            assert_ne!(msrt_crypto_ecdsa_generate(9, sk.as_mut_ptr()), 0);
-            assert_eq!(msrt_crypto_ecdsa_generate(0, sk.as_mut_ptr()), 0);
-            assert_eq!(msrt_crypto_public_key_der(sk.as_ptr(), pk.as_mut_ptr()), 0);
+            assert_ne!(msstd_crypto_ecdsa_generate(9, sk.as_mut_ptr()), 0);
+            assert_eq!(msstd_crypto_ecdsa_generate(0, sk.as_mut_ptr()), 0);
+            assert_eq!(msstd_crypto_public_key_der(sk.as_ptr(), pk.as_mut_ptr()), 0);
             assert_eq!(
-                msrt_crypto_ecdsa_sign(sk.as_ptr(), 3, &data, sig.as_mut_ptr()),
+                msstd_crypto_ecdsa_sign(sk.as_ptr(), 3, &data, sig.as_mut_ptr()),
                 0
             );
             assert_eq!(
-                msrt_crypto_ecdsa_verify(pk.as_ptr(), 3, &data, sig.as_ptr()),
+                msstd_crypto_ecdsa_verify(pk.as_ptr(), 3, &data, sig.as_ptr()),
                 1
             );
             assert_eq!(
-                msrt_crypto_ecdsa_verify(pk.as_ptr(), 3, &other, sig.as_ptr()),
+                msstd_crypto_ecdsa_verify(pk.as_ptr(), 3, &other, sig.as_ptr()),
                 0
             );
             assert_eq!(
-                msrt_crypto_ecdsa_verify(pk.as_ptr(), 99, &data, sig.as_ptr()),
+                msstd_crypto_ecdsa_verify(pk.as_ptr(), 99, &data, sig.as_ptr()),
                 0
             );
         }

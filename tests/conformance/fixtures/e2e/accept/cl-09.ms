@@ -1,12 +1,12 @@
 # conform: tags=generics,modules,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-09.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 type Box[T]:
     value: T
 
-fn unwrap[T](box: Box[T]) ref T:
+fn unwrap[T](box: Box[T]) T:
     return box.value
 
 fn same[T: Equal](left: T, right: T) Bool:

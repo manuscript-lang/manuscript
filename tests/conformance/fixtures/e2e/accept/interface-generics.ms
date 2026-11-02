@@ -1,20 +1,20 @@
 # conform: tags=control-flow,faults,generics,interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/interface-generics.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 interface Read[V]:
-    fn get() ref V
+    fn get() V
 
 interface Same[V: Equal]:
     fn same(other: V) Bool
 
-type Box[T]:
+type Box[T: Clonable]:
     value: T
 
 impl Read[T] for Box[T]:
-    fn get() ref T:
-        return self.value
+    fn get() T:
+        return self.value.clone()
 
 impl Same[T] for Box[T]:
     fn same(other: T) Bool:
@@ -38,7 +38,7 @@ impl Read[Int] for Pair[Int, B]:
 fn identity(value: Int) Int:
     return value
 
-fn read[T](box: Box[T]) ref T:
+fn read[T: Clonable](box: Box[T]) T:
     return box.get()
 
 test "parameters and bounds belong to interfaces and types":

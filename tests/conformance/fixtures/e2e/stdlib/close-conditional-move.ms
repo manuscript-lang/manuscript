@@ -1,15 +1,16 @@
 # conform: tags=scope-cleanup,control-flow,records,tier-io
 # conform: phase=run
 # conform: origin=close-gap-probes
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 type Door:
     name: String
 
 impl Closeable for Door:
-    var fn close() Unit:
+    var fn close() Unit!:
         stdout().write("closed {self.name}\n").get()
+        return ok(unit)
 
 impl Door:
     fn id() Int:

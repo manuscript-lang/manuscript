@@ -2,15 +2,16 @@
 # expect-stdout: close 2
 # expect-stdout: close 1
 # Fields close last-declared first; the record's own close would run before them.
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 type Res:
     id: Int
 
 impl Closeable for Res:
-    var fn close() Unit:
+    var fn close() Unit!:
         stdout().write("close {self.id}\n").get()
+        return ok(unit)
 
 type Pair:
     a: Res

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 67,
+    "stdout": "",
+    "stderr": "stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead\n  at testrunawayrecursionisafault-1.ms:5 in depth\n  ... previous frame repeated 999997 more times\n"
+  }
+}

@@ -57,7 +57,7 @@ fn result(r: Result<String, InvalidInput>) -> String {
 }
 
 #[test]
-fn matches_go() {
+fn matches_oracle() {
     let data = include_str!("oracle/path.tsv");
     let mut n = 0;
     for line in data.lines().filter(|l| !l.starts_with('#')) {

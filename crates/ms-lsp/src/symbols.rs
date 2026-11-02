@@ -26,7 +26,7 @@ struct Outline<'a> {
 impl Outline<'_> {
     /// The range of `name` on the declaration's line, else an empty range.
     fn selection(&self, offset: usize, name: &str) -> Range {
-        if let Some(at) = self.tokens.as_ref().and_then(|l| l.header(offset, name)) {
+        if let Some(at) = lexical::header(self.tokens.as_deref(), &self.d.text, offset, name) {
             return self.positions.range(at, at + name.len());
         }
         Range::at(self.positions.position(offset))
@@ -183,11 +183,11 @@ pub fn document_symbols(analysis: &Analysis, d: &Document) -> Json {
         if decl.0.decl.synthetic && matches!(decl.decl().kind, DeclKind::Interface(_)) {
             continue;
         }
-        let mut end = outline.block_end(d.text.len());
-        if let Some(next) = declarations.get(i + 1) {
-            end = outline.block_end(next.pos().offset as usize);
-        }
-        end = end.max(decl.pos().offset as usize);
+        // Select the boundary before scanning a potentially large EOF suffix.
+        let next = declarations
+            .get(i + 1)
+            .map_or(d.text.len(), |next| next.pos().offset as usize);
+        let end = outline.block_end(next).max(decl.pos().offset as usize);
         out.push(outline.declaration(decl, end));
     }
     Json::Arr(out)

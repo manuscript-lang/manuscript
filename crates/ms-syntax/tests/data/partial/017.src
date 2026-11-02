@@ -1,6 +1,6 @@
-import range from "@std/collections.ms"
-import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import range from "@std/collections/collections.ms"
+import stdout from "@std/io/io.ms"
+import clock from "@std/os/time.ms"
 
 # Shared helpers for the standard-library micro-benchmarks.
 export type Point:

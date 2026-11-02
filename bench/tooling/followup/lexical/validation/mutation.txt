@@ -1,3 +1,0 @@
-9c2296984c92a2f90c08c1353775150802765bae
-Mutation: remove exact source equality from pinned token lookup.
-Expected: fallback oracle rejects modified pinned source.

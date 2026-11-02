@@ -12,7 +12,7 @@ impl Iterator[Int] for Counter:
         if self.n == 0: return none
 
         self.n -= 1
-        return some(self.n)
+        return self.n
 
 fn make() Counter:
     return Counter(n: 3, label: "c")

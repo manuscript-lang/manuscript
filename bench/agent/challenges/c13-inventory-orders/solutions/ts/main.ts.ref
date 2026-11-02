@@ -1,4 +1,4 @@
-import readFileSync from "node:fs";
+import { readFileSync } from "node:fs";
 
 const ARITY: Record<string, number> = { stock: 3, price: 3, cancel: 2, ship: 2, report: 1 };
 const SKU = /^[A-Z0-9-]+$/;

@@ -1,17 +1,17 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-processes,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel, ChannelError from "@std/channels.ms"
+import Channel, ChannelError from "@std/io/channels.ms"
 import panic from "@std/core.ms"
-import read_line, stderr, stdin, stdout from "@std/io.ms"
-import Stdio from "@std/process.ms"
-import ProcessError, ProcessGroup from "@std/processes.ms"
-import expect_equal, expect_error, expect_ok from "@std/test.ms"
+import read_line, stderr, stdin, stdout from "@std/io/io.ms"
+import Stdio from "@std/os/process.ms"
+import ProcessError, ProcessGroup from "@std/os/processes.ms"
+import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 type Job:
     name: String
     sizes: List[Int]
 
-fn square_all(ch: Channel[Int, Int]) Result[Int, ChannelError]:
+fn square_all(ch: Channel[Int, Int]) Int!ChannelError:
     var c = ch
     var count = 0
 
@@ -79,12 +79,12 @@ fn report(ch: Channel[Int, Unit]) Int:
     return 3
 
 test "a child process answers each message in order":
-    let group = ProcessGroup[Result[Int, ChannelError], Int, Int]()
+    let group = ProcessGroup[Int!ChannelError, Int, Int]()
     var child = group.spawn(square_all) | try expect_ok
 
     for n in [1, 2, 3]:
         child.channel.send(n) | try expect_ok
-        child.channel.receive() | try expect_ok | try expect_equal(some(n * n))
+        child.channel.receive() | try expect_ok | try expect_equal((n * n))
 
     child.channel.close()
 
@@ -110,9 +110,9 @@ test "records cross in both directions":
 test "the parent reads what a finished child sent, then the end":
     let group = ProcessGroup[Int, Unit, Int]()
     var child = group.spawn(report) | try expect_ok
-    child.channel.receive() | try expect_ok | try expect_equal(some(10))
-    child.channel.receive() | try expect_ok | try expect_equal(some(20))
-    child.channel.receive() | try expect_ok | try expect_equal(some(30))
+    child.channel.receive() | try expect_ok | try expect_equal(10)
+    child.channel.receive() | try expect_ok | try expect_equal(20)
+    child.channel.receive() | try expect_ok | try expect_equal(30)
     child.channel.receive() | try expect_ok | try expect_equal(none)
     child.result() | try expect_ok | try expect_equal(3)
     child.wait() | try expect_ok | try expect_equal(0)
@@ -132,8 +132,8 @@ test "a group forgets a closed process":
     let _second = group.spawn(describe) | try expect_ok
     let kept = first.result() | try expect_ok
     try expect_equal(kept.name, "child")
-    first.close()
-    first.close()
+    try first.close()
+    try first.close()
 
     let all = group.results() | try expect_ok
     try expect_equal(all.length(), 1)

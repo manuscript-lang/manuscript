@@ -1,0 +1,23 @@
+{
+  "driver_sha256": "c79da56aa7678bf94e6349e0200c6b406d957fe556baaaeb48221c43d5c981b6",
+  "input_summary_sha256": "5cfee924d8b8010c9677f13248c52ca425f1f346c43d7d6d552ed8334ad8af4a",
+  "command": [
+    "bench/perf/json-library/focused.py",
+    "--before",
+    ".artifacts/json-library/precision-before",
+    "--after",
+    ".artifacts/json-library/precision-after",
+    "--summary",
+    "bench/perf/json-library/results/2026-10-31/final-precision/summary.json",
+    "--output",
+    "bench/perf/json-library/results/2026-10-31/review-empty-parse",
+    "--cases",
+    "empty",
+    "--operation",
+    "parse"
+  ],
+  "cases": [
+    "empty"
+  ],
+  "operation": "parse"
+}

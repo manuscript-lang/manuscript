@@ -1,0 +1,26 @@
+[
+  {
+    "case": "producer-error",
+    "exit": 1,
+    "summary_written": false,
+    "diagnostic": "subprocess.CalledProcessError: Command '['/usr/bin/false', '.artifacts/toml-quoting/failure-producer-error/empty.txt', '0']' returned non-zero exit status 1."
+  },
+  {
+    "case": "wrong-semantics",
+    "exit": 1,
+    "summary_written": false,
+    "diagnostic": "ValueError: wrong full serialized value: before, empty"
+  },
+  {
+    "case": "wrong-checksum",
+    "exit": 1,
+    "summary_written": false,
+    "diagnostic": "ValueError: wrong timing/checksum: ['1', '0', '0'], count=1, size=11"
+  },
+  {
+    "case": "unbalanced-trials",
+    "exit": 2,
+    "summary_written": false,
+    "diagnostic": "run.py: error: use complete six-trial blocks (6, 12, 18, ...) for balanced positions"
+  }
+]

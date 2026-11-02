@@ -249,6 +249,16 @@ impl Checker {
                     return i;
                 }
                 cs = case_of(alt, *name);
+                if cs.is_none() && case_names(alt).is_empty() {
+                    self.res_error(
+                        e.pos,
+                        format!(
+                            "{} has no cases or static members, so `{}.{name}(...)` does not exist; if {name} is a module function, import it and call {name}(...); if it is a method, call it on a value",
+                            alt.name, alt.name
+                        ),
+                    );
+                    return i;
+                }
                 if cs.is_none() {
                     self.res_error(
                         e.pos,
@@ -274,6 +284,14 @@ impl Checker {
             cs = case;
         }
         if let (Some(alt), Some(cs)) = (alternative, cs) {
+            if alt.is_std("Optional") && cs.name == "some" {
+                self.type_error(
+                    e.pos,
+                    "there is no some(...); a plain value converts where a T? is expected, so pass it directly, or annotate the binding, e.g. let x: Int? = 5",
+                );
+                i.ty = Some(invalid());
+                return i;
+            }
             self.opaque_denied(
                 e.pos,
                 &alt,
@@ -427,7 +445,7 @@ impl Checker {
         if name.as_str() != "spawn"
             || !m
                 .receiver
-                .is_source_type("@std/processes.ms", "ProcessGroup")
+                .is_source_type("@std/os/processes.ms", "ProcessGroup")
         {
             return;
         }
@@ -493,7 +511,7 @@ impl Checker {
         i
     }
 
-    /// `Shared` is changed through `lock` from `@std/sync.ms`, which is the one place that may call
+    /// `Shared` is changed through `lock` from `@std/concurrency/sync.ms`, which is the one place that may call
     /// its raw `take`, `put`, `locked` and `id`. A `Shared` is not `Data`, so the `Data` bound on
     /// worker and process messages already keeps it from crossing as a silent copy.
     fn check_shared_use(&mut self, e: &Expr, callee: &Expr, callable: &Info) {
@@ -504,12 +522,12 @@ impl Checker {
         if let Some(m) = callable.method.as_ref()
             && m.receiver.is_std("Shared")
             && matches!(name.as_str(), "take" | "put" | "locked" | "id")
-            && self.m().file.as_str() != "@std/sync.ms"
+            && self.m().file.as_str() != "@std/concurrency/sync.ms"
         {
             self.type_error(
                 e.pos,
                 format!(
-                    "Shared.{name} is internal; change a Shared with `var guard = lock(box)` from \"@std/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()"
+                    "Shared.{name} is internal; change a Shared with `var guard = lock(box)` from \"@std/concurrency/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()"
                 ),
             );
         }
@@ -519,13 +537,17 @@ impl Checker {
     /// that captured anything: `WorkerGroup.spawn` and `spawn_many` take the name of a top-level `def`.
     fn check_worker_entry(&mut self, callable: &Info, args: &[Arg]) {
         let is_spawn = callable.method.as_ref().is_some_and(|m| {
-            m.receiver.is_source_type("@std/workers.ms", "WorkerGroup")
+            m.receiver
+                .is_source_type("@std/concurrency/workers.ms", "WorkerGroup")
                 && m.decl
                     .as_ref()
                     .is_some_and(|d| matches!(d.name().as_str(), "spawn" | "spawn_many" | "start"))
-        }) && !matches!(self.m().file.as_str(), "@std/workers.ms" | "@std/net.ms");
+        }) && !matches!(
+            self.m().file.as_str(),
+            "@std/concurrency/workers.ms" | "@std/net/net.ms"
+        );
         let is_serve_cores = callable.symbol.as_ref().is_some_and(|s| {
-            s.module.as_str() == "@std/net.ms" && s.name.as_str() == "serve_cores"
+            s.module.as_str() == "@std/net/net.ms" && s.name.as_str() == "serve_cores"
         });
         if !is_spawn && !is_serve_cores {
             return;
@@ -708,6 +730,7 @@ impl Checker {
                 ),
             );
         }
+        let mut missing: Vec<Name> = Vec::new();
         for (index, v) in vars.iter().enumerate() {
             let mut a = args.get(index).cloned().flatten();
             if a.is_none()
@@ -718,13 +741,14 @@ impl Checker {
             let a = match a {
                 Some(a) => a,
                 None => {
-                    if !self.label_mismatch {
-                        self.type_error(pos, missing_type_argument_hint(name, v.name, vars, &args));
-                    }
+                    missing.push(v.name);
                     invalid()
                 }
             };
             subst.insert(v.id, a);
+        }
+        if !missing.is_empty() && !self.label_mismatch {
+            self.type_error(pos, missing_type_argument_hint(name, &missing, vars, &args));
         }
         self.label_mismatch = false;
         for v in vars {
@@ -763,6 +787,18 @@ impl Checker {
         let Some(def) = &t.def else {
             return t.clone();
         };
+        // A plain constructor can infer its arguments from a matching Optional payload.
+        let expected = expected.map(|exp| {
+            if !t.is_std("Optional")
+                && exp.is_std("Optional")
+                && exp.args.len() == 1
+                && exp.args[0].id == t.id
+            {
+                &exp.args[0]
+            } else {
+                exp
+            }
+        });
         let vars = def.variables();
         let mut subst = Subst::new();
         for (index, v) in vars.iter().enumerate() {
@@ -791,23 +827,6 @@ impl Checker {
             })
             .collect();
         self.infer_arguments(args, &inferred_fields, &vars, &mut subst, None);
-        if t.is_std("Result")
-            && vars.len() == 2
-            && !subst.contains_key(&vars[0].id)
-            && subst
-                .get(&vars[1].id)
-                .is_some_and(|e| e.to_string() == "String")
-        {
-            self.type_error(
-                pos,
-                "error(...) needs a value that implements Error, not a String; to fail a test write `try fail(\"message\")` (from @std/test.ms), otherwise wrap the message in a type that implements Error"
-                    .to_string(),
-            );
-            self.unresolved_constructors.insert(pos);
-            self.unknown_type = true;
-            subst.insert(vars[0].id, invalid());
-            subst.insert(vars[1].id, invalid());
-        }
         let mut actual: Vec<Ty> = Vec::new();
         for v in &vars {
             let mut a = subst.get(&v.id).cloned();
@@ -888,20 +907,12 @@ impl Checker {
         };
         let actual = info.ty.clone();
         if compatible(&actual, expected_optional) {
-            let redundant = is_written_some(e)
-                && matches!(&e.kind, ExprKind::Call { args, .. }
-                    if self.info_of(&args[0].value).and_then(|i| i.ty).is_some_and(|t| !t.is_std("Optional") && same(&t, &payload)));
-            let mut info = self.check_expression(e, info, expected);
-            if redundant {
-                info.redundant_some = true;
-                self.set_info(e, info.clone());
-            }
-            return info;
+            return self.check_expression(e, info, expected);
         }
         let payload_ok = compatible(&actual, &payload)
-            || actual
-                .as_ref()
-                .is_some_and(|a| self.error_assignable(a, &payload));
+            || actual.as_ref().is_some_and(|a| {
+                self.error_assignable(a, &payload) || self.interface_assignable(a, &payload)
+            });
         if payload_ok {
             let mut info = self.check_expression(e, info, Some(&payload));
             info.optional_argument = Some(expected_optional.clone());
@@ -927,15 +938,6 @@ impl Checker {
         self.p.diagnostics.extend(diagnostics);
         info
     }
-}
-
-/// A call written `some(x)` or `some(value: x)` through the prelude name.
-fn is_written_some(e: &Expr) -> bool {
-    let ExprKind::Call { callee, args } = &e.kind else {
-        return false;
-    };
-    matches!(&callee.kind, ExprKind::Name(n) if n.as_str() == "some")
-        && matches!(args.as_slice(), [a] if a.name.is_none_or(|n| n.as_str() == "value"))
 }
 
 #[cfg(test)]
@@ -1043,6 +1045,16 @@ mod argument_tests {
         assert_eq!(messages.len(), 2, "{messages:?}");
         assert!(messages[0].starts_with("missing argument second"));
         assert!(messages[1].starts_with("missing argument third"));
+    }
+
+    #[test]
+    fn generic_source_method_value_needs_type_arguments() {
+        let source = "type Out:\n    n: Int\nimpl Out:\n    fn put[F](value: F) Int:\n        return 1\nfn bare(o: Out) Unit:\n    let g = o.put\nfn fixed(o: Out) Unit:\n    let g = o.put[Int]\n    let n = o.put(1)\n";
+        let p = check(source);
+        let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
+        assert_eq!(messages.len(), 1, "{messages:?}");
+        assert!(messages[0].starts_with("a generic method value requires"));
+        assert_eq!(p.diagnostics[0].pos.line, 7);
     }
 
     #[test]

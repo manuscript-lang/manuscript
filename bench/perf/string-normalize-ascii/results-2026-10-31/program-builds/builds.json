@@ -1,0 +1,506 @@
+{
+  "base": "8dd79f417165200a4208b860d653fc5c4ec22d1e",
+  "compiler_sha256": "b3f7d57762090c7c62d3c42c5bc27651c18a8f918fd8d532024e5aac8315f164",
+  "builds": [
+    {
+      "state": "baseline",
+      "suite": "normalize",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/baseline-normalize"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/baseline.a",
+      "archive_sha256": "89f85bc440ad6827274e4c0f8bbb8e4160118395ee207e4c23acee7532ac388d",
+      "source": "bench/perf/string-normalize-ascii/main.ms",
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "output": "/workspace/normalization-evidence/programs/baseline-normalize",
+      "output_sha256": "5feeac3583fe814d863c155cc9b4f3fb54fcfedac56f5200151c958b6f49c64e",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "baseline",
+      "suite": "byte",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "/workspace/normalization-evidence/inputs/byte220.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/baseline-byte"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/baseline.a",
+      "archive_sha256": "89f85bc440ad6827274e4c0f8bbb8e4160118395ee207e4c23acee7532ac388d",
+      "source": "/workspace/normalization-evidence/inputs/byte220.ms",
+      "source_sha256": "f30c18354c0450b840c846586481ad08550a3455c7e081270b71acdd38fb5f88",
+      "output": "/workspace/normalization-evidence/programs/baseline-byte",
+      "output_sha256": "fb7943a0b9022225a67cf38b2fba1354bf9581f3c9d693f196783564ad2b0c55",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "baseline",
+      "suite": "lines",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-lines/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/baseline-lines"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/baseline.a",
+      "archive_sha256": "89f85bc440ad6827274e4c0f8bbb8e4160118395ee207e4c23acee7532ac388d",
+      "source": "bench/perf/string-lines/main.ms",
+      "source_sha256": "e7d37f5ea0147ac0fa127990ec52848f7319fd300f07719a3f0bd7be76a51787",
+      "output": "/workspace/normalization-evidence/programs/baseline-lines",
+      "output_sha256": "ad0cb2e694f4b2f48544c61c04cf22e77659b5b4f8ee75c666614c3f328c77f7",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "baseline",
+      "suite": "reverse",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/baseline-reverse"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/baseline.a",
+      "archive_sha256": "89f85bc440ad6827274e4c0f8bbb8e4160118395ee207e4c23acee7532ac388d",
+      "source": "bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+      "source_sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+      "output": "/workspace/normalization-evidence/programs/baseline-reverse",
+      "output_sha256": "bd841168fa778ca4434e25010d710194f87a545f860e95354698e2da2a331ac9",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "baseline",
+      "suite": "rss",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/rss.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/baseline-rss"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/baseline.a",
+      "archive_sha256": "89f85bc440ad6827274e4c0f8bbb8e4160118395ee207e4c23acee7532ac388d",
+      "source": "bench/perf/string-normalize-ascii/rss.ms",
+      "source_sha256": "0a73231cb49be25add32205c50c09ce95818715d11cf58545c8c6b0dcdd506b9",
+      "output": "/workspace/normalization-evidence/programs/baseline-rss",
+      "output_sha256": "24df26cd0fa3f74d9d43b59bf2f4041e633f3acdc5d361f430eae2ee07cb7a83",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "byte",
+      "suite": "normalize",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/byte-normalize"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/byte-only.a",
+      "archive_sha256": "3d3da30df60936022f8efff63827c0ca291d4e0409d4589b03049009b5a70f75",
+      "source": "bench/perf/string-normalize-ascii/main.ms",
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "output": "/workspace/normalization-evidence/programs/byte-normalize",
+      "output_sha256": "3306a584568296c33af5c85e0fbb700a90751b6b94389ea6141dc5c8e1ea06cf",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "byte",
+      "suite": "byte",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "/workspace/normalization-evidence/inputs/byte220.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/byte-byte"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/byte-only.a",
+      "archive_sha256": "3d3da30df60936022f8efff63827c0ca291d4e0409d4589b03049009b5a70f75",
+      "source": "/workspace/normalization-evidence/inputs/byte220.ms",
+      "source_sha256": "f30c18354c0450b840c846586481ad08550a3455c7e081270b71acdd38fb5f88",
+      "output": "/workspace/normalization-evidence/programs/byte-byte",
+      "output_sha256": "e0e31029f1b0f0a7212c6f532b55322b28106adf3ec6c913a16fb9d3bb850ca7",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "byte",
+      "suite": "lines",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-lines/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/byte-lines"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/byte-only.a",
+      "archive_sha256": "3d3da30df60936022f8efff63827c0ca291d4e0409d4589b03049009b5a70f75",
+      "source": "bench/perf/string-lines/main.ms",
+      "source_sha256": "e7d37f5ea0147ac0fa127990ec52848f7319fd300f07719a3f0bd7be76a51787",
+      "output": "/workspace/normalization-evidence/programs/byte-lines",
+      "output_sha256": "9dbe357c6c9798a05b9f5019f6ac485dd7366d5775af3cb7160f82b25d7c2748",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "byte",
+      "suite": "reverse",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/byte-reverse"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/byte-only.a",
+      "archive_sha256": "3d3da30df60936022f8efff63827c0ca291d4e0409d4589b03049009b5a70f75",
+      "source": "bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+      "source_sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+      "output": "/workspace/normalization-evidence/programs/byte-reverse",
+      "output_sha256": "4bca52ce1098d965bec1ee038c662af945e805fb86822adf709cba65c622eed9",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "byte",
+      "suite": "rss",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/rss.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/byte-rss"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/byte-only.a",
+      "archive_sha256": "3d3da30df60936022f8efff63827c0ca291d4e0409d4589b03049009b5a70f75",
+      "source": "bench/perf/string-normalize-ascii/rss.ms",
+      "source_sha256": "0a73231cb49be25add32205c50c09ce95818715d11cf58545c8c6b0dcdd506b9",
+      "output": "/workspace/normalization-evidence/programs/byte-rss",
+      "output_sha256": "e01f298c0e3978404c4ab36bf03fd1d67a0ed184c95bc8ea5a3b47feffd83c1f",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "ascii",
+      "suite": "normalize",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/ascii-normalize"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/ascii-only.a",
+      "archive_sha256": "8310f350a4b335c14da48a04b38ad58cca663800213551dd1adeef0b1059e805",
+      "source": "bench/perf/string-normalize-ascii/main.ms",
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "output": "/workspace/normalization-evidence/programs/ascii-normalize",
+      "output_sha256": "dcee9c2148305665d7ef1e3e9b6425d9a619e8f32a067a5b45449d615e04f57b",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "ascii",
+      "suite": "byte",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "/workspace/normalization-evidence/inputs/byte220.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/ascii-byte"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/ascii-only.a",
+      "archive_sha256": "8310f350a4b335c14da48a04b38ad58cca663800213551dd1adeef0b1059e805",
+      "source": "/workspace/normalization-evidence/inputs/byte220.ms",
+      "source_sha256": "f30c18354c0450b840c846586481ad08550a3455c7e081270b71acdd38fb5f88",
+      "output": "/workspace/normalization-evidence/programs/ascii-byte",
+      "output_sha256": "0bb27f09b6be352a72fb45a595d0035bc933aa3bf3ec1ab59e21181ca861218f",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "ascii",
+      "suite": "lines",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-lines/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/ascii-lines"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/ascii-only.a",
+      "archive_sha256": "8310f350a4b335c14da48a04b38ad58cca663800213551dd1adeef0b1059e805",
+      "source": "bench/perf/string-lines/main.ms",
+      "source_sha256": "e7d37f5ea0147ac0fa127990ec52848f7319fd300f07719a3f0bd7be76a51787",
+      "output": "/workspace/normalization-evidence/programs/ascii-lines",
+      "output_sha256": "617bb62254ff1226b2155275af6b1c8b2f2c14d273a5c4038702bbbc2698ab6b",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "ascii",
+      "suite": "reverse",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/ascii-reverse"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/ascii-only.a",
+      "archive_sha256": "8310f350a4b335c14da48a04b38ad58cca663800213551dd1adeef0b1059e805",
+      "source": "bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+      "source_sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+      "output": "/workspace/normalization-evidence/programs/ascii-reverse",
+      "output_sha256": "d037d689a03f56aca5add4c5f4c8d63ecda625df0e1d60b08efec25247a915ba",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "ascii",
+      "suite": "rss",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/rss.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/ascii-rss"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/ascii-only.a",
+      "archive_sha256": "8310f350a4b335c14da48a04b38ad58cca663800213551dd1adeef0b1059e805",
+      "source": "bench/perf/string-normalize-ascii/rss.ms",
+      "source_sha256": "0a73231cb49be25add32205c50c09ce95818715d11cf58545c8c6b0dcdd506b9",
+      "output": "/workspace/normalization-evidence/programs/ascii-rss",
+      "output_sha256": "17dffb1ce52a1fc5c154833fcd8fb0bc349a7bb07083522d415255fbcb090332",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "both",
+      "suite": "normalize",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/both-normalize"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/both.a",
+      "archive_sha256": "5fe7b6c2e2ff066db1e95ee8c07c12c8f31a8985631e828cf9bbceda66c1f19c",
+      "source": "bench/perf/string-normalize-ascii/main.ms",
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "output": "/workspace/normalization-evidence/programs/both-normalize",
+      "output_sha256": "1116df113345eebdd83f98eebd97c73eb2411110f24fd79e7437237f64dcde48",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "both",
+      "suite": "byte",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "/workspace/normalization-evidence/inputs/byte220.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/both-byte"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/both.a",
+      "archive_sha256": "5fe7b6c2e2ff066db1e95ee8c07c12c8f31a8985631e828cf9bbceda66c1f19c",
+      "source": "/workspace/normalization-evidence/inputs/byte220.ms",
+      "source_sha256": "f30c18354c0450b840c846586481ad08550a3455c7e081270b71acdd38fb5f88",
+      "output": "/workspace/normalization-evidence/programs/both-byte",
+      "output_sha256": "b3c45f85c25e07eb963636d687b94ee584760ff826e1700ad52406b610d62c3e",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "both",
+      "suite": "lines",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-lines/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/both-lines"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/both.a",
+      "archive_sha256": "5fe7b6c2e2ff066db1e95ee8c07c12c8f31a8985631e828cf9bbceda66c1f19c",
+      "source": "bench/perf/string-lines/main.ms",
+      "source_sha256": "e7d37f5ea0147ac0fa127990ec52848f7319fd300f07719a3f0bd7be76a51787",
+      "output": "/workspace/normalization-evidence/programs/both-lines",
+      "output_sha256": "ea1b561c98ea794a11e4b5cde54062d3531c703b8687f46157bb73069796f24b",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "both",
+      "suite": "reverse",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/both-reverse"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/both.a",
+      "archive_sha256": "5fe7b6c2e2ff066db1e95ee8c07c12c8f31a8985631e828cf9bbceda66c1f19c",
+      "source": "bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+      "source_sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+      "output": "/workspace/normalization-evidence/programs/both-reverse",
+      "output_sha256": "5a22a9f1277fcea75a2f3ad1af07b25f2d22d728af8dbf5dc0192707f6904209",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    {
+      "state": "both",
+      "suite": "rss",
+      "argv": [
+        "/workspace/normalization-perf/target/release/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/rss.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/normalization-evidence/programs/both-rss"
+      ],
+      "MS_RT_LIB": "/workspace/normalization-evidence/both.a",
+      "archive_sha256": "5fe7b6c2e2ff066db1e95ee8c07c12c8f31a8985631e828cf9bbceda66c1f19c",
+      "source": "bench/perf/string-normalize-ascii/rss.ms",
+      "source_sha256": "0a73231cb49be25add32205c50c09ce95818715d11cf58545c8c6b0dcdd506b9",
+      "output": "/workspace/normalization-evidence/programs/both-rss",
+      "output_sha256": "046afe1d35bc8e65eebfe81dee7a1b6a33503aa2ed382d0caa62d5aa6a4e5bb4",
+      "metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    }
+  ]
+}

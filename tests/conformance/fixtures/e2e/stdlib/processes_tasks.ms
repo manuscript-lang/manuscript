@@ -1,11 +1,11 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-processes,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel from "@std/channels.ms"
-import commands, os_type from "@std/process.ms"
-import ProcessGroup from "@std/processes.ms"
-import TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_ok from "@std/test.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import Channel from "@std/io/channels.ms"
+import os_type, run, spawn from "@std/os/process.ms"
+import ProcessGroup from "@std/os/processes.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_ok from "@std/test/test.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 fn talker(ch: Channel[Int, Unit]) Int:
     var c = ch
@@ -57,10 +57,10 @@ test "a task cancelled in a channel read releases the link":
     let group = ProcessGroup[Int, Unit, Int]()
     var child = group.spawn(late).get()
     let reader = child.channel.clone()
-    var tasks = TaskGroup[Int](timeout: some(nanoseconds(50000000)))
+    var tasks = TaskGroup[Int](timeout: nanoseconds(50000000))
     tasks.spawn(fn ch: first(reader.clone()))
     try expect_equal(tasks.wait().is_error(), true)
-    tasks.close()
+    try tasks.close()
     try expect_equal(child.result().get(-1), 42)
 
 fn long_program() String:
@@ -76,63 +76,63 @@ fn long_args() List[String]:
     return ["30.717"]
 
 fn run_long() Int:
-    let out = commands().run(long_program(), long_args())
+    let out = run(long_program(), long_args())
     return out.get().exit_code
 
 # Whether the long-running child is alive: a process listing for ping on Windows, where nothing
 # else in the run starts one, and the command line on other systems.
 fn long_alive() Bool:
     if os_type() == "windows":
-        let listed = commands().run("tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"])
+        let listed = run("tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"])
         return listed.get().stdout.contains("PING.EXE".to_bytes())
 
-    let found = commands().run("pgrep", ["-f", "sleep 30.717"])
+    let found = run("pgrep", ["-f", "sleep 30.717"])
     return found.get().exit_code == 0
 
 # Names the error when the listing command cannot run, instead of failing inside `long_alive`.
 test "the process listing command runs":
     if os_type() == "windows":
         try expect_ok(
-            commands().run(
+            run(
                 "tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"]
             )
         )
     else:
-        try expect_ok(commands().run("pgrep", ["-f", "sleep 30.717"]))
+        try expect_ok(run("pgrep", ["-f", "sleep 30.717"]))
 
-test "cancelling a task inside commands().run kills the child":
-    var group = TaskGroup[Int](timeout: some(nanoseconds(200000000)))
+test "cancelling a task inside run kills the child":
+    var group = TaskGroup[Int](timeout: nanoseconds(200000000))
     let t = group.spawn(fn ch: run_long())
     try expect_equal(t.result().is_ok(), false)
-    group.close()
+    try group.close()
     sleep(nanoseconds(200000000))
     try expect_equal(long_alive(), false)
 
 fn wait_long() Int:
-    let child = commands().spawn(long_program(), long_args()).get()
+    let child = spawn(long_program(), long_args()).get()
     return child.wait().get(-1)
 
 test "cancelling a task inside Subprocess.wait kills the child":
-    var group = TaskGroup[Int](timeout: some(nanoseconds(200000000)))
+    var group = TaskGroup[Int](timeout: nanoseconds(200000000))
     let t = group.spawn(fn ch: wait_long())
     try expect_equal(t.result().is_ok(), false)
-    group.close()
+    try group.close()
     sleep(nanoseconds(200000000))
     try expect_equal(long_alive(), false)
 
 # The child belongs to the task's closure, not to a local of its frames, so the unwind pass has no
 # value to drop: only Subprocess.wait's own cleanup stops it.
 test "cancelling a task inside Subprocess.wait stops a child the task was handed":
-    let child = commands().spawn(long_program(), long_args()).get()
-    var group = TaskGroup[Int](timeout: some(nanoseconds(200000000)))
+    let child = spawn(long_program(), long_args()).get()
+    var group = TaskGroup[Int](timeout: nanoseconds(200000000))
     let t = group.spawn(fn ch: child.wait().get(-1))
     try expect_equal(t.result().is_ok(), false)
-    group.close()
+    try group.close()
     sleep(nanoseconds(200000000))
     try expect_equal(long_alive(), false)
 
 test "the liveness check sees a live child":
-    let _child = try commands().spawn(long_program(), long_args())
+    let _child = try spawn(long_program(), long_args())
     try expect_equal(long_alive(), true)
 
 fn slow_sum(ch: Channel[Unit, Int]) Int:
@@ -168,7 +168,7 @@ test "two tasks send to the same child while its pipe is full":
     tasks.spawn(fn ch: send_many(a.clone(), 20000))
     tasks.spawn(fn ch: send_many(b.clone(), 20000))
     try expect_equal(tasks.results().get([]), [20000, 20000])
-    tasks.close()
+    try tasks.close()
     child.channel.close()
     try expect_equal(child.result().get(-1), 40000)
 
@@ -184,5 +184,5 @@ test "two tasks receive from the same child":
     let got = tasks.results().get([])
     try expect_equal(got.length(), 2)
     try expect_equal(got[0] + got[1], 3)
-    tasks.close()
+    try tasks.close()
     try expect_equal(child.result().get(-1), 42)

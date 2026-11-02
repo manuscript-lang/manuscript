@@ -45,7 +45,7 @@ fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountErr
 
 ## Error compatibility
 
-`try` accepts the enclosing function's error type, or a specific error implementing `Error` when the function returns `Result[U, Error]`.
+`try` accepts the enclosing function's error type without any interface requirement, or a specific error implementing `Error` when the function returns `Result[U, Error]`.
 
 - `Result[T, E]` can become `Result[U, E]`; or `Result[U, Error]` if `E` implements `Error`.
 - `Error` is an ordinary interface, so the [implicit interface conversion](../types/contracts.md#interface-conversion) applies.

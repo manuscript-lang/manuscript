@@ -1,4 +1,4 @@
-import filled from "@std/collections.ms"
+import filled from "@std/collections/collections.ms"
 import panic from "@std/core.ms"
 
 fn make_cells() List[Int]:

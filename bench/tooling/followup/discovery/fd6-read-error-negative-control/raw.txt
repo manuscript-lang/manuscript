@@ -1,6 +1,0 @@
-=== RUN   TestDiscoveryAuthoritativeOverlaySurvivesDiskReadFailure
-    external_discovery_probe_test.go:31: read failure lost valid overlay or closed sibling symbols map[main:true value:true]
---- FAIL: TestDiscoveryAuthoritativeOverlaySurvivesDiskReadFailure (0.06s)
-FAIL
-FAIL	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.068s
-FAIL

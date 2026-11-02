@@ -1,0 +1,16 @@
+fn g() Int:
+    let a = h(
+        text
+        | f
+        # keep λ😀 on the flow
+        .m(),
+        h(text | f, y)
+        .m(),
+        text
+        | .m()
+        .n(),
+        text
+        | try f
+        .m()
+    )
+    return a

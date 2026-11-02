@@ -1,4 +1,4 @@
-import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 import (
     timestamp,
     parse_timestamp,
@@ -6,12 +6,12 @@ import (
     local_zone,
     Timestamp,
     TimeError,
-    clock,
-    wall_clock,
+    monotonic,
+    now,
     sleep,
     microseconds,
     milliseconds
-) from "@std/time.ms"
+) from "@std/os/time.ms"
 
 test "timestamps preserve nanoseconds and shift across epoch":
     let epoch = try timestamp(0, 123)
@@ -23,23 +23,22 @@ test "timestamps preserve nanoseconds and shift across epoch":
     try expect_equal((try later.shift((-2).seconds)), epoch)
 
 test "time rejects invalid timestamps and out of range nanoseconds":
-    let invalid: Result[Timestamp, TimeError] = error(TimeError.InvalidData)
+    let invalid: Timestamp!TimeError = error(TimeError.InvalidData)
     try expect_equal(parse_timestamp("2024-02-30T00:00:00Z"), invalid)
 
-    let out_of_range: Result[Timestamp, TimeError] = error(TimeError.OutOfRange)
+    let out_of_range: Timestamp!TimeError = error(TimeError.OutOfRange)
     try expect_equal(timestamp(0, 1000000000), out_of_range)
 
 test "host clocks are usable and zero sleep completes":
-    let monotonic = clock()
-    let before = monotonic.now()
+    let before = monotonic()
     sleep(0.milliseconds)
-    try expect_false(monotonic.now() < before)
+    try expect_false(monotonic() < before)
 
-    let now = wall_clock().now()
-    try expect_equal((try parse_timestamp(now.to_string())), now)
+    let current = now()
+    try expect_equal((try parse_timestamp(current.to_string())), current)
 
 test "parse_timestamp reports offsets that leave years 1 through 9999 as out of range":
-    let out_of_range: Result[Timestamp, TimeError] = error(TimeError.OutOfRange)
+    let out_of_range: Timestamp!TimeError = error(TimeError.OutOfRange)
     for text in ["0001-01-01T00:00:00+00:01", "9999-12-31T23:59:59-00:01"]:
         if parse_timestamp(text) != out_of_range: return fail("range {text}")
 
@@ -72,19 +71,25 @@ test "format renders tokens and from_calendar round trips":
     try expect_equal(back, moment)
 
 test "calendar rejects unknown zones and impossible dates":
-    let bad_zone: Result[Timestamp, TimeError] = error(TimeError.InvalidInput)
+    let bad_zone: Timestamp!TimeError = error(TimeError.InvalidInput)
     try expect_equal(from_calendar(2024, 1, 1, 0, 0, 0, 0, "Nowhere/Land"), bad_zone)
 
-    let bad_date: Result[Timestamp, TimeError] = error(TimeError.OutOfRange)
+    let bad_date: Timestamp!TimeError = error(TimeError.OutOfRange)
     try expect_equal(from_calendar(2023, 2, 29, 0, 0, 0, 0, "UTC"), bad_date)
     try expect_false(local_zone() == "")
 
 test "sub-millisecond sleeps are not rounded up to a millisecond":
-    let monotonic = clock()
-    let start = monotonic.now()
-    for round in 0..500:
-        sleep(microseconds(50))
+    var fastest = milliseconds(5000)
 
     # Rounding each sleep up to 1 ms would take at least 500 ms; 50 us sleeps take about 25 ms.
-    let elapsed = monotonic.now().difference(start)
-    try expect_true(elapsed.compare(milliseconds(400)) < 0)
+    # A loaded or coarse-timer runner can stretch one pass, so the fastest of a few passes decides.
+    for attempt in 0..5:
+        let start = monotonic()
+        for round in 0..500:
+            sleep(microseconds(50))
+
+        let elapsed = monotonic().difference(start)
+        if elapsed.compare(fastest) < 0:
+            fastest = elapsed
+
+    try expect_true(fastest.compare(milliseconds(400)) < 0)

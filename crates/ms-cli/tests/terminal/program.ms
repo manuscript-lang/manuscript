@@ -1,6 +1,6 @@
-import terminal, TerminalEvent, EraseRegion from "@std/io.ms"
-import stdout from "@std/io.ms"
-import nanoseconds from "@std/time.ms"
+import TerminalEvent, EraseRegion, raw_mode from "@std/io/io.ms"
+import stdout from "@std/io/io.ms"
+import nanoseconds from "@std/os/time.ms"
 
 fn describe(e: TerminalEvent) String:
     match e:
@@ -9,7 +9,7 @@ fn describe(e: TerminalEvent) String:
         Resize(c, r): return "resize:{c}x{r}"
 
 export fn main() Int:
-    let raw = terminal().raw_mode(alternate_screen: false)
+    let raw = raw_mode(alternate_screen: false)
 
     if let t = raw:
         var term = t
@@ -35,7 +35,7 @@ export fn main() Int:
                 let _ = stdout().write("error\r\n")
                 done = true
 
-        term.close()
+        term.close().get(none)
         return 0
 
     let _ = stdout().write("no raw mode\n")

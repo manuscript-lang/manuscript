@@ -1,6 +1,0 @@
-package lsp
-
-func lexicalInventorySnapshot() lexicalInventoryMetrics {
-	files, bytes := lexicalPinnedSourceSummary()
-	return lexicalInventoryMetrics{Files: files, SourceBytes: bytes}
-}

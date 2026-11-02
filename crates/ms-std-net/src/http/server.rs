@@ -1431,6 +1431,9 @@ impl Server {
         }
         let framing = h1::request_framing(&head).map_err(|b| (b.status, b.reason))?;
         let target = target::parse(&head.target).map_err(|e| (400, e.0))?;
+        if target.path == "*" && head.method != "OPTIONS" {
+            return Err((400, "asterisk-form target needs OPTIONS"));
+        }
         if !head.fields.iter().all(|(n, v)| {
             std::str::from_utf8(n.as_bytes()).is_ok() && std::str::from_utf8(v).is_ok()
         }) {

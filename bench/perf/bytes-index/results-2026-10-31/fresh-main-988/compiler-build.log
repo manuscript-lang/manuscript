@@ -1,0 +1,10 @@
+   Compiling ms-check v0.0.0 (/workspace/manuscript/crates/ms-check)
+   Compiling ms-syntax v0.0.0 (/workspace/manuscript/crates/ms-syntax)
+   Compiling ms-clif v0.0.0 (/workspace/manuscript/crates/ms-clif)
+   Compiling ms-cli v0.1.0 (/workspace/manuscript/crates/ms-cli)
+   Compiling ms-tooling v0.0.0 (/workspace/manuscript/crates/ms-tooling)
+   Compiling ms-driver v0.0.0 (/workspace/manuscript/crates/ms-driver)
+   Compiling ms-lower v0.0.0 (/workspace/manuscript/crates/ms-lower)
+   Compiling ms-lsp v0.0.0 (/workspace/manuscript/crates/ms-lsp)
+   Compiling ms-build v0.0.0 (/workspace/manuscript/crates/ms-build)
+    Finished `release` profile [optimized + debuginfo] target(s) in 23.32s

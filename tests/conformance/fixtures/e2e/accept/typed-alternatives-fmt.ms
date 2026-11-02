@@ -2,31 +2,31 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/typed-alternatives.ms
 import TextError from "@std/core.ms"
-import expect_equal, expect_false, fail from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
 
-fn checked(n: Int) Result[Int, TextError]:
+fn checked(n: Int) Int!TextError:
     if n < 0:
         return error(TextError("negative"))
 
     return ok(n + 1)
 
-fn chain(n: Int) Result[Int, TextError]:
+fn chain(n: Int) Int!TextError:
     let v = try checked(n)
     return ok(v * 2)
 
-fn deeper(n: Int) Result[Int, TextError]:
+fn deeper(n: Int) Int!TextError:
     let a = try chain(n)
     let b = try chain(a)
     return ok(a + b)
 
-fn expression_try(n: Int) Result[Int, TextError]:
+fn expression_try(n: Int) Int!TextError:
     let x = (try checked(n)) + 100
     return ok(x)
 
-fn passthrough(n: Int) Result[Int, TextError]:
+fn passthrough(n: Int) Int!TextError:
     return checked(n)
 
-fn through_local(n: Int) Result[Int, TextError]:
+fn through_local(n: Int) Int!TextError:
     let r = checked(n)
     return r
 
@@ -34,18 +34,18 @@ fn halve(n: Int) Int?:
     if n % 2 != 0:
         return none
 
-    return some(n / 2)
+    return (n / 2)
 
-fn word(n: Int) Result[String, TextError]:
+fn word(n: Int) String!TextError:
     if n == 0:
         return error(TextError("zero"))
 
     return ok("w{n}")
 
-fn ratio(n: Int) Result[Float, TextError]:
+fn ratio(n: Int) Float!TextError:
     return ok(1.5)
 
-fn nothing(flag: Bool) Result[Unit, TextError]:
+fn nothing(flag: Bool) Unit!TextError:
     if flag:
         return ok(unit)
 
@@ -55,18 +55,18 @@ fn nested(n: Int) Int??:
     if n == 0:
         return none
 
-    return some(halve(n))
+    return halve(n)
 
 fn matched_value(n: Int) Int:
     return checked(n).get(-1)
 
-fn closure_return(n: Int) Result[Int, TextError]:
+fn closure_return(n: Int) Int!TextError:
     if let y = halve(n):
         return ok(y)
 
     return error(TextError("odd"))
 
-fn sum_all(count: Int) Result[Int, TextError]:
+fn sum_all(count: Int) Int!TextError:
     var total = 0
 
     for i in 0..count:
@@ -125,7 +125,7 @@ test "optional and payload kinds":
     nothing(true).get()
 
     if let inner = nested(4):
-        try expect_equal(inner, some(2))
+        try expect_equal(inner, 2)
     else:
         return fail("nested none")
 

@@ -1,15 +1,15 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel, ChannelError from "@std/channels.ms"
+import Channel, ChannelError from "@std/io/channels.ms"
 import panic from "@std/core.ms"
-import fetch from "@std/fetch.ms"
-import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/http.ms"
-import stdin from "@std/io.ms"
-import network from "@std/net.ms"
-import TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_error, expect_ok, expect_true from "@std/test.ms"
-import nanoseconds, sleep from "@std/time.ms"
-import Worker, WorkerError, WorkerGroup, worker_bytes, worker_channel from "@std/workers.ms"
+import fetch from "@std/net/fetch.ms"
+import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/net/http.ms"
+import stdin from "@std/io/io.ms"
+import serve from "@std/net/net.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
+import Worker, WorkerError, WorkerGroup, worker_bytes, worker_channel from "@std/concurrency/workers.ms"
 
 type Job:
     id: Int
@@ -19,7 +19,7 @@ type Done:
     id: Int
     count: Int
 
-fn square_each(var ch: Channel[Int, Int]) Result[Unit, ChannelError]:
+fn square_each(var ch: Channel[Int, Int]) Unit!ChannelError:
     while true:
         if let n = try ch.receive():
             try ch.send(n * n)
@@ -96,7 +96,7 @@ fn sum_until_closed() Unit:
             let _ = ch.send(total)
             return
 
-fn ask(group: WorkerGroup[Int, Int], value: Int) Result[Int, WorkerError]:
+fn ask(group: WorkerGroup[Int, Int], value: Int) Int!WorkerError:
     var worker = try group.spawn(squares)
     let _ = worker.channel.send(value)
     var answer = -1
@@ -116,9 +116,9 @@ test "a worker answers each message in order":
     try expect_ok(sent)
     try expect_ok(worker.channel.send(2))
     try expect_ok(worker.channel.send(3))
-    try expect_equal(worker.channel.receive(), ok(some(1)))
-    try expect_equal(worker.channel.receive(), ok(some(4)))
-    try expect_equal(worker.channel.receive(), ok(some(9)))
+    try expect_equal(worker.channel.receive(), ok(1))
+    try expect_equal(worker.channel.receive(), ok(4))
+    try expect_equal(worker.channel.receive(), ok(9))
     worker.channel.close()
     try expect_ok(worker.wait())
 
@@ -126,7 +126,7 @@ test "records cross as JSON":
     let group = WorkerGroup[Job, Done]()
     var worker = group.spawn(count_words).get(none)
     try expect_ok(worker.channel.send(Job(id: 7, words: ["a", "b", "c"])))
-    try expect_equal(worker.channel.receive(), ok(some(Done(id: 7, count: 3))))
+    try expect_equal(worker.channel.receive(), ok(Done(id: 7, count: 3)))
     worker.channel.close()
     try expect_ok(worker.wait())
 
@@ -167,14 +167,14 @@ test "a fault in a worker is a result, not the end of the program":
 test "cancelling a worker stops it":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(announce_then_wait).get(none)
-    try expect_equal(worker.channel.receive(), ok(some(1)))
+    try expect_equal(worker.channel.receive(), ok(1))
     worker.cancel()
     try expect_equal(worker.wait(), error(WorkerError.Cancelled))
 
 test "a worker cancelled while computing is cancelled at its next channel operation":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(spin_then_wait).get(none)
-    try expect_equal(worker.channel.receive(), ok(some(1)))
+    try expect_equal(worker.channel.receive(), ok(1))
     worker.cancel()
     try expect_equal(worker.wait(), error(WorkerError.Cancelled))
 
@@ -188,7 +188,7 @@ test "leaving the group stops workers that are still running":
     var group = WorkerGroup[Int, Int]()
     let worker = group.spawn(wait_forever)
     let _ignored = try expect_ok(worker)
-    group.close()
+    try group.close()
     try expect_equal(1, 1)
 
 test "sends after the worker ended report the channel closed":
@@ -200,7 +200,7 @@ test "sends after the worker ended report the channel closed":
 test "a worker sleeps without blocking its starter":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(naps).get(none)
-    try expect_equal(worker.channel.receive(), ok(some(1)))
+    try expect_equal(worker.channel.receive(), ok(1))
     try expect_ok(worker.wait())
 
 test "standard input stays with the main thread":
@@ -227,7 +227,7 @@ test "cancelling a joined worker's handle leaves a later worker alone":
     var b = group.spawn(delayed_send).get(none)
     sleep(nanoseconds(30000000))
     a.cancel()
-    try expect_equal(b.channel.receive(), ok(some(1)))
+    try expect_equal(b.channel.receive(), ok(1))
     try expect_ok(b.wait())
 
 fn sends_one() Unit:
@@ -237,7 +237,7 @@ fn sends_one() Unit:
 test "a finished worker's channel ends with none instead of an error":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(sends_one).get(none)
-    try expect_equal(worker.channel.receive(), ok(some(1)))
+    try expect_equal(worker.channel.receive(), ok(1))
     try expect_equal(worker.channel.receive(), ok(none))
     try expect_ok(worker.wait())
 
@@ -276,13 +276,12 @@ test "cancelling a worker that is joining another ends it as cancelled":
 
 fn touches_network() Unit:
     var ch = worker_channel[Int, Int]()
-    let _net = network()
     let _ = ch.send(1)
 
 test "a worker that uses the network ends cleanly":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(touches_network).get(none)
-    try expect_equal(worker.channel.receive(), ok(some(1)))
+    try expect_equal(worker.channel.receive(), ok(1))
     try expect_ok(worker.wait())
 
 fn fetches_page() Unit:
@@ -301,7 +300,7 @@ fn page(request: HttpRequest) HttpResponse:
 
 test "workers fetch from the starter's server at the same time":
     let handler = buffered(page)
-    let acquired = network().serve(address: "127.0.0.1:0", handler: handler).get(none)
+    let acquired = serve(address: "127.0.0.1:0", handler: handler).get(none)
     var server = acquired
     var group = WorkerGroup[String, Int]()
     var workers: List[Worker[String, Int]] = []
@@ -312,11 +311,11 @@ test "workers fetch from the starter's server at the same time":
         workers.append(worker)
 
     for i in 0..4:
-        try expect_equal(workers[i].channel.receive(), ok(some(3 * 65536)))
+        try expect_equal(workers[i].channel.receive(), ok((3 * 65536)))
         try expect_ok(workers[i].wait())
 
-    group.close()
-    server.close()
+    try group.close()
+    try server.close()
 
 fn doubles_bytes() Unit:
     var _ch = worker_channel[Int, Int]()

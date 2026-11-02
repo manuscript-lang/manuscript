@@ -4,15 +4,15 @@ type Door:
     n: Int
 
 impl Closeable for Door:
-    var fn close() Unit:
-        return
+    var fn close() Unit!:
+        return ok(unit)
 
 type Bin:
     count: Int
 
 impl Bin:
     fn keep(d: Door) Door?:
-        return some(d)
+        return d
 
 fn apply(f: fn(Door) Door?) Int:
     return f(Door(1)).get().n

@@ -1,0 +1,35 @@
+diff --git a/stdlib/toml.ms b/stdlib/toml.ms
+index b9856ce6b..00968e1f3 100644
+--- a/stdlib/toml.ms
++++ b/stdlib/toml.ms
+@@ -3 +3 @@ import parse_int, parse_float from "@std/math/math.ms"
+-import from_scalars, StringBuilder, Regex, compile from "@std/string.ms"
++import from_scalars, StringBuilder from "@std/string.ms"
+@@ -921,4 +920,0 @@ fn materialize(
+-# ASCII control characters other than tab and newline, which no TOML document may contain.
+-fn control_pattern() Regex:
+-    return compile("[\\x00-\\x08\\x0b-\\x1f\\x7f]").get()
+-
+@@ -942,4 +938,9 @@ export fn parse(text: String, limits: TomlLimits?) TomlValue!TomlError:
+-    var reader = Reader(
+-        data: normalized.to_bytes(), pos: 0, limits: options, values: 0, tables: [],
+-        entries: []
+-    )
++    let data = normalized.to_bytes()
++
++    for pos in 0..data.length():
++        let code = data.get(pos).to_int()
++        if code != 127 and (code >= 32 or code == 9 or code == 10): continue
++
++        let place = locate(data, pos)
++
++        let reason = if code == 13: "bare carriage return" else: "invalid control character"
+@@ -947,4 +947,0 @@ export fn parse(text: String, limits: TomlLimits?) TomlValue!TomlError:
+-    if let span = control_pattern().find_span(normalized):
+-        let place = locate(reader.data, span.get(0))
+-        var reason = "invalid control character"
+-        if reader.data.get(span.get(0)) == 13: reason = "bare carriage return"
+@@ -956,0 +954,3 @@ export fn parse(text: String, limits: TomlLimits?) TomlValue!TomlError:
++    var reader = Reader(
++        data: data, pos: 0, limits: options, values: 0, tables: [], entries: []
++    )

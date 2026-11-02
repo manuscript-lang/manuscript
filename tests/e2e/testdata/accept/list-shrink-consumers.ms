@@ -1,4 +1,4 @@
-import expect_equal, expect_false, expect_true from "@std/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
 type Visits:
     count: Int
@@ -24,9 +24,9 @@ fn step[T](
         mutate(values: var values, mode: mode, fill: fill)
     visits.count = visits.count + 1
 
-fn observe[T](var values: List[T], mode: String, fill: List[T], callback: Bool) Result[
-    List[T], Error
-]:
+fn observe[T: Clonable](
+    var values: List[T], mode: String, fill: List[T], callback: Bool
+) List[T]!:
     var seen: List[T] = []
     var visits = Visits(0)
 

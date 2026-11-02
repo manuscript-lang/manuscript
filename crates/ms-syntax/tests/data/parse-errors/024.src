@@ -1,9 +1,9 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 export fn main() Int:
     var number = 1
     let total = number + (
-            some(value):
+            value:
                 number += 1
                 value
             none: 0

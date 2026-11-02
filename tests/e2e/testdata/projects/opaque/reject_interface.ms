@@ -1,5 +1,5 @@
 import Approved, Mode, approve, safe from "./gate.ms"
-import parse, stringify from "@std/json.ms"
+import parse, stringify from "@std/data/json.ms"
 
 interface Named:
     fn name() String

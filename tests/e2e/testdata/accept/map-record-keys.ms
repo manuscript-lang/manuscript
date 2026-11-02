@@ -1,4 +1,4 @@
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"
 
 type Point:
     x: Int

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,generics,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/generic-instances.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 type Point:
     x: Int
@@ -38,7 +38,7 @@ test "instances copy non-scalar arguments":
     try expect_equal(same.x, 4)
     try expect_equal(point.x, 3)
 
-    var alias = pick(first: true, left: point, right: Point(9)).clone()
+    var alias = pick(first: true, left: point.clone(), right: Point(9)).clone()
     alias.x = 5
     try expect_equal(alias.x, 5)
     try expect_equal(point.x, 3)

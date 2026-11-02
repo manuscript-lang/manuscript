@@ -1,6 +1,6 @@
-import parse, stringify, JsonError from "@std/json.ms"
+import parse, stringify, JsonError from "@std/data/json.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "typed JSON Base64 decodes every byte and preserves strict syntax":
     var bytes = BytesBuilder()
@@ -11,6 +11,6 @@ test "typed JSON Base64 decodes every byte and preserves strict syntax":
     try expect_equal((try parse[List[Bytes]](text)), expected)
     try expect_equal((try parse[Bytes]("\"+/8=\"")), Bytes([251, 255]))
 
-    let invalid: Result[Bytes, JsonError] = error(JsonError.InvalidData)
+    let invalid: Bytes!JsonError = error(JsonError.InvalidData)
     for encoded in ["-_8=", "Zh==", "Zm9=", "=AAA", "AA=A", "éAA", "Zg== "]:
         try expect_equal(parse[Bytes]("\"{encoded}\""), invalid)

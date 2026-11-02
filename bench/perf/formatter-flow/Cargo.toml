@@ -1,0 +1,18 @@
+[package]
+name = "ms-formatter-flow-perf"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+ms-syntax = { path = "../../../crates/ms-syntax" }
+
+[[bin]]
+name = "ms-formatter-flow-perf"
+path = "main.rs"
+
+[profile.release]
+debug = 1
+panic = "abort"

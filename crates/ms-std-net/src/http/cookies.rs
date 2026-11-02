@@ -172,6 +172,20 @@ fn parse_set_cookie(line: &str) -> Option<SetCookie> {
     Some(c)
 }
 
+/// RFC 6265bis section 4.1.3: a `__Secure-` cookie needs the `Secure` attribute and a secure
+/// origin; a `__Host-` cookie also needs no `Domain` and `Path=/`. Names match
+/// case-insensitively.
+fn prefix_ok(c: &SetCookie, https: bool) -> bool {
+    let name = c.name.to_ascii_lowercase();
+    if name.starts_with("__secure-") && !(c.secure && https) {
+        return false;
+    }
+    if name.starts_with("__host-") {
+        return c.secure && https && c.domain.is_empty() && c.path == "/";
+    }
+    true
+}
+
 fn is_ip(host: &str) -> bool {
     host.parse::<std::net::IpAddr>().is_ok()
 }
@@ -236,6 +250,9 @@ impl Jar {
             let Some(c) = parse_set_cookie(line) else {
                 continue;
             };
+            if !prefix_ok(&c, scheme == "https") {
+                continue;
+            }
             let Some(entry) = self.new_entry(&c, &host, path, now) else {
                 continue;
             };
@@ -397,6 +414,44 @@ mod tests {
         assert_eq!(j.cookies("http", "api.example.com", "/a/b"), vec!["d=2"]);
         assert!(j.cookies("http", "other.org", "/").is_empty());
         assert!(j.cookies("ftp", "www.example.com", "/").is_empty());
+    }
+
+    #[test]
+    fn enforces_secure_and_host_name_prefixes() {
+        let mut j = Jar::new();
+        set(
+            &mut j,
+            ("http", "www.example.com", "/"),
+            &[
+                "__Secure-a=1; Secure",
+                "__Host-b=1; Secure; Path=/",
+                "plain=1",
+            ],
+        );
+        assert_eq!(j.cookies("https", "www.example.com", "/"), vec!["plain=1"]);
+        set(
+            &mut j,
+            ("https", "www.example.com", "/x/y"),
+            &[
+                "__Secure-ok=1; Secure",
+                "__Secure-nosecure=1",
+                "__secure-lower=1; Secure",
+                "__Host-ok=1; Secure; Path=/",
+                "__Host-nopath=1; Secure",
+                "__Host-subpath=1; Secure; Path=/x",
+                "__Host-domain=1; Secure; Path=/; Domain=example.com",
+                "__Host-nosecure=1; Path=/",
+            ],
+        );
+        assert_eq!(
+            j.cookies("https", "www.example.com", "/x/y"),
+            vec![
+                "__Secure-ok=1",
+                "__secure-lower=1",
+                "plain=1",
+                "__Host-ok=1"
+            ]
+        );
     }
 
     #[test]

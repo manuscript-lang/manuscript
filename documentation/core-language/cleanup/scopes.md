@@ -40,13 +40,13 @@ A holder closes its parts: a record, an alternative, an `Optional`, a `List` or 
 
 A binding is closed unless something takes the resource from it. Returning it, passing it to a consuming parameter, storing it, or capturing it in a closure that outlives the scope moves it to a new owner, which closes it instead. A resource acquired in a loop closes at the end of that iteration.
 
-To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. A lock guard is a common case: `guard.close()` ends the critical section early.
+To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. A lock guard is a common case: `guard.close()` ends the critical section early; handle its `Result` with `try` or `let _ =`.
 
 ```manuscript
 var guard = lock(counter)
 guard.value += 1
-guard.close()
+let _ = guard.close()
 slow_work()
 ```
 
-`close` returns `Unit`, so a failed flush is invisible: call the fallible method (`try x.flush()`) first. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush`, `sync` or `commit`. There are no enter or error-suppression hooks.
+`close` returns `Unit!`, so a failed close is returned or faults rather than lost; flush first (`try x.flush()`) so buffered data is not lost. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush`, `sync` or `commit`. There are no enter or error-suppression hooks.

@@ -52,12 +52,14 @@ pub unsafe fn equal(a: *const StrVal, b: *const StrVal) -> bool {
     unsafe { ((*a).ptr_word == (*b).ptr_word && (*a).tagged == (*b).tagged) || bytes_eq(a, b) }
 }
 
+/// C view: `msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_eq(a: usize, b: usize) -> u8 {
     // SAFETY: caller passes live strings.
     unsafe { equal(a as *const StrVal, b as *const StrVal) as u8 }
 }
 
+/// C view: `msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_compare(a: usize, b: usize) -> i64 {
     // SAFETY: caller passes live strings.
@@ -163,29 +165,34 @@ pub fn mix(mut h: u64) -> u64 {
 ///
 /// # Safety
 /// `s` must be live.
+/// C view: `msrt_string_hash(s: *const StrVal) -> i64`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_hash(s: usize) -> i64 {
     // SAFETY: caller contract.
     hash_bytes(unsafe { bytes(s as *const StrVal) }) as i64
 }
 
+/// C view: `msrt_string_byte_length(s: *const StrVal) -> i64`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_byte_length(s: usize) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe { (*(s as *const StrVal)).len() as i64 }
 }
 
+/// C view: `msrt_string_is_empty(s: *const StrVal) -> u8`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: usize) -> u8 {
     // SAFETY: caller passes a live string.
     unsafe { (*(s as *const StrVal)).is_empty() as u8 }
 }
 
+/// C view: `msrt_hash_int(v: i64) -> i64`
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_hash_int(v: i64) -> i64 {
     mix(v as u64 ^ 0x9e37_79b9) as i64
 }
 
+/// C view: `msrt_hash_bytes(p: *const u8, len: usize) -> i64`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_hash_bytes(p: usize, len: usize) -> i64 {
     // SAFETY: caller passes a readable range.
@@ -272,6 +279,7 @@ pub unsafe fn find_sw8(m: &MapVal, key: *const u8) -> *const u8 {
 
 /// `get_ptr` for a `String` key and an 8-byte, 8-aligned value: the value's address or null. The
 /// descriptors are accepted for signature parity with the generic entry point and ignored.
+/// C view: `msrt_map_get_ptr_sw8(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8) -> *const u8`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_get_ptr_sw8(
     m: usize,
@@ -291,6 +299,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr_sw8(
 }
 
 /// `contains` for a `String` key and an 8-byte, 8-aligned value.
+/// C view: `msrt_map_contains_sw8(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8) -> u8`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_contains_sw8(
     m: usize,
@@ -303,6 +312,7 @@ pub unsafe extern "C-unwind" fn msrt_map_contains_sw8(
 }
 
 /// `get` for a `String` key and a plain 8-byte scalar value (`Int` or `Float`).
+/// C view: `msrt_map_get_sw8(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, out: *mut u8) -> u8`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_get_sw8(
     m: usize,
@@ -324,6 +334,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_sw8(
 
 /// `get_ptr` for an `Int` key and an 8-byte, 8-aligned value. The call site checked the shape;
 /// the descriptors are accepted for signature parity and ignored.
+/// C view: `msrt_map_get_ptr_w8(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8) -> *const u8`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_get_ptr_w8(
     m: usize,
@@ -339,6 +350,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr_w8(
 }
 
 /// `contains` for an `Int` key and an 8-byte, 8-aligned value.
+/// C view: `msrt_map_contains_w8(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8) -> u8`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_contains_w8(
     m: usize,
@@ -351,6 +363,7 @@ pub unsafe extern "C-unwind" fn msrt_map_contains_w8(
 }
 
 /// `get` for an `Int` key and a plain 8-byte scalar value (`Int` or `Float`).
+/// C view: `msrt_map_get_w8(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, out: *mut u8) -> u8`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_get_w8(
     m: usize,
@@ -371,6 +384,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_w8(
 }
 
 /// `length()`: the number of live entries.
+/// C view: `msrt_map_length(m: *const MapVal) -> i64`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_length(m: usize) -> i64 {
     // SAFETY: caller contract.
@@ -378,6 +392,7 @@ pub unsafe extern "C-unwind" fn msrt_map_length(m: usize) -> i64 {
 }
 
 /// Number of slots to scan with `msrt_map_entry_ptrs` (live entries plus holes).
+/// C view: `msrt_map_slot_count(m: *const MapVal) -> i64`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_slot_count(m: usize) -> i64 {
     // SAFETY: caller contract.
@@ -482,6 +497,7 @@ pub fn key_desc(m: *const MapVal, kd: *const TypeDesc) -> *const TypeDesc {
 }
 
 /// Borrowed pointers to the key and value of slot `i`; 0 for a hole.
+/// C view: `msrt_map_entry_ptrs(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, i: i64, key_out: *mut *const u8, val_out: *mut *const u8) -> u8`
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_entry_ptrs(
     m: usize,

@@ -131,7 +131,7 @@ fn explain_codes(codes: &[&str], json: bool, io: &mut Io) -> i32 {
         let _ = writeln!(
             io.stdout,
             "{}",
-            document.pretty(crate::json::Escape::GoHtml)
+            document.pretty(crate::json::Escape::HtmlSafe)
         );
     }
     status
@@ -188,6 +188,12 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
         return Err(usage_error(
             io,
             "ms review: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms review ms.toml",
+        ));
+    }
+    if args[1].is_empty() {
+        return Err(usage_error(
+            io,
+            "ms review: the file argument is empty; pass a .ms file, directory, or ms.toml",
         ));
     }
     if args[1].starts_with('-') {

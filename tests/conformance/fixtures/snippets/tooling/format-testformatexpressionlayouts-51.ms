@@ -1,0 +1,8 @@
+# conform: tags=diagnostics,maps,optional,strings,tier-core,try-result
+# conform: phase=check
+# conform: origin=pkg/tooling/format/format_layout_test.go:377 TestFormatExpressionLayouts
+fn work(
+    first: Int,
+    second: String
+) (Map[String, String]?)!ApplicationError:
+    return error(cause)

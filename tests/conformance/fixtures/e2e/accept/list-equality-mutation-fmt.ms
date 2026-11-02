@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,formatter,interfaces,interpolation,lists,match,modules,mutation,parser,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/list-equality-mutation.ms
-import fail from "@std/test.ms"
+import fail from "@std/test/test.ms"
 
 type Element:
     id: Int
@@ -18,7 +18,7 @@ type Visits:
 fn noop() Unit:
     return
 
-fn check_equality(side: String, mutation: String) Result[Unit, Error]:
+fn check_equality(side: String, mutation: String) Unit!:
     var left: List[Element] = []
     var right: List[Element] = []
     let calls = Visits(0)

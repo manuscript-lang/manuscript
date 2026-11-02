@@ -1,0 +1,14 @@
+{
+  "baseline-a": {
+    "path": "/workspace/json-perf/.artifacts/json-library/before",
+    "sha256": "43675321a65ee94ed79d64b180bd3c57222fb0b586f621f4a4b62800fa4d4972"
+  },
+  "baseline-b": {
+    "path": "/workspace/json-perf/.artifacts/json-library/before",
+    "sha256": "43675321a65ee94ed79d64b180bd3c57222fb0b586f621f4a4b62800fa4d4972"
+  },
+  "candidate": {
+    "path": "/workspace/json-perf/.artifacts/json-library/after",
+    "sha256": "6e4209d1e46332298453371d87306c62068af0e099595a47f3d47bfdaaa13f4c"
+  }
+}

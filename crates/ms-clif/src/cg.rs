@@ -149,6 +149,7 @@ pub struct Gen<'m> {
     pub count_str: bool,
     pub ext: HashMap<ExtId, FuncId>,
     pub strs: HashMap<u32, DataId>,
+    pub list_consts: HashMap<usize, DataId>,
     pub glue: HashMap<(Glue, Ty), FuncId>,
     pub queue: Vec<(Glue, Ty)>,
     pub vtables: Vec<DataId>,
@@ -532,6 +533,33 @@ impl<'m> Gen<'m> {
     }
 
     /// A static `String` block for literal `i`: the bytes then a NUL.
+    /// The static data of constant list `i` (`list.const`), laid out as its elements are in memory.
+    pub fn list_const(&mut self, i: usize, elem: Ty) -> DataId {
+        if let Some(id) = self.list_consts.get(&i) {
+            return *id;
+        }
+        let leaf = self.lay.leaves(elem)[0];
+        let mut bytes = Vec::with_capacity(self.m.list_consts[i].len() * leaf.size() as usize);
+        for &raw in &self.m.list_consts[i] {
+            match leaf {
+                Leaf::F32 => bytes.extend((f64::from_bits(raw as u64) as f32).to_le_bytes()),
+                _ => bytes.extend(&raw.to_le_bytes()[..leaf.size() as usize]),
+            }
+        }
+        let id = self
+            .module
+            .declare_data(&format!("ms.list.{i}"), self.private(), false, false)
+            .expect("declare constant list");
+        let mut d = DataDescription::new();
+        d.define(bytes.into_boxed_slice());
+        d.set_align(16);
+        self.module
+            .define_data(id, &d)
+            .expect("define constant list");
+        self.list_consts.insert(i, id);
+        id
+    }
+
     pub fn str_lit(&mut self, i: u32) -> DataId {
         if let Some(id) = self.strs.get(&i) {
             return *id;
@@ -628,6 +656,7 @@ fn compile_with_isa(
         count_str: std::env::var_os("MS_COUNT_STR").is_some(),
         ext: HashMap::new(),
         strs: HashMap::new(),
+        list_consts: HashMap::new(),
         glue: HashMap::new(),
         queue: Vec::new(),
         vtables: Vec::new(),
@@ -746,6 +775,7 @@ fn compile_with_isa(
     }
     let mut ctx = Context::new();
     let mut fctx = FunctionBuilderContext::new();
+    let mut pending: Vec<Pending> = Vec::new();
     for (i, f) in m.funcs.iter().enumerate() {
         ctx.clear();
         ctx.func.signature = g.func_sig(f);
@@ -759,8 +789,15 @@ fn compile_with_isa(
             l.finish();
         }
         let fid = g.funcs[i];
-        define_with(&mut g, &mut ctx, fid, &f.name, Some(f))?;
+        if prepare(&mut g, &mut ctx, fid, &f.name, Some(f)) {
+            continue;
+        }
+        pending.push((std::mem::replace(&mut ctx, Context::new()), fid, i));
+        if pending.len() >= BATCH {
+            flush(&mut g, &mut pending)?;
+        }
     }
+    flush(&mut g, &mut pending)?;
     while let Some((kind, ty)) = g.queue.pop() {
         let id = g.glue[&(kind, ty)];
         ctx.clear();
@@ -1017,6 +1054,87 @@ fn define_with(
     name: &str,
     source: Option<&Func>,
 ) -> Result<(), Error> {
+    if prepare(g, ctx, id, name, source) {
+        return Ok(());
+    }
+    g.module
+        .define_function(id, ctx)
+        .map_err(|e| Error(format!("{name}: {e:?}")))?;
+    finish(g, ctx, id, name, source)
+}
+
+/// A lowered function waiting for Cranelift: its context, symbol and index in the MIR module.
+type Pending = (Context, FuncId, usize);
+
+/// Functions lowered before a batch is compiled; bounds the contexts held at once.
+const BATCH: usize = 256;
+
+/// Compiles `pending` on all cores, then defines the results in order so the object is the same
+/// as a serial build's.
+fn flush(g: &mut Gen, pending: &mut Vec<Pending>) -> Result<(), Error> {
+    use std::sync::Mutex;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let batch = std::mem::take(pending);
+    let slots: Vec<Mutex<(Context, Option<String>)>> = batch
+        .iter()
+        .map(|_| Mutex::new((Context::new(), None)))
+        .collect();
+    let mut work: Vec<(Context, FuncId, usize)> = batch;
+    for (slot, item) in slots.iter().zip(work.iter_mut()) {
+        std::mem::swap(&mut slot.lock().unwrap().0, &mut item.0);
+    }
+    let next = AtomicUsize::new(0);
+    let isa = g.module.isa();
+    let threads = std::thread::available_parallelism()
+        .map_or(1, usize::from)
+        .min(slots.len())
+        .max(1);
+    let run = || {
+        let mut plane = cranelift_codegen::control::ControlPlane::default();
+        loop {
+            let k = next.fetch_add(1, Ordering::Relaxed);
+            let Some(slot) = slots.get(k) else { return };
+            let mut guard = slot.lock().unwrap();
+            if let Err(e) = guard.0.compile(isa, &mut plane) {
+                guard.1 = Some(format!("{e:?}"));
+            }
+        }
+    };
+    if threads == 1 {
+        run();
+    } else {
+        std::thread::scope(|scope| {
+            for _ in 1..threads {
+                scope.spawn(run);
+            }
+            run();
+        });
+    }
+    for (slot, (_, id, i)) in slots.into_iter().zip(work) {
+        let (mut ctx, failed) = slot.into_inner().unwrap();
+        let f = &g.m.funcs[i];
+        if let Some(e) = failed {
+            return Err(Error(format!("{}: {e}", f.name)));
+        }
+        let cc = ctx.compiled_code().expect("function compiled");
+        let relocs: Vec<_> = cc
+            .buffer
+            .relocs()
+            .iter()
+            .map(|r| cranelift_module::ModuleReloc::from_mach_reloc(r, &ctx.func, id))
+            .collect();
+        let alignment = cc.buffer.alignment as u64;
+        g.module
+            .define_function_bytes(id, alignment, cc.buffer.data(), &relocs)
+            .map_err(|e| Error(format!("{}: {e:?}", f.name)))?;
+        finish(g, &mut ctx, id, &f.name, Some(f))?;
+    }
+    Ok(())
+}
+
+/// Runs the passes that precede Cranelift's own compilation. `true` when the function went to
+/// LLVM instead and nothing is left to compile.
+fn prepare(g: &mut Gen, ctx: &mut Context, id: FuncId, name: &str, source: Option<&Func>) -> bool {
     if windows_arm64(g.module.isa().triple()) {
         // Non-PIC near symbols also select unsupported ADRP relocations.
         // Far symbol addresses use the COFF writer's supported Abs8 form.
@@ -1084,14 +1202,22 @@ fn define_with(
         }
         g.llvm = Some(llvm);
         g.module.clear_context(ctx);
-        return Ok(());
+        return true;
     }
     if g.opts.opt_level != "none" {
         crate::spill::spill_loop_cold(&mut ctx.func);
     }
-    g.module
-        .define_function(id, ctx)
-        .map_err(|e| Error(format!("{name}: {e:?}")))?;
+    false
+}
+
+/// Records the line and fault tables of a function that Cranelift has compiled and defined.
+fn finish(
+    g: &mut Gen,
+    ctx: &mut Context,
+    id: FuncId,
+    name: &str,
+    source: Option<&Func>,
+) -> Result<(), Error> {
     {
         let cc = ctx.compiled_code().expect("function compiled");
         let mut ranges: Vec<(u32, u32, u32, u32)> = Vec::new();

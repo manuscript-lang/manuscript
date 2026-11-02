@@ -1,0 +1,292 @@
+{
+  "repeat": 1,
+  "format": 1,
+  "source_root": "/workspace/manuscript/bench/perf/stdlib",
+  "benches": [
+    {
+      "index": 0,
+      "duration_ns": 496300639,
+      "name": "regex_bench.ms::regex.captures_all.0",
+      "status": "passed",
+      "stats": {
+        "iterations": 7419577,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 15.741911432417238,
+        "median_ns": 15.820466854107721,
+        "mean_ns": 15.860657375301406,
+        "max_ns": 16.019593839379255,
+        "stddev_ns": 0.11687126330402946
+      }
+    },
+    {
+      "index": 1,
+      "duration_ns": 475597901,
+      "name": "regex_bench.ms::regex.captures_all.1",
+      "status": "passed",
+      "stats": {
+        "iterations": 422616,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 276.5051701781286,
+        "median_ns": 276.69072160069663,
+        "mean_ns": 276.75971961938654,
+        "max_ns": 277.0832670793344,
+        "stddev_ns": 0.2409973052868575
+      }
+    },
+    {
+      "index": 2,
+      "duration_ns": 486398214,
+      "name": "regex_bench.ms::regex.captures_all.128",
+      "status": "passed",
+      "stats": {
+        "iterations": 4131,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 28484.977487291213,
+        "median_ns": 28510.08424110385,
+        "mean_ns": 28689.13047688211,
+        "max_ns": 29072.32970225127,
+        "stddev_ns": 271.15656241907544
+      }
+    },
+    {
+      "index": 3,
+      "duration_ns": 526062780,
+      "name": "regex_bench.ms::regex.captures_all.2000",
+      "status": "passed",
+      "stats": {
+        "iterations": 270,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 440124.3185185185,
+        "median_ns": 440197.5333333333,
+        "mean_ns": 440483.41851851856,
+        "max_ns": 441128.4037037037,
+        "stddev_ns": 457.0517980188362
+      }
+    },
+    {
+      "index": 4,
+      "duration_ns": 505655876,
+      "name": "regex_bench.ms::regex.replace_template.0",
+      "status": "passed",
+      "stats": {
+        "iterations": 7729830,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 15.499887060905609,
+        "median_ns": 15.55632918188369,
+        "mean_ns": 15.591268156393262,
+        "max_ns": 15.71758822639049,
+        "stddev_ns": 0.09224604171527469
+      }
+    },
+    {
+      "index": 5,
+      "duration_ns": 475863650,
+      "name": "regex_bench.ms::regex.replace_template.1",
+      "status": "passed",
+      "stats": {
+        "iterations": 465976,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 250.68623705941937,
+        "median_ns": 251.29416965680636,
+        "mean_ns": 251.10532302092813,
+        "max_ns": 251.33556234655862,
+        "stddev_ns": 0.2968199465910994
+      }
+    },
+    {
+      "index": 6,
+      "duration_ns": 496197837,
+      "name": "regex_bench.ms::regex.replace_template.128",
+      "status": "passed",
+      "stats": {
+        "iterations": 4357,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 27590.883406013312,
+        "median_ns": 27599.16066100528,
+        "mean_ns": 27733.509142376253,
+        "max_ns": 28010.483360110167,
+        "stddev_ns": 195.87949731835252
+      }
+    },
+    {
+      "index": 7,
+      "duration_ns": 526159059,
+      "name": "regex_bench.ms::regex.replace_template.2000",
+      "status": "passed",
+      "stats": {
+        "iterations": 276,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 431500.59420289856,
+        "median_ns": 433004.097826087,
+        "mean_ns": 433376.3309178744,
+        "max_ns": 435624.3007246377,
+        "stddev_ns": 1703.9477643254784
+      }
+    },
+    {
+      "index": 8,
+      "duration_ns": 587289252,
+      "name": "regex_bench.ms::regex.replace_template.mixed_long_short.2000",
+      "status": "passed",
+      "stats": {
+        "iterations": 123,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 956245.5853658536,
+        "median_ns": 996011.918699187,
+        "mean_ns": 987383.9024390243,
+        "max_ns": 1009894.2032520325,
+        "stddev_ns": 22735.809474828195
+      }
+    },
+    {
+      "index": 9,
+      "duration_ns": 405829667,
+      "name": "regex_bench.ms::regex.replace_template.literal.1",
+      "status": "passed",
+      "stats": {
+        "iterations": 1000000,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 100.251643,
+        "median_ns": 100.548473,
+        "mean_ns": 100.44979033333334,
+        "max_ns": 100.549255,
+        "stddev_ns": 0.1401116867867284
+      }
+    },
+    {
+      "index": 10,
+      "duration_ns": 506689344,
+      "name": "regex_bench.ms::regex.replace_template.literal.2000",
+      "status": "passed",
+      "stats": {
+        "iterations": 858,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 139650.98368298367,
+        "median_ns": 140567.7331002331,
+        "mean_ns": 141111.04312354312,
+        "max_ns": 143114.41258741257,
+        "stddev_ns": 1465.201756318959
+      }
+    },
+    {
+      "index": 11,
+      "duration_ns": 526146159,
+      "name": "regex_bench.ms::regex.replace_template.unused_large",
+      "status": "passed",
+      "stats": {
+        "iterations": 3060415,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 39.28136347521496,
+        "median_ns": 39.34169026096134,
+        "mean_ns": 39.322217302773204,
+        "max_ns": 39.343598172143324,
+        "stddev_ns": 0.028898517273255264
+      }
+    },
+    {
+      "index": 12,
+      "duration_ns": 485680356,
+      "name": "regex_bench.ms::regex.named_captures.1",
+      "status": "passed",
+      "stats": {
+        "iterations": 793718,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 150.06111490478986,
+        "median_ns": 150.91477829657384,
+        "mean_ns": 151.1532660214333,
+        "max_ns": 152.4839048629362,
+        "stddev_ns": 1.0033726763621396
+      }
+    },
+    {
+      "index": 13,
+      "duration_ns": 476093570,
+      "name": "regex_bench.ms::regex.named_captures.8",
+      "status": "passed",
+      "stats": {
+        "iterations": 208154,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 552.996142279274,
+        "median_ns": 554.6414577668457,
+        "mean_ns": 561.7053079290653,
+        "max_ns": 577.4783237410763,
+        "stddev_ns": 11.173414477167741
+      }
+    },
+    {
+      "index": 14,
+      "duration_ns": 506026243,
+      "name": "regex_bench.ms::regex.find_all",
+      "status": "passed",
+      "stats": {
+        "iterations": 817,
+        "operations": 2000,
+        "samples": 3,
+        "min_ns": 73.85867074663403,
+        "median_ns": 74.80895838433293,
+        "mean_ns": 74.52595675234598,
+        "max_ns": 74.91024112607099,
+        "stddev_ns": 0.47365072117735973
+      }
+    },
+    {
+      "index": 15,
+      "duration_ns": 516130999,
+      "name": "regex_bench.ms::regex.matches",
+      "status": "passed",
+      "stats": {
+        "iterations": 267,
+        "operations": 10000,
+        "samples": 3,
+        "min_ns": 43.34909063670412,
+        "median_ns": 43.38243970037453,
+        "mean_ns": 43.50121210986267,
+        "max_ns": 43.77210599250936,
+        "stddev_ns": 0.1920341319548376
+      }
+    },
+    {
+      "index": 16,
+      "duration_ns": 495767577,
+      "name": "regex_bench.ms::regex.replace_all",
+      "status": "passed",
+      "stats": {
+        "iterations": 848,
+        "operations": 2000,
+        "samples": 3,
+        "min_ns": 69.3045341981132,
+        "median_ns": 69.37423054245284,
+        "mean_ns": 69.61612539308176,
+        "max_ns": 70.16961143867924,
+        "stddev_ns": 0.3924066743459984
+      }
+    }
+  ],
+  "summary": {
+    "available": 17,
+    "selected": 17,
+    "passed": 17,
+    "failed": 0,
+    "skipped": 0,
+    "not_run": 0,
+    "duration_ns": 8494284008
+  },
+  "completed": true,
+  "exit_code": 0,
+  "stdout": "RUN regex_bench.ms::regex.captures_all.0\nBENCH regex_bench.ms::regex.captures_all.0: 15.820 ns/op median (min 15.742 ns, mean 15.861 ns, max 16.020 ns, stddev 0.117 ns; 7419577 iterations x 3 samples)\nRUN regex_bench.ms::regex.captures_all.1\nBENCH regex_bench.ms::regex.captures_all.1: 276.691 ns/op median (min 276.505 ns, mean 276.760 ns, max 277.083 ns, stddev 0.241 ns; 422616 iterations x 3 samples)\nRUN regex_bench.ms::regex.captures_all.128\nBENCH regex_bench.ms::regex.captures_all.128: 28.510 µs/op median (min 28.485 µs, mean 28.689 µs, max 29.072 µs, stddev 271.157 ns; 4131 iterations x 3 samples)\nRUN regex_bench.ms::regex.captures_all.2000\nBENCH regex_bench.ms::regex.captures_all.2000: 440.198 µs/op median (min 440.124 µs, mean 440.483 µs, max 441.128 µs, stddev 457.052 ns; 270 iterations x 3 samples)\nRUN regex_bench.ms::regex.replace_template.0\nBENCH regex_bench.ms::regex.replace_template.0: 15.556 ns/op median (min 15.500 ns, mean 15.591 ns, max 15.718 ns, stddev 0.092 ns; 7729830 iterations x 3 samples)\nRUN regex_bench.ms::regex.replace_template.1\nBENCH regex_bench.ms::regex.replace_template.1: 251.294 ns/op median (min 250.686 ns, mean 251.105 ns, max 251.336 ns, stddev 0.297 ns; 465976 iterations x 3 samples)\nRUN regex_bench.ms::regex.replace_template.128\nBENCH regex_bench.ms::regex.replace_template.128: 27.599 µs/op median (min 27.591 µs, mean 27.734 µs, max 28.010 µs, stddev 195.879 ns; 4357 iterations x 3 samples)\nRUN regex_bench.ms::regex.replace_template.2000\nBENCH regex_bench.ms::regex.replace_template.2000: 433.004 µs/op median (min 431.501 µs, mean 433.376 µs, max 435.624 µs, stddev 1.704 µs; 276 iterations x 3 samples)\nRUN regex_bench.ms::regex.replace_template.mixed_long_short.2000\nBENCH regex_bench.ms::regex.replace_template.mixed_long_short.2000: 996.012 µs/op median (min 956.246 µs, mean 987.384 µs, max 1.010 ms, stddev 22.736 µs; 123 iterations x 3 samples)\nRUN regex_bench.ms::regex.replace_template.literal.1\nBENCH regex_bench.ms::regex.replace_template.literal.1: 100.548 ns/op median (min 100.252 ns, mean 100.450 ns, max 100.549 ns, stddev 0.140 ns; 1000000 iterations x 3 samples)\nRUN regex_bench.ms::regex.replace_template.literal.2000\nBENCH regex_bench.ms::regex.replace_template.literal.2000: 140.568 µs/op median (min 139.651 µs, mean 141.111 µs, max 143.114 µs, stddev 1.465 µs; 858 iterations x 3 samples)\nRUN regex_bench.ms::regex.replace_template.unused_large\nBENCH regex_bench.ms::regex.replace_template.unused_large: 39.342 ns/op median (min 39.281 ns, mean 39.322 ns, max 39.344 ns, stddev 0.029 ns; 3060415 iterations x 3 samples)\nRUN regex_bench.ms::regex.named_captures.1\nBENCH regex_bench.ms::regex.named_captures.1: 150.915 ns/op median (min 150.061 ns, mean 151.153 ns, max 152.484 ns, stddev 1.003 ns; 793718 iterations x 3 samples)\nRUN regex_bench.ms::regex.named_captures.8\nBENCH regex_bench.ms::regex.named_captures.8: 554.641 ns/op median (min 552.996 ns, mean 561.705 ns, max 577.478 ns, stddev 11.173 ns; 208154 iterations x 3 samples)\nRUN regex_bench.ms::regex.find_all\nBENCH regex_bench.ms::regex.find_all: 74.809 ns/op median (min 73.859 ns, mean 74.526 ns, max 74.910 ns, stddev 0.474 ns; 817 iterations x 3 samples)\nRUN regex_bench.ms::regex.matches\nBENCH regex_bench.ms::regex.matches: 43.382 ns/op median (min 43.349 ns, mean 43.501 ns, max 43.772 ns, stddev 0.192 ns; 267 iterations x 3 samples)\nRUN regex_bench.ms::regex.replace_all\nBENCH regex_bench.ms::regex.replace_all: 69.374 ns/op median (min 69.305 ns, mean 69.616 ns, max 70.170 ns, stddev 0.392 ns; 848 iterations x 3 samples)\n17 benches, 0 failed\n",
+  "diagnostics": []
+}

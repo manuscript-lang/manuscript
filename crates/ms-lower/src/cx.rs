@@ -30,6 +30,8 @@ pub enum JobKind {
     NativeThunk(Rc<NativeThunkJob>),
     /// A native method bound to its receiver.
     BoundNative(Rc<BoundNativeJob>),
+    /// A native method behind an interface table entry.
+    IfaceNative(Rc<IfaceNativeJob>),
     /// A mutating method value bound to a mutable alias.
     BoundAlias(Rc<crate::bound_alias::BoundAliasJob>),
     /// A source callable used as a value whose omittable parameters are optionals.
@@ -69,6 +71,9 @@ pub struct FnAdaptJob {
     pub hir: Rc<ModuleHir>,
     /// The held function type.
     pub have: MTy,
+    /// The held value points into its maker's frame, so the adapter reads it through a pointer
+    /// and stays inside that frame too.
+    pub scoped: bool,
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.
@@ -80,6 +85,19 @@ pub struct BoundNativeJob {
     /// The receiver's type when the closure holds the address of the variable it changes.
     pub shared: Option<MTy>,
     /// The module whose local implementations the method's key and element types use.
+    pub scope: Name,
+}
+
+/// A native method called through an interface table, waiting to be lowered. The first
+/// parameter is the address of the implementing value.
+pub struct IfaceNativeJob {
+    /// The method under the implementing type's substitution.
+    pub method: ct::MethodRef,
+    /// Module the method is declared in.
+    pub hir: Rc<ModuleHir>,
+    /// The implementing type.
+    pub data: MTy,
+    /// The module whose local implementations the method's types use.
     pub scope: Name,
 }
 
@@ -169,6 +187,8 @@ pub struct Cx {
     pub borrows: Rc<HashMap<usize, BorrowKind>>,
     /// Resource bindings closed implicitly when their scope ends.
     pub implicit_closes: Rc<std::collections::HashSet<usize>>,
+    /// Closing bindings the program also closes with an explicit `.close()` call.
+    pub explicit_closes: Rc<std::collections::HashSet<usize>>,
     /// The name expressions that move a closed resource binding, by binding: the scope-end close
     /// runs only on the paths that never reach one.
     pub close_moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
@@ -176,14 +196,27 @@ pub struct Cx {
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves:
         Rc<HashMap<usize, HashMap<ms_syntax::ast::NodeId, Vec<ms_check::types::Name>>>>,
-    /// `ref` functions that lend on every path, by module file and node.
-    pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Captures a non-escaping lambda only reads: the closure points at them instead of copying.
     pub borrowed_captures: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId, usize)>>,
     /// Parameters each callable consumes, by module file and node.
     pub consumes: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<bool>>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
     pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
+    /// Callables whose result is a reference into their arguments, by module file and node.
+    pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Callables whose result is an interface view of their arguments (`ret_view`).
+    pub view_lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Wrappers of lent values built as `opt.view` / `alt.view`, by module file and node.
+    pub view_wraps: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Name expressions moving an interface view out of the local holding it.
+    pub view_moves: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Lending calls whose result the caller owns because an argument is a temporary: the
+    /// result is copied out before the temporary is dropped.
+    pub owned_lends: Rc<
+        std::collections::HashMap<(Name, ms_syntax::ast::NodeId), ms_check::ownership::OwnedLend>,
+    >,
+    /// Conditional and match expressions whose value is a reference on every arm.
+    pub lent_matches: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Which types are resources, for the closers of records and collections that hold them.
     pub classes: ms_check::ownership::Classifier,
 }
@@ -236,13 +269,19 @@ impl Cx {
             fixtures: program.test_fixtures.clone(),
             borrows: program.borrows.clone(),
             implicit_closes: program.implicit_closes.clone(),
+            explicit_closes: program.explicit_closes.clone(),
             close_moves: program.close_moves.clone(),
             moved_payloads: program.moved_payloads.clone(),
             resource_moves: program.resource_moves.clone(),
-            lenders: program.lenders.clone(),
             borrowed_captures: program.borrowed_captures.clone(),
             consumes: program.consumes.clone(),
             getters: program.getter_borrows.clone(),
+            lenders: program.lenders.clone(),
+            view_lenders: program.view_lenders.clone(),
+            view_wraps: program.view_wraps.clone(),
+            view_moves: program.view_moves.clone(),
+            owned_lends: program.owned_lends.clone(),
+            lent_matches: program.lent_matches.clone(),
             classes: ms_check::ownership::Classifier::new(program),
         }
     }
@@ -314,7 +353,7 @@ impl Cx {
                 for p in &t.params {
                     let pt = self.lower_ty(m, &p.ty)?;
                     // A parameter that may be omitted crosses a function value as an optional.
-                    let lifted = t.is_lifted(p.name) && !p.ty.is_std("Optional");
+                    let lifted = t.is_lifted(p.name);
                     params.push(if lifted { m.types.opt(pt) } else { pt });
                 }
                 let ret = self.lower_ty(m, &t.result_ty())?;
@@ -338,12 +377,6 @@ impl Cx {
                 let mut fields = Vec::new();
                 for f in ct::fields(t) {
                     let ty = self.lower_ty(m, &f.ty)?;
-                    // A `ref` field holds a view of its value: the record never owns it.
-                    let ty = if ct::field_is_ref(t, f.name) {
-                        m.types.view(ty)
-                    } else {
-                        ty
-                    };
                     fields.push((f.name.to_string(), ty));
                 }
                 m.records[id.index()].fields = fields;
@@ -411,16 +444,10 @@ impl Cx {
                             params.push(self.lower_ty(m, &p.ty)?);
                         }
                         let ret = self.lower_ty(m, &sig.result_ty())?;
-                        let ret_borrowed = op
-                            .decl
-                            .as_ref()
-                            .and_then(|d| d.func().map(|f| f.result_ref))
-                            .unwrap_or(false);
                         methods.push(MethodSig {
                             name: op.name.to_string(),
                             params,
                             ret,
-                            ret_borrowed,
                             self_params,
                         });
                     }

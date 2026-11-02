@@ -93,6 +93,19 @@ pub(crate) fn has_try(e: &Expr) -> bool {
     v.0
 }
 
+/// Whether evaluating `e` runs a call, so evaluating it again would repeat a side effect.
+pub(crate) fn has_call(e: &Expr) -> bool {
+    struct Calls(bool);
+    impl Visitor for Calls {
+        fn expr(&mut self, e: &Expr) {
+            self.0 |= matches!(&e.kind, ExprKind::Call { .. });
+        }
+    }
+    let mut v = Calls(false);
+    ms_syntax::visit::walk_expr(&mut v, e);
+    v.0
+}
+
 /// How many times `e` reads or names the local `uid`.
 pub(crate) fn uses_of(hir: &ModuleHir, e: &Expr, uid: usize) -> usize {
     struct Uses<'h> {

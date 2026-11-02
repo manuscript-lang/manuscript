@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding absent; declare it with 'let absent = ...' before use, define 'fn absent(...) T:', or import it from a module",
+        "position": {
+          "file": "testexpectedresultgenericinference-2.ms",
+          "line": 5,
+          "column": 35,
+          "offset": 227
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testexpectedresultgenericinference-2.ms:5:35: resolution: unknown binding absent; declare it with 'let absent = ...' before use, define 'fn absent(...) T:', or import it from a module\n   |\n 5 |     let callback: fn() Int? = fn: absent()\n   |                                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

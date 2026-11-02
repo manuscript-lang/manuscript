@@ -48,7 +48,8 @@ impl Checker {
         // dispatch through the contract, rather than native receiver operations.
         // A source or interface operation with type parameters of its own is specialized here too.
         let generic = |m: &crate::types::Method| {
-            !m.variables.is_empty() && (m.native.as_str().is_empty() || m.native == "contract")
+            !m.variables.is_empty()
+                && (m.native.as_str().is_empty() || m.native == "contract" || m.contract.is_some())
         };
         if methods.len() != 1
             || (!generic(&methods[0])
@@ -59,8 +60,19 @@ impl Checker {
             return None;
         }
         let m = methods[0].clone();
+        let mut signature = m.ty.clone();
+        if rt.is_std("Optional")
+            && m.native == "core/ok_or"
+            && let Some(defaults) = &signature.defaults
+            && let Some(cause) = signature.params.first()
+        {
+            let defaults = defaults.with_missing_value_at_call(cause.name);
+            let mut marked = (*signature).clone();
+            marked.defaults = Some(Rc::new(defaults));
+            signature = Rc::new(marked);
+        }
         let info = Info {
-            ty: Some(m.ty.clone()),
+            ty: Some(signature),
             native: (!m.native.as_str().is_empty()).then_some(m.native),
             method: Some(m),
             no_return: receiver.no_return,
@@ -109,6 +121,9 @@ impl Checker {
             );
             supplied = vars.iter().map(|v| subst.get(&v.id).cloned()).collect();
         }
+        if supplied.len() >= required_type_arguments(&vars) {
+            supplied = complete_type_arguments(&vars, &supplied);
+        }
         if method.native.as_str().is_empty() || method.native == "contract" {
             info.type_args = supplied.clone();
         }
@@ -125,3 +140,7 @@ impl Checker {
         info
     }
 }
+
+#[cfg(test)]
+#[path = "method_type_defaults_tests.rs"]
+mod method_type_defaults_tests;

@@ -1,0 +1,19 @@
+[package]
+name = "ms-lsp-outline-perf"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+ms-lsp = { path = "../../../crates/ms-lsp" }
+ms-syntax = { path = "../../../crates/ms-syntax" }
+
+[[bin]]
+name = "ms-lsp-outline-perf"
+path = "main.rs"
+
+[profile.release]
+debug = 1
+panic = "abort"

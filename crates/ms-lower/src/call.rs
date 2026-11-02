@@ -80,7 +80,15 @@ impl<'a> FnLower<'a> {
             Resolution::Method(_) if self.receiver_expr(e).is_none() => {
                 self.call_value(e, &view)?
             }
-            Resolution::Method(m) => self.method_call(e, &view, m)?,
+            Resolution::Method(m) => {
+                let out = self.method_call(e, &view, m)?;
+                if m.name().is_some_and(|n| n.as_str() == "close")
+                    && let Some(recv) = self.receiver_expr(e)
+                {
+                    self.note_explicit_close(recv);
+                }
+                out
+            }
             Resolution::Constructor { ty, case } => self.construct(e, &view, ty, *case)?,
             Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
             _ => return Err(Error::new("unsupported call target")),
@@ -235,7 +243,13 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         // A value that needs no drop stays valid, and keeps the value of its written position.
         let _ = at;
-        if x.own || self.dead || !self.needs_drop(self.ty_of(x.v)) || !self.is_place(e) {
+        // Evaluating a place again would repeat a call in its index (`xs[f()]`).
+        if x.own
+            || self.dead
+            || !self.needs_drop(self.ty_of(x.v))
+            || !self.is_place(e)
+            || crate::mutation::has_call(e)
+        {
             return Ok(x);
         }
         self.expr(e)
@@ -346,15 +360,8 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
-        // A `ref` function the checker proved lends on every path hands back a borrow of its
-        // argument instead of a copy.
-        let lent = self.cx.lenders.contains(&(c.module.file, c.id()))
-            && c.func.func().is_some_and(|f| !f.body.is_empty());
-        let owned_mask = if lent { None } else { self.cx.owned_mask(c) };
-        let fid = if lent {
-            let scope = self.evidence();
-            self.cx.function_lent(self.b.m, c, subst, scope)?
-        } else if owned_mask.is_some() {
+        let owned_mask = self.cx.owned_mask(c);
+        let fid = if owned_mask.is_some() {
             let scope = self.evidence();
             self.cx.function_owned(self.b.m, c, subst, scope)?
         } else {
@@ -364,10 +371,13 @@ impl<'a> FnLower<'a> {
         // A changed parameter is moved into a slot the callee takes from and puts back into.
         let mut slots_out: Vec<(usize, Value, MTy, bool)> = Vec::new();
         let mut vals: Vec<Value> = Vec::new();
+        // Which borrowed arguments were owned temporaries, for a lender that hands one back whole.
+        let mut owned_args: Vec<bool> = Vec::new();
         // The only changed parameter is a field or list element of an owned variable: the callee
         // takes it out of its place and puts it back, instead of working on a copy.
         let mut in_place: Option<(usize, Expr, MTy)> = None;
         for (i, a) in args.slots.into_iter().flatten().enumerate() {
+            owned_args.push(a.own && !vars.contains(&i));
             if !vars.contains(&i) {
                 // A consumed parameter takes the value itself: a copy only when `a` is a borrow.
                 if owned_mask.as_ref().is_some_and(|mask| mask[i]) {
@@ -402,7 +412,7 @@ impl<'a> FnLower<'a> {
             if vars.len() == 1
                 && !a.own
                 && let Some(place) = args.places.get(i).cloned().flatten()
-                && !matches!(place.kind, ExprKind::Name(_))
+                && (!matches!(place.kind, ExprKind::Name(_)) || self.is_alias_name(&place))
                 && self.is_place(&place)
                 && self.place_is_owned(&place)
             {
@@ -473,7 +483,43 @@ impl<'a> FnLower<'a> {
                 _ => self.drop_value(new),
             }
         }
-        Ok(self.val(v, !lent))
+        if self.b.m.funcs[fid.index()].ret_borrowed {
+            // A lending callee: the result points into the arguments. When one of them is a
+            // temporary, the caller owns the result: the temporary itself when the callee hands
+            // it back whole, otherwise a copy taken before the temporary is dropped.
+            let Some(how) = self.cx.owned_lends.get(&(self.hir.data.file, e.id)) else {
+                return Ok(Val { v, own: false });
+            };
+            if let ms_check::ownership::OwnedLend::Whole(source) = how {
+                let offset = usize::from(c.self_binding.is_some());
+                let slot = match source {
+                    None => Some(0),
+                    Some(label) => c
+                        .parameters
+                        .iter()
+                        .position(|p| p.name == *label)
+                        .map(|i| i + offset),
+                };
+                if let Some(k) = slot
+                    && owned_args.get(k).copied().unwrap_or(false)
+                    && let Some(&arg) = vals.get(k)
+                    && self.ty_of(arg) == self.ty_of(v)
+                {
+                    // The result is that temporary: use the argument value itself, which the
+                    // MIR knows as owned, and stop dropping it with the statement.
+                    self.unhold_temp(arg);
+                    return Ok(self.val(arg, true));
+                }
+            }
+            let copy = self.owned(Val { v, own: false });
+            return Ok(self.val(copy, true));
+        }
+        Ok(self.val(v, true))
+    }
+
+    /// Whether `e` names an exclusive borrow of another place (`if var x = ...`, `c?.f()`).
+    fn is_alias_name(&self, e: &Expr) -> bool {
+        matches!(self.hir.resolution(e), ms_check::hir::Resolution::Local(b) if self.aliases.contains_key(&b.uid))
     }
 
     // ------------------------------------------------------------- methods
@@ -522,12 +568,6 @@ impl<'a> FnLower<'a> {
         if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }
-        if let Some(v) = self.lent_result(e)? {
-            return Ok(v);
-        }
-        if let Some(v) = self.list_end_lent(e, recv_expr, &method)? {
-            return Ok(v);
-        }
         if let Some(v) = self.map_get_chain(e, view, recv_expr, &method)? {
             return Ok(v);
         }
@@ -548,50 +588,6 @@ impl<'a> FnLower<'a> {
             return Ok(self.trim_view(sym, recv));
         }
         self.native_method(e, view, m, recv_expr, recv)
-    }
-
-    /// `xs.first()` or `xs.last()` lent by a `ref` function: a view of the element, not a copy.
-    fn list_end_lent(
-        &mut self,
-        e: &Expr,
-        recv_expr: &Expr,
-        name: &str,
-    ) -> Result<Option<Val>, Error> {
-        if !matches!(name, "first" | "last")
-            || !self.lent_return
-            || self.lent_expr != Some(e as *const Expr as usize)
-            || !self.ety(recv_expr).is_std("List")
-        {
-            return Ok(None);
-        }
-        let opt_ty = self.emty(e)?;
-        let lv = self.expr(recv_expr)?;
-        if self.dead {
-            return Ok(Some(lv));
-        }
-        let lv = self.borrow(lv);
-        let len = self.b.list_len(lv);
-        let zero = self.b.iconst(0);
-        let empty = self.b.icmp(ms_mir::ir::Cc::Eq, len, zero);
-        let out = self.b.declare_var(opt_ty, ms_mir::ir::Mode::Borrow);
-        let (absent, present, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br_if(empty, absent, &[], present, &[]);
-        self.b.seal_block(absent);
-        self.b.seal_block(present);
-        self.enter(absent);
-        let none = self.b.opt_none(opt_ty);
-        self.b.def_var(out, none);
-        self.b.br(join, &[]);
-        self.enter(present);
-        let at = self.b.iconst(if name == "first" { 0 } else { -1 });
-        let elem = self.b.list_get(lv, at);
-        let some = self.b.opt_view(elem);
-        self.b.def_var(out, some);
-        self.b.br(join, &[]);
-        self.b.seal_block(join);
-        self.enter(join);
-        let v = self.b.use_var(out);
-        Ok(Some(Val { v, own: false }))
     }
 
     /// `text.trim()` (or `trim_start`, `trim_end`) on a string that stays where it is: a view into it, nothing allocated. The
@@ -687,6 +683,9 @@ impl<'a> FnLower<'a> {
         let name = m.name()?;
         let contract = m.contract.as_ref()?;
         let scope = self.evidence();
+        // A receiver may implement one generic contract at several applications
+        // (`Scorer[String]` and `Scorer[Int]`), so the arguments choose among them.
+        let wanted = ct::sub(contract, &self.subst);
         self.cx
             .methods
             .iter()
@@ -694,13 +693,13 @@ impl<'a> FnLower<'a> {
                 mm.name() == Some(name)
                     && !mm.id.as_str().is_empty()
                     && mm.visible_in(scope)
-                    && mm.contract.as_ref().is_some_and(|c| c.id == contract.id)
-                    && ct::unify(
-                        &mm.receiver,
-                        recv,
-                        &ct::variable_set(&mm.variables),
-                        &mut ct::Subst::new(),
-                    )
+                    && mm.contract.as_ref().is_some_and(|c| {
+                        let vars = ct::variable_set(&mm.variables);
+                        let mut bound = ct::Subst::new();
+                        c.id == contract.id
+                            && ct::unify(&mm.receiver, recv, &vars, &mut bound)
+                            && ct::unify(c, &wanted, &vars, &mut bound)
+                    })
             })
             .cloned()
     }
@@ -775,8 +774,19 @@ impl<'a> FnLower<'a> {
                         return Ok(recv);
                     }
                     self.close_with(&kind, recv.v, want);
-                    let v = self.b.unit();
-                    return Ok(Val { v, own: false });
+                    // The call is checked as `Unit!`: it succeeds, since a part that fails faults.
+                    let result = self.mty(&ms_check::types::test_outcome())?;
+                    let TyKind::Alt(alt) = self.b.m.types.kind(result).clone() else {
+                        return Err(Error::new("a close returns a Result"));
+                    };
+                    let ok = self.b.m.alts[alt.index()]
+                        .cases
+                        .iter()
+                        .position(|c| c.name == "ok")
+                        .ok_or_else(|| Error::new("a close returns a Result"))?;
+                    let unit = self.b.unit();
+                    let v = self.b.alt_new(alt, ok as u32, &[unit]);
+                    return Ok(Val { v, own: true });
                 }
                 return Err(Error::new(format!(
                     "{static_ty} has no implementation of {}",
@@ -858,8 +868,7 @@ impl<'a> FnLower<'a> {
         let r = self.borrow(recv);
         self.at(e.pos);
         let v = self.b.call_method(iface, k as u32, r, &args);
-        // A `ref` operation lends: the result is a borrow of the receiver or an argument.
-        Ok(self.val(v, !sig.ret_borrowed))
+        Ok(self.val(v, true))
     }
 
     /// The contract operation an implementation method fulfils: its parameters without a
@@ -868,8 +877,11 @@ impl<'a> FnLower<'a> {
         &self,
         callee: &Callable,
     ) -> Option<(Option<ms_check::syntax::FuncRef>, ct::Ty)> {
+        // Node ids repeat across modules, so the module must match too.
         let im = self.cx.methods.iter().find(|m| {
-            !m.id.as_str().is_empty() && m.decl.as_ref().is_some_and(|d| d.id() == callee.func.id())
+            !m.id.as_str().is_empty()
+                && m.module == callee.module.file
+                && m.decl.as_ref().is_some_and(|d| d.id() == callee.func.id())
         })?;
         let def = im.contract.as_ref()?.def.as_ref()?;
         let ops = def.operations.borrow();
@@ -922,6 +934,30 @@ impl<'a> FnLower<'a> {
         {
             return self.construct_collection(view, mt);
         }
+        // `ok(x)` / `error(x)` of a reference the checker keeps one: `alt.view` of the payload.
+        if let (TyKind::Alt(a), Some(c), [arg]) = (
+            self.b.m.types.kind(mt).clone(),
+            case,
+            view.arguments.as_slice(),
+        ) && self.cx.view_wraps.contains(&(self.hir.data.file, e.id))
+        {
+            let x = self.expr(arg.expr)?;
+            if self.dead {
+                return Ok(x);
+            }
+            let idx = self.b.m.alts[a.index()]
+                .cases
+                .iter()
+                .position(|x| x.name == c.as_str())
+                .ok_or_else(|| Error::new("unknown case"))?;
+            if !x.own && arg.wrap_optional.is_none() {
+                let v = self.b.alt_view(a, idx as u32, &[x.v]);
+                return Ok(Val { v, own: false });
+            }
+            let o = self.owned(x);
+            let v = self.b.alt_new(a, idx as u32, &[o]);
+            return Ok(Val { v, own: true });
+        }
         // Parameter names and types of the constructor.
         let params: Vec<ct::Param> = match case {
             Some(c) => ct::case_of(&t, c)
@@ -930,19 +966,10 @@ impl<'a> FnLower<'a> {
             None => ct::fields(&t),
         };
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
-        // `return some(part)` of a lending function wraps the borrow itself.
-        let view_only = self.lent_return
-            && self.lent_expr == Some(e as *const Expr as usize)
-            && matches!(self.b.m.types.kind(mt), TyKind::Opt(_))
-            && view.arguments.len() == 1;
         for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
-            }
-            if view_only && a.wrap_optional.is_none() && !x.own {
-                let v = self.b.opt_view(x.v);
-                return Ok(Val { v, own: false });
             }
             let later_try = view.arguments[n + 1..]
                 .iter()
@@ -955,12 +982,8 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
-            let is_ref_field =
-                case.is_none() && ct::field_is_ref(&t, a.slot.name) && a.wrap_optional.is_none();
             // A later field may return early (`try`): hold this one as a temporary until then.
-            let x = if is_ref_field {
-                x
-            } else if later_try {
+            let x = if later_try {
                 self.hold_temp(x)
             } else {
                 let v = self.owned(x);
@@ -978,10 +1001,6 @@ impl<'a> FnLower<'a> {
         let mut vals = Vec::new();
         for (i, s) in slots.into_iter().enumerate() {
             match s {
-                // A `ref` field holds a view of its argument: nothing is copied or moved in.
-                Some(x) if case.is_none() && ct::field_is_ref(&t, params[i].name) => {
-                    vals.push(self.b.ref_new(x.v));
-                }
                 Some(x) => {
                     let v = self.owned(x);
                     vals.push(v);
@@ -1073,7 +1092,7 @@ impl<'a> FnLower<'a> {
         Ok(self.owned(x))
     }
 
-    /// A default written as a literal, `none`, an empty list or a constructor call of literals in a
+    /// A default written as a literal, `none`, an empty list or map, or a constructor call of literals in a
     /// declaration module without checked facts; none when `d` is anything else.
     pub(crate) fn literal_default(&mut self, d: &Expr, t: &ct::Ty) -> Result<Option<Val>, Error> {
         let mt = self.cx.lower_ty(self.b.m, t)?;
@@ -1118,6 +1137,15 @@ impl<'a> FnLower<'a> {
             }
             ExprKind::List(items) if items.is_empty() => {
                 let v = self.call_runtime("msrt_list_new", &[], mt)?;
+                Some(Val { v, own: true })
+            }
+            // `Map[K, V]()`: an empty map.
+            ExprKind::Call { args, .. }
+                if args.is_empty()
+                    && crate::mapset::is_map_or_set(self.b.m, mt)
+                    && t.is_std("Map") =>
+            {
+                let v = self.map_new(mt)?;
                 Some(Val { v, own: true })
             }
             ExprKind::Call { args, .. } if args.iter().all(|a| a.name.is_some()) => {

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 67,
+    "stdout": "",
+    "stderr": "called Result.get() on error; check is_ok first, or pass a default: get(default: ...)\n  at testfaultsourcelocations-9.ms:7 in deep\n  at testfaultsourcelocations-9.ms:10 in main\n"
+  }
+}

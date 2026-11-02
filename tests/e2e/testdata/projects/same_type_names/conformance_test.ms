@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 import flip, shifted from "./other.ms"
 
 # The same type names in two modules lower to distinct Go types.

@@ -1,0 +1,32 @@
+{
+  "revision": "f33f13359a02b59467f042eb67d6ecd06d706c7a",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "binaries": {
+    "before": {
+      "path": "/workspace/json-perf/.artifacts/json-library/before",
+      "sha256": "43675321a65ee94ed79d64b180bd3c57222fb0b586f621f4a4b62800fa4d4972"
+    },
+    "after": {
+      "path": "/workspace/json-perf/.artifacts/json-library/after",
+      "sha256": "6e4209d1e46332298453371d87306c62068af0e099595a47f3d47bfdaaa13f4c"
+    },
+    "rust": {
+      "path": "/workspace/json-perf/.artifacts/json-library/before",
+      "sha256": "43675321a65ee94ed79d64b180bd3c57222fb0b586f621f4a4b62800fa4d4972"
+    }
+  },
+  "source_sha256": {
+    "bench/perf/json-library/src/main.rs": "97f56114c55fe526b8d08aebcb2c7c4cbf6505a58b0a99b164daaec4dd70f98d",
+    "bench/perf/json-library/Cargo.toml": "ab5e33f84ab8ef293fafbab0faa2555371496e6fcebc420f2022ccbf25384243",
+    "bench/perf/json-library/Cargo.lock": "7cb700545d1b1bb61df9a25b9c642e9cb611008d3a326aea9af89bb98a7854e8",
+    "bench/perf/json-library/run.py": "6747b06b803c31e2740e0e578d6dd3ebd97966da17929072c5d0e30189c3581a",
+    "crates/ms-std-json/src/lib.rs": "06c34bd25f31149172a0df08604b08a2bce3dc8c523ca3eab53fe684226e6780",
+    "crates/ms-std-json/Cargo.toml": "3b6ccfd12b26d7c8fbe6d8165fca35c586cb7765204e696aaeb2a2f569876b01",
+    "rust-toolchain.toml": "7f5140056a968f51f7a91e1d73fd6b8c226054ecb5c6d39e791de484f9616457",
+    ".cargo/config.toml": "c411c17fbefc5c7148567d4a348fbf29cde557426121c29c6ae0525fbbd8c34e"
+  },
+  "flags": "Cargo release opt-level3 panic=abort; repository force-frame-pointers; same host allocator for library and Serde; native library component, not Manuscript generated code",
+  "build": "cargo build --release --locked --manifest-path bench/perf/json-library/Cargo.toml",
+  "trials": 12
+}

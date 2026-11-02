@@ -58,7 +58,7 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
                         .copied()
                         .unwrap_or(false)
                 } else {
-                    matches!(lex(file, &source[last..offset]), Err(d) if d.message.starts_with("unterminated delimiter"))
+                    matches!(lex(file, &source[last..offset]), Err(d) if d.message.starts_with("unterminated delimiter") || d.message.starts_with("unterminated multi-line text"))
                 };
                 if unterminated {
                     let mut start = last;
@@ -219,34 +219,16 @@ fn is_candidate_line(line: &str) -> bool {
 }
 
 fn is_declaration_line(line: &str) -> bool {
-    if !is_candidate_line(line) {
-        return false;
-    }
-    let trimmed = line.trim();
-    [
-        "import ",
-        "export ",
-        "fn ",
-        "extern ",
-        "let ",
-        "let(",
-        "type ",
-        "interface ",
-        "impl ",
-        "test ",
-    ]
-    .iter()
-    .any(|k| trimmed.starts_with(k))
+    is_candidate_line(line) && partial_root_start(line.trim())
 }
 
-/// Only a bound for optimistic parsing, never a recovery boundary. Includes
-/// constants and token boundaries such as `import{` and `let(`; malformed input
-/// still synchronizes using the original rules.
+/// Recognizes declaration starts by token boundary, including contextual words
+/// only when their following token selects a declaration. The same roots bound
+/// optimistic parsing and synchronize recovery after an unmatched opener.
 fn partial_root_start(source: &str) -> bool {
     for keyword in [
         "import",
         "export",
-        "fn",
         "extern",
         "type",
         "interface",
@@ -254,15 +236,34 @@ fn partial_root_start(source: &str) -> bool {
         "test",
         "let",
     ] {
-        if !source.starts_with(keyword) {
-            continue;
+        if after_keyword(source, keyword).is_some() {
+            return true;
         }
-        return match source.as_bytes().get(keyword.len()) {
-            None => true,
-            Some(b) => !(b.is_ascii_alphanumeric() || *b == b'_'),
-        };
     }
-    false
+    after_keyword(source, "fn").is_some_and(|rest| {
+        let rest = rest.trim_start();
+        let name_start = rest
+            .as_bytes()
+            .first()
+            .is_some_and(|b| b.is_ascii_alphabetic() || *b == b'_');
+        let name_end = rest
+            .bytes()
+            .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
+            .count();
+        // A named function needs a parameter or type-parameter list after
+        // its name. Inferred callbacks can continue their header on later lines.
+        name_start && rest[name_end..].trim_start().starts_with(['(', '['])
+    }) || after_keyword(source, "bench").is_some_and(|rest| rest.trim_start().starts_with('"'))
+        || after_keyword(source, "opaque")
+            .is_some_and(|rest| after_keyword(rest.trim_start(), "type").is_some())
+}
+
+fn after_keyword<'a>(source: &'a str, keyword: &str) -> Option<&'a str> {
+    source.strip_prefix(keyword).filter(|rest| {
+        rest.as_bytes()
+            .first()
+            .is_none_or(|b| !(b.is_ascii_alphanumeric() || *b == b'_'))
+    })
 }
 
 /// Grouped imports and constants produce several AST nodes for one written
@@ -309,6 +310,13 @@ fn recover_statements(
         if opened > 0 && attempt == 0 {
             line = opened;
         }
+        // A misindented line of multi-line text drops the whole statement.
+        if issue.message.starts_with("text line is indented less") && attempt == 0 {
+            while line > 1 && line <= lines.len() && !lines[line - 1].trim_end().ends_with("\"\"\"")
+            {
+                line -= 1;
+            }
+        }
         // The header line (line 1) failing means the signature is unusable.
         if line < 2 || line > lines.len() {
             return None;
@@ -318,6 +326,15 @@ fn recover_statements(
         let indent = leading_space(&lines[at]);
         if lines[at].trim().is_empty() || indent == 0 {
             return None;
+        }
+        // A one-line statement cut off mid-expression (`return g.`, `let v = a +`)
+        // keeps its operands for navigation once the dangling tail is trimmed.
+        let single = lines
+            .get(at + 1..)
+            .and_then(|rest| rest.iter().find(|l| !l.trim().is_empty()))
+            .is_none_or(|next| leading_space(next) <= indent);
+        if single && let Some(trimmed) = trim_dangling(file, &lines, at) {
+            return Some((trimmed, issues));
         }
         for (index, text) in lines.iter_mut().enumerate().skip(at) {
             if index > at && !text.trim().is_empty() && leading_space(text) <= indent {
@@ -329,6 +346,45 @@ fn recover_statements(
         match parse(file, &text) {
             Ok(_) => return Some((text, issues)),
             Err(e) => issue = *e,
+        }
+    }
+    None
+}
+
+/// Removes the dangling tail of line `at` (a trailing `.`, `?.`, operator or
+/// separator) until the declaration parses, keeping the line's columns by
+/// padding with spaces. `None` when trimming does not make it parse.
+fn trim_dangling(file: &Arc<str>, lines: &[String], at: usize) -> Option<String> {
+    let line = &lines[at];
+    let newline = &line[line.trim_end_matches(['\n', '\r']).len()..];
+    let mut code = line.trim_end_matches(['\n', '\r']).trim_end().to_string();
+    if code.contains('#') || code.contains('"') {
+        return None;
+    }
+    for _ in 0..3 {
+        let kept = code.trim_end_matches(|c: char| {
+            matches!(
+                c,
+                '.' | '?' | '+' | '-' | '*' | '/' | '%' | '<' | '>' | '=' | '!' | ',' | '|'
+            ) || c == ' '
+        });
+        let kept = ["and", "or", "not"]
+            .iter()
+            .find_map(|w| kept.strip_suffix(w).filter(|r| r.ends_with(' ')))
+            .unwrap_or(kept);
+        if kept.len() == code.len() || kept.trim().is_empty() {
+            return None;
+        }
+        code = kept.trim_end().to_string();
+        let mut attempt = lines.to_vec();
+        attempt[at] = format!(
+            "{}{}{newline}",
+            code,
+            " ".repeat(line.trim_end_matches(['\n', '\r']).len() - code.len())
+        );
+        let text = attempt.concat();
+        if parse(file, &text).is_ok() {
+            return Some(text);
         }
     }
     None

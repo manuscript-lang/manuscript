@@ -1,0 +1,18 @@
+diff --git a/stdlib/queue.ms b/stdlib/queue.ms
+index fd096bdec..43422f0e7 100644
+--- a/stdlib/queue.ms
++++ b/stdlib/queue.ms
+@@ -150,8 +150,11 @@ impl PriorityQueue[T]:
+     # Removes and returns the next value by priority, or `none` when empty.
+     var fn dequeue() T?:
+         let count = self.heap.length()
+-        if count == 0:
+-            return none
++        if count <= 1:
++            if count == 0:
++                return none
++            self.orders.pop()
++            return self.heap.pop()
+ 
+         self.swap_entries(0, count - 1)
+         self.orders.pop()

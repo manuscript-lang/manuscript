@@ -1,0 +1,7 @@
+{
+  "/workspace/normalization-evidence/leading-byte/normalize-matrix/record.json": "9293fe6c6777aaa2ee9224df6c9519c7538b80a983a1e3cf46fae60537e6d22a",
+  "/workspace/normalization-evidence/leading-byte/normalize-matrix/samples.csv": "f0341b084b58205756cb389a78e375a167802a379d991e41d9bbc17016de999b",
+  "bench/perf/string-normalize-ascii/identities.json": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+  "/workspace/normalization-perf/bench/perf/string-normalize-ascii/analyze_matrix.py": "52aff28e3a653a1aeb1e6d153b6db9da420b700f73744f68ec46f68abc2a189c",
+  "/workspace/normalization-evidence/leading-byte/paired-comparisons.csv": "98b8827f7f947b0b21a5e183da1f40c89b1004d3ccb9cae83e5511073110b697"
+}

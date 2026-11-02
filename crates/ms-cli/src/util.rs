@@ -33,7 +33,7 @@ pub fn file_error(error: &ProjectError) -> String {
 pub fn emit_json(io: &mut Io, value: &Json, status: i32) -> i32 {
     match io
         .stdout
-        .write_all(value.pretty_line(ms_json::Escape::GoHtml).as_bytes())
+        .write_all(value.pretty_line(ms_json::Escape::HtmlSafe).as_bytes())
     {
         Ok(()) => status,
         Err(error) => {

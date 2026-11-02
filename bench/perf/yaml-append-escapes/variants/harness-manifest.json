@@ -1,0 +1,13 @@
+{
+  "compressed_sha256": "fc417f520d8fa375e076cf0b9e63eef2e0f3376206873cce54301809e1836b11",
+  "uncompressed_sha256": "6cfa4e473fbb924df17aaa13509ba14347fb40d0fa26b06a05efa817d0dd17c5",
+  "files": {
+    "main.ms": "4da5b37eb5948d3a9e4523f380561f81707f02d4d85023e6aa0bb14f40b23aba",
+    "file-writer.ms": "79c3836eafda9205a97ad50530cc631d7a993a307d586e54e2e24c535fcff0d4",
+    "regressions.ms": "47e295a5c41bb754d4e676aeb4e0f21d9242212ae82dda7a8d6cbb0f2e6ca82e",
+    "rust/Cargo.toml": "c14d1c02e66facedd7d2eb2a4685c6c637fd01f22eece0e828cf51eaa7edfb7f",
+    "rust/Cargo.lock": "112393f93f8dd5324ae830850f6cae4970b7e8ad5d2e1c77852a0cfe51fb8d89",
+    "rust/src/main.rs": "3feb18228442dd0a11b463ee1b77206928879ce22cd53a111f11f4f9724ae393",
+    "rust/src/bin/file-writer.rs": "1d0818f210a9c8f11ef0504ec477a5fb7ed78cb32f0a0eef67902508f712dfd6"
+  }
+}

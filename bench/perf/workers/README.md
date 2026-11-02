@@ -1,6 +1,6 @@
 # Worker scaling
 
-Eight CPU-bound jobs (`fib(38)`) sent round-robin over 1, 2 and 4 workers of a `WorkerGroup`; each worker computes its jobs and sends the results back over its channel. The checksum must match across worker counts. Reproduce with `MS=./target/release/ms sh bench/perf/workers/run.sh 3` (best of N wall times, milliseconds); compare only runs from one machine.
+Eight CPU-bound jobs (`fib(38)`) sent round-robin over 1, 2 and 4 workers of a `WorkerGroup`; each worker computes its jobs and sends the results back over its channel. The checksum must match across worker counts. Reproduce with `MS=./target/release/ms ms run bench/tools/workers.ms -- 3` (best of N wall times, milliseconds); compare only runs from one machine.
 
 ## main at c1b81215 (2026-10-25)
 

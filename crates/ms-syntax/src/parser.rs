@@ -64,6 +64,61 @@ struct Parser<'a> {
     next_id: u32,
     /// While positive, failures are speculative: their messages are never shown.
     speculative: u32,
+    failed_type_args: Vec<FailedTypeArgs>,
+}
+
+struct FailedTypeArgs {
+    start: usize,
+    initial_depth: usize,
+    end: usize,
+    depth: usize,
+    ids: u32,
+    diagnostic: Box<Diagnostic>,
+}
+
+/// The position of byte `index` of a text token's source.
+fn text_pos(pos: Pos, full: &str, index: usize, boundaries: &crate::lexer::ScanBoundaries) -> Pos {
+    let before = &full[..index];
+    let offset = (pos.offset as usize + index) as u32;
+    let position = match before.rfind('\n') {
+        None => Pos {
+            line: pos.line,
+            column: (pos.column as usize + index) as u32,
+            offset,
+        },
+        Some(last) => Pos {
+            line: pos.line + before.matches('\n').count() as u32,
+            column: (index - last) as u32,
+            offset,
+        },
+    };
+    boundaries.restore_text_offset(pos, position)
+}
+
+/// Splits the text between multi-line delimiters into its content (without
+/// the line break after the opening quotes and the closing line), the closing
+/// line's indentation width, and the content's start within `body`.
+fn multiline_body(body: &str) -> (&str, usize, usize) {
+    let last = body.rfind('\n').unwrap_or(0);
+    let indent = body.len() - last - 1;
+    (&body[1.min(last)..last], indent, 1.min(last))
+}
+
+/// Removes up to `indent` leading blanks from every line of `content`.
+fn dedent(content: &str, indent: usize) -> String {
+    let mut out = String::with_capacity(content.len());
+    for (i, line) in content.split('\n').enumerate() {
+        if i > 0 {
+            out.push('\n');
+        }
+        let blanks = line
+            .bytes()
+            .take(indent)
+            .take_while(|b| matches!(b, b' ' | b'\t'))
+            .count();
+        out.push_str(&line[blanks..]);
+    }
+    out
 }
 
 fn describe(src: &str, t: Token) -> String {
@@ -130,7 +185,7 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
             } else if found_text == "_" {
                 "; '_' is a reserved word and cannot be used as a name: loops, parameters and bindings need a real name such as item, unused or ignored".into()
             } else if found == Tok::Ref {
-                "; 'ref' appears only before a function's result type or on a record field's type (name: ref T); it cannot mark a parameter or a type nested inside another type".into()
+                "; 'ref' was removed: a function that returns part of a parameter lends it without a marker".into()
             } else if found.as_str() == found_text && found_text.starts_with(|c: char| c.is_ascii_alphabetic()) {
                 format!("; '{}' is a reserved word and cannot be used as a name", found_text)
             } else {
@@ -215,6 +270,10 @@ fn binary_op(kind: Tok) -> Option<BinaryOp> {
     })
 }
 
+fn starts_type(kind: Tok) -> bool {
+    matches!(kind, Tok::Name | Tok::Fn | Tok::LParen)
+}
+
 fn arith_op(kind: Tok) -> Option<BinaryOp> {
     match kind {
         Tok::Plus | Tok::Minus | Tok::Star | Tok::Slash | Tok::Percent => binary_op(kind),
@@ -246,6 +305,7 @@ impl<'a> Parser<'a> {
             queued: Vec::new(),
             next_id,
             speculative: 0,
+            failed_type_args: Vec::new(),
         }
     }
 
@@ -476,6 +536,9 @@ impl<'a> Parser<'a> {
             Tok::If => {
                 "; there is no inline conditional expression 'a if c else b': write 'if c: a else: b', or use an if statement"
             }
+            Tok::Question => {
+                "; '?' is not a postfix unwrap, '??' or 'c ? a : b': unwrap an Optional with 'if let x = v:' or give it a default with 'v.get(default)', chain with 'a?.b', and write a conditional as 'if c: a else: b'"
+            }
             Tok::Comma => {
                 "; commas separate items only inside (), [] or {}: put each field, case, or statement on its own line"
             }
@@ -556,6 +619,7 @@ impl<'a> Parser<'a> {
         }
         self.need_from()?;
         let token = self.need(Tok::String)?;
+        self.single_line(token, "import paths")?;
         let mut parts = self.text_parts_of(token)?;
         let path = match (parts.len(), parts.pop()) {
             (1, Some(TextPart::Lit(text))) => text,
@@ -595,6 +659,14 @@ impl<'a> Parser<'a> {
                 while self.take(Tok::Amp) {
                     bounds.push(self.named_type()?);
                 }
+                if matches!(self.kind(), Tok::Plus | Tok::And) {
+                    let t = self.peek();
+                    return self.fail_fix(
+                        t,
+                        "combine bounds with '&', as in T: Comparable & Clonable",
+                        "&",
+                    );
+                }
             }
             if self.take(Tok::Assign) {
                 default = Some(self.typ()?);
@@ -628,6 +700,14 @@ impl<'a> Parser<'a> {
                 let mut ty = None;
                 let mut default = None;
                 if self.take(Tok::Colon) {
+                    if self.kind() == Tok::Var {
+                        let t = self.peek();
+                        let msg = format!(
+                            "'var' goes before the parameter name, not its type; write var {}: Type",
+                            self.text(name)
+                        );
+                        return self.fail(t, msg);
+                    }
                     ty = Some(self.typ()?);
                 } else if !inferred || self.kind() == Tok::Name {
                     self.need_name_colon(name)?;
@@ -649,7 +729,6 @@ impl<'a> Parser<'a> {
                     ty,
                     default,
                     mutable,
-                    by_ref: false,
                 });
                 if !self.take(Tok::Comma) {
                     break;
@@ -697,7 +776,11 @@ impl<'a> Parser<'a> {
             );
         }
         if self.take(Tok::LBracket) {
-            args = self.type_args()?;
+            args = if self.speculative > 0 && starts_type(self.kind()) {
+                self.speculative_type_args(true)?
+            } else {
+                self.type_args()?
+            };
         }
         let lt = self.peek();
         if lt.kind == Tok::Lt
@@ -713,6 +796,46 @@ impl<'a> Parser<'a> {
             pos: name.pos,
             kind: TypeKind::Named { name: full, args },
         })
+    }
+
+    /// Nested type lists remember failures; expression brackets only replay them.
+    fn speculative_type_args(&mut self, remember: bool) -> PResult<Vec<TypeRef>> {
+        // Replaying a failed speculative parse must preserve its side effects.
+        // Include nesting depth: a limit failure is not a grammar failure.
+        let (start, initial_depth) = (self.at, self.depth);
+        // Recursive failures unwind in reverse source order; expression parsing
+        // then revisits them in forward order. Discard entries already passed.
+        while self
+            .failed_type_args
+            .last()
+            .is_some_and(|failed| failed.start < start)
+        {
+            self.failed_type_args.pop();
+        }
+        if let Some(failed) = self
+            .failed_type_args
+            .pop_if(|failed| failed.start == start && failed.initial_depth == initial_depth)
+        {
+            self.at = failed.end;
+            self.depth = failed.depth;
+            self.next_id += failed.ids;
+            return Err(failed.diagnostic);
+        }
+        let first_id = self.next_id;
+        let result = self.type_args();
+        // Only nested failures can be retried by the enclosing expression.
+        // Ordinary flat indexing never allocates a cache.
+        if remember && let Err(diagnostic) = &result {
+            self.failed_type_args.push(FailedTypeArgs {
+                start,
+                initial_depth,
+                end: self.at,
+                depth: self.depth,
+                ids: self.next_id - first_id,
+                diagnostic: diagnostic.clone(),
+            });
+        }
+        result
     }
 
     fn type_args(&mut self) -> PResult<Vec<TypeRef>> {
@@ -732,7 +855,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the type that follows a parameter list, rejecting the removed
     /// `->` and a missing type with the form to write instead.
-    fn result_type(&mut self) -> PResult<(bool, TypeRef)> {
+    fn result_type(&mut self) -> PResult<TypeRef> {
         let t = self.peek();
         if t.kind == Tok::Arrow {
             return self.fail_fix(
@@ -750,27 +873,48 @@ impl<'a> Parser<'a> {
                 "every fn declares its result type after the parameter list, e.g. fn f() Unit:",
             );
         }
-        let by_ref = self.take(Tok::Ref);
-        Ok((by_ref, self.typ()?))
+        self.no_ref()?;
+        self.typ()
     }
 
-    /// Wraps `t` once per trailing `?`: `T?` is `Optional[T]`. A function type
-    /// needs parentheses first, since its result type takes the `?`.
-    fn optional_suffix(&mut self, mut t: TypeRef) -> TypeRef {
-        while self.kind() == Tok::Question {
-            self.at += 1;
-            let id = self.id();
+    /// Wraps `t` once per trailing suffix, left to right: `T?` is `Optional[T]`, `T!` is
+    /// `Result[T, Error]`, and `T!E` (E directly after the bang) is `Result[T, E]`. A function
+    /// type needs parentheses first, since its result type takes the suffix.
+    fn type_suffix(&mut self, mut t: TypeRef) -> PResult<TypeRef> {
+        loop {
             let pos = t.pos;
+            let (name, args) = if self.take(Tok::Question) {
+                ("Optional", vec![t])
+            } else if self.take(Tok::Bang) {
+                let bang = self.previous();
+                let next = self.peek();
+                let error = if next.kind == Tok::Name && next.lo == bang.hi {
+                    self.named_type()?
+                } else {
+                    let id = self.id();
+                    TypeRef {
+                        id,
+                        pos,
+                        kind: TypeKind::Named {
+                            name: Symbol::intern("Error"),
+                            args: Vec::new(),
+                        },
+                    }
+                };
+                ("Result", vec![t, error])
+            } else {
+                return Ok(t);
+            };
+            let id = self.id();
             t = TypeRef {
                 id,
                 pos,
                 kind: TypeKind::Named {
-                    name: Symbol::intern("Optional"),
-                    args: vec![t],
+                    name: Symbol::intern(name),
+                    args,
                 },
             };
         }
-        t
     }
 
     fn typ(&mut self) -> PResult<TypeRef> {
@@ -797,7 +941,6 @@ impl<'a> Parser<'a> {
                         ty: Some(ty),
                         default: None,
                         mutable: false,
-                        by_ref: false,
                     });
                     if !self.take(Tok::Comma) {
                         break;
@@ -823,7 +966,7 @@ impl<'a> Parser<'a> {
         } else {
             self.named_type()?
         };
-        Ok(self.optional_suffix(t))
+        self.type_suffix(t)
     }
 
     // ---- declarations ----
@@ -949,7 +1092,7 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
         let params = self.parameters(true, false)?;
-        let (result_ref, result) = self.result_type()?;
+        let result = self.result_type()?;
         let body = if body {
             self.statement_suite(false, true)?
         } else {
@@ -964,7 +1107,6 @@ impl<'a> Parser<'a> {
                 type_params,
                 params,
                 result,
-                result_ref,
                 body,
                 external: false,
             },
@@ -975,6 +1117,7 @@ impl<'a> Parser<'a> {
     /// Parses the rest of `test "name":` or `bench "name":` after the keyword.
     fn test_block(&mut self, bench: bool) -> PResult<DeclKind> {
         let name = self.need(Tok::String)?;
+        self.single_line(name, if bench { "bench names" } else { "test names" })?;
         let mut parts = self.text_parts_of(name)?;
         let text = match (parts.len(), parts.pop()) {
             (1, Some(TextPart::Lit(text))) => text,
@@ -1024,14 +1167,13 @@ impl<'a> Parser<'a> {
                 let name = self.need(Tok::Name)?;
                 let type_params = self.type_params()?;
                 let params = self.parameters(true, false)?;
-                let (result_ref, result) = self.result_type()?;
+                let result = self.result_type()?;
                 let body = self.statement_suite(false, true)?;
                 DeclKind::Fn(Func {
                     name: self.sym(name),
                     type_params,
                     params,
                     result,
-                    result_ref,
                     body,
                     external: false,
                 })
@@ -1061,7 +1203,7 @@ impl<'a> Parser<'a> {
                 let name = self.need(Tok::Name)?;
                 let type_params = self.type_params()?;
                 let params = self.parameters(true, false)?;
-                let (result_ref, result) = self.result_type()?;
+                let result = self.result_type()?;
                 if self.kind() == Tok::Colon {
                     let t = self.peek();
                     return self.fail(t, "an extern fn has no body; remove the ':'");
@@ -1072,7 +1214,6 @@ impl<'a> Parser<'a> {
                     type_params,
                     params,
                     result,
-                    result_ref,
                     body: Vec::new(),
                     external: true,
                 })
@@ -1096,10 +1237,10 @@ impl<'a> Parser<'a> {
                 // `impl Contract for Type:` implements a contract; `impl Type:`
                 // declares the type's own methods.
                 let first = self.named_type()?;
-                let first = self.optional_suffix(first);
+                let first = self.type_suffix(first)?;
                 let (contract, receiver) = if self.take(Tok::For) {
                     let receiver = self.named_type()?;
-                    (Some(first), self.optional_suffix(receiver))
+                    (Some(first), self.type_suffix(receiver)?)
                 } else {
                     (None, first)
                 };
@@ -1112,6 +1253,14 @@ impl<'a> Parser<'a> {
                         self.newlines();
                         if self.kind() == Tok::Dedent {
                             break;
+                        }
+                        if self.kind() == Tok::Export {
+                            let t = self.peek();
+                            return self.fail_fix(
+                                t,
+                                "a method is not exported by itself; it is visible wherever its type is, so remove 'export' and export the type",
+                                "",
+                            );
                         }
                         let mutating = self.take(Tok::Var);
                         self.need(Tok::Fn)?;
@@ -1295,7 +1444,7 @@ impl<'a> Parser<'a> {
             } else {
                 let fname = self.need(Tok::Name)?;
                 self.need_name_colon(fname)?;
-                let by_ref = self.take(Tok::Ref);
+                self.no_ref()?;
                 let ty = self.typ()?;
                 let default = if self.take(Tok::Assign) {
                     Some(self.expression(0)?)
@@ -1310,7 +1459,6 @@ impl<'a> Parser<'a> {
                     ty: Some(ty),
                     default,
                     mutable: false,
-                    by_ref,
                 });
                 self.end()?;
             }
@@ -1383,6 +1531,22 @@ impl<'a> Parser<'a> {
             return Ok(Vec::new());
         }
         if self.kind() != Tok::Newline {
+            if self.kind() == Tok::If && (expression || fn_body) {
+                // `fn x: if c: a else: b`: the body is the conditional expression.
+                let (start, at) = (self.at, self.peek().pos);
+                if let Ok(value) = self.expression(0)
+                    && (expression || self.end().is_ok())
+                {
+                    let id = self.id();
+                    return Ok(vec![Stmt {
+                        id,
+                        pos: at,
+                        kind: StmtKind::Return(Some(value)),
+                    }]);
+                }
+                // Not a conditional expression: report it as the statement it was written as.
+                self.at = start;
+            }
             if matches!(self.kind(), Tok::If | Tok::While | Tok::For) {
                 let t = self.peek();
                 return self.fail(t, format!("inline bodies require one simple statement; put '{}' on its own line in an indented block", t.kind.as_str()));
@@ -1417,18 +1581,23 @@ impl<'a> Parser<'a> {
         Ok(body)
     }
 
-    /// Rejects `ref` after `let`, `var`, `for` or `match`: binding a place already borrows it.
-    fn no_binding_ref(&mut self) -> PResult<()> {
+    /// Rejects `ref`, which the language no longer has: a function that returns part of a
+    /// parameter lends it, a field owns its value, and a binding of a place already borrows it.
+    fn no_ref(&mut self) -> PResult<()> {
         if self.kind() == Tok::Ref {
             let at = self.peek();
-            return self.fail(at, "`ref` is written only before a result type; a binding of a place already borrows it, so drop `ref`");
+            return self.fail_fix(
+                at,
+                "`ref` was removed: drop it; a function that returns part of a parameter lends it without a marker, and a field owns its value",
+                "",
+            );
         }
         Ok(())
     }
 
     /// Parses `pattern [: Type] = value` after let or var.
     fn binding(&mut self, mutable: bool, group: Option<Pos>, pos: Pos) -> PResult<Stmt> {
-        self.no_binding_ref()?;
+        self.no_ref()?;
         let pattern = self.pattern()?;
         let mut ty = None;
         if matches!(pattern.kind, PatternKind::Name(_)) && self.take(Tok::Colon) {
@@ -1493,15 +1662,7 @@ impl<'a> Parser<'a> {
                     return self.fail(b, "a local fn cannot take type parameters; declare a generic function at module level");
                 }
                 let params = self.parameters(true, false)?;
-                let at = self.peek();
-                let (by_ref, result) = self.result_type()?;
-                if by_ref {
-                    return self.fail(
-                        at,
-                        "a local fn cannot return a 'ref'; only a declared fn or method can lend",
-                    );
-                }
-                let result = Box::new(result);
+                let result = Box::new(self.result_type()?);
                 let body = self.statement_suite(true, false)?;
                 let pid = self.id();
                 let value = self.mk(
@@ -1594,7 +1755,7 @@ impl<'a> Parser<'a> {
                     let c = self.peek();
                     return self.fail(c, "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in 0..n:' to count");
                 }
-                self.no_binding_ref()?;
+                self.no_ref()?;
                 let name = self.need(Tok::Name)?;
                 if self.kind() == Tok::Name && self.text(self.peek()) == "of" {
                     let c = self.peek();
@@ -1664,8 +1825,8 @@ impl<'a> Parser<'a> {
                         "del" => return self.fail(t, "'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"),
                         "global" | "nonlocal" => return self.fail(t, format!("'{n}' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly")),
                         "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
-                        "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly, or start concurrent work with a TaskGroup from \"@std/tasks.ms\" bound to a local")),
-                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": let group = TaskGroup[T](), then group.spawn(fn ch: work())"),
+                        "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly, or start concurrent work with a TaskGroup from \"@std/concurrency/tasks.ms\" bound to a local")),
+                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/concurrency/tasks.ms\": let group = TaskGroup[T](), then group.spawn(fn ch: work())"),
                         _ => {}
                     }
                 }
@@ -2009,7 +2170,7 @@ impl<'a> Parser<'a> {
                 let right = self.expression(RANGE_LEVEL + 1)?;
                 if self.kind() == Tok::DotDot {
                     let t = self.peek();
-                    return self.fail(t, "a range cannot chain; write one 'start..end', or use range_by for a step from \"@std/collections.ms\"");
+                    return self.fail(t, "a range cannot chain; write one 'start..end', or use range_by for a step from \"@std/collections/collections.ms\"");
                 }
                 e = self.range(e, right);
                 continue;
@@ -2252,7 +2413,7 @@ impl<'a> Parser<'a> {
                 self.mk(t.pos, ExprKind::List(items))
             }
             Tok::Match => {
-                self.no_binding_ref()?;
+                self.no_ref()?;
                 let scrutinee = self.expression(0)?;
                 let arms = self.match_arms(t)?;
                 self.mk(
@@ -2310,7 +2471,6 @@ impl<'a> Parser<'a> {
                             ty: None,
                             default: None,
                             mutable: false,
-                            by_ref: false,
                         });
                         if !self.take(Tok::Comma) {
                             break;
@@ -2350,7 +2510,7 @@ impl<'a> Parser<'a> {
                     }
                     (Tok::Gt, Tok::Lt) => "'<>' is not an operator; write '!=' for inequality",
                     (Tok::Star, Tok::Star) => {
-                        "there is no '**' power operator; multiply explicitly or call a function from @std/math.ms"
+                        "there is no '**' power operator; multiply explicitly or call a function from @std/math/math.ms"
                     }
                     (Tok::Comma | Tok::RParen, Tok::Colon) => {
                         "a label before ':' needs a value, e.g. count: 1"
@@ -2371,7 +2531,24 @@ impl<'a> Parser<'a> {
     /// Applies member access, indexing and calls to `e`.
     fn postfix(&mut self, mut e: Expr) -> PResult<Expr> {
         let mut links = 0usize;
+        // Receivers of `?.` links, outermost first: the rest of the chain
+        // applies to the present payload, so each becomes a match at the end.
+        let mut chains: Vec<(Expr, Symbol)> = Vec::new();
         loop {
+            if self.kind() == Tok::Question
+                && self.ahead(1).kind == Tok::Dot
+                && self.ahead(1).pos.offset == self.peek().end.offset
+                && self.at > 0
+                && self.previous().end.offset == self.peek().pos.offset
+            {
+                self.at += 1;
+                let question = self.previous();
+                let binding = Symbol::intern(&format!("?{}", chains.len()));
+                let present = self.mk(question.pos, ExprKind::Name(binding));
+                chains.push((std::mem::replace(&mut e, present), binding));
+                // The `.` is read as an ordinary member link on the payload.
+                continue;
+            }
             if self.take(Tok::Dot) {
                 self.link(&mut links)?;
                 if self.kind() == Tok::Number {
@@ -2400,11 +2577,54 @@ impl<'a> Parser<'a> {
                         args,
                     },
                 );
+            } else if self.kind() == Tok::Question && index_parts(&e).is_some() {
+                self.at += 1;
+                let pos = e.pos;
+                e = self.mk(pos, ExprKind::Probe(Box::new(e)));
             } else {
                 break;
             }
         }
+        while let Some((receiver, binding)) = chains.pop() {
+            e = self.chain_match(receiver, binding, e);
+        }
         Ok(e)
+    }
+
+    /// `receiver?.rest`, with `rest` already applied to `binding`: a match
+    /// that yields `rest` when the receiver is present and `none` otherwise.
+    fn chain_match(&mut self, receiver: Expr, binding: Symbol, rest: Expr) -> Expr {
+        let pos = receiver.pos;
+        let mut arms = Vec::new();
+        for (case, bindings, value) in [
+            ("some", vec![ArmBinding { name: binding, pos }], rest),
+            (
+                "none",
+                Vec::new(),
+                self.mk(pos, ExprKind::Name(Symbol::intern("none"))),
+            ),
+        ] {
+            let path = self.mk(pos, ExprKind::Name(Symbol::intern(case)));
+            let id = self.id();
+            arms.push(Arm {
+                id,
+                pos,
+                path,
+                bindings,
+                body: Vec::new(),
+                value: Some(value),
+                from_if: false,
+                chain: true,
+                bare: false,
+            });
+        }
+        self.mk(
+            pos,
+            ExprKind::Match {
+                scrutinee: Box::new(receiver),
+                arms,
+            },
+        )
     }
 
     /// Parses the arguments after an opening parenthesis, through `)`.
@@ -2451,18 +2671,46 @@ impl<'a> Parser<'a> {
 
     // ---- text ----
 
+    /// Rejects multi-line text where only a one-line name or path fits.
+    fn single_line(&self, token: Token, what: &str) -> PResult<()> {
+        let full = self.text(token);
+        if full.starts_with("\"\"\"") || full.starts_with("r\"\"\"") {
+            return self.fail(
+                token,
+                format!("{what} are one-line text; write them with a single pair of quotes"),
+            );
+        }
+        Ok(())
+    }
+
     /// Decodes a text token into literal and interpolated parts.
     fn text_parts_of(&mut self, token: Token) -> PResult<Vec<TextPart>> {
         let full = self.text(token);
+        if let Some(body) = full.strip_prefix("r\"\"\"") {
+            let (content, indent, _) = multiline_body(&body[..body.len() - 3]);
+            return Ok(vec![TextPart::Lit(dedent(content, indent).into())]);
+        }
+        if full.starts_with("\"\"\"") {
+            return self.text_parts(token, &full[3..full.len() - 3], 3);
+        }
         let raw = &full[1..full.len() - 1];
         if !raw.bytes().any(|b| b == b'\\' || b == b'{') {
             return Ok(vec![TextPart::Lit(raw.into())]);
         }
-        self.text_parts(token, raw)
+        self.text_parts(token, raw, 1)
     }
 
-    fn text_parts(&mut self, token: Token, raw: &str) -> PResult<Vec<TextPart>> {
+    /// `quotes` is the width of the opening delimiter; `raw` excludes both
+    /// delimiters. A multi-line body drops its first and last line break and
+    /// the closing line's indentation from every line.
+    fn text_parts(&mut self, token: Token, raw: &str, quotes: usize) -> PResult<Vec<TextPart>> {
         let rb = raw.as_bytes();
+        let (first, end, indent) = if quotes == 3 {
+            let (content, indent, first) = multiline_body(raw);
+            (first, first + content.len(), indent)
+        } else {
+            (0, rb.len(), 0)
+        };
         let mut parts: Vec<TextPart> = Vec::new();
         let mut literal: Vec<u8> = Vec::new();
         let flush = |literal: &mut Vec<u8>, parts: &mut Vec<TextPart>| {
@@ -2471,8 +2719,19 @@ impl<'a> Parser<'a> {
                 parts.push(TextPart::Lit(s.into_boxed_str()));
             }
         };
-        let mut i = 0;
-        while i < rb.len() {
+        let mut i = first;
+        let mut line_start = indent > 0;
+        let (mut positioned, mut position) = (0, token.pos);
+        while i < end {
+            if line_start {
+                line_start = false;
+                let mut skipped = 0;
+                while skipped < indent && i < end && matches!(rb[i], b' ' | b'\t') {
+                    i += 1;
+                    skipped += 1;
+                }
+                continue;
+            }
             let mut c = rb[i];
             i += 1;
             if c == b'\\' {
@@ -2500,18 +2759,29 @@ impl<'a> Parser<'a> {
             }
             if c != b'{' {
                 literal.push(c);
+                line_start = c == b'\n' && indent > 0;
                 continue;
             }
             flush(&mut literal, &mut parts);
             let start = i;
-            let brace = self.source_origin + token.lo as usize + start;
+            let brace = self.source_origin + token.lo as usize + quotes + start - 1;
             i = self
                 .boundaries
                 .interpolation_end(brace)
                 .expect("validated interpolation")
-                - (self.source_origin + token.lo as usize + 1);
+                - (self.source_origin + token.lo as usize + quotes);
             let source = &raw[start..i - 1];
-            let value = self.interpolation(token, start, source)?;
+            // Advance through each prefix once, including physical lines in
+            // multiline text. Interpolation expressions themselves have no newlines.
+            let at = quotes + start;
+            position = text_pos(
+                position,
+                &self.text(token)[positioned..],
+                at - positioned,
+                self.boundaries,
+            );
+            positioned = at;
+            let value = self.interpolation(token, at, source, position)?;
             parts.push(TextPart::Interp(value));
         }
         flush(&mut literal, &mut parts);
@@ -2523,24 +2793,32 @@ impl<'a> Parser<'a> {
 
     /// Lexes and parses the expression inside one `{...}` of a text literal.
     /// Failures also state the escape for a literal brace.
-    fn interpolation(&mut self, token: Token, start: usize, source: &str) -> PResult<Expr> {
+    fn interpolation(
+        &mut self,
+        token: Token,
+        at: usize,
+        source: &str,
+        position: Pos,
+    ) -> PResult<Expr> {
         let suffix = format!(
             " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
-            token.pos.column as usize + start
+            position.column - 1
         );
-        let origin = self.source_origin + token.lo as usize + start + 1;
+        let origin = self.source_origin + token.lo as usize + at;
+        // The lexer rejects physical newlines inside an interpolation. Map
+        // each token from its relative byte offset without rescanning the text.
         let shift = |p: Pos| -> Pos {
-            let offset = (p.offset as usize + 1).min(source.len() + 1);
-            Pos {
-                line: token.pos.line,
-                column: (token.pos.column as usize + start + offset) as u32,
-                offset: (token.pos.offset as usize + start + offset) as u32,
-            }
+            let offset = p.offset.min(source.len() as u32);
+            Pos::new(
+                position.offset + offset,
+                position.line,
+                position.column + offset,
+            )
         };
         let mut tokens =
             match crate::lexer::lex_interpolation(self.file, source, origin, self.boundaries) {
                 Ok(tokens) => tokens,
-                Err(_) => return self.interpolation_wrapped(token, start, source),
+                Err(_) => return self.interpolation_wrapped(token, at, source),
             };
         for t in &mut tokens {
             t.pos = shift(t.pos);
@@ -2615,6 +2893,8 @@ impl<'a> Parser<'a> {
                 body: Vec::new(),
                 value: Some(branch),
                 from_if: true,
+                chain: false,
+                bare: false,
             });
         }
         Ok(self.mk(
@@ -2652,13 +2932,37 @@ impl<'a> Parser<'a> {
             let literal = matches!(k, Tok::Number | Tok::True | Tok::False | Tok::String)
                 || (k == Tok::Minus && self.ahead(1).kind == Tok::Number);
             let mut bindings = Vec::new();
+            let mut bare = false;
             let path;
             if literal {
                 path = self.expression(0)?;
             } else if self.take(Tok::Underscore) {
                 path = self.mk(start.pos, ExprKind::Name(Symbol::intern("_")));
             } else {
-                path = self.case_path()?;
+                let mut written = self.case_path()?;
+                if let ExprKind::Name(n) = &written.kind
+                    && n.as_str() == "some"
+                    && self.kind() == Tok::LParen
+                    && self.speculative == 0
+                {
+                    let t = self.peek();
+                    return self.fail(t, "there is no some pattern; write the payload name alone, e.g. 'value:' beside 'none:'");
+                }
+                if let ExprKind::Name(n) = &written.kind
+                    && self.kind() != Tok::LParen
+                    && n.as_str() != "none"
+                    && n.as_str()
+                        .starts_with(|c: char| c.is_ascii_lowercase() || c == '_')
+                {
+                    // A lone lowercase name binds an Optional's payload.
+                    bindings.push(ArmBinding {
+                        name: *n,
+                        pos: start.pos,
+                    });
+                    written = self.mk(start.pos, ExprKind::Name(Symbol::intern("some")));
+                    bare = true;
+                }
+                path = written;
                 if self.take(Tok::LParen) {
                     loop {
                         let tok = self.peek();
@@ -2692,6 +2996,8 @@ impl<'a> Parser<'a> {
                 body: Vec::new(),
                 value: None,
                 from_if: false,
+                chain: false,
+                bare,
             };
             self.value_arm(&mut arm)?;
             arms.push(arm);
@@ -2771,9 +3077,13 @@ impl<'a> Parser<'a> {
         let saved_depth = self.depth;
         let mut types = None;
         // A type starts with a name, `fn` or `(`; anything else is a value.
-        if matches!(self.kind(), Tok::Name | Tok::Fn | Tok::LParen) {
+        if starts_type(self.kind()) {
             self.speculative += 1;
-            let r = self.type_args();
+            let r = if self.failed_type_args.is_empty() {
+                self.type_args()
+            } else {
+                self.speculative_type_args(false)
+            };
             self.speculative -= 1;
             match r {
                 Ok(t) => types = Some(t),
@@ -2887,7 +3197,6 @@ impl<'a> Parser<'a> {
                             ty: p.ty.as_ref().map(|t| self.copy_type(t)),
                             default: p.default.clone(),
                             mutable: p.mutable,
-                            by_ref: false,
                         }
                     })
                     .collect(),
@@ -2903,19 +3212,20 @@ impl<'a> Parser<'a> {
 
     /// Preserve the historical wrapper path for expressions whose lexical
     /// error depends on its physical closing parenthesis.
-    fn interpolation_wrapped(&mut self, token: Token, start: usize, source: &str) -> PResult<Expr> {
+    fn interpolation_wrapped(&mut self, token: Token, at: usize, source: &str) -> PResult<Expr> {
+        let full = self.text(token);
         let suffix = format!(
             " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
-            token.pos.column as usize + start
+            text_pos(token.pos, full, at - 1, self.boundaries).column
         );
         let wrapped = format!("({source})");
         let shift = |p: Pos| -> Pos {
-            let offset = (p.offset as usize).min(source.len() + 1);
-            Pos {
-                line: token.pos.line,
-                column: (token.pos.column as usize + start + offset) as u32,
-                offset: (token.pos.offset as usize + start + offset) as u32,
-            }
+            text_pos(
+                token.pos,
+                full,
+                at - 1 + (p.offset as usize).min(source.len() + 1),
+                self.boundaries,
+            )
         };
         let mut lexed = match lex(self.file, &wrapped) {
             Ok(l) => l,
@@ -2937,7 +3247,7 @@ impl<'a> Parser<'a> {
             t.pos = shift(t.pos);
             t.end = shift(t.end);
         }
-        let origin = self.source_origin + token.lo as usize + start;
+        let origin = self.source_origin + token.lo as usize + at - 1;
         let mut nested = Parser::new(
             self.file,
             &lexed.source,

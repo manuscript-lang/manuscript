@@ -205,12 +205,38 @@ fn source_project(filename: &str) -> Result<(Project, bool), (String, ProjectErr
         };
     }
     let root = pathops::eval_symlinks(&pathops::dir(&absolute)).map_err(|e| (String::new(), e))?;
+    // The nearest enclosing ms.toml supplies the import root and aliases, so entry
+    // files can share a library above them. The file stays the sole entry.
+    if let Some(manifest) = enclosing_manifest(&root) {
+        let (mut config, error) = crate::project::read_project_partial(&manifest);
+        if let Some(error) = error {
+            return Err((config.root, error));
+        }
+        config.entry = absolute;
+        return Ok((config, false));
+    }
     let config = Project {
         root,
         entry: absolute,
         ..Project::default()
     };
     Ok((config, false))
+}
+
+/// The nearest `ms.toml` in `dir` or an ancestor.
+pub fn enclosing_manifest(dir: &str) -> Option<String> {
+    let mut current = dir.to_string();
+    loop {
+        let candidate = pathops::join(&[&current, "ms.toml"]);
+        if std::fs::metadata(&candidate).is_ok_and(|m| m.is_file()) {
+            return Some(candidate);
+        }
+        let parent = pathops::dir(&current);
+        if parent == current {
+            return None;
+        }
+        current = parent;
+    }
 }
 
 /// Builds a diagnostic for an error that is not already one.
@@ -357,6 +383,12 @@ impl Loader<'_> {
                     let secondary: Arc<[Diagnostic]> = issues
                         .into_iter()
                         .filter(|d| d.pos != first.pos && d.pos.line > 0)
+                        // One unclosed delimiter is one mistake: the strict
+                        // parse reports it at the end of the file and recovery
+                        // at the next declaration, naming the same opener.
+                        .filter(|d| {
+                            !(d.message == first.message && d.message.contains(" opened at line "))
+                        })
                         .collect();
                     self.graph.diagnostics.extend(secondary.iter().cloned());
                     return Err(Failure::Diagnostic(first, secondary));

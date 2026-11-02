@@ -1,0 +1,21 @@
+{
+  "binaries": {
+    "before": {
+      "path": "/workspace/json-perf/.artifacts/json-library/final-before",
+      "sha256": "986e0947a3cdc595372db9b6582dd6d0339316bfc022187216e78c7849afe775"
+    },
+    "after": {
+      "path": "/workspace/json-perf/.artifacts/json-library/final-after",
+      "sha256": "598a17a9959f6306c5a1ec42788f59057539ee22d310559b6aa68766217e0cbb"
+    },
+    "rust": {
+      "path": "/workspace/json-perf/.artifacts/json-library/final-before",
+      "sha256": "986e0947a3cdc595372db9b6582dd6d0339316bfc022187216e78c7849afe775"
+    }
+  },
+  "timing_environment_sha256": "03ab6ac5603c22b0c7b6cac1eba5f40b186d9af0df1363b63f761505609746f5",
+  "driver_sha256": "e8f758d9ee75465181040af047ff505759674ddb0346c396cce6bdd95e850c4c",
+  "rss_sha256": "09441b9246dd4d6a5b1454b9d3652f8a8b3dc1b1f925218d00fa91d3fdc98347",
+  "rss_source_sha256": "c671c66114469e2438d3486a19f5826d25cac131405eda0b43cfc5980af62a34",
+  "note": "Whole-process RSS includes setup and full semantic validation; not allocation counts."
+}

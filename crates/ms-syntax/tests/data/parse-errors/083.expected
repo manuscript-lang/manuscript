@@ -1,0 +1,1 @@
+error parse 5:5:32 "a method is not exported by itself; it is visible wherever its type is, so remove 'export' and export the type"

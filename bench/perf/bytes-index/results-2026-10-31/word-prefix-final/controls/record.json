@@ -1,0 +1,140 @@
+[
+  {
+    "suite": "lines",
+    "argv": [
+      "taskset",
+      "-c",
+      "0",
+      "python3",
+      "bench/perf/string-lines/compare.py",
+      "/workspace/byte-search-evidence/integration-3cf/lines-before",
+      "/workspace/byte-search-evidence/word-prefix/lines-after",
+      "/workspace/byte-search-evidence/word-prefix/controls/lines-samples.csv",
+      "--pairs",
+      "6"
+    ],
+    "started": 1793464044.377022,
+    "main_revision": "3cfde58b6216ae4db54aeb3ae4e22ee7d527e323",
+    "source": {
+      "path": "bench/perf/string-lines/main.ms",
+      "sha256": "e7d37f5ea0147ac0fa127990ec52848f7319fd300f07719a3f0bd7be76a51787"
+    },
+    "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+    "executables": {
+      "before": {
+        "path": "/workspace/byte-search-evidence/integration-3cf/lines-before",
+        "sha256": "fa7a9d194d7be373be7cf37a2319e492311eff178dead0a10f417ef5c5987100"
+      },
+      "after": {
+        "path": "/workspace/byte-search-evidence/word-prefix/lines-after",
+        "sha256": "77610bbe14a27e4410dfecb805e9b1dbe3de12d7aa8e054b68cc5185ceabf6fa"
+      }
+    },
+    "build": {
+      "compiler_sha256": "41a060d6b13ee0022fdcae23becefec6f325e43e19ee582145bce268cec47d87",
+      "before_MS_RT_LIB": "/workspace/byte-search-evidence/baseline.a",
+      "after_MS_RT_LIB": "/workspace/manuscript/target/ms-native/libms_native.a",
+      "before_archive_sha256": "4ef63cd2ca0418a2b7b4d9590d001af06bd51413af8b1861228da795f80356be",
+      "after_archive_sha256": "79441c29ceeef9b302961b9eeb3fe1711e5685e5b42143e60576c0d233feb211",
+      "settings": "--build-type Release"
+    },
+    "returncode": 0,
+    "finished": 1793464047.5138986
+  },
+  {
+    "suite": "normalize",
+    "argv": [
+      "taskset",
+      "-c",
+      "0",
+      "python3",
+      "bench/perf/string-lines/compare.py",
+      "/workspace/byte-search-evidence/integration-3cf/normalize-before",
+      "/workspace/byte-search-evidence/word-prefix/normalize-after",
+      "/workspace/byte-search-evidence/word-prefix/controls/normalize-samples.csv",
+      "--pairs",
+      "6",
+      "--identity-file",
+      "bench/perf/string-normalize-ascii/identities.json"
+    ],
+    "started": 1793464047.5141928,
+    "main_revision": "3cfde58b6216ae4db54aeb3ae4e22ee7d527e323",
+    "source": {
+      "path": "bench/perf/string-normalize-ascii/main.ms",
+      "sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4"
+    },
+    "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+    "executables": {
+      "before": {
+        "path": "/workspace/byte-search-evidence/integration-3cf/normalize-before",
+        "sha256": "5e2c2c23f5a5bf90334a8114fe02eccac530ef0b09f0ce18e0ab54b26bbedc3f"
+      },
+      "after": {
+        "path": "/workspace/byte-search-evidence/word-prefix/normalize-after",
+        "sha256": "9cebe8d020d742723c029c3bc10b2a6b8a40775982ec5258060fdd7b1d00e898"
+      }
+    },
+    "build": {
+      "compiler_sha256": "41a060d6b13ee0022fdcae23becefec6f325e43e19ee582145bce268cec47d87",
+      "before_MS_RT_LIB": "/workspace/byte-search-evidence/baseline.a",
+      "after_MS_RT_LIB": "/workspace/manuscript/target/ms-native/libms_native.a",
+      "before_archive_sha256": "4ef63cd2ca0418a2b7b4d9590d001af06bd51413af8b1861228da795f80356be",
+      "after_archive_sha256": "79441c29ceeef9b302961b9eeb3fe1711e5685e5b42143e60576c0d233feb211",
+      "settings": "--build-type Release"
+    },
+    "identities": {
+      "path": "bench/perf/string-normalize-ascii/identities.json",
+      "sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348"
+    },
+    "returncode": 0,
+    "finished": 1793464088.3394332
+  },
+  {
+    "suite": "reverse",
+    "argv": [
+      "taskset",
+      "-c",
+      "0",
+      "python3",
+      "bench/perf/string-lines/compare.py",
+      "/workspace/byte-search-evidence/integration-3cf/reverse-before",
+      "/workspace/byte-search-evidence/word-prefix/reverse-after",
+      "/workspace/byte-search-evidence/word-prefix/controls/reverse-samples.csv",
+      "--pairs",
+      "6",
+      "--identity-file",
+      "bench/perf/string-normalization-rollback/inputs/reverse-full-identities.json"
+    ],
+    "started": 1793464088.3398762,
+    "main_revision": "3cfde58b6216ae4db54aeb3ae4e22ee7d527e323",
+    "source": {
+      "path": "bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+      "sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e"
+    },
+    "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+    "executables": {
+      "before": {
+        "path": "/workspace/byte-search-evidence/integration-3cf/reverse-before",
+        "sha256": "93a8e9ae28ff200fb504a115f1a2045725456ae9d06e4e4498657489ed28126d"
+      },
+      "after": {
+        "path": "/workspace/byte-search-evidence/word-prefix/reverse-after",
+        "sha256": "d4053af911d6b186f5fdc089bd4a92f8cf9f7f5865263d65823dc75c3245029f"
+      }
+    },
+    "build": {
+      "compiler_sha256": "41a060d6b13ee0022fdcae23becefec6f325e43e19ee582145bce268cec47d87",
+      "before_MS_RT_LIB": "/workspace/byte-search-evidence/baseline.a",
+      "after_MS_RT_LIB": "/workspace/manuscript/target/ms-native/libms_native.a",
+      "before_archive_sha256": "4ef63cd2ca0418a2b7b4d9590d001af06bd51413af8b1861228da795f80356be",
+      "after_archive_sha256": "79441c29ceeef9b302961b9eeb3fe1711e5685e5b42143e60576c0d233feb211",
+      "settings": "--build-type Release"
+    },
+    "identities": {
+      "path": "bench/perf/string-normalization-rollback/inputs/reverse-full-identities.json",
+      "sha256": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0"
+    },
+    "returncode": 0,
+    "finished": 1793464186.5546863
+  }
+]

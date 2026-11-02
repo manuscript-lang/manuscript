@@ -1,0 +1,164 @@
+{
+  "complete": true,
+  "argv": [
+    "bench/perf/bytes-index/compare.py",
+    "/workspace/byte-search-evidence/ms-before-final",
+    "/workspace/byte-search-evidence/ms-after-fixed",
+    "/workspace/perf-toolchain/bytes-index-rust-target/release/bytes-index-rust",
+    "/workspace/byte-search-evidence/fixed-130",
+    "--cpu",
+    "0"
+  ],
+  "host": [
+    "Linux",
+    "6199f3f85d57",
+    "6.18.57",
+    "#1 SMP Tue Oct 20 21:56:04 UTC 2026",
+    "x86_64"
+  ],
+  "affinity": [
+    0
+  ],
+  "expected_cases": 130,
+  "executables": {
+    "before": {
+      "path": "/workspace/byte-search-evidence/ms-before-final",
+      "sha256": "94b4decfdf1694c7fbf8e26e72f3d34d4bc07a752da9b5095803a476dcd55489"
+    },
+    "after": {
+      "path": "/workspace/byte-search-evidence/ms-after-fixed",
+      "sha256": "15b3209f8302e3870633ed2c0c814d9858cce5576075ab319ff2d0f5580bcc16"
+    },
+    "rust": {
+      "path": "/workspace/perf-toolchain/bytes-index-rust-target/release/bytes-index-rust",
+      "sha256": "bab58952aac42d4537e3c5befc1b8f6ed4d7a39ed4899976a3b21c748b743a97"
+    }
+  },
+  "validated_producers": [
+    [
+      "warmup",
+      "before"
+    ],
+    [
+      "warmup",
+      "after"
+    ],
+    [
+      "warmup",
+      "rust"
+    ],
+    [
+      0,
+      "before"
+    ],
+    [
+      0,
+      "after"
+    ],
+    [
+      0,
+      "rust"
+    ],
+    [
+      1,
+      "before"
+    ],
+    [
+      1,
+      "rust"
+    ],
+    [
+      1,
+      "after"
+    ],
+    [
+      2,
+      "after"
+    ],
+    [
+      2,
+      "before"
+    ],
+    [
+      2,
+      "rust"
+    ],
+    [
+      3,
+      "after"
+    ],
+    [
+      3,
+      "rust"
+    ],
+    [
+      3,
+      "before"
+    ],
+    [
+      4,
+      "rust"
+    ],
+    [
+      4,
+      "before"
+    ],
+    [
+      4,
+      "after"
+    ],
+    [
+      5,
+      "rust"
+    ],
+    [
+      5,
+      "after"
+    ],
+    [
+      5,
+      "before"
+    ]
+  ],
+  "inputs": {
+    "main.ms": "45c0ca1f9562fa2a72f1f0239eefbbe7f23392e62fa090b5573fc33fb8b68f2a",
+    "rust/src/main.rs": "7c449e1743263a6c0f2ee5ed6258dc896feae8a0c8a0beea61d7e677ec8017bb",
+    "rust/Cargo.toml": "da89bde687bcfdd049fbc121eb1895e6d77d34160e15c0d189bcf896408d6e3d",
+    "rust/Cargo.lock": "93b5f50de245214bf6e4ca111be6563d9b2e3b082c7ef354f9ffd56f277d8d2a",
+    "identities.json": "040da51d324b4b058f9955dcdca5478d30a8a3c33368ff75d2e3ac0bcd58d642",
+    "compare.py": "77eb594cf0640681593616e2463c9a919e7e7de548d05bc85e07e19624072a61"
+  },
+  "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+  "orders": [
+    [
+      "before",
+      "after",
+      "rust"
+    ],
+    [
+      "before",
+      "rust",
+      "after"
+    ],
+    [
+      "after",
+      "before",
+      "rust"
+    ],
+    [
+      "after",
+      "rust",
+      "before"
+    ],
+    [
+      "rust",
+      "before",
+      "after"
+    ],
+    [
+      "rust",
+      "after",
+      "before"
+    ]
+  ]
+}

@@ -1,15 +1,15 @@
 # conform: tags=faults,formatter,match,modules,mutation,optional,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/collection-call-order.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "receiver before index":
     let values = [7]
     var calls = 0
-    let index: Int? = some(0)
+    let index: Int? = 0
     let result = values.get(
         match index:
-            some(i):
+            i:
                 calls += 1
                 i
             none: 0

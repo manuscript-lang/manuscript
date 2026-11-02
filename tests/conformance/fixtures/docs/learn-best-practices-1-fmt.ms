@@ -1,8 +1,8 @@
 # conform: tags=formatter,interpolation,modules,parser,records,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=documentation/learn/best-practices.md:28
-import expect_equal, expect_error from "@std/test.ms"
-import parse, JsonError from "@std/json.ms"
+import expect_equal, expect_error from "@std/test/test.ms"
+import parse, JsonError from "@std/data/json.ms"
 
 type Config:
     port: Int = 8080

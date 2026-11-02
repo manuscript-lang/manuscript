@@ -1,6 +1,6 @@
 import Iterator from "@std/core.ms"
-import stdout from "@std/io.ms"
-import expect_equal from "@std/test.ms"
+import stdout from "@std/io/io.ms"
+import expect_equal from "@std/test/test.ms"
 
 # A point in the plane.
 type Point:
@@ -31,7 +31,7 @@ impl Iterator[Int] for Counter:
         if self.n == 0: return none
 
         self.n -= 1
-        return some(self.n)
+        return self.n
 
 fn add(a: Int, b: Int) Int:
     let total = a + b

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Same[V: Equal]:\n    fn same(other: V) Bool\n\ninterface Read[V]:\n    fn get() ref V\n\ntype Box[T]:\n    value: T\n\nimpl Same[T] for Box[T]:\n    fn same(other: T) Bool:\n        return self.value == other\n\nimpl Read[T] for Box[T]:\n    fn get() ref T:\n        return self.value\n\nfn read[T](value: Box[T]) ref T:\n    return value.get()\n"
-  }
-}

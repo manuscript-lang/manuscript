@@ -1,0 +1,35 @@
+{
+  "command": [
+    "bench/perf/toml-control-scan/focused.py",
+    "--environment",
+    ".artifacts/72-replay/toml-full/environment.json",
+    "--summary",
+    ".artifacts/72-replay/toml-full/summary.json",
+    "--inputs",
+    ".artifacts/72-replay/toml-full",
+    "--output",
+    ".artifacts/72-replay/toml-long",
+    "--operation",
+    "roundtrip",
+    "--cases",
+    "tiny",
+    "unicode16k"
+  ],
+  "driver_sha256": "3f0c7d472fb75a515c0c030b2a4de00d7e6585eae5ccaab98da118f150b45aeb",
+  "environment_sha256": "c08d4cb46caf4cbdb3495819cf62ecf866bd651846d16ccd7a936acb46ea993d",
+  "summary_sha256": "e7bcdeeb2e6a66986903987999897bcb6a92bfeefabd314b5e10e4e233a76338",
+  "binaries": {
+    "baseline-a": {
+      "path": "/workspace/serialization-integration/.artifacts/72-replay/toml-before",
+      "sha256": "81029d88745a3b1abd2b08523b6353541509324b7c5b7ee0336cb0a51c97a67a"
+    },
+    "baseline-b": {
+      "path": "/workspace/serialization-integration/.artifacts/72-replay/toml-before",
+      "sha256": "81029d88745a3b1abd2b08523b6353541509324b7c5b7ee0336cb0a51c97a67a"
+    },
+    "candidate": {
+      "path": "/workspace/serialization-integration/.artifacts/72-replay/toml-after",
+      "sha256": "8869751aac59b16b5049258b8523b58244044210c88f6c9b171d70e058a81673"
+    }
+  }
+}

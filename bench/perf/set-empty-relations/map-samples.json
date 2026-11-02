@@ -1,0 +1,1938 @@
+{
+  "complete": true,
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "affinity": [
+    0
+  ],
+  "sha256": {
+    "/workspace/collection-evidence/maps-fresh-before": "5147ac049fe4aac8cefbe428cadf07c55c75fe3c1e8b3382135f2ca0cbee32cc",
+    "/workspace/collection-evidence/maps-fresh-after": "5a40e61d17f286620fa481de0f2742b6c231a5bc9337a49b7a72cb382d59e109",
+    "/workspace/collection-evidence/maps-rust": "b23d9df7f73013ce32bbc3eba1c885e493c8927ca705bc80e1e42501a6c3b8fb"
+  },
+  "cases": [
+    {
+      "mode": "int_get",
+      "size": 0,
+      "prefix_width": 0,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          682123,
+          720450,
+          690445,
+          676745,
+          663776,
+          713650
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          679599,
+          691107,
+          708673,
+          676775,
+          680371,
+          694882
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          786630,
+          663265,
+          731928,
+          696074,
+          663445,
+          685719
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 686284.0,
+        "/workspace/collection-evidence/maps-fresh-after": 685739.0,
+        "/workspace/collection-evidence/maps-rust": 690896.5
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 0,
+      "prefix_width": 0,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          4114321,
+          4105458,
+          4089734,
+          4175723,
+          4139079,
+          4050726
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          4227461,
+          4103344,
+          4072709,
+          4084036,
+          4052379,
+          4063735
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          903095,
+          930266,
+          939339,
+          900120,
+          902544,
+          924917
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 4109889.5,
+        "/workspace/collection-evidence/maps-fresh-after": 4078372.5,
+        "/workspace/collection-evidence/maps-rust": 914006.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 0,
+      "prefix_width": 0,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          1354532,
+          1403405,
+          1357046,
+          1394622,
+          1367792,
+          1420401
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          1358417,
+          1458558,
+          1362874,
+          1359229,
+          1356945,
+          1351968
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          715003,
+          707030,
+          662594,
+          721692,
+          680661,
+          678007
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 1381207.0,
+        "/workspace/collection-evidence/maps-fresh-after": 1358823.0,
+        "/workspace/collection-evidence/maps-rust": 693845.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 0,
+      "prefix_width": 16,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          1373770,
+          1390276,
+          1356705,
+          1394161,
+          1348143,
+          1340080
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          1409124,
+          1350585,
+          1372118,
+          1349384,
+          1339780,
+          1336915
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          692759,
+          676825,
+          679139,
+          777426,
+          715183,
+          694581
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 1365237.5,
+        "/workspace/collection-evidence/maps-fresh-after": 1349984.5,
+        "/workspace/collection-evidence/maps-rust": 693670.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 0,
+      "prefix_width": 256,
+      "repeats": 111111,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          151177,
+          148052,
+          172639,
+          172619,
+          148082,
+          147952
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          147932,
+          148022,
+          148052,
+          225618,
+          151157,
+          172579
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          88213,
+          73770,
+          73740,
+          73801,
+          73711,
+          73741
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 149629.5,
+        "/workspace/collection-evidence/maps-fresh-after": 149604.5,
+        "/workspace/collection-evidence/maps-rust": 73755.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 0,
+      "prefix_width": 0,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          2118437,
+          2074672,
+          2018328,
+          2021973,
+          2012229,
+          2052609
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          2074832,
+          2065428,
+          2040921,
+          2051658,
+          2013631,
+          2018858
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          898087,
+          897235,
+          896395,
+          913340,
+          897085,
+          915743
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 2037291.0,
+        "/workspace/collection-evidence/maps-fresh-after": 2046289.5,
+        "/workspace/collection-evidence/maps-rust": 897661.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 0,
+      "prefix_width": 16,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          2040140,
+          2117676,
+          2040200,
+          2224036,
+          2071547,
+          2029494
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          2013420,
+          2012569,
+          2049655,
+          2073921,
+          2078348,
+          2016274
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          884417,
+          917706,
+          905809,
+          1117316,
+          945158,
+          895804
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 2055873.5,
+        "/workspace/collection-evidence/maps-fresh-after": 2032964.5,
+        "/workspace/collection-evidence/maps-rust": 911757.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 0,
+      "prefix_width": 256,
+      "repeats": 111111,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          275243,
+          221933,
+          221583,
+          221602,
+          221863,
+          221712
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          221823,
+          221883,
+          240100,
+          239369,
+          238758,
+          236515
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          98377,
+          98338,
+          98257,
+          98277,
+          98317,
+          98347
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 221787.5,
+        "/workspace/collection-evidence/maps-fresh-after": 237636.5,
+        "/workspace/collection-evidence/maps-rust": 98327.5
+      }
+    },
+    {
+      "mode": "int_get",
+      "size": 1,
+      "prefix_width": 0,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          243535,
+          234061,
+          233761,
+          520390,
+          233710,
+          243606
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          248332,
+          233741,
+          234101,
+          233561,
+          249765,
+          248713
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          1164537,
+          1134251,
+          1116535,
+          1144186,
+          1152459,
+          1125258
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 238798.0,
+        "/workspace/collection-evidence/maps-fresh-after": 241216.5,
+        "/workspace/collection-evidence/maps-rust": 1139218.5
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 1,
+      "prefix_width": 0,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          612258,
+          594792,
+          588012,
+          602474,
+          563084,
+          633751
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          563014,
+          575423,
+          563415,
+          563145,
+          596865,
+          593460
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          2190316,
+          2230335,
+          2230205,
+          2294211,
+          2184567,
+          2182293
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 598633.0,
+        "/workspace/collection-evidence/maps-fresh-after": 569419.0,
+        "/workspace/collection-evidence/maps-rust": 2210260.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 1,
+      "prefix_width": 0,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          827351,
+          761472,
+          743656,
+          742003,
+          920580,
+          848884
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          793851,
+          1000772,
+          743906,
+          744576,
+          761873,
+          753520
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          1456034,
+          1441312,
+          1448933,
+          1572088,
+          1477306,
+          1443004
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 794411.5,
+        "/workspace/collection-evidence/maps-fresh-after": 757696.5,
+        "/workspace/collection-evidence/maps-rust": 1452483.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 1,
+      "prefix_width": 16,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          1363836,
+          1128102,
+          1123986,
+          1115904,
+          1185849,
+          1187862
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          1169204,
+          1139940,
+          1160140,
+          1531587,
+          1113290,
+          1437296
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          2154272,
+          1890596,
+          1857566,
+          1937065,
+          1870236,
+          1968093
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 1156975.5,
+        "/workspace/collection-evidence/maps-fresh-after": 1164672.0,
+        "/workspace/collection-evidence/maps-rust": 1913830.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 1,
+      "prefix_width": 256,
+      "repeats": 11111,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          853210,
+          935083,
+          896404,
+          867561,
+          865999,
+          982454
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          838098,
+          889224,
+          856415,
+          852990,
+          895333,
+          899670
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          957936,
+          947791,
+          986159,
+          951527,
+          934021,
+          970105
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 881982.5,
+        "/workspace/collection-evidence/maps-fresh-after": 872819.5,
+        "/workspace/collection-evidence/maps-rust": 954731.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 1,
+      "prefix_width": 0,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          1336614,
+          1323095,
+          1345288,
+          1330856,
+          1442444,
+          1309805
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          1286851,
+          1283435,
+          1288233,
+          1333260,
+          1294101,
+          1283966
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          3243585,
+          3229695,
+          3650365,
+          3397987,
+          3249554,
+          3329324
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 1333735.0,
+        "/workspace/collection-evidence/maps-fresh-after": 1287542.0,
+        "/workspace/collection-evidence/maps-rust": 3289439.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 1,
+      "prefix_width": 16,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          3261873,
+          3360000,
+          3277356,
+          3260421,
+          3263354,
+          3258177
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          3389044,
+          3261102,
+          3267782,
+          3259489,
+          3283375,
+          3235583
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          4041172,
+          4036094,
+          4090686,
+          4029624,
+          4124607,
+          4161512
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 3262613.5,
+        "/workspace/collection-evidence/maps-fresh-after": 3264442.0,
+        "/workspace/collection-evidence/maps-rust": 4065929.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 1,
+      "prefix_width": 256,
+      "repeats": 11111,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          1933280,
+          1845739,
+          1868052,
+          1879920,
+          1880460,
+          1860771
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          1845839,
+          1850165,
+          1850075,
+          1849655,
+          1878407,
+          1847622
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          1707341,
+          1802875,
+          1671427,
+          1677296,
+          1659950,
+          1703896
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 1873986.0,
+        "/workspace/collection-evidence/maps-fresh-after": 1849865.0,
+        "/workspace/collection-evidence/maps-rust": 1690596.0
+      }
+    },
+    {
+      "mode": "int_get",
+      "size": 8,
+      "prefix_width": 0,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          398778,
+          490295,
+          416765,
+          398347,
+          412949,
+          414932
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          412158,
+          429664,
+          398307,
+          418447,
+          431147,
+          398638
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          1690306,
+          1741692,
+          1691677,
+          1693821,
+          1712178,
+          1692379
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 413940.5,
+        "/workspace/collection-evidence/maps-fresh-after": 415302.5,
+        "/workspace/collection-evidence/maps-rust": 1693100.0
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 8,
+      "prefix_width": 0,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          754232,
+          758287,
+          757466,
+          756986,
+          945097,
+          740831
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          762033,
+          753210,
+          762463,
+          755654,
+          754081,
+          739079
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          3318218,
+          3276445,
+          3299109,
+          3277736,
+          3322244,
+          3346690
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 757226.0,
+        "/workspace/collection-evidence/maps-fresh-after": 754867.5,
+        "/workspace/collection-evidence/maps-rust": 3308663.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 8,
+      "prefix_width": 0,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          1161713,
+          1167902,
+          1159720,
+          1166800,
+          1167331,
+          1170235
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          1191307,
+          1178568,
+          1165999,
+          1178158,
+          1201863,
+          1177156
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          2177476,
+          2162083,
+          2214552,
+          2174181,
+          2171918,
+          2169084
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 1167065.5,
+        "/workspace/collection-evidence/maps-fresh-after": 1178363.0,
+        "/workspace/collection-evidence/maps-rust": 2173049.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 8,
+      "prefix_width": 16,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          1709875,
+          1710045,
+          1721913,
+          1722434,
+          1723976,
+          1747611
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          2002845,
+          2004076,
+          1770205,
+          1760250,
+          1743986,
+          1723635
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          2693831,
+          3203315,
+          2623746,
+          2601252,
+          2962544,
+          2615453
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 1722173.5,
+        "/workspace/collection-evidence/maps-fresh-after": 1765227.5,
+        "/workspace/collection-evidence/maps-rust": 2658788.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 8,
+      "prefix_width": 256,
+      "repeats": 2222,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          1434632,
+          1538758,
+          1448883,
+          1477015,
+          1488352,
+          1429995
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          1472228,
+          1499569,
+          1485337,
+          1438097,
+          1450135,
+          1449234
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          1528212,
+          1533060,
+          1552479,
+          1532939,
+          1536365,
+          1533700
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 1462949.0,
+        "/workspace/collection-evidence/maps-fresh-after": 1461181.5,
+        "/workspace/collection-evidence/maps-rust": 1533380.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 8,
+      "prefix_width": 0,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          2002463,
+          1998547,
+          2006911,
+          2020721,
+          1999148,
+          2001702
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          2039248,
+          2039709,
+          2031347,
+          2020710,
+          2017466,
+          2018648
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          5154100,
+          5067200,
+          5164115,
+          5071347,
+          5021191,
+          5033440
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 2002082.5,
+        "/workspace/collection-evidence/maps-fresh-after": 2026028.5,
+        "/workspace/collection-evidence/maps-rust": 5069273.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 8,
+      "prefix_width": 16,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          5389162,
+          5345097,
+          5337775,
+          5429314,
+          5402313,
+          5334010
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          5423625,
+          5366129,
+          5344195,
+          5344736,
+          5359779,
+          5356174
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          6876645,
+          6777506,
+          6723555,
+          6793480,
+          6746369,
+          7218668
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 5367129.5,
+        "/workspace/collection-evidence/maps-fresh-after": 5357976.5,
+        "/workspace/collection-evidence/maps-rust": 6785493.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 8,
+      "prefix_width": 256,
+      "repeats": 2222,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          2990114,
+          2736244,
+          2701662,
+          2729314,
+          2716184,
+          2797255
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          2686510,
+          2698147,
+          2701021,
+          2730926,
+          2689734,
+          2730996
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          2875353,
+          3142253,
+          2933751,
+          2959509,
+          2908272,
+          2910356
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 2732779.0,
+        "/workspace/collection-evidence/maps-fresh-after": 2699584.0,
+        "/workspace/collection-evidence/maps-rust": 2922053.5
+      }
+    },
+    {
+      "mode": "int_get",
+      "size": 128,
+      "prefix_width": 0,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          657336,
+          658277,
+          680731,
+          703095,
+          711618,
+          642043
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          640831,
+          708643,
+          670345,
+          671648,
+          674963,
+          641142
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          2744156,
+          2733260,
+          2838558,
+          2811066,
+          2935443,
+          2771768
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 669504.0,
+        "/workspace/collection-evidence/maps-fresh-after": 670996.5,
+        "/workspace/collection-evidence/maps-rust": 2791417.0
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 128,
+      "prefix_width": 0,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          1305047,
+          1308412,
+          1282493,
+          1271057,
+          1297896,
+          1275163
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          1213150,
+          1261963,
+          1265848,
+          1221943,
+          1218437,
+          1251037
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          5400920,
+          5209835,
+          5367460,
+          5300580,
+          5286609,
+          5372589
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 1290194.5,
+        "/workspace/collection-evidence/maps-fresh-after": 1236490.0,
+        "/workspace/collection-evidence/maps-rust": 5334020.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 128,
+      "prefix_width": 0,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          1976845,
+          1973641,
+          1965618,
+          1967891,
+          1977626,
+          2326118
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          1997597,
+          1995673,
+          2012628,
+          1970155,
+          1987271,
+          2133931
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          3709584,
+          3661411,
+          3647291,
+          3767600,
+          3668712,
+          5010645
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 1975243.0,
+        "/workspace/collection-evidence/maps-fresh-after": 1996635.0,
+        "/workspace/collection-evidence/maps-rust": 3689148.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 128,
+      "prefix_width": 16,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          3271878,
+          3271647,
+          3285718,
+          3305938,
+          3287491,
+          3248703
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          3262774,
+          3245948,
+          3366479,
+          3258177,
+          3379529,
+          3273079
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          4435162,
+          4432969,
+          4587401,
+          4597115,
+          4599399,
+          4659289
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 3278798.0,
+        "/workspace/collection-evidence/maps-fresh-after": 3267926.5,
+        "/workspace/collection-evidence/maps-rust": 4592258.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 128,
+      "prefix_width": 256,
+      "repeats": 222,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          2740740,
+          2728903,
+          2660020,
+          2653409,
+          2688833,
+          2692328
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          2749394,
+          2672508,
+          2661532,
+          2669694,
+          2706570,
+          2695893
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          2509243,
+          2538577,
+          2801392,
+          2526790,
+          2690295,
+          2476705
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 2690580.5,
+        "/workspace/collection-evidence/maps-fresh-after": 2684200.5,
+        "/workspace/collection-evidence/maps-rust": 2532683.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 128,
+      "prefix_width": 4096,
+      "repeats": 15,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          3088873,
+          2994020,
+          2968783,
+          2981111,
+          2979439,
+          2987971
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          3004507,
+          2990776,
+          3013200,
+          2981542,
+          2995864,
+          2998318
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          2357937,
+          2379369,
+          2358508,
+          2390605,
+          2439549,
+          2429544
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 2984541.0,
+        "/workspace/collection-evidence/maps-fresh-after": 2997091.0,
+        "/workspace/collection-evidence/maps-rust": 2384987.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 128,
+      "prefix_width": 0,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          3439709,
+          3494941,
+          3499679,
+          3497546,
+          3498107,
+          3481541
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          3469183,
+          3504457,
+          3516144,
+          3505368,
+          3497095,
+          3485177
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          9715171,
+          9576673,
+          9800229,
+          9753218,
+          9709362,
+          9794501
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 3496243.5,
+        "/workspace/collection-evidence/maps-fresh-after": 3500776.0,
+        "/workspace/collection-evidence/maps-rust": 9734194.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 128,
+      "prefix_width": 16,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          9245648,
+          9204815,
+          9232938,
+          11434369,
+          10077555,
+          9818666
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          9674480,
+          9158197,
+          10582072,
+          10128072,
+          9517745,
+          10282843
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          11295341,
+          11135502,
+          11075713,
+          12494649,
+          11755502,
+          12610093
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 9532157.0,
+        "/workspace/collection-evidence/maps-fresh-after": 9901276.0,
+        "/workspace/collection-evidence/maps-rust": 11525421.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 128,
+      "prefix_width": 256,
+      "repeats": 222,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          5392167,
+          5048702,
+          4835463,
+          4831357,
+          5388732,
+          5498988
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          5464666,
+          5273210,
+          4788312,
+          4909404,
+          5123104,
+          5343594
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          4785648,
+          4573550,
+          4529614,
+          4568281,
+          4854061,
+          4995583
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 5218717.0,
+        "/workspace/collection-evidence/maps-fresh-after": 5198157.0,
+        "/workspace/collection-evidence/maps-rust": 4679599.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 128,
+      "prefix_width": 4096,
+      "repeats": 15,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          4855673,
+          4862503,
+          4721642,
+          4747010,
+          4776795,
+          4747511
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          4753640,
+          5029743,
+          4764156,
+          4771757,
+          4778457,
+          4729654
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          3813630,
+          3726489,
+          3779228,
+          3743464,
+          3745628,
+          3751296
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 4762153.0,
+        "/workspace/collection-evidence/maps-fresh-after": 4767956.5,
+        "/workspace/collection-evidence/maps-rust": 3748462.0
+      }
+    },
+    {
+      "mode": "int_get",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          1429534,
+          1417296,
+          1453239,
+          1361032,
+          1393900,
+          1440821
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          1380711,
+          1523715,
+          1341182,
+          1340220,
+          1395052,
+          1355233
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          4764797,
+          4695042,
+          4706950,
+          4818677,
+          4797074,
+          4704576
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 1423415.0,
+        "/workspace/collection-evidence/maps-fresh-after": 1367972.0,
+        "/workspace/collection-evidence/maps-rust": 4735873.5
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          2552018,
+          2795553,
+          5051597,
+          4102733,
+          2509665,
+          2490795
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          2477566,
+          3906530,
+          3212699,
+          2889764,
+          2463895,
+          2432949
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          9183114,
+          11127700,
+          8863043,
+          8921911,
+          8771406,
+          8784105
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 2673785.5,
+        "/workspace/collection-evidence/maps-fresh-after": 2683665.0,
+        "/workspace/collection-evidence/maps-rust": 8892477.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          3377937,
+          3416494,
+          3344657,
+          3275803,
+          3366639,
+          3372808
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          3270726,
+          3331917,
+          3263195,
+          3240079,
+          3431717,
+          3270215
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          6195472,
+          6225878,
+          6260710,
+          6230254,
+          6230675,
+          6243465
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 3369723.5,
+        "/workspace/collection-evidence/maps-fresh-after": 3270470.5,
+        "/workspace/collection-evidence/maps-rust": 6230464.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 16,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          6413189,
+          6537846,
+          6841231,
+          6289674,
+          6399769,
+          6467179
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          6363615,
+          6565287,
+          6332187,
+          6363855,
+          6379488,
+          6291667
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          7915312,
+          8039938,
+          8074400,
+          7897024,
+          7984646,
+          7926559
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 6440184.0,
+        "/workspace/collection-evidence/maps-fresh-after": 6363735.0,
+        "/workspace/collection-evidence/maps-rust": 7955602.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 256,
+      "repeats": 11,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          4632929,
+          4627060,
+          4624666,
+          4809563,
+          4662043,
+          4745448
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          4543425,
+          4617997,
+          4555082,
+          4579689,
+          4684636,
+          4641151
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          4233169,
+          4219860,
+          4203064,
+          4321913,
+          4187561,
+          4223084
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 4647486.0,
+        "/workspace/collection-evidence/maps-fresh-after": 4598843.0,
+        "/workspace/collection-evidence/maps-rust": 4221472.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 4096,
+      "repeats": 1,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          8969122,
+          8800119,
+          8889994,
+          9059368,
+          9083524,
+          8838717
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          8754331,
+          8905427,
+          8735162,
+          9024225,
+          8917465,
+          9155423
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          6538107,
+          6626859,
+          6587862,
+          7481120,
+          6904405,
+          7415542
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 8929558.0,
+        "/workspace/collection-evidence/maps-fresh-after": 8911446.0,
+        "/workspace/collection-evidence/maps-rust": 6765632.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          6322753,
+          6301050,
+          6335453,
+          6180950,
+          6278607,
+          6270344
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          6292557,
+          6264466,
+          6312989,
+          6277656,
+          6335462,
+          6245568
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          15294229,
+          15227519,
+          15526147,
+          15071506,
+          14994560,
+          15117245
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 6289828.5,
+        "/workspace/collection-evidence/maps-fresh-after": 6285106.5,
+        "/workspace/collection-evidence/maps-rust": 15172382.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 16,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          17444945,
+          17466096,
+          17486377,
+          17414219,
+          17635982,
+          17887999
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          17417765,
+          17818796,
+          17273457,
+          17481600,
+          17676272,
+          17364153
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          20241369,
+          20171905,
+          20033337,
+          20086797,
+          20104433,
+          20006446
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 17476236.5,
+        "/workspace/collection-evidence/maps-fresh-after": 17449682.5,
+        "/workspace/collection-evidence/maps-rust": 20095615.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 256,
+      "repeats": 11,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          8157124,
+          8222093,
+          8092597,
+          8070606,
+          8107079,
+          8057615
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          8050166,
+          8244305,
+          8099859,
+          8285967,
+          8420830,
+          8327381
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          7573299,
+          7521911,
+          7742443,
+          7789693,
+          7502283,
+          7714941
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 8099838.0,
+        "/workspace/collection-evidence/maps-fresh-after": 8265136.0,
+        "/workspace/collection-evidence/maps-rust": 7644120.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 4096,
+      "repeats": 1,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          15791425,
+          15307860,
+          15567649,
+          15361751,
+          15770983,
+          15510603
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          15765055,
+          15720870,
+          15048951,
+          14932587,
+          15313067,
+          15289412
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          11010604,
+          10837966,
+          10930845,
+          11124366,
+          10758977,
+          11184455
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 15539126.0,
+        "/workspace/collection-evidence/maps-fresh-after": 15301239.5,
+        "/workspace/collection-evidence/maps-rust": 10970724.5
+      }
+    },
+    {
+      "mode": "int_get",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 5,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          5653900,
+          5664266,
+          5795303,
+          5642373,
+          5603233,
+          5666809
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          5716714,
+          5690405,
+          5785257,
+          5587311,
+          5696374,
+          6016023
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          5302854,
+          5318236,
+          9829022,
+          5571336,
+          5373310,
+          5094011
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 5659083.0,
+        "/workspace/collection-evidence/maps-fresh-after": 5706544.0,
+        "/workspace/collection-evidence/maps-rust": 5345773.0
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 5,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          9084335,
+          8382672,
+          8637194,
+          8303754,
+          9161141,
+          8352527
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          8308181,
+          8290815,
+          8245567,
+          8334371,
+          8184756,
+          8207640
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          9336342,
+          9606298,
+          11483032,
+          10422823,
+          9534600,
+          9532117
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 8509933.0,
+        "/workspace/collection-evidence/maps-fresh-after": 8268191.0,
+        "/workspace/collection-evidence/maps-rust": 9570449.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 5,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          7962142,
+          7843054,
+          7886750,
+          7872587,
+          7805988,
+          7946728
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          7903624,
+          8233399,
+          7828851,
+          7861692,
+          7877475,
+          7813139
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          8376213,
+          7760179,
+          7481311,
+          7372207,
+          7379708,
+          7464335
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 7879668.5,
+        "/workspace/collection-evidence/maps-fresh-after": 7869583.5,
+        "/workspace/collection-evidence/maps-rust": 7472823.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 65536,
+      "prefix_width": 16,
+      "repeats": 5,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          10734101,
+          10713369,
+          10793299,
+          10887180,
+          10791347,
+          10745709
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          10781592,
+          10753210,
+          10772368,
+          10744887,
+          10706029,
+          10683776
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          9135293,
+          9733440,
+          9067841,
+          9152338,
+          9002333,
+          9283896
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 10768528.0,
+        "/workspace/collection-evidence/maps-fresh-after": 10749048.5,
+        "/workspace/collection-evidence/maps-rust": 9143815.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 65536,
+      "prefix_width": 256,
+      "repeats": 1,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          8232068,
+          8220852,
+          8211738,
+          8365869,
+          8164297,
+          8258777
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          8502183,
+          9240810,
+          8367531,
+          8725799,
+          8163395,
+          8274823
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          14181031,
+          10804006,
+          11865939,
+          12174280,
+          12135844,
+          12125308
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 8226460.0,
+        "/workspace/collection-evidence/maps-fresh-after": 8434857.0,
+        "/workspace/collection-evidence/maps-rust": 12130576.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 5,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          12714991,
+          11936834,
+          12298698,
+          12197466,
+          11914511,
+          12343805
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          12680190,
+          12385829,
+          12161091,
+          12904607,
+          11973951,
+          12105318
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          21181191,
+          20532098,
+          20636335,
+          20759900,
+          20092708,
+          20443274
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 12248082.0,
+        "/workspace/collection-evidence/maps-fresh-after": 12273460.0,
+        "/workspace/collection-evidence/maps-rust": 20584216.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 65536,
+      "prefix_width": 16,
+      "repeats": 5,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          21639890,
+          21825277,
+          21999308,
+          21920039,
+          21544121,
+          21690090
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          21704466,
+          22083365,
+          21952479,
+          22724446,
+          22584897,
+          22093625
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          23348972,
+          24890985,
+          23180511,
+          26070024,
+          23663695,
+          33163521
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 21757683.5,
+        "/workspace/collection-evidence/maps-fresh-after": 22088495.0,
+        "/workspace/collection-evidence/maps-rust": 24277340.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 65536,
+      "prefix_width": 256,
+      "repeats": 1,
+      "samples": {
+        "/workspace/collection-evidence/maps-fresh-before": [
+          13859064,
+          14415920,
+          14023541,
+          14593177,
+          13960218,
+          14264614
+        ],
+        "/workspace/collection-evidence/maps-fresh-after": [
+          14472124,
+          14654317,
+          14365555,
+          14114909,
+          14491885,
+          14213347
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          21317161,
+          22145252,
+          25455556,
+          22590039,
+          21088377,
+          22123670
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-fresh-before": 14144077.5,
+        "/workspace/collection-evidence/maps-fresh-after": 14418839.5,
+        "/workspace/collection-evidence/maps-rust": 22134461.0
+      }
+    }
+  ]
+}

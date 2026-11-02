@@ -1,4 +1,4 @@
-import redirect_to_null, read_line, StdStream, stderr, stdin, stdout from "@std/io.ms"
+import redirect_to_null, read_line, StdStream, stderr, stdin, stdout from "@std/io/io.ms"
 
 fn shown(text: String) Int:
     if stdout().write(text).is_error():

@@ -1,4 +1,4 @@
-import expect_equal, expect_fault from "@std/test.ms"
+import expect_equal, expect_fault from "@std/test/test.ms"
 import (
     bit_and,
     bit_or,
@@ -15,8 +15,8 @@ import (
     wrapping_add,
     wrapping_subtract,
     wrapping_multiply
-) from "@std/math.ms"
-import max_int, min_int from "@std/math.ms"
+) from "@std/math/math.ms"
+import max_int, min_int from "@std/math/math.ms"
 
 fn shift_too_far() Unit:
     let _value = shift_left(1, 64)
@@ -39,8 +39,8 @@ test "shifts distinguish arithmetic from logical":
     try expect_equal(shift_right_unsigned(-1, 63), 1)
     try expect_equal(shift_right_unsigned(8, 2), 2)
     try expect_equal(shift_right_unsigned(-1, 0), -1)
-    try expect_equal(shift_right_unsigned(-1, 1), max_int())
-    try expect_equal(shift_right_unsigned(min_int(), 63), 1)
+    try expect_equal(shift_right_unsigned(-1, 1), max_int)
+    try expect_equal(shift_right_unsigned(min_int, 63), 1)
     try expect_equal(shift_right_unsigned(-16, 4), 1152921504606846975)
 
 test "shift counts outside 0 through 63 fault":
@@ -50,7 +50,7 @@ test "shift counts outside 0 through 63 fault":
 test "rotation and bit counts":
     try expect_equal(rotate_left(1, 64), 1)
     try expect_equal(rotate_left(1, 1), 2)
-    try expect_equal(rotate_right(1, 1), min_int())
+    try expect_equal(rotate_right(1, 1), min_int)
     try expect_equal(count_ones(255), 8)
     try expect_equal(count_ones(-1), 64)
     try expect_equal(leading_zeros(1), 63)
@@ -59,7 +59,7 @@ test "rotation and bit counts":
     try expect_equal(trailing_zeros(0), 64)
 
 test "wrapping arithmetic never faults":
-    try expect_equal(wrapping_add(max_int(), 1), min_int())
-    try expect_equal(wrapping_subtract(min_int(), 1), max_int())
-    try expect_equal(wrapping_multiply(max_int(), 2), -2)
-    try expect_equal(wrapping_multiply(min_int(), 3), min_int())
+    try expect_equal(wrapping_add(max_int, 1), min_int)
+    try expect_equal(wrapping_subtract(min_int, 1), max_int)
+    try expect_equal(wrapping_multiply(max_int, 2), -2)
+    try expect_equal(wrapping_multiply(min_int, 3), min_int)

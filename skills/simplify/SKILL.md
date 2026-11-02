@@ -10,7 +10,7 @@ request, survey the requested area before choosing changes.
 
 Use [manuscript-change](../manuscript-change/SKILL.md) for contract tracing,
 domain checks, and durable lessons. Read the
-[cleanup lessons](../../.experts/repository.md#repository-cleanup-must-remove-duplicated-work-and-layers)
+[cleanup lessons](../../wiki/repository/repository-cleanup-must-remove-duplicated-work-and-layers.md)
 and [architecture](../../documentation/contributing/architecture.md).
 
 ## Find the complexity
@@ -36,11 +36,11 @@ tree or line count alone does not establish simpler behavior.
   boundaries before moving responsibilities; splitting files alone may leave
   duplicate work intact.
 - Compare language/API alternatives with small source examples and fewer rules
-  to remember. Use [language-design-taste](../language-design-taste/SKILL.md)
+  to remember. Use [language-design](../language-design/SKILL.md)
   for current choices, flat control flow, and generated-code performance goals.
 - Simplify an example's scenario before adding helpers or types. Follow
   [documentation](../documentation/SKILL.md) for authoring and
-  [improve-documentation](../improve-documentation/SKILL.md) for a broad redesign.
+  [documentation](../documentation/SKILL.md) for a broad redesign.
 
 For a broad restructure, new representation, layer, or pass, follow the proposal
 and independent skeptical review requirement in

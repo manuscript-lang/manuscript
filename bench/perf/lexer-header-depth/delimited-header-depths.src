@@ -1,0 +1,17 @@
+fn layouts(flag: Bool) Int:
+    let callbacks = [
+        (
+            fn(value: Int) Int:
+                return value + 1
+        ),
+        (
+            fn(value: Int) Int:
+                return value - 1
+        )
+    ]
+    let values = [
+        match flag:
+            true: 1
+            false: 2
+    ]
+    return callbacks[0](values[0])

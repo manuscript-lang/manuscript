@@ -1,11 +1,11 @@
 # conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
 # Cancelling a task must drop every owned value its frames hold, whatever shape holds it.
-# CI runs this program against the counting runtime (scripts/leak-check.sh): any live block fails.
-import stdout from "@std/io.ms"
-import TaskGroup from "@std/tasks.ms"
-import nanoseconds, sleep from "@std/time.ms"
-import Channel from "@std/channels.ms"
+# CI runs this program against the counting runtime (tools/leak-check.ms): any live block fails.
+import stdout from "@std/io/io.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
+import Channel from "@std/io/channels.ms"
 
 type Box:
     name: String
@@ -56,7 +56,7 @@ fn t_consume_in_loop() Int:
     return total
 
 fn t_optional() Int:
-    let o: List[String]? = some(["a", "b"])
+    let o: List[String]? = ["a", "b"]
     nap()
     return o.get([]).length()
 
@@ -67,10 +67,10 @@ fn t_closure() Int:
     return f()
 
 fn t_match() Int:
-    let r: List[Int]? = some([1, 2, 3])
+    let r: List[Int]? = [1, 2, 3]
 
     match r:
-        some(v):
+        v:
             nap()
             return v.length()
         none:
@@ -92,7 +92,7 @@ fn t_nested(depth: Int) Int:
     return t_nested(depth - 1) + s.length()
 
 fn run_one(which: Int) Unit:
-    let group = TaskGroup[Int](timeout: some(nanoseconds(1000000)))
+    let group = TaskGroup[Int](timeout: nanoseconds(1000000))
 
     if which == 0: group.spawn(fn ch: t_record())
     else if which == 1: group.spawn(fn ch: t_field_move())

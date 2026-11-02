@@ -1,0 +1,3 @@
+interface:
+  display_name: "Perf Bash"
+  short_description: "Measure and fix perf gaps with before/after evidence"

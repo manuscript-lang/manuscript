@@ -1,5 +1,5 @@
 # Parser fixture: lexical forms, independent of name resolution.
-import stdout, IoError from "@std/io.ms"
+import stdout, IoError from "@std/io/io.ms"
 import Sample from "./support.ms"
 
 extern type Native
@@ -14,13 +14,13 @@ type State:
     case Data(value: Int)
 
 interface Reader:
-    fn text() ref String
+    fn text() String
 
 type Document:
     value: String
 
 impl Reader for Document:
-    fn text() ref String:
+    fn text() String:
         return self.value
 
 impl Document:
@@ -51,9 +51,7 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
     let mapping = {"count": COUNT, "ratio": RATIO}
     let plain = "Literal \{braces\}, # text, \"quote\", \\, \t, \r, \n, \u{1F642}"
     let message = "\{escaped\} {mapping.get("count")} {"{callback(1)}"} \u{41}"
-
     let selected = if true and not false or as == 0: first else: second
-
     var total = 0
     total += 1
     total -= 2
@@ -73,7 +71,7 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
         total = total + 1
     if let value = items.first():
         total = value
-    if var value = items.first():
+    if var value = items[0]?:
         value += 1
 
     var resource = acquire()

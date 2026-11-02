@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Optional[T]:\n    case none\n    case T\n\nimpl T?:\n    fn get() T: ...\n"
+  }
+}

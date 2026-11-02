@@ -1,0 +1,26 @@
+
+#[test]
+fn adjacent_escape_runs_keep_unicode_boundaries_and_exact_budgets() {
+    let run = "\"\\\0\u{8}\u{c}\n\r\t\u{1f}".repeat(4);
+    let escaped = r#"\"\\\u0000\b\f\n\r\t\u001f"#.repeat(4);
+    for length in [0, 1, 7, 15, 16, 17, 31, 32, 33, 127, 128] {
+        let plain = "a".repeat(length);
+        for (text, body) in [
+            (format!("{run}{plain}"), format!("{escaped}{plain}")),
+            (format!("{plain}{run}"), format!("{plain}{escaped}")),
+            (
+                format!("{plain}{run}é🙂{run}{plain}"),
+                format!("{plain}{escaped}é🙂{escaped}{plain}"),
+            ),
+        ] {
+            let expected = format!("\"{body}\"");
+            let exact = i64::try_from(expected.len()).unwrap();
+            let mut writer = Writer::new(Some(exact), None);
+            writer.string(&text);
+            assert_eq!(writer.finish().unwrap(), expected);
+            let mut writer = Writer::new(Some(exact - 1), None);
+            writer.string(&text);
+            assert!(matches!(writer.finish(), Err(Fail::LimitExceeded)));
+        }
+    }
+}

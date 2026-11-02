@@ -155,7 +155,7 @@ fn completion_in_unfinished_code() {
         ),
         (
             "std-member",
-            "import stdout from \"@std/io.ms\"\nfn main() Int:\n    let w = stdout().",
+            "import stdout from \"@std/io/io.ms\"\nfn main() Int:\n    let w = stdout().",
         ),
         ("list-member", "fn main() Int:\n    let w = [1]."),
         ("string-member", "fn main() Int:\n    let w = \"a\"."),
@@ -174,7 +174,7 @@ fn completion_in_unfinished_code() {
         ("import-path", "import stdout from \"@std/i"),
         (
             "import-from",
-            "import stdout from \"@std/io.ms\"\nimport  from \"@std/testing.ms\"",
+            "import stdout from \"@std/io/io.ms\"\nimport  from \"@std/testing.ms\"",
         ),
         ("import-local", "import x from \"./"),
         ("keyword", "fn main() Int:\n    ret"),
@@ -639,4 +639,60 @@ fn opaque_is_a_keyword_only_before_type() {
         obj([("textDocument", obj([("uri", uri.as_str().into())]))]),
     );
     compare("opaque-tokens", &s);
+}
+
+#[test]
+fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
+    let ws = Workspace::new("text-none-references");
+    let main = ws.uri("main.ms");
+    let mut script = Script::initialize(&ws.root.to_string_lossy(), true);
+    script.open(&main, &ws.read("main.ms"), 1);
+    let first = script.at("textDocument/references", &main, 30, 31);
+    let second = script.at("textDocument/references", &main, 30, 33);
+    let responses = script.rust();
+    // The general snapshot caps large responses. Pin how many written `none` tokens each module
+    // contributes; implicit Optional defaults have no `none` token and must not add ranges. The
+    // bundled sources shift constantly, so the pin is a count per module, not line numbers.
+    let expected = std::collections::BTreeMap::from([
+        ("collections/collections.ms", 7),
+        ("io/io.ms", 6),
+        ("main.ms", 1),
+        ("math/math.ms", 2),
+        ("string.ms", 7),
+    ]);
+    for id in [first, second] {
+        let locations = responses
+            .iter()
+            .find(|message| message.get("id").and_then(|id| id.as_i64()) == Some(id))
+            .unwrap()
+            .get("result")
+            .and_then(|value| value.as_array())
+            .unwrap();
+        assert!(locations.windows(2).all(|pair| {
+            ms_lsp::nav::location_sort_key(&pair[0]) <= ms_lsp::nav::location_sort_key(&pair[1])
+        }));
+        let mut actual = std::collections::BTreeMap::new();
+        let mut seen = std::collections::BTreeSet::new();
+        for location in locations {
+            let uri = location.get("uri").and_then(|uri| uri.as_str()).unwrap();
+            let module = if uri == main {
+                "main.ms"
+            } else {
+                uri.strip_prefix("manuscript-stdlib:///").unwrap()
+            };
+            let range = ms_lsp::text::Range::from_json(location.get("range").unwrap()).unwrap();
+            assert_eq!(range.start.line, range.end.line);
+            let source = if uri == main {
+                ws.read("main.ms")
+            } else {
+                ms_lsp::analysis::standard_library_source(uri).unwrap()
+            };
+            let start = ms_lsp::text::offset(&source, range.start).unwrap();
+            let end = ms_lsp::text::offset(&source, range.end).unwrap();
+            assert_eq!(&source[start..end], "none", "{uri}: {range:?}");
+            assert!(seen.insert((module, range.start.line, range.start.character)));
+            *actual.entry(module).or_insert(0) += 1;
+        }
+        assert_eq!(actual, expected);
+    }
 }

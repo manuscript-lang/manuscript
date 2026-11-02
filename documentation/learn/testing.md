@@ -5,13 +5,13 @@ weight = 3
 
 # Test your code
 
-A `test "name":` block runs under `ms test` and passes when it finishes normally. For timing, see [Benchmark your code](#benchmark-your-code). Assertions in `@std/test.ms` return `Result`s; `try` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
+A `test "name":` block runs under `ms test` and passes when it finishes normally. For timing, see [Benchmark your code](#benchmark-your-code). Assertions in `@std/test/test.ms` return `Result`s; `try` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
 
 Save this complete file as `test.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn add(a: Int, b: Int) Int:
     return a + b
@@ -51,8 +51,8 @@ ms test ms.toml --json
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import parse, JsonError from "@std/json.ms"
-import expect_equal, expect_ok, expect_error, expect_some from "@std/test.ms"
+import parse, JsonError from "@std/data/json.ms"
+import expect_equal, expect_ok, expect_error, expect_some from "@std/test/test.ms"
 
 test "typed JSON and Optional payloads":
     let number = try expect_ok(parse[Int]("3"))
@@ -85,7 +85,7 @@ A property test checks a rule on many generated inputs instead of a few hand-pic
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import check, ints, lists from "@std/test/property.ms"
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "reversing twice restores a list":
     try check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))
@@ -122,13 +122,19 @@ All assertions return `Result`, so use `try`:
 - `fail(message)` fails explicitly; `skip(reason)` skips while running cleanup.
 - Write each independently reported case as its own `test` block.
 
+## Golden files and misbehaving streams
+
+`expect_golden(path, actual)` in `@std/test/golden.ms` compares text with a file kept next to the test and names the first differing line on a mismatch. Run `MS_UPDATE_GOLDEN=1 ms test ...` to rewrite the files from the actual output, review the change in version control, then run again without it. `expect_golden_bytes` does the same for bytes.
+
+`@std/test/iotest.ms` wraps streams to test code that reads and writes: `one_byte(input)` trickles one byte per read, `fail_after(input, n, cause)` fails every read after `n` bytes, and `fail_writer_after(output, n, cause)` fails like a full disk. `check_reader(make, expected)` checks a `ReadStream` you wrote: whole reads, one-byte reads, a respected chunk size, and an end of input that stays ended.
+
 ## Benchmark your code
 
 A `bench "name":` block works like a `test` block, but `ms bench` times it instead of checking it. The body is one iteration; `ms bench` repeats it until a sample takes about 100ms (that calibration is also the warmup), takes ten samples, and reports the time per iteration. `ms test` skips bench blocks. Save this complete file as `bench.ms`:
 
 <!-- manuscript-example: {"mode":"bench"} -->
 ```manuscript
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn sum_to(n: Int) Int:
     var total = 0
@@ -148,8 +154,8 @@ ms bench ms.toml --filter "sum" --json
 
 - A project loads `bench.ms` and `*_bench.ms` files; a bench may also sit in any module the command loads. Benches take the same selection options as tests (`--filter`, `--match`, `--exclude`, `--bench`, `--list`, `--repeat`, `--fail-fast`, `--timeout`).
 - `--time` sets the target length of one sample, `--samples` the number of timed samples, and `--iterations` fixes the iteration count and skips calibration.
-- `bench "name" per 1000:` declares that one iteration performs 1000 operations (a loop over 1000 items, say); every statistic is then per operation. `keep(value)` from `@std/bench.ms` consumes a computed `Int` so the work stays observable.
-- To keep setup out of the timing, build the data first and time only the work: `try measure(1000, fn: keep(data.sorted().length()))` from `@std/bench.ms` runs the work repeatedly and reports per operation, here for 1000 operations per run. Everything before `measure` runs once, untimed.
+- `bench "name" per 1000:` declares that one iteration performs 1000 operations (a loop over 1000 items, say); every statistic is then per operation. `keep(value)` from `@std/test/bench.ms` consumes a computed `Int` so the work stays observable.
+- To keep setup out of the timing, build the data first and time only the work: `try measure(1000, fn: keep(data.sorted().length()))` from `@std/test/bench.ms` runs the work repeatedly and reports per operation, here for 1000 operations per run. Everything before `measure` runs once, untimed.
 - Each bench runs in its own process. A body that returns an error, faults, or exceeds `--timeout` (default 10 minutes) fails that bench and the exit status is 1. Standard output written by a bench is discarded.
 - `--json` adds `stats` to each entry of `benches`: `iterations`, `samples`, and `min_ns`, `median_ns`, `mean_ns`, `max_ns`, `stddev_ns` in nanoseconds per iteration.
 - Keep the measured work in the body and the setup outside it: a bench has no `fixture` and no hooks. Check a result with `try` so the compiler cannot discard the work; benchmark the default `Release` build.
@@ -166,11 +172,11 @@ This runs the application entry point, not its test blocks. Put the workload you
 
 ## Shared setup and teardown
 
-Without `make_fixture`, no hooks run. Define `fn make_fixture() T` where `T` implements `TestHooks` from `@std/test.ms`; tests then read it as `fixture`.
+Without `make_fixture`, no hooks run. Define `fn make_fixture() T` where `T` implements `TestHooks` from `@std/test/test.ms`; tests then read it as `fixture`.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import TestHooks, expect_equal from "@std/test.ms"
+import TestHooks, expect_equal from "@std/test/test.ms"
 
 type Counter:
     count: Int
@@ -198,13 +204,13 @@ test "starts fresh":
 
 ## Run tests only on some platforms
 
-There is no platform attribute on `test` blocks. Skip at run time instead, comparing `os_type()` from `@std/process.ms` (`Linux`, `Darwin`, or `Windows_NT`). The file must still compile on every platform.
+There is no platform attribute on `test` blocks. Skip at run time instead, comparing `os_type()` from `@std/os/process.ms` (`Linux`, `Darwin`, or `Windows_NT`). The file must still compile on every platform.
 
 To skip a single test, call `skip` in its body:
 
 ```manuscript
-import skip from "@std/test.ms"
-import os_type from "@std/process.ms"
+import skip from "@std/test/test.ms"
+import os_type from "@std/os/process.ms"
 
 test "unix permission bits":
     if os_type() == "Windows_NT":
@@ -215,8 +221,8 @@ test "unix permission bits":
 To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:
 
 ```manuscript
-import TestHooks, skip from "@std/test.ms"
-import os_type from "@std/process.ms"
+import TestHooks, skip from "@std/test/test.ms"
+import os_type from "@std/os/process.ms"
 
 type WindowsOnly:
     ok: Bool

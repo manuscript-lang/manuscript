@@ -1,4 +1,4 @@
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 import compile, RegexError from "@std/string.ms"
 
 test "regex receivers execute matching replacement and empty results":
@@ -15,17 +15,17 @@ test "regex rejects invalid expressions and exhausted budgets":
     try expect_equal(invalid.err(), RegexError.InvalidData)
 
     let regex = try compile("[0-9]+")
-    let limited: Result[List[String], RegexError] = error(RegexError.LimitExceeded)
+    let limited: List[String]!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(regex.find_all("1 2", 1), limited)
 
-    let output_limit: Result[String, RegexError] = error(RegexError.LimitExceeded)
+    let output_limit: String!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(regex.replace_all("1", "long", 3), output_limit)
 
 test "regex captures groups spans and splits":
     let date = try compile("(?P<y>[0-9]\{4\})-(?P<m>[0-9]\{2\})")
     try expect_equal(date.captures("on 2026-10 ok"), ["2026-10", "2026", "10"])
     try expect_equal(date.captures("none"), [])
-    try expect_equal(date.named_captures("2026-10") ["y"], "2026")
+    try expect_equal(date.named_captures("2026-10")["y"], "2026")
     try expect_equal(date.named_captures("none").is_empty(), true)
     try expect_equal(date.find_span("on 2026-10").get(), [3, 10])
     try expect_equal(date.find_span("none").is_none(), true)
@@ -43,7 +43,7 @@ test "regex captures groups spans and splits":
         (try swap.replace_template("me@home x@y", "$\{host\}:$1 $$")), "home:me $ y:x $"
     )
 
-    let limited: Result[List[String], RegexError] = error(RegexError.LimitExceeded)
+    let limited: List[String]!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(comma.split("a,b,c", 2), limited)
 
 test "regex repeated captures clear absent groups and preserve budgets":
@@ -53,9 +53,7 @@ test "regex repeated captures clear absent groups and preserve budgets":
         [["a", "a", ""], ["bbb", "", "bbb"], ["a", "a", ""]]
     )
 
-    let limited: Result[List[List[String]], RegexError] = error(
-        RegexError.LimitExceeded
-    )
+    let limited: List[List[String]]!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(re.captures_all("a bbb a", 2), limited)
     try expect_equal((try re.captures_all("xyz", 0)), [])
 
@@ -67,7 +65,7 @@ test "regex repeated template expansion preserves byte budgets":
     )
     try expect_equal((try re.replace_template("a b", "$$", 3)), "$ $")
 
-    let limited: Result[String, RegexError] = error(RegexError.LimitExceeded)
+    let limited: String!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(re.replace_template("a b", "$$", 2), limited)
     try expect_equal((try re.replace_template("a b", "xy", 5)), "xy xy")
     try expect_equal(re.replace_template("a b", "xy", 4), limited)
@@ -90,9 +88,7 @@ test "regex capture methods preserve whole match only patterns":
     try expect_equal(unnamed.named_captures("word123").is_empty(), true)
     try expect_equal((try re.captures_all("sword word word", 2)), [["word"], ["word"]])
 
-    let limited: Result[List[List[String]], RegexError] = error(
-        RegexError.LimitExceeded
-    )
+    let limited: List[List[String]]!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(re.captures_all("word word", 1), limited)
     try expect_equal((try re.captures_all("sword", 0)), [])
 
@@ -102,3 +98,31 @@ test "regex capture methods preserve whole match only patterns":
     let absent = try compile("(a)?b")
     try expect_equal(absent.captures("b"), ["b", ""])
     try expect_equal((try absent.captures_all("b b")), [["b", ""], ["b", ""]])
+
+test "regex collection budgets preserve empty adjacency and exact counts":
+    let re = try compile("a*")
+    try expect_equal((try re.find_all("a🙂🙂a", 3)), ["a", "", "a"])
+    try expect_equal((try re.captures_all("a🙂🙂a", 3)), [["a"], [""], ["a"]])
+
+    let find_limit: List[String]!RegexError = error(RegexError.LimitExceeded)
+    let capture_limit: List[List[String]]!RegexError = error(RegexError.LimitExceeded)
+    try expect_equal(re.find_all("a🙂🙂a", 2), find_limit)
+    try expect_equal(re.captures_all("a🙂🙂a", 2), capture_limit)
+    try expect_equal(re.find_all("", 0), find_limit)
+    try expect_equal(re.captures_all("", 0), capture_limit)
+
+    for pattern in ["x", "(x)"]:
+        let matching = try compile(pattern)
+        try expect_equal((try matching.find_all("none", 0)), [])
+        try expect_equal((try matching.captures_all("none", 0)), [])
+        try expect_equal((try matching.find_all("é🙂", 0)), [])
+        try expect_equal((try matching.captures_all("é🙂", 0)), [])
+        try expect_equal(matching.find_all("x", 0), find_limit)
+        try expect_equal(matching.captures_all("x", 0), capture_limit)
+
+        for max in [1, 4, 8]:
+            let text = try "x".repeat(max)
+            try expect_equal((try matching.find_all(text, max)).length(), max)
+            try expect_equal((try matching.captures_all(text, max)).length(), max)
+            try expect_equal(matching.find_all(text + "x", max), find_limit)
+            try expect_equal(matching.captures_all(text + "x", max), capture_limit)

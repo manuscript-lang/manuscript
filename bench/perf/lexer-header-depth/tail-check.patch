@@ -1,0 +1,21 @@
+diff --git a/crates/ms-syntax/src/lexer.rs b/crates/ms-syntax/src/lexer.rs
+index 5dff49c2e..4079f88fc 100644
+--- a/crates/ms-syntax/src/lexer.rs
++++ b/crates/ms-syntax/src/lexer.rs
+@@ -68,6 +68,7 @@ struct Scanner<'a> {
+     delimiters: Vec<u8>,
+     groups: Vec<usize>,
+     opened: Vec<Pos>,
++    /// Nondecreasing header depths, all at most the current delimiter depth.
+     function_depths: Vec<usize>,
+     /// CR bytes removed before each normalised line; empty when source had no CRLF.
+     line_offsets: Vec<u32>,
+@@ -657,7 +658,7 @@ impl Scanner<'_> {
+             }
+             if self.tokens.len() > line_start {
+                 let last_kind = self.tokens.last().unwrap().kind;
+-                let has_function = self.function_depths.contains(&self.delimiters.len());
++                let has_function = self.function_depths.last() == Some(&self.delimiters.len());
+                 if last_kind == Tok::Colon && (self.delimiters.len() == top_depth || has_function) {
+                     pending = true;
+                     header_indent = leading;

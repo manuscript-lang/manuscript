@@ -1,0 +1,18 @@
+{
+  "compressed_sha256": "a07acf0eea09c2964454f62e1b347235f78b58abcab4beb7d2f043d3afa699db",
+  "uncompressed_sha256": "c0e1153e088a4e054627951b277e74a05d592740265800f645eaebc4159575f2",
+  "files": {
+    "file-writer.ms": "857702d1d2b8fc75d9ed74046c98dbba4a17447a6a7c5a7c7a3d7cb62ae8853b",
+    "file-error.ms": "78f35a3599c26400828da932322123f204ab47155b61d45503af98de9500594d",
+    "read.ms": "1dbb460759b61a3bcea33d04106ef8721d26466ed6d1e80a3205a26df00d02ff",
+    "pack.py": "4c6ade889ca129ac9406284b65193e8490d1aa7ad612da4816a8f9157d7bb518",
+    "file.ms": "67a34a271bad946a300786a0383ac5ad1a14a2a2c12ffd6a7a423053949bffa7",
+    "file-run.py": "571037cfe672a77d09268485bbaad62ebfc90af61bbdccb3a59763c50c29f32d",
+    "focused.py": "3f0c7d472fb75a515c0c030b2a4de00d7e6585eae5ccaab98da118f150b45aeb",
+    "rust/Cargo.lock": "21b823c8a50ae6ef118aaaae5bcbce499e870ad5a30ed65d7c284ff8c2b056f2",
+    "rust/Cargo.toml": "ef79c60baceaaa7ba8eb9ca85dfff347733fdc5723c0500626d4dbc34ee12798",
+    "rust/src/bin/file-writer.rs": "63e85dbc32f1ec321360ddf3665cae0349741e6017f0d1e0731e13c47e6eb4f1",
+    "rust/src/bin/file.rs": "60c9be0e755902f6009b9fb3a24ba0d7ed8e7ebd797a1f772417cb3acd55bf66",
+    "rust/src/bin/read.rs": "3b7f306f9f3bfec57d285cd1a2974d6aedaeef7c3bdfb0a5d0b4c0438ee75b26"
+  }
+}

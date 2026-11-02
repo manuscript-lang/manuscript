@@ -1,0 +1,25 @@
+let (
+# top-level bindings
+    first = 1
+        # A comment may be deeper than its neighbors.
+    second = 2
+)
+
+let (
+        # The first comment can be deeper than the binding.
+    third = 3
+)
+
+test "group":
+    var (
+# mutable bindings
+        total = 0
+            # Keep this explanation.
+        count = 1
+    )
+    let (
+# immutable bindings
+        label = "café"
+        # Keep the next binding attached.
+        suffix = "!"
+    )

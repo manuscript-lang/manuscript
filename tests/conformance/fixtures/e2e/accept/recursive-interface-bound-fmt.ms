@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,generics,interfaces,modules,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/recursive-interface-bound.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 interface Compare[T]:
     fn compare(other: T) Int

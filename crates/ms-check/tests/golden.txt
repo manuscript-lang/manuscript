@@ -1,24 +1,25 @@
 fn use(value: Int?) Unit:
     match value:
-        some(_):
+        _value:
             match value:
-                some(_): unit
+                _value: unit
                 none: unit
         none: unit
-import filesystem from "@std/fs.ms"
+import filesystem from "@std/os/fs.ms"
 fn use(path: String) Int:
     match filesystem().stat(path: path, follow_links: true):
         error(NotFound): return 1
         ok(_): return 0
-import TextError from "@std/errors.ms"
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	3	11	75	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"import TextError from "@std/errors.ms"
 fn fail() Result[Int, TextError]:
     return error(TextError("boom"))
 fn use() Unit:
     fail()
 resolution	1	8	7	unknown standard module @std/errors.ms
 resolution	2	23	61	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	3	18	90	unknown binding TextError; add: import TextError from "@std/core.ms"import network from "@std/net.ms"
-import HttpResponse from "@std/http.ms"
+resolution	3	18	90	unknown binding TextError; add: import TextError from "@std/core.ms"import network from "@std/net/net.ms"
+import HttpResponse from "@std/net/http.ms"
 import panic from "@std/faults.ms"
 fn use() Unit:
     let shared = Map[Int, Int]()
@@ -26,9 +27,11 @@ fn use() Unit:
         shared.add(key: 1, value: 2)
         return panic("unreached")
     )
-resolution	3	8	81	unknown standard module @std/faults.ms
-resolution	8	16	302	unknown binding panic; add: import panic from "@std/core.ms"
-type	6	68	224	expected fn(HttpExchange) Result[Unit, HttpError], found fn(HttpExchange) HttpResponse (in argument 'handler' of serve)# Doubles a number.
+resolution	1	8	7	module does not export network; did you mean 'Network'?
+resolution	3	8	89	unknown standard module @std/faults.ms
+resolution	6	19	183	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+type	6	71	235	cannot infer callback parameter request; provide a type or a known function context
+resolution	8	16	310	unknown binding panic; add: import panic from "@std/core.ms"# Doubles a number.
 export fn double(value: Int) Int:
     return value * 2
 
@@ -87,7 +90,7 @@ export fn value() Int:
 export fn main() Int:
     return "a"
 type	2	12	33	expected Int, found String (in the return value)fn (
-parse	2	1	5	unterminated delimiter '(' opened at line 1:4; add the matching ')' before the end of the fileimport TomlValue from "@std/toml.ms"
+parse	2	1	5	unterminated delimiter '(' opened at line 1:4; add the matching ')' before the end of the fileimport TomlValue from "@std/data/toml.ms"
 
 export fn main() Int:
     let v: TomlValue? = none
@@ -178,8 +181,8 @@ and standalone run/test/debug/profile artifacts.
   --debug              Alias for --build-type Debug
   --watch              Rebuild and rerun after each saved source change
 parse	1	3	2	indentation must be a multiple of four spaces, found 2; use 0 or 4  --build-type <level>  Debug, Release, RelWithDebInfo, or MinSizeRel (case-insensitive)
-parse	1	3	2	indentation must be a multiple of four spaces, found 2; use 0 or 4import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
+parse	1	3	2	indentation must be a multiple of four spaces, found 2; use 0 or 4import arguments from "@std/os/process.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let message = "Arguments: {arguments().length()}\n"
@@ -370,8 +373,8 @@ impl Read for Box[fn(Int) Int]:
 test "opaque":
     let queue = Queue[Int](capacity: 1)
     let capacity = queue.capacity
-resolution	1	8	7	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	3	17	66	unknown binding Queue; add: import Queue from "@std/queue.ms"interface Same[V]:
+resolution	1	8	7	unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?
+resolution	3	17	66	unknown binding Queue; add: import Queue from "@std/collections/queue.ms"interface Same[V]:
     fn same(other: V) Bool
 type Box[T: Equal]:
     value: T
@@ -394,8 +397,7 @@ impl Read[T] for Box[T]:
         return self.value
 fn read[T](value: Box[T]) T:
     return value.get()
-type	11	14	239	`get` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`
-type	13	27	294	`read` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`interface Read[V]:
+type	12	21	262	cannot move `self.value` out of `self`: only a whole variable can move; take an owned copy with `self.value.clone()`interface Read[V]:
     fn get() V
 type Box[T]:
     value: T
@@ -410,7 +412,7 @@ type Pair[A, B]:
 impl Read[B] for Pair[Int, B]:
     fn get() B:
         return self.right
-type	7	14	120	`get` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`interface Read[V]:
+type	8	21	143	cannot move `self.right` out of `self`: only a whole variable can move; take an owned copy with `self.right.clone()`interface Read[V]:
     fn get() V
 type Box[T]:
     value: T
@@ -453,10 +455,10 @@ fn hidden() Int:
 "
 fn check() Int:
     return read(value: Value(value: 3))
-parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakimport MapBuilder from "@std/collections.ms"
+parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakimport MapBuilder from "@std/collections/collections.ms"
 type MapBuilder:
     value: Int
-resolution	1	8	7	module does not export MapBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'fn old[T: MissingBound](value: T) T:
+resolution	1	8	7	module does not export MapBuilder; @std/collections/collections.ms exports: CollectionError, List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'fn old[T: MissingBound](value: T) T:
     return value
 resolution	1	11	10	unknown type MissingBound; declare it with 'type MissingBound:' / 'interface MissingBound:', declare it as a type parameter, or import itinterface Read:
     fn get() Int
@@ -470,7 +472,7 @@ fn old(value: Read & Equal) Unit:
     let resource = Closeable(value: queue)parse	2	5	40	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport Queue from "@std/queues.ms"
 import Closeable from "@std/cleanup.ms"
 fn invalid() Unit: ...
-    resolution	1	8	7	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+    resolution	1	8	7	unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?
 resolution	2	8	42	unknown standard module @std/cleanup.msimport panic from "@std/faults.ms"
 
 fn positive(value: Int) Int:
@@ -510,13 +512,13 @@ resolution	7	12	168	unknown binding panic; add: import panic from "@std/core.ms"
 fn required(value: Int) Int: return value
 fn call(x: Int?) Int:
     let chosen = match x:
-        some(n): optional
+        n: optional
         none: required
     return chosen()
-type	7	12	196	missing argument value: Int in call to chosen; add 'value: <Int>'fn f(x: Int?) Int:
+type	7	12	190	missing argument value: Int in call to chosen; add 'value: <Int>'fn f(x: Int?) Int:
     while true:
         while (match x:
-            some(n): true
+            n: true
             none: break
         ):
             break
@@ -528,29 +530,29 @@ fn call(x: Int?) Int:
 type	1	27	26	operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with "{value}", or convert between Int and Float)fn f() String: return "a" - "b"
 type	1	27	26	arithmetic requires numeric operandsfn f(x: Int?) Int:
     return match x:
-        some(n): n
+        n: n
 type	2	12	30	non-exhaustive match; missing cases: none, or add a final '_:' arm; add the arms 'case none:'fn f(x: Int?) Unit:
     let y = match x:
-        some(n): n
+        n: n
         none: "missing"
-type	4	15	74	expected Int, found Stringfn f(x: Int?) Int:
+type	4	15	68	expected Int, found Stringfn f(x: Int?) Int:
     return match x:
-        some(n): n
+        n: n
         none: return "missing"
-type	4	22	79	expected Int, found String (in the return value)fn f(x: Int?) Int:
+type	4	22	73	expected Int, found String (in the return value)fn f(x: Int?) Int:
     let y = match x:
-        some(n): n
+        n: n
         none: 0
     return n
-resolution	5	12	86	unknown binding n; declare it with 'let n = ...' before use, define 'fn n(...) T:', or import it from a modulefn p() Result[Int, Error]:
+resolution	5	12	80	unknown binding n; declare it with 'let n = ...' before use, define 'fn n(...) T:', or import it from a modulefn p() Result[Int, Error]:
     return ok(1)
 fn f(x: Int?) Result[Unit, Error]:
     match x:
-        some(n):
+        n:
             try p()
             return ok(unit)
         none: return ok(unit)
-type	6	13	121	standalone try requires a Unit success value, found Int; use 'let name = try ...' to keep the value or 'return try ...' to return itfn p() Result[Int, Error]:
+type	6	13	115	standalone try requires a Unit success value, found Int; use 'let name = try ...' to keep the value or 'return try ...' to return itfn p() Result[Int, Error]:
     return ok(1)
 fn f() Int:
     return p()
@@ -558,15 +560,15 @@ fn f() Int:
     return x
 type	2	12	30	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f(x: Int?) Int:
     return match x:
-        some(n):
+        n:
             n
             n + 1
         none: 0
-parse	4	13	68	an arm value must be its final expressionimport filesystem, FileSystemError from "@std/fs.ms"
+parse	4	13	62	an arm value must be its final expressionimport filesystem, FileSystemError from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 fn forward[T](item: T) T: item
-fn check() Unit: ...
-    import filesystem from "@std/fs.ms"
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'fn check() Unit: ...
+    import filesystem from "@std/os/fs.ms"
 fn explicit() Unit:
     let fs = filesystem()
     fs.write_file("", "", false)
@@ -574,47 +576,45 @@ fn explicit() Unit:
     fs.copy_tree("", "", false, max_entries: none, max_bytes: 3)
     fs.create_directory("", true)
     fs.remove("", false)
-type	4	5	86	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
-type	5	5	119	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
-type	6	5	150	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
-type	7	5	215	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
-type	8	5	249	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport panic from "@std/faults.ms"
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	3	14	72	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+type	6	46	194	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingimport panic from "@std/faults.ms"
 type Override:
     received: Bool
 impl FileSystem for Override:
 resolution	1	8	7	unknown standard module @std/faults.ms
-resolution	4	6	74	unknown type FileSystem; add: import FileSystem from "@std/fs.ms"test "filesystem concrete overrides and interface defaults":
+resolution	4	6	74	unknown type FileSystem; declare it with 'type FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import ittest "filesystem concrete overrides and interface defaults":
     let item = Override(false)
     let view = FileSystem(item)
 resolution	2	16	76	unknown binding Override; declare it with 'let Override = ...' before use, define 'fn Override(...) T:', or import it from a module
-resolution	3	16	107	unknown binding FileSystem; add: import FileSystem from "@std/fs.ms"    view.%s(%s)
+resolution	3	16	107	unknown binding FileSystem; declare it with 'let FileSystem = ...' before use, define 'fn FileSystem(...) T:', or import it from a module    view.%s(%s)
     if item.received: return panic("interface default %s")
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport %s from "@std/%s.ms"
 test "reject":
     let value = %s()
 parse	1	8	7	expected a name, found '%'fn wrong() Result[Unit, JsonError]:
     return error(cause: EncodingError.InvalidData)
-resolution	1	25	24	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	2	25	60	unknown binding EncodingError; add: import EncodingError from "@std/encoding.ms"fn wrong() JsonError:
+resolution	1	25	24	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	2	25	60	unknown binding EncodingError; add: import EncodingError from "@std/data/encoding.ms"fn wrong() JsonError:
     return JsonError.PermissionDenied
-resolution	1	12	11	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	2	12	33	unknown binding JsonError; add: import JsonError from "@std/json.ms"import hex_decode from "@std/encoding.ms"
+resolution	1	12	11	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	2	12	33	unknown binding JsonError; add: import JsonError from "@std/data/json.ms"import hex_decode from "@std/data/encoding.ms"
 fn wrong() Result[Unit, JsonError]:
     let bytes = try hex_decode(text: "ff", max_bytes: 1)
     return ok(value: unit)
-resolution	2	25	66	unknown type JsonError; add: import JsonError from "@std/json.ms"type Impostor:
+resolution	2	25	71	unknown type JsonError; add: import JsonError from "@std/data/json.ms"type Impostor:
     detail: String
 fn wrong(value: Impostor) Error:
     return value
 type	4	12	78	expected Error, found Impostor (in the return value); no applicable 'impl Error for Impostor' is visible; declare an implementation before passing it as Errorfn wrong() Result[String, Error]:
     return Result[Int, JsonError].ok(value: 1)
-resolution	2	24	57	unknown type JsonError; add: import JsonError from "@std/json.ms"fn wrong(value: Error) JsonError:
+resolution	2	24	57	unknown type JsonError; add: import JsonError from "@std/data/json.ms"fn wrong(value: Error) JsonError:
     return value
-resolution	1	24	23	unknown type JsonError; add: import JsonError from "@std/json.ms"fn wrong(values: List[JsonError]) List[Error]:
+resolution	1	24	23	unknown type JsonError; add: import JsonError from "@std/data/json.ms"fn wrong(values: List[JsonError]) List[Error]:
     return values
-resolution	1	23	22	unknown type JsonError; add: import JsonError from "@std/json.ms"fn wrong(operation: fn() JsonError) fn() Error:
+resolution	1	23	22	unknown type JsonError; add: import JsonError from "@std/data/json.ms"fn wrong(operation: fn() JsonError) fn() Error:
     return operation
-resolution	1	26	25	unknown type JsonError; add: import JsonError from "@std/json.ms"interface Diagnostic:
+resolution	1	26	25	unknown type JsonError; add: import JsonError from "@std/data/json.ms"interface Diagnostic:
     fn message() String
 type LocalError:
     detail: String
@@ -623,7 +623,7 @@ impl Diagnostic for LocalError:
         return self.detail
 fn wrong(value: LocalError) Diagnostic:
     return value
-type	6	18	131	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`type Impostor:
+type	7	21	159	cannot move `self.detail` out of `self`: only a whole variable can move; take an owned copy with `self.detail.clone()`type Impostor:
     detail: String
 fn wrong(value: Impostor) Error:
     return Error(value: value)
@@ -684,8 +684,8 @@ fn wrong(cause: Error) String:
             return value.message()
         _:
             return cause.message()
-type	8	9	150	concrete type pattern requires explicit type arguments; write e.g. Box[Int]import JsonError from "@std/json.ms"
-import hex_decode from "@std/encoding.ms"
+type	8	9	150	concrete type pattern requires explicit type arguments; write e.g. Box[Int]import JsonError from "@std/data/json.ms"
+import hex_decode from "@std/data/encoding.ms"
 fn general(cause: JsonError) Error:
     return cause
 fn failed() Result[Unit, JsonError]:
@@ -697,7 +697,7 @@ fn propagated() Result[Unit, Error]:
     return ok(value: unit)
 fn constructed() Result[Unit, Error]:
     return error(cause: JsonError.InvalidData)
-type	10	9	317	local binding bytes is never read; remove it, use it, or name it with a leading '_' to ignore itfn diagnostic(cause: %s) String:
+type	10	9	327	local binding bytes is never read; remove it, use it, or name it with a leading '_' to ignore itfn diagnostic(cause: %s) String:
     return cause.message()
 fn view(cause: %s) Error:
     return cause
@@ -822,13 +822,13 @@ func init() {
 fn fail() Int:
     return 1 / 0
 export fn main() Int:
-    let data = parse	5	16	93	expected an expression, found end of line; write a value, name, call, or literal hereimport base64_encode, base64_decode from "@std/encoding.ms"
-import parse, CsvOptions from "@std/csv.ms"
-import commands, Commands, CommandOutput, CommandError from "@std/process.ms"
+    let data = parse	5	16	93	expected an expression, found end of line; write a value, name, call, or literal hereimport base64_encode, base64_decode from "@std/data/encoding.ms"
+import parse, CsvOptions from "@std/data/csv.ms"
+import commands, Commands, CommandOutput, CommandError from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"
-import Duration from "@std/time.ms"
+import Duration from "@std/os/time.ms"
 fn forward[T](item: T) T: item
-let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
+resolution	3	8	121	module does not export commands; did you mean 'Commands'?let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
     f(Bytes([]))parse	2	5	66	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f = forward(base64_encode)
     f(Bytes([]))parse	2	5	35	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int?, timeout: Duration?) Result[CommandOutput, CommandError] = commands().run
     f(program: "", arguments: [])parse	2	5	167	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itexport fn main() Int:
@@ -837,19 +837,19 @@ fn forward[T](item: T) T: item
 export fn main() Int:
     return panic(message: "profile failure")
 resolution	1	8	7	unknown standard module @std/faults.ms
-resolution	3	12	68	unknown binding panic; add: import panic from "@std/core.ms"import nanoseconds, sleep from "@std/time.ms"
-import stdout from "@std/io.ms"
+resolution	3	12	68	unknown binding panic; add: import panic from "@std/core.ms"import nanoseconds, sleep from "@std/os/time.ms"
+import stdout from "@std/io/io.ms"
 export fn main() Int:
     stdout().write(data: "ready\n")
     sleep(nanoseconds(60000000000))
     return 0
-type	4	5	104	this statement discards Result[Unit, IoError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io.ms"
+type	4	5	110	this statement discards Result[Unit, IoError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io/io.ms"
 
 export fn main() Int:
     if stdout().write(data: %q).is_error():
         return 1
     return 0
-parse	4	29	83	expected an expression, found '%'; write a value, name, call, or literal heretype A:
+parse	4	29	86	expected an expression, found '%'; write a value, name, call, or literal heretype A:
     case X
 type B:
     case X
@@ -907,22 +907,22 @@ fn call(left: Int, right: Int) Int: return first(right, left)
 fn use() Unit: unit
 "
 fn use() Unit: unit
-parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakimport List from "@std/collections.ms"
+parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakimport List from "@std/collections/collections.ms"
 fn broken(
-parse	3	1	50	unterminated delimiter '(' opened at line 2:10; add the matching ')' before the end of the fileimport ListBuilder, List from "@std/collections.ms"
+parse	3	1	62	unterminated delimiter '(' opened at line 2:10; add the matching ')' before the end of the fileimport ListBuilder, List from "@std/collections/collections.ms"
 fn broken(
-parse	3	1	63	unterminated delimiter '(' opened at line 2:10; add the matching ')' before the end of the fileimport List from "@std/collections.ms"
+parse	3	1	75	unterminated delimiter '(' opened at line 2:10; add the matching ')' before the end of the fileimport List from "@std/collections/collections.ms"
 fn bad() String: "unterminated
-parse	2	18	56	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakfn bad() Unit:
+parse	2	18	68	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakfn bad() Unit:
    unit
-import List from "@std/collections.ms"
+import List from "@std/collections/collections.ms"
 parse	2	4	18	indentation must be a multiple of four spaces, found 3; use 0 or 4type Failure:
     detail: String
 impl Error for Failure:
     fn message() String: self.detail
 fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 fn first() Result[Int, Error]: fail_cause(Failure("empty"))
-type	4	18	74	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`fn from_callback[T](factory: fn() T) T: factory()
+type	4	31	87	cannot move `self.detail` out of `self`: only a whole variable can move; take an owned copy with `self.detail.clone()`fn from_callback[T](factory: fn() T) T: factory()
 fn first() Unit:
     let callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)
 type	3	9	75	local binding callback is never read; remove it, use it, or name it with a leading '_' to ignore itimport TextError from "@std/errors.ms"
@@ -1050,7 +1050,7 @@ fn call(view: Read) Unit:
     return 0
 fn f() Int:
     match peek():
-        some(x):
+        x:
             return x
         none:
             return 0
@@ -1112,8 +1112,8 @@ resolution	3	5	51	unknown binding panic; add: import panic from "@std/core.ms"i
 fn f(q: Queue[Int]) Int:
     q.capacity = 5
     return q.capacity
-resolution	1	8	7	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	2	9	43	unknown type Queue; add: import Queue from "@std/queue.ms"
+resolution	1	8	7	unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?
+resolution	2	9	43	unknown type Queue; add: import Queue from "@std/collections/queue.ms"
 type	3	7	66	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'interface I:
     fn n() Int
 type Pair[A, B]:
@@ -1137,31 +1137,31 @@ fn f() Int:
     return 0
 resolution	2	13	24	unknown binding SetBuilder; declare it with 'let SetBuilder = ...' before use, define 'fn SetBuilder(...) T:', or import it from a module
 resolution	3	13	54	unknown binding SetBuilder; declare it with 'let SetBuilder = ...' before use, define 'fn SetBuilder(...) T:', or import it from a module
-resolution	4	13	84	unknown binding Queue; add: import Queue from "@std/queue.ms"
-resolution	5	13	109	unknown binding Queue; add: import Queue from "@std/queue.ms"fn f(counts: Map[String, Int], names: List[String], found: Int?) Unit:
+resolution	4	13	84	unknown binding Queue; add: import Queue from "@std/collections/queue.ms"
+resolution	5	13	109	unknown binding Queue; add: import Queue from "@std/collections/queue.ms"fn f(counts: Map[String, Int], names: List[String], found: Int?) Unit:
     match found:
-        some(n):
+        n:
             counts.add(key: "a", value: n)
         none:
             names.append("x")
-type	4	13	117	cannot change `counts`: parameter `counts` is not declared var; write `var counts: <Type>` in the signature and pass `var` at every call
-type	6	13	174	cannot change `names`: parameter `names` is not declared var; write `var names: <Type>` in the signature and pass `var` at every callfn f(xs: List[Int], o: Int?) Unit:
+type	4	13	111	cannot change `counts`: parameter `counts` is not declared var; write `var counts: <Type>` in the signature and pass `var` at every call
+type	6	13	168	cannot change `names`: parameter `names` is not declared var; write `var names: <Type>` in the signature and pass `var` at every callfn f(xs: List[Int], o: Int?) Unit:
     var n = 0
     match o:
-        some(v):
+        v:
             n = v
             xs.set(index: 0, value: 5)
         none:
             n = 2
     xs.append(n)
-type	6	13	109	cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every call
-type	9	5	172	cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every callfn f(xs: List[Int], o: Int?) Unit:
+type	6	13	103	cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every call
+type	9	5	166	cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every callfn f(xs: List[Int], o: Int?) Unit:
     let r = match o:
-        some(v):
+        v:
             xs.set(index: 0, value: v)
         none:
             xs.length()
-type	6	16	141	expected Unit, found Int# A described record.
+type	6	16	135	expected Unit, found Int# A described record.
 export type Counter:
     # Current count in items.
     # May start at zero.
@@ -1201,21 +1201,21 @@ impl parse	2	6	6	expected a name, found end of lineinterface DatagramSocket:
     fn receive(max_bytes: Int? = none, timeout: Duration? = none) Result[Datagram, NetworkError]
     fn send(data: String, address: String, timeout: Duration? = none) Result[Unit, NetworkError]
     fn send_bytes(data: Bytes, address: String, timeout: Duration? = none) Result[Unit, NetworkError]
-resolution	4	49	118	unknown type Duration; add: import Duration from "@std/time.ms"
-resolution	4	74	143	unknown type Datagram; add: import Datagram from "@std/net.ms"
-resolution	4	84	153	unknown type NetworkError; add: import NetworkError from "@std/net.ms"
-resolution	5	53	219	unknown type Duration; add: import Duration from "@std/time.ms"
-resolution	5	84	250	unknown type NetworkError; add: import NetworkError from "@std/net.ms"
+resolution	4	49	118	unknown type Duration; add: import Duration from "@std/os/time.ms"
+resolution	4	74	143	unknown type Datagram; add: import Datagram from "@std/net/net.ms"
+resolution	4	84	153	unknown type NetworkError; add: import NetworkError from "@std/net/net.ms"
+resolution	5	53	219	unknown type Duration; add: import Duration from "@std/os/time.ms"
+resolution	5	84	250	unknown type NetworkError; add: import NetworkError from "@std/net/net.ms"
 resolution	6	25	288	unknown type Bytes; add: import Bytes from "@std/bytes.ms"
-resolution	6	58	321	unknown type Duration; add: import Duration from "@std/time.ms"
-resolution	6	89	352	unknown type NetworkError; add: import NetworkError from "@std/net.ms"type DnsRecord:
+resolution	6	58	321	unknown type Duration; add: import Duration from "@std/os/time.ms"
+resolution	6	89	352	unknown type NetworkError; add: import NetworkError from "@std/net/net.ms"type DnsRecord:
     kind: DnsKind
     value: String
     priority: Int
     weight: Int
     port: Int
-resolution	2	11	26	unknown type DnsKind; add: import DnsKind from "@std/net.ms"type Optional[T]:
-    case some(value: T)
+resolution	2	11	26	unknown type DnsKind; add: import DnsKind from "@std/net/net.ms"type Optional[T]:
+    case T
     case none
 
 impl T?:
@@ -1228,7 +1228,7 @@ impl T?:
     fn ok_or[E: Error = MissingValue](cause: E? = none) Result[T, E]: ...
     fn ok_or_else[E: Error](create: fn() E) Result[T, E]: ...
 resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
-type	5	1	57	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesfn helper(left: Int, right: Int) Int:
+type	5	1	44	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesfn helper(left: Int, right: Int) Int:
     return left + right
 export fn defaults(first: Int = -3, second: Int = helper(left: first, right: 2), text: String = "literal, )", callback: fn(Int) Int = (fn(value: Int) Int:
     return value + 1
@@ -1341,7 +1341,7 @@ resolution	5	9	78	unknown case None of Optional; cases: none, some; did you mean
     if n == 0:
         return 1
     return 0
-type	2	10	28	operator operands require the same independently known type, found Int? == Int; Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f(n: Int?) Int:
+fn f(n: Int?) Int:
     return 1 + n
 type	2	14	32	operator operands require the same independently known type, found Int + Int?; Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn p() Result[Int, Error]:
     return ok(1)
@@ -1358,10 +1358,10 @@ fn f() Int:
     return [1, 2].length
 type	2	19	30	expected Int, found fn() Int (in the return value); this is a function; call it with parentheses to get its Int resultfn f() Unit:
     println("hi")
-resolution	2	5	17	unknown binding println; there is no built-in print: import stdout from "@std/io.ms" and call stdout().write("text\\n")fn f() Int:
+resolution	2	5	17	unknown binding println; there is no built-in print: import stdout from "@std/io/io.ms" and call stdout().write("text\\n")fn f() Int:
     let s = null
     return 0
-resolution	2	13	24	unknown binding null; Manuscript has no null: absence is an Optional, written none, and a present value is some(value)fn f() Int:
+resolution	2	13	24	unknown binding null; Manuscript has no null: absence is an Optional, written none, and a present value is just the value, which converts where an Optional is expectedfn f() Int:
     let x = 1
     return x()
 type	3	12	37	x is not a function (it has type Int); only functions and methods can be called, so remove the (...) or call a function insteadimport nope from "@std/faults.ms"
@@ -1375,8 +1375,8 @@ fn f() Unit:
 fn f() Int:
     let q = PriorityQueue(compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0)
     return 0
-resolution	1	8	7	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	3	13	67	unknown binding PriorityQueue; add: import PriorityQueue from "@std/queue.ms"type Choice[T]:
+resolution	1	8	7	unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?
+resolution	3	13	67	unknown binding PriorityQueue; add: import PriorityQueue from "@std/collections/queue.ms"type Choice[T]:
     case Found(value: T)
     case Missing
 fn f(c: Choice[Int], o: Int?) Int:
@@ -1414,7 +1414,7 @@ fn f() Int:
 resolution	2	19	30	unknown or ambiguous member len on String; did you mean 'length' or 'byte_length' or 'scalar_length'?fn f() Int:
     let n = "abc".foo()
     return 0
-resolution	2	19	30	unknown or ambiguous member foo on String; available: byte_length, chars, clamp, compare, concat, contains, drop, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, max, min, normalize, pad_end, pad_start, parse_float, parse_int, repeat, replace, replace_first, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, take, to_bytes, trim, trim_end, trim_start, upperfn f() String:
+resolution	2	19	30	unknown or ambiguous member foo on String; available starting with 'f': fields, fields_by, find_char; 56 members in totalfn f() String:
     return [1.5].join(separator: ",")
 fn double(n: Int) Int:
     return n * 2
@@ -1433,7 +1433,7 @@ fn f(s: S) Int:
             return 1
         other:
             return 2
-resolution	8	9	99	'other' is not a case of S; use '_' for a catch-all arm (it cannot bind a name); cases: A, Bexport type MoneyError:
+resolution	8	9	99	'other' is not a case of S; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: A, Bexport type MoneyError:
     case Invalid
 export fn parse_cents() Int: 0
 export fn format_cents() String: "0"
@@ -1497,7 +1497,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T: self.item
 fn read() Read[Int]: Box(1)
-type	6	14	97	`get` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`type E:
+type	6	22	105	cannot move `self.item` out of `self`: only a whole variable can move; take an owned copy with `self.item.clone()`type E:
     text: String
 impl Error for E:
     fn message() String: this.text
@@ -1519,7 +1519,7 @@ resolution	1	19	18	unknown binding Shape; did you mean 'shape'?type E:
 impl Error for E:
     fn message() String: self.text
 fn error_value() Error: E("bad input")
-type	4	18	60	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`fn identity(this: Int) Int: this
+type	4	31	73	cannot move `self.text` out of `self`: only a whole variable can move; take an owned copy with `self.text.clone()`fn identity(this: Int) Int: this
 fn f() Int: this
 resolution	1	13	12	unknown binding this; there is no 'this'; inside an impl method the receiver is 'self'export type Sq:
     s: Int
@@ -1550,39 +1550,39 @@ let Y = X + X
     return "a" + x.foo + x.bar()
 resolution	2	13	27	unknown binding nope; declare it with 'let nope = ...' before use, define 'fn nope(...) T:', or import it from a modulefn f(text: String) Result[JsonValue, JsonError]:
     return parse(text)
-resolution	1	27	26	unknown type JsonValue; add: import JsonValue from "@std/json.ms"
-resolution	1	38	37	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	2	12	60	unknown binding parse; add: import parse from "@std/csv.ms"type Request:
+resolution	1	27	26	unknown type JsonValue; add: import JsonValue from "@std/data/json.ms"
+resolution	1	38	37	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	2	12	60	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     return parse[Request](text)
-resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	4	12	90	unknown binding parse; add: import parse from "@std/csv.ms"type Request:
+resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	4	12	90	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     return parse(text)
-resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	4	12	90	unknown binding parse; add: import parse from "@std/csv.ms"type Request:
+resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	4	12	90	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     let request = try parse[Request](text)
     return ok(request)
-resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	4	23	101	unknown binding parse; add: import parse from "@std/csv.ms"type Request:
+resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	4	23	101	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     let request: Request = try parse(text)
     return ok(request)
-resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	4	32	110	unknown binding parse; add: import parse from "@std/csv.ms"fn f[T](text: String) Result[T, JsonError]:
+resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	4	32	110	unknown binding parse; add: import parse from "@std/data/csv.ms"fn f[T](text: String) Result[T, JsonError]:
     return parse[T](text)
-resolution	1	33	32	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	2	12	55	unknown binding parse; add: import parse from "@std/csv.ms"type Request:
+resolution	1	33	32	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	2	12	55	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     callback: fn() Int
 fn f(text: String) Result[Request, JsonError]:
     return parse[Request](text)
-resolution	3	36	72	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	4	12	95	unknown binding parse; add: import parse from "@std/csv.ms"type Expr:
+resolution	3	36	72	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	4	12	95	unknown binding parse; add: import parse from "@std/data/csv.ms"type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
     case Neg(inner: Expr?)
@@ -1710,8 +1710,8 @@ resolution	1	36	35	unknown type Bytes; add: import Bytes from "@std/bytes.ms"ty
     let x = parse	2	13	30	expected an expression, found end of line; write a value, name, call, or literal heretype Box[T]:
     value: T
 fn f() Unit:
-    let x = some(some(none))
-type	2	23	35	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f(value: Int?) Int: return value.get()
+    let x = none
+type	2	13	25	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f(value: Int?) Int: return value.get()
 fn call() Int: return f(4)
 fn call[T](operation: fn() T) T:
     return operation()
@@ -1729,7 +1729,7 @@ type	9	19	243	local binding e is never read; remove it, use it, or name it with 
     value: Int
 fn identity[T](value: T) T: value
 fn use() Unit: ...
-    let v%d = identity(some(%d))
+    let v%d = identity(%d)
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it    let v%d = value.f%d
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn f0[T](value: T) T: value
 fn f%d[T](value: T) T: f%d(f%d(value))
@@ -1741,11 +1741,11 @@ fn apply(callback: fn(Int) Int, input: Int) Int: callback(input)
 fn run() Unit:
     let ignored = parse	3	19	34	expected an expression, found end of line; write a value, name, call, or literal herefn one() Int:
     return 1
-import TomlValue from "@std/toml.ms"
+import TomlValue from "@std/data/toml.ms"
 fn one() Int:
     return 1
-import TomlValue from "@std/toml.ms"
-import YamlValue from "@std/yaml.ms"
+import TomlValue from "@std/data/toml.ms"
+import YamlValue from "@std/data/yaml.ms"
 fn one() Int:
     return 1
 type Key:
@@ -1754,7 +1754,7 @@ impl Equal for Key:
     fn equals(other: Equal) Bool: return true
 fn keys() Map[Key, Int]: return Map[Key, Int]()
 type	4	8	49	implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) Bool
-type	5	33	120	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itimport TestHooks from "@std/test.ms"
+type	5	33	120	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itimport TestHooks from "@std/test/test.ms"
 type State:
     value: Int
 impl TestHooks for State:
@@ -1764,7 +1764,7 @@ test "reads fixture":
     let value: Int = fixture.value
 resolution	2	19	44	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	2	1	26	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	3	12	62	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a module
 resolution	5	22	121	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileimpl TestHooks for State:
     fn before_each() Unit:
@@ -1776,7 +1776,7 @@ test "closure captures fixture":
     let value: Int = read()
 resolution	4	19	107	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	4	1	89	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	4	1	89	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	5	12	125	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a module
 resolution	7	26	199	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileimpl TestHooks for State:
     fn before_each(value: Int) Unit:
@@ -1787,7 +1787,7 @@ test "test":
     return
 resolution	4	19	96	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	4	1	78	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	4	1	78	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	5	12	114	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a moduleimpl TestHooks for State:
 fn make_fixture(value: Int) State:
     return State(value)
@@ -1809,15 +1809,15 @@ fn make_fixture() TestHooks:
     return State(1)
 test "test":
     return
-resolution	2	19	44	unknown type TestHooks; add: import TestHooks from "@std/test.ms"
+resolution	2	19	44	unknown type TestHooks; add: import TestHooks from "@std/test/test.ms"
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	2	1	26	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	3	12	66	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a modulefn make_fixture() State:
     return State(1)
 test "test":
     return
 resolution	1	19	18	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	1	1	0	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	1	1	0	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	2	12	36	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a moduleimpl TestHooks for State:
 fn make_fixture() State:
     return State(fixture.value)
@@ -1825,7 +1825,7 @@ test "test":
     return
 resolution	2	19	44	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	2	1	26	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	3	12	62	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a moduletest "test":
     let value = fixture.value
 resolution	2	17	29	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileinterface TestHooks:
@@ -1839,7 +1839,7 @@ fn make_fixture() State:
     return State(1)
 test "test":
     return
-type	8	1	138	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for itlet alias = b
+type	8	1	138	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for itlet alias = b
     resolution	1	13	12	unknown binding b; declare it with 'let b = ...' before use, define 'fn b(...) T:', or import it from a modulelet read = fn() String: b.freeze()
     type	1	12	11	a constant takes literals, operators, collections, and other constants; compute this value in a functionlet read = fn(value: String = b.freeze()) String: value
     type	1	12	11	a constant takes literals, operators, collections, and other constants; compute this value in a functionlet frozen = b.freeze()
@@ -1878,8 +1878,8 @@ resolution	1	28	27	unknown type Bytes; add: import Bytes from "@std/bytes.ms"fn
         return ok(4)
     )parse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let value = choose(first: fn():
         if true: return none
-        return some(1)
-    , second: fn(): some(2))parse	2	9	40	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let value = choose(first: fn():
+        return 1
+    , second: fn(): 2)parse	2	9	40	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let value = choose(first: fn():
         let value = try checked()
         return Result[Int, TextError].ok(value)
     , second: fn(): ok(4))parse	2	9	40	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let offset = 7
@@ -1960,11 +1960,11 @@ fn wrong() Unit:
 resolution	3	35	94	unknown or non-nullary alternative case Sha257 of HashAlgorithm; cases: Md5, Sha1, Sha224, Sha256, Sha384, Sha3_256, Sha3_384, Sha3_512, Sha512 (cases with payloads need call syntax)import CompressionFormat from "@std/compress.ms"
 fn wrong() Unit:
     let format = CompressionFormat.GZip
-resolution	1	8	7	unknown standard module @std/compress.ms
-resolution	3	18	83	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"import ArchiveFormat from "@std/archive.ms"
+resolution	1	8	7	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
+resolution	3	18	83	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"import ArchiveFormat from "@std/io/archive.ms"
 fn wrong() Unit:
     let format = ArchiveFormat.TAR
-resolution	3	32	92	unknown or non-nullary alternative case TAR of ArchiveFormat; cases: Tar, Zip (cases with payloads need call syntax)import HashAlgorithm from "@std/crypto.ms"
+resolution	3	32	95	unknown or non-nullary alternative case TAR of ArchiveFormat; cases: Tar, Zip (cases with payloads need call syntax)import HashAlgorithm from "@std/crypto.ms"
 fn choose(algorithm: HashAlgorithm) Unit:
     return unit
 fn wrong() Unit:
@@ -1975,29 +1975,29 @@ fn choose(algorithm: HashAlgorithm) Unit:
     return unit
 fn wrong() Unit:
     choose(CompressionFormat.Gzip)
-resolution	2	8	50	unknown standard module @std/compress.ms
-resolution	6	12	178	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"type Other:
+resolution	2	8	50	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
+resolution	6	12	178	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"type Other:
     case OutOfRange
 fn other() Other: Other.OutOfRange
 fn standard() CollectionError: CollectionError.OutOfRange
 fn recognize(value: Other) Int:
     match value:
         OutOfRange: return 1
-import ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries from "@std/collections.ms"
+import ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries from "@std/collections/collections.ms"
 import ErrorCategory, TextError, category from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 fn bytes() Bytes: Bytes([1])
 fn build() List[Int]: ListBuilder[Int]().freeze()
 fn text_error(message: String) TextError: TextError(message)
-resolution	1	8	7	module does not export ListBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'
-resolution	1	21	20	module does not export MapBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'
-resolution	1	33	32	module does not export SetBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'
-resolution	2	8	103	unknown standard module @std/errors.ms
-resolution	2	23	118	unknown standard module @std/errors.ms
-resolution	2	34	129	unknown standard module @std/errors.ms
-resolution	6	32	304	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	5	23	245	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a module
-resolution	6	43	315	unknown binding TextError; did you mean 'text_error'?type Other:
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	21	20	module does not export MapBuilder; @std/collections/collections.ms exports: CollectionError, List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	33	32	module does not export SetBuilder; @std/collections/collections.ms exports: CollectionError, List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	2	8	115	unknown standard module @std/errors.ms
+resolution	2	23	130	unknown standard module @std/errors.ms
+resolution	2	34	141	unknown standard module @std/errors.ms
+resolution	6	32	316	unknown type TextError; add: import TextError from "@std/core.ms"
+resolution	5	23	257	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a module
+resolution	6	43	327	unknown binding TextError; did you mean 'text_error'?type Other:
     case OutOfRange
 fn get() Other: OutOfRange
 resolution	3	17	48	ambiguous alternative case OutOfRange; qualify it with its type, e.g. Type.OutOfRangetype ListEntry[T]:
@@ -2023,7 +2023,7 @@ export type CollectionError:
     message: String
 resolution	1	8	7	declaration Map reuses a prelude name; rename it, because Map always refers to the standard declaration
 resolution	3	8	43	declaration MapEntry reuses a prelude name; rename it, because MapEntry always refers to the standard declaration
-resolution	5	8	84	declaration CollectionError reuses a prelude name; rename it, because CollectionError always refers to the standard declarationimport List, Map, Set from "@std/collections.ms"
+resolution	5	8	84	declaration CollectionError reuses a prelude name; rename it, because CollectionError always refers to the standard declarationimport List, Map, Set from "@std/collections/collections.ms"
 fn get() Int: List[Int]().length()+Map[Int,Int]().length()+Set[Int]().length()
 resolution	1	8	7	redundant prelude import List; remove List from this import and use its prelude declaration directly
 resolution	1	14	13	redundant prelude import Map; remove Map from this import and use its prelude declaration directly
@@ -2043,9 +2043,9 @@ fn get() Other: Missing(1)
 resolution	3	17	57	ambiguous alternative case Missing; qualify it with its type, e.g. Type.Missingimport compress, CompressionFormat, CompressionError from "@std/compress.ms"
 import Bytes from "@std/bytes.ms"
 fn forward[T](item: T) T: item
-resolution	1	8	7	unknown standard module @std/compress.ms
-resolution	1	18	17	unknown standard module @std/compress.ms
-resolution	1	37	36	unknown standard module @std/compress.mslet encode = forward(compress)
+resolution	1	8	7	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
+resolution	1	18	17	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
+resolution	1	37	36	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?let encode = forward(compress)
     encode("".to_bytes(), "gzip")parse	2	5	35	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode: fn(data: Bytes, format: String, level: Int, max_bytes: Int?) Result[Bytes, CompressionError] = compress
     encode("".to_bytes(), "gzip")parse	2	5	120	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode = forward(CompressionFormat.Gzip.compress)
     encode("".to_bytes())parse	2	5	58	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode: fn(data: Bytes, level: Int, max_bytes: Int?) Result[Bytes, CompressionError] = CompressionFormat.Gzip.compress
@@ -2058,15 +2058,15 @@ fn explicit() Unit:
     CompressionFormat.Gzip.compress(data, 6)
     CompressionFormat.Zlib.compress(data, 0, max_bytes: none)
     CompressionFormat.Deflate.compress(data, 9, max_bytes: 100)
-resolution	1	8	7	unknown standard module @std/compress.ms
-resolution	1	18	17	unknown standard module @std/compress.ms
-resolution	4	5	112	unknown binding compress; add: import compress from "@std/archive.ms"
-resolution	5	5	142	unknown binding compress; add: import compress from "@std/archive.ms"
-resolution	6	5	189	unknown binding compress; add: import compress from "@std/archive.ms"
-resolution	7	5	238	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"
-resolution	8	5	283	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"
+resolution	1	8	7	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
+resolution	1	18	17	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
+resolution	4	5	112	unknown binding compress; add: import compress from "@std/io/archive.ms"
+resolution	5	5	142	unknown binding compress; add: import compress from "@std/io/archive.ms"
+resolution	6	5	189	unknown binding compress; add: import compress from "@std/io/archive.ms"
+resolution	7	5	238	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"
+resolution	8	5	283	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"
 type	8	57	335	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding
-resolution	9	5	345	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"let initial = Mode.Idle
+resolution	9	5	345	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"let initial = Mode.Idle
 
 type Mode:
     case Idle
@@ -2106,7 +2106,7 @@ resolution	3	39	112	unknown type TextError; add: import TextError from "@std/cor
 resolution	3	57	130	unknown binding TextError; add: import TextError from "@std/core.ms"
 resolution	10	30	443	unknown binding panic; add: import panic from "@std/core.ms"fn first() Unit:
     let result: Result[Int, TextError] = fail("empty")resolution	2	29	45	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	2	42	58	unknown binding fail; add: import fail from "@std/test.ms"fn first() Unit:
+resolution	2	42	58	unknown binding fail; add: import fail from "@std/test/test.ms"fn first() Unit:
     let callback: fn() Int? = fn: absent()resolution	2	35	51	unknown binding absent; declare it with 'let absent = ...' before use, define 'fn absent(...) T:', or import it from a modulefn failed[T]() Result[T, Failure]: error(Failure("empty"))
 fn first() Result[Int, Error]: failed()resolution	1	26	25	unknown type Failure; declare it with 'type Failure:' / 'interface Failure:', declare it as a type parameter, or import it
 resolution	1	42	41	unknown binding Failure; did you mean 'failed'?
@@ -2128,21 +2128,16 @@ fn first() Unit:
     callback()resolution	3	33	84	unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...) T:', or import it from a module
 type	5	5	157	missing argument _0: Int in call to callback; add '_0: <Int>'fn first() Unit:
     let value: fn(String) Result[Int, TextError] = failresolution	2	39	55	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	2	52	68	unknown binding fail; add: import fail from "@std/test.ms"fn cause(value: Int) String: "cause"
+resolution	2	52	68	unknown binding fail; add: import fail from "@std/test/test.ms"fn cause(value: Int) String: "cause"
 fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)type	2	61	97	callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest
-type	2	50	86	String does not satisfy Error; pass a type that already implements it
-type	2	61	97	expected fn() String, found fn(Int) String (in argument 'create' of value.ok_or_else)
-type	2	1	37	String does not satisfy Error; use a type that implements itfn check(value: Int, key: String) Bool: true
+type	2	61	97	expected fn() String, found fn(Int) String (in argument 'create' of value.ok_or_else)fn check(value: Int, key: String) Bool: true
 fn wrong(value: Map[String, Int]) Bool: value.every(check)resolution	2	47	91	unknown or ambiguous member every on Map[String, Int]; every(predicate) is now all(predicate)type Optional[T]:
-    case some(value: T)
+    case T
     case none
-fn wrong(value: Int?) Result[Int, String]: value.ok_or("missing")resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
-type	4	50	105	String does not satisfy Error; pass a type that already implements it
-type	4	1	56	String does not satisfy Error; use a type that implements ittype Result[T, E]:
+fn wrong(value: Int?) Result[Int, String]: value.ok_or("missing")resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declarationtype Result[T, E]:
     case ok(value: T)
     case error(cause: E)
-fn wrong(value: Result[Int, String]) Int?: value.to_optional()resolution	1	1	0	declaration Result reuses a prelude name; rename it, because Result always refers to the standard declaration
-type	4	1	66	String does not satisfy Error; use a type that implements itfn f() Int:
+fn wrong(value: Result[Int, String]) Int?: value.to_optional()resolution	1	1	0	declaration Result reuses a prelude name; rename it, because Result always refers to the standard declarationfn f() Int:
     var x: Int = 1
     x += try 3
     return x
@@ -2152,8 +2147,7 @@ type	4	1	66	String does not satisfy Error; use a type that implements itfn f() 
     let output = value.filter(fn k, n: n)type	2	40	79	expected Bool, found Int (in the return value)type Result[T, E]:
     case ok(value: T)
     case error(cause: E)
-fn wrong(value: Result[Int, String]) Int: value.get()resolution	1	1	0	declaration Result reuses a prelude name; rename it, because Result always refers to the standard declaration
-type	4	1	66	String does not satisfy Error; use a type that implements itfn identity(n: Int) Int: return n
+fn wrong(value: Result[Int, String]) Int: value.get()resolution	1	1	0	declaration Result reuses a prelude name; rename it, because Result always refers to the standard declarationfn identity(n: Int) Int: return n
 fn identity[T](n: T) T: return n
 fn identity(n: Int = 0) Int: return n
 fn identity(n: Int) Int: return n + 1
@@ -2228,14 +2222,14 @@ type	3	17	46	recursive generic applications must preserve their parameters; a ty
     fn read() Int:
 parse	2	5	17	a type declares only fields or cases; write its methods in an 'impl Handle:' block, or implement an interface with 'impl <Interface> for Handle:'fn wrong() String:
     let convert = unescape
-    return convert(value: "&amp;")resolution	2	19	37	unknown binding unescape; add: import unescape from "@std/html.ms"fn identity[T](value: T) T: value
-fn first() Int: ... type	2	1	34	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)let x = match some(0):
-            some(n):
+    return convert(value: "&amp;")resolution	2	19	37	unknown binding unescape; add: import unescape from "@std/data/html.ms"fn identity[T](value: T) T: value
+fn first() Int: ... type	2	1	34	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)let x = match 0:
+            n:
                 sum = start
                 n
             none: 0
         sum += i
-        i += 1parse	2	13	35	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn identity[T](value: T) T: return value
+        i += 1parse	2	13	29	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn identity[T](value: T) T: return value
 fn effect(value: Int) Int: return value + 1
 fn probe(start: Int, flag: Bool) Int: ...
     type	3	1	85	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)fn identity[T](value: T) T: return value
@@ -2327,7 +2321,7 @@ fn probe() Int:
     let values = [fn() Int: 1]
     return values.distinct().length()resolution	3	19	65	unknown or ambiguous member distinct on List[fn() Int]; distinct requires fn() Int to be Equal; fn() Int does not satisfy Equal; use a type that implements itfn wrong() List[Int]:
     let copy = [1].METHOD
-    return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export interface Read[T]:
+    return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...export interface Read[T]:
     fn get() T
 export type Box[T]:
     value: T
@@ -2390,11 +2384,11 @@ export type Box[T: Read]:
         let child = fn() Int:
             let grandchild = fn() Int: values.length()
             return grandchild()
-        return child()parse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let size = match some(1):
-        some(n):
+        return child()parse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let size = match 1:
+        n:
             values.add(n, n)
             values.get(n).get()
-        none: values.length()parse	2	9	34	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let callback = fn() Int:
+        none: values.length()parse	2	9	28	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let callback = fn() Int:
         let values = Map[Int, Int]()
         values.add(1, 2)
         return values.get(1).get()parse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn consume(values: Map[Int, Int]) Unit: unit
@@ -2424,8 +2418,8 @@ fn probe() Int:
     return number
 type	3	5	77	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change it
 type	3	16	88	`key` is moved here but used again at 4:23; a value has one owner, so pass `key.clone()` to keep the original, or move it only at its last usevar i = 0
-    let captured = match some(0):
-        some(n):
+    let captured = match 0:
+        n:
             i = start
             n
         none: 0parse	2	5	14	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn probe(start: Int, flag: Bool) Unit: ...
@@ -2492,8 +2486,8 @@ fn probe() Int:
     return area(shapes.get(0))
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itexport interface Tag:
     fn tag() Int
-import stdout from "@std/io.ms"
-import File from "@std/io.ms"
+import stdout from "@std/io/io.ms"
+import File from "@std/io/io.ms"
 import Queue from "@std/queues.ms"
 interface Read:
     fn get() Int
@@ -2502,7 +2496,7 @@ type Val:
 impl Read for Val:
     fn get() Int:
         return self.val
-resolution	3	8	69	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?fn f(value: Val) Unit:
+resolution	3	8	75	unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?fn f(value: Val) Unit:
     value.val = true
 resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	33	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f(value: Val) Unit:
@@ -2539,16 +2533,16 @@ resolution	2	13	35	unknown binding Val; declare it with 'let Val = ...' before u
 resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	33	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f() Unit:
     stdout().clone()
-resolution	2	5	17	unknown binding stdout; add: import stdout from "@std/io.ms"fn f(file: File) Unit:
+resolution	2	5	17	unknown binding stdout; add: import stdout from "@std/io/io.ms"fn f(file: File) Unit:
     file.clone()
-resolution	1	12	11	unknown type File; add: import File from "@std/io.ms"import Network from "@std/net.ms"
+resolution	1	12	11	unknown type File; add: import File from "@std/io/io.ms"import Network from "@std/net/net.ms"
 fn f(socket: Network) Unit:
     socket.clone()
-resolution	3	12	73	unknown or ambiguous member clone on Network; did you mean 'close'?; available: bind_datagram, close, connect, connect_tls, connect_tls_config, connect_unix, http_client, listen, listen_tls, listen_unix, lookup, request, request_bytes, resolve, restrict, serve, serve_connections, web_socket, with_resolverfn f(queue: Queue[Int]) Unit:
+resolution	3	12	77	unknown or ambiguous member clone on Network; did you mean 'close'?; available: bind_datagram, close, connect, connect_tls, connect_tls_config, connect_unix, http_client, listen, listen_tls, listen_unix, lookup, request, request_bytes, resolve, restrict, serve, serve_connections, web_socket, with_resolverfn f(queue: Queue[Int]) Unit:
     queue.clone()
-resolution	1	13	12	unknown type Queue; add: import Queue from "@std/queue.ms"fn f(queue: Queue[Int]) Unit:
+resolution	1	13	12	unknown type Queue; add: import Queue from "@std/collections/queue.ms"fn f(queue: Queue[Int]) Unit:
     queue.capacity = 1
-resolution	1	13	12	unknown type Queue; add: import Queue from "@std/queue.ms"
+resolution	1	13	12	unknown type Queue; add: import Queue from "@std/collections/queue.ms"
 type	2	11	40	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn number(value: Int?) Int: return value.get()
 fn call() Int: return type	2	16	62	bare return requires Unit; this function returns Int, so write 'return <value>'fn f(value: Int?) Unit: return
 fn call() Unit: f("wrong")
@@ -2563,8 +2557,8 @@ fn call() Unit: f()
 fn f(value: Int??) Unit: return
 fn call() Unit: f(4)
 type	2	19	50	expected Int??, found Int (in argument 'value' of f)fn f(value: Int) Unit: return
-fn call() Unit: f(some(value: 4))
-type	2	19	48	expected Int, found Int? (in argument 'value' of f); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f(value: Float?) Unit: return
+fn call() Unit: f(4)
+fn f(value: Float?) Unit: return
 fn call(value: Int?) Unit: f(value)
 type	2	30	62	expected Float?, found Int? (in argument 'value' of f)fn f[T](first: T?, second: T) Unit: return
 fn call() Unit: f(first: 4, second: "wrong")
@@ -2583,7 +2577,7 @@ fn call() Unit: f(other: 4)
 type	2	19	49	unknown argument other; parameters of f: valuefn f(value: Int?) Unit: return
 fn call() Unit: f(4, value: 5)
 type	2	22	52	duplicate argument value; pass each argument oncetype Optional[T]:
-    case some(value: T)
+    case T
     case none
 fn f(value: Int?) Unit: return
 fn call() Unit: f(4)
@@ -2593,9 +2587,8 @@ fn call() Unit: f(4)
     return value.get()
 type	2	18	45	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn wrong(value: Result[Int, String]) Bool:
     return value.is_some()
-resolution	2	18	60	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optional
-type	1	1	0	String does not satisfy Error; use a type that implements ittype Optional[T]:
-    case some(value: T)
+resolution	2	18	60	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optionaltype Optional[T]:
+    case T
     case none
 fn wrong(value: Int?) Int:
     return value.get()
@@ -2614,16 +2607,15 @@ fn broken(
     let missing = none
 type	2	19	31	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f() Unit:
     let result = ok(value: 1)
-type	2	18	30	cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the binding
-type	2	18	30	<invalid> does not satisfy Error; use a type that implements itfn f() Unit:
+type	2	18	30	cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f() Unit:
     let result = error(cause: "failed")
-type	2	18	30	error(...) needs a value that implements Error, not a String; to fail a test write `try fail("message")` (from @std/test.ms), otherwise wrap the message in a type that implements Errorfn f() Error:
+type	2	18	30	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f() Error:
     return "failed"
 type	2	12	25	expected Error, found String (in the return value); use a concrete value implementing Errortype Other:
-    case some(value: Int)
+    case Int
 fn f() Int?:
-    return some(value: 1)
-resolution	4	12	62	ambiguous alternative case some; qualify it with its type, e.g. Type.somefn use() Int:
+    return 1
+fn use() Int:
     let nested: List[List[Int]] = [[], [1]]
     let empty: Map[String, Int] = {}
     return Map[String, Int]().add("a", nested[1][0]).get("a").get()
@@ -2663,11 +2655,11 @@ fn f(m: Map[String,Int]) Unit:
     m.add("a", 1)
 resolution	1	1	0	declaration Map reuses a prelude name; rename it, because Map always refers to the standard declarationfn f(m: Map[Int,Int]) Unit:
     m.add(1)
-type	2	7	34	missing argument value: Int in call to m.add; add 'value: <Int>'import Map from "@std/collections.ms"
+type	2	7	34	missing argument value: Int in call to m.add; add 'value: <Int>'import Map from "@std/collections/collections.ms"
 type Map[K,V]:
     value: V
 resolution	1	8	7	redundant prelude import Map; remove Map from this import and use its prelude declaration directly
-resolution	2	1	38	declaration Map reuses a prelude name; rename it, because Map always refers to the standard declarationfn f(values: Set[Int]) Unit:
+resolution	2	1	50	declaration Map reuses a prelude name; rename it, because Map always refers to the standard declarationfn f(values: Set[Int]) Unit:
     values.add(true)
 type	2	16	44	expected Int, found Bool (in argument 'value' of values.add)fn f(values: Set[List[Int]]) Unit:
     return
@@ -2677,11 +2669,11 @@ fn f(values: Set[Int]) Unit:
     values.add(1)
 resolution	1	1	0	declaration Set reuses a prelude name; rename it, because Set always refers to the standard declarationfn f() Unit:
     let values = Set()
-type	2	18	30	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingimport Set from "@std/collections.ms"
+type	2	18	30	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingimport Set from "@std/collections/collections.ms"
 type Set[T]:
     value: T
 resolution	1	8	7	redundant prelude import Set; remove Set from this import and use its prelude declaration directly
-resolution	2	1	38	declaration Set reuses a prelude name; rename it, because Set always refers to the standard declarationtype Optional:
+resolution	2	1	50	declaration Set reuses a prelude name; rename it, because Set always refers to the standard declarationtype Optional:
     value: Int
 resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declarationtype Map[K, V]:
     value: V
@@ -2692,8 +2684,8 @@ resolution	2	1	38	declaration Set reuses a prelude name; rename it, because Set 
 resolution	1	1	0	declaration ListEntry reuses a prelude name; rename it, because ListEntry always refers to the standard declarationinterface Equal:
     fn same() Bool
 resolution	1	1	0	declaration Equal reuses a prelude name; rename it, because Equal always refers to the standard declarationfn List(value: Int) Int: value
-resolution	1	1	0	declaration List reuses a prelude name; rename it, because List always refers to the standard declarationfn some(value: Int) Int: value
-resolution	1	1	0	declaration some reuses a prelude constructor name; rename it, because some always refers to the prelude casefn ok(value: Int) Int: value
+resolution	1	1	0	declaration List reuses a prelude name; rename it, because List always refers to the standard declarationfn Int Int: value
+parse	1	8	7	expected '(', found name 'Int'; a call or parameter list starts with '('fn ok(value: Int) Int: value
 resolution	1	1	0	declaration ok reuses a prelude constructor name; rename it, because ok always refers to the prelude casefn none() Int: 1
 resolution	1	1	0	declaration none reuses a prelude constructor name; rename it, because none always refers to the prelude casefn error(value: Int) Int: value
 resolution	1	1	0	declaration error reuses a prelude constructor name; rename it, because error always refers to the prelude caseexport type List[T]:
@@ -2716,8 +2708,8 @@ resolution	2	1	38	declaration Set reuses a prelude name; rename it, because Set 
         visits.append(1)
         return line.is_some()
     return falseparse	2	9	40	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn probe(input: ReadStream, visits: List[Int]) Bool: ...
-    resolution	1	17	16	unknown type ReadStream; add: import ReadStream from "@std/io.ms"
-type	1	1	0	reachable fallthrough in function returning Bool; end every path with 'return <Bool>' (or make the last branch return)import read_line, ReadStream from "@std/io.ms"
+    resolution	1	17	16	unknown type ReadStream; add: import ReadStream from "@std/io/io.ms"
+type	1	1	0	reachable fallthrough in function returning Bool; end every path with 'return <Bool>' (or make the last branch return)import read_line, ReadStream from "@std/io/io.ms"
 fn probe(input: ReadStream) Bool:
     let next = read_line
     if let line = next(input):
@@ -2889,8 +2881,7 @@ type	2	38	92	Error does not satisfy Equal; pass a type that already implements i
 fn first() Unit: domain(f())resolution	1	27	26	unknown type E2; declare it with 'type E2:' / 'interface E2:', declare it as a type parameter, or import it
 type	2	18	61	cannot infer type argument T for domain; write domain[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 resolution	2	25	68	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn same[T, E: Error](first: Result[T, E], second: Result[T, E]) Unit: return
-fn first() Unit: same(first: f(), second: other())type	2	18	94	cannot infer type argument T for same; write same[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
-type	2	18	94	cannot infer type argument E for same; write same[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter
+fn first() Unit: same(first: f(), second: other())type	2	18	94	cannot infer type arguments T, E for same; write same[T, E](...) with explicit types for T, E; call arguments and the expected result must determine every type parameter
 resolution	2	30	106	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module
 resolution	2	43	119	unknown binding other; declare it with 'let other = ...' before use, define 'fn other(...) T:', or import it from a modulefn values[T](r: List[Result[T, Error]]) Unit: return
 fn first() Unit: values([f()])type	2	18	70	cannot infer type argument T for values; write values[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
@@ -2906,8 +2897,7 @@ impl Read for E1:
 fn read[T](r: Result[T, Read]) Unit: return
 fn first() Unit: read(f())resolution	3	15	47	unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it
 type	6	18	140	cannot infer type argument T for read; write read[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
-resolution	6	23	145	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module
-type	5	1	79	Read does not satisfy Error; use a type that implements ittype Cause:
+resolution	6	23	145	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a moduletype Cause:
     text: String
 impl Error for Cause:
     fn message() String: self.text
@@ -2921,7 +2911,7 @@ fn wrapped(n: Int) Result[Int, Cause]:
 fn twice(n: Int) Result[Int, Cause]:
     let value = try wrapped(n)
     return ok(value)
-type	4	18	68	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`let alias = affine
+type	4	31	81	cannot move `self.text` out of `self`: only a whole variable can move; take an owned copy with `self.text.clone()`let alias = affine
     resolution	1	13	12	unknown binding affine; declare it with 'let affine = ...' before use, define 'fn affine(...) T:', or import it from a modulefn probe(value: Int) Int: ...
     type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)var sum = 0
     var i = 0
@@ -2943,8 +2933,8 @@ resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' befo
 resolution	1	31	30	unknown type Cause; declare it with 'type Cause:' / 'interface Cause:', declare it as a type parameter, or import it
 resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' before use, define 'fn Cause(...) T:', or import it from a modulefn affine(n: Int) Result[Int, Cause]:
     if n < 0:
-        return error(Cause(match some(n):
-            some(value):
+        return error(Cause(match n:
+            value:
                 return ok(9223372036854775807)
             none: "negative"
         ))
@@ -2958,7 +2948,7 @@ resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' befo
     text: String
 impl Error for Cause:
     fn message() String: self.text
-type	4	18	68	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`fn probe() Int:
+type	4	31	81	cannot move `self.text` out of `self`: only a whole variable can move; take an owned copy with `self.text.clone()`fn probe() Int:
     var sum = 0
     var i = -1
     while i < 1000:
@@ -3027,8 +3017,7 @@ fn f() Result[Int, Error]:
 fn f() Result[Int, Error]:
     try operation()
     return ok(1)
-type	1	35	34	Int does not satisfy Error; use a type that implements it
-type	3	5	74	try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for itfn operation() Result[Unit, Error]: ok(unit)
+type	3	5	74	try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for itfn operation() Result[Unit, Error]: ok(unit)
 fn f() Unit:
     try operation()
 type	3	5	62	try requires an enclosing Result; declare this function to return Result[T, E], or use 'if let', '.get(default)', or '.get()'fn operation() Unit: unit
@@ -3232,14 +3221,18 @@ fn work(counter: Counter) List[Int]:
     var value = 1
     return [
         value, counter.value, counter.value, advance(counter), value,
-        match some(2):
-            some(number):
+        match 2:
+            number:
                 value = number
                 advance(counter)
             none: 0
         , value, counter.value, advance(counter)
     ]
-type	5	13	76	cannot change `counter.value`: parameter `counter` is not declared var; write `var counter: <Type>` in the signature and pass `var` at every callexport let LIMIT = 10
+type	13	13	280	a match on Int takes literal arms such as 1, "text" or true, and a final '_:' arm; to bind or compare computed values use if/else
+type	13	13	280	a literal arm has no payload to bind
+resolution	14	25	312	unknown binding number; declare it with 'let number = ...' before use, define 'fn number(...) T:', or import it from a module
+type	16	13	364	a match on Int takes literal arms such as 1, "text" or true, and a final '_:' arm; to bind or compare computed values use if/else
+type	12	9	259	non-exhaustive match on Int; add a final '_:' armexport let LIMIT = 10
 let NAMES: List[String] = ["a"]
 fn f(record: Box) Int:
     var total = 12
@@ -3252,11 +3245,12 @@ let NAMES: List[String] = ["a"]
     return 0
 type	2	5	31	non-exhaustive match on String; add a final '_:' armfn f(r: Result[Int?, String]) Int:
     match r:
-        ok(some(n)): return n
+        ok(n): return n
     return 0
-parse	3	16	63	patterns cannot be nested; bind the outer payload, then handle it in a separate match or helper functionfn f() String: "é \{1 + * 2\}"
+type	3	23	70	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match
+type	2	5	39	non-exhaustive match; missing cases: error, or add a final '_:' arm; add the arms 'case error(cause):'fn f() String: "é \{1 + * 2\}"
 export fn commands() Commands: ...
-resolution	1	22	21	unknown type Commands; add: import Commands from "@std/process.ms"export type Duration: ...
+resolution	1	22	21	unknown type Commands; add: import Commands from "@std/os/process.ms"export type Duration: ...
 type List[T]: ...
 impl List[T]:
     fn map[U](transform: fn(T) U) List[U]: ...
@@ -3264,11 +3258,11 @@ impl List[T]:
 resolution	1	1	0	declaration List reuses a prelude name; rename it, because List always refers to the standard declaration
 type	2	1	18	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typestype Optional[T]:
     case none
-    case some(value: T)
+    case T
 impl T?:
     fn get() T: ...
 resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
-type	4	1	56	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typestype Counter:
+type	4	1	43	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typestype Counter:
     value: Int
 impl Counter:
     fn double() Int:
@@ -3523,7 +3517,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T:
         return self.value
-type	6	14	112	`get` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`type Read:
+type	7	21	135	cannot move `self.value` out of `self`: only a whole variable can move; take an owned copy with `self.value.clone()`type Read:
     fn get() Int
 parse	2	5	15	a type declares only fields or cases; write its methods in an 'impl Read:' block, or implement an interface with 'impl <Interface> for Read:'interface Read:
     value: Int
@@ -3584,11 +3578,11 @@ type	4	34	127	expected fn() Unit, found fn() Int (in entry 2 of the literal, who
 parse	2	14	26	only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a functionfn f() Unit:
     let value = parse	2	17	29	expected an expression, found end of line; write a value, name, call, or literal herefn f(x: Int?) Result[Unit, Error]:
     match x:
-        some(n):
+        n:
             try g(n)
             return ok(unit)
         none: return ok(unit)
-resolution	4	17	81	unknown binding g; declare it with 'let g = ...' before use, define 'fn g(...) T:', or import it from a module} from "./module.ms"
+resolution	4	17	75	unknown binding g; declare it with 'let g = ...' before use, define 'fn g(...) T:', or import it from a module} from "./module.ms"
 fn broken(
 parse	1	1	0	unmatched closing delimiter '}'; remove it or add the matching opener before itlet values = [
 parse	2	1	15	unterminated delimiter '[' opened at line 1:14; add the matching ']' before the end of the file]
@@ -3651,11 +3645,11 @@ fn valid() Int:
 import (
 ListBuilder,
 MapBuilder,
-) from "@std/collections.ms"
+) from "@std/collections/collections.ms"
 fn broken(
 fn later() Int:
     return 2
-parse	10	1	132	unterminated delimiter '(' opened at line 7:10; add the matching ')' before the end of the filefn broken(
+parse	10	1	144	unterminated delimiter '(' opened at line 7:10; add the matching ')' before the end of the filefn broken(
 fn later(first: Int = 3, second: Int = first + 1) Int:
     return second
 parse	4	1	84	unterminated delimiter '(' opened at line 1:10; add the matching ')' before the end of the file# prefix
@@ -3678,12 +3672,12 @@ fn later() Int:
 parse	18	1	204	unterminated delimiter '(' opened at line 15:10; add the matching ')' before the end of the filefn broken(
 fn later(values: List[Int]) Int:
     let result = match values[0]:
-        some(number):
+        number:
             let doubled = number * 2
             doubled
         none: return 0
     return result
-parse	9	1	198	unterminated delimiter '(' opened at line 1:10; add the matching ')' before the end of the filefn broken(
+parse	9	1	192	unterminated delimiter '(' opened at line 1:10; add the matching ')' before the end of the filefn broken(
 fn later(values: List[Int]) Unit:
     let field = values[holder . index]
     let nested = values[indices[index]]
@@ -3752,7 +3746,7 @@ impl Box:
 fn f() Unit:
     let g = fn(x: Int) Result[Int, String]: ok(x)
     return unit
-type	2	45	57	String does not satisfy Error; use a type that implements itfn f() Int: 1
+type	2	9	21	local binding g is never read; remove it, use it, or name it with a leading '_' to ignore itfn f() Int: 1
 fn f(g: fn(value: Int) Int) Int: 1
 parse	1	17	16	expected ')', found ':'; close the parenthesis, separating items with commasfn f() Int:
     let g = fn(x) Int: x
@@ -3764,8 +3758,7 @@ impl Box:
 parse	1	7	6	every fn declares its result type after the parameter list, e.g. fn f() Unit:interface Read:
     fn read()
 parse	2	14	29	every fn declares its result type after the parameter list, e.g. fn f() Unit:fn f() Result[Unit, String]: ...
-    type	1	1	0	reachable fallthrough in function returning Result[Unit, String]; end every path with 'return <Result[Unit, String]>' (or make the last branch return)
-type	1	1	0	String does not satisfy Error; use a type that implements it
+    type	1	1	0	reachable fallthrough in function returning Result[Unit, String]; end every path with 'return <Result[Unit, String]>' (or make the last branch return)
 fn broken(
 parse	3	1	12	unterminated delimiter '(' opened at line 2:10; add the matching ')' before the end of the filefn choose(value: Int) Int:
     return value
@@ -3856,12 +3849,13 @@ fn run() Unit:
         values.append(1)
     )
 type	10	9	241	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change it
-type	9	24	229	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change itimport network from "@std/net.ms"
-import HttpResponse, HttpServerOptions from "@std/http.ms"
+type	9	24	229	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change itimport network from "@std/net/net.ms"
+import HttpResponse, HttpServerOptions from "@std/net/http.ms"
 import panic from "@std/faults.ms"
 fn run() Unit:
     let values = [0]
-resolution	3	8	100	unknown standard module @std/faults.ms    let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) HttpResponse:
+resolution	1	8	7	module does not export network; did you mean 'Network'?
+resolution	3	8	108	unknown standard module @std/faults.ms    let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) HttpResponse:
         values.append(1)
         return panic("not executed by lint")
     )
@@ -3871,7 +3865,7 @@ fn run() Unit:
     , options: HttpServerOptions(tls: none))
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it.ms"
 fn example() Unit:
-    parse	1	4	3	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakimport CsvOptions from "@std/csv.ms"
+    parse	1	4	3	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakimport CsvOptions from "@std/data/csv.ms"
 fn example(CsvOptions: fn() Unit) Unit:
     CsvOptions()
 import Queue from "@std/queues.ms"
@@ -3882,10 +3876,10 @@ fn named(state: Queue[Int], value: Int = read(state)) Int:
 fn nested(state: Queue[Int]) Unit:
     let callback = fn(value: Int = read(state)) Int:
         return value
-resolution	1	8	7	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	2	16	50	unknown type Queue; add: import Queue from "@std/queue.ms"
-resolution	4	17	109	unknown type Queue; add: import Queue from "@std/queue.ms"
-resolution	6	18	186	unknown type Queue; add: import Queue from "@std/queue.ms"diff --git a/src/a.ms b/src/a.ms
+resolution	1	8	7	unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?
+resolution	2	16	50	unknown type Queue; add: import Queue from "@std/collections/queue.ms"
+resolution	4	17	109	unknown type Queue; add: import Queue from "@std/collections/queue.ms"
+resolution	6	18	186	unknown type Queue; add: import Queue from "@std/collections/queue.ms"diff --git a/src/a.ms b/src/a.ms
 index 111..222 100644
 --- a/src/a.ms
 +++ b/src/a.ms
@@ -3983,14 +3977,14 @@ fn example() Int:
     )
 fn work() Unit:
     try expect_false(try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [["line\n\nbreak"], [""]])
-resolution	2	9	24	unknown binding expect_false; add: import expect_false from "@std/test.ms"fn work() Unit:
+resolution	2	9	24	unknown binding expect_false; add: import expect_false from "@std/test/test.ms"fn work() Unit:
     try expect_false(
         try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [
             ["line\n\nbreak"],
             [""]
         ]
     )
-resolution	2	9	24	unknown binding expect_false; add: import expect_false from "@std/test.ms"fn work() Unit:
+resolution	2	9	24	unknown binding expect_false; add: import expect_false from "@std/test/test.ms"fn work() Unit:
     send_message(condition: account_is_active and payment_is_allowed and remaining_balance > 0)
 resolution	2	5	20	unknown binding send_message; declare it with 'let send_message = ...' before use, define 'fn send_message(...) T:', or import it from a modulefn work() Unit:
     send_message(
@@ -4096,16 +4090,16 @@ let affordable = (
 )
 type	3	12	55	a constant takes literals, operators, collections, and other constants; compute this value in a functionfn work(early: Int) Int:
     let result = subtract(try
-        match some(0):
-            some(_):
+        match 0:
+            _value:
                 10
             none: 10
     )
     return result
 resolution	2	18	42	unknown binding subtract; declare it with 'let subtract = ...' before use, define 'fn subtract(...) T:', or import it from a modulefn work(early: Int) Int:
     let result = subtract(
-        try match some(0):
-            some(_):
+        try match 0:
+            _value:
                 10
             none: 10
     )
@@ -4285,14 +4279,14 @@ resolution	5	11	136	unknown binding pending_withdrawal_total; declare it with 'l
         _: return 0
 resolution	1	18	17	unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import itfn work() Bool:
     return Error(value: CommandError.Failed(message: "command diagnostic")).message() != "command diagnostic"
-resolution	2	25	40	unknown binding CommandError; add: import CommandError from "@std/process.ms"
+resolution	2	25	40	unknown binding CommandError; add: import CommandError from "@std/os/process.ms"
 type	2	12	27	Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directlyfn work() Bool:
     return (
         Error(
             value: CommandError.Failed(message: "command diagnostic")
         ).message() != "command diagnostic"
     )
-resolution	4	20	63	unknown binding CommandError; add: import CommandError from "@std/process.ms"
+resolution	4	20	63	unknown binding CommandError; add: import CommandError from "@std/os/process.ms"
 type	3	9	37	Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directlyfn work() Int:
     if tagged_detail(integer) != "integer 7" or tagged_detail(text) != "text diagnostic":
         return 1
@@ -4312,21 +4306,21 @@ resolution	4	12	81	unknown binding tagged_detail; declare it with 'let tagged_de
     let text = "# A deliberately long literal with {format(value: "nested text")} that must retain its exact original spelling."
     if enabled: return text
     return text
-resolution	3	53	97	unknown binding format; add: import format from "@std/fs.ms"
+resolution	3	53	97	unknown binding format; add: import format from "@std/data/semver.ms"
 resolution	4	8	181	unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...) T:', or import it from a modulefn work() String:
     let values = [1, 2, 3]
     let text = "# A deliberately long literal with {format(value: "nested text")} that must retain its exact original spelling."
     if enabled: return text
 
     return text
-resolution	3	53	97	unknown binding format; add: import format from "@std/fs.ms"
+resolution	3	53	97	unknown binding format; add: import format from "@std/data/semver.ms"
 resolution	4	8	181	unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...) T:', or import it from a modulefn f() Bool:
     return active or allowed and remaining > 0
 resolution	2	12	24	unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...) T:', or import it from a module
 resolution	2	22	34	unknown binding allowed; declare it with 'let allowed = ...' before use, define 'fn allowed(...) T:', or import it from a module
 resolution	2	34	46	unknown binding remaining; declare it with 'let remaining = ...' before use, define 'fn remaining(...) T:', or import it from a modulefn read(values: List[Int]) Int:
     let result=match values.first():
-        some(number):
+        number:
             let doubled=number*2
             doubled
         none: return 0
@@ -4342,7 +4336,7 @@ resolution	2	34	46	unknown binding remaining; declare it with 'let remaining = .
             return 0
         error(_):
             return 1
-resolution	2	19	49	unknown binding parse; add: import parse from "@std/csv.ms"
+resolution	2	19	49	unknown binding parse; add: import parse from "@std/data/csv.ms"
 resolution	5	18	158	unknown binding summarize; declare it with 'let summarize = ...' before use, define 'fn summarize(...) T:', or import it from a module
 resolution	6	19	195	unknown binding encode; declare it with 'let encode = ...' before use, define 'fn encode(...) T:', or import it from a module
 resolution	7	11	220	unknown binding save; declare it with 'let save = ...' before use, define 'fn save(...) T:', or import it from a modulefn process(input: String) Int:
@@ -4358,7 +4352,7 @@ resolution	7	11	220	unknown binding save; declare it with 'let save = ...' befor
             return 0
         error(_):
             return 1
-resolution	2	19	49	unknown binding parse; add: import parse from "@std/csv.ms"
+resolution	2	19	49	unknown binding parse; add: import parse from "@std/data/csv.ms"
 resolution	6	18	159	unknown binding summarize; declare it with 'let summarize = ...' before use, define 'fn summarize(...) T:', or import it from a module
 resolution	7	19	196	unknown binding encode; declare it with 'let encode = ...' before use, define 'fn encode(...) T:', or import it from a module
 resolution	9	11	222	unknown binding save; declare it with 'let save = ...' before use, define 'fn save(...) T:', or import it from a modulefn choose(value: Choice) Int:
@@ -4457,7 +4451,7 @@ fn example() Int:
         # A comment inside the branch.
     # A comment on the next step.
     return second
-resolution	9	9	142	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module# File introduction.
+resolution	9	9	142	unknown binding run; add: import run from "@std/os/process.ms"# File introduction.
 fn example() Int:
     let first = 1
     # A deliberate new step.
@@ -4467,7 +4461,7 @@ fn example() Int:
         # A comment inside the branch.
     # A comment on the next step.
     return second
-resolution	7	9	140	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a modulefn example(
+resolution	7	9	140	unknown binding run; add: import run from "@std/os/process.ms"fn example(
     value: Int = choose(
         first: 1,
         second: 2
@@ -4584,7 +4578,7 @@ fn sum(left: Int, right: Int) Int:  # sum
             return 0
         error(_):
             return 1
-resolution	3	13	72	unknown type WriteStream; add: import WriteStream from "@std/io.ms"fn double(x:Int) Int:return x*2
+resolution	3	13	72	unknown type WriteStream; add: import WriteStream from "@std/io/io.ms"fn double(x:Int) Int:return x*2
 fn f(x:Int) Int:
     if x>0:return double(x)
     else:return 0
@@ -4597,19 +4591,19 @@ fn f(x: Int) Int:
     let values={"a":1,"b":{1:2},}
     consume(values,other: {})
 type	2	27	39	expected Int, found Map[Int, Int] (in entry 4 of the literal, whose entries share one type)
-resolution	3	5	51	unknown binding consume; declare it with 'let consume = ...' before use, define 'fn consume(...) T:', or import it from a moduleimport ListBuilder from "@std/collections.ms"
+resolution	3	5	51	unknown binding consume; declare it with 'let consume = ...' before use, define 'fn consume(...) T:', or import it from a moduleimport ListBuilder from "@std/collections/collections.ms"
 let A = 1
 let B = 2
 fn f() Int:
     return A + B
-resolution	1	8	7	module does not export ListBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'import ListBuilder from "@std/collections.ms"
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'import ListBuilder from "@std/collections/collections.ms"
 
 let A = 1
 let B = 2
 
 fn f() Int:
     return A + B
-resolution	1	8	7	module does not export ListBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'let A = (
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'let A = (
     parse	2	5	14	unterminated delimiter '(' opened at line 1:9; add the matching ')' before the end of the fileexport fn main() Int: ...
 type	1	8	7	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)    let a = [1, 2]
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it    let m = Map[String, Int]()
@@ -4641,17 +4635,17 @@ fn size() Int:
 fn answer(input: Int) Int:
     let value = input
     return value
-import ListBuilder from "@std/collections.ms"
+import ListBuilder from "@std/collections/collections.ms"
 fn answer() Int:
     let unused = 1
     var written = 2
     written = 3
     return 0
     return 1
-resolution	1	8	7	module does not export ListBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'import parse from "@std/json.ms"
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'import parse from "@std/data/json.ms"
 fn answer(parse: Int) Int:
     return parse
-import parse from "@std/json.ms"
+import parse from "@std/data/json.ms"
 type Item:
     parse: Int
 fn answer() Item:
@@ -4682,11 +4676,11 @@ fn answer() Item:
     match parse("1"):
         ok(value): return 1
         error(e): return 2
-resolution	2	11	27	unknown binding parse; add: import parse from "@std/csv.ms"fn answer() Int:
+resolution	2	11	27	unknown binding parse; add: import parse from "@std/data/csv.ms"fn answer() Int:
     match parse("1"):
         ok(value): return value
         error(_): return 2
-resolution	2	11	27	unknown binding parse; add: import parse from "@std/csv.ms"fn answer() Int:
+resolution	2	11	27	unknown binding parse; add: import parse from "@std/data/csv.ms"fn answer() Int:
     let items = [1, 2, 3]
     return items.length()
 export fn answer() Int:
@@ -4809,7 +4803,7 @@ fn answer(input: Int) Int:
     return value.|
 parse	2	18	43	expected a name, found '|'fn work() Int?:
     return Int?.|
-parse	2	15	30	expected end of statement, found '?'; put one statement per line, and join operands with an operator or a comma inside bracketsfn work() Result[Int, Error]:
+parse	2	17	32	expected a name, found '|'fn work() Result[Int, Error]:
     return Result[Int, Error].|
 parse	2	31	60	expected a name, found '|'fn count(items: List[String]) Unit:
     items.ap|
@@ -4824,23 +4818,23 @@ fn answer(input: Int) Int:
 ) Int:
     return inp|
 fn broken(
-parse	6	1	61	unterminated delimiter '(' opened at line 5:10; add the matching ')' before the end of the fileimport WriteStream from "@std/io.ms"
+parse	6	1	61	unterminated delimiter '(' opened at line 5:10; add the matching ')' before the end of the fileimport WriteStream from "@std/io/io.ms"
 fn render(
     arguments: List[String],
     output: WriteStream
 ) Int:
     let joined = arguments.jo|
     match output.write(data: "hello"):
-parse	6	31	138	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'fn answer(input: Int) Unit:
+parse	6	31	141	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'fn answer(input: Int) Unit:
     if true:
         let input = "text"
         inp|
     return unit
-parse	4	13	80	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'import stdout from "@std/io.ms"
+parse	4	13	80	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'import stdout from "@std/io/io.ms"
 export fn main() Int:
     stdout().wr|
     return 0
-parse	3	17	70	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'interface Reader:
+parse	3	17	73	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'interface Reader:
     fn read() String
 fn answer[T: Reader](reader: T) String:
     return reader.|
@@ -4865,17 +4859,17 @@ fn text(value: Queue[Int]) String:
     return items.
 parse	2	18	53	expected a name, found end of linefn size(text: String) Int:
     return text.bl|
-parse	2	20	46	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'import HttpClient from "@std/http.ms"
+parse	2	20	46	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'import HttpClient from "@std/net/http.ms"
 fn work(client: HttpClient) Unit:
     client.|
-parse	3	12	83	expected a name, found '|' from "@std/time.ms"
+parse	3	12	87	expected a name, found '|' from "@std/os/time.ms"
 fn work(value: parse	1	2	1	indentation must be a multiple of four spaces, found 1; use 0 or 4fn use(values: List[Int], entries: Map[String, Int], unique: Set[Int]) Unit:
     entries.add("a", 1)
 type	2	5	81	cannot change `entries`: parameter `entries` is not declared var; write `var entries: <Type>` in the signature and pass `var` at every callfn use(entries: Map[String, Int]) Unit:
     entries.ad|
 parse	2	16	55	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'fn use(entries: Map[String, Int]) Unit:
     entries.add(key: "a", value: |
-parse	3	1	75	unterminated delimiter '(' opened at line 2:16; add the matching ')' before the end of the fileimport TestHooks from "@std/test.ms"
+parse	3	1	75	unterminated delimiter '(' opened at line 2:16; add the matching ')' before the end of the fileimport TestHooks from "@std/test/test.ms"
 type State:
     count: Int
 fn make_fixture() State:
@@ -4883,7 +4877,7 @@ fn make_fixture() State:
 impl TestHooks for State:
 test "one":
     fixture.|
-parse	8	13	159	expected a name, found '|'# max items
+parse	8	13	164	expected a name, found '|'# max items
 export let MAX_ITEMS = 100
 let NAMES: List[String] = ["a"]
 let LIMIT = MAX_ITEMS * 2
@@ -4907,13 +4901,13 @@ export fn main() Int:
     let s = add(a: 1, b: 2)
     let q = (
     return s
-parse	9	1	153	unterminated delimiter '(' opened at line 7:13; add the matching ')' before the end of the fileimport SetBuilder from "@std/collections.ms"
-import CsvOptions from "@std/csv.ms"
+parse	9	1	153	unterminated delimiter '(' opened at line 7:13; add the matching ')' before the end of the fileimport SetBuilder from "@std/collections/collections.ms"
+import CsvOptions from "@std/data/csv.ms"
 fn example() Unit:
     SetBuilder[String]()
     CsvOptions(delimiter: ",", line_ending: "\n")
-resolution	1	8	7	module does not export SetBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'
-resolution	4	5	105	unknown binding SetBuilder; declare it with 'let SetBuilder = ...' before use, define 'fn SetBuilder(...) T:', or import it from a modulefn absent[T]() T?: none
+resolution	1	8	7	module does not export SetBuilder; @std/collections/collections.ms exports: CollectionError, List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	4	5	122	unknown binding SetBuilder; declare it with 'let SetBuilder = ...' before use, define 'fn SetBuilder(...) T:', or import it from a modulefn absent[T]() T?: none
 fn transform[T, U](callback: fn(T) U) fn(T) U: callback
 fn answer() Unit:
     let empty: Int? = absent()
@@ -4999,17 +4993,17 @@ fn message(value: Reader) String:
     return value.read()
 fn make() Box:
     return Box(label: "value")
-type	6	15	102	`read` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`fn answer() Int:
+type	7	21	130	cannot move `self.label` out of `self`: only a whole variable can move; take an owned copy with `self.label.clone()`fn answer() Int:
     let number = 42
     return number
 fn later() Int:
     return 2
-import ListBuilder from "@std/collections.ms"
+import ListBuilder from "@std/collections/collections.ms"
 fn answer() Int:
     return 42
-resolution	1	8	7	module does not export ListBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'fn answer(value: Int?) Int:
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'fn answer(value: Int?) Int:
     match value:
-        some(_):
+        _value:
             return 1
         none:
             return 0
@@ -5040,7 +5034,7 @@ fn run() Int: double(2)
 fn apply(callback: fn(Int) Int) Int: callback(2)
 fn identity(callback: fn(Int) Int) fn(Int) Int: callback
 fn use(callback: fn(Int) Int) Int: identity(callback)(2)
-import HttpRequest from "@std/http.ms"
+import HttpRequest from "@std/net/http.ms"
 import Bytes from "@std/bytes.ms"
 fn content_type(request: HttpRequest) List[Bytes]?:
     return request.headers.values_bytes("content-type")
@@ -5060,7 +5054,7 @@ fn lookup(fields: HttpHeaders) Unit:
 let arbitrary = 1
 fn read(values: List[Int], index: Int) Int:
     let result = match values.take(index).first():
-        some(number):
+        number:
             let doubled = number * 2
             doubled
         none: 0
@@ -5075,15 +5069,15 @@ fn work(value: Val) Unit:
     let list = [copy]
     list.clone().append(value)
 type	5	15	93	cannot change `value.val`: parameter `value` is not declared var; write `var value: <Type>` in the signature and pass `var` at every call
-type	4	20	68	cannot change `value`: parameter `value` is not declared var; write `var value: <Type>` in the signature and pass `var` at every callimport ListBuilder from "@std/collections.ms"
+type	4	20	68	cannot change `value`: parameter `value` is not declared var; write `var value: <Type>` in the signature and pass `var` at every callimport ListBuilder from "@std/collections/collections.ms"
 import system from "@std/system.ms"
 fn length(values: List[Int]) Int:
     return values.length()
 fn os_name() String:
     return system().info().os
-resolution	1	8	7	module does not export ListBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'
-resolution	2	8	53	unknown standard module @std/system.ms; did you mean '@std/bytes.ms'?
-resolution	6	12	175	unknown binding system; add: import system from "@std/process.ms"fn label(value: Int) String:
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	2	8	65	unknown standard module @std/system.ms
+resolution	6	12	187	unknown binding system; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"fn label(value: Int) String:
     return "{value}"
 test "methods":
     let labels = [1].map(transform: label)
@@ -5091,17 +5085,17 @@ test "methods":
     let text = " hello ".trim()
 type	4	9	74	local binding labels is never read; remove it, use it, or name it with a leading '_' to ignore it
 type	5	9	117	local binding convert is never read; remove it, use it, or name it with a leading '_' to ignore it
-type	6	9	151	local binding text is never read; remove it, use it, or name it with a leading '_' to ignore itimport JsonError from "@std/json.ms"
+type	6	9	151	local binding text is never read; remove it, use it, or name it with a leading '_' to ignore itimport JsonError from "@std/data/json.ms"
 fn describe(cause: Error) String:
     match cause:
         JsonError(json):
             return json.message()
         _:
             return cause.message()
-import parse, TomlValue from "@std/toml.ms"
+import parse, TomlValue from "@std/data/toml.ms"
 fn read() Unit:
     let result = parse(text: "a=1")
-type	3	9	68	local binding result is never read; remove it, use it, or name it with a leading '_' to ignore itfn read() Int:
+type	3	9	73	local binding result is never read; remove it, use it, or name it with a leading '_' to ignore itfn read() Int:
     return 1
 fn named(value: Int = read()) Int:
     return value
@@ -5138,23 +5132,23 @@ fn cut(values: List[Int]) Result[List[Int], CollectionError]: values.slice(0, 1)
 import MissingValue from "@std/errors.ms" # keep
 fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	41	89	unknown type MissingValue; use the prelude MissingValue declaration directly; rename any shadowing binding or declarationimport List from "@std/collections.ms" # keep
+resolution	2	41	89	unknown type MissingValue; use the prelude MissingValue declaration directly; rename any shadowing binding or declarationimport List from "@std/collections/collections.ms" # keep
 fn count() Int: List[Int]().length()
-resolution	1	8	7	redundant prelude import List; remove List from this import and use its prelude declaration directlyimport ListBuilder, List from "@std/collections.ms"
+resolution	1	8	7	redundant prelude import List; remove List from this import and use its prelude declaration directlyimport ListBuilder, List from "@std/collections/collections.ms"
 fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
-resolution	1	8	7	module does not export ListBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	1	21	20	redundant prelude import List; remove List from this import and use its prelude declaration directly
-resolution	2	17	68	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a moduleimport (
+resolution	2	17	80	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a moduleimport (
     List, # keep
     ListBuilder,
-) from "@std/collections.ms"
+) from "@std/collections/collections.ms"
 fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
 resolution	2	5	13	redundant prelude import List; remove List from this import and use its prelude declaration directly
-resolution	3	5	30	module does not export ListBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'
-resolution	5	17	88	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a modulefn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
+resolution	3	5	30	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	5	17	100	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a modulefn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 fn bad() Unit:
    unit
-import ListBuilder, List from "@std/collections.ms"
+import ListBuilder, List from "@std/collections/collections.ms"
 parse	2	4	18	indentation must be a multiple of four spaces, found 3; use 0 or 4export type Row[T]:
     value: T
 fn use() Unit:
@@ -5214,25 +5208,25 @@ fn read(node: Node) Int:
 fn missing_binding() Int: ...
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)fn use(value: Int?) Int:
     return match value:
-        some(_):
+        _value:
             match value:
-                some(n): n
+                n: n
                 none: 0
         none: 0
 fn use(value: Int?) Int:
     return match value:
-        some(_):
+        _value:
             let callback = fn() Int:
                 return match value:
-                    some(n): n
+                    n: n
                     none: 0
             callback()
         none: 0
 fn use(value: Int?) Int:
     return match value:
-        some(_):
+        _value:
             let callback = fn(n: Int = match value:
-                some(x): x
+                x: x
                 none: 0
             ) Int:
                 return n
@@ -5241,44 +5235,48 @@ fn read(node: Node) Int:
 fn use(value: Int?) Int:
     return match (
         match value:
-            some(x): some(x)
-            none: some(0)
+            x: x
+            none: 0
     ):
-        some(x): x
+        x: x
         none: 0
-fn use(value: Int?) Int:
+type	7	9	117	a match on Int takes literal arms such as 1, "text" or true, and a final '_:' arm; to bind or compare computed values use if/else
+type	7	9	117	a literal arm has no payload to bind
+type	8	9	130	a match on Int takes literal arms such as 1, "text" or true, and a final '_:' arm; to bind or compare computed values use if/else
+type	2	12	36	non-exhaustive match on Int; add a final '_:' arm
+resolution	7	12	120	unknown binding x; declare it with 'let x = ...' before use, define 'fn x(...) T:', or import it from a modulefn use(value: Int?) Int:
     return match value:
-        some(_):
+        _value:
             match value:
-                some(_):
+                _value:
                     match value:
-                        some(n): n
+                        n: n
                         none: 0
                 none: 0
         none: 0
 fn use(value: Int?) Int:
     let present = match value:
-        some(n): n
+        n: n
         none: return 0
     return match value:
-        some(n): present + n
+        n: present + n
         none: 0
 fn inner(value: Int?) Int:
     return match value:
-        some(n): n
+        n: n
         none: 0
 fn use(value: Int?) Int:
     return match value:
-        some(_): inner(value)
+        _value: inner(value)
         none: 0
 fn use() String: "match nested match"
 fn use(value: Int?) Int:
     match value:
-        some(n): return n
+        n: return n
         none: return 0
 fn use(value: Int?) Int:
     return match value:
-        some(n): n
+        n: n
         none: 0
 fn use(value: Int?) Int:
     if let n = value:
@@ -5316,27 +5314,27 @@ fn use(value: Envelope) Int:
     value: Int
 fn use(value: Item?) Int:
     match value:
-        some(Item): return Item.value
+        item: return Item.value
         none: return 0
-fn use(value: Int?) Int:
+resolution	5	27	95	unknown or non-nullary alternative case value of Item; cases:  (cases with payloads need call syntax)fn use(value: Int?) Int:
     match value:
-        some(Int): return Int
+        int: return Int
         none: return 0
-type Flag:
+type	3	21	62	type name requires a constructor call; write Int(field: value, ...) to build a valuetype Flag:
     case Ready
 fn use(value: Int?) Int:
     match value:
-        some(Ready): return Ready
+        ready: return Ready
         none: return 0
-type First:
+type	5	23	90	expected Int, found Flag (in the return value)type First:
     case Ready
 type Second:
     case Ready
 fn use(value: Int?) Int:
     match value:
-        some(Ready): return Ready
+        ready: return Ready
         none: return 0
-type Failure[T]:
+resolution	7	23	119	ambiguous alternative case Ready; qualify it with its type, e.g. Type.Readytype Failure[T]:
     case NotFound
     case Denied(reason: T)
 impl Error for Failure[T]:
@@ -5360,16 +5358,17 @@ fn use(value: Describe) Int:
     value: T
 fn use[T](value: Box[T]?) T:
     match value:
-        some(Box): return Box.value
+        box: return Box.value
         none: return panic(message: "empty")
-resolution	6	22	129	unknown binding panic; add: import panic from "@std/core.ms"type Flag:
+resolution	5	25	96	unknown or non-nullary alternative case value of Box; cases:  (cases with payloads need call syntax)
+resolution	6	22	123	unknown binding panic; add: import panic from "@std/core.ms"type Flag:
     case Ready
 fn use(value: Int?) Int:
     let Flag = 2
     match value:
-        some(Ready): return Ready
+        ready: return Ready
         none: return 0
-type	4	9	59	local binding Flag is never read; remove it, use it, or name it with a leading '_' to ignore it    let NotFound = 2
+type	6	23	107	expected Int, found Flag (in the return value)    let NotFound = 2
     match result:parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn NotFound() Int: 2
 type Failure:
     case NotFound
@@ -5378,9 +5377,11 @@ fn use() Int:
     return NotFound
 fn use[T](value: T?) T:
     match value:
-        some(Value): return Value
+        value: return Value
         none: return panic(message: "empty")
-resolution	4	22	96	unknown binding panic; add: import panic from "@std/core.ms"type Failure:
+type	3	9	49	binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'
+resolution	3	23	63	unknown binding Value; did you mean 'value'?
+resolution	4	22	90	unknown binding panic; add: import panic from "@std/core.ms"type Failure:
     case NotFound
     case Denied(reason: String)
 impl Error for Failure:
@@ -5408,14 +5409,15 @@ fn use() Int:
         ok(value): return value
 fn record(value: Item?) Int:
     match value:
-        some(Item): return Item.value
+        item: return Item.value
         none: return 0
-parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakimport filesystem from "@std/fs.ms"
+parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakimport filesystem from "@std/os/fs.ms"
 fn classify(path: String) String:
     match filesystem().stat(path: path, follow_links: true):
         error(NotFound): return "missing"
         ok(_): return "exists"
-type Point:
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	3	11	83	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"type Point:
     x: Int
     y: Int
 
@@ -5492,7 +5494,7 @@ fn caller() Unit:
     return 0
 fn use(value: Result[Int, Error]) Int:
     return value.get(0)
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn say(text: String) Result[Unit, Error]:
     try stdout().write("{text}\n")
@@ -5526,7 +5528,7 @@ fn b(n: Int) Int:
     let result = number + 1
 
     return result - 42
-import stdin from "@std/io.ms"
+import stdin from "@std/io/io.ms"
 export fn main() Int:
     let number = read_number()
     var result = number + 1
@@ -5538,7 +5540,7 @@ export fn main() Int:
 fn read_number() Int:
     let input = stdin().read(max_bytes: 1)
     return 41
-type	11	9	219	local binding input is never read; remove it, use it, or name it with a leading '_' to ignore itimport stdout, stderr from "@std/io.ms"
+type	11	9	222	local binding input is never read; remove it, use it, or name it with a leading '_' to ignore itimport stdout, stderr from "@std/io/io.ms"
 import panic from "@std/faults.ms"
 
 test "pass=a=b":
@@ -5550,9 +5552,9 @@ test "fails":
 
 test "after":
     return unit
-resolution	2	8	47	unknown standard module @std/faults.ms
-resolution	9	12	234	unknown binding panic; add: import panic from "@std/core.ms"import panic from "@std/faults.ms"
-import filesystem from "@std/fs.ms"
+resolution	2	8	50	unknown standard module @std/faults.ms
+resolution	9	12	237	unknown binding panic; add: import panic from "@std/core.ms"import panic from "@std/faults.ms"
+import filesystem from "@std/os/fs.ms"
 export fn other() Int: return 4
 test "source":
     if other() != 4: return panic("bad other")
@@ -5561,12 +5563,14 @@ test "source":
     else:
         return panic("library fixture cwd changed")
 resolution	1	8	7	unknown standard module @std/faults.ms
-resolution	5	29	146	unknown binding panic; add: import panic from "@std/core.ms"
-resolution	7	39	283	unknown binding panic; add: import panic from "@std/core.ms"
-resolution	9	16	336	unknown binding panic; add: import panic from "@std/core.ms"import parse, CsvOptions from "@std/csv.ms"
-import base64_encode, base64_decode from "@std/encoding.ms"
-import commands from "@std/process.ms"
-import filesystem from "@std/fs.ms"
+resolution	2	8	42	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	5	29	149	unknown binding panic; add: import panic from "@std/core.ms"
+resolution	6	19	186	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+resolution	7	39	286	unknown binding panic; add: import panic from "@std/core.ms"
+resolution	9	16	339	unknown binding panic; add: import panic from "@std/core.ms"import parse, CsvOptions from "@std/data/csv.ms"
+import base64_encode, base64_decode from "@std/data/encoding.ms"
+import commands from "@std/os/process.ms"
+import filesystem from "@std/os/fs.ms"
 import compress, decompress, CompressionFormat from "@std/compress.ms"
 import panic from "@std/faults.ms"
 test "copied native defaults":
@@ -5606,8 +5610,8 @@ test "copied native defaults":
     let encode = CompressionFormat.Gzip.compress
     if encode(data).get() != compressed: return panic("bound default compression level")
     if decompress(compressed, "gzip").get() != data: return panic("default compression round trip")
-parse	21	34	936	expected an expression, found '%'; write a value, name, call, or literal hereimport arguments from "@std/process.ms"
-import stdout, stderr from "@std/io.ms"
+parse	21	34	952	expected an expression, found '%'; write a value, name, call, or literal hereimport arguments from "@std/os/process.ms"
+import stdout, stderr from "@std/io/io.ms"
 export fn main() Int:
     let args = arguments()
     let _out = stdout().write(data: "out={args[0]}\n")
@@ -5726,16 +5730,16 @@ resolution	3	28	74	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"
     let parts = split(max_parts: -7, separator: Bytes([0]))
     return parts.length()
 resolution	2	16	37	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"export fn main() Int:
-    let cap: Int? = some(-7)
+    let cap: Int? = -7
     let parts = Bytes([1]).split(Bytes([]), cap)
     return parts.length()
-resolution	3	17	67	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"
-resolution	3	34	84	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"fn depth(n: Int) Int:
+resolution	3	17	61	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"
+resolution	3	34	78	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"fn depth(n: Int) Int:
     return 1 + depth(n + 1)
 export fn main() Int:
     return depth(0)
-import stdout, stderr from "@std/io.ms"
-import fail from "@std/test.ms"
+import stdout, stderr from "@std/io/io.ms"
+import fail from "@std/test/test.ms"
 
 test "first=pass":
     let _out = stdout().write(data: "PASS fake test\nuser stdout\n")
@@ -5749,21 +5753,21 @@ test "third=after":
 export fn helper() Int: return 0
 test "bad":
     let x = unknown_name
-resolution	2	13	24	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'fn unknown_name(...) T:', or import it from a moduleimport sleep, nanoseconds from "@std/time.ms"
+resolution	2	13	24	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'fn unknown_name(...) T:', or import it from a moduleimport sleep, nanoseconds from "@std/os/time.ms"
 
 test "timeout":
     sleep(nanoseconds(1000000000))
 
 test "after":
     return unit
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 
 test "bytes":
     let data = "x".to_bytes().with_value(index: 0, value: 255)
     let _out = stdout().write_bytes(data: data)
-import arguments from "@std/process.ms"
-import stdout, stderr from "@std/io.ms"
+import arguments from "@std/os/process.ms"
+import stdout, stderr from "@std/io/io.ms"
 
 export fn main() Int:
     let args = arguments()
@@ -5779,9 +5783,9 @@ export fn main() Int:
     if args.length() > 0 and args[0] == "fail":
         return 23
     return 0
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
-import stderr from "@std/io.ms"
+import arguments from "@std/os/process.ms"
+import stdout from "@std/io/io.ms"
+import stderr from "@std/io/io.ms"
 
 fn write_line(text: String) Result[Unit, Error]:
     try stdout().write(data: "{text}\n")
@@ -5807,7 +5811,7 @@ test "selected=a=b":
 
 test "unselected":
     write_line("unselected")
-type	28	5	670	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn f() Int:
+type	28	5	679	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn f() Int:
     return 1
 let X = f()
 type	3	9	33	a constant takes literals, operators, collections, and other constants; compute this value in a functionfn f() Int:
@@ -5914,11 +5918,11 @@ resolution	4	6	82	unknown type Closeable; add: import Closeable from "@std/core.
             sum += 3
             i += 1
     return sum
-parse	1	9	8	expected '(', found '%'; a call or parameter list starts with '('import stderr from "@std/io.ms"
+parse	1	9	8	expected '(', found '%'; a call or parameter list starts with '('import stderr from "@std/io/io.ms"
 
 export fn main() Int:
     let stream = stderr()
-    let chunk = "parse	5	18	98	unterminated text literal".to_bytes()
+    let chunk = "parse	5	18	101	unterminated text literal".to_bytes()
     while true:
         let _written = stream.write_bytes(data: chunk)
     return 0
@@ -5929,7 +5933,7 @@ export fn main() Int:
 export fn main() Int:
     let total = add(a: 1, b: 2)
     return total - 3
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn never() Int:
     return 1
@@ -5939,7 +5943,7 @@ export fn main() Int:
     return 0
 test "continues after decimal overflow":
     let finite = 1d / 3d
-resolution	2	18	58	Decimal literal requires the canonical Decimal import; add: import Decimal from "@std/decimal.ms"interface Shape:
+resolution	2	18	58	Decimal literal requires the canonical Decimal import; add: import Decimal from "@std/math/decimal.ms"interface Shape:
     fn area() Int
 
 type Rect:
@@ -5953,14 +5957,14 @@ impl Shape for Rect:
 test "method fault frame":
     let rect = Rect(w: 9223372036854775807, h: 2)
     rect.area()
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "arithmetic":
     2 + 3 | try expect_equal(expected: 5)
 test "fault":
     let missing: Int? = none
     let impossible = missing.get()
-type	3	9	51	local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore itimport expect_equal from "@std/test.ms"
+type	3	9	51	local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore itimport expect_equal from "@std/test/test.ms"
 test "failed assertion":
     2 + 3 | try expect_equal(expected: 6)
 fn sum(value: Int) Int:
@@ -5982,7 +5986,7 @@ test "fault":
     return missing
 resolution	2	12	27	unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...) T:', or import it from a modulefn wrong():
   return
-parse	2	3	14	indentation must be a multiple of four spaces, found 2; use 0 or 4import expect_true, fail from "@std/test.ms"
+parse	2	3	14	indentation must be a multiple of four spaces, found 2; use 0 or 4import expect_true, fail from "@std/test/test.ms"
 
 interface Read:
     fn get() Int
@@ -5996,16 +6000,17 @@ test "encoded nominal identity":
     let view = Read(value: box)
     if not (view.get() == 3):
         return fail("check failed")
-type	12	16	238	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyimport stdout from "@std/io.ms"
-import clock from "@std/time.ms"
-import Instant from "@std/time.ms"
+type	12	16	243	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyimport stdout from "@std/io/io.ms"
+import clock from "@std/os/time.ms"
+import Instant from "@std/os/time.ms"
 
 export fn now() Instant:
     return clock().now()
 
 export fn close_output() Unit:
     stdout().close()
-fn private_value() Int:
+resolution	2	8	42	module does not export clock; @std/os/time.ms exports: Calendar, Duration, Instant, TimeError, Timestamp, from_calendar, hours, local_zone, microseconds, milliseconds, minutes, monotonic, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/time.ms"'
+resolution	6	12	146	unknown binding clock; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"fn private_value() Int:
     return 7
 export fn defaulted(value: Int = private_value()) Int:
     return value
@@ -6059,7 +6064,7 @@ fn probe(value: Int) Int:
     return cell.total
 export fn main() Int:
     return probe(9223372036854775807)
-type	7	14	132	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow thatimport read_line, ReadStream, stdin from "@std/io.ms"
+type	7	14	132	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow thatimport read_line, ReadStream, stdin from "@std/io/io.ms"
 fn limit() Int:
     return 1 / 0
 fn probe(input: ReadStream) Bool:
@@ -6069,7 +6074,7 @@ fn probe(input: ReadStream) Bool:
 export fn main() Int:
     if probe(stdin()): return 1
     return 0
-type	3	14	83	division by zero always faults; guard the divisor or use a nonzero constantfn crash() Int:
+type	3	14	86	division by zero always faults; guard the divisor or use a nonzero constantfn crash() Int:
     return 1 / 0
 export fn main() Int:
     let values = Map[Int, Int]()
@@ -6127,9 +6132,9 @@ export fn main() Int:
     let value = Set[Int]().add(0)
     return value.map(crash).length()
 resolution	5	18	120	unknown or ambiguous member map on Unit; this type has no fields or operationsfn crash(value: Int) Int?:
-    return some(1 / value)
+    return (1 / value)
 export fn main() Int:
-    let value: Int? = some(0)
+    let value: Int? = 0
     return value.and_then(crash).get()
 fn deep(l: List[Int], i: Int) Int:
     return l.get(i)
@@ -6166,7 +6171,7 @@ export fn main() Int:
     return value.get()
 export fn main() Int:
     return extract[Int](none)
-type	1	26	25	`extract` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`interface Crash:
+interface Crash:
     fn run() Int
 type Item:
     value: Int
@@ -6182,7 +6187,7 @@ export fn main() Int:
 export fn main() Int:
     let [value] = empty()
     return value
-import filesystem, FileSystemError from "@std/fs.ms"
+import filesystem, FileSystemError from "@std/os/fs.ms"
 
 export fn main() Int:
     let fs = filesystem()
@@ -6198,7 +6203,8 @@ export fn main() Int:
     if fs.rename(source: "sentinel", destination: "") != invalid: return 6
     if fs.remove(path: "child", recursive: true).is_error(): return 7
     return 0
-type Counter:
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	4	14	92	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"type Counter:
     value: Int
 
 impl Counter:
@@ -6216,11 +6222,11 @@ test "inherent fault frame":
 impl I:
     fn f() Int:
         return 1
-type	3	1	28	I is an interface; 'impl I:' declares a type's own methods, so write 'impl I for <Type>:' to implement the interfaceimport Duration from "@std/time.ms"
+type	3	1	28	I is an interface; 'impl I:' declares a type's own methods, so write 'impl I for <Type>:' to implement the interfaceimport Duration from "@std/os/time.ms"
 impl Duration:
     fn f() Int:
         return 1
-type	2	1	36	inherent methods belong in the module that declares Duration; to add operations to another module's type, declare an interface and write 'impl <Interface> for Duration:'type B[T]:
+type	2	1	39	inherent methods belong in the module that declares Duration; to add operations to another module's type, declare an interface and write 'impl <Interface> for Duration:'type B[T]:
     x: T
 impl B:
     fn f() Int:
@@ -6243,7 +6249,7 @@ type	7	8	75	duplicate implementation operation m; define each operation once per
     x: Int
 impl B:
     fn m() Int: ...
-type	4	8	34	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)import expect_equal from "@std/test.ms"
+type	4	8	34	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)import expect_equal from "@std/test/test.ms"
 import panic from "@std/faults.ms"
 
 fn positive(value: Int) Int:
@@ -6258,9 +6264,9 @@ fn discard(value: Int) Unit:
 test "return contracts":
     positive(value: 3) | try expect_equal(expected: 3)
     discard(value: 1) | try expect_equal(expected: unit)
-resolution	2	8	47	unknown standard module @std/faults.ms
-resolution	8	9	162	unknown binding panic; add: import panic from "@std/core.ms"
-type	4	1	76	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)import expect_contains, expect_fault from "@std/test.ms"
+resolution	2	8	52	unknown standard module @std/faults.ms
+resolution	8	9	167	unknown binding panic; add: import panic from "@std/core.ms"
+type	4	1	81	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)import expect_contains, expect_fault from "@std/test/test.ms"
 import panic from "@std/faults.ms"
 
 fn failed_initializer() Never:
@@ -6288,15 +6294,15 @@ test "Never faults propagate through initializers and returned values":
         ),
         "result cannot return"
     )
-resolution	2	8	64	unknown standard module @std/faults.ms
-resolution	5	27	150	unknown binding panic; add: import panic from "@std/core.ms"
-type	4	1	93	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)
-resolution	8	12	233	unknown binding panic; add: import panic from "@std/core.ms"import expect_contains, expect_fault from "@std/test.ms"
+resolution	2	8	69	unknown standard module @std/faults.ms
+resolution	5	27	155	unknown binding panic; add: import panic from "@std/core.ms"
+type	4	1	98	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)
+resolution	8	12	238	unknown binding panic; add: import panic from "@std/core.ms"import expect_contains, expect_fault from "@std/test/test.ms"
 import panic from "@std/faults.ms"
 test "expect_fault reports the injected fault":
     try expect_contains(try expect_fault(fn: panic("boom")), "boom")
-resolution	2	8	64	unknown standard module @std/faults.ms
-resolution	4	46	185	unknown binding panic; add: import panic from "@std/core.ms"interface Read:
+resolution	2	8	69	unknown standard module @std/faults.ms
+resolution	4	46	190	unknown binding panic; add: import panic from "@std/core.ms"interface Read:
     fn read() Int
 type Reader:
     operation: fn() Int
@@ -6309,13 +6315,13 @@ export fn main() Int:
 type	9	16	181	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyfn prepare() fn() Int:
     let invalid = 1 / 0
     return fn() Int: 1
-export fn main()parse	4	17	86	every fn declares its result type after the parameter list, e.g. fn f() Unit:import fail from "@std/test.ms"
+export fn main()parse	4	17	86	every fn declares its result type after the parameter list, e.g. fn f() Unit:import fail from "@std/test/test.ms"
 export fn other() Int: return 4
 test "unimported":
     if other() != 4: return fail("bad other")
 test "nested":
     return unit
-import fail from "@std/test.ms"
+import fail from "@std/test/test.ms"
 export fn other() Int: return 4
 test "unimported":
     return fail("changed unimported test")
@@ -6335,15 +6341,15 @@ test "unimported":
     let values = [1, 2]
     let part = values.METHOD(-7)
     return part.length()
-resolution	3	23	68	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export fn main() Int:
+resolution	3	23	68	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...export fn main() Int:
     let copy = [1, 2].METHOD
     let part = copy(count: -7)
     return part.length()
-resolution	2	23	44	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export fn main() Int:
+resolution	2	23	44	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...export fn main() Int:
     let empty: List[Int] = []
     let part = empty.METHOD(-7)
     return part.length()
-resolution	3	22	73	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...import panic from "@std/faults.ms"
+resolution	3	22	73	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...import panic from "@std/faults.ms"
 
 fn run() Int:
     let boom = fn(value: Int) Int: panic(message: "closure failed")
@@ -6438,15 +6444,15 @@ test "bound count":
 test "continues":
     let values = [1].splice(0, 1, [])
     values.append(2)
-resolution	13	12	293	unknown or ambiguous member append on Unit; this type has no fields or operationsimport File from "@std/io.ms"
-import Connection from "@std/net.ms"
+resolution	13	12	293	unknown or ambiguous member append on Unit; this type has no fields or operationsimport File from "@std/io/io.ms"
+import Connection from "@std/net/net.ms"
 type Val:
     val: Int
 fn f(socket: Connection) Unit:
     socket.clone()
-resolution	1	14	13	unknown type Connection; add: import Connection from "@std/net.ms"import files from "@std/io.ms"
-import File from "@std/io.ms"
-import IoError from "@std/io.ms"
+resolution	1	14	13	unknown type Connection; add: import Connection from "@std/net/net.ms"import files from "@std/io/io.ms"
+import File from "@std/io/io.ms"
+import IoError from "@std/io/io.ms"
 type Holder:
     file: File
     label: String
@@ -6462,8 +6468,8 @@ export fn main() Int:
     let chunk = read.get()
 
     match chunk:
-        some(data):
-            if data.decode_utf8() != some(value: "d"):
+        data:
+            if data.decode_utf8() != "d":
                 return 5
         none:
             return 6
@@ -6485,8 +6491,8 @@ export fn main() Int:
         _:
             return 2
 
-type	25	33	558	cannot move `file` out: it only borrows its value (a borrow); use `file.clone()` to get an owned copy
-type	27	10	624	cannot change `copy.label`: `copy` is declared with let, which is immutable including its contents; declare it `var copy` to change ittest %q:
+resolution	1	8	7	module does not export files; did you mean 'File'?
+resolution	8	18	188	unknown binding files; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"test %q:
     let minimum = nanoseconds(-9223372036854775808)
     let maximum = nanoseconds(9223372036854775807)
     let divide = minimum.divide
@@ -6511,9 +6517,9 @@ export fn main() Int:
 import Queue, PriorityQueue from "@std/queues.ms"
 import from_int from "@std/bigint.ms"
 fn compare(left: Int, right: Int) Int: left - right
-resolution	2	8	55	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	2	15	62	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	3	8	105	unknown standard module @std/bigint.ms; did you mean '@std/bitset.ms'?test %q:
+resolution	2	8	55	unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?
+resolution	2	15	62	unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?
+resolution	3	8	105	unknown standard module @std/bigint.mstest %q:
     let bytes = Bytes(values: [0, 255])
     let list = [0, 1]
 %sparse	1	6	5	expected text in double quotes, found '%'test "continues after preconditions":
@@ -6566,9 +6572,9 @@ export fn main() Int:
     next: Node?
 export fn main() Int:
     let node = Node(none)
-    node.next = some(node)
+    node.next = node
     return node.hash()
-resolution	6	17	118	unknown or ambiguous member hash on Node; available: nexttype Grow[T]:
+resolution	6	17	112	unknown or ambiguous member hash on Node; available: nexttype Grow[T]:
     next: fn() Grow[List[T]]
 export fn main() Int: return 0
 type	2	5	18	recursive generic applications must preserve their parameters in Grow.next; keep the same type arguments in the same positions along a recursive cyclelet replace = "a".replace_n
@@ -6588,8 +6594,8 @@ test "continues":
 resolution	4	9	88	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
 resolution	6	23	157	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
 resolution	9	8	223	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
-resolution	11	26	289	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?import filesystem from "@std/fs.ms"
-import expect_true, fail from "@std/test.ms"
+resolution	11	26	289	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?import filesystem from "@std/os/fs.ms"
+import expect_true, fail from "@std/test/test.ms"
 
 test "fixture next to the manifest":
     match filesystem().read_file(path: "golden/input.txt", max_bytes: 1024):
@@ -6598,8 +6604,9 @@ test "fixture next to the manifest":
                 return fail("wrong fixture size")
         error(_):
             return fail("fixture not found")
-import TestHooks, expect_equal, fail, skip from "@std/test.ms"
-import stdout from "@std/io.ms"
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	5	11	137	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"import TestHooks, expect_equal, fail, skip from "@std/test/test.ms"
+import stdout from "@std/io/io.ms"
 import panic from "@std/faults.ms"
 fn println(message: String) Unit:
     let written = stdout().write("{message}\n").get()
@@ -6623,8 +6630,8 @@ test "first":
     try expect_equal(fixture.value, 1)
 test "second":
     try expect_equal(fixture.value, 2)
-resolution	3	8	102	unknown standard module @std/faults.msimport TestHooks, expect_equal from "@std/test.ms"
-import stdout from "@std/io.ms"
+resolution	3	8	110	unknown standard module @std/faults.msimport TestHooks, expect_equal from "@std/test/test.ms"
+import stdout from "@std/io/io.ms"
 fn println(message: String) Unit:
     let written = stdout().write("{message}\n").get()
 
@@ -6638,9 +6645,9 @@ test "one":
     var hooks = TestHooks(value: fixture)
     hooks.before_all()
     try expect_equal(fixture.value, 7)
-type	13	17	321	TestHooks is an interface and cannot be constructed; a type with 'impl TestHooks for <Type>:' passes wherever TestHooks is expected, so pass the value directlyimport TestHooks, expect_equal, expect_ok from "@std/test.ms"
-import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers from "@std/http.ms"
-import network from "@std/net.ms"
+type	13	17	329	TestHooks is an interface and cannot be constructed; a type with 'impl TestHooks for <Type>:' passes wherever TestHooks is expected, so pass the value directlyimport TestHooks, expect_equal, expect_ok from "@std/test/test.ms"
+import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers from "@std/net/http.ms"
+import network from "@std/net/net.ms"
 type ApiFixture:
     server: HttpServer
 fn handle(request: HttpRequest) HttpResponse:
@@ -6656,7 +6663,13 @@ test "first request":
 test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
-type	9	80	461	expected fn(HttpExchange) Result[Unit, HttpError], found fn(HttpRequest) HttpResponse (in argument 'handler' of serve)export fn helper() Unit:
+resolution	3	8	164	module does not export network; did you mean 'Network'?
+resolution	9	31	425	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+type	14	24	618	cannot infer type arguments T, E for expect_ok; write expect_ok[T, E](...) with explicit types for T, E; call arguments and the expected result must determine every type parameter
+resolution	14	34	628	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+type	17	24	861	cannot infer type arguments T, E for expect_ok; write expect_ok[T, E](...) with explicit types for T, E; call arguments and the expected result must determine every type parameter
+resolution	17	34	871	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+type	12	9	553	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeexport fn helper() Unit:
     return
 test "interruptible":
     println("READY")
@@ -6664,10 +6677,10 @@ test "second request uses same server":
         try expect_equal(1, 1)
 test "later":
     try fail("must not run")
-resolution	2	5	26	unknown binding println; there is no built-in print: import stdout from "@std/io.ms" and call stdout().write("text\\n")
-resolution	4	13	71	unknown binding expect_equal; add: import expect_equal from "@std/test.ms"
-resolution	6	9	112	unknown binding fail; add: import fail from "@std/test.ms"import TestHooks, expect_equal from "@std/test.ms"
-import stdout from "@std/io.ms"
+resolution	2	5	26	unknown binding println; there is no built-in print: import stdout from "@std/io/io.ms" and call stdout().write("text\\n")
+resolution	4	13	71	unknown binding expect_equal; add: import expect_equal from "@std/test/test.ms"
+resolution	6	9	112	unknown binding fail; add: import fail from "@std/test/test.ms"import TestHooks, expect_equal from "@std/test/test.ms"
+import stdout from "@std/io/io.ms"
 type UnusedFixture:
     value: Int
 impl TestHooks for UnusedFixture:
@@ -6681,10 +6694,10 @@ impl TestHooks for UnusedFixture:
         let written = stdout().write("UNUSED after_all").get()
 test "plain test":
     try expect_equal(1 + 1, 2)
-type	7	13	190	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
-type	9	13	281	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
-type	11	13	372	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
-type	13	13	461	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore itimport expect_equal, skip from "@std/test.ms"
+type	7	13	198	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	9	13	289	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	11	13	380	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	13	13	469	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore itimport expect_equal, skip from "@std/test/test.ms"
 test "passing":
     try expect_equal(2 + 2, 4)
 test "skipped":
@@ -6701,7 +6714,7 @@ test "receiver fault comes first":
     let impossible = (1 / 0).minutes
 test "continues with valid units":
     let valid = (1).seconds
-type	6	25	204	division by zero always faults; guard the divisor or use a nonzero constantimport stdout from "@std/io.ms"
+type	6	25	204	division by zero always faults; guard the divisor or use a nonzero constantimport stdout from "@std/io/io.ms"
 
 export fn main() Int:
     match stdout().write(data: %q):
@@ -6709,4 +6722,4 @@ export fn main() Int:
             return 0
         error(_):
             return 1
-parse	4	32	86	expected an expression, found '%'; write a value, name, call, or literal here
+parse	4	32	89	expected an expression, found '%'; write a value, name, call, or literal here

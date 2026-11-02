@@ -1,0 +1,139 @@
+{
+  "complete": true,
+  "argv": [
+    "/workspace/byte-search-evidence/fresh-main-988/runner/string-normalize-ascii/compare_matrix.py",
+    "/workspace/byte-search-evidence/fresh-main-988/normalize-programs.json",
+    "/workspace/byte-search-evidence/fresh-main-988/normalize-identities.json",
+    "/workspace/byte-search-evidence/fresh-main-988/normalize-matrix",
+    "--cpu",
+    "0",
+    "--cycles",
+    "2"
+  ],
+  "affinity": [
+    0
+  ],
+  "orders": [
+    [
+      "baseline",
+      "word"
+    ],
+    [
+      "word",
+      "baseline"
+    ],
+    [
+      "word",
+      "baseline"
+    ],
+    [
+      "baseline",
+      "word"
+    ],
+    [
+      "baseline",
+      "word"
+    ],
+    [
+      "word",
+      "baseline"
+    ],
+    [
+      "word",
+      "baseline"
+    ],
+    [
+      "baseline",
+      "word"
+    ]
+  ],
+  "cases": 100,
+  "validated_producers": [
+    [
+      "warmup",
+      "baseline"
+    ],
+    [
+      "warmup",
+      "word"
+    ],
+    [
+      0,
+      "baseline"
+    ],
+    [
+      0,
+      "word"
+    ],
+    [
+      1,
+      "word"
+    ],
+    [
+      1,
+      "baseline"
+    ],
+    [
+      2,
+      "word"
+    ],
+    [
+      2,
+      "baseline"
+    ],
+    [
+      3,
+      "baseline"
+    ],
+    [
+      3,
+      "word"
+    ],
+    [
+      4,
+      "baseline"
+    ],
+    [
+      4,
+      "word"
+    ],
+    [
+      5,
+      "word"
+    ],
+    [
+      5,
+      "baseline"
+    ],
+    [
+      6,
+      "word"
+    ],
+    [
+      6,
+      "baseline"
+    ],
+    [
+      7,
+      "baseline"
+    ],
+    [
+      7,
+      "word"
+    ]
+  ],
+  "programs": {
+    "baseline": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/baseline-normalize",
+      "sha256": "58e766fa2bb4d664bb8ea59f15ca266f4c07c95d8c1d318ef9c9ff3e8a0161cc"
+    },
+    "word": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/word-normalize",
+      "sha256": "e1f20f26d948f6d732fd6f10f1cf56962e4b77cbf9c1cc43661bc2268a352a1e"
+    }
+  },
+  "program_inventory_sha256": "01280cf816942677bef28957ecdd675d602041e20733d930f8a8fb5973f4bd25",
+  "identities_sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+  "runner_sha256": "d2ebeaf2c449cc49830beba5e267dc03b89e864ff0cb43830dd29a5144dcd485",
+  "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+}

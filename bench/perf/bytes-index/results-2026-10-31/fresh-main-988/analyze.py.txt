@@ -1,0 +1,48 @@
+import csv
+import json
+from pathlib import Path
+from statistics import median
+
+out=Path(__file__).resolve().parent
+all_results=[]
+for suite, directory, labels in [
+    ('byte','byte220',['before','after','rust']),
+    ('lines','lines-matrix',['baseline','word']),
+    ('normalize','normalize-matrix',['baseline','word']),
+    ('reverse','reverse-matrix',['baseline','word','rust']),
+]:
+    rows=list(csv.DictReader((out/directory/'samples.csv').open()))
+    rec=json.loads((out/directory/'record.json').read_text())
+    assert rec['complete']
+    cases=list(dict.fromkeys(r['case'] for r in rows))
+    pairs=sorted({int(r['pair']) for r in rows})
+    assert len(rows)==len(cases)*len(pairs)*len(labels)
+    results=[]
+    for name in cases:
+        values={v:{int(r['pair']):int(r['elapsed_ns'])/int(r['iterations']) for r in rows if r['case']==name and r['variant']==v} for v in labels}
+        assert all(set(x)==set(pairs) for x in values.values())
+        for left,right in [(labels[0],labels[1])]+([(labels[0],'rust'),(labels[1],'rust')] if 'rust' in labels else []):
+            a,b=values[left],values[right]
+            delta=[b[p]-a[p] for p in pairs]
+            r={'suite':suite,'case':name,'before':left,'after':right,'pairs':len(pairs),
+               'before_median_ns':median(a.values()),'after_median_ns':median(b.values()),
+               'change_pct':100*(median(b.values())/median(a.values())-1),
+               'paired_median_delta_ns':median(delta),'paired_min_delta_ns':min(delta),'paired_max_delta_ns':max(delta),
+               'slower_pairs':sum(d>0 for d in delta),'before_min_ns':min(a.values()),'before_max_ns':max(a.values()),
+               'after_min_ns':min(b.values()),'after_max_ns':max(b.values())}
+            results.append(r)
+    with (out/(suite+'-paired.csv')).open('w',newline='') as f:
+        w=csv.DictWriter(f,fieldnames=list(results[0]),lineterminator='\n');w.writeheader();w.writerows(results)
+    all_results+=results
+    native=[r for r in results if r['before']==labels[0] and r['after']==labels[1]]
+    print(suite, 'rows',len(rows),'native median increases',sum(r['change_pct']>0 for r in native))
+    for r in sorted(native,key=lambda r:r['change_pct'],reverse=True)[:8]:
+        print(r['case'],round(r['before_median_ns'],3),round(r['after_median_ns'],3),round(r['change_pct'],3),round(r['paired_median_delta_ns'],3),str(r['slower_pairs'])+'/'+str(r['pairs']))
+    if suite=='byte':
+        for name in ['miss_1048576','last_1048576','near16_4096','near17_4096']:
+            r=next(r for r in native if r['case']==name);print('gain',r)
+    if suite=='reverse':
+        for name in ['ascii_mixed_n63','ascii_mixed_n64','ascii_mixed_n1048576','two_byte_copies65536','early_unicode_1048576']:
+            for r in results:
+                if r['case']==name:print('reference',r)
+(out/'analysis-complete.json').write_text(json.dumps({'rows':len(all_results),'all_inventories_complete':True},indent=2)+'\n')

@@ -3,7 +3,7 @@
 use crate::analysis::{Analysis, Document};
 use crate::index::{Occurrence, expr_text};
 use crate::json::{Json, obj};
-use crate::text::{self, EditorKind, SourcePositions};
+use crate::text::{self, EditorKind, ForwardPositions};
 use ms_check::types::Kind;
 use ms_syntax::ast::*;
 use ms_syntax::token::{KEYWORDS, Tok};
@@ -210,7 +210,7 @@ pub fn semantic_tokens(analysis: Option<&Analysis>, index: &[Occurrence], d: &Do
             }
         }
     }
-    let positions = SourcePositions::new(&d.text);
+    let mut positions = ForwardPositions::new(&d.text);
     let (mut line, mut character) = (0usize, 0usize);
     let mut data: Vec<Json> = Vec::new();
     for token in &tokens {

@@ -1,0 +1,38 @@
+{
+  "command": [
+    ".artifacts/yaml-append-escapes/focused.py",
+    "--environment",
+    ".artifacts/yaml-append-escapes/file-full/environment.json",
+    "--summary",
+    ".artifacts/yaml-append-escapes/file-full/summary.json",
+    "--inputs",
+    ".artifacts/yaml-append-escapes/file-full",
+    "--output",
+    ".artifacts/yaml-append-escapes/file-long",
+    "--operation",
+    "writer",
+    "--cases",
+    "common",
+    "sparse",
+    "sparse1m",
+    "ascii1m",
+    "unicode16k"
+  ],
+  "driver_sha256": "2553be58d32b5c00c3ffabbf9826b84e3a9a4a0dd3f28c8f5d5a812619b87653",
+  "environment_sha256": "cb55595dbab7c787e03addcfd4f5974ac534a73ad5b7d4c8e89eabf5f516fa4e",
+  "summary_sha256": "c0e4632be5252e060d95104d87e8bd9d5ae74c1e458d3c40f30f0d165bfdad5a",
+  "binaries": {
+    "baseline-a": {
+      "path": "/workspace/yaml-perf/.artifacts/yaml-append-escapes/file-before",
+      "sha256": "5ad8551a78ab1d9132008bef61c8eee45c27d90cc17c3e6ae316cf20e904ea4c"
+    },
+    "baseline-b": {
+      "path": "/workspace/yaml-perf/.artifacts/yaml-append-escapes/file-before",
+      "sha256": "5ad8551a78ab1d9132008bef61c8eee45c27d90cc17c3e6ae316cf20e904ea4c"
+    },
+    "candidate": {
+      "path": "/workspace/yaml-perf/.artifacts/yaml-append-escapes/file-after",
+      "sha256": "19448e1dd230901cd927eb85880dffc429b271750179da06c4c2c3f775151132"
+    }
+  }
+}

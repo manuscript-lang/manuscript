@@ -1,4 +1,4 @@
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 type DivideError:
     case DivideByZero

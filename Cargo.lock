@@ -122,12 +122,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd307490d624467aa6f74b0eabb77633d1f758a7b25f12bceb0b22e08d9726f6"
 
 [[package]]
-name = "base64"
-version = "0.23.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
-
-[[package]]
 name = "base64ct"
 version = "1.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1094,22 +1088,19 @@ dependencies = [
  "ms-rt-abi",
  "ms-std-archive",
  "ms-std-bigint",
- "ms-std-compress",
+ "ms-std-core",
  "ms-std-crypto",
  "ms-std-decimal",
- "ms-std-encoding",
  "ms-std-fs",
  "ms-std-html",
  "ms-std-io",
  "ms-std-json",
- "ms-std-log",
- "ms-std-math",
  "ms-std-net",
  "ms-std-path",
  "ms-std-process",
- "ms-std-random",
  "ms-std-regex",
  "ms-std-system",
+ "ms-std-table",
  "ms-std-terminal",
  "ms-std-time",
  "ms-std-url",
@@ -1151,9 +1142,10 @@ dependencies = [
 name = "ms-std-archive"
 version = "0.1.0"
 dependencies = [
+ "miniz_oxide",
  "ms-rt",
  "ms-rt-abi",
- "ms-std-compress",
+ "ms-std-core",
 ]
 
 [[package]]
@@ -1167,10 +1159,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-std-compress"
+name = "ms-std-core"
 version = "0.1.0"
 dependencies = [
- "miniz_oxide",
+ "getrandom 0.4.3",
+ "libm",
  "ms-rt",
  "ms-rt-abi",
 ]
@@ -1209,16 +1202,7 @@ version = "0.1.0"
 dependencies = [
  "ms-rt",
  "num-bigint 0.5.1",
- "num-integer",
  "num-traits",
-]
-
-[[package]]
-name = "ms-std-encoding"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
 ]
 
 [[package]]
@@ -1259,37 +1243,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-std-log"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
- "ms-std-json",
-]
-
-[[package]]
-name = "ms-std-math"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
-]
-
-[[package]]
 name = "ms-std-net"
 version = "0.1.0"
 dependencies = [
- "base64",
  "flate2",
  "httparse",
  "mio",
  "ms-rt",
  "ms-rt-abi",
+ "ms-std-core",
  "psl",
  "ring",
  "rustix",
  "rustls",
  "rustls-native-certs",
- "rustls-pki-types",
  "socket2",
  "windows-sys 0.61.2",
  "x509-parser",
@@ -1316,15 +1283,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-std-random"
-version = "0.1.0"
-dependencies = [
- "getrandom 0.4.3",
- "ms-rt",
- "ms-rt-abi",
-]
-
-[[package]]
 name = "ms-std-regex"
 version = "0.1.0"
 dependencies = [
@@ -1342,6 +1300,15 @@ dependencies = [
  "ms-rt-abi",
  "ms-std-process",
  "rustix",
+]
+
+[[package]]
+name = "ms-std-table"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+ "unicode-width",
 ]
 
 [[package]]
@@ -2117,6 +2084,12 @@ checksum = "75cd3fb03d5288b3ba9a1ee103ac7e9cbb59f0b03d64f8ddfcc04dd42758a85d"
 dependencies = [
  "tinyvec",
 ]
+
+[[package]]
+name = "unicode-width"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca718471876992059f251e33aafc334346ada08042b7661dd1fe313a9bced557"
 
 [[package]]
 name = "universal-hash"

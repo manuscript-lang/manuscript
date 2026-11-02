@@ -6,7 +6,7 @@ import TextError from "@std/core.ms"
 type Input:
     names: List[String?]
 
-let input = Input([none, some("Ada")])
+let input = Input([none, "Ada"])
 let nested: List[List[Int]] = [[], [1]]
 let success: Result[Int, TextError] = ok(1)
 let failure: Result[Int, TextError] = error(TextError("unavailable"))

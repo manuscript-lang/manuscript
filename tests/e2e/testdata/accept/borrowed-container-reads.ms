@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 # `let x = m.get(k)`, `if let x = m.get(k)`, `xs.first()`, `xs.last()`, `m[k]` and
 # `m.get_or(k, d)` read the entry in place (a borrow the checker already enforces) instead of
@@ -130,7 +130,7 @@ test "get_or reads through the entry":
 
 test "an entry whose optional is boxed is still read correctly":
     var nodes = Map[String, Node]()
-    nodes.add("x", Node(name: "x", next: some(Node(name: "y", next: none))))
+    nodes.add("x", Node(name: "x", next: Node(name: "y", next: none)))
 
     let x = nodes.get("x")
     try expect_equal(x.get().next.get().name, "y")
@@ -150,7 +150,7 @@ test "if let over a borrowed optional lends its payload":
 
     try expect_equal(maybe.is_some(), true)
 
-    let text: String? = some("hello")
+    let text: String? = "hello"
     if let t = text:
         try expect_equal(t.length(), 5)
     try expect_equal(text.get(), "hello")

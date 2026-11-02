@@ -1,4 +1,4 @@
-import share, Shared from "@std/shared.ms"
+import share, Shared from "@std/concurrency/shared.ms"
 
 type Holder:
     items: Shared[List[String]]

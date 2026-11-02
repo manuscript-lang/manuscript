@@ -5,16 +5,15 @@ weight = 2
 
 # Development workflow
 
-Run commands from the repository root. `rust-toolchain.toml` pins Rust and `.node-version` pins Node. Setup needs Make, curl, a SHA-256 utility, and Internet access. Building `ms` needs a C compiler (`cc`); the first native link downloads the pinned `lld` into the cache (`MS_LLD` names a local one), and the first optimized build also fetches the LLVM tools. Linking with the packaged compiler needs no separate C compiler; see the [platform build requirements](rust-toolchain.md). Book work needs Hugo Extended 0.146.7 or newer.
+Run commands from the repository root. `rust-toolchain.toml` pins Rust and `.node-version` pins Node. Setup needs Make and Internet access; the repository tools in `tools/` are Manuscript programs run by the `ms` that `make build` produces. Building `ms` needs a C compiler (`cc`); the first native link downloads the pinned `lld` into the cache (`MS_LLD` names a local one), and the first optimized build also fetches the LLVM tools. Linking with the packaged compiler needs no separate C compiler; see the [platform build requirements](rust-toolchain.md). Book work needs Hugo Extended 0.146.7 or newer.
 
 ```sh
-make setup
 make doctor
 make verify
 ```
 
-- `make setup` installs pinned linters (`actionlint`, `shellcheck`) into `.tools/`; `make doctor` reports missing prerequisites without downloading.
-- `make verify` runs `make check` (`cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`), `make lint` (workflow and shell lint), `make repo-check`, `make unit` (`cargo nextest run --workspace` and doc tests), `make docs-check`, and `make licenses-check`.
+- `make doctor` reports missing prerequisites without downloading.
+- `make verify` runs `make check` (`cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`), `make repo-check`, `make unit` (`cargo nextest run --workspace` and doc tests), `make docs-check`, and `make licenses-check`.
 - `make runtime` (`cargo xtask runtime`) builds the native runtime into `target/ms-native/`. `ms-cli`'s build script only embeds that archive, so run it first (and after runtime changes; it also writes `ms_rt_hot.ll`, the pure runtime helpers that release builds inline, see [DESIGN.md](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md#pure-and-stateful-runtime-code)) before any cargo command that compiles `ms-cli`, such as clippy, nextest, or `cargo build`; `make check`, `make unit`, and `make build` do it for you. In CI it runs once per Rust job, ahead of sccache-wrapped cargo calls, so the runtime's compiler outputs are cached like any other crate.
 - `make build` produces `target/release/ms`; the Rust build details are in [Rust toolchain](rust-toolchain.md).
 - `make fmt`, `make docs`, and `make licenses` write corrections and generated output explicitly.
@@ -34,23 +33,21 @@ It adds `make conform` (the conformance corpus), `make e2e` (every `tests/e2e/te
 
 ## Conformance
 
-`make conform` builds the Rust `ms` and `ms-conform`, lints the corpus, and replays the run, check, and test phases of `tests/conformance/` against `ms`, excluding fixtures tagged `aliasing`. Known differences are listed in `tests/conformance/expect-fail.txt`. `CONFORM_SHARD=i/n` splits the run. See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
+`make conform` builds the Rust `ms` and `ms-conform`, lints the corpus, and replays the run, check, and test phases of `tests/conformance/` against `ms`, excluding fixtures tagged `aliasing`, and the parse phase for every fixture. Known differences are listed in `tests/conformance/expect-fail.txt`. `CONFORM_SHARD=i/n` splits the run. See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
 
-`python3 scripts/extern-parity.py` (read-only; `-v` lists every entry) reports how many bodiless standard functions derive their runtime signature from their declaration under the ABI conventions, and which are mismatched, use types outside the scalar/`String`/`Bytes` set, or have no runtime symbol. It measures how much of the native table a signature-driven `extern` could cover.
-
-`make leak-check` builds the runtime with allocation counters (`ms-rt` feature `stats`, via `MS_RT_LIB`) and runs the corpus programs that finish normally, failing when any leaves live heap blocks at exit. Pass files to sweep instead (`sh scripts/leak-check.sh path.ms`). Run it after changing lowering, ownership, or runtime code; valgrind covers the native `ms-std-*` crates that use the system allocator.
+`make leak-check` builds the runtime with allocation counters (`ms-rt` feature `stats`, via `MS_RT_LIB`) and runs the corpus programs that finish normally, failing when any leaves live heap blocks at exit. Pass files to sweep instead (`target/release/ms run tools/leak-check.ms -- path.ms`). Run it after changing lowering, ownership, or runtime code; valgrind covers the native `ms-std-*` crates that use the system allocator.
 
 `make count-check` runs `tests/ownership-counts/*.ms` in Debug and Release against the same counting runtime and compares the runtime's `ms-rt counts:` line (allocations, allocated bytes, runtime list copies and string clones) with each fixture's `# expect-debug:` / `# expect-release:` headers, and the program's stdout (cleanup order) with its `# expect-stdout:` lines. Lowering and optimizer passes legitimately change allocation counts, so the two builds carry separate expectations; a change that raises a count states why and updates the header in the same commit. Inline list clones allocate and copy without a runtime call, so `alloc_bytes` is the reliable copy signal.
 
 Keep Manuscript source out of Rust strings. Diagnostics and run output belong in `tests/conformance/fixtures/snippets/` (`ms-conform record`) or `tests/e2e/testdata`; lowering expectations are `# expect-mir:` header comments on `crates/ms-build/tests/lower/*.ms`; a Rust test that drives a program (servers, signals, pipes) loads it with `include_str!` from a `.ms` file beside it. Rust tests keep to Rust internals.
 
-Write source assertions with `@std/test.ms` and propagate their Results: `operation() | try expect_ok | try expect_equal(value)`. Fault messages are asserted in `.ms` tests with `expect_fault`. For callbacks that must be skipped, record invocations and assert that the record stays empty.
+Write source assertions with `@std/test/test.ms` and propagate their Results: `operation() | try expect_ok | try expect_equal(value)`. Fault messages are asserted in `.ms` tests with `expect_fault`. For callbacks that must be skipped, record invocations and assert that the record stays empty.
 
 `make stdlib-bench` prints per-case ns/op for `bench/perf/stdlib` (`BENCHREPEATS`, `BENCHFILTER`); add cases as `bench` blocks in `bench/perf/stdlib/*_bench.ms` (`measure(ops, work)` times the work after untimed setup); `BENCHREPEATS` is the sample count. It is a profiling guide, not a gate. `make agent-bench-check` runs the agent benchmark oracle.
 
 Complete tutorial fences carry a `manuscript-example` JSON comment giving `test` or `run`, arguments, and expected stdout (more fields in [common tasks](../learn/common-tasks.md)).
 
-`make dist` builds a single-binary archive in `dist/` with `scripts/package-rust.sh`.
+`make dist` builds a single-binary archive in `dist/` with `tools/package.ms`.
 
 ## Preview and publish the book
 
@@ -73,11 +70,16 @@ The book uses vendored Hugo Book v13; put styling in `website/assets/_custom.scs
 
 ## Continuous integration
 
-[CI/CD](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/cicd.yml) runs on PRs, merge groups, and pushes to `main`. Superseded PR runs are cancelled; merge-group runs are not. Checkouts use the event's `github.sha`. [Language checks](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/test-language.yml) run the pinned linters, repository rules, license check, and the VS Code extension package in one job.
+[`cicd.yml`](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/cicd.yml) runs the checks. Pull requests squash auto-merge when their checks pass; there is no merge queue, which built every stacked ref with the full matrix and restarted on each outside merge.
 
-The account runs 20 jobs at once, so a pull request starts few jobs: one **Rust** job per platform (linux, darwin and windows on amd64 and arm64), the language job, the book, and two aggregates. Each Rust job runs everything for its platform in sequence: native codegen, debug-attribution and source conformance tests, the frozen corpus (linux-amd64, darwin-arm64, windows-amd64), and the packaged `ms` on a hello project. linux-amd64 also runs fmt, clippy, cargo-nextest, and doc tests; nextest and the corpus runner use every core. Each Rust job compiles through sccache and restores one sccache directory per platform (2 GB cap, keyed on `Cargo.lock` and the toolchain), saved only from `main`; it caches each compiler output, so `target/` is not saved and a changed crate rebuilds only itself. Documentation-only pull requests skip them. The **Rust checks** aggregate fails if any Rust job fails, is cancelled, or is skipped when Rust-relevant files changed.
+- **Pull request: the Linux legs.** linux-amd64 and linux-arm64 each run `tests` and `conformance` (`linux-amd64 · tests`), the same jobs `main` runs: four jobs, with the language checks and the book inside linux-arm64 conformance. linux-amd64 runs the Cranelift corpus in `conformance` and leaves the gates to linux-arm64, so each job stays under ten minutes. A newer commit cancels the earlier run. A documentation-only change (documentation, skills, proposals, extensions, Markdown) skips the Rust steps.
+- **Push to `main` and manual runs: all six platforms** (linux, darwin and windows on amd64 and arm64), one job each running both parts, so main holds six runner slots, not twelve. The running main run finishes and only the newest push waits behind it, so commits in between are skipped (cancelling every run meant none finished while pull requests merged every few minutes); a failure on `main` is fixed or reverted there. A manual run takes an `os` input (`all`, `linux`, `darwin`, `windows`) to run one platform's legs, for example to check a platform-sensitive branch. Runs on `main` deploy Pages from the book linux-arm64 builds.
+- **Ruleset:** require `Platform checks`, the sum of the platform legs.
+- Only runs on `main` save the sccache caches, each as a new entry that cache-maintenance's prune keeps instead of the previous one. Each job restores one sccache directory per platform, keyed on `Cargo.lock` and the toolchain (2 GB cap); it caches compiler outputs, so `target/` is not saved.
 
-Release tags package through [`rust-dist.yml`](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml), called from `release.yml`; every target gates there, and matching `v*` tags publish archives. Require **Build design book**, **Language checks / test**, and **Rust checks** for PRs and merge groups (queue checks use `merge_group: checks_requested`); the aggregates fail if any dependency fails or is cancelled.
+[`rust-checks`](https://github.com/manuscript-lang/manuscript/blob/main/.github/actions/rust-checks/action.yml) holds the Rust steps both workflows share. Part `a` (`tests`) builds the workspace once and runs cargo-nextest, doc tests and debug-attribution tests (linux-amd64 also fmt and clippy), then the Cranelift corpus and fixtures where the platform runs them (linux-amd64, darwin-arm64, windows-amd64). Part `b` (`conformance`) runs the frozen corpus and e2e fixtures and, with part `a` on platforms without Cranelift, the gates: bundled-LLVM release build, source conformance, cancellation and ownership checks, the packaged `ms` on a hello project. nextest, the corpus runner and the e2e runner (`E2E_JOBS` overrides the worker count) use every core. Checkouts use the event's `github.sha`. The [language checks](https://github.com/manuscript-lang/manuscript/blob/main/.github/actions/language-checks/action.yml) (repository rules, license check, the VS Code extension package) and the book run inside the linux-arm64 job.
+
+Release tags package through [`rust-dist.yml`](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml), called from `release.yml`; every target gates there, and matching `v*` tags publish archives.
 
 ## Generate the standard library reference
 

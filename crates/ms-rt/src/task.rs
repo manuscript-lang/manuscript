@@ -456,9 +456,9 @@ mod stack {
 
     /// Fibers carry their own bounds, which `task_main` records when it starts.
     pub unsafe fn prepare(base: *mut u8, _len: usize) -> (usize, usize, usize, *mut fault::Hdr) {
-        let hdr = alloc::alloc(size_of::<fault::Hdr>()).cast::<fault::Hdr>();
-        // SAFETY: a fresh block of the right size.
-        unsafe { hdr.write(fault::Hdr::new(0)) };
+        // The system heap, not the runtime allocator: Unix keeps the header in the stack slot, so
+        // counting it here would make Windows report one more allocation per task.
+        let hdr = Box::into_raw(Box::new(fault::Hdr::new(0)));
         (0, 0, base as usize, hdr)
     }
 
@@ -547,7 +547,12 @@ unsafe fn free_task(t: *mut Task) {
         s.slots[idx].task = null_mut();
         s.free_slots.push(idx);
         #[cfg(windows)]
-        alloc::free((*t).ctx.hdr_ptr().cast());
+        {
+            let hdr = (*t).ctx.hdr_ptr();
+            if !hdr.is_null() {
+                drop(Box::from_raw(hdr));
+            }
+        }
         core::ptr::drop_in_place(t);
         alloc::free(t as *mut u8);
     }
@@ -792,8 +797,8 @@ unsafe fn poll_ready(timeout_ns: i64) {
     }
 }
 
-/// Ends the wait of the task whose park the scheduler is about to fault out of, so its cleanup
-/// can park again without a later post to the old token waking the new wait.
+/// Ends the wait the scheduler is about to fault out of. Cleanup may park again, and a
+/// contained fault must leave both its token and any joined task available to later waiters.
 unsafe fn abandon_wait() {
     let mut s = sched();
     // SAFETY: `cur` is the task that is parking.
@@ -807,6 +812,14 @@ unsafe fn abandon_wait() {
                 k.waiter = 0;
             }
             (*cur).wait_token = 0;
+        }
+        // A join has no token. Release its claim before fault cleanup can join the target.
+        // Only this exceptional path scans slots; normal joins still clear their own claim.
+        for slot in &s.slots {
+            let t = slot.task;
+            if !t.is_null() && (*t).joiner == (*cur).handle {
+                (*t).joiner = 0;
+            }
         }
         (*cur).deadline = NO_DEADLINE;
         (*cur).state = State::Running;
@@ -858,6 +871,7 @@ unsafe fn reactor_wait() {
             let mut parked = false;
             if timeout_ns < 0 && s.fd_waiting == 0 {
                 if s.remote_tokens == 0 {
+                    abandon_wait();
                     fault::fault(b"deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation");
                 }
                 // Waiting only on other isolates: stuck if they all wait like this.
@@ -1329,7 +1343,7 @@ crate::isolate_static! {
     static TIMED_OUT: bool = false;
 }
 
-// ---- closure tasks (`@std/tasks.ms`) ----
+// ---- closure tasks (`@std/concurrency/tasks.ms`) ----
 
 /// Entry of a task that runs a `fn() Unit`: calls the closure with itself as its
 /// environment, as every closure call does.
@@ -1844,6 +1858,74 @@ mod tests {
             assert_eq!(msrt_task_count(), 1);
         }
         teardown();
+    }
+
+    unsafe extern "C-unwind" fn deadlocked_token(arg: *mut u8) {
+        // SAFETY: the test owns the live token and deliberately supplies no completion.
+        unsafe { msrt_token_park(arg as u64, -1, null_mut()) };
+    }
+
+    unsafe extern "C-unwind" fn deadlocked_join(arg: *mut u8) {
+        // SAFETY: the test owns the live task, which has no matching completion.
+        unsafe { msrt_task_join(arg as u64, null_mut()) };
+    }
+
+    unsafe extern "C-unwind" fn deadlocked_channel(arg: *mut u8) {
+        crate::channel::msrt_channel_park(arg as i64);
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_deadlocked_channel_wait_frees_its_token() {
+        let _g = lock();
+        teardown();
+        // SAFETY: the guard contains the deliberate deadlock and the token belongs to it.
+        unsafe {
+            let token = crate::channel::msrt_channel_token() as u64;
+            let status = fault::msrt_guard_call(deadlocked_channel, token as *mut u8, null_mut());
+            let retained = token_mut(&mut sched(), token).is_some();
+            teardown();
+            assert_eq!(status, 1);
+            assert!(!retained, "a channel token lasts for only one wait");
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_deadlocked_token_wait_releases_its_registration() {
+        let _g = lock();
+        teardown();
+        // SAFETY: the guard contains the deliberate deadlock and all state is isolate-local.
+        unsafe {
+            let token = msrt_token_new(0);
+            let status = fault::msrt_guard_call(deadlocked_token, token as *mut u8, null_mut());
+            let waiter = token_mut(&mut sched(), token).unwrap().waiter;
+            let running = (*sched().cur).state == State::Running;
+            teardown();
+            assert_eq!(status, 1);
+            assert_eq!(waiter, 0, "a faulted wait must release its token");
+            assert!(running, "fault cleanup must run as a running task");
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_deadlocked_join_releases_the_targets_joiner() {
+        let _g = lock();
+        teardown();
+        // SAFETY: the guard contains the deliberate deadlock and teardown releases the task.
+        unsafe {
+            let token = msrt_token_new(0);
+            let target = msrt_task_spawn(deadlocked_token, token as *mut u8, 0, 0);
+            msrt_task_yield();
+            let status = fault::msrt_guard_call(deadlocked_join, target as *mut u8, null_mut());
+            let joiner = (*lookup(target)).joiner;
+            let running = (*sched().cur).state == State::Running;
+            teardown();
+            assert_eq!(status, 1);
+            assert_eq!(joiner, 0, "a faulted join must stop claiming its target");
+            assert!(running, "fault cleanup must run as a running task");
+        }
     }
 
     unsafe extern "C-unwind" fn returns(_: *mut ms_rt_abi::Closure) {}

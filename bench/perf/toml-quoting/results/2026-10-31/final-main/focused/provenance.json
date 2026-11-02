@@ -1,0 +1,22 @@
+{
+  "driver_sha256": "faf33a5763050799f001e4d83b1b65a319acfb76e28d1772fe7c1f1887cdda4d",
+  "measured_driver_path": "/workspace/json-perf/bench/perf/json-library/toml-focused.py",
+  "retained_equivalent_driver": "bench/perf/toml-quoting/focused.py",
+  "command": [
+    "python3",
+    "bench/perf/json-library/toml-focused.py",
+    "--before",
+    ".artifacts/toml-final/main-native-original-helper",
+    "--after",
+    ".artifacts/toml-final/main-native",
+    "--summary",
+    "bench/perf/json-library/results/2026-10-31/toml-main-helper/summary.json",
+    "--output",
+    "bench/perf/json-library/results/2026-10-31/toml-main-helper-focused"
+  ],
+  "cwd": "/workspace/json-perf",
+  "input_summary_sha256": "f94afb7d8ca6fc7127007a6b2e5d37a49614d0d554ea8471b6dc96cca43be2a5",
+  "measured_full_environment_sha256": "cd615297714d9c71a3903cb00a267a4dc4e508f164de2705ac551ac9d228f527",
+  "annotated_full_environment_sha256": "035f1acda5627ba95fddaa31db52742245fbd8d1361dc915f00ee2673877704c",
+  "annotation": "Driver copied without source changes; measured environment is preserved, plus a symmetric after-TOML source hash and integration/source-pin clarification in annotated environment."
+}

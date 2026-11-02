@@ -1,1 +1,1 @@
-error parse 7:5:122 "a type cannot mix fields and cases; use either fields (a record) or 'case' lines (an alternative), and wrap shared data in a case payload"
+error parse 7:5:127 "a type cannot mix fields and cases; use either fields (a record) or 'case' lines (an alternative), and wrap shared data in a case payload"

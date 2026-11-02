@@ -650,7 +650,6 @@ impl Repo:
         self.move_head(id.clone())
 
         let root_label = if root: " (root-commit)" else: ""
-
         say("[" + self.label() + root_label + " " + short(id) + "] " + message)
 
     var fn cmd_log(args: List[String]) Unit:
@@ -1197,7 +1196,7 @@ export fn main() Int:
                     pos += 1
                     repo.cmd_write(args[0].clone(), body, cmd == "append")
             else:
-                let rest = text.split(cmd, 2) [1].trim()
+                let rest = text.split(cmd, 2)[1].trim()
                 repo.run(cmd, args, rest)
 
     return 0

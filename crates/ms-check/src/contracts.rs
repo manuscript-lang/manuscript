@@ -134,6 +134,27 @@ pub(crate) fn self_binding(contract: &Ty, implementor: &Ty) -> Subst {
     s
 }
 
+/// Fixes receiver-dependent bounds and defaults while keeping method variables open.
+fn instantiate_operation_variables(variables: &[Ty], bindings: &Subst) -> Vec<Ty> {
+    if bindings.is_empty() {
+        return variables.to_vec();
+    }
+    variables
+        .iter()
+        .map(|variable| {
+            let instantiated = (**variable).clone();
+            *instantiated.bounds.borrow_mut() = variable
+                .bounds()
+                .iter()
+                .map(|bound| sub(bound, bindings))
+                .collect();
+            *instantiated.default.borrow_mut() =
+                variable.default_ty().map(|default| sub(&default, bindings));
+            Rc::new(instantiated)
+        })
+        .collect()
+}
+
 /// The operation `name` of `contract` as called on a value of type `implementor`.
 fn contract_operation(contract: &Ty, name: Name, implementor: &Ty) -> Option<MethodRef> {
     let def = contract.def.as_ref()?;
@@ -152,7 +173,10 @@ fn contract_operation(contract: &Ty, name: Name, implementor: &Ty) -> Option<Met
         receiver: contract.clone(),
         contract: Some(contract.clone()),
         ty: sub(&op.ty, &s),
-        variables: stdlib::operation_variables(&format!("{}/{}", contract.id, name)),
+        variables: instantiate_operation_variables(
+            &stdlib::operation_variables(&format!("{}/{}", contract.id, name)),
+            &s,
+        ),
         decl: op.decl.clone(),
         native: n("contract"),
     }))
@@ -202,8 +226,8 @@ impl DataBlocker {
                 format!("add `{}: Data` to the type parameter", self.ty),
             ),
             DataReason::Collection => (
-                "a Map or Set, which has no portable form".to_string(),
-                "send a List, or a JsonValue object".to_string(),
+                "a Set or a Map whose key is not a String, which has no portable form".to_string(),
+                "send a List, a Map[String, T], or a JsonValue object".to_string(),
             ),
             DataReason::Opaque => (
                 "opaque".to_string(),
@@ -464,6 +488,7 @@ impl Checker {
                 );
             }
             let own = self.method_variables(method);
+            self.type_defaults(&method.func.type_params, &own);
             let mut t = (*self.signature(&method.func.params, Some(&method.func.result))).clone();
             let mut found = false;
             for op in &ops {
@@ -475,12 +500,12 @@ impl Checker {
                     let mut merged: HashSet<Name> = t
                         .defaults
                         .as_ref()
-                        .map(|d| (**d).clone())
+                        .map(|d| d.iter().copied().collect())
                         .unwrap_or_default();
                     if let Some(allowed) = &op.ty.defaults {
                         merged.extend(allowed.iter().copied());
                     }
-                    t.defaults = Some(Rc::new(merged));
+                    t.defaults = Some(Rc::new(ParameterDefaults::new(merged)));
                 }
                 let declared = stdlib::operation_variables(&format!("{}/{}", contract.id, op.name));
                 let renamed: Subst = declared
@@ -502,12 +527,42 @@ impl Checker {
                             method.func.name
                         ),
                     );
+                } else if let Some(declared_names) = op
+                    .decl
+                    .as_ref()
+                    .and_then(|f| f.decl.methods().get(f.index?))
+                    .map(|m| m.func.params.iter().map(|p| p.name).collect::<Vec<_>>())
+                    .filter(|names| {
+                        let written: Vec<_> = method.func.params.iter().map(|p| p.name).collect();
+                        written.len() == names.len() && written != *names
+                    })
+                    && same(&Rc::new(t.clone()), &sub(&op.ty, &renamed))
+                {
+                    let names: Vec<String> = declared_names.iter().map(|n| n.to_string()).collect();
+                    self.type_error(
+                        method.pos,
+                        format!(
+                            "implementation operation parameter names do not match contract; {} must name its parameters ({}) like the interface, since a call through the interface labels arguments by those names",
+                            method.func.name,
+                            names.join(", ")
+                        ),
+                    );
                 } else if !same(&Rc::new(t.clone()), &sub(&op.ty, &renamed)) {
                     self.type_error(
                         method.pos,
                         format!(
-                            "implementation operation signature does not match contract; {} must be declared as fn {}{}",
+                            "implementation operation signature does not match contract; {} must be declared as {} {}{}",
                             method.func.name,
+                            if op
+                                .decl
+                                .as_ref()
+                                .and_then(|f| f.decl.methods().get(f.index?))
+                                .is_some_and(|m| m.mutating)
+                            {
+                                "var fn"
+                            } else {
+                                "fn"
+                            },
                             method.func.name,
                             signature_text(&op.ty)
                         ),
@@ -615,7 +670,6 @@ impl Checker {
                                 args: Vec::new(),
                             },
                         },
-                        result_ref: false,
                         body: Vec::new(),
                         external: false,
                     }),
@@ -663,18 +717,21 @@ impl Checker {
                         param.name
                     ),
                 );
+            } else if self.intrinsic_type_parameter(param.name) {
+                self.res_error(
+                    param.pos,
+                    format!(
+                        "duplicate or intrinsic type parameter {}; choose a different type parameter name",
+                        param.name
+                    ),
+                );
             }
             let id = self.unique("typevar");
             let v: Ty = Rc::new(Type::new(param.name, id, Kind::Variable));
             own.push(v.clone());
             self.scope.types.borrow_mut().insert(param.name, v);
         }
-        for (i, param) in method.func.type_params.iter().enumerate() {
-            for bound in &param.bounds {
-                let t = self.resolve(Some(bound));
-                own[i].bounds.borrow_mut().push(t);
-            }
-        }
+        self.resolve_type_bounds(&method.func.type_params, &own);
         own
     }
 
@@ -711,32 +768,24 @@ impl Checker {
         contract.is_std("Comparable") && builtin_comparable(receiver)
     }
 
-    /// Whether `.clone()` is available for `t`: plain data is, resource handles and functions are not.
+    /// Whether `.clone()` is available for `t`: every value but a resource, which has one owner.
     fn clonable(&self, t: &Ty, state: &mut PropertyState) -> bool {
         match t.kind {
-            Kind::Variable => return t.bounds().iter().any(|b| b.is_std("Clonable")),
-            // A function type does not record what a closure captured, so a copy could duplicate a resource.
-            Kind::Contract | Kind::Function => return false,
-            Kind::Primitive => return true,
+            Kind::Variable => return t.bounds().iter().any(implies_clonable),
+            Kind::Contract => return !t.is_std("Closeable"),
+            Kind::Function | Kind::Primitive => return true,
             _ => {}
         }
-        if t.is_std("List") || t.is_std("Map") || t.is_std("Set") {
+        if self.closeable(t) {
+            return false;
+        }
+        if t.kind == Kind::Native {
             return t
                 .args
                 .iter()
                 .all(|a| self.property_in(a, "Clonable", state));
         }
-        if t.is_std("Regex") {
-            return false;
-        }
-        if t.kind == Kind::Native {
-            return t.is_std("Bytes") || t.is_std("Decimal") || t.is_std("BigInt");
-        }
         if t.def.is_some() {
-            // A resource has one owner: a copy would be closed a second time.
-            if self.closeable(t) {
-                return false;
-            }
             return fields(t)
                 .iter()
                 .all(|f| self.property_in(&f.ty, "Clonable", state));
@@ -809,7 +858,7 @@ impl Checker {
             self.method_visible(m)
                 && m.contract
                     .as_ref()
-                    .is_some_and(|c| c.is_source_type("@std/json.ms", "JsonEncode"))
+                    .is_some_and(|c| c.is_source_type("@std/data/json.ms", "JsonEncode"))
                 && {
                     let mut s = Subst::new();
                     unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
@@ -855,6 +904,13 @@ impl Checker {
             return t
                 .args
                 .first()
+                .and_then(|a| self.data_blocker(a, visiting, path));
+        }
+        if t.is_std("Map") && t.args.first().is_some_and(|k| k.id.as_str() == "String") {
+            // A `Map[String, T]` is a JSON object.
+            return t
+                .args
+                .get(1)
                 .and_then(|a| self.data_blocker(a, visiting, path));
         }
         if t.is_std("Map") || t.is_std("Set") {
@@ -1088,7 +1144,7 @@ impl Checker {
                 r.contract = m.contract.as_ref().map(|c| sub(c, &s));
                 r.receiver = receiver.clone();
                 // Implementation variables are fixed by the receiver; the method's own stay open.
-                r.variables = own.to_vec();
+                r.variables = instantiate_operation_variables(own, &s);
                 result.push(Rc::new(r));
             }
         }
@@ -1097,6 +1153,14 @@ impl Checker {
 
     /// Methods named `name` available on `receiver`.
     pub(crate) fn methods(&self, receiver: &Ty, name: Name) -> Vec<MethodRef> {
+        // A type's own `clone` replaces the structural one: a resource's clone duplicates its
+        // handle and returns a `Result`.
+        if name == "clone" && matches!(receiver.kind, Kind::Record | Kind::Alternative) {
+            let own = self.implemented_methods(receiver, name);
+            if !own.is_empty() {
+                return own;
+            }
+        }
         if let Some(m) = native_method(receiver, name) {
             return vec![Rc::new(m)];
         }
@@ -1107,10 +1171,14 @@ impl Checker {
         }
         if receiver.kind == Kind::Variable {
             let mut result: Vec<MethodRef> = Vec::new();
+            let mut seen_bounds: Vec<Ty> = Vec::new();
             for b in receiver.bounds() {
-                if b.kind != Kind::Contract {
+                // A bound inherited from both the receiver declaration and the
+                // implementation must not make its operations ambiguous.
+                if b.kind != Kind::Contract || seen_bounds.iter().any(|s| s.id == b.id) {
                     continue;
                 }
+                seen_bounds.push(b.clone());
                 // `Self` in a bound's operation is the bounded variable itself.
                 match contract_operation(&b, name, receiver) {
                     Some(method) => result.push(method),
@@ -1157,7 +1225,7 @@ impl Checker {
             return self
                 .methods(t, n("close"))
                 .iter()
-                .any(|m| m.ty.params.is_empty() && m.ty.result_ty().id == "Unit");
+                .any(|m| m.ty.params.is_empty() && is_close_result(&m.ty.result_ty()));
         }
         self.implements(t, &standard("Closeable", vec![]))
     }
@@ -1242,6 +1310,11 @@ impl Checker {
                 }
                 for op in def.operations.borrow().clone() {
                     self.check_declared(&op.ty, d.pos(), s.export);
+                    for v in stdlib::operation_variables(&format!("{}/{}", t.id, op.name)) {
+                        for b in v.bounds() {
+                            self.check_declared(&b, d.pos(), s.export);
+                        }
+                    }
                 }
             }
             for v in s.variables() {
@@ -1317,6 +1390,11 @@ impl Checker {
                 "{prefix}it is or holds a Closeable resource, which is closed once by its owner and cannot be a set element or map key; key on a plain value such as an Int id instead"
             );
         }
+        if bound.is_std("Clonable") && t.kind != Kind::Variable {
+            return format!(
+                "{prefix}it is or holds a Closeable resource, which has one owner and closes once, so it cannot be copied; move it, or use it in place"
+            );
+        }
         if matches!(t.kind, Kind::Record | Kind::Alternative)
             && let Some(symbol) = t.symbol()
             && (symbol.native.as_str().is_empty() || self.standard_declarations)
@@ -1378,7 +1456,7 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
         };
     if name == "clone"
         && (matches!(t.kind, Kind::Record | Kind::Alternative)
-            || (t.kind == Kind::Variable && t.bounds().iter().any(|b| b.is_std("Clonable")))
+            || (t.kind == Kind::Variable && t.bounds().iter().any(implies_clonable))
             || (t.kind == Kind::Primitive && t.id.as_str() == "String")
             || t.is_std("List")
             || t.is_std("Map")
@@ -1431,7 +1509,10 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
                     native,
                     t,
                     sub(&operation.ty, &substitution(t)),
-                    stdlib::operation_variables(&key),
+                    instantiate_operation_variables(
+                        &stdlib::operation_variables(&key),
+                        &substitution(t),
+                    ),
                     operation.decl.clone(),
                 ));
             }
@@ -1443,3 +1524,7 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
 #[cfg(test)]
 #[path = "method_candidates_tests.rs"]
 mod method_candidates_tests;
+
+#[cfg(test)]
+#[path = "method_parameter_names_tests.rs"]
+mod method_parameter_names_tests;

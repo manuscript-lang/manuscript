@@ -1,5 +1,5 @@
-import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
 
 type Body:
     x: Float
@@ -257,9 +257,9 @@ fn wordfreq(n: Int) Int:
     return m.length()
 
 fn timed(name: String, run: fn() Int) Unit:
-    let t = clock().now()
+    let t = monotonic()
     let r = run()
-    say("{name} {clock().now().difference(t).to_nanoseconds() / 1000} {r}\n")
+    say("{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
 
 export fn main() Int:
     timed("sieve_5M", fn() Int: return sieve(5000000))

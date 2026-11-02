@@ -3,7 +3,7 @@ use crate::envfile;
 #[cfg(unix)]
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
+use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_LIMIT_EXCEEDED, STATUS_NOT_FOUND, STATUS_UNSUPPORTED};
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::ops::read_bounded;
 use ms_std_fs::sys::{self, CPath};
@@ -71,7 +71,12 @@ pub fn send_signal(pid: i64, signal: i64) -> Res<()> {
     }
     // SAFETY: plain system call.
     if unsafe { libc::kill(pid as libc::pid_t, signal as i32) } != 0 {
-        return Err(Fail::raw(sys::errno()));
+        let errno = sys::errno();
+        // A missing process is the same `NotFound` that Windows reports for it.
+        if errno == libc::ESRCH {
+            return Err(Fail::status(STATUS_NOT_FOUND));
+        }
+        return Err(Fail::raw(errno));
     }
     Ok(())
 }
@@ -183,8 +188,7 @@ pub fn initialize_groups(username: &[u8], gid: i64) -> Res<()> {
 /// Process title through procfs, as Go's `hostos` does on Linux.
 #[cfg(target_os = "linux")]
 fn comm_path() -> CPath {
-    // SAFETY: plain system call.
-    let pid = unsafe { libc::getpid() };
+    let pid = std::process::id();
     let text = alloc::format!("/proc/self/task/{pid}/comm");
     CPath::new(text.as_bytes()).expect("no NUL in a formatted path")
 }
@@ -360,7 +364,7 @@ pub fn info() -> Res<Info> {
     unsafe {
         Ok(Info {
             pid: std::process::id() as i64,
-            parent_pid: libc::getppid() as i64,
+            parent_pid: std::os::unix::process::parent_id() as i64,
             executable: executable()?,
             uid: libc::getuid() as i64,
             gid: libc::getgid() as i64,
@@ -526,7 +530,7 @@ pub fn resident_bytes() -> Res<i64> {
     // SAFETY: `info` is writable for `size` bytes.
     let got = unsafe {
         libc::proc_pidinfo(
-            libc::getpid(),
+            std::process::id() as libc::c_int,
             libc::PROC_PIDTASKINFO,
             0,
             (&mut info as *mut libc::proc_taskinfo).cast(),
@@ -625,6 +629,11 @@ mod tests {
         assert_eq!(
             send_signal(0, 65).unwrap_err().status,
             ms_rt_abi::STATUS_INVALID_INPUT
+        );
+        // No process has the largest pid, on any platform.
+        assert_eq!(
+            send_signal(2_147_483_647, 0).unwrap_err().status,
+            ms_rt_abi::STATUS_NOT_FOUND
         );
         assert!(!working_directory().unwrap().is_empty());
         if cfg!(any(target_os = "linux", target_os = "macos")) {

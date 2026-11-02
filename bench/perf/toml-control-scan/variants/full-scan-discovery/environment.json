@@ -1,0 +1,18 @@
+{
+  "revision": "26d586480a0aa786035d3def7bfe47651c96e297",
+  "binaries": {
+    "before": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/before",
+      "sha256": "d5e04b7cc408597a893785d7c44c1f77073cf6cad743420bbdb031d73ae646b4"
+    },
+    "after": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/after",
+      "sha256": "ec9027ad1501516d1d565978ee5950a87d92fd7efc1c88761d562bb271b11954"
+    }
+  },
+  "sources": {
+    "before": "2eb4e52f3248829ac728d0a8847f987ba2a6b4ac9c728cee10c3eb41729cf4c5",
+    "after": "2c1fe5bd4929a94a2d2c8204c5ea023f6cdf94ea7e5880935b5f31c62657acd7"
+  },
+  "driver_sha256": "211b7d33ed057be24d27bb1f866d52bf6bb69f7af0fa50bd699141a034d0aab1"
+}

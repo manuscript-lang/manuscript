@@ -1,7 +1,7 @@
-import Channel from "@std/channels.ms"
-import control from "@std/process.ms"
-import TaskError, TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_error, expect_ok from "@std/test.ms"
+import Channel from "@std/io/channels.ms"
+import memory_usage from "@std/os/process.ms"
+import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 fn hold_receive(ch: Channel[Int, Int]) Unit:
     var end = ch
@@ -42,38 +42,38 @@ fn send_value(ready: Channel[Unit, Unit], target: Channel[Int, Int]) Unit:
     var end = target.clone()
     end.send(42).get()
 
-fn cancel_receive(target: Channel[Int, Int]) Result[Unit, Error]:
+fn cancel_receive(target: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Int]()
     let end = target.clone()
     var task = group.spawn(fn ready: receive_value(ready, end))
-    task.channel.receive() | try expect_ok | try expect_equal(some(unit))
+    task.channel.receive() | try expect_ok | try expect_equal(unit)
 
     # The acknowledging task parks on the target before this receive resumes us.
-    group.close()
+    try group.close()
     task.result() | try expect_error | try expect_equal(TaskError.Closed)
-    group.close()
+    try group.close()
     return ok(unit)
 
-fn cancel_send(target: Channel[Int, Int]) Result[Unit, Error]:
+fn cancel_send(target: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Unit]()
     let end = target.clone()
     var task = group.spawn(fn ready: send_value(ready, end))
-    task.channel.receive() | try expect_ok | try expect_equal(some(unit))
-    group.close()
+    task.channel.receive() | try expect_ok | try expect_equal(unit)
+    try group.close()
     task.result() | try expect_error | try expect_equal(TaskError.Closed)
-    group.close()
+    try group.close()
     return ok(unit)
 
-fn wake_receiver(target: Channel[Int, Int]) Result[Unit, Error]:
+fn wake_receiver(target: Channel[Int, Int]) Unit!:
     var end = target.clone()
     end.send(7) | try expect_ok
-    end.receive() | try expect_ok | try expect_equal(some(7))
+    end.receive() | try expect_ok | try expect_equal(7)
     return ok(unit)
 
-fn wake_sender(target: Channel[Int, Int]) Result[Unit, Error]:
+fn wake_sender(target: Channel[Int, Int]) Unit!:
     var end = target.clone()
     for value in 0..17:
-        end.receive() | try expect_ok | try expect_equal(some(value))
+        end.receive() | try expect_ok | try expect_equal(value)
     for value in 0..17:
         end.send(value) | try expect_ok
     return ok(unit)
@@ -90,17 +90,17 @@ test "cancelled receives retain no more storage than the woken control":
         try cancel_receive(woken.channel.clone())
         try wake_receiver(woken.channel.clone())
 
-    let before = control().memory_usage() | try expect_ok
+    let before = memory_usage() | try expect_ok
     for index in 0..32:
         try cancel_receive(task.channel.clone())
 
-    let retained = control().memory_usage() | try expect_ok
+    let retained = memory_usage() | try expect_ok
 
     for index in 0..32:
         try cancel_receive(woken.channel.clone())
         try wake_receiver(woken.channel.clone())
 
-    let cleared = control().memory_usage() | try expect_ok
+    let cleared = memory_usage() | try expect_ok
     (
         retained.heap_used - before.heap_used | try expect_equal(
             cleared.heap_used - retained.heap_used
@@ -123,17 +123,17 @@ test "cancelled sends retain no more storage than the woken control":
         try cancel_send(woken.channel.clone())
         try wake_sender(woken.channel.clone())
 
-    let before = control().memory_usage() | try expect_ok
+    let before = memory_usage() | try expect_ok
     for index in 0..32:
         try cancel_send(task.channel.clone())
 
-    let retained = control().memory_usage() | try expect_ok
+    let retained = memory_usage() | try expect_ok
 
     for index in 0..32:
         try cancel_send(woken.channel.clone())
         try wake_sender(woken.channel.clone())
 
-    let cleared = control().memory_usage() | try expect_ok
+    let cleared = memory_usage() | try expect_ok
     (
         retained.heap_used - before.heap_used | try expect_equal(
             cleared.heap_used - retained.heap_used
@@ -152,12 +152,12 @@ test "cancelling one receiver preserves another receivers wake":
     let first_end = target.channel.clone()
     var cancelled = TaskGroup[Int]()
     var removed = cancelled.spawn(fn ready: receive_value(ready, first_end))
-    removed.channel.receive() | try expect_ok | try expect_equal(some(unit))
+    removed.channel.receive() | try expect_ok | try expect_equal(unit)
 
     let survivor = TaskGroup[Int]()
     let second_end = target.channel.clone()
     var kept = survivor.spawn(fn ready: receive_value(ready, second_end))
-    kept.channel.receive() | try expect_ok | try expect_equal(some(unit))
-    cancelled.close()
+    kept.channel.receive() | try expect_ok | try expect_equal(unit)
+    try cancelled.close()
     target.channel.send(7) | try expect_ok
     kept.result() | try expect_ok | try expect_equal(7)

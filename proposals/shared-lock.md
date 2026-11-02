@@ -1,7 +1,7 @@
 # Shared: access only through a lock guard
 
 Status: **implemented** (Chinmay, 2026-10-25: waiting lock, `with let/var name = expr:` replacing `as`). Checked against `ccac1772`.
-Built shape differs from the sketch below in one place: a stdlib module cannot mix native `...` stubs with bodies, so the lock is the function `lock(box)` in `@std/sync.ms`, not a `box.lock()` method. `Shared.take`, `put` and `locked` stay as natives and the checker rejects them outside `@std/sync.ms`. `lock` waits by polling a 50 µs sleep, which is cancellable; a per-box wait queue would replace it.
+Built shape differs from the sketch below in one place: a stdlib module cannot mix native `...` stubs with bodies, so the lock is the function `lock(box)` in `@std/concurrency/sync.ms`, not a `box.lock()` method. `Shared.take`, `put` and `locked` stay as natives and the checker rejects them outside `@std/concurrency/sync.ms`. `lock` waits by polling a 50 µs sleep, which is cancellable; a per-box wait queue would replace it.
 Direction (Chinmay, 2026-10-25): "yeah let's make it similar to rust" (`Arc<Mutex<T>>`: access only through a guard, released on every exit, no public `take`/`put`).
 
 ## Summary

@@ -9,7 +9,7 @@ import (
     count_ones,
     leading_zeros,
     sqrt
-) from "@std/math.ms"
+) from "@std/math/math.ms"
 
 fn root(value: Float, form: NormalizationForm) Float:
     if form == NormalizationForm.Nfc: return sqrt(value)

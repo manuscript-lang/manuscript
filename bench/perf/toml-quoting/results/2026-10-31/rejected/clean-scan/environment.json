@@ -1,0 +1,22 @@
+{
+  "revision": "d4a94aa92+clean-string-candidate",
+  "toolchain": "rustc 1.99.1; LLVM 23.1.1; Release",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "cpu": "AMD EPYC 9V45 96-Core Processor",
+  "binaries": {
+    "before": {
+      "path": "/workspace/serialization-perf/.artifacts/toml-quoting/before",
+      "sha256": "002b6ccd1ef13506b2f61ae9c673c32b47ac78d1ba6b376a659b9fb988ad43d6"
+    },
+    "after": {
+      "path": "/workspace/serialization-perf/.artifacts/toml-quoting/after",
+      "sha256": "f4a4ee584d9d536310873d9ba0df97d98fc80779ec47d7a325d9d69f60b3acea"
+    },
+    "rust": {
+      "path": "/workspace/serialization-perf/bench/perf/toml-quoting/rust/target/release/toml-quoting-control",
+      "sha256": "d226af83352a7b46646bead47097abe1ae68e2b381552fa46f51838eac272001"
+    }
+  },
+  "repeats": 9,
+  "note": "Native producer timings exclude input/setup/printing. Stringify and output release are timed. Rust may choose different equivalent TOML quoting; byte lengths are recorded independently."
+}

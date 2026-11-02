@@ -113,7 +113,7 @@ impl Checker {
         let ExprKind::Call { args, .. } = &value.kind else {
             return false;
         };
-        if !ty.is_source_type("@std/sync.ms", "SharedGuard") {
+        if !ty.is_source_type("@std/concurrency/sync.ms", "SharedGuard") {
             return false;
         }
         let Some(place) = args.first().and_then(|a| place_text(&a.value)) else {

@@ -118,7 +118,7 @@ fn rejected_programs_report_exactly_the_marked_lines() {
 fn facts_expose_moves_modes_and_drops() {
     use ms_check::ownership::{Access, ParamMode};
     run_on_big_stack(|| {
-        let source = "fn take(xs: List[Int]) List[Int]:\n    return xs\n\nfn grow(var xs: List[Int]) Unit:\n    xs.append(1)\n\nfn f() Int:\n    var a = [1]\n    grow(var a)\n    let b = take(a)\n    a = [2]\n    return b.length() + a.length()\n";
+        let source = "fn take(xs: List[Int]) List[Int]:\n    return xs\n\nfn grow(var xs: List[Int]) Unit:\n    xs.append(1)\n\nfn f() Int:\n    var a = [1]\n    grow(var a)\n    let b = take(a)\n    let n = b.length()\n    a = [2]\n    return n + a.length()\n";
         let file: Arc<str> = Arc::from("t.ms");
         let module = ms_syntax::parser::parse(&file, source).expect("parses");
         let program = ms_check::check(
@@ -142,7 +142,7 @@ fn facts_expose_moves_modes_and_drops() {
                 .expect("callable");
             ownership.of(c).expect("facts").parameters.clone()
         };
-        assert_eq!(mode("take"), vec![ParamMode::Consume]);
+        assert_eq!(mode("take"), vec![ParamMode::Borrow]);
         assert_eq!(mode("grow"), vec![ParamMode::Mutate]);
         let c = callables
             .iter()
@@ -159,7 +159,7 @@ fn facts_expose_moves_modes_and_drops() {
             .values()
             .filter(|u| u.access == Access::Write)
             .count();
-        assert_eq!((moves, writes), (1, 1));
+        assert_eq!((moves, writes), (0, 1));
         assert_eq!(facts.drops_old.len(), 1);
     });
 }

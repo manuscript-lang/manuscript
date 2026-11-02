@@ -1,6 +1,5 @@
 //! Annotates views with what a diff changed, and explains one finding.
 
-use crate::diff::atoi;
 use crate::facts::Facts;
 use crate::json::Json;
 use crate::report::REPORT_FORMAT;
@@ -53,7 +52,7 @@ fn select<'a>(findings: &'a [Finding], selector: &str) -> Result<(&'a Finding, u
         .iter()
         .filter(|f| f.tier != TIER_INTERNAL)
         .collect();
-    if let Some(n) = atoi(selector) {
+    if let Ok(n) = selector.parse::<i64>() {
         if n < 1 || n > attention.len() as i64 {
             return Err(format!(
                 "no finding {n}; LOOK HERE FIRST numbers run 1 to {}",

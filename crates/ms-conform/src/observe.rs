@@ -64,7 +64,7 @@ pub fn normalize_text(text: &str, work: &Path) -> String {
     mask_stdlib_lines(&out)
 }
 
-/// Replace the line of a standard-library frame (`@std/tasks.ms:312`) with `<LINE>`, so editing a
+/// Replace the line of a standard-library frame (`@std/concurrency/tasks.ms:312`) with `<LINE>`, so editing a
 /// standard-library file does not change the expectation of every fixture that faults through it.
 fn mask_stdlib_lines(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
@@ -236,7 +236,9 @@ fn check_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
 }
 
 fn parse_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
-    let json_out = ctx.invoke(fx, &["check", entry, "--json"], work, b"");
+    // `fmt --check` parses without loading and checking the standard library, which `check`
+    // does for every file that parses (about 55 of its 60 ms); the parse diagnostics are the same.
+    let json_out = ctx.invoke(fx, &["fmt", entry, "--check", "--json"], work, b"");
     let report = parse_json_output(&json_out, work);
     let parse_diags: Vec<Json> = diagnostics_of(&report)
         .as_array()
@@ -366,10 +368,10 @@ mod tests {
         let work = Path::new("/tmp/ms-conform-x/w1");
         assert_eq!(
             normalize_text(
-                "at @std/tasks.ms:283 in run\nat a.ms:3 in f @std/x.ms:1 @std/y",
+                "at @std/concurrency/tasks.ms:283 in run\nat a.ms:3 in f @std/x.ms:1 @std/y",
                 work
             ),
-            "at @std/tasks.ms:<LINE> in run\nat a.ms:3 in f @std/x.ms:<LINE> @std/y"
+            "at @std/concurrency/tasks.ms:<LINE> in run\nat a.ms:3 in f @std/x.ms:<LINE> @std/y"
         );
     }
 

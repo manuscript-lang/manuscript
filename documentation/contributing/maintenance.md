@@ -18,7 +18,6 @@ These changes modify tracked inputs; `make verify` only checks them.
 | Cargo dependencies | Edit `Cargo.toml` and refresh `Cargo.lock`; then `make licenses` |
 | Extension dependencies | Edit `extensions/vscode/package.json`, run `npm install --package-lock-only --ignore-scripts`, then `npm ci` and `npm run package -- --allow-missing-repository` |
 | License inventory | `make licenses` records each locked Cargo crate's name, version, and declared SPDX license (from `cargo metadata --locked`) plus SHA-256 hashes of bundled notices; `make licenses-check` detects drift. It is not a legal assessment |
-| Linters | Update `scripts/devtools.env` and the checksums in `scripts/devtools.sha256`, then `make setup`; tools stay in `.tools/` |
 
 Dependabot groups weekly updates (Cargo, npm, GitHub Actions) into PRs with normal verification and no auto-merge; run `make verify-full` before merging.
 
@@ -42,6 +41,6 @@ A version update creates no tag. Documentation archives are separate preserved s
 
 ## Keep the feedback loop healthy
 
-Use `make verify` while editing and `make verify-full` before merging native changes. The `Language checks / test` gate fails if any dependency job fails or is cancelled.
+Use `make verify` while editing and `make verify-full` before merging native changes. The `Platform checks` gate fails if any platform job fails or is cancelled.
 
 - Test where a regression is observable: source fixtures and the conformance corpus for language behavior, the packaged binary for installation.

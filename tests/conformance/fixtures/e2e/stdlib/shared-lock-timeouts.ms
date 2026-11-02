@@ -1,22 +1,22 @@
 # conform: tags=stdlib-shared,stdlib-tasks,tier-io
 # conform: phase=run
 # conform: timeout=20
-import stdout from "@std/io.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
-import TaskGroup from "@std/tasks.ms"
-import nanoseconds, milliseconds, sleep from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import nanoseconds, milliseconds, sleep from "@std/os/time.ms"
 
 fn holder(box: Shared[Int], nap: Int) Int:
     var _g = lock(box)
     sleep(nanoseconds(nap))
-    _g.close()
+    _g.close().get(none)
     return 0
 
 fn waiter(box: Shared[Int]) Int:
     var g = lock(box)
     g.value = g.value + 1
-    g.close()
+    g.close().get(none)
     return 1
 
 export fn main() Int:
@@ -31,9 +31,7 @@ export fn main() Int:
 
         let _first = g.spawn(
             fn ch: waiter(box),
-            timeout: some(
-                nanoseconds(nap - 100000 + (round % 7) * 3000 - 9000)
-            )
+            timeout: nanoseconds(nap - 100000 + (round % 7) * 3000 - 9000)
         )
         let second = g.spawn(fn ch: waiter(box))
         if second.result().is_ok():

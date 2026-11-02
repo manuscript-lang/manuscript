@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,generics,interfaces,lists,maps,match,modules,mutation,optional,records,sets,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/direct-collection-conversions.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 fn append_generic[T](var values: List[T?], value: T) Unit:
     values.append(value)
@@ -41,8 +41,8 @@ test "direct append preserves checked argument conversions":
     errors.append(Failure(1))
     try expect_equal(errors.get(0).message(), "failure")
 
-    var results: List[Result[Int, Error]?] = []
-    let failed: Result[Int, Failure] = error(Failure(2))
+    var results: List[Int!?] = []
+    let failed: Int!Failure = error(Failure(2))
     results.append(failed)
 
     let widened = results.get(0).get()
@@ -73,8 +73,8 @@ test "direct calls capture receiver and arguments in written order":
     var receiver = first.clone()
     receiver.append(
         (
-            match some(7):
-                some(value):
+            match present(7):
+                value:
                     receiver = second.clone()
                     value
                 none: 0
@@ -87,8 +87,8 @@ test "direct calls capture receiver and arguments in written order":
     entries.add(
         key,
         (
-            match some(7):
-                some(value):
+            match present(7):
+                value:
                     key = 2
                     value
                 none: 0
@@ -97,3 +97,6 @@ test "direct calls capture receiver and arguments in written order":
     try expect_false(
         (entries.get(1).get().get() != 7 or entries.contains(2) or key != 2)
     )
+
+fn present[T](value: T) T?:
+    return value

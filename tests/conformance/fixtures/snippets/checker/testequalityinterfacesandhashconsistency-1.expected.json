@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3021",
+        "phase": "type",
+        "message": "Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it",
+        "position": {
+          "file": "testequalityinterfacesandhashconsistency-1.ms",
+          "line": 10,
+          "column": 33,
+          "offset": 314
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testequalityinterfacesandhashconsistency-1.ms:10:33: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n    |\n 10 | fn keys() Map[Key, Int]: return Map[Key, Int]()\n    |                                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

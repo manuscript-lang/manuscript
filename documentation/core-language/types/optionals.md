@@ -5,10 +5,10 @@ weight = 4
 
 # Optional values
 
-`T?` makes absence part of the declared type: `some(value: ...)` holds a `T`, `none` holds nothing. All three names are in the prelude.
+`T?` makes absence part of the declared type: it holds a `T` or `none`. There is no `some`: a plain `T` converts wherever a `T?` is expected, and `some(...)` is rejected. `none` is in the prelude.
 
 ```manuscript
-let present: String? = some("Ada")
+let present: String? = "Ada"
 let missing: String? = none
 ```
 
@@ -16,10 +16,9 @@ let missing: String? = none
 
 A parameter or record field of type `T?` with no default is `none` when omitted, so `= none` is never written; a plain `T` passed for it wraps without `some`.
 
-`T?` is an invariant alternative. `some` and `none` use the expected type or infer `T` from a `some` payload; `none` needs the type written on its binding.
+`T?` is an invariant alternative. `none` takes its type from the expected type, so the type is written on the binding; a bare `let x = 1` is an `Int`, not an `Int?`.
 
 ```manuscript
-let inferred = some(1)  # Int?
 let explicit: String? = none
 # Rejected: no type determines the absent payload.
 let unknown = none
@@ -31,10 +30,10 @@ There is no implicit unwrapping or flattening: `Int??` differs from `Int?`. `Res
 
 ## Passing optional arguments
 
-An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as `some(value: ...)`. An argument already `T?` passes unchanged, including `none`.
+An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as the present case. An argument already `T?` passes unchanged, including `none`.
 
 ```manuscript
-import Queue from "@std/queue.ms"
+import Queue from "@std/collections/queue.ms"
 
 fn main() Unit:
     var _bounded = Queue[Int](capacity: 4)
@@ -45,8 +44,8 @@ fn main() Unit:
 - Wraps exactly one layer: an `Int?` fits `Int??`, a bare `Int` does not.
 - The expression evaluates once, in argument order. Zero, `false`, and empty values stay present.
 - Generic inference matches either the whole optional or its payload: `fn present[T](value: T?) T?` infers `T = Int` from `present(4)`. The payload type also gives context to an empty list or incomplete constructor.
-- An `T?` parameter is still required unless it has a default or a library omission permission.
-- The same wrapping applies wherever a `T?` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`let id: Int? = 3`). A user-defined `Optional` gets no wrapping. Write the plain value there; `some(value)` is also accepted, and `ms lint` reports the redundant form as the warning **MSL113** (`ms lint --fix` removes it).
+- A `T?` parameter or field with no default is `none` when omitted.
+- The same wrapping applies wherever a `T?` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`let id: Int? = 3`). A user-defined `Optional` gets no wrapping.
 
 See [declarations and calls](../functions/declarations-and-calls.md#argument-names).
 
@@ -101,16 +100,50 @@ fn first_number(text: String?) Int?:
 ```manuscript
 fn display_name(name: String?) String:
     if let value = name:
-        return value
+        return value.clone()
     return "Anonymous"
 ```
 
-A [match](../control-flow/pattern-matching.md) with only `some` and `none` arms is reported by `ms lint` as MSL108. Use [Result](../errors/results.md) when failure needs an explanation; `try` propagates only `Result` errors.
+A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `none:`; `v:` binds the payload. A two-arm match is reported by `ms lint` as MSL108. Use [Result](../errors/results.md) when failure needs an explanation; `try` propagates only `Result` errors.
+
+## Optional chaining
+
+`a?.b` reads `b` when `a` is present and is `none` otherwise. The result is optional (`B?`), and stays `B?` rather than `B??` when `b` is already optional. The rest of the chain runs only when `a` is present, so `a?.f(args)` evaluates `args` only then, and `a?.b?.c` stops at the first `none`. Write `?.` with no space on either side; the receiver must be optional, since `.` already reads a member of a value that is always present.
+
+```manuscript
+type Address:
+    city: String?
+
+type User:
+    address: Address?
+
+fn city_length(user: User?) Int?:
+    return user?.address?.city?.length()
+```
+
+A chain cannot move a field out of the optional it reads, so end an owned `String` or record field with `.clone()`.
+
+A chain borrows the optional it starts from. When that place is a `var` (a `var` binding or parameter, or a field of one), the chain may call a `var fn` or change the payload, and the change lands in the optional itself, in place; on `none` nothing runs:
+
+```manuscript
+type Counter:
+    n: Int
+
+impl Counter:
+    var fn bump() Int:
+        self.n += 1
+        return self.n
+
+fn tick(var counter: Counter?) Int?:
+    return counter?.bump()
+```
+
+Through a `let` or an undeclared-`var` parameter, `counter?.bump()` is rejected like any other change to that binding.
 
 ## Converting absence to a Result
 
-- `ok_or[E: Error = MissingValue](cause: E?) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` must implement `Error`.
-- `ok_or_else[E: Error](create: fn() E) Result[T, E]`: calls `create` once, only on absence.
+- `ok_or[E = MissingValue](cause: E?) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` may be any value type.
+- `ok_or_else[E](create: fn() E) Result[T, E]`: calls `create` once, only on absence.
 
 Omitting the cause yields the prelude `MissingValue` (from `@std/core.ms`), the [default type argument](generics.md#default-type-arguments). It records the source file and line of the `ok_or()` call, and `message()` reports them, such as `missing value at src/main.ms:12`. Since `MissingValue` implements `Error`, `try` flattens it in any function whose error type is `Error`:
 
@@ -120,7 +153,7 @@ fn port_number(text: String) Result[Int, Error]:
     return ok(port)
 ```
 
-A context fixing another error type, such as `Result[Int, TextError]`, needs a cause; omitting it faults with `called Optional.ok_or() without a cause for an error type other than MissingValue`.
+When fixing another error type, such as `Result[Int, TextError]`, supply a cause explicitly.
 
 [Result.to_optional](../errors/results.md#converting-success-to-an-optional) to keep success while discarding an error.
 

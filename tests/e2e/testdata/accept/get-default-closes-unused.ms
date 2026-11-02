@@ -1,19 +1,20 @@
 import Closeable from "@std/core.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
-import expect_equal from "@std/test.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Door:
     id: Int
     log: Shared[List[Int]]
 
 impl Closeable for Door:
-    var fn close() Unit:
+    var fn close() Unit!:
         var seen = lock(self.log)
         seen.value.append(self.id)
+        return ok(unit)
 
 fn present(log: Shared[List[Int]]) Int:
-    let held = some(Door(1, log))
+    let held: Door? = Door(1, log)
     let door = held.get(Door(2, log))
     return door.id
 
@@ -23,7 +24,7 @@ fn absent(log: Shared[List[Int]]) Int:
     return door.id
 
 fn named(log: Shared[List[Int]]) Int:
-    let held = some(Door(4, log))
+    let held: Door? = Door(4, log)
     let spare = Door(5, log)
     let door = held.get(spare)
     return door.id + spare.id

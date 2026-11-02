@@ -1,0 +1,188 @@
+diff --git a/crates/ms-rt/src/num.rs b/crates/ms-rt/src/num.rs
+index 4565cb55f..f13ce64b2 100644
+--- a/crates/ms-rt/src/num.rs
++++ b/crates/ms-rt/src/num.rs
+@@ -88,6 +88,22 @@ pub fn parse_int_decimal(text: &[u8]) -> Option<i64> {
+     core::str::from_utf8(text).ok()?.parse().ok()
+ }
+
++/// Validates a suffix after the magnitude has already exceeded the Int range.
++fn valid_radix_digits(digits: &[u8], radix: u64) -> bool {
++    for &c in digits {
++        let d = match c {
++            b'0'..=b'9' => (c - b'0') as u64,
++            b'a'..=b'z' => (c - b'a') as u64 + 10,
++            b'A'..=b'Z' => (c - b'A') as u64 + 10,
++            _ => return false,
++        };
++        if d >= radix {
++            return false;
++        }
++    }
++    true
++}
++
+ /// `Numbers.parse_int`: Err carries the status code.
+ pub fn parse_int_radix(text: &[u8], radix: i64) -> Result<i64, u8> {
+     if !(2..=36).contains(&radix) {
+@@ -102,28 +118,27 @@ pub fn parse_int_radix(text: &[u8], radix: i64) -> Result<i64, u8> {
+     if digits.is_empty() {
+         return Err(STATUS_INVALID_DATA);
+     }
+-    for &c in digits {
++    let mut acc = 0u128;
++    let limit = if neg { 1u128 << 63 } else { (1u128 << 63) - 1 };
++    for (index, &c) in digits.iter().enumerate() {
+         let d = match c {
+-            b'0'..=b'9' => (c - b'0') as u64,
+-            b'a'..=b'z' => (c - b'a') as u64 + 10,
+-            b'A'..=b'Z' => (c - b'A') as u64 + 10,
++            b'0'..=b'9' => (c - b'0') as u128,
++            b'a'..=b'z' => (c - b'a') as u128 + 10,
++            b'A'..=b'Z' => (c - b'A') as u128 + 10,
+             _ => return Err(STATUS_INVALID_DATA),
+         };
+-        if d >= radix {
++        if d >= radix as u128 {
+             return Err(STATUS_INVALID_DATA);
+         }
+-    }
+-    let mut acc: u128 = 0;
+-    let limit: u128 = if neg { 1u128 << 63 } else { (1u128 << 63) - 1 };
+-    for &c in digits {
+-        let d = match c {
+-            b'0'..=b'9' => (c - b'0') as u128,
+-            b'a'..=b'z' => (c - b'a') as u128 + 10,
+-            _ => (c - b'A') as u128 + 10,
+-        };
+         acc = acc * radix as u128 + d;
+         if acc > limit {
+-            return Err(STATUS_OUT_OF_RANGE);
++            // Keep invalid digits ahead of range errors without accumulating
++            // the remainder of an already overflowing magnitude.
++            return Err(if valid_radix_digits(&digits[index + 1..], radix) {
++                STATUS_OUT_OF_RANGE
++            } else {
++                STATUS_INVALID_DATA
++            });
+         }
+     }
+     Ok(if neg {
+@@ -699,6 +714,117 @@ mod tests {
+         assert_eq!(parse_int_radix(b"1", 1), Err(STATUS_INVALID_INPUT));
+     }
+
++    #[test]
++    fn radix_parsing_preserves_range_and_invalid_digit_precedence() {
++        let reference = |text: &[u8], radix: i64| {
++            if !(2..=36).contains(&radix) {
++                return Err(STATUS_INVALID_INPUT);
++            }
++            let digits = text
++                .strip_prefix(b"+")
++                .or_else(|| text.strip_prefix(b"-"))
++                .unwrap_or(text);
++            if digits.is_empty()
++                || digits
++                    .iter()
++                    .any(|&byte| char::from(byte).to_digit(radix as u32).is_none())
++            {
++                return Err(STATUS_INVALID_DATA);
++            }
++            i64::from_str_radix(core::str::from_utf8(text).unwrap(), radix as u32)
++                .map_err(|_| STATUS_OUT_OF_RANGE)
++        };
++        let check = |text: &[u8], radix| {
++            assert_eq!(
++                parse_int_radix(text, radix),
++                reference(text, radix),
++                "{text:?} base {radix}"
++            );
++        };
++        for radix in 2..=36 {
++            for value in [
++                (1u128 << 63) - 1,
++                1u128 << 63,
++                (1u128 << 63) + 1,
++                (1u128 << 64) - 1,
++                1u128 << 64,
++                (1u128 << 64) + 1,
++            ] {
++                let mut magnitude = value;
++                let mut text = Vec::new();
++                while magnitude != 0 {
++                    text.push(
++                        b"0123456789abcdefghijklmnopqrstuvwxyz"
++                            [(magnitude % radix as u128) as usize],
++                    );
++                    magnitude /= radix as u128;
++                }
++                text.reverse();
++                for sign in [b"".as_slice(), b"+", b"-"] {
++                    let mut input = sign.to_vec();
++                    input.extend_from_slice(&text);
++                    check(&input, radix);
++                }
++            }
++            for text in [
++                b"".as_slice(),
++                b"+",
++                b"-",
++                b"++1",
++                b"--1",
++                b"+-1",
++                b" 1",
++                b"1 ",
++                b"1_0",
++                b"\xff",
++            ] {
++                check(text, radix);
++            }
++            for digit in [
++                b'0',
++                b'1',
++                b"0123456789abcdefghijklmnopqrstuvwxyz"[radix as usize - 1],
++            ] {
++                for len in [1, 18, 19, 20, 63, 64, 65, 129, 1024] {
++                    let text = vec![digit; len];
++                    for sign in [b"".as_slice(), b"+", b"-"] {
++                        let mut input = sign.to_vec();
++                        input.extend_from_slice(&text);
++                        check(&input, radix);
++                        input.push(b'!');
++                        check(&input, radix);
++                    }
++                }
++            }
++            let mut bits = 0x9e37_79b9_7f4a_7c15u64;
++            for index in 0..256 {
++                bits = bits.wrapping_mul(6364136223846793005).wrapping_add(1);
++                let value = match index {
++                    0 => i64::MIN,
++                    1 => i64::MIN + 1,
++                    2 => i64::MAX,
++                    3 => i64::MAX - 1,
++                    _ => bits as i64,
++                };
++                let mut text = Vec::new();
++                format_radix(value, radix as u32, &mut text);
++                check(&text, radix);
++                assert_eq!(parse_int_radix(&text, radix), Ok(value));
++                check(&text.to_ascii_uppercase(), radix);
++                if value >= 0 {
++                    let mut signed = b"+000".to_vec();
++                    signed.extend_from_slice(&text);
++                    check(&signed, radix);
++                }
++            }
++        }
++        for radix in [i64::MIN, -1, 0, 1, 37, i64::MAX] {
++            for text in [b"1".as_slice(), b"", b"-", b"!", b"18446744073709551616"] {
++                check(text, radix);
++            }
++        }
++    }
++
+     #[test]
+     fn float_strings_render_shortest() {
+         let _g = crate::testutil::lock();

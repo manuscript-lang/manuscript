@@ -1,0 +1,31 @@
+{
+  "classification": "inconclusive",
+  "reason": "rustc missing from PATH prevented intended bad producers from running; not validation evidence",
+  "raw": {
+    "driver_sha256": "28701d3d6269d18180f1f55e2874caa0015e82fb8afdb7a0799b161508d9bcc5",
+    "environment_sha256": "2e9282a8fbe864f705990fada9b8c5d5e0eb0d28dc0704d7ec1c794c8ac3ea64",
+    "records": [
+      {
+        "case": "failed-producer",
+        "exit": 1,
+        "summary_written": false,
+        "stderr": "Traceback (most recent call last):\n  File \"/workspace/toml-scan/bench/perf/toml-control-scan/file-run.py\", line 24, in <module>\n    metadata = {'command': sys.argv, 'revision': a.revision, 'platform': platform.platform(), 'toolchain': subprocess.check_output(['rustc', '-vV'], text=True),\n                                                                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 466, in check_output\n    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 1955, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'rustc'\n",
+        "producer_sha256": "931a44fd0d71614c99744f89b09217fc731b4695ef066a2e72ba2589ede6a1a7"
+      },
+      {
+        "case": "changed-output",
+        "exit": 1,
+        "summary_written": false,
+        "stderr": "Traceback (most recent call last):\n  File \"/workspace/toml-scan/bench/perf/toml-control-scan/file-run.py\", line 24, in <module>\n    metadata = {'command': sys.argv, 'revision': a.revision, 'platform': platform.platform(), 'toolchain': subprocess.check_output(['rustc', '-vV'], text=True),\n                                                                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 466, in check_output\n    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 1955, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'rustc'\n",
+        "producer_sha256": "e782508257e1a44330f7f11a448e135787cf1d1c31232cbe153995230f06b926"
+      },
+      {
+        "case": "wrong-checksum",
+        "exit": 1,
+        "summary_written": false,
+        "stderr": "Traceback (most recent call last):\n  File \"/workspace/toml-scan/bench/perf/toml-control-scan/file-run.py\", line 24, in <module>\n    metadata = {'command': sys.argv, 'revision': a.revision, 'platform': platform.platform(), 'toolchain': subprocess.check_output(['rustc', '-vV'], text=True),\n                                                                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 466, in check_output\n    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 1955, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'rustc'\n",
+        "producer_sha256": "80d1a9ba7f8677994a8682351408f87c6ffeff0ff99397b0501a4ebfa3f222f9"
+      }
+    ]
+  }
+}

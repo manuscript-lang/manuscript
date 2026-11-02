@@ -1,4 +1,4 @@
-import stringify from "@std/json.ms"
+import stringify from "@std/data/json.ms"
 
 fn show[T](value: T) String:
     return stringify(value).get("")

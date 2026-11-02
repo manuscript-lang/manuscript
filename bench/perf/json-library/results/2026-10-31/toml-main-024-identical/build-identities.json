@@ -1,0 +1,193 @@
+{
+  "base": "024af5e2e544f7c9d2ccccc1c333b92b70db0ef3",
+  "candidate_head": "e609f6d3a4f9646606c13452646ad8e0428b9d9e",
+  "note": "Same worktree, same dependency graph and target paths; toggle only JSON library source. Primary TOML source unchanged. Earlier separate-worktree cohort retained as discovery; this removes checkout-path confounding. Normal repository build flags only. Baseline retains the candidate manifests and exact locked dependency graph; only lib.rs is restored, not a pristine-main graph. All four before/after executable pairs are byte-identical: these produced-workload timings are A/A, not an algorithm-specific TOML change.",
+  "build_commands": [
+    {
+      "label": "before",
+      "command": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ]
+    },
+    {
+      "label": "before",
+      "command": [
+        "cargo",
+        "build",
+        "--release",
+        "--locked",
+        "-p",
+        "ms-cli"
+      ]
+    },
+    {
+      "label": "before",
+      "command": [
+        "target/release/ms",
+        "build",
+        "/workspace/toml-scan/bench/perf/toml-control-scan/file.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        ".artifacts/integrated-024/same-worktree/toml-before"
+      ]
+    },
+    {
+      "label": "before",
+      "command": [
+        "target/release/ms",
+        "build",
+        "/workspace/toml-scan/bench/perf/toml-control-scan/file-error.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        ".artifacts/integrated-024/same-worktree/error-before"
+      ]
+    },
+    {
+      "label": "before",
+      "command": [
+        "target/release/ms",
+        "build",
+        "/workspace/toml-scan/bench/perf/toml-control-scan/file-writer.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        ".artifacts/integrated-024/same-worktree/writer-before"
+      ]
+    },
+    {
+      "label": "before",
+      "command": [
+        "target/release/ms",
+        "build",
+        "/workspace/toml-scan/bench/perf/toml-control-scan/read.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        ".artifacts/integrated-024/same-worktree/read-before"
+      ]
+    },
+    {
+      "label": "after",
+      "command": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ]
+    },
+    {
+      "label": "after",
+      "command": [
+        "cargo",
+        "build",
+        "--release",
+        "--locked",
+        "-p",
+        "ms-cli"
+      ]
+    },
+    {
+      "label": "after",
+      "command": [
+        "target/release/ms",
+        "build",
+        "/workspace/toml-scan/bench/perf/toml-control-scan/file.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        ".artifacts/integrated-024/same-worktree/toml-after"
+      ]
+    },
+    {
+      "label": "after",
+      "command": [
+        "target/release/ms",
+        "build",
+        "/workspace/toml-scan/bench/perf/toml-control-scan/file-error.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        ".artifacts/integrated-024/same-worktree/error-after"
+      ]
+    },
+    {
+      "label": "after",
+      "command": [
+        "target/release/ms",
+        "build",
+        "/workspace/toml-scan/bench/perf/toml-control-scan/file-writer.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        ".artifacts/integrated-024/same-worktree/writer-after"
+      ]
+    },
+    {
+      "label": "after",
+      "command": [
+        "target/release/ms",
+        "build",
+        "/workspace/toml-scan/bench/perf/toml-control-scan/read.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        ".artifacts/integrated-024/same-worktree/read-after"
+      ]
+    }
+  ],
+  "binaries": {
+    "toml-before": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/toml-before",
+      "sha256": "bad6d0750f592c8afa71f1616dafa22df135fcf67949140a2f0e96e969de5647"
+    },
+    "error-before": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/error-before",
+      "sha256": "70a403a95ccaaa52e780fd8e4a2d43e5ba3ac3b22df78a7bf8d168de22795b1d"
+    },
+    "writer-before": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/writer-before",
+      "sha256": "7250f330fd2460c9a7305298ba75383877396183644625b0ba9e8209a00e9123"
+    },
+    "read-before": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/read-before",
+      "sha256": "d814a0052f474256eaf878a0b5d50b55b54dad9975bd3c7e9325abb7936d584e"
+    },
+    "toml-after": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/toml-after",
+      "sha256": "bad6d0750f592c8afa71f1616dafa22df135fcf67949140a2f0e96e969de5647"
+    },
+    "error-after": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/error-after",
+      "sha256": "70a403a95ccaaa52e780fd8e4a2d43e5ba3ac3b22df78a7bf8d168de22795b1d"
+    },
+    "writer-after": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/writer-after",
+      "sha256": "7250f330fd2460c9a7305298ba75383877396183644625b0ba9e8209a00e9123"
+    },
+    "read-after": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/read-after",
+      "sha256": "d814a0052f474256eaf878a0b5d50b55b54dad9975bd3c7e9325abb7936d584e"
+    }
+  },
+  "source": {
+    "before": "0bfa3d3dbd6a32a4c1b18692685c796d992c1efb297f10ea270736f063206071",
+    "after": "97a92356a415764d4c815898dc0e88bc5a7b02b8bec1acf6bd7576f7f2051a16"
+  },
+  "runtime": {
+    "before": "301f3ec2f744816a999d59dc280adb93b1aa30f015f2be79f840d71bc4cb7692",
+    "after": "a31bf57c132afafdecdd9e2ded807e501ef84d00d9290d8a70c6000b15ef6188"
+  },
+  "harness_source_and_lock_sha256": {
+    "bench/perf/toml-control-scan/file.ms": "67a34a271bad946a300786a0383ac5ad1a14a2a2c12ffd6a7a423053949bffa7",
+    "bench/perf/toml-control-scan/file-error.ms": "78f35a3599c26400828da932322123f204ab47155b61d45503af98de9500594d",
+    "bench/perf/toml-control-scan/file-writer.ms": "857702d1d2b8fc75d9ed74046c98dbba4a17447a6a7c5a7c7a3d7cb62ae8853b",
+    "bench/perf/toml-control-scan/read.ms": "1dbb460759b61a3bcea33d04106ef8721d26466ed6d1e80a3205a26df00d02ff",
+    "bench/perf/toml-control-scan/file-run.py": "571037cfe672a77d09268485bbaad62ebfc90af61bbdccb3a59763c50c29f32d",
+    "bench/perf/toml-control-scan/rust/Cargo.toml": "ef79c60baceaaa7ba8eb9ca85dfff347733fdc5723c0500626d4dbc34ee12798",
+    "bench/perf/toml-control-scan/rust/Cargo.lock": "21b823c8a50ae6ef118aaaae5bcbce499e870ad5a30ed65d7c284ff8c2b056f2",
+    "Cargo.lock": "ac80e0b9b741b44d914f94c1cf520ff65c7f2e8fedd946051d2ae117e1dd055e"
+  }
+}

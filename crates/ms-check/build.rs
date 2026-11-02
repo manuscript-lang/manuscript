@@ -1,4 +1,4 @@
-//! Embeds `stdlib/*.ms`, `stdlib/*/*.ms` and `bindings.json` unchanged.
+//! Embeds `stdlib/*.ms`, `stdlib/*/*.ms` and unchanged.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -45,14 +45,6 @@ fn main() {
         .unwrap();
     }
     out.push_str("];\n");
-    let bindings = dir.join("bindings.json");
-    println!("cargo:rerun-if-changed={}", bindings.display());
-    writeln!(
-        out,
-        "/// The native binding table.\npub const BINDINGS: &str = include_str!({:?});",
-        bindings.display().to_string()
-    )
-    .unwrap();
     let dest = PathBuf::from(std::env::var("OUT_DIR").expect("out dir")).join("std_sources.rs");
     std::fs::write(dest, out).expect("write");
 }

@@ -1,5 +1,5 @@
-import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
 
 # Shared helpers for the standard-library micro-benchmarks.
 export type Point:
@@ -11,9 +11,9 @@ export fn say(text: String) Unit:
 
 # Runs `body` once and prints `name<TAB>ops<TAB>ns_per_op`; `body` returns a checksum that keeps its work observable.
 export fn bench(name: String, ops: Int, body: fn() Int) Unit:
-    let started = clock().now()
+    let started = monotonic()
     let checksum = body()
-    let elapsed = clock().now().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     say("{name}\t{ops}\t{elapsed / ops}\n")
     say("# checksum {name} {checksum}\n")
     say("# elapsed {name} {elapsed}\n")

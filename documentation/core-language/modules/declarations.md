@@ -9,9 +9,9 @@ Each `.ms` file is a module with its own boundary. `export` makes a declaration 
 
 ## Names and declaration order
 
-Import several symbols with `import Name, OtherName from "./module.ms"`: a nonempty comma-separated list on one line. To wrap across lines, parenthesize the list (`import (Name, OtherName) from "./module.ms"`); a trailing comma is allowed there. Braces are rejected. Single-symbol `import Name from "./module.ms"` also works. Duplicate names and collisions are errors.
+Import several symbols with `import Name, OtherName from "./module.ms"`: a nonempty comma-separated list on one line. To wrap across lines, parenthesize the list (`import (Name, OtherName) from "./module.ms"`); a trailing comma is allowed there. `ms fmt` wraps a bare list wider than 88 columns into the parenthesized form, one name per line, and leaves parenthesized lists that fit on their line as written. Braces are rejected. Single-symbol `import Name from "./module.ms"` also works. Duplicate names and collisions are errors.
 
-Types, interfaces, functions, and imports share one module namespace. Duplicates, import/declaration collisions, and overloads are rejected. Order does not matter: names and signatures are collected before bodies are checked, so forward references and mutual recursion work. Type layout cycles follow the [recursive data rule](../types/records.md#recursive-data).
+Types, interfaces, functions, and imports share one module namespace. Duplicates, import/declaration collisions, and overloads are rejected. Two modules that export the same name (for example `parse` in `@std/data/csv.ms` and `@std/data/toml.ms`) cannot both be imported into one module, and imports cannot be renamed. Import one, and wrap the other in a small module that exports it under a new name. Order does not matter: names and signatures are collected before bodies are checked, so forward references and mutual recursion work. Type layout cycles follow the [recursive data rule](../types/records.md#recursive-data).
 
 The intrinsic core type names are `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. The standard interfaces `Equal`, `Comparable`, `Hashable`, and `Clonable` also have fixed identities in the prelude. Declarations, imports, and type parameters cannot redefine these. Locals may shadow outer names, but a shadowed value name cannot be used as a type.
 
@@ -88,7 +88,7 @@ An `impl` in a source type's defining module is available wherever the type is u
 ## Standard-library imports
 
 ```manuscript
-import Queue from "@std/queue.ms"
+import Queue from "@std/collections/queue.ms"
 ```
 
 `@std` is always available, needs no `[aliases]` entry, and cannot be overridden. Importing one export does not import the other type names in its signature: importing `Queue` does not bring other names from the module into scope (`Result` is in the prelude). Host accessors are imported separately and return services when called.

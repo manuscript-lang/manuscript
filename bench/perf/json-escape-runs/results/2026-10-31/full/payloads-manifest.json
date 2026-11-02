@@ -1,0 +1,70 @@
+{
+  "compressed_sha256": "538715c81e8aa1dd83970f58fb82f3e4f352fb406953bd040192a600cf409fcd",
+  "uncompressed_sha256": "1823917f88f17834dde51ef9e9936d39fe3a07a0c832dac6cd49b2107486a0e9",
+  "files": {
+    "hard-floats-rust.json": {
+      "bytes": 11954,
+      "sha256": "ead149b3dea52d176117b39e9a209300814098acf4f628584dd0fc60a7b39de6"
+    },
+    "integers-ms.json": {
+      "bytes": 8417,
+      "sha256": "ffa303583815f983b45dff41b1180805c979fa3cd080ec41d1e5773a6d46f736"
+    },
+    "escapes-rust.json": {
+      "bytes": 60161,
+      "sha256": "0010d8e136f2657ef202afb393b42c083b36f925877ee61e747ddf14e300b5b3"
+    },
+    "escapes-ms.json": {
+      "bytes": 60161,
+      "sha256": "0010d8e136f2657ef202afb393b42c083b36f925877ee61e747ddf14e300b5b3"
+    },
+    "hard-floats-ms.json": {
+      "bytes": 11960,
+      "sha256": "bee6ecc8db1da59237a1d66bffe75a873d4087a2b4ac40bc5fa37dee170de4a5"
+    },
+    "unicode-ms.json": {
+      "bytes": 62209,
+      "sha256": "6c002d0cb7832ea2a3e990187de09a1992eb0229065532b1fc5a574ecac50b9f"
+    },
+    "empty-ms.json": {
+      "bytes": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "decimals-rust.json": {
+      "bytes": 3761,
+      "sha256": "b8fe024c5ada4fad84d62c13b76a58ab2feb1963f52b544b55f9e62f9fdb3d4f"
+    },
+    "tiny-ms.json": {
+      "bytes": 17,
+      "sha256": "7e940b51777d18531f4e5eaa0f57235ae3d2fac56fae8408944ea225bf40ac79"
+    },
+    "empty-rust.json": {
+      "bytes": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "decimals-ms.json": {
+      "bytes": 3761,
+      "sha256": "b8fe024c5ada4fad84d62c13b76a58ab2feb1963f52b544b55f9e62f9fdb3d4f"
+    },
+    "ascii-ms.json": {
+      "bytes": 11777,
+      "sha256": "6e5f6a031f12830b4d4b15854a31a5e1acdf26692cdee728902c4ca758530d49"
+    },
+    "ascii-rust.json": {
+      "bytes": 11777,
+      "sha256": "6e5f6a031f12830b4d4b15854a31a5e1acdf26692cdee728902c4ca758530d49"
+    },
+    "integers-rust.json": {
+      "bytes": 8417,
+      "sha256": "ffa303583815f983b45dff41b1180805c979fa3cd080ec41d1e5773a6d46f736"
+    },
+    "tiny-rust.json": {
+      "bytes": 17,
+      "sha256": "7e940b51777d18531f4e5eaa0f57235ae3d2fac56fae8408944ea225bf40ac79"
+    },
+    "unicode-rust.json": {
+      "bytes": 62209,
+      "sha256": "6c002d0cb7832ea2a3e990187de09a1992eb0229065532b1fc5a574ecac50b9f"
+    }
+  }
+}

@@ -8,6 +8,11 @@ use ms_mir::ir::{Cc, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
+/// Element count above which a list literal of constants is emitted as static data.
+const CONST_LIST_LITERAL: usize = 64;
+const LONG_LIST_LITERAL: usize = 512;
+const LONG_LIST_CHUNK: usize = 64;
+
 impl<'a> FnLower<'a> {
     /// A placeholder for the value of code that cannot run.
     pub fn dummy(&mut self, ty: MTy) -> Val {
@@ -44,29 +49,7 @@ impl<'a> FnLower<'a> {
         let x = self.expr_value(e);
         self.converting = saved;
         let x = x?;
-        let x = match self.hir.info(e).wrap_some {
-            Some(_)
-                if !self.dead
-                    && self.lent_return
-                    && !x.own
-                    && self.lent_expr == Some(e as *const Expr as usize) =>
-            {
-                // A lending function wraps a borrow as a borrow, as `some(value)` does.
-                Val {
-                    v: self.b.opt_view(x.v),
-                    own: false,
-                }
-            }
-            Some(_) if !self.dead => {
-                let o = self.owned(x);
-                Val {
-                    v: self.b.opt_some(o),
-                    own: true,
-                }
-            }
-            _ => x,
-        };
-        match self.hir.info(e).error_source {
+        let x = match self.hir.info(e).error_source {
             Some(src) if !self.dead => {
                 let want = self.emty(e)?;
                 // An owned resource converted to an interface without `close` is only read (the
@@ -90,10 +73,33 @@ impl<'a> FnLower<'a> {
                 self.scope_override = self.evidence_of(std::slice::from_ref(&src));
                 let out = self.fit_ty(x, &ct::sub(&src, &self.subst), want);
                 self.scope_override = saved;
-                out
+                out?
             }
-            _ => Ok(x),
-        }
+            _ => x,
+        };
+        // The conversion to the interface comes first: `Shape?` takes a `Sq` as `some(Shape(sq))`.
+        let x = match self.hir.info(e).wrap_some {
+            // A reference wrapped on its way to a binding or a return stays one: `opt.view`.
+            Some(_)
+                if !self.dead
+                    && !x.own
+                    && self.cx.view_wraps.contains(&(self.hir.data.file, e.id)) =>
+            {
+                Val {
+                    v: self.b.opt_view(x.v),
+                    own: false,
+                }
+            }
+            Some(_) if !self.dead => {
+                let o = self.owned(x);
+                Val {
+                    v: self.b.opt_some(o),
+                    own: true,
+                }
+            }
+            _ => x,
+        };
+        Ok(x)
     }
 
     pub(crate) fn expr_value(&mut self, e: &Expr) -> Result<Val, Error> {
@@ -115,6 +121,7 @@ impl<'a> FnLower<'a> {
             ExprKind::Name(_) => self.name(e),
             ExprKind::Member { left, name } => self.member(e, left, name.as_str()),
             ExprKind::Index { left, index } => self.index(e, left, index),
+            ExprKind::Probe(_) => Err(Error::new("`place[key]?` is only lowered by `if var`")),
             ExprKind::Apply { value, .. } => match value {
                 Some(v) if self.is_index_apply(e) => {
                     let ExprKind::Apply { left, .. } = &e.kind else {
@@ -244,6 +251,18 @@ impl<'a> FnLower<'a> {
         let TyKind::List(elem) = self.b.m.types.kind(lt).clone() else {
             return Err(Error::new("list literal of a non-list type"));
         };
+        if items.len() > CONST_LIST_LITERAL
+            && !self.needs_drop(elem)
+            && let Some(v) = self.const_list_literal(elem, items)
+        {
+            return Ok(v);
+        }
+        if items.len() > LONG_LIST_LITERAL
+            && !self.needs_drop(elem)
+            && !items.iter().any(crate::mutation::has_try)
+        {
+            return self.long_list_literal(lt, elem, items);
+        }
         let mut vals = Vec::new();
         let mut pending = Vec::new();
         for (n, it) in items.iter().enumerate() {
@@ -271,11 +290,108 @@ impl<'a> FnLower<'a> {
         Ok(Val { v, own: true })
     }
 
+    /// The raw register value of a constant scalar element (an integer, float, or boolean
+    /// literal, optionally negated), or `None` when `e` is anything else.
+    fn const_scalar(&self, e: &Expr) -> Option<i64> {
+        let (text, negate) = match &e.kind {
+            ExprKind::Bool(b) => return Some(i64::from(*b)),
+            ExprKind::Number(text) => (text.as_str(), false),
+            ExprKind::Unary {
+                op: UnaryOp::Neg,
+                operand,
+            } => match &operand.kind {
+                ExprKind::Number(text) => (text.as_str(), true),
+                _ => return None,
+            },
+            _ => return None,
+        };
+        let t = self.ety(e);
+        match t.id.as_str() {
+            "Int" | "Int8" | "Int16" | "Int32" | "Int64" | "UInt8" | "UInt16" | "UInt32" => {
+                let n = parse_int(text)?;
+                i64::try_from(if negate { -n } else { n }).ok()
+            }
+            "UInt64" => Some(u64::try_from(parse_int(text)?).ok()? as i64),
+            "Float" | "Float32" | "Float64" => {
+                let f: f64 = ms_syntax::number::canonical(text).parse().ok()?;
+                let f = if negate { -f } else { f };
+                let f = if ct::float_bits(&t) == Some(32) {
+                    f64::from(f as f32)
+                } else {
+                    f
+                };
+                Some(f.to_bits() as i64)
+            }
+            _ => None,
+        }
+    }
+
+    /// A long literal of constants is static data copied into a fresh list. Building it element
+    /// by element makes one function as long as the literal, and register allocation, the SLP
+    /// vectorizer and the instruction scheduler are all quadratic in that.
+    fn const_list_literal(&mut self, elem: MTy, items: &[Expr]) -> Option<Val> {
+        let data = items
+            .iter()
+            .map(|it| self.const_scalar(it))
+            .collect::<Option<Vec<i64>>>()?;
+        let v = self.b.list_const(elem, data);
+        Some(Val { v, own: true })
+    }
+
+    /// A long literal of plain runtime values is built from `list.lit` chunks joined by
+    /// `list.concat`, and each chunk's code moves into its own helper function when it can
+    /// (`FuncBuilder::outline`: the values it reads become parameters). One function over every
+    /// element makes register allocation (40000 elements took 20s in a Debug build), the SLP
+    /// vectorizer and the scheduler (20000 took 127s) quadratic, and pushing each element instead
+    /// bloats the code. Values that need no drop are copied by the join exactly as they would be
+    /// moved, and none of the items returns early.
+    fn long_list_literal(&mut self, lt: MTy, elem: MTy, items: &[Expr]) -> Result<Val, Error> {
+        let d = self.type_desc(elem);
+        let mut list: Option<Value> = None;
+        for chunk in items.chunks(LONG_LIST_CHUNK) {
+            let mark = self.b.mark();
+            let temps = self.temps.len();
+            let mut vals = Vec::with_capacity(chunk.len());
+            for it in chunk {
+                let x = self.expr(it)?;
+                if self.dead {
+                    return Ok(self.dummy(lt));
+                }
+                vals.push(self.owned(x));
+            }
+            let mut part = self.b.list_lit(elem, &vals);
+            if self.temps.len() == temps {
+                let name = format!("list.literal.{}", self.b.m.funcs.len());
+                part = self.b.outline(mark, part, &name).unwrap_or(part);
+            }
+            list = Some(match list {
+                None => part,
+                Some(head) => {
+                    let joined = self.call_runtime("msrt_list_concat", &[head, part, d], lt)?;
+                    self.drop_value(head);
+                    self.drop_value(part);
+                    joined
+                }
+            });
+        }
+        let v = list.expect("a long literal has items");
+        Ok(Val { v, own: true })
+    }
+
     // ----------------------------------------------------------------- names
 
     fn name(&mut self, e: &Expr) -> Result<Val, Error> {
         match self.hir.resolution(e) {
             Resolution::Local(b) => {
+                if self.cx.view_moves.contains(&(self.hir.data.file, e.id)) && !self.dead {
+                    // The interface view this local holds moves into the result; what stays
+                    // behind owns nothing, so the scope's drop frees nothing.
+                    let l = self.local(&b)?;
+                    let v = self.local_take(&l);
+                    // The return this move belongs to skips the local's drop on this path.
+                    self.closed_on_path.insert(b.uid);
+                    return Ok(Val { v, own: true });
+                }
                 let x = self.read_local(&b)?;
                 self.moved_closer(b.uid, e);
                 self.fit_function_value(e, x)
@@ -370,11 +486,7 @@ impl<'a> FnLower<'a> {
             .iter()
             .position(|f| f.0 == name)
             .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
-        let mut f = self.b.rec_get(rid, idx, obj.v);
-        // A `ref` field holds a view; reading it borrows what it views.
-        if matches!(self.b.m.types.kind(self.ty_of(f)), TyKind::Ref(_)) {
-            f = self.b.ref_get(f);
-        }
+        let f = self.b.rec_get(rid, idx, obj.v);
         if let Some((uid, names)) = self.resource_move_of(e) {
             let o = self.moved_field(uid, &names, f)?;
             return Ok(Val { v: o, own: true });

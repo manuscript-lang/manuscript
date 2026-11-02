@@ -1,0 +1,231 @@
+{
+  "complete": true,
+  "argv": [
+    "bench/perf/string-normalize-ascii/compare_matrix.py",
+    "/workspace/normalization-evidence/factorial-protocol/normalize-aa-programs.json",
+    "bench/perf/string-normalize-ascii/identities.json",
+    "/workspace/normalization-evidence/normalize-aa"
+  ],
+  "affinity": [
+    0
+  ],
+  "orders": [
+    [
+      "ascii-a",
+      "ascii-b",
+      "both-a",
+      "both-b"
+    ],
+    [
+      "ascii-b",
+      "both-a",
+      "both-b",
+      "ascii-a"
+    ],
+    [
+      "both-a",
+      "both-b",
+      "ascii-a",
+      "ascii-b"
+    ],
+    [
+      "both-b",
+      "ascii-a",
+      "ascii-b",
+      "both-a"
+    ],
+    [
+      "both-b",
+      "both-a",
+      "ascii-b",
+      "ascii-a"
+    ],
+    [
+      "ascii-a",
+      "both-b",
+      "both-a",
+      "ascii-b"
+    ],
+    [
+      "ascii-b",
+      "ascii-a",
+      "both-b",
+      "both-a"
+    ],
+    [
+      "both-a",
+      "ascii-b",
+      "ascii-a",
+      "both-b"
+    ]
+  ],
+  "cases": 100,
+  "validated_producers": [
+    [
+      "warmup",
+      "ascii-a"
+    ],
+    [
+      "warmup",
+      "ascii-b"
+    ],
+    [
+      "warmup",
+      "both-a"
+    ],
+    [
+      "warmup",
+      "both-b"
+    ],
+    [
+      0,
+      "ascii-a"
+    ],
+    [
+      0,
+      "ascii-b"
+    ],
+    [
+      0,
+      "both-a"
+    ],
+    [
+      0,
+      "both-b"
+    ],
+    [
+      1,
+      "ascii-b"
+    ],
+    [
+      1,
+      "both-a"
+    ],
+    [
+      1,
+      "both-b"
+    ],
+    [
+      1,
+      "ascii-a"
+    ],
+    [
+      2,
+      "both-a"
+    ],
+    [
+      2,
+      "both-b"
+    ],
+    [
+      2,
+      "ascii-a"
+    ],
+    [
+      2,
+      "ascii-b"
+    ],
+    [
+      3,
+      "both-b"
+    ],
+    [
+      3,
+      "ascii-a"
+    ],
+    [
+      3,
+      "ascii-b"
+    ],
+    [
+      3,
+      "both-a"
+    ],
+    [
+      4,
+      "both-b"
+    ],
+    [
+      4,
+      "both-a"
+    ],
+    [
+      4,
+      "ascii-b"
+    ],
+    [
+      4,
+      "ascii-a"
+    ],
+    [
+      5,
+      "ascii-a"
+    ],
+    [
+      5,
+      "both-b"
+    ],
+    [
+      5,
+      "both-a"
+    ],
+    [
+      5,
+      "ascii-b"
+    ],
+    [
+      6,
+      "ascii-b"
+    ],
+    [
+      6,
+      "ascii-a"
+    ],
+    [
+      6,
+      "both-b"
+    ],
+    [
+      6,
+      "both-a"
+    ],
+    [
+      7,
+      "both-a"
+    ],
+    [
+      7,
+      "ascii-b"
+    ],
+    [
+      7,
+      "ascii-a"
+    ],
+    [
+      7,
+      "both-b"
+    ]
+  ],
+  "programs": {
+    "ascii-a": {
+      "path": "/workspace/normalization-evidence/programs/ascii-normalize",
+      "sha256": "dcee9c2148305665d7ef1e3e9b6425d9a619e8f32a067a5b45449d615e04f57b"
+    },
+    "ascii-b": {
+      "path": "/workspace/normalization-evidence/programs/ascii-normalize",
+      "sha256": "dcee9c2148305665d7ef1e3e9b6425d9a619e8f32a067a5b45449d615e04f57b"
+    },
+    "both-a": {
+      "path": "/workspace/normalization-evidence/programs/both-normalize",
+      "sha256": "1116df113345eebdd83f98eebd97c73eb2411110f24fd79e7437237f64dcde48"
+    },
+    "both-b": {
+      "path": "/workspace/normalization-evidence/programs/both-normalize",
+      "sha256": "1116df113345eebdd83f98eebd97c73eb2411110f24fd79e7437237f64dcde48"
+    }
+  },
+  "program_inventory_sha256": "d89a9aa326f44266aa1bc704c371a19e0be32c99297dc35e13b37ff5b506eea8",
+  "identities_sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+  "runner_sha256": "c430e1babbf6028534f8a3a42c4cb2bd09c501be3628647563aea0dfcc2b91fd",
+  "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+}

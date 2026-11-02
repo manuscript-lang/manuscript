@@ -128,20 +128,38 @@ fn walk(directory: &str, files: &mut Vec<String>) -> Result<(), ProjectError> {
         let file_type = entry
             .file_type()
             .map_err(|e| ProjectError::path("lstat", directory, &e))?;
-        entries.push((
-            entry.file_name().to_string_lossy().into_owned(),
-            file_type.is_dir(),
-            // A symlink to a directory is skipped, even when its name ends in `.ms`.
-            file_type.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|m| m.is_dir()),
-        ));
-    }
-    entries.sort();
-    for (name, is_dir, linked_dir) in entries {
-        let path = pathops::join(&[directory, &name]);
+        let name = entry.file_name();
+        let is_dir = file_type.is_dir();
         if is_dir {
-            if name.starts_with('.') || name == "vendor" || name == "node_modules" {
+            if name.as_encoded_bytes().starts_with(b".")
+                || name == "vendor"
+                || name == "node_modules"
+            {
                 continue;
             }
+        } else {
+            // A symlink to a directory is skipped, even when its name ends in `.ms`.
+            let linked_dir =
+                file_type.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|m| m.is_dir());
+            if linked_dir || !name.as_encoded_bytes().ends_with(b".ms") {
+                continue;
+            }
+        }
+        let Ok(name) = name.into_string() else {
+            // Nested projects are excluded even when their directory name is not UTF-8.
+            if is_dir && std::fs::metadata(entry.path().join("ms.toml")).is_ok() {
+                continue;
+            }
+            return Err(ProjectError::Message(format!(
+                "source filename in {directory} is not valid UTF-8; rename it using UTF-8 and re-run the command"
+            )));
+        };
+        entries.push((name, is_dir));
+    }
+    entries.sort();
+    for (name, is_dir) in entries {
+        let path = pathops::join(&[directory, &name]);
+        if is_dir {
             match std::fs::metadata(pathops::join(&[&path, "ms.toml"])) {
                 Ok(_) => continue,
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
@@ -154,7 +172,7 @@ fn walk(directory: &str, files: &mut Vec<String>) -> Result<(), ProjectError> {
                 }
             }
             walk(&path, files)?;
-        } else if !linked_dir && pathops::ext(&name) == ".ms" {
+        } else {
             files.push(path);
         }
     }

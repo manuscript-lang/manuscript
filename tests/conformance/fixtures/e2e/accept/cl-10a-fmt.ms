@@ -1,10 +1,10 @@
 # conform: tags=control-flow,faults,formatter,generics,interfaces,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-10a.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 interface ReadValue[T]:
-    fn get() ref T
+    fn get() T
 
 interface SameValue[T: Equal]:
     fn same(other: T) Bool
@@ -13,7 +13,7 @@ type Box[T]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    fn get() ref T:
+    fn get() T:
         return self.value
 
 impl SameValue[T] for Box[T]:

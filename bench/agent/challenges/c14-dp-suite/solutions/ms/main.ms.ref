@@ -1,4 +1,4 @@
-import stdin, stdout, read_line from "@std/io.ms"
+import stdin, stdout, read_line from "@std/io/io.ms"
 
 fn parse_num(s: String) Int?:
     let codes = s.scalar_values()
@@ -13,7 +13,7 @@ fn parse_num(s: String) Int?:
 
         n = n * 10 + (c - 48)
 
-    return some(n)
+    return n
 
 fn min_int(a: Int, b: Int) Int:
     if a < b:

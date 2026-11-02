@@ -1,0 +1,57 @@
+{
+  "command": [
+    ".artifacts/yaml-append-escapes/run.py",
+    "--mode",
+    "file",
+    "--before",
+    ".artifacts/yaml-append-escapes/file-before",
+    "--after",
+    ".artifacts/yaml-append-escapes/file-after",
+    "--rust",
+    ".artifacts/yaml-append-escapes/harness/rust/target/release/file-writer",
+    "--output",
+    ".artifacts/yaml-append-escapes/file-full"
+  ],
+  "base": "024af5e2e544f7c9d2ccccc1c333b92b70db0ef3",
+  "mode": "file",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "rust": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "binaries": {
+    "before": {
+      "path": "/workspace/yaml-perf/.artifacts/yaml-append-escapes/file-before",
+      "sha256": "5ad8551a78ab1d9132008bef61c8eee45c27d90cc17c3e6ae316cf20e904ea4c"
+    },
+    "after": {
+      "path": "/workspace/yaml-perf/.artifacts/yaml-append-escapes/file-after",
+      "sha256": "19448e1dd230901cd927eb85880dffc429b271750179da06c4c2c3f775151132"
+    },
+    "rust": {
+      "path": "/workspace/yaml-perf/.artifacts/yaml-append-escapes/harness/rust/target/release/file-writer",
+      "sha256": "c7a8d2423778d2af49e2027aa4b307b0374d2293eb63deca4ec7ceaace768352"
+    }
+  },
+  "before_yaml_sha256": "0f421f5407edc9eddb6e9beef79e8922e7b11a380141795f9bc688e940872e2c",
+  "after_yaml_sha256": "a7193f7f0f701a4435bb35e76d5b1f921a7656d1ccbe733b8e8274e915172c02",
+  "driver_sha256": "967fd26331bf297b07633fbc980f9383655ae732f93635cfb635b1020f8682b8",
+  "harness_sha256": {
+    "harness/regressions.ms": "47e295a5c41bb754d4e676aeb4e0f21d9242212ae82dda7a8d6cbb0f2e6ca82e",
+    "harness/file-writer.ms": "79c3836eafda9205a97ad50530cc631d7a993a307d586e54e2e24c535fcff0d4",
+    "harness/main.ms": "4da5b37eb5948d3a9e4523f380561f81707f02d4d85023e6aa0bb14f40b23aba",
+    "harness/rust/Cargo.lock": "112393f93f8dd5324ae830850f6cae4970b7e8ad5d2e1c77852a0cfe51fb8d89",
+    "harness/rust/Cargo.toml": "c14d1c02e66facedd7d2eb2a4685c6c637fd01f22eece0e828cf51eaa7edfb7f",
+    "harness/rust/src/main.rs": "3feb18228442dd0a11b463ee1b77206928879ce22cd53a111f11f4f9724ae393",
+    "harness/rust/src/bin/file-writer.rs": "1d0818f210a9c8f11ef0504ec477a5fb7ed78cb32f0a0eef67902508f712dfd6",
+    "harness/.ms-cache/build/6505222c5228113b8c799ee9d606d5bedbd5348a6ae2963b67d58adc86b51d50/manifest": "85dae390488a9d7249d04f0896272171bace99d57b716316216460a27c2c495b",
+    "harness/.ms-cache/build/6505222c5228113b8c799ee9d606d5bedbd5348a6ae2963b67d58adc86b51d50/exe": "fa1bafcffd0c97ec5206edaa04c61b510bea86a3746bbe4248aa35c280832bda",
+    "harness/.ms-cache/build/40252830ef9928d06f34ada6ec32fe4ba346189d4328f167d9a3573363c185be/manifest": "1a87da983e22f72dfaa80eed078cb866ba5852c7d94a21224395ce0e47c5456f",
+    "harness/.ms-cache/build/40252830ef9928d06f34ada6ec32fe4ba346189d4328f167d9a3573363c185be/exe": "19448e1dd230901cd927eb85880dffc429b271750179da06c4c2c3f775151132",
+    "harness/.ms-cache/build/ccc9bf6f68804fcd6c70d0fd42e5bad3d1d2aa174e5cb0828ad74b0b0f63aa1a/manifest": "85dae390488a9d7249d04f0896272171bace99d57b716316216460a27c2c495b",
+    "harness/.ms-cache/build/ccc9bf6f68804fcd6c70d0fd42e5bad3d1d2aa174e5cb0828ad74b0b0f63aa1a/exe": "e8f7045feb7874790dd8f0bddea68763c000d7100f7dfd5b75491d31b61fdbbd",
+    "harness/.ms-cache/build/e3a9ffcd83b476ed0f9b67a5021e903ecb5ad2c868e1660d459828a9cbaf88b6/manifest": "1a87da983e22f72dfaa80eed078cb866ba5852c7d94a21224395ce0e47c5456f",
+    "harness/.ms-cache/build/e3a9ffcd83b476ed0f9b67a5021e903ecb5ad2c868e1660d459828a9cbaf88b6/exe": "5ad8551a78ab1d9132008bef61c8eee45c27d90cc17c3e6ae316cf20e904ea4c"
+  },
+  "native_archive_sha256": "0c3ed61252fb1ca383208a0cd58914d0229b705243a0e4eaea253b2c48b351ea",
+  "trials": 12,
+  "flags": "Rust1.99.1 LLVM23.1.1; MS Release; Rust opt-level3 panicabort; repository framepointers; no concurrent builds/benchmarks",
+  "note": "Primary file mode rereads UTF8 inside every iteration, creates the same dynamic single-string map and stringifies with full equality guard. Setup/printing excluded; I/O/map creation/serialization/destruction timed. Guarded mode reuses an invariant value and is exploratory whole-program evidence only, not source-proof of per-iteration serialization. Counts calibrated separately and retained."
+}

@@ -1,4 +1,4 @@
-//! The compiled-handler side of `@std/http.ms` servers: the fault-isolating guard and the
+//! The compiled-handler side of `@std/net/http.ms` servers: the fault-isolating guard and the
 //! dispatcher that calls into compiled code.
 
 use super::ExchH;

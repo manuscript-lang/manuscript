@@ -6,7 +6,7 @@ use ms_lsp::text;
 use ms_rt as _;
 
 mod support;
-use support::Workspace;
+use support::{Script, Workspace};
 
 const SOURCE: &str = include_str!("signature_help/boundaries.ms");
 
@@ -40,7 +40,10 @@ fn check(expression: &str, expected_name: &str, expected: usize, valid: bool) {
             .get("label")
             .and_then(|j| j.as_str())
             .unwrap();
-        assert!(label.starts_with(expected_name), "{label}");
+        assert!(
+            label.starts_with(&expected_name.replace('\n', newline)),
+            "{label}"
+        );
         assert_eq!(
             d.text, source,
             "private snapshot must not edit the document"
@@ -138,6 +141,96 @@ fn incomplete_calls_keep_the_current_slot() {
         ),
     ] {
         check(expression, "combine(", active, false);
+    }
+}
+
+#[test]
+fn signature_labels_exclude_preceding_operators_and_keywords() {
+    for (expression, name) in [
+        ("1 + combine(1,| 2)", "combine("),
+        ("-combine(1,| 2)", "combine("),
+        ("combine(1, 2) + pair.combine(3,| 4)", "pair.combine("),
+        ("1 + first[Int](1,| 2)", "first[Int]("),
+        ("if true: combine(1,| 2) else: 3", "combine("),
+        ("1 + (pair).combine(1,| 2)", "(pair).combine("),
+        ("\"{(pair).combine(1,| 2)}\".length()", "(pair).combine("),
+        ("1 + ((pair)).combine(1,| 2)", "((pair)).combine("),
+        (
+            "( # ignored (\n        pair\n    ).combine(1,| 2)",
+            "( # ignored (\n        pair\n    ).combine(",
+        ),
+        (
+            "(pair.left + 1).to_string().length() + combine(1,| 2)",
+            "combine(",
+        ),
+    ] {
+        check(expression, name, 1, true);
+    }
+}
+
+#[test]
+fn signature_labels_follow_the_servers_changed_snapshot() {
+    for newline in ["\n", "\r\n"] {
+        let ws = Workspace::new("signature-label-edits");
+        let uri = ws.uri("signature.ms");
+        let mut script = Script::initialize(ws.root.to_str().unwrap(), false);
+        script.open(&uri, &SOURCE.replace('\n', newline), 1);
+        let mut requests = Vec::new();
+        for (index, expression) in [
+            "1 + combine(1,| 2)",
+            "\"😀 {(pair).combine(1,| 2)}\".length()",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let offset = expression.find('|').unwrap();
+            let expression = expression.replace('|', "");
+            let source = SOURCE.replace("combine(1, 2)", &expression);
+            let cursor = source.rfind(&expression).unwrap() + offset;
+            let cursor = source[..cursor].replace('\n', newline).len();
+            let source = source.replace('\n', newline);
+            script.notify(
+                "textDocument/didChange",
+                ms_lsp::json::obj([
+                    (
+                        "textDocument",
+                        ms_lsp::json::obj([
+                            ("uri", uri.clone().into()),
+                            ("version", (index + 2).into()),
+                        ]),
+                    ),
+                    (
+                        "contentChanges",
+                        ms_lsp::json::Json::Arr(vec![ms_lsp::json::obj([(
+                            "text",
+                            source.clone().into(),
+                        )])]),
+                    ),
+                ]),
+            );
+            let at = text::position(&source, cursor);
+            requests.push(script.at("textDocument/signatureHelp", &uri, at.line, at.character));
+        }
+        let messages = script.rust();
+        for (request, expected) in requests.into_iter().zip([
+            "combine(left: Int, right: Int) Int",
+            "(pair).combine(left: Int, right: Int) Int",
+        ]) {
+            let response = messages
+                .iter()
+                .find(|message| message.get("id").and_then(|j| j.as_i64()) == Some(request))
+                .expect("signature response");
+            let help = response.get("result").expect("successful response");
+            let signature = &help.get("signatures").and_then(|j| j.as_array()).unwrap()[0];
+            assert_eq!(
+                signature.get("label").and_then(|j| j.as_str()),
+                Some(expected)
+            );
+            assert_eq!(
+                help.get("activeParameter").and_then(|j| j.as_i64()),
+                Some(1)
+            );
+        }
     }
 }
 

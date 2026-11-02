@@ -129,8 +129,6 @@ pub struct Func {
     pub params: Vec<Param>,
     /// Declared result type (mandatory in source).
     pub result: TypeRef,
-    /// Written `ref T`: the result lends part of a borrowed parameter or receiver.
-    pub result_ref: bool,
     /// Body statements; may be empty for an empty declaration suite.
     pub body: Vec<Stmt>,
     /// `extern fn`: a native symbol with no body, named after the function.
@@ -273,9 +271,6 @@ pub struct Param {
     pub default: Option<Expr>,
     /// Declared `var name: Type`: the callee may change the argument.
     pub mutable: bool,
-    /// Declared `name: ref Type` on a record field: the field borrows its value from a place that
-    /// outlives the record instead of owning it.
-    pub by_ref: bool,
 }
 
 /// A generic parameter `T: Bound & Other = Default`.
@@ -389,6 +384,9 @@ pub enum ExprKind {
         /// Index expression.
         index: Box<Expr>,
     },
+    /// `left[index]?`: the entry of a map or list when it exists, as an `Optional`. Only
+    /// `if var` accepts it, where the present entry is borrowed in place.
+    Probe(Box<Expr>),
     /// `[a, b]`.
     List(Vec<Expr>),
     /// `{k: v, ...}`.
@@ -436,14 +434,16 @@ impl Expr {
             | ExprKind::Apply { left, .. }
             | ExprKind::Index { left, .. }
             | ExprKind::Binary { left, .. } => left.start(),
+            ExprKind::Probe(target) => target.start(),
             ExprKind::Call { callee, .. } => callee.start(),
             _ => self.pos,
         }
     }
 
-    /// A written `match`, not the Bool match an `if` expression stands for.
+    /// A written `match`, not the Bool match an `if` expression stands for or
+    /// the match an optional chain `a?.b` stands for.
     pub fn is_written_match(&self) -> bool {
-        matches!(&self.kind, ExprKind::Match { arms, .. } if !arms.first().is_some_and(|a| a.from_if))
+        matches!(&self.kind, ExprKind::Match { arms, .. } if !arms.first().is_some_and(|a| a.from_if || a.chain))
     }
 }
 
@@ -600,6 +600,13 @@ pub struct Arm {
     pub value: Option<Expr>,
     /// The arm is a branch of an `if` expression written `if c: a else: b`.
     pub from_if: bool,
+    /// The arm belongs to the match an optional chain `a?.b` stands for: the
+    /// result is the present arm's type made optional (not wrapped again when
+    /// it already is), and the `none` arm yields `none`.
+    pub chain: bool,
+    /// The arm was written as a lone lowercase name, which binds an Optional's
+    /// payload; the parser spells it as the `some` case with that binding.
+    pub bare: bool,
 }
 
 /// A payload binding in a match arm.

@@ -7,7 +7,7 @@ use std::process::Command;
 fn many_joins_in_one_function() {
     let n: i64 = 300;
     let mut source = String::from(
-        "import stdout from \"@std/io.ms\"\n\nfn id(x: Int) Int: x\n\nexport fn main() Int:\n",
+        "import stdout from \"@std/io/io.ms\"\n\nfn id(x: Int) Int: x\n\nexport fn main() Int:\n",
     );
     let value = |i: i64| i * 3 + i % 7;
     for i in 0..n {

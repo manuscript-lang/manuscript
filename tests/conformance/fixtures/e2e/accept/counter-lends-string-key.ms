@@ -1,7 +1,7 @@
 # conform: tags=maps,strings,tier-io
 # conform: phase=run
 # conform: origin=m.add(w.clone(), m.get(w).get(0) + 1) borrows w and copies the key only when it is absent
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn tally(words: List[String]) Map[String, Int]:
     var m = Map[String, Int]()

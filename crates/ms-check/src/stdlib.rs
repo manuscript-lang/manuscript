@@ -1,12 +1,11 @@
 //! The bundled standard declarations.
 //!
-//! `stdlib/*.ms` and `bindings.json` are embedded unchanged. Native
+//! `stdlib/*.ms` is embedded unchanged. Native
 //! modules (declarations without bodies) are declared once per thread; source
 //! modules (declarations with bodies) are checked lazily with the ordinary
 //! checker and shared by every program.
 
 use crate::checker::{CheckOptions, Checker, Names};
-use crate::json;
 use crate::receivers::RECEIVER_BINDINGS;
 use crate::syntax::*;
 use crate::types::Case;
@@ -72,7 +71,6 @@ struct World {
     implementations: Vec<MethodRef>,
     operation_variables: HashMap<String, Vec<Ty>>,
     receiver_bindings: HashMap<String, Name>,
-    runtime_symbols: HashMap<String, String>,
     done: HashMap<Name, Rc<StdResult>>,
     checking: HashSet<Name>,
 }
@@ -85,47 +83,62 @@ fn world<R>(f: impl FnOnce(&mut World) -> R) -> R {
     WORLD.with(|w| f(&mut w.borrow_mut()))
 }
 
-#[derive(Default)]
-struct Bindings {
-    native_types: HashMap<String, String>,
-    function_overrides: HashMap<String, String>,
-    intrinsic_receivers: HashMap<String, String>,
-    contract_methods: HashMap<String, String>,
-    runtime_symbols: HashMap<String, String>,
+/// The primitive types whose operations the `<Type>Operations` interfaces of `intrinsics.ms` declare.
+const INTRINSIC_RECEIVERS: &[&str] = &[
+    "Float", "Float32", "Int", "Int16", "Int32", "Int8", "String", "UInt16", "UInt32", "UInt64",
+    "UInt8",
+];
+
+/// Externs that store their function arguments instead of running them before they return. A parameter-level
+/// marker would replace this list.
+const KEPT_CALLBACKS: &[&str] = &[
+    "extern:msstd_process_fork",
+    "extern:msrt_channel_group_add",
+    "extern:msrt_scope_spawn",
+];
+
+/// Whether a native function (`module/name`, or `extern:name`) keeps the function values it is given.
+pub fn keeps_callbacks(native: &str) -> bool {
+    KEPT_CALLBACKS.contains(&native)
 }
 
-fn read_bindings() -> Result<Bindings, String> {
-    let root = json::parse(BINDINGS)?;
-    let entries = root.entries();
-    let strings = |key: &str| -> HashMap<String, String> {
-        entries
-            .get(key)
-            .map(|v| {
-                v.entries()
-                    .into_iter()
-                    .map(|(k, v)| (k, v.text().to_string()))
-                    .collect()
-            })
-            .unwrap_or_default()
-    };
-    Ok(Bindings {
-        native_types: strings("native_types"),
-        function_overrides: strings("function_overrides"),
-        intrinsic_receivers: strings("intrinsic_receivers"),
-        contract_methods: strings("contract_methods"),
-        runtime_symbols: strings("runtime_symbols"),
-    })
-}
+/// Native types that declare fields, so they cannot be written `extern type`.
+const NATIVE_WITH_FIELDS: &[&str] = &["List"];
 
 // -------------------------------------------------------------------- queries
 
-/// The bundled source modules that extend native standard types (List operations, Bytes codecs, scalar ordering); their
-/// methods apply to every program.
-const EXTENSION_MODULES: [&str; 3] = [
-    "@std/collections.ms+source",
+/// Bundled source modules whose methods extend native standard types in every program.
+const EXTENSION_MODULES: [&str; 4] = [
+    "@std/collections/collections.ms+source",
     "@std/bytes.ms+source",
-    "@std/ordering.ms",
+    "@std/collections/ordering.ms",
+    "@std/string.ms+source",
 ];
+
+/// The directories that group bundled modules into packages; a module's native identifiers use its file stem without them.
+const PACKAGES: [&str; 7] = [
+    "collections",
+    "concurrency",
+    "data",
+    "io",
+    "math",
+    "net",
+    "os",
+];
+
+/// A bundled module's path without `@std/`, its package directory, and `.ms`: `@std/net/http.ms` is `http`.
+pub fn module_stem(file: &str) -> &str {
+    let path = file.trim_start_matches("@std/").trim_end_matches(".ms");
+    match path {
+        "test/test" => return "test",
+        "test/bench" => return "bench",
+        _ => {}
+    }
+    match path.split_once('/') {
+        Some((package, rest)) if PACKAGES.contains(&package) => rest,
+        _ => path,
+    }
+}
 
 /// Loads the standard declarations on first use.
 pub fn ensure_standard() {
@@ -189,26 +202,6 @@ pub fn receiver_binding(key: &str) -> Option<Name> {
     world(|w| w.receiver_bindings.get(key).copied())
 }
 
-/// The native function (`module/name`) that bindings.json binds to a runtime symbol, when exactly one is.
-pub fn native_for_symbol(symbol: &str) -> Option<String> {
-    ensure_standard();
-    world(|w| {
-        let mut bound = w
-            .runtime_symbols
-            .iter()
-            .filter(|(_, s)| s.as_str() == symbol)
-            .map(|(k, _)| k.clone());
-        let first = bound.next()?;
-        bound.next().is_none().then_some(first)
-    })
-}
-
-/// The runtime symbol that implements a native function (`module/name`), as bindings.json names it.
-pub fn runtime_symbol(native: &str) -> Option<String> {
-    ensure_standard();
-    world(|w| w.runtime_symbols.get(native).cloned())
-}
-
 /// Records the type variables an operation declares for itself (`Receiver id/name`).
 pub(crate) fn set_operation_variables(key: String, variables: Vec<Ty>) {
     world(|w| {
@@ -236,6 +229,19 @@ pub fn standard_source_module(path: Name) -> Option<ModRef> {
     world(|w| w.source_modules.get(&path).cloned())
 }
 
+/// The bundled source module an import reads from: the module itself, or for a name that only the source half of a mixed
+/// native file declares, that file's `+source` twin.
+pub fn import_source(item: &Import) -> Option<ModRef> {
+    let path = n(&item.path);
+    if let Some(module) = standard_source_module(path) {
+        return Some(module);
+    }
+    if standard_module_symbol(path, item.name).is_some() {
+        return None;
+    }
+    standard_source_module(n(&format!("{}+source", item.path)))
+}
+
 /// Whether the path names a native bundled module.
 pub fn is_native_module(path: Name) -> bool {
     ensure_standard();
@@ -257,11 +263,7 @@ pub(crate) fn source_type_symbol(module: &ModRef, d: &DeclRef) -> SymRef {
         DeclKind::Interface(_) => Kind::Contract,
         _ => Kind::Record,
     };
-    let stem = module
-        .file
-        .as_str()
-        .trim_start_matches("@std/")
-        .trim_end_matches(".ms");
+    let stem = module_stem(module.file.as_str());
     let s = Rc::new(Sym {
         name,
         id: n(&format!("standard_{stem}_symbol_{name}")),
@@ -314,7 +316,12 @@ pub fn standard_module_symbol(path: Name, name: Name) -> Option<SymRef> {
     })
 }
 
-/// Every bundled module path in sorted order.
+/// Whether a bundled module is internal: it holds the native declarations of the public modules and is not importable by programs.
+pub fn is_internal(path: &str) -> bool {
+    path.starts_with("@std/internal/")
+}
+
+/// Every public bundled module path in sorted order.
 pub fn standard_module_names() -> Vec<&'static str> {
     ensure_standard();
     let mut names: BTreeSet<&'static str> = BTreeSet::new();
@@ -322,7 +329,10 @@ pub fn standard_module_names() -> Vec<&'static str> {
         names.extend(w.modules.keys().map(|k| k.as_str()));
         names.extend(w.source_modules.keys().map(|k| k.as_str()));
     });
-    names.into_iter().collect()
+    names
+        .into_iter()
+        .filter(|path| !is_internal(path) && !path.ends_with("+source"))
+        .collect()
 }
 
 /// A standard module's exported declarations, checking a bundled source
@@ -337,7 +347,7 @@ pub fn standard_exports(path: &str) -> HashMap<Name, SymRef> {
             .map(|(k, v)| (*k, v.clone()))
             .collect();
     }
-    world(|w| {
+    let mut exports: HashMap<Name, SymRef> = world(|w| {
         w.modules
             .get(&path)
             .map(|m| {
@@ -347,7 +357,16 @@ pub fn standard_exports(path: &str) -> HashMap<Name, SymRef> {
                     .collect()
             })
             .unwrap_or_default()
-    })
+    });
+    // The bodies of a mixed file export under the file's own name too.
+    if let Some(twin) = standard_source_module(n(&format!("{path}+source"))) {
+        for (name, symbol) in standard_exports(twin.file.as_str()) {
+            if symbol.module == twin.file {
+                exports.entry(name).or_insert(symbol);
+            }
+        }
+    }
+    exports
 }
 
 /// The checked result of a bundled source module, if it has been checked.
@@ -360,7 +379,7 @@ fn source_reach(module: &ModRef) -> Vec<ModRef> {
     let mut stack: Vec<ModRef> = vec![module.clone()];
     while let Some(m) = stack.pop() {
         for item in &m.imports {
-            if let Some(dep) = standard_source_module(n(&item.path))
+            if let Some(dep) = import_source(item)
                 && !seen.iter().any(|s| s.file == dep.file)
             {
                 seen.push(dep.clone());
@@ -409,7 +428,7 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
     }
     for g in &group {
         for item in &g.imports {
-            if let Some(dep) = standard_source_module(n(&item.path))
+            if let Some(dep) = import_source(item)
                 && !group.iter().any(|m| m.file == dep.file)
             {
                 ensure_source(&dep);
@@ -429,14 +448,7 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
         bundled: Some(module.file),
         ..CheckOptions::default()
     });
-    checker.id_scope = format!(
-        "standard_{}_",
-        module
-            .file
-            .as_str()
-            .trim_start_matches("@std/")
-            .trim_end_matches(".ms")
-    );
+    checker.id_scope = format!("standard_{}_", module_stem(module.file.as_str()));
     if group.len() > 1 {
         checker.group = group.clone();
     }
@@ -527,7 +539,7 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
         }
         state.insert(module.file, 1);
         for item in &module.imports {
-            if let Some(dep) = standard_source_module(n(&item.path)) {
+            if let Some(dep) = import_source(item) {
                 visit(&dep, state, ordered, diagnostics);
             }
         }
@@ -542,13 +554,13 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
             visit(&extension, &mut state, &mut ordered, &mut diagnostics);
         }
     }
-    // A `bench` block runs under the driver in `@std/bench.ms`, which its module need not import.
+    // A `bench` block runs under the driver in `@std/test/bench.ms`, which its module need not import.
     let benching = modules.iter().any(|m| {
         m.decls
             .iter()
             .any(|d| matches!(&d.decl().kind, DeclKind::Test(t) if t.bench))
     });
-    if benching && let Some(driver) = standard_source_module(n("@std/bench.ms")) {
+    if benching && let Some(driver) = standard_source_module(n("@std/test/bench.ms")) {
         visit(&driver, &mut state, &mut ordered, &mut diagnostics);
     }
     for m in &modules {
@@ -717,7 +729,6 @@ fn renumber_param(
         ty,
         default: None,
         mutable: p.mutable,
-        by_ref: p.by_ref,
     })
 }
 
@@ -793,7 +804,6 @@ fn interface_for_inherent(
                 .map(|p| renumber_param(p, ids))
                 .collect::<Result<_, _>>()?,
             result: renumber_type(&m.func.result, ids)?,
-            result_ref: m.func.result_ref,
             body: Vec::new(),
             external: false,
         };
@@ -912,6 +922,8 @@ fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
         imports: parsed
             .imports
             .iter()
+            // The native half has no bodies, so it needs none of the internal externs the bodies call.
+            .filter(|i| own || !is_internal(&i.path))
             .cloned()
             .chain(own.then(|| own_imports.clone()).into_iter().flatten())
             .collect(),
@@ -935,8 +947,6 @@ fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
 }
 
 fn load() -> Result<(), String> {
-    let bindings = read_bindings()?;
-    world(|w| w.runtime_symbols = bindings.runtime_symbols.clone());
     let mut modules: Vec<ModRef> = Vec::new();
     for (name, source) in SOURCES {
         let file: Arc<str> = Arc::from(format!("@std/{name}").as_str());
@@ -962,10 +972,7 @@ fn load() -> Result<(), String> {
     }
     let mut checker = Checker::new(&CheckOptions::default());
     checker.standard_declarations = true;
-    let mut loader = Loader {
-        bindings,
-        c: &mut checker,
-    };
+    let mut loader = Loader { c: &mut checker };
     for module in &modules {
         loader.register(module)?;
     }
@@ -978,7 +985,6 @@ fn load() -> Result<(), String> {
 }
 
 struct Loader<'a> {
-    bindings: Bindings,
     c: &'a mut Checker,
 }
 
@@ -1076,24 +1082,8 @@ impl Loader<'_> {
             let mut id = n(&format!("@std/{name}"));
             let mut native = name;
             if sym_kind == SymKind::Fn {
-                // Identities are module/name unless bindings.json overrides them.
-                let mut ident = format!(
-                    "{}/{}",
-                    module
-                        .file
-                        .as_str()
-                        .trim_start_matches("@std/")
-                        .trim_end_matches(".ms"),
-                    name
-                );
-                if let Some(o) = self
-                    .bindings
-                    .function_overrides
-                    .get(&format!("{}/{}", module.file, name))
-                    .filter(|o| !o.is_empty())
-                {
-                    ident = o.clone();
-                }
+                // Identities are module/name.
+                let ident = format!("{}/{}", module_stem(module.file.as_str()), name);
                 native = n(&ident);
                 id = n(&format!("@std/{ident}"));
             }
@@ -1109,19 +1099,10 @@ impl Loader<'_> {
                 decl: Some(d.clone()),
             });
             if let Some(mut kind) = kind {
-                if let Some(nk) = self
-                    .bindings
-                    .native_types
-                    .get(&format!("{}/{}", module.file, name))
-                    .filter(|k| !k.is_empty())
-                {
-                    kind = match nk.as_str() {
-                        "native" => Kind::Native,
-                        "record" => Kind::Record,
-                        "alternative" => Kind::Alternative,
-                        "contract" => Kind::Contract,
-                        other => return Err(format!("unknown native kind {other}")),
-                    };
+                // `extern type` declares an opaque runtime value; `List` also carries a constructor field.
+                let external = matches!(&d.decl().kind, DeclKind::Record(r) if r.external);
+                if external || NATIVE_WITH_FIELDS.contains(&name.as_str()) {
+                    kind = Kind::Native;
                 }
                 let def = Definition::new(&s, kind);
                 let mut t = Type::new(name, id, kind);
@@ -1320,7 +1301,6 @@ impl Loader<'_> {
 
     /// Checks native impl blocks and ties each to its binding.
     fn bind_implementations(&mut self) -> Result<(), String> {
-        let mut used: HashSet<String> = HashSet::new();
         for module in self.native_sources() {
             self.scope_module(&module);
             for d in &module.decls {
@@ -1346,28 +1326,17 @@ impl Loader<'_> {
                         module.file, receiver_name, contract_name, name
                     );
                     method.id = n(&key);
-                    let contract = format!("{contract_name}/{name}");
-                    let native = self
-                        .bindings
-                        .contract_methods
-                        .get(&contract)
-                        .cloned()
-                        .unwrap_or_default();
-                    if native.is_empty() {
-                        return Err(format!(
-                            "missing native implementation binding for {contract}: {}",
-                            position_text(module.file, method.decl.as_ref().expect("decl").pos())
-                        ));
-                    }
+                    // A native contract method is the contract module's function of that name (`core/message`).
+                    let contract_module =
+                        world(|w| w.symbols.get(&n(&contract_name)).map(|c| c.module));
+                    let native = format!(
+                        "{}/{}",
+                        module_stem(contract_module.unwrap_or(module.file).as_str()),
+                        name
+                    );
                     method.native = n(&native);
-                    used.insert(contract);
                     self.c.p.methods[index] = Rc::new(method);
                 }
-            }
-        }
-        for contract in self.bindings.contract_methods.keys() {
-            if !used.contains(contract) {
-                return Err(format!("unused native implementation binding: {contract}"));
             }
         }
         let implementations = self.c.p.methods.clone();
@@ -1379,8 +1348,9 @@ impl Loader<'_> {
                 text.join("; ")
             ));
         }
-        for (receiver, name) in &self.bindings.intrinsic_receivers {
-            let Some(typ) = world(|w| w.symbols.get(&n(name)).cloned()) else {
+        for receiver in INTRINSIC_RECEIVERS {
+            let name = format!("{receiver}Operations");
+            let Some(typ) = world(|w| w.symbols.get(&n(&name)).cloned()) else {
                 return Err(format!("missing intrinsic receiver declaration {name}"));
             };
             world(|w| w.intrinsic.insert(n(receiver), typ.ty()));
@@ -1390,12 +1360,6 @@ impl Loader<'_> {
 
     /// Attaches native receiver bindings and their requirements.
     fn bind_receivers(&mut self) -> Result<(), String> {
-        let intrinsic_names: HashMap<String, String> = self
-            .bindings
-            .intrinsic_receivers
-            .iter()
-            .map(|(r, name)| (name.clone(), r.clone()))
-            .collect();
         let mut bound: HashSet<String> = HashSet::new();
         for module in self.native_sources() {
             self.scope_module(&module);
@@ -1405,8 +1369,11 @@ impl Loader<'_> {
                 }
                 let symbol = self.module_symbol(&module, declaration);
                 let mut receiver = declaration.name().to_string();
-                if let Some(name) = intrinsic_names.get(&receiver) {
-                    receiver = name.clone();
+                if let Some(primitive) = receiver
+                    .strip_suffix("Operations")
+                    .filter(|p| INTRINSIC_RECEIVERS.contains(p))
+                {
+                    receiver = primitive.to_string();
                 }
                 for method in declaration.methods() {
                     let mname = method.func.name;
@@ -1435,18 +1402,7 @@ impl Loader<'_> {
 
     /// Checks native default expressions and folds their constants.
     fn check_defaults(&mut self) -> Result<(), String> {
-        let deferred = std::mem::take(&mut self.c.deferred_default_bounds);
-        for check in deferred {
-            if !self.c.satisfies(&check.resolved, &check.bound) {
-                let msg = self.c.unsatisfied_message(
-                    &check.resolved,
-                    &check.bound,
-                    "choose a default that already implements it",
-                );
-                self.c.module = Some(check.module.clone());
-                self.c.type_error(check.pos, msg);
-            }
-        }
+        self.c.check_type_defaults();
         // Check native default expressions with the ordinary expression checker.
         // Lowering prepares concrete slots before native dispatch; the runtime does
         // not own a second default-expression schema.

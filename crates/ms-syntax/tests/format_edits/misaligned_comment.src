@@ -1,0 +1,9 @@
+fn a() Int:
+    return 1
+ # c
+
+fn b() Int:
+    for i in 0..2:
+        if i == 1: continue
+     # d
+    return 2

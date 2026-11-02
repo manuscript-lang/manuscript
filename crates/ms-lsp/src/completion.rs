@@ -2,10 +2,10 @@
 
 use crate::analysis::{Document, Documents, workspace_analysis};
 use crate::editor::{
-    CursorContext, EditorAnalysis, call_arguments, context_at, query_call, query_editor,
-    type_expression,
+    CursorContext, EditorAnalysis, call_arguments, context_at, interpolation_start, query_call,
+    query_editor, type_expression,
 };
-use crate::index::DeclFiles;
+use crate::index::{DeclFiles, hidden_structure};
 use crate::json::{Json, obj};
 use crate::nav;
 use crate::text::{self, EditorKind, Position, Range};
@@ -16,7 +16,7 @@ use ms_check::stdlib::is_prelude_symbol;
 use ms_check::syntax::{DeclRef, FuncRef};
 use ms_check::types::{Kind, Name, SymKind, SymRef, Ty, cases, constructor_signature, n};
 use ms_driver::project::pathops;
-use ms_syntax::ast::DeclKind;
+use ms_syntax::ast::{DeclKind, Expr, ExprKind, Param};
 use std::collections::{HashMap, HashSet};
 
 /// One completion item before JSON encoding.
@@ -60,7 +60,13 @@ fn text_edit(range: Range, text: &str) -> Json {
 }
 
 /// Text inserted for a callable, with snippet placeholders when supported.
-pub fn callable_text(name: &str, t: Option<&Ty>, variables: &[Ty], snippets: bool) -> String {
+pub fn callable_text(
+    name: &str,
+    t: Option<&Ty>,
+    variables: &[Ty],
+    parameters: &[Param],
+    snippets: bool,
+) -> String {
     let Some(t) = t.filter(|t| snippets && t.kind == Kind::Function) else {
         return name.to_string();
     };
@@ -88,6 +94,12 @@ pub fn callable_text(name: &str, t: Option<&Ty>, variables: &[Ty], snippets: boo
         }
         if t.params.len() != 1 {
             out.push_str(&format!("{}: ", p.name));
+        }
+        if parameters
+            .iter()
+            .any(|decl| decl.name == p.name && decl.mutable)
+        {
+            out.push_str("var ");
         }
         out.push_str(&format!("${{{at}:{}}}", p.name));
         at += 1;
@@ -207,7 +219,13 @@ impl Completer<'_> {
         let before = self.items.len();
         let mut kind = if s.kind == SymKind::Type { 7 } else { 3 };
         let ty = s.ty_opt();
-        let mut insert = callable_text(s.name.as_str(), ty.as_ref(), &s.variables(), self.snippets);
+        let mut insert = callable_text(
+            s.name.as_str(),
+            ty.as_ref(),
+            &s.variables(),
+            s.decl.as_ref().map_or(&[], |d| d.fn_params()),
+            self.snippets,
+        );
         if s.is_constant() {
             kind = 21;
             insert = s.name.as_str().to_string();
@@ -235,6 +253,15 @@ impl Completer<'_> {
         }
     }
 
+    /// An opaque type's representation is visible only in its declaring file.
+    fn structure_visible(&self, ty: &Ty) -> bool {
+        let Some(owner) = ty.opaque_module() else {
+            return true;
+        };
+        let file = self.a.result.module(&self.a.document).map(|m| m.file);
+        Some(owner) == file
+    }
+
     fn member_items(&mut self) {
         let Some(expr) = self.a.expression.clone() else {
             return;
@@ -243,12 +270,21 @@ impl Completer<'_> {
             return;
         };
         if let Some(ty) = type_expression(left, &self.a.scope) {
+            if !self.structure_visible(&ty) {
+                return;
+            }
             for case in cases(&ty) {
                 let signature = ms_check::types::function(case.fields.clone(), ty.clone());
                 let insert = if case.fields.is_empty() {
                     case.name.as_str().to_string()
                 } else {
-                    callable_text(case.name.as_str(), Some(&signature), &[], self.snippets)
+                    callable_text(
+                        case.name.as_str(),
+                        Some(&signature),
+                        &[],
+                        &[],
+                        self.snippets,
+                    )
                 };
                 self.add(
                     case.name.as_str(),
@@ -266,6 +302,13 @@ impl Completer<'_> {
             return;
         };
         let file = module.file;
+        if module
+            .facts()
+            .info(left.id)
+            .is_some_and(|info| hidden_structure(&module, left, info, &mut HashMap::new()))
+        {
+            return;
+        }
         let Some(ty) = module.facts().info(left.id).and_then(|i| i.ty.clone()) else {
             return;
         };
@@ -273,7 +316,13 @@ impl Completer<'_> {
             let (kind, insert) = match member.kind {
                 MemberKind::Method => (
                     2,
-                    callable_text(member.name.as_str(), Some(&member.ty), &[], self.snippets),
+                    callable_text(
+                        member.name.as_str(),
+                        Some(&member.ty),
+                        &[],
+                        &[],
+                        self.snippets,
+                    ),
                 ),
                 MemberKind::Field => (5, member.name.as_str().to_string()),
             };
@@ -293,6 +342,11 @@ impl Completer<'_> {
         let Some((call, signature)) = query_call(&self.a) else {
             return;
         };
+        let declaration = call_declaration(&self.a, &call);
+        let parameters = declaration
+            .as_ref()
+            .and_then(FuncRef::func)
+            .map_or(&[][..], |f| &f.params);
         let used: HashSet<String> = call_arguments(&self.a, &call)
             .into_iter()
             .map(|(name, _)| name)
@@ -303,6 +357,9 @@ impl Completer<'_> {
                 continue;
             }
             let mut insert = format!("{}: ", param.name);
+            if parameters.iter().any(|p| p.name == param.name && p.mutable) {
+                insert.push_str("var ");
+            }
             if self.snippets {
                 insert.push_str(&format!("${{1:{}}}", param.name));
             }
@@ -339,7 +396,7 @@ impl Completer<'_> {
         let scope = self.a.scope.clone();
         if !c.type_context {
             for (name, b) in &scope.bindings {
-                let insert = callable_text(name.as_str(), Some(&b.ty), &[], self.snippets);
+                let insert = callable_text(name.as_str(), Some(&b.ty), &[], &[], self.snippets);
                 self.add(name.as_str(), 6, Some(&b.ty), 0, &insert, Json::Null);
             }
         }
@@ -403,7 +460,13 @@ impl Completer<'_> {
             }
             let Some(ty) = s.ty_opt() else { continue };
             let mut kind = 3;
-            let mut insert = callable_text(name.as_str(), Some(&ty), &s.variables(), self.snippets);
+            let mut insert = callable_text(
+                name.as_str(),
+                Some(&ty),
+                &s.variables(),
+                s.decl.as_ref().map_or(&[], |d| d.fn_params()),
+                self.snippets,
+            );
             if s.kind == SymKind::Type {
                 kind = 7;
                 insert = name.as_str().to_string();
@@ -420,12 +483,13 @@ impl Completer<'_> {
                         .collect();
                     insert = format!("{name}[{}]", parts.join(", "));
                 }
-                if !c.type_context && ty.kind == Kind::Record {
+                if !c.type_context && ty.kind == Kind::Record && self.structure_visible(&ty) {
                     let signature = constructor_signature(&ty);
                     insert = callable_text(
                         name.as_str(),
                         Some(&signature),
                         &s.variables(),
+                        &[],
                         self.snippets,
                     );
                 }
@@ -433,6 +497,31 @@ impl Completer<'_> {
             if s.is_constant() {
                 kind = 21;
                 insert = name.as_str().to_string();
+            }
+            if s.kind == SymKind::Type && !c.type_context && self.structure_visible(&ty) {
+                // An alternative's cases are in scope next to the type.
+                for case in cases(&ty) {
+                    let signature = ms_check::types::function(case.fields.clone(), ty.clone());
+                    let insert = if case.fields.is_empty() {
+                        case.name.as_str().to_string()
+                    } else {
+                        callable_text(
+                            case.name.as_str(),
+                            Some(&signature),
+                            &[],
+                            &[],
+                            self.snippets,
+                        )
+                    };
+                    self.add(
+                        case.name.as_str(),
+                        20,
+                        Some(&signature),
+                        2,
+                        &insert,
+                        Json::Null,
+                    );
+                }
             }
             let documentation = self.doc(s.decl.as_ref(), s.module);
             self.add(
@@ -907,6 +996,25 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
     Some(items)
 }
 
+/// Source declaration of the checked callee. Mutation is a declaration contract,
+/// not part of an ordinary function type.
+fn call_declaration(a: &EditorAnalysis, call: &Expr) -> Option<FuncRef> {
+    let ExprKind::Call { callee, .. } = &call.kind else {
+        return None;
+    };
+    let module = a.module.clone().or_else(|| a.result.module(&a.document))?;
+    let facts = module.facts();
+    let info = facts.info(callee.id)?;
+    info.method
+        .as_ref()
+        .and_then(|m| m.decl.clone())
+        .or_else(|| {
+            let decl = info.symbol.as_ref()?.decl.as_ref()?;
+            decl.func()?;
+            Some(FuncRef::of_decl(decl.clone()))
+        })
+}
+
 /// Signature help for the call around the cursor.
 pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Json, &'static str> {
     let mut c = context_at(d, p)?;
@@ -918,11 +1026,21 @@ pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Jso
     let Some((call, t)) = query_call(&a) else {
         return Ok(Json::Null);
     };
-    let name = d.text[c.callee_start..c.callee_end].trim();
+    let name = signature_name(&a.document.text, &call);
+    let declaration = call_declaration(&a, &call);
+    let declared = declaration
+        .as_ref()
+        .and_then(FuncRef::func)
+        .map_or(&[][..], |f| &f.params);
     let mut parameters = Vec::new();
     let mut labels = Vec::new();
     for param in &t.params {
-        let mut label = format!("{}: {}", param.name, param.ty);
+        let mutable = if declared.iter().any(|p| p.name == param.name && p.mutable) {
+            "var "
+        } else {
+            ""
+        };
+        let mut label = format!("{mutable}{}: {}", param.name, param.ty);
         if t.is_default(param.name) {
             label.push_str(" = ...");
         }
@@ -974,6 +1092,40 @@ pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Jso
         ("activeSignature", 0usize.into()),
         ("activeParameter", active.into()),
     ]))
+}
+
+/// Read the checked callee rather than guessing its boundary from operators or
+/// keywords. Its start excludes grouping parentheses, so include an opener when
+/// a parenthesized receiver closes inside the callee, as in `(pair).combine`.
+fn signature_name<'a>(source: &'a str, call: &ms_syntax::ast::Expr) -> &'a str {
+    let ms_syntax::ast::ExprKind::Call { callee, .. } = &call.kind else {
+        return "";
+    };
+    let mut start = callee.start().offset as usize;
+    let end = callee.end.offset as usize;
+    let (mut depth, mut missing) = (0usize, 0usize);
+    for token in text::editor_tokens(&source[start..end]) {
+        if token.is(b'(') {
+            depth += 1;
+        } else if token.is(b')') && depth == 0 {
+            missing += 1;
+        } else if token.is(b')') {
+            depth -= 1;
+        }
+    }
+    if missing > 0 {
+        let from = interpolation_start(source, start).unwrap_or(0);
+        for token in text::editor_tokens(&source[from..start]).iter().rev() {
+            if token.is(b'(') {
+                missing -= 1;
+                if missing == 0 {
+                    start = from + token.start;
+                    break;
+                }
+            }
+        }
+    }
+    source[start..end].trim()
 }
 
 /// Select argument boundaries in the original source. A completion marker can

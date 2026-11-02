@@ -558,7 +558,20 @@ mod process {
         unsafe {
             ms_rt::glue::write_bytes(b"", &mut input);
             assert_eq!(
-                msstd_process_command_run(st("sh"), &args, &input, 0, 0, 0, 0, out.as_mut_ptr()),
+                msstd_process_command_run(
+                    st("sh"),
+                    &args,
+                    &input,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    st(""),
+                    &empty(),
+                    &empty(),
+                    out.as_mut_ptr()
+                ),
                 STATUS_OK
             );
             let o = out.assume_init_read();
@@ -572,6 +585,10 @@ mod process {
                     0,
                     0,
                     0,
+                    0,
+                    st(""),
+                    &empty(),
+                    &empty(),
                     out.as_mut_ptr()
                 ),
                 STATUS_UNAVAILABLE
@@ -586,23 +603,64 @@ mod process {
                     0,
                     1,
                     50_000_000,
+                    0,
+                    st(""),
+                    &empty(),
+                    &empty(),
                     out.as_mut_ptr()
                 ),
                 STATUS_TIMEOUT
             );
             let flood = list_of(&["-c", "yes | head -c 100000"]);
             assert_eq!(
-                msstd_process_command_run(st("sh"), &flood, &input, 1, 10, 0, 0, out.as_mut_ptr()),
+                msstd_process_command_run(
+                    st("sh"),
+                    &flood,
+                    &input,
+                    1,
+                    10,
+                    0,
+                    0,
+                    0,
+                    st(""),
+                    &empty(),
+                    &empty(),
+                    out.as_mut_ptr()
+                ),
                 STATUS_OUTPUT_LIMIT
             );
             assert_eq!(
-                msstd_process_command_run(st("sh"), &args, &input, 1, -1, 0, 0, out.as_mut_ptr()),
+                msstd_process_command_run(
+                    st("sh"),
+                    &args,
+                    &input,
+                    1,
+                    -1,
+                    0,
+                    0,
+                    0,
+                    st(""),
+                    &empty(),
+                    &empty(),
+                    out.as_mut_ptr()
+                ),
                 STATUS_INVALID_INPUT
             );
 
             let mut child = core::ptr::null_mut();
             assert_eq!(
-                msstd_process_command_spawn(st("cat"), &empty(), 0, 0, 0, &mut child),
+                msstd_process_command_spawn(
+                    st("cat"),
+                    &empty(),
+                    0,
+                    0,
+                    0,
+                    0,
+                    st(""),
+                    &empty(),
+                    &empty(),
+                    &mut child
+                ),
                 STATUS_OK
             );
             let stdin = msstd_process_subprocess_stream(child, 0);

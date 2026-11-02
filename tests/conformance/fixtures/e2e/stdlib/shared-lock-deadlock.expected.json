@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "waiting\n",
-    "stderr": "deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation\n  at @std/sync.ms:<LINE> in lock\n  at shared-lock-deadlock.ms:18 in waiter\n  at shared-lock-deadlock.ms:29 in <anonymous>\n  at @std/tasks.ms:<LINE> in run\n  at @std/tasks.ms:<LINE> in <anonymous>\n  task started by:\n  at @std/tasks.ms:<LINE> in TaskGroup.spawn\n  at shared-lock-deadlock.ms:29 in main\n"
+    "stderr": "deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation\n  at @std/concurrency/sync.ms:<LINE> in lock\n  at shared-lock-deadlock.ms:18 in waiter\n  at shared-lock-deadlock.ms:29 in <anonymous>\n  at @std/concurrency/tasks.ms:<LINE> in run\n  at @std/concurrency/tasks.ms:<LINE> in <anonymous>\n  task started by:\n  at @std/concurrency/tasks.ms:<LINE> in TaskGroup.spawn\n  at shared-lock-deadlock.ms:29 in main\n"
   }
 }

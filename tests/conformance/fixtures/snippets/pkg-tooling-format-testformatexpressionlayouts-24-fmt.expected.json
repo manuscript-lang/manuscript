@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "let prices = [12, 8, 25]\nlet affordable = (\n    prices.length > 1\n    and prices.keep(predicate: fn(value: Int) Bool: return value <= 10).length > 0\n)\n"
-  }
-}

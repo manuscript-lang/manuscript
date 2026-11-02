@@ -1,14 +1,14 @@
-import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/http.ms"
-import network from "@std/net.ms"
-import stdout from "@std/io.ms"
-import sleep, nanoseconds from "@std/time.ms"
+import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/net/http.ms"
+import serve from "@std/net/net.ms"
+import stdout from "@std/io/io.ms"
+import sleep, nanoseconds from "@std/os/time.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
     sleep(nanoseconds(600000000))
     return HttpResponse(200, headers(), "done".to_bytes())
 
 export fn main() Int:
-    if let acquired = network().serve(
+    if let acquired = serve(
         address: "127.0.0.1:0", handler: buffered(handle),
         options: HttpServerOptions(grace: nanoseconds(10000000000))
     ):

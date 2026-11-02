@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "let present: String? = some(\"Ada\")\nlet missing: String? = none\n"
+    "fmt": "let present: String? = \"Ada\"\nlet missing: String? = none\n"
   }
 }

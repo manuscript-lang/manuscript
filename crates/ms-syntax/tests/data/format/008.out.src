@@ -1,1 +1,1 @@
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"

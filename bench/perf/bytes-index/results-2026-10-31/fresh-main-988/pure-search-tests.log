@@ -1,0 +1,12 @@
+   Compiling ms-rt v0.1.0 (/workspace/manuscript/crates/ms-rt)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.93s
+────────────
+ Nextest run ID 174617c8-a1bd-4b72-9a33-41a97d6e70bf with nextest profile: default
+    Starting 5 tests across 3 binaries (152 tests skipped)
+        PASS [   0.004s] (1/5) ms-rt string::tests::short_searches_agree_with_a_naive_scan
+        PASS [   0.010s] (2/5) ms-rt string::tests::find_matches_naive_search
+        PASS [   0.013s] (3/5) ms-rt string::tests::needle_find_matches_a_naive_search_near_the_window_edge
+        PASS [   0.011s] (4/5) ms-rt string::tests::substring_search_repetitive_near_matches
+        PASS [   0.039s] (5/5) ms-rt string::tests::substring_search_matches_exhaustive_byte_model
+────────────
+     Summary [   0.039s] 5 tests run: 5 passed, 152 skipped

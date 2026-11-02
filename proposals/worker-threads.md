@@ -3,8 +3,8 @@
 ## Summary
 
 - Problem: a program uses one core. `TaskGroup` interleaves on one thread; CPU-bound work cannot scale.
-- Change: `WorkerGroup` in `@std/workers.ms` runs a named top-level `def` on an OS thread with its own runtime state (an isolate: arena, scheduler, task tree, fault context, poller). Parent and worker talk over `Channel`s in both directions; the group joins or cancels workers at the end of `with`.
-- Transport: channel messages are JSON frames over an in-memory duplex byte pipe, written in Manuscript (`@std/channels.ms`, channels thread). No sockets for threads (sockets are for processes). Values are encoded, not moved between arenas.
+- Change: `WorkerGroup` in `@std/concurrency/workers.ms` runs a named top-level `def` on an OS thread with its own runtime state (an isolate: arena, scheduler, task tree, fault context, poller). Parent and worker talk over `Channel`s in both directions; the group joins or cancels workers at the end of `with`.
+- Transport: channel messages are JSON frames over an in-memory duplex byte pipe, written in Manuscript (`@std/io/channels.ms`, channels thread). No sockets for threads (sockets are for processes). Values are encoded, not moved between arenas.
 - Runtime (built, this branch): thread-local isolate state, one arena per isolate, per-task header blocks, per-isolate wake inboxes, worker spawn/cancel/join. Rust keeps only these primitives; `WorkerGroup`, `Worker` and the channel framing are `.ms`.
 - Decision requested: none outstanding for the runtime; the `.ms` surface waits on the channel API.
 
@@ -43,7 +43,7 @@
 ### Syntax and API (as built)
 
 ```manuscript
-import WorkerGroup, worker_channel from "@std/workers.ms"
+import WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
 fn hash_worker() Unit:
     var ch = worker_channel[String, Bytes]()
@@ -55,7 +55,7 @@ fn hash_all(chunks: List[Bytes]) Result[List[String], WorkerError]:
         # send chunks, read digests, then worker.channel.close() and worker.join()
 ```
 
-- `WorkerGroup[In = Unit, Out = Unit]`: `Closeable`. `spawn(entry: Callable[[], Unit]) -> Result[Worker[In, Out], WorkerError]`. The starter's end is `worker.channel: Channel[In, Out]`; the worker takes the other with `worker_channel[Send, Receive]()` (`Channel` and `Transport` come from `@std/channels.ms`).
+- `WorkerGroup[In = Unit, Out = Unit]`: `Closeable`. `spawn(entry: Callable[[], Unit]) -> Result[Worker[In, Out], WorkerError]`. The starter's end is `worker.channel: Channel[In, Out]`; the worker takes the other with `worker_channel[Send, Receive]()` (`Channel` and `Transport` come from `@std/io/channels.ms`).
 - `entry` is a named top-level `def` with no parameters. The checker rejects anything else (lambda, local function, captured value) at the `spawn` call, because the entry crosses as a capture-free closure: the runtime copies its code pointer into a system block and rebuilds a closure in the worker's arena (one binary, so the pointer is valid in both). This replaces the earlier idea of passing the channel end as an entry parameter, which needed a generated typed thunk: `worker_channel` is an ordinary generic function, so no compiler support beyond the checker rule is needed.
 - `Worker.join()` closes the starter's end, waits, and returns `Result[Unit, WorkerError]` (`Faulted(report)`, `Cancelled`, `NotStarted`); later calls return the same outcome. `Worker.cancel()` raises the worker's cancel flag. Leaving `with` cancels, closes and joins every worker.
 - A fault in a worker does not end the program: it comes back from `join` as `Faulted(report)`. The group does not re-raise (decision changed from the first draft: the caller can choose, and a fault is data like a task's error).
@@ -105,7 +105,7 @@ flowchart LR
 | `stdlib/workers.ms` | `WorkerGroup`, `Worker`, `worker_channel`, `WorkerTransport` in Manuscript (done) | `make docs-check` |
 | `crates/ms-std-*` | statics classified; reactors per thread | per-crate tests |
 | `ms-syntax`, formatter, lint, LSP | unchanged (no syntax) | - |
-| Docs | core-language page, cheat sheet (`ms guide`), `crates/DESIGN.md` decision 4, `VISION.md`, `.experts/runtime.md` | `make repo-check`, `make book-check` |
+| Docs | core-language page, cheat sheet (`ms guide`), `crates/DESIGN.md` decision 4, `VISION.md`, `wiki/runtime/index.md` | `make repo-check`, `make book-check` |
 | Conformance | ordering, rejection, cancel, fault exit | `make conform` |
 
 ## Examples
@@ -153,7 +153,7 @@ flowchart LR
 3. Done: per-isolate arenas with registry and remote free; per-isolate wake inboxes; header blocks with slot-aligned stacks; main as a task; worker spawn/cancel/join with unit tests (spawn, fault report, cancel, remote free).
 4. Done: checker rule (named-def entry), `WorkerGroup`/`Worker`/`worker_channel` in `stdlib/workers.ms`, `Global<T>` faults in a worker, conformance fixtures `workers.ms` and `worker-entry-lambda.ms`.
 5. Done: in-memory duplex message pipe (`pipe.rs`) and the transport.
-6. Done on Linux: docs (`concurrency/workers.md`, `crates/DESIGN.md`, `VISION.md`, `.experts/runtime.md`), scaling (gate of 1.6x on two workers met). Open: green `make verify-full` on macOS and Windows.
+6. Done on Linux: docs (`concurrency/workers.md`, `crates/DESIGN.md`, `VISION.md`, `wiki/runtime/index.md`), scaling (gate of 1.6x on two workers met). Open: green `make verify-full` on macOS and Windows.
 
 ## Open questions
 

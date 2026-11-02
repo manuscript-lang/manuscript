@@ -1,8 +1,8 @@
 # conform: tags=closures,stdlib-tasks,tier-stdlib
 # conform: phase=run
-import Channel from "@std/channels.ms"
-import stdout from "@std/io.ms"
-import TaskGroup from "@std/tasks.ms"
+import Channel from "@std/io/channels.ms"
+import stdout from "@std/io/io.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 
 fn entry(ch: Channel[Unit, Unit]) Int:
     return 6
@@ -19,5 +19,5 @@ export fn main() Int:
             0
         ].to_string() + "\n"
     )
-    g.close()
+    g.close().get(none)
     return 0

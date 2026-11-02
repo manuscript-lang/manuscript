@@ -6,22 +6,19 @@
 extern crate ms_rt;
 extern crate ms_std_archive;
 extern crate ms_std_bigint;
-extern crate ms_std_compress;
+extern crate ms_std_core;
 extern crate ms_std_crypto;
 extern crate ms_std_decimal;
-extern crate ms_std_encoding;
 extern crate ms_std_fs;
 extern crate ms_std_html;
 extern crate ms_std_io;
 extern crate ms_std_json;
-extern crate ms_std_log;
-extern crate ms_std_math;
 extern crate ms_std_net;
 extern crate ms_std_path;
 extern crate ms_std_process;
-extern crate ms_std_random;
 extern crate ms_std_regex;
 extern crate ms_std_system;
+extern crate ms_std_table;
 extern crate ms_std_terminal;
 extern crate ms_std_time;
 extern crate ms_std_url;
@@ -30,3 +27,6 @@ extern crate ms_std_url;
 #[cfg(target_os = "linux")]
 #[global_allocator]
 static HEAP: ms_rt::alloc::StdHeap = ms_rt::alloc::StdHeap;
+
+#[cfg(all(feature = "entry", target_os = "linux", target_env = "gnu"))]
+mod entry;

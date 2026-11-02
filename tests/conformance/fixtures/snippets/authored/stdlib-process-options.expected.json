@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "stdlib-process-options.ms::run starts the child in cwd with extra environment",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "stdlib-process-options.ms::run reports the child's peak resident set",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "stdlib-process-options.ms::spawn accepts cwd and env and reports the peak resident set after wait",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "stdlib-process-options.ms::bad cwd and variable names are rejected",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN stdlib-process-options.ms::run starts the child in cwd with extra environment\nPASS stdlib-process-options.ms::run starts the child in cwd with extra environment\nRUN stdlib-process-options.ms::run reports the child's peak resident set\nPASS stdlib-process-options.ms::run reports the child's peak resident set\nRUN stdlib-process-options.ms::spawn accepts cwd and env and reports the peak resident set after wait\nPASS stdlib-process-options.ms::spawn accepts cwd and env and reports the peak resident set after wait\nRUN stdlib-process-options.ms::bad cwd and variable names are rejected\nPASS stdlib-process-options.ms::bad cwd and variable names are rejected\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

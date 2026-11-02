@@ -1,0 +1,6 @@
+{
+  "baseline": "/workspace/normalization-evidence/programs/baseline-reverse",
+  "byte": "/workspace/normalization-evidence/programs/byte-reverse",
+  "ascii": "/workspace/normalization-evidence/programs/ascii-reverse",
+  "both": "/workspace/normalization-evidence/programs/both-reverse"
+}

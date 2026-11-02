@@ -1,0 +1,21 @@
+{
+  "main_revision": "3cfde58b6216ae4db54aeb3ae4e22ee7d527e323",
+  "local_merge_head_before_report": "445564a2790fb1bc0549a3e50ee29145d750f478",
+  "original_candidate_revision": "4638bb9163fb00e81f52ccf9bc4b03565964e6cc",
+  "compiler_sha256": "41a060d6b13ee0022fdcae23becefec6f325e43e19ee582145bce268cec47d87",
+  "before_MS_RT_LIB": "/workspace/byte-search-evidence/baseline.a",
+  "after_MS_RT_LIB": "/workspace/manuscript/target/ms-native/libms_native.a",
+  "before_archive_sha256": "4ef63cd2ca0418a2b7b4d9590d001af06bd51413af8b1861228da795f80356be",
+  "after_archive_sha256": "51064bdfa7bd90b113ca5b0f116c6e29eeb21a6141b9134e6d7c40a23dcfd75a",
+  "native_sources": "No differences from d4a94aa92 through main3cf in ms-rt/ms-rt-abi/ms-rt-hot/ms-native/ms-std-*/Cargo.lock; existing baseline archive is source-matched.",
+  "source_tests": "2 passed each in Debug and Release using candidate archive",
+  "clippy": "workspace all-targets warnings denied passed",
+  "repo_check": "passed",
+  "exact_preflight": "Final byte130 checks optional presence separately from its numeric checksum sentinel before timing. Earlier-byte130 retains the preceding exact source phase; timed work/counts/checksums are unchanged.",
+  "control_screen": {
+    "lines": [],
+    "normalize": [],
+    "reverse": []
+  },
+  "limits": "This is an integrated current-main branch replay, not a completed merged-main campaign replay."
+}

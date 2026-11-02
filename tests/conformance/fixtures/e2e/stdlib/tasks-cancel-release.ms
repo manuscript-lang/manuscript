@@ -1,8 +1,8 @@
 # conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
-import stdout from "@std/io.ms"
-import TaskError, TaskGroup from "@std/tasks.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 # A cancelled task leaves its frames by a jump, so the runtime must drop what they own.
 # `make leak-check` runs this program against a counting runtime: any live block at exit fails.
@@ -23,14 +23,14 @@ fn hold_in_callee() Int:
     return total + words.length()
 
 fn group_timeout() Unit:
-    let group = TaskGroup[Int](timeout: some(nanoseconds(1000000)))
+    let group = TaskGroup[Int](timeout: nanoseconds(1000000))
     group.spawn(fn ch: hold_in_callee())
 
     let _ = group.wait()
 
 fn task_timeout() Unit:
     let group = TaskGroup[Int]()
-    let held = group.spawn(fn ch: hold_in_callee(), timeout: some(nanoseconds(1000000)))
+    let held = group.spawn(fn ch: hold_in_callee(), timeout: nanoseconds(1000000))
     let _ = held.result()
 
 fn leave_group() Unit:

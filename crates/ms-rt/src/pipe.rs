@@ -1,4 +1,4 @@
-//! In-memory duplex message pipes between isolates, for the worker channels of `@std/workers.ms`.
+//! In-memory duplex message pipes between isolates, for the worker channels of `@std/concurrency/workers.ms`.
 //!
 //! A pipe has two ends; a message sent on one end is read from the other, in order. Messages
 //! are byte strings (the channel layer in Manuscript encodes values as JSON). Everything the

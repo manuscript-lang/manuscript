@@ -1,0 +1,241 @@
+{
+  "complete": true,
+  "commands": [
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/bytes-index/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/byte-search-evidence/fresh-main-988/baseline-byte"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/byte-search-evidence/fresh-main-988/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-byte-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-lines/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/byte-search-evidence/fresh-main-988/baseline-lines"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/byte-search-evidence/fresh-main-988/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-lines-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/byte-search-evidence/fresh-main-988/baseline-normalize"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/byte-search-evidence/fresh-main-988/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-normalize-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/byte-search-evidence/fresh-main-988/baseline-reverse"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/byte-search-evidence/fresh-main-988/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-reverse-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/bytes-index/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/byte-search-evidence/fresh-main-988/word-byte"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/byte-search-evidence/fresh-main-988/word.a"
+      },
+      "exit": 0,
+      "log": "word-byte-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-lines/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/byte-search-evidence/fresh-main-988/word-lines"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/byte-search-evidence/fresh-main-988/word.a"
+      },
+      "exit": 0,
+      "log": "word-lines-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/byte-search-evidence/fresh-main-988/word-normalize"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/byte-search-evidence/fresh-main-988/word.a"
+      },
+      "exit": 0,
+      "log": "word-normalize-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/byte-search-evidence/fresh-main-988/word-reverse"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/byte-search-evidence/fresh-main-988/word.a"
+      },
+      "exit": 0,
+      "log": "word-reverse-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "test",
+        "tests/e2e/testdata/stdlib/bytes-index-search.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/byte-search-evidence/fresh-main-988/word.a"
+      },
+      "exit": 0,
+      "log": "source-tests-debug.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "test",
+        "tests/e2e/testdata/stdlib/bytes-index-search.ms",
+        "--build-type",
+        "Release"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/byte-search-evidence/fresh-main-988/word.a"
+      },
+      "exit": 0,
+      "log": "source-tests-release.log"
+    },
+    {
+      "argv": [
+        "/workspace/reverse-discovery/rust-reverse-control",
+        "--verify"
+      ],
+      "extra_env": {},
+      "exit": 0,
+      "log": "rust-reverse-verify.log"
+    },
+    {
+      "argv": [
+        "/workspace/reverse-discovery/rust-reverse-control",
+        "--inventory"
+      ],
+      "extra_env": {},
+      "exit": 0,
+      "log": "rust-reverse-inventory.log"
+    }
+  ],
+  "base": "98854115f95bfeddbaa362382bfcff85c0499752",
+  "compiler": {
+    "path": "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+    "sha256": "c0206ad63cab27353feb941a70d4f500dca2856beeb184e4cd98cf3b997a4a85"
+  },
+  "head": "58691f4e3e9143c47ddc5801902e9aba8a8633ab",
+  "archives": {
+    "baseline": "0efde0154f2c05d1c6c748307f2c586e815bd69e8cfe5074bb5ce12a0908dae7",
+    "word": "143c2592a1c481ab14eb613aff6415df9b8dd021f56b5b480ece60ddf50c5b03"
+  },
+  "sources": {
+    "byte": {
+      "path": "/workspace/manuscript/bench/perf/bytes-index/main.ms",
+      "sha256": "f30c18354c0450b840c846586481ad08550a3455c7e081270b71acdd38fb5f88"
+    },
+    "lines": {
+      "path": "/workspace/manuscript/bench/perf/string-lines/main.ms",
+      "sha256": "e7d37f5ea0147ac0fa127990ec52848f7319fd300f07719a3f0bd7be76a51787"
+    },
+    "normalize": {
+      "path": "/workspace/manuscript/bench/perf/string-normalize-ascii/main.ms",
+      "sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4"
+    },
+    "reverse": {
+      "path": "/workspace/manuscript/bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+      "sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e"
+    }
+  },
+  "programs": {
+    "baseline-byte": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/baseline-byte",
+      "sha256": "62686cd4ee32d9622e13fbf59a8bb143d7f0df0a5b5e3ca29ac741c2f3b4019e"
+    },
+    "baseline-lines": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/baseline-lines",
+      "sha256": "e2195cfe6da848ac93bb25c21516351882e769d9a3e4174580926dc78ebb03ca"
+    },
+    "baseline-normalize": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/baseline-normalize",
+      "sha256": "58e766fa2bb4d664bb8ea59f15ca266f4c07c95d8c1d318ef9c9ff3e8a0161cc"
+    },
+    "baseline-reverse": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/baseline-reverse",
+      "sha256": "4e5bfe6e4aff26cc10291a686f20b5a849bfaf43f3641487dced1c6cbeb8ce51"
+    },
+    "word-byte": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/word-byte",
+      "sha256": "5a3c11bff2e465a0149605298d0619013add95cf9b622b431030bf5ac5075f11"
+    },
+    "word-lines": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/word-lines",
+      "sha256": "2366bed8606945ce9be44f7b9f6ac7dbce2c5928c5f496427a4a912083f932d5"
+    },
+    "word-normalize": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/word-normalize",
+      "sha256": "e1f20f26d948f6d732fd6f10f1cf56962e4b77cbf9c1cc43661bc2268a352a1e"
+    },
+    "word-reverse": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/word-reverse",
+      "sha256": "8ed413db341a0fc9b3acda46441220fb43f9739d925ffdb5f577611bb80c8f90"
+    }
+  }
+}

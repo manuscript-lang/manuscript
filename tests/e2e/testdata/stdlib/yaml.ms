@@ -1,26 +1,33 @@
-import expect_equal, expect_error, expect_false, expect_ok, expect_true, fail from "@std/test.ms"
+import (
+    expect_equal,
+    expect_error,
+    expect_false,
+    expect_ok,
+    expect_true,
+    fail
+) from "@std/test/test.ms"
 import from_scalars from "@std/string.ms"
 import TextError from "@std/core.ms"
-import parse, stringify, YamlValue, YamlError, YamlLimits from "@std/yaml.ms"
+import parse, stringify, YamlValue, YamlError, YamlLimits from "@std/data/yaml.ms"
 
-fn entries(value: YamlValue) Result[Map[String, YamlValue], Error]:
+fn entries(value: YamlValue) Map[String, YamlValue]!:
     match value:
         ObjectValue(values): return ok(values)
         _: return error(TextError("expected YAML mapping"))
 
-fn items(value: YamlValue) Result[List[YamlValue], Error]:
+fn items(value: YamlValue) List[YamlValue]!:
     match value:
         ArrayValue(values): return ok(values)
         _: return error(TextError("expected YAML sequence"))
 
 fn limits(bytes: Int?, depth: Int?, values: Int?) YamlLimits?:
-    return some(YamlLimits(max_bytes: bytes, max_depth: depth, max_values: values))
+    return YamlLimits(max_bytes: bytes, max_depth: depth, max_values: values)
 
 type ScalarCase:
     text: String
     expected: String
 
-fn scalar(text: String, expected: String) Result[Unit, Error]:
+fn scalar(text: String, expected: String) Unit!:
     let root = parse(text: text) | try expect_ok | try entries
     if root["a"] != YamlValue.StringValue(expected): return error(
         TextError("scalar folding: {text}")
@@ -165,7 +172,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         )
     )
 
-    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
+    let limited: YamlValue!YamlError = error(YamlError.LimitExceeded)
     try expect_false(
         (
             parse(
@@ -341,7 +348,7 @@ test "YAML documents BOM CRLF empty input and version directive":
             text: "\u{feff}%YAML 1.2\r\n---\r\na: 1\r\n...\r\n# done\r\n"
         ) | try expect_ok
     )
-    (try entries(root)) ["a"] | try expect_equal(YamlValue.NumberValue("1"))
+    (try entries(root))["a"] | try expect_equal(YamlValue.NumberValue("1"))
     parse(text: "# comment\n") | try expect_ok | try expect_equal(YamlValue.Null)
     parse(text: "---\n...\n") | try expect_ok | try expect_equal(YamlValue.Null)
     (try items((parse(text: "- - 1\n  - 2\n- - 3\n") | try expect_ok))).length() | try expect_equal(
@@ -403,8 +410,8 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
             _: return fail("expected unsupported feature")
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
-    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
-    let invalid: Result[YamlValue, YamlError] = error(YamlError.InvalidInput)
+    let limited: YamlValue!YamlError = error(YamlError.LimitExceeded)
+    let invalid: YamlValue!YamlError = error(YamlError.InvalidInput)
     try expect_false(
         (
             parse(
@@ -493,13 +500,9 @@ test "YAML merge and block header errors name their own line":
     )
 
 test "YAML limits fields default to none":
-    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
-    parse(text: "a: 1", limits: some(YamlLimits(max_bytes: 2))) | try expect_equal(
-        limited
-    )
-    parse(text: "a: 1", limits: some(YamlLimits())) | try expect_equal(
-        parse(text: "a: 1")
-    )
+    let limited: YamlValue!YamlError = error(YamlError.LimitExceeded)
+    parse(text: "a: 1", limits: YamlLimits(max_bytes: 2)) | try expect_equal(limited)
+    parse(text: "a: 1", limits: YamlLimits()) | try expect_equal(parse(text: "a: 1"))
 
 test "YAML stringify round trips scalars sequences and mappings":
     let source = "title: \"é🙂 \\\"q\\\" \\t tab\"\nnone: null\nflag: true\nint: -42\nfloat: 1.5e3\nlist:\n  - 1\n  - two\n  - [3, 4]\n  - a: 1\n    b: [x, y]\nempty_list: []\nempty_map: \{\}\n\"odd key\": 1\n\"true\": 2\nnested:\n  deep:\n    value: ok\n"
@@ -511,14 +514,14 @@ test "YAML stringify round trips scalars sequences and mappings":
     )
 
 test "YAML stringify validates numbers and honors max_bytes":
-    let invalid: Result[String, YamlError] = error(YamlError.InvalidInput)
-    let limited: Result[String, YamlError] = error(YamlError.LimitExceeded)
+    let invalid: String!YamlError = error(YamlError.InvalidInput)
+    let limited: String!YamlError = error(YamlError.LimitExceeded)
     stringify(value: YamlValue.NumberValue("not a number")) | try expect_equal(invalid)
 
     let root = (parse(text: "a: 1") | try expect_ok)
     stringify(value: root, max_bytes: 3) | try expect_equal(limited)
 
-    let exact: Result[String, YamlError] = ok("a: 1\n")
+    let exact: String!YamlError = ok("a: 1\n")
     stringify(value: root, max_bytes: 5) | try expect_equal(exact)
     stringify(value: root, max_bytes: -1) | try expect_equal(invalid)
 
@@ -639,13 +642,11 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
     let first = (try entries(list.first().get()))
     first["b"] | try expect_equal(YamlValue.NumberValue("2"))
     (try items(list.get(1).clone())).length() | try expect_equal(2)
-    (try entries(list.last().get())) ["d"] | try expect_equal(
-        YamlValue.NumberValue("4")
-    )
+    (try entries(list.last().get()))["d"] | try expect_equal(YamlValue.NumberValue("4"))
 
 fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
-    if count == 1: return text
+    if count == 1: return text.clone()
 
     let half = repeated(text: text.clone(), count: count / 2)
     if count % 2 == 1: return half.concat(half).concat(text)
@@ -683,7 +684,7 @@ test "YAML flow mapping keys without a colon map to null":
         ok(_): return fail("duplicate null keys")
         error(_): let _ignored = unit
 
-    let limited = limits(bytes: none, depth: none, values: some(2))
+    let limited = limits(bytes: none, depth: none, values: 2)
 
     match parse(text: "\{a, b, c\}", limits: limited):
         ok(_): return fail("null keys count against the value limit")
@@ -749,7 +750,7 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
 
     let depth = 3000
     var source = "{repeated(text: "- ", count: depth)}x\n"
-    var root = (parse(text: source, limits: some(YamlLimits())) | try expect_ok)
+    var root = (parse(text: source, limits: YamlLimits()) | try expect_ok)
 
     for level in 1..depth:
         let inner = (try items(root))
@@ -778,5 +779,12 @@ test "YAML parse without limits stops alias bombs and deep nesting":
     let nested = parse(deep)
     if nested.is_ok(): return fail("nesting over the default depth was accepted")
 
-    let lifted = parse(deep, some(YamlLimits()))
+    let lifted = parse(deep, YamlLimits())
     try expect_true(lifted.is_ok())
+
+test "YAML plain scalars and keys keep Unicode spaces":
+    (try scalar(text: "a: x\u{a0}\n", expected: "x\u{a0}"))
+    (try scalar(text: "a: \u{3000}x\n", expected: "\u{3000}x"))
+
+    let root = parse(text: "k\u{a0}: 1\n") | try expect_ok | try entries
+    try expect_true(root.contains("k\u{a0}"))

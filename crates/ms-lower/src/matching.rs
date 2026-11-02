@@ -87,11 +87,9 @@ impl FnLower<'_> {
             }
         }
         let rty = self.emty(e)?;
-        // The returned expression of a lending function hands back the branch values themselves.
-        let lend_arms = self.lent_return
-            && self.lent_expr == Some(e as *const Expr as usize)
-            && self.ownership_checked();
-        let owned = self.needs_drop(rty) && !lend_arms;
+        // A reference on every arm is joined as one: the checker holds its origins.
+        let lent = self.cx.lent_matches.contains(&(self.hir.data.file, e.id));
+        let owned = self.needs_drop(rty) && !lent;
         let res = self
             .b
             .declare_var(rty, if owned { Mode::Own } else { Mode::Borrow });
@@ -194,6 +192,13 @@ impl FnLower<'_> {
             let facts = self.hir.arm(arm);
             for (i, b) in facts.bindings.iter().enumerate() {
                 let Some(b) = b else { continue };
+                if arm.chain && self.cx.exclusive(b.uid) {
+                    // `c?.f()` changing the payload: `?N` names the payload of `c` itself.
+                    let mut alias = self.alias_chain(scrutinee)?;
+                    alias.steps.push(crate::alias::AStep::Some);
+                    self.aliases.insert(b.uid, alias);
+                    continue;
+                }
                 let cur = self.b.use_var(sv);
                 let payload = match (&kind, case) {
                     (TyKind::Iface(_), Some(_)) => {
@@ -232,21 +237,13 @@ impl FnLower<'_> {
             self.stmts(&arm.body)?;
             let mark = self.temps.len();
             if !self.dead {
-                if lend_arms && let Some(v) = &arm.value {
-                    self.lent_expr = Some(v as *const Expr as usize);
-                }
                 let x = match &arm.value {
                     Some(v) => Some(self.expr(v)?),
                     None => None,
                 };
                 if !self.dead {
                     let v = match x {
-                        Some(x) if lend_arms => {
-                            if x.own && self.needs_drop(self.ty_of(x.v)) {
-                                self.lent_violation = true;
-                            }
-                            x.v
-                        }
+                        Some(x) if lent => x.v,
                         Some(x) => self.owned(x),
                         None => self.b.unit(),
                     };
@@ -365,12 +362,28 @@ impl FnLower<'_> {
                 .ok_or_else(|| Error::new("try without a propagated error"))?;
             x = self.fit_ty(x, &ms_check::types::sub(&failure, &self.subst), want)?;
         }
-        let po = self.owned(x);
-        let out = self.b.alt_new(ra, ret_err as u32, &[po]);
-        if hidden {
-            self.drop_value(cur);
+        if !hidden
+            && !x.own
+            && self.b.func_mut().ret_borrowed
+            && self.cx.view_wraps.contains(&(self.hir.data.file, e.id))
+        {
+            // The operand lends its error from this function's arguments: hand the reference on.
+            let out = self.b.alt_view(ra, ret_err as u32, &[x.v]);
+            self.emit_return(Some(Val { v: out, own: false }));
+        } else if hidden && !x.own && self.ty_of(payload) == want {
+            // The operand is ours: its error moves into the result and the rest is released.
+            let po = self.b.alt_take(a, err as u32, 0, cur);
+            self.b.alt_release(a, err as u32, 1, cur);
+            let out = self.b.alt_new(ra, ret_err as u32, &[po]);
+            self.emit_return(Some(Val { v: out, own: true }));
+        } else {
+            let po = self.owned(x);
+            let out = self.b.alt_new(ra, ret_err as u32, &[po]);
+            if hidden {
+                self.drop_value(cur);
+            }
+            self.emit_return(Some(Val { v: out, own: true }));
         }
-        self.emit_return(Some(Val { v: out, own: true }));
 
         self.enter(okb);
         let cur = self.b.use_var(rv);

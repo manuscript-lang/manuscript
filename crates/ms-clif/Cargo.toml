@@ -19,10 +19,16 @@ gimli = { version = "=0.34.0", default-features = false, features = ["write", "r
 [dev-dependencies]
 # Exercise both supported architectures on every host, including ELF, Mach-O and COFF emission.
 cranelift-codegen = { version = "=0.136.0", features = ["x86", "arm64"] }
+# Exercise SDK stub ownership with tiny Mach-O objects on every host.
+object = { version = "0.40", default-features = false, features = ["std", "read_core", "archive", "macho", "write_core"] }
 
 # Reads Mach-O objects and archives to generate the macOS SDK stubs.
 [target.'cfg(target_os = "macos")'.dependencies]
 object = { version = "0.40", default-features = false, features = ["read_core", "archive", "macho"] }
+
+# Writes the ELF objects that become the glibc link-time stubs.
+[target.'cfg(target_os = "linux")'.dependencies]
+object = { version = "0.40", default-features = false, features = ["std", "write_core", "elf"] }
 
 # lld and the LLVM tools are downloaded on first use rather than embedded.
 [target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]

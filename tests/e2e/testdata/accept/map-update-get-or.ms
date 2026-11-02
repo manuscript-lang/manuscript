@@ -1,5 +1,5 @@
-import expect_equal from "@std/test.ms"
-import SortedMap from "@std/sorted.ms"
+import expect_equal from "@std/test/test.ms"
+import SortedMap from "@std/collections/sorted.ms"
 
 test "map update counts and transforms":
     var counts = Map[String, Int]()

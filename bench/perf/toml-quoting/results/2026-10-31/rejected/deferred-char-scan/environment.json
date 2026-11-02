@@ -1,0 +1,47 @@
+{
+  "revision": "d4a94aa9283348133542078e22ccaa3b2c9dc348",
+  "toolchain": "rustc 1.99.1; LLVM 23.1.1; Release",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "cpu": "AMD EPYC 9V45 96-Core Processor",
+  "binaries": {
+    "before": {
+      "path": "/workspace/serialization-perf/.artifacts/toml-quoting/before-guarded",
+      "sha256": "71db5a093ba0942fffbfe6382a5b80607e1ce9b0563ddac4e8f820dfc71d6665"
+    },
+    "after": {
+      "path": "/workspace/serialization-perf/.artifacts/toml-quoting/after-deferred",
+      "sha256": "ccda97ffbc9a0d0f4a4f070702a8a7fa9b036d7337adec2846a865472eb294d8"
+    },
+    "rust": {
+      "path": "/workspace/serialization-perf/bench/perf/toml-quoting/rust/target/release/toml-quoting-control",
+      "sha256": "9003a06db53a3878d0a7bc76952c994fb670bbdb85df2f5e1e92b68d768a548f"
+    }
+  },
+  "repeats": 12,
+  "provenance": {
+    "base_commit": "d4a94aa9283348133542078e22ccaa3b2c9dc348",
+    "before_toml_sha256": "79b719c6bfab6b57566bebb644b7523c172f74d610dd2778e051b76c674ab522",
+    "after_toml_sha256": "07b1953c1f6ef233cab62e151d35c60441cf2e1f83b7270cc6480d973200ce73",
+    "source_and_runtime_sha256": {
+      "bench/perf/toml-quoting/main.ms": "b10920067b1c3278bf91d4fe5b2faf21395d091ddfef0c576e8344cd0e7d9d93",
+      "bench/perf/toml-quoting/run.py": "1289c3ff6223361072b1fc2a29701e25b5c3c6a25bf95524ad080180af74ef93",
+      "bench/perf/toml-quoting/rust/Cargo.toml": "7dee553b1806594d1b25b121747bd98c3ed7b49035371f4e0158674e48439773",
+      "bench/perf/toml-quoting/rust/Cargo.lock": "770f4123a4d9d8fb1056e9a773e36ec605cfea74b1aaa5eab62ef866f65c37bb",
+      "bench/perf/toml-quoting/rust/src/main.rs": "5ad86724c02346336e0bde7d78d2a16e9b1fce2d7bbe77b1a989199c9b7e5683",
+      "Cargo.lock": "998cb7c3e0e21215625429800b7d885428c8f4f32388dba45dcc5abfd3f6f6e3",
+      "rust-toolchain.toml": "7f5140056a968f51f7a91e1d73fd6b8c226054ecb5c6d39e791de484f9616457",
+      "scripts/lld.lock": "6026878d9013e192ec3d1fc384691808383f0593d386d52b5faa2ca2d903fa41",
+      "target/ms-native/libms_native.a": "4cafcd024b5c4a6fee46fd695c514f5a76d26d487b0f49bcd1ad92220c9b1021"
+    },
+    "build_commands": {
+      "compiler": "cargo xtask runtime && cargo build --release --locked -p ms-cli",
+      "before": "ms build bench/perf/toml-quoting/main.ms --build-type Release -o before-guarded; stdlib/toml.ms at base_commit",
+      "after": "ms build bench/perf/toml-quoting/main.ms --build-type Release -o after-deferred; stdlib/toml.ms at after_toml_sha256",
+      "rust": "cargo build --release --locked --manifest-path bench/perf/toml-quoting/rust/Cargo.toml"
+    },
+    "rust_flags": "workspace .cargo/config.toml: -C force-frame-pointers=yes; Rust control opt-level=3, panic=abort; no target-cpu override",
+    "native_tools": "pinned LLVM 23.1.1 O3, musl target per repository Release build; no backend override",
+    "content_guards": "both producers compare every timed full output with their expected text, then accumulate byte lengths"
+  },
+  "note": "Native producer timings exclude input/setup/printing. Stringify, full-output equality guard, and output release are timed. Rust may choose different equivalent TOML quoting; byte lengths are recorded independently."
+}

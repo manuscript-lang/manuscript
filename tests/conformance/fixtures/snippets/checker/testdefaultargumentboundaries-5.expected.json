@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3002",
+        "phase": "type",
+        "message": "duplicate argument value; pass each argument once",
+        "position": {
+          "file": "testdefaultargumentboundaries-5.ms",
+          "line": 8,
+          "column": 17,
+          "offset": 216
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testdefaultargumentboundaries-5.ms:8:17: type: duplicate argument value; pass each argument once\n   |\n 8 |     return f(2, value: 3)\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

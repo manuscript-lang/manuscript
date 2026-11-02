@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/local-closures-keep-semantics.ms
 import TextError from "@std/core.ms"
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"
 
 fn bump(factor: Int) Int:
     var offset = 10
@@ -14,7 +14,7 @@ fn bump(factor: Int) Int:
 fn lookup(limit: Int) Int:
     let find = fn(key: Int) Int?:
         if key < limit:
-            return some(key * 2)
+            return (key * 2)
 
         return none
 
@@ -23,7 +23,7 @@ fn lookup(limit: Int) Int:
 
     while i < 5:
         match find(key: i):
-            some(found):
+            found:
                 total = total + found
             none:
                 total = total + 100
@@ -32,8 +32,8 @@ fn lookup(limit: Int) Int:
 
     return total
 
-fn parse(text: String) Result[Int, TextError]:
-    let guard = fn(number: Int) Result[Int, TextError]:
+fn parse(text: String) Int!TextError:
+    let guard = fn(number: Int) Int!TextError:
         if number < 0:
             return Result[Int, TextError].error(TextError("negative"))
 

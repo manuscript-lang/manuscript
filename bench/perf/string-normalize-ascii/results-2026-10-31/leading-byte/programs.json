@@ -1,0 +1,10 @@
+{
+  "baseline": "/workspace/normalization-evidence/programs/baseline-normalize",
+  "word": "/workspace/normalization-evidence/programs/byte-normalize",
+  "rejected-ascii": "/workspace/normalization-evidence/programs/ascii-normalize",
+  "rejected-both": "/workspace/normalization-evidence/programs/both-normalize",
+  "leading-ascii": "/workspace/normalization-evidence/leading-byte/ascii-normalize",
+  "leading-both": "/workspace/normalization-evidence/leading-byte/both-normalize",
+  "rust-matched": "/workspace/normalization-evidence/rust-matched",
+  "rust-matched-ascii": "/workspace/normalization-evidence/rust-matched-ascii"
+}

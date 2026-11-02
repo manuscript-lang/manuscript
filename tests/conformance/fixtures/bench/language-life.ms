@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,lists,modules,mutation,stdlib-collections,stdlib-faults,tier-stdlib
 # conform: phase=run
 # conform: origin=bench/language/life.ms
-import filled from "@std/collections.ms"
+import filled from "@std/collections/collections.ms"
 import panic from "@std/core.ms"
 
 fn make_cells() List[Int]:

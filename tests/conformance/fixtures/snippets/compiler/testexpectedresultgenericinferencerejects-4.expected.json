@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...) T:', or import it from a module",
+        "position": {
+          "file": "testexpectedresultgenericinferencerejects-4.ms",
+          "line": 7,
+          "column": 33,
+          "offset": 268
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument _0: Int in call to callback; add '_0: <Int>'",
+        "position": {
+          "file": "testexpectedresultgenericinferencerejects-4.ms",
+          "line": 9,
+          "column": 5,
+          "offset": 341
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testexpectedresultgenericinferencerejects-4.ms:7:33: resolution: unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...) T:', or import it from a module\n   |\n 7 |     var callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)\n   |                                 ^\n<DIR>/testexpectedresultgenericinferencerejects-4.ms:9:5: type: missing argument _0: Int in call to callback; add '_0: <Int>'\n   |\n 9 |     callback()\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

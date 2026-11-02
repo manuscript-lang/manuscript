@@ -41,10 +41,12 @@ fn bundled_extension_method_fault_names_the_bundled_file() {
         let frames: Vec<&str> = stderr.lines().filter(|l| l.starts_with("  at ")).collect();
         assert_eq!(frames.len(), 3, "{stderr}");
         assert!(
-            frames[0].starts_with("  at @std/ordering.ms:") && frames[0].ends_with(" in clamped")
+            frames[0].starts_with("  at @std/collections/ordering.ms:")
+                && frames[0].ends_with(" in clamped")
         );
         assert!(
-            frames[1].starts_with("  at @std/ordering.ms:") && frames[1].ends_with(" in Int.clamp")
+            frames[1].starts_with("  at @std/collections/ordering.ms:")
+                && frames[1].ends_with(" in Int.clamp")
         );
         assert_eq!(frames[2], "  at clamp.ms:3 in main");
     }

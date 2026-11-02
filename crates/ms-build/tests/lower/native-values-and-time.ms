@@ -2,9 +2,9 @@
 # expect-mir: "closure.new"
 # expect-mir: "msstd_time_parse_timestamp"
 
-import stdout from "@std/io.ms"
-import sqrt, max from "@std/math.ms"
-import Duration, parse_timestamp from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import sqrt, max from "@std/math/math.ms"
+import Duration, parse_timestamp from "@std/os/time.ms"
 
 fn via(f: fn(Float) Float, x: Float) Float: f(x)
 

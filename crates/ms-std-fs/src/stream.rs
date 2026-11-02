@@ -196,6 +196,18 @@ impl Stream {
         s
     }
 
+    /// A second handle over a duplicate of this file's descriptor, closed on its own. It shares
+    /// the file position, but not bytes this handle already read ahead.
+    pub fn duplicate(&self) -> Result<Stream, sys::Errno> {
+        let fd = sys::duplicate(self.fd)?;
+        let mut s = Stream::with_pollable(fd, true, self.name.clone(), self.pollable);
+        s.no_read = self.no_read;
+        s.no_write = self.no_write;
+        s.append = self.append;
+        s.file = self.file;
+        Ok(s)
+    }
+
     pub fn is_closed(&self) -> bool {
         self.closed
     }
@@ -672,6 +684,22 @@ mod tests {
             let mut f = Stream::open(b"/proc/self/status").unwrap();
             assert!(f.read(None).unwrap().is_some());
         }
+    }
+
+    #[test]
+    fn close_reports_release_errors_and_retires_the_stream() {
+        // This positive descriptor/handle cannot name an open file. No resource is acquired,
+        // and the failed release must not be hidden by File's infallible destructor.
+        let mut stream =
+            Stream::with_pollable(sys::Fd::MAX, true, Cow::Borrowed(b"invalid-handle"), true);
+        let failure = stream.close().unwrap_err();
+        assert_eq!(failure.status, STATUS_FAILED);
+        assert!(failure.message.starts_with(b"close invalid-handle: "));
+        assert!(stream.is_closed());
+        assert_eq!(stream.read(None).unwrap_err().status, STATUS_CLOSED);
+        assert_eq!(stream.write(b"x").unwrap_err().status, STATUS_CLOSED);
+        assert_eq!(stream.flush().unwrap_err().status, STATUS_CLOSED);
+        assert_eq!(stream.close(), Ok(()));
     }
 
     #[test]

@@ -1,12 +1,12 @@
 # conform: tags=closures,control-flow,faults,formatter,generics,interfaces,match,modules,parser,stdlib-cleanup,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/local_extensions/second.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 import Item, Box, Holder, Choice from "./domain.ms"
 import Read, invoke, relay, as_view from "./contracts.ms"
 import Closeable from "@std/core.ms"
-import share from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
 
 impl Read[Int] for Item:
     fn get() Int:
@@ -16,7 +16,7 @@ fn delta() Int:
     return 20
 
 impl Read[T] for Box[T]:
-    fn get() ref T:
+    fn get() T:
         return self.value
 
 impl Read[Int] for Choice:
@@ -57,9 +57,10 @@ test "second local extensions":
 import Resource from "./domain.ms"
 
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         var guard = lock(self.events)
         guard.value.append(value: 20)
+        return ok(unit)
 
 fn leave(resource: Resource) Unit:
     let _local = resource

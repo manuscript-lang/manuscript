@@ -1,0 +1,8 @@
+test_failed_producer_never_publishes_summary (test_matrix.MatrixEvidenceTests.test_failed_producer_never_publishes_summary) ... ok
+test_incomplete_or_missing_evidence_rejected (test_matrix.MatrixEvidenceTests.test_incomplete_or_missing_evidence_rejected) ... ok
+test_valid_balanced_matrix_and_paired_report (test_matrix.MatrixEvidenceTests.test_valid_balanced_matrix_and_paired_report) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.401s
+
+OK

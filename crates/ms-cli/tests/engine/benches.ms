@@ -1,5 +1,5 @@
-import keep, measure from "@std/bench.ms"
-import expect_equal, fail from "@std/test.ms"
+import keep, measure from "@std/test/bench.ms"
+import expect_equal, fail from "@std/test/test.ms"
 
 fn sum_to(n: Int) Int:
     var total = 0

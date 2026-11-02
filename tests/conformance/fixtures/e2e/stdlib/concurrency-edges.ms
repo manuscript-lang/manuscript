@@ -1,10 +1,10 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-tasks,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel, ChannelError from "@std/channels.ms"
-import Task, TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_true from "@std/test.ms"
-import nanoseconds, sleep from "@std/time.ms"
-import Worker, WorkerGroup, worker_channel from "@std/workers.ms"
+import Channel, ChannelError from "@std/io/channels.ms"
+import Task, TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_true from "@std/test/test.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
+import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
 # Edge behaviour found by probing the concurrency runtime: misuse and limits answer with errors, never a
 # fault or a hang, and every wait here ends on its own.
@@ -35,7 +35,7 @@ fn waiter(t: Task[Int]) Int:
 
     return r.err().message().length()
 
-fn echo(ch: Channel[Int, Int]) Result[Int, ChannelError]:
+fn echo(ch: Channel[Int, Int]) Int!ChannelError:
     var c = ch
     var n = 0
 
@@ -51,7 +51,7 @@ fn echo(ch: Channel[Int, Int]) Result[Int, ChannelError]:
 test "many tasks echo through their channels without losing a value":
     var total = 0
     var counts = 0
-    var group = TaskGroup[Result[Int, ChannelError], Int, Int]()
+    var group = TaskGroup[Int!ChannelError, Int, Int]()
 
     for t in 0..20:
         var task = group.spawn(echo)
@@ -67,7 +67,7 @@ test "many tasks echo through their channels without losing a value":
     let results = group.results().get()
     for r in results:
         counts += r.get(0)
-    group.close()
+    try group.close()
 
     # Each task echoes 0..199 plus one: 20 tasks, sum 19900 + 200 per task.
     try expect_equal(total, 20 * (19900 + 200))
@@ -85,7 +85,7 @@ test "creating and closing task groups many times leaves them usable":
 
 test "spawning into a closed group never runs the task":
     var group = TaskGroup[Int]()
-    group.close()
+    try group.close()
 
     var t = group.spawn(fn ch: quick())
     let r = t.result()
@@ -94,27 +94,27 @@ test "spawning into a closed group never runs the task":
     try expect_equal(t.channel.send(unit).is_ok(), false)
 
 test "a zero timeout cancels the task instead of running it":
-    var group = TaskGroup[Int](timeout: some(nanoseconds(0)))
+    var group = TaskGroup[Int](timeout: nanoseconds(0))
     let t = group.spawn(fn ch: quick())
     try expect_equal(t.result().is_ok(), false)
-    group.close()
+    try group.close()
 
     let group2 = TaskGroup[Int]()
-    let t2 = group2.spawn(fn ch: quick(), timeout: some(nanoseconds(0)))
+    let t2 = group2.spawn(fn ch: quick(), timeout: nanoseconds(0))
     try expect_equal(t2.result().is_ok(), false)
 
 test "a task waiting on a task of another group sees it time out":
     var seen = 0
     var a = TaskGroup[Int]()
-    let b = TaskGroup[Int](timeout: some(nanoseconds(50000000)))
+    let b = TaskGroup[Int](timeout: nanoseconds(50000000))
     let tb = b.spawn(fn ch: slow())
     let waiting = a.spawn(fn ch: waiter(tb))
     seen = waiting.result().get(-1)
-    a.close()
+    try a.close()
     try expect_equal(seen, "task: timed out".length())
 
 test "a send to a task cancelled by its group ends with closed":
-    let group = TaskGroup[Int, Int, Unit](timeout: some(nanoseconds(100000000)))
+    let group = TaskGroup[Int, Int, Unit](timeout: nanoseconds(100000000))
     var t = group.spawn(deaf)
     var sent = 0
     var stopped = false
@@ -131,7 +131,7 @@ test "a send to a task cancelled by its group ends with closed":
     try expect_equal(stopped, true)
 
 test "a receive from a task cancelled by its group ends with none":
-    let group = TaskGroup[Int, Unit, Int](timeout: some(nanoseconds(100000000)))
+    let group = TaskGroup[Int, Unit, Int](timeout: nanoseconds(100000000))
     var t = group.spawn(mute)
     let r = t.channel.receive()
     try expect_equal(r.is_ok(), true)
@@ -140,8 +140,8 @@ test "a receive from a task cancelled by its group ends with none":
 test "handles of a closed worker group answer instead of faulting":
     var kept: Worker[Int, Int]? = none
     var group = WorkerGroup[Int, Int]()
-    kept = some(group.spawn(waits).get())
-    group.close()
+    kept = group.spawn(waits).get()
+    try group.close()
 
     if let worker = kept:
         var w = worker

@@ -1,7 +1,7 @@
-import expect_ok from "@std/test.ms"
+import expect_ok from "@std/test/test.ms"
 import http_result from "./support/http.ms"
 import TextError from "@std/core.ms"
-import headers, HttpMethod, buffered from "@std/http.ms"
+import headers, HttpMethod, buffered from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import (
     HttpRequest,
@@ -11,9 +11,9 @@ import (
     HttpServerOptions,
     HttpClientOptions,
     HttpHeaders
-) from "@std/http.ms"
-import network from "@std/net.ms"
-import TlsOptions from "@std/net.ms"
+) from "@std/net/http.ms"
+import http_client, request, serve from "@std/net/net.ms"
+import TlsOptions from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 
 fn route(request: HttpRequest) HttpResponse:
@@ -31,7 +31,7 @@ fn route(request: HttpRequest) HttpResponse:
         status: 200, headers: fields, body: "{request.path}|{request.query}".to_bytes()
     )
 
-fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
+fn stream_route(exchange: HttpExchange) Unit!HttpError:
     var chain_1 = Map[String, List[String]]()
     chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
@@ -43,8 +43,8 @@ fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
     )
     return ok(unit)
 
-fn check_route(url: String, expected: String) Result[Unit, Error]:
-    let response = network().request(
+fn check_route(url: String, expected: String) Unit!:
+    let response = request(
         method: HttpMethod.Get, url: url,
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
     ) | try expect_ok
@@ -57,8 +57,8 @@ fn check_route(url: String, expected: String) Result[Unit, Error]:
 
     return ok(unit)
 
-fn check_rejected(url: String) Result[Unit, Error]:
-    let response = network().request(
+fn check_rejected(url: String) Unit!:
+    let response = request(
         method: HttpMethod.Get, url: url,
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
     ) | try expect_ok
@@ -68,7 +68,7 @@ fn check_rejected(url: String) Result[Unit, Error]:
 
     return ok(unit)
 
-fn check_paths(base: String) Result[Unit, Error]:
+fn check_paths(base: String) Unit!:
     (try check_route(url: "{base}/a%20b", expected: "/a b|"))
     (try check_route(url: "{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F"))
     (try check_route(url: "{base}/a/../b/", expected: "/b/|"))
@@ -79,19 +79,17 @@ fn check_paths(base: String) Result[Unit, Error]:
     return ok(unit)
 
 test "buffered routes validate original input and decode once":
-    let server = network().serve(
-        address: "127.0.0.1:0", handler: buffered(route)
-    ) | try expect_ok
+    let server = serve(address: "127.0.0.1:0", handler: buffered(route)) | try expect_ok
     (try check_paths("http://{server.address()}"))
 
 test "streaming routes validate original input and decode once":
-    let server = network().serve(
+    let server = serve(
         address: "127.0.0.1:0", handler: stream_route,
         options: HttpServerOptions(tls: none)
     ) | try expect_ok
     (try check_paths("http://{server.address()}"))
 
-fn expect_http_error[T](outcome: Result[T, HttpError]) Result[Unit, Error]:
+fn expect_http_error[T](outcome: T!HttpError) Unit!:
     match outcome:
         ok(_): return error(TextError("invalid URL succeeded"))
         error(cause):
@@ -104,7 +102,7 @@ fn expect_http_error[T](outcome: Result[T, HttpError]) Result[Unit, Error]:
 test "buffered and reusable clients reject malformed ports as InvalidInput":
     let headers = (try text_headers(Map[String, String]()))
     let body = ""
-    network().request(
+    request(
         method: HttpMethod.Get, url: "http://127.0.0.1:99999/", headers: headers,
         body: body
     ) | try expect_http_error
@@ -113,7 +111,7 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
         server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
         alpn: [], require_client_certificate: false
     )
-    let client = network().http_client(
+    let client = http_client(
         HttpClientOptions(decompress: false, cookies: false, tls: tls)
     ) | try expect_ok
     client.request(

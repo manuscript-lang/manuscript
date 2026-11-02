@@ -9,7 +9,7 @@ weight = 4
 
 ## String literals
 
-A literal is delimited by `"` and fits on one source line, interpolations included. Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. There are no single-quoted, raw, multiline, or byte literals.
+A literal is delimited by `"` and fits on one source line, interpolations included. Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. [Multi-line and raw literals](#multi-line-and-raw-literals) span lines. There are no single-quoted or byte literals.
 
 | Escape | Value |
 | --- | --- |
@@ -29,6 +29,25 @@ let template = "Literal braces: \{name\}"
 let lines = "first\nsecond"
 let symbol = "\u{1F642}"
 ```
+
+## Multi-line and raw literals
+
+`"""` opens text that spans lines. The opening quotes end their line, the closing quotes stand alone on a later line, and the closing line's indentation is removed from every line, so the text can be indented with the code around it. The line break after the opening quotes and the one before the closing line are not part of the value. A blank line may be shorter than the indentation; any other line indented less than the closing quotes is an error. Escapes and `{expression}` interpolation work as in `"..."` (an interpolated expression still stays on one line), and `"` needs no escape. The text cannot contain `"""` at all.
+
+`r"""` opens raw text with the same layout where every character is literal: no escapes, no interpolation, braces and backslashes included. Use it for JSON, regular expressions, and fixtures.
+
+```manuscript
+let name = "Ada"
+let greeting = """
+    Hello, {name}!
+      Indented line, "quoted".
+    """
+let config = r"""
+    {"name": "ada", "tags": ["a", "b"], "pattern": "\d+"}
+    """
+```
+
+`greeting` is `Hello, Ada!` and `  Indented line, "quoted".` on two lines; `config` holds the JSON exactly as written. Import paths, `test` names and `bench` names must be one-line `"..."` text. The formatter keeps the literal's lines and moves them with the line where the literal starts.
 
 Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equality](../types/equality-and-hashing.md) compares contents exactly.
 
@@ -109,15 +128,17 @@ The removed spellings migrate as follows.
 | --- | --- |
 | `String` | `byte_length() Int`; `to_bytes() Bytes`; `parse_int() Int?`; `parse_float() Float?` |
 | `Bytes(values: List[UInt8])` | Immutable bytes; `Bytes([104, 105])` types its literals as `UInt8`, so a value outside 0–255 is a compile error |
-| `Bytes` | `length() Int`; `get(index: Int, default: UInt8?) UInt8`; `[index] UInt8`; `concat(values: Bytes) Bytes` |
-| `Bytes` | `to_string() String?` |
+| `Bytes` | `length() Int`; `get(index: Int, default: UInt8?) UInt8`; `[index] UInt8`; `concat(other: Bytes) Bytes` |
+| `Bytes` | `decode_utf8() String?`; `decode_utf8_range(start: Int, end: Int) String?` |
 | `Bytes` | `values() List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
 
-`to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic; negative indexes count from the end, and `[]` faults out of range where `get` takes a default. Bytes are immutable, so `data[i] = v` is rejected.
+`to_bytes` encodes UTF-8. `Bytes.decode_utf8` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic; negative indexes count from the end, and `[]` faults out of range where `get` takes a default. Bytes are immutable, so `data[i] = v` is rejected.
 
 `Bytes(values:)` copies its list, and `data.values()` (like the free function `values(data:)` in `@std/bytes.ms`) returns a fresh copy; editing either never changes the Bytes. `values` is a method, not a data field.
 
 `parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`. `parse_float` takes an optional sign, digits, an optional fraction with digits on both sides of the point, an optional exponent, or `NaN`, `Infinity` and `-Infinity`; anything else, or a finite-looking value beyond the Float range, gives `none`. Use `math.parse_float` and `math.parse_int(text, radix)` when the failure cause or a radix is needed. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
+
+`trim`, `trim_start` and `trim_end` remove the Unicode `White_Space` scalars: U+0009 to U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F and U+3000. Zero-width spaces (U+200B), U+180E and U+FEFF are not whitespace.
 
 ```manuscript
 import panic from "@std/core.ms"
@@ -127,12 +148,12 @@ import Bytes from "@std/bytes.ms"
 test "explicit byte conversion":
     if not ("é".byte_length() == 2):
         return panic("check failed")
-    if not ("é".to_bytes().decode_utf8() == some("é")):
+    if not ("é".to_bytes().decode_utf8() == "é"):
         return panic("check failed")
     let invalid: String? = none
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
-    if not ("-007".parse_int() == some(-7)):
+    if not ("-007".parse_int() == -7):
         return panic("check failed")
 ```
 
@@ -184,7 +205,7 @@ Formatting never depends on locale or host settings.
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |
 | Record | `Type(field: value, ...)`, with fields sorted by name and values recursively converted |
 | Alternative | `Type.Case` for a nullary case; `Type.Case(value, ...)` for payloads in declaration order |
-| Optional | `Optional.some(value)` or `Optional.none`; for example, `some(42)` formats as `Optional.some(42)` |
+| Optional | `Optional.some(value)` or `Optional.none`; for example, an `Int?` holding 42 formats as `Optional.some(42)` |
 | Result | `Result.ok(value)` or `Result.error(cause)`; for example, `ok(42)` formats as `Result.ok(42)` |
 | List | `[value, ...]` in element order |
 | Map | `Map(key: value, ...)` in insertion order |

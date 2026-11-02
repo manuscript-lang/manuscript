@@ -7,6 +7,7 @@ use ms_check::types::n;
 use ms_check::{ModuleData, Program};
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
+use ms_syntax::{DiagnosticFix, Pos};
 use std::collections::HashSet;
 
 pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Finding>) {
@@ -42,17 +43,84 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
             used.insert(symbol.key());
         }
     }
-    for import in &module.imports {
+    let unused = |import: &Import| {
         let key = symbol_of(import.name.as_str());
-        if !key.is_some_and(|k| used.contains(&k)) {
-            findings.push(finding(
+        !key.is_some_and(|k| used.contains(&k))
+    };
+    for import in &module.imports {
+        if unused(import) {
+            let siblings = module.imports.iter().filter(|i| i.pos == import.pos);
+            let whole = siblings.clone().all(unused);
+            let mut found = finding(
                 "MSL102",
                 format!("Import {} is never used", import.name.as_str()),
                 &file,
                 import.name_pos,
-            ));
+            );
+            found.fix = if whole {
+                statement_removal(&module.source, import)
+            } else {
+                name_removal(&module.source, import)
+            };
+            findings.push(found);
         }
     }
+}
+
+/// The position of byte `offset` in `source`.
+fn pos_at(source: &str, offset: usize) -> Pos {
+    let before = &source[..offset];
+    let line = before.matches('\n').count() + 1;
+    let column = offset - before.rfind('\n').map_or(0, |i| i + 1) + 1;
+    Pos {
+        offset: offset as u32,
+        line: line as u32,
+        column: column as u32,
+    }
+}
+
+fn fix_of(source: &str, start: usize, end: usize) -> Option<DiagnosticFix> {
+    Some(DiagnosticFix {
+        pos: pos_at(source, start),
+        end: pos_at(source, end),
+        replacement: String::new(),
+    })
+}
+
+/// Deletes the whole `import ... from "path"` statement, with its line breaks.
+fn statement_removal(source: &str, import: &Import) -> Option<DiagnosticFix> {
+    let start = import.pos.offset as usize;
+    let quote = start + source.get(start..)?.find('"')?;
+    let close = quote + 1 + source.get(quote + 1..)?.find('"')?;
+    let line_end = source[close..]
+        .find('\n')
+        .map_or(source.len(), |i| close + i + 1);
+    let line_start = source[..start].rfind('\n').map_or(0, |i| i + 1);
+    let alone = source[line_start..start].trim().is_empty();
+    fix_of(source, if alone { line_start } else { start }, line_end)
+}
+
+/// Deletes one name and its separator from an import list that keeps other names.
+fn name_removal(source: &str, import: &Import) -> Option<DiagnosticFix> {
+    let start = import.name_pos.offset as usize;
+    let end = start + import.name.as_str().len();
+    let blank = |c: char| c == ' ' || c == '\t';
+    let after = source[end..].trim_start_matches(blank);
+    let after_at = source.len() - after.len();
+    if after.starts_with(',') {
+        let next = source[after_at + 1..].trim_start_matches(blank);
+        let next_at = source.len() - next.len();
+        let line_start = source[..start].rfind('\n').map_or(0, |i| i + 1);
+        if next.starts_with('\n') && source[line_start..start].trim().is_empty() {
+            return fix_of(source, line_start, next_at + 1);
+        }
+        return fix_of(source, start, next_at);
+    }
+    let before = source[..start].trim_end_matches(blank);
+    if !before.ends_with(',') {
+        return None;
+    }
+    fix_of(source, before.len() - 1, end)
 }
 
 #[derive(Default)]

@@ -1,0 +1,8 @@
+{
+  "discovery/inputs/bench/perf/string-lines/compare.py": "discovery/inputs/bench/perf/string-lines/compare.py.txt",
+  "discovery/inputs/bench/perf/string-normalize-ascii/main.ms": "discovery/inputs/bench/perf/string-normalize-ascii/main.ms.txt",
+  "discovery/inputs/bench/perf/string-normalize-ascii/rust/Cargo.lock": "discovery/inputs/bench/perf/string-normalize-ascii/rust/Cargo.lock.txt",
+  "discovery/inputs/bench/perf/string-normalize-ascii/rust/Cargo.toml": "discovery/inputs/bench/perf/string-normalize-ascii/rust/Cargo.toml.txt",
+  "discovery/inputs/bench/perf/string-normalize-ascii/rust/src/main.rs": "discovery/inputs/bench/perf/string-normalize-ascii/rust/src/main.rs.txt",
+  "inputs/byte220.ms": "inputs/byte220.ms.txt"
+}

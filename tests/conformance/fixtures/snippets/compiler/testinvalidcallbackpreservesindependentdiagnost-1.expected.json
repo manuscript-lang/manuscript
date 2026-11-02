@@ -1,0 +1,82 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...) T:', or import it from a module",
+        "position": {
+          "file": "testinvalidcallbackpreservesindependentdiagnost-1.ms",
+          "line": 5,
+          "column": 37,
+          "offset": 237
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding other_missing; declare it with 'let other_missing = ...' before use, define 'fn other_missing(...) T:', or import it from a module",
+        "position": {
+          "file": "testinvalidcallbackpreservesindependentdiagnost-1.ms",
+          "line": 5,
+          "column": 51,
+          "offset": 251
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding apply; declare it with 'let apply = ...' before use, define 'fn apply(...) T:', or import it from a module",
+        "position": {
+          "file": "testinvalidcallbackpreservesindependentdiagnost-1.ms",
+          "line": 6,
+          "column": 20,
+          "offset": 285
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Int, found String (in the initializer of 'wrong')",
+        "position": {
+          "file": "testinvalidcallbackpreservesindependentdiagnost-1.ms",
+          "line": 7,
+          "column": 22,
+          "offset": 367
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "callback parameter count does not match its context; the callback takes exactly the parameters its context declares",
+        "position": {
+          "file": "testinvalidcallbackpreservesindependentdiagnost-1.ms",
+          "line": 8,
+          "column": 33,
+          "offset": 406
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding missing_too; declare it with 'let missing_too = ...' before use, define 'fn missing_too(...) T:', or import it from a module",
+        "position": {
+          "file": "testinvalidcallbackpreservesindependentdiagnost-1.ms",
+          "line": 8,
+          "column": 37,
+          "offset": 410
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testinvalidcallbackpreservesindependentdiagnost-1.ms:5:37: resolution: unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...) T:', or import it from a module\n   |\n 5 |     let names = [1, 2].map(fn item: missing).join(other_missing)\n   |                                     ^\n<DIR>/testinvalidcallbackpreservesindependentdiagnost-1.ms:5:51: resolution: unknown binding other_missing; declare it with 'let other_missing = ...' before use, define 'fn other_missing(...) T:', or import it from a module\n   |\n 5 |     let names = [1, 2].map(fn item: missing).join(other_missing)\n   |                                                   ^\n<DIR>/testinvalidcallbackpreservesindependentdiagnost-1.ms:6:20: resolution: unknown binding apply; declare it with 'let apply = ...' before use, define 'fn apply(...) T:', or import it from a module\n   |\n 6 |     let conflict = apply(value: 1, transform: fn(item: String): missing_result)\n   |                    ^\n<DIR>/testinvalidcallbackpreservesindependentdiagnost-1.ms:7:22: type: expected Int, found String (in the initializer of 'wrong')\n   |\n 7 |     let wrong: Int = \"text\"\n   |                      ^\n<DIR>/testinvalidcallbackpreservesindependentdiagnost-1.ms:8:33: type: callback parameter count does not match its context; the callback takes exactly the parameters its context declares\n   |\n 8 |     let callback: fn(Int) Int = fn: missing_too\n   |                                 ^\n<DIR>/testinvalidcallbackpreservesindependentdiagnost-1.ms:8:37: resolution: unknown binding missing_too; declare it with 'let missing_too = ...' before use, define 'fn missing_too(...) T:', or import it from a module\n   |\n 8 |     let callback: fn(Int) Int = fn: missing_too\n   |                                     ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -18,30 +18,38 @@ pub enum ParamMode {
     Consume,
 }
 
-/// An argument position of a source callable.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Slot {
-    /// The receiver of a method.
-    Receiver,
-    /// A parameter, by label.
-    Param(Name),
-    /// What the receiver, a borrowing value, holds: a part reached through one of its `ref`
-    /// fields. A call lends from the places the receiver binding holds, not from the receiver.
-    HeldReceiver,
-    /// What a parameter that is a borrowing value holds.
-    HeldParam(Name),
+/// Where a callable's result comes from.
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
+pub struct Lend {
+    /// Every return path yields a part of the receiver or of a parameter, so the result is a
+    /// reference into those arguments: the caller holds it as a borrow of them.
+    pub lends: bool,
+    /// The result is an owned interface view of the sources (a lent value converted to an
+    /// interface on the way out): lowering returns an owned value the caller drops, and the
+    /// caller still holds the sources. A path returning a new value is allowed beside it.
+    pub view: bool,
+    /// The receiver is a source.
+    pub receiver: bool,
+    /// The parameters that are sources, by label.
+    pub params: Vec<Name>,
+    /// Every path yields the same chain of fields of one source (`return self.items`): a `var`
+    /// binding of the call is an exclusive borrow of that place. The source is a parameter by
+    /// label, or the receiver.
+    pub path: Option<(Option<Name>, Vec<Name>)>,
 }
 
-/// Where a call's result may come from: a read-only parameter whose part it returns.
-#[derive(Clone, Default, PartialEq, Eq, Debug)]
-pub struct ResultOrigin {
-    /// The parameters a returned part belongs to.
-    pub slots: Vec<Slot>,
-    /// Every return is this one path of fields below a single parameter.
-    pub plain: Option<(Slot, Vec<Name>)>,
-    /// Some return gives back an owned value (an interface call, a closure call, or a call of
-    /// a function that does): the result cannot be handed back as a borrow without a copy.
-    pub owned: bool,
+impl Lend {
+    /// The optimistic start of the fixpoint: a body not yet walked may lend from everything.
+    /// Walking withdraws sources that are not returned and the claim when any path owns.
+    fn optimistic(params: &[ms_syntax::ast::Param]) -> Lend {
+        Lend {
+            lends: true,
+            view: false,
+            receiver: true,
+            params: params.iter().map(|p| p.name).collect(),
+            path: None,
+        }
+    }
 }
 
 /// The modes of a source callable.
@@ -51,11 +59,8 @@ pub struct Summary {
     pub receiver: ParamMode,
     /// Parameters by label.
     pub params: Vec<(Name, ParamMode)>,
-    /// What the result borrows from.
-    pub result: ResultOrigin,
-    /// Type parameters whose values the body may copy (`xs.reversed()` on a `List[T]`): an
-    /// instance that binds one of them to a resource would close each copy.
-    pub copies: Vec<Name>,
+    /// Where the result comes from.
+    pub result: Lend,
 }
 
 impl Summary {
@@ -85,8 +90,7 @@ impl Summary {
                     )
                 })
                 .collect(),
-            result: ResultOrigin::default(),
-            copies: Vec::new(),
+            result: Lend::optimistic(params),
         }
     }
 
@@ -121,9 +125,6 @@ pub struct CallModes {
     pub receiver: Option<ParamMode>,
     /// Each written argument.
     pub arguments: Vec<ParamMode>,
-    /// The call is a native method whose result is a borrowed projection of
-    /// its receiver (`first`, `get`, ...).
-    pub accessor: bool,
     /// The call mutates a collection and returns that same collection.
     pub returns_receiver: bool,
     /// A source or native callee that runs its function arguments immediately
@@ -133,11 +134,6 @@ pub struct CallModes {
     /// parameter as a borrow (`o.get(default)`, `xs.fold(initial, ..)`, a stored element): a
     /// function written there escapes.
     pub retained: Vec<bool>,
-    /// The source callee returns a part of these read-only arguments.
-    pub origin: ResultOrigin,
-    /// The callee is a `ref` function whose summary names no slot yet (a recursive call before
-    /// its summary converges): it lends, from arguments a later pass names.
-    pub pending: bool,
 }
 
 /// Resolves the modes of a call from its callee.
@@ -152,37 +148,15 @@ pub fn call_modes(
     let borrow_all = |receiver: Option<ParamMode>| CallModes {
         receiver,
         arguments: vec![ParamMode::Borrow; args.len()],
-        accessor: false,
         returns_receiver: false,
         callbacks_borrowed: true,
         retained: Vec::new(),
-        origin: ResultOrigin::default(),
-        pending: false,
     };
     match m.resolution(call) {
-        Resolution::Constructor { ty, case } => {
-            // A `ref` field borrows its argument, and the constructed value holds it.
-            let refs: Vec<Option<Name>> = (0..args.len())
-                .map(|i| label(i).filter(|l| case.is_none() && crate::types::field_is_ref(&ty, *l)))
-                .collect();
-            CallModes {
-                arguments: refs
-                    .iter()
-                    .map(|r| {
-                        if r.is_some() {
-                            ParamMode::Borrow
-                        } else {
-                            ParamMode::Consume
-                        }
-                    })
-                    .collect(),
-                origin: ResultOrigin {
-                    slots: refs.iter().flatten().map(|l| Slot::Param(*l)).collect(),
-                    ..ResultOrigin::default()
-                },
-                ..borrow_all(None)
-            }
-        }
+        Resolution::Constructor { .. } => CallModes {
+            arguments: vec![ParamMode::Consume; args.len()],
+            ..borrow_all(None)
+        },
         Resolution::Function(s) | Resolution::Constant(s) => {
             let source = s
                 .native
@@ -196,12 +170,9 @@ pub fn call_modes(
                     from_summary(summaries, s.module, &func, args.len(), label, None)
                 }
                 None => {
-                    // A native function keeps function arguments it is given, except the
-                    // testing helpers, which run them at once, and the worker start, which
-                    // copies the code pointer of a capture-free entry and keeps nothing else.
-                    let runs_now = s.module.as_str() == "@std/test.ms"
-                        || (s.module.as_str() == "@std/workers.ms"
-                            && s.name.as_str() == "msrt_worker_start");
+                    // A native runs the function arguments it is given before it returns,
+                    // unless it is one of the externs that keep them.
+                    let runs_now = !crate::stdlib::keeps_callbacks(s.native.as_str());
                     let params = s.ty().params.clone();
                     CallModes {
                         arguments: (0..args.len())
@@ -233,6 +204,39 @@ pub fn call_modes(
     }
 }
 
+/// Where the result of `call` comes from: a source callable's inferred lending, or nothing for
+/// a native, an interface operation, a constructor or a function value, whose results own.
+pub fn call_lend(m: &ModuleHir, call: &Expr, summaries: &Summaries) -> Lend {
+    match m.resolution(call) {
+        Resolution::Function(s) | Resolution::Constant(s) => {
+            if !s.native.as_str().is_empty() {
+                return Lend::default();
+            }
+            let Some(d) = s.decl.as_ref() else {
+                return Lend::default();
+            };
+            let func = FuncRef::of_decl(d.clone());
+            summaries
+                .get(&(s.module, func.id()))
+                .map(|k| k.result.clone())
+                .unwrap_or_else(|| Summary::declared(&func).result)
+        }
+        Resolution::Method(method) => {
+            if !method.native.as_str().is_empty() {
+                return Lend::default();
+            }
+            let Some(func) = &method.decl else {
+                return Lend::default();
+            };
+            summaries
+                .get(&(method.module, func.id()))
+                .map(|k| k.result.clone())
+                .unwrap_or_else(|| Summary::declared(func).result)
+        }
+        _ => Lend::default(),
+    }
+}
+
 fn from_summary(
     summaries: &Summaries,
     module: Name,
@@ -242,12 +246,6 @@ fn from_summary(
     receiver: Option<()>,
 ) -> CallModes {
     let known = summaries.get(&(module, func.id())).cloned();
-    // A `ref` callee lends on every path, so one that names no slot and returns nothing owned has
-    // only reached calls of others still pending (or returns only `none`): it lends too.
-    let pending = func.func().is_some_and(|f| f.result_ref)
-        && known
-            .as_ref()
-            .is_none_or(|s| s.result.slots.is_empty() && !s.result.owned);
     let summary = known.unwrap_or_else(|| Summary::declared(func));
     CallModes {
         receiver: receiver.map(|()| summary.receiver),
@@ -258,30 +256,9 @@ fn from_summary(
                     .unwrap_or(ParamMode::Borrow)
             })
             .collect(),
-        accessor: false,
         returns_receiver: false,
         callbacks_borrowed: true,
         retained: Vec::new(),
-        origin: summary.result,
-        pending,
-    }
-}
-
-/// What a call through an interface hands back: a `ref` operation lends, as every
-/// implementation does, from the receiver or any argument (the implementations may name their
-/// parameters differently); any other operation returns an owned value.
-fn contract_origin(declared: &Summary, func: &FuncRef) -> ResultOrigin {
-    if !func.func().is_some_and(|f| f.result_ref) {
-        return ResultOrigin {
-            owned: true,
-            ..ResultOrigin::default()
-        };
-    }
-    let mut slots = vec![Slot::Receiver];
-    slots.extend(declared.params.iter().map(|(name, _)| Slot::Param(*name)));
-    ResultOrigin {
-        slots,
-        ..ResultOrigin::default()
     }
 }
 
@@ -311,45 +288,15 @@ fn method_modes(
                                 .unwrap_or(ParamMode::Borrow)
                         })
                         .collect(),
-                    accessor: false,
                     returns_receiver: false,
                     callbacks_borrowed: false,
                     retained: Vec::new(),
-                    origin: contract_origin(&declared, func),
-                    pending: false,
                 }
             }
             None => native_unknown(count),
         };
     }
     native_method_modes(method, count, label)
-}
-
-/// The summary of the source callable `call` runs, with the callee's type, its type variables,
-/// and the receiver type of a method, so a caller can bind the callee's type parameters.
-pub fn callee_summary<'s>(
-    m: &ModuleHir,
-    call: &Expr,
-    summaries: &'s Summaries,
-) -> Option<(&'s Summary, Ty, Vec<Ty>, Option<Ty>)> {
-    match m.resolution(call) {
-        Resolution::Function(s) if s.native.as_str().is_empty() => {
-            let func = FuncRef::of_decl(s.decl.clone()?);
-            let summary = summaries.get(&(s.module, func.id()))?;
-            Some((summary, s.ty_opt()?, s.variables.borrow().clone(), None))
-        }
-        Resolution::Method(method) if method.native.as_str().is_empty() => {
-            let func = method.decl.as_ref()?;
-            let summary = summaries.get(&(method.module, func.id()))?;
-            Some((
-                summary,
-                method.ty.clone(),
-                method.variables.clone(),
-                Some(method.receiver.clone()),
-            ))
-        }
-        _ => None,
-    }
 }
 
 /// How a method treats its receiver, for a method used as a value.
@@ -361,23 +308,10 @@ fn native_unknown(count: usize) -> CallModes {
     CallModes {
         receiver: Some(ParamMode::Borrow),
         arguments: vec![ParamMode::Borrow; count],
-        accessor: false,
         returns_receiver: false,
         callbacks_borrowed: false,
         retained: Vec::new(),
-        origin: ResultOrigin::default(),
-        pending: false,
     }
-}
-
-/// Collections run their callbacks immediately; other natives may keep them.
-fn runs_callbacks(receiver: &Ty) -> bool {
-    receiver.is_std("List")
-        || receiver.is_std("Map")
-        || receiver.is_std("Set")
-        || receiver.is_std("Optional")
-        || receiver.is_std("Result")
-        || receiver.is_std("String")
 }
 
 fn native_method_modes(
@@ -387,7 +321,8 @@ fn native_method_modes(
 ) -> CallModes {
     let receiver = &method.receiver;
     let mutator = collection_mutation(method);
-    let callbacks_borrowed = runs_callbacks(receiver);
+    // A native method runs its callbacks before it returns.
+    let callbacks_borrowed = true;
     let params = &method.ty.params;
     let result = method.ty.result_ty();
     let mut retained = vec![false; count];
@@ -423,22 +358,6 @@ fn native_method_modes(
             }
         })
         .collect();
-    // A native lends exactly when its standard-library declaration says so (`ref`), unless the
-    // call gives a fallback (`o.get(default)`): the result is then an owned copy of either.
-    let accessor = method
-        .decl
-        .as_ref()
-        .and_then(|d| d.func())
-        .is_some_and(|f| {
-            f.result_ref
-                && !(0..count).any(|i| {
-                    label(i).is_some_and(|l| {
-                        f.params
-                            .iter()
-                            .any(|p| p.default.is_some() && p.name.as_str() == l.as_str())
-                    })
-                })
-        });
     CallModes {
         receiver: Some(if mutator {
             ParamMode::Mutate
@@ -450,11 +369,8 @@ fn native_method_modes(
             ParamMode::Borrow
         }),
         arguments,
-        accessor,
         returns_receiver: mutator && same(&result, receiver),
         callbacks_borrowed,
         retained,
-        origin: ResultOrigin::default(),
-        pending: false,
     }
 }

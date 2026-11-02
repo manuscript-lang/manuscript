@@ -1,7 +1,7 @@
 # conform: tags=closures,formatter,modules,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-05.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn increase(value: Int) Int:
     return value + 1

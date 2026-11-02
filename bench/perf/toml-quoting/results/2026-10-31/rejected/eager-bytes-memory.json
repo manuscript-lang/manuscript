@@ -1,0 +1,128 @@
+[
+  {
+    "label": "before",
+    "trial": 0,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 5740
+  },
+  {
+    "label": "after",
+    "trial": 0,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 6864
+  },
+  {
+    "label": "rust",
+    "trial": 0,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 5932
+  },
+  {
+    "label": "before",
+    "trial": 1,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 5740
+  },
+  {
+    "label": "rust",
+    "trial": 1,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 5952
+  },
+  {
+    "label": "after",
+    "trial": 1,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 6864
+  },
+  {
+    "label": "rust",
+    "trial": 2,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 5948
+  },
+  {
+    "label": "before",
+    "trial": 2,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 5740
+  },
+  {
+    "label": "after",
+    "trial": 2,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 6864
+  },
+  {
+    "label": "rust",
+    "trial": 3,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 5932
+  },
+  {
+    "label": "after",
+    "trial": 3,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 6864
+  },
+  {
+    "label": "before",
+    "trial": 3,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 5740
+  },
+  {
+    "label": "after",
+    "trial": 4,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 6864
+  },
+  {
+    "label": "rust",
+    "trial": 4,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 5920
+  },
+  {
+    "label": "before",
+    "trial": 4,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 5740
+  },
+  {
+    "label": "after",
+    "trial": 5,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 6864
+  },
+  {
+    "label": "before",
+    "trial": 5,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 5740
+  },
+  {
+    "label": "rust",
+    "trial": 5,
+    "input_bytes": 1245184,
+    "output_bytes": 1245195,
+    "maxrss_kib": 5980
+  }
+]

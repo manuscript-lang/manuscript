@@ -90,26 +90,6 @@ fn is_higher_order(name: &str) -> bool {
     )
 }
 
-/// The `module/name` of natives that bindings override with a bare name.
-/// The host-rule path functions that `fs` absorbed from the former `path` module.
-const PATH_FUNCTIONS: [&str; 15] = [
-    "basename",
-    "dirname",
-    "extension",
-    "is_absolute",
-    "join",
-    "normalize",
-    "relative",
-    "basename_without",
-    "resolve",
-    "parse",
-    "format",
-    "separator",
-    "delimiter",
-    "to_namespaced_path",
-    "matches_glob",
-];
-
 /// An evaluated argument of a native call.
 #[derive(Clone, Copy)]
 pub(crate) struct NArg {
@@ -118,11 +98,11 @@ pub(crate) struct NArg {
     pub wrapped: bool,
 }
 
-/// The native identity of `@std/json.ms`'s typed calls, which its source module declares as externs.
+/// The native identity of `@std/data/json.ms`'s typed calls, which its source module declares as externs.
 pub(crate) fn json_native(native: &str) -> &str {
     match native {
-        "extern:msrt_json_parse" => "json/parse",
-        "extern:msrt_json_stringify" => "json/stringify",
+        "extern:msstd_json_parse" => "json/parse",
+        "extern:msstd_json_stringify" => "json/stringify",
         other => other,
     }
 }
@@ -207,9 +187,9 @@ impl<'a> FnLower<'a> {
                 let decode = symbol == "msstd_archive_decompress_stream";
                 return self.codec_stream(args[0].val, &args[1..], decode, result);
             }
-            // A symbol that still has a hand-lowered native identity keeps it.
-            if let Some(legacy) = ms_check::stdlib::native_for_symbol(symbol) {
-                return self.native_function(e, view, &legacy, params, sym);
+            // A symbol that is lowered by hand keeps its native identity.
+            if let Some(hand) = crate::stdnative::by_symbol(symbol) {
+                return self.native_function(e, view, hand.identity, params, sym);
             }
             // A bundled extern is a runtime symbol; its convention comes from the runtime's declaration.
             let args = self.native_args(view)?;
@@ -218,6 +198,33 @@ impl<'a> FnLower<'a> {
             }
             let result = self.emty(e)?;
             self.at(e.pos);
+            // The host-rule path functions share the interface's entry points; a leading `windows` flag the
+            // declaration does not spell selects the host's rules.
+            if crate::rtcall::rt_sig(symbol)
+                .is_some_and(|sig| sig.params.first().is_some_and(|p| p.name == "windows"))
+                && params.first().is_none_or(|p| p.name.as_str() != "windows")
+            {
+                let name = ct::n("windows");
+                let v = self.b.bconst(cfg!(windows));
+                let mut args = args;
+                args.insert(
+                    0,
+                    NArg {
+                        name,
+                        val: Val { v, own: false },
+                        wrapped: false,
+                    },
+                );
+                let mut decl = params.to_vec();
+                decl.insert(
+                    0,
+                    ct::Param {
+                        name,
+                        ty: ct::bool_(),
+                    },
+                );
+                return self.rt_function(symbol, &decl, &args, result);
+            }
             return self.rt_function(symbol, params, &args, result);
         }
         match native {
@@ -231,7 +238,7 @@ impl<'a> FnLower<'a> {
                 let v = self.call_runtime("msrt_list_range", &vals, lt)?;
                 Ok(Val { v, own: true })
             }
-            "panic" => {
+            "core/panic" => {
                 let args = self.native_args(view)?;
                 if self.dead {
                     return Ok(self.dummy(MTy::UNIT));
@@ -287,8 +294,11 @@ impl<'a> FnLower<'a> {
                 let want = self.emty(e)?;
                 self.fit_ty(r, &declared, want)
             }
-            "random/secure_int" | "random/uuid_v4" | "random/float" | "random/shuffle"
-            | "random/choice" => self.random_native(e, view, native),
+            "random/draw_int"
+            | "random/draw_uuid"
+            | "random/draw_float"
+            | "random/draw_shuffle"
+            | "random/draw_choice" => self.random_native(e, view, native),
             "html/parse" => {
                 let mut args = self.native_args(view)?;
                 if self.dead {
@@ -338,34 +348,14 @@ impl<'a> FnLower<'a> {
                 self.time_clock(it, native == "time/wall_clock")
             }
             "io/read_line" => self.read_line_native(e, view, params),
-            "sleep" => {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let d = args
-                    .first()
-                    .ok_or_else(|| Error::new("sleep without a duration"))?;
-                let d = self.borrow(d.val);
-                self.at(e.pos);
-                self.call_runtime("msstd_time_sleep", &[d], MTy::UNIT)?;
-                Ok(self.dummy(MTy::UNIT))
-            }
             "math/min" => self.math_extreme(view, false),
             "math/max" => self.math_extreme(view, true),
             "io/read_all" => self.stream_native(e, view, crate::streamloop::Loop::ReadAll),
             "io/copy" => self.stream_native(e, view, crate::streamloop::Loop::Copy),
-            other
-                if crate::natiface::HANDLE_FUNCTIONS
-                    .iter()
-                    .any(|f| f.0 == other) =>
-            {
-                let &(_, module, make, constant) = crate::natiface::HANDLE_FUNCTIONS
-                    .iter()
-                    .find(|f| f.0 == other)
-                    .expect("listed");
+            other if crate::stdnative::handle_of(other).is_some() => {
+                let handle = crate::stdnative::handle_of(other).expect("checked");
                 let (ity, want) = (self.ety(e), self.emty(e)?);
-                self.handle_interface(&ity, want, module, make, constant)
+                self.handle_interface(&ity, want, handle.module, handle.make, handle.constant)
             }
             other if other.starts_with("test/") => {
                 self.testing_native(e, view, &other["test/".len()..])
@@ -391,32 +381,6 @@ impl<'a> FnLower<'a> {
                 }
                 let result = self.emty(e)?;
                 self.at(e.pos);
-                if other
-                    .strip_prefix("fs/")
-                    .is_some_and(|name| PATH_FUNCTIONS.contains(&name))
-                {
-                    // The host-rule functions share the interface's entry points; the leading
-                    // `windows` flag selects the host's rules.
-                    let name = ct::n("windows");
-                    let v = self.b.bconst(cfg!(windows));
-                    args.insert(
-                        0,
-                        NArg {
-                            name,
-                            val: Val { v, own: false },
-                            wrapped: false,
-                        },
-                    );
-                    let mut decl = params.to_vec();
-                    decl.insert(
-                        0,
-                        ct::Param {
-                            name,
-                            ty: ct::bool_(),
-                        },
-                    );
-                    return self.native_call(other, &decl, &args, result);
-                }
                 self.native_call(other, params, &args, result)
             }
         }
@@ -428,7 +392,6 @@ impl<'a> FnLower<'a> {
             native,
             "math/min"
                 | "math/max"
-                | "time/duration"
                 | "shared/share"
                 | "core/category"
                 | "math/bit_and"
@@ -485,12 +448,6 @@ impl<'a> FnLower<'a> {
             let v = self.shared_new(payload, result);
             return Ok(Val { v, own: true });
         }
-        if native == "time/duration" {
-            return Ok(Val {
-                v: self.borrow(args[0].val),
-                own: false,
-            });
-        }
         if native == "collections/map_from_entries" {
             return self.map_from_entries(args[0].val, result);
         }
@@ -506,7 +463,7 @@ impl<'a> FnLower<'a> {
                 _ => 5,
             };
             let alg = self.b.iconst(alg);
-            let sym = "msrt_crypto_digest";
+            let sym = "msstd_crypto_digest";
             let sig = crate::rtcall::rt_sig(sym)
                 .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
             return self.finish_rt_call(sym, &sig, true, vec![alg, data], MTy::BYTES);
@@ -517,7 +474,7 @@ impl<'a> FnLower<'a> {
             for a in args {
                 vals.push(self.borrow(a.val));
             }
-            let sym = "msrt_crypto_derive_key";
+            let sym = "msstd_crypto_derive_key";
             let sig = crate::rtcall::rt_sig(sym)
                 .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
             return self.finish_rt_call(sym, &sig, true, vals, result);
@@ -887,6 +844,9 @@ impl<'a> FnLower<'a> {
                 let radix = self.borrow(args[0].val);
                 self.call_runtime("msrt_uint_to_string_radix", &[v, radix], MTy::STR)?
             }
+            "to_string" if args.is_empty() => {
+                self.call_runtime("msrt_uint_to_string", &[v], MTy::STR)?
+            }
             "compare_int" => {
                 let other = self.borrow(args[0].val);
                 self.call_runtime("msrt_uint_compare", &[v, other], MTy::INT)?
@@ -1140,7 +1100,9 @@ impl<'a> FnLower<'a> {
         let name = native.rsplit('/').next().unwrap_or(native);
         let rty = self.ty_of(recv.v);
         // `map_add`, `set_values`: the receiver type already says which.
-        let name = if crate::mapset::is_map_or_set(self.b.m, rty) {
+        // `Map.map_keys` is itself the method's name, which the `map_` rule would cut.
+        let keep = name == "map_keys";
+        let name = if !keep && crate::mapset::is_map_or_set(self.b.m, rty) {
             name.strip_prefix("map_")
                 .or_else(|| name.strip_prefix("set_"))
                 .unwrap_or(name)
@@ -1165,7 +1127,7 @@ impl<'a> FnLower<'a> {
                 self.map_entries(recv_expr, recv, result)
             }
             (TyKind::List(_), "list_keys") => self.list_keys(recv_expr, recv, result),
-            (TyKind::List(_), "list_entries") => self.list_entries(recv_expr, recv, result),
+            (TyKind::List(_), "entries") => self.list_entries(recv_expr, recv, result),
             (TyKind::List(_) | TyKind::Bytes, "length") => {
                 let r = self.borrow(recv);
                 let v = self.b.list_len(r);
@@ -1196,7 +1158,7 @@ impl<'a> FnLower<'a> {
                 let out = self.call_runtime(sym, &[r, d, n], rty)?;
                 Ok(Val { v: out, own: true })
             }
-            (TyKind::List(_), "list_zip") => {
+            (TyKind::List(_), "zip") => {
                 let TyKind::List(pair) = self.b.m.types.kind(result).clone() else {
                     return Err(Error::new("zip without a list result"));
                 };
@@ -1234,8 +1196,8 @@ impl<'a> FnLower<'a> {
                 let out = self.b.use_var(acc);
                 Ok(Val { v: out, own: true })
             }
-            (TyKind::List(elem), "list_chunks" | "list_windows") => {
-                self.list_pieces(name == "list_chunks", elem, recv, &args, result)
+            (TyKind::List(elem), "chunks" | "windows") => {
+                self.list_pieces(name == "chunks", elem, recv, &args, result)
             }
             (TyKind::List(elem), "get") => {
                 // Arguments arrive in written order; the names say which is which.
@@ -2422,8 +2384,6 @@ impl<'a> FnLower<'a> {
             index(self.b.m, "error").ok_or_else(|| Error::new("not a Result"))?,
         );
         let cause = args.first().copied();
-        let line = at.line;
-        let file = self.b.m.files[self.file as usize].clone();
         self.two_ways(
             some,
             out,
@@ -2451,20 +2411,30 @@ impl<'a> FnLower<'a> {
                         p
                     }
                 } else {
-                    // `MissingValue` names the source line of the call.
                     let et = s.b.m.alts[res.index()].cases[err].fields[0].1;
-                    let TyKind::Alt(missing) = s.b.m.types.kind(et).clone() else {
-                        return Err(Error::new("ok_or without a cause needs MissingValue"));
-                    };
-                    let base = file.rsplit('/').next().unwrap_or(&file);
-                    let at = s.b.str_lit(&format!("{base}:{line}"));
-                    let at = s.owned(Val { v: at, own: false });
-                    s.b.alt_new(missing, 0, &[at])
+                    let cause = s.missing_value_at(et, at)?;
+                    s.owned(cause)
                 };
                 s.finish(recv);
                 Ok(Some(s.b.alt_new(res, err as u32, &[failure])))
             },
         )
+    }
+
+    /// Constructs the existing MissingValue default in the invoking source module.
+    pub(crate) fn missing_value_at(&mut self, ty: MTy, at: ms_syntax::Pos) -> Result<Val, Error> {
+        let TyKind::Alt(missing) = self.b.m.types.kind(ty).clone() else {
+            return Err(Error::new("ok_or without a cause needs MissingValue"));
+        };
+        let file = &self.b.m.files[self.file as usize];
+        let base = file.rsplit('/').next().unwrap_or(file);
+        let site = self.b.str_lit(&format!("{base}:{}", at.line));
+        let site = self.owned(Val {
+            v: site,
+            own: false,
+        });
+        let v = self.b.alt_new(missing, 0, &[site]);
+        Ok(Val { v, own: true })
     }
 
     fn result_method(
@@ -3656,12 +3626,12 @@ fn build_clock_method(
 /// The runtime symbol of a `HashAlgorithm` operation, by native identity.
 fn hash_algorithm_symbol(native: &str) -> Option<&'static str> {
     match native {
-        "crypto/hash_algorithm_digest" => Some("msrt_crypto_digest"),
-        "crypto/hash_algorithm_hmac" => Some("msrt_crypto_hmac"),
-        "derive_key" | "crypto/hash_algorithm_derive_key" => Some("msrt_crypto_derive_key"),
-        "hkdf" | "crypto/hash_algorithm_hkdf" => Some("msrt_crypto_hkdf"),
-        "crypto/hash_algorithm_hasher" => Some("msrt_crypto_hasher_new"),
-        "crypto/hash_algorithm_hmac_hasher" => Some("msrt_crypto_hmac_hasher_new"),
+        "crypto/hash_algorithm_digest" => Some("msstd_crypto_digest"),
+        "crypto/hash_algorithm_hmac" => Some("msstd_crypto_hmac"),
+        "derive_key" | "crypto/hash_algorithm_derive_key" => Some("msstd_crypto_derive_key"),
+        "hkdf" | "crypto/hash_algorithm_hkdf" => Some("msstd_crypto_hkdf"),
+        "crypto/hash_algorithm_hasher" => Some("msstd_crypto_hasher_new"),
+        "crypto/hash_algorithm_hmac_hasher" => Some("msstd_crypto_hmac_hasher_new"),
         _ => None,
     }
 }

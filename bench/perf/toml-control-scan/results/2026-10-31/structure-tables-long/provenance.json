@@ -1,0 +1,34 @@
+{
+  "command": [
+    "bench/perf/toml-control-scan/focused.py",
+    "--environment",
+    ".artifacts/control-scan/latest-verified/environment.json",
+    "--summary",
+    ".artifacts/control-scan/structure-discovery/focused-summary.json",
+    "--inputs",
+    ".artifacts/control-scan/structure-discovery",
+    "--output",
+    ".artifacts/control-scan/structure-tables-long",
+    "--operation",
+    "roundtrip",
+    "--cases",
+    "tables128"
+  ],
+  "driver_sha256": "3f0c7d472fb75a515c0c030b2a4de00d7e6585eae5ccaab98da118f150b45aeb",
+  "environment_sha256": "588de620115ebf56da4edf81014a241c137c242d32850415a2b0e517ed7101bd",
+  "summary_sha256": "679a57aa3fd13e420b1405c0469bd0fa82d7576e780b12e7191b5a6b332de7da",
+  "binaries": {
+    "baseline-a": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-latest-before",
+      "sha256": "4eef203b38e09c96cc6cfc64d249d2980f25ce0c08bcafb0e9dbdfa1c22cd972"
+    },
+    "baseline-b": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-latest-before",
+      "sha256": "4eef203b38e09c96cc6cfc64d249d2980f25ce0c08bcafb0e9dbdfa1c22cd972"
+    },
+    "candidate": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-latest-after",
+      "sha256": "e321df9a7b3ded3b34b574eba6dfd263c0fbad3ea29a16437cdc2ebf984ca4c3"
+    }
+  }
+}

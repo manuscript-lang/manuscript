@@ -1,0 +1,27 @@
+{
+  "ascii": {
+    "ascii.valid.0": 1,
+    "ascii.valid.7": 1,
+    "ascii.valid.56": 1,
+    "ascii.valid.4095": 1,
+    "ascii.valid.1048579": 1,
+    "ascii.invalid.first.1": 1,
+    "ascii.invalid.last.1": 1,
+    "ascii.invalid.first.57": 1,
+    "ascii.invalid.last.57": 1,
+    "ascii.invalid.first.4096": 1,
+    "ascii.invalid.last.4096": 1,
+    "ascii.invalid.first.1048580": 1,
+    "ascii.invalid.last.1048580": 1,
+    "ascii.unicode.accent.1": 1,
+    "ascii.unicode.emoji.1": 1,
+    "ascii.unicode.accent.2048": 1,
+    "ascii.unicode.emoji.2048": 1,
+    "ascii.unicode.accent.524288": 1,
+    "ascii.unicode.emoji.524288": 1,
+    "ascii.unicode.first.8": 1,
+    "ascii.unicode.last.8": 1,
+    "ascii.unicode.first.524288": 1,
+    "ascii.unicode.last.524288": 1
+  }
+}

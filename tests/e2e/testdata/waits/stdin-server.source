@@ -1,8 +1,8 @@
 # Serves /line, whose handler reads one line of standard input, and /health. A handler waiting
 # for input must not stop the server answering other requests.
-import headers, HttpRequest, HttpResponse, buffered from "@std/http.ms"
-import read_line, stdin, stdout from "@std/io.ms"
-import network from "@std/net.ms"
+import headers, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
+import read_line, stdin, stdout from "@std/io/io.ms"
+import serve from "@std/net/net.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/line":
@@ -14,7 +14,7 @@ fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "ok\n".to_bytes())
 
 export fn main() Int:
-    if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
+    if let acquired = serve(address: "127.0.0.1:0", handler: buffered(handle)):
         let server = acquired
         let _said = stdout().write("{server.address()}\n")
         let _flushed = stdout().flush()

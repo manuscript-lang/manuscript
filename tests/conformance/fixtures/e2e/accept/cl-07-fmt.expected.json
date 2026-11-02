@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test.ms\"\n\ntype Outcome:\n    case Ready(value: Int)\n    case Failed(reason: String)\n\nfn score(outcome: Outcome) Int:\n    match outcome:\n        Ready(value):\n            return value\n        Failed(_):\n            return 0\n\ntest \"alternative result\":\n    try expect_equal(score(Outcome.Ready(8)), 8)\n    try expect_equal(score(Outcome.Failed(\"unavailable\")), 0)\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntype Outcome:\n    case Ready(value: Int)\n    case Failed(reason: String)\n\nfn score(outcome: Outcome) Int:\n    match outcome:\n        Ready(value):\n            return value\n        Failed(_):\n            return 0\n\ntest \"alternative result\":\n    try expect_equal(score(Outcome.Ready(8)), 8)\n    try expect_equal(score(Outcome.Failed(\"unavailable\")), 0)\n"
   }
 }

@@ -1,0 +1,33 @@
+{
+  "revision": "f33f13359a02b59467f042eb67d6ecd06d706c7a",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "binaries": {
+    "before": {
+      "path": "/workspace/json-perf/.artifacts/json-library/edges-before",
+      "sha256": "56df4381887ffd204cb2d4e30aaada41df7e87451dcf9e256c13640da7dfc9bb"
+    },
+    "after": {
+      "path": "/workspace/json-perf/.artifacts/json-library/edges-after",
+      "sha256": "06a08f6ad8ce800efe28aa3fa94a0fd82b9c1ee5f1b2adb6556872032524a748"
+    },
+    "rust": {
+      "path": "/workspace/json-perf/.artifacts/json-library/edges-before",
+      "sha256": "56df4381887ffd204cb2d4e30aaada41df7e87451dcf9e256c13640da7dfc9bb"
+    }
+  },
+  "source_sha256": {
+    "bench/perf/json-library/src/bin/float-edges.rs": "f2b046c8743d58e4d6e452b3bc1df1c85925916124d04a0627be6f83b11651d4",
+    "bench/perf/json-library/edges.py": "516af525d8afc163cad77b89b4c87b6b83f7bce4a4f2fbecda35631180322b06",
+    "bench/perf/json-library/Cargo.toml": "ab5e33f84ab8ef293fafbab0faa2555371496e6fcebc420f2022ccbf25384243",
+    "bench/perf/json-library/Cargo.lock": "c0d530dd24689e5119037b81a8ea77b7aaef0b3da0833b7ecb97c319b05bcf2f",
+    "bench/perf/json-library/run.py": "6747b06b803c31e2740e0e578d6dd3ebd97966da17929072c5d0e30189c3581a",
+    "crates/ms-std-json/src/lib.rs": "97a92356a415764d4c815898dc0e88bc5a7b02b8bec1acf6bd7576f7f2051a16",
+    "crates/ms-std-json/Cargo.toml": "bf8648784dafb89ecc0b079af4a7634e0398bec6ab781738d16a11eda7051b55",
+    "rust-toolchain.toml": "7f5140056a968f51f7a91e1d73fd6b8c226054ecb5c6d39e791de484f9616457",
+    ".cargo/config.toml": "c411c17fbefc5c7148567d4a348fbf29cde557426121c29c6ae0525fbbd8c34e"
+  },
+  "flags": "Cargo release opt-level3 panic=abort; repository force-frame-pointers; same host allocator for library and Serde; native library component, not Manuscript generated code",
+  "build": "cargo build --release --locked --manifest-path bench/perf/json-library/Cargo.toml",
+  "trials": 12
+}

@@ -1,7 +1,7 @@
-import keep, measure from "@std/bench.ms"
+import keep, measure from "@std/test/bench.ms"
 import words from "./src/harness.ms"
 import compile from "@std/string.ms"
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn captures_bench(count: Int) Result[Unit, Error]:
     let re = try compile("(word)([0-9]+)")
@@ -105,7 +105,6 @@ bench "regex.replace_template.unused_large":
 
 fn named_bench(count: Int) Result[Unit, Error]:
     let pattern = if count == 1: "(?P<a>a)" else: "(?P<a>a)(?P<b>b)(?P<c>c)(?P<d>d)(?P<e>e)(?P<f>f)(?P<g>g)(?P<h>h)"
-
     let re = try compile(pattern)
     let names = ["a", "b", "c", "d", "e", "f", "g", "h"]
     var expected = Map[String, String]()

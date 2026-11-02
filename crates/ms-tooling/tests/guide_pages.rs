@@ -73,7 +73,7 @@ fn cheatsheet_claims_match_the_compiler() {
         "    var n = 1\n    n += 2\n    n %= 2\n",
         "    let o: Int? = none\n    let v = o.get(3)\n",
         "    let name = \"x\"\n    let text = \"hi {name}\"\n",
-        "    var m = Map[String, Int]()\n    for e in m.entries():\n        let k = e.key\n    if var n = m.get(\"k\"):\n        n += 1\n",
+        "    var m = Map[String, Int]()\n    for e in m.entries():\n        let k = e.key\n    if var n = m[\"k\"]?:\n        n += 1\n",
     ] {
         let found = check(body);
         assert!(
@@ -103,7 +103,7 @@ fn bare(name: &str) -> &str {
 // Agents read these pages whole, so every page of the real library must fit its budget.
 #[test]
 fn std_pages_stay_bounded() {
-    assert!(index().len() <= 3500, "index is {} bytes", index().len());
+    assert!(index().len() <= 4000, "index is {} bytes", index().len());
     for module in standard_library() {
         let name = module
             .path
@@ -140,9 +140,9 @@ fn std_pages_stay_bounded() {
 fn std_pages_resolve_forms() {
     for path in [
         "json",
-        "@std/json.ms",
+        "@std/data/json.ms",
         "json.parse",
-        "@std/json.ms.parse",
+        "@std/data/json.ms.parse",
         "prelude.List",
         "prelude.List.sorted",
         "prelude.List.group_by",
@@ -153,7 +153,7 @@ fn std_pages_resolve_forms() {
     assert!(
         page("json")
             .unwrap()
-            .contains("import Name from \"@std/json.ms\"")
+            .contains("import Name from \"@std/data/json.ms\"")
     );
     for path in ["nope", "json.nope", "prelude.List.nope"] {
         let error = page(path).unwrap_err();
@@ -188,17 +188,17 @@ fn search_output_stays_bounded() {
 #[test]
 fn search_finds_apis_from_loose_queries() {
     let cases = [
-        ("jsn parse", "@std/json.ms", "parse"),
-        ("read file", "@std/fs.ms", "FileSystem.read_file"),
-        ("JSON PARSE", "@std/json.ms", "parse"),
-        ("http server", "@std/http.ms", "HttpServer"),
-        ("parse_int", "@std/math.ms", "parse_int"),
-        ("sleep", "@std/time.ms", "sleep"),
+        ("jsn parse", "@std/data/json.ms", "parse"),
+        ("read file", "@std/os/fs.ms", "read_file"),
+        ("JSON PARSE", "@std/data/json.ms", "parse"),
+        ("http server", "@std/net/http.ms", "HttpServer"),
+        ("parse_int", "@std/math/math.ms", "parse_int"),
+        ("sleep", "@std/os/time.ms", "sleep"),
         ("regex replace", "@std/string.ms", "Regex.replace_all"),
-        ("base64 encode", "@std/encoding.ms", "base64_encode"),
+        ("base64 encode", "@std/data/encoding.ms", "base64_encode"),
         ("sorted", "prelude", "List.sorted"),
         ("sort by", "prelude", "List.sorted"),
-        ("read stdin lines", "@std/io.ms", "read_line"),
+        ("read stdin lines", "@std/io/io.ms", "read_line"),
         ("uppercase", "prelude", "String.upper"),
     ];
     for (query, module, name) in cases {

@@ -1,4 +1,4 @@
-fn parse(text: String) Result[Int, Error]:
+fn parse(text: String) Int!:
     return ok(1)
 
 # A statement that drops a Result loses its failure; `let _ =` drops it on purpose.

@@ -1,9 +1,9 @@
-import stdout from "@std/io.ms"
-import clock, Instant from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import Instant, monotonic from "@std/os/time.ms"
 import StringBuilder from "@std/string.ms"
 import BytesBuilder from "@std/bytes.ms"
-import PriorityQueue from "@std/queue.ms"
-import SortedMap from "@std/sorted.ms"
+import PriorityQueue from "@std/collections/queue.ms"
+import SortedMap from "@std/collections/sorted.ms"
 
 type Rec:
     key: Int
@@ -13,7 +13,7 @@ fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
 fn since(started: Instant) Int:
-    return clock().now().difference(started).to_nanoseconds()
+    return monotonic().difference(started).to_nanoseconds()
 
 fn report(name: String, ops: Int, started: Instant) Unit:
     say("{name} {ops} {since(started)}\n")
@@ -22,7 +22,7 @@ fn next_rand(x: Int) Int:
     return (x * 1103515245 + 12345) % 2147483648
 
 fn bench_list_append(n: Int) Int:
-    let t = clock().now()
+    let t = monotonic()
     var l: List[Int] = []
     for i in 0..n:
         l.append(i)
@@ -34,7 +34,7 @@ fn bench_list_get(n: Int) Int:
     for i in 0..n:
         l.append(i)
 
-    let t = clock().now()
+    let t = monotonic()
     var x = 1
     var sum = 0
 
@@ -53,7 +53,7 @@ fn bench_list_sort(n: Int) Int:
         x = next_rand(x)
         l.append(x)
 
-    let t = clock().now()
+    let t = monotonic()
     let s = l.sorted()
     report("list_sort_int", n, t)
     return s[0]
@@ -66,13 +66,13 @@ fn bench_list_sort_cmp(n: Int) Int:
         x = next_rand(x)
         l.append(Rec(key: x % 100000, id: i))
 
-    let t = clock().now()
+    let t = monotonic()
     let s = l.sorted(compare: fn(a: Rec, b: Rec) Int: a.key - b.key)
     report("list_sort_cmp", n, t)
     return s[0].id
 
 fn bench_map_int(n: Int) Int:
-    let t = clock().now()
+    let t = monotonic()
     var m = Map[Int, Int]()
     var x = 1
 
@@ -95,7 +95,7 @@ fn bench_map_str(n: Int) Int:
     for i in 0..n:
         keys.append("key{i}")
 
-    let t = clock().now()
+    let t = monotonic()
     var m = Map[String, Int]()
     for i in 0..n:
         m.add(keys[i].clone(), i)
@@ -107,7 +107,7 @@ fn bench_map_str(n: Int) Int:
     return hits
 
 fn bench_set(n: Int) Int:
-    let t = clock().now()
+    let t = monotonic()
     var s = Set[Int]()
     var x = 1
 
@@ -127,7 +127,7 @@ fn bench_set(n: Int) Int:
     return hits
 
 fn bench_string(n: Int) Int:
-    let t = clock().now()
+    let t = monotonic()
     var sb = StringBuilder()
 
     for i in 0..n:
@@ -142,7 +142,7 @@ fn bench_string(n: Int) Int:
     return replaced.byte_length() + parts.length()
 
 fn bench_bytes(n: Int) Int:
-    let t = clock().now()
+    let t = monotonic()
     var bb = BytesBuilder()
     for i in 0..n:
         bb.append((i % 256).to_uint8().get(0))
@@ -152,7 +152,7 @@ fn bench_bytes(n: Int) Int:
     return b.length()
 
 fn bench_pq(n: Int) Int:
-    let t = clock().now()
+    let t = monotonic()
     var q = PriorityQueue[Int]()
     var x = 1
 
@@ -167,7 +167,7 @@ fn bench_pq(n: Int) Int:
     return sum
 
 fn bench_sorted_map(n: Int) Int:
-    let t = clock().now()
+    let t = monotonic()
     var m = SortedMap[Int, Int]()
     var x = 1
 

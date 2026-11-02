@@ -1,10 +1,10 @@
 # conform: tags=control-flow,faults,formatter,interfaces,maps,match,modules,optional,parser,records,stdlib-bytes,stdlib-io,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/stdlib-revamp.ms
-import expect_equal, expect_false, fail from "@std/test.ms"
-import ReadStream, IoError, read_line from "@std/io.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
+import ReadStream, IoError, read_line from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
-import PriorityQueue from "@std/queue.ms"
+import PriorityQueue from "@std/collections/queue.ms"
 
 type Key:
     id: Int
@@ -31,7 +31,7 @@ test "domain equality and hashing select interfaces":
     values.add(a.clone(), "a")
     values.add(b.clone(), "b")
     try expect_equal(values.length(), 1)
-    try expect_equal(values.get(a), some("b"))
+    try expect_equal(values.get(a), "b")
     try expect_false(not ([a.clone()].contains(b)))
 
     let view: Equal = a
@@ -66,21 +66,21 @@ type EchoReader:
     unused: Int
 
 impl ReadStream for EchoReader:
-    var fn read(max_bytes: Int?) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int?) Bytes?!IoError:
         let requested = max_bytes.get(0)
         if requested == 1: return error(IoError.InvalidInput)
 
-        return ok(some(Bytes([requested.to_uint8().get(0)])))
+        return ok(Bytes([requested.to_uint8().get(0)]))
 
     fn close() Unit: unit
 
 test "native compositions preserve Optional arguments for source implementations":
     var stream: ReadStream = EchoReader(0)
-    let omitted: Result[Bytes?, IoError] = stream.read()
-    try expect_equal(omitted, ok(some(Bytes([0]))))
+    let omitted: Bytes?!IoError = stream.read()
+    try expect_equal(omitted, ok(Bytes([0])))
 
-    let supplied: Result[Bytes?, IoError] = stream.read(8)
-    try expect_equal(supplied, ok(some(Bytes([8]))))
+    let supplied: Bytes?!IoError = stream.read(8)
+    try expect_equal(supplied, ok(Bytes([8])))
 
     let line = read_line(stream)
     try expect_false(line.is_ok())

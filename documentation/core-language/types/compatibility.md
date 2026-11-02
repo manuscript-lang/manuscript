@@ -32,7 +32,7 @@ let exact: fn(Int) Int = identity
 let wrong: fn(Int) String = identity
 ```
 
-An expected `T?` accepts a plain `T`, wrapped as `some(value: ...)`, in arguments, constructor fields, alternative payloads, annotated bindings, assignments, returns, defaults, and collection elements ([optional values](optionals.md#passing-optional-arguments)). It wraps one layer and never changes a numeric type.
+An expected `T?` accepts a plain `T`, wrapped as the present case, in arguments, constructor fields, alternative payloads, annotated bindings, assignments, returns, defaults, and collection elements ([optional values](optionals.md#passing-optional-arguments)). It wraps one layer and never changes a numeric type.
 
 There are no implicit numeric conversions, optional unwrapping, result wrapping, structural record conversions, unions, or nullable references. An integer literal is `Int` even where `Float` is expected; use the [explicit conversion API](../basics/numbers-and-booleans.md#numeric-conversion).
 
@@ -45,7 +45,7 @@ import TextError from "@std/core.ms"
 type Input:
     names: List[String?]
 
-let input = Input([none, some("Ada")])
+let input = Input([none, "Ada"])
 let nested: List[List[Int]] = [[], [1]]
 let success: Result[Int, TextError] = ok(1)
 let failure: Result[Int, TextError] = error(TextError("unavailable"))
@@ -59,8 +59,8 @@ Expressions whose type cannot be determined are rejected.
 | --- | --- |
 | `none` or `[]` | Not enough information to determine the payload or element type. |
 | `ok(value: 1)` | The success is Int, but the error type is still unknown. |
-| `some(value: 1)` | The complete type is Int?. |
-| `[none, some(value: 1)]` | The typed some value supplies enough context for List[Int?]. |
+| `1` | Int; it wraps only where an `Int?` is expected. |
+| `[none, 1]` | Not enough information: a plain `1` does not make the list optional. Annotate `List[Int?]`. |
 
 A list whose independently typed elements disagree is rejected.
 

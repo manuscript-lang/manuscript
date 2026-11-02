@@ -1,0 +1,8 @@
+{
+  "baseline": "/workspace/normalization-evidence/programs/baseline-normalize",
+  "byte": "/workspace/normalization-evidence/programs/byte-normalize",
+  "ascii": "/workspace/normalization-evidence/programs/ascii-normalize",
+  "both": "/workspace/normalization-evidence/programs/both-normalize",
+  "rust-matched": "/workspace/normalization-evidence/rust-matched",
+  "rust-matched-ascii": "/workspace/normalization-evidence/rust-matched-ascii"
+}

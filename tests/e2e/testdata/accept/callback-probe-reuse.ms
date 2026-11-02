@@ -1,5 +1,5 @@
 import TextError from "@std/core.ms"
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 fn apply[T, U](value: T, transform: fn(T) U) U: transform(value)
 
@@ -8,7 +8,7 @@ fn choose[T](first: fn() T, second: fn() T) T: first()
 fn optional[T, U](value: T, transform: (fn(T) U)?) U:
     return transform.get()(value)
 
-fn with_result[T](transform: fn() Result[T, TextError]) Result[T, TextError]: transform()
+fn with_result[T](transform: fn() T!TextError) T!TextError: transform()
 
 type Callback[T, U]:
     transform: fn(T) U
@@ -35,7 +35,7 @@ test "callback inference retains captures and contextual metadata":
     try expect_equal(callback.transform(3), 10)
     try expect_equal(optional(value: 5, transform: fn item: item + offset), 12)
 
-    let missing = choose(first: fn: none, second: fn: some(3))
+    let missing = choose(first: fn: none, second: fn() Int?: 3)
     try expect_false(not missing.is_none())
 
     let failure = with_result(
@@ -47,9 +47,7 @@ test "callback inference retains captures and contextual metadata":
 
     try expect_equal(failure, Result[Int, TextError].error(TextError("expected")))
 
-    let failed: Result[Int, Error] = apply(
-        value: 9, transform: fn item: error(Failure(item))
-    )
+    let failed: Int! = apply(value: 9, transform: fn item: error(Failure(item)))
     try expect_false(failed.is_ok())
     try expect_equal(failed.err().message(), "9")
 
@@ -62,7 +60,8 @@ test "later returns repair incomplete and convertible evidence":
         fn:
             if true: return absent()
 
-            return some(1)
+            let one: Int? = 1
+            return one
     )
 
     try expect_false(not value.is_none())
@@ -76,7 +75,7 @@ test "later returns repair incomplete and convertible evidence":
 
     try expect_equal(cause.message(), "2")
 
-fn operation() Result[Int, TextError]: ok(4)
+fn operation() Int!TextError: ok(4)
 
 test "try rechecks the inferred enclosing result":
     let value = from_callback(

@@ -83,14 +83,14 @@ An implementation uses its receiver declaration's generic parameters; only those
 
 ```manuscript
 interface ReadValue[T]:
-    fn get() ref T
+    fn get() T
 
-type Box[T]:
+type Box[T: Clonable]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    fn get() ref T:
-        return self.value
+    fn get() T:
+        return self.value.clone()
 ```
 
 This covers `Box[Int]`, `Box[String]`, and every other well-formed application. Bounds are inherited from the receiver declaration and, for interface arguments that are receiver parameters, the interface declaration. The body is checked once under them with `self: Box[T]`, and they must prove every nested application and operation legal. At a use, the matched arguments must satisfy them; a concretely specialized parameter is substituted into other bounds (`Pair[A, B: ReadValue[A]]` with receiver `Pair[Int, B]` gives `B: ReadValue[Int]`).
@@ -132,13 +132,13 @@ impl Ranked[Int] for Scores:
         ...
 ```
 
-A call infers the operation's parameters from its arguments, or takes them explicitly: `scores.best_by[Int](key)`. Dispatch is static and each use is monomorphized, so the operation works on a concrete receiver and through a type parameter bounded by the interface. An interface with a generic operation cannot be the type of a value, because a method table has no entry for an operation whose types are not yet known; converting to it is rejected. The standard `List` uses this for `max_by` and `min_by` (`stdlib/collections.ms`).
+A call infers the operation's parameters from its arguments, or takes them explicitly: `scores.best_by[Int](key)`. Dispatch is static and each use is monomorphized, so the operation works on a concrete receiver and through a type parameter bounded by the interface. An interface with a generic operation cannot be the type of a value, because a method table has no entry for an operation whose types are not yet known; converting to it is rejected. The standard `List` uses this for `max_by` and `min_by` (`stdlib/collections/collections.ms`).
 
 ## Interface conversion
 
 A value whose type has a declared implementation of an interface converts implicitly wherever that interface is expected: arguments, `let` with a type annotation, record fields, collection entries, and returns. The relationship is still declared (`impl Contract for Type`); matching method names never convert. Existing views of the same application are identity, and other interface-to-interface conversions and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check.
 
-The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (record field, collection entry, `let`, return) moves it at its last use or needs `.clone()` otherwise. The interface value owns a copy when the operand is borrowed.
+The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (record field, collection entry, `let`, return) moves it at its last use or needs `.clone()` otherwise. A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
 
 ```manuscript
 fn use_increment(operation: Increment) Int:

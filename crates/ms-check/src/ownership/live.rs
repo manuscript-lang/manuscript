@@ -315,6 +315,7 @@ impl Pass<'_> {
                 self.expr(index, live);
                 self.expr(left, live);
             }
+            ExprKind::Probe(target) => self.expr(target, live),
             ExprKind::List(items) => items.iter().rev().for_each(|i| self.expr(i, live)),
             ExprKind::Map(entries) => {
                 for entry in entries.iter().rev() {

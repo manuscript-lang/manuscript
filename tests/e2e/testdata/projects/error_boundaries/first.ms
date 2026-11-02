@@ -7,13 +7,13 @@ impl Error for DomainFailure:
 export fn first_error(cause: DomainFailure) Error:
     return cause
 
-fn failure(cause: DomainFailure) Result[Unit, DomainFailure]:
+fn failure(cause: DomainFailure) Unit!DomainFailure:
     return error(cause)
 
-export fn first_result(cause: DomainFailure) Result[Unit, Error]:
+export fn first_result(cause: DomainFailure) Unit!:
     return failure(cause)
 
-export fn first_propagated(cause: DomainFailure) Result[Unit, Error]:
+export fn first_propagated(cause: DomainFailure) Unit!:
     try failure(cause)
     return ok(unit)
 

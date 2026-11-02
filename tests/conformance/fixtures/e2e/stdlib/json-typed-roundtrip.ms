@@ -1,8 +1,8 @@
 # conform: tags=alternatives,optional,records,stdlib-json,stdlib-net,testing,tier-io,try-result
 # conform: phase=test
-import expect_equal from "@std/test.ms"
-import parse, stringify, JsonError from "@std/json.ms"
-import IpAddress, Cidr, parse_ip, parse_cidr from "@std/net.ms"
+import expect_equal from "@std/test/test.ms"
+import parse, stringify, JsonError from "@std/data/json.ms"
+import IpAddress, Cidr, parse_ip, parse_cidr from "@std/net/net.ms"
 
 type Color:
     case Red
@@ -18,7 +18,7 @@ type Endpoint:
     fallback: IpAddress?
 
 test "JSON payloadless cases are their names and round-trip":
-    let swatch = Swatch(Color.Green, some(Color.Red))
+    let swatch = Swatch(Color.Green, Color.Red)
     let text = try stringify(swatch)
     try expect_equal(text, "\{\"color\":\"Green\",\"shade\":\"Red\"\}")
 
@@ -26,14 +26,14 @@ test "JSON payloadless cases are their names and round-trip":
     try expect_equal(try stringify(back), text)
 
 test "JSON rejects an unknown case name":
-    let invalid: Result[Color, JsonError] = error(JsonError.InvalidData)
+    let invalid: Color!JsonError = error(JsonError.InvalidData)
     try expect_equal(parse[Color]("\"Blue\""), invalid)
     try expect_equal(parse[Color]("\"Color.Red\""), invalid)
 
 test "JSON writes and reads IpAddress and Cidr as strings":
     let endpoint = Endpoint(
         try parse_ip("::1"), try parse_cidr("10.1.2.3/8"),
-        some(try parse_ip("192.0.2.7"))
+        try parse_ip("192.0.2.7")
     )
     let text = try stringify(endpoint)
     try expect_equal(

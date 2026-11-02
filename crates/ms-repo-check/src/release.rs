@@ -1,4 +1,4 @@
-//! Release pins: the extension version and the required workflows' triggers.
+//! Release pins: the extension version and the required workflow's triggers.
 
 pub fn extension_version() -> Vec<String> {
     let (Ok(release), Ok(manifest)) = (
@@ -7,9 +7,12 @@ pub fn extension_version() -> Vec<String> {
     ) else {
         return vec!["cannot read .msversion or extensions/vscode/package.json".into()];
     };
-    let version = manifest
-        .split_once("\"version\"")
-        .and_then(|(_, rest)| rest.split('"').nth(1))
+    let parsed = ms_json::parse(&manifest);
+    let version = parsed
+        .as_ref()
+        .ok()
+        .and_then(|json| json.get("version"))
+        .and_then(ms_json::Json::as_str)
         .unwrap_or("");
     if version == release.trim() {
         return Vec::new();
@@ -19,19 +22,17 @@ pub fn extension_version() -> Vec<String> {
     )]
 }
 
-/// Required workflows must report on every PR and on the queue's combined commit.
+/// The CI workflow must run on every PR, whatever files it changes, and on the merge queue's combined
+/// commit: the ruleset on `main` requires its `Platform checks` job.
 pub fn workflow_triggers() -> Vec<String> {
-    let mut issues = Vec::new();
-    for path in [
-        ".github/workflows/cicd.yml",
-        ".github/workflows/release.yml",
-    ] {
-        match std::fs::read_to_string(path) {
-            Ok(text) => issues.extend(triggers(&text).map(|e| format!("{path}: {e}"))),
-            Err(e) => issues.push(format!("{path}: {e}")),
-        }
+    let path = ".github/workflows/cicd.yml";
+    match std::fs::read_to_string(path) {
+        Ok(text) => triggers(&text)
+            .map(|e| format!("{path}: {e}"))
+            .into_iter()
+            .collect(),
+        Err(e) => vec![format!("{path}: {e}")],
     }
-    issues
 }
 
 /// Lines of the child block of `key:` at `indent`, stopping at the next sibling.

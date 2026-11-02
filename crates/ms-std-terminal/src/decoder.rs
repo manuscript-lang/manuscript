@@ -246,8 +246,12 @@ impl Decoder {
     }
 
     /// Treats pending input as final: a lone escape is the Escape key and any other incomplete
-    /// sequence is dropped.
+    /// escape sequence is dropped. A partial UTF-8 scalar is kept: a terminal never ends one
+    /// early, so its remaining bytes can still arrive on a slow link.
     pub fn flush(&mut self) -> Vec<Event> {
+        if self.pending.first() != Some(&0x1b) {
+            return Vec::new();
+        }
         let lone = self.pending == [0x1b];
         self.pending.clear();
         if lone {
@@ -347,6 +351,18 @@ mod tests {
         assert!(d.pending());
         assert_eq!(d.feed(&"é".as_bytes()[1..]), vec![text("é")]);
         assert_eq!(d.feed(&[0xff, b'x']), vec![text("\u{fffd}x")]);
+    }
+
+    #[test]
+    fn flush_keeps_a_partial_scalar() {
+        let mut d = Decoder::default();
+        assert_eq!(d.feed(&"€".as_bytes()[..2]), vec![]);
+        assert_eq!(d.flush(), vec![]);
+        assert!(d.pending());
+        assert_eq!(d.feed(&"€".as_bytes()[2..]), vec![text("€")]);
+        assert_eq!(d.feed(b"\x1b"), vec![]);
+        assert_eq!(d.flush(), vec![key("escape", false, false, false)]);
+        assert!(!d.pending());
     }
 
     #[test]

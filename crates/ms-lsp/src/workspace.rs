@@ -4,7 +4,7 @@
 use crate::analysis::{Analysis, Document, Documents, workspace_analysis};
 use crate::index::Occurrence;
 use crate::json::{Json, obj};
-use crate::nav::{self, go_location_order};
+use crate::nav::{self, location_sort_key};
 use crate::text::Position;
 use crate::uri;
 use ms_driver::project::pathops;
@@ -162,7 +162,7 @@ pub fn workspace_references(
         .is_some_and(|symbol| symbol.kind == ms_check::types::SymKind::Fn && !symbol.export)
     {
         let mut locations = nav::references_with_index(analysis, index, d, p, include);
-        locations.sort_by_cached_key(go_location_order);
+        locations.sort_by_cached_key(location_sort_key);
         return locations;
     }
     let documents = match workspace_documents(d, docs, false, cancel) {
@@ -170,15 +170,19 @@ pub fn workspace_references(
         Err(ScanError::Canceled) => return Vec::new(),
         Err(ScanError::Io(_)) => {
             let mut locations = nav::references_with_index(analysis, index, d, p, include);
-            locations.sort_by_cached_key(go_location_order);
+            locations.sort_by_cached_key(location_sort_key);
             return locations;
         }
     };
     let mut locations: Vec<Json> = Vec::new();
-    let mut seen: HashSet<String> = HashSet::new();
+    let mut seen: HashSet<nav::LocationKey> = HashSet::new();
     for file in &documents {
         if canceled(cancel).is_err() {
             return Vec::new();
+        }
+        // A file that never spells the name cannot refer to it; skip the checker run.
+        if file.uri != d.uri && !file.text.contains(selected.name.as_str()) {
+            continue;
         }
         let checked = workspace_analysis(file, docs);
         if canceled(cancel).is_err() {
@@ -194,12 +198,12 @@ pub fn workspace_references(
             let Some(location) = nav::occurrence_location(&checked, entry) else {
                 continue;
             };
-            if seen.insert(go_location_order(&location)) {
+            if seen.insert(location_sort_key(&location)) {
                 locations.push(location);
             }
         }
     }
-    locations.sort_by_cached_key(go_location_order);
+    locations.sort_by_cached_key(location_sort_key);
     locations
 }
 
@@ -265,8 +269,8 @@ pub(crate) fn workspace_symbols_matching(
     }
     let mut analyzed: HashSet<String> = HashSet::new();
     let mut names = HashMap::new();
-    let mut seen: HashSet<String> = HashSet::new();
-    let mut result: Vec<(String, Json)> = Vec::new();
+    let mut seen: HashSet<nav::LocationKey> = HashSet::new();
+    let mut result: Vec<((i64, nav::LocationKey, String), Json)> = Vec::new();
     for d in &documents {
         if canceled(cancel).is_err() {
             return None;
@@ -296,7 +300,7 @@ pub(crate) fn workspace_symbols_matching(
             let Some(location) = nav::occurrence_location(&checked, entry) else {
                 continue;
             };
-            let id = go_location_order(&location);
+            let id = location_sort_key(&location);
             if !seen.insert(id.clone()) {
                 continue;
             }
@@ -305,13 +309,13 @@ pub(crate) fn workspace_symbols_matching(
                 Some(s) if s.is_constant() => 14,
                 _ => 12,
             };
-            // Go orders by the printed map: kind, location, name.
-            let order = format!("map[kind:{kind} location:{} name:{}]", id, entry.name);
+            // Ordered by kind, location, then name.
+            let order = (kind, id, entry.name.clone());
             result.push((
                 order,
                 obj([
                     ("name", entry.name.clone().into()),
-                    ("kind", (kind as i64).into()),
+                    ("kind", kind.into()),
                     ("location", location),
                 ]),
             ));
@@ -339,19 +343,39 @@ fn may_contain_symbol(
             // including modules outside discovery's scan scope. Only the
             // ordinary, unescaped standard path spelling proves otherwise;
             // unusual strings or malformed imports conservatively stay in.
-            let standard = i
-                .checked_sub(1)
-                .and_then(|i| lexed.tokens.get(i))
+            let standard = lexed.tokens[i + 1..]
+                .iter()
+                .take_while(|t| {
+                    !matches!(
+                        t.kind,
+                        ms_syntax::token::Tok::Newline | ms_syntax::token::Tok::Eof
+                    )
+                })
+                .find(|t| t.kind == ms_syntax::token::Tok::String)
                 .is_some_and(|path| {
                     let text = &lexed.source[path.lo as usize..path.hi as usize];
-                    path.kind == ms_syntax::token::Tok::String
-                        && (text.starts_with("\"@std/") || text.starts_with("'@std/"))
+                    text.starts_with("\"@std/") || text.starts_with("'@std/")
                 });
             if !standard {
                 return true;
             }
         }
         if token.kind != ms_syntax::token::Tok::Name {
+            return false;
+        }
+        // Only a name a declaration introduces can be a returned symbol; uses and fields of
+        // the same spelling would send nearly every file of a large tree through the checker.
+        let declares = i
+            .checked_sub(1)
+            .and_then(|i| lexed.tokens.get(i))
+            .is_some_and(|before| {
+                use ms_syntax::token::Tok;
+                matches!(
+                    before.kind,
+                    Tok::Fn | Tok::Type | Tok::Interface | Tok::Let | Tok::Var | Tok::Case
+                )
+            });
+        if !declares {
             return false;
         }
         let name = &lexed.source[token.lo as usize..token.hi as usize];
@@ -362,4 +386,33 @@ fn may_contain_symbol(
         names.insert(name.to_string(), found);
         found
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn kept(text: &str, query: &str) -> bool {
+        let document = Document::new(uri::file_uri("/tmp/a.ms"), text);
+        may_contain_symbol(
+            &document,
+            &|name| name.eq_ignore_ascii_case(query),
+            &mut HashMap::new(),
+        )
+    }
+
+    #[test]
+    fn a_file_is_kept_only_for_a_name_it_declares_or_a_local_import() {
+        let std_only = "import stdout from \"@std/io/io.ms\"\n\nfn helper() Int:\n    return 1\n";
+        assert!(kept(std_only, "helper"));
+        // Uses, imports and fields of the same spelling do not make a file a candidate.
+        assert!(!kept(std_only, "stdout"));
+        assert!(!kept(std_only, "missing"));
+        // A local module can bring in declarations the scan has not seen.
+        assert!(kept("import f from \"./other.ms\"\n", "missing"));
+        assert!(kept(
+            "import (\n    a,\n    b\n) from \"./other.ms\"\n",
+            "missing"
+        ));
+    }
 }

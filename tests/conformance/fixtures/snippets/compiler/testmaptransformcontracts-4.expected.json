@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Bool, found Int (in the return value)",
+        "position": {
+          "file": "testmaptransformcontracts-4.ms",
+          "line": 5,
+          "column": 43,
+          "offset": 249
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testmaptransformcontracts-4.ms:5:43: type: expected Bool, found Int (in the return value)\n   |\n 5 |     let found = values.find_last(fn k, v: v)\n   |                                           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

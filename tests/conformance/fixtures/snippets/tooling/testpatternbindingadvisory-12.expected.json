@@ -1,0 +1,79 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'",
+        "position": {
+          "file": "testpatternbindingadvisory-12.ms",
+          "line": 6,
+          "column": 9,
+          "offset": 222
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Value; did you mean 'value'?",
+        "position": {
+          "file": "testpatternbindingadvisory-12.ms",
+          "line": 6,
+          "column": 23,
+          "offset": 236
+        },
+        "fix": {
+          "position": {
+            "file": "testpatternbindingadvisory-12.ms",
+            "line": 6,
+            "column": 23,
+            "offset": 236
+          },
+          "end": {
+            "file": "testpatternbindingadvisory-12.ms",
+            "line": 6,
+            "column": 28,
+            "offset": 241
+          },
+          "replacement": "value"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
+        "position": {
+          "file": "testpatternbindingadvisory-12.ms",
+          "line": 7,
+          "column": 22,
+          "offset": 263
+        },
+        "fix": {
+          "position": {
+            "file": "testpatternbindingadvisory-12.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "testpatternbindingadvisory-12.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import panic from \"@std/core.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testpatternbindingadvisory-12.ms:6:9: type: binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'\n   |\n 6 |         value: return Value\n   |         ^\n<DIR>/testpatternbindingadvisory-12.ms:6:23: resolution: unknown binding Value; did you mean 'value'?\n   |\n 6 |         value: return Value\n   |                       ^\n<DIR>/testpatternbindingadvisory-12.ms:7:22: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 7 |         none: return panic(message: \"empty\")\n   |                      ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

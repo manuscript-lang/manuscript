@@ -1,5 +1,0 @@
---- FAIL: TestWorkspaceCancellationStopsDiscoveryScopes (0.00s)
-    boundaries_test.go:91: canceled discovery continued into additional roots [] 3 1
-FAIL
-FAIL	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.002s
-FAIL

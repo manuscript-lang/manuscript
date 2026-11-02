@@ -1,8 +1,8 @@
-import keep, measure from "@std/bench.ms"
-import Queue, PriorityQueue from "@std/queue.ms"
-import Deque from "@std/deque.ms"
-import BitSet from "@std/bitset.ms"
-import SortedMap from "@std/sorted.ms"
+import keep, measure from "@std/test/bench.ms"
+import Queue, PriorityQueue from "@std/collections/queue.ms"
+import Deque from "@std/collections/deque.ms"
+import BitSet from "@std/collections/bitset.ms"
+import SortedMap from "@std/collections/sorted.ms"
 
 # Queue, PriorityQueue, Deque, BitSet and SortedMap at two sizes each, so ns/op staying flat shows the complexity class.
 bench "queue.enqueue_dequeue_100000":

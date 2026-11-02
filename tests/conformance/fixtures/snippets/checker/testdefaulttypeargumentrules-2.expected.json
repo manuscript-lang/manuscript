@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "type parameter B needs a default because an earlier parameter has one; give B a default or move it before the defaulted parameters",
+        "position": {
+          "file": "testdefaulttypeargumentrules-2.ms",
+          "line": 4,
+          "column": 15,
+          "offset": 168
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testdefaulttypeargumentrules-2.ms:4:15: type: type parameter B needs a default because an earlier parameter has one; give B a default or move it before the defaulted parameters\n   |\n 4 | fn f[A = Int, B](value: B) B: value\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

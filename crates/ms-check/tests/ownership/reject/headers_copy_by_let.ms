@@ -1,4 +1,4 @@
-import headers from "@std/http.ms"
+import headers from "@std/net/http.ms"
 
 export fn main() Int:
     let a = headers()

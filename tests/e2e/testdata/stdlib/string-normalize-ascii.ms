@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 import StringError from "@std/string.ms"
 
 test "ASCII normalization is identical under every form and byte budget":

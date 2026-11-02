@@ -1,7 +1,7 @@
 # conform: tags=records,stdlib-json,testing
 # conform: phase=test
-import expect_equal from "@std/test.ms"
-import parse, stringify, JsonError from "@std/json.ms"
+import expect_equal from "@std/test/test.ms"
+import parse, stringify, JsonError from "@std/data/json.ms"
 
 type Sized:
     small: UInt8
@@ -16,7 +16,7 @@ fn sample() Sized:
     let single: Float32 = 0.1
     let low: Int32 = -1
     let high: Int32 = 2
-    return Sized(255, -128, 18446744073709551615, single, some(maybe), [low, high])
+    return Sized(255, -128, 18446744073709551615, single, maybe, [low, high])
 
 test "JSON writes sized numbers like Int and Float":
     try expect_equal(
@@ -35,7 +35,7 @@ test "JSON reads sized numbers back":
     try expect_equal(stringify(back).get(), text)
 
 test "JSON rejects sized numbers outside their range":
-    let invalid: Result[Sized, JsonError] = error(JsonError.InvalidData)
+    let invalid: Sized!JsonError = error(JsonError.InvalidData)
     let head = "\{\"signed\":0,\"wide\":0,\"single\":0,\"items\":[]"
     try expect_equal(parse[Sized](head + ",\"small\":256\}"), invalid)
     try expect_equal(parse[Sized](head + ",\"small\":-1\}"), invalid)

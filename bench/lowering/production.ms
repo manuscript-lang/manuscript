@@ -4,7 +4,7 @@ type Resource:
     value: Int
 
 impl Closeable for Resource:
-    fn close() Unit: return
+    fn close() Unit!: return ok(unit)
 
 fn empty(value: Int) Int: value
 

@@ -5,7 +5,7 @@ use ms_driver::project::pathops;
 
 use crate::backend::Io;
 
-const MAIN: &str = "import arguments from \"@std/process.ms\"\nimport stdout from \"@std/io.ms\"\n\nexport fn main() Int:\n    let message = \"Arguments: {arguments().length()}\\n\"\n    if stdout().write(message).is_error():\n        return 1\n\n    return 0\n";
+const MAIN: &str = "import arguments from \"@std/os/process.ms\"\nimport stdout from \"@std/io/io.ms\"\n\nexport fn main() Int:\n    let message = \"Arguments: {arguments().length()}\\n\"\n    if stdout().write(message).is_error():\n        return 1\n\n    return 0\n";
 const TEST: &str = "import panic from \"@std/core.ms\"\n\ntest \"arithmetic\":\n    if not (2 + 3 == 5):\n        return panic(message: \"arithmetic failed\")\n";
 const IGNORE: &str = ".ms-cache/\n";
 
@@ -16,7 +16,7 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
         if arg.starts_with('-') || given {
             let _ = writeln!(
                 io.stderr,
-                "unexpected init argument: {arg} ; ms init takes at most one directory, e.g. ms init hello"
+                "unexpected init argument: {arg}; ms init takes at most one directory, e.g. ms init hello"
             );
             return 2;
         }

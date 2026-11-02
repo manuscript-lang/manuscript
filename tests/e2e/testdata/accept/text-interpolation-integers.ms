@@ -1,5 +1,5 @@
-import expect_equal from "@std/test.ms"
-import min_int, max_int from "@std/math.ms"
+import expect_equal from "@std/test/test.ms"
+import min_int, max_int from "@std/math/math.ms"
 
 # Integer interpolations are written straight into the joined text (the `strfuse` pass passes the
 # integer to `msrt_string_fmtN`), so every integer shape and length must still read back the same.
@@ -15,10 +15,8 @@ test "integer interpolation shapes":
     try expect_equal(label("n=", -7), "n=-7")
     try expect_equal(pair(1, ":", 2), "1:2")
     try expect_equal(pair(-1, "", -2), "-1-2")
-    try expect_equal("{min_int()}", "-9223372036854775808")
-    try expect_equal(
-        "{max_int()}|{min_int()}", "9223372036854775807|-9223372036854775808"
-    )
+    try expect_equal("{min_int}", "-9223372036854775808")
+    try expect_equal("{max_int}|{min_int}", "9223372036854775807|-9223372036854775808")
 
 test "integer interpolation at the inline boundary":
     # 14 bytes of text plus one digit is the longest inline string; one more byte allocates.

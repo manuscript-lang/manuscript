@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,generics,modules,mutation,parser,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/generic-specialization.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn ident[T](x: T) T:
     return x

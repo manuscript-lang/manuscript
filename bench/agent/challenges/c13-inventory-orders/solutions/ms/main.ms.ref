@@ -1,4 +1,4 @@
-import stdin, stdout, read_line from "@std/io.ms"
+import stdin, stdout, read_line from "@std/io/io.ms"
 
 type Item:
     sku: String
@@ -61,7 +61,7 @@ fn number(s: String) Int?:
 
         n = n * 10 + (c - 48)
 
-    return some(n)
+    return n
 
 fn quantity(s: String) Int?:
     let n = number(s)
@@ -123,7 +123,7 @@ fn place_order(var w: Warehouse, t: List[String]) List[String]:
     var total = 0
 
     for it in items:
-        if var n = w.stock.get(it.sku):
+        if var n = w.stock[it.sku]?:
             n -= it.qty
 
         let unit_price = w.price.get(it.sku).get()
@@ -154,7 +154,7 @@ fn report(w: Warehouse) List[String]:
             placed = placed + 1
 
             for it in o.items:
-                if var n = reserved.get(it.sku):
+                if var n = reserved[it.sku]?:
                     n += it.qty
                 else:
                     reserved.add(key: it.sku.clone(), value: it.qty)
@@ -235,9 +235,9 @@ fn run_command(var w: Warehouse, line: String) List[String]:
             return ["error: order {id} already {o.status}"]
 
         for it in o.items:
-            if var n = w.stock.get(it.sku):
+            if var n = w.stock[it.sku]?:
                 n += it.qty
-        if var u = w.orders.get(id):
+        if var u = w.orders[id]?:
             u.status = "cancelled"
         return ["ok"]
 
@@ -246,7 +246,7 @@ fn run_command(var w: Warehouse, line: String) List[String]:
     if o.status == "cancelled":
         return ["error: order {id} is cancelled"]
 
-    if var u = w.orders.get(id):
+    if var u = w.orders[id]?:
         u.status = "shipped"
     return ["ok"]
 

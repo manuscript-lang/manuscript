@@ -19,7 +19,7 @@ Ordinary programs grouped by what a general-purpose language must do well, each 
 | `set_2M` | `Set[Int]` insert and lookup |
 | `chars_1M` | iterating the characters of a string |
 
-Run `MS=./ms sh bench/perf/competence/run.sh 7` (median of N, microseconds). Compare only runs from the same machine.
+Run `MS=./ms ms run bench/tools/kernels.ms -- competence 7` (median of N, microseconds). Compare only runs from the same machine.
 
 ## Latest (2026-10-25)
 

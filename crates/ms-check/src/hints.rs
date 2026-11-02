@@ -13,7 +13,7 @@ use std::collections::HashSet;
 /// enough to be a plausible misspelling.
 pub fn closest(name: &str, candidates: &[String]) -> String {
     let mut best = String::new();
-    let mut best_distance = 0usize;
+    let mut best_key = (0usize, false);
     if name.len() < 3 {
         return best;
     }
@@ -23,14 +23,21 @@ pub fn closest(name: &str, candidates: &[String]) -> String {
         if candidate == name {
             continue;
         }
-        let d = edit_distance(&lname, &candidate.to_lowercase());
+        let lcandidate = candidate.to_lowercase();
+        let d = edit_distance(&lname, &lcandidate);
+        // At equal distance a name that extends or truncates the typed one
+        // ("testing" for "test") beats an unrelated one.
+        let key = (
+            d,
+            !(lname.starts_with(&lcandidate) || lcandidate.starts_with(&lname)),
+        );
         if d <= limit
             && (best.is_empty()
-                || d < best_distance
-                || (d == best_distance && candidate.as_str() < best.as_str()))
+                || key < best_key
+                || (key == best_key && candidate.as_str() < best.as_str()))
         {
             best = candidate.clone();
-            best_distance = d;
+            best_key = key;
         }
     }
     best
@@ -237,7 +244,13 @@ pub fn signature_text(t: &Ty) -> String {
         .iter()
         .map(|p| format!("{}: {}", p.name, p.ty))
         .collect();
-    format!("({}) {}", parts.join(", "), t.result_ty())
+    let result = t.result_ty();
+    // `T!` is the declared spelling of `Result[T, Error]`.
+    let result = match result.args.as_slice() {
+        [ok, err] if result.is_std("Result") && err.is_std("Error") => format!("{ok}!"),
+        _ => result.to_string(),
+    };
+    format!("({}) {result}", parts.join(", "))
 }
 
 /// The builtin type other languages call by this name.
@@ -332,7 +345,7 @@ pub fn arity_mismatch_hint(actual: &Ty, expected: &Ty) -> String {
 /// Explains a missing type argument.
 pub fn missing_type_argument_hint(
     name: &str,
-    missing: Name,
+    missing: &[Name],
     variables: &[Ty],
     arguments: &[Option<Ty>],
 ) -> String {
@@ -344,8 +357,18 @@ pub fn missing_type_argument_hint(
             _ => v.name.to_string(),
         })
         .collect();
+    let list = missing
+        .iter()
+        .map(|m| m.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let (noun, each) = if missing.len() == 1 {
+        ("argument", "an explicit type for")
+    } else {
+        ("arguments", "explicit types for")
+    };
     format!(
-        "cannot infer type argument {missing} for {name}; write {name}[{}](...) with an explicit type for {missing}; call arguments and the expected result must determine every type parameter",
+        "cannot infer type {noun} {list} for {name}; write {name}[{}](...) with {each} {list}; call arguments and the expected result must determine every type parameter",
         parts.join(", ")
     )
 }
@@ -420,17 +443,17 @@ impl Checker {
         match name.as_str() {
             "range" => {
                 return format!(
-                    "{message}; there is no range function: write start..end for the integers from start up to but excluding end, or range_by from \"@std/collections.ms\" for a stepped list"
+                    "{message}; there is no range function: write start..end for the integers from start up to but excluding end, or range_by from \"@std/collections/collections.ms\" for a stepped list"
                 );
             }
             "nil" | "null" | "None" | "undefined" => {
                 return format!(
-                    "{message}; Manuscript has no null: absence is an Optional, written none, and a present value is some(value)"
+                    "{message}; Manuscript has no null: absence is an Optional, written none, and a present value is just the value, which converts where an Optional is expected"
                 );
             }
             "Some" => {
                 return format!(
-                    "{message}; write the lowercase some(value) for a present Optional"
+                    "{message}; there is no Some: a plain value converts where an Optional is expected, so pass it directly"
                 );
             }
             "Ok" => {
@@ -461,32 +484,38 @@ impl Checker {
             }
             "float" | "parseFloat" | "parse_float" => {
                 return format!(
-                    "{message}; parse text with parse_float (import parse_float from \"@std/math.ms\"), which returns a Result; an Int converts with value.to_float()"
+                    "{message}; parse text with parse_float (import parse_float from \"@std/math/math.ms\"), which returns a Result; an Int converts with value.to_float()"
                 );
             }
             "Object" | "Array" | "dict" | "list" => {
                 return format!(
-                    "{message}; use List[T] and Map[K, V] from \"@std/collections.ms\"; read a Map with m.keys(), m.values() or m.entries()"
+                    "{message}; use List[T] and Map[K, V] from \"@std/collections/collections.ms\"; read a Map with m.keys(), m.values() or m.entries()"
                 );
             }
             "Math" | "math" => {
                 return format!(
-                    "{message}; the math functions (floor, sqrt, pow, ...) are in \"@std/math.ms\": import floor from \"@std/math.ms\""
+                    "{message}; the math functions (floor, sqrt, pow, ...) are in \"@std/math/math.ms\": import floor from \"@std/math/math.ms\""
                 );
             }
             "console" | "System" | "fmt" | "os" => {
                 return format!(
-                    "{message}; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")"
+                    "{message}; there is no built-in print: import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")"
                 );
             }
             "spawn" | "Promise" | "Future" | "Thread" | "thread" | "setTimeout" | "setInterval" => {
                 return format!(
-                    "{message}; there is no free {name}: start tasks with a TaskGroup from \"@std/tasks.ms\" bound to a local, e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))"
+                    "{message}; there is no free {name}: start tasks with a TaskGroup from \"@std/concurrency/tasks.ms\" bound to a local, e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))"
+                );
+            }
+            "filesystem" | "network" | "commands" | "control" | "system" | "clock"
+            | "wall_clock" | "entropy" | "terminal" | "files" => {
+                return format!(
+                    "{message}; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/os/time.ms\""
                 );
             }
             "print" | "println" | "printf" | "puts" | "echo" => {
                 return format!(
-                    "{message}; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")"
+                    "{message}; there is no built-in print: import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")"
                 );
             }
             _ => {}
@@ -737,13 +766,24 @@ impl Checker {
         if path.starts_with("@std/") {
             let pn = n(path);
             if !stdlib::is_native_module(pn) && stdlib::standard_source_module(pn).is_none() {
-                let hint = did_you_mean(
-                    path,
-                    &stdlib::standard_module_names()
-                        .iter()
-                        .map(|s| s.to_string())
-                        .collect::<Vec<_>>(),
-                );
+                let stem = |p: &str| stdlib::module_stem(p).to_string();
+                let names = stdlib::standard_module_names();
+                let stems: Vec<String> = names.iter().map(|s| stem(s)).collect();
+                let mut hint = did_you_mean(&stem(path), &stems);
+                // The right module under another folder (`@std/json/json.ms` for `@std/data/json.ms`)
+                // has the same stem, which a spelling suggestion does not report.
+                let base = |p: &str| p.rsplit('/').next().unwrap_or(p).to_string();
+                if hint.is_empty()
+                    && let Some(same) = names.iter().find(|name| base(name) == base(path))
+                {
+                    hint = format!("; did you mean '{same}'?");
+                }
+                let suggested = hint.split('\'').nth(1).map(str::to_string);
+                if let Some(found) = suggested
+                    && let Some(full) = names.iter().find(|name| stem(name) == found)
+                {
+                    hint = format!("; did you mean '{full}'?");
+                }
                 return format!("unknown standard module {path}{hint}");
             }
             exports.extend(
@@ -856,7 +896,7 @@ pub fn builtin_constructor_hint(typ: &Ty) -> String {
     match typ.to_string().as_str() {
         "String" => "; make text with interpolation \"{value}\" or value.to_string()".to_string(),
         "Int" => "; parse text with text.parse_int() (Int?); Float has truncate_to_int()".to_string(),
-        "Float" => "; convert an Int with value.to_float(); parse text with parse_float (import parse_float from \"@std/math.ms\")".to_string(),
+        "Float" => "; convert an Int with value.to_float(); parse text with parse_float (import parse_float from \"@std/math/math.ms\")".to_string(),
         _ => String::new(),
     }
 }

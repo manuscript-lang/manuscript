@@ -4,8 +4,8 @@ type Res:
     name: String
 
 impl Closeable for Res:
-    var fn close() Unit:
-        return unit
+    var fn close() Unit!:
+        return ok(unit)
 
 # A value derived from the `with` resource cannot be stored where it outlives the block.
 fn main() Int:
@@ -13,5 +13,5 @@ fn main() Int:
     var r = Res("b")
     let n = r.name
     kept.append(n)  # error: cannot move `n` out: it only borrows its value
-    r.close()
+    r.close().get(none)
     return kept.length()

@@ -4,8 +4,8 @@ type Door:
     id: Int
 
 impl Closeable for Door:
-    var fn close() Unit:
-        return
+    var fn close() Unit!:
+        return ok(unit)
 
 type Room:
     door: Door
@@ -15,8 +15,8 @@ type Guard:
     door: Door
 
 impl Closeable for Guard:
-    var fn close() Unit:
-        return
+    var fn close() Unit!:
+        return ok(unit)
 
 fn keep(d: Door) List[Door]:
     var xs: List[Door] = []

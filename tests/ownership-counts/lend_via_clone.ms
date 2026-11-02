@@ -17,7 +17,7 @@ fn first_kid(n: Node) Node?:
     if n.kids.length() == 0:
         return none
 
-    return some(n.kids[0].clone())
+    return n.kids[0].clone()
 
 fn descend(n: Node, d: Int) Int:
     if d == 0:

@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"",
         "position": {
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
@@ -29,13 +29,13 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
+          "replacement": "import Decimal from \"@std/math/decimal.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"",
         "position": {
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
@@ -55,13 +55,13 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
+          "replacement": "import Decimal from \"@std/math/decimal.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"",
         "position": {
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
@@ -81,14 +81,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
+          "replacement": "import Decimal from \"@std/math/decimal.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-faults-1.ms:6:30: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n   |\n 6 | fn discount_validated(price: Decimal, percent: Decimal) Decimal:\n   |                              ^\n<DIR>/core-language-errors-faults-1.ms:6:48: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n   |\n 6 | fn discount_validated(price: Decimal, percent: Decimal) Decimal:\n   |                                                ^\n<DIR>/core-language-errors-faults-1.ms:6:57: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n   |\n 6 | fn discount_validated(price: Decimal, percent: Decimal) Decimal:\n   |                                                         ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-faults-1.ms:6:30: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 6 | fn discount_validated(price: Decimal, percent: Decimal) Decimal:\n   |                              ^\n<DIR>/core-language-errors-faults-1.ms:6:48: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 6 | fn discount_validated(price: Decimal, percent: Decimal) Decimal:\n   |                                                ^\n<DIR>/core-language-errors-faults-1.ms:6:57: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 6 | fn discount_validated(price: Decimal, percent: Decimal) Decimal:\n   |                                                         ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

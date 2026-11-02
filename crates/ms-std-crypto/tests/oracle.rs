@@ -48,7 +48,7 @@ fn flag(b: bool) -> String {
 }
 
 #[test]
-fn matches_go() {
+fn matches_oracle() {
     let data = include_str!("oracle/crypto.tsv");
     let mut n = 0;
     for line in data.lines().filter(|l| !l.starts_with('#')) {

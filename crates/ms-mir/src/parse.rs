@@ -392,10 +392,8 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                         params.push(parse_ty(&mut c, &mut m)?);
                         c.eat_p(',');
                     }
-                    let mut ret_borrowed = false;
                     let ret = if c.peek() == Some(&Tok::Arrow) {
                         c.next();
-                        ret_borrowed = c.eat_ident("ref");
                         parse_ty(&mut c, &mut m)?
                     } else {
                         Ty::UNIT
@@ -404,7 +402,6 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                         name: mname,
                         params,
                         ret,
-                        ret_borrowed,
                         self_params: Vec::new(),
                     });
                     c.eat_p(',');
@@ -643,14 +640,13 @@ fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
         "str" => Ty::STR,
         "bytes" => Ty::BYTES,
         "ptr" => Ty::PTR,
-        "list" | "opt" | "ref" => {
+        "list" | "opt" => {
             c.expect_p('<')?;
             let inner = parse_ty(c, m)?;
             c.expect_p('>')?;
             match name.as_str() {
                 "list" => m.types.list(inner),
-                "opt" => m.types.opt(inner),
-                _ => m.types.view(inner),
+                _ => m.types.opt(inner),
             }
         }
         "fn" => {

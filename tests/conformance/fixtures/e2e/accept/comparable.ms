@@ -1,9 +1,9 @@
 # conform: tags=control-flow,decimal,generics,interfaces,lists,match,modules,optional,records,stdlib-decimal,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/comparable.ms
-import expect_true from "@std/test.ms"
-import max, min from "@std/math.ms"
-import Decimal from "@std/decimal.ms"
+import expect_true from "@std/test/test.ms"
+import max, min from "@std/math/math.ms"
+import Decimal from "@std/math/decimal.ms"
 
 type Version:
     major: Int
@@ -39,6 +39,6 @@ test "compare through an explicit view":
 test "max and min over a list":
     let numbers = [3, 9, 2]
     let empty: List[Int] = []
-    try expect_true((numbers.max() == some(9) and numbers.min() == some(2)))
+    try expect_true((numbers.max() == 9 and numbers.min() == 2))
     try expect_true((empty.max().is_none() and empty.min().is_none()))
-    try expect_true(([Version(4), Version(8)].max() == some(Version(8))))
+    try expect_true(([Version(4), Version(8)].max() == Version(8)))

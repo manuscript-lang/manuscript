@@ -1,4 +1,4 @@
-import readFileSync from "node:fs";
+import { readFileSync } from "node:fs";
 
 const BAD = "error: bad command";
 const isNum = (s: string) => /^[0-9]{1,6}$/.test(s);

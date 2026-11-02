@@ -7,17 +7,17 @@
 
 wrong: print("hi")
 right: stdout().write("hi\n").get()
-setup: import stdout from "@std/io.ms"
+setup: import stdout from "@std/io/io.ms"
 diag: no built-in print
 
 wrong: stdout().write("hi\n")
 right: stdout().write("hi\n").get()
-setup: import stdout from "@std/io.ms"
+setup: import stdout from "@std/io/io.ms"
 diag: this statement discards
 
 wrong: f"n={n}"
 right: "n={n}"
-setup: import stdout from "@std/io.ms"
+setup: import stdout from "@std/io/io.ms"
 body: let n = 1;;stdout().write({}).get()
 diag: no f-string prefix
 
@@ -102,6 +102,12 @@ wrong: out.append(first)
 right: out.append(first.clone())
 body: let xs = ["a"];;var out = ["b"];;let first = xs[0];;{}
 diag: cannot move
+
+wrong: names.append(name_of(u))
+right: names.append(name_of(u).clone())
+setup: type User:;;    name: String;;;;fn name_of(u: User) String:;;    return u.name
+body: let u = User(name: "a");;var names = ["b"];;{}
+diag: returns a reference into
 
 wrong: let xs = [1]
 right: var xs = [1]

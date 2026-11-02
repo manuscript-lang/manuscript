@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn walked(s: String) List[Int]:
     var out: List[Int] = []

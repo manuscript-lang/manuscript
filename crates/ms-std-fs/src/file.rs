@@ -45,6 +45,15 @@ pub fn open(path: &[u8], flags: i64, mode: i64) -> Res<Stream> {
     Ok(Stream::file_handle(fd, flags, path))
 }
 
+/// `FileHandle.clone`: a second handle over the same open file, closed on its own.
+pub fn duplicate(file: &Stream) -> Res<Stream> {
+    if file.is_closed() {
+        return Err(Fail::status(STATUS_CLOSED));
+    }
+    file.duplicate()
+        .map_err(|e| Fail::errno(e, "duplicate", &file.name))
+}
+
 fn offset_ok(offset: i64) -> Res<()> {
     if offset < 0 {
         return Err(Fail::invalid());
@@ -188,6 +197,17 @@ impl Stream {
     pub fn data_sync(&mut self) -> Res<()> {
         self.admit(Access::Any)?;
         sys::fdatasync(self.fd).map_err(|e| self.fail("sync", e))
+    }
+
+    /// Tries an advisory lock on the whole file; `false` when another handle holds a conflicting one.
+    pub fn try_lock(&mut self, exclusive: bool) -> Res<bool> {
+        self.admit(Access::Any)?;
+        sys::try_lock(self.fd, exclusive).map_err(|e| self.fail("lock", e))
+    }
+
+    pub fn unlock(&mut self) -> Res<()> {
+        self.admit(Access::Any)?;
+        sys::unlock(self.fd).map_err(|e| self.fail("unlock", e))
     }
 
     pub fn chmod(&mut self, mode: i64) -> Res<()> {
@@ -389,6 +409,12 @@ mod tests {
         h.chmod(0o640).unwrap();
         h.sync().unwrap();
         h.data_sync().unwrap();
+        let mut other = open(&f, sys::O_RDONLY as i64, 0).unwrap();
+        assert!(h.try_lock(true).unwrap());
+        assert!(!other.try_lock(false).unwrap());
+        h.unlock().unwrap();
+        assert!(other.try_lock(false).unwrap());
+        other.close().unwrap();
         h.set_times((1_000_000, 0), (2_000_000, 0)).unwrap();
         assert_eq!(h.stat().unwrap().modified, (2_000_000, 0));
         assert_eq!(h.stat().unwrap().permissions, 0o640);

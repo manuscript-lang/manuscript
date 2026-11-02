@@ -1,0 +1,16 @@
+{
+  "base_revision": "d4a94aa9283348133542078e22ccaa3b2c9dc348",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "cpu": "AMD EPYC 9V45 96-Core Processor",
+  "cpu_affinity": "0",
+  "cpu_quota": "4 cores",
+  "rust": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "hashes": {
+    "/workspace/scratch/encoding-perf/ms-before": "37bd24d0079c1e1ebe1d28813dcbbbb43a784bb50177b0cc441cc340e55b95e0",
+    "/workspace/scratch/encoding-perf/ms-after": "126d591e669fbd583363f735eddd38fd459e33cc56c5b68993f269b42526297b",
+    "/workspace/scratch/encoding-perf/rust": "31fd7cd65d403124f4efd6749080455728fd349b483f7e6828ca291296fddd34",
+    "/workspace/scratch/encoding-perf/rust.rs": "aa8c0024cdce4e6235d421077deba9597424a60aad30f8a42e8c3caa3a549f01",
+    "/workspace/manuscript/stdlib/encoding.ms": "f3a5ca013c2809ca4e09723682a05374b0e87ad6057f9d91afa9cec7dd49fad4",
+    "/workspace/manuscript/bench/perf/stdlib/encoding_ascii_bench.ms": "9762b812848b3f792b7b8099a1e5177008183a9d898c5d685f275c9e51ebe5be"
+  }
+}

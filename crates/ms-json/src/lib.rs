@@ -1,7 +1,7 @@
 //! An order-preserving JSON value with a strict parser and two writers.
 //!
 //! Objects keep insertion order and numbers keep their written spelling, so
-//! documents round-trip byte for byte. [`Escape::GoHtml`] matches Go's
+//! documents round-trip byte for byte. [`Escape::HtmlSafe`] matches Go's
 //! `encoding/json` (the `--json` documents); [`Escape::Plain`] leaves `<`, `>`
 //! and `&` alone (the language-server protocol and the conformance corpus).
 
@@ -24,7 +24,7 @@ pub enum Json {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Escape {
     /// Go's `encoding/json`: also `\b`, `\f`, and `<`-style `<`, `>`, `&`, U+2028, U+2029.
-    GoHtml,
+    HtmlSafe,
     /// Quotes, backslashes and control characters (and DEL) only.
     Plain,
 }
@@ -260,9 +260,9 @@ fn write_string(out: &mut String, text: &str, escape: Escape) {
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
-            '\u{8}' if escape == Escape::GoHtml => out.push_str("\\b"),
-            '\u{c}' if escape == Escape::GoHtml => out.push_str("\\f"),
-            '<' | '>' | '&' | '\u{2028}' | '\u{2029}' if escape == Escape::GoHtml => {
+            '\u{8}' if escape == Escape::HtmlSafe => out.push_str("\\b"),
+            '\u{c}' if escape == Escape::HtmlSafe => out.push_str("\\f"),
+            '<' | '>' | '&' | '\u{2028}' | '\u{2029}' if escape == Escape::HtmlSafe => {
                 let _ = write!(out, "\\u{:04x}", c as u32);
             }
             c if (c as u32) < 0x20 || c == '\u{7f}' && escape == Escape::Plain => {
@@ -425,6 +425,9 @@ impl Parser<'_> {
             .s
             .get(self.at..self.at + 4)
             .ok_or("invalid unicode escape")?;
+        if !digits.iter().all(u8::is_ascii_hexdigit) {
+            return Err("invalid unicode escape".into());
+        }
         let text = std::str::from_utf8(digits).map_err(|_| "invalid unicode escape")?;
         let value = u32::from_str_radix(text, 16).map_err(|_| "invalid unicode escape")?;
         self.at += 4;
@@ -508,7 +511,18 @@ mod tests {
 
     #[test]
     fn rejects_malformed_input() {
-        for bad in ["", "{", "[1,]", "{\"a\" 1}", "01", "\"\\x\"", "1 2", "tru"] {
+        for bad in [
+            "",
+            "{",
+            "[1,]",
+            "{\"a\" 1}",
+            "01",
+            "\"\\x\"",
+            "\"\\u+123\"",
+            "\"\\u-123\"",
+            "1 2",
+            "tru",
+        ] {
             assert!(parse(bad.as_bytes()).is_err(), "{bad}");
         }
     }
@@ -523,7 +537,7 @@ mod tests {
     fn writes_go_and_plain_escapes() {
         let value = Json::str("<a&b>\u{8}\u{7f}\u{2028}");
         assert_eq!(
-            value.compact(Escape::GoHtml),
+            value.compact(Escape::HtmlSafe),
             "\"\\u003ca\\u0026b\\u003e\\b\u{7f}\\u2028\""
         );
         assert_eq!(
@@ -533,14 +547,14 @@ mod tests {
     }
 
     #[test]
-    fn pretty_matches_go_indent() {
+    fn pretty_indent() {
         let value = obj([
             ("a", vec![1i64, 2].into()),
             ("b", Json::object()),
             ("c", Json::Arr(vec![])),
         ]);
         assert_eq!(
-            value.pretty_line(Escape::GoHtml),
+            value.pretty_line(Escape::HtmlSafe),
             "{\n  \"a\": [\n    1,\n    2\n  ],\n  \"b\": {},\n  \"c\": []\n}\n"
         );
     }

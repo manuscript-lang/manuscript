@@ -1,0 +1,21 @@
+{
+  "plan": "One same-source cross-location baseline control, then one matched-location baseline/candidate comparison; no further paths, variants or rebuild selection.",
+  "baseline": "83826bb7ecedb032a36c6b60719f04bbac135e2b",
+  "candidate": "dfe33861ebeefeee851ce43cd722f5a803b91914",
+  "checkout": "/workspace/scratch/numeric-main-replay",
+  "compiler": "/workspace/scratch/float-parse-baseline/target/release/ms",
+  "compiler_sha256": "50371c0c5d43dc64e1bcce681e3a58ce344c6bec3be857c408a4b4483e561c15",
+  "flags": "cargo xtask runtime; Release; unchanged default backend selection; Rust musl opt3 overflowchecks+framepointers",
+  "files": {
+    "/workspace/scratch/numeric-main-replay/crates/ms-rt/src/num.rs": "c6ecc0135ecee9645c918c5457a3449ef48b7fb19686331b2716afb8b6ef4330",
+    "/workspace/scratch/numeric-conversions/main.ms": "48b370cd3ce7eb523bd23f363f97ff214dc52c9199474dc9d6ed5e803f0eba73",
+    "/workspace/scratch/numeric-conversions/main.rs": "37eefefca9138b7d7d29d72f5902e0f12d09edcda9a8a61201cb5bb238972c42",
+    "/workspace/scratch/numeric-conversions/driver.py": "2862e507d1b5065be9b20d3c2396de25f6283201be234c2b34d82472670494ce",
+    "/workspace/scratch/numeric-conversions/repeat.py": "81010424b985b922ac99cff34de043baac75fa506b423501e422409845667b73",
+    "/workspace/scratch/numeric-perf/main.ms": "c81e10b193685980f376ac757c4af1589005808e7bf081de71a71c604beb93cf",
+    "/workspace/scratch/numeric-perf/repeat.py": "0e128c13ac19e5b2b90628726482b01acf54fbab17ed29bd0ce17e55181de6de",
+    "/workspace/scratch/numeric-conversions/confirm.py": "b37e522fc64cc54d465d4d55ce93506ca7d421b29dec356611cc877f99a19c3b"
+  },
+  "rejection": "Reject if the previously demonstrated invalid-input regressions persist. If they disappear without same-source location control explaining them, treat as unresolved; no exoneration. No path-independent claim.",
+  "protocol": "Four labels,8 balanced rotation/reversal phases, one warmup, tiny controls1/2/1000, all16 conversion and33 existing controls; same longcontrol16phase counts20M/50k/2M. Location-only controls use16phases and unchanged longcontrol workloads/counts."
+}

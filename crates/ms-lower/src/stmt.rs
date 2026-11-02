@@ -149,7 +149,9 @@ impl<'a> FnLower<'a> {
                 }
             }
             StmtKind::Return(e) => {
-                self.lent_expr = e.as_ref().map(|e| e as *const Expr as usize);
+                // A view moved out of its local on this path (`view_moves`) is not dropped by
+                // this return; the other paths still drop it.
+                let moved_before = self.closed_on_path.clone();
                 let x = match e {
                     Some(e) => self.expr(e)?,
                     None => Val {
@@ -167,6 +169,7 @@ impl<'a> FnLower<'a> {
                     x
                 };
                 self.emit_return(Some(x));
+                self.closed_on_path = moved_before;
                 // The return released this statement's temporaries.
                 self.temps.truncate(mark);
                 return Ok(());
@@ -249,15 +252,6 @@ impl<'a> FnLower<'a> {
             }
             self.bind_lent(&b, opt.v);
             return Ok(());
-        }
-        if self.lent_return
-            && let PatternKind::Name(_) = pattern.kind
-            && let Some(b) = self.hir.pattern_binding(pattern)
-            && self.cx.shared(b.uid)
-        {
-            // A `let` borrow in a lending function takes the lent form of an accessor, so the
-            // function can hand it back.
-            self.lent_expr = Some(value as *const Expr as usize);
         }
         let x = self.expr(value)?;
         if self.dead {
@@ -393,6 +387,11 @@ impl<'a> FnLower<'a> {
                 // A registered resource closes the value it replaces; the scope closes the new one.
                 if let Some(closer) = self.closers.get(&b.uid).cloned() {
                     self.assign_closing(b.uid, &closer, old, l.ty)?;
+                } else if self.var_slots.iter().any(|v| v.uid == b.uid) {
+                    // A `var` parameter holds the caller's value, which the caller closes at
+                    // the end, but a value this assignment replaces is the callee's to close.
+                    let ty = ms_check::types::sub(&b.ty, &self.subst);
+                    self.close_discarded_ty(&ty, old)?;
                 }
                 self.local_put(&l, new);
                 if self.cx_needs_drop_ty(l.ty) {
@@ -663,7 +662,7 @@ impl<'a> FnLower<'a> {
             let found = if exclusive {
                 let (alias, found) = self.alias_accessor(cond)?;
                 accessor_alias = Some(alias);
-                found
+                crate::alias::Found::Present(found)
             } else if let Some((b, shape)) = self.lendable(binding, cond)? {
                 // `if let x = m.get(k)`: the test is the entry's presence and `x` is the entry
                 // itself, lent for the branch; no `Optional` is built.

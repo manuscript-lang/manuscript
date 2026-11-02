@@ -75,8 +75,8 @@ Only a simple name accepts a type annotation. Destructuring infers each local; e
 
 ## Reassignment and references
 
-A `let` record or collection cannot be mutated. Scalars copy implicitly; strings and other owned values move at their last use into consuming positions, while place bindings can borrow. `.clone()` makes an explicit deep copy; see [mutation and references](../types/references.md).
+A `let` record or collection cannot be mutated. Primitives copy implicitly. A string, record or collection has one owner: `let y = x` and `let y = x.part` borrow it (`x` stays readable and cannot change while `y` is used), `var y = x.part` borrows it exclusively so `y.append(1)` changes `x.part`, and `var y = x` moves it when `x` is not itself a `var`. A value moves into a consuming position (a record field, a collection, a `return` of something that is not a parameter) at its last use; `.clone()` makes an explicit deep copy wherever an independent value is wanted. See [mutation and references](../types/references.md).
 
-`var x = place` is the exception: when the value is a field or element of another `var` (`var n = r.n`, `var xs = r.xs`, `var head = rows[0]`), `x` is a mutable borrow of that part for every type, so `n += 1` changes `r.n` just as `xs.append(1)` changes `r.xs`. To get an independent scalar, bind it with `let` first (`let start = r.n` then `var n = start`); to get an independent collection or record, use `.clone()`. A call result has no place to borrow, so `var n = f()` owns the value.
+`var n = r.n` of a primitive copies the number: `n += 1` leaves `r.n` as it was. A call that returns a part of its argument lends it, so `var xs = b.list()` changes `b`'s list and `var xs = f()` of a function building a new value owns it.
 
 Assignment does not close the previous resource or invalidate aliases. A resource bound with `let` or `var` is closed when its scope ends. See [mutation and references](../types/references.md).

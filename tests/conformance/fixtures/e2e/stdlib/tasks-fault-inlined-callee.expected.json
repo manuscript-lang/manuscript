@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "",
-    "stderr": "index 5 out of range for length 1; pass a default: get(index:, default: ...)\n  at tasks-fault-inlined-callee.ms:13 in boom\n  at tasks-fault-inlined-callee.ms:17 in <anonymous>\n  at @std/tasks.ms:<LINE> in run\n  at @std/tasks.ms:<LINE> in <anonymous>\n  task started by:\n  at @std/tasks.ms:<LINE> in TaskGroup.spawn\n  at tasks-fault-inlined-callee.ms:17 in main\n"
+    "stderr": "index 5 out of range for length 1; pass a default: get(index:, default: ...)\n  at tasks-fault-inlined-callee.ms:13 in boom\n  at tasks-fault-inlined-callee.ms:17 in <anonymous>\n  at @std/concurrency/tasks.ms:<LINE> in run\n  at @std/concurrency/tasks.ms:<LINE> in <anonymous>\n  task started by:\n  at @std/concurrency/tasks.ms:<LINE> in TaskGroup.spawn\n  at tasks-fault-inlined-callee.ms:17 in main\n"
   }
 }

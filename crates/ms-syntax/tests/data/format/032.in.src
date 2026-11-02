@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 # Sum three integer values with explicit named arguments.
 export fn total(first: Int, second: Int, third: Int) Int:

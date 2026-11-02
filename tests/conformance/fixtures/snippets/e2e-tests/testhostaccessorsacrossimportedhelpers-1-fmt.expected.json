@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import stdout from \"@std/io/io.ms\"\nimport monotonic from \"@std/os/time.ms\"\nimport Instant from \"@std/os/time.ms\"\n\nexport fn now() Instant:\n    return monotonic()\n\nexport fn close_output() Unit:\n    stdout().close()\n"
+  }
+}

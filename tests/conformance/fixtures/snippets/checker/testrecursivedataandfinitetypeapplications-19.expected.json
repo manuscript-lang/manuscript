@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3040",
+        "phase": "type",
+        "message": "recursive generic applications must preserve their parameters in B.a; keep the same type arguments in the same positions along a recursive cycle",
+        "position": {
+          "file": "testrecursivedataandfinitetypeapplications-19.ms",
+          "line": 8,
+          "column": 5,
+          "offset": 223
+        }
+      },
+      {
+        "code": "MS3040",
+        "phase": "type",
+        "message": "recursive generic applications must preserve their parameters in A.b; keep the same type arguments in the same positions along a recursive cycle",
+        "position": {
+          "file": "testrecursivedataandfinitetypeapplications-19.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 193
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testrecursivedataandfinitetypeapplications-19.ms:8:5: type: recursive generic applications must preserve their parameters in B.a; keep the same type arguments in the same positions along a recursive cycle\n   |\n 8 |     a: A[U]\n   |     ^\n<DIR>/testrecursivedataandfinitetypeapplications-19.ms:5:5: type: recursive generic applications must preserve their parameters in A.b; keep the same type arguments in the same positions along a recursive cycle\n   |\n 5 |     b: B[List[T]]\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

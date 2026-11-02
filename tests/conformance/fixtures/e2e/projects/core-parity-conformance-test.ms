@@ -1,7 +1,7 @@
 # conform: tags=closures,diagnostics,faults,interfaces,maps,modules,sets,stdlib-testing,testing,tier-core,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/core_parity/conformance_test.ms
-import expect_equal, expect_false, expect_true from "@std/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import (
     first_mapped,
     first_bound_map,

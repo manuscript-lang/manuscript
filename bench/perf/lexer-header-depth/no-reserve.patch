@@ -1,0 +1,10 @@
+--- a/crates/ms-syntax/src/lexer.rs
++++ b/crates/ms-syntax/src/lexer.rs
+@@ -106,7 +106,6 @@
+     let (normalized, offsets) = normalize_source(source);
+     let (tokens, mut boundaries) = {
+         let mut s = Scanner::new(file, &normalized, base_offset, base_line, offsets);
+-        s.tokens.reserve(source.len() / 4 + 16);
+         s.run(None)?;
+         (s.tokens, s.boundaries)
+     };

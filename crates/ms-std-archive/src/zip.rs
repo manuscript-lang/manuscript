@@ -1,7 +1,7 @@
 //! Zip reading and writing for `@std/archive`: end-of-central-directory search (with prefix data and zip64),
 //! stored and deflated members, data descriptors and CRC verification.
+use crate::compress::{crc32, inflate};
 use alloc::vec::Vec;
-use ms_std_compress::{crc32, inflate};
 
 use crate::tar::Bad;
 

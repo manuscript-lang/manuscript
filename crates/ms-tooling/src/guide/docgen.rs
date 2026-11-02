@@ -4,6 +4,7 @@
 
 use crate::guide::api::{ApiDeclaration, ApiMember, ApiModule, standard_library};
 use crate::guide::json::{self, Json};
+use ms_check::stdlib;
 use std::collections::{BTreeMap, BTreeSet};
 
 fn declaration_kind(kind: &str) -> &str {
@@ -37,7 +38,7 @@ fn render(module: &ApiModule, for_site: bool) -> String {
     } else if path == "@std/core.ms" {
         b += "`Error`, `MissingValue`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations; explicit imports of them are rejected.\n\n";
         b += &format!("Import other names with `import Name from {path:?}`.\n\n");
-    } else if path == "@std/collections.ms" {
+    } else if path == "@std/collections/collections.ms" {
         b += "`List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry` are prelude declarations; explicit imports of them are rejected.\n\n";
         b += &format!("Import other names with `import Name from {path:?}`.\n\n");
     } else if path.starts_with("@std/") {
@@ -101,8 +102,9 @@ pub fn site_files() -> BTreeMap<String, Vec<u8>> {
             "stdlib/{}.ms",
             if name == "prelude" { "core" } else { name }
         );
-        // A module in a stdlib subdirectory (`test/property`) gets one flat page (`test-property`).
-        let name = name.replace('/', "-");
+        // The page is named by the module stem (`http`), not its package, so links stay stable; a
+        // module in the `test` package (`test/property`) gets one flat page (`test-property`).
+        let name = stdlib::module_stem(&module.path).replace('/', "-");
         let body = render(module, true);
         files.insert(
             format!("documentation/standard-library/reference/{name}.md"),
@@ -193,7 +195,7 @@ pub fn to_json(modules: &[ApiModule]) -> String {
         ("format".to_string(), Json::int(1)),
         ("modules".to_string(), Json::Arr(modules)),
     ]);
-    value.pretty_line(ms_json::Escape::GoHtml)
+    value.pretty_line(ms_json::Escape::HtmlSafe)
 }
 
 /// Includes every rendered declaration and member, including prelude aliases.
@@ -293,7 +295,7 @@ impl DocumentationInventory {
             ),
             ("entries".to_string(), Json::Arr(entries)),
         ]);
-        value.pretty_line(ms_json::Escape::GoHtml)
+        value.pretty_line(ms_json::Escape::HtmlSafe)
     }
 }
 

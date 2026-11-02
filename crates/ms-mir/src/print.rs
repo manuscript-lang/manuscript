@@ -54,11 +54,6 @@ fn write_ty(m: &Module, t: Ty, out: &mut String) {
             write_ty(m, *e, out);
             out.push('>');
         }
-        TyKind::Ref(e) => {
-            out.push_str("ref<");
-            write_ty(m, *e, out);
-            out.push('>');
-        }
         TyKind::Obj(n, args) => {
             if args.is_empty() {
                 out.push_str("obj ");
@@ -161,13 +156,7 @@ pub fn print_module(m: &Module) -> String {
             .iter()
             .map(|s| {
                 let ps: Vec<String> = s.params.iter().map(|t| ty_str(m, *t)).collect();
-                format!(
-                    "{}({}) -> {}{}",
-                    s.name,
-                    ps.join(", "),
-                    if s.ret_borrowed { "ref " } else { "" },
-                    ty_str(m, s.ret)
-                )
+                format!("{}({}) -> {}", s.name, ps.join(", "), ty_str(m, s.ret))
             })
             .collect();
         let _ = writeln!(o, "iface {} {{ {} }}", i.name, ms.join(", "));

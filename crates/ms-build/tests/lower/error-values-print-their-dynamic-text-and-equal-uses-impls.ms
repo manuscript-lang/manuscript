@@ -2,7 +2,7 @@
 # expect-mir: "iface.is"
 # expect-mir: "iface.new"
 
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import TextError from "@std/core.ms"
 
 type Key:

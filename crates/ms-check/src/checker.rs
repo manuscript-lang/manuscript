@@ -117,6 +117,8 @@ pub struct Program {
     pub borrows: Rc<HashMap<usize, crate::ownership::BorrowKind>>,
     /// Resource bindings closed implicitly when their scope ends. Filled together with `borrows`.
     pub implicit_closes: Rc<HashSet<usize>>,
+    /// Closed resource bindings that also have an explicit `.close()` call.
+    pub explicit_closes: Rc<HashSet<usize>>,
     /// The name expressions that move a closed resource binding, by binding.
     pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
     /// Payload bindings of a consumed match scrutinee that some path moves out.
@@ -126,9 +128,18 @@ pub struct Program {
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
-    /// `ref` functions that return a borrow on every path, by module file and node, for lowering.
-    /// Filled together with `borrows`.
+    /// Callables whose result is a reference into their arguments (`ownership::Ownership`).
     pub lenders: Rc<HashSet<(Name, NodeId)>>,
+    /// Callables whose result is an owned interface view of their arguments.
+    pub view_lenders: Rc<HashSet<(Name, NodeId)>>,
+    /// Wrappers (`x?`, `ok(x)`, `error(x)`) of lent values that stay references.
+    pub view_wraps: Rc<HashSet<(Name, NodeId)>>,
+    /// Name expressions moving an interface view out of the local holding it.
+    pub view_moves: Rc<HashSet<(Name, NodeId)>>,
+    /// Lending calls whose result the caller owns, by module file and call node.
+    pub owned_lends: Rc<HashMap<(Name, NodeId), crate::ownership::OwnedLend>>,
+    /// Conditional and match expressions whose value is a reference, by module file and node.
+    pub lent_matches: Rc<HashSet<(Name, NodeId)>>,
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
     /// identity. Filled together with `borrows`.
     pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
@@ -159,12 +170,12 @@ pub struct CallbackReturns {
     pub context_dependent: bool,
 }
 
-/// A default-bound check deferred until implementations are bound.
-pub struct DeferredBound {
+/// A default type check deferred until declarations and implementations are complete.
+pub struct DeferredTypeDefault {
     /// Default type.
     pub resolved: Ty,
-    /// Bound it must satisfy.
-    pub bound: Ty,
+    /// Bounds it must satisfy, with its own variable replaced by the default.
+    pub bounds: Vec<Ty>,
     /// Where to report.
     pub pos: Pos,
     /// File of the declaring module.
@@ -193,7 +204,7 @@ pub struct Checker {
     pub(crate) mismatch_context: Option<String>,
     pub(crate) scope_marker: Option<String>,
     pub(crate) standard_declarations: bool,
-    pub(crate) deferred_default_bounds: Vec<DeferredBound>,
+    pub(crate) deferred_type_defaults: Vec<DeferredTypeDefault>,
     pub(crate) id_scope: String,
     /// Mutually importing bundled source modules checked together.
     pub(crate) group: Vec<ModRef>,
@@ -244,7 +255,7 @@ impl Checker {
             mismatch_context: None,
             scope_marker: options.scope_marker.clone(),
             standard_declarations: false,
-            deferred_default_bounds: Vec::new(),
+            deferred_type_defaults: Vec::new(),
             id_scope: String::new(),
             group: Vec::new(),
             p: Program::default(),
@@ -417,12 +428,21 @@ impl Checker {
             return;
         }
         if existing.is_some() {
-            self.res_error(
-                pos,
+            let current = self.current_file();
+            let imported = s.module != current
+                && existing
+                    .as_ref()
+                    .is_some_and(|e| !stdlib::is_prelude_symbol(e));
+            let message = if imported {
+                format!(
+                    "import {name} collides with another {name} in this module; an import cannot be renamed, so import only one {name} here and wrap the other in a small module that exports it under a new name"
+                )
+            } else {
                 format!(
                     "duplicate or intrinsic name {name}; this name is already declared, imported, or built in, so rename one of them"
-                ),
-            );
+                )
+            };
+            self.res_error(pos, message);
             self.rejected_names.insert(name);
             return;
         }
@@ -478,6 +498,14 @@ impl Checker {
                         param.name
                     ),
                 );
+            } else if self.intrinsic_type_parameter(param.name) {
+                self.res_error(
+                    param.pos,
+                    format!(
+                        "duplicate or intrinsic type parameter {}; choose a different type parameter name",
+                        param.name
+                    ),
+                );
             }
             let v: Ty = Rc::new(Type::new(
                 param.name,
@@ -487,12 +515,7 @@ impl Checker {
             variables.push(v.clone());
             self.scope.types.borrow_mut().insert(param.name, v);
         }
-        for (i, param) in method.func.type_params.iter().enumerate() {
-            for bound in &param.bounds {
-                let t = self.resolve(Some(bound));
-                variables[i].bounds.borrow_mut().push(t);
-            }
-        }
+        self.resolve_type_bounds(&method.func.type_params, &variables);
         self.type_defaults(&method.func.type_params, &variables);
         stdlib::set_operation_variables(format!("{owner}/{}", method.func.name), variables);
     }
@@ -597,6 +620,7 @@ impl Checker {
                 self.implementation(d);
             }
         }
+        self.check_type_defaults();
         self.check_test_fixture(module);
         self.check_defaults(module);
         self.check_bodies(module);
@@ -656,6 +680,7 @@ impl Checker {
                 }
             }
         }
+        self.check_type_defaults();
         for module in group {
             self.enter_module(module);
             self.check_test_fixture(module);
@@ -681,15 +706,34 @@ impl Checker {
                         .and_then(|names| names.borrow().get(&item.name).cloned());
                     f.filter(|f| f.module == pn)
                 } else {
-                    stdlib::standard_module_symbol(pn, item.name)
+                    // A file that mixes native declarations and bodies exports both halves under its own name.
+                    stdlib::standard_module_symbol(pn, item.name).or_else(|| {
+                        let twin = stdlib::import_source(item)?;
+                        stdlib::ensure_source(&twin)
+                            .exports
+                            .get(&item.name)
+                            .filter(|s| s.module == twin.file)
+                            .cloned()
+                    })
                 }
             } else {
-                self.imports
-                    .get(module.file, item.id)
-                    .and_then(|target| self.p.symbols.get(&target).cloned())
-                    .and_then(|names| names.borrow().get(&item.name).cloned())
+                self.imports.get(module.file, item.id).and_then(|target| {
+                    self.p.symbols.get(&target).and_then(|names| {
+                        names
+                            .borrow()
+                            .get(&item.name)
+                            .filter(|symbol| symbol.module == target)
+                            .cloned()
+                    })
+                })
             };
-            let usable = found.as_ref().filter(|f| f.export).cloned();
+            let hidden = stdlib::is_internal(path) && !module.file.starts_with("@std/");
+            // An internal module declares the natives of its host and names the host's private types.
+            let host = stdlib::is_internal(module.file.as_str());
+            let usable = found
+                .as_ref()
+                .filter(|f| (f.export || host) && !hidden)
+                .cloned();
             let Some(found) = usable else {
                 let end = Pos::new(
                     item.name_pos.offset + item.name.len() as u32,
@@ -834,8 +878,20 @@ impl Checker {
 
     /// Resolves default type arguments.
     pub(crate) fn type_defaults(&mut self, params: &[TypeParam], vars: &[Ty]) {
+        if !params.iter().any(|param| param.default.is_some()) {
+            return;
+        }
         let mut defaulted = false;
         let old = self.scope.clone();
+        // Receiver parameters and Self stay visible; this parameter list's own
+        // variables become visible only after their defaults have been resolved.
+        let enclosing = Scope::new(old.parent.clone());
+        let own: HashSet<Name> = vars.iter().map(|v| v.id).collect();
+        for (name, ty) in old.types.borrow().iter() {
+            if !own.contains(&ty.id) {
+                enclosing.types.borrow_mut().insert(*name, ty.clone());
+            }
+        }
         for (index, p) in params.iter().enumerate() {
             let Some(default) = &p.default else {
                 if defaulted {
@@ -850,31 +906,48 @@ impl Checker {
                 continue;
             };
             defaulted = true;
-            self.scope = self.variable_scope(&vars[..index]);
+            self.scope = Scope::new(Some(enclosing.clone()));
+            for var in &vars[..index] {
+                self.scope.types.borrow_mut().insert(var.name, var.clone());
+            }
             let resolved = self.resolve(Some(default));
             if invalid_ty(&resolved) {
                 continue;
             }
-            for bound in vars[index].bounds() {
-                if self.standard_declarations {
-                    self.deferred_default_bounds.push(DeferredBound {
-                        resolved: resolved.clone(),
-                        bound: bound.clone(),
-                        pos: default.pos,
-                        module: self.m(),
-                    });
-                } else if !self.satisfies(&resolved, &bound) {
-                    let msg = self.unsatisfied_message(
-                        &resolved,
-                        &bound,
-                        "choose a default that already implements it",
-                    );
-                    self.type_error(default.pos, msg);
-                }
-            }
+            let bindings = Subst::from([(vars[index].id, resolved.clone())]);
+            self.deferred_type_defaults.push(DeferredTypeDefault {
+                resolved: resolved.clone(),
+                bounds: vars[index]
+                    .bounds()
+                    .iter()
+                    .map(|bound| sub(bound, &bindings))
+                    .collect(),
+                pos: default.pos,
+                module: self.m(),
+            });
             *vars[index].default.borrow_mut() = Some(resolved);
         }
         self.scope = old;
+    }
+
+    /// Fields and implementations must be complete before defaults are tested.
+    pub(crate) fn check_type_defaults(&mut self) {
+        let old_module = self.module.clone();
+        for check in std::mem::take(&mut self.deferred_type_defaults) {
+            self.module = Some(check.module);
+            self.well_formed(&check.resolved, check.pos, &mut HashSet::new());
+            for bound in check.bounds {
+                if !self.satisfies(&check.resolved, &bound) {
+                    let message = self.unsatisfied_message(
+                        &check.resolved,
+                        &bound,
+                        "choose a default that already implements it",
+                    );
+                    self.type_error(check.pos, message);
+                }
+            }
+        }
+        self.module = old_module;
     }
 
     fn resolve_signatures(&mut self, module: &ModRef) {
@@ -980,7 +1053,14 @@ impl Checker {
                             continue;
                         };
                         let old = self.scope.clone();
-                        let vars = self.sym(i.name).map(|s| s.variables()).unwrap_or_default();
+                        let mut vars = self.sym(i.name).map(|s| s.variables()).unwrap_or_default();
+                        if let Some(symbol) = self.sym(i.name) {
+                            vars.extend(stdlib::operation_variables(&format!(
+                                "{}/{}",
+                                symbol.ty().id,
+                                method.func.name
+                            )));
+                        }
                         self.scope = self.variable_scope(&vars);
                         let typ = self.resolve(param.ty.as_ref());
                         self.expression(default, Some(&typ));
@@ -1099,17 +1179,19 @@ impl Checker {
         b
     }
 
+    pub(crate) fn intrinsic_type_parameter(&self, name: Name) -> bool {
+        self.sym(name).is_some_and(|s| s.module.as_str().is_empty())
+            || matches!(
+                name.as_str(),
+                "Equal" | "Comparable" | "Hashable" | "Clonable"
+            )
+    }
+
     pub(crate) fn type_variables(&mut self, params: &[TypeParam]) -> Vec<Ty> {
         let mut vars: Vec<Ty> = Vec::new();
         for p in params {
-            let intrinsic = self
-                .sym(p.name)
-                .is_some_and(|s| s.module.as_str().is_empty())
-                || self.scope.types.borrow().contains_key(&p.name)
-                || matches!(
-                    p.name.as_str(),
-                    "Equal" | "Comparable" | "Hashable" | "Clonable"
-                );
+            let intrinsic = self.intrinsic_type_parameter(p.name)
+                || self.scope.types.borrow().contains_key(&p.name);
             if intrinsic {
                 self.res_error(
                     p.pos,
@@ -1124,6 +1206,12 @@ impl Checker {
             vars.push(v.clone());
             self.scope.types.borrow_mut().insert(p.name, v);
         }
+        self.resolve_type_bounds(params, &vars);
+        vars
+    }
+
+    /// Attaches only interface bounds, consistently for declarations and operations.
+    pub(crate) fn resolve_type_bounds(&mut self, params: &[TypeParam], vars: &[Ty]) {
         for (i, p) in params.iter().enumerate() {
             for b in &p.bounds {
                 // A declaration's own parameters are not registered yet, so resolving it here would misreport its arity.
@@ -1159,7 +1247,6 @@ impl Checker {
                 vars[i].bounds.borrow_mut().push(t);
             }
         }
-        vars
     }
 
     /// Resolves a written type.
@@ -1350,7 +1437,7 @@ impl Checker {
         let defaults = if defaults.is_empty() {
             None
         } else {
-            Some(Rc::new(defaults))
+            Some(Rc::new(ParameterDefaults::new(defaults)))
         };
         function_with(ps, r, defaults)
     }
@@ -1538,7 +1625,7 @@ impl Checker {
         {
             self.type_error(
                 decl.pos(),
-                "make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it",
+                "make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it",
             );
             return;
         }
@@ -1573,7 +1660,9 @@ impl Checker {
             }
         }
         // `a..b` is parsed as a call of `..`, which is always the standard `range`.
-        if let Some(range) = stdlib::standard_module_symbol(n("@std/collections.ms"), n("range")) {
+        if let Some(range) =
+            stdlib::standard_module_symbol(n("@std/collections/collections.ms"), n("range"))
+        {
             self.names.borrow_mut().insert(n(".."), range);
         }
         for name in stdlib::STANDARD_PRELUDE_NAMES {
@@ -1596,11 +1685,12 @@ impl Checker {
 }
 
 pub(crate) fn hex(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() * 2);
-    for b in s.bytes() {
-        out.push_str(&format!("{b:02x}"));
-    }
-    out
+    use std::fmt::Write;
+    s.bytes()
+        .fold(String::with_capacity(s.len() * 2), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
 }
 
 /// Drops repeats of one message at one position.
@@ -1626,3 +1716,7 @@ pub fn self_variable(owner: Name) -> Ty {
         Kind::Variable,
     ))
 }
+
+#[cfg(test)]
+#[path = "operation_bounds_tests.rs"]
+mod operation_bounds_tests;

@@ -1,5 +1,12 @@
 import Arg, CliError, Command, Flag, FlagKind, Matches, command from "@std/cli.ms"
-import expect_contains, expect_equal, expect_error, expect_ok, expect_some, fail from "@std/test.ms"
+import (
+    expect_contains,
+    expect_equal,
+    expect_error,
+    expect_ok,
+    expect_some,
+    fail
+) from "@std/test/test.ms"
 
 type ServeOptions:
     port: Int
@@ -8,7 +15,7 @@ type ServeOptions:
     verbose: Bool
     tags: List[String]
 
-fn serve(options: ServeOptions) Result[Int, Error]:
+fn serve(options: ServeOptions) Int!:
     return ok(options.port)
 
 fn common_flags() List[Flag]:
@@ -64,7 +71,7 @@ fn app() Command:
         children: [serve_command(), remote_group()]
     )
 
-fn run(argv: List[String]) Result[Matches, CliError]:
+fn run(argv: List[String]) Matches!CliError:
     let parsed = app().parse(argv)
     if parsed.is_error(): return error(parsed.err().clone())
 
@@ -72,7 +79,7 @@ fn run(argv: List[String]) Result[Matches, CliError]:
         Run(_, matches): return ok(matches.clone())
         Help(text): return ok(Matches(path: [text.clone()]))
 
-fn failure(argv: List[String]) Result[String, Error]:
+fn failure(argv: List[String]) String!:
     let result = app().parse(argv)
     if result.is_ok(): return error(CliError.InvalidSchema("accepted"))
 
@@ -111,7 +118,7 @@ test "optional and rest arguments":
 
     let full = (run(["remote", "add", "origin", "u", "x", "y"]) | try expect_ok)
     full.list("extra") | try expect_equal(["x", "y"])
-    full.string_or_none("url") | try expect_equal(some("u"))
+    full.string_or_none("url") | try expect_equal("u")
 
 test "usage errors name the problem":
     (try failure(["serve"])) | try expect_equal("cli: missing required root")
@@ -209,7 +216,7 @@ test "schema mistakes are reported before parsing":
         "bad command name help"
     )
 
-fn handled(argv: List[String]) Result[Int, Error]:
+fn handled(argv: List[String]) Int!:
     let parsed = app().parse(argv)
     if parsed.is_error(): return error(parsed.err().clone())
 

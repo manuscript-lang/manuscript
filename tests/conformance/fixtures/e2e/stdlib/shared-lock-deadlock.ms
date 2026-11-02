@@ -1,23 +1,23 @@
 # conform: tags=stdlib-shared,stdlib-tasks,tier-io
 # conform: phase=run
-import Channel from "@std/channels.ms"
-import stdout from "@std/io.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
-import TaskGroup from "@std/tasks.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import Channel from "@std/io/channels.ms"
+import stdout from "@std/io/io.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 fn holder(box: Shared[Int], chan: Channel[Unit, Unit]) Int:
     var ch = chan.clone()
     var _g = lock(box)
     let _never = ch.receive()
-    _g.close()
+    _g.close().get(none)
     return 0
 
 fn waiter(box: Shared[Int]) Int:
     var g = lock(box)
     g.value = 1
-    g.close()
+    g.close().get(none)
     return 1
 
 export fn main() Int:
@@ -29,5 +29,5 @@ export fn main() Int:
     let w = g.spawn(fn ch: waiter(box))
     let _ = stdout().write("waiting\n")
     let _ = w.result()
-    g.close()
+    g.close().get(none)
     return 0

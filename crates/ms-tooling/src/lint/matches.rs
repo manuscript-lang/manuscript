@@ -50,7 +50,7 @@ impl Scan<'_> {
         let (code, message, first, second) = if ty.is_std("Optional") {
             (
                 "MSL108",
-                "Matching an Optional with only some and none; use 'if let value = ...:' with 'else:', or an Optional method such as get(default) or map",
+                "Matching an Optional with only a payload arm and none; use 'if let value = ...:' with 'else:', or an Optional method such as get(default) or map",
                 "some",
                 "none",
             )

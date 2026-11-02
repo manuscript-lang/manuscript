@@ -2,7 +2,7 @@
 //! references and highlights.
 
 use crate::analysis::{Analysis, Document};
-use crate::index::{DeclFiles, OccInfo, Occurrence, callables, expr_text};
+use crate::index::{DeclFiles, OccInfo, Occurrence, callables, expr_text, hidden_structure};
 use crate::json::{Json, obj};
 use crate::text::{self, Position, Range};
 use ms_check::syntax::ModRef;
@@ -10,6 +10,7 @@ use ms_check::types::{Name, SymRef};
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
+use std::collections::HashMap;
 use std::rc::Rc;
 
 /// The occurrence covering a position, if the document is checked.
@@ -39,8 +40,9 @@ pub struct Hit {
 struct Finder<'a> {
     module: &'a ModRef,
     source: &'a str,
-    p: Position,
+    cursor: Result<usize, Position>,
     best: Option<Hit>,
+    hidden: HashMap<NodeId, bool>,
 }
 
 impl Finder<'_> {
@@ -49,12 +51,27 @@ impl Finder<'_> {
         let Some(info) = self.module.facts().info(e.id).cloned() else {
             return;
         };
+        if hidden_structure(self.module, e, &info, &mut self.hidden) {
+            return;
+        }
         let offset = e.pos.offset as usize;
-        let start = text::position(self.source, offset);
-        let end = text::position(self.source, offset + text.len());
-        let inside = self.p.line == start.line
-            && self.p.character >= start.character
-            && self.p.character < end.character;
+        let end = offset + text.len();
+        let inside = if let Ok(cursor) = self.cursor
+            && self.source.get(offset..end) == Some(text)
+            && !text.contains('\n')
+        {
+            cursor >= offset && cursor < end
+        } else {
+            // Invalid positions and mismatched/recovered snapshots retain the
+            // original clamped UTF-16 comparison.
+            let p = self
+                .cursor
+                .map(|at| text::position(self.source, at))
+                .unwrap_or_else(|p| p);
+            let start = text::position(self.source, offset);
+            let end = text::position(self.source, end);
+            p.line == start.line && p.character >= start.character && p.character < end.character
+        };
         if inside && self.best.as_ref().is_none_or(|b| text.len() < b.text.len()) {
             self.best = Some(Hit {
                 offset,
@@ -97,8 +114,9 @@ pub fn at(analysis: &Analysis, d: &Document, p: Position, index: &[Occurrence]) 
     let mut finder = Finder {
         module: &module,
         source: &d.text,
-        p,
+        cursor: text::offset(&d.text, p).map_err(|_| p),
         best: None,
+        hidden: HashMap::new(),
     };
     for decl in &module.decls {
         visit::walk_decl(&mut finder, decl.decl());
@@ -392,7 +410,7 @@ pub fn type_definition(
     match hit.info.ty.as_ref().and_then(|t| t.symbol()) {
         Some(symbol) => {
             // Point at the declared name, as definition does, not at the declaration keyword.
-            let key = crate::index::symbol_key(Some(&symbol));
+            let key = crate::index::symbol_key(&analysis.module_path(""), Some(&symbol));
             let name = index.iter().find(|e| e.declaration && e.key == key);
             match name.and_then(|e| occurrence_location(analysis, e)) {
                 Some(found) => Json::Arr(vec![found]),
@@ -414,30 +432,54 @@ pub fn references_with_index(
     let Some(selected) = occurrence_at(analysis, d, p, index) else {
         return Vec::new();
     };
-    index
+    let entries: Vec<_> = index
         .iter()
         .filter(|e| e.key == selected.key && (include || !e.declaration))
-        .filter_map(|e| occurrence_location(analysis, e))
-        .collect()
+        .collect();
+    if entries.is_empty() {
+        return Vec::new();
+    }
+    let modules = analysis.source_modules();
+    let mut locations = Vec::with_capacity(entries.len());
+    for entries in entries.chunk_by(|a, b| a.file == b.file) {
+        let file = entries[0].file;
+        let Some(module) = modules.iter().find(|m| m.file == file) else {
+            continue;
+        };
+        // Index only the prefix needed by these locations. A reference near the
+        // start of a large file should not scan the unrelated remainder.
+        let end = entries
+            .iter()
+            .map(|e| e.offset.max(e.end))
+            .max()
+            .unwrap_or(0);
+        let source = module.source.get(..end).unwrap_or(&module.source);
+        let positions = text::SourcePositions::new(source);
+        let source_uri = analysis.source_uri(file.as_str());
+        locations.extend(
+            entries
+                .iter()
+                .map(|entry| location(&source_uri, positions.range(entry.offset, entry.end))),
+        );
+    }
+    locations
 }
 
-/// Go prints a location map as `map[range:{{a b} {c d}} uri:u]`; results
-/// are ordered by that text, which this reproduces.
-pub fn go_location_order(location: &Json) -> String {
+/// Orders locations by range (start line and character, then end), then URI.
+pub type LocationKey = (i64, i64, i64, i64, String);
+
+/// The sort and de-duplication key of a location.
+pub fn location_sort_key(location: &Json) -> LocationKey {
     let number = |j: Option<&Json>| j.and_then(|j| j.as_i64()).unwrap_or(0);
     let range = location.get("range");
     let side = |name: &str| {
         let s = range.and_then(|r| r.get(name));
-        format!(
-            "{{{} {}}}",
+        (
             number(s.and_then(|s| s.get("line"))),
-            number(s.and_then(|s| s.get("character")))
+            number(s.and_then(|s| s.get("character"))),
         )
     };
-    format!(
-        "map[range:{{{} {}}} uri:{}]",
-        side("start"),
-        side("end"),
-        location.get("uri").and_then(|u| u.as_str()).unwrap_or("")
-    )
+    let (start, end) = (side("start"), side("end"));
+    let uri = location.get("uri").and_then(|u| u.as_str()).unwrap_or("");
+    (start.0, start.1, end.0, end.1, uri.to_string())
 }

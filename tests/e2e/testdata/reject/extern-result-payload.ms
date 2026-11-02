@@ -6,7 +6,7 @@ impl Error for ReadError:
         match self:
             Failed(message): return message
 
-extern fn read_value() Result[Int, ReadError]
+extern fn read_value() Int!ReadError
 
 export fn main() Int:
     return 0

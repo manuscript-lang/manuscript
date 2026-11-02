@@ -1,5 +1,5 @@
-import stdout from "@std/io.ms"
-import sleep, nanoseconds from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import sleep, nanoseconds from "@std/os/time.ms"
 
 export fn main() Int:
     stdout().write("first\n").get()

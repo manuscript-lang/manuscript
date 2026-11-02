@@ -1,0 +1,50 @@
+{
+  "file-before": {
+    "previous": ".artifacts/control-scan/file-ready-before",
+    "rebuilt": ".artifacts/control-scan/file-latest-before",
+    "sha256": "4eef203b38e09c96cc6cfc64d249d2980f25ce0c08bcafb0e9dbdfa1c22cd972",
+    "identical": true
+  },
+  "file-after": {
+    "previous": ".artifacts/control-scan/file-inline-after",
+    "rebuilt": ".artifacts/control-scan/file-latest-after",
+    "sha256": "e321df9a7b3ded3b34b574eba6dfd263c0fbad3ea29a16437cdc2ebf984ca4c3",
+    "identical": true
+  },
+  "file-error-before": {
+    "previous": ".artifacts/control-scan/file-error-ready-before",
+    "rebuilt": ".artifacts/control-scan/file-error-latest-before",
+    "sha256": "a6d67d569b3b1d29259b8ae82ecd2b8bd765fdbd82b63168b5429cc7675c13b6",
+    "identical": true
+  },
+  "file-error-after": {
+    "previous": ".artifacts/control-scan/file-error-inline-after",
+    "rebuilt": ".artifacts/control-scan/file-error-latest-after",
+    "sha256": "fb81350f806ed940f8344957f2c6d27ab5c63f063332748d3956ba9e546cda31",
+    "identical": true
+  },
+  "file-writer-before": {
+    "previous": ".artifacts/control-scan/file-writer-ready-before",
+    "rebuilt": ".artifacts/control-scan/file-writer-latest-before",
+    "sha256": "d60594d4881a61dd66e71feb45a5f9f85b4d41f8683c06d76d0ce225c6edc544",
+    "identical": true
+  },
+  "file-writer-after": {
+    "previous": ".artifacts/control-scan/file-writer-inline-after",
+    "rebuilt": ".artifacts/control-scan/file-writer-latest-after",
+    "sha256": "d60594d4881a61dd66e71feb45a5f9f85b4d41f8683c06d76d0ce225c6edc544",
+    "identical": true
+  },
+  "read-before": {
+    "previous": ".artifacts/control-scan/read-ready-before",
+    "rebuilt": ".artifacts/control-scan/read-latest-before",
+    "sha256": "82f39994cef960560584cacc8c5d3564479d226d94369fec43599762948de43d",
+    "identical": true
+  },
+  "read-after": {
+    "previous": ".artifacts/control-scan/read-inline-after",
+    "rebuilt": ".artifacts/control-scan/read-latest-after",
+    "sha256": "82f39994cef960560584cacc8c5d3564479d226d94369fec43599762948de43d",
+    "identical": true
+  }
+}

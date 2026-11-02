@@ -9,7 +9,7 @@ interface Show:
 type Counter:
     value: Int
 
-type Box[T]:
+type Box[T: Clonable]:
     item: T
 
 type Shape:
@@ -38,8 +38,8 @@ impl Show for Counter:
         return "counter"
 
 impl Box[T]:
-    fn get() ref T:
-        return self.item
+    fn get() T:
+        return self.item.clone()
 
 impl Shape:
     fn area() Int:

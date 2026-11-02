@@ -34,7 +34,7 @@ backend setting establishes the identity here.
 
 Seven paired process runs alternate before/after order. Each run takes three
 timed samples per case after untimed setup and calibration/warmup. Measurement
-uses `@std/bench.ms` inside the generated executable, excluding compilation,
+uses `@std/test/bench.ms` inside the generated executable, excluding compilation,
 compiler startup, process startup, regex compilation, and input preparation.
 The driver is pinned to CPU 0; no other local builds or tests run during the
 comparison. These are warm measurements on a shared VM, not cold-cache results.

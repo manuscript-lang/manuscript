@@ -21,6 +21,7 @@ impl import in interface let match not or ref return self test true try type
 unit var while
 ```
 
+- `ref` is reserved but has no meaning: a program that writes it is rejected with a hint to drop it, because a function that returns a part of a parameter lends it without a marker.
 - `opaque` is contextual too: it modifies a `type` declaration only directly before `type` (`export opaque type Name:`), so `let opaque = 1` is valid.
 - `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `let from = 2` and `let bench = 3` are valid.
 - Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Unit) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `none`, `unit`, `try expr`, and so on).
@@ -91,7 +92,7 @@ fn example() Int:
     )
 ```
 
-Use `fn value: value - 1` when context supplies the parameter type; an inline body returns its value, while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
+Use `fn value: value - 1` when context supplies the parameter type; an inline body returns its value (it can be a conditional expression: `fn value: if value > 0: value else: 0`), while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
 
 ```manuscript
 fn example() Int:
@@ -111,8 +112,8 @@ In the EBNF, braces repeat, brackets are optional, and quoted brackets are sourc
 
 ```ebnf
 Module        = { Import | Declaration } ;
-Import        = "import", ( Name | "{", ImportNames, "}" ), "from", PlainStringLiteral, NEWLINE ;
-ImportNames   = Name, { ",", Name }, [ "," ] ;
+Import        = "import", ( ImportNames | "(", ImportNames, [ "," ], ")" ), "from", PlainStringLiteral, NEWLINE ;
+ImportNames   = Name, { ",", Name } ;
 Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration
               | ConstantDeclaration | ExternDeclaration)
               | Implementation | TestDeclaration | BenchDeclaration ;
@@ -131,8 +132,7 @@ ContractBody  = OperationSignature, { OperationSignature } ;
 OperationSignature = "fn", Name, "(", [ FunctionParameters ], ")", ResultType, NEWLINE ;
 FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
                       ResultType, FunctionSuite ;
-ResultType    = [ "ref" ], Type ;
-(* `ref` marks a result that lends part of a borrowed parameter or the receiver; see ownership. A function type has no `ref`. *)
+ResultType    = Type ;
 Implementation = "impl", NamedType, [ "for", NamedType ], ":", NEWLINE,
                  [ INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ] ;
 (* With "for", the first NamedType is the interface and the second the type. Without it, the only NamedType is the type and the block declares its own methods. *)
@@ -155,18 +155,19 @@ TypeParameters = "[", TypeParameter, { ",", TypeParameter }, [ "," ], "]" ;
 TypeParameter = Name, [ ":", Bounds ], [ "=", Type ] ;
 Bounds        = NamedType, { "&", NamedType } ;
 
-Type          = NamedType | FunctionType | "(", Type, ")" ;
+Type          = ( NamedType | FunctionType | "(", Type, ")" ), { "?" | "!", [ NamedType ] } ;
 NamedType     = TypePath, [ TypeArguments ] ;
 TypePath      = Name, { ".", Name } ;
 TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
 FunctionType  = "fn", "(", [ Type, { ",", Type } ], ")", Type ;
 ```
 
+- A type suffix `?` is `Optional[T]`; `!` is `Result[T, Error]`, and `!E` with `E` directly after the bang is `Result[T, E]`. Suffixes apply left to right.
 - A `type` declares record fields or alternative cases, never both; its methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A nullary case is `case Ready`, without `()`. Names are unique per scope.
 - A result type follows the parameter list with no arrow (`fn double(value: Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value: Int) Int: value * 2`).
 - Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
 - Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and alternative payloads have none. Parameter names in a `Callable` type do not exist: two function types are the same when their parameter types and result type match, and calls through function values are positional. No variadics or parameter patterns.
-- A named function or method body may be `...` (`fn commands() Commands: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. Interface, implementation, test, bench, and control-flow suites are nonempty.
+- A named function or method body may be `...` (`fn read_bytes(count: Int) Bytes: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. Interface, implementation, test, bench, and control-flow suites are nonempty.
 - Imports and declarations may interleave; order does not affect resolution. Import paths, test names, and bench names are plain literals (escapes allowed, no interpolation).
 - `export` applies to types, interfaces, and named functions, not tests, benches, or `impl` blocks.
 - `impl` blocks declare no type parameters, and `impl Type:` is accepted only in the module that declares `Type`: in `impl Contract[T] for Data[T]:`, `T` comes from the receiver type and bounds from the declarations. Every parameter in the signatures must occur in the receiver application, and operations and source methods cannot declare their own. Overlap follows [contracts](../types/contracts.md#generic-implementations).

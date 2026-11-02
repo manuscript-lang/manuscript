@@ -1,0 +1,18 @@
+{
+  "base_revision": "28946f9c42b48eff4b79a01edc2130bd92c82133",
+  "compiler_revision": "28946f9c42b48eff4b79a01edc2130bd92c82133",
+  "artifacts": {
+    "compiler": "7c4a0e64031279d42628f03acac92bf4c8859fc9914777aca8bf4d89eb892f34",
+    "native_before": "9f4313e5ed42a5b7c5c1d5eee08968c145f8f7b2d0203b6a9285c8d01f4139e5",
+    "native_after": "e0c8adb1c5b9d37e2a2dac2577729706cd6f7f85ce35b1552dba22e7073274e3",
+    "url_before": "d5db62a0f0cfd2b93b7a781604375faf162523d4de68ba8bee5ec525c917b885",
+    "url_after": "7a93941a556c637bf59860492dcbbe9217844fda95f3cd6b660b42545de2beaf",
+    "path_before_merged": "1dc92a9eb0eea7b815004a6fa0185b2e87e13f21ee73fb44edef658ddee98b5c",
+    "path_after": "1dc92a9eb0eea7b815004a6fa0185b2e87e13f21ee73fb44edef658ddee98b5c",
+    "path_before81": "780ee96af79da530549813776f9e6156b06ea8d0452cbae0dbb8bebf39c21ee5",
+    "rust": "e8ecaffd7043c1d94d9d66c5a7ce81b48f5a2bf4cd0712c83093319b9755a70e",
+    "allocation_before": "c72eeb3060dcc2a41261063251ad423251170a75bcebcefdafdc8414dcbf68f7",
+    "allocation_after": "0491b736451e07cfc2da2fa0bc5b8e63a2cdeeb49431cc5ebab2baca653411cd"
+  },
+  "url_source_sha256": "de5d743f84f32decf5e8dfa45c40eb6fa6a4e7c74081017422e70e3eb394dd46"
+}

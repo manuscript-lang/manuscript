@@ -1,0 +1,146 @@
+{
+  "complete": true,
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "/workspace/manuscript/bench/perf/bytes-index/compare.py",
+        "/workspace/byte-search-evidence/fresh-main-988/baseline-byte",
+        "/workspace/byte-search-evidence/fresh-main-988/word-byte",
+        "/workspace/perf-toolchain/bytes-index-rust-target/release/bytes-index-rust",
+        "/workspace/byte-search-evidence/fresh-main-988/byte220",
+        "--cpu",
+        "0"
+      ],
+      "exit": 0,
+      "log": "byte220.log"
+    },
+    {
+      "argv": [
+        "python3",
+        "/workspace/byte-search-evidence/fresh-main-988/runner/string-normalize-ascii/compare_matrix.py",
+        "/workspace/byte-search-evidence/fresh-main-988/lines-programs.json",
+        "/workspace/byte-search-evidence/fresh-main-988/lines-identities.json",
+        "/workspace/byte-search-evidence/fresh-main-988/lines-matrix",
+        "--cpu",
+        "0",
+        "--cycles",
+        "2"
+      ],
+      "exit": 0,
+      "log": "lines.log"
+    },
+    {
+      "argv": [
+        "python3",
+        "/workspace/byte-search-evidence/fresh-main-988/runner/string-normalize-ascii/compare_matrix.py",
+        "/workspace/byte-search-evidence/fresh-main-988/normalize-programs.json",
+        "/workspace/byte-search-evidence/fresh-main-988/normalize-identities.json",
+        "/workspace/byte-search-evidence/fresh-main-988/normalize-matrix",
+        "--cpu",
+        "0",
+        "--cycles",
+        "2"
+      ],
+      "exit": 0,
+      "log": "normalize.log"
+    },
+    {
+      "argv": [
+        "python3",
+        "/workspace/byte-search-evidence/fresh-main-988/runner/string-normalize-ascii/compare_matrix.py",
+        "/workspace/byte-search-evidence/fresh-main-988/reverse-programs.json",
+        "/workspace/byte-search-evidence/fresh-main-988/reverse-identities.json",
+        "/workspace/byte-search-evidence/fresh-main-988/reverse-matrix",
+        "--cpu",
+        "0"
+      ],
+      "exit": 0,
+      "log": "reverse.log"
+    }
+  ],
+  "inputs": {
+    "/workspace/byte-search-evidence/fresh-main-988/build-record.json": "e1a4814555913697109b24ad5eb677536b1103f19bd98e419a12e580725cf50c",
+    "/workspace/byte-search-evidence/fresh-main-988/production.patch": "cb9a96f155412173e5e26c5ed529d317ba06eb0b3f25072ee3c9aa467100cbed",
+    "/workspace/byte-search-evidence/fresh-main-988/replay.py": "55b0393fb9cefbad2b3f75a82d6a721076d8d1a84d803419f6c504ced42d30e4",
+    "/workspace/manuscript/bench/perf/bytes-index/compare.py": "9b6d6b2360a39b5686c5912f14ab0f4ba38b0fdc989e51e63e32a57f0db35395",
+    "/workspace/manuscript/bench/perf/bytes-index/identities.json": "92f64bf1570cfb2edea65d39e7de7a09dc9223dd37cf589140a03dcee973523d",
+    "/workspace/byte-search-evidence/fresh-main-988/runner/string-normalize-ascii/compare_matrix.py": "d2ebeaf2c449cc49830beba5e267dc03b89e864ff0cb43830dd29a5144dcd485",
+    "/workspace/byte-search-evidence/fresh-main-988/runner/string-lines/compare.py": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+    "/workspace/byte-search-evidence/fresh-main-988/lines-programs.json": "0eea6886915b0ba087602f8b72ee1917433ded03914b8b829ac4efd319c8790a",
+    "/workspace/byte-search-evidence/fresh-main-988/lines-identities.json": "910d8ccb7b7065c8c90afefdaef31999c694aeefaeb27ee6283505e318d75bc0",
+    "/workspace/byte-search-evidence/fresh-main-988/normalize-programs.json": "01280cf816942677bef28957ecdd675d602041e20733d930f8a8fb5973f4bd25",
+    "/workspace/byte-search-evidence/fresh-main-988/normalize-identities.json": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+    "/workspace/byte-search-evidence/fresh-main-988/reverse-programs.json": "e5d23b40605f00bc44b5770ac1c17ae95cd8be292c1f48b3f066b84e2e01c8ec",
+    "/workspace/byte-search-evidence/fresh-main-988/reverse-identities.json": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0"
+  },
+  "programs": {
+    "baseline-byte": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/baseline-byte",
+      "sha256": "62686cd4ee32d9622e13fbf59a8bb143d7f0df0a5b5e3ca29ac741c2f3b4019e"
+    },
+    "baseline-lines": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/baseline-lines",
+      "sha256": "e2195cfe6da848ac93bb25c21516351882e769d9a3e4174580926dc78ebb03ca"
+    },
+    "baseline-normalize": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/baseline-normalize",
+      "sha256": "58e766fa2bb4d664bb8ea59f15ca266f4c07c95d8c1d318ef9c9ff3e8a0161cc"
+    },
+    "baseline-reverse": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/baseline-reverse",
+      "sha256": "4e5bfe6e4aff26cc10291a686f20b5a849bfaf43f3641487dced1c6cbeb8ce51"
+    },
+    "word-byte": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/word-byte",
+      "sha256": "5a3c11bff2e465a0149605298d0619013add95cf9b622b431030bf5ac5075f11"
+    },
+    "word-lines": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/word-lines",
+      "sha256": "2366bed8606945ce9be44f7b9f6ac7dbce2c5928c5f496427a4a912083f932d5"
+    },
+    "word-normalize": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/word-normalize",
+      "sha256": "e1f20f26d948f6d732fd6f10f1cf56962e4b77cbf9c1cc43661bc2268a352a1e"
+    },
+    "word-reverse": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/word-reverse",
+      "sha256": "8ed413db341a0fc9b3acda46441220fb43f9739d925ffdb5f577611bb80c8f90"
+    },
+    "rust-byte": {
+      "path": "/workspace/perf-toolchain/bytes-index-rust-target/release/bytes-index-rust",
+      "sha256": "a3682e891b77d3f0801de7b8edea638f0eca5a48c0033bdbd91d39aed48f567c"
+    },
+    "rust-reverse": {
+      "path": "/workspace/reverse-discovery/rust-reverse-control",
+      "sha256": "5e3f74836ec76da1835928aa6fd50ec0aa2fcecea9f88a37efc3f82798fce6ea"
+    }
+  },
+  "integrity_after": {
+    "/workspace/byte-search-evidence/fresh-main-988/build-record.json": true,
+    "/workspace/byte-search-evidence/fresh-main-988/production.patch": true,
+    "/workspace/byte-search-evidence/fresh-main-988/replay.py": true,
+    "/workspace/manuscript/bench/perf/bytes-index/compare.py": true,
+    "/workspace/manuscript/bench/perf/bytes-index/identities.json": true,
+    "/workspace/byte-search-evidence/fresh-main-988/runner/string-normalize-ascii/compare_matrix.py": true,
+    "/workspace/byte-search-evidence/fresh-main-988/runner/string-lines/compare.py": true,
+    "/workspace/byte-search-evidence/fresh-main-988/lines-programs.json": true,
+    "/workspace/byte-search-evidence/fresh-main-988/lines-identities.json": true,
+    "/workspace/byte-search-evidence/fresh-main-988/normalize-programs.json": true,
+    "/workspace/byte-search-evidence/fresh-main-988/normalize-identities.json": true,
+    "/workspace/byte-search-evidence/fresh-main-988/reverse-programs.json": true,
+    "/workspace/byte-search-evidence/fresh-main-988/reverse-identities.json": true
+  },
+  "programs_integrity_after": {
+    "baseline-byte": true,
+    "baseline-lines": true,
+    "baseline-normalize": true,
+    "baseline-reverse": true,
+    "word-byte": true,
+    "word-lines": true,
+    "word-normalize": true,
+    "word-reverse": true,
+    "rust-byte": true,
+    "rust-reverse": true
+  }
+}

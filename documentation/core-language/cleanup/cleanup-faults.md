@@ -22,4 +22,4 @@ Root hosts isolate and report request failures.
 
 Shielding cannot force uncooperative code to finish. Hosts set cleanup watchdogs separately from request timeouts, and may need [process-level escalation](../../contributing/runtime-conventions.md#host-escalation) if cleanup cannot finish.
 
-Handle expected failures with an explicit fallible method before leaving the scope; for example, commit a transaction rather than relying on close. See [Closeable](closeable.md) and [resource release](resource-release.md).
+A close that returns an error is not a fault where the function can return it: the error becomes the function's result (see [Closeable](closeable.md#a-close-returns-a-result)). Commit a transaction explicitly rather than relying on close when you need to react to its failure. See [Closeable](closeable.md) and [resource release](resource-release.md).

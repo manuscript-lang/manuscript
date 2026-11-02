@@ -1,0 +1,3 @@
+fn show(value: Int) String:
+    # The incomplete quote forces the forgiving scanner.
+    return "😀 é

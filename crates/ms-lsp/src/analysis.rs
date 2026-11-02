@@ -96,6 +96,14 @@ impl Analysis {
         self.diagnostics.is_empty()
     }
 
+    /// Whether the program resolves completely: no diagnostic, or only unread
+    /// local bindings, which are style errors that leave every name resolved.
+    pub fn resolves(&self) -> bool {
+        self.diagnostics
+            .iter()
+            .all(|d| d.subcode() == Some("MS3000.1"))
+    }
+
     /// The directory a module's logical path is relative to.
     fn root(&self) -> &str {
         if self.project_root.is_empty() {

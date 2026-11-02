@@ -719,6 +719,13 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Alt(c, Rc::new(self.take_args(f, regs, a))));
             }
+            Op::AltView => {
+                let Imm::Case(_, c) = inst.imm else {
+                    return Err(Raw::internal("alt.view without case"));
+                };
+                let fields: Vec<Val> = a.iter().map(|x| arg(f, regs, *x, false, m)).collect();
+                set!(Val::Alt(c, Rc::new(fields)));
+            }
             Op::AltTag => {
                 let Val::Alt(t, _) = &regs[a[0].index()] else {
                     return Err(Raw::internal("alt.tag on a non-alternative"));
@@ -774,6 +781,21 @@ impl<'m> Interp<'m> {
                 set!(Val::List(Rc::new(Vec::with_capacity(cap))));
             }
             Op::ListLit => set!(Val::List(Rc::new(self.take_args(f, regs, a)))),
+            Op::ListConst => {
+                let elem = inst.res.and_then(|r| self.m.list_elem(f.ty(r)));
+                let kind = elem.map(|e| self.m.types.kind(e).clone());
+                let items = self.m.list_consts[imm_int(inst.imm) as usize]
+                    .iter()
+                    .map(|&r| match kind {
+                        Some(TyKind::Float | TyKind::Float32) => {
+                            Val::Float(f64::from_bits(r as u64))
+                        }
+                        Some(TyKind::Bool) => Val::Bool(r != 0),
+                        _ => Val::Int(r),
+                    })
+                    .collect();
+                set!(Val::List(Rc::new(items)))
+            }
             Op::ListLen => {
                 let Val::List(l) = &regs[a[0].index()] else {
                     return Err(Raw::internal("list.len on a non-list"));
@@ -815,7 +837,6 @@ impl<'m> Interp<'m> {
             }
             Op::OptSome => set!(Val::Opt(Some(Rc::new(arg(f, regs, a[0], true, m))))),
             Op::OptView => set!(Val::Opt(Some(Rc::new(arg(f, regs, a[0], false, m))))),
-            Op::RefNew | Op::RefGet => set!(arg(f, regs, a[0], false, m)),
             Op::OptNone => set!(Val::Opt(None)),
             Op::OptIsSome => {
                 let Val::Opt(o) = &regs[a[0].index()] else {
@@ -889,6 +910,13 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Iface(v, Rc::new(arg(f, regs, a[0], true, m))));
             }
+            Op::IfaceLend => {
+                let Imm::Vtable(v) = inst.imm else {
+                    return Err(Raw::internal("iface.lend without vtable"));
+                };
+                set!(Val::Iface(v, Rc::new(arg(f, regs, a[0], false, m))));
+            }
+            Op::IfaceView => set!(regs[a[0].index()].clone()),
             Op::IfaceIs => {
                 let (Imm::Vtable(want), Val::Iface(have, _)) = (inst.imm, &regs[a[0].index()])
                 else {

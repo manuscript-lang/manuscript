@@ -12,7 +12,7 @@ full outputs. Trials alternate program and compiler order. Trial `-1` is a disca
 warm-up. Build validation executes separately from the timed compilation.
 
 Build both compiler revisions with the same pinned Rust toolchain and the pinned
-LLVM bundle from `scripts/lld.lock`. Save the binaries under different names. Build
+LLVM bundle from `toolchain/lld.lock`. Save the binaries under different names. Build
 the stage driver separately with `cargo build --release --locked -p ms-build --example
 perf_stages`. It uses the same public passes as Release and requires a real LLVM
 object; it cannot silently measure a Cranelift fallback.

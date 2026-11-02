@@ -1,0 +1,19 @@
+{
+  "driver_sha256": "8a6f5cef7942db365a9b95e4338700fb7f0c531774129c40fd5a93c3e918a540",
+  "records": [
+    {
+      "label": "before",
+      "binary": "/workspace/toml-scan/.artifacts/control-scan/file-ready-before",
+      "sha256": "4eef203b38e09c96cc6cfc64d249d2980f25ce0c08bcafb0e9dbdfa1c22cd972",
+      "exit": 1,
+      "result": "changed external input rejected after setup"
+    },
+    {
+      "label": "after",
+      "binary": "/workspace/toml-scan/.artifacts/control-scan/file-inline-after",
+      "sha256": "e321df9a7b3ded3b34b574eba6dfd263c0fbad3ea29a16437cdc2ebf984ca4c3",
+      "exit": 1,
+      "result": "changed external input rejected after setup"
+    }
+  ]
+}

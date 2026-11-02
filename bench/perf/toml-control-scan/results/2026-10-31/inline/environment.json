@@ -1,0 +1,108 @@
+{
+  "command": [
+    "bench/perf/toml-control-scan/file-run.py",
+    "--before",
+    ".artifacts/control-scan/file-ready-before",
+    "--after",
+    ".artifacts/control-scan/file-inline-after",
+    "--rust",
+    "bench/perf/toml-control-scan/rust/target/release/file",
+    "--error-before",
+    ".artifacts/control-scan/file-error-ready-before",
+    "--error-after",
+    ".artifacts/control-scan/file-error-inline-after",
+    "--writer-before",
+    ".artifacts/control-scan/file-writer-ready-before",
+    "--writer-after",
+    ".artifacts/control-scan/file-writer-inline-after",
+    "--read-before",
+    ".artifacts/control-scan/read-ready-before",
+    "--read-after",
+    ".artifacts/control-scan/read-inline-after",
+    "--rust-writer",
+    "bench/perf/toml-control-scan/rust/target/release/file-writer",
+    "--rust-read",
+    "bench/perf/toml-control-scan/rust/target/release/read",
+    "--output",
+    ".artifacts/control-scan/inline",
+    "--revision",
+    "f9009c115a00f91dddf1714ceb39bae6365f8f73"
+  ],
+  "revision": "f9009c115a00f91dddf1714ceb39bae6365f8f73",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "before_toml_sha256": "79b719c6bfab6b57566bebb644b7523c172f74d610dd2778e051b76c674ab522",
+  "after_toml_sha256": "50a72a61e28ae32f8ecdc5951492c1f3c9447c3ba9aa8ab6f12b357f8a3b97e7",
+  "binaries": {
+    "before": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-ready-before",
+      "sha256": "4eef203b38e09c96cc6cfc64d249d2980f25ce0c08bcafb0e9dbdfa1c22cd972"
+    },
+    "after": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-inline-after",
+      "sha256": "e321df9a7b3ded3b34b574eba6dfd263c0fbad3ea29a16437cdc2ebf984ca4c3"
+    },
+    "rust": {
+      "path": "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/file",
+      "sha256": "db46b21bb7225895b0bf97f429033764eb02e2a6a19ee6389e9f358f662aeed7"
+    }
+  },
+  "error_binaries": {
+    "before": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-error-ready-before",
+      "sha256": "a6d67d569b3b1d29259b8ae82ecd2b8bd765fdbd82b63168b5429cc7675c13b6"
+    },
+    "after": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-error-inline-after",
+      "sha256": "fb81350f806ed940f8344957f2c6d27ab5c63f063332748d3956ba9e546cda31"
+    }
+  },
+  "writer_binaries": {
+    "before": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-writer-ready-before",
+      "sha256": "d60594d4881a61dd66e71feb45a5f9f85b4d41f8683c06d76d0ce225c6edc544"
+    },
+    "after": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-writer-inline-after",
+      "sha256": "d60594d4881a61dd66e71feb45a5f9f85b4d41f8683c06d76d0ce225c6edc544"
+    },
+    "rust": {
+      "path": "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/file-writer",
+      "sha256": "1aad86292f5c3d8ad30e88731ef49122fa441522a45beae583cb3de93c77b485"
+    }
+  },
+  "read_binaries": {
+    "before": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/read-ready-before",
+      "sha256": "82f39994cef960560584cacc8c5d3564479d226d94369fec43599762948de43d"
+    },
+    "after": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/read-inline-after",
+      "sha256": "82f39994cef960560584cacc8c5d3564479d226d94369fec43599762948de43d"
+    },
+    "rust": {
+      "path": "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/read",
+      "sha256": "dd743861f8f37ab8e5bc316b425034bcdf0d7a437bc77d2d93173da751c139a3"
+    }
+  },
+  "source_and_runtime_sha256": {
+    "bench/perf/toml-control-scan/file.ms": "67a34a271bad946a300786a0383ac5ad1a14a2a2c12ffd6a7a423053949bffa7",
+    "bench/perf/toml-control-scan/file-error.ms": "78f35a3599c26400828da932322123f204ab47155b61d45503af98de9500594d",
+    "bench/perf/toml-control-scan/file-writer.ms": "857702d1d2b8fc75d9ed74046c98dbba4a17447a6a7c5a7c7a3d7cb62ae8853b",
+    "bench/perf/toml-control-scan/read.ms": "1dbb460759b61a3bcea33d04106ef8721d26466ed6d1e80a3205a26df00d02ff",
+    "bench/perf/toml-control-scan/file-run.py": "571037cfe672a77d09268485bbaad62ebfc90af61bbdccb3a59763c50c29f32d",
+    "bench/perf/toml-control-scan/rust/src/bin/file.rs": "60c9be0e755902f6009b9fb3a24ba0d7ed8e7ebd797a1f772417cb3acd55bf66",
+    "bench/perf/toml-control-scan/rust/src/bin/file-writer.rs": "63e85dbc32f1ec321360ddf3665cae0349741e6017f0d1e0731e13c47e6eb4f1",
+    "bench/perf/toml-control-scan/rust/src/bin/read.rs": "3b7f306f9f3bfec57d285cd1a2974d6aedaeef7c3bdfb0a5d0b4c0438ee75b26",
+    "bench/perf/toml-control-scan/rust/Cargo.toml": "ef79c60baceaaa7ba8eb9ca85dfff347733fdc5723c0500626d4dbc34ee12798",
+    "bench/perf/toml-control-scan/rust/Cargo.lock": "21b823c8a50ae6ef118aaaae5bcbce499e870ad5a30ed65d7c284ff8c2b056f2",
+    "Cargo.lock": "28394abc6273c1de6f6651304368979865e9e20b2b00eee4512f85565ddd0b43",
+    "rust-toolchain.toml": "7f5140056a968f51f7a91e1d73fd6b8c226054ecb5c6d39e791de484f9616457",
+    ".cargo/config.toml": "c411c17fbefc5c7148567d4a348fbf29cde557426121c29c6ae0525fbbd8c34e",
+    "scripts/lld.lock": "6026878d9013e192ec3d1fc384691808383f0593d386d52b5faa2ca2d903fa41",
+    "target/ms-native/libms_native.a": "7bedae2865ccfd8ca715a69ac17212431934688a14fac7cd86c0291f7893de6f"
+  },
+  "build": "cargo xtask runtime; cargo build --release --locked -p ms-cli; ms build each unchanged source producer --build-type Release; Rust standalone Cargo release opt-level3 panic=abort with repository frame pointers",
+  "trials": 12,
+  "note": "Each measured iteration reads fresh UTF-8 file input; cached-file ingestion includes I/O and prevents treating parser input as loop-invariant. Full equivalent string-table values; possible different TOML quoting. Read-only and writer-only controls retain I/O. Errors compare exact MS diagnostics only. Setup/printing excluded; read/parse/serialization/destruction/full-output guards timed. Counts calibrated separately per producer; retain actual counts."
+}

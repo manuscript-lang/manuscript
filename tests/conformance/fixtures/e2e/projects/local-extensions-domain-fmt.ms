@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,faults,formatter,generics,interfaces,modules,parser,records,stdlib-collections,tier-stdlib
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/local_extensions/domain.ms
-import Shared from "@std/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import Read from "./contracts.ms"
 
 export interface Original:

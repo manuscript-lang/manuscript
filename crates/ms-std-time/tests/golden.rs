@@ -5,7 +5,7 @@ use ms_rt as _;
 use ms_std_time::core_time::{Ts, calendar, from_calendar, to_string};
 
 #[test]
-fn matches_go() {
+fn matches_oracle() {
     let text = match std::env::var("MS_TIME_GOLDEN") {
         Ok(path) => std::fs::read_to_string(path).unwrap(),
         Err(_) => include_str!("golden/golden.txt").to_string(),

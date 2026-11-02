@@ -450,8 +450,13 @@ impl Exchange {
         if data.len() > remaining {
             return Err(IoErr::failed("response body limit exceeded"));
         }
-        if is_head || !server::body_allowed(status) {
+        if !server::body_allowed(status) {
             return Err(IoErr::InvalidInput);
+        }
+        // A HEAD answer has no body: the bytes are dropped, so a handler written for GET
+        // streams unchanged. The head alone goes out when the handler returns.
+        if is_head {
+            return Ok(());
         }
         let deadline = self.deadline();
         let result = if let Some(id) = self.h2_id() {
@@ -539,6 +544,11 @@ impl Exchange {
             return Err(self.upgrade_h2(&request, &options));
         }
         let deadline = self.deadline();
+        // RFC 6455 section 4.2.1: the opening handshake is an HTTP/1.1 (or later) request.
+        if self.st.borrow().minor == 0 {
+            let rejected = handshake::Rejected::new(400, "websocket: upgrade needs HTTP/1.1");
+            return Err(self.reject(rejected, deadline));
+        }
         match handshake::accept(&request, &options) {
             Err(rejected) => Err(self.reject(rejected, deadline)),
             Ok(accepted) => {

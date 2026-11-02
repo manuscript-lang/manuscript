@@ -1,4 +1,4 @@
-import expect_equal, expect_false, fail from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
 
 type Failure:
     message_text: String
@@ -7,26 +7,23 @@ impl Error for Failure:
     fn message() String:
         return self.message_text.clone()
 
-fn success() Result[Int?, Error]:
-    return ok(some(7))
+fn success() Int?!:
+    return ok(7)
 
-fn failure() Result[Int, Failure]:
+fn failure() Int!Failure:
     return error(Failure("failed"))
 
-fn propagated() Result[Int, Error]:
+fn propagated() Int!:
     return ok(try failure())
 
 test "prelude cases and optional methods need no imports":
-    let inferred = some(3)
+    let inferred: Int? = 3
     let absent: Int? = none
     let qualified: Int? = 5
     try expect_false(not inferred.is_some() or not absent.is_none())
     try expect_false(inferred.get() != 3 or qualified.get() != 5)
     try expect_false(
-        (
-            absent.get(9) != 9
-            or absent.or_else(fn() Int?: return some(11)).get() != 11
-        )
+        (absent.get(9) != 9 or absent.or_else(fn() Int?: return 11).get() != 11)
     )
 
     let value = try success()

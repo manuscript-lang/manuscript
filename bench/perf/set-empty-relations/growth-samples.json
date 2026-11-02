@@ -1,0 +1,1198 @@
+{
+  "complete": true,
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "affinity": [
+    0
+  ],
+  "sha256": {
+    "/workspace/collection-evidence/growth-fresh-before": "2bdd6d9b7bc8bd5b37f5822c767e64ffe9355919e7cfd579b2cfc53dca8f1a45",
+    "/workspace/collection-evidence/growth-fresh-after": "7a0d70ede0122e9188d606da487028126d3080b334ae9ee8a0fc1513a6ed0b77",
+    "/workspace/collection-evidence/growth-rust": "a12419c0c94b99da5d4cc2dd0c33c5b62759ee54a90ce6ea51fc40a15d95fc79"
+  },
+  "cases": [
+    {
+      "mode": "int_insert",
+      "size": 0,
+      "prefix_width": 0,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          9645295,
+          9651686,
+          9701479,
+          9641889,
+          9652126,
+          9611264
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          9684455,
+          9661639,
+          9703574,
+          9654310,
+          9642931,
+          9654270
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          1249714,
+          1258698,
+          1259249,
+          1287311,
+          1248502,
+          1246209
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 9648490.5,
+        "/workspace/collection-evidence/growth-fresh-after": 9657974.5,
+        "/workspace/collection-evidence/growth-rust": 1254206.0
+      }
+    },
+    {
+      "mode": "int_churn",
+      "size": 0,
+      "prefix_width": 0,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          2756604,
+          3981812,
+          2798087,
+          2769173,
+          3175622,
+          2754411
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          2793018,
+          2862643,
+          2811737,
+          2767831,
+          2819770,
+          2954040
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          895263,
+          894141,
+          895002,
+          898147,
+          898878,
+          948071
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 2783630.0,
+        "/workspace/collection-evidence/growth-fresh-after": 2815753.5,
+        "/workspace/collection-evidence/growth-rust": 896705.0
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 0,
+      "prefix_width": 0,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          9883413,
+          9870653,
+          9987029,
+          9855712,
+          9963913,
+          9888770
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          9894389,
+          9855040,
+          9896041,
+          9885525,
+          9865165,
+          9861079
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          1350256,
+          1370034,
+          1345017,
+          1347901,
+          1375053,
+          1355843
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 9886091.5,
+        "/workspace/collection-evidence/growth-fresh-after": 9875345.0,
+        "/workspace/collection-evidence/growth-rust": 1353049.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 0,
+      "prefix_width": 16,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          9887348,
+          9887108,
+          9878746,
+          9857163,
+          9856783,
+          9838735
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          9869473,
+          9850513,
+          9852666,
+          9844273,
+          9842401,
+          9883073
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          1350516,
+          1353109,
+          1483245,
+          1352398,
+          1349734,
+          1419619
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 9867954.5,
+        "/workspace/collection-evidence/growth-fresh-after": 9851589.5,
+        "/workspace/collection-evidence/growth-rust": 1352753.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 0,
+      "prefix_width": 256,
+      "repeats": 111111,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          1124136,
+          1113540,
+          1132138,
+          1096384,
+          1117275,
+          1120811
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          1098147,
+          1114151,
+          1113160,
+          1151197,
+          1167421,
+          1139609
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          148062,
+          207602,
+          148062,
+          148292,
+          147811,
+          187201
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 1119043.0,
+        "/workspace/collection-evidence/growth-fresh-after": 1126880.0,
+        "/workspace/collection-evidence/growth-rust": 148177.0
+      }
+    },
+    {
+      "mode": "int_insert",
+      "size": 1,
+      "prefix_width": 0,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          3092208,
+          2959959,
+          2904967,
+          2933710,
+          2943884,
+          2910996
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          2887120,
+          2876274,
+          2875502,
+          2849944,
+          3087560,
+          2864046
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          4105657,
+          3942082,
+          3993920,
+          4064566,
+          4078126,
+          4057586
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 2938797.0,
+        "/workspace/collection-evidence/growth-fresh-after": 2875888.0,
+        "/workspace/collection-evidence/growth-rust": 4061076.0
+      }
+    },
+    {
+      "mode": "int_churn",
+      "size": 1,
+      "prefix_width": 0,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          1611647,
+          1600040,
+          1634170,
+          1626319,
+          1618818,
+          1637085
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          1568353,
+          1593670,
+          1593600,
+          1590054,
+          1588413,
+          1565257
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          3015622,
+          2992578,
+          2988602,
+          3173510,
+          2999499,
+          3068061
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 1622568.5,
+        "/workspace/collection-evidence/growth-fresh-after": 1589233.5,
+        "/workspace/collection-evidence/growth-rust": 3007560.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 1,
+      "prefix_width": 0,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          3474091,
+          3599628,
+          3654220,
+          3477075,
+          3535442,
+          3494812
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          3529002,
+          3506329,
+          3530825,
+          3500289,
+          3591036,
+          3506128
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          4570986,
+          4530865,
+          4598176,
+          4487581,
+          4741170,
+          4472017
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 3515127.0,
+        "/workspace/collection-evidence/growth-fresh-after": 3517665.5,
+        "/workspace/collection-evidence/growth-rust": 4550925.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 1,
+      "prefix_width": 16,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          4718106,
+          4752668,
+          4543974,
+          4526269,
+          4632077,
+          4678316
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          4824646,
+          4467230,
+          4471496,
+          4456394,
+          4695642,
+          4478707
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          5171296,
+          5267419,
+          5418596,
+          5159397,
+          5180229,
+          5279668
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 4655196.5,
+        "/workspace/collection-evidence/growth-fresh-after": 4475101.5,
+        "/workspace/collection-evidence/growth-rust": 5223824.0
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 1,
+      "prefix_width": 256,
+      "repeats": 11111,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          1836144,
+          1760300,
+          1803135,
+          1884616,
+          1777586,
+          1765638
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          1824076,
+          1760400,
+          1895413,
+          1861662,
+          1780150,
+          1800370
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          1771978,
+          1808171,
+          1767691,
+          1801632,
+          1783475,
+          1805077
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 1790360.5,
+        "/workspace/collection-evidence/growth-fresh-after": 1812223.0,
+        "/workspace/collection-evidence/growth-rust": 1792553.5
+      }
+    },
+    {
+      "mode": "int_insert",
+      "size": 8,
+      "prefix_width": 0,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          1291137,
+          1286389,
+          1290135,
+          1292819,
+          1283976,
+          1320150
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          1333620,
+          1303114,
+          1288542,
+          1307962,
+          1388001,
+          1295884
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          6155813,
+          6195672,
+          6116133,
+          6133128,
+          6189663,
+          6173618
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 1290636.0,
+        "/workspace/collection-evidence/growth-fresh-after": 1305538.0,
+        "/workspace/collection-evidence/growth-rust": 6164715.5
+      }
+    },
+    {
+      "mode": "int_churn",
+      "size": 8,
+      "prefix_width": 0,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          1755383,
+          1763064,
+          1734391,
+          1742683,
+          1731947,
+          1753660
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          1775623,
+          1733419,
+          1718447,
+          1725528,
+          1727651,
+          1720210
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          3269433,
+          3178737,
+          3247241,
+          3222863,
+          3233560,
+          3200800
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 1748171.5,
+        "/workspace/collection-evidence/growth-fresh-after": 1726589.5,
+        "/workspace/collection-evidence/growth-rust": 3228211.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 8,
+      "prefix_width": 0,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          2623414,
+          2494210,
+          2450025,
+          2612108,
+          2471477,
+          2504036
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          2467270,
+          2512889,
+          2446279,
+          2457946,
+          2425708,
+          2455934
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          8482752,
+          8265797,
+          8143643,
+          8246008,
+          8226748,
+          8315000
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 2499123.0,
+        "/workspace/collection-evidence/growth-fresh-after": 2456940.0,
+        "/workspace/collection-evidence/growth-rust": 8255902.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 8,
+      "prefix_width": 16,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          5465597,
+          5234261,
+          5264836,
+          5266638,
+          5409133,
+          5220269
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          5144575,
+          5073389,
+          5076193,
+          5232346,
+          5205888,
+          5107110
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          9937865,
+          10049921,
+          10258153,
+          10286167,
+          10312194,
+          10722681
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 5265737.0,
+        "/workspace/collection-evidence/growth-fresh-after": 5125842.5,
+        "/workspace/collection-evidence/growth-rust": 10272160.0
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 8,
+      "prefix_width": 256,
+      "repeats": 2222,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          2588131,
+          2564215,
+          2569444,
+          2643013,
+          2542123,
+          2577656
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          2548742,
+          2610926,
+          2582193,
+          2548662,
+          2594541,
+          2621091
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          3936664,
+          3828402,
+          3844567,
+          3824877,
+          3869344,
+          3947039
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 2573550.0,
+        "/workspace/collection-evidence/growth-fresh-after": 2588367.0,
+        "/workspace/collection-evidence/growth-rust": 3856955.5
+      }
+    },
+    {
+      "mode": "int_insert",
+      "size": 128,
+      "prefix_width": 0,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          1841732,
+          1876144,
+          1819509,
+          1915172,
+          1977597,
+          1855092
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          1829434,
+          1882744,
+          1820140,
+          1813850,
+          1891547,
+          1836394
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          10448570,
+          10195841,
+          10227559,
+          10218236,
+          10486106,
+          10502932
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 1865618.0,
+        "/workspace/collection-evidence/growth-fresh-after": 1832914.0,
+        "/workspace/collection-evidence/growth-rust": 10338064.5
+      }
+    },
+    {
+      "mode": "int_churn",
+      "size": 128,
+      "prefix_width": 0,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          2562042,
+          2526719,
+          2645908,
+          2653910,
+          2583905,
+          2550255
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          2564806,
+          2596584,
+          2650605,
+          2530315,
+          2541091,
+          2616785
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          5294250,
+          5153669,
+          5235301,
+          5076713,
+          5242793,
+          5122323
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 2572973.5,
+        "/workspace/collection-evidence/growth-fresh-after": 2580695.0,
+        "/workspace/collection-evidence/growth-rust": 5194485.0
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 128,
+      "prefix_width": 0,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          3967580,
+          3926869,
+          4043494,
+          4032498,
+          4224216,
+          3947570
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          4045047,
+          4068271,
+          3969193,
+          3949713,
+          3958557,
+          3954891
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          19834817,
+          19722278,
+          19482009,
+          19667046,
+          19687517,
+          19846185
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 4000039.0,
+        "/workspace/collection-evidence/growth-fresh-after": 3963875.0,
+        "/workspace/collection-evidence/growth-rust": 19704897.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 128,
+      "prefix_width": 16,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          9066097,
+          8924975,
+          8965766,
+          8885236,
+          9044795,
+          8952246
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          8944314,
+          9049773,
+          9096843,
+          8862802,
+          9193188,
+          9003253
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          22270039,
+          23311961,
+          22270360,
+          22025923,
+          22515317,
+          22126064
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 8959006.0,
+        "/workspace/collection-evidence/growth-fresh-after": 9026513.0,
+        "/workspace/collection-evidence/growth-rust": 22270199.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 128,
+      "prefix_width": 256,
+      "repeats": 222,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          4810756,
+          4711137,
+          4719399,
+          4862244,
+          4711536,
+          4751617
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          4617236,
+          4976204,
+          4945077,
+          4807722,
+          4777676,
+          4843375
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          7333589,
+          7419359,
+          7558327,
+          7504857,
+          7438688,
+          7595983
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 4735508.0,
+        "/workspace/collection-evidence/growth-fresh-after": 4825548.5,
+        "/workspace/collection-evidence/growth-rust": 7471772.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 128,
+      "prefix_width": 4096,
+      "repeats": 15,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          4859118,
+          4616824,
+          4658378,
+          4825469,
+          4637416,
+          4820992
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          4548653,
+          4631477,
+          4620731,
+          4706139,
+          4616424,
+          4686209
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          6647821,
+          6493741,
+          6725988,
+          6547992,
+          6713350,
+          6723785
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 4739685.0,
+        "/workspace/collection-evidence/growth-fresh-after": 4626104.0,
+        "/workspace/collection-evidence/growth-rust": 6680585.5
+      }
+    },
+    {
+      "mode": "int_insert",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          3620360,
+          3806099,
+          3616174,
+          3729704,
+          3652529,
+          3738818
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          3800870,
+          3765889,
+          3798157,
+          3755644,
+          3624656,
+          3737456
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          19471807,
+          18275432,
+          18672057,
+          18575413,
+          18560150,
+          18734631
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 3691116.5,
+        "/workspace/collection-evidence/growth-fresh-after": 3760766.5,
+        "/workspace/collection-evidence/growth-rust": 18623735.0
+      }
+    },
+    {
+      "mode": "int_churn",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          4920931,
+          5103164,
+          4903766,
+          4984877,
+          4931617,
+          5113280
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          5001412,
+          4948213,
+          4984497,
+          5416604,
+          5038798,
+          5061743
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          8779900,
+          8631536,
+          8729614,
+          8795083,
+          8916224,
+          8820721
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 4958247.0,
+        "/workspace/collection-evidence/growth-fresh-after": 5020105.0,
+        "/workspace/collection-evidence/growth-rust": 8787491.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          8135402,
+          7482674,
+          7557555,
+          7559208,
+          7315993,
+          7478557
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          7889624,
+          7757416,
+          7665818,
+          7479339,
+          7631657,
+          7621612
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          34838677,
+          35579778,
+          34936283,
+          34678346,
+          34350183,
+          34654851
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 7520114.5,
+        "/workspace/collection-evidence/growth-fresh-after": 7648737.5,
+        "/workspace/collection-evidence/growth-rust": 34758511.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 4096,
+      "prefix_width": 16,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          17943936,
+          17783605,
+          17792617,
+          17707951,
+          17828062,
+          17813769
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          18091356,
+          17995182,
+          17939269,
+          17958086,
+          18462413,
+          17883956
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          41053508,
+          39567880,
+          39168803,
+          39031916,
+          40727099,
+          38538276
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 17803193.0,
+        "/workspace/collection-evidence/growth-fresh-after": 17976634.0,
+        "/workspace/collection-evidence/growth-rust": 39368341.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 4096,
+      "prefix_width": 256,
+      "repeats": 11,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          8205087,
+          8187501,
+          8166068,
+          8144967,
+          8166358,
+          8200640
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          8159238,
+          8215694,
+          8128503,
+          8228142,
+          8224106,
+          8152348
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          13003304,
+          13176874,
+          12970786,
+          13068251,
+          12861572,
+          12831216
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 8176929.5,
+        "/workspace/collection-evidence/growth-fresh-after": 8187466.0,
+        "/workspace/collection-evidence/growth-rust": 12987045.0
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 4096,
+      "prefix_width": 4096,
+      "repeats": 1,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          13868001,
+          13258397,
+          13475593,
+          13654000,
+          13437646,
+          13412439
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          13400240,
+          14771267,
+          13374391,
+          14378357,
+          13302904,
+          13339740
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          18572568,
+          18520130,
+          18743144,
+          19211676,
+          18682722,
+          18211105
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 13456619.5,
+        "/workspace/collection-evidence/growth-fresh-after": 13387315.5,
+        "/workspace/collection-evidence/growth-rust": 18627645.0
+      }
+    },
+    {
+      "mode": "int_insert",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 5,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          9869134,
+          9907361,
+          9978356,
+          9961011,
+          9949004,
+          10015622
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          10007781,
+          9905368,
+          9998528,
+          10115362,
+          10042874,
+          10061322
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          16991356,
+          16953609,
+          17086709,
+          17010845,
+          16998867,
+          17056705
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 9955007.5,
+        "/workspace/collection-evidence/growth-fresh-after": 10025327.5,
+        "/workspace/collection-evidence/growth-rust": 17004856.0
+      }
+    },
+    {
+      "mode": "int_churn",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 5,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          10425047,
+          10427250,
+          10386710,
+          10370516,
+          10420380,
+          11933400
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          10436164,
+          10428873,
+          10309163,
+          10245858,
+          10613469,
+          10671957
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          9088703,
+          9015073,
+          9001913,
+          9076295,
+          8968403,
+          13545603
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 10422713.5,
+        "/workspace/collection-evidence/growth-fresh-after": 10432518.5,
+        "/workspace/collection-evidence/growth-rust": 9045684.0
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 5,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          14008402,
+          13977094,
+          13899648,
+          14072828,
+          13892849,
+          14018628
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          14283215,
+          13955483,
+          13863135,
+          13881031,
+          13978027,
+          13920690
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          35035131,
+          36445206,
+          37333078,
+          38108702,
+          34718336,
+          37706418
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 13992748.0,
+        "/workspace/collection-evidence/growth-fresh-after": 13938086.5,
+        "/workspace/collection-evidence/growth-rust": 36889142.0
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 65536,
+      "prefix_width": 16,
+      "repeats": 5,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          24662374,
+          23405653,
+          22531862,
+          22387988,
+          22759034,
+          22710021
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          22692469,
+          22539217,
+          22577923,
+          22962719,
+          22684011,
+          22610130
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          41468751,
+          40459261,
+          40454954,
+          43886171,
+          40236817,
+          40338430
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 22734527.5,
+        "/workspace/collection-evidence/growth-fresh-after": 22647070.5,
+        "/workspace/collection-evidence/growth-rust": 40457107.5
+      }
+    },
+    {
+      "mode": "string_insert",
+      "size": 65536,
+      "prefix_width": 256,
+      "repeats": 1,
+      "samples": {
+        "/workspace/collection-evidence/growth-fresh-before": [
+          29673464,
+          30123339,
+          29257400,
+          28616659,
+          28823030,
+          29037380
+        ],
+        "/workspace/collection-evidence/growth-fresh-after": [
+          28956470,
+          29574496,
+          28656879,
+          29731782,
+          29454006,
+          28647376
+        ],
+        "/workspace/collection-evidence/growth-rust": [
+          33642907,
+          36273563,
+          34131130,
+          37521755,
+          35166683,
+          37089697
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/growth-fresh-before": 29147390.0,
+        "/workspace/collection-evidence/growth-fresh-after": 29205238.0,
+        "/workspace/collection-evidence/growth-rust": 35720123.0
+      }
+    }
+  ]
+}

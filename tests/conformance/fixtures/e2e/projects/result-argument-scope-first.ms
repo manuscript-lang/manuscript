@@ -7,8 +7,8 @@ import erase, forward from "./helper.ms"
 impl Error for Cause[T]:
     fn message() String: "first {self.value}"
 
-export fn first() Result[Int, Error]: erase(Result[Int, Cause[Int]].error(make()))
+export fn first() Int!: erase(Result[Int, Cause[Int]].error(make()))
 
-export fn first_generic() Result[Int, Error]: forward(
+export fn first_generic() Int!: forward(
     Result[Int, Cause[Int]].error(make())
 )

@@ -29,9 +29,7 @@ pub fn run_where(m: &mut Module, select: impl Fn(&Func) -> bool) -> bool {
         if m.funcs[fi].blocks.is_empty() || !select(&m.funcs[fi]) {
             continue;
         }
-        // The stand-in keeps `ret_borrowed`, so a recursive call still reads as lending.
-        let mut stand_in = Func::new("", Vec::new(), crate::types::Ty::UNIT);
-        stand_in.ret_borrowed = m.funcs[fi].ret_borrowed;
+        let stand_in = Func::new("", Vec::new(), crate::types::Ty::UNIT);
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
         changed |= function(m, &mut f);
         m.funcs[fi] = f;
@@ -56,7 +54,6 @@ fn plain(m: &Module, t: crate::types::Ty, seen: &mut Vec<crate::types::Ty>) -> b
         | TyKind::Float32
         | TyKind::Str
         | TyKind::Bytes => true,
-        TyKind::Ref(_) => true,
         TyKind::Ptr | TyKind::Fn(..) | TyKind::Iface(_) => false,
         TyKind::List(e) | TyKind::Opt(e) => plain(m, *e, seen),
         TyKind::Obj(n, args) => {
@@ -319,12 +316,10 @@ fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> HashSet<Value> {
                     // intermediate alive until the end of the scope).
                     let fresh = matches!(i.imm, Imm::Ext(e) if m.externs[e.index()].fresh);
                     // A lending function's result is a borrow of its arguments.
-                    let lent = m.result_mode(f, i) == Some(Mode::Borrow)
-                        && matches!(i.op, Op::Call | Op::CallMethod);
-                    // A result holding a view of an argument points into it too.
-                    let viewing = matches!(i.op, Op::Call | Op::CallMethod)
-                        && i.res.is_some_and(|r| m.holds_view(f.ty(r)));
-                    if (i.op == Op::CallRt && !fresh || lent || viewing)
+                    let lent = (m.result_mode(f, i) == Some(Mode::Borrow)
+                        && matches!(i.op, Op::Call | Op::CallMethod))
+                        || m.result_views(i);
+                    if (i.op == Op::CallRt && !fresh || lent)
                         && let Some(r) = i.res
                         && !is_scalar(m, f.ty(r))
                     {

@@ -14,9 +14,6 @@ use crate::error::WsErr;
 use crate::http::h1::{self, ResponseHead};
 use crate::http::headers::canonical;
 use crate::http::url;
-use base64::Engine as _;
-use base64::alphabet;
-use base64::engine::{GeneralPurpose, GeneralPurposeConfig};
 use ring::digest;
 use ring::rand::{SecureRandom, SystemRandom};
 
@@ -30,18 +27,12 @@ pub const GUID: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 pub const DEFLATE_RESPONSE: &str =
     "permessage-deflate; server_no_context_takeover; client_no_context_takeover";
 
-/// Standard base64 accepts non-zero trailing bits; the strict default does not.
-const LENIENT: GeneralPurpose = GeneralPurpose::new(
-    &alphabet::STANDARD,
-    GeneralPurposeConfig::new().with_decode_allow_trailing_bits(true),
-);
-
 /// `Sec-WebSocket-Accept` for a challenge key.
 pub fn accept_key(challenge: &str) -> String {
     let mut ctx = digest::Context::new(&digest::SHA1_FOR_LEGACY_USE_ONLY);
     ctx.update(challenge.as_bytes());
     ctx.update(GUID.as_bytes());
-    base64::engine::general_purpose::STANDARD.encode(ctx.finish())
+    ms_std_core::encoding::base64_encode(ctx.finish().as_ref(), false)
 }
 
 /// A fresh `Sec-WebSocket-Key`: 16 random bytes in base64.
@@ -53,12 +44,12 @@ pub fn generate_key() -> String {
             .map_or(0, |d| d.as_nanos());
         bytes.copy_from_slice(&nanos.to_le_bytes());
     }
-    base64::engine::general_purpose::STANDARD.encode(bytes)
+    ms_std_core::encoding::base64_encode(&bytes, false)
 }
 
 /// Whether `s` is the base64 text of exactly 16 bytes.
 pub fn valid_challenge_key(s: &str) -> bool {
-    !s.is_empty() && LENIENT.decode(s).is_ok_and(|b| b.len() == 16)
+    !s.is_empty() && ms_std_core::encoding::base64_decode_lenient(s).is_some_and(|b| b.len() == 16)
 }
 
 fn values<'a>(fields: &'a Fields, name: &'a str) -> impl Iterator<Item = &'a [u8]> {
@@ -300,7 +291,7 @@ pub struct Rejected {
 }
 
 impl Rejected {
-    const fn new(status: u16, message: &'static str) -> Rejected {
+    pub const fn new(status: u16, message: &'static str) -> Rejected {
         Rejected { status, message }
     }
 
@@ -362,7 +353,8 @@ pub fn accept(req: &Request<'_>, options: &ServerOptions<'_>) -> Result<Accepted
         return Err(Rejected::new(403, "websocket: request origin not allowed"));
     }
     let key = first_text(fields, "Sec-WebSocket-Key");
-    if !valid_challenge_key(&key) {
+    // The field must appear once (RFC 6455 section 4.1), or two parsers could read two keys.
+    if !valid_challenge_key(&key) || values(fields, "Sec-WebSocket-Key").count() > 1 {
         return Err(Rejected::new(
             400,
             "websocket: 'Sec-WebSocket-Key' header must be the Base64 text of 16 bytes",
@@ -504,25 +496,28 @@ impl ClientFailure {
 /// The outcome of a valid server response.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ClientAccepted {
-    /// `Sec-WebSocket-Protocol` of the response, taken as sent (it is not checked
-    /// against the offers); empty when absent.
+    /// `Sec-WebSocket-Protocol` of the response, one of the offers; empty when absent.
     pub subprotocol: String,
     pub compress: bool,
 }
 
 /// The client's checks on the response: status 101, `Upgrade` and `Connection` tokens,
-/// the accept key, then the extension (applied whenever the server sends it, as usual
-/// even when the client did not offer it).
+/// the accept key, a subprotocol the client offered (RFC 6455 section 4.1), then the
+/// extension (applied whenever the server sends it, as usual even when the client did
+/// not offer it).
 pub fn check_response(
     status: u16,
     fields: &Fields,
     key: &str,
+    offered: &[String],
 ) -> Result<ClientAccepted, ClientFailure> {
     let accept = first_text(fields, "Sec-WebSocket-Accept");
+    let subprotocol = first_text(fields, "Sec-WebSocket-Protocol");
     if status != 101
         || !token_list_contains(fields, "Upgrade", "websocket")
         || !token_list_contains(fields, "Connection", "upgrade")
         || accept != accept_key(key)
+        || (!subprotocol.is_empty() && !offered.contains(&subprotocol))
     {
         return Err(ClientFailure::BadHandshake);
     }
@@ -537,7 +532,7 @@ pub fn check_response(
         compress = true;
     }
     Ok(ClientAccepted {
-        subprotocol: first_text(fields, "Sec-WebSocket-Protocol"),
+        subprotocol,
         compress,
     })
 }
@@ -546,8 +541,9 @@ pub fn check_response(
 pub fn check_response_head(
     head: &ResponseHead,
     key: &str,
+    offered: &[String],
 ) -> Result<ClientAccepted, ClientFailure> {
-    check_response(head.status, &head.fields, key)
+    check_response(head.status, &head.fields, key, offered)
 }
 
 #[cfg(test)]
@@ -780,6 +776,11 @@ mod tests {
         assert!(r.message.contains("must be the Base64 text of 16 bytes"));
         // The checks run in a fixed order: a bad key hides behind a bad method.
         assert_eq!(reject(&f, "PUT").status, 405);
+        // A repeated key is ambiguous, so it is refused even when each copy is valid.
+        let f = upgrade_fields(&[("Sec-WebSocket-Key", SAMPLE_KEY)]);
+        let r = reject(&f, "GET");
+        assert_eq!(r.status, 400);
+        assert!(r.message.contains("Sec-WebSocket-Key"));
     }
 
     #[test]
@@ -845,7 +846,7 @@ mod tests {
         let Parsed::Complete(resp) = parse_response(&accepted.response, 1 << 16) else {
             panic!("not a response");
         };
-        let done = check_response_head(&resp, SAMPLE_KEY).unwrap();
+        let done = check_response_head(&resp, SAMPLE_KEY, &["echo".to_string()]).unwrap();
         assert_eq!(
             done,
             ClientAccepted {
@@ -863,21 +864,21 @@ mod tests {
             ("Sec-WebSocket-Accept", SAMPLE_ACCEPT),
         ]);
         assert_eq!(
-            check_response(101, &ok, SAMPLE_KEY).unwrap(),
+            check_response(101, &ok, SAMPLE_KEY, &[]).unwrap(),
             ClientAccepted {
                 subprotocol: String::new(),
                 compress: false
             }
         );
         let bad = ClientFailure::BadHandshake;
-        assert_eq!(check_response(200, &ok, SAMPLE_KEY), Err(bad));
+        assert_eq!(check_response(200, &ok, SAMPLE_KEY, &[]), Err(bad));
         assert_eq!(
-            check_response(101, &ok, "AAAAAAAAAAAAAAAAAAAAAA=="),
+            check_response(101, &ok, "AAAAAAAAAAAAAAAAAAAAAA==", &[]),
             Err(bad)
         );
         let mut no_upgrade = ok.clone();
         no_upgrade.retain(|(n, _)| n != "Upgrade");
-        assert_eq!(check_response(101, &no_upgrade, SAMPLE_KEY), Err(bad));
+        assert_eq!(check_response(101, &no_upgrade, SAMPLE_KEY, &[]), Err(bad));
         assert_eq!(bad.message(), "websocket: bad handshake");
         assert_eq!(
             bad.error(),
@@ -889,13 +890,29 @@ mod tests {
             "Sec-WebSocket-Extensions",
             "permessage-deflate; server_no_context_takeover",
         )]));
-        let invalid = check_response(101, &partial, SAMPLE_KEY).unwrap_err();
+        let invalid = check_response(101, &partial, SAMPLE_KEY, &[]).unwrap_err();
         assert_eq!(
             invalid.message(),
             "websocket: invalid compression negotiation"
         );
+        let mut chosen = ok.clone();
+        chosen.extend(fields(&[("Sec-WebSocket-Protocol", "chat")]));
+        let offered = vec!["other".to_string(), "chat".to_string()];
+        let accepted = check_response(101, &chosen, SAMPLE_KEY, &offered).unwrap();
+        assert_eq!(accepted.subprotocol, "chat");
+        // A subprotocol the client did not offer fails the connection (RFC 6455 section 4.1).
+        assert_eq!(check_response(101, &chosen, SAMPLE_KEY, &[]), Err(bad));
+        assert_eq!(
+            check_response(101, &chosen, SAMPLE_KEY, &["other".to_string()]),
+            Err(bad)
+        );
+
         let mut full = ok;
         full.extend(fields(&[("Sec-WebSocket-Extensions", DEFLATE_RESPONSE)]));
-        assert!(check_response(101, &full, SAMPLE_KEY).unwrap().compress);
+        assert!(
+            check_response(101, &full, SAMPLE_KEY, &[])
+                .unwrap()
+                .compress
+        );
     }
 }

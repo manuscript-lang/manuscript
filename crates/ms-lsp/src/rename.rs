@@ -233,7 +233,7 @@ fn validate_rename(
         canceled(cancel)?;
         let before = workspace_analysis(target, docs);
         canceled(cancel)?;
-        if !before.success() {
+        if !before.resolves() {
             return Err(format!(
                 "rename requires a clean workspace: {}",
                 uri::filename(&target.uri)
@@ -242,7 +242,7 @@ fn validate_rename(
         let updated = modified.get(&target.uri).unwrap_or(target);
         let after = workspace_analysis(updated, modified);
         canceled(cancel)?;
-        if !after.success() {
+        if !after.resolves() {
             let message = after
                 .diagnostics
                 .first()

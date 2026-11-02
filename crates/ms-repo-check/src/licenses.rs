@@ -45,7 +45,7 @@ pub fn run(check: bool) -> Result<(), String> {
             ),
         ),
     ]);
-    let text = document.pretty_line(Escape::GoHtml);
+    let text = document.pretty_line(Escape::HtmlSafe);
     if check {
         let actual = std::fs::read_to_string(INVENTORY).map_err(|e| format!("{INVENTORY}: {e}"))?;
         if actual != text {

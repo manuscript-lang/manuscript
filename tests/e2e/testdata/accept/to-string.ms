@@ -1,8 +1,8 @@
 import TextError from "@std/core.ms"
-import fail from "@std/test.ms"
+import fail from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
-import Decimal from "@std/decimal.ms"
-import Queue from "@std/queue.ms"
+import Decimal from "@std/math/decimal.ms"
+import Queue from "@std/collections/queue.ms"
 
 type Person:
     name: String
@@ -13,11 +13,11 @@ type Outcome:
     case Waiting
 
 interface Named:
-    fn name() ref String
+    fn name() String
 
 impl Named for Person:
-    fn name() ref String:
-        return self.name
+    fn name() String:
+        return self.name.clone()
 
 fn stringify[T](value: T) String:
     return value.to_string()
@@ -28,7 +28,7 @@ fn interpolate[T](value: T) String:
 fn bound_stringify[T: Named](value: T) String:
     return value.to_string()
 
-fn check(value: String, expected: String) Result[Unit, Error]:
+fn check(value: String, expected: String) Unit!:
     if value != expected: return fail(message: "expected {expected}, received {value}")
 
     return ok(unit)
@@ -70,8 +70,8 @@ test "records alternatives and collections convert":
     (try check(value: Outcome.Waiting.to_string(), expected: "Outcome.Waiting"))
 
     let absent: Int? = none
-    let present: Int? = some(3)
-    let result: Result[Int, TextError] = error(TextError("failed"))
+    let present: Int? = 3
+    let result: Int!TextError = error(TextError("failed"))
     (try check(value: absent.to_string(), expected: "Optional.none"))
     (try check(value: present.to_string(), expected: "Optional.some(3)"))
     (

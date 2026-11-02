@@ -43,7 +43,7 @@ fn text_of_deep_and_large_values_is_capped_and_linear() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     // Nesting depth 64 prints `...`; a long list formats in linear time.
-    let source = "import stdout from \"@std/io.ms\"\n\
+    let source = "import stdout from \"@std/io/io.ms\"\n\
         type L:\n\
         \x20   case Nil\n\
         \x20   case Cons(head: Int, tail: L)\n\
@@ -74,7 +74,7 @@ fn lower_applies_final_sigma_after_titlecase_letters() {
     let dir = std::env::temp_dir().join(format!("ms-cli-sigma-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = "import stdout from \"@std/io.ms\"\n\
+    let source = "import stdout from \"@std/io/io.ms\"\n\
         export fn main() Int:\n\
         \x20   let lowered = \"\\u{1C5}\\u{3A3}\".lower()\n\
         \x20   stdout().write(\"{lowered.scalar_values()}\\n\").get()\n\
@@ -92,7 +92,7 @@ fn build_time_for_cases(cases: usize) -> std::time::Duration {
     let dir = std::env::temp_dir().join(format!("ms-cli-cases-{}-{cases}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let mut source = String::from("import stdout from \"@std/io.ms\"\ntype E:\n");
+    let mut source = String::from("import stdout from \"@std/io/io.ms\"\ntype E:\n");
     for i in 0..cases {
         source.push_str(&format!("    case C{i}(x: Int)\n"));
     }

@@ -1,7 +1,7 @@
 //! Lambdas and calls through function values.
 
 use crate::Error;
-use crate::cx::{BoundNativeJob, Cx, Job, JobKind, LambdaJob, NativeThunkJob};
+use crate::cx::{BoundNativeJob, Cx, IfaceNativeJob, Job, JobKind, LambdaJob, NativeThunkJob};
 use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
@@ -28,6 +28,7 @@ pub(crate) enum CapturedStep {
     Field(ct::Name),
     Index(usize),
     Key(usize),
+    Some,
 }
 
 impl FnLower<'_> {
@@ -159,6 +160,10 @@ impl FnLower<'_> {
             let (value, is_key) = match step {
                 crate::alias::AStep::Field(name) => {
                     steps.push(CapturedStep::Field(name));
+                    continue;
+                }
+                crate::alias::AStep::Some => {
+                    steps.push(CapturedStep::Some);
                     continue;
                 }
                 crate::alias::AStep::Index(value) => (value, false),
@@ -546,7 +551,7 @@ impl FnLower<'_> {
                         let this = b
                             .emit(Op::Load, &[ptr], Imm::Ty(recv_mty), Some(recv_mty))
                             .expect("load");
-                        let r = b.call_method_owned(iface, k as u32, this, &args[1..]);
+                        let r = b.call_method(iface, k as u32, this, &args[1..]);
                         b.ret(Some(r));
                         let f = b.into_func();
                         let id = self.b.m.add_func(f);
@@ -596,6 +601,18 @@ impl FnLower<'_> {
                 &mut subst,
             ) {
                 return Err(Error::new("cannot bind method receiver type"));
+            }
+            // The method's own type parameters come from the value's checked type.
+            let own_vars = ct::variable_set(&declared.variables);
+            if declared
+                .variables
+                .iter()
+                .any(|v| !subst.contains_key(&v.name))
+            {
+                let want = self.ety(e);
+                if !ct::unify(&declared.ty, &want, &own_vars, &mut subst) {
+                    return Err(Error::new("cannot infer the method value's type arguments"));
+                }
             }
             let vars = self.cx.var_positions(&c);
             if vars.iter().any(|v| *v != 0) {
@@ -667,7 +684,7 @@ impl FnLower<'_> {
                     .expect("capture");
                 let rest = &args[1..];
                 let r = match callee {
-                    Err((iface, k)) => b.call_method_owned(iface, k, this, rest),
+                    Err((iface, k)) => b.call_method(iface, k, this, rest),
                     Ok((fid, false)) => {
                         let mut all = vec![this];
                         all.extend_from_slice(rest);
@@ -813,10 +830,24 @@ impl FnLower<'_> {
                     captures: vec![held],
                 };
                 let id = self.b.m.add_func(f);
+                // Omission adaptation needs the declared payload types, including the
+                // method's own type arguments fixed by its checked function-value type.
+                let declared = ct::sub(&m.ty, &self.subst);
+                let mut subst = ct::Subst::new();
+                if !ct::unify(
+                    &declared,
+                    &self.ety(e),
+                    &ct::variable_set(&m.variables),
+                    &mut subst,
+                ) {
+                    return Err(Error::new("cannot infer the method value's type arguments"));
+                }
+                let mut method = (**m).clone();
+                method.ty = ct::sub(&declared, &subst);
                 self.cx.queue.push(Job {
                     func: id,
                     kind: JobKind::BoundNative(Rc::new(BoundNativeJob {
-                        method: m.clone(),
+                        method: Rc::new(method),
                         hir: self.hir.clone(),
                         shared: shared.map(|(_, t)| t),
                         scope,
@@ -948,7 +979,8 @@ impl FnLower<'_> {
             f
         };
         let fv = self.borrow(f);
-        let declared = self.ety(callee).params.clone();
+        let checked = self.ety(callee);
+        let declared = &checked.params;
         let ftype = self.ty_of(f.v);
         let TyKind::Fn(ptys, _) = self.b.m.types.kind(ftype).clone() else {
             return Err(Error::new("call of a non-function value"));
@@ -974,11 +1006,33 @@ impl FnLower<'_> {
             let x = self.lift_argument(x, ptys[at]);
             slots[at] = Some(self.borrow(x));
         }
-        // An omitted parameter of a function type is an optional one: it is `none`.
+        // Native invocation defaults are prepared here; other omissions cross as `none`.
         let mut args = Vec::new();
+        let missing_value = checked
+            .defaults
+            .as_ref()
+            .and_then(|d| d.missing_value_at_call());
         for (i, s) in slots.into_iter().enumerate() {
             args.push(match s {
                 Some(v) => v,
+                None if missing_value == Some(declared[i].name)
+                    && declared[i].ty.is_std("Optional")
+                    && declared[i].ty.args[0].is_std("MissingValue") =>
+                {
+                    self.at(e.pos);
+                    let cause_ty = self.mty(&declared[i].ty.args[0])?;
+                    let cause = self.missing_value_at(cause_ty, e.pos)?;
+                    let cause = self.owned(cause);
+                    let present = self.b.opt_some(cause);
+                    let supplied = self.lift_argument(
+                        Val {
+                            v: present,
+                            own: true,
+                        },
+                        ptys[i],
+                    );
+                    self.borrow(supplied)
+                }
                 None if matches!(self.b.m.types.kind(ptys[i]), TyKind::Opt(_)) => {
                     self.b.opt_none(ptys[i])
                 }
@@ -1157,7 +1211,7 @@ fn lower_iface_thunk(
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
     let vals: Vec<Value> = args.iter().map(|a| fl.borrow(a.val)).collect();
-    let r = fl.b.call_method_owned(job.iface, job.index, this, &vals);
+    let r = fl.b.call_method(job.iface, job.index, this, &vals);
     let out = fl.val(r, true);
     fl.emit_return(Some(out));
     Ok(())
@@ -1215,8 +1269,11 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
             fl.emit_return(Some(out));
             return Ok(());
         }
-        "random/secure_int" | "random/uuid_v4" | "random/float" | "random/shuffle"
-        | "random/choice" => {
+        "random/draw_int"
+        | "random/draw_uuid"
+        | "random/draw_float"
+        | "random/draw_shuffle"
+        | "random/draw_choice" => {
             let out = fl.random_with(&job.native, &args, ret)?;
             fl.emit_return(Some(out));
             return Ok(());
@@ -1243,11 +1300,14 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
             return Ok(());
         }
         other => {
-            let handle = crate::natiface::HANDLE_FUNCTIONS
-                .iter()
-                .find(|f| f.0 == other);
-            if let Some(&(_, module, make, constant)) = handle {
-                let out = fl.handle_interface(&job.result, ret, module, make, constant)?;
+            if let Some(handle) = crate::stdnative::handle_of(other) {
+                let out = fl.handle_interface(
+                    &job.result,
+                    ret,
+                    handle.module,
+                    handle.make,
+                    handle.constant,
+                )?;
                 fl.emit_return(Some(out));
                 return Ok(());
             }
@@ -1261,7 +1321,7 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
 impl FnLower<'_> {
     /// The arguments of a native called through a function value: a parameter the function type
     /// made optional is read as its supplied value or the declared default.
-    fn thunk_native_args(
+    pub(crate) fn thunk_native_args(
         &mut self,
         module: ct::Name,
         func: Option<&ms_syntax::ast::Func>,
@@ -1270,9 +1330,31 @@ impl FnLower<'_> {
     ) -> Result<Vec<crate::native::NArg>, Error> {
         let mut args: Vec<crate::native::NArg> = Vec::new();
         for (i, (p, v)) in params.iter().zip(vals).enumerate() {
-            let lifted = !p.ty.is_std("Optional")
-                && matches!(self.b.m.types.kind(self.ty_of(*v)), TyKind::Opt(_));
-            let val = if lifted {
+            let default = func.and_then(|f| f.params.get(i)?.default.as_ref());
+            let omittable = default.is_some() || p.ty.is_std("Optional");
+            let passed = self.ty_of(*v);
+            let declared = if omittable && matches!(self.b.m.types.kind(passed), TyKind::Opt(_)) {
+                self.mty(&p.ty)?
+            } else {
+                passed
+            };
+            let lifted = passed != declared;
+            let none_default = p.ty.is_std("Optional")
+                && default
+                    .is_none_or(|d| matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none"));
+            let val = if lifted && none_default {
+                // Native/interface arguments borrow their caller's values. A supplied payload and
+                // the implicit none both live through this call; copying here would make
+                // even an ignored cause pay copy/drop costs before the native reads it.
+                let supplied = self.b.opt_is_some(*v);
+                self.two_ways_mode(
+                    supplied,
+                    declared,
+                    Mode::Borrow,
+                    &mut |s| Ok(Some(s.b.opt_get(*v))),
+                    &mut |s| Ok(Some(s.b.opt_none(declared))),
+                )?
+            } else if lifted {
                 self.unlift_param(*v, &mut |s| {
                     let mut tmp: Vec<crate::native::NArg> = params
                         .iter()
@@ -1327,6 +1409,47 @@ pub(crate) fn build_bound_native(
     Ok(())
 }
 
+/// Lowers the body of a native method behind an interface table entry.
+pub(crate) fn build_iface_native(
+    cx: &mut Cx,
+    m: &mut Module,
+    func: FuncId,
+    job: &IfaceNativeJob,
+) -> Result<(), Error> {
+    let proto = m.funcs[func.index()].clone();
+    let file = m.add_file(job.hir.data.file.as_str());
+    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
+    b.func_mut().kind = proto.kind.clone();
+    b.func_mut().linkage = proto.linkage;
+    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
+    fl.scope_override = Some(job.scope);
+    let result = lower_iface_native(&mut fl, job);
+    let mut f = fl.b.into_func();
+    result?;
+    f.compact_blocks();
+    m.funcs[func.index()] = f;
+    Ok(())
+}
+
+fn lower_iface_native(fl: &mut FnLower<'_>, job: &IfaceNativeJob) -> Result<(), Error> {
+    let params = fl.b.params();
+    let func = job.method.decl.as_ref().and_then(|d| d.func());
+    let ret = fl.ret_ty;
+    let args =
+        fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
+    let out = if ms_check::effects::collection_mutation(&job.method) {
+        // The table entry receives the address of the value it changes.
+        fl.shared_native_call(&job.method, params[0], job.data, &args, ret)?
+    } else {
+        let v =
+            fl.b.emit(Op::Load, &[params[0]], Imm::Ty(job.data), Some(job.data))
+                .expect("load");
+        fl.bound_native_call(&job.method, Val { v, own: false }, &args, ret)?
+    };
+    fl.emit_return(Some(out));
+    Ok(())
+}
+
 fn lower_bound_native(
     fl: &mut FnLower<'_>,
     job: &BoundNativeJob,
@@ -1344,9 +1467,9 @@ fn lower_bound_native(
             .expect("capture");
     let recv = Val { v: cap, own: false };
     let func = job.method.decl.as_ref().and_then(|d| d.func());
+    let ret = fl.ret_ty;
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
-    let ret = fl.ret_ty;
     if job.shared.is_some() {
         let out = fl.shared_native_call(&job.method, cap, recv_ty, &args, ret)?;
         fl.emit_return(Some(out));
@@ -1412,6 +1535,7 @@ pub(crate) fn restore_alias_capture(
         .iter()
         .map(|step| match step {
             CapturedStep::Field(name) => crate::alias::AStep::Field(*name),
+            CapturedStep::Some => crate::alias::AStep::Some,
             CapturedStep::Index(index) => crate::alias::AStep::Index(values[*index]),
             CapturedStep::Key(index) => {
                 let value = values[*index];
@@ -1485,13 +1609,13 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
     }
     let bindings = fl.hir.lambda_parameters(&job.expr);
     for (i, (b, v)) in bindings.iter().zip(params.iter().skip(1)).enumerate() {
-        let lifted =
-            matches!(fl.b.m.types.kind(fl.ty_of(*v)), TyKind::Opt(_)) && !b.ty.is_std("Optional");
+        let default = lam.params.get(i).and_then(|p| p.default.as_ref());
+        // Only an extra ABI wrapper denotes omission; T itself may instantiate as Optional.
+        let lifted = default.is_some()
+            && matches!(fl.b.m.types.kind(fl.ty_of(*v)), TyKind::Opt(_))
+            && fl.ty_of(*v) != fl.mty(&b.ty)?;
         if lifted {
-            let d = lam.params.get(i).and_then(|p| p.default.as_ref());
-            let Some(d) = d else {
-                return Err(Error::new("optional parameter without a default"));
-            };
+            let d = default.expect("lifted parameter has a default");
             let x = fl.unlift_param(*v, &mut |s| s.expr(d))?;
             fl.bind_local(b, x);
         } else if mutated.contains(&b.uid) && fl.needs_drop(fl.ty_of(*v)) {
@@ -1578,6 +1702,22 @@ fn with_alias_origins(
         roots: std::collections::HashMap<usize, usize>,
     }
     impl ms_syntax::visit::Visitor for Origins<'_, '_> {
+        fn expr(&mut self, e: &Expr) {
+            // `c?.f()` borrows `c` for the payload binding of its chain.
+            let ExprKind::Match { scrutinee, arms } = &e.kind else {
+                return;
+            };
+            for arm in arms.iter().filter(|a| a.chain) {
+                for b in self.fl.hir.arm(arm).bindings.iter().flatten() {
+                    if self.fl.cx.exclusive(b.uid)
+                        && let Some(root) = alias_origin(self.fl, scrutinee)
+                    {
+                        self.roots.insert(b.uid, root);
+                    }
+                }
+            }
+        }
+
         fn stmt(&mut self, s: &Stmt) {
             let (pattern, value) = match &s.kind {
                 StmtKind::Bind { pattern, value, .. } => (pattern, value),
@@ -1623,6 +1763,7 @@ fn alias_origin(fl: &FnLower<'_>, e: &Expr) -> Option<usize> {
             Some(b.uid)
         }
         ExprKind::Member { left, .. } => alias_origin(fl, left),
+        ExprKind::Probe(target) => alias_origin(fl, target),
         ExprKind::Call { callee, args } => {
             let source = match (&callee.kind, fl.hir.resolution(e)) {
                 (ExprKind::Member { left, .. }, ms_check::hir::Resolution::Method(_)) => &**left,
@@ -1666,18 +1807,32 @@ impl FnLower<'_> {
             mode: Mode::Borrow,
         }));
         let mut f = ms_mir::ir::Func::new("<function adapter>", ps, wr);
+        // A held closure that points into this frame stays here: the adapter reads it through
+        // a pointer to a slot, and is itself scoped.
+        let scoped = self.b.is_scoped_closure(x.v);
         f.kind = FuncKind::Closure {
-            captures: vec![have],
+            captures: vec![if scoped { MTy::PTR } else { have }],
         };
+        f.scoped = scoped;
         let id = self.b.m.add_func(f);
         self.cx.queue.push(Job {
             func: id,
             kind: JobKind::FnAdapt(Rc::new(crate::cx::FnAdaptJob {
                 hir: self.hir.clone(),
                 have,
+                scoped,
             })),
         });
-        let held = self.owned(x);
+        let held = if scoped {
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], Imm::Ty(have), Some(MTy::PTR))
+                .expect("slot");
+            self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);
+            slot
+        } else {
+            self.owned(x)
+        };
         let v = self
             .b
             .emit(Op::ClosureNew, &[held], Imm::Func(id), Some(want))
@@ -1699,7 +1854,7 @@ pub(crate) fn build_fn_adapter(
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
-    let result = lower_fn_adapter(&mut fl, job.have);
+    let result = lower_fn_adapter(&mut fl, job.have, job.scoped);
     let mut f = fl.b.into_func();
     result?;
     f.compact_blocks();
@@ -1707,11 +1862,17 @@ pub(crate) fn build_fn_adapter(
     Ok(())
 }
 
-fn lower_fn_adapter(fl: &mut FnLower<'_>, have: MTy) -> Result<(), Error> {
+fn lower_fn_adapter(fl: &mut FnLower<'_>, have: MTy, scoped: bool) -> Result<(), Error> {
     let params = fl.b.params();
-    let held =
-        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(have))
+    let cap_ty = if scoped { MTy::PTR } else { have };
+    let mut held =
+        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(cap_ty))
             .expect("capture");
+    if scoped {
+        held =
+            fl.b.emit(Op::Load, &[held], Imm::Ty(have), Some(have))
+                .expect("load");
+    }
     let TyKind::Fn(hp, _) = fl.b.m.types.kind(have).clone() else {
         return Err(Error::new("function adapter without a function type"));
     };

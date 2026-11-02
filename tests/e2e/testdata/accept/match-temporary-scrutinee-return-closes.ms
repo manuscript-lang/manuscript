@@ -1,23 +1,24 @@
 import Closeable from "@std/core.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
-import expect_equal from "@std/test.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Door:
     id: Int
     log: Shared[List[Int]]
 
 impl Closeable for Door:
-    var fn close() Unit:
+    var fn close() Unit!:
         var seen = lock(self.log)
         seen.value.append(self.id)
+        return ok(unit)
 
 fn open(id: Int, log: Shared[List[Int]]) Door?:
-    return some(Door(id, log))
+    return Door(id, log)
 
 fn early(log: Shared[List[Int]]) Int:
     match open(1, log):
-        some(d):
+        d:
             if d.id == 1:
                 return 10
 
@@ -27,14 +28,14 @@ fn early(log: Shared[List[Int]]) Int:
 
 fn late(log: Shared[List[Int]]) Int:
     let n = match open(2, log):
-        some(d): d.id
+        d: d.id
         none: 0
 
     return n
 
 fn hand_on(log: Shared[List[Int]]) Door?:
     match open(3, log):
-        some(d): return some(d)
+        d: return d
         none: return none
 
 test "a payload moved out of the arm is not closed by the match":

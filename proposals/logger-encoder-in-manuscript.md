@@ -1,0 +1,51 @@
+# Write the logger encoder in Manuscript
+
+## Summary
+
+- Problem: `@std/log.ms` is a thin shell over the `ms-std-log` Rust crate through `stdlib/logcore.ms`; the crate only builds a JSON line the standard library can already build.
+- Change: build the record in `log.ms` with `JsonValue` and `stringify`, replace the native gate with a flag in the transport's own state, and delete the crate, `logcore.ms` and their symbols.
+- Decision requested: none beyond the direction already given; this records why it is safe.
+
+## Status
+
+Implemented 2026-11-01 on top of `main` at `4c5998a0` (#2184). Direction: "I don't see why we need these methods in Rust, we can just do them in Manuscript."
+
+## Problem
+
+Writing a record crossed into Rust four times: `new_state`, `child`, `line`, `line_json`, plus a `LogGate` object for a shut flag.
+
+- The Rust side re-parses the fields text with `ms_std_json`, merges maps and calls the same `stringify` the `.ms` side calls first (`crates/ms-std-log/src/lib.rs`, 214 lines).
+- Level numbering existed twice: an index 0 to 6 in `.ms` and Rust, and `(index + 1) * 10` written to the line.
+- The surface was 11 `msrt_logcore_*` symbols in `crates/ms-rt/SYMBOLS.md` and a 115-line `stdlib/logcore.ms` of one-line forwards.
+
+## Design
+
+- `Logger` holds the threshold as the number written to the line (Trace 10 to Fatal 60, Silent 70), `timestamp`, `max_bytes`, the bound fields as JSON text and the shared transport.
+- A record line is built from text: `level`, `msg`, optional `time`, then `context` (the fields bound by `child`), then `data` (the call's fields). Each value is the `stringify` text of the field value, written as is, with no parse and no per-record map. Fields nest under `data` and `context`, so they can no longer collide with `level`, `msg` and `time`, and the reserved-key rule is gone.
+- `child` merges object members once, at bind time, so a child of a child keeps its parent's context (the newer value wins); any other combination keeps the newer value.
+- Size: the finished line, newline included, is measured against `max_bytes`; over it is `LimitExceeded`. A `JsonError` from encoding is `InvalidData`.
+- Shutting a transport is a `closed` field in the `Shared` state next to the stream, checked under the lock each write already takes. `LogGate` goes away.
+- `set_level` is now `var fn`, because a `Logger` is a value and no longer a handle to a shared native object. A copy keeps its own threshold, so a copy handed to a function no longer sees later `set_level` calls. Callers that used `let` must use `var`.
+- `close` and `flush` now wait for an in-flight write on the same lock. A stalled stream delays `close`, but a file is never closed under a writer, which the lock-free gate allowed.
+- The raw-text methods (`log_json`, `child_json`) were removed in #2160, so the cases that fed invalid or non-object JSON text no longer exist.
+
+## Components touched
+
+| Component | Change | Test |
+| --- | --- | --- |
+| `stdlib/log.ms` | encoder, level numbers, gate flag | `tests/e2e/testdata/stdlib/log.ms` |
+| `stdlib/logcore.ms`, `stdlib/internal/logcore.ms` | deleted | `make docs-check` |
+| `crates/ms-std-log` | deleted with its 1752-line oracle | the unit tests in `log.ms` |
+| `crates/ms-native`, `Cargo.lock`, `crates/ms-rt/SYMBOLS.md` | drop the crate and 11 symbols | `ms-cli` `runtime_symbols` |
+
+## Evidence
+
+- Format change (direction: attach the fields as data, no reparse): flat top-level fields became `data` and `context`. The 36-case table that pinned the old flat encoding was removed with the oracle it came from; `log.ms` tests pin the new layout, limits, escapes and every error.
+- Code removed: about 2400 lines (crate sources and oracle harness 411, oracle data 1752, `logcore.ms` plus its internal helper 116) for about 130 added lines of `.ms`.
+- This is not a performance PR, so no `bench/perf` baseline was run.
+
+## Alternatives
+
+- Do nothing: keeps a crate, 11 symbols and the second level numbering for no capability.
+- Keep the encoder in Rust and only drop the gate: removes one object, leaves most of the layer.
+- Keep fields flat with a parse and merge per record: the old shape, but a reparse and a map per record.

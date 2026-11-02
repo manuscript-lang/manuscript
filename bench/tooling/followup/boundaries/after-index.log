@@ -1,5 +1,0 @@
---- FAIL: TestRenameCancellationAfterIndex (0.05s)
-    boundaries_test.go:48: rename started selection after index-phase cancellation <nil> select a resolved source declaration or use
-FAIL
-FAIL	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.051s
-FAIL

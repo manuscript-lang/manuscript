@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work() Unit:\n    send(\n        condition: account_is_active\n        or payment_is_allowed and remaining_balance > minimum_balance\n    )\n"
-  }
-}

@@ -2,7 +2,7 @@
 //!
 //! Everything here works on byte buffers and never touches a socket.
 
-use std::fmt::Write as _;
+use std::io::Write as _;
 
 /// Longest request or status line plus headers when no limit is configured.
 pub const DEFAULT_HEAD_LIMIT: usize = 1 << 20;
@@ -151,23 +151,11 @@ fn field<'a>(fields: &'a [(String, Vec<u8>)], name: &str) -> impl Iterator<Item 
         .map(|(_, v)| v.as_slice())
 }
 
-fn trim(b: &[u8]) -> &[u8] {
-    let start = b
-        .iter()
-        .position(|c| !c.is_ascii_whitespace())
-        .unwrap_or(b.len());
-    let end = b
-        .iter()
-        .rposition(|c| !c.is_ascii_whitespace())
-        .map_or(start, |i| i + 1);
-    &b[start..end]
-}
-
 /// Whether a comma-separated field holds `token` (case-insensitive).
 pub fn has_token(fields: &[(String, Vec<u8>)], name: &str, token: &str) -> bool {
     field(fields, name).any(|v| {
         v.split(|&c| c == b',')
-            .any(|t| trim(t).eq_ignore_ascii_case(token.as_bytes()))
+            .any(|t| t.trim_ascii().eq_ignore_ascii_case(token.as_bytes()))
     })
 }
 
@@ -175,7 +163,7 @@ fn content_length(fields: &[(String, Vec<u8>)]) -> Result<Option<u64>, ()> {
     let mut found: Option<u64> = None;
     for value in field(fields, "Content-Length") {
         for part in value.split(|&c| c == b',') {
-            let part = trim(part);
+            let part = part.trim_ascii();
             if part.is_empty() || !part.iter().all(u8::is_ascii_digit) {
                 return Err(());
             }
@@ -201,7 +189,7 @@ pub fn request_framing(head: &RequestHead) -> Result<Framing, BadMessage> {
         let list: Vec<&[u8]> = encodings
             .iter()
             .flat_map(|v| v.split(|&c| c == b','))
-            .map(trim)
+            .map(<[u8]>::trim_ascii)
             .filter(|t| !t.is_empty())
             .collect();
         // Both framings make the request's end ambiguous between parsers: refuse it.
@@ -232,7 +220,7 @@ pub fn response_framing(head: &ResponseHead, method: &str) -> Result<Framing, &'
     if has_token(&head.fields, "Transfer-Encoding", "chunked") {
         // Another coding would hand the caller still-encoded bytes as the body.
         let coded = field(&head.fields, "Transfer-Encoding").any(|v| {
-            v.split(|&c| c == b',').map(trim).any(|t| {
+            v.split(|&c| c == b',').map(<[u8]>::trim_ascii).any(|t| {
                 !t.eq_ignore_ascii_case(b"chunked") && !t.eq_ignore_ascii_case(b"identity")
             })
         });
@@ -391,7 +379,7 @@ impl BodyDecoder {
                         return Err("chunk size line must end with CRLF");
                     };
                     let digits: &[u8] = line.split(|&c| c == b';').next().unwrap_or(&[]);
-                    let digits = trim(digits);
+                    let digits = digits.trim_ascii();
                     if digits.is_empty()
                         || !digits.iter().all(u8::is_ascii_hexdigit)
                         || digits.len() > 16
@@ -560,19 +548,9 @@ pub fn status_line(out: &mut Vec<u8>, status: u16) {
         out.extend_from_slice(text.as_bytes());
         out.extend_from_slice(b"\r\n");
     } else if text.is_empty() {
-        let _ = write!(Vec_(out), "HTTP/1.1 {status} status code {status}\r\n");
+        let _ = write!(out, "HTTP/1.1 {status} status code {status}\r\n");
     } else {
-        let _ = write!(Vec_(out), "HTTP/1.1 {status} {text}\r\n");
-    }
-}
-
-/// `fmt::Write`/`io::Write` adapter appending to a vector.
-struct Vec_<'a>(&'a mut Vec<u8>);
-
-impl std::fmt::Write for Vec_<'_> {
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
-        self.0.extend_from_slice(s.as_bytes());
-        Ok(())
+        let _ = write!(out, "HTTP/1.1 {status} {text}\r\n");
     }
 }
 
@@ -605,7 +583,7 @@ pub fn chunk(out: &mut Vec<u8>, data: &[u8]) {
     if data.is_empty() {
         return;
     }
-    let _ = write!(Vec_(out), "{:x}\r\n", data.len());
+    let _ = write!(out, "{:x}\r\n", data.len());
     out.extend_from_slice(data);
     out.extend_from_slice(b"\r\n");
 }

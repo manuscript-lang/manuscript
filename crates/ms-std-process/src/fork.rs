@@ -1,4 +1,4 @@
-//! Natives for `@std/processes.ms`: start a child of this executable at a process entry, and
+//! Natives for `@std/os/processes.ms`: start a child of this executable at a process entry, and
 //! move bytes over its IPC pipe. Framing, encoding and the group live in Manuscript; these only
 //! start the child and read and write the pipe.
 use crate::command::{self, Subprocess};
@@ -140,6 +140,7 @@ fn start(runner: Handler, modes: [i64; 3]) -> Res<Forked> {
         modes,
         Some(&end),
         &[(ms_rt::start::ENTRY_ENV, entry.as_bytes())],
+        None,
     )?;
     // The parent's copy of the child's end closes here, so the parent sees the child's exit.
     drop(end);

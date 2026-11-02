@@ -318,11 +318,11 @@ pub fn classify(e: Errno) -> u8 {
     }
 }
 
-/// The text for an error code: Go's wording on Unix, `std`'s message otherwise (without its
-/// trailing " (os error N)").
+/// The host's detail text for an error code: a fixed wording on Unix, `std`'s message otherwise
+/// (without its trailing " (os error N)"). Wording for users is composed in the stdlib `.ms`.
 pub fn describe(e: Errno) -> String {
     #[cfg(unix)]
-    if let Some(text) = unix::go_text(e) {
+    if let Some(text) = unix::errno_text(e) {
         return String::from(text);
     }
     let mut text = io::Error::from_raw_os_error(e).to_string();
@@ -430,14 +430,36 @@ pub fn open(path: &CPath, flags: i32, mode: u32) -> Result<Fd, Errno> {
     opened.map(into_fd).map_err(|e| code(&e))
 }
 
-/// Closes an owned descriptor: dropping the `File` closes it.
+/// Closes an owned descriptor once, preserving the host's release error.
 pub fn close(fd: Fd) -> Result<(), Errno> {
     if is_invalid(fd) {
         return Err(codes::EBADF);
     }
-    // SAFETY: the caller hands over ownership of an open descriptor.
-    drop(ManuallyDrop::into_inner(unsafe { borrow(fd) }));
+    // File's destructor cannot report close failures. Use the existing host bindings
+    // directly, and never retry: even an interrupted close can have retired the descriptor.
+    #[cfg(unix)]
+    // SAFETY: the caller hands over the descriptor; close validates it and consumes it once.
+    let failed = unsafe { libc::close(fd) } != 0;
+    #[cfg(windows)]
+    // SAFETY: the caller hands over the handle; CloseHandle validates and releases it once.
+    let failed = unsafe {
+        windows_sys::Win32::Foundation::CloseHandle(fd as std::os::windows::io::RawHandle)
+    } == 0;
+    if failed {
+        return Err(code(&io::Error::last_os_error()));
+    }
     Ok(())
+}
+
+/// A second descriptor over the same open file (`dup` on Unix, `DuplicateHandle` on Windows),
+/// closed on its own; the two share the file position.
+pub fn duplicate(fd: Fd) -> Result<Fd, Errno> {
+    if is_invalid(fd) {
+        return Err(codes::EBADF);
+    }
+    // SAFETY: the caller keeps `fd` open for this call; the borrow is never dropped.
+    let file = unsafe { borrow(fd) };
+    file.try_clone().map(into_fd).map_err(|e| code(&e))
 }
 
 /// The descriptor of standard stream `which` (0 input, 1 output, 2 error).
@@ -557,6 +579,28 @@ pub fn fsync(fd: Fd) -> Result<(), Errno> {
 
 pub fn fdatasync(fd: Fd) -> Result<(), Errno> {
     with(fd, File::sync_data)
+}
+
+/// Takes an advisory whole-file lock (`flock`, `LockFileEx`) without waiting: `Ok(false)` when
+/// another handle holds a conflicting lock.
+pub fn try_lock(fd: Fd, exclusive: bool) -> Result<bool, Errno> {
+    use std::fs::TryLockError;
+    with(fd, |f| {
+        let taken = if exclusive {
+            f.try_lock()
+        } else {
+            f.try_lock_shared()
+        };
+        match taken {
+            Ok(()) => Ok(true),
+            Err(TryLockError::WouldBlock) => Ok(false),
+            Err(TryLockError::Error(e)) => Err(e),
+        }
+    })
+}
+
+pub fn unlock(fd: Fd) -> Result<(), Errno> {
+    with(fd, File::unlock)
 }
 
 /// Sets the permission bits (Windows: the read-only attribute from the owner write bit).

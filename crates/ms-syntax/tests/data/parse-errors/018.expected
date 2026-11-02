@@ -1,1 +1,1 @@
-error parse 11:23:141 "expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body"
+error parse 11:23:146 "expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body"

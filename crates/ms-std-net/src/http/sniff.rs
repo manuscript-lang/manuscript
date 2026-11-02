@@ -233,7 +233,7 @@ mod tests {
 
     /// Recorded vectors.
     #[test]
-    fn matches_go() {
+    fn matches_oracle() {
         let cases: &[(&[u8], &str)] = &[
             (b"<html><body>", "text/html; charset=utf-8"),
             (b"  <!doctype html>", "text/html; charset=utf-8"),

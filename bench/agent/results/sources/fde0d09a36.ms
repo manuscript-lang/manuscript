@@ -366,7 +366,7 @@ fn is_digit(c: String) Bool:
     return c >= "0" and c <= "9"
 
 fn digit_value(c: String) Int:
-    return c.scalar_values() [0] - 48
+    return c.scalar_values()[0] - 48
 
 # Lexes the whole script. Bad characters and unterminated strings become "err" tokens so that
 # only the statement containing them fails.

@@ -5,25 +5,34 @@ weight = 5
 
 # Mutation and references
 
-Strings, records, lists, maps, sets, and alternatives are values. Scalars and records of scalars copy implicitly; a `String` is owned like a list, so storing a borrowed string in an owned position (a record field, `Map.add`, a returned value) needs an explicit `.clone()`, which makes the copy visible. Other values move at their last use into consuming positions; local place bindings and projections can borrow. `.clone()` explicitly duplicates nested data. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) for parameter modes and borrow checking.
+## How memory works
 
-## Borrowing with `ref`
+Every value has exactly one owner: a variable, a field, or a slot in a collection. When the owner goes out of scope, the value is freed, right there and on time. There is no garbage collector and no reference counting, and the compiler never copies a value behind your back. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, alternatives without payloads, `Shared` handles) are the exception: they own nothing, so they copy freely.
 
-A borrow is a handle to a value another binding owns: many readers, or one writer, until the borrow's last use. Binding a place borrows it without a marker: `let x = a.b` is a shared borrow and `var x = a.b` an exclusive one. `ref` is written before a function's result type or on a record field, never in a binding, element, type argument, function type or escaping closure.
+Everything else, including strings, records, lists and maps, is handed around by reference until you put it somewhere that must own it:
 
-- A function that returns part of a parameter or the receiver declares it: `fn list() ref List[Int]`, `fn trim() ref String`. Without `ref` the function is rejected; return `.clone()` to own the value instead. Every path of a `ref` function returns such a part (or `none`): returning a new value, a `try` failure, a part converted to an interface, a `get` with a fallback (`o.get(default)` copies), or a borrow of a temporary built inside the function is rejected, because the caller would hold a borrow of something freed when the function returns. Drop `ref` to return owned values. A call site needs no marker: `let t = s.trim()` holds a shared borrow of `s`, and `var ys = b.list()` writes through to `b` when `list` returns one plain field path of its only argument. Any other `var` binding of a `ref` call is rejected; `.clone()` it or bind it with `let`.
-- A record field written `name: ref Type` makes the record a carrier that views the variable it was built from: `Cursor(source: d, position: 0)`. A carrier is used in place only: it cannot be moved, cloned, stored in a collection, or returned unless built from a read-only parameter, and its source is held unchanged until the carrier's last use.
-- A binding of a place (`let x = a.b`, `var x = xs[i]`), a loop variable and a match payload borrow without a marker; `let ref`, `for ref` and `match ref` are rejected.
+- `let b = a` and `f(a)` *borrow*: `b` and `f` read `a` in place, and `a` is still yours afterwards. `var b = a` and `f(var a)` borrow exclusively, so changes reach `a`.
+- Storing a value in a field or a collection, returning a new value, or binding it at its last use *moves* it. After a move the old name is dead and the new owner frees it.
+- `.clone()` is the only copy. Write it when you want a value of your own that outlives or diverges from the original.
+
+The compiler checks that references stay in bounds. While a borrow lives, the owner cannot change or be reassigned, and the borrow cannot be stored, returned, or captured by a closure that outlives it. If you want that, clone. Nothing dangles at runtime because the checker refuses the program first.
+
+Functions join in: when every return path hands back a part of a parameter, the result *is* that part, and the caller holds the arguments while it uses it. Wrapping the part in an `Optional` or a `Result`, passing an error on with `try`, or converting it to an interface keeps it a reference, so `return ok(r.name)` and `return cause` as `Error` cost no copy. The sections below give the exact rules; the compiler's own notes are in the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
+
+## Borrowing
+
+A borrow is a handle to a value another binding owns: many readers, or one writer, until the borrow's last use. Binding a place borrows it without a marker: `let x = a.b` is a shared borrow and `var x = a.b` an exclusive one. A loop variable and a match payload borrow the same way.
+
+- A function that returns a part of a parameter or the receiver on every path returns a reference to it (a lending function): `fn list() List[Int]: return self.items`. The caller holds the result as a borrow of the arguments, so `let xs = b.list()` reads `b.items` in place and `var xs = b.list()` changes it. Storing or returning the result elsewhere needs `.clone()`, and a function that returns a part on one path and a new value on another is an error until the part is cloned. Wrapping the part keeps it a reference: `fn first() String?: return self.items[0]` and `fn name() String!Missing: return ok(self.name)` lend, and `try` hands a lent error on. Converting it to an interface keeps it one too: `fn first_error(cause: Cause) Error: return cause` and `return error(cause)` as `Int!` return a view of `cause`, the caller holds `cause` while the view lives, and `let e: Error = cause` binds such a view. Storing a view needs an owned value (`cause.clone()` before the conversion). An interface with a `var fn` operation, such as `ReadStream`, is the one conversion that still copies a borrowed value, since calls through it may change the value. A lambda or an interface method always owns its result. Names bound to a lending result are borrows: `let first = xs.first()` keeps `xs` readable but not changeable until `first` is last used.
+- A record field owns its value. A record cannot view another variable.
 - A place changed in place (a `var` argument, a `var` receiver, a `var` borrow, a closure that assigns) may not overlap any other operand or live borrow of the same call or scope. Distinct fields (`var p.left`, `var p.right`) and distinct non-negative literal list indexes (`var xs[0]`, `var xs[1]`) are disjoint; every other pair of element accesses (`xs[i]`, `xs[0]` with `xs[-1]`, map entries) may be the same element and is rejected, as is any change to the list itself while an element borrow is live. A read that finishes before the change starts, such as an `Int` argument `f(var xs, xs[0])`, stays valid.
-- A `ref` result freezes every borrowable argument of the call until its last use, not only the one it came from.
-- An interface operation declares `ref` when its implementations lend: every implementation of a `ref` operation returns `ref`, and an owning operation cannot be implemented by a lender. A scalar result (`Int`, `Bool`, `Float?`) is the same lent or owned, so an implementation may compute it; a `Shared` handle still refers to storage, so it is not exempt. A call through the interface lends too: `view.label()` borrows from `view`, so keeping the result past `view`, or returning it from a function without `ref`, needs `.clone()`.
 
 ```manuscript
 type Box:
     items: List[Int]
 
 impl Box:
-    fn list() ref List[Int]:
+    fn list() List[Int]:
         return self.items
 
 fn grow(var b: Box) Int:
@@ -31,8 +40,7 @@ fn grow(var b: Box) Int:
     xs.append(1)
     return b.items.length()
 ```
-
-The standard library declares its lending natives the same way (`trim`, `List.first`, `Map.get`, `Optional.get`). `Error.message` owns its result, so an implementation may build the text; one that returns a stored field writes `.clone()`.
+`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` lend the element, so `let x = m.get(k)` keeps `m` unchangeable until `x` is last used and `if var x = m.get(k)` changes the entry in place; `trim` and `Optional.get` return owned values. `Error.message` is an interface method, so an implementation that returns a stored field writes `.clone()`.
 
 ## Reassignment
 
@@ -49,15 +57,15 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 ## Sharing a value
 
-`Shared[T]` from `@std/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
+`Shared[T]` from `@std/concurrency/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
 
-To change the value, lock it with `lock(box)` from `@std/sync.ms` into a `var` binding. The guard holds the payload as `guard.value` and puts it back when the binding goes out of scope, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. `ms check` rejects the visible case, a `lock` of the same written place (`box`, `self.lines`) while the guard of an earlier `lock` of it is still open (before its scope ends or its `close()`) in the same function; a second handle to the box, or a call that locks it, is caught only by the runtime. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
+To change the value, lock it with `lock(box)` from `@std/concurrency/sync.ms` into a `var` binding. The guard holds the payload as `guard.value` and puts it back when the binding goes out of scope, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. `ms check` rejects the visible case, a `lock` of the same written place (`box`, `self.lines`) while the guard of an earlier `lock` of it is still open (before its scope ends or its `close()`) in the same function; a second handle to the box, or a call that locks it, is caught only by the runtime. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import share, Shared from "@std/shared.ms"
-import lock from "@std/sync.ms"
-import expect_equal from "@std/test.ms"
+import share, Shared from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Counter:
     values: List[Int]

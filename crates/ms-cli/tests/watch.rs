@@ -2,8 +2,11 @@
 //! `ms run --watch` and `ms test --watch` against the real binary: a saved change rebuilds and
 //! restarts, a broken edit keeps the old program, and Ctrl-C ends the watch with status 130.
 
+mod common;
+
+use common::scratch;
 use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{Receiver, channel};
 use std::time::{Duration, Instant};
@@ -74,13 +77,6 @@ impl Watch {
     }
 }
 
-fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("ms-watch-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
-}
-
 fn program(exit: i32) -> String {
     format!("export fn main() Int:\n    return {exit}\n")
 }
@@ -117,7 +113,7 @@ fn test_reruns_after_each_change() {
     let source = dir.join("sample_test.ms");
     let tests = |expected: i32| {
         format!(
-            "import expect_equal from \"@std/test.ms\"\n\ntest \"adds\":\n    try expect_equal(1 + 1, {expected})\n"
+            "import expect_equal from \"@std/test/test.ms\"\n\ntest \"adds\":\n    try expect_equal(1 + 1, {expected})\n"
         )
     };
     std::fs::write(&source, tests(3)).unwrap();

@@ -1,6 +1,6 @@
-import share from "@std/shared.ms"
-import lock from "@std/sync.ms"
-import expect_equal from "@std/test.ms"
+import share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
+import expect_equal from "@std/test/test.ms"
 
 # A `Shared[T]` handle is `Copy`: another copy of it can replace the value while a reader
 # holds what `get()` returned, so a kept result is a copy, never a view of the cell.
@@ -27,7 +27,7 @@ test "a let of a shared value keeps a copy":
     let names = sh.get()
     var g = lock(other)
     g.value = ["replaced"]
-    g.close()
+    try g.close()
     try expect_equal(names[1], "grace hopper")
 
 test "a match payload of a shared value is a copy":
@@ -38,6 +38,6 @@ test "a match payload of a shared value is a copy":
         Running(n):
             var g = lock(other)
             g.value = State.Running("replaced")
-            g.close()
+            try g.close()
             try expect_equal(n, "ada lovelace")
         Idle: try expect_equal(1, 0)

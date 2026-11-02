@@ -1,5 +1,5 @@
-//! The runtime symbol catalogue the compiler marshals calls from lists exactly the functions the
-//! embedded runtime archive exports.
+//! The generated signature table the compiler marshals calls from (`ms-lower/rt_symbols.txt`)
+//! lists exactly the functions the embedded runtime archive exports.
 
 use object::read::archive::ArchiveFile;
 use object::{Object as _, ObjectSymbol as _};
@@ -7,7 +7,20 @@ use std::collections::BTreeSet;
 use std::io::Read as _;
 
 const ARCHIVE_GZ: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/libms_native.a.gz"));
-const CATALOGUE: &str = include_str!("../../ms-rt/SYMBOLS.md");
+const TABLE: &str = include_str!("../../ms-lower/rt_symbols.txt");
+
+/// Exports the table cannot list: data symbols and assembly entry points, which have no Rust signature.
+const UNLISTED: &[&str] = &[
+    "msrt_desc_int",
+    "msrt_desc_float",
+    "msrt_desc_float32",
+    "msrt_desc_bool",
+    "msrt_desc_string",
+    "msrt_desc_bytes",
+    "msrt_ascii_chars",
+    "msrt_guard_jump",
+    "msrt_task_tramp",
+];
 
 /// Runtime prefixes the compiler calls; other exports (libc shims, Rust internals) are not catalogued.
 fn runtime_name(name: &str) -> bool {
@@ -52,10 +65,11 @@ fn exported() -> BTreeSet<String> {
 }
 
 fn catalogued() -> BTreeSet<String> {
-    CATALOGUE
+    TABLE
         .lines()
         .filter(|l| runtime_name(l))
-        .filter_map(|l| l.split(['(', ' ']).next())
+        .filter_map(|l| l.split('(').next())
+        .chain(UNLISTED.iter().copied())
         .map(str::to_string)
         .collect()
 }
@@ -73,6 +87,6 @@ fn runtime_symbol_catalogue_matches_archive() {
     let stale: Vec<_> = catalogued.difference(&exported).collect();
     assert!(
         unlisted.is_empty() && stale.is_empty(),
-        "crates/ms-rt/SYMBOLS.md is out of date.\nexported but not listed: {unlisted:?}\nlisted but not exported: {stale:?}"
+        "crates/ms-lower/rt_symbols.txt is out of date (run `cargo xtask symbols`).\nexported but not listed: {unlisted:?}\nlisted but not exported: {stale:?}"
     );
 }

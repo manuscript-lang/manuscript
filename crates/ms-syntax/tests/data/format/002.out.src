@@ -1,4 +1,4 @@
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"
 import (
     abs,
     abs_int,
@@ -12,7 +12,7 @@ import (
     round,
     sqrt,
     truncate
-) from "@std/math.ms"
+) from "@std/math/math.ms"
 
 fn viaValue(f: fn(Float) Float, x: Float) Float: f(value: x)
 

@@ -13,7 +13,7 @@ runs:
   using: composite
   steps:
     # `ms` downloads the pinned lld and LLVM tools into $XDG_CACHE_HOME/ms/{lld,llvm} on first use
-    # (manuscript-lang/llvm-bundle, pinned by checksum in scripts/lld.lock); restoring them keeps CI
+    # (manuscript-lang/llvm-bundle, pinned by checksum in toolchain/lld.lock); restoring them keeps CI
     # off the network.
     - name: Point the ms cache at a fixed directory
       shell: bash
@@ -24,13 +24,13 @@ runs:
         path: |
           ${{ runner.temp }}/ms-cache/ms/lld
           ${{ runner.temp }}/ms-cache/ms/llvm
-        key: ms-llvm-tools-${{ runner.os }}-${{ inputs.arch }}-${{ hashFiles('scripts/lld.lock') }}
+        key: ms-llvm-tools-${{ runner.os }}-${{ inputs.arch }}-${{ hashFiles('toolchain/lld.lock') }}
     # Windows programs link against llvm-mingw's CRT and import libraries, and the runtime is built
-    # with its clang (scripts/fetch-mingw.sh).
+    # with its clang (toolchain/fetch-mingw.sh).
     - name: Fetch llvm-mingw
       if: runner.os == 'Windows'
       shell: bash
       run: |
-        mingw="$(MINGW_WORK="$RUNNER_TEMP/llvm-mingw" sh scripts/fetch-mingw.sh | tail -n 1)"
+        mingw="$(MINGW_WORK="$RUNNER_TEMP/llvm-mingw" sh toolchain/fetch-mingw.sh | tail -n 1)"
         echo "MS_MINGW=$(cygpath -w "$mingw")" >> "$GITHUB_ENV"
         rustup target add "$(rustc -vV | sed -n 's/^host: //p' | sed 's/msvc/gnullvm/')"

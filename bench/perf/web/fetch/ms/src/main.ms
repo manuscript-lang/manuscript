@@ -1,23 +1,23 @@
-import fetcher, FetchOptions from "@std/fetch.ms"
-import stdout from "@std/io.ms"
-import arguments from "@std/process.ms"
-import TaskGroup from "@std/tasks.ms"
-import clock, nanoseconds from "@std/time.ms"
-import Worker, WorkerGroup, worker_channel from "@std/workers.ms"
+import fetcher, FetchOptions from "@std/net/fetch.ms"
+import stdout from "@std/io/io.ms"
+import arguments from "@std/os/process.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import nanoseconds, monotonic from "@std/os/time.ms"
+import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
 fn worker(url: String, nanos: Int) Int:
     var f = fetcher().get()
-    let started = clock().now()
+    let started = monotonic()
     var n = 0
 
-    while clock().now().difference(started).compare(nanoseconds(nanos)) < 0:
+    while monotonic().difference(started).compare(nanoseconds(nanos)) < 0:
         if let r = f.fetch(url):
             n += r.body.length()
             n -= r.body.length() - 1
         else:
             return -1000000
 
-    f.close()
+    f.close().get(none)
     return n
 
 # One thread of a multi-threaded run: it receives "url connections seconds", runs that many fetching
@@ -38,7 +38,7 @@ fn fetch_thread() Unit:
 
         for r in group.results().get():
             total += r
-        group.close()
+        group.close().get(none)
 
         let _ = ch.send(total)
 
@@ -56,7 +56,7 @@ fn run_threads(url: String, conns: Int, secs: Int, threads: Int) Int:
     for i in 0..threads:
         if let n = workers[i].channel.receive().get(none):
             total += n
-    group.close()
+    group.close().get(none)
     return total
 
 export fn main() Int:
@@ -87,7 +87,7 @@ export fn main() Int:
 
     for r in group.results().get():
         total += r
-    group.close()
+    group.close().get(none)
 
     let _ = stdout().write("req/s {total / secs}\n")
     return 0

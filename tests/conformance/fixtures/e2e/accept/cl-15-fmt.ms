@@ -1,8 +1,8 @@
 # conform: tags=closures,decimal,formatter,modules,optional,parser,records,stdlib-decimal,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-15.ms
-import expect_equal, expect_not_equal from "@std/test.ms"
-import Decimal from "@std/decimal.ms"
+import expect_equal, expect_not_equal from "@std/test/test.ms"
+import Decimal from "@std/math/decimal.ms"
 
 type Callback:
     handler: fn(Int) Int
@@ -14,8 +14,8 @@ fn preserve_key[K: Hashable](value: K) K:
     return value
 
 test "derived value equality":
-    let present: Int? = some(1)
-    let same: Int? = some(1)
+    let present: Int? = 1
+    let same: Int? = 1
     let missing: Int? = none
     try expect_equal(present, same)
     try expect_not_equal(present, missing)

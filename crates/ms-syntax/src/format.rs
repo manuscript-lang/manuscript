@@ -19,6 +19,74 @@ const WIDTH: usize = 88;
 /// Formats `source`. Invalid syntax never produces output.
 pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     parse(file, source)?;
+    let normalized = source.replace("\r\n", "\n");
+    let tokens = lex(file, &normalized)?.tokens;
+    let multiline: Vec<&Token> = tokens
+        .iter()
+        .filter(|t| {
+            t.kind == Tok::String && normalized[t.lo as usize..t.hi as usize].contains('\n')
+        })
+        .collect();
+    if multiline.is_empty() {
+        return format_lines(file, source);
+    }
+    // The line-based passes cannot see inside a multi-line text literal, so a
+    // one-line placeholder stands in for each and the literal text returns
+    // afterwards, shifted with the line it lands on.
+    let marker = ('\u{e000}'..='\u{f8ff}')
+        .find(|c| !normalized.contains(*c))
+        .expect("source does not use the whole private use area");
+    let placeholder = |i: usize| format!("\"{marker}{i}\"");
+    let mut masked = String::with_capacity(normalized.len());
+    let mut copied = 0;
+    for (i, t) in multiline.iter().enumerate() {
+        masked.push_str(&normalized[copied..t.lo as usize]);
+        masked.push_str(&placeholder(i));
+        copied = t.hi as usize;
+    }
+    masked.push_str(&normalized[copied..]);
+    let mut result = format_lines(file, &masked)?;
+    for (i, t) in multiline.iter().enumerate() {
+        let text = &normalized[t.lo as usize..t.hi as usize];
+        let line_start = normalized[..t.lo as usize].rfind('\n').map_or(0, |n| n + 1);
+        let before = indent_of(&normalized[line_start..]);
+        let at = result
+            .find(&placeholder(i))
+            .expect("placeholder survives formatting");
+        let line_start = result[..at].rfind('\n').map_or(0, |n| n + 1);
+        let after = indent_of(&result[line_start..]);
+        result.replace_range(
+            at..at + placeholder(i).len(),
+            &shift_lines(text, before, after),
+        );
+    }
+    parse(file, &result)?;
+    Ok(result)
+}
+
+/// Moves every line after the first of `text` from indentation `before` to
+/// `after`; the text is unchanged when a line lacks the indentation to give up.
+fn shift_lines(text: &str, before: usize, after: usize) -> String {
+    let mut lines = text.split('\n');
+    let mut out = String::from(lines.next().unwrap_or(""));
+    for line in lines {
+        out.push('\n');
+        if line.trim().is_empty() {
+            out.push_str(line);
+        } else if after >= before {
+            out.push_str(&" ".repeat(after - before));
+            out.push_str(line);
+        } else if indent_of(line) >= before - after {
+            out.push_str(&line[before - after..]);
+        } else {
+            return text.to_string();
+        }
+    }
+    out
+}
+
+fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
+    parse(file, source)?;
     let mut normalized = source.replace("\r\n", "\n");
     let mut lines: Vec<String> = normalized.split('\n').map(str::to_string).collect();
     let module = parse(file, &normalized)?;
@@ -40,6 +108,9 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     let text = |t: &Token| &normalized[t.lo as usize..t.hi as usize];
     let mut output: Vec<String> = Vec::new();
     let mut blank = true;
+    // A comment-only line whose indentation snaps to a block boundary can need
+    // the blank lines a dedent gets, which only the next pass sees.
+    let mut realigned = false;
     for (index, line) in lines.iter().enumerate() {
         if breaks.contains(&(index + 1)) && !blank {
             output.push(String::new());
@@ -63,6 +134,7 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
             }
             let stripped = line.trim_start_matches(' ');
             let indent = line.len() - stripped.len();
+            realigned |= indent % 4 != 0;
             output.push(format!(
                 "{}{}",
                 " ".repeat(indent / 4 * 4),
@@ -80,6 +152,9 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
         }
         let last = parts[parts.len() - 1];
         let tail = last.pos.column as usize - 1 + text(&last).len();
+        if let Some(rows) = wrap_import(parts, &formatted, &normalized) {
+            formatted = rows;
+        }
         if tail < line.len()
             && let Some(comment) = line[tail..].find('#')
         {
@@ -98,7 +173,33 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     let result = output.join("\n") + "\n";
     let result = format_expression_layout(file, &result)?;
     parse(file, &result)?;
+    if realigned && result != source {
+        return format_lines(file, &result);
+    }
     Ok(result)
+}
+
+/// A bare import list wider than the line wraps into the parenthesized form,
+/// one name per line with a trailing comma. Parenthesized imports keep the
+/// author's layout, so a second pass leaves the wrapped form unchanged.
+fn wrap_import(parts: &[Token], flat: &str, source: &str) -> Option<String> {
+    let text = |t: &Token| &source[t.lo as usize..t.hi as usize];
+    if parts.first()?.kind != Tok::Import
+        || parts.get(1)?.kind == Tok::LParen
+        || flat.chars().count() <= WIDTH
+    {
+        return None;
+    }
+    let from = parts
+        .iter()
+        .position(|t| t.kind != Tok::Import && text(t) == "from")?;
+    let indent = " ".repeat(parts[0].pos.column as usize - 1);
+    let mut out = format!("{indent}import (\n");
+    for t in parts[1..from].iter().filter(|t| t.kind == Tok::Name) {
+        out.push_str(&format!("{indent}    {},\n", text(t)));
+    }
+    out.push_str(&format!("{indent}) from {}", text(parts.get(from + 1)?)));
+    Some(out)
 }
 
 fn indent_of(line: &str) -> usize {
@@ -183,10 +284,55 @@ fn align_suite_headers(lines: &[String], tokens: &[Token]) -> Option<Vec<String>
     )
 }
 
+/// Reports whether the final `)` closes the parameter list of an `fn`
+/// declaration or function type, so a `(` after it opens a parenthesized
+/// return type (`fn f() (fn() Int)?`) rather than calling a result.
+/// `None` when the matching `(` is not among `tokens` (a line that starts at
+/// the `)`).
+fn closes_parameter_list(tokens: &[Token]) -> Option<bool> {
+    let mut depth = 0usize;
+    let mut open = None;
+    for (index, token) in tokens.iter().enumerate().rev() {
+        match token.kind {
+            Tok::RParen => depth += 1,
+            Tok::LParen => {
+                depth -= 1;
+                if depth == 0 {
+                    open = Some(index);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut at = open?;
+    if at > 0 && tokens[at - 1].kind == Tok::RBracket {
+        let mut depth = 0usize;
+        while at > 0 {
+            at -= 1;
+            match tokens[at].kind {
+                Tok::RBracket => depth += 1,
+                Tok::LBracket => {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let kind = |back: usize| at.checked_sub(back).map(|i| tokens[i].kind);
+    Some(kind(1) == Some(Tok::Fn) || (kind(1) == Some(Tok::Name) && kind(2) == Some(Tok::Fn)))
+}
+
 fn token_space(tokens: &[Token], at: usize) -> bool {
     let (current, previous) = (tokens[at].kind, tokens[at - 1].kind);
     if current == Tok::Dot && matches!(previous, Tok::Pipe | Tok::Try) {
         return true;
+    }
+    if previous == Tok::Bang && current == Tok::Name && tokens[at].lo == tokens[at - 1].hi {
+        return false;
     }
     if current == Tok::DotDot || previous == Tok::DotDot {
         return false;
@@ -200,6 +346,7 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
             | Tok::Dot
             | Tok::Colon
             | Tok::Question
+            | Tok::Bang
     ) {
         return false;
     }
@@ -222,9 +369,18 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
     if current == Tok::LParen
         && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket | Tok::Fn)
     {
-        return false;
+        if previous != Tok::RParen {
+            return false;
+        }
+        // Per-line spacing cannot see a `(` on an earlier line; keep the authored gap.
+        return closes_parameter_list(&tokens[..at]).unwrap_or(tokens[at].lo != tokens[at - 1].hi);
     }
-    if current == Tok::LBracket && matches!(previous, Tok::Name | Tok::SelfKw | Tok::RBracket) {
+    if current == Tok::LBracket
+        && matches!(
+            previous,
+            Tok::Name | Tok::SelfKw | Tok::RBracket | Tok::RParen
+        )
+    {
         return false;
     }
     if previous == Tok::Minus
@@ -400,7 +556,7 @@ fn paragraph_block(s: &Stmt) -> bool {
         while let ExprKind::Unary { operand, .. } = &value.kind {
             value = operand;
         }
-        if matches!(value.kind, ExprKind::Match { .. })
+        if value.is_written_match()
             || block_lambda(value)
             || matches!(&value.kind, ExprKind::Call { args, .. } if args.iter().any(|a| block_lambda(&a.value)))
         {
@@ -518,8 +674,14 @@ fn format_expression_layout(file: &Arc<str>, source: &str) -> PResult<String> {
             && index >= 2
             && nodes[index - 1].tok.kind == Tok::Name
             && nodes[index - 2].tok.kind == Tok::Dot;
+        let import_list =
+            g.open.kind == Tok::LParen && index >= 1 && nodes[index - 1].tok.kind == Tok::Import;
         let following = if chained {
             layout.following_width(&nodes[index + 1..], true)
+        } else if import_list {
+            // The `from "path"` clause shares the closing line.
+            let rest = &source[g.close.hi as usize..];
+            rest.split('\n').next().map_or(0, |l| l.chars().count())
         } else {
             0
         };
@@ -806,13 +968,21 @@ impl<'a> Layout<'a> {
 
     fn flat(&self, nodes: &[Node]) -> String {
         let mut out = String::new();
+        let mut last_line = 0u32;
+        let mut flow = FlowPrefix::default();
         for node in nodes {
+            let joined = flow.advance(node, last_line);
             if layout_token(node.tok.kind) || node.tok.kind == Tok::Comment {
                 continue;
             }
-            if !out.is_empty() && node.space {
+            if joined {
+                out.push_str(" | ");
+            } else if !out.is_empty() && node.space {
                 out.push(' ');
             }
+            last_line = node
+                .group
+                .map_or(node.tok.pos.line, |g| self.groups[g].close.pos.line);
             match node.group {
                 Some(g) => {
                     let g = &self.groups[g];
@@ -954,7 +1124,7 @@ impl<'a> Layout<'a> {
 
     fn layout_operators(&self, nodes: &[Node]) -> (Option<Tok>, usize) {
         let (mut selected, mut level, mut count) = (None, 7, 0);
-        for node in nodes {
+        for (index, node) in nodes.iter().enumerate() {
             if node.tok.kind == Tok::Newline || node.tok.kind == Tok::Fn {
                 return (None, 0); // Operators here belong to a callable body or type.
             }
@@ -967,7 +1137,7 @@ impl<'a> Layout<'a> {
                 Tok::EqEq | Tok::NotEq | Tok::Lt | Tok::Gt | Tok::Le | Tok::Ge => 3,
                 Tok::Plus | Tok::Minus => 4,
                 Tok::Star | Tok::Slash | Tok::Percent => 5,
-                Tok::Dot => 6,
+                Tok::Dot if !optional_dot(nodes, index) => 6,
                 _ => continue,
             };
             if p < level {
@@ -1116,13 +1286,16 @@ impl<'a> Layout<'a> {
         };
         let mut first_indent = 0i64;
         for node in nodes {
-            if !layout_token(node.tok.kind) {
+            // A leading comment may sit off the code's indentation.
+            if !layout_token(node.tok.kind) && node.tok.kind != Tok::Comment {
                 first_indent = self.line_indent(node.tok.pos.line) as i64;
                 break;
             }
         }
         let (mut pending, mut suite, mut last_line) = (false, false, 0u32);
+        let mut flow = FlowPrefix::default();
         for (index, node) in nodes.iter().enumerate() {
+            let joined = flow.advance(node, last_line);
             if layout_token(node.tok.kind) {
                 pending = pending || node.tok.kind == Tok::Newline;
                 suite = suite || node.tok.kind == Tok::Newline;
@@ -1165,6 +1338,8 @@ impl<'a> Layout<'a> {
                 }
             } else if comment {
                 w.write("  ");
+            } else if joined {
+                w.write(" | ");
             } else if node.space {
                 w.write(" ");
             }
@@ -1183,11 +1358,43 @@ impl<'a> Layout<'a> {
     }
 }
 
+/// A line starting with `.` after a flow step applies to the whole flow so far.
+/// Joined onto the previous line it must read `| .name(...)`, since `step.name`
+/// would instead select a member of the step.
+#[derive(Default)]
+struct FlowPrefix {
+    previous: Option<Tok>,
+    has_pipe: bool,
+}
+
+impl FlowPrefix {
+    fn advance(&mut self, node: &Node, last_line: u32) -> bool {
+        let joined = node.tok.kind == Tok::Dot
+            && last_line != 0
+            && last_line != node.tok.pos.line
+            && self.has_pipe
+            && !matches!(self.previous, Some(Tok::Pipe | Tok::Try));
+        // Only preceding code in the current comma-separated item contributes.
+        if node.group.is_none() && node.tok.kind == Tok::Comma {
+            *self = Self::default();
+        } else if !layout_token(node.tok.kind) && node.tok.kind != Tok::Comment {
+            self.previous = Some(node.tok.kind);
+            self.has_pipe |= node.tok.kind == Tok::Pipe;
+        }
+        joined
+    }
+}
+
 fn is_comparison(k: Tok) -> bool {
     matches!(
         k,
         Tok::EqEq | Tok::NotEq | Tok::Lt | Tok::Gt | Tok::Le | Tok::Ge
     )
+}
+
+/// The `.` of `?.`: a line cannot start with `?.`, so a chain never breaks there.
+fn optional_dot(nodes: &[Node], index: usize) -> bool {
+    nodes[index].tok.kind == Tok::Dot && index > 0 && nodes[index - 1].tok.kind == Tok::Question
 }
 
 fn split_layout(nodes: &[Node], separator: Tok) -> Vec<&[Node]> {
@@ -1202,7 +1409,7 @@ fn split_layout(nodes: &[Node], separator: Tok) -> Vec<&[Node]> {
             }
             _ => k == separator,
         };
-        if node.group.is_some() || !matches {
+        if node.group.is_some() || !matches || optional_dot(nodes, i) {
             continue;
         }
         let mut end = i;
@@ -1355,6 +1562,8 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     Tok::Dot if depth == 0 => dots += 1,
                     Tok::Newline | Tok::Indent | Tok::Dedent | Tok::Fn => return,
                     Tok::If | Tok::Else => return,
+                    // A line starting with `.` after a flow step applies to the whole flow.
+                    Tok::Pipe if depth == 0 => return,
                     k if depth == 0
                         && (matches!(k, Tok::And | Tok::Or) || is_comparison(k) || is_arith(k)) =>
                     {
@@ -1379,14 +1588,14 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             }
         }
 
-        fn wrap(&mut self, start: usize) {
+        fn wrap(&mut self, start: usize, limit: u32) {
             if self.strip {
                 return;
             }
             let tokens = self.tokens;
             let (mut end, mut booleans, mut dots, mut operators) = (start, 0, 0, 0);
             let mut calls: Vec<(usize, usize)> = Vec::new();
-            while end < tokens.len() {
+            while end < tokens.len() && tokens[end].pos.offset < limit {
                 if let Some(&close) = self.pairs.get(&end) {
                     // A call with a trivial argument gains nothing from breaking.
                     if tokens[end].kind == Tok::LParen && close > end + 3 {
@@ -1396,13 +1605,9 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     continue;
                 }
                 let kind = tokens[end].kind;
-                if layout_token(kind)
-                    || matches!(
-                        kind,
-                        Tok::Colon | Tok::Comma | Tok::RParen | Tok::RBracket | Tok::RBrace
-                    )
-                {
-                    break;
+                if layout_token(kind) {
+                    // An indented suite cannot be wrapped as a partial value.
+                    return;
                 }
                 match kind {
                     Tok::And | Tok::Or => booleans += 1,
@@ -1510,7 +1715,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                 }
                 _ => {}
             }
-            self.wrap(start);
+            self.wrap(start, value.end.offset);
         }
     }
     let mut g = G {
@@ -1534,7 +1739,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             && !suite_expression(&c.value)
             && let Some(&start) = g.starts.get(&c.init_pos.offset)
         {
-            g.wrap(start);
+            g.wrap(start, c.value.end.offset);
         }
         visit::walk_decl(&mut g, d);
     }

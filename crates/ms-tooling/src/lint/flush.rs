@@ -36,7 +36,7 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
         findings.push(finding(
             "MSL114",
             format!(
-                "`{name}` is closed when its scope ends, and close cannot report a failure; call `try {name}.{method}()` before the scope ends to see one"
+                "`{name}` is closed when its scope ends, and unflushed data is lost if that fails; call `try {name}.{method}()` before the scope ends to see the failure"
             ),
             &file,
             pos,

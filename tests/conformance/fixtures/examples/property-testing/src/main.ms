@@ -1,4 +1,4 @@
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 # Returns the numbers in ascending order, keeping duplicates.
 export fn insertion_sort(numbers: List[Int]) List[Int]:

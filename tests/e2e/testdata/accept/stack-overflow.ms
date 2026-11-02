@@ -1,4 +1,4 @@
-import expect_contains, expect_fault from "@std/test.ms"
+import expect_contains, expect_fault from "@std/test/test.ms"
 
 # Every call keeps 1500 locals live across the recursive call, so the frame is large enough
 # that the 1 GiB main stack runs out after only a few hundred thousand calls.

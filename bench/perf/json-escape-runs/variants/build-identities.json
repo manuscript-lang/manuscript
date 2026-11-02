@@ -1,0 +1,25 @@
+{
+  "base_revision": "c3a96a65dee6f0d1aa7c83c30de9b835624f3b08",
+  "candidate_library_sha256": "81853e3ce121c71690b6c7ab581e1965b5432f93fe302c50106d55cd77d5bf1a",
+  "artifacts": {
+    "before": "0ae1a4461d61aa915fb89f5f4f53228969b01b79dd0fadbe2d0797291cab473f",
+    "after": "77e44b5a44cbf87d1c513ad7cfff82886d53ebe0f1408c7ca21bdb61be798db5",
+    "edges-before": "3b46b30bf7bd9d90748449e2c2f78d174ae71ecad9fdd679b1fc51e8bb814c55",
+    "edges-after": "14393281c7a3a98761436acabde1e20d3f67357bde0a23859a6ea3def4f4c95c",
+    "before-lib.rs": "0bfa3d3dbd6a32a4c1b18692685c796d992c1efb297f10ea270736f063206071",
+    "candidate.patch": "eca3987dea3f749f473889bdfcd044f7d6aef570eff314e8bd7ec432230aaa1e"
+  },
+  "source_sha256": {
+    "bench/perf/json-library/src/main.rs": "9054a13ec8519ebf1567f4e09aba6db3bcb6dd29a2973a8732d5b9ac58a01afb",
+    "bench/perf/json-library/src/bin/float-edges.rs": "c0c912ea6f14943b030dd8766a8e443e22cc099992e1436ac7984a34f45ea60d",
+    "bench/perf/json-library/Cargo.toml": "c20940ae8c19243122504862a07f57f42e8c04b9173e68672a654af0a829001f",
+    "bench/perf/json-library/Cargo.lock": "b0ba4f76e066d78a1d1083485689c0b42477f206843ca361f642be21d17cf46a",
+    ".cargo/config.toml": "c411c17fbefc5c7148567d4a348fbf29cde557426121c29c6ae0525fbbd8c34e",
+    "rust-toolchain.toml": "7f5140056a968f51f7a91e1d73fd6b8c226054ecb5c6d39e791de484f9616457"
+  },
+  "build_commands": [
+    "cargo build --offline --release --manifest-path bench/perf/json-library/Cargo.toml (baseline: Cargo.lock updates only local ms-std-json dependency list to current baseline manifest)",
+    "cargo build --offline --locked --release --manifest-path bench/perf/json-library/Cargo.toml (candidate)"
+  ],
+  "note": "Component control only. Same c3a96main sources/dependencies and Rust toolchain; only adjacent writer escape-loop differs. No concurrent build during timing. Float optimization #2126 is absent on both sides."
+}

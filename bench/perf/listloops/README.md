@@ -13,7 +13,7 @@ Element-wise loops over `List[T]` (`for i in 0..n: out[i] = ...`) in GFLOPS (one
 | `conv` | `out[i] = a[i].to_float() * 0.5` from `Int` to `Float` |
 | `dot32` | a `Float32` dot product (a strict-order reduction) |
 
-Run `sh bench/perf/listloops/run.sh 7` (best of N). Compare only runs from the same machine.
+Run `ms run bench/tools/listloops.ms -- 7` (best of N). Compare only runs from the same machine.
 
 ## Element addresses as pointer plus offset (2026-10-27)
 

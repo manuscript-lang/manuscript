@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "close-explicit-consumes.ms::an explicit close consumes the binding",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "close-explicit-consumes.ms::a close on one path leaves the other path to the scope",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "close-explicit-consumes.ms::a binding given a new value is closed afresh",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN close-explicit-consumes.ms::an explicit close consumes the binding\nPASS close-explicit-consumes.ms::an explicit close consumes the binding\nRUN close-explicit-consumes.ms::a close on one path leaves the other path to the scope\nPASS close-explicit-consumes.ms::a close on one path leaves the other path to the scope\nRUN close-explicit-consumes.ms::a binding given a new value is closed afresh\nPASS close-explicit-consumes.ms::a binding given a new value is closed afresh\n3 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

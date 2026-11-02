@@ -1,0 +1,5 @@
+RUN string-normalize-identity.ms::ASCII identity covers every byte and preserves exact byte budgets
+PASS string-normalize-identity.ms::ASCII identity covers every byte and preserves exact byte budgets
+RUN string-normalize-identity.ms::ASCII identity retains spelling validation before normalization
+PASS string-normalize-identity.ms::ASCII identity retains spelling validation before normalization
+2 tests, 0 failed

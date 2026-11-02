@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...) T:', or import it from a module",
+        "position": {
+          "file": "format-testformatexpressionlayouts-41.ms",
+          "line": 5,
+          "column": 12,
+          "offset": 179
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding allowed; declare it with 'let allowed = ...' before use, define 'fn allowed(...) T:', or import it from a module",
+        "position": {
+          "file": "format-testformatexpressionlayouts-41.ms",
+          "line": 5,
+          "column": 22,
+          "offset": 189
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding remaining; declare it with 'let remaining = ...' before use, define 'fn remaining(...) T:', or import it from a module",
+        "position": {
+          "file": "format-testformatexpressionlayouts-41.ms",
+          "line": 5,
+          "column": 34,
+          "offset": 201
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/format-testformatexpressionlayouts-41.ms:5:12: resolution: unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...) T:', or import it from a module\n   |\n 5 |     return active or allowed and remaining > 0\n   |            ^\n<DIR>/format-testformatexpressionlayouts-41.ms:5:22: resolution: unknown binding allowed; declare it with 'let allowed = ...' before use, define 'fn allowed(...) T:', or import it from a module\n   |\n 5 |     return active or allowed and remaining > 0\n   |                      ^\n<DIR>/format-testformatexpressionlayouts-41.ms:5:34: resolution: unknown binding remaining; declare it with 'let remaining = ...' before use, define 'fn remaining(...) T:', or import it from a module\n   |\n 5 |     return active or allowed and remaining > 0\n   |                                  ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

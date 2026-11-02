@@ -1,7 +1,7 @@
 # conform: tags=closures,faults,stdlib-tasks,tier-stdlib,scope-cleanup
 # conform: phase=run
-import stdout from "@std/io.ms"
-import TaskError, TaskGroup from "@std/tasks.ms"
+import stdout from "@std/io/io.ms"
+import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
 
 fn boom(xs: List[Int]) Int:
     return xs.get(5)
@@ -28,7 +28,7 @@ export fn main() Int:
         ok(value): say("good {value}")
         error(_other): say("good failed")
 
-    group.close()
+    group.close().get(none)
 
     var group2 = TaskGroup[Int](contain_faults: true)
     group2.spawn(fn ch: boom([1]))
@@ -37,5 +37,5 @@ export fn main() Int:
         ok(_unit): say("wait ok")
         error(reason): say(describe(reason))
 
-    group2.close()
+    group2.close().get(none)
     return 0

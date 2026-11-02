@@ -1,11 +1,17 @@
-import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
+import Bytes from "@std/bytes.ms"
 import http_result from "./support/http.ms"
-import headers, HttpMethod, buffered from "@std/http.ms"
+import headers, HttpMethod, buffered from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
-import network from "@std/net.ms"
-import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/http.ms"
-import WebSocketOptions, WebSocketError from "@std/net.ms"
-import TlsOptions from "@std/net.ms"
+import connect, http_client, request, serve, web_socket from "@std/net/net.ms"
+import (
+    HttpExchange,
+    HttpError,
+    HttpServerOptions,
+    HttpClientOptions
+) from "@std/net/http.ms"
+import WebSocketOptions, WebSocketError from "@std/net/net.ms"
+import TlsOptions from "@std/net/net.ms"
 
 fn tls_options() TlsOptions:
     return TlsOptions(
@@ -13,7 +19,7 @@ fn tls_options() TlsOptions:
         alpn: [], require_client_certificate: false
     )
 
-fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
+fn echo(exchange: HttpExchange) Unit!HttpError:
     if exchange.path() == "/ws":
         var socket = (
             try http_result(
@@ -30,7 +36,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
                 )
             )
         )
-        socket.close()
+        socket.close().get(none)
         return ok(unit)
 
     var chain_1 = Map[String, List[String]]()
@@ -42,15 +48,12 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     return ok(unit)
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
-    let net = network()
     let options = HttpServerOptions(
         max_requests: 4, timeout: 3.seconds, grace: 0.seconds, tls: none
     )
-    let server = net.serve(
-        address: "127.0.0.1:0", handler: echo, options: options
-    ) | try expect_ok
+    let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
     let url = "http://{server.address()}/"
-    let response = net.request(
+    let response = request(
         method: HttpMethod.Get, url: url,
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
     ) | try expect_ok
@@ -65,7 +68,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     let client_options = HttpClientOptions(
         decompress: true, cookies: true, tls: tls_options()
     )
-    var client = net.http_client(client_options) | try expect_ok
+    var client = http_client(client_options) | try expect_ok
     let body = client.request(
         method: HttpMethod.Get, url: url,
         headers: (try text_headers(Map[String, String]())), body: "",
@@ -74,11 +77,11 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     body.metadata().status | try expect_equal(201)
     (body.read(5) | try expect_ok).get() | try expect_equal("hello".to_bytes())
     ((body.read(5) | try expect_ok).is_none()) | try expect_true
-    client.close()
+    try client.close()
 
-    let _limited: Result[Unit, HttpError] = error(HttpError.LimitExceeded)
+    let _limited: Unit!HttpError = error(HttpError.LimitExceeded)
 
-    match net.request(
+    match request(
         method: HttpMethod.Get, url: url,
         headers: (try text_headers(Map[String, String]())), body: "",
         max_response_bytes: 4, timeout: 2.seconds
@@ -88,16 +91,13 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             try expect_equal(cause, HttpError.LimitExceeded)
 
 test "WebSocket negotiates a protocol and echoes a text frame":
-    let net = network()
     let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
-    let server = net.serve(
-        address: "127.0.0.1:0", handler: echo, options: options
-    ) | try expect_ok
+    let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
     let client_options = WebSocketOptions(
         max_message_bytes: 1024, timeout: 2.seconds, tls: tls_options(),
         compression: false
     )
-    let socket = net.web_socket(
+    let socket = web_socket(
         url: "ws://{server.address()}/ws",
         headers: (try text_headers(Map[String, String]())), subprotocols: ["echo"],
         options: client_options
@@ -108,30 +108,54 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     let message = (socket.receive() | try expect_ok).get()
     (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
 
-fn report_host(exchange: HttpExchange) Result[Unit, HttpError]:
+fn upgrade_status(address: String, version: String, extra: String) String!:
+    let client = try connect(address, 2.seconds)
+    let key = "dGhlIHNhbXBsZSBub25jZQ=="
+    let request = (
+        "GET /ws {version}\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+        + "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: {key}\r\n{extra}\r\n"
+    )
+    try client.write(request, 2.seconds)
+
+    let reply = (try client.read(timeout: 2.seconds)).get(Bytes([]))
+    return ok(reply.decode_utf8().get("").split("\r\n").first().get(""))
+
+test "WebSocket upgrades need HTTP/1.1 and one key":
+    let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
+    let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
+    let address = server.address()
+    try expect_equal(
+        try upgrade_status(address, "HTTP/1.1", ""), "HTTP/1.1 101 Switching Protocols"
+    )
+    try expect_equal(
+        try upgrade_status(address, "HTTP/1.0", ""), "HTTP/1.1 400 Bad Request"
+    )
+    try expect_equal(
+        try upgrade_status(
+            address, "HTTP/1.1", "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+        ),
+        "HTTP/1.1 400 Bad Request"
+    )
+
+fn report_host(exchange: HttpExchange) Unit!HttpError:
     let hosts = exchange.headers().values("Host")
     let _started = try exchange.send_headers(status: 200, headers: headers())
     let _written = (try http_result(exchange.write(hosts.join(","))))
     return ok(unit)
 
 test "HTTP streaming handlers see the Host request header":
-    let net = network()
     let options = HttpServerOptions(
         max_requests: 2, timeout: 3.seconds, grace: 0.seconds, tls: none
     )
-    let server = net.serve(
-        address: "127.0.0.1:0", handler: report_host, options: options
-    ) | try expect_ok
-    let response = net.request(
+    let server = serve(address: "127.0.0.1:0", handler: report_host, options: options) | try expect_ok
+    let response = request(
         method: HttpMethod.Get, url: "http://{server.address()}/",
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
     ) | try expect_ok
     response.body | try expect_equal(server.address().to_bytes())
 
 test "HTTP requests reject an empty method":
-    let net = network()
-
-    match net.request(
+    match request(
         method: HttpMethod.Custom(value: ""), url: "http://127.0.0.1:1/",
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 1.seconds
     ):

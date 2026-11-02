@@ -198,7 +198,7 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
         }
     }
     if request.fix {
-        let (applied, edited) = apply_fixes(fixes, io);
+        let (applied, edited, waited) = apply_fixes(fixes, io);
         if applied > 0 {
             let _ = writeln!(
                 io.stderr,
@@ -206,8 +206,9 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
                 plural(applied, "fix", "fixes"),
                 plural(edited, "file", "files")
             );
+            // A fix that overlapped an applied one is found again on the rerun.
             let rerun = AnalysisRequest {
-                fix: false,
+                fix: waited,
                 ..request.clone()
             };
             return analysis_once(&rerun, io);
@@ -299,13 +300,16 @@ fn source_fixes(checked: &Checked) -> Vec<(String, ms_driver::DiagnosticFix)> {
 
 /// Applies the fixes in place, last edit first so offsets stay valid. A fix
 /// that is repeated or overlaps an earlier one waits for the next run.
-/// Returns the fixes applied and the files changed.
-fn apply_fixes(fixes: Vec<(String, ms_driver::DiagnosticFix)>, io: &mut Io) -> (usize, usize) {
+/// Returns the fixes applied, the files changed, and whether any fix waited.
+fn apply_fixes(
+    fixes: Vec<(String, ms_driver::DiagnosticFix)>,
+    io: &mut Io,
+) -> (usize, usize, bool) {
     let mut by_file: BTreeMap<String, Vec<ms_driver::DiagnosticFix>> = BTreeMap::new();
     for (path, fix) in fixes {
         by_file.entry(path).or_default().push(fix);
     }
-    let (mut applied, mut edited) = (0, 0);
+    let (mut applied, mut edited, mut waited) = (0, 0, false);
     for (path, mut file_fixes) in by_file {
         file_fixes.sort_by_key(|f| (f.pos.offset, f.end.offset));
         file_fixes.dedup();
@@ -323,6 +327,8 @@ fn apply_fixes(fixes: Vec<(String, ms_driver::DiagnosticFix)>, io: &mut Io) -> (
             if valid && (chosen.is_empty() || start >= last_end) {
                 last_end = end;
                 chosen.push(fix);
+            } else if valid {
+                waited = true;
             }
         }
         if chosen.is_empty() {
@@ -341,7 +347,7 @@ fn apply_fixes(fixes: Vec<(String, ms_driver::DiagnosticFix)>, io: &mut Io) -> (
         applied += chosen.len();
         edited += 1;
     }
-    (applied, edited)
+    (applied, edited, waited)
 }
 
 /// The check summary for one input that passed.
@@ -424,7 +430,7 @@ fn ordered(diagnostics: Vec<CommandDiagnostic>) -> Vec<CommandDiagnostic> {
     let mut seen = BTreeSet::new();
     let mut unique: Vec<CommandDiagnostic> = diagnostics
         .into_iter()
-        .filter(|d| seen.insert(d.to_json().pretty_line(ms_json::Escape::GoHtml)))
+        .filter(|d| seen.insert(d.to_json().pretty_line(ms_json::Escape::HtmlSafe)))
         .collect();
     unique.sort_by(|a, b| {
         let key = |d: &CommandDiagnostic| {
@@ -474,7 +480,7 @@ pub fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendResult {
     let program = checked.program.as_ref().expect("accepted program");
     let mut text = inspect(program)
         .to_json()
-        .pretty_line(ms_json::Escape::GoHtml);
+        .pretty_line(ms_json::Escape::HtmlSafe);
     text.push('\n');
     Ok(write_output(io, &request.output, text.as_bytes()))
 }
@@ -536,7 +542,7 @@ fn view(request: &DiagramRequest, head: &Checked, io: &mut Io) -> i32 {
             ("entity", ms_json::Json::str(&request.entity)),
             ("tree", tree.to_json()),
         ])
-        .pretty_line(ms_json::Escape::GoHtml)
+        .pretty_line(ms_json::Escape::HtmlSafe)
             + "\n"
     } else if request.format == "mermaid" {
         tree.mermaid()
@@ -577,7 +583,7 @@ pub fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
         let findings = compare_facts(&base, &head_facts, &input);
         let explanation = if request.format == "json" {
             explain_json(&findings, &head_facts, &request.explain)
-                .map(|j| j.pretty_line(ms_json::Escape::GoHtml) + "\n")
+                .map(|j| j.pretty_line(ms_json::Escape::HtmlSafe) + "\n")
         } else {
             explain(&findings, &head_facts, &request.explain)
         };

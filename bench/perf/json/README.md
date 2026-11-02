@@ -4,9 +4,9 @@
 
 ```sh
 cargo xtask runtime && cargo build --release --locked -p ms-cli
-sh bench/perf/json/run.sh
+ms run bench/tools/json_bench.ms
 ```
 
-`rust/` is the serde_json baseline (`Value`, `from_slice` and `to_vec`, release build) with the same protocol; `run.sh` prints the speed against Node and against serde_json. `fetch.sh` downloads the corpora into `data/` (not committed). `node.js` and `src/main.ms` use one protocol: a warm-up run, then the median of at least five runs and one second. The last two columns are how many times faster Manuscript is than each, so below `1.00x` the baseline wins.
+`rust/` is the serde_json baseline (`Value`, `from_slice` and `to_vec`, release build) with the same protocol; `bench/tools/json_bench.ms` prints the speed against Node and against serde_json and downloads the corpora into `data/` (not committed). `node.js` and `src/main.ms` use one protocol: a warm-up run, then the median of at least five runs and one second. The last two columns are how many times faster Manuscript is than each, so below `1.00x` the baseline wins.
 
 For profiling, `ms run bench/perf/json/ms.toml -- quick twitter:doc` runs five iterations of one case; the operations are `parse`, `stringify`, and `doc` (build the parsed document and release it, without creating the `JsonValue` tree).

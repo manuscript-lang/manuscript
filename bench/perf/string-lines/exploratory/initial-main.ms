@@ -1,5 +1,5 @@
-import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
 
 fn sum_lines(text: String) Int:
     let lines = text.lines()
@@ -12,11 +12,11 @@ fn measure(name: String, text: String, expected: Int, iterations: Int) Int:
     if sum_lines(text) != expected: return 1
 
     var checksum = 0
-    let started = clock().now()
+    let started = monotonic()
     for iteration in 0..iterations:
         checksum += sum_lines(text)
 
-    let elapsed = clock().now().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     if checksum != expected * iterations:
         return 1
 

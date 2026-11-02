@@ -84,12 +84,16 @@ pub(crate) struct FnLower<'a> {
     pub ret_ty: MTy,
     /// The body is bracketed by `depth.enter` / `depth.leave` (the optimizer removes it for non-recursive functions).
     pub counts_depth: bool,
-    /// This instance lends its result: a returned borrow is handed back without a copy.
-    pub lent_return: bool,
-    /// The `return` expression being lowered in a lent instance.
-    pub lent_expr: Option<usize>,
-    /// A lent instance returned an owned value, which its caller would not free.
-    pub lent_violation: bool,
+    /// The value `return` is carrying while the scopes unwind, which a close error replaces.
+    pub pending_return: Option<Value>,
+    /// `return` already ran its var-slot, temporary and fixture handling on this path.
+    pub prologue_done: bool,
+    /// Bindings whose close already ran on the path that is returning a close error.
+    pub closed_on_path: HashSet<usize>,
+    /// A close error is being returned, so a further close failure is dropped.
+    pub returning_close_error: bool,
+    /// Bindings of the scope being left whose close and drop already ran.
+    pub scope_done: Vec<usize>,
     /// Record to build on return and the binding uids of the `var` parameters it carries.
     pub var_slots: Vec<VarSlot>,
     /// The expression statement being lowered, whose value nothing reads (by address).
@@ -166,9 +170,6 @@ fn instance_key(c: &Callable, subst: &Subst) -> String {
 /// The substitution entry marking an instance that takes its consumed parameters owned.
 pub(crate) const OWNED: &str = "$own";
 
-/// The substitution entry marking an instance that lends its `ref` result.
-pub(crate) const LENT: &str = "$lent";
-
 impl Cx {
     /// The parameters a direct call hands over owned: those the body consumes (moves, stores or
     /// returns), for a function or method whose parameters all pass by value; a method's mask
@@ -179,13 +180,10 @@ impl Cx {
             return None;
         }
         let f = c.func.func()?;
-        if f.body.is_empty() || f.result_ref {
+        if f.body.is_empty() {
             return None;
         }
         let key = (c.module.file, c.id());
-        if self.lenders.contains(&key) {
-            return None;
-        }
         let mask = self.consumes.get(&key)?;
         (mask.len() == c.parameters.len() + c.self_binding.iter().count()).then(|| mask.clone())
     }
@@ -201,19 +199,6 @@ impl Cx {
         let mut owned = subst.clone();
         owned.insert(ct::n(OWNED), ct::primitive("owned"));
         self.function_in(m, c, &owned, scope)
-    }
-
-    /// The instance of `c` that returns its `ref` result as a borrow instead of a copy.
-    pub(crate) fn function_lent(
-        &mut self,
-        m: &mut Module,
-        c: &Rc<Callable>,
-        subst: &Subst,
-        scope: ct::Name,
-    ) -> Result<FuncId, Error> {
-        let mut lent = subst.clone();
-        lent.insert(ct::n(LENT), ct::primitive("lent"));
-        self.function_in(m, c, &lent, scope)
     }
 
     /// The checked result type of a callable (generic-open).
@@ -277,9 +262,13 @@ impl Cx {
             c.name.to_string()
         };
         let mut f = ms_mir::ir::Func::new(&name, params, ret);
-        f.ret_borrowed = subst.contains_key(&ct::n(LENT));
         // The checker keeps a `var` argument from overlapping any other argument.
         f.noalias = vars.iter().map(|&i| i as u32).collect();
+        // The checker found every result a reference into the arguments.
+        f.ret_borrowed = self.lenders.contains(&(c.module.file, c.id()));
+        // The checker found the result an interface view of the arguments: owned, dropped by
+        // the caller, held as a borrow of the arguments while it lives.
+        f.ret_view = self.view_lenders.contains(&(c.module.file, c.id()));
         let id = m.add_func(f);
         self.insts.insert(key, id);
         self.queue.push(Job {
@@ -351,10 +340,11 @@ pub(crate) fn lower_tests(
             .callables
             .values()
             .find(|c| {
-                c.module.file.as_str() == "@std/bench.ms" && c.name.as_str() == "run_bench_block"
+                c.module.file.as_str() == "@std/test/bench.ms"
+                    && c.name.as_str() == "run_bench_block"
             })
             .cloned()
-            .ok_or_else(|| Error::new("the bench driver @std/bench.ms is not loaded"))?;
+            .ok_or_else(|| Error::new("the bench driver @std/test/bench.ms is not loaded"))?;
         let driver = cx.function_for(&mut m, &driver, &Subst::new())?;
         let per: Vec<i64> = tests
             .iter()
@@ -409,6 +399,7 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
         }
         JobKind::Lambda(l) => return crate::closure::build_lambda(cx, m, job.func, l),
         JobKind::BoundNative(n) => return crate::closure::build_bound_native(cx, m, job.func, n),
+        JobKind::IfaceNative(n) => return crate::closure::build_iface_native(cx, m, job.func, n),
         JobKind::BoundAlias(n) => return crate::bound_alias::build_bound_alias(cx, m, job.func, n),
         JobKind::DefaultThunk(n) => return crate::closure::build_default_thunk(cx, m, job.func, n),
         JobKind::NativeThunk(n) => return crate::closure::build_native_thunk(cx, m, job.func, n),
@@ -423,18 +414,15 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     let proto = m.funcs[job.func.index()].clone();
     let b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     let mut fl = FnLower::new(cx, b, hir, jsubst, file, proto.ret);
+    // A lending function returns references as they are; `emit_return` reads the flag.
+    fl.b.func_mut().ret_borrowed = proto.ret_borrowed;
+    fl.b.func_mut().ret_view = proto.ret_view;
     let result = fl.lower_callable(&c);
-    let violated = fl.lent_violation;
     let mut func = fl.b.into_func();
-    func.ret_borrowed = proto.ret_borrowed;
     result?;
-    if violated {
-        return Err(Error::new(format!(
-            "`{}` returns `ref` but some path returns an owned value; return a part of a parameter on every path",
-            c.name
-        )));
-    }
     func.noalias = proto.noalias;
+    func.ret_borrowed = proto.ret_borrowed;
+    func.ret_view = proto.ret_view;
     func.compact_blocks();
     m.funcs[job.func.index()] = func;
     Ok(())
@@ -465,9 +453,11 @@ impl<'a> FnLower<'a> {
             dead: false,
             ret_ty,
             counts_depth: false,
-            lent_return: false,
-            lent_expr: None,
-            lent_violation: false,
+            pending_return: None,
+            prologue_done: false,
+            closed_on_path: HashSet::new(),
+            returning_close_error: false,
+            scope_done: Vec::new(),
             var_slots: Vec::new(),
             slotted: HashSet::new(),
             redefined: HashSet::new(),
@@ -514,6 +504,14 @@ impl<'a> FnLower<'a> {
     }
 
     /// Whether values of `t` are resources, which must be closed whatever their storage.
+    /// Whether `v` is an interface value.
+    pub fn is_iface(&self, v: ms_mir::ir::Value) -> bool {
+        matches!(
+            self.b.m.types.kind(self.ty_of(v)),
+            ms_mir::types::TyKind::Iface(_)
+        )
+    }
+
     pub fn is_resource(&self, t: MTy) -> bool {
         self.cx
             .source_tys
@@ -700,14 +698,27 @@ impl<'a> FnLower<'a> {
                             | Op::ListGet
                             | Op::ListGetNn
                             | Op::ListGetU
+                            | Op::Load
                     )
                 )
                 // Its parent must outlive the binding: an owned scrutinee is dropped as soon as
-                // its payload has been copied out.
+                // its payload has been copied out. A payload loaded out of an interface value
+                // (`iface.data`) is held by the interface value itself, so that must be borrowed.
                 && self
                     .b
                     .defining_operand(x.v)
-                    .is_some_and(|parent| self.b.is_borrowed(parent)));
+                    .is_some_and(|parent| self.b.is_borrowed(parent) && self.holder_borrowed(x.v, parent)));
+        // A `let` of a lending call's result the checker holds as a borrow of the arguments.
+        let lent = lent
+            || (self.cx.shared(binding.uid)
+                && self.ownership_checked()
+                && !x.own
+                && !binding.mutable
+                && !self.slotted.contains(&binding.uid)
+                && self.temps.is_empty()
+                && self.needs_drop(ty)
+                && self.b.defining_op(x.v) == Some(Op::Call)
+                && self.b.is_borrowed(x.v));
         if lent {
             self.bind_lent(binding, x.v);
             return;
@@ -732,6 +743,18 @@ impl<'a> FnLower<'a> {
         self.slotify(binding.uid);
         if owned {
             self.scopes.last_mut().expect("scope").push(binding.uid);
+        }
+    }
+
+    /// Whether the value `parent` that `v` was read from is itself borrowed, looking through the
+    /// `iface.data` pointer a type pattern loads its payload from.
+    fn holder_borrowed(&self, v: Value, parent: Value) -> bool {
+        if self.b.defining_op(v) != Some(Op::Load) {
+            return true;
+        }
+        match self.b.defining_operand(parent) {
+            Some(iface) => self.b.is_borrowed(iface),
+            None => false,
         }
     }
 
@@ -854,9 +877,13 @@ impl<'a> FnLower<'a> {
     }
 
     fn drop_scope_locals(&mut self, depth: usize) {
+        let outer_done = std::mem::take(&mut self.scope_done);
         for i in (depth..self.scopes.len()).rev() {
             let uids = self.scopes[i].clone();
             for uid in uids.iter().rev() {
+                if self.closed_on_path.contains(uid) {
+                    continue;
+                }
                 if let Some((kind, list, idx)) = self.rest_closers.get(uid).cloned() {
                     self.close_rest(&kind, list, idx);
                     continue;
@@ -875,8 +902,10 @@ impl<'a> FnLower<'a> {
                     let v = self.local_take(&l);
                     self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
                 }
+                self.scope_done.push(*uid);
             }
         }
+        self.scope_done = outer_done;
     }
 
     /// Ends a scope, dropping its locals when control reaches the end.
@@ -913,28 +942,41 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return;
         }
+        // A lending function returns the reference itself; the caller never releases it.
+        let lends = self.b.func_mut().ret_borrowed;
+        let views = self.b.func_mut().ret_view;
         let v = value.map(|x| {
-            if !self.lent_return {
-                return self.owned(x);
+            if lends {
+                x.v
+            } else if views && !x.own && self.is_iface(x.v) {
+                // A view lender hands a plain reference to an interface value on as a value that
+                // owns nothing (`iface.view`); the caller drops it like the views it builds.
+                self.b.iface_view(x.v)
+            } else {
+                self.owned(x)
             }
-            // A lent result is a borrow the caller never frees, so an owned value cannot be one.
-            if x.own && self.needs_drop(self.ty_of(x.v)) {
-                self.lent_violation = true;
-            }
-            x.v
         });
-        for slot in self.var_slots.clone() {
-            let l = self.locals[&slot.uid];
-            let x = self.local_take(&l);
-            self.move_into(slot.ptr, x);
+        // A close error returned from inside this unwinding re-enters here with the prologue done.
+        let nested = self.prologue_done;
+        if !nested {
+            for slot in self.var_slots.clone() {
+                let l = self.locals[&slot.uid];
+                let x = self.local_take(&l);
+                self.move_into(slot.ptr, x);
+            }
+            // The temporaries stay registered: a conditional return leaves the others running.
+            for t in self.temps.clone().into_iter().rev() {
+                self.close_temp(t);
+                self.drop_value(t);
+            }
+            self.end_fixture();
         }
-        // The temporaries stay registered: a conditional return leaves the others running.
-        for t in self.temps.clone().into_iter().rev() {
-            self.close_temp(t);
-            self.drop_value(t);
-        }
-        self.end_fixture();
+        let outer_pending =
+            std::mem::replace(&mut self.pending_return, if nested { None } else { v });
+        self.prologue_done = true;
         self.unwind_to(0);
+        self.prologue_done = nested;
+        self.pending_return = outer_pending;
         if self.counts_depth {
             self.b
                 .emit(Op::DepthLeave, &[], ms_mir::ir::Imm::None, None);
@@ -946,7 +988,6 @@ impl<'a> FnLower<'a> {
     // --------------------------------------------------------------- bodies
 
     fn lower_callable(&mut self, c: &Rc<Callable>) -> Result<(), Error> {
-        self.lent_return = self.subst.contains_key(&ct::n(LENT));
         // Inline/default frames must return to this declaration's file, even
         // when every surviving instruction originates in another module.
         self.b.func_mut().loc = self.loc(c.func.decl.decl().pos);
@@ -1087,8 +1128,10 @@ impl<'a> FnLower<'a> {
                 }
             }
             ms_check::hir::Body::Expr(e) => {
+                let moved_before = self.closed_on_path.clone();
                 let x = self.expr(e)?;
                 self.emit_return(Some(x));
+                self.closed_on_path = moved_before;
             }
         }
         Ok(())

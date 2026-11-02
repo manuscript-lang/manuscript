@@ -1,4 +1,4 @@
-import stdin, stdout, read_line from "@std/io.ms"
+import stdin, stdout, read_line from "@std/io/io.ms"
 
 # Returns an error message for an invalid grid, or "" when the grid is valid.
 fn validate(rows: List[List[Int]]) String:

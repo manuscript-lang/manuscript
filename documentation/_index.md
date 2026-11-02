@@ -8,8 +8,8 @@ description = "A statically typed, natively compiled language designed for agent
 {{< docs-home >}}
 <!-- manuscript-example: {"mode":"run","args":["Ada"],"stdout":"Hello, Ada!\n","cases":[{"stdout":"Hello, world!\n"}]} -->
 ```manuscript {filename="hello.ms"}
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
+import arguments from "@std/os/process.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let name = arguments().get(0, default: "world")

@@ -99,8 +99,8 @@ fn handshake_on(
         loop {
             match h1::parse_response(&buf, HEAD_LIMIT) {
                 Parsed::Complete(head) => {
-                    let accepted =
-                        handshake::check_response_head(&head, &key).map_err(|f| f.error())?;
+                    let accepted = handshake::check_response_head(&head, &key, dial.subprotocols)
+                        .map_err(|f| f.error())?;
                     return Ok((accepted, buf.split_off(head.length)));
                 }
                 Parsed::Bad(_) => return Err(WsErr::Failed("malformed HTTP response".into())),

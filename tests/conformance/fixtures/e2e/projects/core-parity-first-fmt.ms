@@ -37,8 +37,8 @@ export fn first_lookup() String:
     values.add(Key(5, "original"), "found")
     return values.filter(fn k, v: true) | lookup(Key(5, "different"), "absent")
 
-export fn first_failure(cause: Cause) Result[String, Error]:
-    let value: Result[Int, Error] = error(cause)
+export fn first_failure(cause: Cause) String!:
+    let value: Int! = error(cause)
     return value.map(fn n: n.to_string()).and_then(fn text: ok(text))
 
 export fn first_queries() Bool:
@@ -52,7 +52,7 @@ export fn first_queries() Bool:
         and locate_set(set, Key(5, "different")).is_some()
     )
 
-export fn first_converted(cause: Cause) Result[Int, Error]:
+export fn first_converted(cause: Cause) Int!:
     let missing: Int? = none
     return convert(missing, fn() Error: cause)
 

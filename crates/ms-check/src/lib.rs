@@ -16,7 +16,6 @@ pub mod exprs;
 pub mod hints;
 pub mod hir;
 pub mod inference;
-pub mod json;
 pub mod native;
 pub mod native_defaults;
 pub mod ownership;
@@ -32,7 +31,13 @@ pub mod types;
 mod unused;
 
 #[cfg(test)]
+mod generic_defaults_tests;
+#[cfg(test)]
 mod record_fields_tests;
+#[cfg(test)]
+mod type_argument_defaults_tests;
+#[cfg(test)]
+mod type_graph_tests;
 
 pub use checker::{CheckOptions, ImportMap, Program, TestFixture, self_variable};
 pub use syntax::{ModRef, ModuleData};
@@ -76,13 +81,19 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         let own = program.hir().ownership();
         program.borrows = Rc::new(own.borrows);
         program.implicit_closes = Rc::new(own.closes);
+        program.explicit_closes = Rc::new(own.explicit_closes);
         program.close_moves = Rc::new(own.close_moves);
         program.resource_moves = Rc::new(own.resource_moves);
         program.moved_payloads = Rc::new(own.moved_payloads);
-        program.getter_borrows = Rc::new(own.getters);
-        program.lenders = Rc::new(own.lenders);
         program.borrowed_captures = Rc::new(own.borrowed_captures);
         program.consumes = Rc::new(own.consumes);
+        program.lenders = Rc::new(own.lenders);
+        program.view_lenders = Rc::new(own.view_lenders);
+        program.view_wraps = Rc::new(own.view_wraps);
+        program.view_moves = Rc::new(own.view_moves);
+        program.owned_lends = Rc::new(own.owned_lends);
+        program.lent_matches = Rc::new(own.lent_matches);
+        program.getter_borrows = Rc::new(own.getter_borrows);
         program.diagnostics.extend(own.diagnostics);
     }
     if program.diagnostics.is_empty() {

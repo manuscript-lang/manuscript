@@ -1,9 +1,9 @@
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 import Item, Box, Holder, Choice from "./domain.ms"
 import Read, invoke, relay, as_view from "./contracts.ms"
 import Closeable from "@std/core.ms"
-import share from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
 
 impl Read[Int] for Item:
     fn get() Int:
@@ -13,8 +13,8 @@ fn delta() Int:
     return 20
 
 impl Read[T] for Box[T]:
-    fn get() ref T:
-        return self.value
+    fn get() T:
+        return self.value.clone()
 
 impl Read[Int] for Choice:
     fn get() Int:
@@ -43,7 +43,7 @@ export fn second_generic() fn(Item) Int:
 
 test "second local extensions":
     let item = Item(2)
-    (item.get() != 22 or invoke(item) != 22 or relay(item) != 22) | try expect_false
+    (item.get() != 22 or invoke(item) != 22 or relay(item.clone()) != 22) | try expect_false
     as_view(item).get() | try expect_equal(22)
 
     let holder = Holder(item)
@@ -54,9 +54,10 @@ test "second local extensions":
 import Resource from "./domain.ms"
 
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         var guard = lock(self.events)
         guard.value.append(value: 20)
+        return ok(unit)
 
 fn leave(resource: Resource) Unit:
     let _local = resource

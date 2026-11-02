@@ -123,7 +123,7 @@ fn significant_words(query: &str) -> Vec<String> {
 /// One ranked lookup result.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Match {
-    /// Module path (`@std/json.ms` or `prelude`).
+    /// Module path (`@std/data/json.ms` or `prelude`).
     pub module: String,
     /// Declaration or `Declaration.member` name.
     pub name: String,

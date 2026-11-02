@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work() Bool:\n    return (\n        Error(\n            value: CommandError.Failed(message: \"command diagnostic\")\n        ).message() != \"command diagnostic\"\n    )\n"
-  }
-}

@@ -1,5 +1,5 @@
-import floor from "@std/math.ms"
-import expect_equal from "@std/test.ms"
+import floor from "@std/math/math.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn original(value: Int = 7) Int: value + 1
 

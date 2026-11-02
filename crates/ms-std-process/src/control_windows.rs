@@ -58,6 +58,15 @@ pub fn send_signal(pid: i64, signal: i64) -> Res<()> {
         )
     };
     if process.is_null() {
+        let error = sys::errno();
+        // `OpenProcess` reports a pid that names no process as `ERROR_INVALID_PARAMETER`.
+        if error == sys::EINVAL {
+            return Err(Fail::status(STATUS_NOT_FOUND));
+        }
+        let classified = Fail::raw(error);
+        if classified.status != ms_rt_abi::STATUS_FAILED {
+            return Err(classified);
+        }
         let mut m = b"OpenProcess: ".to_vec();
         m.extend_from_slice(describe(sys::errno()).as_bytes());
         return Err(Fail {

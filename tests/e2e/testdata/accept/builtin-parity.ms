@@ -1,7 +1,7 @@
-import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
-import from_int from "@std/math.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
+import from_int from "@std/math/math.ms"
 import compile from "@std/string.ms"
-import filled, range_by, map_from_entries from "@std/collections.ms"
+import filled, range_by, map_from_entries from "@std/collections/collections.ms"
 import Bytes from "@std/bytes.ms"
 import StringError from "@std/string.ms"
 
@@ -31,14 +31,14 @@ fn compare(left: Int, right: Int) Int:
 
     return 0
 
-fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
+fn common_result[T, E: Error](result: T!E) T!:
     match result:
         ok(value):
             return ok(value)
         error(cause):
             return error(cause)
 
-fn checked_expansion() Result[Unit, Error]:
+fn checked_expansion() Unit!:
     (
         not (
             try common_result(
@@ -84,8 +84,8 @@ test "list methods mutate explicit clones and remain typed":
     let absent: Int? = none
     original.get(index: -9223372036854775808, default: -1) | try expect_equal(-1)
     original.get(index: 9223372036854775807, default: -1) | try expect_equal(-1)
-    original.first() | try expect_equal(some(3))
-    original.last() | try expect_equal(some(1))
+    original.first() | try expect_equal(3)
+    original.last() | try expect_equal(1)
 
     let empty: List[Int] = []
     empty.first() | try expect_equal(absent)
@@ -94,8 +94,8 @@ test "list methods mutate explicit clones and remain typed":
     (not original.is_empty()) | try expect_true
     (original.contains(value: 2)) | try expect_true
     (not original.contains(value: 8)) | try expect_true
-    original.index_of(value: 1) | try expect_equal(some(1))
-    original.last_index_of(value: 1) | try expect_equal(some(3))
+    original.index_of(value: 1) | try expect_equal(1)
+    original.last_index_of(value: 1) | try expect_equal(3)
     original.index_of(value: 8) | try expect_equal(absent)
     original.last_index_of(value: 8) | try expect_equal(absent)
 
@@ -117,10 +117,10 @@ test "list methods mutate explicit clones and remain typed":
     chain_4 | try expect_equal([1, 2, 1, 3])
     original.sorted(compare: compare) | try expect_equal([1, 1, 2, 3])
     [-1, 0, 2, 3].filter(predicate: positive) | try expect_equal([2, 3])
-    [-1, 0, 2, 3].find(predicate: positive) | try expect_equal(some(2))
-    [-1, 0, 2, 3].find_last(predicate: positive) | try expect_equal(some(3))
-    [-1, 0, 2, 3].find_index(predicate: positive) | try expect_equal(some(2))
-    [-1, 0, 2, 3].find_last_index(predicate: positive) | try expect_equal(some(3))
+    [-1, 0, 2, 3].find(predicate: positive) | try expect_equal(2)
+    [-1, 0, 2, 3].find_last(predicate: positive) | try expect_equal(3)
+    [-1, 0, 2, 3].find_index(predicate: positive) | try expect_equal(2)
+    [-1, 0, 2, 3].find_last_index(predicate: positive) | try expect_equal(3)
     original.find(predicate: negative) | try expect_equal(absent)
     original.find_last(predicate: negative) | try expect_equal(absent)
     original.find_index(predicate: negative) | try expect_equal(absent)
@@ -276,10 +276,10 @@ test "string methods use Unicode scalars":
     let _missing: String? = none
     "".get(index: 0, default: "?") | try expect_equal("?")
     "é".get(index: -9223372036854775808, default: "?") | try expect_equal("?")
-    "é🙂é".index_of(value: "🙂") | try expect_equal(some(1))
-    "é🙂é".last_index_of(value: "é") | try expect_equal(some(2))
-    "é🙂é".last_index_of(value: "") | try expect_equal(some(3))
-    "é🙂é".index_of(value: "") | try expect_equal(some(0))
+    "é🙂é".index_of(value: "🙂") | try expect_equal(1)
+    "é🙂é".last_index_of(value: "é") | try expect_equal(2)
+    "é🙂é".last_index_of(value: "") | try expect_equal(3)
+    "é🙂é".index_of(value: "") | try expect_equal(0)
 
     let absent: Int? = none
     "é🙂é".index_of(value: "z") | try expect_equal(absent)
@@ -316,8 +316,8 @@ test "bytes have analogous immutable operations":
     let missing: Int? = none
     data.get(index: -9223372036854775808, default: 255) | try expect_equal(255)
     (data.contains(value: Bytes([2, 3]))) | try expect_true
-    data.index_of(value: Bytes([2])) | try expect_equal(some(1))
-    data.last_index_of(value: Bytes([2])) | try expect_equal(some(3))
+    data.index_of(value: Bytes([2])) | try expect_equal(1)
+    data.last_index_of(value: Bytes([2])) | try expect_equal(3)
     data.index_of(value: Bytes([9])) | try expect_equal(missing)
     (data.starts_with(prefix: Bytes([1, 2]))) | try expect_true
     (data.ends_with(suffix: Bytes([3, 2]))) | try expect_true
@@ -337,12 +337,8 @@ test "growth limits and invalid inputs return values":
     "x".pad_start(target_length: -1, padding: " ") | try expect_equal("x")
     "x".pad_end(target_length: 4, padding: "") | try expect_equal("x")
 
-    let list_limit: Result[List[Int], CollectionError] = error(
-        CollectionError.LimitExceeded
-    )
-    let list_invalid: Result[List[Int], CollectionError] = error(
-        CollectionError.InvalidInput
-    )
+    let list_limit: List[Int]!CollectionError = error(CollectionError.LimitExceeded)
+    let list_invalid: List[Int]!CollectionError = error(CollectionError.InvalidInput)
     range_by(start: 0, end: 4, step: 1, max_items: 3) | try expect_equal(list_limit)
     range_by(start: 0, end: 4, step: 0, max_items: 3) | try expect_equal(list_invalid)
     filled(value: 1, count: 2, max_items: 1) | try expect_equal(list_limit)
@@ -387,7 +383,7 @@ test "grouping and lazy map defaults":
     original.values() | try expect_equal([1])
     calls.length() | try expect_equal(0)
 
-fn verify_text_and_numbers() Result[Unit, Error]:
+fn verify_text_and_numbers() Unit!:
     (try common_result(result: "é".normalize(form: "NFC", max_bytes: 2))) | try expect_equal(
         "é"
     )
@@ -430,25 +426,23 @@ test "normalization, empty separators, and precision formatting":
     "".replace_first(old: "", new: "-") | try expect_equal("-")
     "é".concat(other: "🙂") | try expect_equal("é🙂")
 
-    let invalid: Result[String, StringError] = error(StringError.InvalidInput)
-    let limit: Result[String, StringError] = error(StringError.LimitExceeded)
+    let invalid: String!StringError = error(StringError.InvalidInput)
+    let limit: String!StringError = error(StringError.LimitExceeded)
     "é".normalize(form: "invalid", max_bytes: 8) | try expect_equal(invalid)
     "é".normalize(form: "NFD", max_bytes: 2) | try expect_equal(limit)
 
-fn verify_bigint_and_regex() Result[Unit, Error]:
+fn verify_bigint_and_regex() Unit!:
     let a = from_int(value: 12)
     let b = from_int(value: 5)
     a.add(other: b).to_string_radix(radix: 10) | try expect_equal("17")
     a.subtract(other: b).to_string_radix(radix: 10) | try expect_equal("7")
     a.multiply(other: b).to_string_radix(radix: 10) | try expect_equal("60")
-    (try common_result(result: a.divide(other: b))).to_int() | try expect_equal(some(2))
-    (try common_result(result: a.remainder(other: b))).to_int() | try expect_equal(
-        some(2)
-    )
+    (try common_result(result: a.divide(other: b))).to_int() | try expect_equal(2)
+    (try common_result(result: a.remainder(other: b))).to_int() | try expect_equal(2)
     a.compare(other: b) | try expect_equal(1)
-    a.bit_and(other: b).to_int() | try expect_equal(some(4))
-    a.bit_or(other: b).to_int() | try expect_equal(some(13))
-    a.bit_xor(other: b).to_int() | try expect_equal(some(9))
+    a.bit_and(other: b).to_int() | try expect_equal(4)
+    a.bit_or(other: b).to_int() | try expect_equal(13)
+    a.bit_xor(other: b).to_int() | try expect_equal(9)
 
     let pattern = try common_result(result: compile(pattern: "[0-9]+"))
     (pattern.matches(text: "a12b3")) | try expect_true

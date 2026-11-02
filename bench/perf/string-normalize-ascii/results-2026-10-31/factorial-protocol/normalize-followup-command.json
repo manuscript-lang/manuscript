@@ -1,0 +1,7 @@
+[
+  "python3",
+  "bench/perf/string-normalize-ascii/compare_matrix.py",
+  "/workspace/normalization-evidence/factorial-protocol/normalize-aa-programs.json",
+  "bench/perf/string-normalize-ascii/identities.json",
+  "/workspace/normalization-evidence/normalize-aa"
+]

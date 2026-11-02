@@ -1,0 +1,79 @@
+{
+  "revision": "26d586480a0aa786035d3def7bfe47651c96e297",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "before_toml_sha256": "2eb4e52f3248829ac728d0a8847f987ba2a6b4ac9c728cee10c3eb41729cf4c5",
+  "after_toml_sha256": "0f945e6f4536a2f87828935049e21bd2c292bf8e056c91a9d97022fa0cc2c7be",
+  "binaries": {
+    "before": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-before",
+      "sha256": "2d67bee17af42f1ee8463a5419ae42687f2d03b6dd6d6b50a4ba3a1f813464d4"
+    },
+    "after": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-after",
+      "sha256": "8eb76885b61e0dfced51c9ca2ddba7c583b29bc8d39c205b01b4d787b038557d"
+    },
+    "rust": {
+      "path": "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/file",
+      "sha256": "b21d71440698c47b17467a9124ed8813ac726918f89382386de00ffe636befbd"
+    }
+  },
+  "error_binaries": {
+    "before": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-error-before",
+      "sha256": "cfc4bf4cd27579f19b0349f9b9722559ed6eea1fb71535cb2bcd4f963980cb13"
+    },
+    "after": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-error-after",
+      "sha256": "8a96d64d74c4f6826b7adb9267bef59e09522cfd5987eb9e1e0bef43a4f4e659"
+    }
+  },
+  "writer_binaries": {
+    "before": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-writer-before",
+      "sha256": "ae23d6db0a680279721549ed70fb04753754d58c22eed4b52d9b3fb06d6e1c32"
+    },
+    "after": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-writer-after",
+      "sha256": "d1afdd11e101b5bf399fce19ecfd3eb558402be911699f339d60bedd8791aefa"
+    },
+    "rust": {
+      "path": "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/file-writer",
+      "sha256": "80683b269e1a0a0cf04bd7768b9752146ebee47c7b91d179117053a01e4c2fe9"
+    }
+  },
+  "read_binaries": {
+    "before": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/read-before",
+      "sha256": "b6e31b93e7e2651e58c88a68a16e1a6e7936db3bd98c432468c01351ff495e6c"
+    },
+    "after": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/read-after",
+      "sha256": "b6e31b93e7e2651e58c88a68a16e1a6e7936db3bd98c432468c01351ff495e6c"
+    },
+    "rust": {
+      "path": "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/read",
+      "sha256": "55682001d75d2bf1b336529ee5de0224cb60d578ea24e5299e11dbb67158bb6f"
+    }
+  },
+  "source_and_runtime_sha256": {
+    "bench/perf/toml-control-scan/file.ms": "f187d313c99b98659185231fbef11e2bb527066ba4a5e34e7596a4fe829d4020",
+    "bench/perf/toml-control-scan/file-error.ms": "c0515bfa71de22c5c2ce71962ab75fcac35d6108c70d12c2cfa7c56d3dfe390a",
+    "bench/perf/toml-control-scan/file-writer.ms": "9164003d0ea9dcd3c510cedf1ef6c2e09447f78a8bcb8e20c6104cc24e41b6f2",
+    "bench/perf/toml-control-scan/read.ms": "11823e26e8220bd55da4275d15c2df4e3d705a134bf8e2423de6b357231df1b6",
+    "bench/perf/toml-control-scan/file-run.py": "ee65fed088558c6fdbc1abee1df9790805ad6b1372b11675e463e8f13e7c1a1a",
+    "bench/perf/toml-control-scan/rust/src/bin/file.rs": "32676ee63b19e2df62e89d4b26445e060224a6d839c1ea8a4081f9ffaed11c40",
+    "bench/perf/toml-control-scan/rust/src/bin/file-writer.rs": "63a94d04efe1e3c47e744850168741cf63e3d91bd607983da8a621a53be412ab",
+    "bench/perf/toml-control-scan/rust/src/bin/read.rs": "920e6c182560f1c00ae028bebe1157b5ed280970840f50b1c1fbecc637916d8b",
+    "bench/perf/toml-control-scan/rust/Cargo.toml": "ef79c60baceaaa7ba8eb9ca85dfff347733fdc5723c0500626d4dbc34ee12798",
+    "bench/perf/toml-control-scan/rust/Cargo.lock": "21b823c8a50ae6ef118aaaae5bcbce499e870ad5a30ed65d7c284ff8c2b056f2",
+    "Cargo.lock": "998cb7c3e0e21215625429800b7d885428c8f4f32388dba45dcc5abfd3f6f6e3",
+    "rust-toolchain.toml": "7f5140056a968f51f7a91e1d73fd6b8c226054ecb5c6d39e791de484f9616457",
+    ".cargo/config.toml": "c411c17fbefc5c7148567d4a348fbf29cde557426121c29c6ae0525fbbd8c34e",
+    "scripts/lld.lock": "6026878d9013e192ec3d1fc384691808383f0593d386d52b5faa2ca2d903fa41",
+    "target/ms-native/libms_native.a": "d404441191788e45de9570a36800336746c59fd6444149556141b0ac7c5fd4f9"
+  },
+  "build": "cargo xtask runtime; cargo build --release --locked -p ms-cli; ms build each unchanged source producer --build-type Release; Rust standalone Cargo release opt-level3 panic=abort with repository frame pointers",
+  "trials": 12,
+  "note": "Each measured iteration reads fresh UTF-8 file input; cached-file ingestion includes I/O and prevents treating parser input as loop-invariant. Full equivalent string-table values; possible different TOML quoting. Read-only and writer-only controls retain I/O. Errors compare exact MS diagnostics only. Setup/printing excluded; read/parse/serialization/destruction/full-output guards timed. Counts calibrated separately per producer; retain actual counts."
+}

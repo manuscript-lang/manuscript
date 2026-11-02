@@ -1,0 +1,65 @@
+--- a/stdlib/toml.ms
++++ b/stdlib/toml.ms
+@@ -1038,5 +1037,0 @@
+-fn hex4(code: Int) String:
+-    var digits = code.to_string_radix(16)
+-    while digits.length() < 4: digits = "0".concat(digits)
+-    return digits
+-
+@@ -1043,0 +1039,15 @@
++    if text.is_empty(): return "\"\""
++
++    let bytes = text.to_bytes()
++    let end = bytes.length()
++    var at = 0
++
++    # Find the first escape before allocating a builder; plain text needs only its quotes.
++    while at < end:
++        let code = bytes.get(at).to_int()
++        if code < 32 or code == 34 or code == 92 or code == 127: break
++
++        at += 1
++
++    if at == end: return "\"".concat(text).concat("\"")
++
+@@ -1047,8 +1057,17 @@
+-    for c in text.chars():
+-        let code = c.scalar_at(0)
+-
+-        if c == "\"": result.append("\\\"")
+-        else if c == "\\": result.append("\\\\")
+-        else if c == "\n": result.append("\\n")
+-        else if c == "\t": result.append("\\t")
+-        else if c == "\r": result.append("\\r")
++    var run = 0
++
++    while at < end:
++        let code = bytes.get(at).to_int()
++
++        # Escapes are ASCII, so run boundaries are also UTF-8 scalar boundaries.
++        if code >= 32 and code != 34 and code != 92 and code != 127:
++            at += 1
++            continue
++
++        if run < at: result.append(bytes.decode_utf8_range(run, at).get())
++
++        if code == 34: result.append("\\\"")
++        else if code == 92: result.append("\\\\")
++        else if code == 10: result.append("\\n")
++        else if code == 9: result.append("\\t")
++        else if code == 13: result.append("\\r")
+@@ -1057,5 +1076,9 @@
+-        else if code < 32 or code == 127:
+-            result.append("\\u")
+-            result.append(hex4(code))
+-        else: result.append(c)
+-
++        else:
++            result.append("\\u00")
++            result.append("0123456789abcdef".get(code / 16))
++            result.append("0123456789abcdef".get(code % 16))
++
++        at += 1
++        run = at
++
++    if run < at: result.append(bytes.decode_utf8_range(run, at).get())

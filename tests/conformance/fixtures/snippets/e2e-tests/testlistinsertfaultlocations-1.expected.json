@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 67,
+    "stdout": "",
+    "stderr": "List.insert: index must be between -2 and 2 (negative indexes count from the end), found 3\n  at testlistinsertfaultlocations-1.ms:6 in main\n"
+  }
+}

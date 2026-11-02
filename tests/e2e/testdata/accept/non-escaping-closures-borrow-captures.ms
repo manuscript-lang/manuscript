@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 # A closure that does not outlive its maker reads what it captures in place; one that is
 # returned or stored owns a copy and keeps the value it was made with.
@@ -75,7 +75,7 @@ fn keep_map(text: String) Int:
 fn keep_opt(text: String) Int:
     var os: List[(fn() Int)?] = []
     for p in text.split(","):
-        os.append(some(fn() Int: return p.length()))
+        os.append((fn() Int: return p.length()))
 
     var t = 0
     for o in os:

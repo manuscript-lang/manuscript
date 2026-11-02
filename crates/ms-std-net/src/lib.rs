@@ -1,5 +1,5 @@
-//! Native implementations of `@std/net.ms`, `@std/net.ms`, `@std/http.ms` and
-//! `@std/net.ms` behind the `ms-rt` C ABI (see `ABI.md`).
+//! Native implementations of `@std/net/net.ms`, `@std/net/net.ms`, `@std/net/http.ms` and
+//! `@std/net/net.ms` behind the `ms-rt` C ABI (see `ABI.md`).
 //!
 //! The logic is ordinary Rust over `&str`/`&[u8]`; the `ffi` module holds the
 //! `extern "C"` shims.

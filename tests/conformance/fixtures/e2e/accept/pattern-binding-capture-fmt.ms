@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,formatter,generics,interfaces,match,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/pattern-binding-capture.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 type Failure[T]:
     case NotFound
@@ -44,12 +44,16 @@ test "a payload identifier binds every alternative without changing semantics":
     let success: Result[Int, Failure[String]] = ok(7)
     try expect_false(
         (
-            captured(denied) != 1
-            or captured(missing) != 1
-            or captured(success) != 7
+            captured(denied.clone()) != 1
+            or captured(missing.clone()) != 1
+            or captured(success.clone()) != 7
         )
     )
     try expect_false(
-        (precise(denied) != 2 or precise(missing) != 1 or precise(success) != 7)
+        (
+            precise(denied.clone()) != 2
+            or precise(missing) != 1
+            or precise(success) != 7
+        )
     )
     try expect_equal(deliberate(denied), "permission denied")

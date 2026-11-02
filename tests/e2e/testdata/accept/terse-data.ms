@@ -1,4 +1,4 @@
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 fn subtract(amount: Int, deduction: Int = 1) Int: amount - deduction
 
@@ -38,7 +38,7 @@ test "map literals and positional identifier arguments":
     let nested: Map[String, Map[String, Int]] = {"a": {}, "b": {"c": 1}}
     try expect_equal(nested["b"]["c"], 1)
 
-    let optional: Map[String, Int?] = {"a": none, "b": some(2)}
+    let optional: Map[String, Int?] = {"a": none, "b": 2}
     try expect_false(not optional["a"].is_none())
 
     let key = "c"

@@ -785,7 +785,12 @@ impl Server<'_> {
                 if end < start {
                     return Ok(());
                 }
-                d.text = format!("{}{}{}", &d.text[..start], text, &d.text[end..]);
+                // Reuse the transactional copy when no capacity growth is needed.
+                if text.len() == end - start {
+                    d.text.replace_range(start..end, text);
+                } else {
+                    d.text = format!("{}{}{}", &d.text[..start], text, &d.text[end..]);
+                }
             }
         }
         self.docs.insert(d.uri.clone(), d.clone());
@@ -921,7 +926,7 @@ impl Server<'_> {
         if self.request_canceled(r) {
             return ok(Json::Null);
         }
-        if !checked.success() {
+        if !checked.resolves() {
             return Outcome::Error(failure(-32602, "rename requires a checked document"));
         }
         let mut name = p.new_name.as_str();

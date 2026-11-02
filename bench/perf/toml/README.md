@@ -3,7 +3,7 @@
 `@std/toml` `parse` against the Rust `toml` crate (`toml::Table`, 0.9 and 0.8) on the document the stdlib benchmark generates: 2000 tables of an integer, a string and a two-element array, 110,670 bytes. Best of 200 parses.
 
 ```sh
-MS=./target/release/ms sh bench/perf/toml/run.sh
+MS=./target/release/ms ms run bench/tools/cargo_vs_ms.ms -- toml
 ```
 
 Compare numbers only from the same machine.

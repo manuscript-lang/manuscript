@@ -16,12 +16,13 @@ fn branch(b: Big, flag: Bool) Int:
     if flag:
         let ys = size(b.items)
         return ys.length()
+
     return b.items.length() + b.name.length()
 
 fn reinit(b: Big) Int:
     var c = b
-    let first = size(c.items)
-    c.items = [first.length()]
+    let first = size(c.items).length()
+    c.items = [first]
     return c.items.length()
 
 fn nested(w: Wrap) List[Int]:
@@ -39,7 +40,7 @@ type Holder:
 
 fn paths(b: Cell, first: Bool) List[Int]:
     if first:
-        return b.items
+        return b.items.clone()
 
     let w = Holder(inner: b)
     return w.inner.items.clone()

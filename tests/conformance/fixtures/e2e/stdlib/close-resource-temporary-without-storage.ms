@@ -1,7 +1,7 @@
 # conform: tags=scope-cleanup,records,tier-io
 # conform: phase=run
 # conform: origin=value-semantics-audit
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 # A resource with only scalar fields has no storage to free, but a temporary of it is still closed.
@@ -9,8 +9,9 @@ type Counter:
     id: Int
 
 impl Closeable for Counter:
-    var fn close() Unit:
+    var fn close() Unit!:
         stdout().write("closed {self.id}\n").get()
+        return ok(unit)
 
 impl Counter:
     fn value() Int:

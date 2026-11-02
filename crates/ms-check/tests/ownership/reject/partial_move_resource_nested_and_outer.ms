@@ -4,8 +4,8 @@ type Door:
     id: Int
 
 impl Closeable for Door:
-    var fn close() Unit:
-        return
+    var fn close() Unit!:
+        return ok(unit)
 
 type Room:
     door: Door
@@ -27,4 +27,5 @@ fn rooms(r: Room) List[Room]:
 fn both(w: Wrap, flag: Bool) Int:
     if flag:
         return rooms(w.room).length()
+
     return keep(w.room.door).length()  # error: are both moved out

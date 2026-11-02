@@ -1,11 +1,17 @@
-import Pair from "@std/collections.ms"
+import Pair from "@std/collections/collections.ms"
 import panic from "@std/core.ms"
-import stderr from "@std/io.ms"
-import bit_xor, shift_right_unsigned, wrapping_add, wrapping_multiply, max_int from "@std/math.ms"
-import control from "@std/process.ms"
-import entropy, secure_int from "@std/random.ms"
-import expect_fault, fail from "@std/test.ms"
-import clock, milliseconds from "@std/time.ms"
+import stderr from "@std/io/io.ms"
+import (
+    bit_xor,
+    shift_right_unsigned,
+    wrapping_add,
+    wrapping_multiply,
+    max_int
+) from "@std/math/math.ms"
+import environment from "@std/os/process.ms"
+import secure_int from "@std/os/random.ms"
+import expect_fault, fail from "@std/test/test.ms"
+import milliseconds, monotonic from "@std/os/time.ms"
 
 # Property-based testing for `test` blocks. A property is a function that must hold for every value a generator produces.
 # `check` runs it on many generated values and, on failure, shrinks the input to a small counterexample.
@@ -73,7 +79,7 @@ export fn draw(source: Source, max: Int) Drawn[Int]:
             value = 0
         else if edge == 1:
             value = max
-        else if max == max_int():
+        else if max == max_int:
             value = positive
         else:
             value = positive % (max + 1)
@@ -201,7 +207,7 @@ fn zip_draw[A, B, C](
     let {value: b, source} = second.make(middle)
     return Drawn(combine(a, b), source)
 
-# Generates `some(value)` or `none`, shrinking toward `none`.
+# Generates a value or `none`, shrinking toward `none`.
 export fn optionals[T](gen: Gen[T]) Gen[T?]:
     return Gen[T?](fn s: optional_draw(gen, s))
 
@@ -252,7 +258,7 @@ export fn strings(
     return lists(element_of(letters), 0, max_length).map(fn cs: cs.join(""))
 
 # Generates a 2-element `Pair`.
-export fn pairs[A, B](first: Gen[A], second: Gen[B]) Gen[Pair[A, B]]:
+export fn pairs[A: Clonable, B: Clonable](first: Gen[A], second: Gen[B]) Gen[Pair[A, B]]:
     return first.zip(second, fn a, b: Pair(a, b))
 
 # Run settings. `ms test` fills them from `--runs`, `--seed`, and `--fuzz` through environment variables.
@@ -267,7 +273,7 @@ export type Settings:
 # Returns defaults with `ms test` flag overrides (`MS_TEST_RUNS`, `MS_TEST_SEED`, `MS_TEST_FUZZ_MS`) applied.
 export fn settings(runs: Int = 100) Settings:
     var found = Settings(runs, none, 0)
-    let environment = control().environment().get(Map[String, String]())
+    let environment = environment().get(Map[String, String]())
     if let text = environment.get("MS_TEST_RUNS"):
         found.runs = text.parse_int().get(runs)
     if let text = environment.get("MS_TEST_SEED"):
@@ -281,7 +287,7 @@ type Outcome:
     source: Source
     failure: String?
 
-fn run_case[T](gen: Gen[T], property: fn(T) Result[Unit, Error], s: Source) Outcome:
+fn run_case[T](gen: Gen[T], property: fn(T) Unit!, s: Source) Outcome:
     let {value, source} = gen.make(s)
     if source.invalid:
         return Outcome(source, none)
@@ -304,7 +310,7 @@ fn run_case[T](gen: Gen[T], property: fn(T) Result[Unit, Error], s: Source) Outc
 
 let property_failed = "property returned an error"
 
-fn run_property[T](property: fn(T) Result[Unit, Error], value: T) Unit:
+fn run_property[T](property: fn(T) Unit!, value: T) Unit:
     if property(value).is_error():
         panic(property_failed)
 
@@ -318,17 +324,13 @@ fn simpler(candidate: List[Int], current: List[Int]) Bool:
             return candidate[i] < current[i]
     return false
 
-fn replay[T](
-    gen: Gen[T],
-    property: fn(T) Result[Unit, Error],
-    choices: List[Int]
-) Outcome:
+fn replay[T](gen: Gen[T], property: fn(T) Unit!, choices: List[Int]) Outcome:
     return run_case(gen, property, Source(choices.clone(), 0, 0, false, false))
 
 # Tries `candidate`; returns the used draws when it still fails and is simpler than `current`.
 fn attempt[T](
     gen: Gen[T],
-    property: fn(T) Result[Unit, Error],
+    property: fn(T) Unit!,
     candidate: List[Int],
     current: List[Int]
 ) List[Int]?:
@@ -345,7 +347,7 @@ fn attempt[T](
 # Shrinks failing `choices`: deletes spans, then lowers values, until a full pass makes no progress or `budget` replays run.
 fn shrink[T](
     gen: Gen[T],
-    property: fn(T) Result[Unit, Error],
+    property: fn(T) Unit!,
     choices: List[Int],
     budget: Int
 ) List[Int]:
@@ -394,10 +396,10 @@ fn shrink[T](
 export fn check[T](
     name: String,
     gen: Gen[T],
-    property: fn(T) Result[Unit, Error],
+    property: fn(T) Unit!,
     runs: Int = 100,
     seed: Int?
-) Result[Unit, Error]:
+) Unit!:
     let config = settings(runs)
     var chosen = seed
     if chosen.is_none():
@@ -408,7 +410,7 @@ export fn check[T](
     if let given = chosen:
         base = given
     else:
-        base = try secure_int(entropy(), 0, max_int())
+        base = try secure_int(0, max_int)
 
     let fuzzing = config.fuzz_milliseconds > 0
     if fuzzing:
@@ -421,14 +423,13 @@ export fn check[T](
             .get()
         )
 
-    let clk = clock()
-    let deadline = clk.now().shift(milliseconds(config.fuzz_milliseconds))
+    let deadline = monotonic().shift(milliseconds(config.fuzz_milliseconds))
     var case_index = 0
     var executed = 0
     var discarded = 0
 
     while (
-        (fuzzing and clk.now().compare(deadline) < 0)
+        (fuzzing and monotonic().compare(deadline) < 0)
         or (not fuzzing and executed < config.runs)
     ):
         let case_seed = wrapping_add(base, case_index)
@@ -456,12 +457,12 @@ export fn check[T](
 fn report[T](
     name: String,
     gen: Gen[T],
-    property: fn(T) Result[Unit, Error],
+    property: fn(T) Unit!,
     failing: Source,
     message: String,
     seed: Int,
     executed: Int
-) Result[Unit, Error]:
+) Unit!:
     let used = failing.choices.take(failing.pos)
     let small = shrink(gen, property, used, 2000)
     let final = replay(gen, property, small)

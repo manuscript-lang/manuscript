@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn row(width: Int, seed: Int) List[Int]:
     var cells = List[Int]()

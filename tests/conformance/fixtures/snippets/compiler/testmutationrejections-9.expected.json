@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3060",
+        "phase": "type",
+        "message": "cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'",
+        "position": {
+          "file": "testmutationrejections-9.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 162
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testmutationrejections-9.ms:5:5: type: cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'\n   |\n 5 |     value -= 1\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

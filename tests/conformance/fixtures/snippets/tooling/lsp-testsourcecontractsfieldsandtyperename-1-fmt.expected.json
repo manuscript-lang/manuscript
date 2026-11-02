@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "interface Reader:\n    fn read() String\n\ntype Box:\n    label: String\n\nimpl Reader for Box:\n    fn read() String:\n        return self.label\n\nfn message(value: Reader) String:\n    return value.read()\n\nfn make() Box:\n    return Box(label: \"value\")\n"
+  }
+}

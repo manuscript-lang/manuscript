@@ -1,4 +1,4 @@
-import keep, measure from "@std/bench.ms"
+import keep, measure from "@std/test/bench.ms"
 import ints, Point from "./src/harness.ms"
 
 # Index of the greatest key; `key` is a known lambda at every call site (see proposals/specialize-closure-args.md).
@@ -184,10 +184,10 @@ bench "list.max_by_loop":
         var n = 0
 
         for i in 0..100:
-            var best = small_points.get(0)
-            for p in small_points:
-                if p.y > best.y: best = p
-            n += best.x
+            var best = 0
+            for j in 1..small_points.length():
+                if small_points[j].y > small_points[best].y: best = j
+            n += small_points[best].x
 
         return keep(n)
 

@@ -1,0 +1,149 @@
+{
+  "complete": true,
+  "base": "8dd79f417",
+  "compiler_sha256": "b3f7d57762090c7c62d3c42c5bc27651c18a8f918fd8d532024e5aac8315f164",
+  "native_sha256": "89f85bc440ad6827274e4c0f8bbb8e4160118395ee207e4c23acee7532ac388d",
+  "affinity": [
+    0
+  ],
+  "programs": {
+    "ms": {
+      "path": "/workspace/normalization-evidence/ms-baseline",
+      "sha256": "5feeac3583fe814d863c155cc9b4f3fb54fcfedac56f5200151c958b6f49c64e"
+    },
+    "rust-normalizer": {
+      "path": "/workspace/normalization-evidence/rust-normalizer",
+      "sha256": "728b2c05b085743d610f71b31aba434add6858dd690412f4fb162f5ba54e2736"
+    },
+    "rust-ascii": {
+      "path": "/workspace/normalization-evidence/rust-ascii",
+      "sha256": "2ad0527b990f96d087074170da1bc3776bb6757753cf1a9caf6a26b1293437fc"
+    }
+  },
+  "inputs": {
+    "bench/perf/string-normalize-ascii/main.ms": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+    "bench/perf/string-normalize-ascii/identities.json": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+    "bench/perf/string-normalize-ascii/rust/src/main.rs": "1b1a69570db21a4a79ce40ad6a186de196ee7f65664c6c43efc0600e991f017d",
+    "bench/perf/string-normalize-ascii/rust/Cargo.toml": "01e75f907addfed5148ec693f190d2ee72ffffc64b1e0e174ea719b5f351c83d",
+    "bench/perf/string-normalize-ascii/rust/Cargo.lock": "0a74863c631ce86a469191ead50476e65f0ec6c11e88a3b33803d54ebd042cb3",
+    "bench/perf/string-lines/compare.py": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+  },
+  "orders": [
+    [
+      "ms",
+      "rust-normalizer",
+      "rust-ascii"
+    ],
+    [
+      "ms",
+      "rust-ascii",
+      "rust-normalizer"
+    ],
+    [
+      "rust-normalizer",
+      "ms",
+      "rust-ascii"
+    ],
+    [
+      "rust-normalizer",
+      "rust-ascii",
+      "ms"
+    ],
+    [
+      "rust-ascii",
+      "ms",
+      "rust-normalizer"
+    ],
+    [
+      "rust-ascii",
+      "rust-normalizer",
+      "ms"
+    ]
+  ],
+  "valid_producers": [
+    [
+      "warmup",
+      "ms"
+    ],
+    [
+      "warmup",
+      "rust-normalizer"
+    ],
+    [
+      "warmup",
+      "rust-ascii"
+    ],
+    [
+      0,
+      "ms"
+    ],
+    [
+      0,
+      "rust-normalizer"
+    ],
+    [
+      0,
+      "rust-ascii"
+    ],
+    [
+      1,
+      "ms"
+    ],
+    [
+      1,
+      "rust-ascii"
+    ],
+    [
+      1,
+      "rust-normalizer"
+    ],
+    [
+      2,
+      "rust-normalizer"
+    ],
+    [
+      2,
+      "ms"
+    ],
+    [
+      2,
+      "rust-ascii"
+    ],
+    [
+      3,
+      "rust-normalizer"
+    ],
+    [
+      3,
+      "rust-ascii"
+    ],
+    [
+      3,
+      "ms"
+    ],
+    [
+      4,
+      "rust-ascii"
+    ],
+    [
+      4,
+      "ms"
+    ],
+    [
+      4,
+      "rust-normalizer"
+    ],
+    [
+      5,
+      "rust-ascii"
+    ],
+    [
+      5,
+      "rust-normalizer"
+    ],
+    [
+      5,
+      "ms"
+    ]
+  ]
+}

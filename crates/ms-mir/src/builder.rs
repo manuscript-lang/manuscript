@@ -30,6 +30,14 @@ struct VarInfo {
     is_single: bool,
 }
 
+/// A position in a function under construction.
+#[derive(Clone, Copy, Debug)]
+pub struct Mark {
+    block: Block,
+    insts: usize,
+    blocks: usize,
+}
+
 /// Builds one function inside a module.
 pub struct FuncBuilder<'m> {
     /// The module being extended (types, strings and declarations are interned here).
@@ -85,6 +93,29 @@ impl<'m> FuncBuilder<'m> {
     pub fn defining_op(&self, v: Value) -> Option<Op> {
         let insts = &self.f.blocks[self.cur.index()].insts;
         insts.iter().rev().find(|i| i.res == Some(v)).map(|i| i.op)
+    }
+
+    /// Whether `v` is, through copies, a closure whose environment points into this frame.
+    pub fn is_scoped_closure(&self, v: Value) -> bool {
+        let mut cur = v;
+        loop {
+            let Some(i) = self
+                .f
+                .blocks
+                .iter()
+                .flat_map(|b| &b.insts)
+                .find(|i| i.res == Some(cur))
+            else {
+                return false;
+            };
+            match (i.op, i.imm) {
+                (crate::ir::Op::ClosureNew, crate::ir::Imm::Func(g)) => {
+                    return self.m.funcs.get(g.index()).is_some_and(|c| c.scoped);
+                }
+                (crate::ir::Op::Copy, _) if !i.args.is_empty() => cur = i.args[0],
+                _ => return false,
+            }
+        }
     }
 
     /// Whether `v` is a borrow: defined by an operation whose result borrows, or a borrowed
@@ -286,6 +317,23 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.alt(a);
         self.val(Op::AltNew, fields, Imm::Case(a, case), t)
     }
+    /// `alt.view`: an alternative holding the borrowed `fields` themselves, which it neither
+    /// retains nor releases.
+    pub fn alt_view(&mut self, a: AltId, case: u32, fields: &[Value]) -> Value {
+        let t = self.m.types.alt(a);
+        self.val(Op::AltView, fields, Imm::Case(a, case), t)
+    }
+    /// `iface.lend`: an interface value whose box holds a bitwise copy of the borrowed `data`
+    /// leaves (vtable word tagged 1): dropping it frees the box and leaves the payload alone.
+    pub fn iface_lend(&mut self, vt: VtableId, data: Value, t: Ty) -> Value {
+        self.val(Op::IfaceLend, &[data], Imm::Vtable(vt), t)
+    }
+    /// `iface.view`: the borrowed interface value `x` as an owned value that owns nothing
+    /// (vtable word tagged 2): dropping it frees nothing.
+    pub fn iface_view(&mut self, x: Value) -> Value {
+        let t = self.ty(x);
+        self.val(Op::IfaceView, &[x], Imm::None, t)
+    }
     /// `alt.tag`.
     pub fn alt_tag(&mut self, obj: Value) -> Value {
         self.val(Op::AltTag, &[obj], Imm::None, Ty::INT)
@@ -294,6 +342,17 @@ impl<'m> FuncBuilder<'m> {
     pub fn alt_get(&mut self, a: AltId, case: u32, field: u32, obj: Value) -> Value {
         let ty = self.m.alts[a.index()].cases[case as usize].fields[field as usize].1;
         self.val(Op::AltGet, &[obj], Imm::AltField(a, case, field), ty)
+    }
+    /// `alt.take`: moves `field` of the active `case` out of the owned `obj`, which an
+    /// `alt.release` naming that field must then free.
+    pub fn alt_take(&mut self, a: AltId, case: u32, field: u32, obj: Value) -> Value {
+        let ty = self.m.alts[a.index()].cases[case as usize].fields[field as usize].1;
+        self.val(Op::AltTake, &[obj], Imm::AltField(a, case, field), ty)
+    }
+    /// `alt.release`: drops the owned `obj` of `case` except the fields in `mask`, which were
+    /// taken out.
+    pub fn alt_release(&mut self, a: AltId, case: u32, mask: u32, obj: Value) {
+        self.emit(Op::AltRelease, &[obj], Imm::AltMask(a, case, mask), None);
     }
 
     // Lists.
@@ -307,6 +366,12 @@ impl<'m> FuncBuilder<'m> {
     pub fn list_lit(&mut self, elem: Ty, items: &[Value]) -> Value {
         let t = self.m.types.list(elem);
         self.val(Op::ListLit, items, Imm::None, t)
+    }
+    /// `list.const`: a list of single-register scalars copied from static data.
+    pub fn list_const(&mut self, elem: Ty, data: Vec<i64>) -> Value {
+        let t = self.m.types.list(elem);
+        let id = self.m.add_list_const(data);
+        self.val(Op::ListConst, &[], Imm::Int(id), t)
     }
     /// `list.len`.
     pub fn list_len(&mut self, l: Value) -> Value {
@@ -343,21 +408,6 @@ impl<'m> FuncBuilder<'m> {
         self.val(Op::ListDropLast, &[l], Imm::None, t)
     }
 
-    // Borrowed views.
-
-    /// `ref.new`: a view of the borrowed `v`; nothing is retained, copied or dropped.
-    pub fn ref_new(&mut self, v: Value) -> Value {
-        let t = self.m.types.view(self.ty(v));
-        self.val(Op::RefNew, &[v], Imm::None, t)
-    }
-    /// `ref.get`: the value a view borrows, as a borrow.
-    pub fn ref_get(&mut self, r: Value) -> Value {
-        let TyKind::Ref(inner) = self.m.types.kind(self.ty(r)).clone() else {
-            panic!("ref.get of a non-view")
-        };
-        self.val(Op::RefGet, &[r], Imm::None, inner)
-    }
-
     // Optionals.
 
     /// `opt.some`.
@@ -383,6 +433,11 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.opt_inner(self.ty(o)).expect("optional operand");
         self.val(Op::OptGet, &[o], Imm::None, t)
     }
+    /// `opt.unbox`: moves the payload out of an owned present optional, which it consumes.
+    pub fn opt_unbox(&mut self, o: Value) -> Value {
+        let t = self.m.opt_inner(self.ty(o)).expect("optional operand");
+        self.val(Op::OptUnbox, &[o], Imm::None, t)
+    }
     /// `opt.unwrap` (faults on none).
     pub fn opt_unwrap(&mut self, o: Value) -> Value {
         let t = self.m.opt_inner(self.ty(o)).expect("optional operand");
@@ -396,6 +451,95 @@ impl<'m> FuncBuilder<'m> {
         let ret = self.m.funcs[f.index()].ret;
         self.val(Op::Call, args, Imm::Func(f), ret)
     }
+    /// A position in the current block, for [`FuncBuilder::outline`].
+    pub fn mark(&self) -> Mark {
+        Mark {
+            block: self.cur,
+            insts: self.f.blocks[self.cur.index()].insts.len(),
+            blocks: self.f.blocks.len(),
+        }
+    }
+
+    /// Moves the instructions emitted since `mark` into a new function and calls it, so one long
+    /// straight-line run does not become one long function body (register allocation, SLP and the
+    /// scheduler are all quadratic in that). The function takes the values the run reads from
+    /// outside as parameters and returns `result`, the one value the caller uses afterwards.
+    /// Returns the call's result, or `None` (leaving the code in place) when the run is not
+    /// self-contained: it spans blocks, defines a value that needs a drop besides `result`, reads
+    /// a value that needs one from outside, or uses frame-bound operations.
+    pub fn outline(&mut self, mark: Mark, result: Value, name: &str) -> Option<Value> {
+        let cur = self.cur.index();
+        if mark.block != self.cur || mark.blocks != self.f.blocks.len() {
+            return None;
+        }
+        let run = &self.f.blocks[cur].insts[mark.insts..];
+        if run.is_empty() || !run.iter().any(|i| i.res == Some(result)) {
+            return None;
+        }
+        let mut defined = std::collections::HashSet::new();
+        let mut free: Vec<Value> = Vec::new();
+        for i in run {
+            if matches!(
+                i.op,
+                Op::Slot | Op::CleanupPush | Op::CleanupRun | Op::DepthEnter | Op::DepthLeave
+            ) {
+                return None;
+            }
+            for a in &i.args {
+                if !defined.contains(a) && !free.contains(a) {
+                    if self.m.needs_drop(self.f.ty(*a)) {
+                        return None;
+                    }
+                    free.push(*a);
+                }
+            }
+            if let Some(r) = i.res {
+                if r != result && self.m.needs_drop(self.f.ty(r)) {
+                    return None;
+                }
+                defined.insert(r);
+            }
+        }
+        let ret = self.f.ty(result);
+        let params = free
+            .iter()
+            .map(|v| Param {
+                ty: self.f.ty(*v),
+                mode: Mode::Borrow,
+            })
+            .collect::<Vec<_>>();
+        let mut g = Func::new(name, params, ret);
+        g.inline = InlineHint::Never;
+        g.loc = run[0].loc;
+        let mut map: HashMap<Value, Value> = free.iter().copied().zip(g.param_values()).collect();
+        for i in run {
+            let mut j = i.clone();
+            j.args = i.args.iter().map(|a| map[a]).collect();
+            if let Some(r) = i.res {
+                let n = g.new_value(self.f.ty(r));
+                map.insert(r, n);
+                j.res = Some(n);
+            }
+            g.blocks[0].insts.push(j);
+        }
+        g.blocks[0].term = Term::Ret(Some(map[&result]));
+        let id = self.m.add_func(g);
+        self.f.blocks[cur].insts.truncate(mark.insts);
+        let loc = self.loc;
+        self.loc = if let Some(l) = self.m.funcs[id.index()].blocks[0]
+            .insts
+            .first()
+            .map(|i| i.loc)
+        {
+            l
+        } else {
+            loc
+        };
+        let v = self.call(id, &free);
+        self.loc = loc;
+        Some(v)
+    }
+
     /// `call.rt` a runtime function.
     pub fn call_rt(&mut self, e: ExtId, args: &[Value]) -> Value {
         let ret = self.m.externs[e.index()].ret;
@@ -422,22 +566,6 @@ impl<'m> FuncBuilder<'m> {
         let mut all = vec![recv];
         all.extend_from_slice(args);
         self.val(Op::CallMethod, &all, Imm::Method(iface, method), ret)
-    }
-    /// `call.method` whose result the caller owns: a lent result is copied.
-    pub fn call_method_owned(
-        &mut self,
-        iface: IfaceId,
-        method: u32,
-        recv: Value,
-        args: &[Value],
-    ) -> Value {
-        let r = self.call_method(iface, method, recv, args);
-        let sig = &self.m.ifaces[iface.index()].methods[method as usize];
-        if !sig.ret_borrowed || !self.m.needs_drop(sig.ret) {
-            return r;
-        }
-        let ret = sig.ret;
-        self.val(Op::Copy, &[r], Imm::None, ret)
     }
     /// `poll`.
     pub fn poll(&mut self) {

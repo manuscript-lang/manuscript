@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "export fn main() Int:\n    let cap: Int? = -7\n    let parts = Bytes([1]).split(Bytes([]), cap)\n    return parts.length()\n"
+  }
+}

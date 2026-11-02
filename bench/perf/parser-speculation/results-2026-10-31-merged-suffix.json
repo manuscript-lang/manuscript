@@ -1,0 +1,3089 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "cpu_affinity": [
+    0
+  ],
+  "revision": "649ddeb9a2fb91eb36d1eb074842eaaa4ee370fc",
+  "baseline_revision": "d4a94aa9283348133542078e22ccaa3b2c9dc348",
+  "baseline_parser_sha256": "f684535a1aa951cbe27ba857faec481c853972d38fff46fc561107b26f16afda",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "binaries": {
+    "baseline": "7b15c78c74a65bc9733d55e04fec7479e64c3ac944e7fe556033761271ad0503",
+    "candidate": "b1120ece14a592becf53ee85109745ed72eea39b98558452e993508f5e77f271"
+  },
+  "parser_sha256": "cae01de886fe725067923b0c2b10b8e9ad2b19a4e1d6e5aa429d1f93eb8e0a66",
+  "validation": {
+    "tiny": {
+      "tree_sha256": "226ee3e0fb5a70e70605b044211236c093fc53f4f30a51bfab993cfd8c2331d0",
+      "inputs": [
+        {
+          "path": "tiny.ms",
+          "sha256": "49b3ad174ff21b8516cef778facc81f0cd902cc25cd8ae6d6fe9d3798a0c6fad",
+          "bytes": 40
+        }
+      ]
+    },
+    "plain-256": {
+      "tree_sha256": "85a60f77a396352b69acc4e46785e6c2dbd3800f267c383420acc7d2501cee93",
+      "inputs": [
+        {
+          "path": "plain-256.ms",
+          "sha256": "969271dfd20efedde27344087c2f2094d7285ea75a93dd96286f0697473f9902",
+          "bytes": 10642
+        }
+      ]
+    },
+    "single-optional-256": {
+      "tree_sha256": "0ef5d7b4a6d6962fdb1a9ba69842133aaf45b1afe8f1e04b3c93d44a3388cdf4",
+      "inputs": [
+        {
+          "path": "single-optional-256.ms",
+          "sha256": "7ab5c38da07e4279221ac21ff2ade0039ebb08adcd78906e23a15d0553f6fcc0",
+          "bytes": 10898
+        }
+      ]
+    },
+    "single-result-256": {
+      "tree_sha256": "6458ed5e3fcd9125c5c4c287dd096ff8e44f4114d508f89c50c4521a4918cb18",
+      "inputs": [
+        {
+          "path": "single-result-256.ms",
+          "sha256": "1dec60d961c5188b2c642041dc786d308f26ae19c078c980955dfd94a5cf77ae",
+          "bytes": 10898
+        }
+      ]
+    },
+    "generic-optional-256": {
+      "tree_sha256": "75d628901727c1887b6d5ecfff9b0e880d4182a206df60633b391e29a0eeeff2",
+      "inputs": [
+        {
+          "path": "generic-optional-256.ms",
+          "sha256": "de80a804ed3d1d4a35e19b6fc893ddc604b3c3b6873c02112924c35aa704a6dc",
+          "bytes": 17298
+        }
+      ]
+    },
+    "optional-16": {
+      "tree_sha256": "e5881cf9c7054fc920ce8f730f8a55c11bd4faf1dea9de1e1dc0dd7a112eb828",
+      "inputs": [
+        {
+          "path": "optional-16.ms",
+          "sha256": "2ad86f05ddddb73e620ec3b881eaa33ebc053168125577d0ab9e8909f1b5bf57",
+          "bytes": 902
+        }
+      ]
+    },
+    "optional-64": {
+      "tree_sha256": "cd8a66fadc5edff38a01eff3901104541fd68002f703b7b1e6640393c33c95c0",
+      "inputs": [
+        {
+          "path": "optional-64.ms",
+          "sha256": "99e3da31ef5906f3299181af63feb1aba02d131d02148c85dfeccd98c8380cec",
+          "bytes": 1670
+        }
+      ]
+    },
+    "optional-128": {
+      "tree_sha256": "aa992077b4b243bba50aaa514636643ce6c2ae53e539e3282b6bc48dbf4c1111",
+      "inputs": [
+        {
+          "path": "optional-128.ms",
+          "sha256": "6283cb222b84b655ec14a33d58ca4ceae92dfae0510bab26419311c57d711b5a",
+          "bytes": 2694
+        }
+      ]
+    },
+    "optional-256": {
+      "tree_sha256": "22d4d9ab2800ecd5ef39c1e206d04d943e4d071d4b7efa4e2bd1b9a8c50b001e",
+      "inputs": [
+        {
+          "path": "optional-256.ms",
+          "sha256": "45f09787a2edfd5e3f70984897bd5f00ab8dadf067ce4a01b38df24abc3a7e81",
+          "bytes": 4742
+        }
+      ]
+    },
+    "optional-512": {
+      "tree_sha256": "e408897d4618badfd1762d45ebd106301148ce4e20523753585a8d2961bce2cf",
+      "inputs": [
+        {
+          "path": "optional-512.ms",
+          "sha256": "64fe2d8c83179143888589a4a7e72da2aa88954e8633e743af6433a12ac05163",
+          "bytes": 8838
+        }
+      ]
+    },
+    "result-64": {
+      "tree_sha256": "432dc8f845795a914d60edddd07b5e3d430084dc367092ac11c69ba99463929a",
+      "inputs": [
+        {
+          "path": "result-64.ms",
+          "sha256": "2fb338898b35d1079a7fe0f595d31d32543fb13e6a29390058250ba24e29e83d",
+          "bytes": 1670
+        }
+      ]
+    },
+    "result-128": {
+      "tree_sha256": "1d4304cb69ab4480ac11fb1a28f3f065169289d35889c0237c669fc24823848f",
+      "inputs": [
+        {
+          "path": "result-128.ms",
+          "sha256": "4ba4ef38df6fa627bdcb2cef6bd86dbc2698e3b2fa270bb1b6b70e8101ef3cf7",
+          "bytes": 2694
+        }
+      ]
+    },
+    "result-256": {
+      "tree_sha256": "0ff20a5280956b33667296f32e7b264f59b4fea1e5e89d44f9104fdcb90e4aa5",
+      "inputs": [
+        {
+          "path": "result-256.ms",
+          "sha256": "668532b4cf47fa94de1b108381a54058a876f50374ea55568551a0a005326902",
+          "bytes": 4742
+        }
+      ]
+    },
+    "mixed-128-crlf": {
+      "tree_sha256": "472fa57acfed013ac132a702535620939a2314b1c05378cc9fd325a2affd41bc",
+      "inputs": [
+        {
+          "path": "mixed-128-crlf.ms",
+          "sha256": "c5acf2e95075fc3141f0bf40a64a6c6f05da32735410f15da277dd5b4f3d14bb",
+          "bytes": 3750
+        }
+      ]
+    },
+    "stdlib": {
+      "tree_sha256": "366b884e826a3bf3f1d42e3dcba686ca13672dfef0b9854387bd1744db524997",
+      "inputs": [
+        {
+          "path": "stdlib/archive.ms",
+          "sha256": "646fe9c1ebb9c071bdc9f5fd30cb9727d738559517d2d1ec41c6445b223c0719",
+          "bytes": 8527
+        },
+        {
+          "path": "stdlib/bench.ms",
+          "sha256": "1182189fcdad6583b3c02789093d3beb6e3cfe63cce003893aae6c33af63031f",
+          "bytes": 5633
+        },
+        {
+          "path": "stdlib/bitset.ms",
+          "sha256": "fa4260c2f429ee1f5ab9e22415fb535a60a94a3526b8b33bad6af9f6116e9af4",
+          "bytes": 5587
+        },
+        {
+          "path": "stdlib/bytes.ms",
+          "sha256": "340e0989fb1cd6baa6e23045c37da641b1e6867e1a40df5fc9e24b5c03928a14",
+          "bytes": 13764
+        },
+        {
+          "path": "stdlib/channels.ms",
+          "sha256": "a78425c1a1ff9f5ad868751b5c23f947061bd757189d3d500d3542f1a6b09cff",
+          "bytes": 2788
+        },
+        {
+          "path": "stdlib/cli.ms",
+          "sha256": "fb72a78b335b2ac5207080aaae67e271b310ad7022f88bfce4720f8c73de287a",
+          "bytes": 26938
+        },
+        {
+          "path": "stdlib/collections.ms",
+          "sha256": "729b7bf80566a52f3ccf422d83964111da00791569541f99599ae63cd957d500",
+          "bytes": 30005
+        },
+        {
+          "path": "stdlib/core.ms",
+          "sha256": "d64152d69f3e02f0f4722bb66180d256a063128e74a17d299bf1e9cf6ba42f37",
+          "bytes": 9344
+        },
+        {
+          "path": "stdlib/crypto.ms",
+          "sha256": "2700df85d2cd6aab9705ee9c8604b235e8c7c6bf3fc43616e3d5a8670a6e0112",
+          "bytes": 12815
+        },
+        {
+          "path": "stdlib/csv.ms",
+          "sha256": "bcb1edfb379ee26c01bf7add0f77648696629cf3a98443f4059eae65bc33761d",
+          "bytes": 9265
+        },
+        {
+          "path": "stdlib/decimal.ms",
+          "sha256": "4266d654ee8f014c6415fa95bdf51ed9caac4501963da42b5cf38580a412d26a",
+          "bytes": 3612
+        },
+        {
+          "path": "stdlib/deque.ms",
+          "sha256": "e2fbc8577bdbe945e6563659df2dc309662bbd20e71caadebd87365b8555f50f",
+          "bytes": 4113
+        },
+        {
+          "path": "stdlib/encoding.ms",
+          "sha256": "5b0ec361dcab8a46148e049484c99fe592a91a24ca3f70c94d6be6844a0f426f",
+          "bytes": 9669
+        },
+        {
+          "path": "stdlib/fetch.ms",
+          "sha256": "583bd24aaebe159de7717095a59fb3b31e46b00ffbde800865c282371c7ccfd6",
+          "bytes": 10035
+        },
+        {
+          "path": "stdlib/fs.ms",
+          "sha256": "cd1dabe5a880488c474ac42bee864cf13e4d2d07b371cf2979b92b728e587f57",
+          "bytes": 36296
+        },
+        {
+          "path": "stdlib/html.ms",
+          "sha256": "d14e35273f74a79bef82c905f7d4c852c1241e65c2d0512e6097fd204c933956",
+          "bytes": 4120
+        },
+        {
+          "path": "stdlib/http.ms",
+          "sha256": "e38ae4fbdd63675aee975956b5b2311495376c6d17cfce2e22e9ba8d5877e178",
+          "bytes": 24732
+        },
+        {
+          "path": "stdlib/intrinsics.ms",
+          "sha256": "fa1da9779075ef3b914f67bdde0c275852bef4e022b02d26a9df4c2f9d766922",
+          "bytes": 22116
+        },
+        {
+          "path": "stdlib/io.ms",
+          "sha256": "73d52d6e1de4781fb63c272d27f21c9387d76d831d7568e534724999c4e23c64",
+          "bytes": 16122
+        },
+        {
+          "path": "stdlib/iterable.ms",
+          "sha256": "dab670f496df5fad09ac4938e6c2cab27d38fcb7a73f2c84d1eba061313fbe4e",
+          "bytes": 429
+        },
+        {
+          "path": "stdlib/json.ms",
+          "sha256": "edaacf22d6a1e34762559239eb0bb5d306f4ce41230ca36e656fd0b4ea9a67aa",
+          "bytes": 13356
+        },
+        {
+          "path": "stdlib/jsonstream.ms",
+          "sha256": "ef961024cbc19b9867236d0065249980b58bd7e718e9b210d12a32b4d395ca1f",
+          "bytes": 6252
+        },
+        {
+          "path": "stdlib/log.ms",
+          "sha256": "edfb24e9ca77ba4f43469c0163a2963855b7cdb8624ea524b319df0c12184c09",
+          "bytes": 12725
+        },
+        {
+          "path": "stdlib/logcore.ms",
+          "sha256": "b7a3edfbbe2a7b144b617e8ff8bde516e24318e154c79dd3e9832e04cfdd042b",
+          "bytes": 3742
+        },
+        {
+          "path": "stdlib/math.ms",
+          "sha256": "f7f9b051bf1cb124c6d70ef30e03f07cd5b602ab167b82a24ad368cc6ecc1280",
+          "bytes": 21197
+        },
+        {
+          "path": "stdlib/net.ms",
+          "sha256": "22c08b6cc93a98cc46310bcafd3318f42bc975aeae82754bae00891f040127c5",
+          "bytes": 38333
+        },
+        {
+          "path": "stdlib/ordering.ms",
+          "sha256": "d6f6a314ea3b3810fbb1d69338779b3ec901dd17e444f594a7a00d6af2fd0177",
+          "bytes": 9611
+        },
+        {
+          "path": "stdlib/process.ms",
+          "sha256": "5d533e7c2554bd63c2125d15482335defd915ba917e52d01efa3442534677e62",
+          "bytes": 28436
+        },
+        {
+          "path": "stdlib/processes.ms",
+          "sha256": "bdd517d38ce7c846a7e12861fd02ecec2f091c62ac0519c2efd8241c975ee5d3",
+          "bytes": 18103
+        },
+        {
+          "path": "stdlib/queue.ms",
+          "sha256": "89841c33abd7a6f57d2ab2a9c7d3d7f8b93c81c9c0ca4fd720c21db148a28ae9",
+          "bytes": 6887
+        },
+        {
+          "path": "stdlib/random.ms",
+          "sha256": "df7b60df61ad1a2a5c715a71fa4fdec62d6973a6d0a7e1066151c5df6188700a",
+          "bytes": 2092
+        },
+        {
+          "path": "stdlib/router.ms",
+          "sha256": "5c71754ae1d275dccf3fc8257207a89c8cf618ff8294961e46065f70c171107e",
+          "bytes": 27020
+        },
+        {
+          "path": "stdlib/semver.ms",
+          "sha256": "3c69d27a8bda07c072ecfdafc748731b97ca72a3344340ae6f2b59e3420b46a4",
+          "bytes": 6038
+        },
+        {
+          "path": "stdlib/shared.ms",
+          "sha256": "f645acae961ec03665db6475e5fe8316dd2291eb35d0142bd314608784bc6670",
+          "bytes": 1433
+        },
+        {
+          "path": "stdlib/sorted.ms",
+          "sha256": "bd594197424cbe17aa4f4fe1e58e3a2cbe154d1106e3a030b03b312a58f65c48",
+          "bytes": 13410
+        },
+        {
+          "path": "stdlib/sse.ms",
+          "sha256": "ec4a8eadbe5af2163333c6745244b915e4cc2a91a38903ee9e5117185aa8b789",
+          "bytes": 13343
+        },
+        {
+          "path": "stdlib/streams.ms",
+          "sha256": "8b130bf3b6ffde20a5c8467949d39fdd81a3140802430a52c94c35a3fc88bf38",
+          "bytes": 6291
+        },
+        {
+          "path": "stdlib/string.ms",
+          "sha256": "b15a88de4243d777450c689e505171287d4082a7668756262709ea7f1f4aa2e9",
+          "bytes": 4828
+        },
+        {
+          "path": "stdlib/sync.ms",
+          "sha256": "207cd898e789c79530c8966f7c7c17d9f34db4a19c3f146b0a5a656db3387a23",
+          "bytes": 2281
+        },
+        {
+          "path": "stdlib/tasks.ms",
+          "sha256": "accf589ae8e7b4555df5c4c9b5d3487cc8897c46b0f3a92a9609d47272f83eff",
+          "bytes": 17184
+        },
+        {
+          "path": "stdlib/test.ms",
+          "sha256": "bb3f536b4abda636888f6f94d4e431ea0a5690e54d1937ad2e18ddac11c987f4",
+          "bytes": 4261
+        },
+        {
+          "path": "stdlib/time.ms",
+          "sha256": "99773de2c84e7cc37cdc57985569fc457a2615b1dee73d22e6025ed337186132",
+          "bytes": 16672
+        },
+        {
+          "path": "stdlib/toml.ms",
+          "sha256": "79b719c6bfab6b57566bebb644b7523c172f74d610dd2778e051b76c674ab522",
+          "bytes": 40086
+        },
+        {
+          "path": "stdlib/workers.ms",
+          "sha256": "3d05e19bf17628aba8e91130d02a042a4bb57df2d96c20f81b12277b7827219c",
+          "bytes": 10560
+        },
+        {
+          "path": "stdlib/yaml.ms",
+          "sha256": "2ec9270e5c40abe483985d914eac6057de8d4838c1ff23d45313b30b862a98b9",
+          "bytes": 62151
+        }
+      ]
+    }
+  },
+  "samples": [
+    {
+      "elapsed_ns": 101697527,
+      "passes": 816,
+      "units": 2048,
+      "checksum": 1671168,
+      "case": "single-result-256",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100309439,
+      "passes": 800,
+      "units": 2048,
+      "checksum": 1638400,
+      "case": "single-result-256",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 173758235,
+      "passes": 32,
+      "units": 4192,
+      "checksum": 134144,
+      "case": "result-128",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100550138,
+      "passes": 656,
+      "units": 4192,
+      "checksum": 2749952,
+      "case": "result-128",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100707842,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100011365,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100444781,
+      "passes": 1600,
+      "units": 352,
+      "checksum": 563200,
+      "case": "optional-16",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100140266,
+      "passes": 4720,
+      "units": 352,
+      "checksum": 1661440,
+      "case": "optional-16",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100885658,
+      "passes": 464,
+      "units": 2816,
+      "checksum": 1306624,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101423269,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 154256630,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 155161118,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 351188140,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "result-256",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101284546,
+      "passes": 336,
+      "units": 8288,
+      "checksum": 2784768,
+      "case": "result-256",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 1040053902,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "optional-512",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 103754379,
+      "passes": 224,
+      "units": 8288,
+      "checksum": 1856512,
+      "case": "optional-512",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 153116768,
+      "passes": 32,
+      "units": 3168,
+      "checksum": 101376,
+      "case": "mixed-128-crlf",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100271485,
+      "passes": 656,
+      "units": 3168,
+      "checksum": 2078208,
+      "case": "mixed-128-crlf",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101494199,
+      "passes": 848,
+      "units": 1792,
+      "checksum": 1519616,
+      "case": "single-optional-256",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101123806,
+      "passes": 848,
+      "units": 1792,
+      "checksum": 1519616,
+      "case": "single-optional-256",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 124232616,
+      "passes": 32,
+      "units": 2144,
+      "checksum": 68608,
+      "case": "optional-128",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101193790,
+      "passes": 880,
+      "units": 2144,
+      "checksum": 1886720,
+      "case": "optional-128",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 255662445,
+      "passes": 16,
+      "units": 4192,
+      "checksum": 67072,
+      "case": "optional-256",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 102414551,
+      "passes": 464,
+      "units": 4192,
+      "checksum": 1945088,
+      "case": "optional-256",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 108446416,
+      "passes": 112,
+      "units": 1120,
+      "checksum": 125440,
+      "case": "optional-64",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100581187,
+      "passes": 1632,
+      "units": 1120,
+      "checksum": 1827840,
+      "case": "optional-64",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100001423,
+      "passes": 182144,
+      "units": 6,
+      "checksum": 1092864,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100006370,
+      "passes": 184432,
+      "units": 6,
+      "checksum": 1106592,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 109648038,
+      "passes": 80,
+      "units": 2144,
+      "checksum": 171520,
+      "case": "result-64",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100743919,
+      "passes": 1232,
+      "units": 2144,
+      "checksum": 2641408,
+      "case": "result-64",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100488098,
+      "passes": 1232,
+      "units": 2144,
+      "checksum": 2641408,
+      "case": "result-64",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 110615901,
+      "passes": 80,
+      "units": 2144,
+      "checksum": 171520,
+      "case": "result-64",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100159148,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100331865,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101839313,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101161732,
+      "passes": 464,
+      "units": 2816,
+      "checksum": 1306624,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100261119,
+      "passes": 4720,
+      "units": 352,
+      "checksum": 1661440,
+      "case": "optional-16",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100366757,
+      "passes": 1584,
+      "units": 352,
+      "checksum": 557568,
+      "case": "optional-16",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100093530,
+      "passes": 1616,
+      "units": 1120,
+      "checksum": 1809920,
+      "case": "optional-64",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 110189249,
+      "passes": 112,
+      "units": 1120,
+      "checksum": 125440,
+      "case": "optional-64",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100245636,
+      "passes": 800,
+      "units": 2048,
+      "checksum": 1638400,
+      "case": "single-result-256",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101177195,
+      "passes": 800,
+      "units": 2048,
+      "checksum": 1638400,
+      "case": "single-result-256",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101493929,
+      "passes": 336,
+      "units": 8288,
+      "checksum": 2784768,
+      "case": "result-256",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 350410304,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "result-256",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 105844546,
+      "passes": 240,
+      "units": 8288,
+      "checksum": 1989120,
+      "case": "optional-512",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 1036299872,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "optional-512",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100006361,
+      "passes": 188560,
+      "units": 6,
+      "checksum": 1131360,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100007824,
+      "passes": 183344,
+      "units": 6,
+      "checksum": 1100064,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101395412,
+      "passes": 880,
+      "units": 2144,
+      "checksum": 1886720,
+      "case": "optional-128",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 125480653,
+      "passes": 32,
+      "units": 2144,
+      "checksum": 68608,
+      "case": "optional-128",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 102563144,
+      "passes": 464,
+      "units": 4192,
+      "checksum": 1945088,
+      "case": "optional-256",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 254921562,
+      "passes": 16,
+      "units": 4192,
+      "checksum": 67072,
+      "case": "optional-256",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100826304,
+      "passes": 656,
+      "units": 4192,
+      "checksum": 2749952,
+      "case": "result-128",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 173499641,
+      "passes": 32,
+      "units": 4192,
+      "checksum": 134144,
+      "case": "result-128",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101644925,
+      "passes": 864,
+      "units": 1792,
+      "checksum": 1548288,
+      "case": "single-optional-256",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100206239,
+      "passes": 848,
+      "units": 1792,
+      "checksum": 1519616,
+      "case": "single-optional-256",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101186922,
+      "passes": 640,
+      "units": 3168,
+      "checksum": 2027520,
+      "case": "mixed-128-crlf",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 150572227,
+      "passes": 32,
+      "units": 3168,
+      "checksum": 101376,
+      "case": "mixed-128-crlf",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 158388841,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 153857525,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 151662232,
+      "passes": 32,
+      "units": 3168,
+      "checksum": 101376,
+      "case": "mixed-128-crlf",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100745964,
+      "passes": 656,
+      "units": 3168,
+      "checksum": 2078208,
+      "case": "mixed-128-crlf",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 109508289,
+      "passes": 80,
+      "units": 2144,
+      "checksum": 171520,
+      "case": "result-64",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101225219,
+      "passes": 1248,
+      "units": 2144,
+      "checksum": 2675712,
+      "case": "result-64",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 156996354,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 155840521,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100818142,
+      "passes": 848,
+      "units": 1792,
+      "checksum": 1519616,
+      "case": "single-optional-256",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101806485,
+      "passes": 864,
+      "units": 1792,
+      "checksum": 1548288,
+      "case": "single-optional-256",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 125792278,
+      "passes": 32,
+      "units": 2144,
+      "checksum": 68608,
+      "case": "optional-128",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101364336,
+      "passes": 880,
+      "units": 2144,
+      "checksum": 1886720,
+      "case": "optional-128",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101381551,
+      "passes": 464,
+      "units": 2816,
+      "checksum": 1306624,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100673567,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100735087,
+      "passes": 1600,
+      "units": 352,
+      "checksum": 563200,
+      "case": "optional-16",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100175544,
+      "passes": 4720,
+      "units": 352,
+      "checksum": 1661440,
+      "case": "optional-16",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 351065074,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "result-256",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101004309,
+      "passes": 336,
+      "units": 8288,
+      "checksum": 2784768,
+      "case": "result-256",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101488892,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101385217,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 173588294,
+      "passes": 32,
+      "units": 4192,
+      "checksum": 134144,
+      "case": "result-128",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100832372,
+      "passes": 656,
+      "units": 4192,
+      "checksum": 2749952,
+      "case": "result-128",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 1029590279,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "optional-512",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 104526732,
+      "passes": 240,
+      "units": 8288,
+      "checksum": 1989120,
+      "case": "optional-512",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100000284,
+      "passes": 183552,
+      "units": 6,
+      "checksum": 1101312,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100003337,
+      "passes": 187088,
+      "units": 6,
+      "checksum": 1122528,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 108810249,
+      "passes": 112,
+      "units": 1120,
+      "checksum": 125440,
+      "case": "optional-64",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100439588,
+      "passes": 1632,
+      "units": 1120,
+      "checksum": 1827840,
+      "case": "optional-64",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101352419,
+      "passes": 784,
+      "units": 2048,
+      "checksum": 1605632,
+      "case": "single-result-256",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101487871,
+      "passes": 816,
+      "units": 2048,
+      "checksum": 1671168,
+      "case": "single-result-256",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 254430488,
+      "passes": 16,
+      "units": 4192,
+      "checksum": 67072,
+      "case": "optional-256",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100037129,
+      "passes": 448,
+      "units": 4192,
+      "checksum": 1878016,
+      "case": "optional-256",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 102694109,
+      "passes": 464,
+      "units": 4192,
+      "checksum": 1945088,
+      "case": "optional-256",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 254727290,
+      "passes": 16,
+      "units": 4192,
+      "checksum": 67072,
+      "case": "optional-256",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 102056129,
+      "passes": 672,
+      "units": 3168,
+      "checksum": 2128896,
+      "case": "mixed-128-crlf",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 150614976,
+      "passes": 32,
+      "units": 3168,
+      "checksum": 101376,
+      "case": "mixed-128-crlf",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100190106,
+      "passes": 4736,
+      "units": 352,
+      "checksum": 1667072,
+      "case": "optional-16",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100643703,
+      "passes": 1600,
+      "units": 352,
+      "checksum": 563200,
+      "case": "optional-16",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101459128,
+      "passes": 864,
+      "units": 1792,
+      "checksum": 1548288,
+      "case": "single-optional-256",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101411046,
+      "passes": 848,
+      "units": 1792,
+      "checksum": 1519616,
+      "case": "single-optional-256",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100000113,
+      "passes": 186224,
+      "units": 6,
+      "checksum": 1117344,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100007523,
+      "passes": 183520,
+      "units": 6,
+      "checksum": 1101120,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101232191,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100558435,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101310257,
+      "passes": 816,
+      "units": 2048,
+      "checksum": 1671168,
+      "case": "single-result-256",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100746517,
+      "passes": 800,
+      "units": 2048,
+      "checksum": 1638400,
+      "case": "single-result-256",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100369474,
+      "passes": 1248,
+      "units": 2144,
+      "checksum": 2675712,
+      "case": "result-64",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 108325635,
+      "passes": 80,
+      "units": 2144,
+      "checksum": 171520,
+      "case": "result-64",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100163126,
+      "passes": 1632,
+      "units": 1120,
+      "checksum": 1827840,
+      "case": "optional-64",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 108623380,
+      "passes": 112,
+      "units": 1120,
+      "checksum": 125440,
+      "case": "optional-64",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100575672,
+      "passes": 656,
+      "units": 4192,
+      "checksum": 2749952,
+      "case": "result-128",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 173728467,
+      "passes": 32,
+      "units": 4192,
+      "checksum": 134144,
+      "case": "result-128",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100994254,
+      "passes": 336,
+      "units": 8288,
+      "checksum": 2784768,
+      "case": "result-256",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 355910858,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "result-256",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100930110,
+      "passes": 880,
+      "units": 2144,
+      "checksum": 1886720,
+      "case": "optional-128",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 123851944,
+      "passes": 32,
+      "units": 2144,
+      "checksum": 68608,
+      "case": "optional-128",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 152235042,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 152387839,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101832816,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100562772,
+      "passes": 464,
+      "units": 2816,
+      "checksum": 1306624,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 104636136,
+      "passes": 240,
+      "units": 8288,
+      "checksum": 1989120,
+      "case": "optional-512",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 1038306111,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "optional-512",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100002366,
+      "passes": 180688,
+      "units": 6,
+      "checksum": 1084128,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100007955,
+      "passes": 185152,
+      "units": 6,
+      "checksum": 1110912,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 109757851,
+      "passes": 112,
+      "units": 1120,
+      "checksum": 125440,
+      "case": "optional-64",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100000864,
+      "passes": 1600,
+      "units": 1120,
+      "checksum": 1792000,
+      "case": "optional-64",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 111214223,
+      "passes": 80,
+      "units": 2144,
+      "checksum": 171520,
+      "case": "result-64",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100865953,
+      "passes": 1232,
+      "units": 2144,
+      "checksum": 2641408,
+      "case": "result-64",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 355414627,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "result-256",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100373620,
+      "passes": 320,
+      "units": 8288,
+      "checksum": 2652160,
+      "case": "result-256",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 1056375035,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "optional-512",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 106141547,
+      "passes": 240,
+      "units": 8288,
+      "checksum": 1989120,
+      "case": "optional-512",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 153662767,
+      "passes": 32,
+      "units": 3168,
+      "checksum": 101376,
+      "case": "mixed-128-crlf",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101535759,
+      "passes": 656,
+      "units": 3168,
+      "checksum": 2078208,
+      "case": "mixed-128-crlf",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100603119,
+      "passes": 1552,
+      "units": 352,
+      "checksum": 546304,
+      "case": "optional-16",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100194220,
+      "passes": 4528,
+      "units": 352,
+      "checksum": 1593856,
+      "case": "optional-16",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100463231,
+      "passes": 928,
+      "units": 1536,
+      "checksum": 1425408,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101091668,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 179717006,
+      "passes": 32,
+      "units": 4192,
+      "checksum": 134144,
+      "case": "result-128",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101289232,
+      "passes": 656,
+      "units": 4192,
+      "checksum": 2749952,
+      "case": "result-128",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 260423758,
+      "passes": 16,
+      "units": 4192,
+      "checksum": 67072,
+      "case": "optional-256",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100744300,
+      "passes": 448,
+      "units": 4192,
+      "checksum": 1878016,
+      "case": "optional-256",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101288130,
+      "passes": 464,
+      "units": 2816,
+      "checksum": 1306624,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101115233,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 125795634,
+      "passes": 32,
+      "units": 2144,
+      "checksum": 68608,
+      "case": "optional-128",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100814595,
+      "passes": 864,
+      "units": 2144,
+      "checksum": 1852416,
+      "case": "optional-128",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100649718,
+      "passes": 848,
+      "units": 1792,
+      "checksum": 1519616,
+      "case": "single-optional-256",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100399566,
+      "passes": 832,
+      "units": 1792,
+      "checksum": 1490944,
+      "case": "single-optional-256",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100782016,
+      "passes": 800,
+      "units": 2048,
+      "checksum": 1638400,
+      "case": "single-result-256",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100009394,
+      "passes": 784,
+      "units": 2048,
+      "checksum": 1605632,
+      "case": "single-result-256",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 154369380,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 157919123,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101699224,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100278945,
+      "passes": 448,
+      "units": 2816,
+      "checksum": 1261568,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 105674902,
+      "passes": 240,
+      "units": 8288,
+      "checksum": 1989120,
+      "case": "optional-512",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 1050152351,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "optional-512",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101066240,
+      "passes": 336,
+      "units": 8288,
+      "checksum": 2784768,
+      "case": "result-256",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 356699013,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "result-256",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 102195994,
+      "passes": 656,
+      "units": 4192,
+      "checksum": 2749952,
+      "case": "result-128",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 178314595,
+      "passes": 32,
+      "units": 4192,
+      "checksum": 134144,
+      "case": "result-128",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 102113451,
+      "passes": 640,
+      "units": 3168,
+      "checksum": 2027520,
+      "case": "mixed-128-crlf",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 167355108,
+      "passes": 32,
+      "units": 3168,
+      "checksum": 101376,
+      "case": "mixed-128-crlf",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100923206,
+      "passes": 1648,
+      "units": 1120,
+      "checksum": 1845760,
+      "case": "optional-64",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 108398211,
+      "passes": 112,
+      "units": 1120,
+      "checksum": 125440,
+      "case": "optional-64",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101815678,
+      "passes": 864,
+      "units": 1792,
+      "checksum": 1548288,
+      "case": "single-optional-256",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100197194,
+      "passes": 848,
+      "units": 1792,
+      "checksum": 1519616,
+      "case": "single-optional-256",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100470842,
+      "passes": 1248,
+      "units": 2144,
+      "checksum": 2675712,
+      "case": "result-64",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 107880541,
+      "passes": 80,
+      "units": 2144,
+      "checksum": 171520,
+      "case": "result-64",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 153964706,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 151496536,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 102300991,
+      "passes": 464,
+      "units": 4192,
+      "checksum": 1945088,
+      "case": "optional-256",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 254128892,
+      "passes": 16,
+      "units": 4192,
+      "checksum": 67072,
+      "case": "optional-256",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100004509,
+      "passes": 184560,
+      "units": 6,
+      "checksum": 1107360,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100004592,
+      "passes": 183952,
+      "units": 6,
+      "checksum": 1103712,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101067278,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100502025,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100166914,
+      "passes": 4736,
+      "units": 352,
+      "checksum": 1667072,
+      "case": "optional-16",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100496707,
+      "passes": 1600,
+      "units": 352,
+      "checksum": 563200,
+      "case": "optional-16",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100928690,
+      "passes": 816,
+      "units": 2048,
+      "checksum": 1671168,
+      "case": "single-result-256",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101498379,
+      "passes": 816,
+      "units": 2048,
+      "checksum": 1671168,
+      "case": "single-result-256",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101190131,
+      "passes": 880,
+      "units": 2144,
+      "checksum": 1886720,
+      "case": "optional-128",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 126407945,
+      "passes": 32,
+      "units": 2144,
+      "checksum": 68608,
+      "case": "optional-128",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100353773,
+      "passes": 1600,
+      "units": 352,
+      "checksum": 563200,
+      "case": "optional-16",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100188506,
+      "passes": 4720,
+      "units": 352,
+      "checksum": 1661440,
+      "case": "optional-16",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 108067476,
+      "passes": 80,
+      "units": 2144,
+      "checksum": 171520,
+      "case": "result-64",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101151753,
+      "passes": 1248,
+      "units": 2144,
+      "checksum": 2675712,
+      "case": "result-64",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100716454,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100958936,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100000147,
+      "passes": 179936,
+      "units": 6,
+      "checksum": 1079616,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100000527,
+      "passes": 188592,
+      "units": 6,
+      "checksum": 1131552,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 109530497,
+      "passes": 112,
+      "units": 1120,
+      "checksum": 125440,
+      "case": "optional-64",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100150039,
+      "passes": 1632,
+      "units": 1120,
+      "checksum": 1827840,
+      "case": "optional-64",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101683076,
+      "passes": 800,
+      "units": 2048,
+      "checksum": 1638400,
+      "case": "single-result-256",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100837114,
+      "passes": 800,
+      "units": 2048,
+      "checksum": 1638400,
+      "case": "single-result-256",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 1035468863,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "optional-512",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 105899593,
+      "passes": 240,
+      "units": 8288,
+      "checksum": 1989120,
+      "case": "optional-512",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101185644,
+      "passes": 464,
+      "units": 2816,
+      "checksum": 1306624,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101086256,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 154569017,
+      "passes": 32,
+      "units": 3168,
+      "checksum": 101376,
+      "case": "mixed-128-crlf",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100722803,
+      "passes": 656,
+      "units": 3168,
+      "checksum": 2078208,
+      "case": "mixed-128-crlf",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 154560328,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 154243171,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101737166,
+      "passes": 864,
+      "units": 1792,
+      "checksum": 1548288,
+      "case": "single-optional-256",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101716706,
+      "passes": 864,
+      "units": 1792,
+      "checksum": 1548288,
+      "case": "single-optional-256",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 354551702,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "result-256",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101733721,
+      "passes": 336,
+      "units": 8288,
+      "checksum": 2784768,
+      "case": "result-256",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 125292331,
+      "passes": 32,
+      "units": 2144,
+      "checksum": 68608,
+      "case": "optional-128",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101797997,
+      "passes": 880,
+      "units": 2144,
+      "checksum": 1886720,
+      "case": "optional-128",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 256363789,
+      "passes": 16,
+      "units": 4192,
+      "checksum": 67072,
+      "case": "optional-256",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 103387287,
+      "passes": 464,
+      "units": 4192,
+      "checksum": 1945088,
+      "case": "optional-256",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 174828336,
+      "passes": 32,
+      "units": 4192,
+      "checksum": 134144,
+      "case": "result-128",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100230069,
+      "passes": 640,
+      "units": 4192,
+      "checksum": 2682880,
+      "case": "result-128",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 152612039,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 152832647,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 101544399,
+      "passes": 816,
+      "units": 2048,
+      "checksum": 1671168,
+      "case": "single-result-256",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100315176,
+      "passes": 800,
+      "units": 2048,
+      "checksum": 1638400,
+      "case": "single-result-256",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100624567,
+      "passes": 1616,
+      "units": 1120,
+      "checksum": 1809920,
+      "case": "optional-64",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 109753189,
+      "passes": 112,
+      "units": 1120,
+      "checksum": 125440,
+      "case": "optional-64",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100957153,
+      "passes": 336,
+      "units": 8288,
+      "checksum": 2784768,
+      "case": "result-256",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 350498805,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "result-256",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 102700542,
+      "passes": 464,
+      "units": 4192,
+      "checksum": 1945088,
+      "case": "optional-256",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 255510646,
+      "passes": 16,
+      "units": 4192,
+      "checksum": 67072,
+      "case": "optional-256",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100287287,
+      "passes": 4752,
+      "units": 352,
+      "checksum": 1672704,
+      "case": "optional-16",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100750607,
+      "passes": 1520,
+      "units": 352,
+      "checksum": 535040,
+      "case": "optional-16",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100365023,
+      "passes": 832,
+      "units": 1792,
+      "checksum": 1490944,
+      "case": "single-optional-256",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100071405,
+      "passes": 816,
+      "units": 1792,
+      "checksum": 1462272,
+      "case": "single-optional-256",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 101382670,
+      "passes": 1232,
+      "units": 2144,
+      "checksum": 2641408,
+      "case": "result-64",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 111220841,
+      "passes": 80,
+      "units": 2144,
+      "checksum": 171520,
+      "case": "result-64",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100006759,
+      "passes": 184832,
+      "units": 6,
+      "checksum": 1108992,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100000809,
+      "passes": 178944,
+      "units": 6,
+      "checksum": 1073664,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100746302,
+      "passes": 224,
+      "units": 8288,
+      "checksum": 1856512,
+      "case": "optional-512",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 1061460094,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "optional-512",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 101452485,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 102388071,
+      "passes": 464,
+      "units": 2816,
+      "checksum": 1306624,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100532863,
+      "passes": 864,
+      "units": 2144,
+      "checksum": 1852416,
+      "case": "optional-128",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 127022164,
+      "passes": 32,
+      "units": 2144,
+      "checksum": 68608,
+      "case": "optional-128",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 101397082,
+      "passes": 656,
+      "units": 3168,
+      "checksum": 2078208,
+      "case": "mixed-128-crlf",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 153316013,
+      "passes": 32,
+      "units": 3168,
+      "checksum": 101376,
+      "case": "mixed-128-crlf",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 101084927,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100260968,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100150483,
+      "passes": 640,
+      "units": 4192,
+      "checksum": 2682880,
+      "case": "result-128",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 175204202,
+      "passes": 32,
+      "units": 4192,
+      "checksum": 134144,
+      "case": "result-128",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 173713740,
+      "passes": 32,
+      "units": 4192,
+      "checksum": 134144,
+      "case": "result-128",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101681776,
+      "passes": 656,
+      "units": 4192,
+      "checksum": 2749952,
+      "case": "result-128",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100836917,
+      "passes": 1584,
+      "units": 352,
+      "checksum": 557568,
+      "case": "optional-16",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100154999,
+      "passes": 4656,
+      "units": 352,
+      "checksum": 1638912,
+      "case": "optional-16",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100004756,
+      "passes": 181520,
+      "units": 6,
+      "checksum": 1089120,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100004806,
+      "passes": 184016,
+      "units": 6,
+      "checksum": 1104096,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 1053597702,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "optional-512",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100443199,
+      "passes": 224,
+      "units": 8288,
+      "checksum": 1856512,
+      "case": "optional-512",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 110588348,
+      "passes": 112,
+      "units": 1120,
+      "checksum": 125440,
+      "case": "optional-64",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100866311,
+      "passes": 1616,
+      "units": 1120,
+      "checksum": 1809920,
+      "case": "optional-64",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100192396,
+      "passes": 832,
+      "units": 1792,
+      "checksum": 1490944,
+      "case": "single-optional-256",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101086518,
+      "passes": 848,
+      "units": 1792,
+      "checksum": 1519616,
+      "case": "single-optional-256",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 358322686,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "result-256",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 102677853,
+      "passes": 336,
+      "units": 8288,
+      "checksum": 2784768,
+      "case": "result-256",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 256646633,
+      "passes": 16,
+      "units": 4192,
+      "checksum": 67072,
+      "case": "optional-256",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 102462952,
+      "passes": 464,
+      "units": 4192,
+      "checksum": 1945088,
+      "case": "optional-256",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 108569768,
+      "passes": 80,
+      "units": 2144,
+      "checksum": 171520,
+      "case": "result-64",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100723908,
+      "passes": 1248,
+      "units": 2144,
+      "checksum": 2675712,
+      "case": "result-64",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 125303411,
+      "passes": 32,
+      "units": 2144,
+      "checksum": 68608,
+      "case": "optional-128",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101783739,
+      "passes": 880,
+      "units": 2144,
+      "checksum": 1886720,
+      "case": "optional-128",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 157408986,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 156214114,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101223904,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101146637,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 151445710,
+      "passes": 32,
+      "units": 3168,
+      "checksum": 101376,
+      "case": "mixed-128-crlf",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101556520,
+      "passes": 656,
+      "units": 3168,
+      "checksum": 2078208,
+      "case": "mixed-128-crlf",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100266497,
+      "passes": 800,
+      "units": 2048,
+      "checksum": 1638400,
+      "case": "single-result-256",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101863739,
+      "passes": 816,
+      "units": 2048,
+      "checksum": 1671168,
+      "case": "single-result-256",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101702249,
+      "passes": 464,
+      "units": 2816,
+      "checksum": 1306624,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101623200,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100117274,
+      "passes": 800,
+      "units": 2048,
+      "checksum": 1638400,
+      "case": "single-result-256",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100681801,
+      "passes": 784,
+      "units": 2048,
+      "checksum": 1605632,
+      "case": "single-result-256",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100003013,
+      "passes": 185296,
+      "units": 6,
+      "checksum": 1111776,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100006019,
+      "passes": 182000,
+      "units": 6,
+      "checksum": 1092000,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100567535,
+      "passes": 1616,
+      "units": 1120,
+      "checksum": 1809920,
+      "case": "optional-64",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 110733921,
+      "passes": 112,
+      "units": 1120,
+      "checksum": 125440,
+      "case": "optional-64",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 102066392,
+      "passes": 336,
+      "units": 8288,
+      "checksum": 2784768,
+      "case": "result-256",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 357446519,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "result-256",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100290351,
+      "passes": 864,
+      "units": 2144,
+      "checksum": 1852416,
+      "case": "optional-128",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 127729513,
+      "passes": 32,
+      "units": 2144,
+      "checksum": 68608,
+      "case": "optional-128",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100088391,
+      "passes": 4400,
+      "units": 352,
+      "checksum": 1548800,
+      "case": "optional-16",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100073658,
+      "passes": 1584,
+      "units": 352,
+      "checksum": 557568,
+      "case": "optional-16",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100296152,
+      "passes": 448,
+      "units": 4192,
+      "checksum": 1878016,
+      "case": "optional-256",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 261129985,
+      "passes": 16,
+      "units": 4192,
+      "checksum": 67072,
+      "case": "optional-256",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 156832726,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 153360166,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 105546391,
+      "passes": 240,
+      "units": 8288,
+      "checksum": 1989120,
+      "case": "optional-512",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 1041330825,
+      "passes": 16,
+      "units": 8288,
+      "checksum": 132608,
+      "case": "optional-512",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100409877,
+      "passes": 848,
+      "units": 1792,
+      "checksum": 1519616,
+      "case": "single-optional-256",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100269478,
+      "passes": 832,
+      "units": 1792,
+      "checksum": 1490944,
+      "case": "single-optional-256",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 101231372,
+      "passes": 1216,
+      "units": 2144,
+      "checksum": 2607104,
+      "case": "result-64",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 108776793,
+      "passes": 80,
+      "units": 2144,
+      "checksum": 171520,
+      "case": "result-64",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 102043122,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 101715504,
+      "passes": 464,
+      "units": 2816,
+      "checksum": 1306624,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100623646,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100364378,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 102351322,
+      "passes": 656,
+      "units": 3168,
+      "checksum": 2078208,
+      "case": "mixed-128-crlf",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 156497492,
+      "passes": 32,
+      "units": 3168,
+      "checksum": 101376,
+      "case": "mixed-128-crlf",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 101696015,
+      "passes": 656,
+      "units": 4192,
+      "checksum": 2749952,
+      "case": "result-128",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 175462012,
+      "passes": 32,
+      "units": 4192,
+      "checksum": 134144,
+      "case": "result-128",
+      "which": "baseline",
+      "trial": 9
+    }
+  ]
+}

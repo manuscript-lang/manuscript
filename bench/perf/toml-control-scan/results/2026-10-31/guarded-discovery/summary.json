@@ -1,0 +1,402 @@
+[
+  {
+    "operation": "roundtrip",
+    "case": "empty",
+    "distributions": {
+      "before": {
+        "median_ns": 3707.1955376841506,
+        "mad_ns": 98.80200697459259,
+        "min_ns": 3500.8452067468506,
+        "max_ns": 4683.252651056864
+      },
+      "after": {
+        "median_ns": 55.687107499999996,
+        "mad_ns": 1.2289449999999995,
+        "min_ns": 54.025638,
+        "max_ns": 62.459338
+      },
+      "rust": {
+        "median_ns": 236.9387735454851,
+        "mad_ns": 8.157841803836106,
+        "min_ns": 227.53478054256007,
+        "max_ns": 271.24101400234326
+      }
+    },
+    "before_over_after": 66.57188178940972,
+    "after_over_rust": 0.23502741517023068
+  },
+  {
+    "operation": "roundtrip",
+    "case": "tiny",
+    "distributions": {
+      "before": {
+        "median_ns": 5595.0339,
+        "mad_ns": 59.085949999999684,
+        "min_ns": 5452.9728,
+        "max_ns": 5817.7822
+      },
+      "after": {
+        "median_ns": 766.4099155789979,
+        "mad_ns": 5.899946264688765,
+        "min_ns": 753.2281629594015,
+        "max_ns": 803.0149751827707
+      },
+      "rust": {
+        "median_ns": 612.7829119045211,
+        "mad_ns": 3.8731768989582633,
+        "min_ns": 605.6195205825832,
+        "max_ns": 657.8945989683423
+      }
+    },
+    "before_over_after": 7.300315126759722,
+    "after_over_rust": 1.2507037985067275
+  },
+  {
+    "operation": "roundtrip",
+    "case": "fields32",
+    "distributions": {
+      "before": {
+        "median_ns": 22292.796754563893,
+        "mad_ns": 444.1870182555758,
+        "min_ns": 21633.874645030424,
+        "max_ns": 23837.37687626775
+      },
+      "after": {
+        "median_ns": 17056.139036684403,
+        "mad_ns": 414.7097451694208,
+        "min_ns": 16522.974516942035,
+        "max_ns": 21015.864183702044
+      },
+      "rust": {
+        "median_ns": 11755.776523919754,
+        "mad_ns": 169.70187114197688,
+        "min_ns": 11539.223186728395,
+        "max_ns": 13881.350694444445
+      }
+    },
+    "before_over_after": 1.3070248024254767,
+    "after_over_rust": 1.4508730241664494
+  },
+  {
+    "operation": "roundtrip",
+    "case": "fields128",
+    "distributions": {
+      "before": {
+        "median_ns": 72639.47688564478,
+        "mad_ns": 393.4136253041361,
+        "min_ns": 72184.11435523114,
+        "max_ns": 75417.21654501217
+      },
+      "after": {
+        "median_ns": 65792.91301969366,
+        "mad_ns": 680.2538293216712,
+        "min_ns": 65029.65207877462,
+        "max_ns": 70498.45842450765
+      },
+      "rust": {
+        "median_ns": 48537.23606557377,
+        "mad_ns": 264.8491803278703,
+        "min_ns": 47915.240163934424,
+        "max_ns": 50360.77704918033
+      }
+    },
+    "before_over_after": 1.1040623306024122,
+    "after_over_rust": 1.3555142062643921
+  },
+  {
+    "operation": "roundtrip",
+    "case": "fields512",
+    "distributions": {
+      "before": {
+        "median_ns": 282553.22769953054,
+        "mad_ns": 5443.73474178405,
+        "min_ns": 275524.2018779343,
+        "max_ns": 331686.8075117371
+      },
+      "after": {
+        "median_ns": 269746.6310043668,
+        "mad_ns": 4643.351528384257,
+        "min_ns": 259334.06986899563,
+        "max_ns": 311282.9213973799
+      },
+      "rust": {
+        "median_ns": 216924.85815602838,
+        "mad_ns": 4461.501773049662,
+        "min_ns": 210513.43971631204,
+        "max_ns": 246932.6879432624
+      }
+    },
+    "before_over_after": 1.0474763916326963,
+    "after_over_rust": 1.243502627118673
+  },
+  {
+    "operation": "roundtrip",
+    "case": "unicode16k",
+    "distributions": {
+      "before": {
+        "median_ns": 184253.66228070174,
+        "mad_ns": 5904.519005847935,
+        "min_ns": 175791.27777777778,
+        "max_ns": 208000.47368421053
+      },
+      "after": {
+        "median_ns": 171036.0737704918,
+        "mad_ns": 4037.662568306012,
+        "min_ns": 165976.34153005463,
+        "max_ns": 205618.67759562843
+      },
+      "rust": {
+        "median_ns": 37370.26277372263,
+        "mad_ns": 1295.9032846715309,
+        "min_ns": 35862.55717761557,
+        "max_ns": 44343.74513381995
+      }
+    },
+    "before_over_after": 1.0772795365259975,
+    "after_over_rust": 4.576796122791997
+  },
+  {
+    "operation": "roundtrip",
+    "case": "escapes",
+    "distributions": {
+      "before": {
+        "median_ns": 375641.8368055555,
+        "mad_ns": 5433.548611111066,
+        "min_ns": 369763.49305555556,
+        "max_ns": 410670.84722222225
+      },
+      "after": {
+        "median_ns": 362712.7394366197,
+        "mad_ns": 1836.8908450703893,
+        "min_ns": 357843.6549295775,
+        "max_ns": 382026.94366197183
+      },
+      "rust": {
+        "median_ns": 165649.8157894737,
+        "mad_ns": 1581.011080332435,
+        "min_ns": 163684.68698060943,
+        "max_ns": 172468.27146814406
+      }
+    },
+    "before_over_after": 1.035645556285169,
+    "after_over_rust": 2.1896356341113927
+  },
+  {
+    "operation": "roundtrip",
+    "case": "comment32k",
+    "distributions": {
+      "before": {
+        "median_ns": 89051.35122699387,
+        "mad_ns": 1112.0268404907983,
+        "min_ns": 87399.28527607361,
+        "max_ns": 121955.49233128835
+      },
+      "after": {
+        "median_ns": 72962.59963768115,
+        "mad_ns": 1075.4607487922694,
+        "min_ns": 70750.00966183575,
+        "max_ns": 77942.09782608696
+      },
+      "rust": {
+        "median_ns": 19504.11671087533,
+        "mad_ns": 823.7713148920047,
+        "min_ns": 18554.425161045852,
+        "max_ns": 23148.73588480485
+      }
+    },
+    "before_over_after": 1.2205068304748803,
+    "after_over_rust": 3.740882026049292
+  },
+  {
+    "operation": "roundtrip",
+    "case": "comment1m",
+    "distributions": {
+      "before": {
+        "median_ns": 2702658.8863636367,
+        "mad_ns": 28788.11363636353,
+        "min_ns": 2663426.772727273,
+        "max_ns": 2960803.8181818184
+      },
+      "after": {
+        "median_ns": 2338142.173076923,
+        "mad_ns": 55238.0384615385,
+        "min_ns": 2255643.3076923075,
+        "max_ns": 3625857.5
+      },
+      "rust": {
+        "median_ns": 600741.0170454546,
+        "mad_ns": 21286.59659090906,
+        "min_ns": 567539.5909090909,
+        "max_ns": 927738.2045454546
+      }
+    },
+    "before_over_after": 1.1559001490516811,
+    "after_over_rust": 3.8920967717108774
+  },
+  {
+    "operation": "roundtrip",
+    "case": "literal1m",
+    "distributions": {
+      "before": {
+        "median_ns": 8265342.285714285,
+        "mad_ns": 89120.42857142864,
+        "min_ns": 8131326.428571428,
+        "max_ns": 9904550.714285715
+      },
+      "after": {
+        "median_ns": 8258181.714285715,
+        "mad_ns": 76179.85714285681,
+        "min_ns": 8063771.428571428,
+        "max_ns": 9273425.857142856
+      },
+      "rust": {
+        "median_ns": 1831884.0,
+        "mad_ns": 20821.953125,
+        "min_ns": 1797067.15625,
+        "max_ns": 2201039.0625
+      }
+    },
+    "before_over_after": 1.0008670881407447,
+    "after_over_rust": 4.508026553147314
+  },
+  {
+    "operation": "roundtrip",
+    "case": "unicode1m",
+    "distributions": {
+      "before": {
+        "median_ns": 11316055.9,
+        "mad_ns": 177743.7000000002,
+        "min_ns": 11065809.4,
+        "max_ns": 11632010.4
+      },
+      "after": {
+        "median_ns": 10862715.8,
+        "mad_ns": 63561.59999999963,
+        "min_ns": 10617094.8,
+        "max_ns": 11182166.4
+      },
+      "rust": {
+        "median_ns": 2310996.333333333,
+        "mad_ns": 23267.75,
+        "min_ns": 2246227.1666666665,
+        "max_ns": 2432310.5416666665
+      }
+    },
+    "before_over_after": 1.0417335874699032,
+    "after_over_rust": 4.700447007776877
+  },
+  {
+    "operation": "error",
+    "case": "zero",
+    "distributions": {
+      "before": {
+        "median_ns": 5088.3346,
+        "mad_ns": 27.73590000000013,
+        "min_ns": 5043.1182,
+        "max_ns": 5608.7365
+      },
+      "after": {
+        "median_ns": 41.29403,
+        "mad_ns": 0.7759150000000012,
+        "min_ns": 40.164003,
+        "max_ns": 47.20279
+      }
+    },
+    "before_over_after": 123.22203960233477
+  },
+  {
+    "operation": "error",
+    "case": "unicode",
+    "distributions": {
+      "before": {
+        "median_ns": 5507.1803500000005,
+        "mad_ns": 185.2258999999999,
+        "min_ns": 5276.1476,
+        "max_ns": 6299.0354
+      },
+      "after": {
+        "median_ns": 64.99225623961473,
+        "mad_ns": 1.8117064389695265,
+        "min_ns": 63.14581968010215,
+        "max_ns": 78.08262970745794
+      }
+    },
+    "before_over_after": 84.73594653639996
+  },
+  {
+    "operation": "error",
+    "case": "crlf-bare-cr",
+    "distributions": {
+      "before": {
+        "median_ns": 5446.458500000001,
+        "mad_ns": 87.14879999999994,
+        "min_ns": 5329.4439,
+        "max_ns": 6121.6213
+      },
+      "after": {
+        "median_ns": 109.91015875399194,
+        "mad_ns": 0.9190406615808371,
+        "min_ns": 107.95476849098046,
+        "max_ns": 116.64093916451549
+      }
+    },
+    "before_over_after": 49.553731536232405
+  },
+  {
+    "operation": "error",
+    "case": "syntax-first",
+    "distributions": {
+      "before": {
+        "median_ns": 5466.8814,
+        "mad_ns": 196.2260000000001,
+        "min_ns": 5157.8063,
+        "max_ns": 6467.709
+      },
+      "after": {
+        "median_ns": 57.988226499999996,
+        "mad_ns": 1.1234880000000018,
+        "min_ns": 56.138062,
+        "max_ns": 66.828759
+      }
+    },
+    "before_over_after": 94.27571301909019
+  },
+  {
+    "operation": "error",
+    "case": "early1m",
+    "distributions": {
+      "before": {
+        "median_ns": 50709.25604053001,
+        "mad_ns": 1458.38698363211,
+        "min_ns": 46367.46843335932,
+        "max_ns": 57648.402182385034
+      },
+      "after": {
+        "median_ns": 44058.332430602575,
+        "mad_ns": 1224.2224102911314,
+        "min_ns": 40157.093432633716,
+        "max_ns": 47039.98916723087
+      }
+    },
+    "before_over_after": 1.1509572251833062
+  },
+  {
+    "operation": "error",
+    "case": "late1m",
+    "distributions": {
+      "before": {
+        "median_ns": 2733044.4545454546,
+        "mad_ns": 45123.090909090824,
+        "min_ns": 2656806.090909091,
+        "max_ns": 3735105.6363636362
+      },
+      "after": {
+        "median_ns": 2525384.333333333,
+        "mad_ns": 41361.374999999534,
+        "min_ns": 2422834.75,
+        "max_ns": 2799182.1666666665
+      }
+    },
+    "before_over_after": 1.0822291159690631
+  }
+]

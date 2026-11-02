@@ -1,0 +1,42 @@
+import hashlib,json,pathlib,statistics,subprocess
+root=pathlib.Path(__file__).resolve().parent
+result=root/'full-scan';result.mkdir(exist_ok=False)
+versions={'before':root/'before','after':root/'after'}
+source=pathlib.Path('/workspace/json-perf/.artifacts/parser-discovery/pass1')
+rust=pathlib.Path('/workspace/json-perf/.artifacts/parser-discovery/rust/target/release/parser-roundtrip-discovery')
+digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+(result/'environment.json').write_text(json.dumps({'revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'binaries':{k:{'path':str(v),'sha256':digest(v)} for k,v in versions.items()},'sources':{'before':digest(root/'original-toml.ms'),'after':digest(pathlib.Path('stdlib/toml.ms'))},'driver_sha256':digest(pathlib.Path(__file__))},indent=2)+'\n')
+rows=[]
+for case in ['tiny','fields32','fields128','fields512','unicode','escapes']:
+ path=source/f'toml-{case}.input';outputs={k:subprocess.check_output([v,path,'0']) for k,v in versions.items()}
+ if outputs['before']!=outputs['after']:raise ValueError('changed output')
+ output=(result/(case+'.toml')).resolve();output.write_bytes(outputs['after']);subprocess.run([rust,'--validate','toml',path,output],check=True)
+ size=len(outputs['after'])
+ def invoke(label,count):
+  ns,checksum,observed=map(int,subprocess.check_output([versions[label],path,str(count)]).split())
+  if ns<=0 or checksum!=size*count or observed!=size:raise ValueError('bad producer')
+  return ns/count
+ counts={}
+ for label in versions:
+  count=1
+  while True:
+   ns=invoke(label,count)
+   if ns*count>=60_000_000:break
+   count=min(max(count+1,int(70_000_000/ns)),count*10)
+  counts[label]=count
+ for trial in range(6):
+  order=['before','after'] if trial%2==0 else ['after','before']
+  for label in order:
+   row=dict(case=case,label=label,trial=trial,count=counts[label],ns=invoke(label,counts[label]))
+   rows.append(row)
+   with (result/'samples.jsonl').open('a') as out:out.write(json.dumps(row)+'\n')
+summary=[]
+for case in ['tiny','fields32','fields128','fields512','unicode','escapes']:
+ d={}
+ for label in versions:
+  values=[r['ns'] for r in rows if r['case']==case and r['label']==label];m=statistics.median(values)
+  if len(values)!=6:raise ValueError('incomplete')
+  d[label]=dict(median_ns=m,mad_ns=statistics.median(abs(x-m) for x in values),min_ns=min(values),max_ns=max(values))
+ summary.append(dict(case=case,distributions=d,before_over_after=d['before']['median_ns']/d['after']['median_ns']))
+(result/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+for r in summary:print(r['case'],r['distributions'],r['before_over_after'])

@@ -1,4 +1,4 @@
-//! `@std/archive.ms` natives: in-memory zip and tar packing and unpacking with the validation,
+//! `@std/io/archive.ms` natives: in-memory zip and tar packing and unpacking with the validation,
 //! limits and error mapping.
 //! Zip members are compressed with miniz_oxide.
 #![no_std]
@@ -9,6 +9,7 @@ use ms_rt as _;
 
 extern crate alloc;
 
+pub mod compress;
 pub mod ffi;
 mod tar;
 mod zip;
@@ -123,7 +124,7 @@ pub fn pack(entries: &[Entry], format: &str, max_bytes: Option<i64>) -> Result<V
                 })
                 .collect();
             zip::pack(&members, 5, |data, level| {
-                ms_std_compress::encode(data, ms_std_compress::Format::Deflate, level)
+                crate::compress::encode(data, crate::compress::Format::Deflate, level)
             })
         }
         "tar" => {

@@ -1,0 +1,126 @@
+[
+  {
+    "suite": "lines",
+    "argv": [
+      "taskset",
+      "-c",
+      "0",
+      "python3",
+      "bench/perf/string-lines/compare.py",
+      "/workspace/byte-search-evidence/lines-before",
+      "/workspace/byte-search-evidence/lines-after",
+      "/workspace/byte-search-evidence/controls/lines-samples.csv",
+      "--pairs",
+      "6"
+    ],
+    "started": 1793462250.9992301,
+    "returncode": 0,
+    "finished": 1793462254.04369,
+    "source": {
+      "path": "bench/perf/string-lines/main.ms",
+      "sha256": "e7d37f5ea0147ac0fa127990ec52848f7319fd300f07719a3f0bd7be76a51787"
+    },
+    "executables": {
+      "before": {
+        "path": "/workspace/byte-search-evidence/lines-before",
+        "sha256": "fa7a9d194d7be373be7cf37a2319e492311eff178dead0a10f417ef5c5987100"
+      },
+      "after": {
+        "path": "/workspace/byte-search-evidence/lines-after",
+        "sha256": "f2d1a7d9a333bf63504506a3678e6422003393438f24b495fa5eb89b2a4259ea"
+      }
+    },
+    "build": {
+      "compiler_sha256": "e0f8d0152bf68b04e9f0a6fc2ca876d4c51328d2e58b94dcac322b2c5b71daeb",
+      "before_MS_RT_LIB": "/workspace/byte-search-evidence/baseline.a",
+      "after_MS_RT_LIB": "/workspace/manuscript/target/ms-native/libms_native.a",
+      "before_archive_sha256": "4ef63cd2ca0418a2b7b4d9590d001af06bd51413af8b1861228da795f80356be",
+      "after_archive_sha256": "b723d84dfc49745a824add6fc82313ddd9657a13a17343020d760a7edd051231",
+      "settings": "--build-type Release"
+    }
+  },
+  {
+    "suite": "normalize",
+    "argv": [
+      "taskset",
+      "-c",
+      "0",
+      "python3",
+      "bench/perf/string-lines/compare.py",
+      "/workspace/byte-search-evidence/normalize-before",
+      "/workspace/byte-search-evidence/normalize-after",
+      "/workspace/byte-search-evidence/controls/normalize-samples.csv",
+      "--pairs",
+      "6",
+      "--identity-file",
+      "bench/perf/string-normalize-ascii/identities.json"
+    ],
+    "started": 1793462254.043984,
+    "returncode": 0,
+    "finished": 1793462294.4977603,
+    "source": {
+      "path": "bench/perf/string-normalize-ascii/main.ms",
+      "sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4"
+    },
+    "executables": {
+      "before": {
+        "path": "/workspace/byte-search-evidence/normalize-before",
+        "sha256": "5e2c2c23f5a5bf90334a8114fe02eccac530ef0b09f0ce18e0ab54b26bbedc3f"
+      },
+      "after": {
+        "path": "/workspace/byte-search-evidence/normalize-after",
+        "sha256": "b48e518bef5f4333769c78d781ba196a8e4e9f659335140ee954d5b1b4c18487"
+      }
+    },
+    "build": {
+      "compiler_sha256": "e0f8d0152bf68b04e9f0a6fc2ca876d4c51328d2e58b94dcac322b2c5b71daeb",
+      "before_MS_RT_LIB": "/workspace/byte-search-evidence/baseline.a",
+      "after_MS_RT_LIB": "/workspace/manuscript/target/ms-native/libms_native.a",
+      "before_archive_sha256": "4ef63cd2ca0418a2b7b4d9590d001af06bd51413af8b1861228da795f80356be",
+      "after_archive_sha256": "b723d84dfc49745a824add6fc82313ddd9657a13a17343020d760a7edd051231",
+      "settings": "--build-type Release"
+    }
+  },
+  {
+    "suite": "reverse",
+    "argv": [
+      "taskset",
+      "-c",
+      "0",
+      "python3",
+      "bench/perf/string-lines/compare.py",
+      "/workspace/byte-search-evidence/reverse-before",
+      "/workspace/byte-search-evidence/reverse-after",
+      "/workspace/byte-search-evidence/controls/reverse-samples.csv",
+      "--pairs",
+      "6",
+      "--identity-file",
+      "bench/perf/string-normalization-rollback/inputs/reverse-full-identities.json"
+    ],
+    "started": 1793462294.4980915,
+    "returncode": 0,
+    "finished": 1793462392.548574,
+    "source": {
+      "path": "bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+      "sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e"
+    },
+    "executables": {
+      "before": {
+        "path": "/workspace/byte-search-evidence/reverse-before",
+        "sha256": "93a8e9ae28ff200fb504a115f1a2045725456ae9d06e4e4498657489ed28126d"
+      },
+      "after": {
+        "path": "/workspace/byte-search-evidence/reverse-after",
+        "sha256": "ab841ba9be93e84a260c49c2fb8419fad24dbc0f08e76f13448540c2fd4fcf7a"
+      }
+    },
+    "build": {
+      "compiler_sha256": "e0f8d0152bf68b04e9f0a6fc2ca876d4c51328d2e58b94dcac322b2c5b71daeb",
+      "before_MS_RT_LIB": "/workspace/byte-search-evidence/baseline.a",
+      "after_MS_RT_LIB": "/workspace/manuscript/target/ms-native/libms_native.a",
+      "before_archive_sha256": "4ef63cd2ca0418a2b7b4d9590d001af06bd51413af8b1861228da795f80356be",
+      "after_archive_sha256": "b723d84dfc49745a824add6fc82313ddd9657a13a17343020d760a7edd051231",
+      "settings": "--build-type Release"
+    }
+  }
+]

@@ -1,0 +1,75 @@
+{
+  "cwd": "/workspace/perf-parser-evidence/lexer-work",
+  "baseline_revision": "e01fb141e",
+  "candidate_revision": "2051a41785d509676a98168e42486451d8430579",
+  "builds": [
+    {
+      "label": "base",
+      "lexer_sha256": "d68d0bd8956b75bb8c4fe17a8c27175eeb0520b64fbcadfe998d40d9646de362",
+      "library_sha256": "12e6400d93a20e2e34f8b5ce84d73cc03ff2fc85aab11f022762aea8486a70c9",
+      "bench_sha256": "7439c7b18f99dda3722a6f63615b53e89d9b9c0b74c8a60d70a73ad298718aa9",
+      "cargo_command": [
+        "cargo",
+        "build",
+        "--release",
+        "--locked",
+        "-p",
+        "ms-syntax"
+      ],
+      "harness_command": [
+        "rustc",
+        "--edition=2024",
+        "-O",
+        "-D",
+        "warnings",
+        "-C",
+        "debuginfo=1",
+        "-C",
+        "panic=abort",
+        "-C",
+        "force-frame-pointers=yes",
+        "--extern",
+        "ms_syntax=target/release/libms_syntax.rlib",
+        "-L",
+        "dependency=target/release/deps",
+        "/workspace/manuscript/bench/perf/parser-suffix/bench.rs",
+        "-o",
+        "/workspace/perf-parser-evidence/header-samepath-base/bench"
+      ]
+    },
+    {
+      "label": "candidate",
+      "lexer_sha256": "7a7c81749e4089a8032c144673631e922571ff529ede1f2cd709b93a6dbc496a",
+      "library_sha256": "e66579ab1ba2bb981fe29c805858101874fdee088cf5a356c8167e24d2834668",
+      "bench_sha256": "3dbb685921cbd9245792be7063d2edf5796b627a66319862724e9f280fc57ff0",
+      "cargo_command": [
+        "cargo",
+        "build",
+        "--release",
+        "--locked",
+        "-p",
+        "ms-syntax"
+      ],
+      "harness_command": [
+        "rustc",
+        "--edition=2024",
+        "-O",
+        "-D",
+        "warnings",
+        "-C",
+        "debuginfo=1",
+        "-C",
+        "panic=abort",
+        "-C",
+        "force-frame-pointers=yes",
+        "--extern",
+        "ms_syntax=target/release/libms_syntax.rlib",
+        "-L",
+        "dependency=target/release/deps",
+        "/workspace/manuscript/bench/perf/parser-suffix/bench.rs",
+        "-o",
+        "/workspace/perf-parser-evidence/header-samepath-candidate/bench"
+      ]
+    }
+  ]
+}

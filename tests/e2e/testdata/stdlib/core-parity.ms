@@ -1,31 +1,22 @@
 import TextError from "@std/core.ms"
 import panic from "@std/core.ms"
-import expect_equal, expect_false from "@std/test.ms"
-import JsonLimits from "@std/json.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
+import JsonLimits from "@std/data/json.ms"
 
 type Counter:
     calls: Int
 
-impl Error for Counter:
-    fn message() String: "counter"
-
 type Pending:
     values: List[Int]
-
-impl Error for Pending:
-    fn message() String: "pending"
 
 fn bump(var counter: Counter) Int:
     counter.calls += 1
     return 9
 
-fn map_result[T, E: Error, U](value: Result[T, E], transform: fn(T) U) Result[U, E]:
+fn map_result[T, E, U](value: T!E, transform: fn(T) U) U!E:
     return value.map(transform)
 
-fn chain_result[T, E: Error, U](
-    value: Result[T, E],
-    transform: fn(T) Result[U, E]
-) Result[U, E]:
+fn chain_result[T, E, U](value: T!E, transform: fn(T) U!E) U!E:
     return value.and_then(transform)
 
 fn map_optional[T, U](value: T?, transform: fn(T) U) U?:
@@ -35,22 +26,22 @@ fn map_set[T: Hashable, U: Hashable](values: Set[T], transform: fn(T) U) Set[U]:
     return values.map[U](transform)
 
 test "core parity operations are callable":
-    let success: Result[Int, TextError] = ok(2)
-    let failure: Result[Int, TextError] = error(TextError("failed"))
+    let success: Int!TextError = ok(2)
+    let failure: Int!TextError = error(TextError("failed"))
     try expect_false(not (success.is_ok()) or success.is_error())
     try expect_false(success.get() != 2 or failure.err().message() != "failed")
     try expect_equal(failure.get(7), 7)
     try expect_equal(failure.get_or_else(fn cause: cause.message().scalar_length()), 6)
     try expect_equal(success.map(fn n: n + 1).get(), 3)
 
-    let chained: Result[String, TextError] = success.and_then(fn n: ok(n.to_string()))
+    let chained: String!TextError = success.and_then(fn n: ok(n.to_string()))
     try expect_equal(chained.get(), "2")
 
-    let present: Int? = some(2)
+    let present: Int? = 2
     let missing: Int? = none
     try expect_equal(present.map(fn n: n + 1).get(), 3)
-    try expect_equal(present.and_then(fn n: some(n.to_string())).get(), "2")
-    try expect_equal(missing.or_else(fn: some(4)).get(), 4)
+    try expect_equal(present.and_then(fn(n: Int) String?: n.to_string()).get(), "2")
+    try expect_equal(missing.or_else(fn: 4).get(), 4)
 
     let values: Map[String, Int] = {"a": 1, "b": 2}
     try expect_false(values.is_empty() or values.get_or("absent", 8) != 8)
@@ -63,13 +54,13 @@ test "core parity operations are callable":
 fn unexpected_text(value: Int) String:
     return panic("transform must not run for errors")
 
-fn unexpected_chain(value: Int) Result[String, Counter]:
+fn unexpected_chain(value: Int) String!Counter:
     return panic("chain must not run for errors")
 
 test "Result preserves unconstrained payloads and success-only composition":
     let counter = Counter(0)
-    let failure: Result[Int, Counter] = error(counter.clone())
-    let success: Result[Int, Counter] = ok(0)
+    let failure: Int!Counter = error(counter.clone())
+    let success: Int!Counter = ok(0)
     let skipped = map_result(failure.clone(), unexpected_text)
     try expect_false(not (skipped.is_error()) or skipped.is_ok())
 
@@ -100,7 +91,7 @@ test "Result preserves unconstrained payloads and success-only composition":
     try expect_equal(counter.calls, 0)
     try expect_equal(produced.err().calls, 0)
 
-    let collection_error: Result[Bool, Pending] = error(Pending([1]))
+    let collection_error: Bool!Pending = error(Pending([1]))
     var pending = Pending(
         collection_error.clone().map(fn flag: not flag).err().values.clone()
     )
@@ -109,25 +100,25 @@ test "Result preserves unconstrained payloads and success-only composition":
     try expect_equal(collection_error.err().values, [1])
 
     let limits = JsonLimits(-1)
-    let record: Result[JsonLimits, TextError] = ok(limits.clone())
+    let record: JsonLimits!TextError = ok(limits.clone())
     var changed = record.clone().map(fn value: value).get().clone()
-    changed.max_values = some(7)
+    changed.max_values = 7
     try expect_equal(changed.max_values.get(), 7)
     try expect_false(limits.max_values.is_some())
 
-    let nested = success.clone().map(fn n: some(n))
+    let nested = success.clone().map(fn(n: Int) Int?: n)
     try expect_equal(nested.get().get(), 0)
 
-    let unit_result: Result[Unit, TextError] = ok(unit)
+    let unit_result: Unit!TextError = ok(unit)
     try expect_false(not (unit_result.is_ok()))
 
-    let bool_result: Result[Bool, TextError] = ok(false)
+    let bool_result: Bool!TextError = ok(false)
     try expect_false(bool_result.get(true))
 
 test "Result fallbacks are eager or lazy and bound methods keep receivers":
     var counter = Counter(0)
-    let success: Result[Int, Counter] = ok(0)
-    let failure: Result[Int, Counter] = error(counter.clone())
+    let success: Int!Counter = ok(0)
+    let failure: Int!Counter = error(counter.clone())
     try expect_false(success.get(bump(var counter)) != 0 or counter.calls != 1)
 
     let create = fn(cause: Counter) Int: 12
@@ -149,7 +140,7 @@ test "Result fallbacks are eager or lazy and bound methods keep receivers":
 
 test "Optional composition keeps nesting identity and lazy callback counts":
     let counter = Counter(0)
-    let present: Counter? = some(counter.clone())
+    let present: Counter? = counter.clone()
     let missing: Counter? = none
     let transform = fn(value: Counter) Counter:
         return Counter(value.calls + 1)
@@ -164,13 +155,13 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     edited.calls = 2
     try expect_equal(mapped.get().calls, 1)
 
-    let chained = present.clone().and_then(fn value: some(value))
+    let chained = present.clone().and_then(fn(value: Counter) Counter?: value)
     try expect_equal(chained.get().calls, 0)
 
     let absent = present.clone().and_then(fn(unused: Counter) Int?: none)
     try expect_false(not (absent.is_none()))
 
-    let create = fn() Counter?: some(Counter(5))
+    let create = fn() Counter?: Counter(5)
     let unexpected_create = fn() Counter?: panic("fallback must stay lazy")
     let bound = present.clone().or_else
     try expect_equal(bound(unexpected_create).get().calls, 0)
@@ -185,7 +176,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     try expect_equal(bound_map(fn value: value.calls.to_string()).get(), "1")
 
     let bound_chain = missing.clone().and_then[String]
-    try expect_false(not (bound_chain(fn unused: some("unexpected")).is_none()))
+    try expect_false(not (bound_chain(fn unused: "unexpected").is_none()))
 
 test "Map filter copies ordered membership and get_or never inserts":
     var counter = Counter(0)

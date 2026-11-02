@@ -20,17 +20,6 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "<invalid> does not satisfy Error; use a type that implements it",
-        "position": {
-          "file": "core-language-types-compatibility-3.ms",
-          "line": 12,
-          "column": 27,
-          "offset": 452
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
         "message": "try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, TextError] but the operand fails with <invalid>, so change the return error type or implement Error for it",
         "position": {
           "file": "core-language-types-compatibility-3.ms",
@@ -43,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-compatibility-3.ms:12:27: type: cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the binding\n    |\n 12 |     let number: Int = try ok(1)\n    |                           ^\n<DIR>/core-language-types-compatibility-3.ms:12:27: type: <invalid> does not satisfy Error; use a type that implements it\n    |\n 12 |     let number: Int = try ok(1)\n    |                           ^\n<DIR>/core-language-types-compatibility-3.ms:12:23: type: try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, TextError] but the operand fails with <invalid>, so change the return error type or implement Error for it\n    |\n 12 |     let number: Int = try ok(1)\n    |                       ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-compatibility-3.ms:12:27: type: cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the binding\n    |\n 12 |     let number: Int = try ok(1)\n    |                           ^\n<DIR>/core-language-types-compatibility-3.ms:12:23: type: try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, TextError] but the operand fails with <invalid>, so change the return error type or implement Error for it\n    |\n 12 |     let number: Int = try ok(1)\n    |                       ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

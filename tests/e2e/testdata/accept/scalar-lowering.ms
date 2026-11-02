@@ -1,7 +1,13 @@
 import TextError from "@std/core.ms"
-import expect_equal, expect_false, expect_not_equal, expect_ok, expect_true from "@std/test.ms"
+import (
+    expect_equal,
+    expect_false,
+    expect_not_equal,
+    expect_ok,
+    expect_true
+) from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
-import filesystem from "@std/fs.ms"
+import read_file, temporary, write_file from "@std/os/fs.ms"
 
 type Counter:
     value: Int = 0
@@ -11,10 +17,11 @@ type Resource:
 
 # Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
 impl Closeable for Resource:
-    var fn close() Unit:
-        let _written = filesystem().write_file(self.marker, "closed", true)
+    var fn close() Unit!:
+        let _written = write_file(self.marker, "closed", true)
+        return ok(unit)
 
-fn closed(marker: String) Bool: filesystem().read_file(marker).is_ok()
+fn closed(marker: String) Bool: read_file(marker).is_ok()
 
 fn mark(var counter: Counter, digit: Int) Int:
     counter.value = counter.value * 10 + digit
@@ -23,8 +30,8 @@ fn mark(var counter: Counter, digit: Int) Int:
 fn generic[T: Equal](left: T, right: T) Bool: left == right
 
 fn returning_match() Bool:
-    return true == match some(1):
-        some(_): return false
+    return true == match present(1):
+        _value: return false
         none: false
 
 test "primitive equality captures operands once in order":
@@ -33,8 +40,8 @@ test "primitive equality captures operands once in order":
     try expect_equal(counter.value, 12)
 
     var original = 1
-    let captured = original == match some(1):
-        some(value):
+    let captured = original == match present(1):
+        value:
             original = 2
             value
         none: 0
@@ -55,8 +62,8 @@ fn conditional(marker: String, take: Bool) Int:
     return 8
 
 fn matched(marker: String) Int:
-    return match some(1):
-        some(value):
+    return match present(1):
+        value:
             var _resource = Resource(marker.clone())
             return value
             0
@@ -64,11 +71,11 @@ fn matched(marker: String) Int:
 
 fn defaulted(
     marker: String,
-    value: Int = match some(2):
-        some(number):
+    value: Int = match present(2):
+        number:
             var _resource = Resource(marker.clone())
             let _used = unit
-            _resource.close()
+            _resource.close().get(none)
             number
         none: 0
 ) Int: value
@@ -80,26 +87,26 @@ fn nested(marker: String) Unit:
 
     callback()
 
-fn failed() Result[Int, TextError]: error(TextError("expected"))
+fn failed() Int!TextError: error(TextError("expected"))
 
-fn propagate(marker: String) Result[Int, TextError]:
+fn propagate(marker: String) Int!TextError:
     var _resource = Resource(marker.clone())
     let value = try failed()
     return ok(value)
     return ok(0)
 
-fn bare_propagate() Result[Int, TextError]:
+fn bare_propagate() Int!TextError:
     let value = try failed()
     return ok(value)
 
-fn equality_propagate() Result[Bool, TextError]:
+fn equality_propagate() Bool!TextError:
     let matches = (try failed()) == 0
     return ok(matches)
 
-fn bool_failed() Result[Bool, TextError]: error(TextError("expected"))
+fn bool_failed() Bool!TextError: error(TextError("expected"))
 
-fn nested_results(marker: String) Result[Int, TextError]:
-    let child = fn() Result[Bool, TextError]:
+fn nested_results(marker: String) Int!TextError:
+    let child = fn() Bool!TextError:
         var _resource = Resource(marker.clone())
         let value = try bool_failed()
         return ok(value)
@@ -109,9 +116,9 @@ fn nested_results(marker: String) Result[Int, TextError]:
     let value = try failed()
     return ok(value)
 
-fn statement_match_try(marker: String) Result[Int, TextError]:
-    match some(1):
-        some(_):
+fn statement_match_try(marker: String) Int!TextError:
+    match present(1):
+        _value:
             let _resource = Resource(marker.clone())
             let value = try failed()
             return ok(value)
@@ -119,15 +126,15 @@ fn statement_match_try(marker: String) Result[Int, TextError]:
 
     return ok(-1)
 
-fn value_match_loop_try(marker: String) Result[Int, TextError]:
+fn value_match_loop_try(marker: String) Int!TextError:
     var index = 0
 
     while index < 2:
-        let _selected = match some(index):
-            some(number):
+        let _selected = match present(index):
+            number:
                 var _resource = Resource(marker.clone())
                 let _value = try failed()
-                _resource.close()
+                _resource.close().get(none)
                 number
             none: 0
 
@@ -136,8 +143,7 @@ fn value_match_loop_try(marker: String) Result[Int, TextError]:
     return ok(index)
 
 test "combined lowering retains callable state and try boundaries":
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-scalar-") | try expect_ok
+    let temporary = temporary("manuscript-scalar-") | try expect_ok
     let dir = temporary.path()
     let expected = Result[Int, TextError].error(TextError("expected"))
     try expect_equal(nested_results("{dir}/nested"), expected)
@@ -148,8 +154,7 @@ test "combined lowering retains callable state and try boundaries":
     try expect_true(closed("{dir}/loop"))
 
 test "cleanup remains owned by its source callable":
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-scalar-") | try expect_ok
+    let temporary = temporary("manuscript-scalar-") | try expect_ok
     let dir = temporary.path()
     try expect_equal(conditional("{dir}/skipped", take: false), 8)
     try expect_false(closed("{dir}/skipped"))
@@ -187,3 +192,6 @@ test "cleanup remains owned by its source callable":
     try expect_true(closed("{dir}/loop1"))
     try expect_true(closed("{dir}/loop2"))
     try expect_false(closed("{dir}/loop3"))
+
+fn present[T](value: T) T?:
+    return value

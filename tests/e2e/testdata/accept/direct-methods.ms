@@ -1,5 +1,5 @@
 import TextError from "@std/core.ms"
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Counter:
     n: Int
@@ -52,17 +52,17 @@ test "views, defaults, and reordered labels keep dispatch":
     let c = Counter(5)
     try expect_equal(through_view(c, 2), 7)
     try expect_equal(c.scale(2), 10)
-    try expect_equal(c.scale(offset: some(1), factor: 2), 11)
-    try expect_equal(c.scale(2, some(3)), 13)
+    try expect_equal(c.scale(offset: 1, factor: 2), 11)
+    try expect_equal(c.scale(2, 3), 13)
 
 type Parser:
     base: Int
 
 interface Parse:
-    fn parse(n: Int) Result[Int, TextError]
+    fn parse(n: Int) Int!TextError
 
 impl Parse for Parser:
-    fn parse(n: Int) Result[Int, TextError]:
+    fn parse(n: Int) Int!TextError:
         if n < 0:
             return error(TextError("negative"))
 
@@ -72,13 +72,13 @@ type Chain:
     parser: Parser
 
 interface Step:
-    fn step(n: Int) Result[Int, TextError]
+    fn step(n: Int) Int!TextError
 
 impl Step for Chain:
-    fn step(n: Int) Result[Int, TextError]:
+    fn step(n: Int) Int!TextError:
         return ok((try self.parser.parse(n)) + 1)
 
-fn code(r: Result[Int, TextError]) Int:
+fn code(r: Int!TextError) Int:
     return r.get(-1)
 
 fn run_direct(chain: Chain, n: Int) Int:

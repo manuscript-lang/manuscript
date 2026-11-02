@@ -1,8 +1,8 @@
 # conform: tags=control-flow,formatter,interfaces,interpolation,modules,parser,records,stdlib-cleanup,stdlib-io,strings,tier-stdlib,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/signal/main.ms
-import stdout from "@std/io.ms"
-import WriteStream from "@std/io.ms"
+import stdout from "@std/io/io.ms"
+import WriteStream from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 type Resource:
@@ -10,8 +10,9 @@ type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
-    fn close() Unit:
+    fn close() Unit!:
         let _ignored = self.output.write("close {self.label}\n")
+        return ok(unit)
 
 export fn main() Int:
     let output = stdout()

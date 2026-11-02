@@ -182,20 +182,4 @@ impl<'a> FnLower<'a> {
             &mut |s| Ok(Some(s.b.opt_none(opt_ty))),
         )
     }
-
-    /// `return m.get(key)`, `return xs.first()` or `return xs.last()` of a lending function: the
-    /// entry itself, as an optional that borrows it. `None` when `e` is not that.
-    pub(crate) fn lent_result(&mut self, e: &Expr) -> Result<Option<Val>, Error> {
-        if !self.lent_return || self.lent_expr != Some(e as *const Expr as usize) {
-            return Ok(None);
-        }
-        let Some(shape) = self.lent_shape(e)? else {
-            return Ok(None);
-        };
-        let Some((present, entry)) = self.lent_read(shape, e)? else {
-            let v = self.b.unit();
-            return Ok(Some(Val { v, own: false }));
-        };
-        Ok(Some(self.lent_optional(present, &entry)?))
-    }
 }

@@ -1,7 +1,13 @@
-import expect_equal, expect_false, expect_not_equal, expect_ok, fail from "@std/test.ms"
+import (
+    expect_equal,
+    expect_false,
+    expect_not_equal,
+    expect_ok,
+    fail
+) from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
-import JsonError from "@std/json.ms"
-import filesystem from "@std/fs.ms"
+import JsonError from "@std/data/json.ms"
+import read_file, temporary, write_file from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 type Key:
@@ -22,36 +28,36 @@ type Resource:
 # Resources own their state, so close records order through the filesystem:
 # resource 1 notes whether resource 2 had already closed.
 impl Closeable for Resource:
-    var fn close() Unit:
-        let fs = filesystem()
-        let inner_closed = fs.read_file("{self.dir}/2").is_ok()
-        let _ = fs.write_file("{self.dir}/{self.id}", "{inner_closed}", true)
+    var fn close() Unit!:
+        let inner_closed = read_file("{self.dir}/2").is_ok()
+        let _ = write_file("{self.dir}/{self.id}", "{inner_closed}", true)
+        return ok(unit)
 
 fn leave(dir: String) Int:
     let _outer = Resource(dir.clone(), 1)
     let _inner = Resource(dir, 2)
     return 42
 
-fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
+fn propagate(result: Int!JsonError) Int!JsonError:
     let found = try result
     return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
-    let create = fn: some(42)
-    let present: Int? = some(0)
+    let create = fn() Int?: 42
+    let present: Int? = 0
     let missing: Int? = none
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(missing.or_else(create).get(), 42)
 
-    let nested: Int?? = some(missing)
+    let nested: Int?? = missing
     try expect_false(not nested.is_some() or not nested.get().is_none())
 
 test "Result propagation and Error views preserve concrete causes":
-    let failed: Result[Int, JsonError] = error(JsonError.InvalidData)
+    let failed: Int!JsonError = error(JsonError.InvalidData)
     try expect_equal(propagate(failed), failed)
 
-    let success: Result[Int, JsonError] = ok(3)
-    let expected: Result[Int, JsonError] = ok(4)
+    let success: Int!JsonError = ok(3)
+    let expected: Int!JsonError = ok(4)
     try expect_equal(propagate(success), expected)
 
     let view: Error = JsonError.InvalidData
@@ -70,12 +76,11 @@ test "custom equality and hashing define map key identity":
     var map = Map[Key, String]()
     map.add(first.clone(), "a")
     map.add(second, "b")
-    try expect_false(map.length() != 1 or map.get(first) != some("b"))
+    try expect_false(map.length() != 1 or map.get(first) != "b")
 
 test "Closeable cleanup runs in reverse order before return delivery":
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-cleanup-") | try expect_ok
+    let temporary = temporary("manuscript-cleanup-") | try expect_ok
     let dir = temporary.path()
     try expect_equal(leave(dir.clone()), 42)
-    try expect_equal((try fs.read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
-    try expect_equal((try fs.read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))
+    try expect_equal((try read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
+    try expect_equal((try read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))

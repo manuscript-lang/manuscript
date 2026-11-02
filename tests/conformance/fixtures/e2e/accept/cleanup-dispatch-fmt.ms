@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,generics,interfaces,lists,modules,parser,records,stdlib-cleanup,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cleanup-dispatch.ms
-import expect_equal, expect_fault from "@std/test.ms"
+import expect_equal, expect_fault from "@std/test/test.ms"
 import panic from "@std/core.ms"
 import Closeable from "@std/core.ms"
 
@@ -20,16 +20,17 @@ impl OtherClose for Resource:
         return 0
 
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         panic("closeable")
+        return ok(unit)
 
 impl Disposable for Resource:
     var fn close() Unit:
         panic("disposable")
 
 fn bound_cleanup[T: Disposable](resource: T) Unit:
-    let _item = resource
-    let _completed = unit
+    var item = resource
+    item.close()
 
 fn canonical_cleanup[T: Closeable](resource: T) Unit:
     let _item = resource

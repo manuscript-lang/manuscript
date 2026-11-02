@@ -11,12 +11,12 @@ import (
     rsa_decrypt
 ) from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
-import expect_equal, expect_true, expect_false from "@std/test.ms"
+import expect_equal, expect_true, expect_false from "@std/test/test.ms"
 
-fn widened_sign(key: Bytes) Result[Bytes, Error]:
+fn widened_sign(key: Bytes) Bytes!:
     return rsa_sign(key, HashAlgorithm.Sha256, "message".to_bytes())
 
-fn widened_decrypt(key: Bytes, data: Bytes) Result[Bytes, Error]:
+fn widened_decrypt(key: Bytes, data: Bytes) Bytes!:
     return rsa_decrypt(key, HashAlgorithm.Sha256, data)
 
 fn marked(var calls: List[Int], marker: Int, data: Bytes) Bytes:

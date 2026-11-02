@@ -2,11 +2,11 @@
 # conform: phase=check
 # conform: origin=documentation/core-language/types/contracts.md:83
 interface ReadValue[T]:
-    fn get() ref T
+    fn get() T
 
-type Box[T]:
+type Box[T: Clonable]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    fn get() ref T:
-        return self.value
+    fn get() T:
+        return self.value.clone()

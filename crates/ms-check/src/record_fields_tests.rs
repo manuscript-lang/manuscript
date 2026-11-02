@@ -105,7 +105,7 @@ fn record_fields_bundled_and_source_standard_records_have_indices() {
     let pair = standard("Pair", vec![int(), string()]);
     assert_eq!(field_of(&pair, n("first")).unwrap().ty.id, "Int");
     assert_eq!(field_of(&pair, n("second")).unwrap().ty.id, "String");
-    let deque = crate::stdlib::source_type(n("@std/deque.ms"), n("Deque")).unwrap();
+    let deque = crate::stdlib::source_type(n("@std/collections/deque.ms"), n("Deque")).unwrap();
     let deque = with_args(&deque.ty(), vec![int()]);
     assert_eq!(field_of(&deque, n("size")).unwrap().ty.id, "Int");
     assert_eq!(

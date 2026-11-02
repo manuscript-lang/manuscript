@@ -1,4 +1,4 @@
-import lines, stdin from "@std/io.ms"
+import lines, stdin from "@std/io/io.ms"
 
 export fn main() Int:
     let reader = lines(stdin())

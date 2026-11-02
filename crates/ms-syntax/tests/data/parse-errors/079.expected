@@ -1,1 +1,1 @@
-error parse 2:9:36 "`ref` is written only before a result type; a binding of a place already borrows it, so drop `ref`"
+error parse 2:9:36 "`ref` was removed: drop it; a function that returns part of a parameter lends it without a marker, and a field owns its value"

@@ -1,0 +1,13 @@
+diff --git a/crates/ms-syntax/src/lexer.rs b/crates/ms-syntax/src/lexer.rs
+index 5dff49c2e..3b318d4b5 100644
+--- a/crates/ms-syntax/src/lexer.rs
++++ b/crates/ms-syntax/src/lexer.rs
+@@ -106,7 +106,7 @@ pub(crate) fn lex_at<'a>(
+     let (normalized, offsets) = normalize_source(source);
+     let (tokens, mut boundaries) = {
+         let mut s = Scanner::new(file, &normalized, base_offset, base_line, offsets);
+-        s.tokens.reserve(source.len() / 4 + 16);
++        s.tokens.reserve(16);
+         s.run(None)?;
+         (s.tokens, s.boundaries)
+     };

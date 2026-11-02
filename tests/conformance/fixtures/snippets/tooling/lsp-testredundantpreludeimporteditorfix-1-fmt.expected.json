@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import MissingValue from \"@std/core.ms\"  # keep\n\nfn first(values: List[Int]) Int!MissingValue: values.first().ok_or()\n"
+  }
+}

@@ -317,7 +317,7 @@ fn imports_of(text: &str) -> BTreeSet<String> {
     while let Some(i) = rest.find("\"@std/") {
         rest = &rest[i + 6..];
         let end = rest.find(['.', '"']).unwrap_or(rest.len());
-        let name = &rest[..end];
+        let name = rest[..end].rsplit('/').next().unwrap_or("");
         if !name.is_empty()
             && name
                 .chars()
@@ -780,7 +780,7 @@ mod tests {
 
     #[test]
     fn imports_and_tiers() {
-        let text = "import a from \"@std/json.ms\"\nimport b from \"@std/fs.ms\"\n";
+        let text = "import a from \"@std/data/json.ms\"\nimport b from \"@std/os/fs.ms\"\n";
         let tags = tags_for(text, Phase::Run);
         assert!(tags.contains(&"stdlib-json".to_string()));
         assert!(tags.contains(&"tier-io".to_string()));

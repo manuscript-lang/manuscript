@@ -1,0 +1,4 @@
+fn show(value: Int) String:
+    let text = "😀 é"
+    # Unicode before the next line: 😀
+    return "value {value} {text}"

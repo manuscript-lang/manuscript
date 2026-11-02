@@ -1,5 +1,6 @@
-//! Linking with the pinned `lld` (downloaded once into the cache), so no C toolchain is needed. Linux produces a static
-//! executable over musl's startup files and libc; macOS links against generated SDK stubs; Windows
+//! Linking with the pinned `lld` (downloaded once into the cache), so no C toolchain is needed. Linux produces a
+//! dynamic executable over stubs of glibc 2.28 (it runs on any later glibc), or with `--static` a static one over musl's startup files and libc;
+//! macOS links against generated SDK stubs; Windows
 //! links an executable over the mingw-w64 CRT and import libraries, so it needs neither the MSVC
 //! SDK nor a C compiler.
 
@@ -7,7 +8,7 @@ use crate::Error;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use super::bundled::{FILES, LINKER_ID};
 
@@ -52,11 +53,23 @@ pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
 /// builds never see a partial file. `None` when the target has no published archive.
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 fn fetch(name: &str, url: &str, sha: &str, files: &[&str]) -> Result<Option<PathBuf>, String> {
-    use sha2::{Digest, Sha256};
     if url.is_empty() {
         return Ok(None);
     }
     let root = cache_root().join("ms").join(name);
+    fetch_at(&root, name, sha, files, || super::fetch::get(url))
+}
+
+/// One cache attempt, with the download supplied separately so local tests can coordinate builders.
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+fn fetch_at(
+    root: &Path,
+    name: &str,
+    sha: &str,
+    files: &[&str],
+    download: impl FnOnce() -> Result<Vec<u8>, String>,
+) -> Result<Option<PathBuf>, String> {
+    use sha2::{Digest, Sha256};
     let dir = root.join(&sha[..16]);
     let files: Vec<String> = files
         .iter()
@@ -68,15 +81,13 @@ fn fetch(name: &str, url: &str, sha: &str, files: &[&str]) -> Result<Option<Path
     let failed = |what: &str, e: &dyn std::fmt::Display| {
         format!("cannot {what} {name} into {}: {e}", dir.display())
     };
-    let stage = root.join(format!(".fetch-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&stage);
-    std::fs::create_dir_all(&stage).map_err(|e| failed("create the cache for", &e))?;
+    let stage = staging(root, "fetch").map_err(|e| failed("create the cache for", &e))?;
     let result = (|| {
         // Only for a person at a terminal: programs and tests read this stream as output.
         if std::io::IsTerminal::is_terminal(&std::io::stderr()) {
             eprintln!("ms: fetching {name} (once)");
         }
-        let archive = super::fetch::get(url).map_err(|e| failed("download", &e))?;
+        let archive = download().map_err(|e| failed("download", &e))?;
         let got: String = Sha256::digest(&archive)
             .iter()
             .map(|b| format!("{b:02x}"))
@@ -100,6 +111,25 @@ fn fetch(name: &str, url: &str, sha: &str, files: &[&str]) -> Result<Option<Path
     })();
     let _ = std::fs::remove_dir_all(&stage);
     result.map(|()| Some(dir))
+}
+
+/// Exclusively owns one sibling staging directory. A failed or completed builder may remove only
+/// this directory; concurrent threads and stale directories from a reused PID keep their contents.
+fn staging(parent: &Path, prefix: &str) -> std::io::Result<PathBuf> {
+    std::fs::create_dir_all(parent)?;
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    loop {
+        let stage = parent.join(format!(
+            ".{prefix}-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        match std::fs::create_dir(&stage) {
+            Ok(()) => return Ok(stage),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error),
+        }
+    }
 }
 
 /// The `lld` to link with: `MS_LLD`, else the pinned release fetched into the cache on first use.
@@ -130,20 +160,26 @@ fn lld_path() -> Result<PathBuf, Error> {
 }
 
 /// Links `object` and `inputs` (the runtime built for this platform) into the executable `out`.
-pub fn link(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
+pub fn link(
+    object: &Path,
+    inputs: &[&Path],
+    out: &Path,
+    strip: bool,
+    musl: bool,
+) -> Result<(), Error> {
     let dir = extract()?;
-    let mut command = Command::new(lld_path()?);
+    let lld = lld_path()?;
+    let mut command = Command::new(&lld);
     #[cfg(target_os = "linux")]
-    linux_arguments(&mut command, &dir, object, inputs, out, strip);
+    linux_arguments(&mut command, &dir, &lld, object, inputs, out, strip, musl)?;
     #[cfg(target_os = "windows")]
     windows_arguments(&mut command, &dir, object, inputs, out, strip);
     #[cfg(target_os = "macos")]
     let stubs = macos_arguments(&mut command, &dir, object, inputs, out, strip)?;
-    let o = command
-        .output()
-        .map_err(|e| Error(format!("cannot run the bundled linker: {e}")))?;
+    let result = command.output();
     #[cfg(target_os = "macos")]
     let _ = std::fs::remove_dir_all(stubs);
+    let o = result.map_err(|e| Error(format!("cannot run the bundled linker: {e}")))?;
     if o.status.success() {
         return Ok(());
     }
@@ -164,37 +200,75 @@ pub fn link(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<
         ),
         None => "A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error".to_string(),
     };
+    #[cfg(target_os = "linux")]
+    let advice = if musl {
+        advice
+    } else {
+        format!(
+            "{advice}. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead"
+        )
+    };
     Err(Error(format!(
         "linking failed ({}); the linker output follows. {advice}:\n{detail}",
         o.status
     )))
 }
 
+/// Whether Linux programs link static musl (`--static`) instead of glibc. Set once by the
+/// command line before any build; the default is glibc.
+static STATIC_MUSL: AtomicBool = AtomicBool::new(false);
+
+/// Selects static musl (`true`) or glibc (`false`, the default) for Linux links.
+pub fn set_static(on: bool) {
+    STATIC_MUSL.store(on, Ordering::Relaxed);
+}
+
+/// Whether Linux links static musl; the runtime archive must be the musl build to match.
+pub fn is_static() -> bool {
+    cfg!(target_os = "linux") && STATIC_MUSL.load(Ordering::Relaxed)
+}
+
 /// Drops runtime and standard-library code the program never reaches: the runtime archive is one
 /// object per Rust codegen unit with a section per function, so unused pieces cost nothing.
 #[cfg(target_os = "linux")]
+#[allow(clippy::too_many_arguments)]
 fn linux_arguments(
     command: &mut Command,
     dir: &Path,
+    lld: &Path,
     object: &Path,
     inputs: &[&Path],
     out: &Path,
     strip: bool,
-) {
+    musl: bool,
+) -> Result<(), Error> {
     command
-        .args([
-            "-flavor",
-            "gnu",
-            "-static",
-            "--gc-sections",
-            "--eh-frame-hdr",
-        ])
+        .args(["-flavor", "gnu", "--gc-sections", "--eh-frame-hdr"])
         .arg("-o")
         .arg(out);
     if strip {
         command.arg("--strip-all");
     }
+    if !musl {
+        // The runtime archive defines `_start`, which hands `main` to glibc's `__libc_start_main`.
+        // Every symbol binds at load (`-z now`), so a program never fails at a later call.
+        let stubs = glibc_stubs::stubs(dir, lld)?;
+        command
+            .args(["--dynamic-linker", glibc_stubs::loader()])
+            .args(["-z", "now", "-z", "relro"])
+            .arg(object)
+            .arg("--start-group")
+            .args(inputs)
+            .arg(dir.join("libunwind.a"))
+            .arg("--end-group")
+            .arg("--as-needed");
+        for library in glibc_stubs::libraries() {
+            command.arg(stubs.join(library));
+        }
+        return Ok(());
+    }
     command
+        .arg("-static")
         .arg(dir.join("crt1.o"))
         .arg(dir.join("crti.o"))
         .arg(object)
@@ -204,6 +278,7 @@ fn linux_arguments(
         .arg(dir.join("libc.a"))
         .arg("--end-group")
         .arg(dir.join("crtn.o"));
+    Ok(())
 }
 
 /// Links a console executable over mingw-w64's startup object and CRT, dropping unreachable sections
@@ -274,10 +349,7 @@ fn macos_arguments(
     } else {
         "x86_64"
     };
-    let sdk = dir.join(format!(".sdk-{}", std::process::id()));
-    macos_stubs::write(&sdk, arch, object, inputs).inspect_err(|_| {
-        let _ = std::fs::remove_dir_all(&sdk);
-    })?;
+    let sdk = sdk_stubs(dir, arch, object, inputs)?;
     command
         .args(["-flavor", "darwin", "-arch", arch])
         .args(["-platform_version", "macos", "12.0", "12.0"])
@@ -303,14 +375,28 @@ fn macos_arguments(
     Ok(sdk)
 }
 
+#[cfg(any(target_os = "macos", test))]
+fn sdk_stubs(dir: &Path, arch: &str, object: &Path, inputs: &[&Path]) -> Result<PathBuf, Error> {
+    let sdk = staging(dir, "sdk").map_err(|e| Error(format!("cannot stage the SDK stubs: {e}")))?;
+    macos_stubs::write(&sdk, arch, object, inputs).inspect_err(|_| {
+        let _ = std::fs::remove_dir_all(&sdk);
+    })?;
+    Ok(sdk)
+}
+
 /// Writes the bundled linker and its support files to a per-build cache entry, once.
 fn extract() -> Result<PathBuf, Error> {
     let dir = cache_root().join("ms").join("linker").join(LINKER_ID);
+    extract_at(&dir, FILES)?;
+    Ok(dir)
+}
+
+fn extract_at(dir: &Path, files: &[(&str, &[u8])]) -> Result<(), Error> {
     let present = |name: &str, bytes: &[u8]| {
         std::fs::metadata(dir.join(name)).is_ok_and(|m| m.len() == bytes.len() as u64)
     };
-    if FILES.iter().all(|(name, bytes)| present(name, bytes)) {
-        return Ok(dir);
+    if files.iter().all(|(name, bytes)| present(name, bytes)) {
+        return Ok(());
     }
     let failed = |e: std::io::Error| {
         Error(format!(
@@ -318,29 +404,27 @@ fn extract() -> Result<PathBuf, Error> {
             dir.display()
         ))
     };
-    std::fs::create_dir_all(&dir).map_err(failed)?;
-    // Staged beside the destination so concurrent builds never see a partial file; the counter
-    // keeps threads of one process from sharing a staged file.
-    static STAGED: AtomicUsize = AtomicUsize::new(0);
-    for (name, bytes) in FILES.iter().filter(|(name, bytes)| !present(name, bytes)) {
-        let staged = dir.join(format!(
-            ".{name}-{}-{}",
-            std::process::id(),
-            STAGED.fetch_add(1, Ordering::Relaxed)
-        ));
-        let written = std::fs::write(&staged, bytes)
-            .and_then(|()| set_mode(&staged, false))
-            .and_then(|()| std::fs::rename(&staged, dir.join(name)));
-        // Another build may have installed (and be running) the same file; Windows refuses to
-        // replace a file in use, so a complete copy already in place is as good as ours.
-        if let Err(e) = written {
-            let _ = std::fs::remove_file(&staged);
-            if !present(name, bytes) {
+    // The exclusively created directory owns every file we write and clean up. Stale
+    // neighboring files or links must never be opened as this attempt's staging files.
+    let stage = staging(dir, "embedded").map_err(failed)?;
+    let result = (|| {
+        for (name, bytes) in files.iter().filter(|(name, bytes)| !present(name, bytes)) {
+            let staged = stage.join(name);
+            let written = std::fs::write(&staged, bytes)
+                .and_then(|()| set_mode(&staged, false))
+                .and_then(|()| std::fs::rename(&staged, dir.join(name)));
+            // Another build may have installed (and be running) the same file; Windows refuses to
+            // replace a file in use, so a complete copy already in place is as good as ours.
+            if let Err(e) = written
+                && !present(name, bytes)
+            {
                 return Err(failed(e));
             }
         }
-    }
-    Ok(dir)
+        Ok(())
+    })();
+    let _ = std::fs::remove_dir_all(stage);
+    result
 }
 
 #[cfg(windows)]
@@ -369,5 +453,10 @@ fn cache_root() -> PathBuf {
         .unwrap_or_else(std::env::temp_dir)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(target_os = "linux")]
+mod glibc_stubs;
+#[cfg(any(target_os = "macos", test))]
 mod macos_stubs;
+
+#[cfg(test)]
+mod tests;

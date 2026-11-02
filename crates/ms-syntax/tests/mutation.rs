@@ -68,14 +68,24 @@ fn mutate(source: &str, rng: &mut Rng) -> String {
 }
 
 fn sources() -> Vec<(PathBuf, String)> {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/e2e/testdata");
+    // Single-file e2e fixtures live in the conformance corpus once the corpus replays them; the rest stay in testdata.
+    let tests = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests");
     let mut out = Vec::new();
     for dir in ["accept", "reject"] {
-        let mut paths: Vec<PathBuf> = std::fs::read_dir(root.join(dir))
-            .unwrap()
-            .map(|e| e.unwrap().path())
-            .filter(|p| p.extension().is_some_and(|e| e == "ms"))
-            .collect();
+        let mut paths: Vec<PathBuf> = Vec::new();
+        for root in [
+            tests.join("e2e/testdata"),
+            tests.join("conformance/fixtures/e2e"),
+        ] {
+            let Ok(entries) = std::fs::read_dir(root.join(dir)) else {
+                continue;
+            };
+            paths.extend(
+                entries
+                    .map(|e| e.unwrap().path())
+                    .filter(|p| p.extension().is_some_and(|e| e == "ms")),
+            );
+        }
         paths.sort();
         for path in paths {
             let text = std::fs::read_to_string(&path).unwrap();

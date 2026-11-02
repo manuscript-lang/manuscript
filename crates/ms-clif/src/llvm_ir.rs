@@ -11,6 +11,7 @@ use cranelift_codegen::ir::{
     self, Block, ExtFuncData, ExternalName, Function, GlobalValueData, Inst, InstructionData,
     Opcode, Type, Value, types,
 };
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
 
@@ -37,8 +38,6 @@ pub struct LlvmModule {
     decls: BTreeMap<String, String>,
     /// External data symbols referenced.
     data: BTreeMap<String, ()>,
-    /// Symbols defined in this module.
-    defined: Vec<String>,
     /// Internal functions' parameters that are exclusive pointers, by symbol. They are passed as
     /// `ptr noalias`, so LLVM knows nothing else the function reaches overlaps them.
     exclusive: HashMap<String, Vec<usize>>,
@@ -152,7 +151,7 @@ impl DebugInfo {
         let fnode = self.file_node(file);
         let n = self.push(format!(
             "distinct !DISubprogram(name: \"{}\", scope: !{fnode}, file: !{fnode}, line: 1, type: !4, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !0)",
-            name.replace(['"', '\\'], "'")
+            metadata_string(&name)
         ));
         self.scope_sp.insert((idx, fn_sp), n);
         n
@@ -227,6 +226,26 @@ impl DebugInfo {
 /// type list and the subroutine type; file `i` is `FIRST_FILE + i`.
 const FIRST_FILE: usize = 5;
 
+/// LLVM quoted byte strings use hexadecimal escapes. Keep each metadata node on one
+/// physical line, including names and paths that contain line breaks or line markers.
+fn metadata_string(text: &str) -> Cow<'_, str> {
+    if !text
+        .bytes()
+        .any(|b| b.is_ascii_control() || matches!(b, b'"' | b'\\'))
+    {
+        return Cow::Borrowed(text);
+    }
+    let mut escaped = String::with_capacity(text.len());
+    for c in text.chars() {
+        if c.is_ascii_control() || matches!(c, '"' | '\\') {
+            let _ = write!(escaped, "\\{:02X}", c as u32);
+        } else {
+            escaped.push(c);
+        }
+    }
+    Cow::Owned(escaped)
+}
+
 impl LlvmModule {
     /// A module whose debug info names `files` relative to `cwd`.
     pub fn new(mut files: Vec<Option<String>>, cwd: String) -> Self {
@@ -249,7 +268,6 @@ impl LlvmModule {
             defs: Vec::new(),
             decls: BTreeMap::new(),
             data: BTreeMap::new(),
-            defined: Vec::new(),
             exclusive: HashMap::new(),
         };
         // Placeholder slots for the fixed ids and one `DIFile` per file.
@@ -400,12 +418,46 @@ struct Edge {
     args: Vec<String>,
 }
 
+/// The values of `f` used anywhere but as the condition of a `brif` or `select`.
+fn wide_values(f: &Function) -> HashSet<Value> {
+    let mut wide = HashSet::new();
+    for block in f.layout.blocks() {
+        for inst in f.layout.block_insts(block) {
+            let data = &f.dfg.insts[inst];
+            let cond = match data {
+                InstructionData::Brif { arg, .. } => Some(*arg),
+                InstructionData::Ternary {
+                    opcode: Opcode::Select,
+                    args,
+                    ..
+                } => Some(args[0]),
+                _ => None,
+            };
+            let mut skipped = false;
+            for v in f.dfg.inst_values(inst) {
+                if !skipped && Some(v) == cond {
+                    skipped = true;
+                } else {
+                    wide.insert(v);
+                }
+            }
+        }
+    }
+    wide
+}
+
 struct Tr<'a> {
     f: &'a Function,
     syms: &'a dyn Symbols,
     out: String,
     /// Operand text of each Cranelift value.
     ops: HashMap<Value, String>,
+    /// The `i1` behind a compare or overflow flag, which `ops` holds widened to `i8`. A branch on
+    /// the widened form (`zext`, then `icmp ne 0`) made LLVM's InstCombine quadratic in the length
+    /// of a compare-and-branch chain (8000 arms: 12s against 1.5s).
+    flags: HashMap<Value, String>,
+    /// Values with a use other than a branch or select condition: only these need the `i8` form.
+    wide: HashSet<Value>,
     tmp: usize,
     /// Incoming edges per Cranelift block.
     incoming: HashMap<Block, Vec<Edge>>,
@@ -436,7 +488,7 @@ struct Tr<'a> {
     calls: Vec<bool>,
     /// `(from, to)` layout positions of the branches that go back to an earlier or the same block.
     back_edges: Vec<(usize, usize)>,
-    /// `(from, to)` layout positions of every branch, and per block position: it ends the function
+    /// `(from, to)` layout positions of every branch in source-block order, and per block position: it ends the function
     /// (a return) or calls a fault.
     edges: Vec<(usize, usize)>,
     returns: Vec<bool>,
@@ -451,15 +503,21 @@ impl<'a> Tr<'a> {
     fn has_element_loop(&self) -> bool {
         self.back_edges.iter().any(|&(from, to)| {
             let range = to..=from;
-            let exits = self
-                .edges
+            if !self.elements[to..=from].iter().any(|&e| e)
+                || self.calls[to..=from].iter().any(|&c| c)
+            {
+                return false;
+            }
+            // Edges were appended as blocks were translated in layout order. Restrict the
+            // scan to this loop instead of visiting every other loop's edges again.
+            let first = self.edges.partition_point(|&(f, _)| f < to);
+            let last = self.edges.partition_point(|&(f, _)| f <= from);
+            let exits = self.edges[first..last]
                 .iter()
-                .filter(|&&(f, t)| range.contains(&f) && !range.contains(&t) && !self.faults[t])
+                .filter(|&&(_, t)| !range.contains(&t) && !self.faults[t])
                 .count()
                 + self.returns[to..=from].iter().filter(|&&r| r).count();
-            self.elements[to..=from].iter().any(|&e| e)
-                && !self.calls[to..=from].iter().any(|&c| c)
-                && exits <= 1
+            exits <= 1
         })
     }
 
@@ -495,6 +553,16 @@ impl<'a> Tr<'a> {
         d
     }
 
+    /// Records result `idx` of `inst` as the `i1` `flag` widened to `i8`.
+    fn set_flag(&mut self, inst: Inst, idx: usize, flag: String) {
+        let r = self.f.dfg.inst_results(inst)[idx];
+        if self.wide.contains(&r) {
+            let widened = self.def(format!("zext i1 {flag} to i8"));
+            self.set(inst, idx, widened);
+        }
+        self.flags.insert(r, flag);
+    }
+
     fn set(&mut self, inst: Inst, idx: usize, text: String) {
         let r = self.f.dfg.inst_results(inst)[idx];
         self.ops.insert(r, text);
@@ -515,6 +583,9 @@ impl<'a> Tr<'a> {
     }
 
     fn cond_i1(&mut self, v: Value) -> String {
+        if let Some(flag) = self.flags.get(&v) {
+            return flag.clone();
+        }
         let o = self.op(v);
         if o == "0" {
             return "false".into();
@@ -619,8 +690,7 @@ impl<'a> Tr<'a> {
                 let (a, b) = (self.op(args[0]), self.op(args[1]));
                 let t = llty(self.ty(args[0]));
                 let c = self.def(format!("icmp {} {t} {a}, {b}", icc(cond)));
-                let z = self.def(format!("zext i1 {c} to i8"));
-                self.set(inst, 0, z);
+                self.set_flag(inst, 0, c);
             }
             InstructionData::FloatCompare { args, cond, .. } => {
                 let (a, b) = (self.op(args[0]), self.op(args[1]));
@@ -629,8 +699,7 @@ impl<'a> Tr<'a> {
                     fcc(cond),
                     llty(self.ty(args[0]))
                 ));
-                let z = self.def(format!("zext i1 {c} to i8"));
-                self.set(inst, 0, z);
+                self.set_flag(inst, 0, c);
             }
             InstructionData::Unary { arg, .. } => self.unary(inst, opc, arg),
             InstructionData::Ternary { args, .. } => {
@@ -1000,9 +1069,8 @@ impl<'a> Tr<'a> {
                 ));
                 let v = self.def(format!("extractvalue {st} {r}, 0"));
                 let o = self.def(format!("extractvalue {st} {r}, 1"));
-                let z = self.def(format!("zext i1 {o} to i8"));
                 self.set(inst, 0, v);
-                self.set(inst, 1, z);
+                self.set_flag(inst, 1, o);
                 return;
             }
             Opcode::UsubOverflow | Opcode::UaddOverflow | Opcode::UmulOverflow => {
@@ -1017,9 +1085,8 @@ impl<'a> Tr<'a> {
                 ));
                 let v = self.def(format!("extractvalue {st} {r}, 0"));
                 let o = self.def(format!("extractvalue {st} {r}, 1"));
-                let z = self.def(format!("zext i1 {o} to i8"));
                 self.set(inst, 0, v);
-                self.set(inst, 1, z);
+                self.set_flag(inst, 1, o);
                 return;
             }
             other => panic!("unsupported binary op {other}"),
@@ -1095,7 +1162,6 @@ impl LlvmModule {
             (h, b)
         });
         let copies = avx2.is_some();
-        self.defined.push(name.to_string());
         self.defs.push(Def {
             name: name.to_string(),
             public,
@@ -1126,8 +1192,8 @@ impl LlvmModule {
         let file_node = self.di.file_node(sp_file);
         self.di.meta.push(format!(
             "distinct !DISubprogram(name: \"{}\", linkageName: \"{}\", scope: !{file_node}, file: !{file_node}, line: {sp_line}, type: !4, scopeLine: {sp_line}, spFlags: DISPFlagDefinition, unit: !0)",
-            display.replace(['"', '\\'], "'"),
-            name.replace(['"', '\\'], "'")
+            metadata_string(display),
+            metadata_string(name)
         ));
         let none_loc = self.di.push(format!("!DILocation(line: 0, scope: !{sp})"));
         let mut tr = Tr {
@@ -1135,6 +1201,8 @@ impl LlvmModule {
             syms,
             out: String::new(),
             ops: HashMap::new(),
+            flags: HashMap::new(),
+            wide: wide_values(f),
             tmp: 0,
             incoming: HashMap::new(),
             tramps: Vec::new(),
@@ -1366,14 +1434,21 @@ impl LlvmModule {
             };
             let _ = write!(s, "define {vis}{header}{}", d.body);
         }
+        // References can precede definitions. Index their borrowed names once instead of
+        // scanning every definition for each call or function address in the module.
+        let defined: HashSet<&str> = if self.decls.is_empty() && self.data.is_empty() {
+            HashSet::new()
+        } else {
+            self.defs.iter().map(|d| d.name.as_str()).collect()
+        };
         for (name, decl) in &self.decls {
-            if !self.defined.contains(name) {
+            if !defined.contains(name.as_str()) {
                 s.push_str(decl);
                 s.push('\n');
             }
         }
         for name in self.data.keys() {
-            if !self.defined.contains(name) {
+            if !defined.contains(name.as_str()) {
                 let _ = writeln!(s, "@\"{name}\" = external global i8");
             }
         }
@@ -1413,7 +1488,6 @@ impl LlvmModule {
             s.push_str("declare i64 @msrt_cpu_level() nounwind willreturn memory(none)\n");
         }
         // Debug metadata: line tables only (no variables, types or inline frames).
-        let esc = |t: &str| t.replace('\\', "\\5C").replace('"', "\\22");
         let first_file = self.di.files.iter().position(Option::is_some).unwrap_or(0);
         s.push_str("!llvm.dbg.cu = !{!0}\n!llvm.module.flags = !{!1, !2}\n");
         let _ = writeln!(
@@ -1430,8 +1504,8 @@ impl LlvmModule {
                 s,
                 "!{} = !DIFile(filename: \"{}\", directory: \"{}\")",
                 FIRST_FILE + i,
-                esc(name),
-                esc(&self.di.cwd)
+                metadata_string(name),
+                metadata_string(&self.di.cwd)
             );
         }
         for (i, n) in self
@@ -1488,6 +1562,118 @@ mod tests {
     fn only_a_huge_body_skips_optimization() {
         assert!(!is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES)));
         assert!(is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES + 1)));
+    }
+
+    #[test]
+    fn metadata_strings_preserve_unicode_and_escape_quoted_control_bytes() {
+        assert_eq!(metadata_string("plain/雪.ms"), "plain/雪.ms");
+        assert_eq!(
+            metadata_string("quote\"slash\\tab\tline\nreturn\r\0\u{7f}雪"),
+            "quote\\22slash\\5Ctab\\09line\\0Areturn\\0D\\00\\7F雪"
+        );
+    }
+
+    #[test]
+    fn metadata_line_markers_stay_inside_their_quoted_fields() {
+        struct Inlined;
+        impl Symbols for Inlined {
+            fn symbol(&self, _: u32, _: u32) -> String {
+                unreachable!()
+            }
+            fn loc(&self, _: u32) -> Option<(u32, u32, u32)> {
+                None
+            }
+            fn scope(&self, _: u32) -> Option<(String, u32, u32, u32)> {
+                Some(("inline\n}\ndefine scope".into(), 0, 0, 1))
+            }
+        }
+        let mut m = LlvmModule::new(
+            vec![Some("part\n}\ndefine file.ms".into())],
+            "dir\r\n}\ndefine cwd".into(),
+        );
+        m.add_function(
+            "plain",
+            "display\n}\ndefine name",
+            (0, 1),
+            &returning(1),
+            &TestSymbols,
+            true,
+        );
+        m.di.scope_sp(&Inlined, 1, FIRST_FILE + 1);
+        let text = m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
+        assert_eq!(text.lines().filter(|l| l.starts_with("define ")).count(), 1);
+        assert_eq!(text.lines().filter(|l| *l == "}").count(), 1);
+        for quoted in [
+            "part\\0A}\\0Adefine file.ms",
+            "dir\\0D\\0A}\\0Adefine cwd",
+            "display\\0A}\\0Adefine name",
+            "inline\\0A}\\0Adefine scope",
+        ] {
+            assert!(text.contains(quoted), "missing {quoted}: {text}");
+        }
+    }
+
+    #[test]
+    fn quoted_metadata_survives_llvm_and_fault_table_reconstruction() {
+        struct Inlined;
+        const INLINE: &str = "inline\"\\雪\n}\ndefine scope";
+        impl Symbols for Inlined {
+            fn symbol(&self, _: u32, _: u32) -> String {
+                unreachable!()
+            }
+            fn loc(&self, bits: u32) -> Option<(u32, u32, u32)> {
+                (bits == 0).then_some((0, 7, 1))
+            }
+            fn scope(&self, idx: u32) -> Option<(String, u32, u32, u32)> {
+                (idx == 1).then(|| (INLINE.into(), 0, 0, 3))
+            }
+        }
+        let mut sig = Signature::new(CallConv::SystemV);
+        sig.params.push(AbiParam::new(types::I64));
+        sig.returns.push(AbiParam::new(types::I64));
+        let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+        let mut context = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut context);
+        let entry = b.create_block();
+        b.append_block_params_for_function_params(entry);
+        b.switch_to_block(entry);
+        b.set_srcloc(ir::SourceLoc::new(0));
+        let arg = b.block_params(entry)[0];
+        let next = b.ins().iadd_imm_s(arg, 1);
+        b.ins().return_(&[next]);
+        b.seal_all_blocks();
+        b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        let file = "/source/雪\nquote\".ms".to_string();
+        let display = "display\"\\雪\n}\ndefine name";
+        let mut m = LlvmModule::new(vec![Some(file.clone())], "dir\r\n}\ndefine cwd".into());
+        m.add_function("metadata", display, (0, 1), &f, &Inlined, true);
+        let triple = format!("{}-unknown-linux-gnu", std::env::consts::ARCH);
+        let text = m.finish(&triple, &HashSet::new(), false);
+        let object = crate::llvm_obj::compile(&text, "3").unwrap();
+        let funcs = [crate::cg::LlvmFn {
+            id: cranelift_module::FuncId::from_u32(0),
+            symbol: "metadata".into(),
+            copy: false,
+            name: display.into(),
+            file: 0,
+            line: 1,
+        }];
+        let tables = crate::llvm_tables::read(object.path(), &funcs, &[file], false).unwrap();
+        assert!(
+            tables
+                .scopes
+                .iter()
+                .any(|s| s.name == INLINE && s.call_line == 3),
+            "inlined name or call line lost: {:?}",
+            tables.scopes
+        );
+        // Line-table-only DWARF may omit the abstract origin's declaration file. The
+        // instruction row still has to recover the exact source path and line.
+        assert!(tables.dbg[0].ranges.iter().any(|r| r.1 == 0 && r.2 == 7));
     }
 
     #[test]
@@ -1673,6 +1859,57 @@ mod tests {
         f
     }
 
+    #[test]
+    fn definitions_filter_call_and_address_declarations_without_losing_externals() {
+        // Calls and function addresses enter separate declaration maps, including forward
+        // references. Similar external names must survive, and emission stays sorted.
+        let mut m = LlvmModule::new(vec![Some("symbols.ms".into())], ".".into());
+        let f = returning(1);
+        for i in 0..256 {
+            let name = format!("function_{i:06}");
+            m.decls
+                .insert(name.clone(), format!("declare i64 @\"{name}\"()"));
+            m.data.insert(name.clone(), ());
+            m.add_function(&name, &name, (0, 1), &f, &TestSymbols, i == 0);
+        }
+        for name in ["function_000256", "function_000000_external"] {
+            m.decls
+                .insert(name.into(), format!("declare i64 @\"{name}\"()"));
+        }
+        m.data.insert("function_000000_address".into(), ());
+        let pinned = HashSet::from(["function_000001".into()]);
+        for anchored in [false, true] {
+            let text = m.finish("x86_64-unknown-linux-gnu", &pinned, anchored);
+            let declarations: Vec<_> = text
+                .lines()
+                .filter(|l| l.starts_with("declare i64 @\""))
+                .collect();
+            assert_eq!(
+                declarations,
+                [
+                    "declare i64 @\"function_000000_external\"()",
+                    "declare i64 @\"function_000256\"()",
+                ]
+            );
+            let data: Vec<_> = text.lines().filter(|l| l.starts_with("@\"")).collect();
+            assert_eq!(data, ["@\"function_000000_address\" = external global i8"]);
+            assert!(text.contains("define i64 @\"function_000000\""));
+            assert!(text.contains("define hidden i64 @\"function_000001\""));
+            let visibility = if anchored { "internal" } else { "hidden" };
+            assert!(text.contains(&format!("define {visibility} i64 @\"function_000002\"")));
+            assert_eq!(
+                text,
+                m.finish("x86_64-unknown-linux-gnu", &pinned, anchored)
+            );
+        }
+        // A previously external reference can acquire a definition before the next finish.
+        let name = "function_000256";
+        m.add_function(name, name, (0, 1), &f, &TestSymbols, false);
+        let text = m.finish("x86_64-unknown-linux-gnu", &pinned, false);
+        assert!(!text.contains("declare i64 @\"function_000256\"()"));
+        assert!(text.contains("define hidden i64 @\"function_000256\""));
+    }
+
     /// `fn(base, i) -> f32 { load(base + i * 4) }`.
     fn element_load() -> Function {
         let mut sig = Signature::new(CallConv::SystemV);
@@ -1700,6 +1937,60 @@ mod tests {
         f
     }
 
+    /// `fn(a, b) -> i8 { if a == b { return 1 } else { return keep ? (a == b) : 0 } }`, the
+    /// compare feeding a `brif` and, when `keep`, also returned as data.
+    fn compare_branch(keep: bool) -> Function {
+        let mut sig = Signature::new(CallConv::SystemV);
+        sig.params = vec![AbiParam::new(types::I64); 2];
+        sig.returns.push(AbiParam::new(types::I8));
+        let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+        let mut cx = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut cx);
+        let (entry, yes, no) = (b.create_block(), b.create_block(), b.create_block());
+        b.append_block_params_for_function_params(entry);
+        b.switch_to_block(entry);
+        let args = b.block_params(entry).to_vec();
+        let same = b.ins().icmp(IntCC::Equal, args[0], args[1]);
+        b.ins().brif(same, yes, &[], no, &[]);
+        b.switch_to_block(yes);
+        let one = b.ins().iconst(types::I8, 1);
+        b.ins().return_(&[one]);
+        b.switch_to_block(no);
+        let out = if keep {
+            same
+        } else {
+            b.ins().iconst(types::I8, 0)
+        };
+        b.ins().return_(&[out]);
+        b.seal_all_blocks();
+        b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        f
+    }
+
+    fn compare_branch_text(keep: bool) -> String {
+        let mut m = LlvmModule::new(vec![Some("cmp.ms".into())], ".".into());
+        let f = compare_branch(keep);
+        m.add_function("cmp", "cmp", (0, 1), &f, &TestSymbols, true);
+        m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false)
+    }
+
+    #[test]
+    fn a_branch_condition_stays_an_i1_and_widens_only_for_data_uses() {
+        // Widening to `i8` and testing against zero again made InstCombine quadratic on a long
+        // compare-and-branch chain, and an unused `zext` kept SimplifyCFG from forming a switch.
+        let branch_only = compare_branch_text(false);
+        assert!(!branch_only.contains("zext i1"), "{branch_only}");
+        assert!(!branch_only.contains("icmp ne i8"), "{branch_only}");
+        assert!(branch_only.contains("br i1 %t"), "{branch_only}");
+        let also_data = compare_branch_text(true);
+        assert!(also_data.contains("zext i1"), "{also_data}");
+        assert!(also_data.contains("br i1 %t"), "{also_data}");
+    }
+
     #[test]
     fn an_element_address_is_a_base_pointer_plus_an_offset() {
         let mut m = LlvmModule::new(vec![Some("elem.ms".into())], ".".into());
@@ -1711,6 +2002,127 @@ mod tests {
         assert!(text.contains("= inttoptr i64 %a0 to ptr"), "{text}");
         assert!(text.contains("getelementptr i8, ptr %t"), "{text}");
         assert!(!text.contains("inttoptr i64 %t"), "{text}");
+    }
+
+    fn scalar_loop_for_cpu_classification(b: &mut FunctionBuilder<'_>, n: Value, zero: Value) {
+        let header = b.create_block();
+        let body = b.create_block();
+        let done = b.create_block();
+        b.append_block_param(header, types::I64);
+        b.ins().jump(header, &[zero.into()]);
+        b.switch_to_block(header);
+        let i = b.block_params(header)[0];
+        let more = b.ins().icmp(IntCC::SignedLessThan, i, n);
+        b.ins().brif(more, body, &[], done, &[]);
+        b.switch_to_block(body);
+        let inc = b.ins().iadd_imm_s(i, 1);
+        b.ins().jump(header, &[inc.into()]);
+        b.switch_to_block(done);
+    }
+
+    fn loop_for_cpu_classification(
+        elements: bool,
+        calls: bool,
+        early_return: bool,
+        neighbors: bool,
+    ) -> Function {
+        let mut sig = Signature::new(CallConv::SystemV);
+        sig.params = vec![AbiParam::new(types::I64); 2];
+        sig.returns.push(AbiParam::new(types::I64));
+        let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+        let sigref = f.import_signature(Signature::new(CallConv::SystemV));
+        let name = f.declare_imported_user_function(ir::UserExternalName::new(0, 0));
+        let callee = f.import_function(ExtFuncData {
+            name: ExternalName::User(name),
+            signature: sigref,
+            colocated: false,
+            patchable: false,
+        });
+        let mut cx = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut cx);
+        let entry = b.create_block();
+        let header = b.create_block();
+        let body = b.create_block();
+        let done = b.create_block();
+        b.append_block_params_for_function_params(entry);
+        b.append_block_param(header, types::I64);
+        b.switch_to_block(entry);
+        let base = b.block_params(entry)[0];
+        let n = b.block_params(entry)[1];
+        let zero = b.ins().iconst(types::I64, 0);
+        if neighbors {
+            scalar_loop_for_cpu_classification(&mut b, n, zero);
+        }
+        b.ins().jump(header, &[zero.into()]);
+        b.switch_to_block(header);
+        let i = b.block_params(header)[0];
+        let more = b.ins().icmp(IntCC::SignedLessThan, i, n);
+        b.ins().brif(more, body, &[], done, &[]);
+        b.switch_to_block(body);
+        if elements {
+            let scaled = b.ins().imul_imm_s(i, 8);
+            let address = b.ins().iadd(base, scaled);
+            b.ins()
+                .load(types::F64, ir::MemFlagsData::trusted(), address, 0);
+        }
+        if calls {
+            b.ins().call(callee, &[]);
+        }
+        if early_return {
+            let stop = b.create_block();
+            let next = b.create_block();
+            let found = b.ins().icmp_imm_s(IntCC::Equal, i, 1);
+            b.ins().brif(found, stop, &[], next, &[]);
+            b.switch_to_block(stop);
+            b.ins().return_(&[i]);
+            b.switch_to_block(next);
+        }
+        let inc = b.ins().iadd_imm_s(i, 1);
+        b.ins().jump(header, &[inc.into()]);
+        b.switch_to_block(done);
+        if neighbors {
+            scalar_loop_for_cpu_classification(&mut b, n, zero);
+        }
+        b.ins().return_(&[n]);
+        b.seal_all_blocks();
+        b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        f
+    }
+
+    #[test]
+    fn cpu_copies_require_elements_no_calls_and_one_exit() {
+        struct OpaqueCall;
+        impl Symbols for OpaqueCall {
+            fn symbol(&self, _: u32, _: u32) -> String {
+                "opaque_call".into()
+            }
+            fn loc(&self, _: u32) -> Option<(u32, u32, u32)> {
+                None
+            }
+            fn scope(&self, _: u32) -> Option<(String, u32, u32, u32)> {
+                None
+            }
+        }
+        for (elements, calls, early_return, copies) in [
+            (false, false, false, false),
+            (true, false, false, true),
+            (true, true, false, false),
+            (true, false, true, false),
+        ] {
+            for neighbors in [false, true] {
+                let mut m = LlvmModule::new(vec![Some("loops.ms".into())], ".".into());
+                let f = loop_for_cpu_classification(elements, calls, early_return, neighbors);
+                assert_eq!(
+                    m.add_function("loops", "loops", (0, 1), &f, &OpaqueCall, true),
+                    copies,
+                    "elements={elements}, calls={calls}, early_return={early_return}, neighbors={neighbors}"
+                );
+            }
+        }
     }
 
     #[test]

@@ -1,4 +1,0 @@
-=== RUN   TestDiscoveryAuthoritativeOverlaySurvivesDiskReadFailure
---- PASS: TestDiscoveryAuthoritativeOverlaySurvivesDiskReadFailure (0.14s)
-PASS
-ok  	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.138s

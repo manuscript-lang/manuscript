@@ -4,8 +4,8 @@ type Res:
     id: Int
 
 impl Closeable for Res:
-    var fn close() Unit:
-        return
+    var fn close() Unit!:
+        return ok(unit)
 
 type Holder:
     case Has(r: Res)
@@ -17,5 +17,6 @@ fn dup[T: Clonable](x: T) T:
 fn f() Int:
     let a = Holder.Has(Res(1))
     let _b = dup(a)  # error: Holder does not satisfy Clonable
-    let _c = dup(some(Res(2)))  # error: Res? does not satisfy Clonable
+    let c: Res? = Res(2)
+    let _c = dup(c)  # error: Res? does not satisfy Clonable
     return 0

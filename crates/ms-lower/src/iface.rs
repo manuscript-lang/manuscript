@@ -93,14 +93,14 @@ impl Cx {
                 {
                     continue;
                 }
-                found = Some((mm.module, decl.id(), subst, mm.native));
+                found = Some((mm.module, decl.id(), subst, mm.native, mm.clone()));
                 break;
             }
             if found.is_none() && s.name == "equals" && m.ifaces[iface.index()].name == "Equal" {
                 methods.push(self.builtin_equals(m, iface, data_ty, scope, own, key.as_str())?);
                 continue;
             }
-            let (module, id, subst, native) = found.ok_or_else(|| {
+            let (module, id, subst, native, mref) = found.ok_or_else(|| {
                 Error::new(format!(
                     "{concrete} has no method {} for {}",
                     s.name,
@@ -130,17 +130,12 @@ impl Cx {
                 methods.push(m.add_func(f));
                 continue;
             }
-            // A `ref` operation's table entry lends what the implementation's lent instance
-            // returns; the checker made every source implementation of it a lender.
-            let lends = s.ret_borrowed && m.needs_drop(s.ret);
-            if lends && !native.as_str().is_empty() {
-                return Err(Error::new(format!(
-                    "a native implementation of `{}` cannot lend its `ref` result",
-                    s.name
-                )));
-            }
-            let callee = if !native.as_str().is_empty() {
+            let callee = if native.as_str() == "core/message" {
                 self.native_method_fn(m, native.as_str(), concrete, data_ty)?
+            } else if !native.as_str().is_empty() {
+                let f = self.iface_native_thunk(m, &mref, &subst, scope, data_ty, &ps, s.ret)?;
+                methods.push(f);
+                continue;
             } else {
                 let c = self
                     .callables
@@ -154,22 +149,11 @@ impl Cx {
                     ));
                 }
                 writes_back = !vars.is_empty();
-                if lends && writes_back {
-                    return Err(Error::new(format!(
-                        "`{}` changes its receiver, so it cannot lend its `ref` result through an interface",
-                        s.name
-                    )));
-                }
-                if lends {
-                    self.function_lent(m, &c, &subst, scope)?
-                } else {
-                    self.function_in(m, &c, &subst, scope)?
-                }
+                self.function_in(m, &c, &subst, scope)?
             };
             let mut b = FuncBuilder::new(m, &format!("vt.{}", s.name), ps, s.ret);
             b.func_mut().kind = FuncKind::Method;
             b.func_mut().linkage = Linkage::Internal;
-            b.func_mut().ret_borrowed = lends;
             let args = b.params();
             // A method that changes `self` takes the box itself: it moves the data out and
             // puts the new value back.
@@ -223,6 +207,44 @@ impl Cx {
 }
 
 impl Cx {
+    /// A table entry for a native method: it lowers like a direct call on the data.
+    #[allow(clippy::too_many_arguments)]
+    fn iface_native_thunk(
+        &mut self,
+        m: &mut Module,
+        mref: &ct::MethodRef,
+        subst: &ct::Subst,
+        scope: ct::Name,
+        data_ty: MTy,
+        params: &[Param],
+        ret: MTy,
+    ) -> Result<ms_mir::ir::FuncId, Error> {
+        let mut f = ms_mir::ir::Func::new(&format!("vt.{}", mref.native), params.to_vec(), ret);
+        f.kind = FuncKind::Method;
+        f.linkage = Linkage::Internal;
+        let id = m.add_func(f);
+        let mut method = (**mref).clone();
+        method.ty = ct::sub(&mref.ty, subst);
+        let method = std::rc::Rc::new(method);
+        // A standard module's native half has no queries of its own: its source twin or the
+        // module of the use stands in.
+        let twin = ct::Name::from(format!("{}+source", mref.module).as_str());
+        let hir = self
+            .module(mref.module)
+            .or_else(|_| self.module(twin))
+            .or_else(|_| self.module(scope))?;
+        self.queue.push(crate::cx::Job {
+            func: id,
+            kind: crate::cx::JobKind::IfaceNative(std::rc::Rc::new(crate::cx::IfaceNativeJob {
+                method,
+                hir,
+                data: data_ty,
+                scope,
+            })),
+        });
+        Ok(id)
+    }
+
     /// `equals` of data with built-in equality (scalars, collections, records without an
     /// `impl Equal`): structural equality against another value of the same type, and `False`
     /// against any other type.
@@ -360,6 +382,19 @@ impl FnLower<'_> {
         };
         let scope = self.evidence();
         let vt = self.cx.vtable_for(self.b.m, concrete, have, iface, scope)?;
+        let mutates = self
+            .cx
+            .contracts
+            .get(&iface)
+            .is_some_and(ms_check::types::contract_mutates);
+        if !x.own && !mutates {
+            // A borrowed value becomes a view: a box of its leaves as they are, which owns only
+            // the box. The checker holds the value's owner for as long as the view lives. An
+            // interface with a `var fn` copies instead: a call through it (a native stream
+            // reader, say) would change leaves the view only borrows.
+            let v = self.b.iface_lend(vt, x.v, want);
+            return Ok(Val { v, own: true });
+        }
         let o = self.owned(x);
         let v = self
             .b
@@ -513,19 +548,20 @@ impl FnLower<'_> {
             self.enter(blk);
             let cur = self.b.use_var(held);
             let (sc, dc) = if is_error { (serr, derr) } else { (sok, dok) };
-            let payload = self.b.alt_get(src, sc as u32, 0, cur);
-            let mut p = Val {
-                v: payload,
-                own: false,
+            let mut p = if x.own {
+                // The source is ours: the payload moves out and the rest is released.
+                let v = self.b.alt_take(src, sc as u32, 0, cur);
+                self.b.alt_release(src, sc as u32, 1, cur);
+                Val { v, own: true }
+            } else {
+                let v = self.b.alt_get(src, sc as u32, 0, cur);
+                Val { v, own: false }
             };
             if is_error {
                 p = self.fit_ty(p, &failure, want_err)?;
             }
             let po = self.owned(p);
             let out = self.b.alt_new(dst, dc as u32, &[po]);
-            if x.own {
-                self.drop_value(cur);
-            }
             self.b.def_var(res, out);
             self.b.br(join, &[]);
         }

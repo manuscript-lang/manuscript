@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Result requires 2 type arguments, found 1; write Result[T1, T2]",
+        "position": {
+          "file": "testdiagnosticfixes-2.ms",
+          "line": 8,
+          "column": 9,
+          "offset": 263
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Result requires 2 type arguments, found 1; write Result[T1, T2]",
+        "position": {
+          "file": "testdiagnosticfixes-2.ms",
+          "line": 4,
+          "column": 16,
+          "offset": 197
+        }
+      },
+      {
+        "code": "MS3012",
+        "phase": "type",
+        "message": "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types",
+        "position": {
+          "file": "testdiagnosticfixes-2.ms",
+          "line": 4,
+          "column": 1,
+          "offset": 182
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Error, found Result[Int] (in argument 'cause' of error); use a concrete value implementing Error",
+        "position": {
+          "file": "testdiagnosticfixes-2.ms",
+          "line": 9,
+          "column": 18,
+          "offset": 299
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testdiagnosticfixes-2.ms:8:9: type: Result requires 2 type arguments, found 1; write Result[T1, T2]\n   |\n 8 | fn f(x: Result[Int]) Int!:\n   |         ^\n<DIR>/testdiagnosticfixes-2.ms:4:16: type: Result requires 2 type arguments, found 1; write Result[T1, T2]\n   |\n 4 | impl Error for Result[Int]:\n   |                ^\n<DIR>/testdiagnosticfixes-2.ms:4:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n   |\n 4 | impl Error for Result[Int]:\n   | ^\n<DIR>/testdiagnosticfixes-2.ms:9:18: type: expected Error, found Result[Int] (in argument 'cause' of error); use a concrete value implementing Error\n   |\n 9 |     return error(x)\n   |                  ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

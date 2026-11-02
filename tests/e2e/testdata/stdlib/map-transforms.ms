@@ -1,5 +1,5 @@
 import TextError from "@std/core.ms"
-import expect_equal, expect_false, expect_true from "@std/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
 type Counter:
     count: Int
@@ -18,7 +18,7 @@ impl Hashable for Key:
 fn map_values[K: Hashable, V, W](values: Map[K, V], transform: fn(K, V) W) Map[K, W]:
     return values.map[W](transform)
 
-fn map_keys[K: Hashable, V, W: Hashable](
+fn map_keys[K: Hashable, V: Clonable, W: Hashable](
     values: Map[K, V],
     transform: fn(K, V) W
 ) Map[W, V]:
@@ -120,7 +120,7 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
 
     let values: Map[String, Int] = {"a": 0}
     let map = values.clone().map[Int?]
-    try expect_true((map(fn k, v: none) ["a"].is_none()))
+    try expect_true((map(fn k, v: none)["a"].is_none()))
 
     let nested = values.map(fn k, v: Result[Int, TextError].error(TextError("nested")))
     nested["a"].err().message() | try expect_equal("nested")

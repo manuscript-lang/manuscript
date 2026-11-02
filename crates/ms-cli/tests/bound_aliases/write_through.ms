@@ -1,4 +1,4 @@
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 type Lists:
     left: List[Int]
@@ -69,7 +69,7 @@ export fn main() Int:
     entries.add("key-1", [7])
     calls = 0
 
-    if var value = entries.get(key(var calls)):
+    if var value = entries[key(var calls)]?:
         let add = value.append
         add(8)
         add(9)

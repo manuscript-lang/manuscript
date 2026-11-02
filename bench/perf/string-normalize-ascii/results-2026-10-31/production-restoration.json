@@ -1,0 +1,20 @@
+{
+  "purpose": "Evidence-only final tree; both normalization production candidates rejected and restored to baseline. Historical current-source-hashes.json records the original simple-ASCII stage.",
+  "base": "63cfffa9eb0ba72afaefe7e06cb3af5cf29d4a69",
+  "hashes": {
+    "crates/ms-rt/src/string.rs": "d61ca5b408602dda474058ca6b83661b16bb2187d567fc950a816eb6cba22725",
+    "crates/ms-rt/src/vec.rs": "a983e6c02b4c07977d82258fc277b4a281c2fa6148cd87b59261f38cf89ebfa6",
+    "bench/perf/string-normalize-ascii/main.ms": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+    "bench/perf/string-normalize-ascii/identities.json": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+    "bench/perf/string-normalize-ascii/compare_matrix.py": "c430e1babbf6028534f8a3a42c4cb2bd09c501be3628647563aea0dfcc2b91fd",
+    "bench/perf/string-normalize-ascii/analyze_matrix.py": "52aff28e3a653a1aeb1e6d153b6db9da420b700f73744f68ec46f68abc2a189c",
+    "bench/perf/string-normalize-ascii/test_matrix.py": "9992c50b5233414ad0839c239108a80799e19af7fff6e8a8577b504b55f1ac8d",
+    "bench/perf/string-normalize-ascii/rust/src/main.rs": "aa2175ad601a8551ef9db47ffb831aa31506617ac4b9fcacd6253ecb62c9aa8c",
+    "bench/perf/string-normalize-ascii/rust/Cargo.toml": "69d3ecaa490f0deccde2cd093230a087dbfbd72929e6bf1081a89b10d6a7b106",
+    "bench/perf/string-normalize-ascii/rust/Cargo.lock": "0a74863c631ce86a469191ead50476e65f0ec6c11e88a3b33803d54ebd042cb3",
+    "bench/perf/string-normalize-ascii/rss.ms": "0a73231cb49be25add32205c50c09ce95818715d11cf58545c8c6b0dcdd506b9",
+    "bench/perf/representative/rss.c": "c671c66114469e2438d3486a19f5826d25cac131405eda0b43cfc5980af62a34",
+    "tests/e2e/testdata/stdlib/string-normalize-identity.ms": "6cfecf8ca2ac8f629dfc9f18a1de51de4eacdb0df8bce5dcf375423be8c464d2"
+  },
+  "production_diff": ""
+}

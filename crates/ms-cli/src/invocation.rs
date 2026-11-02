@@ -56,6 +56,9 @@ pub const JSON_COMMANDS: &[&str] = &[
     "search_symbol",
 ];
 
+/// Commands that execute a program and can forward its arguments after `--`.
+const PROGRAM_ARGUMENT_COMMANDS: &[&str] = &["run", "test", "bench", "profile"];
+
 #[derive(Debug, Default)]
 pub struct Invocation {
     pub command: String,
@@ -66,6 +69,8 @@ pub struct Invocation {
     pub output: String,
     /// `--link`: extra objects and static libraries for `extern fn` symbols.
     pub link: Vec<String>,
+    /// `--static`: link a static musl executable instead of the system libc (Linux).
+    pub static_libc: bool,
     pub format_check: bool,
     pub structured: bool,
     pub watch: bool,
@@ -146,6 +151,15 @@ pub fn parse_invocation(args: &[String], io: &mut Io) -> Result<Invocation, i32>
     }
     inv.targets = vec![inv.filename.clone()];
     parse_options(&mut inv, args, first, positional, io)?;
+    if inv.analysis && inv.targets.iter().any(String::is_empty) {
+        return Err(usage_error(
+            io,
+            format!(
+                "ms {}: an input argument is empty; pass a .ms file, directory, or ms.toml",
+                inv.command
+            ),
+        ));
+    }
     Ok(inv)
 }
 
@@ -175,6 +189,7 @@ fn parse_options(
             }
             "--watch" => inv.watch = true,
             "--fix" => inv.fix = true,
+            "--static" => inv.static_libc = true,
             "--deny-warnings" => inv.deny_warnings = true,
             "--check" => inv.format_check = true,
             "--json" => inv.structured = true,
@@ -348,18 +363,28 @@ fn parse_options(
                         i += 1;
                         continue;
                     }
+                    let fix = if inv.is_one_of(PROGRAM_ARGUMENT_COMMANDS) {
+                        "arguments for the program go after --"
+                    } else {
+                        "remove the extra argument"
+                    };
                     return Err(usage_error(
                         io,
                         format!(
-                            "unexpected extra argument {} (ms {} takes one file; arguments for the program go after --)",
+                            "unexpected extra argument {} (ms {} takes one file; {fix})",
                             args[i], inv.command
                         ),
                     ));
                 }
+                let arguments_hint = if inv.is_one_of(PROGRAM_ARGUMENT_COMMANDS) {
+                    " (arguments for the program go after --)"
+                } else {
+                    ""
+                };
                 return Err(usage_error(
                     io,
                     format!(
-                        "unknown option {} for ms {}; run 'ms help {}' for its options (arguments for the program go after --)",
+                        "unknown option {} for ms {}; run 'ms help {}' for its options{arguments_hint}",
                         args[i], inv.command, inv.command
                     ),
                 ));
@@ -427,6 +452,12 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
     ]) {
         crate::unknown_command(io, &command);
         return Err(2);
+    }
+    if !inv.arguments.is_empty() && !inv.is_one_of(PROGRAM_ARGUMENT_COMMANDS) {
+        return Err(usage_error(
+            io,
+            format!("ms {command} does not run a program; remove the arguments after --"),
+        ));
     }
     if !inv.format.is_empty() && command != "diagram" {
         return Err(usage_error(
@@ -602,6 +633,18 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             return Err(2);
         }
     };
+    if inv.static_libc && !inv.is_one_of(&["build", "run", "test", "bench"]) {
+        return Err(usage_error(
+            io,
+            format!("--static requires build, run, test, or bench, not {command}; remove the flag"),
+        ));
+    }
+    if inv.static_libc && !cfg!(target_os = "linux") {
+        return Err(usage_error(
+            io,
+            "--static links static musl, which only Linux has; remove the flag",
+        ));
+    }
     if !inv.link.is_empty() && !inv.is_one_of(&["build", "run", "test", "bench"]) {
         return Err(usage_error(
             io,
@@ -641,6 +684,40 @@ pub fn requests_help(args: &[String]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_executing_commands_accept_program_arguments() {
+        for command in [
+            "run", "test", "bench", "profile", "build", "emit", "inspect", "diagram",
+        ] {
+            let args = [command, "main.ms", "--", "--help", ""].map(String::from);
+            let (mut stdin, mut stdout, mut stderr) = (std::io::empty(), Vec::new(), Vec::new());
+            let mut io = Io {
+                stdin: &mut stdin,
+                stdout: &mut stdout,
+                stderr: &mut stderr,
+            };
+            let result = parse_invocation(&args, &mut io).and_then(|mut inv| {
+                validate(&mut inv, &mut io)?;
+                Ok(inv)
+            });
+            assert!(stdout.is_empty(), "{command}: {stdout:?}");
+            if matches!(command, "run" | "test" | "bench" | "profile") {
+                let inv = result.expect(command);
+                let expected = if matches!(command, "test" | "bench") {
+                    vec!["--", "--help", ""]
+                } else {
+                    vec!["--help", ""]
+                };
+                assert_eq!(inv.arguments, expected, "{command}");
+                assert!(stderr.is_empty(), "{command}: {stderr:?}");
+            } else {
+                assert_eq!(result.unwrap_err(), 2, "{command}");
+                let stderr = String::from_utf8(stderr).unwrap();
+                assert!(stderr.contains("remove the arguments after --"), "{stderr}");
+            }
+        }
+    }
 
     #[test]
     fn help_scanning_respects_option_values_and_the_separator() {

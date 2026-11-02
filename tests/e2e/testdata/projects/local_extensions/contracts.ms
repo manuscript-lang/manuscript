@@ -1,5 +1,5 @@
 export interface Read[T]:
-    fn get() ref T
+    fn get() T
 
 export fn invoke[T: Read[Int]](value: T) Int:
     return value.get()

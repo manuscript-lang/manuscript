@@ -14,8 +14,18 @@ mod places;
 mod walk;
 
 pub use classify::{Class, Classifier};
-pub use modes::{CallModes, ParamMode, ResultOrigin, Slot};
+pub use modes::{CallModes, ParamMode};
 pub use places::{Place, Step};
+
+/// How the caller comes to own the result of a lending call over a temporary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OwnedLend {
+    /// The result is a part of the temporary: copied out before the temporary is dropped.
+    Copy,
+    /// The result is the whole temporary passed as the receiver (`None`) or as the parameter
+    /// with this label: the caller keeps the temporary instead of dropping it, no copy.
+    Whole(Option<Name>),
+}
 
 use crate::hir::*;
 use crate::types::*;
@@ -154,6 +164,9 @@ pub struct CallableOwnership {
     pub resource_moves: HashMap<usize, HashMap<NodeId, Vec<Name>>>,
     /// Resource bindings that nothing takes: lowering closes them when their scope ends.
     pub implicit_closes: HashSet<usize>,
+    /// Closed resource bindings the program also closes by an explicit `.close()` call: the
+    /// scope end still releases them, but a result the program handled is not returned again.
+    pub explicit_closes: HashSet<usize>,
     /// For a closed resource binding that is also moved on some paths: the name expressions
     /// that move it. The close at scope end runs only on the paths with no move.
     pub close_moves: HashMap<usize, HashSet<NodeId>>,
@@ -163,6 +176,27 @@ pub struct CallableOwnership {
     pub parameters: Vec<ParamMode>,
     /// The receiver's mode, for a method.
     pub receiver: Option<ParamMode>,
+    /// The result is a reference into the receiver or a parameter on every path: lowering
+    /// returns it without copying, and the caller holds it without dropping.
+    pub lends: bool,
+    /// With `lends`: the result is an owned interface view of the arguments (a converted lent
+    /// value, `iface.lend`): the caller drops it and holds the arguments while it lives.
+    pub view: bool,
+    /// Wrappers of a lent value (`x` as `x?`, `ok(x)`, `error(x)`) that stay references:
+    /// lowering builds them with `opt.view` / `alt.view` instead of copying the payload.
+    pub view_wraps: HashSet<NodeId>,
+    /// Name expressions that move an interface view out of the local holding it, into a result
+    /// that holds the same origins: lowering takes the value and leaves a view that owns nothing.
+    pub view_moves: HashSet<NodeId>,
+    /// Calls of lending callables whose sources are temporaries: the caller owns the result,
+    /// by taking the temporary over or by a copy made before it is dropped.
+    pub owned_lends: HashMap<NodeId, OwnedLend>,
+    /// Calls bound with `var` as an exclusive borrow of the field chain the callee returns, by
+    /// call node: lowering names that place instead of calling.
+    pub getter_borrows: HashMap<NodeId, Vec<Name>>,
+    /// Conditional and match expressions whose value is a reference on every arm: lowering
+    /// joins the arms without copying.
+    pub lent_matches: HashSet<NodeId>,
 }
 
 impl CallableOwnership {
@@ -182,6 +216,8 @@ pub struct Ownership {
     pub borrows: HashMap<usize, BorrowKind>,
     /// Resource bindings closed implicitly when their scope ends.
     pub closes: HashSet<usize>,
+    /// Closed resource bindings with an explicit `.close()` call.
+    pub explicit_closes: HashSet<usize>,
     /// Name expressions that move a closed resource binding, by binding.
     pub close_moves: HashMap<usize, HashSet<NodeId>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
@@ -190,15 +226,29 @@ pub struct Ownership {
     pub moved_payloads: HashSet<usize>,
     /// Calls bound with `var` as a mutable borrow, by module file and node: the fields from the
     /// argument to the part they borrow.
-    pub getters: HashMap<(Name, NodeId), Vec<Name>>,
-    /// `ref` functions that can hand back a borrow on every path, by module file and node.
-    pub lenders: HashSet<Key>,
     /// Captures a non-escaping lambda only reads in place, by module file, lambda node and
     /// binding identity: the closure may point at the variable instead of copying it.
     pub borrowed_captures: HashSet<(Name, NodeId, usize)>,
     /// For each callable with a `Consume` parameter or receiver, which parameters (declaration
     /// order, the receiver first for a method) the body moves, stores or returns.
     pub consumes: HashMap<Key, Vec<bool>>,
+    /// Callables whose result is a reference into their arguments.
+    pub lenders: HashSet<Key>,
+    /// Callables whose result is an owned interface view of their arguments: the caller drops
+    /// it and holds the arguments while it lives (`ret_view` in MIR).
+    pub view_lenders: HashSet<Key>,
+    /// Wrappers of lent values that stay references, by module file and node.
+    pub view_wraps: HashSet<(Name, NodeId)>,
+    /// Name expressions moving an interface view out of its local, by module file and node.
+    pub view_moves: HashSet<(Name, NodeId)>,
+    /// Lending calls whose result the caller owns (a source was a temporary), by module file and
+    /// call node.
+    pub owned_lends: HashMap<(Name, NodeId), OwnedLend>,
+    /// `var` bindings of a lending call, by module file and call node: the field chain of the
+    /// argument the binding borrows exclusively.
+    pub getter_borrows: HashMap<(Name, NodeId), Vec<Name>>,
+    /// Conditional and match expressions whose value is a reference, by module file and node.
+    pub lent_matches: HashSet<(Name, NodeId)>,
 }
 
 impl Ownership {
@@ -219,118 +269,6 @@ pub fn is_vetted(file: Name) -> bool {
 }
 
 impl Hir<'_> {
-    /// Checks the `ref` written in result types: a `ref` result must lend from a parameter or the
-    /// receiver, and an implementation agrees with the interface operation it implements.
-    fn ref_results(
-        &self,
-        modules: &HashMap<Name, ModuleHir>,
-        callables: &[Callable],
-        summaries: &Summaries,
-    ) -> Vec<Diagnostic> {
-        let diag = |file: Name, pos: ms_syntax::Pos, message: String| Diagnostic {
-            file: std::sync::Arc::from(file.as_str()),
-            pos,
-            phase: ms_syntax::Phase::Type,
-            message,
-            end: None,
-            fix: None,
-        };
-        let insert_ref = |mut d: Diagnostic, at: ms_syntax::Pos| {
-            d.fix = Some(ms_syntax::DiagnosticFix {
-                pos: at,
-                end: at,
-                replacement: "ref ".to_string(),
-            });
-            d
-        };
-        let mut out = Vec::new();
-        for c in callables {
-            let Some(f) = c.func.func() else { continue };
-            if f.body.is_empty() {
-                continue;
-            }
-            let lends = summaries
-                .get(&(c.module.file, c.id()))
-                .is_some_and(|s| !s.result.slots.is_empty());
-            // A function returning a borrowing value lends without writing `ref`: its type says so.
-            let result_borrows = modules
-                .get(&c.module.file)
-                .and_then(|m| m.type_ref(f.result.id))
-                .is_some_and(|t| borrows(&t));
-            if lends && !f.result_ref && !result_borrows {
-                out.push(insert_ref(
-                    diag(
-                        c.module.file,
-                        f.result.pos,
-                        format!(
-                            "`{}` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`",
-                            f.name
-                        ),
-                    ),
-                    f.result.pos,
-                ));
-            }
-            if f.result_ref && !lends {
-                out.push(diag(
-                    c.module.file,
-                    f.result.pos,
-                    format!(
-                        "`{}` returns `ref`, but no `return` gives back part of a parameter or the receiver; drop `ref` to return an owned value",
-                        f.name
-                    ),
-                ));
-            }
-        }
-        for m in &self.program().methods {
-            let (Some(contract), Some(decl)) = (&m.contract, &m.decl) else {
-                continue;
-            };
-            let (Some(f), Some(def)) = (decl.func(), &contract.def) else {
-                continue;
-            };
-            if !modules.contains_key(&m.module) {
-                continue;
-            }
-            let declared = def
-                .operations
-                .borrow()
-                .iter()
-                .find(|o| o.name == f.name)
-                .and_then(|o| o.decl.as_ref().and_then(|d| d.func().map(|f| f.result_ref)));
-            let Some(declared) = declared else { continue };
-            // An implementation follows the operation's contract: it lends exactly when the
-            // operation is declared `ref`. A scalar result is the same either way; a `Copy`
-            // handle such as `Shared` still holds a reference, so it must be lent too.
-            let scalar = modules[&m.module]
-                .type_ref(f.result.id)
-                .is_some_and(|t| scalar(&t));
-            if declared && !f.result_ref && !scalar {
-                out.push(insert_ref(
-                    diag(
-                        m.module,
-                        f.result.pos,
-                        format!(
-                            "`{}` implements an operation declared `ref`: the operation lends, so this method must return `ref` and give back part of the receiver or a parameter on every path; or drop `ref` from the operation to return owned values",
-                            f.name
-                        ),
-                    ),
-                    f.result.pos,
-                ));
-            }
-            if f.result_ref && !declared {
-                out.push(diag(
-                    m.module,
-                    f.result.pos,
-                    format!(
-                        "`{}` implements an operation that returns an owned result, but this method returns `ref`; declare `ref` on the interface operation or return an owned copy",
-                        f.name
-                    ),
-                ));
-            }
-        }
-        out
-    }
-
     /// Checks ownership rules and computes move, borrow and drop facts for
     /// every callable of the user's modules.
     pub fn ownership(&self) -> Ownership {
@@ -356,27 +294,6 @@ impl Hir<'_> {
         // carries a fact one call further, so a chain needs about one round per callable.
         let rounds = callables.len() + 16;
         for round in 0..=rounds {
-            if round == rounds {
-                // Not converged: lend from every argument of every `ref` callable, which no
-                // real summary exceeds, and take one last pass against that.
-                for c in &callables {
-                    if c.func.func().is_some_and(|f| f.result_ref) {
-                        let key = (c.module.file, c.id());
-                        let mut s = summaries
-                            .get(&key)
-                            .cloned()
-                            .unwrap_or_else(|| modes::Summary::declared(&c.func));
-                        s.result = modes::ResultOrigin {
-                            slots: std::iter::once(modes::Slot::Receiver)
-                                .filter(|_| c.func.method().is_some())
-                                .chain(s.params.iter().map(|(n, _)| modes::Slot::Param(*n)))
-                                .collect(),
-                            ..modes::ResultOrigin::default()
-                        };
-                        summaries.decls.insert(key, s);
-                    }
-                }
-            }
             outcomes.clear();
             let mut changed = false;
             for (c, l) in callables.iter().zip(&liveness) {
@@ -407,17 +324,43 @@ impl Hir<'_> {
             }
         }
         let mut facts = HashMap::new();
-        let mut diagnostics = self.ref_results(&modules, &callables, &summaries);
+        let mut diagnostics = Vec::new();
         let mut borrows = HashMap::new();
         let mut closes = HashSet::new();
+        let mut explicit_closes = HashSet::new();
         let mut close_moves = HashMap::new();
         let mut moved_payloads = HashSet::new();
         let mut resource_moves = HashMap::new();
-        let mut getters = HashMap::new();
-        let mut lenders = HashSet::new();
         let mut borrowed_captures = HashSet::new();
         let mut consumes = HashMap::new();
+        let mut lenders = HashSet::new();
+        let mut view_lenders = HashSet::new();
+        let mut view_wraps = HashSet::new();
+        let mut view_moves = HashSet::new();
+        let mut owned_lends = HashMap::new();
+        let mut getter_borrows = HashMap::new();
+        let mut lent_matches = HashSet::new();
         for (c, out) in callables.iter().zip(outcomes) {
+            lent_matches.extend(out.facts.lent_matches.iter().map(|n| (c.module.file, *n)));
+            if out.facts.lends && out.facts.view {
+                view_lenders.insert((c.module.file, c.id()));
+            } else if out.facts.lends {
+                lenders.insert((c.module.file, c.id()));
+            }
+            view_wraps.extend(out.facts.view_wraps.iter().map(|n| (c.module.file, *n)));
+            view_moves.extend(out.facts.view_moves.iter().map(|n| (c.module.file, *n)));
+            owned_lends.extend(
+                out.facts
+                    .owned_lends
+                    .iter()
+                    .map(|(n, how)| ((c.module.file, *n), *how)),
+            );
+            getter_borrows.extend(
+                out.facts
+                    .getter_borrows
+                    .iter()
+                    .map(|(n, f)| ((c.module.file, *n), f.clone())),
+            );
             for (node, lambda) in &out.facts.lambdas {
                 for (uid, mode) in &lambda.captures {
                     if !lambda.escaping && *mode == CaptureMode::Borrow {
@@ -436,6 +379,7 @@ impl Hir<'_> {
                 borrows.insert(f.binding.uid, kind);
             }
             closes.extend(out.facts.implicit_closes.iter().copied());
+            explicit_closes.extend(out.facts.explicit_closes.iter().copied());
             close_moves.extend(out.facts.close_moves.iter().map(|(k, v)| (*k, v.clone())));
             moved_payloads.extend(out.facts.moved_payloads.iter().copied());
             resource_moves.extend(
@@ -444,9 +388,6 @@ impl Hir<'_> {
                     .iter()
                     .map(|(k, v)| (*k, v.clone())),
             );
-            if c.func.func().is_some_and(|f| f.result_ref) && !out.summary.result.owned {
-                lenders.insert((c.module.file, c.id()));
-            }
             let modes: Vec<bool> = out
                 .facts
                 .receiver
@@ -457,9 +398,6 @@ impl Hir<'_> {
             if modes.contains(&true) {
                 consumes.insert((c.module.file, c.id()), modes);
             }
-            for (node, fields) in out.getters {
-                getters.insert((c.module.file, node), fields);
-            }
             diagnostics.extend(out.diagnostics);
             facts.insert((c.module.file, c.id()), out.facts);
         }
@@ -468,21 +406,19 @@ impl Hir<'_> {
             diagnostics,
             borrows,
             closes,
+            explicit_closes,
             close_moves,
             resource_moves,
             moved_payloads,
-            getters,
-            lenders,
             borrowed_captures,
             consumes,
+            lenders,
+            view_lenders,
+            view_wraps,
+            view_moves,
+            owned_lends,
+            getter_borrows,
+            lent_matches,
         }
-    }
-}
-
-/// A value that holds no reference: a number, `Bool`, `Unit`, or an optional of one.
-pub(crate) fn scalar(t: &Type) -> bool {
-    match t.kind {
-        Kind::Primitive => t.id.as_str() != "String",
-        _ => t.is_std("Optional") && t.args.first().is_some_and(|a| scalar(a)),
     }
 }

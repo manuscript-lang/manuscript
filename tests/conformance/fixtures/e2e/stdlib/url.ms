@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,faults,interpolation,lists,modules,optional,stdlib-testing,stdlib-url,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/url.ms
-import expect_equal, expect_false, fail from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
 import (
     parse,
     format,
@@ -13,11 +13,11 @@ import (
     QueryEntry,
     Url,
     UrlError
-) from "@std/net.ms"
+) from "@std/net/net.ms"
 
 test "URL canonicalization and relative references":
     let url = try parse("https://EXAMPLE.com:443/a/b?q=1#fragment")
-    try expect_false(url.host != "example.com" or url.port != some(443))
+    try expect_false(url.host != "example.com" or url.port != 443)
     try expect_equal((try format(url)), "https://example.com:443/a/b?q=1#fragment")
     try expect_equal(
         (url | try resolve("../c") | try format), "https://example.com:443/c"
@@ -30,10 +30,10 @@ test "URL query retains duplicate keys empty values and spaces":
     try expect_false(entries.length() != 4 or entries.get(3).value != "hello world")
     try expect_equal(format_query(entries), "a=1&a=2&empty=&space=hello+world")
 
-    let limited: Result[List[QueryEntry], UrlError] = error(UrlError.LimitExceeded)
+    let limited: List[QueryEntry]!UrlError = error(UrlError.LimitExceeded)
     try expect_equal(parse_query("a=1&b=2", 1), limited)
 
-    let invalid: Result[String, UrlError] = error(UrlError.InvalidData)
+    let invalid: String!UrlError = error(UrlError.InvalidData)
     try expect_equal(decode_component("%zz"), invalid)
 
 test "URL query skips empty segments":
@@ -45,7 +45,7 @@ test "URL query skips empty segments":
 
 test "URL format rejects queries that would not round trip":
     let base = try parse("http://h/p")
-    let invalid: Result[String, UrlError] = error(UrlError.InvalidInput)
+    let invalid: String!UrlError = error(UrlError.InvalidInput)
 
     for query in ["a#b", "a b", "%zz", "a%2"]:
         let bad = Url(
@@ -61,7 +61,7 @@ test "URL format rejects queries that would not round trip":
     try expect_equal((try format(good)), "http://h/p?a=%41&b")
 
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
-    let invalid: Result[Url, UrlError] = error(UrlError.InvalidData)
+    let invalid: Url!UrlError = error(UrlError.InvalidData)
     for text in ["http://host:80:80/", "http://h/p?q=a b", "http://h/p?q=%zz"]:
         if parse(text) != invalid: return fail("accepted {text}")
 
@@ -70,8 +70,8 @@ test "URL parse rejects malformed hosts and queries and keeps an empty authority
     try expect_equal((empty | try format | try parse), empty)
 
 test "URL format and resolve reject invalid schemes and hostless relative paths":
-    let invalid_text: Result[String, UrlError] = error(UrlError.InvalidInput)
-    let invalid_url: Result[Url, UrlError] = error(UrlError.InvalidInput)
+    let invalid_text: String!UrlError = error(UrlError.InvalidInput)
+    let invalid_url: Url!UrlError = error(UrlError.InvalidInput)
 
     for scheme in [
         "", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"

@@ -263,8 +263,10 @@ impl Cx {
             self.ensure_glue(m, i, scope);
         }
         // An optional scalar is a flag and a value with padding between: it compares through glue.
+        // An optional string is a custom-layout value the runtime cannot hash without it.
         let scalar_opt = matches!(m.types.kind(t), TyKind::Opt(i)
-            if m.types.is_int(*i) || m.types.is_float(*i) || *i == MTy::BOOL);
+            if m.types.is_int(*i) || m.types.is_float(*i) || *i == MTy::BOOL || *i == MTy::STR || *i == MTy::BYTES
+                || matches!(m.types.kind(*i), TyKind::Rec(_) | TyKind::Alt(_)));
         if !scalar_opt && !matches!(m.types.kind(t), TyKind::Rec(_) | TyKind::Alt(_)) {
             return;
         }
@@ -432,7 +434,7 @@ fn hash_into(b: &mut FuncBuilder<'_>, t: MTy, v: Value, acc: Value) -> Value {
                 .emit(Op::B2I, &[some], Imm::None, Some(MTy::INT))
                 .expect("b2i");
             let acc = combine(b, acc, flag);
-            if !b.m.types.is_int(inner) && inner != MTy::BOOL {
+            if !b.m.types.is_int(inner) && inner != MTy::BOOL && inner != MTy::STR {
                 return acc;
             }
             let x = b.opt_get(v);

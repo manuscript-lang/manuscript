@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/if-let.ms
 import TextError from "@std/core.ms"
-import expect_true, fail from "@std/test.ms"
+import expect_true, fail from "@std/test/test.ms"
 
 fn describe(name: String?) String:
     if let value = name:
@@ -17,7 +17,7 @@ fn total(items: List[Int?]) Int:
             sum = sum + value
     return sum
 
-fn check(value: Bool, message: String) Result[Unit, Error]:
+fn check(value: Bool, message: String) Unit!:
     (value) | try expect_true
     return ok(unit)
 
@@ -29,15 +29,15 @@ test "if let unwraps a present optional":
 
 test "if let takes else when absent and keeps falsy payloads":
     (try check(value: describe(none) == "Hello!", message: "none"))
-    (try check(value: describe(some("Ada")) == "Hello, Ada", message: "some"))
+    (try check(value: describe("Ada") == "Hello, Ada", message: "some"))
 
-    let items: List[Int?] = [some(1), none, some(0), some(2)]
+    let items: List[Int?] = [1, none, 0, 2]
     (try check(value: total(items) == 3, message: "total"))
 
     let empty: List[Int] = []
     if let value = empty.first(): return fail(message: "unexpected {value}")
 
-fn parse(text: String) Result[Int, TextError]:
+fn parse(text: String) Int!TextError:
     if text == "":
         return error(TextError("empty"))
 

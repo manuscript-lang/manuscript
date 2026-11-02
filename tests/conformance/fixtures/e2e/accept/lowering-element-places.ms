@@ -1,7 +1,7 @@
 # conform: tags=control-flow,lists,maps,modules,mutation,records,stdlib-testing,testing,tier-core
 # conform: phase=test
 # conform: origin=bug bash: lowering and codegen
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Pt:
     x: Int
@@ -68,6 +68,6 @@ test "an eager list get default is released on every path":
 
 test "find over owned elements keeps the hit":
     let rows = [[1], [2], [3, 3]]
-    try expect_equal(rows.find(fn(value: List[Int]): value[0] == 2), some([2]))
+    try expect_equal(rows.find(fn(value: List[Int]): value[0] == 2), [2])
     try expect_equal(rows.find(fn(value: List[Int]): value[0] == 9), none)
-    try expect_equal(rows.find_last(fn(value: List[Int]): value[0] > 1), some([3, 3]))
+    try expect_equal(rows.find_last(fn(value: List[Int]): value[0] > 1), [3, 3])

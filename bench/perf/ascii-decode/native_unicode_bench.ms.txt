@@ -1,0 +1,69 @@
+import ascii_decode, EncodingError from "./native.ms"
+import keep, measure from "@std/test/bench.ms"
+import expect_equal from "@std/test/test.ms"
+
+bench "ascii.unicode.accent.1":
+    let data = (try "é".repeat(1)).to_bytes()
+    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    try expect_equal(ascii_decode(data), expected)
+
+    fn work() Unit!:
+        try expect_equal(ascii_decode(data), expected)
+        return keep(data.length())
+
+    try measure(1, work)
+
+bench "ascii.unicode.emoji.1":
+    let data = (try "🙂".repeat(1)).to_bytes()
+    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    try expect_equal(ascii_decode(data), expected)
+
+    fn work() Unit!:
+        try expect_equal(ascii_decode(data), expected)
+        return keep(data.length())
+
+    try measure(1, work)
+
+bench "ascii.unicode.accent.2048":
+    let data = (try "é".repeat(2048)).to_bytes()
+    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    try expect_equal(ascii_decode(data), expected)
+
+    fn work() Unit!:
+        try expect_equal(ascii_decode(data), expected)
+        return keep(data.length())
+
+    try measure(1, work)
+
+bench "ascii.unicode.emoji.2048":
+    let data = (try "🙂".repeat(2048)).to_bytes()
+    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    try expect_equal(ascii_decode(data), expected)
+
+    fn work() Unit!:
+        try expect_equal(ascii_decode(data), expected)
+        return keep(data.length())
+
+    try measure(1, work)
+
+bench "ascii.unicode.accent.524288":
+    let data = (try "é".repeat(524288)).to_bytes()
+    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    try expect_equal(ascii_decode(data), expected)
+
+    fn work() Unit!:
+        try expect_equal(ascii_decode(data), expected)
+        return keep(data.length())
+
+    try measure(1, work)
+
+bench "ascii.unicode.emoji.524288":
+    let data = (try "🙂".repeat(524288)).to_bytes()
+    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    try expect_equal(ascii_decode(data), expected)
+
+    fn work() Unit!:
+        try expect_equal(ascii_decode(data), expected)
+        return keep(data.length())
+
+    try measure(1, work)

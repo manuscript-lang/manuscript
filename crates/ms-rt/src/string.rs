@@ -575,7 +575,7 @@ fn find_short(hay: &[u8], needle: &[u8]) -> Option<usize> {
 /// `memchr` for a short haystack: eight bytes per step, testing each word for a byte equal to
 /// `c` with the zero-byte trick.
 #[inline]
-fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
+pub(super) fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
     const LO: u64 = 0x0101_0101_0101_0101;
     const HI: u64 = 0x8080_8080_8080_8080;
     let pat = LO * c as u64;

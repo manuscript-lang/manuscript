@@ -4,41 +4,42 @@
 # A handler whose client went away is cancelled: its wait ends and its cleanup runs with
 # tasks.cancelled() true.
 import Closeable from "@std/core.ms"
-import buffered, headers, HttpRequest, HttpResponse from "@std/http.ms"
-import stdout from "@std/io.ms"
-import network from "@std/net.ms"
-import cancelled from "@std/tasks.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
+import stdout from "@std/io/io.ms"
+import connect, serve from "@std/net/net.ms"
+import cancelled from "@std/concurrency/tasks.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 type Reporter:
     name: String
 
 impl Closeable for Reporter:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _line = stdout().write(
             "{self.name} cleanup sees cancelled: {cancelled()}\n"
         )
+        return ok(unit)
 
 fn handle(request: HttpRequest) HttpResponse:
     var _reporter = Reporter("handler")
     sleep(nanoseconds(30000000000))
-    _reporter.close()
+    _reporter.close().get(none)
     return HttpResponse(200, headers(), "late\n".to_bytes())
 
 export fn main() Int:
-    if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
+    if let acquired = serve(address: "127.0.0.1:0", handler: buffered(handle)):
         var server = acquired
 
-        if var conn = network().connect(server.address()):
+        if var conn = connect(server.address()):
             let _sent = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
             # Let the handler start, then leave without waiting for the response.
             sleep(nanoseconds(100000000))
-            conn.close()
+            conn.close().get(none)
             sleep(nanoseconds(500000000))
 
             let _done = stdout().write("done\n")
-            server.close()
+            server.close().get(none)
             return 0
 
     return 1

@@ -1,9 +1,9 @@
 import first, first_generic from "./first.ms"
 import second, second_generic from "./second.ms"
 import Cause from "./domain.ms"
-import expect_true, fail from "@std/test.ms"
+import expect_true, fail from "@std/test/test.ms"
 
-fn describe(r: Result[Int, Error]) String:
+fn describe(r: Int!) String:
     match r:
         ok(_): return "unexpected success"
         error(cause):

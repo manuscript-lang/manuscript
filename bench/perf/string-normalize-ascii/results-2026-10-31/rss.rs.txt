@@ -1,0 +1,19 @@
+use std::hint::black_box;
+use unicode_normalization::UnicodeNormalization;
+
+fn main() {
+    let text = "x".repeat(4194304);
+    let input = black_box(text.as_str());
+    let output: String;
+    if cfg!(feature = "ascii-identity") && input.is_ascii() {
+        output = input.to_owned();
+    } else {
+        let mut chars = Vec::new();
+        for ch in input.chars() {
+            chars.push(ch);
+        }
+        output = chars.iter().copied().nfc().collect();
+    }
+    assert_eq!(output, text);
+    println!("{}", output.len());
+}

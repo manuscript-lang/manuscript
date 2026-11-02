@@ -1,0 +1,13 @@
+{
+  "base_main": "3cfde58b6216ae4db54aeb3ae4e22ee7d527e323",
+  "compiler_sha256": "41a060d6b13ee0022fdcae23becefec6f325e43e19ee582145bce268cec47d87",
+  "before_archive_sha256": "4ef63cd2ca0418a2b7b4d9590d001af06bd51413af8b1861228da795f80356be",
+  "after_archive_sha256": "79441c29ceeef9b302961b9eeb3fe1711e5685e5b42143e60576c0d233feb211",
+  "before_MS_RT_LIB": "/workspace/byte-search-evidence/baseline.a",
+  "after_MS_RT_LIB": "/workspace/manuscript/target/ms-native/libms_native.a",
+  "settings": "normal --build-type Release; companion metadata reports cranelift; Rust 1.99.1 Cargo release, overflow-checks=true, repository frame pointers",
+  "production_patch_sha256": "cb9a96f155412173e5e26c5ed529d317ba06eb0b3f25072ee3c9aa467100cbed",
+  "source_tests": "2 pass each in Debug and Release with candidate archive",
+  "scope": "pure byte search; helper implementation unchanged, visibility pub(super) permits reuse; no backend/lifetime investigation",
+  "merge_status": "Current-main integrated branch replay; merged-main campaign replay and required CI remain pending."
+}

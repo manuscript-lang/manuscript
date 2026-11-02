@@ -13,7 +13,7 @@ import (
     expect_some,
     expect_true,
     fail
-) from "@std/test.ms"
+) from "@std/test/test.ms"
 
 fn identity[T](value: T) T:
     return value
@@ -28,13 +28,13 @@ test "testing assertions":
     try expect_close(1.01, 1.0, 0.02)
     "Manuscript" | try expect_contains("script")
 
-    let present: Int? = some(7)
+    let present: Int? = 7
     let absent: Int? = none
     ((present | try expect_some)) | try expect_equal(7)
     absent | try expect_none
 
-    let success: Result[Int, TextError] = ok(9)
-    let failure: Result[Int, TextError] = error(TextError("bad"))
+    let success: Int!TextError = ok(9)
+    let failure: Int!TextError = error(TextError("bad"))
     ((success | try expect_ok)) | try expect_equal(9)
     ((failure | try expect_error)) | try expect_equal(TextError("bad"))
 

@@ -1,11 +1,12 @@
 //! `@std/fs` natives for path-based operations. Symbols are `msstd_fs_<name>`.
 //!
 //! Paths arrive as strings; fallible functions return a `STATUS_*` code (`0` ok) and write results
-//! only on success. For `STATUS_FAILED` the Go-style diagnostic text is available from
+//! only on success. For `STATUS_FAILED` the diagnostic text is available from
 //! `msstd_fs_failure_message` until the next fallible call. `FileInfo` is flattened into
 //! [`InfoOut`]; optional limits are a present flag plus an `i64`.
 // `libc::statfs` field widths differ per target, so the portable casts look redundant on Linux.
 #![allow(clippy::unnecessary_cast)]
+#![recursion_limit = "256"]
 
 extern crate alloc;
 
@@ -306,6 +307,11 @@ native! {
         fs_status(opened).map(Object)
     }
 
+    /// `FileHandle.clone`: a second handle over a duplicate of the descriptor.
+    fn msstd_fs_file_clone(h: ObjRef<Stream>) -> Result<Object<Stream>, StatusCode> {
+        fs_status(file::duplicate(&h)).map(Object)
+    }
+
     /// The stream view of a file handle: the same handle, retained for the caller.
     fn msstd_fs_file_reader(h: ObjShare<Stream>) -> ObjShare<Stream> {
         h
@@ -396,6 +402,16 @@ native! {
     fn msstd_fs_file_data_sync(h: ObjMut<Stream>) -> Result<(), StatusCode> {
         let mut h = h;
         fs_status(h.data_sync())
+    }
+
+    fn msstd_fs_file_try_lock(h: ObjMut<Stream>, exclusive: bool) -> Result<i64, StatusCode> {
+        let mut h = h;
+        fs_status(h.try_lock(exclusive)).map(i64::from)
+    }
+
+    fn msstd_fs_file_unlock(h: ObjMut<Stream>) -> Result<(), StatusCode> {
+        let mut h = h;
+        fs_status(h.unlock())
     }
 
     fn msstd_fs_file_chmod(h: ObjMut<Stream>, mode: i64) -> Result<(), StatusCode> {

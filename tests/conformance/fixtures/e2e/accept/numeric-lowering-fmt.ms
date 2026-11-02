@@ -1,7 +1,7 @@
 # conform: tags=closures,formatter,generics,interpolation,modules,mutation,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/numeric-lowering.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 type Counter:
     value: Int

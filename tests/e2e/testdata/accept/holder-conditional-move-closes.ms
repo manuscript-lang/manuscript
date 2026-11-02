@@ -1,16 +1,17 @@
 import Closeable from "@std/core.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
-import expect_equal from "@std/test.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Door:
     id: Int
     log: Shared[List[Int]]
 
 impl Closeable for Door:
-    var fn close() Unit:
+    var fn close() Unit!:
         var seen = lock(self.log)
         seen.value.append(self.id)
+        return ok(unit)
 
 test "a list moved on one path closes on the path that keeps it":
     let log: Shared[List[Int]] = share([])
@@ -21,7 +22,7 @@ fn block(log: Shared[List[Int]], id: Int) Unit:
     let doors = [Door(id, log)]
     var moved: List[Door]? = none
     if doors.length() == 0:
-        moved = some(doors)
+        moved = doors
     if moved.is_some():
         return
 
@@ -31,10 +32,10 @@ test "an optional resource reassigned after a conditional move closes the new va
     log.get().clone() | try expect_equal([1, 2])
 
 fn reassign(log: Shared[List[Int]]) Unit:
-    var held: Door? = some(Door(1, log))
+    var held: Door? = Door(1, log)
     if var door = held:
         door.id = 1
-    held = some(Door(2, log))
+    held = Door(2, log)
     if held.is_none():
         return
 

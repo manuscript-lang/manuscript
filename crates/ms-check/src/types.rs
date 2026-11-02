@@ -65,8 +65,58 @@ pub struct Param {
     pub ty: Ty,
 }
 
-/// Parameters flagged as omittable on a source callable.
-pub type Defaults = Option<Rc<HashSet<Name>>>;
+/// Omission permissions and the native default that needs an invocation position.
+#[derive(Clone, Debug)]
+pub struct ParameterDefaults {
+    names: HashSet<Name>,
+    missing_value_at_call: Option<Name>,
+}
+
+impl ParameterDefaults {
+    /// Ordinary declaration defaults, without a native invocation default.
+    pub fn new(names: HashSet<Name>) -> Self {
+        Self {
+            names,
+            missing_value_at_call: None,
+        }
+    }
+
+    /// Whether this parameter may be omitted.
+    pub fn contains(&self, name: &Name) -> bool {
+        self.names.contains(name)
+    }
+
+    /// Omittable parameter names.
+    pub fn iter(&self) -> impl Iterator<Item = &Name> {
+        self.names.iter()
+    }
+
+    /// The number of omittable parameters.
+    pub fn len(&self) -> usize {
+        self.names.len()
+    }
+
+    /// Whether every parameter is required.
+    pub fn is_empty(&self) -> bool {
+        self.names.is_empty()
+    }
+
+    /// The already-omittable native parameter whose MissingValue is made at the call.
+    pub fn missing_value_at_call(&self) -> Option<Name> {
+        self.missing_value_at_call
+    }
+
+    pub(crate) fn with_missing_value_at_call(&self, name: Name) -> Self {
+        let mut defaults = self.clone();
+        if defaults.contains(&name) {
+            defaults.missing_value_at_call = Some(name);
+        }
+        defaults
+    }
+}
+
+/// Parameters flagged as omittable on a known callable; erasure removes all default metadata.
+pub type Defaults = Option<Rc<ParameterDefaults>>;
 
 /// A checked type.
 pub struct Type {
@@ -215,9 +265,9 @@ impl Type {
         id.len() == 5 + name.len() && id.starts_with("@std/") && &id[5..] == name
     }
 
-    /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/time.ms`.
+    /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/os/time.ms`.
     pub fn is_time(&self, name: &str) -> bool {
-        self.is_source_type("@std/time.ms", name)
+        self.is_source_type("@std/os/time.ms", name)
     }
 
     /// Whether this is the type `name` declared by the bundled source module `module`.
@@ -267,13 +317,27 @@ pub struct Operation {
     pub decl: Option<FuncRef>,
 }
 
+/// Whether interface `t` declares a `var fn` operation: a call through it may change the
+/// value, so a converted value cannot stay a view of borrowed storage.
+pub fn contract_mutates(t: &Ty) -> bool {
+    let Some(def) = &t.def else {
+        return false;
+    };
+    let mutating = |op: &Operation| {
+        let f = op.decl.as_ref()?;
+        Some(f.decl.methods().get(f.index?)?.mutating)
+    };
+    def.operations
+        .borrow()
+        .iter()
+        .any(|op| mutating(op).unwrap_or(false))
+}
+
 /// A nominal type definition.
 pub struct Definition {
     symbol: RefCell<Weak<Sym>>,
     // Signature resolution preserves these immutable source field positions.
     field_indices: HashMap<Name, usize>,
-    /// Fields declared `ref`: they borrow their value instead of owning it.
-    ref_fields: HashSet<Name>,
     /// Definition kind (record, alternative, contract, native).
     pub kind: Kind,
     /// Declared type variables.
@@ -290,20 +354,15 @@ impl Definition {
     /// A new definition owned by `symbol`.
     pub fn new(symbol: &SymRef, kind: Kind) -> Rc<Definition> {
         let mut field_indices = HashMap::new();
-        let mut ref_fields = HashSet::new();
         if let Some(decl) = &symbol.decl {
             for (index, field) in decl.record_fields().iter().enumerate() {
                 // Invalid duplicate declarations still resolve to the first field.
                 field_indices.entry(field.name).or_insert(index);
-                if field.by_ref {
-                    ref_fields.insert(field.name);
-                }
             }
         }
         Rc::new(Definition {
             symbol: RefCell::new(Rc::downgrade(symbol)),
             field_indices,
-            ref_fields,
             kind,
             variables: RefCell::new(Vec::new()),
             fields: RefCell::new(Vec::new()),
@@ -315,16 +374,6 @@ impl Definition {
     /// The owning symbol.
     pub fn symbol(&self) -> Option<SymRef> {
         self.symbol.borrow().upgrade()
-    }
-
-    /// Whether any record field is declared `ref`.
-    pub fn has_ref_field(&self) -> bool {
-        !self.ref_fields.is_empty()
-    }
-
-    /// Whether the record field `name` is declared `ref`.
-    pub fn field_is_ref(&self, name: Name) -> bool {
-        self.ref_fields.contains(&name)
     }
 
     /// Declared variables (snapshot of the list of pointers).
@@ -662,11 +711,11 @@ pub fn standard(name: &str, args: Vec<Ty>) -> Ty {
     with_args(&sym.ty(), args)
 }
 
-/// `Duration`, `Instant` or `Timestamp`, the records of `@std/time.ms`.
+/// `Duration`, `Instant` or `Timestamp`, the records of `@std/os/time.ms`.
 pub fn time_type(name: &str) -> Ty {
     // The module is checked on first use; its records have no fields before that.
-    crate::stdlib::standard_exports("@std/time.ms");
-    let sym = crate::stdlib::source_type(n("@std/time.ms"), n(name))
+    crate::stdlib::standard_exports("@std/os/time.ms");
+    let sym = crate::stdlib::source_type(n("@std/os/time.ms"), n(name))
         .unwrap_or_else(|| panic!("standard time type {name}"));
     sym.ty()
 }
@@ -674,6 +723,11 @@ pub fn time_type(name: &str) -> Ty {
 /// `TestOutcome`: the implicit `Result[Unit, Error]` of a test block.
 pub fn test_outcome() -> Ty {
     standard("Result", vec![unit(), standard("Error", vec![])])
+}
+
+/// Whether `t` is `Result[Unit, Error]`, the result of every `close`.
+pub fn is_close_result(t: &Ty) -> bool {
+    t.is_std("Result") && t.args.len() == 2 && t.args[0].id == "Unit" && t.args[1].is_std("Error")
 }
 
 // ------------------------------------------------------------ type algebra
@@ -686,30 +740,69 @@ pub fn same(a: &Ty, b: &Ty) -> bool {
     if Rc::ptr_eq(a, b) && a.args.is_empty() && a.params.is_empty() {
         return true;
     }
-    if a.id != b.id
-        || a.kind != b.kind
-        || a.args.len() != b.args.len()
-        || a.params.len() != b.params.len()
-    {
-        return false;
+    struct Comparison {
+        remaining: u8,
+        equal: Option<HashSet<(*const Type, *const Type)>>,
     }
-    for (x, y) in a.args.iter().zip(&b.args) {
-        if !same(x, y) {
+    fn compare(a: &Ty, b: &Ty, context: &mut Comparison) -> bool {
+        if Rc::ptr_eq(a, b) && a.args.is_empty() && a.params.is_empty() {
+            return true;
+        }
+        if a.id != b.id
+            || a.kind != b.kind
+            || a.args.len() != b.args.len()
+            || a.params.len() != b.params.len()
+        {
             return false;
         }
-    }
-    if a.kind == Kind::Function {
-        for (p, q) in a.params.iter().zip(&b.params) {
-            if !same(&p.ty, &q.ty) {
+        if a.kind != Kind::Function && a.args.is_empty() {
+            return true;
+        }
+        // Reuse only completed successes, and only after a bounded amount of
+        // ordinary work. Active comparisons and missing results prove nothing.
+        let key = (Rc::as_ptr(a), Rc::as_ptr(b));
+        if context.remaining > 0 {
+            context.remaining -= 1;
+        } else if context
+            .equal
+            .as_ref()
+            .is_some_and(|equal| equal.contains(&key))
+        {
+            return true;
+        }
+        for (x, y) in a.args.iter().zip(&b.args) {
+            if !compare(x, y, context) {
                 return false;
             }
         }
-        return match (&a.result, &b.result) {
-            (Some(x), Some(y)) => same(x, y),
-            _ => false,
-        };
+        if a.kind == Kind::Function {
+            for (p, q) in a.params.iter().zip(&b.params) {
+                if !compare(&p.ty, &q.ty, context) {
+                    return false;
+                }
+            }
+            let same_result = match (&a.result, &b.result) {
+                (Some(x), Some(y)) => compare(x, y, context),
+                _ => false,
+            };
+            if !same_result {
+                return false;
+            }
+        }
+        if context.remaining == 0 {
+            context.equal.get_or_insert_with(HashSet::new).insert(key);
+        }
+        true
     }
-    true
+
+    compare(
+        a,
+        b,
+        &mut Comparison {
+            remaining: 64,
+            equal: None,
+        },
+    )
 }
 
 /// `Same` over optional types: nil is never the same as anything.
@@ -730,9 +823,6 @@ pub fn compatible(actual: &Option<Ty>, expected: &Ty) -> bool {
 
 /// Substitutes type variables.
 pub fn sub(t: &Ty, bindings: &Subst) -> Ty {
-    if bindings.is_empty() && t.kind != Kind::Variable {
-        return sub_walk(t, bindings);
-    }
     sub_walk(t, bindings)
 }
 
@@ -747,28 +837,41 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
     if t.args.is_empty() && t.params.is_empty() && t.result.is_none() {
         return t.clone();
     }
-    let mut changed = false;
-    let args: Vec<Ty> = t
-        .args
-        .iter()
-        .map(|a| {
-            let r = sub_walk(a, bindings);
-            changed |= !Rc::ptr_eq(&r, a);
-            r
-        })
-        .collect();
-    let params: Vec<Param> = t
-        .params
-        .iter()
-        .map(|p| {
-            let r = sub_walk(&p.ty, bindings);
-            changed |= !Rc::ptr_eq(&r, &p.ty);
-            Param {
-                name: p.name,
-                ty: r,
-            }
-        })
-        .collect();
+    // Most substitutions leave concrete children unchanged. Allocate each collection only
+    // at its first changed child, while still walking variables to snapshot their bounds.
+    let mut args: Option<Vec<Ty>> = None;
+    for (i, a) in t.args.iter().enumerate() {
+        let r = sub_walk(a, bindings);
+        if Rc::ptr_eq(&r, a) {
+            continue;
+        }
+        let mut values = Vec::with_capacity(t.args.len());
+        values.extend_from_slice(&t.args[..i]);
+        values.push(r);
+        values.extend(t.args[i + 1..].iter().map(|a| sub_walk(a, bindings)));
+        args = Some(values);
+        break;
+    }
+    let mut params: Option<Vec<Param>> = None;
+    for (i, p) in t.params.iter().enumerate() {
+        let r = sub_walk(&p.ty, bindings);
+        if Rc::ptr_eq(&r, &p.ty) {
+            continue;
+        }
+        let mut values = Vec::with_capacity(t.params.len());
+        values.extend_from_slice(&t.params[..i]);
+        values.push(Param {
+            name: p.name,
+            ty: r,
+        });
+        values.extend(t.params[i + 1..].iter().map(|p| Param {
+            name: p.name,
+            ty: sub_walk(&p.ty, bindings),
+        }));
+        params = Some(values);
+        break;
+    }
+    let mut changed = args.is_some() || params.is_some();
     let result = t.result.as_ref().map(|r| {
         let s = sub_walk(r, bindings);
         changed |= !Rc::ptr_eq(&s, r);
@@ -777,11 +880,18 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
     if !changed {
         return t.clone();
     }
-    let mut r = (**t).clone();
-    r.args = args;
-    r.params = params;
-    r.result = result;
-    Rc::new(r)
+    Rc::new(Type {
+        name: t.name,
+        id: t.id,
+        kind: t.kind,
+        args: args.unwrap_or_else(|| t.args.clone()),
+        params: params.unwrap_or_else(|| t.params.clone()),
+        result,
+        def: t.def.clone(),
+        bounds: RefCell::new(t.bounds.borrow().clone()),
+        default: RefCell::new(t.default.borrow().clone()),
+        defaults: t.defaults.clone(),
+    })
 }
 
 /// `Sub` over an optional type.
@@ -792,10 +902,17 @@ pub fn sub_opt(t: &Option<Ty>, bindings: &Subst) -> Option<Ty> {
 /// Erases omission permissions and selects the ordinary required-argument form
 /// used by explicit function types and generic inference.
 pub fn required_type(t: &Ty) -> Ty {
+    if !type_any::<true>(t, |t| t.defaults.is_some()) {
+        return t.clone();
+    }
+    required_walk(t)
+}
+
+fn required_walk(t: &Ty) -> Ty {
     let mut changed = t.defaults.is_some();
     let mut args: Option<Vec<Ty>> = None;
     for (i, a) in t.args.iter().enumerate() {
-        let r = required_type(a);
+        let r = required_walk(a);
         if !Rc::ptr_eq(&r, a) && args.is_none() {
             args = Some(t.args.clone());
             changed = true;
@@ -806,7 +923,7 @@ pub fn required_type(t: &Ty) -> Ty {
     }
     let mut params: Option<Vec<Param>> = None;
     for (i, p) in t.params.iter().enumerate() {
-        let r = required_type(&p.ty);
+        let r = required_walk(&p.ty);
         if !Rc::ptr_eq(&r, &p.ty) && params.is_none() {
             params = Some(t.params.clone());
             changed = true;
@@ -815,7 +932,7 @@ pub fn required_type(t: &Ty) -> Ty {
             v[i].ty = r;
         }
     }
-    let result = t.result.as_ref().map(required_type);
+    let result = t.result.as_ref().map(required_walk);
     if let (Some(r), Some(o)) = (&result, &t.result)
         && !Rc::ptr_eq(r, o)
     {
@@ -872,36 +989,10 @@ pub fn fields(t: &Ty) -> Vec<Param> {
         .collect()
 }
 
-/// Whether the record field `name` of `t` is declared `ref`: it borrows its value.
-pub fn field_is_ref(t: &Ty, name: Name) -> bool {
-    t.def.as_ref().is_some_and(|d| d.field_is_ref(name))
-}
-
-/// Whether `t` is a borrowing value: a record with a `ref` field, or one holding such a value
-/// in a field, payload or type argument. It must not outlive what it borrows.
-pub fn borrows(t: &Ty) -> bool {
-    borrows_in(t, &mut Vec::new())
-}
-
-fn borrows_in(t: &Ty, seen: &mut Vec<Name>) -> bool {
-    if t.args.iter().any(|a| borrows_in(a, seen)) {
-        return true;
-    }
-    let Some(def) = &t.def else { return false };
-    if def.kind != Kind::Record && def.kind != Kind::Alternative {
-        return false;
-    }
-    if seen.contains(&t.id) {
-        return false;
-    }
-    seen.push(t.id);
-    let found = def.has_ref_field()
-        || fields(t).iter().any(|f| borrows_in(&f.ty, seen))
-        || cases(t)
-            .iter()
-            .any(|c| c.fields.iter().any(|f| borrows_in(&f.ty, seen)));
-    seen.pop();
-    found
+/// Whether the bound `b` makes a type parameter `Clonable`: `Data` and `Hashable` hold no
+/// resource, so their values can be copied, as `Hashable` implies `Equal`.
+pub fn implies_clonable(b: &Ty) -> bool {
+    b.is_std("Clonable") || b.is_std("Data") || b.is_std("Hashable")
 }
 
 /// One declared record field, freshly substituted with the receiver's type arguments.
@@ -1007,7 +1098,7 @@ pub fn constructor_signature(t: &Ty) -> Ty {
     let defaults = if defaults.is_empty() {
         None
     } else {
-        Some(Rc::new(defaults))
+        Some(Rc::new(ParameterDefaults::new(defaults)))
     };
     function_with(params, t.clone(), defaults)
 }
@@ -1151,20 +1242,75 @@ pub fn with_default_arguments(vars: &[Ty], args: &[Ty]) -> Vec<Ty> {
 
 /// Whether `t` mentions `<invalid>` anywhere.
 pub fn invalid_type(t: &Option<Ty>) -> bool {
-    match t {
-        None => false,
-        Some(t) => invalid_ty(t),
+    t.as_ref().is_some_and(invalid_ty)
+}
+
+/// Searches a type graph without allocating for ordinary small queries.
+/// `CALLABLES` selects whether parameter/result edges are part of the query.
+/// The predicate must remain stable for each node throughout the query.
+pub(crate) fn type_any<const CALLABLES: bool>(t: &Ty, matches: impl Fn(&Ty) -> bool) -> bool {
+    fn bounded<const CALLABLES: bool>(
+        t: &Ty,
+        matches: &impl Fn(&Ty) -> bool,
+        remaining: &mut u8,
+    ) -> Option<bool> {
+        if matches(t) {
+            return Some(true);
+        }
+        if t.args.is_empty() && (!CALLABLES || (t.params.is_empty() && t.result.is_none())) {
+            return Some(false);
+        }
+        *remaining = remaining.checked_sub(1)?;
+        for a in &t.args {
+            if bounded::<CALLABLES>(a, matches, remaining)? {
+                return Some(true);
+            }
+        }
+        if CALLABLES {
+            for p in &t.params {
+                if bounded::<CALLABLES>(&p.ty, matches, remaining)? {
+                    return Some(true);
+                }
+            }
+            if let Some(r) = &t.result {
+                return bounded::<CALLABLES>(r, matches, remaining);
+            }
+        }
+        Some(false)
     }
+    fn visit<const CALLABLES: bool>(
+        t: &Ty,
+        matches: &impl Fn(&Ty) -> bool,
+        seen: &mut HashSet<*const Type>,
+    ) -> bool {
+        if matches(t) {
+            return true;
+        }
+        if !seen.insert(Rc::as_ptr(t)) {
+            return false;
+        }
+        t.args.iter().any(|a| visit::<CALLABLES>(a, matches, seen))
+            || (CALLABLES
+                && (t
+                    .params
+                    .iter()
+                    .any(|p| visit::<CALLABLES>(&p.ty, matches, seen))
+                    || t.result
+                        .as_ref()
+                        .is_some_and(|r| visit::<CALLABLES>(r, matches, seen))))
+    }
+    if t.args.is_empty() && (!CALLABLES || (t.params.is_empty() && t.result.is_none())) {
+        return matches(t);
+    }
+    // Ordinary queries need only a stack counter. Retry a large query with
+    // deduplication after at most64 nonleaf expansions, independent of DAG size.
+    bounded::<CALLABLES>(t, &matches, &mut 64)
+        .unwrap_or_else(|| visit::<CALLABLES>(t, &matches, &mut HashSet::new()))
 }
 
 /// Whether `t` mentions `<invalid>` anywhere.
 pub fn invalid_ty(t: &Ty) -> bool {
-    if t.id == "<invalid>" {
-        return true;
-    }
-    t.args.iter().any(invalid_ty)
-        || t.params.iter().any(|p| invalid_ty(&p.ty))
-        || t.result.as_ref().is_some_and(invalid_ty)
+    type_any::<true>(t, |t| t.id == "<invalid>")
 }
 
 /// Whether the top-level id is `<invalid>`.
@@ -1174,14 +1320,7 @@ pub fn is_invalid_id(t: &Ty) -> bool {
 
 /// Whether `t` mentions a variable of `variables`.
 pub fn mentions_variable(t: &Ty, variables: &VarSet) -> bool {
-    if variables.contains(&t.id) {
-        return true;
-    }
-    t.args.iter().any(|a| mentions_variable(a, variables))
-        || t.params.iter().any(|p| mentions_variable(&p.ty, variables))
-        || t.result
-            .as_ref()
-            .is_some_and(|r| mentions_variable(r, variables))
+    type_any::<true>(t, |t| variables.contains(&t.id))
 }
 
 /// Names of params.

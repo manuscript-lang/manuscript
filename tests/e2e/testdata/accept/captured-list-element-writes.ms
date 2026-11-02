@@ -1,4 +1,4 @@
-import expect_contains, expect_equal, expect_fault from "@std/test.ms"
+import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
 fn each(n: Int, f: fn(Int) Unit) Unit:
     for i in 0..n:

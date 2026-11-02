@@ -2,15 +2,15 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/typed-alternative-lets-keep-semantics.ms
 import TextError from "@std/core.ms"
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"
 
 fn halve(n: Int) Int?:
     if n % 2 != 0:
         return none
 
-    return some(value: n / 2)
+    return (n / 2)
 
-fn parse(n: Int) Result[Int, TextError]:
+fn parse(n: Int) Int!TextError:
     if n < 0:
         return error(cause: TextError("negative"))
 
@@ -20,7 +20,7 @@ fn matched(n: Int) Int:
     let found = halve(n: n)
 
     match found:
-        some(v):
+        v:
             return v
         none:
             return 0 - 1
@@ -30,13 +30,13 @@ fn twice(n: Int) Int:
     var total = 0
 
     match found:
-        some(v):
+        v:
             total = total + v
         none:
             total = total + 100
 
     match found:
-        some(v):
+        v:
             total = total + v
         none:
             total = total + 1000
@@ -60,7 +60,7 @@ fn captured(n: Int) Int:
     let found = halve(n: n)
     let read = fn() Int:
         match found:
-            some(v):
+            v:
                 return v
             none:
                 return 0 - 1

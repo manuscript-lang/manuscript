@@ -1,6 +1,0 @@
-=== RUN   TestNonLSPNodeCapNegativeControl
-    non_lsp_perf_probe_test.go:56: uncapped independent roots: got 300 nodes, budget 200
---- FAIL: TestNonLSPNodeCapNegativeControl (0.00s)
-FAIL
-FAIL	github.com/manuscript-lang/manuscript/pkg/tooling	0.003s
-FAIL

@@ -1,7 +1,7 @@
 # conform: tags=lists,maps,mutation,records,tier-core
 # conform: phase=run
 # conform: origin=perf thread: in-place field updates and name-indexed element updates
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 type Reader:
     entries: List[Map[String, Int]]

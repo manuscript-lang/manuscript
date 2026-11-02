@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,formatter,interpolation,lists,modules,mutation,numbers,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/inlined-list-callbacks-keep-semantics.ms
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"
 
 type Point:
     x: Int
@@ -39,10 +39,10 @@ test "inlined callbacks":
         )
     )
     try expect_true((items.count(predicate: fn(v: Int) Bool: v > 1) == 3))
-    try expect_true((items.some(predicate: fn(v: Int) Bool: v == 4)))
-    try expect_true((not items.some(predicate: fn(v: Int) Bool: v == 9)))
-    try expect_true((items.every(predicate: fn(v: Int) Bool: v < 5)))
-    try expect_true((not items.every(predicate: fn(v: Int) Bool: v < 4)))
+    try expect_true((items.any(predicate: fn(v: Int) Bool: v == 4)))
+    try expect_true((not items.any(predicate: fn(v: Int) Bool: v == 9)))
+    try expect_true((items.all(predicate: fn(v: Int) Bool: v < 5)))
+    try expect_true((not items.all(predicate: fn(v: Int) Bool: v < 4)))
 
     # Closures cannot mutate captures, so iterate a clone while growing the original.
     var seen = List[Int]()

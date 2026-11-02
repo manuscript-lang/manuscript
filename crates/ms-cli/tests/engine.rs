@@ -3,8 +3,11 @@
 //! tests supply the MIR the lowering would produce.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
+mod common;
+
+use common::scratch;
 use ms_rt as _;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 use ms_build::{Lower, Module, Native};
@@ -22,13 +25,6 @@ impl Lower for Fixed {
 
 const EXIT_SEVEN: &str =
     "module \"t\"\nentry @main\nfn @main() -> int {\nb0:\n  %c: int = iconst 7\n  ret %c\n}\n";
-
-fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("ms-engine-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
-}
 
 fn ms<L: Lower>(backend: &Engine<L>, args: &[&str]) -> (i32, String, String) {
     let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
@@ -148,6 +144,13 @@ fn build_fails_when_its_metadata_cannot_be_written() {
         assert!(stderr.contains("cannot write build metadata"), "{stderr}");
         assert!(stderr.contains(".ms-build.json"), "{stderr}");
         assert!(metadata.is_dir());
+        assert!(std::fs::read_dir(&dir).unwrap().all(|entry| {
+            !entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".ms-metadata-")
+        }));
         if structured {
             let document = ms_json::parse(&stdout).unwrap();
             assert_eq!(document.get("completed").unwrap().as_bool(), Some(false));
@@ -168,6 +171,68 @@ fn build_fails_when_its_metadata_cannot_be_written() {
         } else {
             assert!(stdout.is_empty(), "{stdout}");
         }
+    }
+}
+
+fn metadata_link_preserves_source(
+    cached: bool,
+    kind: &str,
+    link: impl Fn(&Path, &Path) -> std::io::Result<()>,
+) {
+    struct Counted(std::cell::Cell<usize>);
+    impl Lower for Counted {
+        fn lower(&self, program: &ms_check::Program, entry: &str) -> Result<Module, String> {
+            self.0.set(self.0.get() + 1);
+            Fixed(EXIT_SEVEN).lower(program, entry)
+        }
+    }
+    let dir = scratch(&format!("metadata-{kind}-{cached}"));
+    let source = write(&dir, "main.ms", MAIN);
+    let output = dir.join("program");
+    let metadata = dir.join("program.ms-build.json");
+    let backend = Engine::new(Counted(std::cell::Cell::new(0)));
+    let build = || {
+        ms(
+            &backend,
+            &["build", &source, "-o", output.to_str().unwrap(), "--json"],
+        )
+    };
+    if cached {
+        let (status, stdout, stderr) = build();
+        assert_eq!(status, 0, "{stdout}{stderr}");
+        std::fs::remove_file(&metadata).unwrap();
+    }
+    link(Path::new(&source), &metadata).unwrap();
+    let (status, stdout, stderr) = build();
+    assert_eq!(status, 0, "{stdout}{stderr}");
+    assert_eq!(std::fs::read_to_string(&source).unwrap(), MAIN);
+    assert_eq!(backend.lowering.0.get(), 1, "warm build must use its cache");
+    let document = ms_json::parse(std::fs::read_to_string(&metadata).unwrap()).unwrap();
+    assert_eq!(document.get("format").unwrap().as_i64(), Some(1));
+    assert_eq!(Command::new(&output).status().unwrap().code(), Some(7));
+    assert_eq!(
+        ms_json::parse(&stdout)
+            .unwrap()
+            .get("completed")
+            .unwrap()
+            .as_bool(),
+        Some(true)
+    );
+}
+
+#[test]
+fn build_metadata_replaces_hard_links_without_changing_their_targets() {
+    for cached in [false, true] {
+        metadata_link_preserves_source(cached, "hard-link", |from, to| {
+            std::fs::hard_link(from, to)
+        });
+    }
+}
+
+#[test]
+fn build_metadata_replaces_symlinks_without_changing_their_targets() {
+    for cached in [false, true] {
+        metadata_link_preserves_source(cached, "symlink", common::symlink_file);
     }
 }
 
@@ -651,7 +716,9 @@ fn native_http_handlers_sleep_without_blocking_other_requests() {
     child.kill().unwrap();
     child.wait().unwrap();
     assert!(quick.starts_with("HTTP/1.1 200"), "{quick}");
-    assert!(quick_took < Duration::from_millis(300), "{quick_took:?}");
+    // A blocked scheduler serves the quick request only after all four 500 ms commands (about
+    // 1.9 s); the bound leaves headroom for slow process spawn on loaded Windows runners.
+    assert!(quick_took < Duration::from_millis(450), "{quick_took:?}");
     assert!(total < Duration::from_millis(1500), "{total:?}");
 }
 
@@ -708,7 +775,9 @@ fn native_http_handlers_run_commands_without_blocking_other_requests() {
     child.kill().unwrap();
     child.wait().unwrap();
     assert!(quick.starts_with("HTTP/1.1 200"), "{quick}");
-    assert!(quick_took < Duration::from_millis(300), "{quick_took:?}");
+    // A blocked scheduler serves the quick request only after all four 500 ms commands (about
+    // 1.9 s); the bound leaves headroom for slow process spawn on loaded Windows runners.
+    assert!(quick_took < Duration::from_millis(450), "{quick_took:?}");
     assert!(total < Duration::from_millis(1500), "{total:?}");
 }
 
@@ -877,4 +946,229 @@ fn bench_without_bench_blocks_reports_none() {
     assert_eq!(status, 0, "{err}");
     assert!(stdout.contains("no bench blocks found"), "{stdout}");
     assert!(!err.contains("bench driver"), "{err}");
+}
+
+/// A single-file build takes its aliases from the enclosing `ms.toml`, so editing the manifest
+/// invalidates the cached build.
+#[test]
+fn cached_file_build_notices_enclosing_manifest_changes() {
+    let dir = scratch("cache-manifest");
+    for lib in ["lib", "lib2"] {
+        std::fs::create_dir_all(dir.join("src").join(lib)).unwrap();
+    }
+    write(
+        &dir.join("src/lib"),
+        "m.ms",
+        "export fn code() Int:\n    return 3\n",
+    );
+    write(
+        &dir.join("src/lib2"),
+        "m.ms",
+        "export fn code() Int:\n    return 4\n",
+    );
+    let manifest = |alias: &str| {
+        format!(
+            "[project]\nname = \"p\"\nsource = \"src\"\n\n[aliases]\n\"@lib\" = \"src/{alias}\"\n"
+        )
+    };
+    write(&dir, "ms.toml", &manifest("lib"));
+    std::fs::create_dir_all(dir.join("bin")).unwrap();
+    let entry = write(
+        &dir.join("bin"),
+        "a.ms",
+        "import code from \"@lib/m.ms\"\nexport fn main() Int:\n    return code()\n",
+    );
+    let output = dir.join("a.out");
+    let backend = Engine::new(Native);
+    let build = || {
+        let (status, _, err) = ms(&backend, &["build", &entry, "-o", output.to_str().unwrap()]);
+        assert_eq!((status, err.as_str()), (0, ""));
+        Command::new(&output).status().unwrap().code()
+    };
+    assert_eq!(build(), Some(3));
+    assert_eq!(build(), Some(3));
+    write(&dir, "ms.toml", &manifest("lib2"));
+    assert_eq!(build(), Some(4));
+}
+
+#[test]
+fn cached_file_build_notices_new_ancestor_and_nearer_manifests() {
+    let dir = scratch("cache-new-manifest");
+    let src = dir.join("src");
+    std::fs::create_dir(&src).unwrap();
+    let source = write(&src, "main.ms", MAIN);
+    let output = dir.join("program");
+    let metadata = dir.join("program.ms-build.json");
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let build = || {
+        ms(
+            &backend,
+            &[
+                "build",
+                &source,
+                "-o",
+                output.to_str().unwrap(),
+                "--build-type",
+                "Debug",
+                "--json",
+            ],
+        )
+    };
+    let (status, stdout, stderr) = build();
+    assert_eq!(status, 0, "{stdout}{stderr}");
+    let snapshot = || {
+        (
+            std::fs::read(&output).unwrap(),
+            std::fs::read(&metadata).unwrap(),
+        )
+    };
+    for manifest in [dir.join("ms.toml"), src.join("ms.toml")] {
+        // The previous rebuild relinked the program, and the linker stamps the time into it.
+        let previous = snapshot();
+        std::fs::write(&manifest, "[project\n").unwrap();
+        let (status, stdout, stderr) = build();
+        assert_eq!(status, 1, "{stdout}{stderr}");
+        let document = ms_json::parse(stdout).unwrap();
+        assert_eq!(
+            document.get("reason").unwrap().as_str(),
+            Some("compile_error")
+        );
+        assert_eq!(snapshot(), previous);
+        std::fs::write(&manifest, "[project]\nname = \"p\"\nsource = \".\"\n").unwrap();
+        let (status, stdout, stderr) = build();
+        assert_eq!(status, 0, "{stdout}{stderr}");
+    }
+    std::fs::remove_file(src.join("ms.toml")).unwrap();
+    let (status, stdout, stderr) = build();
+    assert_eq!(status, 0, "{stdout}{stderr}");
+    assert_eq!(Command::new(output).status().unwrap().code(), Some(7));
+}
+
+#[test]
+fn cached_file_build_searches_manifests_through_directory_symlinks() {
+    let dir = scratch("cache-symlink-manifest");
+    let physical = dir.join("physical");
+    let src = physical.join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    write(&src, "main.ms", MAIN);
+    let alias = dir.join("alias");
+    common::symlink_dir(&src, &alias).unwrap();
+    let source = alias.join("main.ms");
+    let output = dir.join("program");
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let build = || {
+        ms(
+            &backend,
+            &[
+                "build",
+                source.to_str().unwrap(),
+                "-o",
+                output.to_str().unwrap(),
+                "--build-type",
+                "Debug",
+            ],
+        )
+    };
+    let (status, stdout, stderr) = build();
+    assert_eq!(status, 0, "{stdout}{stderr}");
+    std::fs::write(physical.join("ms.toml"), "[project\n").unwrap();
+    let (status, stdout, stderr) = build();
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert_eq!(Command::new(output).status().unwrap().code(), Some(7));
+}
+
+#[test]
+fn cached_file_build_skips_manifest_directories_without_disabling_cache() {
+    struct Counted(std::cell::Cell<usize>);
+    impl Lower for Counted {
+        fn lower(&self, program: &ms_check::Program, entry: &str) -> Result<Module, String> {
+            self.0.set(self.0.get() + 1);
+            Fixed(EXIT_SEVEN).lower(program, entry)
+        }
+    }
+    for parent_manifest in [false, true] {
+        let dir = scratch(&format!("cache-manifest-directory-{parent_manifest}"));
+        let src = dir.join("src");
+        std::fs::create_dir_all(src.join("ms.toml")).unwrap();
+        if parent_manifest {
+            write(&dir, "ms.toml", "[project]\nname = \"p\"\nsource = \".\"\n");
+        }
+        let source = write(&src, "main.ms", MAIN);
+        let output = dir.join("program");
+        let backend = Engine::new(Counted(std::cell::Cell::new(0)));
+        for _ in 0..2 {
+            let (status, stdout, stderr) = ms(
+                &backend,
+                &[
+                    "build",
+                    &source,
+                    "-o",
+                    output.to_str().unwrap(),
+                    "--build-type",
+                    "Debug",
+                ],
+            );
+            assert_eq!(status, 0, "{stdout}{stderr}");
+        }
+        assert_eq!(
+            backend.lowering.0.get(),
+            1,
+            "second build must hit the cache"
+        );
+    }
+}
+
+fn entry_symlink_build(project: bool) {
+    let dir = scratch(&format!("cache-entry-symlink-{project}"));
+    let first = write(&dir, "first.ms", MAIN);
+    let second = write(
+        &dir,
+        "second.ms",
+        include_str!("engine/cache-entry-target.ms"),
+    );
+    let entry = dir.join("main.ms");
+    common::symlink_file(Path::new(&first), &entry).unwrap();
+    let input = if project {
+        write(
+            &dir,
+            "ms.toml",
+            "[project]\nname = \"p\"\nsource = \".\"\nentry = \"main.ms\"\n",
+        );
+        dir.join("ms.toml")
+    } else {
+        entry.clone()
+    };
+    let output = dir.join("program");
+    let backend = Engine::new(Native);
+    let build = || {
+        let (status, stdout, stderr) = ms(
+            &backend,
+            &[
+                "build",
+                input.to_str().unwrap(),
+                "-o",
+                output.to_str().unwrap(),
+                "--build-type",
+                "Debug",
+            ],
+        );
+        assert_eq!(status, 0, "{stdout}{stderr}");
+        Command::new(&output).status().unwrap().code()
+    };
+    assert_eq!(build(), Some(0));
+    assert_eq!(build(), Some(0));
+    std::fs::remove_file(&entry).unwrap();
+    common::symlink_file(Path::new(&second), &entry).unwrap();
+    assert_eq!(build(), Some(8));
+    assert_eq!(build(), Some(8));
+}
+
+#[test]
+fn cached_file_build_notices_entry_symlink_retargeting() {
+    entry_symlink_build(false);
+}
+
+#[test]
+fn cached_project_build_notices_entry_symlink_retargeting() {
+    entry_symlink_build(true);
 }

@@ -5,13 +5,13 @@ weight = 2
 
 # Process groups
 
-A `ProcessGroup[T, In, Out]` runs functions of your program in child processes and owns them until its scope ends. Import it from `@std/processes.ms`. It has the same shape as a [task group](task-groups.md): `spawn(entry)` gives the child its end of a two-way channel, a `Channel[Out, In]`, and the `Process[T, In, Out]` it returns holds the parent's end in its `channel` field. Use a process when the work should run on another core or must not take the parent down when it faults.
+A `ProcessGroup[T, In, Out]` runs functions of your program in child processes and owns them until its scope ends. Import it from `@std/os/processes.ms`. It has the same shape as a [task group](task-groups.md): `spawn(entry)` gives the child its end of a two-way channel, a `Channel[Out, In]`, and the `Process[T, In, Out]` it returns holds the parent's end in its `channel` field. Use a process when the work should run on another core or must not take the parent down when it faults.
 
 <!-- manuscript-example: test -->
 ```manuscript
-import Channel, ChannelError from "@std/channels.ms"
-import ProcessGroup from "@std/processes.ms"
-import expect_equal, expect_ok from "@std/test.ms"
+import Channel, ChannelError from "@std/io/channels.ms"
+import ProcessGroup from "@std/os/processes.ms"
+import expect_equal, expect_ok from "@std/test/test.ms"
 
 fn square_all(ch: Channel[Int, Int]) Result[Int, ChannelError]:
     var c = ch
@@ -28,7 +28,7 @@ test "a child process answers messages on its channel":
     let group = ProcessGroup[Result[Int, ChannelError], Int, Int]()
     var child = group.spawn(square_all) | try expect_ok
     child.channel.send(3) | try expect_ok
-    child.channel.receive() | try expect_ok | try expect_equal(some(9))
+    child.channel.receive() | try expect_ok | try expect_equal(9)
     child.channel.close()
     child.result() | try expect_ok | try expect_ok | try expect_equal(1)
 ```

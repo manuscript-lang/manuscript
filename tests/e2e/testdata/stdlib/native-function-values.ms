@@ -1,11 +1,11 @@
-import expect_equal, expect_true from "@std/test.ms"
-import parse from "@std/html.ms"
+import expect_equal, expect_true from "@std/test/test.ms"
+import parse from "@std/data/html.ms"
 import sha256, sha512 from "@std/crypto.ms"
-import entropy, secure_int, uuid_v4, shuffle, choice, float from "@std/random.ms"
-import map_from_entries from "@std/collections.ms"
-import stdout, stderr from "@std/io.ms"
-import clock, wall_clock from "@std/time.ms"
-import max from "@std/math.ms"
+import secure_int, uuid_v4, shuffle, choice, float from "@std/os/random.ms"
+import map_from_entries from "@std/collections/collections.ms"
+import stdout, stderr from "@std/io/io.ms"
+import monotonic, now from "@std/os/time.ms"
+import max from "@std/math/math.ms"
 import Bytes from "@std/bytes.ms"
 
 test "stdlib natives bound to a name behave like the call":
@@ -23,29 +23,28 @@ test "stdlib natives bound to a name behave like the call":
     let biggest = max[Int]
     try expect_equal(biggest(1, 3), 3)
 
-test "random natives bound to a name draw from the entropy":
-    let source = entropy()
+test "random natives bound to a name draw from the operating system":
     let int_in = secure_int
     let id = uuid_v4
     let mix = shuffle[Int]
     let pick = choice[Int]
     let draw = float
-    let n = int_in(source, 5, 6).get()
+    let n = int_in(5, 6).get()
     try expect_equal(n, 5)
-    try expect_equal(id(source).get().length(), 36)
-    try expect_equal(mix(source, [1, 2, 3]).get().length(), 3)
-    try expect_true(pick(source, [7]).get().is_some())
-    try expect_true(draw(source).get() < 1.0)
+    try expect_equal(id().get().length(), 36)
+    try expect_equal(mix([1, 2, 3]).get().length(), 3)
+    try expect_true(pick([7]).get().is_some())
+    try expect_true(draw().get() < 1.0)
 
 test "handle natives bound to a name are usable":
     let out = stdout
     let err = stderr
-    let wall = wall_clock
-    let mono = clock
+    let wall = now
+    let mono = monotonic
     try expect_true(out().flush().is_ok())
     try expect_true(err().flush().is_ok())
-    try expect_true(wall().now().unix_seconds() > 0)
+    try expect_true(wall().unix_seconds() > 0)
 
-    let first = mono().now()
-    let second = mono().now()
+    let first = mono()
+    let second = mono()
     try expect_true(second.difference(first).to_nanoseconds() >= 0)

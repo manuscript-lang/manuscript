@@ -1,7 +1,19 @@
 import Data from "@std/core.ms"
+import (
+    msrt_bytes_join,
+    msrt_bytes_values,
+    msrt_bytes_read_word,
+    msrt_float_from_bits,
+    msrt_float_to_bits,
+    msrt_float32_from_bits,
+    msrt_float32_to_bits,
+    msrt_bits_bit_and,
+    msrt_bits_shift_right
+) from "@std/internal/bytes.ms"
+import msrt_bits_bit_or, msrt_bits_shift_left from "@std/internal/math.ms"
 
 # An immutable sequence of bytes. Indices and slice bounds are zero-based.
-export type Bytes: ...
+export extern type Bytes
 
 impl Data for Bytes:
 
@@ -21,7 +33,7 @@ impl Bytes:
     # Selects [start, end) in bytes; negative bounds are relative to the end.
     # Bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
     # The immutable result may share storage with the receiver.
-    fn slice(start: Int, end: Int) Result[Bytes, CollectionError]: ...
+    fn slice(start: Int, end: Int) Bytes!CollectionError: ...
 
     # Returns an unsigned byte; negative indexes are relative to the end. An out-of-range index returns `default`, and without one raises a fault.
     fn get(index: Int, default: UInt8?) UInt8: ...
@@ -69,13 +81,15 @@ impl Bytes:
     fn decode_utf8_range(start: Int, end: Int) String?: ...
 
 # Returns the parts end to end as one new Bytes; an empty list gives empty bytes. One allocation and one copy of each part, unlike repeated concat.
-export fn join(parts: List[Bytes]) Bytes: ...
+export fn join(parts: List[Bytes]) Bytes:
+    return msrt_bytes_join(parts)
 
 # Returns a fresh mutable list of bytes, like data.values().
-export fn values(data: Bytes) List[UInt8]: ...
+export fn values(data: Bytes) List[UInt8]:
+    return msrt_bytes_values(data)
 
 # Builds a byte sequence efficiently before freezing it into an immutable value.
-export type BytesBuilder: ...
+export extern type BytesBuilder
 
 impl BytesBuilder:
     # Appends one byte to the end of the builder.
@@ -99,27 +113,30 @@ impl Error for BinaryError:
     # Returns a binary-prefixed diagnostic without echoing source bytes or numeric input.
     fn message() String: ...
 
-# Fixed-width number codecs for Bytes and BytesBuilder, written in Manuscript over one word reader and four float bit casts.
-# They apply wherever Bytes and BytesBuilder are used, without an import.
-# The `width` bytes at `at` (1, 2, 4 or 8) as an unsigned number; eight bytes keep their bit pattern as an Int.
-extern fn msrt_bytes_read_word(
-    data: Bytes,
-    at: Int,
-    width: Int,
-    little: Bool
-) Result[Int, BinaryError]
+# A decoded variable-length integer and the absolute offset of the next byte.
+# Example: `let first = try data.uvarint(0); let second = try data.varint(first.next_offset)`.
+export type VarintRead[T]:
+    # The integer decoded as unsigned base-128 or signed zigzag by the read method.
+    value: T
+    # The first byte after the encoding, relative to the receiver, including for a slice.
+    next_offset: Int
 
-extern fn msrt_float_from_bits(bits: Int) Float
+# A variable-length integer could not be read. Example: `data.uvarint(0).err()`.
+export type VarintError:
+    # The offset is negative or past length(); length() itself is valid but incomplete.
+    case InvalidOffset
+    # The input ends before a terminating byte, with fewer than ten bytes available.
+    case Incomplete
+    # The encoding cannot fit in 64 bits, including a continuation bit in byte ten.
+    case Overflow
 
-extern fn msrt_float_to_bits(value: Float) Int
-
-extern fn msrt_float32_from_bits(bits: Int) Float
-
-extern fn msrt_float32_to_bits(value: Float) Int
-
-extern fn msrt_bits_bit_and(left: Int, right: Int) Int
-
-extern fn msrt_bits_shift_right(value: Int, count: Int) Int
+impl Error for VarintError:
+    # Returns a diagnostic without including input bytes.
+    fn message() String:
+        match self:
+            InvalidOffset: return "binary: invalid varint offset"
+            Incomplete: return "binary: incomplete varint"
+            Overflow: return "binary: varint overflows 64 bits"
 
 # Appends the low `width` bytes of `value` in the requested byte order.
 fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Unit:
@@ -140,102 +157,186 @@ fn signed(raw: Int, half: Int) Int:
 
     return raw
 
+# Converts a 64-bit word without narrowing its unsigned upper half.
+fn unsigned_word(raw: Int) UInt64:
+    if raw >= 0:
+        return raw.to_uint64().get(0)
+
+    return (raw + 9223372036854775807 + 1).to_uint64().get(0) + 9223372036854775808
+
+# Reads two unsigned halves so the top bit never passes through a signed conversion.
+fn read_uint64(data: Bytes, at: Int, little: Bool) UInt64!BinaryError:
+    if at < 0 or at > data.length() - 8:
+        return error(BinaryError.OutOfRange)
+
+    let first = try msrt_bytes_read_word(data, at, 4, little)
+    let second = try msrt_bytes_read_word(data, at + 4, 4, little)
+    if little:
+        return ok(second.to_uint64().get(0) * 4294967296 + first.to_uint64().get(0))
+
+    return ok(first.to_uint64().get(0) * 4294967296 + second.to_uint64().get(0))
+
+fn put_uint64(var out: BytesBuilder, value: UInt64, little: Bool) Unit:
+    let high = (value / 4294967296).to_int().get(0)
+    let low = (value % 4294967296).to_int().get(0)
+
+    if little:
+        put_word(var out, low, 4, true)
+        put_word(var out, high, 4, true)
+        return unit
+
+    put_word(var out, high, 4, false)
+    put_word(var out, low, 4, false)
+
 interface BytesCodecs:
-    fn int8(at: Int) Result[Int8, BinaryError]
-    fn uint8(at: Int) Result[UInt8, BinaryError]
-    fn int16_le(at: Int) Result[Int16, BinaryError]
-    fn uint16_le(at: Int) Result[UInt16, BinaryError]
-    fn int16_be(at: Int) Result[Int16, BinaryError]
-    fn uint16_be(at: Int) Result[UInt16, BinaryError]
-    fn int32_le(at: Int) Result[Int32, BinaryError]
-    fn uint32_le(at: Int) Result[UInt32, BinaryError]
-    fn int32_be(at: Int) Result[Int32, BinaryError]
-    fn uint32_be(at: Int) Result[UInt32, BinaryError]
-    fn int64_le(at: Int) Result[Int, BinaryError]
-    fn int64_be(at: Int) Result[Int, BinaryError]
-    fn float32_le(at: Int) Result[Float32, BinaryError]
-    fn float32_be(at: Int) Result[Float32, BinaryError]
-    fn float64_le(at: Int) Result[Float, BinaryError]
-    fn float64_be(at: Int) Result[Float, BinaryError]
+    fn int8(at: Int) Int8!BinaryError
+    fn uint8(at: Int) UInt8!BinaryError
+    fn int16_le(at: Int) Int16!BinaryError
+    fn uint16_le(at: Int) UInt16!BinaryError
+    fn int16_be(at: Int) Int16!BinaryError
+    fn uint16_be(at: Int) UInt16!BinaryError
+    fn int32_le(at: Int) Int32!BinaryError
+    fn uint32_le(at: Int) UInt32!BinaryError
+    fn int32_be(at: Int) Int32!BinaryError
+    fn uint32_be(at: Int) UInt32!BinaryError
+    fn int64_le(at: Int) Int!BinaryError
+    fn int64_be(at: Int) Int!BinaryError
+    fn uint64_le(at: Int) UInt64!BinaryError
+    fn uint64_be(at: Int) UInt64!BinaryError
+    fn uvarint(at: Int) VarintRead[UInt64]!VarintError
+    fn varint(at: Int) VarintRead[Int]!VarintError
+    fn float32_le(at: Int) Float32!BinaryError
+    fn float32_be(at: Int) Float32!BinaryError
+    fn float64_le(at: Int) Float!BinaryError
+    fn float64_be(at: Int) Float!BinaryError
 
 impl BytesCodecs for Bytes:
     # Reads one signed byte at `at`; a missing byte returns BinaryError.OutOfRange. Offsets are absolute, so a negative `at` is out of range.
-    fn int8(at: Int) Result[Int8, BinaryError]:
+    fn int8(at: Int) Int8!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 1, true)
         return ok(signed(raw, 128).to_int8().get(0))
 
     # Reads one unsigned byte at `at`.
-    fn uint8(at: Int) Result[UInt8, BinaryError]:
+    fn uint8(at: Int) UInt8!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 1, true)
         return ok(raw.to_uint8().get(0))
 
     # Reads a signed 16-bit little-endian integer from two bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn int16_le(at: Int) Result[Int16, BinaryError]:
+    fn int16_le(at: Int) Int16!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 2, true)
         return ok(signed(raw, 32768).to_int16().get(0))
 
     # Reads an unsigned 16-bit little-endian integer from two bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn uint16_le(at: Int) Result[UInt16, BinaryError]:
+    fn uint16_le(at: Int) UInt16!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 2, true)
         return ok(raw.to_uint16().get(0))
 
     # Reads a signed 16-bit big-endian integer from two bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn int16_be(at: Int) Result[Int16, BinaryError]:
+    fn int16_be(at: Int) Int16!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 2, false)
         return ok(signed(raw, 32768).to_int16().get(0))
 
     # Reads an unsigned 16-bit big-endian integer from two bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn uint16_be(at: Int) Result[UInt16, BinaryError]:
+    fn uint16_be(at: Int) UInt16!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 2, false)
         return ok(raw.to_uint16().get(0))
 
     # Reads a signed 32-bit little-endian integer from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn int32_le(at: Int) Result[Int32, BinaryError]:
+    fn int32_le(at: Int) Int32!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 4, true)
         return ok(signed(raw, 2147483648).to_int32().get(0))
 
     # Reads an unsigned 32-bit little-endian integer from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn uint32_le(at: Int) Result[UInt32, BinaryError]:
+    fn uint32_le(at: Int) UInt32!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 4, true)
         return ok(raw.to_uint32().get(0))
 
     # Reads a signed 32-bit big-endian integer from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn int32_be(at: Int) Result[Int32, BinaryError]:
+    fn int32_be(at: Int) Int32!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 4, false)
         return ok(signed(raw, 2147483648).to_int32().get(0))
 
     # Reads an unsigned 32-bit big-endian integer from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn uint32_be(at: Int) Result[UInt32, BinaryError]:
+    fn uint32_be(at: Int) UInt32!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 4, false)
         return ok(raw.to_uint32().get(0))
 
     # Reads a signed 64-bit little-endian integer from eight bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn int64_le(at: Int) Result[Int, BinaryError]:
+    fn int64_le(at: Int) Int!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 8, true)
         return ok(raw)
 
     # Reads a signed 64-bit big-endian integer from eight bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn int64_be(at: Int) Result[Int, BinaryError]:
+    fn int64_be(at: Int) Int!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 8, false)
         return ok(raw)
 
+    # Reads an unsigned 64-bit little-endian integer from eight bytes at `at`, including the full UInt64 range.
+    # Negative offsets or missing bytes return BinaryError.OutOfRange.
+    fn uint64_le(at: Int) UInt64!BinaryError:
+        return read_uint64(self, at, true)
+
+    # Reads an unsigned 64-bit big-endian integer from eight bytes at `at`, including the full UInt64 range.
+    # Negative offsets or missing bytes return BinaryError.OutOfRange.
+    fn uint64_be(at: Int) UInt64!BinaryError:
+        return read_uint64(self, at, false)
+
+    # Reads an unsigned base-128 integer, least-significant group first, from absolute byte offset `at`.
+    # Reads at most ten bytes; byte ten must be 0 or 1. Accepts nonminimal encodings and ignores trailing bytes.
+    # Offsets require 0 <= at <= length(); an unterminated shorter input is Incomplete.
+    fn uvarint(at: Int) VarintRead[UInt64]!VarintError:
+        if at < 0 or at > self.length():
+            return error(VarintError.InvalidOffset)
+
+        let remaining = self.length() - at
+        var word = 0
+
+        for i in 0..10:
+            if i >= remaining:
+                return error(VarintError.Incomplete)
+
+            let byte = self.get(at + i).to_int()
+            if i == 9 and byte > 1:
+                return error(VarintError.Overflow)
+
+            word = msrt_bits_bit_or(
+                word,
+                msrt_bits_shift_left(
+                    msrt_bits_bit_and(byte, 127), i * 7
+                )
+            )
+            if byte < 128:
+                return ok(VarintRead(unsigned_word(word), at + i + 1))
+
+        return error(VarintError.Overflow)
+
+    # Reads a signed 64-bit zigzag integer (0, -1, 1, -2 become 0, 1, 2, 3).
+    # Shares uvarint's offsets, ten-byte bound, nonminimal acceptance, and error cases.
+    fn varint(at: Int) VarintRead[Int]!VarintError:
+        let raw = try self.uvarint(at)
+        let half = (raw.value / 2).to_int().get(0)
+        if raw.value % 2 == 1:
+            return ok(VarintRead(-half - 1, raw.next_offset))
+
+        return ok(VarintRead(half, raw.next_offset))
+
     # Reads an IEEE 754 binary32 little-endian float from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn float32_le(at: Int) Result[Float32, BinaryError]:
+    fn float32_le(at: Int) Float32!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 4, true)
         return ok(msrt_float32_from_bits(raw).to_float32().get(0.0))
 
     # Reads an IEEE 754 binary32 big-endian float from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn float32_be(at: Int) Result[Float32, BinaryError]:
+    fn float32_be(at: Int) Float32!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 4, false)
         return ok(msrt_float32_from_bits(raw).to_float32().get(0.0))
 
     # Reads an IEEE 754 binary64 little-endian float from eight bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn float64_le(at: Int) Result[Float, BinaryError]:
+    fn float64_le(at: Int) Float!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 8, true)
         return ok(msrt_float_from_bits(raw))
 
     # Reads an IEEE 754 binary64 big-endian float from eight bytes at `at`; missing bytes return BinaryError.OutOfRange.
-    fn float64_be(at: Int) Result[Float, BinaryError]:
+    fn float64_be(at: Int) Float!BinaryError:
         let raw = try msrt_bytes_read_word(self, at, 8, false)
         return ok(msrt_float_from_bits(raw))
 
@@ -251,6 +352,10 @@ interface BytesBuilderCodecs:
     var fn append_uint32_be(value: UInt32) Unit
     var fn append_int64_le(value: Int) Unit
     var fn append_int64_be(value: Int) Unit
+    var fn append_uint64_le(value: UInt64) Unit
+    var fn append_uint64_be(value: UInt64) Unit
+    var fn append_uvarint(value: UInt64) Unit
+    var fn append_varint(value: Int) Unit
     var fn append_float32_le(value: Float32) Unit
     var fn append_float32_be(value: Float32) Unit
     var fn append_float64_le(value: Float) Unit
@@ -300,6 +405,32 @@ impl BytesBuilderCodecs for BytesBuilder:
     # Appends a signed 64-bit big-endian integer.
     var fn append_int64_be(value: Int) Unit:
         put_word(var self, value, 8, false)
+
+    # Appends an unsigned 64-bit little-endian integer, including the full UInt64 range.
+    var fn append_uint64_le(value: UInt64) Unit:
+        put_uint64(var self, value, true)
+
+    # Appends an unsigned 64-bit big-endian integer, including the full UInt64 range.
+    var fn append_uint64_be(value: UInt64) Unit:
+        put_uint64(var self, value, false)
+
+    # Appends the shortest unsigned base-128 encoding, from one through ten bytes.
+    var fn append_uvarint(value: UInt64) Unit:
+        var remaining = value
+
+        while remaining >= 128:
+            self.append((remaining % 128).to_uint8().get(0) + 128)
+            remaining /= 128
+
+        self.append(remaining.to_uint8().get(0))
+
+    # Appends the shortest signed 64-bit zigzag encoding; even the most negative Int fits in ten bytes.
+    var fn append_varint(value: Int) Unit:
+        if value < 0:
+            self.append_uvarint((-(value + 1)).to_uint64().get(0) * 2 + 1)
+            return unit
+
+        self.append_uvarint(value.to_uint64().get(0) * 2)
 
     # Appends an IEEE 754 binary32 little-endian float.
     var fn append_float32_le(value: Float32) Unit:

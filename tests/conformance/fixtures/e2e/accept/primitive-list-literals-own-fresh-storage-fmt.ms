@@ -1,7 +1,7 @@
 # conform: tags=faults,formatter,lists,modules,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/primitive-list-literals-own-fresh-storage.ms
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"
 
 fn fresh() List[Int]:
     return [1, 2, 3]

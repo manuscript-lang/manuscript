@@ -402,13 +402,6 @@ pub const KINDS: &[Kind] = &[
     ),
     kind!(
         "MS3000",
-        "MS3000.3",
-        "returns part of a parameter",
-        "Result borrows a parameter",
-        "write `ref` before the result type, or return an owned copy"
-    ),
-    kind!(
-        "MS3000",
         "MS3000.4",
         "shadows an outer binding",
         "Shadowed binding",

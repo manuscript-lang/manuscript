@@ -1,0 +1,31 @@
+{
+  "baseline_commit": "83826bb7ecedb032a36c6b60719f04bbac135e2b",
+  "candidate_commit": "dfe33861ebeefeee851ce43cd722f5a803b91914",
+  "candidate_status": "rejected; unapplied patch only",
+  "restoration_checkpoint": "ab786bc8da85e8421d789eb27ab09ab7da28d53c",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13); cargo 1.99.1 (5f94df478 2026-08-27)",
+  "compiler_sha256": "50371c0c5d43dc64e1bcce681e3a58ce344c6bec3be857c408a4b4483e561c15",
+  "baseline_archive_sha256": "4294047dc447c4d4b391b35212bb38b217eeba0e94aa616ee40d1793749df1e2",
+  "candidate_archive_sha256": "c326ea1b1f6d56db4690f58b1004e439c9c056e74dde921e169b41295b4fcb74",
+  "retained_file_sha256": {
+    "README.md": "1a2fe28213aba53e393106f2932c77f68e2093f2c005a64cc0f258529e87df19",
+    "confirm.py": "74d06bc4ce9e7f6be1aa14e09f83343f76ba7f3070367aa01a2ceba80fda5aad",
+    "driver.py": "2862e507d1b5065be9b20d3c2396de25f6283201be234c2b34d82472670494ce",
+    "main.ms": "48b370cd3ce7eb523bd23f363f97ff214dc52c9199474dc9d6ed5e803f0eba73",
+    "matched-plan.json": "77c295da3527e1d6dba9844a3a303b1fd951ba10d7fcf8fa1461ce808b38c716",
+    "matched-result.json": "19c762381690a60b14d4de6b443a5da233662171856b922afb5b70f38b5a628c",
+    "repeat.py": "81010424b985b922ac99cff34de043baac75fa506b423501e422409845667b73",
+    "results/checkpoint-controls.jsonl": "3cc709cb43fd927645247165f3b7a31dbcbe6eff94b6e99a20d3a4a1104a94e3",
+    "results/checkpoint-conversions.jsonl": "cba745274be61d837ebd0de635f8d387a865655b688729ca00e9da03ebd0b9ef",
+    "results/confirmation.jsonl": "8acbbe68e0e4118bf69a91be978ff2fc1d36cd69c5498ef4578b05e8a5e5557b",
+    "results/controls.jsonl": "1a475c4f6a5cf0423359829798f5a60c493154845840644c389d2b743f8e1329",
+    "results/conversions.jsonl": "25da693a862a73d0eee38d60bff036cde8e60d731c7de76a6392eb8b278548d8",
+    "rust.rs": "37eefefca9138b7d7d29d72f5902e0f12d09edcda9a8a61201cb5bb238972c42",
+    "source-tests.ms": "201cf73d6d44be24f82a35ac4761d71d9b9e27fa1c6e0bf4155194a086b5923f",
+    "validate.py": "192571470d3eea775a5cc80c14d017ab92a0fee17082bf5722c9d59efd7c96fe",
+    "variants/rejected.patch": "beebb4d0e502e71d1dde0e29c7bf25ea44995a6aed1f339645d52937a3fa5a05"
+  },
+  "checkpoint_commit": "26d586480a0aa786035d3def7bfe47651c96e297",
+  "checkpoint_compiler_sha256": "4a476bb3a53d34fcbc3e3a86c60df379eafc1a65824fbc74a3cf7dbd747e86e7",
+  "checkpoint_archive_sha256": "bc2f24ad9800ebf4c65466748b32f13ec96617589add9f2276cadcf3a8ae4660"
+}

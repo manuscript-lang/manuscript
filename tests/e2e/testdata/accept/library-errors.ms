@@ -1,18 +1,15 @@
-import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
-import parse, JsonError, JsonLimits from "@std/json.ms"
-import EncodingError, hex_decode from "@std/encoding.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
+import parse, JsonError, JsonLimits from "@std/data/json.ms"
+import EncodingError, hex_decode from "@std/data/encoding.ms"
 
 type ApplicationError:
     case Json(cause: JsonError)
     case Encoding(cause: EncodingError)
 
-impl Error for ApplicationError:
-    fn message() String: "ApplicationError"
-
 fn encoding_error(cause: EncodingError) ApplicationError:
     return Encoding(cause)
 
-fn decode_bad_input() Result[Unit, ApplicationError]:
+fn decode_bad_input() Unit!ApplicationError:
     match hex_decode(text: "zz", max_bytes: 10):
         ok(_):
             return ok(unit)
@@ -38,13 +35,11 @@ test "JSON errors need only JSON cases":
             try expect_equal(json_error_code(cause), 2)
 
 test "explicit error mapping preserves the cause":
-    let expected: Result[Unit, ApplicationError] = error(
-        Encoding(EncodingError.InvalidData)
-    )
+    let expected: Unit!ApplicationError = error(Encoding(EncodingError.InvalidData))
     decode_bad_input() | try expect_equal(expected)
 
 # Error is an ordinary operation contract. Custom errors use ordinary impl blocks.
-import IoError from "@std/io.ms"
+import IoError from "@std/io/io.ms"
 
 type CustomError:
     detail: String
@@ -60,11 +55,11 @@ impl Error for TaggedError[T]:
     fn message() String:
         return "tagged failure"
 
-fn decode_generically() Result[Unit, Error]:
+fn decode_generically() Unit!:
     let _bytes = try hex_decode(text: "zz", max_bytes: 10)
     return ok(unit)
 
-fn propagate_generic() Result[Unit, Error]:
+fn propagate_generic() Unit!:
     let _completed = try decode_generically()
     return ok(unit)
 
@@ -159,7 +154,7 @@ impl Error for ReadError:
     fn message() String:
         return self.diagnostic.clone()
 
-fn failed_read() Result[Unit, ReadError]:
+fn failed_read() Unit!ReadError:
     return error(
         ReadError(
             diagnostic: "read failed", path: "settings.json", attempt: 2,
@@ -167,7 +162,7 @@ fn failed_read() Result[Unit, ReadError]:
         )
     )
 
-fn propagate_read() Result[Unit, ReadError]:
+fn propagate_read() Unit!ReadError:
     let _completed = try failed_read()
     return ok(unit)
 
@@ -198,20 +193,20 @@ test "domain error fields survive propagation without a wrapper":
         _:
             return fail(message: "generic boundary lost concrete error")
 
-fn read_failure(cause: ReadError) Result[Unit, ReadError]:
+fn read_failure(cause: ReadError) Unit!ReadError:
     return error(cause)
 
-fn general_read(cause: ReadError) Result[Unit, Error]:
+fn general_read(cause: ReadError) Unit!:
     let _completed = try read_failure(cause)
     return ok(unit)
 
-fn forward_read(cause: ReadError) Result[Unit, Error]:
+fn forward_read(cause: ReadError) Unit!:
     return read_failure(cause)
 
-fn generic_failure[E: Error](cause: E) Result[Unit, E]:
+fn generic_failure[E](cause: E) Unit!E:
     return error(cause)
 
-fn generic_propagation[E: Error](cause: E) Result[Unit, Error]:
+fn generic_propagation[E: Error](cause: E) Unit!:
     let _completed = try generic_failure(cause)
     return ok(unit)
 
@@ -229,7 +224,7 @@ test "specific errors pass directly into Error boundaries":
         ) != "read failed" or shared.message() != "read failed"
     ) | try expect_false
 
-    let results: List[Result[Unit, Error]] = [
+    let results: List[Unit!] = [
         general_read(original.clone()), forward_read(original.clone()),
         generic_propagation(original.clone()), error(original.clone())
     ]
@@ -260,10 +255,10 @@ test "specific errors pass directly into Error boundaries":
 
     original.path | try expect_equal("settings.json")
 
-fn read_success() Result[Int, ReadError]:
+fn read_success() Int!ReadError:
     return ok(7)
 
-fn general_read_success() Result[Int, Error]:
+fn general_read_success() Int!:
     return read_success()
 
 test "Error Result forwarding preserves successful payloads":
@@ -276,10 +271,7 @@ test "Error Result forwarding preserves successful payloads":
 type ValidationError:
     case InvalidField(field: String, expected: Int, actual: Int)
 
-impl Error for ValidationError:
-    fn message() String: "ValidationError"
-
-fn invalid_field() Result[Unit, ValidationError]:
+fn invalid_field() Unit!ValidationError:
     return error(InvalidField(field: "attempt", expected: 1, actual: 0))
 
 test "domain case payloads need no Error implementation":
@@ -298,9 +290,9 @@ test "standard error diagnostics work directly":
     (cause.message() != "read failed" or message() != "read failed") | try expect_false
     JsonError.InvalidData.message() | try expect_equal("JSON: invalid data")
 
-import FileSystemError from "@std/fs.ms"
+import FileSystemError from "@std/os/fs.ms"
 import LogError from "@std/log.ms"
-import CommandError from "@std/process.ms"
+import CommandError from "@std/os/process.ms"
 
 test "standard diagnostics preserve messages and wrapped causes":
     let sink = LogError.Io(IoError.Failed("sink diagnostic"))
@@ -312,14 +304,14 @@ test "standard diagnostics preserve messages and wrapped causes":
 
 # The type-pattern rule also works for unrelated operation contracts.
 interface Label[T]:
-    fn label() ref T
+    fn label() T
 
 type Labelled[T]:
     value: T
 
 impl Label[String] for Labelled[String]:
-    fn label() ref String:
-        return self.value
+    fn label() String:
+        return self.value.clone()
 
 fn match_label(view: Label[String]) String:
     match view:
@@ -349,14 +341,13 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
     let view: Label[String] = Labelled("separate handler")
     match_label(view) | try expect_equal("separate handler")
 
-import filesystem from "@std/fs.ms"
+import read_file, remove, stat, temporary_directory from "@std/os/fs.ms"
 
-fn check_missing_file() Result[Unit, Error]:
-    let fs = filesystem()
-    let directory = try fs.temporary_directory("manuscript-errors-")
+fn check_missing_file() Unit!:
+    let directory = try temporary_directory("manuscript-errors-")
     let missing = "{directory}/missing-secret-token"
 
-    let cause = match fs.read_file(path: missing):
+    let cause = match read_file(path: missing):
         ok(_):
             return fail(message: "missing file read succeeded")
         error(cause): cause
@@ -376,7 +367,7 @@ fn check_missing_file() Result[Unit, Error]:
         _:
             return fail(message: "missing file changed error case")
 
-    match fs.stat(path: missing, follow_links: true):
+    match stat(path: missing, follow_links: true):
         ok(_):
             return fail(message: "missing file stat succeeded")
         error(stat_cause):
@@ -384,7 +375,7 @@ fn check_missing_file() Result[Unit, Error]:
                 stat_cause.message(), "filesystem: file or directory not found"
             )
 
-    let _removed = try fs.remove(path: directory, recursive: false)
+    let _removed = try remove(path: directory, recursive: false)
     return ok(unit)
 
 test "missing file diagnostics preserve the filesystem case":

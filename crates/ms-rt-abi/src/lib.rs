@@ -10,6 +10,9 @@
 // `unsafe extern "C" fn` pointer types and `Sync` impls for the C-layout statics.
 #![allow(unsafe_code)]
 
+#[cfg(test)]
+extern crate std;
+
 /// Bump when any layout or symbol here changes incompatibly.
 pub const ABI_VERSION: u32 = 3;
 
@@ -601,6 +604,119 @@ pub mod symbols {
 mod tests {
     use super::*;
     use core::mem::{offset_of, size_of};
+
+    /// The `STATUS_*` constants as `(C name, value)`, in declaration order.
+    const STATUSES: &[(&str, u8)] = &[
+        ("OK", STATUS_OK),
+        ("INVALID_INPUT", STATUS_INVALID_INPUT),
+        ("OUT_OF_RANGE", STATUS_OUT_OF_RANGE),
+        ("LIMIT_EXCEEDED", STATUS_LIMIT_EXCEEDED),
+        ("INVALID_DATA", STATUS_INVALID_DATA),
+        ("NOT_FOUND", STATUS_NOT_FOUND),
+        ("ALREADY_EXISTS", STATUS_ALREADY_EXISTS),
+        ("NOT_EMPTY", STATUS_NOT_EMPTY),
+        ("PERMISSION_DENIED", STATUS_PERMISSION_DENIED),
+        ("UNSUPPORTED", STATUS_UNSUPPORTED),
+        ("CLOSED", STATUS_CLOSED),
+        ("FAILED", STATUS_FAILED),
+        ("UNAVAILABLE", STATUS_UNAVAILABLE),
+        ("TIMEOUT", STATUS_TIMEOUT),
+        ("OUTPUT_LIMIT", STATUS_OUTPUT_LIMIT),
+        ("NOT_TERMINAL", STATUS_NOT_TERMINAL),
+        ("NONE", STATUS_NONE),
+        ("BUSY", STATUS_BUSY),
+    ];
+
+    /// The C header for natives, built from this crate's constants and layouts so it cannot
+    /// drift from `StrVal`. `header_is_current` compares it with `include/ms_abi.h`.
+    fn header() -> std::string::String {
+        let mut h = std::string::String::new();
+        let mut w = |line: std::string::String| {
+            h.push_str(&line);
+            h.push('\n');
+        };
+        w("/* Generated from crates/ms-rt-abi/src/lib.rs by the `header_is_current` test; do not edit.".into());
+        w(
+            " * Regenerate with: MS_UPDATE_HEADER=1 cargo test -p ms-rt-abi header_is_current"
+                .into(),
+        );
+        w(" *".into());
+        w(" * The Manuscript ABI for `extern fn` natives (ms-rt/ABI.md, section 1).".into());
+        w(" * Int is int64_t, Float is double, Bool is uint8_t (0 or 1). A String argument arrives as a".into());
+        w(" * borrowed `const ms_str *`: read it with ms_str_data/ms_str_len and do not keep the pointer".into());
+        w(" * after returning. A String result is written through a trailing `ms_str *out` that the native".into());
+        w(" * fills with msrt_string_from_bytes; never allocate or free string memory yourself. */".into());
+        w("#ifndef MS_ABI_H".into());
+        w("#define MS_ABI_H".into());
+        w("".into());
+        w("#include <stddef.h>".into());
+        w("#include <stdint.h>".into());
+        w("".into());
+        w(std::format!("#define MS_ABI_VERSION {ABI_VERSION}"));
+        w("".into());
+        w("/* Status byte returned by a fallible native; the ok value goes through the trailing out pointer. */".into());
+        for (name, value) in STATUSES {
+            w(std::format!("#define MS_STATUS_{name} {value}"));
+        }
+        w("".into());
+        w(std::format!("#define MS_STR_INLINE_MAX {STR_INLINE_MAX}"));
+        w("".into());
+        w("typedef struct ms_str {".into());
+        w("    void *ptr_word;".into());
+        w("    size_t tagged;".into());
+        w("} ms_str;".into());
+        w("".into());
+        w(std::format!(
+            "_Static_assert(sizeof(ms_str) == {}, \"ms_str is two words\");",
+            size_of::<StrVal>()
+        ));
+        w(std::format!(
+            "_Static_assert(offsetof(ms_str, tagged) == {}, \"ms_str layout\");",
+            offset_of!(StrVal, tagged)
+        ));
+        w("".into());
+        w("/* Tag in the top two bits of `tagged`: 1 is an inline string whose bytes live in the value. */".into());
+        w(std::format!(
+            "static inline int ms_str_is_inline(const ms_str *s) {{ return (s->tagged >> 62) == {}; }}",
+            STR_INLINE >> 62
+        ));
+        w("".into());
+        w("static inline size_t ms_str_len(const ms_str *s) {".into());
+        w(std::format!(
+            "    return ms_str_is_inline(s) ? (s->tagged >> {STR_INLINE_LEN_SHIFT}) & {STR_INLINE_MAX} : s->tagged & (((size_t)1 << 62) - 1);"
+        ));
+        w("}".into());
+        w("".into());
+        w("static inline const uint8_t *ms_str_data(const ms_str *s) {".into());
+        w(
+            "    return ms_str_is_inline(s) ? (const uint8_t *)s : (const uint8_t *)s->ptr_word;"
+                .into(),
+        );
+        w("}".into());
+        w("".into());
+        w(
+            "/* Builds an owned string from `len` bytes at `ptr` into uninitialised `out`. */"
+                .into(),
+        );
+        w("void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);".into());
+        w("".into());
+        w("#endif".into());
+        h
+    }
+
+    #[test]
+    fn header_is_current() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/include/ms_abi.h");
+        let want = header();
+        if std::env::var_os("MS_UPDATE_HEADER").is_some() {
+            std::fs::write(path, &want).expect("write header");
+        }
+        let have = std::fs::read_to_string(path).expect("read header");
+        assert!(
+            have == want,
+            "include/ms_abi.h is stale; run `MS_UPDATE_HEADER=1 cargo test -p ms-rt-abi header_is_current`"
+        );
+    }
 
     #[test]
     fn inline_strings_hold_their_bytes_in_the_value() {

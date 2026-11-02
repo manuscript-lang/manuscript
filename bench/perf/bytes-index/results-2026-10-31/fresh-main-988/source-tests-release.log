@@ -1,0 +1,5 @@
+RUN bytes-index-search.ms::byte search preserves offsets across scanner boundaries
+PASS bytes-index-search.ms::byte search preserves offsets across scanner boundaries
+RUN bytes-index-search.ms::byte search returns the earliest hit at or after start
+PASS bytes-index-search.ms::byte search returns the earliest hit at or after start
+2 tests, 0 failed

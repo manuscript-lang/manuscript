@@ -1,10 +1,10 @@
-import stringify from "@std/json.ms"
-import base64_encode from "@std/encoding.ms"
+import stringify from "@std/data/json.ms"
+import base64_encode from "@std/data/encoding.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import arguments from "@std/os/process.ms"
+import stdout from "@std/io/io.ms"
+import clock from "@std/os/time.ms"
 
 extern fn codec_bench_cpu_ns() Int
 

@@ -28,7 +28,7 @@ fn limit(tok: &str) -> Option<i64> {
 }
 
 #[test]
-fn matches_go() {
+fn matches_oracle() {
     let data = include_str!("oracle/archive.tsv");
     let rows: Vec<Vec<&str>> = data
         .lines()

@@ -76,10 +76,7 @@ impl Scan<'_> {
                 return;
             }
             match s.native.as_str() {
-                "panic" => {}
-                "sleep" => {
-                    self.effects.insert("read");
-                }
+                "core/panic" => {}
                 _ => {
                     self.effects.insert("unknown");
                 }

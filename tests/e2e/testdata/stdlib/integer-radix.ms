@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "integer radix formatting keeps signs zero and high unsigned bits":
     try expect_equal(0.to_string_radix(2), "0")

@@ -1,7 +1,14 @@
-import expect_equal, expect_false from "@std/test.ms"
-import parse, stringify, CsvOptions, CsvError from "@std/csv.ms"
-import base64_encode, base64_decode, EncodingError from "@std/encoding.ms"
-import Commands, Subprocess, CommandOutput, CommandError, commands, Stdio from "@std/process.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
+import parse, stringify, CsvOptions, CsvError from "@std/data/csv.ms"
+import base64_encode, base64_decode, EncodingError from "@std/data/encoding.ms"
+import (
+    Commands,
+    Subprocess,
+    CommandOutput,
+    CommandError,
+    run,
+    Stdio
+) from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"
 
 fn forward[T](item: T) T: item
@@ -15,22 +22,26 @@ impl Commands for Capture:
         arguments: List[String],
         input: Bytes,
         max_output_bytes: Int?,
-        timeout: Duration?
-    ) Result[CommandOutput, CommandError]:
-        return ok(CommandOutput(0, input, "".to_bytes()))
+        timeout: Duration?,
+        cwd: String?,
+        env: Map[String, String]
+    ) CommandOutput!CommandError:
+        return ok(CommandOutput(0, input, "".to_bytes(), 0))
 
     fn spawn(
         program: String,
         arguments: List[String],
         stdin: Stdio,
         stdout: Stdio,
-        stderr: Stdio
-    ) Result[Subprocess, CommandError]:
+        stderr: Stdio,
+        cwd: String?,
+        env: Map[String, String]
+    ) Subprocess!CommandError:
         return error(CommandError.Unavailable)
 
-import Duration from "@std/time.ms"
+import Duration from "@std/os/time.ms"
 
-fn generic_run[T: Commands](service: T) Result[Bytes, Error]:
+fn generic_run[T: Commands](service: T) Bytes!:
     return ok((try service.run("fake", [])).stdout)
 
 type Override:
@@ -42,17 +53,21 @@ impl Commands for Override:
         arguments: List[String],
         input: Bytes = self.input,
         max_output_bytes: Int?,
-        timeout: Duration?
-    ) Result[CommandOutput, CommandError]:
-        return ok(CommandOutput(0, input, "".to_bytes()))
+        timeout: Duration?,
+        cwd: String?,
+        env: Map[String, String]
+    ) CommandOutput!CommandError:
+        return ok(CommandOutput(0, input, "".to_bytes(), 0))
 
     fn spawn(
         program: String,
         arguments: List[String],
         stdin: Stdio,
         stdout: Stdio,
-        stderr: Stdio
-    ) Result[Subprocess, CommandError]:
+        stderr: Stdio,
+        cwd: String?,
+        env: Map[String, String]
+    ) Subprocess!CommandError:
         return error(CommandError.Unavailable)
 
 test "concrete implementation defaults and interface defaults stay distinct":
@@ -92,7 +107,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     let typed = forward(stringify)
     try expect_equal((try typed([["a", "b"]], second, none)), "a,b\n")
 
-    let limited: Result[List[List[String]], CsvError] = error(CsvError.LimitExceeded)
+    let limited: List[List[String]]!CsvError = error(CsvError.LimitExceeded)
     try expect_false(
         (
             parse("a,b\n", max_cells: 1) != limited
@@ -100,7 +115,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
         )
     )
 
-    let invalid: Result[String, CsvError] = error(CsvError.InvalidInput)
+    let invalid: String!CsvError = error(CsvError.InvalidInput)
     try expect_equal(stringify([["a"]], CsvOptions("")), invalid)
 
 test "Base64 defaults support stored functions and explicit alphabets":
@@ -129,10 +144,10 @@ test "Base64 defaults support stored functions and explicit alphabets":
     let decode = base64_decode
     try expect_equal((try decode("/w==", max_bytes: 1)), bytes)
 
-    let invalid: Result[Bytes, EncodingError] = error(EncodingError.InvalidData)
+    let invalid: Bytes!EncodingError = error(EncodingError.InvalidData)
     try expect_equal(base64_decode("_w=="), invalid)
 
-    let limited: Result[Bytes, EncodingError] = error(EncodingError.LimitExceeded)
+    let limited: Bytes!EncodingError = error(EncodingError.LimitExceeded)
     try expect_equal(base64_decode("/w==", max_bytes: 0), limited)
 
 test "Commands defaults cross concrete bound view and generic boundaries":
@@ -151,8 +166,15 @@ test "Commands defaults cross concrete bound view and generic boundaries":
     try expect_equal(output, input)
 
     let forwarded = forward(view.run)
-    try expect_equal((try forwarded("fake", [], input, none, none)).stdout.get(0), 42)
+    try expect_equal(
+        (
+            try forwarded(
+                "fake", [], input, none, none, none, Map[String, String]()
+            )
+        ).stdout.get(0),
+        42
+    )
 
-    let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
-    let native = commands().run
+    let invalid: CommandOutput!CommandError = error(CommandError.InvalidInput)
+    let native = run
     try expect_equal(native("", []), invalid)

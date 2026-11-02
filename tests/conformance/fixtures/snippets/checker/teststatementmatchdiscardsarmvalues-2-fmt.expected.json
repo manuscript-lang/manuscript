@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn f(var xs: List[Int], o: Int?) Unit:\n    var n = 0\n\n    match o:\n        v:\n            n = v\n            xs.set(index: 0, value: 5)\n        none:\n            n = 2\n\n    xs.append(n)\n"
+  }
+}

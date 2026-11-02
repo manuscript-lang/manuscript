@@ -1,5 +1,5 @@
-import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import clock from "@std/os/time.ms"
 import StringError from "@std/string.ms"
 
 fn consume(result: Result[String, StringError], expected: String, status: Int) Int:

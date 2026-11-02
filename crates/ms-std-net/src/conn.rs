@@ -63,6 +63,11 @@ pub trait Io {
     fn short_read_drains(&self) -> bool {
         false
     }
+    /// A second stream over a duplicate of the descriptor, closed on its own; `None` when the
+    /// stream keeps state of its own (TLS) that a duplicate could not share.
+    fn try_clone(&self) -> Option<io::Result<Box<dyn Io>>> {
+        None
+    }
 }
 
 /// A socket that can be closed before its owner is dropped, so a closed connection frees its
@@ -117,12 +122,16 @@ fn parked<T>(busy: &Cell<u32>, idle: &dyn Fn(), body: impl FnOnce() -> T) -> T {
 /// An unencrypted socket.
 pub struct Plain {
     sock: OwnedSock,
+    /// Open descriptors over this socket, counting duplicates: a shutdown would stop them all, so
+    /// only the last one shuts the socket down.
+    open: Rc<Cell<u32>>,
 }
 
 impl Plain {
     pub fn new(sock: Socket) -> Plain {
         Plain {
             sock: OwnedSock::new(sock),
+            open: Rc::new(Cell::new(1)),
         }
     }
 
@@ -176,11 +185,27 @@ impl Io for Plain {
     }
 
     fn shutdown_both(&self) {
-        let _ = self.sock.shutdown(std::net::Shutdown::Both);
+        let open = self.open.get();
+        self.open.set(open - 1);
+        if open == 1 {
+            let _ = self.sock.shutdown(std::net::Shutdown::Both);
+        }
     }
 
     fn release(&self) {
         self.sock.release();
+    }
+
+    fn try_clone(&self) -> Option<io::Result<Box<dyn Io>>> {
+        let sock = match self.sock.try_clone() {
+            Ok(s) => OwnedSock::new(s),
+            Err(e) => return Some(Err(e)),
+        };
+        self.open.set(self.open.get() + 1);
+        Some(Ok(Box::new(Plain {
+            sock,
+            open: self.open.clone(),
+        })))
     }
 }
 
@@ -318,6 +343,21 @@ impl Connection {
             self.io.shutdown_both();
             self.release_if_idle();
         }
+    }
+
+    /// A second connection over a duplicate of the socket, closed on its own: one task can read
+    /// while another writes. A TLS connection keeps session state a duplicate cannot share.
+    pub fn duplicate(&self) -> Result<Rc<Connection>, NetErr> {
+        if self.closed.get() {
+            return Err(NetErr::Closed);
+        }
+        let io = self
+            .io
+            .try_clone()
+            .ok_or(NetErr::Unsupported)?
+            .map_err(|e| io_to_net(&e))?;
+        self.owner
+            .adopt_io(io, self.local.clone(), self.peer.clone())
     }
 
     fn release_if_idle(&self) {
@@ -641,27 +681,32 @@ impl Listener {
     /// (a descriptor, or a `SOCKET` on Windows) for `Server::adopt`, possibly on another thread.
     /// The caller owns the handle until `Server::adopt` takes it: dropping it unadopted leaks the socket. A listener that
     /// upgrades accepted sockets (TLS) refuses, since the handshake belongs to the adopter.
+    /// Identifies this listener as the owner of the handles it released.
+    pub fn owner_key(&self) -> usize {
+        self as *const Listener as usize
+    }
+
     pub fn accept_raw(&self, timeout: Option<i64>) -> Result<i64, NetErr> {
         if self.upgrade.is_some() {
             return Err(NetErr::InvalidInput);
         }
         let deadline = Deadline::from_nanos(timeout).map_err(|_| NetErr::InvalidInput)?;
         let (sock, _peer) = self.accept_socket(deadline)?;
-        Ok(into_raw_handle(sock))
+        Ok(into_raw_handle(sock, self.owner_key()))
     }
 }
 
 /// Handles `accept_raw` released and `take_raw_handle` has not yet claimed, so a number a program
 /// invents, or a handle used twice, never reaches `from_raw_*`.
-static OUTSTANDING: std::sync::LazyLock<std::sync::Mutex<std::collections::HashSet<i64>>> =
+static OUTSTANDING: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<i64, usize>>> =
     std::sync::LazyLock::new(Default::default);
 
-fn outstanding() -> std::sync::MutexGuard<'static, std::collections::HashSet<i64>> {
+fn outstanding() -> std::sync::MutexGuard<'static, std::collections::HashMap<i64, usize>> {
     OUTSTANDING.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 /// The socket's operating-system handle, released from its owner and recorded as outstanding.
-fn into_raw_handle(sock: Socket) -> i64 {
+fn into_raw_handle(sock: Socket, owner: usize) -> i64 {
     #[cfg(unix)]
     let raw = {
         use std::os::fd::IntoRawFd;
@@ -672,16 +717,14 @@ fn into_raw_handle(sock: Socket) -> i64 {
         use std::os::windows::io::IntoRawSocket;
         sock.into_raw_socket() as i64
     };
-    outstanding().insert(raw);
+    outstanding().insert(raw, owner);
     raw
 }
 
 /// The socket behind a handle `accept_raw` returned, or `None` for a number that is not an
 /// outstanding handle (invented, or already adopted).
 pub fn take_raw_handle(raw: i64) -> Option<Socket> {
-    if !outstanding().remove(&raw) {
-        return None;
-    }
+    outstanding().remove(&raw)?;
     #[cfg(unix)]
     {
         use std::os::fd::FromRawFd;
@@ -1033,7 +1076,7 @@ impl Network {
             return Err(NetErr::PermissionDenied);
         }
         let sock = self.listen_tcp(address)?;
-        let config = tls::server_config(options)?;
+        let config = tls::stream_server_config(options)?;
         let clients = !options.roots_pem.is_empty() || options.require_client_certificate;
         let upgrade: Upgrade =
             Box::new(move |s, deadline| tls::accept(s, config.clone(), deadline, clients));
@@ -1084,6 +1127,18 @@ impl Network {
             return Err(NetErr::Closed);
         }
         Ok(d)
+    }
+}
+
+/// Closes every handle released under `owner` (a `Listener::owner_key`) that no server adopted.
+pub fn release_unadopted(owner: usize) {
+    let mine: Vec<i64> = outstanding()
+        .iter()
+        .filter(|(_, held_by)| **held_by == owner)
+        .map(|(raw, _)| *raw)
+        .collect();
+    for raw in mine {
+        drop(take_raw_handle(raw));
     }
 }
 

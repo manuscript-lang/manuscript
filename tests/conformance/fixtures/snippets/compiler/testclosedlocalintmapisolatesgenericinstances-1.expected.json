@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`key` is moved here but used again at 7:23; a value has one owner, so pass `key.clone()` to keep the original, or move it only at its last use",
+        "position": {
+          "file": "testclosedlocalintmapisolatesgenericinstances-1.ms",
+          "line": 6,
+          "column": 16,
+          "offset": 289
+        },
+        "fix": {
+          "position": {
+            "file": "testclosedlocalintmapisolatesgenericinstances-1.ms",
+            "line": 6,
+            "column": 19,
+            "offset": 292
+          },
+          "end": {
+            "file": "testclosedlocalintmapisolatesgenericinstances-1.ms",
+            "line": 6,
+            "column": 19,
+            "offset": 292
+          },
+          "replacement": ".clone()"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testclosedlocalintmapisolatesgenericinstances-1.ms:6:16: type: `key` is moved here but used again at 7:23; a value has one owner, so pass `key.clone()` to keep the original, or move it only at its last use\n   |\n 6 |     values.add(key, value)\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

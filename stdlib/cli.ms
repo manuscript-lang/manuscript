@@ -8,13 +8,13 @@
 #
 # ```manuscript
 # import Arg, Command, Flag, FlagKind, command from "@std/cli.ms"
-# import arguments from "@std/process.ms"
+# import arguments from "@std/os/process.ms"
 #
 # type Greeting:
 #     name: String
 #     shout: Bool
 #
-# fn greet(options: Greeting) Result[Int, Error]:
+# fn greet(options: Greeting) Int!:
 #     return ok(0)
 #
 # export fn main() Int:
@@ -28,8 +28,8 @@
 #     return Command(name: "tool", children: [greeting]).execute(arguments())
 # ```
 import Data from "@std/core.ms"
-import stderr, stdout from "@std/io.ms"
-import parse, stringify from "@std/json.ms"
+import stderr, stdout from "@std/io/io.ms"
+import parse, stringify from "@std/data/json.ms"
 
 # Errors returned while checking a command schema or parsing arguments.
 export type CliError:
@@ -145,7 +145,7 @@ export type Matches:
 impl Matches:
     # Returns the text of a flag or argument.
     fn string(name: String) String:
-        return self.values.get(name).get() [0].clone()
+        return self.values.get(name).get()[0].clone()
 
     # Returns an Int flag or argument value.
     fn int(name: String) Int:
@@ -196,7 +196,7 @@ export type Command:
     # Subcommands in help order; their names must be unique, nonempty and not `help`.
     children: List[Command] = []
     # Runs after a successful parse; the returned Int is the exit status.
-    exec: fn(Matches) Result[Int, Error] = fn m: ok(0)
+    exec: fn(Matches) Int! = fn m: ok(0)
 
 # The outcome of parsing: help text to show, or a node ready to run.
 export type Parsed:
@@ -216,7 +216,7 @@ export type Parsed:
 impl Command:
     # Checks the tree, resolves the subcommand chain, and validates flags and arguments.
     # Returns `Help` for `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
-    fn parse(argv: List[String]) Result[Parsed, CliError]:
+    fn parse(argv: List[String]) Parsed!CliError:
         try check_schema(self, [], [self.name.clone()])
         return walk(self, argv)
 
@@ -285,7 +285,7 @@ impl Command:
 # handler returns the exit status.
 export fn command[T: Data](
     name: String,
-    run: fn(T) Result[Int, Error],
+    run: fn(T) Int!,
     about: String = "",
     flags: List[Flag] = [],
     args: List[Arg] = []
@@ -296,7 +296,7 @@ export fn command[T: Data](
     )
 
 # Builds `T` from the JSON literals of the supplied values.
-fn decode[T: Data](matches: Matches) Result[T, CliError]:
+fn decode[T: Data](matches: Matches) T!CliError:
     var members: List[String] = []
     for entry in matches.fields.entries():
         members.append(stringify(entry.key.clone()).get() + ":" + entry.value)
@@ -311,7 +311,7 @@ fn decode[T: Data](matches: Matches) Result[T, CliError]:
 # Renders one supplied value as the JSON literal for its kind.
 fn literal(kind: FlagKind, text: String) String:
     match kind:
-        Bool: return text
+        Bool: return text.clone()
         Int: return "{text.parse_int().get()}"
         Float: return "{text.parse_float().get()}"
         _: return stringify(text.clone()).get()
@@ -395,18 +395,14 @@ fn fits(flag: Flag, value: String) Bool:
         _: return true
 
 # Checks one flag name or short against names already seen.
-fn claim(var seen: List[String], key: String, label: String) Result[Unit, CliError]:
+fn claim(var seen: List[String], key: String, label: String) Unit!CliError:
     if seen.contains(key): return error(CliError.InvalidSchema("duplicate {label}"))
 
     seen.append(key)
     return ok(unit)
 
 # Validates a node and everything below it; `inherited` holds ancestors' persistent flags.
-fn check_schema(
-    node: Command,
-    inherited: List[Flag],
-    path: List[String]
-) Result[Unit, CliError]:
+fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!CliError:
     let where = path.join(" ")
     var names: List[String] = []
     var shorts: List[String] = []
@@ -514,7 +510,7 @@ fn store(var values: Map[String, List[String]], flag: Flag, value: String) Resul
     return ok(unit)
 
 # Resolves subcommands, flags and positionals from `argv`.
-fn walk(root: Command, argv: List[String]) Result[Parsed, CliError]:
+fn walk(root: Command, argv: List[String]) Parsed!CliError:
     var node = root.clone()
     var path = [root.name.clone()]
     var inherited: List[Flag] = []
@@ -626,7 +622,7 @@ fn bind(
     words: List[String],
     var values: Map[String, List[String]],
     path: List[String]
-) Result[Unit, CliError]:
+) Unit!CliError:
     var next = 0
 
     for arg in node.args:
@@ -657,7 +653,7 @@ fn bind(
     return ok(unit)
 
 # Applies the default of an absent flag or reports a missing required one.
-fn fill(var values: Map[String, List[String]], flag: Flag) Result[Unit, CliError]:
+fn fill(var values: Map[String, List[String]], flag: Flag) Unit!CliError:
     if values.contains(flag.name): return ok(unit)
 
     if let text = flag.default:
@@ -738,7 +734,6 @@ fn flag_section(title: String, flags: List[Flag]) String:
 
     for flag in flags:
         var label = if not flag.short.is_empty(): "-{flag.short}, " else: "    "
-
         label += "--{flag.name}"
         if not is_bool(flag.kind): label += " <{value_hint(flag)}>"
         labels.append(label.clone())

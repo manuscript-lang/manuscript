@@ -1,5 +1,5 @@
-import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
 
 type Pattern:
     name: String
@@ -46,11 +46,11 @@ fn measure(name: String, text: String, expected: String) Int:
 
     let iterations = iterations_for(text.byte_length())
     var checksum = 0
-    let started = clock().now()
+    let started = monotonic()
     for iteration in 0..iterations:
         checksum += reverse_sum(text, expected)
 
-    let elapsed = clock().now().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     if checksum != expected_sum * iterations: return 1
 
     let _written = stdout().write(

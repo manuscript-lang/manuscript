@@ -14,7 +14,7 @@ let price = 12.50d
 let active = true
 ```
 
-Decimal literals need `import Decimal from "@std/decimal.ms"`. Integer literals are `Int`, written in decimal, `0x` hexadecimal or `0b` binary; `_` separates digits (`1_000_000`, `0xFF_FF`, `0b1010_0101`, `3.141_592`). A hex or binary literal is a value, not a bit pattern, so `0xFFFF_FFFF_FFFF_FFFF` is out of range. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
+Decimal literals need `import Decimal from "@std/math/decimal.ms"`. Integer literals are `Int`, written in decimal, `0x` hexadecimal or `0b` binary; `_` separates digits (`1_000_000`, `0xFF_FF`, `0b1010_0101`, `3.141_592`). A hex or binary literal is a value, not a bit pattern, so `0xFFFF_FFFF_FFFF_FFFF` is out of range. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
 
 | Type | Representation |
 | --- | --- |
@@ -79,7 +79,7 @@ fn sized() Unit:
 
 Unsigned types follow the same rules with a lower bound of zero: `let b: UInt8 = 200`, `let x: UInt8 = -1` and `256` are rejected, `a - b` faults when `b > a`, and unary `-` is a compile error. `to_uintN()` exists on every integer type except its own and returns `Optional` unless every source value fits (`UInt8.to_uint16()` is direct, `Int.to_uint8()` is `none` for -1 or 256, `UInt32.to_int32()` is `none` above 2147483647). `UInt8.to_int()` widens directly; `UInt64.to_int()` is `none` above 9223372036854775807. `UInt64` literals and results above that bound print, compare, sort and divide as unsigned values. Floats reach an unsigned type through `truncate_to_int().get(0).to_uint8()`-style chains, as there is no `truncate_to_uintN()`.
 
-`abs()` and `sign()` are methods on every signed integer and float type (unsigned values are never negative, so they have neither), so no cast is needed: `abs()` returns the receiver's own type (`Int8` `-128` has no absolute value and faults like any overflow), integer `sign()` returns `Int` (-1, 0 or 1), and float `sign()` returns the receiver's type with zeros and NaN unchanged. `@std/math.ms` has no `abs`, `sign` or `to_float32` functions; the methods are the one spelling. Every integer width, Float, Float32 and String also have `a.min(b)`, `a.max(b)` and `a.clamp(low, high)` methods that need no import and return the receiver's own type; the lesser or greater of equal values is the receiver, Float orders NaN above every other value, and `clamp` with `low` greater than `high` is a programming fault. `math.min`, `math.max`, `List.min` and `List.max` accept any `Comparable` type, including Decimal, BigInt and the time types.
+`abs()` and `sign()` are methods on every signed integer and float type (unsigned values are never negative, so they have neither), so no cast is needed: `abs()` returns the receiver's own type (`Int8` `-128` has no absolute value and faults like any overflow), integer `sign()` returns `Int` (-1, 0 or 1), and float `sign()` returns the receiver's type with zeros and NaN unchanged. `@std/math/math.ms` has no `abs`, `sign` or `to_float32` functions; the methods are the one spelling. Every integer width, Float, Float32 and String also have `a.min(b)`, `a.max(b)` and `a.clamp(low, high)` methods that need no import and return the receiver's own type; the lesser or greater of equal values is the receiver, Float orders NaN above every other value, and `clamp` with `low` greater than `high` is a programming fault. `math.min`, `math.max`, `List.min` and `List.max` accept any `Comparable` type, including Decimal, BigInt and the time types.
 
 ## Runtime numeric outcomes
 
@@ -122,19 +122,19 @@ Validate expected bad input with [expected failures](../errors/results.md); see 
 
 ### BigInt
 
-`BigInt` (from `@std/math.ms`) is an arbitrary-precision signed integer; it cannot overflow. It supports `+ - * / %`, unary `-`, and `< <= > >= == !=`. Both operands must be `BigInt`: `BigInt + Int` is a type error, so convert with `from_int(n)`. `/` truncates toward zero, `%` takes the sign of the dividend, and either by zero is a fault; `divide` and `remainder` return a `Result` instead. There are no bitwise operators; use `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shift_left`, and `shift_right`.
+`BigInt` (from `@std/math/math.ms`) is an arbitrary-precision signed integer; it cannot overflow. It supports `+ - * / %`, unary `-`, and `< <= > >= == !=`. Both operands must be `BigInt`: `BigInt + Int` is a type error, so convert with `from_int(n)`. `/` truncates toward zero, `%` takes the sign of the dividend, and either by zero is a fault; `divide` and `remainder` return a `Result` instead. There are no bitwise operators; use `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shift_left`, and `shift_right`.
 
 ```manuscript
-import from_int from "@std/math.ms"
+import from_int from "@std/math/math.ms"
 
 let big = from_int(2) * from_int(3) + from_int(1)
 ```
 
 #### Scale rounding and fixed places
 
-`round(places:)` yields a Decimal at a chosen scale; `to_fixed(digits:)` yields text with stable trailing zeros (`25.50d` shows as `"25.50"`). Both return `Result[..., NumberError]` (from `@std/math.ms`) and work on the exact value. Negative places round to tens, hundreds, and so on.
+`round(places:)` yields a Decimal at a chosen scale; `to_fixed(digits:)` yields text with stable trailing zeros (`25.50d` shows as `"25.50"`). Both return `Result[..., NumberError]` (from `@std/math/math.ms`) and work on the exact value. Negative places round to tens, hundreds, and so on.
 
-The default `mode` is `RoundingMode.HalfEven`; import `RoundingMode` from `@std/decimal.ms` for others:
+The default `mode` is `RoundingMode.HalfEven`; import `RoundingMode` from `@std/math/decimal.ms` for others:
 
 | Mode | Rule | `2.5d` at zero places | `-2.5d` at zero places |
 | --- | --- | --- | --- |
@@ -151,9 +151,9 @@ Decimal imposes no currency policy; scaled Int cents also work. This example rou
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import Decimal from "@std/decimal.ms"
-import NumberError from "@std/math.ms"
-import expect_equal from "@std/test.ms"
+import Decimal from "@std/math/decimal.ms"
+import NumberError from "@std/math/math.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn amount_text() Result[String, NumberError]:
     let subtotal = 19.99d * 3d
@@ -173,6 +173,6 @@ Booleans drive [if](../control-flow/conditionals.md) and [while](../control-flow
 
 ## Durations
 
-`500.milliseconds`, `2.seconds`, and `2.minutes` are `Duration` values; the members work on any `Int` expression. A `Duration` is a signed 64-bit nanosecond count (`2.seconds` is 2,000,000,000), and the members check overflow. `@std/time.ms` also exports `nanoseconds`, `microseconds`, `milliseconds`, `seconds`, `minutes`, and `hours` as functions (`sleep(seconds(2))`); all take `Int` and fault when the nanosecond count overflows. Interpolating a `Duration` or calling `to_string()` gives human text such as `1m30.5s`, `250ms`, or `0s`.
+`500.milliseconds`, `2.seconds`, and `2.minutes` are `Duration` values; the members work on any `Int` expression. A `Duration` is a signed 64-bit nanosecond count (`2.seconds` is 2,000,000,000), and the members check overflow. `@std/os/time.ms` also exports `nanoseconds`, `microseconds`, `milliseconds`, `seconds`, `minutes`, and `hours` as functions (`sleep(seconds(2))`); all take `Int` and fault when the nanosecond count overflows. Interpolating a `Duration` or calling `to_string()` gives human text such as `1m30.5s`, `250ms`, or `0s`.
 
 `Instant` is an opaque monotonic instant with no source constructor, comparable only within one run's clock domain; crossing domains faults. Duration and Instant arithmetic checks overflow ([operator table](expressions.md)). Mixed arithmetic such as `2.seconds + 1` is a type error.

@@ -25,7 +25,7 @@ weight = 1
 5. `ms-check` loads standard declarations on first use. It resolves declarations, nominal types, bounds, implementations, control flow, captures, cleanup, effects, and ownership, and keeps what lowering, docs, and editors need.
 6. Check, lint, inspect, diagram, and review stop after checking. Formatting uses only the syntax crate.
 7. `ms-lower` turns checked HIR into MIR; `ms-mir` optimizes and verifies it. See [lowering](compiler/lowering/_index.md).
-8. `ms-clif` emits object code and `ms-build` links it with the embedded native runtime: supported platforms use the pinned, cached `lld` (musl on Linux, generated SDK stubs on macOS, the mingw-w64 CRT on Windows).
+8. `ms-clif` emits object code and `ms-build` links it with the embedded native runtime: supported platforms use the pinned, cached `lld` (stubs of glibc 2.28 on Linux, or musl with `--static`; generated SDK stubs on macOS, the mingw-w64 CRT on Windows).
 
 ## Know what each crate owns
 
@@ -41,7 +41,7 @@ weight = 1
 | `ms-tooling`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, `guide`, docgen; language server |
 | `ms-cli`, `ms-conform`, `ms-repo-check` | The `ms` binary; the conformance runner; repository invariants |
 
-`stdlib/*.ms` holds the public standard declarations and `bindings.json` the native identities; it is the signature authority and the Rust implementation embeds it unchanged.
+`stdlib/*.ms` holds the public standard declarations and names the native symbols with `extern fn`; it is the signature authority and the Rust implementation embeds it unchanged.
 
 ## Keep shared behavior in one implementation
 
@@ -60,13 +60,14 @@ weight = 1
 | `website/static/stdlib.md`, `stdlib.json` | Generated API downloads; not committed |
 | `.artifacts/book/` | Ignored generated HTML, search data, and downloads |
 | `crates/` | The Rust implementation; `crates/DESIGN.md` is the design contract |
-| `scripts/` | Tool bootstrap, doctor, `package-rust.sh`, `dist-check.sh` |
+| `tools/` | Repository tools written in Manuscript (`ms run tools/<name>.ms`): conform, e2e, leak and count checks, packaging, doctor |
+| `toolchain/` | Pinned lld and llvm-mingw downloads (`lld.lock`, `fetch-mingw.sh`) read by the build before `ms` exists |
 | `tests/` | `conformance/` (frozen corpus), `docs/` (book checks), `e2e/testdata` (fixtures) |
 | `bench/` | `perf/` (kernels, workloads, JSON, web, workers, stdlib, each with a run script and a dated result page) and `agent/` (the agent benchmark and its results) |
 | `examples/` | Hello project and tooling demo |
 | `extensions/vscode/` | VS Code client, grammar, snippets |
 | `.github/workflows/` | CI, book publishing, six-target release packaging |
-| `skills/`, `.experts/`, `AGENTS.md` | Contributor guidance; `.agents/skills/` and `.claude/skills/` link to shared skills |
+| `skills/`, `wiki/`, `AGENTS.md` | Contributor guidance; `.agents/skills/` and `.claude/skills/` link to shared skills |
 | `.artifacts/`, `dist/`, `target/` | Ignored local reports, releases, build output |
 
 Fix generated output through its generator, never by editing HTML or copying standard signatures into another catalog.
@@ -76,12 +77,12 @@ Fix generated output through its generator, never by editing HTML or copying sta
 | Change | Trace and validation |
 | --- | --- |
 | Syntax or type rules | Guide, `ms-syntax`, `ms-check`, `ms-lower`, formatting and LSP, accepted/rejected fixtures |
-| Standard operation | `.ms` declaration, `bindings.json`, `ms-lower` native call, `ms-std-*` implementation, generated reference; test in a called test block |
+| Standard operation | `.ms` declaration, `ms-lower` native call, `ms-std-*` implementation, generated reference; test in a called test block |
 | Resource work | Checking, acquisition, cancellation, close; verify exit ordering |
 | Manifest, alias, or import | `ms-driver` `project`, module graph, overlays; test equivalent paths, escapes, malformed input |
 | CLI command | `ms-cli`, relevant crate, status/output contract; failed checking preserves outputs |
 | Documentation | Markdown or generator, `make docs-check`, `make book-check`, `make book` |
-| Build packaging | `scripts/package-rust.sh`; `make dist-check` runs the packaged binary |
+| Build packaging | `tools/package.ms`; `make dist-check` runs the packaged binary |
 
 ## Read the evidence correctly
 

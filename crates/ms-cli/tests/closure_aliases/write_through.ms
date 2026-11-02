@@ -1,4 +1,4 @@
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn invoke(f: fn() Unit) Unit:
     f()
@@ -25,13 +25,11 @@ fn next(var count: Int) Int:
 
 fn branch(var box: Box, take: Bool) Unit:
     if take:
+        # A scalar `var` copies, so the closure changes the copy, not `box.count`.
         var _count = box.count
         invoke(fn: _count += 3)
 
     box.count += 1
-
-fn contents(box: Box) ref List[List[Int]]:
-    return box.items
 
 export fn main() Int:
     var calls = 0
@@ -54,7 +52,7 @@ export fn main() Int:
     let _ = stdout().write("{box.items}\n")
     var entries = Map[String, List[Int]]()
     entries.add("dynamic-1", [5])
-    if var value = entries.get("dynamic-{calls}"):
+    if var value = entries["dynamic-{calls}"]?:
         invoke(fn: value.append(value.length()))
 
     let _ = stdout().write("{entries}\n")
@@ -78,10 +76,6 @@ export fn main() Int:
     )
 
     let _ = stdout().write("{local_rows}\n")
-    var via_getter = contents(box)
-    invoke(fn: via_getter.append([6]))
-
-    let _ = stdout().write("{box.items}\n")
     var boxes = [Box(count: 20, items: [])]
     var stored = boxes[0]
     invoke(fn: stored.bump())

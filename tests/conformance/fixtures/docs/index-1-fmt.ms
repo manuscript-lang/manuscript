@@ -1,8 +1,8 @@
 # conform: tags=control-flow,faults,formatter,interpolation,modules,parser,stdlib-io,stdlib-process,tier-io
 # conform: phase=parse
 # conform: origin=documentation/_index.md:10
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
+import arguments from "@std/os/process.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let name = arguments().get(0, default: "world")

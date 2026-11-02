@@ -1,13 +1,13 @@
-import stdout from "@std/io.ms"
-import arguments from "@std/process.ms"
-import clock from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import arguments from "@std/os/process.ms"
+import monotonic from "@std/os/time.ms"
 
 fn ints(size: Int, unique: Int, repeats: Int) Int:
     var data = List[Int](reserve: size)
     for i in 0..size:
         data.append(i % unique)
 
-    let started = clock().now()
+    let started = monotonic()
     var checksum = 0
 
     for unused in 0..repeats:
@@ -16,7 +16,7 @@ fn ints(size: Int, unique: Int, repeats: Int) Int:
         for x in result:
             checksum += x
 
-    let elapsed = clock().now().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     stdout().write("{elapsed} {checksum}\n").get()
     return 0
 
@@ -25,7 +25,7 @@ fn strings(size: Int, unique: Int, repeats: Int) Int:
     for i in 0..size:
         data.append("key-{i % unique}-long-enough-to-be-heap-backed")
 
-    let started = clock().now()
+    let started = monotonic()
     var checksum = 0
 
     for unused in 0..repeats:
@@ -34,7 +34,7 @@ fn strings(size: Int, unique: Int, repeats: Int) Int:
         for x in result:
             checksum += x.length()
 
-    let elapsed = clock().now().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     stdout().write("{elapsed} {checksum}\n").get()
     return 0
 

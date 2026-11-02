@@ -1,5 +1,5 @@
-import expect_equal, expect_true from "@std/test.ms"
-import sqrt from "@std/math.ms"
+import expect_equal, expect_true from "@std/test/test.ms"
+import sqrt from "@std/math/math.ms"
 
 fn increment(value: Int) Int:
     return value + 1
@@ -40,11 +40,11 @@ fn next(var state: Counter) Int:
     state.value = value + 1
     return value
 
-fn prepare_receiver(var state: Counter) Result[Offset, Error]:
+fn prepare_receiver(var state: Counter) Offset!:
     next(var state) | try expect_equal(0)
     return ok(Offset(2))
 
-fn prepare_function(var state: Counter) Result[fn(Int) Int, Error]:
+fn prepare_function(var state: Counter) (fn(Int) Int)!:
     next(var state) | try expect_equal(4)
     return ok(increment)
 

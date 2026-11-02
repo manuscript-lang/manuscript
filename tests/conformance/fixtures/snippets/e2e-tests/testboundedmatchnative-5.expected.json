@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...) T:', or import it from a module",
+        "position": {
+          "file": "testboundedmatchnative-5.ms",
+          "line": 5,
+          "column": 19,
+          "offset": 205
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a module",
+        "position": {
+          "file": "testboundedmatchnative-5.ms",
+          "line": 10,
+          "column": 16,
+          "offset": 303
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testboundedmatchnative-5.ms:5:19: resolution: unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...) T:', or import it from a module\n   |\n 5 |     let shapes = [Shape.Circle(2)]\n   |                   ^\n<DIR>/testboundedmatchnative-5.ms:10:16: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a module\n    |\n 10 |         sum += area(shapes.get(0))\n    |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

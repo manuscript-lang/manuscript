@@ -1,0 +1,116 @@
+{
+  "repeat": 1,
+  "format": 1,
+  "source_root": "/workspace/scratch/encoding-perf",
+  "benches": [
+    {
+      "index": 0,
+      "duration_ns": 506427057,
+      "name": "native_unicode_bench.ms::ascii.unicode.accent.1",
+      "status": "passed",
+      "stats": {
+        "iterations": 10225471,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 11.784114296544384,
+        "median_ns": 12.022711618858438,
+        "mean_ns": 12.0238444436121,
+        "max_ns": 12.26470741543348,
+        "stddev_ns": 0.19620295436074825
+      }
+    },
+    {
+      "index": 1,
+      "duration_ns": 506558509,
+      "name": "native_unicode_bench.ms::ascii.unicode.emoji.1",
+      "status": "passed",
+      "stats": {
+        "iterations": 9394747,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 12.85000639186984,
+        "median_ns": 12.966421767398312,
+        "mean_ns": 12.994966123089851,
+        "max_ns": 13.168470210001397,
+        "stddev_ns": 0.13156971801068323
+      }
+    },
+    {
+      "index": 2,
+      "duration_ns": 524212214,
+      "name": "native_unicode_bench.ms::ascii.unicode.accent.2048",
+      "status": "passed",
+      "stats": {
+        "iterations": 32346,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 3721.9526371112347,
+        "median_ns": 3750.5353057565076,
+        "mean_ns": 3743.621344215668,
+        "max_ns": 3758.3760897792617,
+        "stddev_ns": 15.652883104104877
+      }
+    },
+    {
+      "index": 3,
+      "duration_ns": 538019476,
+      "name": "native_unicode_bench.ms::ascii.unicode.emoji.2048",
+      "status": "passed",
+      "stats": {
+        "iterations": 21211,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 5638.058460232898,
+        "median_ns": 5640.835651312998,
+        "mean_ns": 5641.358650385806,
+        "max_ns": 5645.181839611522,
+        "stddev_ns": 2.9315274136611533
+      }
+    },
+    {
+      "index": 4,
+      "duration_ns": 567486268,
+      "name": "native_unicode_bench.ms::ascii.unicode.accent.524288",
+      "status": "passed",
+      "stats": {
+        "iterations": 132,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 888447.8333333334,
+        "median_ns": 890323.5075757576,
+        "mean_ns": 890692.5151515151,
+        "max_ns": 893306.2045454546,
+        "stddev_ns": 2000.5112099855749
+      }
+    },
+    {
+      "index": 5,
+      "duration_ns": 485506340,
+      "name": "native_unicode_bench.ms::ascii.unicode.emoji.524288",
+      "status": "passed",
+      "stats": {
+        "iterations": 82,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 1444823.9146341463,
+        "median_ns": 1457841.463414634,
+        "mean_ns": 1456567.2032520324,
+        "max_ns": 1467036.231707317,
+        "stddev_ns": 9112.795460642648
+      }
+    }
+  ],
+  "summary": {
+    "available": 6,
+    "selected": 6,
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "not_run": 0,
+    "duration_ns": 3128378436
+  },
+  "completed": true,
+  "exit_code": 0,
+  "stdout": "RUN native_unicode_bench.ms::ascii.unicode.accent.1\nBENCH native_unicode_bench.ms::ascii.unicode.accent.1: 12.023 ns/op median (min 11.784 ns, mean 12.024 ns, max 12.265 ns, stddev 0.196 ns; 10225471 iterations x 3 samples)\nRUN native_unicode_bench.ms::ascii.unicode.emoji.1\nBENCH native_unicode_bench.ms::ascii.unicode.emoji.1: 12.966 ns/op median (min 12.850 ns, mean 12.995 ns, max 13.168 ns, stddev 0.132 ns; 9394747 iterations x 3 samples)\nRUN native_unicode_bench.ms::ascii.unicode.accent.2048\nBENCH native_unicode_bench.ms::ascii.unicode.accent.2048: 3.751 µs/op median (min 3.722 µs, mean 3.744 µs, max 3.758 µs, stddev 15.653 ns; 32346 iterations x 3 samples)\nRUN native_unicode_bench.ms::ascii.unicode.emoji.2048\nBENCH native_unicode_bench.ms::ascii.unicode.emoji.2048: 5.641 µs/op median (min 5.638 µs, mean 5.641 µs, max 5.645 µs, stddev 2.932 ns; 21211 iterations x 3 samples)\nRUN native_unicode_bench.ms::ascii.unicode.accent.524288\nBENCH native_unicode_bench.ms::ascii.unicode.accent.524288: 890.324 µs/op median (min 888.448 µs, mean 890.693 µs, max 893.306 µs, stddev 2.001 µs; 132 iterations x 3 samples)\nRUN native_unicode_bench.ms::ascii.unicode.emoji.524288\nBENCH native_unicode_bench.ms::ascii.unicode.emoji.524288: 1.458 ms/op median (min 1.445 ms, mean 1.457 ms, max 1.467 ms, stddev 9.113 µs; 82 iterations x 3 samples)\n6 benches, 0 failed\n",
+  "diagnostics": []
+}

@@ -1,9 +1,9 @@
 # conform: tags=control-flow,diagnostics,faults,interpolation,modules,records,stdlib-io,stdlib-json,stdlib-process,strings,tier-io,try-result
 # conform: phase=check
 # conform: origin=documentation/learn/common-tasks.md:204
-import arguments from "@std/process.ms"
-import parse, stringify from "@std/json.ms"
-import stdout from "@std/io.ms"
+import arguments from "@std/os/process.ms"
+import parse, stringify from "@std/data/json.ms"
+import stdout from "@std/io/io.ms"
 
 type Config:
     name: String

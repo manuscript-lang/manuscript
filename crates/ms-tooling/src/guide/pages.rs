@@ -66,7 +66,15 @@ pub fn mistakes() -> String {
     out
 }
 
+/// The name `ms search_symbol` shows for a module: `json` for `@std/data/json.ms`.
 pub(crate) fn short_name(path: &str) -> &str {
+    let path = path.strip_prefix("@std/").unwrap_or(path);
+    let path = path.strip_suffix(".ms").unwrap_or(path);
+    path.rsplit('/').next().unwrap_or(path)
+}
+
+/// The module path without `@std/` and `.ms`: `data/json`.
+fn package_name(path: &str) -> &str {
     let path = path.strip_prefix("@std/").unwrap_or(path);
     path.strip_suffix(".ms").unwrap_or(path)
 }
@@ -157,17 +165,32 @@ pub fn module_names() -> Vec<String> {
         .collect()
 }
 
+/// The index stays under this many bytes (the guide-pages test budget is 3500): agents read it
+/// whole, so it narrows its lines as modules are added instead of growing past the budget.
+const INDEX_BUDGET: usize = 3400;
+
 /// Lists each module with a few of its names.
 pub fn index() -> String {
-    let mut b = String::from(
-        "Standard library modules (prelude needs no import).\n`ms search_symbol <module>` lists one, `ms search_symbol <module>.<Name>` shows a declaration, `ms search_symbol <words>` searches.\n\n",
-    );
+    let header = "Standard modules (prelude needs no import).\n`ms search_symbol <module>` lists one, `ms search_symbol <module>.<Name>` shows a declaration, `ms search_symbol <words>` searches.\n\n";
+    let mut width = 84;
+    loop {
+        let body = index_lines(width);
+        if header.len() + body.len() <= INDEX_BUDGET || width <= 24 {
+            return format!("{header}{body}");
+        }
+        width -= 4;
+    }
+}
+
+/// One line per module: the name, then declarations while the line stays within `width`.
+fn index_lines(width: usize) -> String {
+    let mut b = String::new();
     for m in modules() {
         let mut line = format!("{:<12}", short_name(&m.path));
         let mut shown = 0;
         for d in &m.declarations {
             let next = format!("{line} {},", d.name);
-            if next.len() > 84 && shown > 0 {
+            if next.len() > width && shown > 0 {
                 break;
             }
             line = next;
@@ -232,7 +255,9 @@ fn split_path(path: &str) -> Vec<String> {
 }
 
 fn find_module(name: &str) -> Option<&'static ApiModule> {
-    modules().iter().find(|m| short_name(&m.path) == name)
+    modules()
+        .iter()
+        .find(|m| short_name(&m.path) == name || package_name(&m.path) == name)
 }
 
 fn import_line(m: &ApiModule) -> String {
@@ -359,7 +384,9 @@ pub(crate) fn clip_text(s: &str, limit: usize) -> String {
     if s.len() <= limit {
         return s.to_string();
     }
-    let (head, tail) = (limit * 2 / 3, limit / 3);
+    // The omission marker counts against the limit.
+    let room = limit.saturating_sub(48);
+    let (head, tail) = (room * 2 / 3, room / 3);
     let bytes = s.as_bytes();
     let mut out = Vec::new();
     out.extend_from_slice(&bytes[..head]);

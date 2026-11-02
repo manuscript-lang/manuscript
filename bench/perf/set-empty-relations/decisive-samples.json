@@ -1,0 +1,373 @@
+{
+  "complete": true,
+  "affinity": [
+    0
+  ],
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "sha256": {
+    "/workspace/collection-evidence/sets-fresh-before": "c9e8c14fa01c75566225c9da6f53786f912882033dc3834d93f1db788d797210",
+    "/workspace/collection-evidence/sets-fresh-after": "652996ee19110875e483906bb08117f2a9b80309a2887067f6c14ff122b6cbc2"
+  },
+  "cases": [
+    {
+      "mode": "subset",
+      "size": 65536,
+      "repeats": 1000000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3875229,
+          4115059,
+          3862120,
+          3936682,
+          4047137,
+          3830743,
+          3874488,
+          3852425,
+          3958124,
+          3870082,
+          3878143,
+          3873908
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4057392,
+          3841037,
+          3831374,
+          3822619,
+          3843602,
+          3844242,
+          3841298,
+          3837072,
+          3820837,
+          3874117,
+          3842671,
+          3827307
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3874858.5,
+        "/workspace/collection-evidence/sets-fresh-after": 3841167.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 65536,
+      "repeats": 1000000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3854799,
+          3880787,
+          4055050,
+          4064864,
+          3876080,
+          3872224,
+          3852385,
+          4205305,
+          4058594,
+          3878865,
+          4059566,
+          3911053
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3841589,
+          4053747,
+          3867157,
+          4060858,
+          3887347,
+          3861459,
+          3847487,
+          4055049,
+          3838354,
+          3849521,
+          3853406,
+          4013417
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3895920.0,
+        "/workspace/collection-evidence/sets-fresh-after": 3864308.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 65536,
+      "repeats": 1000000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3880467,
+          3902921,
+          3864022,
+          3882119,
+          3923763,
+          3886006,
+          3909391,
+          3882010,
+          3870402,
+          3887488,
+          3865585,
+          3893196
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3838244,
+          3852185,
+          3813798,
+          3842491,
+          3832435,
+          3867297,
+          4220287,
+          4034038,
+          3866746,
+          3922600,
+          3872965,
+          4050673
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3884062.5,
+        "/workspace/collection-evidence/sets-fresh-after": 3867021.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 65536,
+      "repeats": 1000000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4007027,
+          4015299,
+          4014939,
+          4004763,
+          4295180,
+          3996551,
+          4002250,
+          4000968,
+          3997613,
+          3997453,
+          3995319,
+          4001339
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3921438,
+          4053097,
+          3941719,
+          3911504,
+          3913066,
+          3933496,
+          4041439,
+          3945114,
+          4059516,
+          3932524,
+          3921068,
+          3926806
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4001794.5,
+        "/workspace/collection-evidence/sets-fresh-after": 3933010.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 65536,
+      "repeats": 1000000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3998284,
+          4023582,
+          4002100,
+          4049080,
+          4011284,
+          4011905,
+          4022149,
+          4018294,
+          4009421,
+          4011093,
+          4017392,
+          4107058
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3940357,
+          3932736,
+          3935470,
+          3930291,
+          4125865,
+          3932786,
+          3954478,
+          3954579,
+          3939646,
+          3920928,
+          4122340,
+          3930642
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4014648.5,
+        "/workspace/collection-evidence/sets-fresh-after": 3937558.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 65536,
+      "repeats": 1000000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4035009,
+          4226948,
+          4012856,
+          4021178,
+          4146897,
+          4015900,
+          4016581,
+          3999345,
+          4003902,
+          3990953,
+          3998975,
+          4017242
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3924664,
+          3926336,
+          3931674,
+          4043001,
+          3923512,
+          4056211,
+          3930613,
+          4047468,
+          3922300,
+          3926005,
+          4069782,
+          3913357
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4016240.5,
+        "/workspace/collection-evidence/sets-fresh-after": 3928474.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 65536,
+      "repeats": 1000000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4522617,
+          4528275,
+          4752862,
+          4534815,
+          4528216,
+          4529938,
+          4501516,
+          4745351,
+          4729837,
+          4463929,
+          4672622,
+          4797940
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4543698,
+          4562156,
+          4542637,
+          4575247,
+          4557279,
+          4606753,
+          4541295,
+          4565972,
+          4585812,
+          4565331,
+          4688316,
+          4760394
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4532376.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4565651.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 65536,
+      "repeats": 1000000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          7491642,
+          7239955,
+          7293995,
+          7115378,
+          7230070,
+          7219364,
+          7500486,
+          7200535,
+          7221748,
+          7220835,
+          7289079,
+          7224521
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          7188347,
+          7056408,
+          7071902,
+          7087155,
+          7012683,
+          7076209,
+          7010229,
+          7079694,
+          7096709,
+          7085433,
+          7157932,
+          7135728
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 7227295.5,
+        "/workspace/collection-evidence/sets-fresh-after": 7082563.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 65536,
+      "repeats": 1000000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4530718,
+          4538661,
+          4556157,
+          4595796,
+          4558091,
+          4741465,
+          4513454,
+          4589758,
+          4546392,
+          4627354,
+          4465101,
+          4513193
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4552011,
+          4544620,
+          4778491,
+          4575767,
+          4545811,
+          5092984,
+          4579382,
+          4597930,
+          4617089,
+          4570689,
+          4642137,
+          4562807
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4551274.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4577574.5
+      }
+    }
+  ]
+}

@@ -273,7 +273,12 @@ pub fn inspect(program: &Program) -> Inspection {
     result.sources.sort_by(|a, b| a.file.cmp(&b.file));
     result.entities.sort_by(|a, b| a.id.cmp(&b.id));
     result.calls.sort_by(|a, b| a.id.cmp(&b.id));
-    result.build_id = sha256::hex(result.to_json().compact(ms_json::Escape::GoHtml).as_bytes());
+    result.build_id = sha256::hex(
+        result
+            .to_json()
+            .compact(ms_json::Escape::HtmlSafe)
+            .as_bytes(),
+    );
     result
 }
 

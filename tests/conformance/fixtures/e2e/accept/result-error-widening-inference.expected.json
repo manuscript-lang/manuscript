@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "result-error-widening-inference.ms::a generic Result[T, Error] parameter infers T and widens a domain error",
+          "name": "result-error-widening-inference.ms::a generic T! parameter infers T and widens a domain error",
           "status": "passed"
         }
       ],
@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN result-error-widening-inference.ms::a generic Result[T, Error] parameter infers T and widens a domain error\nPASS result-error-widening-inference.ms::a generic Result[T, Error] parameter infers T and widens a domain error\n1 tests, 0 failed\n",
+      "stdout": "RUN result-error-widening-inference.ms::a generic T! parameter infers T and widens a domain error\nPASS result-error-widening-inference.ms::a generic T! parameter infers T and widens a domain error\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

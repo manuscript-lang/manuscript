@@ -1,36 +1,57 @@
-//! Turns the runtime symbol catalogue (`ms-rt/SYMBOLS.md`) into a sorted table, so lowering looks
-//! a symbol up by binary search and a malformed catalogue entry fails the build.
+//! Turns the generated runtime signature table (`rt_symbols.txt`, written by `cargo xtask symbols`)
+//! into a sorted table, so lowering looks a symbol up by binary search and a malformed entry fails
+//! the build.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
-/// A catalogued function: name, parameters (name and type) and return type.
+/// A listed function: name, parameters (name and type) and return type.
 type Entry = (String, Vec<(String, String)>, String);
 
-fn main() {
-    let catalogue = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"))
-        .join("../ms-rt/SYMBOLS.md");
-    println!("cargo:rerun-if-changed={}", catalogue.display());
-    let text = std::fs::read_to_string(&catalogue).expect("read SYMBOLS.md");
-    let mut table: Vec<Entry> = Vec::new();
-    let mut in_block = false;
-    for (n, line) in text.lines().enumerate() {
-        if line.starts_with("```") {
-            in_block = !in_block;
-            continue;
+/// Splits `list` at its top-level commas (a function-pointer type holds commas).
+fn split_params(list: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let (mut depth, mut start) = (0i32, 0usize);
+    let bytes = list.as_bytes();
+    for (i, c) in list.char_indices() {
+        match c {
+            '(' | '[' | '<' => depth += 1,
+            ')' | ']' => depth -= 1,
+            '>' if i == 0 || bytes[i - 1] != b'-' => depth -= 1,
+            ',' if depth == 0 => {
+                parts.push(&list[start..i]);
+                start = i + 1;
+            }
+            _ => {}
         }
-        // `name (data)` lines list exported data, which has no signature to marshal against.
-        if !in_block || line.is_empty() || line.contains(" (data)") {
+    }
+    parts.push(&list[start..]);
+    parts
+}
+
+fn main() {
+    let table_path = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"))
+        .join("rt_symbols.txt");
+    println!("cargo:rerun-if-changed={}", table_path.display());
+    let text = std::fs::read_to_string(&table_path).expect("read rt_symbols.txt");
+    let mut table: Vec<Entry> = Vec::new();
+    for (n, line) in text.lines().enumerate() {
+        if line.is_empty() || line.starts_with('#') {
             continue;
         }
         let Some((name, rest)) = line.split_once('(') else {
-            panic!("SYMBOLS.md:{}: not a function entry: {line}", n + 1);
+            panic!("rt_symbols.txt:{}: not a function entry: {line}", n + 1);
         };
-        let Some(close) = rest.rfind(')') else {
-            panic!("SYMBOLS.md:{}: unclosed parameter list: {line}", n + 1);
+        let Some(close) = rest.rfind(')').filter(|_| !rest.ends_with("->")) else {
+            panic!("rt_symbols.txt:{}: unclosed parameter list: {line}", n + 1);
         };
-        let params = rest[..close]
-            .split(',')
+        // The closing parenthesis of the parameters is the last one before a trailing ` -> ret`.
+        let close = match rest.rfind(") -> ") {
+            Some(at) => at,
+            None => close,
+        };
+        let params = split_params(&rest[..close])
+            .into_iter()
             .map(str::trim)
             .filter(|p| !p.is_empty())
             .filter_map(|p| p.split_once(':'))
@@ -43,7 +64,6 @@ fn main() {
             .unwrap_or_default();
         table.push((name.trim().to_string(), params, ret));
     }
-    // The first entry of a name wins, as in a scan of the catalogue.
     table.sort_by(|a, b| a.0.cmp(&b.0));
     table.dedup_by(|later, first| later.0 == first.0);
     let mut out = String::from("&[\n");

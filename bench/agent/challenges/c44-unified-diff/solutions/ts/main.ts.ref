@@ -1,4 +1,4 @@
-import readFileSync from "node:fs";
+import { readFileSync } from "node:fs";
 
 const lines = readFileSync(0, "utf8").split("\n");
 const [nameA, nameB, ctxText, nText, mText] = lines[0].split(/[ \t]+/).filter((x) => x !== "");

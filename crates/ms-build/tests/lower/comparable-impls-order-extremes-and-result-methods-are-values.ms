@@ -1,8 +1,8 @@
 # Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
 # expect-mir: "call.method"
 
-import stdout from "@std/io.ms"
-import max from "@std/math.ms"
+import stdout from "@std/io/io.ms"
+import max from "@std/math/math.ms"
 
 type Version:
     major: Int
@@ -16,5 +16,5 @@ export fn main() Int:
     let b = Version(2)
     let c: Result[Int, Error] = ok(1)
     let e = c.is_ok
-    let _r = stdout().write("{max(a, b).major} {e()}\n")
+    let _r = stdout().write("{max(a, b).major} {e}\n")
     return 0

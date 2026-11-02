@@ -1,6 +1,6 @@
-import stdout from "@std/io.ms"
-import control from "@std/process.ms"
-import sleep from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import watch_signals from "@std/os/process.ms"
+import sleep from "@std/os/time.ms"
 
 fn say(text: String) Unit:
     let _written = stdout().write(text)
@@ -9,7 +9,7 @@ fn say(text: String) Unit:
     let _flushed = stdout().flush()
 
 export fn main() Int:
-    if let watched = control().watch_signals([2, 15]):
+    if let watched = watch_signals([2, 15]):
         let signals = watched
         say("waiting\n")
 

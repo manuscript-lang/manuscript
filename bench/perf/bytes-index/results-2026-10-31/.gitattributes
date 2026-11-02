@@ -1,0 +1,2 @@
+# Preserve the exact original CSV producer line endings for hashed evidence.
+*.csv -text whitespace=cr-at-eol

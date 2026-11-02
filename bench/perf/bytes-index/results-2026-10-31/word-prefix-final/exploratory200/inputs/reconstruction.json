@@ -1,0 +1,6 @@
+{
+  "main.ms.txt": false,
+  "main.rs.txt": false,
+  "compare.py.txt": true,
+  "identities.json": true
+}

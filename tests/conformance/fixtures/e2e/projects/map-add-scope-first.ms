@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/projects/map_add_scope/first.ms
 import Key from "./domain.ms"
 import insert, insert_bound from "./helper.ms"
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 impl Equal for Key:
     fn equals(other: Key) Bool:
@@ -12,7 +12,7 @@ impl Equal for Key:
 impl Hashable for Key:
     fn hash() Int: 0
 
-export fn first() Result[Int, Error]:
+export fn first() Int!:
     var m = Map[Key, Int]()
     var original = Key(1.0)
     m.add(original, 1)
