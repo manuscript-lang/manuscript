@@ -1402,18 +1402,7 @@ impl Loader<'_> {
 
     /// Checks native default expressions and folds their constants.
     fn check_defaults(&mut self) -> Result<(), String> {
-        let deferred = std::mem::take(&mut self.c.deferred_default_bounds);
-        for check in deferred {
-            if !self.c.satisfies(&check.resolved, &check.bound) {
-                let msg = self.c.unsatisfied_message(
-                    &check.resolved,
-                    &check.bound,
-                    "choose a default that already implements it",
-                );
-                self.c.module = Some(check.module.clone());
-                self.c.type_error(check.pos, msg);
-            }
-        }
+        self.c.check_type_defaults();
         // Check native default expressions with the ordinary expression checker.
         // Lowering prepares concrete slots before native dispatch; the runtime does
         // not own a second default-expression schema.
