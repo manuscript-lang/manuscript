@@ -781,6 +781,21 @@ impl<'m> Interp<'m> {
                 set!(Val::List(Rc::new(Vec::with_capacity(cap))));
             }
             Op::ListLit => set!(Val::List(Rc::new(self.take_args(f, regs, a)))),
+            Op::ListConst => {
+                let Imm::Str(s) = inst.imm else {
+                    return Err(Raw::internal("list.const without elements"));
+                };
+                let elem = self.m.list_elem(f.ty(inst.res.expect("list.const result")));
+                let words = self.strings[s.index()].split(' ').map(|w| {
+                    let bits: i64 = w.parse().unwrap_or_default();
+                    match elem {
+                        Some(Ty::FLOAT) => Val::Float(f64::from_bits(bits as u64)),
+                        Some(Ty::BOOL) => Val::Bool(bits != 0),
+                        _ => Val::Int(bits),
+                    }
+                });
+                set!(Val::List(Rc::new(words.collect())))
+            }
             Op::ListLen => {
                 let Val::List(l) = &regs[a[0].index()] else {
                     return Err(Raw::internal("list.len on a non-list"));

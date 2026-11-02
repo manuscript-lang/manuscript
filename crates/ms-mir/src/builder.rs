@@ -336,6 +336,32 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.list(elem);
         self.val(Op::ListLit, items, Imm::None, t)
     }
+    /// `list.const`: a list of `Int`, `Float`, or `Bool` constants held as static data and copied
+    /// at run time. `bits` are the elements as `i64` words (`f64::to_bits` for floats).
+    pub fn list_const(&mut self, elem: Ty, bits: &[i64]) -> Value {
+        let text = bits
+            .iter()
+            .map(i64::to_string)
+            .collect::<Vec<_>>()
+            .join(" ");
+        let id = self.m.add_string(&text);
+        let t = self.m.types.list(elem);
+        self.val(Op::ListConst, &[], Imm::Str(id), t)
+    }
+    /// The constant `v` holds as an `i64` word, when the last instruction emitted defined it as
+    /// an `Int`, `Float`, or `Bool` constant.
+    pub fn last_const_bits(&self, v: Value) -> Option<i64> {
+        let i = self.f.blocks[self.cur.index()].insts.last()?;
+        if i.res != Some(v) {
+            return None;
+        }
+        match (i.op, i.imm) {
+            (Op::IConst, Imm::Int(c)) if self.f.ty(v) == Ty::INT => Some(c),
+            (Op::FConst, Imm::Float(b)) if self.f.ty(v) == Ty::FLOAT => Some(b as i64),
+            (Op::BConst, Imm::Bool(c)) => Some(c as i64),
+            _ => None,
+        }
+    }
     /// `list.len`.
     pub fn list_len(&mut self, l: Value) -> Value {
         self.val(Op::ListLen, &[l], Imm::None, Ty::INT)

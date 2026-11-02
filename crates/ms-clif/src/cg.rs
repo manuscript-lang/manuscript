@@ -149,6 +149,8 @@ pub struct Gen<'m> {
     pub count_str: bool,
     pub ext: HashMap<ExtId, FuncId>,
     pub strs: HashMap<u32, DataId>,
+    /// Static element arrays of `list.const`, by element text and element size in bytes.
+    pub list_consts: HashMap<(u32, u32), DataId>,
     pub glue: HashMap<(Glue, Ty), FuncId>,
     pub queue: Vec<(Glue, Ty)>,
     pub vtables: Vec<DataId>,
@@ -532,6 +534,30 @@ impl<'m> Gen<'m> {
     }
 
     /// A static `String` block for literal `i`: the bytes then a NUL.
+    /// The array behind `list.const` text `i`: each decimal word stored in `size` little-endian bytes.
+    pub fn list_const(&mut self, i: u32, size: u32) -> DataId {
+        if let Some(id) = self.list_consts.get(&(i, size)) {
+            return *id;
+        }
+        let mut bytes = Vec::new();
+        for w in self.m.strings[i as usize].split(' ') {
+            let bits: i64 = w.parse().expect("list.const word");
+            bytes.extend_from_slice(&bits.to_le_bytes()[..size as usize]);
+        }
+        let id = self
+            .module
+            .declare_data(&format!("ms.lc.{i}.{size}"), self.private(), false, false)
+            .expect("declare list constant");
+        let mut d = DataDescription::new();
+        d.define(bytes.into_boxed_slice());
+        d.set_align(16);
+        self.module
+            .define_data(id, &d)
+            .expect("define list constant");
+        self.list_consts.insert((i, size), id);
+        id
+    }
+
     pub fn str_lit(&mut self, i: u32) -> DataId {
         if let Some(id) = self.strs.get(&i) {
             return *id;
@@ -628,6 +654,7 @@ fn compile_with_isa(
         count_str: std::env::var_os("MS_COUNT_STR").is_some(),
         ext: HashMap::new(),
         strs: HashMap::new(),
+        list_consts: HashMap::new(),
         glue: HashMap::new(),
         queue: Vec::new(),
         vtables: Vec::new(),

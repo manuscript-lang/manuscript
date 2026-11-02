@@ -190,3 +190,51 @@ fn debug_builds_a_long_list_literal_in_bounded_time() {
         "build took {elapsed:?}"
     );
 }
+
+/// A list literal of constants is static data copied at run time, so its code does not grow with
+/// the element count: 200000 elements build in seconds on both backends, with no chunking.
+#[test]
+fn constant_list_literal_builds_in_bounded_time_on_both_backends() {
+    let items: Vec<String> = (0..200_000)
+        .map(|i| (i * 7 % 1000 - 3).to_string())
+        .collect();
+    let source = format!(
+        "import stdout from \"@std/io/io.ms\"\n\nexport fn main() Int:\n    var o = stdout()\n    let xs = [{}]\n    var t = 0\n    for i in 0..xs.length(): t = (t * 31 + xs[i]) % 1000003\n    o.write(\"{{t}} {{xs.length()}}\\n\").get()\n    return 0\n",
+        items.join(", ")
+    );
+    let expected = (0..200_000i64).fold(0, |t, i| (t * 31 + (i * 7 % 1000 - 3)) % 1_000_003);
+    for backend in ["cranelift", "llvm"] {
+        if backend == "llvm"
+            && (!cfg!(any(target_os = "linux", target_os = "macos")) || !ms_clif::llvm_available())
+        {
+            continue;
+        }
+        let dir =
+            std::env::temp_dir().join(format!("ms-const-literal-{backend}-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("c.ms"), &source).unwrap();
+        let started = std::time::Instant::now();
+        let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .env("MS_BACKEND", backend)
+            .current_dir(&dir)
+            .args(["build", "c.ms", "-o", "c"])
+            .output()
+            .unwrap();
+        let elapsed = started.elapsed();
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+        let run = Command::new(dir.join("c")).output().unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(
+            String::from_utf8_lossy(&run.stdout),
+            format!("{expected} 200000\n")
+        );
+        assert!(
+            elapsed < std::time::Duration::from_secs(20),
+            "{backend} build took {elapsed:?}"
+        );
+    }
+}

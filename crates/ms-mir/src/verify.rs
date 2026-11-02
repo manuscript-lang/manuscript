@@ -873,6 +873,23 @@ impl Verifier<'_> {
                 }
                 Ok(())
             }
+            Op::ListConst => {
+                arity(0)?;
+                let elem = res
+                    .and_then(|r| m.list_elem(r))
+                    .ok_or("list.const yields a list")?;
+                let Imm::Str(s) = inst.imm else {
+                    return Err("list.const needs its element text".into());
+                };
+                want(
+                    s.index() < m.strings.len()
+                        && matches!(elem, Ty::INT | Ty::FLOAT | Ty::BOOL)
+                        && m.strings[s.index()]
+                            .split(' ')
+                            .all(|w| w.parse::<i64>().is_ok()),
+                    "list.const holds Int, Float, or Bool bits as decimal words",
+                )
+            }
             Op::ListLen => {
                 arity(1)?;
                 want(

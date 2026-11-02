@@ -10,6 +10,8 @@ use ms_syntax::ast::*;
 
 /// Element count above which a list literal of plain values is built in chunks.
 const LONG_LIST_LITERAL: usize = 512;
+/// Element count above which a list literal of `Int`, `Float`, or `Bool` constants is static data.
+const CONST_LIST_LITERAL: usize = 32;
 /// Elements per chunk of a long list literal.
 const LONG_LIST_CHUNK: usize = 256;
 
@@ -251,6 +253,12 @@ impl<'a> FnLower<'a> {
         let TyKind::List(elem) = self.b.m.types.kind(lt).clone() else {
             return Err(Error::new("list literal of a non-list type"));
         };
+        if items.len() > CONST_LIST_LITERAL
+            && matches!(elem, MTy::INT | MTy::FLOAT | MTy::BOOL)
+            && items.iter().all(is_plain_constant)
+        {
+            return self.const_list_literal(lt, elem, items);
+        }
         if items.len() > LONG_LIST_LITERAL
             && !self.needs_drop(elem)
             && !items.iter().any(crate::mutation::has_try)
@@ -281,6 +289,33 @@ impl<'a> FnLower<'a> {
         for v in pending {
             self.unhold_temp(v);
         }
+        Ok(Val { v, own: true })
+    }
+
+    /// A literal of numeric or boolean constants is one static array copied into the list, so its
+    /// code is constant in the number of elements. An element that does not fold to a constant
+    /// (a name of a `const`, say) sends the whole literal down the chunked path with the values
+    /// already lowered.
+    fn const_list_literal(&mut self, lt: MTy, elem: MTy, items: &[Expr]) -> Result<Val, Error> {
+        let mut vals = Vec::with_capacity(items.len());
+        let mut bits = Some(Vec::with_capacity(items.len()));
+        for it in items {
+            let x = self.expr(it)?;
+            if self.dead {
+                return Ok(self.dummy(lt));
+            }
+            let v = self.owned(x);
+            match (self.b.last_const_bits(v), bits.as_mut()) {
+                (Some(b), Some(all)) => all.push(b),
+                _ => bits = None,
+            }
+            vals.push(v);
+        }
+        if let Some(bits) = bits {
+            let v = self.b.list_const(elem, &bits);
+            return Ok(Val { v, own: true });
+        }
+        let v = self.b.list_lit(elem, &vals);
         Ok(Val { v, own: true })
     }
 
@@ -851,4 +886,16 @@ impl<'a> FnLower<'a> {
 /// Parses an integer literal spelling.
 fn parse_int(text: &str) -> Option<i128> {
     ms_syntax::number::canonical(text).parse().ok()
+}
+
+/// Whether `e` is a number or boolean literal, possibly negated.
+fn is_plain_constant(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Number(_) | ExprKind::Bool(_) => true,
+        ExprKind::Unary {
+            op: UnaryOp::Neg | UnaryOp::Plus,
+            operand,
+        } => matches!(operand.kind, ExprKind::Number(_)),
+        _ => false,
+    }
 }
