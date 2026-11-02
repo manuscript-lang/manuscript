@@ -242,7 +242,7 @@ fn nominal_depth_cutoff_still_allows_sixty_five_active_frames() {
     for depth in 1..=66 {
         t = nominal(
             &mut kept,
-            "Layer",
+            &format!("Layer{depth}"),
             &format!("test/Layer{depth}"),
             Kind::Record,
             vec![],
