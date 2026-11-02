@@ -322,7 +322,12 @@ export fn create(
     var threshold = 30
     if let chosen = level:
         threshold = level_value(chosen)
-    return ok(Logger(threshold, timestamp.get(true), max_bytes, none, share(OwnedTransport(transport))))
+    return ok(
+        Logger(
+            threshold, timestamp.get(true), max_bytes, none,
+            share(OwnedTransport(transport))
+        )
+    )
 
 # Writes log records to an existing byte stream.
 export fn stream_transport(output: WriteStream) Transport:
