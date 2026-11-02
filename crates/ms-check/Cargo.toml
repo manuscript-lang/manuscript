@@ -14,3 +14,6 @@ workspace = true
 [[bin]]
 name = "ms-check-dev"
 path = "src/bin/ms-check-dev.rs"
+
+[build-dependencies]
+ms-syntax = { path = "../ms-syntax" }
