@@ -1960,7 +1960,7 @@ fn wrong() Unit:
 resolution	3	35	94	unknown or non-nullary alternative case Sha257 of HashAlgorithm; cases: Md5, Sha1, Sha224, Sha256, Sha384, Sha3_256, Sha3_384, Sha3_512, Sha512 (cases with payloads need call syntax)import CompressionFormat from "@std/compress.ms"
 fn wrong() Unit:
     let format = CompressionFormat.GZip
-resolution	1	8	7	unknown standard module @std/compress.ms
+resolution	1	8	7	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
 resolution	3	18	83	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"import ArchiveFormat from "@std/io/archive.ms"
 fn wrong() Unit:
     let format = ArchiveFormat.TAR
@@ -1975,7 +1975,7 @@ fn choose(algorithm: HashAlgorithm) Unit:
     return unit
 fn wrong() Unit:
     choose(CompressionFormat.Gzip)
-resolution	2	8	50	unknown standard module @std/compress.ms
+resolution	2	8	50	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
 resolution	6	12	178	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"type Other:
     case OutOfRange
 fn other() Other: Other.OutOfRange
@@ -2043,9 +2043,9 @@ fn get() Other: Missing(1)
 resolution	3	17	57	ambiguous alternative case Missing; qualify it with its type, e.g. Type.Missingimport compress, CompressionFormat, CompressionError from "@std/compress.ms"
 import Bytes from "@std/bytes.ms"
 fn forward[T](item: T) T: item
-resolution	1	8	7	unknown standard module @std/compress.ms
-resolution	1	18	17	unknown standard module @std/compress.ms
-resolution	1	37	36	unknown standard module @std/compress.mslet encode = forward(compress)
+resolution	1	8	7	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
+resolution	1	18	17	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
+resolution	1	37	36	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?let encode = forward(compress)
     encode("".to_bytes(), "gzip")parse	2	5	35	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode: fn(data: Bytes, format: String, level: Int, max_bytes: Int?) Result[Bytes, CompressionError] = compress
     encode("".to_bytes(), "gzip")parse	2	5	120	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode = forward(CompressionFormat.Gzip.compress)
     encode("".to_bytes())parse	2	5	58	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode: fn(data: Bytes, level: Int, max_bytes: Int?) Result[Bytes, CompressionError] = CompressionFormat.Gzip.compress
@@ -2058,8 +2058,8 @@ fn explicit() Unit:
     CompressionFormat.Gzip.compress(data, 6)
     CompressionFormat.Zlib.compress(data, 0, max_bytes: none)
     CompressionFormat.Deflate.compress(data, 9, max_bytes: 100)
-resolution	1	8	7	unknown standard module @std/compress.ms
-resolution	1	18	17	unknown standard module @std/compress.ms
+resolution	1	8	7	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
+resolution	1	18	17	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
 resolution	4	5	112	unknown binding compress; add: import compress from "@std/io/archive.ms"
 resolution	5	5	142	unknown binding compress; add: import compress from "@std/io/archive.ms"
 resolution	6	5	189	unknown binding compress; add: import compress from "@std/io/archive.ms"
@@ -2321,7 +2321,7 @@ fn probe() Int:
     let values = [fn() Int: 1]
     return values.distinct().length()resolution	3	19	65	unknown or ambiguous member distinct on List[fn() Int]; distinct requires fn() Int to be Equal; fn() Int does not satisfy Equal; use a type that implements itfn wrong() List[Int]:
     let copy = [1].METHOD
-    return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, ...export interface Read[T]:
+    return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...export interface Read[T]:
     fn get() T
 export type Box[T]:
     value: T
@@ -6341,15 +6341,15 @@ test "unimported":
     let values = [1, 2]
     let part = values.METHOD(-7)
     return part.length()
-resolution	3	23	68	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, ...export fn main() Int:
+resolution	3	23	68	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...export fn main() Int:
     let copy = [1, 2].METHOD
     let part = copy(count: -7)
     return part.length()
-resolution	2	23	44	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, ...export fn main() Int:
+resolution	2	23	44	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...export fn main() Int:
     let empty: List[Int] = []
     let part = empty.METHOD(-7)
     return part.length()
-resolution	3	22	73	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, ...import panic from "@std/faults.ms"
+resolution	3	22	73	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...import panic from "@std/faults.ms"
 
 fn run() Int:
     let boom = fn(value: Int) Int: panic(message: "closure failed")

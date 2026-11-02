@@ -1,0 +1,8 @@
+fn head() Int: 1
+let text = """
+    é {value} and {value + value}
+    plain text
+    {"inner {value}"}
+    {value}
+    """
+fn tail() Int: 2
