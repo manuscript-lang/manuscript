@@ -49,10 +49,14 @@ fn largest_function_lines(ir: &str) -> usize {
     let (mut longest, mut current) = (0, 0);
     for line in ir.lines() {
         if line.starts_with("define ") {
+            current = 1;
+        } else if current != 0 {
+            current += 1;
+        }
+        longest = longest.max(current);
+        if line == "}" {
             current = 0;
         }
-        current += 1;
-        longest = longest.max(current);
     }
     longest
 }
@@ -203,6 +207,75 @@ mod tests {
         let ir = "define void @a() {\n  ret void\n}\ndefine void @b() {\n  %x = add i64 1, 2\n  %y = add i64 %x, 2\n  ret void\n}\n";
         assert_eq!(largest_function_lines(ir), 5);
         assert_eq!(largest_function_lines(""), 0);
+    }
+
+    #[test]
+    fn function_size_ignores_declarations_and_trailing_metadata() {
+        let outside = "!0 = !{i32 0}\n".repeat(HUGE_FUNCTION_LINE_LIMIT + 1);
+        let tiny = "define void @tiny() {\n  ret void\n}\n";
+        assert_eq!(largest_function_lines(&outside), 0);
+        assert_eq!(
+            largest_function_lines(&format!("{outside}{tiny}{outside}")),
+            3
+        );
+        assert_eq!(largest_function_lines(&format!("{tiny}{outside}{tiny}")), 3);
+    }
+
+    #[test]
+    fn function_size_preserves_the_huge_function_boundary() {
+        for lines in [HUGE_FUNCTION_LINE_LIMIT, HUGE_FUNCTION_LINE_LIMIT + 1] {
+            let body = "  call void @work()\n".repeat(lines - 2);
+            let ir = format!("declare void @work()\ndefine void @large() {{\n{body}}}\n");
+            assert_eq!(largest_function_lines(&ir), lines);
+        }
+    }
+
+    #[test]
+    fn emitted_metadata_line_markers_do_not_trigger_huge_function_flags() {
+        use crate::llvm_ir::{LlvmModule, Symbols};
+        use cranelift_codegen::ir::{Function, InstBuilder, Signature, UserFuncName};
+        use cranelift_codegen::isa::{CallConv, TargetFrontendConfig};
+        use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+        use std::collections::HashSet;
+
+        struct NoSymbols;
+        impl Symbols for NoSymbols {
+            fn symbol(&self, _: u32, _: u32) -> String {
+                unreachable!()
+            }
+            fn loc(&self, _: u32) -> Option<(u32, u32, u32)> {
+                None
+            }
+            fn scope(&self, _: u32) -> Option<(String, u32, u32, u32)> {
+                None
+            }
+        }
+        let mut f = Function::with_name_signature(
+            UserFuncName::user(0, 0),
+            Signature::new(CallConv::SystemV),
+        );
+        let mut context = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut context);
+        let entry = b.create_block();
+        b.switch_to_block(entry);
+        b.ins().return_(&[]);
+        b.seal_all_blocks();
+        b.finalize(TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        let mut module = LlvmModule::new(
+            vec![Some("part\ndefine file.ms".into())],
+            "dir\ndefine cwd".into(),
+        );
+        for i in 0..8000 {
+            let name = format!("tiny_{i}");
+            module.add_function(&name, &name, (0, 1), &f, &NoSymbols, true);
+        }
+        let ir = module.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
+        assert_eq!(largest_function_lines(&ir), 4);
+        assert!(ir.lines().count() > HUGE_FUNCTION_LINE_LIMIT);
     }
 
     const HOT: &str = "define noundef i64 @msrt_map_length(i64 noundef %m) alwaysinline #0 {\n\

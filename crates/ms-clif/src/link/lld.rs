@@ -53,11 +53,23 @@ pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
 /// builds never see a partial file. `None` when the target has no published archive.
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 fn fetch(name: &str, url: &str, sha: &str, files: &[&str]) -> Result<Option<PathBuf>, String> {
-    use sha2::{Digest, Sha256};
     if url.is_empty() {
         return Ok(None);
     }
     let root = cache_root().join("ms").join(name);
+    fetch_at(&root, name, sha, files, || super::fetch::get(url))
+}
+
+/// One cache attempt, with the download supplied separately so local tests can coordinate builders.
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+fn fetch_at(
+    root: &Path,
+    name: &str,
+    sha: &str,
+    files: &[&str],
+    download: impl FnOnce() -> Result<Vec<u8>, String>,
+) -> Result<Option<PathBuf>, String> {
+    use sha2::{Digest, Sha256};
     let dir = root.join(&sha[..16]);
     let files: Vec<String> = files
         .iter()
@@ -69,15 +81,13 @@ fn fetch(name: &str, url: &str, sha: &str, files: &[&str]) -> Result<Option<Path
     let failed = |what: &str, e: &dyn std::fmt::Display| {
         format!("cannot {what} {name} into {}: {e}", dir.display())
     };
-    let stage = root.join(format!(".fetch-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&stage);
-    std::fs::create_dir_all(&stage).map_err(|e| failed("create the cache for", &e))?;
+    let stage = staging(root, "fetch").map_err(|e| failed("create the cache for", &e))?;
     let result = (|| {
         // Only for a person at a terminal: programs and tests read this stream as output.
         if std::io::IsTerminal::is_terminal(&std::io::stderr()) {
             eprintln!("ms: fetching {name} (once)");
         }
-        let archive = super::fetch::get(url).map_err(|e| failed("download", &e))?;
+        let archive = download().map_err(|e| failed("download", &e))?;
         let got: String = Sha256::digest(&archive)
             .iter()
             .map(|b| format!("{b:02x}"))
@@ -101,6 +111,25 @@ fn fetch(name: &str, url: &str, sha: &str, files: &[&str]) -> Result<Option<Path
     })();
     let _ = std::fs::remove_dir_all(&stage);
     result.map(|()| Some(dir))
+}
+
+/// Exclusively owns one sibling staging directory. A failed or completed builder may remove only
+/// this directory; concurrent threads and stale directories from a reused PID keep their contents.
+fn staging(parent: &Path, prefix: &str) -> std::io::Result<PathBuf> {
+    std::fs::create_dir_all(parent)?;
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    loop {
+        let stage = parent.join(format!(
+            ".{prefix}-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        match std::fs::create_dir(&stage) {
+            Ok(()) => return Ok(stage),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error),
+        }
+    }
 }
 
 /// The `lld` to link with: `MS_LLD`, else the pinned release fetched into the cache on first use.
@@ -420,3 +449,6 @@ fn cache_root() -> PathBuf {
 mod glibc_stubs;
 #[cfg(target_os = "macos")]
 mod macos_stubs;
+
+#[cfg(test)]
+mod tests;
