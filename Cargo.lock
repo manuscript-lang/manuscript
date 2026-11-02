@@ -237,12 +237,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crabmole"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7f8e7f59c474361f226bcb242e3222e89b0c7ccf0d555f858c4dbfaa8ef66d6"
-
-[[package]]
 name = "cranelift-assembler-x64"
 version = "0.136.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1151,6 +1145,7 @@ dependencies = [
  "miniz_oxide",
  "ms-rt",
  "ms-rt-abi",
+ "ms-std-core",
 ]
 
 [[package]]
@@ -1160,7 +1155,6 @@ dependencies = [
  "ms-rt",
  "ms-rt-abi",
  "num-bigint 0.5.1",
- "num-integer",
  "num-traits",
 ]
 
@@ -1168,14 +1162,10 @@ dependencies = [
 name = "ms-std-core"
 version = "0.1.0"
 dependencies = [
- "crabmole",
- "crc32fast",
- "data-encoding",
  "getrandom 0.4.3",
  "libm",
  "ms-rt",
  "ms-rt-abi",
- "simd-adler32",
 ]
 
 [[package]]
@@ -1212,7 +1202,6 @@ version = "0.1.0"
 dependencies = [
  "ms-rt",
  "num-bigint 0.5.1",
- "num-integer",
  "num-traits",
 ]
 

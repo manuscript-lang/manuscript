@@ -65,8 +65,58 @@ pub struct Param {
     pub ty: Ty,
 }
 
-/// Parameters flagged as omittable on a source callable.
-pub type Defaults = Option<Rc<HashSet<Name>>>;
+/// Omission permissions and the native default that needs an invocation position.
+#[derive(Clone, Debug)]
+pub struct ParameterDefaults {
+    names: HashSet<Name>,
+    missing_value_at_call: Option<Name>,
+}
+
+impl ParameterDefaults {
+    /// Ordinary declaration defaults, without a native invocation default.
+    pub fn new(names: HashSet<Name>) -> Self {
+        Self {
+            names,
+            missing_value_at_call: None,
+        }
+    }
+
+    /// Whether this parameter may be omitted.
+    pub fn contains(&self, name: &Name) -> bool {
+        self.names.contains(name)
+    }
+
+    /// Omittable parameter names.
+    pub fn iter(&self) -> impl Iterator<Item = &Name> {
+        self.names.iter()
+    }
+
+    /// The number of omittable parameters.
+    pub fn len(&self) -> usize {
+        self.names.len()
+    }
+
+    /// Whether every parameter is required.
+    pub fn is_empty(&self) -> bool {
+        self.names.is_empty()
+    }
+
+    /// The already-omittable native parameter whose MissingValue is made at the call.
+    pub fn missing_value_at_call(&self) -> Option<Name> {
+        self.missing_value_at_call
+    }
+
+    pub(crate) fn with_missing_value_at_call(&self, name: Name) -> Self {
+        let mut defaults = self.clone();
+        if defaults.contains(&name) {
+            defaults.missing_value_at_call = Some(name);
+        }
+        defaults
+    }
+}
+
+/// Parameters flagged as omittable on a known callable; erasure removes all default metadata.
+pub type Defaults = Option<Rc<ParameterDefaults>>;
 
 /// A checked type.
 pub struct Type {
@@ -734,9 +784,6 @@ pub fn compatible(actual: &Option<Ty>, expected: &Ty) -> bool {
 
 /// Substitutes type variables.
 pub fn sub(t: &Ty, bindings: &Subst) -> Ty {
-    if bindings.is_empty() && t.kind != Kind::Variable {
-        return sub_walk(t, bindings);
-    }
     sub_walk(t, bindings)
 }
 
@@ -751,28 +798,41 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
     if t.args.is_empty() && t.params.is_empty() && t.result.is_none() {
         return t.clone();
     }
-    let mut changed = false;
-    let args: Vec<Ty> = t
-        .args
-        .iter()
-        .map(|a| {
-            let r = sub_walk(a, bindings);
-            changed |= !Rc::ptr_eq(&r, a);
-            r
-        })
-        .collect();
-    let params: Vec<Param> = t
-        .params
-        .iter()
-        .map(|p| {
-            let r = sub_walk(&p.ty, bindings);
-            changed |= !Rc::ptr_eq(&r, &p.ty);
-            Param {
-                name: p.name,
-                ty: r,
-            }
-        })
-        .collect();
+    // Most substitutions leave concrete children unchanged. Allocate each collection only
+    // at its first changed child, while still walking variables to snapshot their bounds.
+    let mut args: Option<Vec<Ty>> = None;
+    for (i, a) in t.args.iter().enumerate() {
+        let r = sub_walk(a, bindings);
+        if Rc::ptr_eq(&r, a) {
+            continue;
+        }
+        let mut values = Vec::with_capacity(t.args.len());
+        values.extend_from_slice(&t.args[..i]);
+        values.push(r);
+        values.extend(t.args[i + 1..].iter().map(|a| sub_walk(a, bindings)));
+        args = Some(values);
+        break;
+    }
+    let mut params: Option<Vec<Param>> = None;
+    for (i, p) in t.params.iter().enumerate() {
+        let r = sub_walk(&p.ty, bindings);
+        if Rc::ptr_eq(&r, &p.ty) {
+            continue;
+        }
+        let mut values = Vec::with_capacity(t.params.len());
+        values.extend_from_slice(&t.params[..i]);
+        values.push(Param {
+            name: p.name,
+            ty: r,
+        });
+        values.extend(t.params[i + 1..].iter().map(|p| Param {
+            name: p.name,
+            ty: sub_walk(&p.ty, bindings),
+        }));
+        params = Some(values);
+        break;
+    }
+    let mut changed = args.is_some() || params.is_some();
     let result = t.result.as_ref().map(|r| {
         let s = sub_walk(r, bindings);
         changed |= !Rc::ptr_eq(&s, r);
@@ -781,11 +841,18 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
     if !changed {
         return t.clone();
     }
-    let mut r = (**t).clone();
-    r.args = args;
-    r.params = params;
-    r.result = result;
-    Rc::new(r)
+    Rc::new(Type {
+        name: t.name,
+        id: t.id,
+        kind: t.kind,
+        args: args.unwrap_or_else(|| t.args.clone()),
+        params: params.unwrap_or_else(|| t.params.clone()),
+        result,
+        def: t.def.clone(),
+        bounds: RefCell::new(t.bounds.borrow().clone()),
+        default: RefCell::new(t.default.borrow().clone()),
+        defaults: t.defaults.clone(),
+    })
 }
 
 /// `Sub` over an optional type.
@@ -985,7 +1052,7 @@ pub fn constructor_signature(t: &Ty) -> Ty {
     let defaults = if defaults.is_empty() {
         None
     } else {
-        Some(Rc::new(defaults))
+        Some(Rc::new(ParameterDefaults::new(defaults)))
     };
     function_with(params, t.clone(), defaults)
 }

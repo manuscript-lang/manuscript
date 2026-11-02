@@ -60,8 +60,19 @@ impl Checker {
             return None;
         }
         let m = methods[0].clone();
+        let mut signature = m.ty.clone();
+        if rt.is_std("Optional")
+            && m.native == "core/ok_or"
+            && let Some(defaults) = &signature.defaults
+            && let Some(cause) = signature.params.first()
+        {
+            let defaults = defaults.with_missing_value_at_call(cause.name);
+            let mut marked = (*signature).clone();
+            marked.defaults = Some(Rc::new(defaults));
+            signature = Rc::new(marked);
+        }
         let info = Info {
-            ty: Some(m.ty.clone()),
+            ty: Some(signature),
             native: (!m.native.as_str().is_empty()).then_some(m.native),
             method: Some(m),
             no_return: receiver.no_return,

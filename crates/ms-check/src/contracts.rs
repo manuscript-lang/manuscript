@@ -134,6 +134,27 @@ pub(crate) fn self_binding(contract: &Ty, implementor: &Ty) -> Subst {
     s
 }
 
+/// Fixes receiver-dependent bounds and defaults while keeping method variables open.
+fn instantiate_operation_variables(variables: &[Ty], bindings: &Subst) -> Vec<Ty> {
+    if bindings.is_empty() {
+        return variables.to_vec();
+    }
+    variables
+        .iter()
+        .map(|variable| {
+            let instantiated = (**variable).clone();
+            *instantiated.bounds.borrow_mut() = variable
+                .bounds()
+                .iter()
+                .map(|bound| sub(bound, bindings))
+                .collect();
+            *instantiated.default.borrow_mut() =
+                variable.default_ty().map(|default| sub(&default, bindings));
+            Rc::new(instantiated)
+        })
+        .collect()
+}
+
 /// The operation `name` of `contract` as called on a value of type `implementor`.
 fn contract_operation(contract: &Ty, name: Name, implementor: &Ty) -> Option<MethodRef> {
     let def = contract.def.as_ref()?;
@@ -152,7 +173,10 @@ fn contract_operation(contract: &Ty, name: Name, implementor: &Ty) -> Option<Met
         receiver: contract.clone(),
         contract: Some(contract.clone()),
         ty: sub(&op.ty, &s),
-        variables: stdlib::operation_variables(&format!("{}/{}", contract.id, name)),
+        variables: instantiate_operation_variables(
+            &stdlib::operation_variables(&format!("{}/{}", contract.id, name)),
+            &s,
+        ),
         decl: op.decl.clone(),
         native: n("contract"),
     }))
@@ -476,12 +500,12 @@ impl Checker {
                     let mut merged: HashSet<Name> = t
                         .defaults
                         .as_ref()
-                        .map(|d| (**d).clone())
+                        .map(|d| d.iter().copied().collect())
                         .unwrap_or_default();
                     if let Some(allowed) = &op.ty.defaults {
                         merged.extend(allowed.iter().copied());
                     }
-                    t.defaults = Some(Rc::new(merged));
+                    t.defaults = Some(Rc::new(ParameterDefaults::new(merged)));
                 }
                 let declared = stdlib::operation_variables(&format!("{}/{}", contract.id, op.name));
                 let renamed: Subst = declared
@@ -1120,7 +1144,7 @@ impl Checker {
                 r.contract = m.contract.as_ref().map(|c| sub(c, &s));
                 r.receiver = receiver.clone();
                 // Implementation variables are fixed by the receiver; the method's own stay open.
-                r.variables = own.to_vec();
+                r.variables = instantiate_operation_variables(own, &s);
                 result.push(Rc::new(r));
             }
         }
@@ -1485,7 +1509,10 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
                     native,
                     t,
                     sub(&operation.ty, &substitution(t)),
-                    stdlib::operation_variables(&key),
+                    instantiate_operation_variables(
+                        &stdlib::operation_variables(&key),
+                        &substitution(t),
+                    ),
                     operation.decl.clone(),
                 ));
             }

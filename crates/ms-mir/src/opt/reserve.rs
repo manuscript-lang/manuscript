@@ -137,6 +137,15 @@ impl Cfg {
 
 /// The first literal in `f` that the pass can size.
 fn find(f: &Func) -> Option<Plan> {
+    // Only empty list literals can be replaced. Avoid building and querying
+    // the CFG when the function contains no candidate allocation.
+    if !f.blocks.iter().any(|b| {
+        b.insts
+            .iter()
+            .any(|i| i.op == Op::ListLit && i.args.is_empty())
+    }) {
+        return None;
+    }
     let cfg = Cfg::new(f);
     (1..f.blocks.len()).find_map(|h| plan_loop(f, &cfg, h))
 }

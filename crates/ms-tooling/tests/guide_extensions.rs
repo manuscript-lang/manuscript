@@ -100,6 +100,7 @@ fn string_affix_cuts_expose_each_actual_receiver_signature_once() {
     for (name, signature) in [
         ("cut_prefix", "fn cut_prefix(prefix: String) String?:"),
         ("cut_suffix", "fn cut_suffix(suffix: String) String?:"),
+        ("fields", "fn fields() List[String]:"),
     ] {
         let members: Vec<_> = string
             .members
@@ -239,6 +240,94 @@ fn source_and_native_overloads_remain_distinct_without_repeated_implementations(
             .members
             .iter()
             .filter(|member| member.name == "append")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn regex_span_source_methods_reach_pages_and_search_once() {
+    let regex = standard_library()
+        .iter()
+        .find(|module| module.path == "@std/string.ms")
+        .unwrap()
+        .declarations
+        .iter()
+        .find(|declaration| declaration.name == "Regex")
+        .unwrap();
+    for (name, result, budgets) in [
+        (
+            "find_all_spans",
+            "Result[List[RegexSpan], RegexError]",
+            &["max_matches: Int?"][..],
+        ),
+        (
+            "capture_spans",
+            "Result[List[RegexSpan?]?, RegexError]",
+            &["max_captures: Int?"][..],
+        ),
+        (
+            "capture_all_spans",
+            "Result[List[List[RegexSpan?]], RegexError]",
+            &["max_matches: Int?", "max_captures: Int?"][..],
+        ),
+    ] {
+        let members: Vec<_> = regex
+            .members
+            .iter()
+            .filter(|member| member.name == name)
+            .collect();
+        assert_eq!(members.len(), 1, "Regex.{name}: {members:?}");
+        let signature = &members[0].signature;
+        assert!(signature.contains("text: String"), "{signature}");
+        assert!(signature.contains(result), "{signature}");
+        for budget in budgets {
+            assert!(signature.contains(budget), "{signature}");
+        }
+        assert!(
+            page(&format!("string.Regex.{name}"))
+                .unwrap()
+                .contains(signature)
+        );
+        assert_eq!(
+            search(&format!("Regex.{name}"), 10)
+                .iter()
+                .filter(|found| found.name == format!("Regex.{name}"))
+                .count(),
+            1
+        );
+    }
+}
+
+#[test]
+fn utf8_scalar_record_reaches_pages_and_search_once() {
+    let module = standard_library()
+        .iter()
+        .find(|module| module.path == "@std/data/utf8.ms")
+        .unwrap();
+    let records: Vec<_> = module
+        .declarations
+        .iter()
+        .filter(|declaration| declaration.name == "Utf8Scalar")
+        .collect();
+    assert_eq!(records.len(), 1, "{records:?}");
+    for name in ["scalar", "width"] {
+        assert_eq!(
+            records[0]
+                .members
+                .iter()
+                .filter(|member| member.name == name)
+                .count(),
+            1
+        );
+    }
+    let output = page("utf8.Utf8Scalar").unwrap();
+    assert!(output.contains("scalar: Int"), "{output}");
+    assert!(output.contains("width: Int"), "{output}");
+    assert_eq!(
+        search("Utf8Scalar", 10)
+            .iter()
+            .filter(|found| found.name == "Utf8Scalar")
             .count(),
         1
     );

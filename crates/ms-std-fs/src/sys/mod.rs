@@ -430,13 +430,24 @@ pub fn open(path: &CPath, flags: i32, mode: u32) -> Result<Fd, Errno> {
     opened.map(into_fd).map_err(|e| code(&e))
 }
 
-/// Closes an owned descriptor: dropping the `File` closes it.
+/// Closes an owned descriptor once, preserving the host's release error.
 pub fn close(fd: Fd) -> Result<(), Errno> {
     if is_invalid(fd) {
         return Err(codes::EBADF);
     }
-    // SAFETY: the caller hands over ownership of an open descriptor.
-    drop(ManuallyDrop::into_inner(unsafe { borrow(fd) }));
+    // File's destructor cannot report close failures. Use the existing host bindings
+    // directly, and never retry: even an interrupted close can have retired the descriptor.
+    #[cfg(unix)]
+    // SAFETY: the caller hands over the descriptor; close validates it and consumes it once.
+    let failed = unsafe { libc::close(fd) } != 0;
+    #[cfg(windows)]
+    // SAFETY: the caller hands over the handle; CloseHandle validates and releases it once.
+    let failed = unsafe {
+        windows_sys::Win32::Foundation::CloseHandle(fd as std::os::windows::io::RawHandle)
+    } == 0;
+    if failed {
+        return Err(code(&io::Error::last_os_error()));
+    }
     Ok(())
 }
 
