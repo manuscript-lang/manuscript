@@ -124,6 +124,7 @@ fn stop_requested(sig: i32) {
         unsafe { sys::_exit(ms_rt_abi::EXIT_FAULT) }
     }
     fault::raise_main_cancel(sig as u8);
+    crate::cabi::run_stop_hooks();
     arm_grace_timer();
     crate::task::kick();
 }

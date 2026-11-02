@@ -171,8 +171,12 @@ pub fn call_modes(
                 }
                 None => {
                     // A native runs the function arguments it is given before it returns,
-                    // unless it is one of the externs that keep them.
-                    let runs_now = !crate::stdlib::keeps_callbacks(s.native.as_str());
+                    // unless it is one of the externs that keep them. A user extern's shim may
+                    // keep its functions with ms_fn_retain.
+                    let user_extern = s.native.as_str().starts_with("extern:")
+                        && !s.module.as_str().starts_with("@std/");
+                    let runs_now =
+                        !user_extern && !crate::stdlib::keeps_callbacks(s.native.as_str());
                     let params = s.ty().params.clone();
                     CallModes {
                         arguments: (0..args.len())

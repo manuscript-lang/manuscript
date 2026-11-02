@@ -13,5 +13,6 @@ extern fn takes_map(values: Map[String, Int]) Unit
 extern fn returns_optional() Int?
 extern fn nested_list(values: List[List[Int]]) Unit
 extern fn wrong_error() Handle!Wrong
-extern fn takes_closure(f: fn() Int) Unit
-extern fn fine(h: Handle, data: List[Handle]) Handle!Fine
+extern fn takes_closure(f: fn(Map[String, Int]) Int) Unit
+extern fn returns_handle(f: fn() Handle) Unit
+extern fn fine(h: Handle, data: List[Handle], each: fn(Handle, Int8) String) Handle!Fine
