@@ -27,3 +27,6 @@ export fn id_generic(var values: Map[Key, Int], key: Key) Unit:
 
 export fn id_empty() Map[Key, Int]:
     return Map[Key, Int]()
+
+export fn id_set() Set[Key]:
+    return Set([Key(1, "one"), Key(2, "two"), Key(3, "three")])
