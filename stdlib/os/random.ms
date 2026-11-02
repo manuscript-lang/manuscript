@@ -39,8 +39,8 @@ export fn uuid_v4() String!:
 
 # Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time in milliseconds and 80 random bits.
 # ULIDs made later sort after earlier ones as strings; two made in the same millisecond are ordered randomly.
-# Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return RandomError.
-export fn ulid() String!RandomError:
+# Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return an `Error`.
+export fn ulid() String!:
     let moment = now()
     let millis = moment.seconds * 1000 + moment.nanos / 1000000
     let noise = try random_bytes(10)
@@ -74,7 +74,7 @@ export fn ulid() String!RandomError:
 # Returns a random token of `size` bytes as unpadded URL-safe Base64, the shape of Python's `secrets.token_urlsafe`.
 # The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API keys and password-reset links.
 # `size` follows `random_bytes`: 0 through 16 MiB, otherwise InvalidInput.
-export fn token(size: Int = 32) String!RandomError:
+export fn token(size: Int = 32) String!:
     let data = try random_bytes(size)
     return ok(base64_encode_unpadded(data, url_safe: true))
 

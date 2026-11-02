@@ -1,9 +1,5 @@
 import expect_equal from "@std/test/test.ms"
-import (
-    compress,
-    decompress,
-    CompressionFormat
-) from "@std/io/archive.ms"
+import (compress, decompress, CompressionFormat) from "@std/io/archive.ms"
 import pack, unpack, ArchiveEntry, ArchiveLimits from "@std/io/archive.ms"
 import Bytes from "@std/bytes.ms"
 import from_bytes from "@std/io/streams.ms"

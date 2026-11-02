@@ -39,10 +39,10 @@ test "immutable copies and captured native values keep invocation defaults":
         return copied()
     let nested_result = nested()
     try expect_equal(
-        copied_result.err().message, "missing value at bound-missing-value-source.ms:39"
+        copied_result.err().message, "missing value at bound-missing-value-source.ms:37"
     )
     try expect_equal(
-        nested_result.err().message, "missing value at bound-missing-value-source.ms:41"
+        nested_result.err().message, "missing value at bound-missing-value-source.ms:39"
     )
 
 test "generic callers and direct calls keep their invocation lines":
@@ -54,7 +54,7 @@ test "generic callers and direct calls keep their invocation lines":
 
     let direct = absent.ok_or()
     try expect_equal(
-        direct.err().message, "missing value at bound-missing-value-source.ms:59"
+        direct.err().message, "missing value at bound-missing-value-source.ms:55"
     )
 
     let zero: Int? = 0

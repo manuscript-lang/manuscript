@@ -12,13 +12,6 @@ import base64_decode, base64_encode from "@std/data/encoding.ms"
 #     blocks[0].data                 # the decoded DER bytes
 #     encode_all([PemBlock(label: "NOTE", data: "hi".to_bytes())])
 
-# Errors returned for PEM text whose armor or base64 body is malformed.
-export type PemError:
-    # A BEGIN line has no matching END line, or the labels differ.
-    case InvalidArmor
-    # A block body is not valid base64 or a header line has no colon.
-    case InvalidData
-
 # One PEM block: its label, optional RFC 1421 style headers, and decoded body bytes.
 export type PemBlock:
     # Text between `BEGIN ` and the closing dashes, such as `CERTIFICATE`.
@@ -33,7 +26,7 @@ let END = "-----END "
 let DASHES = "-----"
 
 # Parses every PEM block in `text`; text outside blocks is ignored, and a text without blocks gives an empty list.
-export fn parse(text: String) List[PemBlock]!PemError:
+export fn parse(text: String) List[PemBlock]!:
     var blocks = List[PemBlock]()
     var label = ""
     var open = false
@@ -62,10 +55,18 @@ export fn parse(text: String) List[PemBlock]!PemError:
 
         if line.starts_with(END):
             let closing = line.drop(END.length())
-            if closing != "{label}{DASHES}": return error(PemError.InvalidArmor)
+            if closing != "{label}{DASHES}": return error(
+                Error(
+                    "PEM: invalid armor", kind: ErrorCategory.InvalidData
+                )
+            )
 
             let data = base64_decode(body)
-            if data.is_error(): return error(PemError.InvalidData)
+            if data.is_error(): return error(
+                Error(
+                    "PEM: invalid data", kind: ErrorCategory.InvalidData
+                )
+            )
 
             blocks.append(
                 PemBlock(
@@ -75,7 +76,9 @@ export fn parse(text: String) List[PemBlock]!PemError:
             open = false
             continue
 
-        if line.starts_with(BEGIN): return error(PemError.InvalidArmor)
+        if line.starts_with(BEGIN): return error(
+            Error("PEM: invalid armor", kind: ErrorCategory.InvalidData)
+        )
 
         if in_headers and line.contains(":"):
             let at = line.index_of(":").get(0)
@@ -85,7 +88,7 @@ export fn parse(text: String) List[PemBlock]!PemError:
         in_headers = false
         body = "{body}{line}"
 
-    if open: return error(PemError.InvalidArmor)
+    if open: return error(Error("PEM: invalid armor", kind: ErrorCategory.InvalidData))
 
     return ok(blocks)
 
@@ -117,10 +120,3 @@ export fn encode_all(blocks: List[PemBlock]) String:
     for block in blocks:
         out.append(encode_block(block))
     return out.build()
-
-impl Error for PemError:
-    # Returns a PEM-prefixed diagnostic without echoing the input.
-    fn message() String:
-        match self:
-            InvalidArmor: return "PEM: invalid armor"
-            InvalidData: return "PEM: invalid data"

@@ -133,8 +133,16 @@ test "regex collection budgets preserve empty adjacency and exact counts":
     try expect_equal((try re.find_all("a🙂🙂a", 3)), ["a", "", "a"])
     try expect_equal((try re.captures_all("a🙂🙂a", 3)), [["a"], [""], ["a"]])
 
-    let find_limit: List[String]!RegexError = error(RegexError.LimitExceeded)
-    let capture_limit: List[List[String]]!RegexError = error(RegexError.LimitExceeded)
+    let find_limit: List[String]! = error(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
+    )
+    let capture_limit: List[List[String]]! = error(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
+    )
     try expect_equal(re.find_all("a🙂🙂a", 2), find_limit)
     try expect_equal(re.captures_all("a🙂🙂a", 2), capture_limit)
     try expect_equal(re.find_all("", 0), find_limit)

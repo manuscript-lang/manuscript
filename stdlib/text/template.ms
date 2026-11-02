@@ -30,37 +30,6 @@ import escape from "@std/data/html.ms"
 # action with `| raw` to print trusted markup unchanged. Values come from data only: templates cannot
 # call functions or run code, and `max_output` bounds the result.
 
-# Errors from compiling or rendering a template.
-export type TemplateError:
-    # The template text is malformed; `line` counts from 1.
-    case Syntax(
-        # Line of the action that failed.
-        line: Int,
-        # What was wrong, without echoing template text.
-        reason: String
-    )
-    # A printed path has no value and rendering is strict.
-    case MissingValue(
-        # The dotted path that was not found.
-        path: String
-    )
-    # A filter was called with the wrong kind of value or arguments.
-    case InvalidFilter(
-        # The filter that failed, such as `join` or `truncate`.
-        name: String,
-        # A short reason such as a missing argument, never echoing values.
-        reason: String
-    )
-    # `include` named a partial that was not supplied, or partials nest too deeply.
-    case UnknownPartial(
-        # The partial name that was requested but not found in the supplied map.
-        name: String
-    )
-    # Output exceeded `max_output`.
-    case LimitExceeded
-    # The data could not be converted to JSON.
-    case InvalidData
-
 # A parsed template expression: a literal, a path, a filter call or an operator. Internal to the engine; hidden from callers.
 export opaque type TemplateExpr:
     # A literal string, number, boolean or null written in the template.
@@ -157,33 +126,58 @@ let FILTERS = [
 ]
 let MAX_DEPTH = 64
 
+# Builds a template error. Each message names the line, path, filter or partial but never echoes values.
+fn syntax_error(line: Int, reason: String) Error:
+    return Error(
+        "template: line {line}: {reason}", kind: ErrorCategory.InvalidData,
+        details: {"line": "{line}"}
+    )
+
+fn missing_value_error(path: String) Error:
+    return Error(
+        "template: no value for {path}", kind: ErrorCategory.NotFound,
+        details: {"path": path}
+    )
+
+fn invalid_filter_error(name: String, reason: String) Error:
+    return Error(
+        "template: filter {name}: {reason}", kind: ErrorCategory.InvalidInput,
+        details: {"filter": name}
+    )
+
+fn unknown_partial_error(name: String) Error:
+    return Error(
+        "template: unknown partial {name}", kind: ErrorCategory.NotFound,
+        details: {"partial": name}
+    )
+
 # Compiles template source. With `html: true`, printed values are HTML-escaped unless they end in `| raw`.
-export fn compile(source: String, html: Bool = false) Template!TemplateError:
+export fn compile(source: String, html: Bool = false) Template!Error:
     let tokens = try tokenize(source)
     var builder = Builder(tokens: tokens, at: 0, html: html)
     let done = try builder.block(0)
     if done.end != "": return error(
-        TemplateError.Syntax(line: done.line, reason: "unexpected {done.end}")
+        syntax_error(line: done.line, reason: "unexpected {done.end}")
     )
 
     return ok(Template(nodes: done.nodes, html: html))
 
 # Compiles and renders in one call; use `compile` when rendering more than once.
-export fn render(
-    source: String,
-    data: JsonValue,
-    html: Bool = false
-) String!TemplateError:
+export fn render(source: String, data: JsonValue, html: Bool = false) String!Error:
     let template = try compile(source, html: html)
     return template.render(data)
 
 # Converts any `Data` value (records, lists, scalars) to the `JsonValue` a template reads.
-export fn to_data[T: Data](value: T) JsonValue!TemplateError:
+export fn to_data[T: Data](value: T) JsonValue!Error:
     let text = stringify(value: value)
-    if text.is_error(): return error(TemplateError.InvalidData)
+    if text.is_error(): return error(
+        Error("template: data is not JSON", kind: ErrorCategory.InvalidData)
+    )
 
     let parsed = parse(text.get())
-    if parsed.is_error(): return error(TemplateError.InvalidData)
+    if parsed.is_error(): return error(
+        Error("template: data is not JSON", kind: ErrorCategory.InvalidData)
+    )
 
     return ok(parsed.get())
 
@@ -195,7 +189,7 @@ impl Template:
         partials: Map[String, Template] = Map[String, Template](),
         strict: Bool = true,
         max_output: Int = 16777216
-    ) String!TemplateError:
+    ) String!Error:
         var frames = List[Map[String, JsonValue]]()
         frames.append(root_names(data))
 
@@ -217,7 +211,7 @@ fn root_names(data: JsonValue) Map[String, JsonValue]:
 fn count_lines(text: String) Int:
     return text.count("\n")
 
-fn tokenize(source: String) List[Token]!TemplateError:
+fn tokenize(source: String) List[Token]!Error:
     var tokens = List[Token]()
     var rest = source.clone()
     var line = 1
@@ -241,7 +235,7 @@ fn tokenize(source: String) List[Token]!TemplateError:
         let after = rest.drop(open.get(0) + 2)
         let close = after.index_of("\}\}")
         if not close.is_some(): return error(
-            TemplateError.Syntax(
+            syntax_error(
                 line: line + count_lines(text), reason: "unterminated action"
             )
         )
@@ -283,7 +277,7 @@ fn is_word_start(c: String) Bool:
 fn is_digit(c: String) Bool:
     return c >= "0" and c <= "9"
 
-fn lex(text: String, line: Int) List[Tok]!TemplateError:
+fn lex(text: String, line: Int) List[Tok]!Error:
     var toks = List[Tok]()
     let chars = text.chars()
     var i = 0
@@ -321,9 +315,7 @@ fn lex(text: String, line: Int) List[Tok]!TemplateError:
                     i += 1
 
             if not closed: return error(
-                TemplateError.Syntax(
-                    line: line, reason: "unterminated string"
-                )
+                syntax_error(line: line, reason: "unterminated string")
             )
 
             toks.append(Tok(kind: "str", text: out.build()))
@@ -360,11 +352,7 @@ fn lex(text: String, line: Int) List[Tok]!TemplateError:
 
             toks.append(Tok(kind: "word", text: out))
         else:
-            return error(
-                TemplateError.Syntax(
-                    line: line, reason: "unexpected character"
-                )
-            )
+            return error(syntax_error(line: line, reason: "unexpected character"))
 
     return ok(toks)
 
@@ -387,10 +375,10 @@ impl ExprParser:
         let t = self.peek()
         return t.kind == "word" and t.text == text
 
-    fn fail(reason: String) TemplateError:
-        return TemplateError.Syntax(line: self.line, reason: reason)
+    fn fail(reason: String) Error:
+        return syntax_error(line: self.line, reason: reason)
 
-    var fn or_expr() TemplateExpr!TemplateError:
+    var fn or_expr() TemplateExpr!Error:
         var left = try self.and_expr()
 
         while self.is_word("or"):
@@ -401,7 +389,7 @@ impl ExprParser:
 
         return ok(left)
 
-    var fn and_expr() TemplateExpr!TemplateError:
+    var fn and_expr() TemplateExpr!Error:
         var left = try self.not_expr()
 
         while self.is_word("and"):
@@ -412,7 +400,7 @@ impl ExprParser:
 
         return ok(left)
 
-    var fn not_expr() TemplateExpr!TemplateError:
+    var fn not_expr() TemplateExpr!Error:
         if self.is_word("not"):
             self.at += 1
 
@@ -421,7 +409,7 @@ impl ExprParser:
 
         return self.compare()
 
-    var fn compare() TemplateExpr!TemplateError:
+    var fn compare() TemplateExpr!Error:
         let left = try self.filtered()
         let t = self.peek()
         let is_cmp = (
@@ -435,7 +423,7 @@ impl ExprParser:
         let right = try self.filtered()
         return ok(Op(t.text.clone(), [left, right]))
 
-    var fn filtered() TemplateExpr!TemplateError:
+    var fn filtered() TemplateExpr!Error:
         var value = try self.primary()
 
         while self.is_sym("|"):
@@ -467,7 +455,7 @@ impl ExprParser:
 
         return ok(value)
 
-    var fn primary() TemplateExpr!TemplateError:
+    var fn primary() TemplateExpr!Error:
         let t = self.peek()
         self.at += 1
         if t.kind == "str": return ok(Literal(JsonValue.StringValue(t.text.clone())))
@@ -492,18 +480,16 @@ impl ExprParser:
 
         return error(self.fail("expected a value"))
 
-fn parse_expr(text: String, line: Int) TemplateExpr!TemplateError:
+fn parse_expr(text: String, line: Int) TemplateExpr!Error:
     let toks = try lex(text, line)
     var parser = ExprParser(toks: toks, at: 0, line: line)
     if parser.toks.is_empty(): return error(
-        TemplateError.Syntax(line: line, reason: "empty action")
+        syntax_error(line: line, reason: "empty action")
     )
 
     let expr = try parser.or_expr()
     if parser.at < parser.toks.length(): return error(
-        TemplateError.Syntax(
-            line: line, reason: "unexpected text after expression"
-        )
+        syntax_error(line: line, reason: "unexpected text after expression")
     )
 
     return ok(expr)
@@ -529,10 +515,10 @@ fn after_word(body: String) String:
     return body.drop(first_word(body).length()).trim()
 
 impl Builder:
-    var fn block(depth: Int) BlockEnd!TemplateError:
+    var fn block(depth: Int) BlockEnd!Error:
         var nodes = List[TemplateNode]()
         if depth > MAX_DEPTH: return error(
-            TemplateError.Syntax(line: 0, reason: "nested too deeply")
+            syntax_error(line: 0, reason: "nested too deeply")
         )
 
         while self.at < self.tokens.length():
@@ -578,7 +564,7 @@ impl Builder:
 
         return ok(BlockEnd(nodes: nodes, end: "", cond: "", line: 0))
 
-    fn emit(body: String, line: Int) TemplateNode!TemplateError:
+    fn emit(body: String, line: Int) TemplateNode!Error:
         var expr = try parse_expr(body, line)
         var escape_output = self.html
         let last = trailing_filter(expr)
@@ -591,7 +577,7 @@ impl Builder:
 
         return ok(Emit(expr, escape_output))
 
-    var fn conditional(cond: String, line: Int, depth: Int) TemplateNode!TemplateError:
+    var fn conditional(cond: String, line: Int, depth: Int) TemplateNode!Error:
         var branches = List[TemplateBranch]()
         var otherwise = List[TemplateNode]()
         var guard = try parse_expr(cond, line)
@@ -608,7 +594,7 @@ impl Builder:
             if done.end == "else":
                 let tail = try self.block(depth + 1)
                 if tail.end != "end": return error(
-                    TemplateError.Syntax(
+                    syntax_error(
                         line: done.line, reason: "if needs end"
                     )
                 )
@@ -616,29 +602,25 @@ impl Builder:
                 otherwise = tail.nodes
                 break
 
-            return error(TemplateError.Syntax(line: line, reason: "if needs end"))
+            return error(syntax_error(line: line, reason: "if needs end"))
 
         return ok(If(branches, otherwise))
 
-    var fn for_block(header: String, line: Int, depth: Int) TemplateNode!TemplateError:
+    var fn for_block(header: String, line: Int, depth: Int) TemplateNode!Error:
         let at = header.index_of(" in ")
         if not at.is_some(): return error(
-            TemplateError.Syntax(
-                line: line, reason: "for needs `name in value`"
-            )
+            syntax_error(line: line, reason: "for needs `name in value`")
         )
 
         let names = header.take(at.get(0)).split(",")
         if names.length() > 2: return error(
-            TemplateError.Syntax(
-                line: line, reason: "for takes one or two names"
-            )
+            syntax_error(line: line, reason: "for takes one or two names")
         )
 
         let first = names[0].trim()
         let second = if names.length() == 2: names[1].trim() else: ""
         if first.is_empty() or not is_word_start(first.take(1)) or first.contains("."):
-            return error(TemplateError.Syntax(line: line, reason: "bad loop name"))
+            return error(syntax_error(line: line, reason: "bad loop name"))
         if (
             names.length() == 2
             and (
@@ -647,7 +629,7 @@ impl Builder:
                 or not is_word_start(second.take(1))
             )
         ):
-            return error(TemplateError.Syntax(line: line, reason: "bad loop name"))
+            return error(syntax_error(line: line, reason: "bad loop name"))
 
         let source = try parse_expr(header.drop(at.get(0) + 4), line)
         let body = try self.block(depth + 1)
@@ -656,14 +638,12 @@ impl Builder:
         if body.end == "else":
             let tail = try self.block(depth + 1)
             if tail.end != "end": return error(
-                TemplateError.Syntax(
-                    line: line, reason: "for needs end"
-                )
+                syntax_error(line: line, reason: "for needs end")
             )
 
             otherwise = tail.nodes
         else if body.end != "end":
-            return error(TemplateError.Syntax(line: line, reason: "for needs end"))
+            return error(syntax_error(line: line, reason: "for needs end"))
 
         return ok(Each(first, second, source, body.nodes, otherwise))
 
@@ -689,9 +669,13 @@ type Run:
     html: Bool
 
 impl Run:
-    var fn write(text: String) Unit!TemplateError:
+    var fn write(text: String) Unit!Error:
         self.written += text.length()
-        if self.written > self.limit: return error(TemplateError.LimitExceeded)
+        if self.written > self.limit: return error(
+            Error(
+                "template: output limit exceeded", kind: ErrorCategory.LimitExceeded
+            )
+        )
 
         self.out.append(text)
         return ok(unit)
@@ -719,20 +703,20 @@ impl Run:
 
         return value
 
-    fn eval(expr: TemplateExpr, strict: Bool) JsonValue!TemplateError:
+    fn eval(expr: TemplateExpr, strict: Bool) JsonValue!Error:
         match expr:
             Literal(value): return ok(value.clone())
             Path(parts): return self.path_value(parts, strict)
             Call(name, args): return self.call(name, args, strict)
             Op(op, args): return self.operator(op, args)
 
-    fn path_value(parts: List[String], strict: Bool) JsonValue!TemplateError:
+    fn path_value(parts: List[String], strict: Bool) JsonValue!Error:
         if let found = self.lookup(parts): return ok(found)
-        if strict: return error(TemplateError.MissingValue(path: parts.join(".")))
+        if strict: return error(missing_value_error(path: parts.join(".")))
 
         return ok(JsonValue.Null)
 
-    fn operator(op: String, args: List[TemplateExpr]) JsonValue!TemplateError:
+    fn operator(op: String, args: List[TemplateExpr]) JsonValue!Error:
         let left = try self.eval(args[0].clone(), false)
         if op == "not": return ok(JsonValue.BoolValue(not truthy(left)))
         if op == "and" and not truthy(left): return ok(JsonValue.BoolValue(false))
@@ -750,16 +734,12 @@ impl Run:
 
         return ok(JsonValue.BoolValue(order >= 0 and order != 2))
 
-    fn call(
-        name: String,
-        args: List[TemplateExpr],
-        strict: Bool
-    ) JsonValue!TemplateError:
+    fn call(name: String, args: List[TemplateExpr], strict: Bool) JsonValue!Error:
         if name == "default":
             let input = try self.eval(args[0].clone(), false)
             if truthy(input): return ok(input)
             if args.length() != 2: return error(
-                TemplateError.InvalidFilter(
+                invalid_filter_error(
                     name: name, reason: "needs one argument"
                 )
             )
@@ -772,12 +752,12 @@ impl Run:
             values.append(try self.eval(args[i].clone(), strict))
         return apply_filter(name, input, values)
 
-    var fn nodes(items: List[TemplateNode], depth: Int) Unit!TemplateError:
+    var fn nodes(items: List[TemplateNode], depth: Int) Unit!Error:
         for node in items:
             try self.node(node, depth)
         return ok(unit)
 
-    var fn node(node: TemplateNode, depth: Int) Unit!TemplateError:
+    var fn node(node: TemplateNode, depth: Int) Unit!Error:
         match node:
             Text(text): return self.write(text)
             Emit(expr, escape_output): return self.emit(expr, escape_output)
@@ -787,7 +767,7 @@ impl Run:
             )
             Include(name): return self.include(name, depth)
 
-    var fn emit(expr: TemplateExpr, escape_output: Bool) Unit!TemplateError:
+    var fn emit(expr: TemplateExpr, escape_output: Bool) Unit!Error:
         let value = try self.eval(expr, self.strict)
         let text = to_text(value)
         return self.write(if escape_output: escape(text) else: text)
@@ -796,7 +776,7 @@ impl Run:
         branches: List[TemplateBranch],
         otherwise: List[TemplateNode],
         depth: Int
-    ) Unit!TemplateError:
+    ) Unit!Error:
         for branch in branches:
             let verdict = try self.eval(branch.cond.clone(), false)
             if truthy(verdict): return self.nodes(branch.body.clone(), depth + 1)
@@ -810,7 +790,7 @@ impl Run:
         body: List[TemplateNode],
         otherwise: List[TemplateNode],
         depth: Int
-    ) Unit!TemplateError:
+    ) Unit!Error:
         let collection = try self.eval(source, false)
         let rows = rows_of(collection, first, second)
         if rows.is_empty(): return self.nodes(otherwise, depth + 1)
@@ -826,12 +806,12 @@ impl Run:
 
         return ok(unit)
 
-    var fn include(name: TemplateExpr, depth: Int) Unit!TemplateError:
+    var fn include(name: TemplateExpr, depth: Int) Unit!Error:
         let key = to_text(try self.eval(name, true))
-        if depth > MAX_DEPTH: return error(TemplateError.UnknownPartial(name: key))
+        if depth > MAX_DEPTH: return error(unknown_partial_error(name: key))
 
         let partial = self.partials.get(key).clone()
-        if not partial.is_some(): return error(TemplateError.UnknownPartial(name: key))
+        if not partial.is_some(): return error(unknown_partial_error(name: key))
 
         return self.nodes(
             partial.get(
@@ -938,19 +918,15 @@ fn compare_values(left: JsonValue, right: JsonValue) Int:
 fn text_value(text: String) JsonValue:
     return JsonValue.StringValue(text)
 
-fn invalid(name: String, reason: String) TemplateError:
-    return TemplateError.InvalidFilter(name: name, reason: reason)
+fn invalid(name: String, reason: String) Error:
+    return invalid_filter_error(name: name, reason: reason)
 
-fn arg_text(name: String, args: List[JsonValue], at: Int) String!TemplateError:
+fn arg_text(name: String, args: List[JsonValue], at: Int) String!Error:
     if at >= args.length(): return error(invalid(name.clone(), "missing argument"))
 
     return ok(to_text(args[at]))
 
-fn apply_filter(
-    name: String,
-    input: JsonValue,
-    args: List[JsonValue]
-) JsonValue!TemplateError:
+fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue!Error:
     let text = to_text(input)
     if name == "upper": return ok(text_value(text.upper()))
     if name == "lower": return ok(text_value(text.lower()))
@@ -996,7 +972,7 @@ fn length_of(value: JsonValue) Int:
 
     return to_text(value).length()
 
-fn reverse_value(value: JsonValue) JsonValue!TemplateError:
+fn reverse_value(value: JsonValue) JsonValue!Error:
     if let list = value.as_list(): return ok(JsonValue.ArrayValue(list.reversed()))
 
     return ok(text_value(to_text(value).reverse()))
@@ -1035,14 +1011,3 @@ fn contains_value(haystack: JsonValue, needle: JsonValue) Bool:
     if let members = haystack.as_map(): return members.contains(to_text(needle))
 
     return to_text(haystack).contains(to_text(needle))
-
-impl Error for TemplateError:
-    # Returns a template-prefixed diagnostic; it names the line, path or filter but never echoes values.
-    fn message() String:
-        match self:
-            Syntax(line, reason): return "template: line {line}: {reason}"
-            MissingValue(path): return "template: no value for {path}"
-            InvalidFilter(name, reason): return "template: filter {name}: {reason}"
-            UnknownPartial(name): return "template: unknown partial {name}"
-            LimitExceeded: return "template: output limit exceeded"
-            InvalidData: return "template: data is not JSON"

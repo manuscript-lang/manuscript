@@ -1,14 +1,13 @@
 import expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test/test.ms"
-import parse, YamlError, YamlValue from "@std/data/yaml.ms"
+import parse, YamlValue from "@std/data/yaml.ms"
 
 # Regressions: block key.
 
 fn invalid_block_key(source: String) Unit!:
     let cause = parse(source) | try expect_error
+    if cause.kind == ErrorCategory.InvalidData: return ok(unit)
 
-    match cause:
-        InvalidData(_, _, _): return ok(unit)
-        _: return fail("expected malformed YAML, got {cause}")
+    return fail("expected malformed YAML, got {cause}")
 
 test "YAML unquoted block keys reject reserved leading indicators":
     for key in ["]key", "\}key", ",key", "@key", "`key", "|key", ">key"]:
@@ -35,10 +34,8 @@ test "YAML a question mark followed by a letter is a plain block key":
 test "YAML explicit and complex mapping keys remain unsupported":
     for source in ["? key\n: value", "[key]: value"]:
         let cause = parse(source) | try expect_error
-
-        match cause:
-            UnsupportedFeature(_, _): unit
-            _: return fail("expected unsupported mapping key, got {cause}")
+        if cause.kind != ErrorCategory.Unsupported:
+            return fail("expected unsupported mapping key, got {cause}")
 
 # Regressions: colon.
 
@@ -79,12 +76,11 @@ test "YAML flow colon separators retain quoted and empty values":
 
 fn invalid_colon(source: String) Unit!:
     let cause = parse(source) | try expect_error
+    if cause.kind != ErrorCategory.InvalidData:
+        return fail("expected malformed YAML, got {cause}")
 
-    match cause:
-        InvalidData(_, _, reason):
-            reason | try expect_equal("unexpected mapping colon")
-            return ok(unit)
-        _: return fail("expected malformed YAML, got {cause}")
+    cause.details["reason"] | try expect_equal("unexpected mapping colon")
+    return ok(unit)
 
 test "YAML flow scalar rejects a colon before tab":
     try invalid_colon("\{a: x:\tb\}")
@@ -114,12 +110,12 @@ test "YAML block scalar rejects a separator before a folded paragraph break":
 
 fn rejects_continuation(text: String) Unit!Error:
     let cause = parse(text) | try expect_error
+    if cause.kind != ErrorCategory.InvalidData:
+        return fail("expected InvalidData, got {cause}")
 
-    match cause:
-        InvalidData(_, _, reason): return expect_equal(
-            reason, "unexpected indentation or additional document"
-        )
-        _: return fail("expected InvalidData, got {cause}")
+    return expect_equal(
+        cause.details["reason"], "unexpected indentation or additional document"
+    )
 
 test "YAML inline comments end root and mapping plain scalars":
     try rejects_continuation("first # comment\nnext")
@@ -194,10 +190,10 @@ test "YAML quoted and flow hashes retain their scalar behavior":
 
 fn rejects_flow_continuation(text: String, reason: String) Unit!Error:
     let cause = parse(text) | try expect_error
+    if cause.kind != ErrorCategory.InvalidData:
+        return fail("expected InvalidData, got {cause}")
 
-    match cause:
-        InvalidData(_, _, found): return expect_equal(found, reason)
-        _: return fail("expected InvalidData, got {cause}")
+    return expect_equal(cause.details["reason"], reason)
 
 test "YAML flow sequence comments terminate plain scalar text":
     for source in [
@@ -271,12 +267,10 @@ test "YAML flow mappings reject empty comma entries":
         "\{key,,\}"
     ]:
         let cause = parse(source) | try expect_error
+        if cause.kind != ErrorCategory.InvalidData:
+            return fail("expected malformed flow entry, got {cause}")
 
-        match cause:
-            InvalidData(_, _, reason): reason | try expect_equal(
-                "expected flow mapping key"
-            )
-            _: return fail("expected malformed flow entry, got {cause}")
+        cause.details["reason"] | try expect_equal("expected flow mapping key")
 
 test "YAML flow mappings retain legal trailing commas":
     var values = Map[String, YamlValue]()
@@ -299,13 +293,11 @@ test "YAML flow mappings retain existing empty-key forms":
 
 fn error_at(text: String, line: Int, column: Int) Unit!Error:
     let cause = parse(text) | try expect_error
+    if cause.kind != ErrorCategory.InvalidData:
+        return fail("expected InvalidData, got {cause}")
 
-    match cause:
-        InvalidData(found_line, found_column, _):
-            try expect_equal(found_line, line)
-            try expect_equal(found_column, column)
-        _: return fail("expected InvalidData, got {cause}")
-
+    try expect_equal(cause.details["line"], line.to_string())
+    try expect_equal(cause.details["column"], column.to_string())
     return ok(unit)
 
 test "YAML root EOF location control":
@@ -346,11 +338,10 @@ test "YAML compact tab rewrites retain original scalar columns":
 
 fn unsupported_at(text: String, line: Int) Unit!Error:
     let cause = parse(text) | try expect_error
+    if cause.kind != ErrorCategory.Unsupported:
+        return fail("expected UnsupportedFeature, got {cause}")
 
-    match cause:
-        UnsupportedFeature(found_line, _): try expect_equal(found_line, line)
-        _: return fail("expected UnsupportedFeature, got {cause}")
-
+    try expect_equal(cause.details["line"], line.to_string())
     return ok(unit)
 
 test "YAML flow merge failures retain their source origin":
@@ -391,12 +382,13 @@ test "YAML block header origins distinguish identical quoted key text":
 
 fn invalid_key_line(source: String) Unit!:
     let cause = parse(source) | try expect_error
+    if cause.kind != ErrorCategory.InvalidData:
+        return fail("expected malformed implicit key, got {cause}")
 
-    match cause:
-        InvalidData(_, _, reason):
-            reason | try expect_equal("an implicit mapping key must stay on one line")
-            return ok(unit)
-        _: return fail("expected malformed implicit key, got {cause}")
+    cause.details["reason"] | try expect_equal(
+        "an implicit mapping key must stay on one line"
+    )
+    return ok(unit)
 
 test "YAML plain implicit keys cannot span physical lines":
     for source in ["\{key\n next: value\}", "\{key\n: value\}"]:
@@ -507,7 +499,4 @@ test "YAML brackets inside block plain text stay ordinary characters":
 
 test "YAML plain closing brackets do not hide malformed nested values":
     let cause = parse("word] [text]: \{value: 1\}\}") | try expect_error
-
-    match cause:
-        InvalidData(_, _, _): unit
-        _: return fail("expected malformed YAML, got {cause}")
+    cause.kind | try expect_equal(ErrorCategory.InvalidData)

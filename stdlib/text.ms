@@ -1,4 +1,4 @@
-import StringError, StringBuilder, from_scalars from "@std/string.ms"
+import StringBuilder, from_scalars from "@std/string.ms"
 
 # Conversions between text and values: booleans, integers in any base, and quoted literals.
 # Scalar classification lives in `@std/unicode.ms`; whole-string operations such as `fields_by`,
@@ -119,10 +119,10 @@ fn quote_with(text: String, ascii_only: Bool) String:
 
 # Reverses quote: reads a double-quoted literal and returns its text. Supports `\"`, `\\`, `\n`,
 # `\r`, `\t`, `\0` and `\u{hex}`; anything else, or text that is not fully quoted, is InvalidInput.
-export fn unquote(text: String) String!StringError:
+export fn unquote(text: String) String!:
     let cs = text.scalar_values()
     if cs.length() < 2 or cs[0] != 34 or cs[cs.length() - 1] != 34:
-        return error(StringError.InvalidInput)
+        return error(Error("string: invalid input", kind: ErrorCategory.InvalidInput))
 
     var out = List[Int]()
     var i = 1
@@ -131,13 +131,21 @@ export fn unquote(text: String) String!StringError:
     while i < end:
         let c = cs[i]
         if c == 34:
-            return error(StringError.InvalidInput)
+            return error(
+                Error(
+                    "string: invalid input", kind: ErrorCategory.InvalidInput
+                )
+            )
 
         if c != 92:
             out.append(c)
             i += 1
         else if i + 1 >= end:
-            return error(StringError.InvalidInput)
+            return error(
+                Error(
+                    "string: invalid input", kind: ErrorCategory.InvalidInput
+                )
+            )
         else:
             let e = cs[i + 1]
             i += 2
@@ -161,7 +169,11 @@ export fn unquote(text: String) String!StringError:
                     j += 1
 
                 if j >= end:
-                    return error(StringError.InvalidInput)
+                    return error(
+                        Error(
+                            "string: invalid input", kind: ErrorCategory.InvalidInput
+                        )
+                    )
 
                 let digits = try from_scalars(hex)
                 let value = parse_int_radix(digits, 16)
@@ -169,10 +181,18 @@ export fn unquote(text: String) String!StringError:
                 if let v = value:
                     out.append(v)
                 else:
-                    return error(StringError.InvalidInput)
+                    return error(
+                        Error(
+                            "string: invalid input", kind: ErrorCategory.InvalidInput
+                        )
+                    )
 
                 i = j + 1
             else:
-                return error(StringError.InvalidInput)
+                return error(
+                    Error(
+                        "string: invalid input", kind: ErrorCategory.InvalidInput
+                    )
+                )
 
     return from_scalars(out)

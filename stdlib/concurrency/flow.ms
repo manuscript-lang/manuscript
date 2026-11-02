@@ -1,6 +1,6 @@
 import panic from "@std/core.ms"
 import Deque from "@std/collections/deque.ms"
-import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
 import Channel from "@std/io/channels.ms"
@@ -193,7 +193,7 @@ export fn map_concurrent[T: Clonable, U: Clonable](
     items: List[T],
     limit: Int,
     work: fn(T) U
-) List[U]!TaskError:
+) List[U]!:
     if limit < 1:
         panic("map_concurrent: limit must be at least 1, found {limit}")
 

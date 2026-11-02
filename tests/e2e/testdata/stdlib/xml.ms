@@ -1,5 +1,5 @@
 import expect_equal, expect_true from "@std/test/test.ms"
-import parse, stringify, escape_text, XmlNode, XmlError from "@std/data/xml.ms"
+import parse, stringify, escape_text, XmlNode from "@std/data/xml.ms"
 
 test "parse reads elements attributes and text":
     let doc = parse(

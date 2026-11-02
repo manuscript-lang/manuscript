@@ -1,6 +1,6 @@
 import expect_equal, expect_true from "@std/test/test.ms"
 import parse, JsonValue from "@std/data/json.ms"
-import compile, render, to_data, Template, TemplateError from "@std/text/template.ms"
+import compile, render, to_data, Template from "@std/text/template.ms"
 
 fn data(text: String) JsonValue:
     return parse(text).get()

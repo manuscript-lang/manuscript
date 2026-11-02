@@ -14,13 +14,6 @@ import Headers, HeaderField, parse_headers from "@std/net/mime.ms"
 #     let mail = parse_message(raw).get()
 #     mail.headers.get("Subject")
 
-# Errors returned for malformed addresses or messages.
-export type MailError:
-    # An address lacks a local part, an `@`, or a domain, or has unbalanced quotes or brackets.
-    case InvalidAddress
-    # The header block is malformed or the message is empty.
-    case InvalidMessage
-
 # A mailbox: optional display name and the `local@domain` address.
 export type Address:
     # Display name with quotes removed; empty when none was given.
@@ -50,31 +43,37 @@ impl Address:
 
 # Parses one mailbox: `addr`, `<addr>`, `Name <addr>` or `"Quoted, Name" <addr>`. Encoded words in
 # the name are decoded. Comments are not supported.
-export fn parse_address(text: String) Address!MailError:
+export fn parse_address(text: String) Address!:
     let trimmed = text.trim()
-    if trimmed.is_empty(): return error(MailError.InvalidAddress)
+    if trimmed.is_empty(): return error(
+        Error("mail: invalid address", kind: ErrorCategory.InvalidData)
+    )
 
     var name = ""
     var address = trimmed.clone()
 
     if let open = trimmed.last_index_of("<"):
-        if not trimmed.ends_with(">"): return error(MailError.InvalidAddress)
+        if not trimmed.ends_with(">"): return error(
+            Error("mail: invalid address", kind: ErrorCategory.InvalidData)
+        )
 
         name = trimmed.take(open).trim()
         address = trimmed.slice(open + 1, trimmed.length() - 1).get("").trim()
     else if trimmed.contains(">"):
-        return error(MailError.InvalidAddress)
+        return error(Error("mail: invalid address", kind: ErrorCategory.InvalidData))
 
     if name.starts_with("\""):
         if name.length() < 2 or not name.ends_with("\""): return error(
-            MailError.InvalidAddress
+            Error("mail: invalid address", kind: ErrorCategory.InvalidData)
         )
 
         name = name.slice(1, name.length() - 1).get("").replace("\\\"", "\"").replace(
             "\\\\", "\\"
         )
 
-    if not valid_address(address): return error(MailError.InvalidAddress)
+    if not valid_address(address): return error(
+        Error("mail: invalid address", kind: ErrorCategory.InvalidData)
+    )
 
     return ok(Address(name: decode_words(name), address: address))
 
@@ -90,7 +89,7 @@ fn valid_address(address: String) Bool:
 
 # Parses a comma-separated address list, honoring quoted names and angle brackets.
 # Empty items (a trailing comma) are skipped; an empty list is an empty result.
-export fn parse_address_list(text: String) List[Address]!MailError:
+export fn parse_address_list(text: String) List[Address]!:
     var out = List[Address]()
     var current = StringBuilder()
     var quoted = false
@@ -118,8 +117,10 @@ export fn parse_address_list(text: String) List[Address]!MailError:
 
 # Splits a raw message at the first blank line into headers and body.
 # Both CRLF and LF line endings are accepted; a message without a blank line has an empty body.
-export fn parse_message(raw: String) Message!MailError:
-    if raw.trim().is_empty(): return error(MailError.InvalidMessage)
+export fn parse_message(raw: String) Message!:
+    if raw.trim().is_empty(): return error(
+        Error("mail: invalid message", kind: ErrorCategory.InvalidData)
+    )
 
     var head = ""
     var body = ""
@@ -136,7 +137,9 @@ export fn parse_message(raw: String) Message!MailError:
         head = raw.clone()
 
     let headers = parse_headers(head)
-    if headers.is_error(): return error(MailError.InvalidMessage)
+    if headers.is_error(): return error(
+        Error("mail: invalid message", kind: ErrorCategory.InvalidData)
+    )
 
     return ok(Message(headers: headers.get(), body: body))
 
@@ -231,10 +234,3 @@ fn q_decode(payload: String) Bytes:
         i += 1
 
     return out.build()
-
-impl Error for MailError:
-    # Returns a mail-prefixed diagnostic without echoing the input.
-    fn message() String:
-        match self:
-            InvalidAddress: return "mail: invalid address"
-            InvalidMessage: return "mail: invalid message"

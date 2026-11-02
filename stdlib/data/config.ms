@@ -1,18 +1,9 @@
-# Errors returned when configuration text is malformed.
-export type ConfigError:
-    # A line is not valid for the format.
-    case InvalidData(
-        # One-based line where the offending entry starts.
-        line: Int,
-        # What is wrong, such as `expected KEY=value` or `unterminated quote`.
-        reason: String
+# Builds the error for a malformed line: `config: line <n>: <reason>`, with the line in `details`.
+fn config_error(line: Int, reason: String) Error:
+    return Error(
+        "config: line {line}: {reason}", kind: ErrorCategory.InvalidData,
+        details: {"line": "{line}"}
     )
-
-impl Error for ConfigError:
-    # Returns `config: line <n>: <reason>`.
-    fn message() String:
-        match self:
-            InvalidData(line, reason): return "config: line {line}: {reason}"
 
 # Parses `.env` text into a map in file order, without touching the process environment.
 # Use it to layer settings: read the file, then let real variables win, `values.add(name, value)`.
@@ -24,7 +15,7 @@ impl Error for ConfigError:
 # - Only text after a closing quote may be a comment. A later duplicate name replaces the earlier value and keeps its first position.
 #
 # Example: `parse_dotenv("PORT=8080\nNAME='my app' # label")` holds `PORT` as `"8080"` and `NAME` as `"my app"`.
-export fn parse_dotenv(text: String) Map[String, String]!ConfigError:
+export fn parse_dotenv(text: String) Map[String, String]!:
     var out = Map[String, String]()
     let lines = text.cut_prefix("\u{feff}").get(text).lines()
     var index = 0
@@ -37,14 +28,12 @@ export fn parse_dotenv(text: String) Map[String, String]!ConfigError:
 
         let assignment = entry.cut_prefix("export ").get(entry)
         let found = assignment.index_of("=")
-        if found.is_none(): return error(
-            ConfigError.InvalidData(number, "expected NAME=value")
-        )
+        if found.is_none(): return error(config_error(number, "expected NAME=value"))
 
         let at = found.get(0)
         let name = assignment.take(at).trim()
         if not valid_name(name): return error(
-            ConfigError.InvalidData(number, "invalid variable name")
+            config_error(number, "invalid variable name")
         )
 
         let value = assignment.drop(at + 1).trim()
@@ -58,7 +47,7 @@ export fn parse_dotenv(text: String) Map[String, String]!ConfigError:
 
         while body.index_of(quote).is_none():
             if index >= lines.length(): return error(
-                ConfigError.InvalidData(number, "unterminated quote")
+                config_error(number, "unterminated quote")
             )
 
             body = "{body}\n{lines[index]}"
@@ -67,9 +56,7 @@ export fn parse_dotenv(text: String) Map[String, String]!ConfigError:
         let end = body.index_of(quote).get(0)
         let trailing = body.drop(end + 1).trim()
         if not trailing.is_empty() and not trailing.starts_with("#"): return error(
-            ConfigError.InvalidData(
-                number, "unexpected text after quoted value"
-            )
+            config_error(number, "unexpected text after quoted value")
         )
 
         out.add(name, body.take(end))
@@ -84,7 +71,7 @@ export fn parse_dotenv(text: String) Map[String, String]!ConfigError:
 # - A later duplicate key in a section replaces the earlier value. A line without `=` or `:` returns InvalidData.
 #
 # Example: `parse_ini("[db]\nhost = localhost\nport: 5432")` holds `ini["db"]["port"]` as `"5432"`.
-export fn parse_ini(text: String) Map[String, Map[String, String]]!ConfigError:
+export fn parse_ini(text: String) Map[String, Map[String, String]]!:
     var sections = Map[String, Map[String, String]]()
     sections.add("", Map[String, String]())
 
@@ -99,9 +86,7 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!ConfigError:
 
         if entry.starts_with("["):
             if not entry.ends_with("]"): return error(
-                ConfigError.InvalidData(
-                    number, "unterminated section header"
-                )
+                config_error(number, "unterminated section header")
             )
 
             current = entry.drop(1).take(entry.length() - 2).trim()
@@ -109,13 +94,11 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!ConfigError:
             continue
 
         let split = first_assignment(entry)
-        if split.is_none(): return error(
-            ConfigError.InvalidData(number, "expected key = value")
-        )
+        if split.is_none(): return error(config_error(number, "expected key = value"))
 
         let at = split.get(0)
         let key = entry.take(at).trim()
-        if key.is_empty(): return error(ConfigError.InvalidData(number, "empty key"))
+        if key.is_empty(): return error(config_error(number, "empty key"))
 
         if var section = sections.get(current):
             section.add(key, ini_value(entry.drop(at + 1).trim()))
