@@ -59,6 +59,26 @@ opt-level = 2
 [profile.dev.package.ms-json]
 opt-level = 2
 
+# The ms-cli build script gzips the two runtime archives (about 45 MB each). Build dependencies are
+# unoptimized by default, in release too, and that took about 40 s of every build that reran it; optimized
+# it takes about 5 s.
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+[profile.dev.package.flate2]
+opt-level = 3
+[profile.dev.package.crc32fast]
+opt-level = 3
+[profile.dev.package.adler2]
+opt-level = 3
+[profile.release.package.miniz_oxide]
+opt-level = 3
+[profile.release.package.flate2]
+opt-level = 3
+[profile.release.package.crc32fast]
+opt-level = 3
+[profile.release.package.adler2]
+opt-level = 3
+
 # Cranelift is slow to build unoptimized; keep it lightly optimized in dev builds.
 [profile.dev.package.regalloc2]
 opt-level = 1

@@ -836,6 +836,9 @@ impl<'a> FnLower<'a> {
                 let radix = self.borrow(args[0].val);
                 self.call_runtime("msrt_uint_to_string_radix", &[v, radix], MTy::STR)?
             }
+            "to_string" if args.is_empty() => {
+                self.call_runtime("msrt_uint_to_string", &[v], MTy::STR)?
+            }
             "compare_int" => {
                 let other = self.borrow(args[0].val);
                 self.call_runtime("msrt_uint_compare", &[v, other], MTy::INT)?

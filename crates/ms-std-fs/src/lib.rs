@@ -6,6 +6,7 @@
 //! [`InfoOut`]; optional limits are a present flag plus an `i64`.
 // `libc::statfs` field widths differ per target, so the portable casts look redundant on Linux.
 #![allow(clippy::unnecessary_cast)]
+#![recursion_limit = "256"]
 
 extern crate alloc;
 
@@ -401,6 +402,16 @@ native! {
     fn msstd_fs_file_data_sync(h: ObjMut<Stream>) -> Result<(), StatusCode> {
         let mut h = h;
         fs_status(h.data_sync())
+    }
+
+    fn msstd_fs_file_try_lock(h: ObjMut<Stream>, exclusive: bool) -> Result<i64, StatusCode> {
+        let mut h = h;
+        fs_status(h.try_lock(exclusive)).map(i64::from)
+    }
+
+    fn msstd_fs_file_unlock(h: ObjMut<Stream>) -> Result<(), StatusCode> {
+        let mut h = h;
+        fs_status(h.unlock())
     }
 
     fn msstd_fs_file_chmod(h: ObjMut<Stream>, mode: i64) -> Result<(), StatusCode> {

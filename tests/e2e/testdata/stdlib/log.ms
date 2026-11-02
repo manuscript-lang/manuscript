@@ -12,7 +12,8 @@ import (
     create,
     stream_transport,
     stdout_transport,
-    file_transport
+    file_transport,
+    rotating_file_transport
 ) from "@std/log.ms"
 import WriteStream from "@std/io/io.ms"
 import Shared, share from "@std/concurrency/shared.ms"
@@ -262,6 +263,21 @@ test "source transports receive complete records and close through their contrac
     logger.close()
     try expect_true(read_file("{path}.closed").is_ok())
 
+fn log_from_child(logger: Logger) Unit!LogError:
+    let child = try logger.child("worker")
+    return child.info("from child")
+
+fn log_in_scope(path: String) Unit!LogError:
+    let logger = try create(CaptureTransport(path.clone()), timestamp: false)
+    try log_from_child(logger)
+    return logger.info("parent after child")
+
+test "a logger scope closes its transport and a dropped child does not":
+    let temporary = temporary("manuscript-log-scope-") | try expect_ok
+    let path = "{temporary.path()}/records.ndjson"
+    try expect_ok(log_in_scope(path.clone()))
+    try expect_true(read_file("{path}.closed").is_ok())
+
 test "unencodable fields are rejected and fields keep their shape under data":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
@@ -408,3 +424,28 @@ test "the time field is a millisecond count and the size limit counts the newlin
     )
     try expect_equal(tight.info("ab"), limited)
     try expect_equal(recorded(quiet), plain)
+
+test "rotating transport moves a full file aside and keeps a bounded number of generations":
+    let directory = try temporary("manuscript-rotate-")
+    let path = "{directory.path()}/app.log"
+    var logger = try create(
+        try rotating_file_transport(path.clone(), 80, 2), timestamp: false
+    )
+    for index in 0..12: try logger.info("record number {index}")
+    try logger.flush()
+
+    let current = (try written(path)).get("")
+    let first = (try written("{path}.1")).get("")
+    let second = (try written("{path}.2")).get("")
+    try expect_true(current != "" and first != "" and second != "")
+    try expect_true(current.to_bytes().length() <= 80)
+    try expect_true(read_file("{path}.3").is_error())
+    try expect_true(current.contains("record number 11"))
+    logger.close()
+    try expect_true(logger.info("late").is_error())
+
+test "rotating transport rejects invalid sizes":
+    let directory = try temporary("manuscript-rotate-")
+    let path = "{directory.path()}/app.log"
+    try expect_true(rotating_file_transport(path.clone(), 0, 1).is_error())
+    try expect_true(rotating_file_transport(path.clone(), 10, -1).is_error())

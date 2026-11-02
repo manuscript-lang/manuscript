@@ -465,6 +465,8 @@ msstd_fs_file_set_times(h: *mut ObjCell<Stream>, accessed: *const Timestamp, mod
 msstd_fs_file_stat(h: *mut ObjCell<Stream>, out: *mut InfoOut) -> u8
 msstd_fs_file_sync(h: *mut ObjCell<Stream>) -> u8
 msstd_fs_file_truncate(h: *mut ObjCell<Stream>, size: i64) -> u8
+msstd_fs_file_try_lock(h: *mut ObjCell<Stream>, exclusive: u8, out: *mut i64) -> u8
+msstd_fs_file_unlock(h: *mut ObjCell<Stream>) -> u8
 msstd_fs_file_write_at(h: *mut ObjCell<Stream>, offset: i64, data: *const VecVal) -> u8
 msstd_fs_file_write_vectors(h: *mut ObjCell<Stream>, buffers: *const VecVal, offset: i64) -> u8
 msstd_fs_file_writer(h: *mut ObjCell<Stream>) -> *mut ObjCell<Stream>
@@ -919,8 +921,6 @@ msstd_url_format_query(entries: *const RecList<QueryEntryRec>, out: *mut StrVal)
 msstd_url_parse(text: *const StrVal, out: *mut UrlRec) -> u8
 msstd_url_parse_query(text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
 msstd_url_resolve(base: *const UrlRec, reference: *const StrVal, out: *mut UrlRec) -> u8
-msstd_utf8_decode_first(data: *const VecVal, at: i64) -> i64
-msstd_utf8_decode_last(data: *const VecVal, end: i64) -> i64
 msstd_utf8_is_valid(data: *const VecVal) -> u8
 msstd_websocket_close(s: *const ObjCell<SocketH>)
 msstd_websocket_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: *mut StrVal)

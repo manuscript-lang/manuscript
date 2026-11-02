@@ -428,12 +428,21 @@ impl Checker {
             return;
         }
         if existing.is_some() {
-            self.res_error(
-                pos,
+            let current = self.current_file();
+            let imported = s.module != current
+                && existing
+                    .as_ref()
+                    .is_some_and(|e| !stdlib::is_prelude_symbol(e));
+            let message = if imported {
+                format!(
+                    "import {name} collides with another {name} in this module; an import cannot be renamed, so import only one {name} here and wrap the other in a small module that exports it under a new name"
+                )
+            } else {
                 format!(
                     "duplicate or intrinsic name {name}; this name is already declared, imported, or built in, so rename one of them"
-                ),
-            );
+                )
+            };
+            self.res_error(pos, message);
             self.rejected_names.insert(name);
             return;
         }

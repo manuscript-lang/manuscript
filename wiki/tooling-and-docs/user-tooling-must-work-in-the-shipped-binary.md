@@ -6,6 +6,8 @@ Decision: documentation generation was requested as an `ms` subcommand for users
 
 Verified: a PID or counter makes a staging name distinct, but does not establish ownership. Exclusively create each staging file or directory, retain existing candidates, and clean up only owned paths: shared stages can pair one build's manifest with another executable, while stale file links can overwrite unrelated targets. Exercise [runtime extraction](../../crates/ms-cli/src/engine/runtime.rs), [support extraction](../../crates/ms-clif/src/link/lld/tests.rs), and [cache publication](../../crates/ms-build/src/cache.rs) with overlapping attempts and stale links.
 
+Windows exclusive file creation can report `PermissionDenied` for an occupied directory. Verify that the candidate entry exists with `symlink_metadata` before retrying that error; genuine access failures for unoccupied paths must still propagate. The [metadata staging controls](../../crates/ms-cli/src/engine/mod.rs) and runtime collision test cover both sides of this distinction.
+
 Apply when: adding CLI tooling, upgrading the editor client, or making claims about installation requirements.
 Evidence: [client setup](../../extensions/vscode/extension.js), [dependency pin](../../extensions/vscode/package-lock.json), [activation/restart regression](../../extensions/vscode/tests/extension.test.js), [packaging script](../../tools/package.ms), [packaged binary check](../../tools/dist-check.ms), [native build contract](../../documentation/developer-tooling/how-it-works.md).
 Verify: `make dist-check` extracts the archive for this host and runs the packaged binary on the hello example; additionally exercise a copied binary outside the checkout with empty caches.

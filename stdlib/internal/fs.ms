@@ -103,6 +103,10 @@ export extern fn msstd_fs_file_sync(file: NativeFile) Unit!
 
 export extern fn msstd_fs_file_data_sync(file: NativeFile) Unit!
 
+export extern fn msstd_fs_file_try_lock(file: NativeFile, exclusive: Bool) Int!
+
+export extern fn msstd_fs_file_unlock(file: NativeFile) Unit!
+
 export extern fn msstd_fs_file_chmod(file: NativeFile, mode: Int) Unit!
 
 export extern fn msstd_fs_file_chown(file: NativeFile, uid: Int, gid: Int) Unit!

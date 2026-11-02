@@ -93,14 +93,14 @@ impl Cx {
                 {
                     continue;
                 }
-                found = Some((mm.module, decl.id(), subst, mm.native));
+                found = Some((mm.module, decl.id(), subst, mm.native, mm.clone()));
                 break;
             }
             if found.is_none() && s.name == "equals" && m.ifaces[iface.index()].name == "Equal" {
                 methods.push(self.builtin_equals(m, iface, data_ty, scope, own, key.as_str())?);
                 continue;
             }
-            let (module, id, subst, native) = found.ok_or_else(|| {
+            let (module, id, subst, native, mref) = found.ok_or_else(|| {
                 Error::new(format!(
                     "{concrete} has no method {} for {}",
                     s.name,
@@ -131,10 +131,9 @@ impl Cx {
                 continue;
             }
             let callee = if !native.as_str().is_empty() {
-                return Err(Error::new(format!(
-                    "unsupported native method {}",
-                    native.as_str()
-                )));
+                let f = self.iface_native_thunk(m, &mref, &subst, scope, data_ty, &ps, s.ret)?;
+                methods.push(f);
+                continue;
             } else {
                 let c = self
                     .callables
@@ -206,6 +205,44 @@ impl Cx {
 }
 
 impl Cx {
+    /// A table entry for a native method: it lowers like a direct call on the data.
+    #[allow(clippy::too_many_arguments)]
+    fn iface_native_thunk(
+        &mut self,
+        m: &mut Module,
+        mref: &ct::MethodRef,
+        subst: &ct::Subst,
+        scope: ct::Name,
+        data_ty: MTy,
+        params: &[Param],
+        ret: MTy,
+    ) -> Result<ms_mir::ir::FuncId, Error> {
+        let mut f = ms_mir::ir::Func::new(&format!("vt.{}", mref.native), params.to_vec(), ret);
+        f.kind = FuncKind::Method;
+        f.linkage = Linkage::Internal;
+        let id = m.add_func(f);
+        let mut method = (**mref).clone();
+        method.ty = ct::sub(&mref.ty, subst);
+        let method = std::rc::Rc::new(method);
+        // A standard module's native half has no queries of its own: its source twin or the
+        // module of the use stands in.
+        let twin = ct::Name::from(format!("{}+source", mref.module).as_str());
+        let hir = self
+            .module(mref.module)
+            .or_else(|_| self.module(twin))
+            .or_else(|_| self.module(scope))?;
+        self.queue.push(crate::cx::Job {
+            func: id,
+            kind: crate::cx::JobKind::IfaceNative(std::rc::Rc::new(crate::cx::IfaceNativeJob {
+                method,
+                hir,
+                data: data_ty,
+                scope,
+            })),
+        });
+        Ok(id)
+    }
+
     /// `equals` of data with built-in equality (scalars, collections, records without an
     /// `impl Equal`): structural equality against another value of the same type, and `False`
     /// against any other type.
