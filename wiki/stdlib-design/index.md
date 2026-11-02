@@ -4,6 +4,7 @@
 
 Stdlib API shape, failure modes, naming, construction.
 
+- [Buffering, pipes and virtual file trees reuse existing primitives](buffering-pipes-and-virtual-file-trees-reuse-existing-primitives.md): `buffered.ms`, channel-backed pipes, `section`, and the `FileTree` interface with `MemoryTree` and `walk`; `embed` awaits a language decision.
 - [Calls that fail only on a programmer's constant return plain values; fixed-width codecs are methods](calls-that-fail-only-on-a-programmer-s-constant-return-plain.md): `String.pad_start/pad_end` and `Float.to_fixed/to_precision/to_exponential` return `String`.
 - [Collections: construct from a list, keep insertion order](collections-construct-from-a-list-keep-insertion-order.md): `Set(list)` constructs from a list; Map and Set iterate in insertion order; mutators are verbs that return the receiver.
 - [Every public module needs a fixture, a guide comment, and a doc comment with an example](every-public-module-needs-a-fixture-a-guide-comment-and-a-do.md): public modules have a fixture in `tests/e2e/testdata/stdlib/*.ms`, and all stdlib prose lives in `stdlib/*.ms` (book Markdown is generated b…
