@@ -1,4 +1,4 @@
-import EmbeddedTree from "@std/os/tree.ms"
+import embedded_tree, EmbeddedTree from "@std/os/tree.ms"
 
 # Generated from an [embed] table of ms.toml; edit the files in the directory, not this module.
 # Making the tree costs one map entry per file; a file is decoded only when it is read.

@@ -172,7 +172,7 @@ pub fn generate(name: &str, root: &str) -> Result<String, ProjectError> {
         base64(&data, &mut text);
         let _ = writeln!(source, "    encoded.add({path}, \"{text}\")");
     }
-    source.push_str("    return EmbeddedTree(encoded, directories)\n");
+    source.push_str("    return embedded_tree(encoded, directories)\n");
     Ok(source)
 }
 
