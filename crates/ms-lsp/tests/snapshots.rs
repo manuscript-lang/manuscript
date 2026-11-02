@@ -665,8 +665,8 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
     // The general snapshot caps large responses. Pin every written reference;
     // implicit Optional defaults have no `none` token and must not add ranges.
     let retained = [
-        ("string.ms", 18, 15, 19),
-        ("string.ms", 25, 15, 19),
+        ("string.ms", 19, 15, 19),
+        ("string.ms", 26, 15, 19),
         ("main.ms", 30, 31, 35),
         ("io/io.ms", 68, 34, 38),
         ("io/io.ms", 121, 19, 23),
@@ -682,7 +682,13 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         ("collections/collections.ms", 709, 19, 23),
         ("collections/collections.ms", 754, 34, 38),
     ];
-    let added = [("string.ms", 154, 23, 27), ("string.ms", 185, 37, 41)];
+    let added = [
+        ("string.ms", 193, 32, 36),
+        ("string.ms", 229, 42, 46),
+        ("string.ms", 275, 15, 19),
+        ("string.ms", 314, 23, 27),
+        ("string.ms", 345, 37, 41),
+    ];
     for id in [first, second] {
         let locations = responses
             .iter()

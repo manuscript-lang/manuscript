@@ -132,7 +132,12 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
                 segment = v.end;
             }
         }
-        c.argument = !text_between(&d.text, segment, c.start).contains(':');
+        // `var` already starts a positional operand; complete its binding,
+        // rather than replacing it with another argument label.
+        c.argument = !text_between(&d.text, segment, c.start).contains(':')
+            && !before[at + 1..]
+                .iter()
+                .any(|t| t.start >= segment && t.is_name("var"));
         break;
     }
     let line_start = bytes[..c.start]

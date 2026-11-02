@@ -16,7 +16,6 @@ use ms_rt::ffi::{ObjRef, Object, Out, Status, abi_handle, native};
 use ms_rt::glue::{fault_fmt, poll_cancel};
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 use num_bigint::{BigInt, Sign};
-use num_integer::Integer;
 use num_traits::{One, Signed, ToPrimitive, Zero};
 
 /// The value behind a `BigInt` runtime object.
@@ -34,6 +33,25 @@ impl Status for Code {
 
 /// Result size ceiling in bits for `pow` and `shift_left`.
 const MAX_BITS: i64 = 1 << 24;
+
+/// Greatest common divisor of the magnitudes (never negative; `gcd(0, 0)` is 0).
+fn gcd(a: &BigInt, b: &BigInt) -> BigInt {
+    let (mut a, mut b) = (a.magnitude().clone(), b.magnitude().clone());
+    while b.bits() != 0 {
+        let r = &a % &b;
+        a = core::mem::replace(&mut b, r);
+    }
+    BigInt::from(a)
+}
+
+/// Least common multiple of the magnitudes (never negative; 0 when either is 0).
+fn lcm(a: &BigInt, b: &BigInt) -> BigInt {
+    let g = gcd(a, b);
+    if g.sign() == Sign::NoSign {
+        return g;
+    }
+    BigInt::from(a.magnitude() / g.magnitude() * b.magnitude())
+}
 
 fn make(n: BigInt) -> Object<Big> {
     Object(Big(n))
@@ -137,12 +155,12 @@ native! {
 
     fn msstd_bigint_gcd(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         poll_cancel();
-        make(n(&a).gcd(n(&other)))
+        make(gcd(n(&a), n(&other)))
     }
 
     fn msstd_bigint_lcm(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         poll_cancel();
-        make(n(&a).lcm(n(&other)))
+        make(lcm(n(&a), n(&other)))
     }
 
     fn msstd_bigint_sqrt(a: ObjRef<Big>) -> Result<Object<Big>, Code> {
