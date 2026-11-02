@@ -54,17 +54,22 @@ export fn parse_dotenv(text: String) Map[String, String]!ConfigError:
             out.add(name, value.split("#", 2)[0].trim())
             continue
 
-        var body = value.drop(1)
+        # Only the newest line is searched for the closing quote, so a long value stays linear.
+        var parts = [value.drop(1)]
+        var closing = parts[0].index_of(quote)
 
-        while body.index_of(quote).is_none():
+        while closing.is_none():
             if index >= lines.length(): return error(
                 ConfigError.InvalidData(number, "unterminated quote")
             )
 
-            body = "{body}\n{lines[index]}"
+            parts.append(lines[index].clone())
+            closing = lines[index].index_of(quote)
             index += 1
 
-        let end = body.index_of(quote).get(0)
+        let last = parts.length() - 1
+        let body = parts.join("\n")
+        let end = body.scalar_length() - parts[last].scalar_length() + closing.get(0)
         let trailing = body.drop(end + 1).trim()
         if not trailing.is_empty() and not trailing.starts_with("#"): return error(
             ConfigError.InvalidData(

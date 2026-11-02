@@ -54,3 +54,12 @@ test "encoded words decode":
     try expect_equal(
         parse_address("=?utf-8?B?SMOpbGxv?= <h@x.org>").get().name, "Héllo"
     )
+
+test "encoded words keep literal text and scale linearly":
+    try expect_equal(decode_words("a=?b ?=c"), "a=?b ?=c")
+    try expect_equal(decode_words("x =?utf-8?B?SGk=?= y"), "x Hi y")
+    try expect_equal(decode_words("=?bad?X?zz?= =?utf-8?B?SGk=?="), "=?bad?X?zz?= Hi")
+
+    # A quadratic decoder would take minutes on this many words.
+    let big = decode_words("=?utf-8?B?SGk=?= x ".repeat(50000).get())
+    try expect_equal(big.scalar_length(), 50000 * 5)

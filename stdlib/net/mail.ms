@@ -145,44 +145,50 @@ export fn parse_message(raw: String) Message!MailError:
 export fn decode_words(text: String) String:
     if not text.contains("=?"): return text.clone()
 
+    # Splitting at `?` once keeps decoding linear. A word starts where a field ends in `=` and takes the
+    # next three fields (charset, encoding, payload); the field after them must start with the closing `=`.
+    let fields = text.split("?")
     var out = StringBuilder()
-    var rest = text.clone()
+    var head = StringBuilder()
     var previous_encoded = false
+    var index = 0
+    var seg = fields[0].clone()
 
     while true:
-        let start = rest.index_of("=?")
+        if index == fields.length() - 1 or not seg.ends_with("="):
+            head.append(seg)
+            if index == fields.length() - 1: break
 
-        if not start.is_some():
-            out.append(rest)
-            break
-
-        let head = rest.take(start.get(0))
-        let tail = rest.drop(start.get(0))
-        let parts = tail.split("?")
-
-        # parts: ["=", charset, encoding, payload, "=<remaining>", ...rest of the text split on "?"]
-        if parts.length() < 5 or not parts[4].starts_with("="):
-            out.append(head)
-            out.append(tail.take(2))
-            rest = tail.drop(2)
-            previous_encoded = false
+            head.append("?")
+            index += 1
+            seg = fields[index].clone()
             continue
 
-        let decoded = decode_word(parts[1], parts[2], parts[3])
+        head.append(seg.take(seg.scalar_length() - 1))
+
+        let literal = head.drain()
+        var decoded: String? = none
+        if index + 4 < fields.length() and fields[index + 4].starts_with("="):
+            decoded = decode_word(
+                fields[index + 1], fields[index + 2], fields[index + 3]
+            )
 
         if not decoded.is_some():
-            out.append(head)
-            out.append(tail.take(2))
-            rest = tail.drop(2)
+            out.append(literal)
+            out.append("=?")
             previous_encoded = false
+            index += 1
+            seg = fields[index].clone()
             continue
 
         # Whitespace between two adjacent encoded words is dropped.
-        if not (previous_encoded and head.trim().is_empty()): out.append(head)
+        if not (previous_encoded and literal.trim().is_empty()): out.append(literal)
         out.append(decoded.get(""))
-        rest = parts.slice(4, parts.length()).get(List[String]()).join("?").drop(1)
         previous_encoded = true
+        seg = fields[index + 4].drop(1)
+        index += 4
 
+    out.append(head.drain())
     return out.build()
 
 fn decode_word(charset: String, encoding: String, payload: String) String?:
