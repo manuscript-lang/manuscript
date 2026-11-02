@@ -8,7 +8,7 @@ name: CI/CD
 #   merge queue   the same as a pull request, in case a queue is configured again.
 #   push to main  all six platforms, one job each running both parts (see .github/actions/rust-checks),
 #                 so main holds six runners; linux-arm64 also builds the book for Pages and the jobs save
-#                 the sccache caches. A newer push cancels the running one. A failure is fixed or reverted.
+#                 the sccache caches. The running main run finishes; only the newest push waits. A failure is fixed or reverted.
 #   manual run    the same as a push; its `os` input runs one platform.
 # Require `Platform checks`.
 
@@ -41,10 +41,11 @@ env:
   CARGO_INCREMENTAL: '0'
 
 concurrency:
-  # A new commit cancels the earlier run of the same pull request, and a new push to main the earlier main
-  # run; queue and manual runs are never cancelled.
+  # A new commit cancels the earlier run of the same pull request. Main runs are not cancelled: with pull
+  # requests merging every few minutes, cancelling meant no main run finished. The running one completes and
+  # only the newest push waits (GitHub replaces a pending run with a newer one), so middle commits are skipped.
   group: ci-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref) || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
   run:
