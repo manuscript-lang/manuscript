@@ -657,7 +657,8 @@ fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
         .find("export fn parse(text: String, radix: Int, max_digits: Int?)")
         .unwrap();
     let default = parse + math[parse..].find("Int?").unwrap();
-    let math_references = [absent, default].map(|offset| {
+    let no_root = math.find("let absent: BigInt? = none").unwrap() + "let absent: BigInt? = ".len();
+    let math_references = [absent, default, no_root].map(|offset| {
         let start = ms_lsp::text::position(math, offset);
         (
             "math/math.ms",
