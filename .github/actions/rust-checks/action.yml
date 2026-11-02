@@ -1,9 +1,8 @@
 name: Rust checks
-description: The full Rust checks for one platform (the merge queue and manual runs). Run after checkout, the sccache restore and rust-env.
+description: The Rust checks for one platform (pull requests on Linux, pushes to main and manual runs on all six). Run after checkout, the sccache restore and rust-env.
 
 # One job runs one part (`a` or `b`), so the two parts run on separate runners; `ab` runs both in one job.
 #   part a  unit: build the workspace once, nextest, doc tests, and on Linux amd64 format and clippy
-#           (a pull request runs only format, clippy and the build: see build-checks);
 #           the Cranelift corpus and fixtures on platforms that run them.
 #   part b  conformance: the LLVM corpus and fixtures, plus the gates (below).
 #   gates   bundled-LLVM release build, source conformance, cancellation and ownership checks, the

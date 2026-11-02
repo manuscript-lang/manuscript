@@ -41,6 +41,6 @@ A version update creates no tag. Documentation archives are separate preserved s
 
 ## Keep the feedback loop healthy
 
-Use `make verify` while editing and `make verify-full` before merging native changes. The `Language checks / test` gate fails if any dependency job fails or is cancelled.
+Use `make verify` while editing and `make verify-full` before merging native changes. The `Platform checks` gate fails if any platform job fails or is cancelled.
 
 - Test where a regression is observable: source fixtures and the conformance corpus for language behavior, the packaged binary for installation.
