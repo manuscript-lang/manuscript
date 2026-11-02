@@ -508,7 +508,9 @@ export type CopyOptions:
     # Most file bytes copied in total. Exceeding it returns LimitExceeded. none sets no limit.
     max_bytes: Int? = none
 
-# Options for `watch`.
+# How `watch` observes a path: with native OS events by default, or by polling snapshots when `interval` is set.
+# Every field has a default, so `WatchOptions()` watches natively with no limits and `WatchOptions(interval: seconds(1))` polls.
+# `max_events` and `overflow` apply only to native watching; combining them with `interval` returns `InvalidInput`.
 export type WatchOptions:
     # Polling period, which must be positive. none watches with native OS events.
     interval: Duration? = none
