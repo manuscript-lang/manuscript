@@ -15,7 +15,7 @@ runs:
         EVENT: ${{ github.event_name }}
         BASE: ${{ github.event.pull_request.base.sha }}
       run: |
-        # The merge queue always runs the Rust checks.
+        # Pushes to main and manual runs always run the Rust checks.
         if [ "$EVENT" != pull_request ]; then
           echo "rust=true" >> "$GITHUB_OUTPUT"
           exit 0

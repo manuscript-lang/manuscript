@@ -1,21 +1,33 @@
 name: CI/CD
 
-# One workflow, three triggers:
-#   pull request  `Build checks`: format, clippy, a build of every target, the language checks and the
-#                 book, in one job on linux-amd64. No tests.
-#   merge queue   the heavy checks, once per group of PRs on the group's combined commit: all six
-#                 platforms in two parts each (see .github/actions/rust-checks), the language checks
-#                 and the book. `Platform checks` sums the platforms up.
-#   manual run    the same as the queue, plus Pages. cache-maintenance.yml starts one on main every
-#                 hour; only a manual run on main saves the sccache caches.
-# Require `Build checks` and `Platform checks`: each is skipped (and so passes) where it does not apply.
-# The account runs 20 jobs at once and every extra job waits in the queue, so a pull request is one job.
+# One workflow, four triggers:
+#   pull request  two linux-amd64 jobs, so a green PR can auto-merge on its own checks:
+#                 `Build checks` (format, clippy, a build of every target, a smoke test, nextest and
+#                 doc tests) and `Corpus checks` (the LLVM conformance corpus and e2e fixtures, the
+#                 language checks and the book).
+#   merge queue   the same two jobs, in case a queue is still configured; the queue built every PR's
+#                 stacked ref with the full matrix (5 refs x 12 jobs per group) and restarted on every
+#                 outside merge, so pull requests auto-merge instead.
+#   push to main  the heavy checks: all six platforms in two parts each (see .github/actions/rust-checks),
+#   manual run    the language checks and the book, plus Pages and the sccache caches when on main. A newer
+#                 push to main cancels the running one, so the latest main is always the one being tested.
+# Require `Build checks`, `Corpus checks` and `Platform checks`: each is skipped (and so passes) where it
+# does not apply. A platform failure on main is fixed or reverted there.
+# The account runs 20 jobs at once and every extra job waits in the queue, so a pull request is two jobs.
 
 on:
   pull_request:
+  push:
+    branches: [main]
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
+    inputs:
+      os:
+        description: Platforms for the Rust jobs
+        type: choice
+        options: [all, linux, darwin, windows]
+        default: all
 
 permissions:
   contents: read
@@ -32,24 +44,26 @@ env:
   CARGO_INCREMENTAL: '0'
 
 concurrency:
-  # A new commit cancels the earlier run of the same pull request; queue and manual runs are never cancelled.
-  group: ci-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # A new commit cancels the earlier run of the same pull request, and a new push to main the earlier main
+  # run; queue and manual runs are never cancelled.
+  group: ci-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  # A pull request: the cheap checks, in one job.
+  # A pull request: format, clippy, the build, unit and integration tests.
   build:
     name: Build checks
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       # A commit pushed within a minute cancels this run before any build starts.
       - name: Wait for a newer push
+        if: github.event_name == 'pull_request'
         run: sleep 60
       - uses: actions/checkout@v7
         with:
@@ -58,16 +72,15 @@ jobs:
         uses: ./.github/actions/sccache
         with:
           prefix: cargo-sccache-linux-amd64-a-
-      - uses: ./.github/actions/rust-env
-        with:
-          os: linux
-          arch: amd64
-      # Language and book checks run for every change, documentation included.
-      - uses: ./.github/actions/language-checks
-      - uses: ./.github/actions/book-checks
       # Documentation-only changes skip the Rust checks.
       - id: scope
         uses: ./.github/actions/rust-scope
+      - uses: ./.github/actions/rust-env
+        if: steps.scope.outputs.rust == 'true'
+        with:
+          os: linux
+          arch: amd64
+          llvm-consumers: 'true'
       - uses: ./.github/actions/build-checks
         if: steps.scope.outputs.rust == 'true'
       - uses: ./.github/actions/sccache-save
@@ -76,27 +89,83 @@ jobs:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
 
-  # The merge queue and manual runs: the heavy checks.
+  # A pull request: the LLVM corpus and e2e fixtures, the language checks and the book.
+  corpus:
+    name: Corpus checks
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Wait for a newer push
+        if: github.event_name == 'pull_request'
+        run: sleep 60
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - id: sccache
+        uses: ./.github/actions/sccache
+        with:
+          prefix: cargo-sccache-linux-amd64-b-
+      - uses: ./.github/actions/rust-env
+        with:
+          os: linux
+          arch: amd64
+      # Language and book checks run for every change, documentation included.
+      - uses: ./.github/actions/language-checks
+      - uses: ./.github/actions/book-checks
+      - id: scope
+        uses: ./.github/actions/rust-scope
+      - name: Conformance corpus and e2e fixtures (LLVM)
+        if: steps.scope.outputs.rust == 'true'
+        run: |
+          cargo xtask runtime
+          cargo build --locked -p ms-cli -p ms-conform
+          target/debug/ms run tools/conform.ms
+          target/debug/ms run tools/e2e.ms
+      - uses: ./.github/actions/sccache-save
+        if: ${{ !cancelled() }}
+        with:
+          cache-hit: ${{ steps.sccache.outputs.cache-hit }}
+          primary-key: ${{ steps.sccache.outputs.primary-key }}
+
+  # The platform legs of the Rust jobs. A job `if` cannot read the matrix, so a manual run picks its
+  # platforms here; `all` (and every push) keeps all six.
+  # `lint`: also format and clippy. `cranelift`: also the corpus and fixtures with
+  # `MS_BACKEND=cranelift`, so release builds use the Cranelift backend that Debug builds use.
+  # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
+  # in tests/conformance/expect-fail.<os>.txt with a reason.
+  legs:
+    name: Platform legs
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      legs: ${{ steps.legs.outputs.legs }}
+    steps:
+      - id: legs
+        env:
+          OS: ${{ inputs.os || 'all' }}
+          LEGS: >-
+            [
+            {"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": true},
+            {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm"},
+            {"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"},
+            {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": true},
+            {"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": true},
+            {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}
+            ]
+        run: echo "legs=$(jq -c --arg os "$OS" 'map(select($os == "all" or .os == $os))' <<<"$LEGS")" >> "$GITHUB_OUTPUT"
+
+  # Pushes to main and manual runs: the heavy checks.
   rust:
     name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }} · ${{ matrix.part == 'a' && 'tests' || 'conformance' }}
-    if: github.event_name != 'pull_request'
+    needs: legs
     runs-on: ${{ matrix.leg.runner }}
     timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
         part: [a, b]
-        # `lint`: also format and clippy. `cranelift`: also the corpus and fixtures with
-        # `MS_BACKEND=cranelift`, so release builds use the Cranelift backend that Debug builds use.
-        # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
-        # in tests/conformance/expect-fail.<os>.txt with a reason.
-        leg:
-          - {os: linux, arch: amd64, runner: ubuntu-24.04, lint: true, cranelift: true}
-          - {os: linux, arch: arm64, runner: ubuntu-24.04-arm}
-          - {os: darwin, arch: amd64, runner: macos-15-intel}
-          - {os: darwin, arch: arm64, runner: macos-15, cranelift: true}
-          - {os: windows, arch: amd64, runner: windows-2025, cranelift: true}
-          - {os: windows, arch: arm64, runner: windows-11-arm}
+        leg: ${{ fromJSON(needs.legs.outputs.legs) }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -123,10 +192,10 @@ jobs:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
 
-  # The sum of the Rust jobs above, one name for the queue to require.
+  # The sum of the Rust jobs above, one name for a ruleset to require; skipped (so passing) on pull requests.
   platforms:
     name: Platform checks
-    if: github.event_name == 'merge_group' && always()
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && always()
     needs: rust
     runs-on: ubuntu-latest
     steps:
@@ -137,12 +206,12 @@ jobs:
 
   language:
     name: Language checks
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/test-language.yml
 
   book:
     name: Build design book
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -169,7 +238,7 @@ jobs:
   pages:
     name: Publish Pages docs
     needs: [book, language]
-    if: github.event_name == 'workflow_dispatch' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-24.04
     permissions:
       pages: write
