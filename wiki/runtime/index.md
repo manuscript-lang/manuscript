@@ -46,3 +46,4 @@ Cancellation, cleanup, resources, networking, workers, test helpers.
 - [YAML folding must retain physical blank lines until decoding](yaml-folding-must-retain-physical-blank-lines-until-decoding.md): stripping continuation lines before joining loses paragraph breaks and can misclassify comment markers inside an open quote.
 - [Runtime and stdlib change checklist](runtime-and-stdlib-change-checklist.md): ownership, cancellation, cleanup, native binding, and stdlib API rules to check before editing runtime or stdlib code.
 - [YAML comments terminate plain scalar continuation](yaml-comments-terminate-plain-scalar-continuation.md): retain actual comment boundaries through continuation gathering and compact collection rewrites.
+- [Text helpers: String methods in `.ms`, conversions in `@std/text.ms`](text-helpers-live-in-string-ms-methods-and-a-text-module.md): no new Rust; check for parallel unicode work first; `\u\{` needs escaped braces.
