@@ -25,6 +25,9 @@ Evidence: [long literal lowering](../../crates/ms-lower/src/expr.rs), [Debug bui
 Verified: nominal ownership classification tracks active declaration identities and generic arguments, never display strings. Equal spellings from separate modules can hide nested resources if treated as a cycle; formatting shared phantom arguments can expand exponentially even when the actual fields are small. Keep ancestry local to the query, the existing depth cutoff and Closeable-first rule, and exercise checked multi-module cleanup as well as recursive and shared-DAG controls.
 Evidence: [classification regressions](../../crates/ms-check/tests/type_classification.rs), [native cleanup fixture](../../tests/e2e/testdata/projects/nominal_cycle_identity/conformance_test.ms).
 
+Verified: shared type DAGs need query-local deduplication in equality and negative searches; create the hash table only after bounded ordinary work, and keep allocation-free small controls. Equality may reuse completed successful pairs, never active pairs or an unrestricted pointer shortcut: incomplete callable results retain their existing comparison behavior. A negative omission-permission preflight can preserve the root directly; a positive preflight must use the original recursive mapper so changed variable occurrences retain independent snapshots. Predicates must stay stable within each query.
+Evidence: [shared graph and metadata regressions](../../crates/ms-check/src/type_graph_tests.rs).
+
 Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a cache or table they share.
 Evidence: [type recursion pass](../../crates/ms-check/src/recursion.rs), issues #490 and #491.
 Evidence: [method registration and lookup](../../crates/ms-check/src/contracts.rs), [candidate regressions](../../crates/ms-check/src/method_candidates_tests.rs), [editor queries](../../crates/ms-check/src/editor.rs).

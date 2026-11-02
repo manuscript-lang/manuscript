@@ -36,6 +36,8 @@ mod generic_defaults_tests;
 mod record_fields_tests;
 #[cfg(test)]
 mod type_argument_defaults_tests;
+#[cfg(test)]
+mod type_graph_tests;
 
 pub use checker::{CheckOptions, ImportMap, Program, TestFixture, self_variable};
 pub use syntax::{ModRef, ModuleData};
