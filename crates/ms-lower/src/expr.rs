@@ -34,22 +34,22 @@ impl<'a> FnLower<'a> {
     /// The type of the value an expression computes: while it is lowered ahead of a conversion
     /// to an interface, its own type rather than the interface.
     fn value_ty(&self, e: &Expr) -> ct::Ty {
-        match self.hir.info(e).error_source {
+        match self.hir.info(e).interface_source {
             Some(src) if self.converting == Some(e as *const Expr) => src,
             _ => self.hir.ty(e),
         }
     }
 
-    /// Lowers an expression, converting at an Error boundary the checker marked.
+    /// Lowers an expression, converting to an interface where the checker marked it.
     pub fn expr(&mut self, e: &Expr) -> Result<Val, Error> {
         let saved = self.converting;
-        if self.hir.info(e).error_source.is_some() {
+        if self.hir.info(e).interface_source.is_some() {
             self.converting = Some(e as *const Expr);
         }
         let x = self.expr_value(e);
         self.converting = saved;
         let x = x?;
-        let x = match self.hir.info(e).error_source {
+        let x = match self.hir.info(e).interface_source {
             Some(src) if !self.dead => {
                 let want = self.emty(e)?;
                 // An owned resource converted to an interface without `close` is only read (the

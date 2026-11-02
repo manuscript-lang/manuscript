@@ -1,4 +1,3 @@
-import TextError from "@std/core.ms"
 import stdin, stdout, read_line from "@std/io/io.ms"
 
 type Parser:
@@ -17,7 +16,7 @@ fn peek(var p: Parser) Int:
 
     return 0
 
-fn atom(var p: Parser) Result[Int, TextError]:
+fn atom(var p: Parser) Int!:
     let c = peek(var p)
 
     if c >= 48 and c <= 57:
@@ -38,14 +37,14 @@ fn atom(var p: Parser) Result[Int, TextError]:
 
         let inner = try expr(var p)
         if peek(var p) != 41:
-            return error(TextError("syntax"))
+            return error(Error("syntax"))
 
         p.pos = p.pos + 1
         return ok(inner)
 
-    return error(TextError("syntax"))
+    return error(Error("syntax"))
 
-fn unary(var p: Parser) Result[Int, TextError]:
+fn unary(var p: Parser) Int!:
     if peek(var p) == 45:
         p.pos = p.pos + 1
 
@@ -54,7 +53,7 @@ fn unary(var p: Parser) Result[Int, TextError]:
 
     return atom(var p)
 
-fn term(var p: Parser) Result[Int, TextError]:
+fn term(var p: Parser) Int!:
     var value = try unary(var p)
 
     while true:
@@ -76,7 +75,7 @@ fn term(var p: Parser) Result[Int, TextError]:
 
     return ok(value)
 
-fn expr(var p: Parser) Result[Int, TextError]:
+fn expr(var p: Parser) Int!:
     var value = try term(var p)
 
     while true:

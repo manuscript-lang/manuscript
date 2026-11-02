@@ -230,7 +230,7 @@ impl Checker {
                 && !compatible(&Some(actual.clone()), exp)
             {
                 if self.interface_assignable(&actual, exp) {
-                    i.error_source = Some(actual.clone());
+                    i.interface_source = Some(actual.clone());
                     i.ty = Some(exp.clone());
                 } else {
                     let mut msg = self.assignment_mismatch(&actual, exp);

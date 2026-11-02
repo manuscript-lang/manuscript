@@ -158,27 +158,6 @@ pub(crate) fn typed_method_symbol(recv: &ct::Ty, method: &str) -> Option<String>
     })
 }
 
-/// Status codes of `ms-rt-abi` and the error cases they name. Status 11 (`Failed`) carries the
-/// module's `failure_message` text when the error case has a `String` field.
-const STATUS_CASES: [(i64, &str); 16] = [
-    (1, "InvalidInput"),
-    (2, "OutOfRange"),
-    (3, "LimitExceeded"),
-    (4, "InvalidData"),
-    (5, "NotFound"),
-    (6, "AlreadyExists"),
-    (7, "NotEmpty"),
-    (8, "PermissionDenied"),
-    (9, "Unsupported"),
-    (10, "Closed"),
-    (11, "Failed"),
-    (12, "Unavailable"),
-    (13, "Timeout"),
-    (14, "OutputLimit"),
-    (15, "NotTerminal"),
-    (17, "Busy"),
-];
-
 /// `STATUS_NONE`: end of stream or an absent optional.
 const STATUS_NONE: i64 = 16;
 
@@ -1033,35 +1012,11 @@ impl FnLower<'_> {
         let TyKind::Alt(ea) = self.b.m.types.kind(et).clone() else {
             return Err(Error::new("a runtime status needs an error alternative"));
         };
-        // Crypto uses status 6 for authentication failure (the shared host status
-        // table uses it for AlreadyExists). Match the module's actual ABI.
-        let statuses: &[(i64, &str)] = if sym.starts_with("msstd_crypto_") {
-            &[
-                (1, "InvalidInput"),
-                (9, "Unsupported"),
-                (6, "AuthenticationFailed"),
-            ]
-        } else {
-            &STATUS_CASES
-        };
-        // A runtime that reports `Failed` text through `err` numbers the cases 1 + declaration
-        // index (`ms-std-net/ABI.md`); the others share the `STATUS_CASES` codes.
-        let cases: Vec<(i64, usize)> = if ordinal_status(sym) {
-            (0..self.b.m.alts[ea.index()].cases.len())
-                .map(|i| (i as i64 + 1, i))
-                .collect()
-        } else {
-            statuses
-                .iter()
-                .filter_map(|(n, name)| {
-                    let idx = self.b.m.alts[ea.index()]
-                        .cases
-                        .iter()
-                        .position(|c| c.name == *name)?;
-                    Some((*n, idx))
-                })
-                .collect()
-        };
+        // Every stdlib native returns an `Error` record; an alternative error type belongs to a
+        // user `extern fn`, whose statuses number its cases 1 + declaration index.
+        let cases: Vec<(i64, usize)> = (0..self.b.m.alts[ea.index()].cases.len())
+            .map(|i| (i as i64 + 1, i))
+            .collect();
         let failure = failure_symbol(sym);
         let e = self.status_error(ea, code, &cases, failure.as_deref())?;
         Ok(self.b.alt_new(a, err as u32, &[e]))
@@ -1363,21 +1318,6 @@ fn domain_of(sym: &str) -> String {
                 .unwrap_or("error")
                 .to_string()
         })
-}
-
-/// Whether the statuses of `sym` number the error cases 1 + declaration index
-/// (`ms-std-net/ABI.md`) instead of sharing the `STATUS_CASES` codes.
-fn ordinal_status(sym: &str) -> bool {
-    [
-        "msstd_net_",
-        "msstd_http_",
-        "msstd_websocket_",
-        "msstd_tls_",
-        "msrt_pipe_",
-        "extern:",
-    ]
-    .iter()
-    .any(|p| sym.starts_with(p))
 }
 
 /// The symbol returning the text of a `Failed` status of `sym`'s module, when it has one.

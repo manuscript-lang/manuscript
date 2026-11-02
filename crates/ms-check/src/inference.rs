@@ -350,8 +350,8 @@ impl Checker {
 
     /// Result evidence is transactional and invariant. A failed structural match
     /// must not commit the prefix it happened to match. The only widening here
-    /// is the same explicit Error boundary checked after ordinary expression
-    /// inference.
+    /// is the same explicit interface conversion checked after ordinary
+    /// expression inference.
     fn infer_expected_result(
         &mut self,
         variables: &[Ty],

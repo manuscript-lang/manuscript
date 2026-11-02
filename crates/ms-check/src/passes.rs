@@ -302,7 +302,7 @@ fn mark_plain_try(module: &ModRef) {
                 .module
                 .facts()
                 .info(value.id)
-                .is_some_and(|i| i.error_source.is_none());
+                .is_some_and(|i| i.interface_source.is_none());
             if plain {
                 self.module
                     .facts_mut()

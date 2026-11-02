@@ -139,7 +139,7 @@ impl FnLower<'_> {
     }
 
     /// `code(closure, exchange, err) -> status`: wraps the exchange handle in its
-    /// interface, calls the handler and reports its `HttpError` as a status.
+    /// interface, calls the handler and reports its `Error` as a status.
     fn stream_thunk(
         &mut self,
         user_ty: MTy,

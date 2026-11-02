@@ -16,8 +16,8 @@ use ms_rt::obj::msrt_release;
 /// A string slot no one has written: the null string a thunk leaves when it reports no message.
 const NO_MESSAGE: StrVal = StrVal::literal(std::ptr::null_mut(), 0);
 
-/// Exchange handler: `fn(exchange: HttpExchange) Result[Unit, HttpError]`. The
-/// exchange handle is +1 for the thunk; the result is an `HttpError` status
+/// Exchange handler: `fn(exchange: HttpExchange) Result[Unit, Error]`. The
+/// exchange handle is +1 for the thunk; the result is an `Error` status
 /// (`Failed` text through `err`).
 pub type StreamThunk =
     unsafe extern "C" fn(env: *mut Obj, exchange: *mut Obj, err: *mut StrVal) -> u8;
@@ -109,7 +109,7 @@ impl Program {
     /// A program that hands each exchange to the streaming handler `env` (a reference is taken).
     pub fn streaming(env: &Handler) -> Box<Program> {
         let env = env.as_ptr();
-        // SAFETY: the compiler built `env` as a `fn(HttpExchange) Result[Unit, HttpError]`
+        // SAFETY: the compiler built `env` as a `fn(HttpExchange) Result[Unit, Error]`
         // closure, whose code word is a `StreamThunk`; `env` is live for the call.
         unsafe {
             Box::new(Program {
