@@ -12,8 +12,6 @@ on:
     workflows: [CI/CD]
     types: [completed]
     branches: [main]
-  schedule:
-    - cron: '17 * * * *'
   workflow_dispatch:
 
 permissions:
