@@ -28,8 +28,6 @@
 
 use ms_mir::ir::{Boxing, Module};
 use ms_mir::types::{AltId, Ty, TyKind};
-use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 /// A scalar machine value.
@@ -126,116 +124,120 @@ pub fn mem_layout(leaves: &[Leaf]) -> MemLayout {
     }
 }
 
-/// Layout oracle for one module.
-pub struct Layouts<'m> {
-    /// The module whose types are described.
-    pub m: &'m Module,
-    cache: RefCell<HashMap<Ty, Rc<Shape>>>,
-    alt_cache: RefCell<HashMap<AltId, Rc<AltFields>>>,
-    boxing: RefCell<Boxing>,
-}
-
 /// Per case, per field: the field's type and its leaf indices into the alternative's leaf list.
 pub type AltFields = Vec<Vec<(Ty, Vec<usize>)>>;
 
+/// Layout tables for one module, built once from the immutable type table.
+///
+/// Struct of arrays addressed by `Ty` / `AltId` index: every shape is a `(start, len)` span into
+/// one leaf pool, so lookups are array reads with no hashing, sharing, or interior mutability.
+pub struct Layouts<'m> {
+    /// The module whose types are described.
+    pub m: &'m Module,
+    /// Register leaves of every type, back to back.
+    pool: Vec<Leaf>,
+    /// Per `Ty`: `(start, len)` of its register leaves in `pool`.
+    span: Vec<(u32, u32)>,
+    /// Per `Ty`: index into `reprs`, or `NO_REPR`.
+    repr_of: Vec<u32>,
+    /// Representations of alternatives.
+    reprs: Vec<Rc<AltRepr>>,
+    /// Per `AltId`: the alternative lives behind a pointer.
+    alt_boxed: Vec<bool>,
+    /// Per inner `Ty`: `inner?` holds its payload behind a nullable pointer.
+    opt_boxed: Vec<bool>,
+    /// Per `AltId`: case fields with leaf indices.
+    fields: Vec<Rc<AltFields>>,
+}
+
+const NO_REPR: u32 = u32::MAX;
+
+#[derive(Clone, Copy, PartialEq)]
+enum State {
+    Todo,
+    Active,
+    Done,
+}
+
 impl<'m> Layouts<'m> {
-    /// A fresh oracle.
+    /// Builds the tables for every type of `m`.
     pub fn new(m: &'m Module) -> Self {
-        Layouts {
-            m,
-            cache: RefCell::new(HashMap::new()),
-            alt_cache: RefCell::new(HashMap::new()),
-            boxing: RefCell::new(Boxing::default()),
+        let n = m.types.len();
+        let mut boxing = Boxing::default();
+        let alt_boxed = (0..m.alts.len())
+            .map(|i| boxing.alt(m, AltId(i as u32)))
+            .collect();
+        let mut opt_boxed = vec![false; n];
+        for i in 0..n {
+            if let TyKind::Opt(inner) = m.types.kind(Ty(i as u32)) {
+                opt_boxed[inner.index()] = boxing.opt(m, *inner);
+            }
         }
+        let mut lay = Layouts {
+            m,
+            pool: Vec::new(),
+            span: vec![(0, 0); n],
+            repr_of: vec![NO_REPR; n],
+            reprs: Vec::new(),
+            alt_boxed,
+            opt_boxed,
+            fields: vec![Rc::default(); m.alts.len()],
+        };
+        let mut state = vec![State::Todo; n];
+        for i in 0..n {
+            lay.build(Ty(i as u32), &mut state);
+        }
+        for i in 0..m.alts.len() {
+            lay.fields[i] = Rc::new(lay.build_fields(AltId(i as u32)));
+        }
+        lay
     }
 
     /// Whether the alternative contains itself by value and therefore lives behind a pointer.
     pub fn is_boxed(&self, a: AltId) -> bool {
-        self.boxing.borrow_mut().alt(self.m, a)
+        self.alt_boxed[a.index()]
     }
 
     /// Whether `inner?` contains itself by value (`type Node: next: Node?`)
     /// and therefore holds its payload in a heap block behind a nullable pointer.
     pub fn opt_is_boxed(&self, inner: Ty) -> bool {
-        self.boxing.borrow_mut().opt(self.m, inner)
+        self.opt_boxed[inner.index()]
     }
 
-    /// The flattened shape of `ty`.
-    ///
-    /// Shared: every instruction asks, and copying the leaves and case slots of a large
-    /// alternative each time made lowering quadratic in its case count.
-    pub fn shape(&self, ty: Ty) -> Rc<Shape> {
-        if let Some(s) = self.cache.borrow().get(&ty) {
-            return s.clone();
-        }
-        if let TyKind::Alt(a) = self.m.types.kind(ty)
-            && self.is_boxed(*a)
-        {
-            // A boxed alternative is one pointer; this also ends the recursion through its own fields.
-            self.cache.borrow_mut().insert(
-                ty,
-                Rc::new(Shape {
-                    leaves: vec![Leaf::I64],
-                    alt: None,
-                }),
-            );
-        }
-        let s = Rc::new(self.compute(ty));
-        self.cache.borrow_mut().insert(ty, s.clone());
-        s
+    /// Extra structure for alternatives: `None` for every other type.
+    pub fn alt_repr(&self, ty: Ty) -> Option<&AltRepr> {
+        self.reprs.get(self.repr_of[ty.index()] as usize).map(|r| &**r)
+    }
+
+    /// [`Self::alt_repr`] as a shared handle, for callers that keep it across mutation.
+    pub fn alt_repr_rc(&self, ty: Ty) -> Option<Rc<AltRepr>> {
+        self.reprs.get(self.repr_of[ty.index()] as usize).cloned()
     }
 
     /// Per-case, per-field `(type, leaf indices into the alt's leaf/block list)`.
     pub fn alt_fields(&self, a: AltId) -> Rc<AltFields> {
-        if let Some(f) = self.alt_cache.borrow().get(&a) {
-            return f.clone();
-        }
-        let ty = self
-            .m
-            .types
-            .find(&TyKind::Alt(a))
-            .expect("alt type interned");
-        let shape = self.shape(ty);
-        let no_slots = Vec::new();
-        let slots = match &shape.alt {
-            Some(AltRepr::Inline { slots }) | Some(AltRepr::Boxed { slots, .. }) => slots,
-            None => &no_slots,
-        };
-        let fields: AltFields = self.m.alts[a.index()]
-            .cases
-            .iter()
-            .zip(slots)
-            .map(|(c, sl)| {
-                let mut at = 0;
-                c.fields
-                    .iter()
-                    .map(|f| {
-                        let w = self.width(f.1);
-                        let idx = sl[at..at + w].to_vec();
-                        at += w;
-                        (f.1, idx)
-                    })
-                    .collect()
-            })
-            .collect();
-        let fields = Rc::new(fields);
-        self.alt_cache.borrow_mut().insert(a, fields.clone());
-        fields
+        self.fields[a.index()].clone()
+    }
+
+    /// The register leaves of `ty`.
+    pub fn leaf_slice(&self, ty: Ty) -> &[Leaf] {
+        let (start, len) = self.span[ty.index()];
+        &self.pool[start as usize..(start + len) as usize]
     }
 
     /// The register leaves of `ty`.
     pub fn leaves(&self, ty: Ty) -> Vec<Leaf> {
-        self.shape(ty).leaves.clone()
+        self.leaf_slice(ty).to_vec()
     }
 
     /// Number of register leaves.
     pub fn width(&self, ty: Ty) -> usize {
-        self.shape(ty).leaves.len()
+        self.span[ty.index()].1 as usize
     }
 
     /// Memory layout of `ty`.
     pub fn mem(&self, ty: Ty) -> MemLayout {
-        mem_layout(&self.shape(ty).leaves)
+        mem_layout(self.leaf_slice(ty))
     }
 
     /// Whether `inner?` is a nullable pointer.
@@ -255,59 +257,86 @@ impl<'m> Layouts<'m> {
         }
     }
 
-    fn compute(&self, ty: Ty) -> Shape {
-        use Leaf::*;
-        let plain = |leaves: Vec<Leaf>| Shape { leaves, alt: None };
-        match self.m.types.kind(ty) {
-            TyKind::Unit => plain(vec![]),
-            TyKind::Bool => plain(vec![I8]),
-            TyKind::Int | TyKind::Ptr | TyKind::Fn(..) => plain(vec![I64]),
-            TyKind::Int8 => plain(vec![N8]),
-            TyKind::Int16 => plain(vec![N16]),
-            TyKind::Int32 => plain(vec![N32]),
-            TyKind::UInt8 => plain(vec![U8]),
-            TyKind::UInt16 => plain(vec![U16]),
-            TyKind::UInt32 => plain(vec![U32]),
-            TyKind::UInt64 => plain(vec![I64]),
-            TyKind::Float => plain(vec![F64]),
-            TyKind::Float32 => plain(vec![F32]),
-            TyKind::Str => plain(vec![I64, I64]),
-            TyKind::Bytes | TyKind::List(_) => plain(vec![I64, I64, I64]),
-            TyKind::Obj(n, _) if n == "Map" || n == "Set" => {
-                plain(vec![I64; ms_rt_abi::MAP_SIZE / 8])
-            }
-            TyKind::Obj(..) => plain(vec![I64]),
-            TyKind::Iface(_) => plain(vec![I64, I64]),
-            TyKind::Rec(r) => plain(
-                self.m.records[r.index()]
-                    .fields
-                    .iter()
-                    .flat_map(|f| self.leaves(f.1))
-                    .collect(),
-            ),
-            TyKind::Opt(inner) => {
-                if self.opt_is_nullable(*inner) {
-                    plain(vec![I64])
-                } else if self.is_str_like(ty) {
-                    plain(vec![I64, I64])
-                } else {
-                    let mut l = vec![I8];
-                    l.extend(self.leaves(*inner));
-                    plain(l)
-                }
-            }
-            TyKind::Alt(a) => self.alt_shape(*a),
-        }
+    fn set(&mut self, ty: Ty, leaves: &[Leaf]) {
+        self.span[ty.index()] = (self.pool.len() as u32, leaves.len() as u32);
+        self.pool.extend_from_slice(leaves);
     }
 
-    fn alt_shape(&self, a: AltId) -> Shape {
+    /// Fills the tables for `ty` after the types it contains by value.
+    fn build(&mut self, ty: Ty, state: &mut [State]) {
+        use Leaf::*;
+        match state[ty.index()] {
+            State::Done | State::Active => return,
+            State::Todo => {}
+        }
+        state[ty.index()] = State::Active;
+        let kind = self.m.types.kind(ty);
+        let plain: Vec<Leaf> = match kind {
+            TyKind::Unit => vec![],
+            TyKind::Bool => vec![I8],
+            TyKind::Int | TyKind::Ptr | TyKind::Fn(..) => vec![I64],
+            TyKind::Int8 => vec![N8],
+            TyKind::Int16 => vec![N16],
+            TyKind::Int32 => vec![N32],
+            TyKind::UInt8 => vec![U8],
+            TyKind::UInt16 => vec![U16],
+            TyKind::UInt32 => vec![U32],
+            TyKind::UInt64 => vec![I64],
+            TyKind::Float => vec![F64],
+            TyKind::Float32 => vec![F32],
+            TyKind::Str => vec![I64, I64],
+            TyKind::Bytes | TyKind::List(_) => vec![I64, I64, I64],
+            TyKind::Obj(n, _) if n == "Map" || n == "Set" => {
+                vec![I64; ms_rt_abi::MAP_SIZE / 8]
+            }
+            TyKind::Obj(..) => vec![I64],
+            TyKind::Iface(_) => vec![I64, I64],
+            TyKind::Rec(r) => {
+                let mut l = Vec::new();
+                for f in &self.m.records[r.index()].fields {
+                    self.build(f.1, state);
+                    l.extend_from_slice(self.leaf_slice(f.1));
+                }
+                l
+            }
+            TyKind::Opt(inner) => {
+                if self.opt_is_nullable(*inner) {
+                    vec![I64]
+                } else if self.is_str_like(ty) {
+                    vec![I64, I64]
+                } else {
+                    self.build(*inner, state);
+                    let mut l = vec![I8];
+                    l.extend_from_slice(self.leaf_slice(*inner));
+                    l
+                }
+            }
+            TyKind::Alt(a) => {
+                if self.is_boxed(*a) {
+                    // One pointer; this also ends the recursion through its own fields.
+                    self.set(ty, &[I64]);
+                }
+                self.build_alt(ty, *a, state);
+                state[ty.index()] = State::Done;
+                return;
+            }
+        };
+        self.set(ty, &plain);
+        state[ty.index()] = State::Done;
+    }
+
+    fn build_alt(&mut self, ty: Ty, a: AltId, state: &mut [State]) {
         use Leaf::*;
         let def = &self.m.alts[a.index()];
-        let cases: Vec<Vec<Leaf>> = def
-            .cases
-            .iter()
-            .map(|c| c.fields.iter().flat_map(|f| self.leaves(f.1)).collect())
-            .collect();
+        let mut cases: Vec<Vec<Leaf>> = Vec::with_capacity(def.cases.len());
+        for c in &def.cases {
+            let mut l = Vec::new();
+            for f in &c.fields {
+                self.build(f.1, state);
+                l.extend_from_slice(self.leaf_slice(f.1));
+            }
+            cases.push(l);
+        }
         // Payload slots are shared per leaf kind, widest first so each stays aligned.
         const KINDS: [Leaf; 10] = [I64, F64, F32, N32, U32, N16, U16, N8, U8, I8];
         let count = |l: Leaf| {
@@ -340,17 +369,43 @@ impl<'m> Layouts<'m> {
                     .collect()
             })
             .collect();
+        self.repr_of[ty.index()] = self.reprs.len() as u32;
         if self.is_boxed(a) {
-            Shape {
-                leaves: vec![I64],
-                alt: Some(AltRepr::Boxed { slots, block }),
-            }
+            self.reprs.push(Rc::new(AltRepr::Boxed { slots, block }));
         } else {
-            Shape {
-                leaves: block,
-                alt: Some(AltRepr::Inline { slots }),
-            }
+            self.set(ty, &block);
+            self.reprs.push(Rc::new(AltRepr::Inline { slots }));
         }
+    }
+
+    fn build_fields(&self, a: AltId) -> AltFields {
+        let ty = self
+            .m
+            .types
+            .find(&TyKind::Alt(a))
+            .expect("alt type interned");
+        let no_slots = Vec::new();
+        let slots = match self.alt_repr(ty) {
+            Some(AltRepr::Inline { slots }) | Some(AltRepr::Boxed { slots, .. }) => slots,
+            None => &no_slots,
+        };
+        self.m.alts[a.index()]
+            .cases
+            .iter()
+            .zip(slots)
+            .map(|(c, sl)| {
+                let mut at = 0;
+                c.fields
+                    .iter()
+                    .map(|f| {
+                        let w = self.width(f.1);
+                        let idx = sl[at..at + w].to_vec();
+                        at += w;
+                        (f.1, idx)
+                    })
+                    .collect()
+            })
+            .collect()
     }
 }
 

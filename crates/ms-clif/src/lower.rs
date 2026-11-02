@@ -785,8 +785,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             .types
             .find(&TyKind::Alt(a))
             .expect("alt type interned");
-        let shape = self.g.lay.shape(ty);
-        let Some(AltRepr::Boxed { block, .. }) = &shape.alt else {
+        let repr = self.g.lay.alt_repr_rc(ty);
+        let Some(AltRepr::Boxed { block, .. }) = repr.as_deref() else {
             return None;
         };
         let size = mem_layout(block).size;
@@ -828,12 +828,12 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     fn glue_drop_alt(&mut self, ty: Ty, a: ms_mir::types::AltId, vs: &[Value]) {
         let fields = self.alt_fields(a);
-        let boxed = matches!(self.g.lay.shape(ty).alt, Some(AltRepr::Boxed { .. }));
+        let boxed = matches!(self.g.lay.alt_repr(ty), Some(AltRepr::Boxed { .. }));
         if boxed && self.has_tail(ty, &fields) {
             self.drop_boxed_iter(ty, &fields, vs[0]);
             return;
         }
-        let (leaves, base) = match &self.g.lay.shape(ty).alt {
+        let (leaves, base) = match self.g.lay.alt_repr(ty) {
             Some(AltRepr::Boxed { block, .. }) => (block.clone(), Some(vs[0])),
             _ => (self.g.lay.leaves(ty), None),
         };
@@ -909,8 +909,8 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// Frees a chain of boxed blocks: each iteration drops the non-tail fields of the block,
     /// reads its tail pointer, frees it and moves on to the tail.
     fn drop_boxed_iter(&mut self, ty: Ty, fields: &[Vec<(Ty, Vec<usize>)>], first: Value) {
-        let shape = self.g.lay.shape(ty);
-        let Some(AltRepr::Boxed { block, .. }) = &shape.alt else {
+        let repr = self.g.lay.alt_repr_rc(ty);
+        let Some(AltRepr::Boxed { block, .. }) = repr.as_deref() else {
             return;
         };
         let lay = mem_layout(block);
@@ -995,8 +995,8 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// stores its address where the previous block's tail pointer lives, copies the non-tail
     /// fields, and continues with the source's tail.
     fn copy_boxed_iter(&mut self, ty: Ty, fields: &[Vec<(Ty, Vec<usize>)>], first: Value) -> Value {
-        let shape = self.g.lay.shape(ty);
-        let Some(AltRepr::Boxed { block, .. }) = &shape.alt else {
+        let repr = self.g.lay.alt_repr_rc(ty);
+        let Some(AltRepr::Boxed { block, .. }) = repr.as_deref() else {
             return first;
         };
         let lay = mem_layout(block);
@@ -1226,14 +1226,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             return vs.to_vec();
         };
         let fields = self.alt_fields(a);
-        let shape = self.g.lay.shape(ty);
-        let boxed = matches!(shape.alt, Some(AltRepr::Boxed { .. }));
+        let boxed = matches!(self.g.lay.alt_repr(ty), Some(AltRepr::Boxed { .. }));
         if boxed && self.has_tail(ty, &fields) {
             return vec![self.copy_boxed_iter(ty, &fields, vs[0])];
         }
-        let leaves = match &shape.alt {
+        let leaves = match self.g.lay.alt_repr(ty) {
             Some(AltRepr::Boxed { block, .. }) => block.clone(),
-            _ => shape.leaves.clone(),
+            _ => self.g.lay.leaves(ty),
         };
         // Source leaves: boxed values are loaded from the block.
         let src: Vs = if boxed {
@@ -2068,7 +2067,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::AltTag => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
-                match &self.g.lay.shape(ty).alt {
+                match self.g.lay.alt_repr(ty) {
                     Some(AltRepr::Boxed { .. }) => {
                         vec![self.b.ins().load(types::I64, flags(), v[0], 0)]
                     }
@@ -2082,7 +2081,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let (_, idx) = self.alt_fields(a)[c as usize][i as usize].clone();
                 let v = self.a(inst, 0);
-                match &self.g.lay.shape(ty).alt {
+                match self.g.lay.alt_repr(ty) {
                     Some(AltRepr::Boxed { block, .. }) => {
                         let lay = mem_layout(block);
                         idx.iter()
@@ -2120,7 +2119,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let case = self.alt_fields(a)[c as usize].clone();
                 let v = self.a(inst, 0);
-                let boxed = match &self.g.lay.shape(ty).alt {
+                let boxed = match self.g.lay.alt_repr(ty) {
                     Some(AltRepr::Boxed { block, .. }) => Some(block.clone()),
                     _ => None,
                 };
@@ -2159,7 +2158,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let case = self.alt_fields(a)[c as usize].clone();
                 let v = self.a(inst, 0);
-                let boxed = match &self.g.lay.shape(ty).alt {
+                let boxed = match self.g.lay.alt_repr(ty) {
                     Some(AltRepr::Boxed { block, .. }) => Some(block.clone()),
                     _ => None,
                 };
@@ -2724,11 +2723,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         let Imm::Case(a, c) = inst.imm else {
             unreachable!()
         };
-        let shape = self.g.lay.shape(ty);
         let fields = self.alt_fields(a);
-        let (leaves, boxed) = match &shape.alt {
+        let (leaves, boxed) = match self.g.lay.alt_repr(ty) {
             Some(AltRepr::Boxed { block, .. }) => (block.clone(), true),
-            _ => (shape.leaves.clone(), false),
+            _ => (self.g.lay.leaves(ty), false),
         };
         let mut out: Vs = leaves.iter().map(|l| self.zero(*l)).collect();
         out[0] = self.iconst(c as i64);
