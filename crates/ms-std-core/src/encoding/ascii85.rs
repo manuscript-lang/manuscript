@@ -35,6 +35,9 @@ pub fn ascii85_decode(text: &str, max_bytes: Option<i64>) -> Result<Vec<u8>, Fai
             size = grow(size, bytes.len(), limit)?;
             Ok(())
         })?;
+        if size == 0 {
+            return Ok(Vec::new());
+        }
     }
     let mut out = Vec::with_capacity(size);
     visit_groups(text, |bytes| {

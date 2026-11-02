@@ -96,6 +96,18 @@ fn zero_budget85() Unit!:
     try measure(1, work)
     return ok(unit)
 
+fn whitespace85(bounded: Bool) Unit!:
+    let text = try " \t\r\n".repeat(16384)
+    let limit: Int? = if bounded: 0 else: none
+    let expected: Bytes!EncodingError = ok(Bytes([]))
+
+    fn work() Unit!:
+        try expect_equal(ascii85_decode(text, limit), expected)
+        return keep(1)
+
+    try measure(1, work)
+    return ok(unit)
+
 bench "buffers.unpadded.std.0":
     try unpadded(0, false)
 
@@ -179,3 +191,9 @@ bench "buffers.ascii85.z.exact":
 
 bench "buffers.ascii85.z.under":
     try decode85(8, true, true, true)
+
+bench "buffers.ascii85.whitespace.none":
+    try whitespace85(false)
+
+bench "buffers.ascii85.whitespace.exact":
+    try whitespace85(true)
