@@ -292,9 +292,8 @@ impl<'a> FnLower<'a> {
                 .emit(Op::PtrField, &[addr], Imm::Field(rec, 1), Some(MTy::PTR))
                 .expect("field");
             self.wait_turn(addr, state, read)?;
-            let id = self.call_runtime("msrt_addr_id", &[addr], MTy::INT)?;
             let mode = self.b.iconst(i64::from(read));
-            self.call_runtime("msrt_shared_hold", &[id, state, mode], MTy::UNIT)?;
+            let id = self.call_runtime("msrt_shared_hold", &[addr, state, mode], MTy::INT)?;
             if read {
                 self.read_held.push(key.clone());
             } else {

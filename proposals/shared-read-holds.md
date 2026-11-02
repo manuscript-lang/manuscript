@@ -45,7 +45,15 @@ The box's in-use flag (field 1 of the `Shared#…` record, `sharedbuilder::handl
 - **Same task.** A read inside the task's own read proceeds, so a callback may read the value it was given. A write inside its own read or write faults with the existing message. `msrt_shared_wait` checks all of the running task's holds on the key.
 - **Holds by task.** `Hold` (`crates/ms-rt/src/channel.rs`) gains a mode, and `hold_of` matches on the task as well as the key. `end_abandoned_holds` subtracts a cancelled or faulted reader's hold.
 - **Wake-ups.** When the state returns to `0`, every waiter on the key wakes and checks again (one post each, on one scheduler thread).
-- **Cost.** A read call through a `Shared` gains the two runtime calls that a `var` call already pays. Calls that do not read through a `Shared` are unchanged.
+- **Cost.** A read call through a `Shared` gains the two runtime calls that a `var` call already pays. Calls that do not read through a `Shared` are unchanged. Measured with `ms bench bench/perf/stdlib/conc_bench.ms --filter shared --samples 15`, release, on the same cloud VM class as `baseline-2026-10-28.md`. Before is `96c566d7` and after is this change, each median taken over alternating runs:
+
+  | Bench | Before | After |
+  | --- | --- | --- |
+  | `shared.read_call` (new: a read call on a heap payload) | 7.0 ns | 18.5 ns |
+  | `shared.call` (`var` call) | 9.3 ns | 13.7 ns |
+  | `shared.update` (`box += 1`) | 2.8 ns | 2.4 ns |
+
+  `shared.call` costs more because release now finds the running task's own hold. `msrt_waitq_wake_all` returns early when nobody is waiting, which is what keeps `shared.update` from regressing.
 
 ## Components touched
 

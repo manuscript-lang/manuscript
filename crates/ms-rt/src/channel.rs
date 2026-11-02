@@ -192,14 +192,20 @@ fn hold_of(key: usize, task: u64) -> Option<usize> {
         .rposition(|(k, h)| *k == key && h.task == task)
 }
 
-/// Holds the box `key` for a call of the running task, through its state word `state`, until
-/// `msrt_shared_release`, or until the task is cancelled or faults inside the call. A read hold
-/// (`read` 1) adds a reader; a write hold marks the box changing. The caller has waited its turn.
+/// Holds the box at `addr` for a call of the running task, through its state word `state`, until
+/// `msrt_shared_release` of the returned key (the box's identity), or until the task is cancelled
+/// or faults inside the call. A read hold (`read` 1) adds a reader; a write hold marks the box
+/// changing. The caller has waited its turn.
 ///
 /// # Safety
-/// `state` is the state word of the live box `key`, and the box outlives the hold.
+/// `state` is the state word of the live box at `addr`, and the box outlives the hold.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_shared_hold(key: i64, state: *mut i64, read: i64) {
+pub unsafe extern "C-unwind" fn msrt_shared_hold(
+    addr: *const u8,
+    state: *mut i64,
+    read: i64,
+) -> i64 {
+    let key = msrt_addr_id(addr);
     let read = read != 0;
     // SAFETY: the caller passes the state word of a live box.
     unsafe { *state = if read { *state + 1 } else { -1 } };
@@ -210,6 +216,7 @@ pub unsafe extern "C-unwind" fn msrt_shared_hold(key: i64, state: *mut i64, read
         depth: crate::fault::guard_depth(),
     };
     holders().push((key as usize, hold));
+    key
 }
 
 /// Ends the running task's latest hold of the box `key` when its call returns, and wakes the
@@ -325,7 +332,12 @@ pub extern "C-unwind" fn msrt_waitq_wake(key: i64) -> i64 {
 /// Posts every token queued on `key` and empties the queue, so each waiter checks again.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_waitq_wake_all(key: i64) {
-    let Some(waiting) = queues().remove(&(key as usize)) else {
+    // Nobody waits in the common case: skip hashing the key.
+    let q = queues();
+    if q.is_empty() {
+        return;
+    }
+    let Some(waiting) = q.remove(&(key as usize)) else {
         return;
     };
     for token in waiting {
