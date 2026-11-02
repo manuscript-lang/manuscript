@@ -1,11 +1,11 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel, ChannelError from "@std/io/channels.ms"
-import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import ChannelError from "@std/io/channels.ms"
+import TaskChannel, TaskError, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
-fn square_all(ch: Channel[Int, Int]) Int!ChannelError:
+fn square_all(ch: TaskChannel[Int, Int]) Int!ChannelError:
     var c = ch
     var count = 0
 
@@ -18,28 +18,28 @@ fn square_all(ch: Channel[Int, Int]) Int!ChannelError:
 
     return ok(count)
 
-fn produce(ch: Channel[Int, Unit]) Int:
+fn produce(ch: TaskChannel[Int, Unit]) Int:
     var c = ch
     for n in 0..40:
         if c.send(n).is_error():
             return -1
     return 40
 
-fn wait_for_one(ch: Channel[Int, Unit]) Int:
+fn wait_for_one(ch: TaskChannel[Int, Unit]) Int:
     var c = ch
     if let _got = c.receive():
         return 1
 
     return 2
 
-fn send_all(ch: Channel[Int, Unit], base: Int) Int:
+fn send_all(ch: TaskChannel[Int, Unit], base: Int) Int:
     var c = ch
     for n in 0..50:
         if c.send(base + n).is_error():
             return -1
     return 50
 
-fn total(ch: Channel[Unit, Int]) Int:
+fn total(ch: TaskChannel[Unit, Int]) Int:
     var c = ch
     var sum = 0
 
@@ -56,7 +56,7 @@ fn total(ch: Channel[Unit, Int]) Int:
     return sum
 
 # Reads every value until the channel ends: the values, then how it ended.
-fn drain(var ch: Channel[Unit, Int]) List[String]:
+fn drain(var ch: TaskChannel[Unit, Int]) List[String]:
     var seen = List[String]()
 
     while true:

@@ -12,8 +12,7 @@ import (
 ) from "@std/concurrency/flow.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
-import Channel from "@std/io/channels.ms"
+import TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_true, expect_error, expect_ok from "@std/test/test.ms"
 import milliseconds, sleep, monotonic from "@std/os/time.ms"
 
@@ -150,7 +149,7 @@ fn caller(
     counter: Shared[Int],
     flights: Shared[SingleFlight[Int, Int]],
     n: Int,
-    channel: Channel[Unit, Unit]
+    channel: TaskChannel[Unit, Unit]
 ) Int:
     return slow_square(counter, flights, n)
 

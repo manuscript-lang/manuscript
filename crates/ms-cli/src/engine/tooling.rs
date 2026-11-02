@@ -2,7 +2,7 @@
 //! the source tools, over a program the checker has accepted.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::time::{Duration, Instant, SystemTime};
 
 use ms_driver::project::{Overlay, ProjectError, pathops};
@@ -127,9 +127,13 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
     let mut findings = Vec::new();
     let mut summaries = Vec::new();
     let mut root = String::new();
-    if selection.inputs.is_empty() && selection.diagnostics.is_empty() && !request.json {
+    // The terminal output, written at the end or, with `--json --with-text`, carried in the document.
+    let text = !request.json || request.with_text;
+    let mut text_out: Vec<u8> = Vec::new();
+    let mut text_err: Vec<u8> = Vec::new();
+    if selection.inputs.is_empty() && selection.diagnostics.is_empty() && text {
         let _ = writeln!(
-            io.stderr,
+            text_err,
             "ms {}: no .ms files found in {}",
             if check { "check" } else { "lint" },
             request.targets.join(", ")
@@ -151,7 +155,7 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
             continue;
         };
         if check {
-            if !request.json {
+            if text {
                 summaries.push(checked_line(input, &checked));
             }
             continue;
@@ -219,7 +223,7 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
     let has_errors = !diagnostics.is_empty();
     diagnostics.extend(findings);
     for summary in summaries {
-        let _ = writeln!(io.stdout, "{summary}");
+        let _ = writeln!(text_out, "{summary}");
     }
     if selection.collection {
         diagnostics = ordered(diagnostics);
@@ -229,53 +233,64 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
     }
     let failing = |d: &CommandDiagnostic| d.severity != "warning" || request.deny_warnings;
     let status = i32::from(diagnostics.iter().any(failing));
-    if request.json {
-        return (
-            emit_json(io, &diagnostics_document(&diagnostics), status),
-            files,
-        );
-    }
-    let mut sources = crate::snippet::Sources::default();
-    for issue in &diagnostics {
-        let mut position = issue.position.clone();
-        if !root.is_empty() && !pathops::is_abs(&position.file) {
-            position.file = pathops::join(&[&root, &position.file]);
+    if text {
+        let mut sources = crate::snippet::Sources::default();
+        for issue in &diagnostics {
+            let mut position = issue.position.clone();
+            if !root.is_empty() && !pathops::is_abs(&position.file) {
+                position.file = pathops::join(&[&root, &position.file]);
+            }
+            let label = if !issue.phase.is_empty() {
+                &issue.phase
+            } else if issue.severity == "warning" {
+                &format!("warning {}", issue.code)
+            } else {
+                &issue.code
+            };
+            let end = issue.end.as_ref().map(|e| (e.line, e.column));
+            let excerpt = sources.excerpt(&position.file, position.line, position.column, end);
+            let _ = writeln!(text_err, "{position}: {label}: {}{excerpt}", issue.message);
         }
-        let label = if !issue.phase.is_empty() {
-            &issue.phase
-        } else if issue.severity == "warning" {
-            &format!("warning {}", issue.code)
-        } else {
-            &issue.code
-        };
-        let end = issue.end.as_ref().map(|e| (e.line, e.column));
-        let excerpt = sources.excerpt(&position.file, position.line, position.column, end);
-        let _ = writeln!(io.stderr, "{position}: {label}: {}{excerpt}", issue.message);
+        if has_errors {
+            let count = diagnostics.iter().filter(|d| !d.phase.is_empty()).count();
+            let _ = writeln!(
+                text_err,
+                "{count} {}; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)",
+                plural(count, "error", "errors")
+            );
+        }
+        let warnings = diagnostics
+            .iter()
+            .filter(|d| d.severity == "warning")
+            .count();
+        if warnings > 0 {
+            let note = if request.deny_warnings {
+                "failing because of --deny-warnings"
+            } else {
+                "warnings do not fail ms lint; pass --deny-warnings to fail on them"
+            };
+            let _ = writeln!(
+                text_err,
+                "{warnings} {}; {note}",
+                plural(warnings, "warning", "warnings")
+            );
+        }
     }
-    if has_errors {
-        let count = diagnostics.iter().filter(|d| !d.phase.is_empty()).count();
-        let _ = writeln!(
-            io.stderr,
-            "{count} {}; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)",
-            plural(count, "error", "errors")
-        );
+    if request.json {
+        let mut document = diagnostics_document(&diagnostics);
+        if request.with_text {
+            let utf8 = |bytes: Vec<u8>| String::from_utf8_lossy(&bytes).into_owned();
+            document = document.with(
+                "text",
+                crate::json::Json::object()
+                    .with("stdout", crate::json::Json::str(utf8(text_out)))
+                    .with("stderr", crate::json::Json::str(utf8(text_err))),
+            );
+        }
+        return (emit_json(io, &document, status), files);
     }
-    let warnings = diagnostics
-        .iter()
-        .filter(|d| d.severity == "warning")
-        .count();
-    if warnings > 0 {
-        let note = if request.deny_warnings {
-            "failing because of --deny-warnings"
-        } else {
-            "warnings do not fail ms lint; pass --deny-warnings to fail on them"
-        };
-        let _ = writeln!(
-            io.stderr,
-            "{warnings} {}; {note}",
-            plural(warnings, "warning", "warnings")
-        );
-    }
+    let _ = io.stdout.write_all(&text_out);
+    let _ = io.stderr.write_all(&text_err);
     (status, files)
 }
 

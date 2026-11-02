@@ -357,10 +357,17 @@ impl Loader<'_> {
     }
 
     fn load(&mut self, canonical: &str, file: &Arc<str>) -> Result<Name, Failure> {
-        let bytes = match self.overlay.get(canonical) {
-            Some(source) => source.clone().into_bytes(),
-            None => std::fs::read(canonical)
-                .map_err(|e| Failure::Error(ProjectError::path("open", canonical, &e)))?,
+        let bytes = if let Some(source) = self.overlay.get(canonical) {
+            source.clone().into_bytes()
+        } else if let Some((name, directory)) =
+            crate::project::embed::name_of(&self.config.embed, &self.config.root, canonical)
+        {
+            crate::project::embed::generate(name, directory)
+                .map_err(Failure::Error)?
+                .into_bytes()
+        } else {
+            std::fs::read(canonical)
+                .map_err(|e| Failure::Error(ProjectError::path("open", canonical, &e)))?
         };
         let text = String::from_utf8(bytes).map_err(|_| {
             Failure::diagnostic(Box::new(Diagnostic::parse(

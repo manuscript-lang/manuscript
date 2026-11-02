@@ -1,10 +1,9 @@
 # conform: tags=closures,stdlib-tasks,tier-stdlib
 # conform: phase=run
-import Channel from "@std/io/channels.ms"
 import stdout from "@std/io/io.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 
-fn entry(ch: Channel[Unit, Unit]) Int:
+fn entry(ch: TaskChannel[Unit, Unit]) Int:
     return 6
 
 export fn main() Int:
