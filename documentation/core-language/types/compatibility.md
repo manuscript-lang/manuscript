@@ -7,7 +7,7 @@ weight = 10
 
 A value's type must match the type required at its position: annotations, assignments, arguments, returns, fields, and collection elements. An `Int` is not a `Float`, and records with equal fields are not interchangeable.
 
-`Never` expressions fit anywhere. Errors implementing `Error` pass into an Error boundary ([error compatibility](../errors/propagation.md#error-compatibility)).
+`Never` expressions fit anywhere. `try` needs the same error type as the enclosing function ([error compatibility](../errors/propagation.md#error-compatibility)).
 
 ## Exact and nominal identity
 

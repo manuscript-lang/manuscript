@@ -29,7 +29,7 @@ export fn main() Int:
 ms run hello.ms
 ```
 
-There is no built-in `print`. `try` propagates I/O errors; `main` returns 1 on failure. Later recipes print no diagnostics; to add one, use `cause.message` ([error boundary](../core-language/errors/results.md#a-common-error-boundary)).
+There is no built-in `print`. `try` propagates I/O errors; `main` returns 1 on failure. Later recipes print no diagnostics; to add one, use `cause.message` ([the Error record](../core-language/errors/results.md#the-error-record)).
 
 ## Read command-line arguments
 
