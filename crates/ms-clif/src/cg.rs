@@ -149,6 +149,7 @@ pub struct Gen<'m> {
     pub count_str: bool,
     pub ext: HashMap<ExtId, FuncId>,
     pub strs: HashMap<u32, DataId>,
+    pub list_consts: HashMap<usize, DataId>,
     pub glue: HashMap<(Glue, Ty), FuncId>,
     pub queue: Vec<(Glue, Ty)>,
     pub vtables: Vec<DataId>,
@@ -532,6 +533,33 @@ impl<'m> Gen<'m> {
     }
 
     /// A static `String` block for literal `i`: the bytes then a NUL.
+    /// The static data of constant list `i` (`list.const`), laid out as its elements are in memory.
+    pub fn list_const(&mut self, i: usize, elem: Ty) -> DataId {
+        if let Some(id) = self.list_consts.get(&i) {
+            return *id;
+        }
+        let leaf = self.lay.leaves(elem)[0];
+        let mut bytes = Vec::with_capacity(self.m.list_consts[i].len() * leaf.size() as usize);
+        for &raw in &self.m.list_consts[i] {
+            match leaf {
+                Leaf::F32 => bytes.extend((f64::from_bits(raw as u64) as f32).to_le_bytes()),
+                _ => bytes.extend(&raw.to_le_bytes()[..leaf.size() as usize]),
+            }
+        }
+        let id = self
+            .module
+            .declare_data(&format!("ms.list.{i}"), self.private(), false, false)
+            .expect("declare constant list");
+        let mut d = DataDescription::new();
+        d.define(bytes.into_boxed_slice());
+        d.set_align(16);
+        self.module
+            .define_data(id, &d)
+            .expect("define constant list");
+        self.list_consts.insert(i, id);
+        id
+    }
+
     pub fn str_lit(&mut self, i: u32) -> DataId {
         if let Some(id) = self.strs.get(&i) {
             return *id;
@@ -628,6 +656,7 @@ fn compile_with_isa(
         count_str: std::env::var_os("MS_COUNT_STR").is_some(),
         ext: HashMap::new(),
         strs: HashMap::new(),
+        list_consts: HashMap::new(),
         glue: HashMap::new(),
         queue: Vec::new(),
         vtables: Vec::new(),

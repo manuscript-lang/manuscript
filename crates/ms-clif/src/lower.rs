@@ -2206,6 +2206,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::ListNew
             | Op::ListLit
+            | Op::ListConst
             | Op::ListLen
             | Op::ListGet
             | Op::ListGetNn
@@ -2829,6 +2830,26 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let v = self.a(inst, i);
                     self.store_leaves(p, i as i64 * size, &leaves, &v);
                 }
+                let nn = self.iconst(n);
+                vec![p, nn, nn]
+            }
+            Op::ListConst => {
+                let Imm::Int(i) = inst.imm else {
+                    unreachable!()
+                };
+                let (e, leaves, size) = self.elem_info(res_ty);
+                let n = self.g.m.list_consts[i as usize].len() as i64;
+                if n == 0 {
+                    let z = self.iconst(0);
+                    return vec![z, z, z];
+                }
+                debug_assert_eq!(leaves.len(), 1);
+                let data = self.g.list_const(i as usize, e);
+                let src = self.data_addr(data);
+                let p = self.alloc(n * size);
+                let bytes = self.iconst(n * size);
+                self.b
+                    .call_memcpy(self.g.module.target_config(), p, src, bytes);
                 let nn = self.iconst(n);
                 vec![p, nn, nn]
             }
