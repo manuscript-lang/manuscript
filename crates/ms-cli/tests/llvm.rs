@@ -82,6 +82,42 @@ fn llvm_native_calls_keep_distinct_fault_sites() {
     assert!(llvm.contains("sites.ms:7 in test second"), "{llvm}");
 }
 
+#[test]
+fn llvm_tail_recursion_keeps_fault_frames_and_the_stack_limit() {
+    if !ms_clif::llvm_available() {
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("ms-llvm-tail-recursion-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let source = dir.join("tail-recursive-frames.ms");
+    std::fs::write(&source, include_str!("llvm/tail-recursive-frames.ms")).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .env("MS_BACKEND", "llvm")
+        .args([
+            "test",
+            source.to_str().unwrap(),
+            "--timeout",
+            "10s",
+            "--build-type",
+            "Release",
+        ])
+        .output()
+        .unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let report = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        report.contains("FAIL tail-recursive-frames.ms::final recursive calls keep their source frames: tail recursion reached its base"),
+        "{output:?}"
+    );
+    assert!(report.contains("in descend"), "{output:?}");
+    assert!(
+        report.contains("previous frame repeated 5 more times"),
+        "{output:?}"
+    );
+    assert!(report.contains("3 tests, 1 failed"), "{output:?}");
+}
+
 /// Drop glue of nested collections stays out of line, so optimizing a deeply nested literal takes
 /// time linear in its depth instead of nesting one loop per level.
 #[test]
