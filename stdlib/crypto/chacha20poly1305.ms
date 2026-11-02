@@ -2,9 +2,11 @@ import Bytes, BytesBuilder from "@std/bytes.ms"
 import CryptoError, constant_time_equal from "@std/crypto.ms"
 import (
     bit_and,
+    bit_not,
     bit_or,
     bit_xor,
     shift_left,
+    shift_right,
     shift_right_unsigned
 ) from "@std/math/math.ms"
 
@@ -229,13 +231,15 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!CryptoError:
 
     let g4 = h4 + carry - 67108864
 
-    # g4 is negative exactly when h < 2^130 - 5, so keep h in that case.
-    if g4 >= 0:
-        h0 = g0
-        h1 = g1
-        h2 = g2
-        h3 = g3
-        h4 = bit_and(g4, mask)
+    # g4 is negative exactly when h < 2^130 - 5, so keep h in that case. The choice is a mask, not a
+    # branch, so the time taken does not depend on the secret accumulator.
+    let keep = shift_right(g4, 63)
+    let take = bit_not(keep)
+    h0 = bit_or(bit_and(h0, keep), bit_and(g0, take))
+    h1 = bit_or(bit_and(h1, keep), bit_and(g1, take))
+    h2 = bit_or(bit_and(h2, keep), bit_and(g2, take))
+    h3 = bit_or(bit_and(h3, keep), bit_and(g3, take))
+    h4 = bit_or(bit_and(h4, keep), bit_and(bit_and(g4, mask), take))
 
     let word_mask = 4294967295
     var f0 = bit_and(bit_or(h0, shift_left(h1, 26)), word_mask) + le32(key, 16)

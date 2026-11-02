@@ -1,4 +1,4 @@
-import Histogram from "@std/math/statistics.ms"
+import BinCounts from "@std/math/statistics.ms"
 import (
     expect_close,
     expect_equal,
@@ -8,7 +8,7 @@ import (
 ) from "@std/test/test.ms"
 import (
     correlation,
-    histogram,
+    bin_counts,
     linear_regression,
     mean,
     median,
@@ -54,15 +54,15 @@ test "percentile and quantiles interpolate":
     try expect_equal(quantiles(data, 4), [2.0, 3.0, 4.0])
     try expect_equal(quantiles(List[Float](), 4), List[Float]())
 
-test "histogram bins values":
-    let h = try expect_some(histogram([1.0, 2.0, 2.0, 3.0], 2))
+test "bin_counts bins values":
+    let h = try expect_some(bin_counts([1.0, 2.0, 2.0, 3.0], 2))
     try expect_equal(h.counts, [1, 3])
     try expect_close(h.low, 1.0, 0.000001)
     try expect_close(h.high, 3.0, 0.000001)
 
-    let same = try expect_some(histogram([2.0, 2.0], 3))
+    let same = try expect_some(bin_counts([2.0, 2.0], 3))
     try expect_equal(same.counts, [2, 0, 0])
-    try expect_none(histogram(List[Float](), 2))
+    try expect_none(bin_counts(List[Float](), 2))
 
 test "correlation and regression":
     try expect_close(
@@ -85,5 +85,5 @@ fn discard[T](value: T) Unit:
 test "invalid arguments fault":
     let _first = try expect_fault(fn: discard(percentile([1.0], 101.0)))
     let _second = try expect_fault(fn: discard(quantiles([1.0], 1)))
-    let _third = try expect_fault(fn: discard(histogram([1.0], 0)))
+    let _third = try expect_fault(fn: discard(bin_counts([1.0], 0)))
     let _fourth = try expect_fault(fn: discard(correlation([1.0, 2.0], [1.0])))

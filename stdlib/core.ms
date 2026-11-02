@@ -213,13 +213,13 @@ impl Error for ContextError:
         return self.context + ": " + self.cause.message()
 
 # Returns `cause` with `context` in front of its message: `try read(path)` becomes
-# `error(wrap("read config", cause))`.
-export fn wrap(context: String, cause: Error) ContextError:
+# `error(wrap_error("read config", cause))`.
+export fn wrap_error(context: String, cause: Error) ContextError:
     return ContextError(context, cause)
 
 # Several errors reported together, such as the failures of tasks that all ran to completion.
 export type JoinedError:
-    # The errors in the order they were collected; never empty when made by `join`.
+    # The errors in the order they were collected; never empty when made by `join_errors`.
     errors: List[Error]
 
 impl Error for JoinedError:
@@ -228,7 +228,7 @@ impl Error for JoinedError:
         return self.errors.map(fn cause: cause.message()).join("\n")
 
 # Combines `errors` into one error, or none when the list is empty.
-export fn join(errors: List[Error]) JoinedError?:
+export fn join_errors(errors: List[Error]) JoinedError?:
     if errors.length() == 0:
         return none
 
