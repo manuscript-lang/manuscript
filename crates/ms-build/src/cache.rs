@@ -233,12 +233,34 @@ fn touch(entry: &Path) {
         .and_then(|f| f.set_modified(std::time::SystemTime::now()));
 }
 
+/// How long a store stage may sit untouched before pruning treats its build as dead.
+const STALE_STAGE: std::time::Duration = std::time::Duration::from_secs(24 * 60 * 60);
+
 fn prune(dir: &Path, keep: usize) {
+    prune_stages(dir, keep, STALE_STAGE);
+}
+
+fn prune_stages(dir: &Path, keep: usize, stale: std::time::Duration) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
+    let entries: Vec<_> = entries.filter_map(Result::ok).collect();
+    // Stages are named uniquely per attempt, so one left by a killed build is never reused.
+    for stage in entries
+        .iter()
+        .filter(|e| e.file_name().to_string_lossy().starts_with('.'))
+    {
+        let age = stage
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.elapsed().ok());
+        if age.is_some_and(|age| age > stale) {
+            let _ = std::fs::remove_dir_all(stage.path());
+        }
+    }
     let mut entries: Vec<_> = entries
-        .filter_map(Result::ok)
+        .into_iter()
         .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
         .filter_map(|e| Some((used(&e.path())?, e.path())))
         .collect();
@@ -434,6 +456,19 @@ mod tests {
     #[test]
     fn a_failed_store_does_not_remove_another_attempt() {
         concurrent_stores(true);
+    }
+
+    #[test]
+    fn pruning_removes_only_stages_older_than_the_limit() {
+        let dir = scratch("prune-stage");
+        let stage = dir.join(".k.1-0");
+        std::fs::create_dir_all(&stage).unwrap();
+        prune_stages(&dir, 8, std::time::Duration::from_secs(3600));
+        assert!(stage.exists(), "a recent stage may belong to a live build");
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        prune_stages(&dir, 8, std::time::Duration::from_millis(1));
+        assert!(!stage.exists(), "an abandoned stage is reclaimed");
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
