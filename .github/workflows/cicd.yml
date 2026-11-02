@@ -1,7 +1,8 @@
 name: CI/CD
 
 on:
-  # Every push to main runs the full platform matrix. Only manual runs on main save the sccache
+  # Every push to main runs the darwin and windows legs (Linux ran on the pull request and runs in the
+  # hourly manual run). Only manual runs on main save the sccache
   # caches, because push runs are often replaced before they finish. cache-maintenance.yml starts a
   # manual run every hour.
   push:
@@ -44,8 +45,12 @@ jobs:
       matrix: ${{ steps.diff.outputs.matrix }}
     steps:
       - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
         run: |
-          # Pushes to main, merge groups and manual runs cover all six platforms. Pull requests run
+          # Merge groups and manual runs cover all six platforms. A push to main runs the four darwin
+          # and windows legs only: every pull request already ran both Linux architectures, and the
+          # hourly manual run covers Linux on main. Pull requests run
           # two Linux jobs written in the `rust` matrix; run the workflow by hand on a branch to test a
           # platform-specific change before merging.
           echo "rust=true" >> "$GITHUB_OUTPUT"
@@ -63,7 +68,8 @@ jobs:
           # counts, packaging). Legs without Cranelift move `misc` into part `a` to balance the two.
           # `cache_part` names the sccache entry a job restores; `ab` jobs share part `a`'s, which holds
           # the workspace build that part `b` reuses.
-          matrix=$(echo "{\"include\":[$include]}" | jq -c '{include: [.include[] | . as $leg
+          matrix=$(echo "{\"include\":[$include]}" | jq -c --arg event "$EVENT" '{include: [.include[]
+            | select($event != "push" or .os != "linux") | . as $leg
             | ["a","b"][] as $part
             | $leg + {part: $part, cache_part: $part,
                       part_name: (if $part == "a" then "tests" else "conformance" end),
