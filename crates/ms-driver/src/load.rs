@@ -224,7 +224,7 @@ fn source_project(filename: &str) -> Result<(Project, bool), (String, ProjectErr
 }
 
 /// The nearest `ms.toml` in `dir` or an ancestor.
-fn enclosing_manifest(dir: &str) -> Option<String> {
+pub fn enclosing_manifest(dir: &str) -> Option<String> {
     let mut current = dir.to_string();
     loop {
         let candidate = pathops::join(&[&current, "ms.toml"]);
