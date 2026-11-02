@@ -271,11 +271,18 @@ b0:
     assert!(err.contains("at main t.ms:21"), "{err}");
 }
 
-/// Builds the real runtime static library (`ms-native`) once (in its own target directory).
+/// The real runtime static library (`ms-native` with `entry`). `cargo xtask runtime`, which every
+/// build of `ms` needs first, leaves it at `target/ms-native/libms_native.a`; nextest runs each test in
+/// its own process, so building it here cost every test that links it a release cargo run. Without
+/// that archive the test builds it once in its own target directory.
 fn real_runtime() -> &'static PathBuf {
     static RT: OnceLock<PathBuf> = OnceLock::new();
     RT.get_or_init(|| {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let prebuilt = root.join("target/ms-native/libms_native.a");
+        if prebuilt.is_file() {
+            return prebuilt;
+        }
         let target = root.join("target").join("ms-native-for-clif");
         let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
         let mut command = Command::new(cargo);
