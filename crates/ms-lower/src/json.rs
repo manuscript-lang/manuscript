@@ -1659,7 +1659,7 @@ impl FnLower<'_> {
         Ok(id)
     }
 
-    /// `error(JsonError.<case>)`.
+    /// `error(Error(..))` with the matching `ErrorCategory`.
     fn json_error(
         &mut self,
         ra: ms_mir::types::AltId,

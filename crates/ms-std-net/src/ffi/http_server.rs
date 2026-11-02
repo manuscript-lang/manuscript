@@ -100,7 +100,7 @@ fn server_options(opts: &HttpServerOptionsWire) -> Result<Options, HttpErr> {
 native! {
     // -------------------------------------------------------------------- server
 
-    /// `Network.serve(address, handler, options) -> Result[HttpServer, HttpError]`; the server takes a
+    /// `Network.serve(address, handler, options) -> Result[HttpServer, Error]`; the server takes a
     /// reference to the handler closure and releases it when dropped.
     fn msstd_net_network_serve(
         net: ObjRef<NetH>,
@@ -122,7 +122,7 @@ native! {
         Ok(())
     }
 
-    /// `Network.serve_connections(handler, options) -> Result[HttpServer, HttpError]`: a server
+    /// `Network.serve_connections(handler, options) -> Result[HttpServer, Error]`: a server
     /// without a listener that serves what `HttpServer.adopt` hands it.
     fn msstd_net_network_serve_connections(
         net: ObjRef<NetH>,

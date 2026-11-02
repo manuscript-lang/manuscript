@@ -1,9 +1,9 @@
 //! `@std/process` natives. Symbols are `msstd_process_<name>`.
 //!
 //! Fallible functions return a `STATUS_*` code (`0` ok) and write results only on success; for
-//! `STATUS_FAILED` the Go-style text comes from `msstd_process_failure_message`. `ControlError`
-//! maps to the shared statuses (`InvalidInput`, `InvalidData`, `LimitExceeded`, `NotFound`,
-//! `AlreadyExists`, `PermissionDenied`, `Unsupported`, `Closed`, `Failed`) and `CommandError` to
+//! `STATUS_FAILED` the Go-style text comes from `msstd_process_failure_message`. control errors
+//! map to the shared statuses (`InvalidInput`, `InvalidData`, `LimitExceeded`, `NotFound`,
+//! `AlreadyExists`, `PermissionDenied`, `Unsupported`, `Closed`, `Failed`) and command errors to
 //! `InvalidInput`, `Unavailable`, `Timeout` (13), `OutputLimit` (14) and `Failed`. Optional values
 //! are a present flag plus the value. A `Map[String, String]` crosses as two parallel string lists.
 

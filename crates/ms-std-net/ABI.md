@@ -41,7 +41,7 @@ release, cancellation) and never the other way around.
 
 ## Status tables
 
-| Type | Cases (status 1, 2, ...) |
+| Status group | Kinds (status 1, 2, ...) |
 | --- | --- |
 | `NetworkError` | InvalidInput, InvalidData, LimitExceeded, PermissionDenied, Unsupported, Closed, Timeout, Failed |
 | `IoError` | Closed, InvalidInput, Unavailable, InvalidData, LimitExceeded, Failed |
@@ -49,8 +49,8 @@ release, cancellation) and never the other way around.
 | `WebSocketError` | InvalidInput, InvalidData, LimitExceeded, PermissionDenied, Closed, Timeout, Failed |
 | `TlsError` | InvalidInput, InvalidData, LimitExceeded, AuthenticationFailed |
 
-`Error.message()` is `msstd_net_error_message(status, failed_or_null)` for `NetworkError`
-(and `msstd_http_`, `msstd_websocket_`, `msstd_tls_` forms for the other types). Messages
+The message of a status is `msstd_net_error_message(status, failed_or_null)` for the `NetworkError` group
+(and `msstd_http_`, `msstd_websocket_`, `msstd_tls_` forms for the other groups). Lowering turns each status into an `Error` whose `kind` is the named `ErrorCategory`. Messages
 carry no input values except `Failed` text, which is verbatim.
 
 ## net
@@ -97,7 +97,7 @@ Behavior notes (same as Go unless stated):
 - Addresses are `host:port` with IPv6 hosts in brackets; Unix sockets use their path.
   A Unix listener removes its socket file on close.
 - `Connection.read` caps a chunk at 65536 bytes, answers `STATUS_NONE` at EOF, and a
-  local timeout is `IoError.Failed("operation timed out")`.
+  local timeout is an `Error` of kind `Failed` ("operation timed out").
 - `lookup`/`resolve` of A and AAAA on the default network use the system resolver
   (`getaddrinfo`) on a helper thread so a timeout or stop request is honored; other
   record kinds and networks made with `with_resolver` speak DNS (UDP, TCP fallback)
@@ -113,7 +113,7 @@ Behavior notes (same as Go unless stated):
 msstd_net_network_connect_tls(net, address, server_name, has_timeout, timeout, out, err) -> u8
 msstd_net_network_connect_tls_config(net, address, opts: *const TlsOptionsWire, has_timeout, timeout, out, err) -> u8
 msstd_net_network_listen_tls(net, address, opts: *const TlsOptionsWire, has_handshake_timeout, handshake_timeout, out, err) -> u8
-msstd_net_connection_tls_info(c, out: *mut TlsInfoWire) -> u8          // TlsError status
+msstd_net_connection_tls_info(c, out: *mut TlsInfoWire) -> u8          // TLS status group
 msstd_tls_parse_certificates(pem, has_max, max, certs: *mut *mut CertificateInfoWire, count: *mut usize) -> u8
 msstd_tls_verify_certificates(chain_pem, roots_pem, server_name, now_seconds: i64, now_nanos: i32) -> u8
 msstd_tls_error_message(status) -> String

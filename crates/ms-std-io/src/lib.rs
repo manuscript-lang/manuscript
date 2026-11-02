@@ -1,7 +1,7 @@
 //! `@std/io` natives for host streams. Symbols are `msstd_io_<name>`.
 //!
 //! A stream is a refcounted handle (`stdin`, `stdout`, `stderr` borrow their descriptors, `open`
-//! owns one). Operations return an `IoError` status: `0` ok, `STATUS_NONE` for end of stream,
+//! owns one). Operations return an `ErrorCategory` status: `0` ok, `STATUS_NONE` for end of stream,
 //! `CLOSED`, `INVALID_INPUT`, `UNAVAILABLE`, `INVALID_DATA`, `LIMIT_EXCEEDED`, or `FAILED` with
 //! its Go-style text from `msstd_io_failure_message`. Outputs are written only on success.
 //! Generic `copy`/`read_all`/`read_line` over user-defined `ReadStream`s stay compiler-lowered.

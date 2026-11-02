@@ -654,7 +654,7 @@ impl Checker {
                     self.p.diagnostics.remove(i);
                 }
             }
-            if let (Some(want), Some(have)) = (&expected, &v.error_source)
+            if let (Some(want), Some(have)) = (&expected, &v.interface_source)
                 && arg.mutable
                 && want.kind == Kind::Contract
                 && have.kind != Kind::Contract

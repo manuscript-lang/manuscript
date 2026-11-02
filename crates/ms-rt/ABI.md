@@ -38,7 +38,7 @@ recorded here before it is committed.)_
   `glob_entries`' returns non-zero to exclude it.
   Glob matching lives in `ms-std-path::glob` (shared with `@std/fs`) (braces, extglobs, `**`, and dotfile rules).
 - **v2.5 (`ms-std-process`).** `msstd_process_*` covers process control and child processes. `STATUS_TIMEOUT` (13) and `STATUS_OUTPUT_LIMIT` (14)
-  join the table for `CommandError`. `Map[String, String]` crosses as two parallel string lists (`environment`, `replace`). `command_run` takes
+  join the table (`Timeout`, `LimitExceeded`). `Map[String, String]` crosses as two parallel string lists (`environment`, `replace`). `command_run` takes
   the arguments, input bytes, optional limit and optional timeout and returns `CommandOut` (exit code, stdout, stderr); `command_spawn` returns a
   refcounted child handle whose three pipes are `@std/io` stream handles (`subprocess_stream`, each call adds a reference). Children start in their
   own process group and every wait polls in short slices so a pending cancellation kills the tree before unwinding. `ms-rt` adds `msrt_start_nanos`
