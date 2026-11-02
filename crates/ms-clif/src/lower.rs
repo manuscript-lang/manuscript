@@ -254,14 +254,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             .zip(leaves)
             .map(|((v, p), l)| {
                 let want = leaf_type(l);
-                match p.extension {
-                    ir::ArgumentExtension::Sext if want != p.value_type => {
-                        self.b.ins().sextend(want, *v)
-                    }
-                    ir::ArgumentExtension::Uext if want != p.value_type => {
-                        self.b.ins().uextend(want, *v)
-                    }
-                    _ => *v,
+                if want == p.value_type {
+                    return *v;
+                }
+                match c_param(l).extension {
+                    ir::ArgumentExtension::Sext => self.b.ins().sextend(want, *v),
+                    _ => self.b.ins().uextend(want, *v),
                 }
             })
             .collect()
@@ -3162,7 +3160,13 @@ impl<'a, 'm> Lower<'a, 'm> {
                     // A user shim takes and returns sized numbers as their C types.
                     let mut sig = self.g.module.make_signature();
                     sig.params.extend(params.iter().map(|l| c_param(*l)));
-                    sig.returns.extend(rets.iter().map(|l| c_param(*l)));
+                    // Results carry no extension attribute: AAPCS64 leaves the upper bits of a
+                    // narrow result undefined, and LLVM would trust a `signext` result. The
+                    // caller extends it (`call_c_extern`).
+                    sig.returns.extend(
+                        rets.iter()
+                            .map(|l| ir::AbiParam::new(c_param(*l).value_type)),
+                    );
                     sig
                 } else {
                     // Runtime natives take and return a `Float32` as `f64`.

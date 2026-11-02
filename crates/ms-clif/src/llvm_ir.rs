@@ -293,13 +293,14 @@ fn attr(t: Type) -> &'static str {
     if t == types::I8 { " zeroext" } else { "" }
 }
 
-/// The extension attribute of a signature parameter or return: a user shim's narrow integers
-/// carry their own (`signext` or `zeroext`), runtime bytes are zero-extended.
+/// The extension attribute of a signature parameter or return, as Cranelift records it: runtime
+/// bytes are zero-extended (`abi_param`), a user shim's narrow arguments carry their own, and
+/// a user shim's narrow results carry none, because the C callee need not extend them.
 fn param_attr(p: &ir::AbiParam) -> &'static str {
     match p.extension {
         ir::ArgumentExtension::Sext => " signext",
         ir::ArgumentExtension::Uext => " zeroext",
-        ir::ArgumentExtension::None => attr(p.value_type),
+        ir::ArgumentExtension::None => "",
     }
 }
 

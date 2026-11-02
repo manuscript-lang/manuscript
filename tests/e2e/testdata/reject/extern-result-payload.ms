@@ -1,10 +1,10 @@
 type ReadError:
-    case Failed(message: String)
+    case Failed(reason: String)
 
 impl Error for ReadError:
     fn message() String:
         match self:
-            Failed(message): return message
+            Failed(reason): return reason.clone()
 
 extern fn read_value() Int!ReadError
 
