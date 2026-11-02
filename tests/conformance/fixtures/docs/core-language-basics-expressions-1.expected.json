@@ -20,12 +20,27 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type ConfigError; declare it with 'type ConfigError:' / 'interface ConfigError:', declare it as a type parameter, or import it",
+        "message": "unknown type ConfigError; add: import ConfigError from \"@std/data/config.ms\"",
         "position": {
           "file": "core-language-basics-expressions-1.ms",
           "line": 4,
           "column": 38,
           "offset": 188
+        },
+        "fix": {
+          "position": {
+            "file": "core-language-basics-expressions-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "core-language-basics-expressions-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import ConfigError from \"@std/data/config.ms\"\n"
         }
       },
       {
@@ -43,7 +58,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-basics-expressions-1.ms:4:30: resolution: unknown type Config; declare it with 'type Config:' / 'interface Config:', declare it as a type parameter, or import it\n   |\n 4 | fn load(path: String) Result[Config, ConfigError]:\n   |                              ^\n<DIR>/core-language-basics-expressions-1.ms:4:38: resolution: unknown type ConfigError; declare it with 'type ConfigError:' / 'interface ConfigError:', declare it as a type parameter, or import it\n   |\n 4 | fn load(path: String) Result[Config, ConfigError]:\n   |                                      ^\n<DIR>/core-language-basics-expressions-1.ms:8:15: resolution: unknown binding validate; declare it with 'let validate = ...' before use, define 'fn validate(...) T:', or import it from a module\n   |\n 8 |         | try validate\n   |               ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-basics-expressions-1.ms:4:30: resolution: unknown type Config; declare it with 'type Config:' / 'interface Config:', declare it as a type parameter, or import it\n   |\n 4 | fn load(path: String) Result[Config, ConfigError]:\n   |                              ^\n<DIR>/core-language-basics-expressions-1.ms:4:38: resolution: unknown type ConfigError; add: import ConfigError from \"@std/data/config.ms\"\n   |\n 4 | fn load(path: String) Result[Config, ConfigError]:\n   |                                      ^\n<DIR>/core-language-basics-expressions-1.ms:8:15: resolution: unknown binding validate; declare it with 'let validate = ...' before use, define 'fn validate(...) T:', or import it from a module\n   |\n 8 |         | try validate\n   |               ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
