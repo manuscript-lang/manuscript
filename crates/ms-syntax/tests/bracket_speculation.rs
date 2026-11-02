@@ -54,8 +54,8 @@ fn replayed_failure_retains_ids_consumed_before_the_failure() {
     let source =
         include_str!("data/bracket-expression.src").replace("EXPR", "data[Box[Foo[Bar] + 1]]");
     let module = parse(&Arc::from("index.ms"), &source).unwrap();
-    // Recorded from the parser before failure replay: speculative Foo[Bar]
-    // consumes IDs even though the following '+' forces expression parsing.
-    assert_eq!(module.node_count, 21);
-    assert_eq!(result(&module).id.0, 18);
+    // The '+' marks the bracket as an index before any type is tried, so no
+    // IDs are spent on a failed type interpretation.
+    assert_eq!(module.node_count, 17);
+    assert_eq!(result(&module).id.0, 14);
 }
