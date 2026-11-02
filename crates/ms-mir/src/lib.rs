@@ -10,3 +10,4 @@ pub mod print;
 pub mod types;
 pub mod unwind;
 pub mod verify;
+pub mod vmap;
