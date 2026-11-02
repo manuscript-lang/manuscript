@@ -1,5 +1,5 @@
-//! `ms.toml` reading: the supported subset is `[project]` and `[aliases]`
-//! tables holding double-quoted string values. Diagnostics, locations and their
+//! `ms.toml` reading: the supported subset is `[project]`, `[aliases]` and
+//! `[embed]` tables holding double-quoted string values. Diagnostics, locations and their
 //! order are pinned by the project tests.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -29,6 +29,8 @@ pub struct Project {
     /// The manifest text as read.
     pub configuration: String,
     pub aliases: BTreeMap<String, String>,
+    /// `[embed]` names mapped to canonical directories whose files are baked into the program.
+    pub embed: BTreeMap<String, String>,
     /// The `[project]` table header (or 1:1 when the table is absent).
     pub location: Location,
     pub assignments: BTreeMap<String, Assignment>,
@@ -145,6 +147,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             let table = match line {
                 "[project]" => "project",
                 "[aliases]" => "aliases",
+                "[embed]" => "embed",
                 _ => {
                     let advice = if !line.ends_with(']') {
                         "close the header with ']'"
@@ -157,7 +160,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                     } else {
                         "ms.toml has no other tables"
                     };
-                    return Err(fail.at(&location, format!("unsupported manifest table {line}; ms.toml supports only [project] and [aliases]: {advice}")));
+                    return Err(fail.at(&location, format!("unsupported manifest table {line}; ms.toml supports only [project], [aliases] and [embed]: {advice}")));
                 }
             };
             if !tables.insert(table) {
@@ -257,6 +260,17 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                     ));
                 }
             }
+        } else if section == "embed" {
+            if !valid_alias(&key) || key == "@std" {
+                return Err(fail.at(
+                    &key_location,
+                    format!("invalid or reserved embed name {key}; embed names look like @assets (start with @, letters/digits/underscore) and cannot be @std"),
+                ));
+            }
+            if value.starts_with('@') {
+                return Err(fail.at(&location, format!("invalid embed target {value}; map it to a project-local directory, not an alias")));
+            }
+            p.embed.insert(key, value);
         } else {
             if !valid_alias(&key) || key == "@std" {
                 return Err(fail.at(
@@ -334,6 +348,36 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                 return Err(fail.at(
                     &location,
                     format!("alias {key} target cannot be resolved: {error}; external Manuscript dependency projects are unsupported, so copy the sources inside this project root and point the alias at that copy"),
+                ));
+            }
+        }
+    }
+    let keys: Vec<String> = p.embed.keys().cloned().collect();
+    for key in keys {
+        location = p.assignments[&format!("embed.{key}")].value.clone();
+        if p.aliases.contains_key(&key) {
+            return Err(fail.at(
+                &p.assignments[&format!("embed.{key}")].key.clone(),
+                format!("{key} is declared in both [aliases] and [embed]; rename one so an import names a single thing"),
+            ));
+        }
+        match source_path(&root, &p.embed[&key], &no_overlay) {
+            Ok(target) if std::fs::metadata(&target).is_ok_and(|m| m.is_dir()) => {
+                p.embed.insert(key, target);
+            }
+            Ok(target) => {
+                return Err(fail.at(
+                    &location,
+                    format!(
+                        "embed {key} must name an existing directory; {} is not one, so create it or fix the path in [embed]",
+                        quoting::quote(&target)
+                    ),
+                ));
+            }
+            Err(error) => {
+                return Err(fail.at(
+                    &location,
+                    format!("embed {key} target cannot be resolved: {error}; keep embedded directories inside the project root"),
                 ));
             }
         }
