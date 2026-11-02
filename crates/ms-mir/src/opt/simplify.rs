@@ -410,6 +410,9 @@ fn int_op(op: Op, x: i64, y: i64) -> Option<i64> {
         Op::SRem => x.checked_rem(y)?,
         Op::Shl => x.wrapping_shl(y as u32),
         Op::Sshr => x.wrapping_shr(y as u32),
+        Op::Ushr => ((x as u64).wrapping_shr(y as u32)) as i64,
+        Op::Rotl => (x as u64).rotate_left((y & 63) as u32) as i64,
+        Op::Rotr => (x as u64).rotate_right((y & 63) as u32) as i64,
         _ => return None,
     })
 }
@@ -533,7 +536,7 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
                 _ => Act::Keep,
             }
         }
-        Op::Shl | Op::Sshr => {
+        Op::Shl | Op::Sshr | Op::Ushr | Op::Rotl | Op::Rotr => {
             let (x, y) = (a(0), a(1));
             if let (Some(p), Some(q)) = (env.ci(x), env.ci(y)) {
                 return int_op(inst.op, p, q).map_or(Act::Keep, |r| Act::Const(K::I(r)));

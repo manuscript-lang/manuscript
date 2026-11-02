@@ -1069,6 +1069,11 @@ impl<'a> Tr<'a> {
                 };
                 format!("{op} {lt} {a}, {m}")
             }
+            Opcode::Rotl | Opcode::Rotr => {
+                // LLVM funnel shifts of a value with itself reduce the count modulo the width.
+                let name = if opc == Opcode::Rotl { "fshl" } else { "fshr" };
+                format!("call {lt} @llvm.{name}.{lt}({lt} {a}, {lt} {a}, {lt} {b})")
+            }
             Opcode::SaddOverflow | Opcode::SsubOverflow | Opcode::SmulOverflow => {
                 let name = match opc {
                     Opcode::SaddOverflow => "sadd",
@@ -1134,6 +1139,9 @@ impl<'a> Tr<'a> {
                 )
             }
             Opcode::Bnot => format!("xor {} {a}, -1", llty(t)),
+            Opcode::Clz => format!("call {0} @llvm.ctlz.{0}({0} {a}, i1 false)", llty(t)),
+            Opcode::Ctz => format!("call {0} @llvm.cttz.{0}({0} {a}, i1 false)", llty(t)),
+            Opcode::Popcnt => format!("call {0} @llvm.ctpop.{0}({0} {a})", llty(t)),
             other => panic!("unsupported unary op {other}"),
         };
         let d = self.def(rhs);
@@ -1481,7 +1489,12 @@ impl LlvmModule {
              declare float @llvm.ceil.f32(float)\n\
              declare float @llvm.trunc.f32(float)\n\
              declare i64 @llvm.fptosi.sat.i64.f64(double)\n\
-             declare i64 @llvm.fptosi.sat.i64.f32(float)\n",
+             declare i64 @llvm.fptosi.sat.i64.f32(float)\n\
+             declare i64 @llvm.fshl.i64(i64, i64, i64)\n\
+             declare i64 @llvm.fshr.i64(i64, i64, i64)\n\
+             declare i64 @llvm.ctlz.i64(i64, i1)\n\
+             declare i64 @llvm.cttz.i64(i64, i1)\n\
+             declare i64 @llvm.ctpop.i64(i64)\n",
         );
         for op in ["sadd", "ssub", "smul", "uadd", "usub", "umul"] {
             for t in ["i64", "i32", "i8"] {
