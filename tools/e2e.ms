@@ -17,6 +17,7 @@ import (
     cpus
 ) from "@std/os/process.ms"
 import TaskGroup, Task from "@std/concurrency/tasks.ms"
+import Instant, monotonic from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"
 
 # The exit status and combined output of one `ms` invocation.
@@ -297,12 +298,20 @@ export fn main() Int:
     count += parallel.length()
 
     for f in serial:
-        for message in check_fixture(ctx, f): messages.append(message.clone())
+        for message in run_all(ctx, [f.clone()]): messages.append(message.clone())
         count += 1
 
+    var times = List[String]()
+
     for message in messages:
+        if message.starts_with("TIME "):
+            times.append(message.slice(5, message.length()).get(""))
+            continue
+
         note(message)
         failed += 1
+
+    print_slowest(times)
 
     var tail = ""
     if skipped > 0: tail = ", {skipped} left to the corpus"
@@ -320,8 +329,31 @@ export fn main() Int:
 
     return 0
 
+# Failure messages, then one `TIME <milliseconds> <fixture>` line per fixture.
 fn run_all(ctx: Context, fixtures: List[String]) List[String]:
     var out = List[String]()
+    var times = List[String]()
+
     for f in fixtures:
+        let started = monotonic()
         for message in check_fixture(ctx, f): out.append(message.clone())
-    return out
+        times.append(timed(started, f))
+
+    return out.concat(times)
+
+fn timed(started: Instant, path: String) String:
+    let millis = monotonic().difference(started).to_microseconds() / 1000
+    return "TIME {millis} {path}"
+
+# The fixtures that dominate the run, from `<milliseconds> <fixture>` entries.
+fn print_slowest(times: List[String]) Unit:
+    let slowest = times.sorted(
+        fn(a: String, b: String) Int: millis_of(b) - millis_of(a)
+    )
+    var shown = List[String]()
+    for entry in slowest:
+        if shown.length() < 15: shown.append("  {entry}")
+    stdout().write("slowest fixtures (ms):\n{shown.join("\n")}\n").get()
+
+fn millis_of(entry: String) Int:
+    return entry.split(" ")[0].parse_int().get(0)
