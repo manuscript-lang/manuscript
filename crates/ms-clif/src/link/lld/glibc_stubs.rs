@@ -86,14 +86,32 @@ pub fn stubs(dir: &Path, lld: &Path) -> Result<PathBuf, Error> {
             data,
         });
     }
-    // Staged beside the destination so concurrent builds never see a partial set.
-    let stage = dir.join(format!(".glibc-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&stage);
-    std::fs::create_dir_all(&stage).map_err(|e| failed("create", &e))?;
-    let result = (|| {
+    cache_stubs(dir, |stage| {
         for (soname, exports) in &libraries {
-            build(&stage, lld, soname, exports)?;
+            build(stage, lld, soname, exports)?;
         }
+        Ok(())
+    })
+}
+
+/// Publish only a completely generated set. The constructor receives an exclusively owned stage.
+fn cache_stubs(
+    dir: &Path,
+    generate: impl FnOnce(&Path) -> Result<(), Error>,
+) -> Result<PathBuf, Error> {
+    let out = dir.join("glibc");
+    if out.join(".ok").is_file() {
+        return Ok(out);
+    }
+    let failed = |what: &str, e: &dyn std::fmt::Display| {
+        Error(format!(
+            "cannot {what} the glibc stubs in {}: {e}",
+            out.display()
+        ))
+    };
+    let stage = super::staging(dir, "glibc").map_err(|e| failed("create", &e))?;
+    let result = (|| {
+        generate(&stage)?;
         std::fs::write(stage.join(".ok"), b"").map_err(|e| failed("finish", &e))
     })();
     if result.is_ok() && std::fs::rename(&stage, &out).is_err() && !out.join(".ok").is_file() {
@@ -165,3 +183,6 @@ fn build(stage: &Path, lld: &Path, soname: &str, exports: &[Export]) -> Result<(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;

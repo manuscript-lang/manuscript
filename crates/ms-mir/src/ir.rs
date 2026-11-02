@@ -1192,6 +1192,20 @@ impl Module {
             .map(|i| RecId(i as u32))
     }
 
+    /// The control and payload fields of a `SharedGuard`. A false control flag means
+    /// the payload was handed back to its box and must no longer be copied or dropped.
+    pub fn shared_guard_fields(&self, r: RecId) -> Option<(usize, usize)> {
+        let def = self.records.get(r.index())?;
+        let [box_field, value_field, held_field] = def.fields.as_slice() else {
+            return None;
+        };
+        (def.name.starts_with("SharedGuard[")
+            && box_field.0 == "box"
+            && value_field.0 == "value"
+            && held_field.0 == "held")
+            .then_some((2, 1))
+    }
+
     /// Finds an alternative by name.
     pub fn alt_by_name(&self, name: &str) -> Option<AltId> {
         self.alts

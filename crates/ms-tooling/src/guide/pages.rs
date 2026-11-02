@@ -168,7 +168,7 @@ pub fn module_names() -> Vec<String> {
 /// Lists each module with a few of its names.
 pub fn index() -> String {
     let mut b = String::from(
-        "Standard library modules (prelude needs no import).\n`ms search_symbol <module>` lists one, `ms search_symbol <module>.<Name>` shows a declaration, `ms search_symbol <words>` searches.\n\n",
+        "Standard modules (prelude needs no import).\n`ms search_symbol <module>` lists one, `ms search_symbol <module>.<Name>` shows a declaration, `ms search_symbol <words>` searches.\n\n",
     );
     for m in modules() {
         let mut line = format!("{:<12}", short_name(&m.path));

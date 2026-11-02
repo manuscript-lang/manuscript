@@ -921,3 +921,187 @@ fn cached_file_build_notices_enclosing_manifest_changes() {
     write(&dir, "ms.toml", &manifest("lib2"));
     assert_eq!(build(), Some(4));
 }
+
+#[test]
+fn cached_file_build_notices_new_ancestor_and_nearer_manifests() {
+    let dir = scratch("cache-new-manifest");
+    let src = dir.join("src");
+    std::fs::create_dir(&src).unwrap();
+    let source = write(&src, "main.ms", MAIN);
+    let output = dir.join("program");
+    let metadata = dir.join("program.ms-build.json");
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let build = || {
+        ms(
+            &backend,
+            &[
+                "build",
+                &source,
+                "-o",
+                output.to_str().unwrap(),
+                "--build-type",
+                "Debug",
+                "--json",
+            ],
+        )
+    };
+    let (status, stdout, stderr) = build();
+    assert_eq!(status, 0, "{stdout}{stderr}");
+    let previous = (
+        std::fs::read(&output).unwrap(),
+        std::fs::read(&metadata).unwrap(),
+    );
+    for manifest in [dir.join("ms.toml"), src.join("ms.toml")] {
+        std::fs::write(&manifest, "[project\n").unwrap();
+        let (status, stdout, stderr) = build();
+        assert_eq!(status, 1, "{stdout}{stderr}");
+        let document = ms_json::parse(stdout).unwrap();
+        assert_eq!(
+            document.get("reason").unwrap().as_str(),
+            Some("compile_error")
+        );
+        assert_eq!(
+            (
+                std::fs::read(&output).unwrap(),
+                std::fs::read(&metadata).unwrap()
+            ),
+            previous
+        );
+        std::fs::write(&manifest, "[project]\nname = \"p\"\nsource = \".\"\n").unwrap();
+        let (status, stdout, stderr) = build();
+        assert_eq!(status, 0, "{stdout}{stderr}");
+    }
+    std::fs::remove_file(src.join("ms.toml")).unwrap();
+    let (status, stdout, stderr) = build();
+    assert_eq!(status, 0, "{stdout}{stderr}");
+    assert_eq!(Command::new(output).status().unwrap().code(), Some(7));
+}
+
+#[test]
+fn cached_file_build_searches_manifests_through_directory_symlinks() {
+    let dir = scratch("cache-symlink-manifest");
+    let physical = dir.join("physical");
+    let src = physical.join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    write(&src, "main.ms", MAIN);
+    let alias = dir.join("alias");
+    common::symlink_dir(&src, &alias).unwrap();
+    let source = alias.join("main.ms");
+    let output = dir.join("program");
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let build = || {
+        ms(
+            &backend,
+            &[
+                "build",
+                source.to_str().unwrap(),
+                "-o",
+                output.to_str().unwrap(),
+                "--build-type",
+                "Debug",
+            ],
+        )
+    };
+    let (status, stdout, stderr) = build();
+    assert_eq!(status, 0, "{stdout}{stderr}");
+    std::fs::write(physical.join("ms.toml"), "[project\n").unwrap();
+    let (status, stdout, stderr) = build();
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert_eq!(Command::new(output).status().unwrap().code(), Some(7));
+}
+
+#[test]
+fn cached_file_build_skips_manifest_directories_without_disabling_cache() {
+    struct Counted(std::cell::Cell<usize>);
+    impl Lower for Counted {
+        fn lower(&self, program: &ms_check::Program, entry: &str) -> Result<Module, String> {
+            self.0.set(self.0.get() + 1);
+            Fixed(EXIT_SEVEN).lower(program, entry)
+        }
+    }
+    for parent_manifest in [false, true] {
+        let dir = scratch(&format!("cache-manifest-directory-{parent_manifest}"));
+        let src = dir.join("src");
+        std::fs::create_dir_all(src.join("ms.toml")).unwrap();
+        if parent_manifest {
+            write(&dir, "ms.toml", "[project]\nname = \"p\"\nsource = \".\"\n");
+        }
+        let source = write(&src, "main.ms", MAIN);
+        let output = dir.join("program");
+        let backend = Engine::new(Counted(std::cell::Cell::new(0)));
+        for _ in 0..2 {
+            let (status, stdout, stderr) = ms(
+                &backend,
+                &[
+                    "build",
+                    &source,
+                    "-o",
+                    output.to_str().unwrap(),
+                    "--build-type",
+                    "Debug",
+                ],
+            );
+            assert_eq!(status, 0, "{stdout}{stderr}");
+        }
+        assert_eq!(
+            backend.lowering.0.get(),
+            1,
+            "second build must hit the cache"
+        );
+    }
+}
+
+fn entry_symlink_build(project: bool) {
+    let dir = scratch(&format!("cache-entry-symlink-{project}"));
+    let first = write(&dir, "first.ms", MAIN);
+    let second = write(
+        &dir,
+        "second.ms",
+        include_str!("engine/cache-entry-target.ms"),
+    );
+    let entry = dir.join("main.ms");
+    common::symlink_file(Path::new(&first), &entry).unwrap();
+    let input = if project {
+        write(
+            &dir,
+            "ms.toml",
+            "[project]\nname = \"p\"\nsource = \".\"\nentry = \"main.ms\"\n",
+        );
+        dir.join("ms.toml")
+    } else {
+        entry.clone()
+    };
+    let output = dir.join("program");
+    let backend = Engine::new(Native);
+    let build = || {
+        let (status, stdout, stderr) = ms(
+            &backend,
+            &[
+                "build",
+                input.to_str().unwrap(),
+                "-o",
+                output.to_str().unwrap(),
+                "--build-type",
+                "Debug",
+            ],
+        );
+        assert_eq!(status, 0, "{stdout}{stderr}");
+        Command::new(&output).status().unwrap().code()
+    };
+    assert_eq!(build(), Some(0));
+    assert_eq!(build(), Some(0));
+    std::fs::remove_file(&entry).unwrap();
+    common::symlink_file(Path::new(&second), &entry).unwrap();
+    assert_eq!(build(), Some(8));
+    assert_eq!(build(), Some(8));
+}
+
+#[test]
+fn cached_file_build_notices_entry_symlink_retargeting() {
+    entry_symlink_build(false);
+}
+
+#[test]
+fn cached_project_build_notices_entry_symlink_retargeting() {
+    entry_symlink_build(true);
+}

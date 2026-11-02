@@ -1,0 +1,28 @@
+module "reserve_mixed_literals"
+entry @main
+fn @main() -> int {
+b0:
+  %n: int = iconst 7
+  %l: list<int> = call @fill (%n)
+  %len: int = list.len %l
+  drop %l
+  ret %len
+}
+fn @fill(%n: int) -> list<int> {
+b0:
+  %control: list<int> = list.lit %n
+  drop %control
+  %l0: list<int> = list.lit
+  %z: int = iconst 0
+  br head(%z, %l0)
+head(%i: int, %l: own list<int>):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, body(), out()
+body:
+  %next_list: list<int> = list.push %l, %i
+  %one: int = iconst 1
+  %next: int = iadd %i, %one
+  br head(%next, %next_list)
+out:
+  ret %l
+}

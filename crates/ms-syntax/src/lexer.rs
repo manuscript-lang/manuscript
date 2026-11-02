@@ -24,9 +24,22 @@ pub struct Lexed<'a> {
 pub(crate) struct ScanBoundaries {
     strings: Vec<(usize, usize)>,
     interpolations: Vec<(usize, usize)>,
+    /// CR bytes removed before each line, retained for text interpolation positions.
+    line_offsets: Vec<u32>,
+    base_line: u32,
 }
 
 impl ScanBoundaries {
+    /// Restores CR bytes crossed while advancing through normalized text.
+    pub(crate) fn restore_text_offset(&self, from: Pos, mut to: Pos) -> Pos {
+        if !self.line_offsets.is_empty() {
+            let before = (from.line - self.base_line - 1) as usize;
+            let after = (to.line - self.base_line - 1) as usize;
+            to.offset += self.line_offsets[after] - self.line_offsets[before];
+        }
+        to
+    }
+
     fn string_end(&self, start: usize) -> Option<usize> {
         self.strings
             .binary_search_by_key(&start, |&(at, _)| at)
@@ -108,6 +121,8 @@ pub(crate) fn lex_at<'a>(
         let mut s = Scanner::new(file, &normalized, base_offset, base_line, offsets);
         s.tokens.reserve(source.len() / 4 + 16);
         s.run(None)?;
+        s.boundaries.line_offsets = s.line_offsets;
+        s.boundaries.base_line = base_line;
         (s.tokens, s.boundaries)
     };
     boundaries.strings.sort_unstable_by_key(|&(start, _)| start);

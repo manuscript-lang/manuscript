@@ -59,6 +59,8 @@ pub struct Lower<'a, 'm> {
     /// Result paired with the preceding overflow flag. Reuse only on the very
     /// next instruction, so the defining instruction always dominates the use.
     overflow_result: Option<(Op, Value, Value, Value)>,
+    /// Snapshot of the last slot written in this block; mutations still reach memory.
+    slot_value: Option<(ms_mir::ir::Value, Ty, Vs)>,
     blocks: Vec<Option<ir::Block>>,
     /// First unsupported construct met, reported by the driver.
     pub unsupported: Option<String>,
@@ -89,6 +91,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             lazy: Vec::new(),
             cur: 0,
             overflow_result: None,
+            slot_value: None,
             blocks: Vec::new(),
             unsupported: None,
         }
@@ -592,13 +595,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         let TyKind::Rec(r) = m.types.kind(ty) else {
             return None;
         };
-        let def = &m.records[r.index()];
-        let names: Vec<&str> = def.fields.iter().map(|f| f.0.as_str()).collect();
-        if !def.name.starts_with("SharedGuard[") || names != ["box", "value", "held"] {
-            return None;
-        }
+        let (held, value) = m.shared_guard_fields(*r)?;
         let fields = self.fields_of(ty);
-        Some((vs[fields[2].1], fields[1].1))
+        Some((vs[fields[held].1], fields[value].1))
     }
 
     /// `copy_value` of `vs` when `flag` is set; otherwise `vs` as they are (a payload nobody reads).
@@ -1435,10 +1434,24 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
             }
             self.overflow_result = None;
-            for inst in &f.blocks[b.index()].insts {
+            self.slot_value = None;
+            let insts = &f.blocks[b.index()].insts;
+            for (ii, inst) in insts.iter().enumerate() {
                 self.set_loc(inst.loc);
                 self.refresh(f, inst.args.iter().copied());
-                self.lower_inst(f, inst);
+                if !self.preserves_slot_value(f, inst) {
+                    self.slot_value = None;
+                }
+                let stored_field = ii
+                    .checked_sub(2)
+                    .is_some_and(|start| self.store_changed_field(f, &insts[start..=ii]));
+                if !stored_field {
+                    self.lower_inst(f, inst);
+                }
+                if inst.op == Op::Put {
+                    let value = self.a(inst, 1);
+                    self.slot_value = Some((inst.args[0], f.ty(inst.args[1]), value));
+                }
                 for a in &inst.args {
                     self.used[a.index()] = true;
                 }
@@ -1449,6 +1462,71 @@ impl<'a, 'm> Lower<'a, 'm> {
             self.refresh(f, uses.into_iter());
             self.lower_term(f, &f.blocks[b.index()].term);
         }
+    }
+
+    /// No drop, or a buffer free with no descriptor or user callbacks.
+    fn drop_cannot_call_user(&self, ty: Ty) -> bool {
+        match self.g.m.types.kind(ty) {
+            TyKind::Str | TyKind::Bytes => true,
+            TyKind::List(element) => !self.g.m.needs_drop(*element),
+            _ => !self.g.m.needs_drop(ty),
+        }
+    }
+
+    fn preserves_slot_value(&self, f: &Func, inst: &Inst) -> bool {
+        match inst.op {
+            Op::Load | Op::Take => true,
+            Op::Drop => self.drop_cannot_call_user(f.ty(inst.args[0])),
+            Op::RecSet => {
+                let Imm::Field(record, field) = inst.imm else {
+                    return false;
+                };
+                self.drop_cannot_call_user(
+                    self.g.m.records[record.index()].fields[field as usize].1,
+                )
+            }
+            _ => {
+                let effects = inst.op.info().effects;
+                !effects.writes && !effects.rc && !effects.alloc && !effects.io
+            }
+        }
+    }
+
+    /// `take p; rec.set r.field, value; put p, r` changes only that field in `p`.
+    /// Keep the record update's drop where it is, then store only the changed leaves.
+    /// Adjacency excludes intervening operations; buffer frees cannot call back and
+    /// change another field while the record update drops the old field.
+    fn store_changed_field(&mut self, f: &Func, window: &[Inst]) -> bool {
+        let [take, set, put] = window else {
+            return false;
+        };
+        if take.op != Op::Take || set.op != Op::RecSet || put.op != Op::Put {
+            return false;
+        }
+        let (Some(old), Some(new)) = (take.res, set.res) else {
+            return false;
+        };
+        if set.args[0] != old || put.args != [take.args[0], new] {
+            return false;
+        }
+        let Imm::Field(_, field) = set.imm else {
+            return false;
+        };
+        let ty = f.ty(old);
+        let (field_ty, at, width) = self.fields_of(ty)[field as usize];
+        if !self.drop_cannot_call_user(field_ty) {
+            return false;
+        }
+        // Nested fields share the parent's flattened leaf layout. Their standalone
+        // padding can differ, so use each leaf's actual parent offset.
+        let layout = self.g.lay.mem(ty);
+        let leaves = self.g.lay.leaves(ty);
+        let pointer = self.a(put, 0)[0];
+        let value = self.a(put, 1);
+        for i in at..at + width {
+            self.store_leaf(leaves[i], value[i], pointer, layout.offsets[i] as i32);
+        }
+        true
     }
 
     pub fn lower_main(&mut self, entry: usize) {
@@ -2450,7 +2528,12 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 let leaves = self.g.lay.leaves(ty);
                 let p = self.a(inst, 0)[0];
-                let out = self.load_leaves(p, 0, &leaves);
+                let out = match &self.slot_value {
+                    Some((slot, held_ty, value)) if *slot == inst.args[0] && *held_ty == ty => {
+                        value.clone()
+                    }
+                    _ => self.load_leaves(p, 0, &leaves),
+                };
                 if inst.op == Op::Take
                     && self.is_wide(ty)
                     && let Some(r) = inst.res

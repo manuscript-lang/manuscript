@@ -669,8 +669,8 @@ fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
     // The general snapshot caps large responses. Keep every prior location, plus the
     // new String source defaults and expressions, explicit in this focused check.
     let retained = [
-        ("string.ms", 18, 15, 19),
-        ("string.ms", 25, 15, 19),
+        ("string.ms", 19, 15, 19),
+        ("string.ms", 26, 15, 19),
         ("main.ms", 30, 31, 35),
         ("io/io.ms", 36, 23, 27),
         ("io/io.ms", 68, 34, 38),
@@ -694,19 +694,22 @@ fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
         ("collections/collections.ms", 672, 19, 23),
         ("collections/collections.ms", 690, 19, 23),
         ("collections/collections.ms", 709, 19, 23),
-        ("collections/collections.ms", 754, 34, 38),
+        ("collections/collections.ms", 866, 34, 38),
     ];
     let added = [
-        ("string.ms", 154, 23, 27),
-        ("string.ms", 161, 49, 53),
-        ("string.ms", 162, 49, 53),
-        ("string.ms", 165, 21, 25),
-        ("string.ms", 166, 22, 26),
-        ("string.ms", 172, 49, 53),
-        ("string.ms", 183, 49, 53),
-        ("string.ms", 185, 37, 41),
-        ("string.ms", 194, 21, 25),
-        ("string.ms", 195, 22, 26),
+        ("string.ms", 193, 32, 36),
+        ("string.ms", 229, 42, 46),
+        ("string.ms", 275, 15, 19),
+        ("string.ms", 314, 23, 27),
+        ("string.ms", 321, 49, 53),
+        ("string.ms", 322, 49, 53),
+        ("string.ms", 325, 21, 25),
+        ("string.ms", 326, 22, 26),
+        ("string.ms", 332, 49, 53),
+        ("string.ms", 343, 49, 53),
+        ("string.ms", 345, 37, 41),
+        ("string.ms", 354, 21, 25),
+        ("string.ms", 355, 22, 26),
     ];
     for id in [first, second] {
         let locations = responses
