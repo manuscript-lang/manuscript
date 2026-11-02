@@ -1,0 +1,22 @@
+name: Rust scope
+description: Says whether a pull request changes anything beyond documentation, skills, proposals, extensions and Markdown.
+
+outputs:
+  rust:
+    description: "'false' when the pull request touches only those paths, else 'true'."
+    value: ${{ steps.scope.outputs.rust }}
+
+runs:
+  using: composite
+  steps:
+    - id: scope
+      shell: bash
+      env:
+        BASE: ${{ github.event.pull_request.base.sha }}
+      run: |
+        git fetch --no-tags --depth=1 origin "$BASE"
+        rust=true
+        if ! git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|.*\.md$)'; then
+          rust=false
+        fi
+        echo "rust=$rust" >> "$GITHUB_OUTPUT"

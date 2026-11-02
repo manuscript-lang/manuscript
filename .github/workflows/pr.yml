@@ -1,0 +1,109 @@
+name: Pull request
+
+# A pull request runs two jobs, one per Linux architecture, in parallel. The account allows 20 jobs
+# at once and every extra job waits in the queue, so there are no detect, language, book or
+# aggregate jobs: the amd64 job runs the language and book checks as steps. Required checks:
+# `linux-amd64 · checks` and `linux-arm64 · checks`.
+# Pushes to main and manual runs (all platforms, two parts each) are in cicd.yml.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Debug info makes the dev and test builds slower to link and the saved caches several times
+  # larger; nothing in CI reads the compiler's own debug info. Release keeps the profile setting.
+  CARGO_PROFILE_DEV_DEBUG: '0'
+  # Incremental artifacts are large and never reused on a fresh runner.
+  CARGO_INCREMENTAL: '0'
+  # sccache stores each compiler output, so the saved cache stays small and bounded
+  # (`target/` grew to several GB) and a changed crate rebuilds only itself.
+  RUSTC_WRAPPER: sccache
+  SCCACHE_CACHE_SIZE: 2G
+
+concurrency:
+  # A new commit cancels the earlier run of the same pull request.
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  amd64:
+    name: linux-amd64 · checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      # A commit pushed within a minute cancels this run before any build starts.
+      - name: Wait for a newer push
+        run: sleep 60
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - id: sccache
+        uses: ./.github/actions/sccache
+        with:
+          prefix: cargo-sccache-linux-amd64-a-
+      - uses: ./.github/actions/rust-env
+        with:
+          os: linux
+          arch: amd64
+          llvm-consumers: 'true'
+      # Language and book checks run for every change, documentation included.
+      - uses: ./.github/actions/language-checks
+      - uses: ./.github/actions/book-checks
+      # Documentation-only changes skip the Rust checks.
+      - id: scope
+        uses: ./.github/actions/rust-scope
+      - uses: ./.github/actions/rust-checks
+        if: steps.scope.outputs.rust == 'true'
+        with:
+          os: linux
+          arch: amd64
+          part: ab
+          lint: 'true'
+          cranelift: 'true'
+      - uses: ./.github/actions/sccache-save
+        if: ${{ !cancelled() }}
+        with:
+          cache-hit: ${{ steps.sccache.outputs.cache-hit }}
+          primary-key: ${{ steps.sccache.outputs.primary-key }}
+
+  arm64:
+    name: linux-arm64 · checks
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 75
+    steps:
+      - name: Wait for a newer push
+        run: sleep 60
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - id: scope
+        uses: ./.github/actions/rust-scope
+      - id: sccache
+        if: steps.scope.outputs.rust == 'true'
+        uses: ./.github/actions/sccache
+        with:
+          prefix: cargo-sccache-linux-arm64-a-
+      - uses: ./.github/actions/rust-env
+        if: steps.scope.outputs.rust == 'true'
+        with:
+          os: linux
+          arch: arm64
+          llvm-consumers: 'true'
+      - uses: ./.github/actions/rust-checks
+        if: steps.scope.outputs.rust == 'true'
+        with:
+          os: linux
+          arch: arm64
+          part: ab
+      - uses: ./.github/actions/sccache-save
+        if: ${{ !cancelled() && steps.scope.outputs.rust == 'true' }}
+        with:
+          cache-hit: ${{ steps.sccache.outputs.cache-hit }}
+          primary-key: ${{ steps.sccache.outputs.primary-key }}

@@ -22,10 +22,10 @@ pub fn extension_version() -> Vec<String> {
     )]
 }
 
-/// Required workflows must report on every PR. The ruleset on `main` requires checks from cicd.yml
-/// only, and there is no merge queue.
+/// The pull request workflow must run on every PR, whatever files it changes: the ruleset on `main`
+/// requires its two jobs. There is no merge queue.
 pub fn workflow_triggers() -> Vec<String> {
-    let path = ".github/workflows/cicd.yml";
+    let path = ".github/workflows/pr.yml";
     match std::fs::read_to_string(path) {
         Ok(text) => triggers(&text)
             .map(|e| format!("{path}: {e}"))
