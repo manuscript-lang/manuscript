@@ -41,14 +41,17 @@ fn quarter(var state: List[Int], a: Int, b: Int, c: Int, d: Int) Unit:
     state.set(d, vd)
 
 # One 64-byte ChaCha20 keystream block (RFC 8439) for a 32-byte key, 32-bit counter and 12-byte nonce.
-fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
+fn initial_state(key: Bytes, counter: Int, nonce: Bytes) List[Int]:
     var initial = [1634760805, 857760878, 2036477234, 1797285236]
     for index in 0..8:
         initial.append(le32(key, index * 4))
     initial.append(counter)
     for index in 0..3:
         initial.append(le32(nonce, index * 4))
+    return initial
 
+# Runs the 20 ChaCha rounds over `initial` and returns the 16 keystream words.
+fn keystream(initial: List[Int]) List[Int]:
     var state = initial.clone()
 
     for round in 0..10:
@@ -61,17 +64,20 @@ fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
         quarter(var state, 2, 7, 8, 13)
         quarter(var state, 3, 4, 9, 14)
 
-    var out = BytesBuilder()
-
     for index in 0..16:
-        let word = bit_and(state.get(index) + initial.get(index), 4294967295)
+        state.set(index, bit_and(state.get(index) + initial.get(index), 4294967295))
+    return state
+
+fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
+    let words = keystream(initial_state(key, counter, nonce))
+    var out = BytesBuilder()
+    for word in words:
         for offset in 0..4:
             out.append(
                 bit_and(
                     shift_right_unsigned(word, 8 * offset), 255
                 ).to_uint8().get(0)
             )
-
     return out.build()
 
 fn check_key_nonce(key: Bytes, nonce: Bytes) Bool:
@@ -79,21 +85,23 @@ fn check_key_nonce(key: Bytes, nonce: Bytes) Bool:
 
 fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
     var out = BytesBuilder()
+    var state = initial_state(key, counter, nonce)
     var position = 0
     var index = counter
 
     while position < data.length():
-        let stream = block(key, index, nonce)
-        var offset = 0
+        state.set(12, index)
 
-        while offset < 64 and position < data.length():
-            out.append(
-                bit_xor(
-                    data.get(position).to_int(), stream.get(offset).to_int()
-                ).to_uint8().get(0)
-            )
-            position += 1
-            offset += 1
+        for word in keystream(state):
+            for offset in 0..4:
+                if position < data.length():
+                    let pad = bit_and(shift_right_unsigned(word, 8 * offset), 255)
+                    out.append(
+                        bit_xor(
+                            data.get(position).to_int(), pad
+                        ).to_uint8().get(0)
+                    )
+                    position += 1
 
         index += 1
 
