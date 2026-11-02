@@ -1063,6 +1063,28 @@ pub unsafe extern "C-unwind" fn msrt_list_join_int(
 /// Comparator thunk: `env` is the closure, `a` and `b` point at element slots.
 pub type CmpFn = unsafe extern "C-unwind" fn(env: *mut u8, a: *const u8, b: *const u8) -> i64;
 
+fn sort_needs_rollback() -> bool {
+    // SAFETY: the current task's header stays live for this call.
+    unsafe {
+        (*fault::msrt_isolate_hdr())
+            .guarded
+            .load(core::sync::atomic::Ordering::Relaxed)
+            != 0
+            || fault::has_cleanups()
+    }
+}
+
+/// A copied sort result is not published to its caller until sorting returns.
+unsafe fn finish_sorted(out: *mut VecVal, d: &TypeDesc, sort: impl FnOnce()) {
+    if sort_needs_rollback() {
+        // SAFETY: `out` owns the initialized copy; an interrupted in-place sort restores it
+        // before this cleanup drops it. The caller acquires ownership only on normal return.
+        fault::with_cleanup(&mut || unsafe { drop_list(out, d) }, sort);
+    } else {
+        sort();
+    }
+}
+
 /// [`merge_sort`] for slots that are plain machine words (`Int`, `Float`, pointers): the same
 /// stable result, with typed moves instead of calls to `memcpy` and a bidirectional merge.
 unsafe fn merge_sort_word<T: Copy>(items: *mut T, buf: *mut T, n: usize, cmp: CmpFn, env: *mut u8) {
@@ -1170,20 +1192,34 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
             return;
         }
         let size = d.size as usize;
-        let buf = alloc::alloc(v.len * size.max(1));
-        // Slots of a few words move as typed copies instead of `memcpy` calls of a run-time size.
+        let bytes = v.len * size.max(1);
+        let rollback = sort_needs_rollback();
+        // A comparator can fault or cancel while a merge holds moved slots in scratch.
+        // Both guarded callers and explicit cleanups need a valid owned list on that exit.
+        // Keep an immutable byte snapshot for those observers;
+        // it has no ownership of its own and must never run element copy/drop hooks.
+        let storage = if rollback {
+            bytes
+                .checked_mul(2)
+                .unwrap_or_else(|| fault::fault(b"list size overflow"))
+        } else {
+            bytes
+        };
+        let buf = alloc::alloc(storage);
+        // Fixed-size opaque copies preserve uninitialized padding and pointer provenance.
+        // Interpreting arbitrary slots as initialized integers would be undefined behavior.
         macro_rules! words {
             ($n:literal) => {
                 merge_sort_word(
-                    v.ptr as *mut [u64; $n],
-                    buf as *mut [u64; $n],
+                    v.ptr as *mut core::mem::MaybeUninit<[u64; $n]>,
+                    buf as *mut core::mem::MaybeUninit<[u64; $n]>,
                     v.len,
                     cmp,
                     env,
                 )
             };
         }
-        match size {
+        let sort = || match size {
             8 => words!(1),
             16 => words!(2),
             24 => words!(3),
@@ -1191,6 +1227,20 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
             40 => words!(5),
             48 => words!(6),
             _ => merge_sort(v.ptr, buf, v.len, size, cmp, env),
+        };
+        if rollback {
+            let original = buf.add(bytes);
+            core::ptr::copy_nonoverlapping(v.ptr, original, v.len * size);
+            fault::with_cleanup(
+                &mut || {
+                    // Restore a valid owned list before the caller's drop cleanup runs.
+                    core::ptr::copy_nonoverlapping(original, v.ptr, v.len * size);
+                    alloc::free(buf);
+                },
+                sort,
+            );
+        } else {
+            sort();
         }
         alloc::free(buf);
     }
@@ -1203,6 +1253,9 @@ pub unsafe extern "C" fn msrt_list_sort_ints(v: *mut VecVal, desc: i64) {
     // SAFETY: caller contract: `v` holds `len` words.
     unsafe {
         let v = &mut *v;
+        if v.len < 2 {
+            return;
+        }
         let s = core::slice::from_raw_parts_mut(v.ptr as *mut i64, v.len);
         if desc != 0 {
             s.sort_unstable_by(|a, b| b.cmp(a));
@@ -1228,21 +1281,23 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted_by_difference(
     // SAFETY: caller contract: `v` holds `len` words.
     unsafe {
         copy_list(v, &*d, out);
-        let o = &mut *out;
-        if o.len < 2 {
-            return;
-        }
-        let s = core::slice::from_raw_parts_mut(o.ptr as *mut i64, o.len);
-        let (lo, hi) = s
-            .iter()
-            .fold((i64::MAX, i64::MIN), |(lo, hi), &x| (lo.min(x), hi.max(x)));
-        if hi.checked_sub(lo).is_none() {
-            msrt_list_sort_in_place(out, d, cmp, env);
-        } else if desc != 0 {
-            s.sort_unstable_by(|a, b| b.cmp(a));
-        } else {
-            s.sort_unstable();
-        }
+        finish_sorted(out, &*d, || {
+            let o = &mut *out;
+            if o.len < 2 {
+                return;
+            }
+            let s = core::slice::from_raw_parts_mut(o.ptr as *mut i64, o.len);
+            let (lo, hi) = s
+                .iter()
+                .fold((i64::MAX, i64::MIN), |(lo, hi), &x| (lo.min(x), hi.max(x)));
+            if hi.checked_sub(lo).is_none() {
+                msrt_list_sort_in_place(out, d, cmp, env);
+            } else if desc != 0 {
+                s.sort_unstable_by(|a, b| b.cmp(a));
+            } else {
+                s.sort_unstable();
+            }
+        });
     }
 }
 
@@ -1257,7 +1312,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted(
     // SAFETY: caller contract.
     unsafe {
         copy_list(v, &*d, out);
-        msrt_list_sort_in_place(out, d, cmp, env);
+        finish_sorted(out, &*d, || msrt_list_sort_in_place(out, d, cmp, env));
     }
 }
 
@@ -2382,6 +2437,80 @@ mod tests {
             drop_list(&mut v, d);
             drop_list(&mut dv, d);
         }
+    }
+
+    #[test]
+    fn sort_moves_slots_with_uninitialized_padding() {
+        #[repr(C)]
+        struct Padded {
+            tag: u8,
+            key: i64,
+        }
+        unsafe extern "C-unwind" fn by_key(_: *mut u8, a: *const u8, b: *const u8) -> i64 {
+            // SAFETY: the callback receives initialized Padded fields; padding stays unread.
+            unsafe { (*a.cast::<Padded>()).key.cmp(&(*b.cast::<Padded>()).key) as i64 }
+        }
+        let _g = testutil::lock();
+        let d = plain_desc(core::mem::size_of::<Padded>() as u32, KIND_POD);
+        for n in [3, 13, 40] {
+            let mut v = EMPTY;
+            // SAFETY: only the fields are initialized; opaque slot moves must preserve padding
+            // without interpreting it as an initialized integer, as checked under Miri.
+            unsafe {
+                for key in (0..n).rev() {
+                    let mut value = core::mem::MaybeUninit::<Padded>::uninit();
+                    let p = value.as_mut_ptr();
+                    (&raw mut (*p).tag).write(7);
+                    (&raw mut (*p).key).write(key);
+                    msrt_list_push(&mut v, &d, p.cast());
+                }
+                msrt_list_sort_in_place(&mut v, &d, by_key, core::ptr::null_mut());
+                for i in 0..n as usize {
+                    let p = v.ptr.cast::<Padded>().add(i);
+                    assert_eq!(((*p).tag, (*p).key), (7, i as i64));
+                }
+                drop_list(&mut v, &d);
+            }
+        }
+    }
+
+    #[test]
+    fn int_sort_accepts_empty_and_singleton_lists() {
+        let _g = testutil::lock();
+        let before = alloc::live_blocks();
+        for desc in [0, 1] {
+            let mut v = EMPTY;
+            // SAFETY: the canonical empty list is a valid list of Int.
+            unsafe { msrt_list_sort_ints(&mut v, desc) };
+            assert_eq!(v.len, 0);
+            assert!(v.ptr.is_null());
+            // SAFETY: all slots and backing storage belong to this live Int list.
+            unsafe {
+                reserve(&mut v, &msrt_desc_int, 4);
+                let ptr = v.ptr;
+                let cap = v.cap;
+                msrt_list_sort_ints(&mut v, desc);
+                assert_eq!((v.ptr, v.len, v.cap), (ptr, 0, cap));
+                push_int(&mut v, i64::MIN);
+                msrt_list_sort_ints(&mut v, desc);
+                assert_eq!(ints(&v), [i64::MIN]);
+                assert_eq!((v.ptr, v.cap), (ptr, cap));
+                drop_list(&mut v, &msrt_desc_int);
+            }
+        }
+        assert_eq!(alloc::live_blocks(), before);
+    }
+
+    #[test]
+    fn splice_accepts_unallocated_empty_lists() {
+        let _g = testutil::lock();
+        let mut v = EMPTY;
+        let mut replacement = EMPTY;
+        // SAFETY: both canonical empty lists are live lists of Int.
+        unsafe { msrt_list_splice(&mut v, &msrt_desc_int, 0, 0, &mut replacement) };
+        assert_eq!((v.len, replacement.len), (0, 0));
+        assert!(v.ptr.is_null());
+        assert!(replacement.ptr.is_null());
     }
 
     #[test]

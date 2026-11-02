@@ -44,6 +44,65 @@ impl OccInfo {
     }
 }
 
+/// Recovery facts can retain types for a rejected opaque representation access.
+/// Editors must not advertise those fields, cases or constructor parameters.
+pub(crate) fn hidden_structure(
+    module: &ModRef,
+    e: &Expr,
+    info: &Info,
+    cache: &mut HashMap<NodeId, bool>,
+) -> bool {
+    fn receiver(e: &Expr) -> Option<&Expr> {
+        match &e.kind {
+            ExprKind::Member { left, .. }
+            | ExprKind::Apply { left, .. }
+            | ExprKind::Index { left, .. } => Some(left),
+            ExprKind::Call { callee, .. } => Some(callee),
+            ExprKind::Probe(target)
+            | ExprKind::Unary {
+                operand: target, ..
+            } => Some(target),
+            _ => None,
+        }
+    }
+    let hidden_type = |ty: &Ty| ty.opaque_module().is_some_and(|file| file != module.file);
+    let facts = module.facts();
+    let (mut expression, mut current) = (e, info);
+    let hidden = loop {
+        if let Some(hidden) = cache.get(&expression.id) {
+            break *hidden;
+        }
+        if current.constructor.as_ref().is_some_and(hidden_type) {
+            break true;
+        }
+        let Some(next) = receiver(expression) else {
+            break false;
+        };
+        let Some(next_info) = facts.info(next.id) else {
+            break false;
+        };
+        if matches!(expression.kind, ExprKind::Member { .. })
+            && current.method.is_none()
+            && next_info.ty.as_ref().is_some_and(hidden_type)
+        {
+            break true;
+        }
+        (expression, current) = (next, next_info);
+    };
+    // Cache the inspected prefix with a second walk, without allocating a path
+    // vector for every short member access. Later queries reuse the suffix.
+    let stop = expression.id;
+    let mut expression = e;
+    while expression.id != stop {
+        cache.insert(expression.id, hidden);
+        let Some(next) = receiver(expression) else {
+            break;
+        };
+        expression = next;
+    }
+    hidden
+}
+
 /// One occurrence of an identity in source.
 #[derive(Clone)]
 pub struct Occurrence {
@@ -74,6 +133,16 @@ fn source_key(root: &str, file: Name) -> String {
     } else {
         ms_driver::project::pathops::join(&[root, file.as_str()])
     }
+}
+
+/// Lowered suffixes and omitted arguments have checked facts but no name token.
+fn written_name(source: &str, offset: usize, name: &str) -> bool {
+    let end = offset + name.len();
+    source.get(offset..end) == Some(name)
+        && source
+            .as_bytes()
+            .get(end)
+            .is_none_or(|byte| !crate::text::identifier(*byte))
 }
 
 /// The key of a module symbol.
@@ -185,7 +254,10 @@ impl Builder {
         write: bool,
         info: OccInfo,
     ) {
-        if key.is_empty() || name.is_empty() {
+        if key.is_empty()
+            || name.is_empty()
+            || !written_name(&self.by_file[&file].source, offset, name)
+        {
             return;
         }
         if !self.seen.insert((file, offset, key.clone())) {
@@ -492,6 +564,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
         let mut walker = UseWalker {
             b: &mut b,
             module: m,
+            hidden: HashMap::new(),
         };
         for d in &m.decls {
             visit::walk_decl(&mut walker, d.decl());
@@ -688,6 +761,7 @@ impl Visitor for BindingWalker<'_> {
 struct UseWalker<'a> {
     b: &'a mut Builder,
     module: &'a ModRef,
+    hidden: HashMap<NodeId, bool>,
 }
 
 fn peel_apply(mut e: &Expr) -> &Expr {
@@ -707,8 +781,54 @@ impl UseWalker<'_> {
         self.b.add(key, name, file, offset, false, write, info);
     }
 
+    /// Match paths bypass expression inference. Resolve their case identity
+    /// from the checked scrutinee, rather than treating a bare arm as a name
+    /// lookup (different alternatives may declare the same case spelling).
+    fn match_case(&mut self, scrutinee: &Expr, path: &Expr) {
+        let Some(ty) = self.info_of(scrutinee).and_then(|info| info.ty) else {
+            return;
+        };
+        if ty.kind != Kind::Alternative {
+            return;
+        }
+        let Some(parent) = ty.symbol() else { return };
+        let name = match &path.kind {
+            ExprKind::Name(name) => *name,
+            ExprKind::Member { left, name } => {
+                let qualifier = self.info_of(peel_apply(left)).and_then(|info| info.symbol);
+                if qualifier
+                    .as_ref()
+                    .is_none_or(|symbol| symbol.id != parent.id)
+                {
+                    return;
+                }
+                *name
+            }
+            _ => return,
+        };
+        let Some(def) = &ty.def else { return };
+        if !def.cases.borrow().iter().any(|case| case.name == name) {
+            return;
+        }
+        self.add(
+            format!("case:{}:{}", symbol_key(&self.b.root, Some(&parent)), name),
+            name.as_str(),
+            path.pos.offset as usize,
+            false,
+            OccInfo {
+                ty: Some(ty.clone()),
+                constructor: Some(ty),
+                case: Some(name),
+                ..OccInfo::default()
+            },
+        );
+    }
+
     fn expression(&mut self, e: &Expr) {
         let Some(info) = self.info_of(e) else { return };
+        if hidden_structure(self.module, e, &info, &mut self.hidden) {
+            return;
+        }
         let occ = OccInfo::of(&info);
         match &e.kind {
             ExprKind::Name(name) => {
@@ -924,8 +1044,11 @@ impl Visitor for UseWalker<'_> {
 
     fn expr(&mut self, e: &Expr) {
         self.expression(e);
-        if let ExprKind::Match { arms, .. } = &e.kind {
+        if let ExprKind::Match { scrutinee, arms } = &e.kind {
             for arm in arms {
+                if !arm.bare && !arm.chain && !arm.from_if {
+                    self.match_case(scrutinee, &arm.path);
+                }
                 visit_arm_path(self, &arm.path);
             }
         }

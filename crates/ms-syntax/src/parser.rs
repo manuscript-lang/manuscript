@@ -77,10 +77,10 @@ struct FailedTypeArgs {
 }
 
 /// The position of byte `index` of a text token's source.
-fn text_pos(pos: Pos, full: &str, index: usize) -> Pos {
+fn text_pos(pos: Pos, full: &str, index: usize, boundaries: &crate::lexer::ScanBoundaries) -> Pos {
     let before = &full[..index];
     let offset = (pos.offset as usize + index) as u32;
-    match before.rfind('\n') {
+    let position = match before.rfind('\n') {
         None => Pos {
             line: pos.line,
             column: (pos.column as usize + index) as u32,
@@ -91,7 +91,8 @@ fn text_pos(pos: Pos, full: &str, index: usize) -> Pos {
             column: (index - last) as u32,
             offset,
         },
-    }
+    };
+    boundaries.restore_text_offset(pos, position)
 }
 
 /// Splits the text between multi-line delimiters into its content (without
@@ -2773,7 +2774,12 @@ impl<'a> Parser<'a> {
             // Advance through each prefix once, including physical lines in
             // multiline text. Interpolation expressions themselves have no newlines.
             let at = quotes + start;
-            position = text_pos(position, &self.text(token)[positioned..], at - positioned);
+            position = text_pos(
+                position,
+                &self.text(token)[positioned..],
+                at - positioned,
+                self.boundaries,
+            );
             positioned = at;
             let value = self.interpolation(token, at, source, position)?;
             parts.push(TextPart::Interp(value));
@@ -3210,7 +3216,7 @@ impl<'a> Parser<'a> {
         let full = self.text(token);
         let suffix = format!(
             " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
-            text_pos(token.pos, full, at - 1).column
+            text_pos(token.pos, full, at - 1, self.boundaries).column
         );
         let wrapped = format!("({source})");
         let shift = |p: Pos| -> Pos {
@@ -3218,6 +3224,7 @@ impl<'a> Parser<'a> {
                 token.pos,
                 full,
                 at - 1 + (p.offset as usize).min(source.len() + 1),
+                self.boundaries,
             )
         };
         let mut lexed = match lex(self.file, &wrapped) {

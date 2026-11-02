@@ -28,53 +28,10 @@ impl Format {
     }
 }
 
-const CRC_TABLE: [u32; 256] = {
-    let mut t = [0u32; 256];
-    let mut i = 0;
-    while i < 256 {
-        let mut c = i as u32;
-        let mut k = 0;
-        while k < 8 {
-            c = if c & 1 != 0 {
-                0xedb8_8320 ^ (c >> 1)
-            } else {
-                c >> 1
-            };
-            k += 1;
-        }
-        t[i] = c;
-        i += 1;
-    }
-    t
-};
+pub use ms_std_core::checksum::{adler32, adler32_update};
 
 /// CRC-32 (IEEE) of `data`, continuing from `crc`.
-pub fn crc32(crc: u32, data: &[u8]) -> u32 {
-    let mut c = !crc;
-    for &b in data {
-        c = CRC_TABLE[((c ^ u32::from(b)) & 0xff) as usize] ^ (c >> 8);
-    }
-    !c
-}
-
-/// Adler-32 of `data`.
-pub fn adler32(data: &[u8]) -> u32 {
-    adler32_update(1, data)
-}
-
-/// Adler-32 of `data`, continuing from `adler` (1 for an empty prefix).
-pub fn adler32_update(adler: u32, data: &[u8]) -> u32 {
-    let (mut a, mut b) = (adler & 0xffff, adler >> 16);
-    for chunk in data.chunks(5552) {
-        for &d in chunk {
-            a += u32::from(d);
-            b += a;
-        }
-        a %= 65521;
-        b %= 65521;
-    }
-    b << 16 | a
-}
+pub use ms_std_core::checksum::crc32_update as crc32;
 
 /// Compresses `data`; `level` is 0..=9 and `max_bytes` bounds the encoded size.
 pub fn compress(
