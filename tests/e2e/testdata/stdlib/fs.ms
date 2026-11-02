@@ -7,7 +7,6 @@ import (
     PathEntry,
     create_directory,
     glob,
-    glob_entries,
     list,
     open,
     read_file,
@@ -34,21 +33,20 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
     for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
         write_file(path: "{root}/{name}", data: "", replace: false) | try expect_ok
 
-    let matches = glob(path: root, pattern: "**/*.\{txt,md\}") | try expect_ok
-    matches | try expect_equal(["a.txt", "b.md", "sub/c.txt"])
-    glob(path: root, pattern: "**/*.\{txt,md\}", max_entries: 2) | try expect_fs_error(
-        FileSystemError.LimitExceeded
-    )
-    glob(path: root, pattern: "\{a.txt,[\}") | try expect_fs_error(
+    let all = GlobOptions(patterns: ["**/*.\{txt,md\}"])
+    let matches = glob(path: root, options: all.clone()) | try expect_ok
+    matches.map(fn e: e.path.clone()) | try expect_equal(["a.txt", "b.md", "sub/c.txt"])
+    glob(
+        path: root, options: GlobOptions(patterns: ["**/*.\{txt,md\}"], max_results: 2)
+    ) | try expect_fs_error(FileSystemError.LimitExceeded)
+    glob(path: root, options: GlobOptions(patterns: ["\{a.txt,[\}"])) | try expect_fs_error(
         FileSystemError.InvalidInput
     )
 
-    let options = GlobOptions(
-        patterns: ["*.txt"], exclude: ["sub/**"], follow_links: false
-    )
+    let options = GlobOptions(patterns: ["*.txt"], exclude: ["sub/**"])
     let entries = (
         try expect_ok(
-            glob_entries(
+            glob(
                 path: root, options: options.clone(),
                 exclude: fn(entry: PathEntry) Bool: entry.path == "missing.txt"
             )

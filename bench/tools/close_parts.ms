@@ -3,7 +3,15 @@
 # the linked binaries must be byte for byte the same. Prints one line per project and exits 1 on a difference.
 # Usage: ms run bench/tools/close_parts.ms -- BASE_MS HEAD_MS
 import absolute, run_in, usage from "./lib.ms"
-import copy_tree, glob, read_file, remove, temporary from "@std/os/fs.ms"
+import (
+    copy,
+    CopyOptions,
+    glob,
+    GlobOptions,
+    read_file,
+    remove,
+    temporary
+) from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
 
@@ -29,7 +37,9 @@ export fn main() Int:
     var same = 0
     var differ = 0
     var skipped = 0
-    let projects = glob("bench/perf", "**/ms.toml", max_entries: none).get([])
+    let projects = glob("bench/perf", GlobOptions(patterns: ["**/ms.toml"])).get(
+        []
+    ).map(fn e: e.path.clone())
 
     for toml in projects.sorted():
         let dir = (
@@ -40,7 +50,7 @@ export fn main() Int:
 
         # Both compilers build the same directory, so no path differs between the outputs.
         remove("{w}/p", recursive: true).get(unit)
-        copy_tree(dir, "{w}/p", replace: true).get()
+        copy(dir, "{w}/p", CopyOptions(recursive: true, replace: true)).get()
         remove("{w}/p/ms.lock").get(unit)
 
         let lowers = (

@@ -1,7 +1,7 @@
 import Bytes from "@std/bytes.ms"
 import (
     append_file,
-    copy_file,
+    copy,
     create_directory,
     list,
     read_file,
@@ -22,7 +22,7 @@ fn churn(root: String, name: String) Int:
     let _written = write_file(path, name)
     let _appended = append_file(path, "!")
     let _renamed = rename(path, "{dir}/b.txt")
-    let _copied = copy_file("{dir}/b.txt", "{dir}/c.txt")
+    let _copied = copy("{dir}/b.txt", "{dir}/c.txt")
     let listed = list(dir)
     if let names = listed:
         return names.length()

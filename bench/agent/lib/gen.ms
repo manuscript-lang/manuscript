@@ -1,6 +1,6 @@
 # Shared pieces of the challenge generators: the case record, the committed file layout and the Go oracle.
 import panic from "@std/core.ms"
-import copy_file, temporary_directory, write_file from "@std/os/fs.ms"
+import copy, CopyOptions, temporary_directory, write_file from "@std/os/fs.ms"
 import dumps_data from "./pyjson.ms"
 import bash, write_text from "./text.ms"
 import root from "../core/model.ms"
@@ -31,9 +31,9 @@ export fn build_oracle(id: String) String:
 
     for source in sources:
         let name = source.split("/").last().get("")
-        copy_file(
+        copy(
             "{dir(id)}/{source}", "{tmp}/{name.slice(0, name.length() - 4).get("")}",
-            replace: true
+            CopyOptions(replace: true)
         ).get()
 
     write_file("{tmp}/go.mod", "module oracle\n\ngo 1.21\n", replace: true).get()

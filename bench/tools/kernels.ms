@@ -16,7 +16,7 @@ import (
     rotate,
     sample
 ) from "./lib.ms"
-import copy_tree, create_directory, temporary from "@std/os/fs.ms"
+import copy, CopyOptions, create_directory, temporary from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"
 
 fn build_c(source: String, out: String, flags: List[String]) Result[Unit, Error]:
@@ -29,7 +29,9 @@ fn build_c(source: String, out: String, flags: List[String]) Result[Unit, Error]
 fn run(suite: String, n: Int, work: String) Result[String, Error]:
     let here = "bench/perf/{suite}"
     for dir in ["go", "ms", "rust"]:
-        try copy_tree("{here}/{dir}", "{work}/{dir}", replace: true)
+        try copy(
+            "{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
+        )
     for dir in ["rust-checked", "c", "c-ms"]:
         try create_directory("{work}/{dir}")
     try build_go("{work}/go", "{work}/go/bench")

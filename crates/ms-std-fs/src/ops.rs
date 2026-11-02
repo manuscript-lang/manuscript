@@ -228,13 +228,6 @@ pub fn append_file(path: &[u8], data: &[u8]) -> Res<()> {
     write_with(path, sys::O_APPEND, data)
 }
 
-pub fn copy_file(source: &[u8], destination: &[u8], replace: bool, max: i64) -> Res<()> {
-    cpath(source)?;
-    cpath(destination)?;
-    let data = read_file(source, max)?;
-    write_file(destination, &data, replace)
-}
-
 // ---------------------------------------------------------------------------
 // Whole-file calls on the blocking pool
 // ---------------------------------------------------------------------------
@@ -802,7 +795,7 @@ mod tests {
             (12, b"f.txt".as_slice(), KIND_REGULAR)
         );
         assert_eq!(info.permissions, 0o600);
-        copy_file(&f, &sub(&root, "g"), false, UNLIMITED).unwrap();
+        write_file(&sub(&root, "g"), &read_file(&f, UNLIMITED).unwrap(), false).unwrap();
         rename(&sub(&root, "g"), &sub(&root, "h")).unwrap();
         create_link(&sub(&root, "l"), b"f.txt").unwrap();
         assert_eq!(read_link(&sub(&root, "l")).unwrap(), b"f.txt");
@@ -962,7 +955,7 @@ mod tests {
             chown(&f, 1, 1, true).unwrap_err().status,
             STATUS_UNSUPPORTED
         );
-        copy_file(&f, &sub(&root, "g"), false, UNLIMITED).unwrap();
+        write_file(&sub(&root, "g"), &read_file(&f, UNLIMITED).unwrap(), false).unwrap();
         rename(&sub(&root, "g"), &sub(&root, "h")).unwrap();
         let names: Vec<String> = list(&root, UNLIMITED)
             .unwrap()

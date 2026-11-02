@@ -19,7 +19,7 @@ import (
 ) from "./lib.ms"
 import Invalid, Ran, invalid from "./lib.ms"
 import Stdio, arguments, Subprocess, spawn from "@std/os/process.ms"
-import copy_tree, create_directory, list, temporary from "@std/os/fs.ms"
+import copy, CopyOptions, create_directory, list, temporary from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 import milliseconds, sleep from "@std/os/time.ms"
 
@@ -203,11 +203,11 @@ fn measure_server(
 
 fn prepare_run(here: String, w: String) Result[List[String], Invalid]:
     for dir in ["go", "ms", "load"]:
-        copy_tree("{here}/{dir}", "{w}/{dir}", replace: true).get()
+        copy("{here}/{dir}", "{w}/{dir}", CopyOptions(recursive: true, replace: true)).get()
     create_directory("{w}/rust", recursive: true).get()
     write_text("{w}/rust/Cargo.toml", read_text("{here}/rust/Cargo.toml"))
     write_text("{w}/rust/Cargo.lock", read_text("{here}/rust/Cargo.lock"))
-    copy_tree("{here}/rust/src", "{w}/rust/src", replace: true).get()
+    copy("{here}/rust/src", "{w}/rust/src", CopyOptions(recursive: true, replace: true)).get()
     create_directory("{w}/data", recursive: true).get()
     try build_go("{w}/go", "{w}/go/server")
     try build_go("{w}/load", "{w}/load/load")
@@ -249,8 +249,8 @@ fn cell(p: Plan, argv: List[String]) String:
 fn fetch_all(here: String, seconds: Int) Result[Unit, Invalid]:
     var tmp = temporary("web-fetch-").get()
     let w = tmp.path()
-    copy_tree("{here}/fetch/go", "{w}/go", replace: true).get()
-    copy_tree("{here}/fetch/ms", "{w}/ms", replace: true).get()
+    copy("{here}/fetch/go", "{w}/go", CopyOptions(recursive: true, replace: true)).get()
+    copy("{here}/fetch/ms", "{w}/ms", CopyOptions(recursive: true, replace: true)).get()
     create_directory("{w}/data", recursive: true).get()
     write_text("{w}/data/small", "ok\n")
 

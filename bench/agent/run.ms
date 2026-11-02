@@ -3,7 +3,8 @@
 import Command, Flag, FlagKind, command from "@std/cli.ms"
 import (
     append_file,
-    copy_file,
+    copy,
+    CopyOptions,
     remove,
     stat,
     temporary_directory,
@@ -97,7 +98,7 @@ fn run_one(
             "{ws}/{lang.solution.split("/").take(lang.solution.split("/").length() - 1).join("/")}",
             recursive: true
         ).get()
-        if size.is_some(): copy_file(src, "{ws}/{lang.solution}", replace: true).get()
+        if size.is_some(): copy(src, "{ws}/{lang.solution}", CopyOptions(replace: true)).get()
     else:
         agent = run_agent(h, prompt, model, ws, timeout_s, transcript)
 
@@ -115,7 +116,7 @@ fn run_one(
     if stat(sol, true).is_ok() and h.name() != "oracle":
         let copied = "{root()}/results/sources/{run_id}{lang.suffix()}"
         create_directory("{root()}/results/sources", recursive: true).get()
-        copy_file(sol, copied, replace: true).get()
+        copy(sol, copied, CopyOptions(replace: true)).get()
         g.llm_tokens = llm_tokens(sol)
 
     let rec = RunRecord(

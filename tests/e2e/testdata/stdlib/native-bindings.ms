@@ -20,7 +20,7 @@ import (
     stat_filesystem,
     temporary,
     watch,
-    watch_native,
+    WatchOptions,
     write_file
 ) from "@std/os/fs.ms"
 import milliseconds, sleep from "@std/os/time.ms"
@@ -118,12 +118,14 @@ fn saw(events: List[FileEvent], path: String, kind: String) Bool:
 test "polling and native watchers report a created file and close":
     let temporary = temporary("manuscript-watch-") | try expect_ok
     let root = temporary.path()
-    var polling = try watch(path: root, recursive: false, interval: milliseconds(20))
+    var polling = try watch(
+        path: root, recursive: false, options: WatchOptions(interval: milliseconds(20))
+    )
     try write_file(path: "{root}/a.txt", data: "x", replace: false)
     try expect_true(saw(try polling.next(), join([root.clone(), "a.txt"]), "rename"))
     try polling.close()
 
-    let native = try watch_native(path: root, recursive: false, overflow: "error")
+    let native = try watch(path: root, recursive: false)
     try write_file(path: "{root}/b.txt", data: "y", replace: false)
 
     var found = false
@@ -136,14 +138,14 @@ test "native watcher max_entries counts the paths under the root":
     let t = temporary("ms-me-") | try expect_ok
     try write_file(path: "{t.path()}/a", data: "x", replace: false)
     try expect_fs_error(
-        watch_native(
-            path: t.path(), recursive: true, max_entries: 1, overflow: "error"
+        watch(
+            path: t.path(), recursive: true, options: WatchOptions(max_entries: 1)
         ),
         FileSystemError.LimitExceeded
     )
 
-    var w = try watch_native(
-        path: t.path(), recursive: true, max_entries: 2, overflow: "error"
+    var w = try watch(
+        path: t.path(), recursive: true, options: WatchOptions(max_entries: 2)
     )
     try w.close()
 
@@ -154,11 +156,36 @@ fn wait_next(w: Shared[FileWatcher]) Int:
 
     return 2
 
+test "polling options reject native-only settings":
+    let t = temporary("ms-wo-") | try expect_ok
+    let polled = WatchOptions(interval: milliseconds(20))
+    try expect_fs_error(
+        watch(
+            path: t.path(),
+            options: WatchOptions(interval: milliseconds(20), max_events: 4)
+        ),
+        FileSystemError.InvalidInput
+    )
+    try expect_fs_error(
+        watch(
+            path: t.path(),
+            options: WatchOptions(
+                interval: milliseconds(20), overflow: "ignore"
+            )
+        ),
+        FileSystemError.InvalidInput
+    )
+    try expect_fs_error(
+        watch(path: t.path(), options: WatchOptions(overflow: "bogus")),
+        FileSystemError.InvalidInput
+    )
+
+    var w = try watch(path: t.path(), options: polled)
+    try w.close()
+
 test "close wakes a pending native next with Closed":
     let t = temporary("ms-r2-") | try expect_ok
-    let w: Shared[FileWatcher] = share(
-        try watch_native(path: t.path(), recursive: false, overflow: "error")
-    )
+    let w: Shared[FileWatcher] = share(try watch(path: t.path(), recursive: false))
     let group = TaskGroup[Int]()
     let a = w
     group.spawn(fn ch: wait_next(a))
@@ -171,7 +198,10 @@ test "close wakes a pending native next with Closed":
 test "a group timeout cancels a task waiting on a watcher":
     let t = temporary("ms-r2-") | try expect_ok
     let w: Shared[FileWatcher] = share(
-        try watch(path: t.path(), recursive: false, interval: milliseconds(20))
+        try watch(
+            path: t.path(), recursive: false,
+            options: WatchOptions(interval: milliseconds(20))
+        )
     )
     var group = TaskGroup[Int](timeout: 300.milliseconds)
     let a = w
@@ -185,7 +215,7 @@ test "a group timeout cancels a task waiting on a watcher":
 test "recursive native watch sees a file in a new subdirectory":
     let t = temporary("ms-r2-") | try expect_ok
     let r = t.path()
-    var w = try watch_native(path: r, recursive: true, overflow: "error")
+    var w = try watch(path: r, recursive: true)
     try create_directory(path: "{r}/d", recursive: false)
     try write_file(path: "{r}/d/f", data: "1", replace: false)
 

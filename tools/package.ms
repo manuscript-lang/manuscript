@@ -3,14 +3,7 @@
 # each target builds it natively.
 # Usage: ms run tools/package.ms [-- OS ARCH]
 import capture, dist_arch, dist_os, file_sha256, note, run_program from "./lib.ms"
-import (
-    chmod,
-    copy_file,
-    create_directory,
-    remove,
-    temporary,
-    write_file
-) from "@std/os/fs.ms"
+import chmod, copy, create_directory, remove, temporary, write_file from "@std/os/fs.ms"
 import (
     arguments,
     change_directory,
@@ -73,12 +66,12 @@ export fn main() Int:
     let staging = temporary("ms-package-").get()
     let bundle = "{staging.path()}/{name}"
     create_directory("{bundle}/examples/hello/src", recursive: true).get()
-    copy_file("target/{triple}/release/{executable}", "{bundle}/{executable}").get()
-    copy_file("examples/hello/ms.toml", "{bundle}/examples/hello/ms.toml").get()
-    copy_file("examples/hello/test.ms", "{bundle}/examples/hello/test.ms").get()
-    copy_file("examples/hello/src/main.ms", "{bundle}/examples/hello/src/main.ms").get()
+    copy("target/{triple}/release/{executable}", "{bundle}/{executable}").get()
+    copy("examples/hello/ms.toml", "{bundle}/examples/hello/ms.toml").get()
+    copy("examples/hello/test.ms", "{bundle}/examples/hello/test.ms").get()
+    copy("examples/hello/src/main.ms", "{bundle}/examples/hello/src/main.ms").get()
 
-    # `copy_file` writes private modes; the archive carries the usual ones.
+    # `copy` writes private modes; the archive carries the usual ones.
     for dir in ["", "/examples", "/examples/hello", "/examples/hello/src"]:
         chmod("{bundle}{dir}", 493).get()
     chmod("{bundle}/{executable}", 493).get()

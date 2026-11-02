@@ -10,7 +10,6 @@
 
 extern crate alloc;
 
-pub mod consts;
 pub mod dir;
 pub mod err;
 pub mod file;
@@ -27,8 +26,8 @@ pub mod watch;
 use alloc::vec::Vec;
 use err::{Fail, Res};
 use ms_rt::ffi::{
-    BytesList, EntryFilter, IntList, ObjMut, ObjRef, ObjShare, Object, PairFilter, RecList,
-    StatusCode, Str, Text, TextList, abi_record, native,
+    BytesList, EntryFilter, ObjMut, ObjRef, ObjShare, Object, PairFilter, RecList, StatusCode, Str,
+    Text, TextList, abi_record, native,
 };
 use ms_rt_abi::{STATUS_INVALID_INPUT, STATUS_NONE, StrVal};
 use stream::Stream;
@@ -182,17 +181,6 @@ native! {
         fs_status(ops::append_file(path.as_bytes(), data))
     }
 
-    fn msstd_fs_copy_file(
-        source: &str,
-        destination: &str,
-        replace: bool,
-        has_max: bool,
-        max: i64,
-    ) -> Result<(), StatusCode> {
-        fs_status(lim(has_max, max)
-            .and_then(|m| ops::copy_file(source.as_bytes(), destination.as_bytes(), replace, m)))
-    }
-
     /// `follow` resolves a final symlink (`stat`), otherwise it reports the link (`lstat`).
     fn msstd_fs_stat(path: &str, follow: bool) -> Result<InfoOut, StatusCode> {
         fs_status(ops::stat(path.as_bytes(), follow)).map(info_out)
@@ -289,15 +277,6 @@ native! {
 
     // ---- File handles, directory cursors, temporary directories, glob and copy ----
 
-    /// Opens a file handle. The same handle serves the `msstd_io_*` stream exports.
-    fn msstd_fs_file_open(
-        path: &str,
-        flags: i64,
-        mode: i64,
-    ) -> Result<Object<Stream>, StatusCode> {
-        fs_status(file::open(path.as_bytes(), flags, mode)).map(Object)
-    }
-
     /// `FileSystem.open`: a mode string such as `"r+"` plus permission bits; an unknown mode is
     /// invalid.
     fn msstd_fs_open(path: &str, flags: &str, mode: i64) -> Result<Object<Stream>, StatusCode> {
@@ -320,11 +299,6 @@ native! {
     /// The write-stream view of a file handle: the same handle, retained for the caller.
     fn msstd_fs_file_writer(h: ObjShare<Stream>) -> ObjShare<Stream> {
         h
-    }
-
-    /// `flags_of_mode` for `"r"`, `"r+"`, `"w"`, ... ; `STATUS_INVALID_INPUT` for an unknown mode.
-    fn msstd_fs_open_flags(mode: &str) -> Result<i64, StatusCode> {
-        fs_status(file::flags_of_mode(mode.as_bytes()).ok_or_else(Fail::invalid)).map(i64::from)
     }
 
     fn msstd_fs_file_read_at(
@@ -486,34 +460,6 @@ native! {
         fs_status(h.close())
     }
 
-    /// `glob`: sorted relative matches as a `List[String]`.
-    fn msstd_fs_glob(
-        path: &str,
-        pattern: &str,
-        has_max: bool,
-        max: i64,
-    ) -> Result<TextList, StatusCode> {
-        fs_status(lim(has_max, max).and_then(|m| walk::glob(path.as_bytes(), pattern.as_bytes(), m)))
-            .map(TextList)
-    }
-
-    /// `copy_tree`: `entries` and `bytes` are budgets (pass `i64::MAX` for unlimited).
-    fn msstd_fs_copy_tree(
-        source: &str,
-        destination: &str,
-        replace: bool,
-        entries: i64,
-        bytes: i64,
-    ) -> Result<(), StatusCode> {
-        fs_status(walk::copy_tree(
-            source.as_bytes(),
-            destination.as_bytes(),
-            replace,
-            entries,
-            bytes,
-        ))
-    }
-
     /// `copy`. `clone` is `"none"`, `"try"` or `"force"`; `filter` is null or a closure that
     /// answers whether to copy an entry.
     fn msstd_fs_copy(
@@ -587,16 +533,6 @@ native! {
             directory: u8::from(e.directory),
             symlink: u8::from(e.symlink),
         })))
-    }
-
-    /// The `FileMode`/open-flag constants as parallel `names` (`List[String]`) and `values`
-    /// (`List[Int]`) lists.
-    fn msstd_fs_constants() -> out (TextList, IntList) {
-        let table = consts::file_constants();
-        (
-            TextList(table.iter().map(|(k, _)| k.as_bytes().to_vec()).collect()),
-            IntList(table.iter().map(|(_, v)| *v).collect()),
-        )
     }
 
     /// A polling watcher (`interval_ns` > 0); `max` bounds tracked paths.

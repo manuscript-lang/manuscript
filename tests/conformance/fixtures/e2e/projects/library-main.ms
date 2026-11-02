@@ -5,7 +5,7 @@ import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 import memory_usage, process_info from "@std/os/process.ms"
 import arguments from "@std/os/process.ms"
 import random_bytes from "@std/os/random.ms"
-import append_file, open, read_file, remove, stat, watch_native, write_file from "@std/os/fs.ms"
+import append_file, open, read_file, remove, stat, watch, WatchOptions, write_file from "@std/os/fs.ms"
 import system_info from "@std/os/process.ms"
 import now from "@std/os/time.ms"
 import uuid_v4 from "@std/os/random.ms"
@@ -76,9 +76,9 @@ fn exercise(path: String) Unit!:
     try file.close()
 
     var watcher = try common_result(
-        result: watch_native(
-            path: path, recursive: false, max_entries: 4, max_events: 16,
-            overflow: "error"
+        result: watch(
+            path: path, recursive: false,
+            options: WatchOptions(max_entries: 4, max_events: 16, overflow: "error")
         )
     )
     let _appended = try common_result(

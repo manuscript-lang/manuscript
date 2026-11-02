@@ -3,7 +3,7 @@
 # A token is an identifier or keyword, a number, a string literal, or one punctuation/operator character.
 # Comments are excluded. This is a size measure of the final program, not any model's tokenizer count.
 import compile from "@std/string.ms"
-import glob from "@std/os/fs.ms"
+import glob, GlobOptions from "@std/os/fs.ms"
 import read_text from "../lib/text.ms"
 
 let SKIP_DIRS = [
@@ -24,7 +24,8 @@ export fn count_text(text: String) Int:
 export fn count_workspace(root: String, suffix: String) Int:
     var total = 0
 
-    for path in glob(root, "**/*{suffix}", none).get([]):
+    for entry in glob(root, GlobOptions(patterns: ["**/*{suffix}"])).get([]):
+        let path = entry.path.clone()
         let parts = path.split("/")
         let dirs = parts.take(parts.length() - 1)
         if dirs.any(fn d: SKIP_DIRS.contains(d)): continue

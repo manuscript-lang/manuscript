@@ -8,7 +8,7 @@
 # live only in tests/, which Harbor uploads at verification time. The verifier runs `ms` inside the task, so every
 # image carries the binary given by --ms-binary. The output is generated; do not commit it.
 import Flag, FlagKind, command from "@std/cli.ms"
-import chmod, copy_file, create_directory, remove, stat from "@std/os/fs.ms"
+import chmod, copy, CopyOptions, create_directory, remove, stat from "@std/os/fs.ms"
 import JsonValue from "@std/data/json.ms"
 import stderr, stdout from "@std/io/io.ms"
 import arguments from "@std/os/process.ms"
@@ -51,7 +51,7 @@ fn put(from: String, to: String) Unit:
     create_directory(
         to.split("/").take(to.split("/").length() - 1).join("/"), recursive: true
     ).get()
-    copy_file(from, to, replace: true).get()
+    copy(from, to, CopyOptions(replace: true)).get()
 
 fn export_one(
     ch: Challenge,
