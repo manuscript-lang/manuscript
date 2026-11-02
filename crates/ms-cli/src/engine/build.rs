@@ -90,7 +90,7 @@ pub(super) fn build<L: Lower>(
         )
     };
 
-    // An unchanged build is restored without loading or checking anything.
+    // An unchanged build is restored without loading or checking the source graph.
     let cache = BuildCache::open(backend, request, &output);
     if path_error.is_none()
         && let Some(cache) = &cache
@@ -312,12 +312,8 @@ impl Hit {
     /// Publishes the stored executable (and macOS debug companion) at `output`.
     fn restore_to(&self, output: &str) -> Result<(), String> {
         let output = Path::new(output);
-        let directory = output
-            .parent()
-            .filter(|p| !p.as_os_str().is_empty())
-            .unwrap_or(Path::new("."));
-        std::fs::create_dir_all(directory).map_err(|e| e.to_string())?;
-        let staged = directory.join(format!(".ms-build-{}.exe", std::process::id()));
+        let stage = ms_build::native::BuildStage::for_output(output).map_err(|e| e.to_string())?;
+        let staged = stage.path().join("program.exe");
         let companion = ms_clif_companion(&staged);
         let published = if self.0.restore(&staged, companion.as_deref()) {
             ms_build::publish(&staged, output).map_err(|e| e.to_string())
@@ -337,4 +333,188 @@ impl Hit {
 /// The macOS `.dSYM` directory beside `executable`; none elsewhere.
 fn ms_clif_companion(executable: &Path) -> Option<std::path::PathBuf> {
     ms_build::debug_companion_path(executable)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn hit(directory: &Path, key: &str, payload: &[u8]) -> Hit {
+        let source = directory.join(format!("{key}.source"));
+        let executable = directory.join(format!("{key}.cached"));
+        std::fs::write(&source, b"source").unwrap();
+        std::fs::write(&executable, payload).unwrap();
+        let companion = directory.join(format!("{key}.debug"));
+        let resources = companion.join("Contents/Resources/DWARF");
+        std::fs::create_dir_all(&resources).unwrap();
+        std::fs::write(resources.join("cached"), payload).unwrap();
+        let cache = directory.join("cache");
+        ms_build::cache::store(
+            &cache,
+            key,
+            "root",
+            &[source],
+            &executable,
+            Some(&companion),
+        );
+        Hit(ms_build::cache::lookup(&cache, key).unwrap())
+    }
+
+    fn assert_restored(output: &Path, payload: &[u8]) {
+        assert_eq!(std::fs::read(output).unwrap(), payload);
+        if let Some(companion) = ms_clif_companion(output) {
+            assert_eq!(
+                std::fs::read(
+                    companion
+                        .join("Contents/Resources/DWARF")
+                        .join(output.file_name().unwrap())
+                )
+                .unwrap(),
+                payload
+            );
+        }
+    }
+
+    #[test]
+    fn cache_restore_preserves_existing_staging_links() {
+        let scratch = super::super::TempDir::create("ms-cache-restore-links-").unwrap();
+        let root = &scratch.0;
+        let hit = hit(root, "entry", b"cached executable");
+        let directory = root.join("output");
+        std::fs::create_dir(&directory).unwrap();
+        let victim = directory.join("victim");
+        std::fs::write(&victim, b"retained contents").unwrap();
+        let stale = directory.join(format!(".ms-build-{}.exe", std::process::id()));
+        std::fs::hard_link(&victim, &stale).unwrap();
+        let output = directory.join("program");
+        for _ in 0..2 {
+            hit.restore_to(output.to_str().unwrap()).unwrap();
+            assert_restored(&output, b"cached executable");
+            assert_eq!(std::fs::read(&victim).unwrap(), b"retained contents");
+            assert_eq!(std::fs::read(&stale).unwrap(), b"retained contents");
+        }
+    }
+
+    #[test]
+    fn cache_restore_recreates_a_removed_output_parent() {
+        let scratch = super::super::TempDir::create("ms-cache-restore-parent-").unwrap();
+        let root = &scratch.0;
+        let hit = hit(root, "entry", b"cached executable");
+        let ancestor = root.join("output");
+        let output = ancestor.join("nested/program");
+        hit.restore_to(output.to_str().unwrap()).unwrap();
+        assert_restored(&output, b"cached executable");
+        std::fs::remove_dir_all(&ancestor).unwrap();
+        hit.restore_to(output.to_str().unwrap()).unwrap();
+        assert_restored(&output, b"cached executable");
+    }
+
+    #[test]
+    fn cache_restore_output_can_use_a_staging_directory_name() {
+        let scratch = super::super::TempDir::create("ms-cache-restore-name-").unwrap();
+        let root = &scratch.0;
+        let hit = hit(root, "entry", b"cached executable");
+        let directory = root.join("output");
+        for uppercase in [false, true] {
+            let probe = ms_build::native::BuildStage::create(&directory).unwrap();
+            let name = probe.path().file_name().unwrap().to_str().unwrap();
+            let (prefix, counter) = name.rsplit_once('-').unwrap();
+            let mut name = format!("{prefix}-{}", counter.parse::<usize>().unwrap() + 1);
+            if uppercase {
+                name.make_ascii_uppercase();
+            }
+            let output = directory.join(name);
+            drop(probe);
+            hit.restore_to(output.to_str().unwrap()).unwrap();
+            assert_restored(&output, b"cached executable");
+        }
+    }
+
+    #[test]
+    fn failed_cache_restore_publication_cleans_only_its_owned_files() {
+        let scratch = super::super::TempDir::create("ms-cache-restore-failure-").unwrap();
+        let root = &scratch.0;
+        let hit = hit(root, "entry", b"cached executable");
+        let directory = root.join("output");
+        let output = directory.join("blocked");
+        std::fs::create_dir_all(&output).unwrap();
+        std::fs::write(output.join("retained"), b"original directory").unwrap();
+        if let Some(companion) = ms_clif_companion(&output) {
+            std::fs::create_dir_all(&companion).unwrap();
+            std::fs::write(companion.join("retained"), b"original companion").unwrap();
+        }
+        let entries = || {
+            std::fs::read_dir(&directory)
+                .unwrap()
+                .map(|entry| entry.unwrap().file_name())
+                .collect::<std::collections::BTreeSet<_>>()
+        };
+        let previous = entries();
+        assert!(hit.restore_to(output.to_str().unwrap()).is_err());
+        assert_eq!(
+            std::fs::read(output.join("retained")).unwrap(),
+            b"original directory"
+        );
+        if let Some(companion) = ms_clif_companion(&output) {
+            assert_eq!(
+                std::fs::read(companion.join("retained")).unwrap(),
+                b"original companion"
+            );
+        }
+        assert_eq!(
+            entries(),
+            previous,
+            "failed publication must leave no staging residue"
+        );
+        let recovered = directory.join("recovered");
+        hit.restore_to(recovered.to_str().unwrap()).unwrap();
+        assert_restored(&recovered, b"cached executable");
+    }
+
+    #[test]
+    fn concurrent_cache_restores_keep_distinct_outputs_and_companions() {
+        let scratch = super::super::TempDir::create("ms-cache-restore-concurrent-").unwrap();
+        let root = &scratch.0;
+        let first = hit(root, "first", b"first executable");
+        let second = hit(root, "second", b"second executable");
+        let directory = root.join("output");
+        let ready = std::sync::Barrier::new(8);
+        std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..8)
+                .map(|index| {
+                    let hit = if index % 2 == 0 { &first } else { &second };
+                    let payload = if index % 2 == 0 {
+                        b"first executable".as_slice()
+                    } else {
+                        b"second executable".as_slice()
+                    };
+                    let output = directory.join(format!("program-{index}"));
+                    let ready = &ready;
+                    scope.spawn(move || {
+                        ready.wait();
+                        for _ in 0..8 {
+                            hit.restore_to(output.to_str().unwrap()).unwrap();
+                            assert_restored(&output, payload);
+                        }
+                    })
+                })
+                .collect();
+            for handle in handles {
+                handle.join().unwrap();
+            }
+        });
+        let mut expected = std::collections::BTreeSet::new();
+        for index in 0..8 {
+            let output = directory.join(format!("program-{index}"));
+            expected.insert(output.file_name().unwrap().to_owned());
+            if let Some(companion) = ms_clif_companion(&output) {
+                expected.insert(companion.file_name().unwrap().to_owned());
+            }
+        }
+        let actual = std::fs::read_dir(directory)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(actual, expected);
+    }
 }

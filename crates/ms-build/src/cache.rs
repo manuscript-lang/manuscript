@@ -150,6 +150,20 @@ pub fn store(
     executable: &Path,
     companion: Option<&Path>,
 ) {
+    store_with(dir, key, source_root, sources, companion, |to| {
+        std::fs::copy(executable, to).map(|_| ())
+    });
+}
+
+/// The production copy is supplied separately so tests can coordinate actual store attempts.
+fn store_with(
+    dir: &Path,
+    key: &str,
+    source_root: &str,
+    sources: &[PathBuf],
+    companion: Option<&Path>,
+    copy: impl FnOnce(&Path) -> std::io::Result<()>,
+) {
     let mut manifest = format!("{}\n", source_root.replace('\n', " "));
     for source in sources {
         let (Some(s), Some(text)) = (stamp(source), source.to_str()) else {
@@ -161,10 +175,11 @@ pub fn store(
         let _ = writeln!(manifest, "{}\t{}\t{text}", s.mtime, s.size);
     }
     let entry = dir.join(key);
-    let staged = dir.join(format!(".{key}.{}", std::process::id()));
+    let Ok(staged) = store_stage(dir, key) else {
+        return;
+    };
     let done = (|| -> std::io::Result<()> {
-        std::fs::create_dir_all(&staged)?;
-        std::fs::copy(executable, staged.join("exe"))?;
+        copy(&staged.join("exe"))?;
         if let Some(companion) = companion.filter(|c| c.exists()) {
             copy_tree(companion, &staged.join("companion"))?;
         }
@@ -177,6 +192,25 @@ pub fn store(
         return;
     }
     prune(dir, KEEP);
+}
+
+/// Own a new stage rather than sharing one with another attempt or a reused process ID.
+fn store_stage(dir: &Path, key: &str) -> std::io::Result<PathBuf> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    std::fs::create_dir_all(dir)?;
+    loop {
+        let staged = dir.join(format!(
+            ".{key}.{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        match std::fs::create_dir(&staged) {
+            Ok(()) => return Ok(staged),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error),
+        }
+    }
 }
 
 /// Entries kept per cache directory; the least recently used are removed when a build stores another.
@@ -299,6 +333,160 @@ mod tests {
         std::fs::remove_file(&source).unwrap();
         assert!(lookup(&cache, "k").is_none());
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    fn concurrent_stores(first_fails: bool) {
+        use std::sync::mpsc;
+        use std::time::Duration;
+        let dir = scratch(if first_fails {
+            "concurrent-failure"
+        } else {
+            "concurrent-success"
+        });
+        let cache = dir.join("build");
+        let first_source = dir.join("first.ms");
+        let second_source = dir.join("second.ms");
+        let first_exe = dir.join("first");
+        let second_exe = dir.join("second");
+        std::fs::write(&first_source, b"first source").unwrap();
+        std::fs::write(&second_source, b"second source").unwrap();
+        std::fs::write(&first_exe, b"first executable").unwrap();
+        std::fs::write(&second_exe, b"second executable").unwrap();
+        store(
+            &cache,
+            "k",
+            "original",
+            std::slice::from_ref(&first_source),
+            &first_exe,
+            None,
+        );
+        let (first_ready, first_waiting) = mpsc::channel();
+        let (first_release, first_continue) = mpsc::channel();
+        let a_cache = cache.clone();
+        let a_source = first_source.clone();
+        let a_exe = first_exe.clone();
+        let first = std::thread::spawn(move || {
+            store_with(&a_cache, "k", "first", &[a_source], None, |to| {
+                std::fs::copy(&a_exe, to)?;
+                first_ready.send(()).unwrap();
+                first_continue.recv().unwrap();
+                if first_fails {
+                    return Err(std::io::Error::other("fixture copy failed"));
+                }
+                Ok(())
+            });
+        });
+        first_waiting.recv_timeout(Duration::from_secs(30)).unwrap();
+        let (second_ready, second_waiting) = mpsc::channel();
+        let (second_release, second_continue) = mpsc::channel();
+        let b_cache = cache.clone();
+        let b_source = second_source.clone();
+        let b_exe = second_exe.clone();
+        let second = std::thread::spawn(move || {
+            store_with(&b_cache, "k", "second", &[b_source], None, |to| {
+                std::fs::copy(&b_exe, to)?;
+                second_ready.send(()).unwrap();
+                second_continue.recv().unwrap();
+                Ok(())
+            });
+        });
+        second_waiting
+            .recv_timeout(Duration::from_secs(30))
+            .unwrap();
+        first_release.send(()).unwrap();
+        first.join().unwrap();
+        let entry = lookup(&cache, "k").expect("original or first completed entry");
+        assert_eq!(
+            entry.source_root,
+            if first_fails { "original" } else { "first" }
+        );
+        assert!(
+            entry.matches(&first_exe),
+            "a second attempt must not overwrite the first executable"
+        );
+        second_release.send(()).unwrap();
+        second.join().unwrap();
+        let entry = lookup(&cache, "k").expect("second completed entry");
+        assert_eq!(entry.source_root, "second");
+        assert!(entry.matches(&second_exe));
+        let restored = dir.join("restored");
+        assert!(entry.restore(&restored, None));
+        assert_eq!(std::fs::read(restored).unwrap(), b"second executable");
+        std::fs::write(&second_source, b"changed second source").unwrap();
+        assert!(
+            lookup(&cache, "k").is_none(),
+            "manifest must track the second source"
+        );
+        assert_eq!(
+            std::fs::read_dir(&cache).unwrap().count(),
+            1,
+            "completed and failed stages must be cleaned"
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn concurrent_stores_keep_each_executable_paired_with_its_manifest() {
+        concurrent_stores(false);
+    }
+
+    #[test]
+    fn a_failed_store_does_not_remove_another_attempt() {
+        concurrent_stores(true);
+    }
+
+    #[test]
+    fn stale_store_stages_keep_their_contents() {
+        let dir = scratch("stale-stage");
+        let cache = dir.join("build");
+        let stale = cache.join(format!(".k.{}", std::process::id()));
+        std::fs::create_dir_all(&stale).unwrap();
+        std::fs::write(stale.join("retained"), b"another attempt").unwrap();
+        let source = dir.join("source");
+        let executable = dir.join("executable");
+        std::fs::write(&source, b"source").unwrap();
+        std::fs::write(&executable, b"executable").unwrap();
+        store(&cache, "k", "root", &[source], &executable, None);
+        assert_eq!(
+            std::fs::read(stale.join("retained")).unwrap(),
+            b"another attempt"
+        );
+        let entry = lookup(&cache, "k").unwrap();
+        assert_eq!(entry.source_root, "root");
+        assert!(entry.matches(&executable));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn companion_round_trip_keeps_the_executable_and_debug_resource() {
+        let dir = scratch("companion");
+        let cache = dir.join("build");
+        let source = dir.join("source");
+        let executable = dir.join("executable");
+        std::fs::write(&source, b"source").unwrap();
+        std::fs::write(&executable, b"executable").unwrap();
+        let companion = dir.join("debug");
+        let resources = companion.join("Contents/Resources/DWARF");
+        std::fs::create_dir_all(&resources).unwrap();
+        std::fs::write(resources.join("executable"), b"debug resource").unwrap();
+        store(
+            &cache,
+            "k",
+            "root",
+            &[source],
+            &executable,
+            Some(&companion),
+        );
+        let entry = lookup(&cache, "k").unwrap();
+        let restored = dir.join("restored");
+        let restored_companion = dir.join("restored.debug");
+        assert!(entry.restore(&restored, Some(&restored_companion)));
+        assert!(entry.matches(&restored));
+        assert_eq!(
+            std::fs::read(restored_companion.join("Contents/Resources/DWARF/restored")).unwrap(),
+            b"debug resource"
+        );
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
