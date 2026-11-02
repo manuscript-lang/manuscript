@@ -642,7 +642,7 @@ fn opaque_is_a_keyword_only_before_type() {
 }
 
 #[test]
-fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
+fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
     let ws = Workspace::new("text-none-references");
     let main = ws.uri("main.ms");
     let mut script = Script::initialize(&ws.root.to_string_lossy(), true);
@@ -650,68 +650,16 @@ fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
     let first = script.at("textDocument/references", &main, 30, 31);
     let second = script.at("textDocument/references", &main, 30, 33);
     let responses = script.rust();
-    let math = include_str!("../../../stdlib/math/math.ms");
-    let conversion = math.find("fn to_float() Float?:").unwrap();
-    let absent = conversion + math[conversion..].find("return none").unwrap() + "return ".len();
-    let parse = math
-        .find("export fn parse(text: String, radix: Int, max_digits: Int?)")
-        .unwrap();
-    let default = parse + math[parse..].find("Int?").unwrap();
-    let no_root = math.find("let absent: BigInt? = none").unwrap() + "let absent: BigInt? = ".len();
-    let math_references = [absent, default, no_root].map(|offset| {
-        let start = ms_lsp::text::position(math, offset);
-        (
-            "math/math.ms",
-            start.line,
-            start.character,
-            start.character + 4,
-        )
-    });
-    // The general snapshot caps large responses. Keep every prior location, plus the
-    // new String source defaults and expressions, explicit in this focused check.
-    let retained = [
-        ("string.ms", 19, 15, 19),
-        ("string.ms", 26, 15, 19),
-        ("main.ms", 30, 31, 35),
-        ("io/io.ms", 36, 23, 27),
-        ("io/io.ms", 68, 34, 38),
-        ("io/io.ms", 85, 66, 70),
-        ("io/io.ms", 89, 49, 53),
-        ("io/io.ms", 94, 50, 54),
-        ("io/io.ms", 107, 15, 19),
-        ("io/io.ms", 109, 13, 17),
-        ("io/io.ms", 121, 19, 23),
-        ("io/io.ms", 127, 19, 23),
-        ("io/io.ms", 131, 19, 23),
-        ("io/io.ms", 137, 46, 50),
-        ("io/io.ms", 138, 40, 44),
-        ("collections/collections.ms", 279, 53, 57),
-        ("collections/collections.ms", 290, 15, 19),
-        ("io/io.ms", 299, 27, 31),
-        ("io/io.ms", 301, 38, 42),
-        ("collections/collections.ms", 560, 15, 19),
-        ("collections/collections.ms", 572, 15, 19),
-        ("collections/collections.ms", 660, 19, 23),
-        ("collections/collections.ms", 672, 19, 23),
-        ("collections/collections.ms", 690, 19, 23),
-        ("collections/collections.ms", 709, 19, 23),
-        ("collections/collections.ms", 866, 34, 38),
-    ];
-    let added = [
-        ("string.ms", 193, 32, 36),
-        ("string.ms", 229, 42, 46),
-        ("string.ms", 275, 15, 19),
-        ("string.ms", 314, 23, 27),
-        ("string.ms", 321, 49, 53),
-        ("string.ms", 322, 49, 53),
-        ("string.ms", 325, 21, 25),
-        ("string.ms", 326, 22, 26),
-        ("string.ms", 332, 49, 53),
-        ("string.ms", 343, 49, 53),
-        ("string.ms", 345, 37, 41),
-        ("string.ms", 354, 21, 25),
-        ("string.ms", 355, 22, 26),
-    ];
+    // The general snapshot caps large responses. Pin how many written `none` tokens each module
+    // contributes; implicit Optional defaults have no `none` token and must not add ranges. The
+    // bundled sources shift constantly, so the pin is a count per module, not line numbers.
+    let expected = std::collections::BTreeMap::from([
+        ("collections/collections.ms", 7),
+        ("io/io.ms", 6),
+        ("main.ms", 1),
+        ("math/math.ms", 2),
+        ("string.ms", 7),
+    ]);
     for id in [first, second] {
         let locations = responses
             .iter()
@@ -723,7 +671,8 @@ fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
         assert!(locations.windows(2).all(|pair| {
             ms_lsp::nav::location_sort_key(&pair[0]) <= ms_lsp::nav::location_sort_key(&pair[1])
         }));
-        let mut actual = std::collections::BTreeSet::new();
+        let mut actual = std::collections::BTreeMap::new();
+        let mut seen = std::collections::BTreeSet::new();
         for location in locations {
             let uri = location.get("uri").and_then(|uri| uri.as_str()).unwrap();
             let module = if uri == main {
@@ -733,16 +682,17 @@ fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
             };
             let range = ms_lsp::text::Range::from_json(location.get("range").unwrap()).unwrap();
             assert_eq!(range.start.line, range.end.line);
-            assert!(actual.insert((
-                module,
-                range.start.line,
-                range.start.character,
-                range.end.character,
-            )));
+            let source = if uri == main {
+                ws.read("main.ms")
+            } else {
+                ms_lsp::analysis::standard_library_source(uri).unwrap()
+            };
+            let start = ms_lsp::text::offset(&source, range.start).unwrap();
+            let end = ms_lsp::text::offset(&source, range.end).unwrap();
+            assert_eq!(&source[start..end], "none", "{uri}: {range:?}");
+            assert!(seen.insert((module, range.start.line, range.start.character)));
+            *actual.entry(module).or_insert(0) += 1;
         }
-        for location in retained.into_iter().chain(math_references).chain(added) {
-            assert!(actual.remove(&location), "missing {location:?}");
-        }
-        assert!(actual.is_empty(), "unexpected references: {actual:?}");
+        assert_eq!(actual, expected);
     }
 }
