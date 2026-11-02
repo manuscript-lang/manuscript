@@ -736,7 +736,6 @@ interface ListReshape[T]:
     var fn retain(keep: fn(T) Bool) Unit
     var fn compact_by(same: fn(T, T) Bool) Unit
     var fn rotate(by: Int) Unit
-    var fn sort_by_key[K: Comparable](key: fn(T) K) Unit
     fn is_sorted_by(compare: fn(T, T) Int) Bool
 
 impl ListReshape[T] for List[T]:
@@ -784,11 +783,6 @@ impl ListReshape[T] for List[T]:
         reverse_span(var self, 0, shift)
         reverse_span(var self, shift, size)
         reverse_span(var self, 0, size)
-
-    # Sorts in place, stably, by the natural order of `key(element)`; `key` runs on every comparison, so keep it cheap.
-    # Example: `words.sort_by_key(fn w: w.length())` orders by length.
-    var fn sort_by_key[K: Comparable](key: fn(T) K) Unit:
-        self.sort(fn a, b: key(a).compare(key(b)))
 
     # Reports whether the list is already in the order `compare` defines: no element sorts after its successor.
     # Empty and one-element lists are sorted.

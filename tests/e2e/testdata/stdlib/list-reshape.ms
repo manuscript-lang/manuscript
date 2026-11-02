@@ -56,15 +56,11 @@ test "is_sorted and is_sorted_by":
     try expect_true(List[Int]().is_sorted())
     try expect_true([3, 2, 1].is_sorted_by(fn a, b: b - a))
 
-test "sorted_by_key and sort_by_key are stable":
+test "sorted_by_key is stable":
     let people = [Person("a", 30), Person("b", 20), Person("c", 30), Person("d", 10)]
     let ordered = people.sorted_by_key(fn p: p.age)
     try expect_equal(ordered.map(fn p: p.name.clone()), ["d", "b", "a", "c"])
     try expect_equal(people[0].name, "a")
-
-    var mutable = people.clone()
-    mutable.sort_by_key(fn p: p.name.length() * 100 - p.age)
-    try expect_equal(mutable.map(fn p: p.name.clone()), ["a", "c", "b", "d"])
 
 test "repeated copies the list":
     try expect_equal([1, 2].repeated(3), [1, 2, 1, 2, 1, 2])
