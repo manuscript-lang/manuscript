@@ -1870,6 +1870,30 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 self.b.ins().sshr(x, y)
             }],
+            Op::Ushr => vec![{
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                self.b.ins().ushr(x, y)
+            }],
+            Op::Rotl => vec![{
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                self.b.ins().rotl(x, y)
+            }],
+            Op::Rotr => vec![{
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                self.b.ins().rotr(x, y)
+            }],
+            Op::Clz => vec![{
+                let x = self.a(inst, 0)[0];
+                self.b.ins().clz(x)
+            }],
+            Op::Ctz => vec![{
+                let x = self.a(inst, 0)[0];
+                self.b.ins().ctz(x)
+            }],
+            Op::Popcnt => vec![{
+                let x = self.a(inst, 0)[0];
+                self.b.ins().popcnt(x)
+            }],
             Op::Not => vec![{
                 let x = self.a(inst, 0)[0];
                 self.b.ins().bxor_imm_s(x, 1)
