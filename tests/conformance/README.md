@@ -56,6 +56,8 @@ Tier (what a Rust milestone needs): `tier-core` imports nothing, `tier-stdlib` i
 
 ## Adding and refreshing fixtures
 
+A new behavior test goes in `tests/e2e/testdata` as an in-source `test` with `expect_equal`, not here: a conformance copy of an e2e program is rejected by `make repo-check` (fixture twins). Add a fixture here only for a diagnostic or CLI output that needs its recorded text.
+
 1. Write the `.ms` file with a header (or run `harvest`), choose tags and phase.
 2. `ms-conform record --ms ./ms --id <slug>` writes the expectation; each fixture runs twice and is refused if the answers differ (`deterministic=true` skips this for time- or random-dependent output you have normalized). `--prune` deletes fixtures that cannot be recorded.
 3. `ms-conform lint` checks metadata, unknown tags, orphaned expectations.

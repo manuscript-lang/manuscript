@@ -143,7 +143,8 @@ impl Checker {
             }
             defaults = renamed;
         }
-        let defaults = (!defaults.is_empty()).then(|| std::rc::Rc::new(defaults));
+        let defaults =
+            (!defaults.is_empty()).then(|| std::rc::Rc::new(ParameterDefaults::new(defaults)));
         let mut info = Info::of(function_with(params, result, defaults));
         if let Some(frame) = &self.return_inference {
             info.inference_deferred = frame.unresolved || frame.context_dependent;

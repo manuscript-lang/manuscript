@@ -26,7 +26,7 @@ const URL: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012
 
 // Both alphabets are fixed. Build their decoding tables once at compile time rather than
 // initializing 256 entries and installing the alphabet for every decoded byte string.
-const fn reverse_alphabet(alpha: &[u8; 64]) -> [u8; 256] {
+const fn reverse_alphabet(alpha: &[u8]) -> [u8; 256] {
     let mut reverse = [0xff; 256];
     let mut i = 0;
     while i < alpha.len() {

@@ -830,10 +830,24 @@ impl FnLower<'_> {
                     captures: vec![held],
                 };
                 let id = self.b.m.add_func(f);
+                // Omission adaptation needs the declared payload types, including the
+                // method's own type arguments fixed by its checked function-value type.
+                let declared = ct::sub(&m.ty, &self.subst);
+                let mut subst = ct::Subst::new();
+                if !ct::unify(
+                    &declared,
+                    &self.ety(e),
+                    &ct::variable_set(&m.variables),
+                    &mut subst,
+                ) {
+                    return Err(Error::new("cannot infer the method value's type arguments"));
+                }
+                let mut method = (**m).clone();
+                method.ty = ct::sub(&declared, &subst);
                 self.cx.queue.push(Job {
                     func: id,
                     kind: JobKind::BoundNative(Rc::new(BoundNativeJob {
-                        method: m.clone(),
+                        method: Rc::new(method),
                         hir: self.hir.clone(),
                         shared: shared.map(|(_, t)| t),
                         scope,
@@ -965,7 +979,8 @@ impl FnLower<'_> {
             f
         };
         let fv = self.borrow(f);
-        let declared = self.ety(callee).params.clone();
+        let checked = self.ety(callee);
+        let declared = &checked.params;
         let ftype = self.ty_of(f.v);
         let TyKind::Fn(ptys, _) = self.b.m.types.kind(ftype).clone() else {
             return Err(Error::new("call of a non-function value"));
@@ -991,11 +1006,33 @@ impl FnLower<'_> {
             let x = self.lift_argument(x, ptys[at]);
             slots[at] = Some(self.borrow(x));
         }
-        // An omitted parameter of a function type is an optional one: it is `none`.
+        // Native invocation defaults are prepared here; other omissions cross as `none`.
         let mut args = Vec::new();
+        let missing_value = checked
+            .defaults
+            .as_ref()
+            .and_then(|d| d.missing_value_at_call());
         for (i, s) in slots.into_iter().enumerate() {
             args.push(match s {
                 Some(v) => v,
+                None if missing_value == Some(declared[i].name)
+                    && declared[i].ty.is_std("Optional")
+                    && declared[i].ty.args[0].is_std("MissingValue") =>
+                {
+                    self.at(e.pos);
+                    let cause_ty = self.mty(&declared[i].ty.args[0])?;
+                    let cause = self.missing_value_at(cause_ty, e.pos)?;
+                    let cause = self.owned(cause);
+                    let present = self.b.opt_some(cause);
+                    let supplied = self.lift_argument(
+                        Val {
+                            v: present,
+                            own: true,
+                        },
+                        ptys[i],
+                    );
+                    self.borrow(supplied)
+                }
                 None if matches!(self.b.m.types.kind(ptys[i]), TyKind::Opt(_)) => {
                     self.b.opt_none(ptys[i])
                 }
@@ -1293,9 +1330,31 @@ impl FnLower<'_> {
     ) -> Result<Vec<crate::native::NArg>, Error> {
         let mut args: Vec<crate::native::NArg> = Vec::new();
         for (i, (p, v)) in params.iter().zip(vals).enumerate() {
-            let lifted = !p.ty.is_std("Optional")
-                && matches!(self.b.m.types.kind(self.ty_of(*v)), TyKind::Opt(_));
-            let val = if lifted {
+            let default = func.and_then(|f| f.params.get(i)?.default.as_ref());
+            let omittable = default.is_some() || p.ty.is_std("Optional");
+            let passed = self.ty_of(*v);
+            let declared = if omittable && matches!(self.b.m.types.kind(passed), TyKind::Opt(_)) {
+                self.mty(&p.ty)?
+            } else {
+                passed
+            };
+            let lifted = passed != declared;
+            let none_default = p.ty.is_std("Optional")
+                && default
+                    .is_none_or(|d| matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none"));
+            let val = if lifted && none_default {
+                // Native/interface arguments borrow their caller's values. A supplied payload and
+                // the implicit none both live through this call; copying here would make
+                // even an ignored cause pay copy/drop costs before the native reads it.
+                let supplied = self.b.opt_is_some(*v);
+                self.two_ways_mode(
+                    supplied,
+                    declared,
+                    Mode::Borrow,
+                    &mut |s| Ok(Some(s.b.opt_get(*v))),
+                    &mut |s| Ok(Some(s.b.opt_none(declared))),
+                )?
+            } else if lifted {
                 self.unlift_param(*v, &mut |s| {
                     let mut tmp: Vec<crate::native::NArg> = params
                         .iter()
@@ -1367,9 +1426,9 @@ fn lower_bound_native(
             .expect("capture");
     let recv = Val { v: cap, own: false };
     let func = job.method.decl.as_ref().and_then(|d| d.func());
+    let ret = fl.ret_ty;
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
-    let ret = fl.ret_ty;
     if job.shared.is_some() {
         let out = fl.shared_native_call(&job.method, cap, recv_ty, &args, ret)?;
         fl.emit_return(Some(out));
@@ -1509,13 +1568,13 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
     }
     let bindings = fl.hir.lambda_parameters(&job.expr);
     for (i, (b, v)) in bindings.iter().zip(params.iter().skip(1)).enumerate() {
-        let lifted =
-            matches!(fl.b.m.types.kind(fl.ty_of(*v)), TyKind::Opt(_)) && !b.ty.is_std("Optional");
+        let default = lam.params.get(i).and_then(|p| p.default.as_ref());
+        // Only an extra ABI wrapper denotes omission; T itself may instantiate as Optional.
+        let lifted = default.is_some()
+            && matches!(fl.b.m.types.kind(fl.ty_of(*v)), TyKind::Opt(_))
+            && fl.ty_of(*v) != fl.mty(&b.ty)?;
         if lifted {
-            let d = lam.params.get(i).and_then(|p| p.default.as_ref());
-            let Some(d) = d else {
-                return Err(Error::new("optional parameter without a default"));
-            };
+            let d = default.expect("lifted parameter has a default");
             let x = fl.unlift_param(*v, &mut |s| s.expr(d))?;
             fl.bind_local(b, x);
         } else if mutated.contains(&b.uid) && fl.needs_drop(fl.ty_of(*v)) {

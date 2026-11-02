@@ -38,7 +38,7 @@ pub fn run(m: &mut Module) -> bool {
             f = merged;
             any = true;
         }
-        while convert_one(m, &mut f, &positive) {
+        while convert_all(m, &mut f, &positive) {
             any = true;
         }
         if any {
@@ -95,7 +95,7 @@ fn merge_returns(m: &Module, f: &Func, positive: &HashSet<Value>) -> Option<Func
     }
     let before = condbrs(&g);
     let mut any = false;
-    while convert_one(m, &mut g, positive) {
+    while convert_all(m, &mut g, positive) {
         any = true;
     }
     (any && condbrs(&g) + rets.len() - 1 <= before).then_some(g)
@@ -205,12 +205,13 @@ fn scalar(m: &Module, f: &Func, v: Value) -> bool {
     matches!(m.types.kind(t), TyKind::Bool) || m.types.is_scalar(t)
 }
 
-fn convert_one(m: &Module, f: &mut Func, positive: &HashSet<Value>) -> bool {
+fn convert_all(m: &Module, f: &mut Func, positive: &HashSet<Value>) -> bool {
     let mut edges = vec![0usize; f.blocks.len()];
     for b in &f.blocks {
         b.term.for_each_target(|t| edges[t.block.index()] += 1);
     }
-    for a in 0..f.blocks.len() {
+    let mut changed = false;
+    'heads: for a in 0..f.blocks.len() {
         let Term::CondBr { cond, then, els } = f.blocks[a].term.clone() else {
             continue;
         };
@@ -245,6 +246,14 @@ fn convert_one(m: &Module, f: &mut Func, positive: &HashSet<Value>) -> bool {
             if !ta.args.iter().chain(&ea.args).all(|&v| scalar(m, f, v)) {
                 continue;
             }
+            // Keep counts current as this diamond is removed. Converting only one
+            // head per sweep rebuilt the whole CFG for every independent diamond.
+            for b in [Some(a), ta.block, ea.block].into_iter().flatten() {
+                f.blocks[b]
+                    .term
+                    .for_each_target(|t| edges[t.block.index()] -= 1);
+            }
+            edges[j] += 1;
             let loc = f.blocks[a].term_loc;
             let mut insts = Vec::new();
             hoist(f, &ta, &mut insts);
@@ -270,8 +279,9 @@ fn convert_one(m: &Module, f: &mut Func, positive: &HashSet<Value>) -> bool {
                 block: Block(j as u32),
                 args,
             });
-            return true;
+            changed = true;
+            continue 'heads;
         }
     }
-    false
+    changed
 }

@@ -7,12 +7,16 @@ Decision: the user wants parsing, checking, and lowering to stay linear (or n lo
 Verified: type-suffix sugar must move the accumulated syntax tree into each wrapper. Cloning it for every `?` or `!` copies all preceding wrappers and makes construction quadratic; preserve node IDs and positions while removing the discarded copies.
 Evidence: [suffix parser](../../crates/ms-syntax/src/parser.rs), [shape and position regressions](../../crates/ms-syntax/tests/type_suffix.rs), [interleaved parser measurements](../../bench/perf/parser-suffix/README.md).
 
+Verified: interpolation positions must advance through each literal prefix once. Recomputing the line and byte position from the start of the text for every interpolation token makes both long expressions and many short interpolations quadratic, especially in multiline text. The lexer rejects physical newlines inside expressions, so their token positions are relative byte offsets from one computed origin. Preserve nested/error attribution and LF/CRLF behavior when changing that mapping.
+Evidence: [interpolation position regressions](../../crates/ms-syntax/tests/interpolation_positions.rs).
+
 Verified: replaying failed type-argument speculation must preserve the token cursor, final nesting depth, consumed node IDs and diagnostic; include starting depth in the key so a nesting-limit failure is not treated as an unconditional grammar failure. Record only nested, retry-eligible failures, and measure shallow indexing: unconditional cache work can erase gains on ordinary input.
 Evidence: [speculative parser](../../crates/ms-syntax/src/parser.rs), [metadata regressions](../../crates/ms-syntax/tests/bracket_speculation.rs), [accepted and rejected measurements](../../bench/perf/parser-speculation/README.md).
 
 Verified: repeatedly recomputing use counts and scanning a function to delete the last unused instruction makes dead-expression chains quadratic. Decrement operand use counts as dead users are removed, and visit newly dead definitions with a worklist. Preserve faulting instructions and owned results as roots.
 
 Verified: LLVM's SLP vectorizer (in `opt`) and machine scheduler (in `llc`) are quadratic in the length of one function, so a 20000-element list literal built in 127s in Release against 0.4s in Cranelift. A function body over 12000 IR lines turns both off for the module; loop vectorization stays on. Time Release builds, not only Debug, at N/2N/4N, and read `opt -time-passes` and `llc -time-passes` before blaming the frontend.
+Count definition lines rather than trailing metadata. Keep quoted metadata fields on one physical line with LLVM byte escapes: literal line breaks in a filename or scope name can otherwise manufacture apparent `define` or closing-brace lines for a textual size heuristic.
 Verified: an LLVM `br` on a compare that Cranelift widened to `i8` (`zext`, then `icmp ne 0`) made InstCombine 8x slower on an 8000-arm `if n == k: return` chain (15s to 2s), and a leftover unused `zext` blocked SimplifyCFG from turning the chain into a switch. Branch and select conditions use the `i1` directly; only values with a data use are widened.
 Evidence: [LLVM invocation](../../crates/ms-clif/src/llvm_obj.rs), [large literal regression](../../crates/ms-cli/tests/llvm.rs), [i1 condition test](../../crates/ms-clif/src/llvm_ir.rs).
 

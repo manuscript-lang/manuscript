@@ -355,4 +355,4 @@ export fn ascii_decode(data: Bytes) String!EncodingError:
     let bytes = data.values()
     for byte in bytes:
         if byte > 127: return error(EncodingError.InvalidData)
-    return ok(text_of(bytes.map(fn b: b.to_int())))
+    return ok(data.decode_utf8().get(""))

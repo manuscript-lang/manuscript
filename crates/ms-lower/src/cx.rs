@@ -335,7 +335,7 @@ impl Cx {
                 for p in &t.params {
                     let pt = self.lower_ty(m, &p.ty)?;
                     // A parameter that may be omitted crosses a function value as an optional.
-                    let lifted = t.is_lifted(p.name) && !p.ty.is_std("Optional");
+                    let lifted = t.is_lifted(p.name);
                     params.push(if lifted { m.types.opt(pt) } else { pt });
                 }
                 let ret = self.lower_ty(m, &t.result_ty())?;
