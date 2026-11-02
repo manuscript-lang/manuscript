@@ -11,7 +11,8 @@ static B32HEX_REVERSE: [u8; 256] = reverse_alphabet(B32HEX);
 
 /// Encodes `data` in groups of `bits`-bit symbols; `group` is the symbols per full block (8 or 4).
 fn encode(data: &[u8], alpha: &[u8], bits: u32, group: usize, pad: bool) -> String {
-    let mut out = String::with_capacity(data.len().div_ceil(bits as usize) * group);
+    let bytes_per_group = bits as usize * group / 8;
+    let mut out = String::with_capacity(data.len().div_ceil(bytes_per_group) * group);
     let (mut acc, mut held) = (0u32, 0u32);
     let mut symbols = 0;
     for &byte in data {
@@ -49,6 +50,10 @@ fn decode(
     let t = text.as_bytes();
     let pad = t.iter().rev().take_while(|&&c| c == b'=').count();
     let n = t.len() - pad;
+    // Base32 rejects interior padding before considering the output budget.
+    if bits == 5 && t[..n].contains(&b'=') {
+        return Err(Fail::InvalidData);
+    }
     // Padding belongs only to padded text, only at the end, and completes the last block.
     if (pad > 0 && !padded) || (padded && !t.len().is_multiple_of(group)) {
         return Err(Fail::InvalidData);
