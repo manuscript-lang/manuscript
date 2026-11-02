@@ -5,7 +5,7 @@
 //! - sized numbers and `Bool` cross directly as their C types (the code generator narrows and
 //!   extends them, see `ms_mir::ir::Module::c_externs`);
 //! - `String` and `Bytes` are lent by pointer, a `List[T]` as an `ms_list` naming its element
-//!   type, an `extern type` as its object;
+//!   type, an `extern type` as its object, a function as an `ms_fn` (see `function_argument`);
 //! - a result that is not a number comes back through a trailing `out`, followed by `code_out`
 //!   and `message_out` when the error type has those fields. Every output is filled with an
 //!   empty value before the call and dropped after it, so a shim that writes the wrong output,
@@ -15,11 +15,13 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
-use ms_mir::ir::{FaultKind, Imm, Op, Value};
+use ms_mir::builder::FuncBuilder;
+use ms_mir::ir::{FaultKind, FuncId, FuncKind, Imm, Mode, Op, Param, Value};
 use ms_mir::types::{AltId, Ty as MTy, TyKind};
 use ms_rt_abi::{
-    ELEM_BOOL, ELEM_BYTES, ELEM_FLOAT32, ELEM_FLOAT64, ELEM_INT8, ELEM_INT16, ELEM_INT32,
-    ELEM_INT64, ELEM_OBJECT, ELEM_STRING, ELEM_UINT8, ELEM_UINT16, ELEM_UINT32, ELEM_UINT64,
+    CALL_MAX_PARAMS, ELEM_BOOL, ELEM_BYTES, ELEM_FLOAT32, ELEM_FLOAT64, ELEM_INT8, ELEM_INT16,
+    ELEM_INT32, ELEM_INT64, ELEM_OBJECT, ELEM_STRING, ELEM_UINT8, ELEM_UINT16, ELEM_UINT32,
+    ELEM_UINT64,
 };
 use ms_syntax::ast::Expr;
 
@@ -49,28 +51,29 @@ impl FnLower<'_> {
         let result = self.emty(e)?;
         self.b.m.c_externs.insert(symbol.to_string());
         let mut vals: Vec<Value> = Vec::new();
+        let mut fns: Vec<Value> = Vec::new();
         for a in &args {
             let v = self.borrow(a.val);
-            self.extern_argument(v, &mut vals)?;
+            self.extern_argument(v, &mut vals, &mut fns)?;
         }
         self.at(e.pos);
         if let TyKind::Alt(a) = self.b.m.types.kind(result).clone() {
-            return self.extern_result(symbol, a, result, &mut vals);
+            return self.extern_result(symbol, a, result, &mut vals, &fns);
         }
         if result == MTy::UNIT {
-            self.call_runtime(symbol, &vals, MTy::UNIT)?;
+            self.call_shim(symbol, &vals, MTy::UNIT, &fns)?;
             return Ok(Val {
                 v: self.b.unit(),
                 own: false,
             });
         }
         if self.is_c_scalar(result) {
-            let v = self.call_runtime(symbol, &vals, result)?;
+            let v = self.call_shim(symbol, &vals, result, &fns)?;
             return Ok(Val { v, own: false });
         }
         if matches!(self.b.m.types.kind(result), TyKind::Obj(..)) {
             // An object comes back as a pointer the shim must not leave NULL.
-            let p = self.call_runtime(symbol, &vals, MTy::PTR)?;
+            let p = self.call_shim(symbol, &vals, MTy::PTR, &fns)?;
             let slot = self.empty_slot(result);
             self.b.emit(Op::Store, &[slot, p], Imm::None, None);
             let v = self.checked_object(symbol, slot, result);
@@ -78,9 +81,25 @@ impl FnLower<'_> {
         }
         let slot = self.empty_slot(result);
         self.push_output(slot, result, &mut vals);
-        self.call_runtime(symbol, &vals, MTy::UNIT)?;
+        self.call_shim(symbol, &vals, MTy::UNIT, &fns)?;
         let v = self.move_out(slot, result);
         Ok(Val { v, own: true })
+    }
+
+    /// Calls the shim, then releases the `ms_fn` handles made for its function arguments (a
+    /// shim that keeps one holds its own reference).
+    fn call_shim(
+        &mut self,
+        symbol: &str,
+        vals: &[Value],
+        ret: MTy,
+        fns: &[Value],
+    ) -> Result<Value, Error> {
+        let r = self.call_runtime(symbol, vals, ret)?;
+        for f in fns {
+            self.call_runtime("msrt_release", &[*f], MTy::UNIT)?;
+        }
+        Ok(r)
     }
 
     /// Whether `t` is a number or `Bool`, which crosses in a register.
@@ -154,9 +173,21 @@ impl FnLower<'_> {
         Ok(r)
     }
 
-    /// Appends the native form of one borrowed argument.
-    fn extern_argument(&mut self, v: Value, vals: &mut Vec<Value>) -> Result<(), Error> {
+    /// Appends the native form of one borrowed argument; an `ms_fn` made for a function
+    /// argument is also added to `fns`.
+    fn extern_argument(
+        &mut self,
+        v: Value,
+        vals: &mut Vec<Value>,
+        fns: &mut Vec<Value>,
+    ) -> Result<(), Error> {
         let t = self.ty_of(v);
+        if matches!(self.b.m.types.kind(t), TyKind::Fn(..)) {
+            let f = self.function_argument(v, t)?;
+            vals.push(f);
+            fns.push(f);
+            return Ok(());
+        }
         if self.is_c_scalar(t) || t == MTy::STR || matches!(self.b.m.types.kind(t), TyKind::Obj(..))
         {
             // Numbers in registers; a string as its value (lowered to a pointer); an object as itself.
@@ -244,6 +275,7 @@ impl FnLower<'_> {
         a: AltId,
         result: MTy,
         vals: &mut Vec<Value>,
+        fns: &[Value],
     ) -> Result<Val, Error> {
         let ok = self.ok_case_index(a)?;
         let err = 1 - ok;
@@ -275,7 +307,7 @@ impl FnLower<'_> {
             slot
         });
         let outputs = Outputs { out, code, message };
-        let raw = self.call_runtime(symbol, vals, MTy::INT)?;
+        let raw = self.call_shim(symbol, vals, MTy::INT, fns)?;
         let mask = self.b.iconst(0xff);
         let status = self.b.binop(Op::And, raw, mask);
         let zero = self.b.iconst(0);
@@ -379,5 +411,123 @@ impl FnLower<'_> {
             },
         )?;
         Ok(r.v)
+    }
+
+    /// The `ms_fn` for a borrowed function argument: a runtime object holding a closure that
+    /// calls `f` with arguments the runtime has converted from `ms_value`s, and the signature
+    /// `ms_call` checks them against (see `ms_rt::cabi::ms_call_v1`).
+    fn function_argument(&mut self, f: Value, fty: MTy) -> Result<Value, Error> {
+        let TyKind::Fn(ps, ret) = self.b.m.types.kind(fty).clone() else {
+            return Err(Error::new("an ms_fn needs a function"));
+        };
+        if ps.len() > CALL_MAX_PARAMS {
+            return Err(Error::new(
+                "a function an extern takes has too many parameters",
+            ));
+        }
+        let code = |s: &Self, t: MTy| -> Result<u64, Error> {
+            if t == MTy::UNIT {
+                return Ok(0);
+            }
+            let elem = s.elem_code(t)?;
+            Ok((elem & 0xff) | ((elem >> 8) & 0xf) << 4)
+        };
+        let mut sig = ps.len() as u64;
+        for (i, p) in ps.iter().enumerate() {
+            sig |= code(self, *p)? << (8 * (i + 1));
+        }
+        sig |= code(self, ret)? << 56;
+        let thunk = self.invoke_thunk(fty, &ps, ret);
+        let held = self.owned(Val { v: f, own: false });
+        let wty = self.b.m.types.func(vec![MTy::PTR], MTy::UNIT);
+        let wrapper = self
+            .b
+            .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(wty))
+            .expect("closure");
+        let sig = self.b.iconst(sig as i64);
+        let handle = self.call_runtime("msrt_fn_new", &[wrapper, sig], MTy::PTR)?;
+        self.drop_value(wrapper);
+        Ok(handle)
+    }
+
+    /// The closure body behind an `ms_fn` of type `fty`: takes its arguments out of the
+    /// runtime's 24-byte cells, calls the captured function, and puts the result in the cell
+    /// after the last argument slot.
+    fn invoke_thunk(&mut self, fty: MTy, ps: &[MTy], ret: MTy) -> FuncId {
+        let key = format!("ms_fn:{}", fty.index());
+        if let Some(t) = self.cx.helpers.get(&key) {
+            return *t;
+        }
+        let drops: Vec<bool> = ps.iter().map(|p| self.needs_drop(*p)).collect();
+        let ret_drops = self.needs_drop(ret);
+        let (_, cell) = self.b.m.add_record(
+            "ms_fn_cell",
+            vec![
+                ("a".into(), MTy::INT),
+                ("b".into(), MTy::INT),
+                ("c".into(), MTy::INT),
+            ],
+        );
+        let (frame, _) = self.b.m.add_record(
+            "ms_fn_frame",
+            (0..=CALL_MAX_PARAMS)
+                .map(|i| (format!("c{i}"), cell))
+                .collect(),
+        );
+        let params = vec![
+            Param {
+                ty: MTy::PTR,
+                mode: Mode::Borrow,
+            },
+            Param {
+                ty: MTy::PTR,
+                mode: Mode::Borrow,
+            },
+        ];
+        let mut b = FuncBuilder::new(self.b.m, "ms_fn_invoke", params, MTy::UNIT);
+        b.func_mut().kind = FuncKind::Closure {
+            captures: vec![fty],
+        };
+        let me = b.params();
+        let target = b
+            .emit(Op::ClosureCap, &[me[0]], Imm::Idx(0), Some(fty))
+            .expect("capture");
+        let mut args = Vec::new();
+        for (i, p) in ps.iter().enumerate() {
+            let at = b
+                .emit(
+                    Op::PtrField,
+                    &[me[1]],
+                    Imm::Field(frame, i as u32),
+                    Some(MTy::PTR),
+                )
+                .expect("cell");
+            let op = if drops[i] { Op::Take } else { Op::Load };
+            args.push(b.emit(op, &[at], Imm::Ty(*p), Some(*p)).expect("argument"));
+        }
+        let r = b.call_ind(target, &args);
+        for (a, d) in args.iter().zip(&drops) {
+            if *d {
+                b.emit(Op::Drop, &[*a], Imm::None, None);
+            }
+        }
+        if ret != MTy::UNIT {
+            let at = b
+                .emit(
+                    Op::PtrField,
+                    &[me[1]],
+                    Imm::Field(frame, CALL_MAX_PARAMS as u32),
+                    Some(MTy::PTR),
+                )
+                .expect("cell");
+            let op = if ret_drops { Op::Put } else { Op::Store };
+            b.emit(op, &[at, r], Imm::None, None);
+        }
+        let unit = b.unit();
+        b.ret(Some(unit));
+        let f = b.into_func();
+        let id = self.b.m.add_func(f);
+        self.cx.helpers.insert(key, id);
+        id
     }
 }

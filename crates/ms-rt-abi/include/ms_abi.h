@@ -37,6 +37,11 @@ extern "C" {
 #define ms_retain ms_retain_v1
 #define ms_release ms_release_v1
 #define ms_fault ms_fault_v1
+#define ms_call ms_call_v1
+#define ms_fn_retain ms_fn_retain_v1
+#define ms_fn_release ms_fn_release_v1
+#define ms_on_stop ms_on_stop_v1
+#define ms_on_stop_remove ms_on_stop_remove_v1
 
 /* ---- 2. Status codes ----------------------------------------------------------------- */
 typedef enum ms_status {
@@ -118,6 +123,30 @@ void       ms_release(ms_object *o);
    rest. */
 /* An unrecoverable error: reported and cleaned up like a Manuscript fault. */
 MS_NORETURN void ms_fault(const char *text, size_t len);
+
+/* ---- 8. Calling Manuscript functions ------------------------------------------------- */
+/* A function argument (`f: fn(Int) Bool`) is a borrowed `ms_fn *`. Its parameters (at most
+   6) are sized numbers, Bool, String, Bytes or extern types; its result one of those
+   but an extern type, or Unit. */
+typedef struct ms_fn ms_fn;
+/* Calls f on this thread with copies of `count` arguments. An integer must have the kind
+   (MS_INT or MS_UINT) and range of its parameter, a string must be UTF-8, an object is
+   retained; anything else faults before the call. `result` (may be NULL) receives the value
+   as ms_list_get gives it: strings and bytes are malloc'd copies (ms_value_free). A fault in f
+   is a fault of the program; ms_call does not return from it. */
+void   ms_call(ms_fn *f, const ms_value *args, size_t count, ms_value *result);
+/* Keep f after the extern call returns, and drop it, on the thread that called the shim. */
+ms_fn *ms_fn_retain(ms_fn *f);
+void   ms_fn_release(ms_fn *f);
+
+/* ---- 10. Stop requests --------------------------------------------------------------- */
+typedef struct ms_stop_hook ms_stop_hook;
+/* fn(arg) runs when a stop is requested (SIGINT, SIGTERM, Ctrl-C), from a signal handler or
+   another thread, so it may only do async-signal-safe work: set a flag, write to a pipe, call
+   uv_async_send. Use it to return from a C call that blocks. NULL when 32 hooks are
+   set. */
+ms_stop_hook *ms_on_stop(void (*fn)(void *arg), void *arg);
+void          ms_on_stop_remove(ms_stop_hook *h);
 
 /* Before version 1: the same as ms_string_new on an empty `out`. */
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);

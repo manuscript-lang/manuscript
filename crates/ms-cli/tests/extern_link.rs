@@ -19,7 +19,11 @@ fn compile_shim() -> PathBuf {
 /// Compiles `tests/extern_link/<name>.c` against `ms_abi.h`.
 fn compile(name: &str) -> PathBuf {
     let manifest = env!("CARGO_MANIFEST_DIR");
-    let object = std::env::temp_dir().join(format!("ms-extern-{name}-{}.o", std::process::id()));
+    // Unique per call: tests in one process may compile the same shim at once.
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let object =
+        std::env::temp_dir().join(format!("ms-extern-{name}-{}-{n}.o", std::process::id()));
     // CI sets CC where the default `cc` is not the host architecture (Windows on arm64).
     let cc = std::env::var("CC").unwrap_or_else(|_| "cc".into());
     let status = Command::new(&cc)
@@ -90,7 +94,12 @@ fn every_signature_type_round_trips_on_both_backends() {
              drops 2\n\
              ok 43 error failed at 1: not a digit error empty error unknown 7\n\
              drops 3\n\
-             fine []\n",
+             fine []\n\
+             19\n\
+             ab -3 true 2.5 2\n\
+             fired 41\n\
+             fired 42\n\
+             drops 4\n",
             "{build_type}"
         );
         for (mode, fault) in [
@@ -107,11 +116,78 @@ fn every_signature_type_round_trips_on_both_backends() {
                 "extern fn abi_bad_status returned a status that names no case of ParseError",
             ),
             ("fault", "the shim gave up"),
+            (
+                "callkind",
+                "ms_call received MS_STRING for parameter 1 of type Int",
+            ),
+            ("callfault", "the shim gave up"),
         ] {
             let (code, out) = run_abi(&object, build_type, mode);
             assert_eq!(code, Some(67), "{build_type} {mode}: {out}");
             assert!(out.contains(fault), "{build_type} {mode}: {out}");
         }
     }
+    let _ = std::fs::remove_file(&object);
+}
+
+/// A shim blocked in C returns when a stop hook runs, and the program then stops with 130. The
+/// shim requests the stop itself: SIGINT on Unix, Ctrl-Break to its own process group on Windows.
+#[test]
+fn a_stop_hook_ends_a_blocked_shim() {
+    use std::io::Read;
+    use std::process::Stdio;
+    let object = compile("abi");
+    let file = format!("{}/tests/extern_link/abi.ms", env!("CARGO_MANIFEST_DIR"));
+    let exe = object.with_extension(if cfg!(windows) { "exe" } else { "stop" });
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .args(["build", &file, "--link"])
+        .arg(&object)
+        .arg("-o")
+        .arg(&exe)
+        .output()
+        .unwrap();
+    assert!(built.status.success(), "{}", text(&built));
+    let mut command = Command::new(&exe);
+    command
+        .arg("stop")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    #[cfg(windows)]
+    {
+        // A group of its own, so Ctrl-Break reaches the program and not the test runner.
+        use std::os::windows::process::CommandExt;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x200;
+        command.creation_flags(CREATE_NEW_PROCESS_GROUP);
+    }
+    let mut child = command.spawn().unwrap();
+    // A shim that never returns fails the test instead of hanging it.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status;
+        }
+        if std::time::Instant::now() > deadline {
+            let _ = child.kill();
+            panic!("the shim did not return within 20s of the stop request");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    };
+    let mut out = String::new();
+    child
+        .stdout
+        .take()
+        .unwrap()
+        .read_to_string(&mut out)
+        .unwrap();
+    let mut err = String::new();
+    child
+        .stderr
+        .take()
+        .unwrap()
+        .read_to_string(&mut err)
+        .unwrap();
+    assert_eq!(out, "hooks 1\n", "stderr: {err}");
+    assert_eq!(status.code(), Some(130), "stderr: {err}");
+    let _ = std::fs::remove_file(&exe);
     let _ = std::fs::remove_file(&object);
 }

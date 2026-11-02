@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "extern parameter values has type Map, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them",
+        "message": "extern parameter values has type Map, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, Lists of them, and functions of them",
         "position": {
           "file": "extern-signature-rejected.ms",
           "line": 12,
@@ -31,7 +31,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "extern parameter values has type List, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them",
+        "message": "extern parameter values has type List, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, Lists of them, and functions of them",
         "position": {
           "file": "extern-signature-rejected.ms",
           "line": 14,
@@ -53,19 +53,30 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "extern parameter f has type fn, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them",
+        "message": "extern parameter f has type fn(Map[String, Int]) Int, which cannot cross the native boundary; a function an extern takes has at most 6 parameters of sized numbers, Bool, String, Bytes or extern types this program declares, and returns a number, Bool, String, Bytes or Unit",
         "position": {
           "file": "extern-signature-rejected.ms",
           "line": 16,
           "column": 25,
           "offset": 433
         }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "extern parameter f has type fn() Handle, which cannot cross the native boundary; a function an extern takes has at most 6 parameters of sized numbers, Bool, String, Bytes or extern types this program declares, and returns a number, Bool, String, Bytes or Unit",
+        "position": {
+          "file": "extern-signature-rejected.ms",
+          "line": 17,
+          "column": 26,
+          "offset": 492
+        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/extern-signature-rejected.ms:12:21: type: extern parameter values has type Map, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them\n    |\n 12 | extern fn takes_map(values: Map[String, Int]) Unit\n    |                     ^\n<DIR>/extern-signature-rejected.ms:13:30: type: extern result has type Optional, which cannot cross the native boundary; an extern returns sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them, Unit, or a Result of one\n    |\n 13 | extern fn returns_optional() Int?\n    |                              ^\n<DIR>/extern-signature-rejected.ms:14:23: type: extern parameter values has type List, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them\n    |\n 14 | extern fn nested_list(values: List[List[Int]]) Unit\n    |                       ^\n<DIR>/extern-signature-rejected.ms:15:25: type: extern error type Wrong must be an alternative whose cases carry nothing, `code: Int`, `message: String`, or both; the native returns the status 1 + the case index and fills code_out and message_out\n    |\n 15 | extern fn wrong_error() Handle!Wrong\n    |                         ^\n<DIR>/extern-signature-rejected.ms:16:25: type: extern parameter f has type fn, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them\n    |\n 16 | extern fn takes_closure(f: fn() Int) Unit\n    |                         ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/extern-signature-rejected.ms:12:21: type: extern parameter values has type Map, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, Lists of them, and functions of them\n    |\n 12 | extern fn takes_map(values: Map[String, Int]) Unit\n    |                     ^\n<DIR>/extern-signature-rejected.ms:13:30: type: extern result has type Optional, which cannot cross the native boundary; an extern returns sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them, Unit, or a Result of one\n    |\n 13 | extern fn returns_optional() Int?\n    |                              ^\n<DIR>/extern-signature-rejected.ms:14:23: type: extern parameter values has type List, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, Lists of them, and functions of them\n    |\n 14 | extern fn nested_list(values: List[List[Int]]) Unit\n    |                       ^\n<DIR>/extern-signature-rejected.ms:15:25: type: extern error type Wrong must be an alternative whose cases carry nothing, `code: Int`, `message: String`, or both; the native returns the status 1 + the case index and fills code_out and message_out\n    |\n 15 | extern fn wrong_error() Handle!Wrong\n    |                         ^\n<DIR>/extern-signature-rejected.ms:16:25: type: extern parameter f has type fn(Map[String, Int]) Int, which cannot cross the native boundary; a function an extern takes has at most 6 parameters of sized numbers, Bool, String, Bytes or extern types this program declares, and returns a number, Bool, String, Bytes or Unit\n    |\n 16 | extern fn takes_closure(f: fn(Map[String, Int]) Int) Unit\n    |                         ^\n<DIR>/extern-signature-rejected.ms:17:26: type: extern parameter f has type fn() Handle, which cannot cross the native boundary; a function an extern takes has at most 6 parameters of sized numbers, Bool, String, Bytes or extern types this program declares, and returns a number, Bool, String, Bytes or Unit\n    |\n 17 | extern fn returns_handle(f: fn() Handle) Unit\n    |                          ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
