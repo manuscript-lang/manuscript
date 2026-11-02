@@ -1,13 +1,7 @@
 name: Cache maintenance
 
-# Two jobs. `warm` starts a manual CI/CD run on main at most once an hour, because only a finished
-# manual run saves the sccache caches (push runs are replaced before they finish). It starts from
-# the end of any push run on main and from an hourly schedule. GitHub runs schedules on a best-effort
-# basis (one of about seven hourly slots ran in the first seven hours, #2158), so the schedule only
-# covers quiet hours and the workflow_run trigger is what keeps the caches warm. `prune` keeps one
-# cache per name.
-#
-# Keeps one cache per name. A lockfile change writes a new cargo cache and nothing removes the old
+# Every push to main runs the full CI/CD matrix, which saves the sccache caches. This workflow
+# keeps one cache per name. A lockfile change writes a new cargo cache and nothing removes the old
 # one, so copies pile up until GitHub evicts at the 10 GB limit and takes live entries with it.
 # Only main saves caches; entries from pull request refs and from the earlier rust-cache and lld
 # keys are dead and go too.
@@ -18,8 +12,6 @@ on:
     workflows: [CI/CD]
     types: [completed]
     branches: [main]
-  schedule:
-    - cron: '17 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -30,28 +22,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  warm:
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Start a manual CI/CD run on main unless one is pending or started within the hour
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          last=$(gh run list --workflow cicd.yml --event workflow_dispatch --branch main --limit 1 \
-            --json status,createdAt --jq '.[0] // empty | "\(.status) \(.createdAt)"')
-          status=${last%% *}
-          started=$(date -d "${last#* }" +%s 2>/dev/null || echo 0)
-          if [ -n "$last" ] && [ "$status" != completed ]; then
-            echo "A manual run is already pending"
-          elif [ $(( $(date +%s) - started )) -lt 3300 ]; then
-            echo "The last manual run started within the hour"
-          else
-            gh workflow run cicd.yml --ref main
-          fi
-
   prune:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

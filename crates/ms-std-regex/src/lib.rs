@@ -114,6 +114,15 @@ impl Regex {
 
     pub fn find_all(&self, text: &str, max: Option<i64>) -> Result<Vec<String>, Fail> {
         let max = limit(max)?;
+        if max == 0 {
+            #[cfg(test)]
+            self.scans.set(self.scans.get() + 1);
+            return if self.pattern.is_match(text) {
+                Err(Fail::LimitExceeded)
+            } else {
+                Ok(Vec::new())
+            };
+        }
         let n = max.min(text.len() + 1);
         let spans = self.spans(text, n + 1);
         if spans.len() > n {
@@ -145,6 +154,15 @@ impl Regex {
     /// [`captures`](Self::captures) for every match, under the `find_all` match budget.
     pub fn captures_all(&self, text: &str, max: Option<i64>) -> Result<Vec<Vec<String>>, Fail> {
         let max = limit(max)?;
+        if max == 0 {
+            #[cfg(test)]
+            self.scans.set(self.scans.get() + 1);
+            return if self.pattern.is_match(text) {
+                Err(Fail::LimitExceeded)
+            } else {
+                Ok(Vec::new())
+            };
+        }
         let n = max.min(text.len() + 1);
         let spans = self.spans(text, n + 1);
         if spans.len() > n {
@@ -551,14 +569,77 @@ mod tests {
 
     #[test]
     fn incremental_spans_match_the_bounded_collector() {
-        for pattern in ["", "a*", "a", "é|🙂"] {
+        for pattern in [
+            "",
+            "a*",
+            "a",
+            "é|🙂",
+            "a*?",
+            "a+?",
+            "a|",
+            "|a",
+            "^",
+            "$",
+            "(?m)^a|b$",
+            r"\b",
+            r"\B",
+            "(a)?()",
+        ] {
             let re = compile(pattern).unwrap();
-            for text in ["", "a🙂a", "é🙂é", "\na\n"] {
+            for text in ["", "a🙂a", "é🙂é", "\na\n", "za b\na b", "é a", "aaaaaaaaa"] {
+                let expected = re.spans_iter(text).collect::<Vec<_>>();
                 assert_eq!(
-                    re.spans_iter(text).collect::<Vec<_>>(),
                     re.spans(text, usize::MAX),
+                    expected,
                     "pattern {pattern:?}, text {text:?}"
                 );
+                for max in [0, 1, 2, 4, 8, expected.len(), expected.len() + 1] {
+                    let bounded: Vec<_> = expected.iter().copied().take(max).collect();
+                    assert_eq!(
+                        re.spans(text, max),
+                        bounded,
+                        "pattern {pattern:?}, text {text:?}, max {max}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn collected_match_budgets_stop_at_first_overflow() {
+        let text = "x".repeat(10_000);
+        for pattern in ["x", "(x)"] {
+            let re = compile(pattern).unwrap();
+            for max in [0, 1, 4, 8, 128] {
+                re.scans.set(0);
+                assert_eq!(re.find_all(&text, Some(max)), Err(Fail::LimitExceeded));
+                assert_eq!(re.scans.get(), max as usize + 1);
+                re.scans.set(0);
+                assert_eq!(re.captures_all(&text, Some(max)), Err(Fail::LimitExceeded));
+                assert_eq!(re.scans.get(), max as usize + 1);
+
+                let exact = "x".repeat(max as usize);
+                assert_eq!(re.find_all(&exact, Some(max)).unwrap().len(), max as usize);
+                assert_eq!(
+                    re.captures_all(&exact, Some(max)).unwrap().len(),
+                    max as usize
+                );
+            }
+            assert_eq!(re.find_all("none", Some(0)), Ok(Vec::new()));
+            assert_eq!(re.captures_all("none", Some(0)), Ok(Vec::new()));
+            assert_eq!(re.find_all("é🙂", Some(0)), Ok(Vec::new()));
+            assert_eq!(re.captures_all("é🙂", Some(0)), Ok(Vec::new()));
+            re.scans.set(0);
+            assert_eq!(re.find_all(&text, Some(-1)), Err(Fail::InvalidInput));
+            assert_eq!(re.captures_all(&text, Some(-1)), Err(Fail::InvalidInput));
+            assert_eq!(re.scans.get(), 0);
+        }
+        for pattern in ["", "a*", "(a)?()", "^", "$", r"\b"] {
+            let re = compile(pattern).unwrap();
+            for text in ["", "a", "é🙂"] {
+                let expected = re.pattern.find(text).is_some();
+                assert_eq!(re.find_all(text, Some(0)).is_err(), expected);
+                assert_eq!(re.captures_all(text, Some(0)).is_err(), expected);
             }
         }
     }

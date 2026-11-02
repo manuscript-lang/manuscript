@@ -652,6 +652,9 @@ pub unsafe fn eq_map(
         if x.len != y.len {
             return false;
         }
+        // Probe the right-hand index with the identity that built it. A caller outside the
+        // creator's module may have a different implementation, or no hashing glue at all.
+        let kd = &*key_desc(b, kd);
         let l = layout(kd, vd);
         for i in 0..x.used {
             let p = slot(x, &l, i);
@@ -1836,6 +1839,74 @@ mod tests {
             drop_map(&mut a, kd, None);
             drop_map(&mut b, kd, None);
         }
+    }
+
+    #[test]
+    fn equality_uses_the_probed_collections_creator_evidence() {
+        let _g = testutil::lock();
+        let unavailable = TypeDesc {
+            size: 8,
+            align: 8,
+            kind: KIND_CUSTOM,
+            reserved: 0,
+            inner0: core::ptr::null(),
+            inner1: core::ptr::null(),
+            drop: None,
+            copy: None,
+            eq: None,
+            hash: None,
+        };
+        let before = alloc::live_blocks();
+        for map_values in [false, true] {
+            let vd = map_values.then_some(&msrt_desc_int);
+            // SAFETY: both collections hold i64 slots with the same creator's modulo identity;
+            // only the caller's descriptor deliberately lacks that identity's implementations.
+            unsafe {
+                let mut left = empty();
+                let mut right = empty();
+                msrt_map_stamp(&mut left, &MODULO_KEY);
+                msrt_map_stamp(&mut right, &MODULO_KEY);
+                let put = |m: &mut MapVal, mut key: i64, mut value: i64| {
+                    insert(
+                        m,
+                        &MODULO_KEY,
+                        vd,
+                        (&raw mut key).cast(),
+                        (&raw mut value).cast(),
+                    );
+                };
+                put(&mut left, 1, 5);
+                put(&mut left, 2, 6);
+                put(&mut right, 12, 6);
+                put(&mut right, 11, 5);
+                for caller in [&unavailable, &msrt_desc_int] {
+                    assert!(eq_map(&left, &right, caller, vd));
+                    assert!(eq_map(&right, &left, caller, vd));
+                }
+                let mut copied = empty();
+                copy_map(&right, &MODULO_KEY, vd, &mut copied);
+                assert!(eq_map(&left, &copied, &unavailable, vd));
+                drop_map(&mut copied, &MODULO_KEY, vd);
+                if map_values {
+                    put(&mut right, 22, 99);
+                    assert!(!eq_map(&left, &right, &unavailable, vd));
+                    assert!(!eq_map(&right, &left, &unavailable, vd));
+                    put(&mut right, 32, 6);
+                }
+                assert!(remove(
+                    &mut right,
+                    &MODULO_KEY,
+                    vd,
+                    (&11i64 as *const i64).cast()
+                ));
+                put(&mut right, 3, 5);
+                assert!(!eq_map(&left, &right, &unavailable, vd));
+                assert!(!eq_map(&right, &left, &unavailable, vd));
+                drop_map(&mut left, &MODULO_KEY, vd);
+                drop_map(&mut right, &MODULO_KEY, vd);
+            }
+        }
+        assert_eq!(alloc::live_blocks(), before);
     }
 
     #[test]

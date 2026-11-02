@@ -1,11 +1,18 @@
-import Bytes from "@std/bytes.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
+import base64_encode_unpadded from "@std/data/encoding.ms"
+import now from "@std/os/time.ms"
 import panic from "@std/core.ms"
 import (
+    bit_and,
     bit_xor,
+    shift_left,
     shift_right_unsigned,
     wrapping_add,
     wrapping_multiply,
-    max_int
+    cos,
+    log,
+    max_int,
+    sqrt
 ) from "@std/math/math.ms"
 import (
     msstd_random_draw_int,
@@ -29,6 +36,47 @@ export fn secure_int(min: Int, max_exclusive: Int?) Int!:
 # Creates a version-4 UUID from the operating system's entropy.
 export fn uuid_v4() String!:
     return msstd_random_draw_uuid(msstd_random_entropy())
+
+# Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time in milliseconds and 80 random bits.
+# ULIDs made later sort after earlier ones as strings; two made in the same millisecond are ordered randomly.
+# Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return RandomError.
+export fn ulid() String!RandomError:
+    let moment = now()
+    let millis = moment.seconds * 1000 + moment.nanos / 1000000
+    let noise = try random_bytes(10)
+    var raw = BytesBuilder()
+    for place in 0..6:
+        raw.append(
+            bit_and(
+                shift_right_unsigned(millis, 8 * (5 - place)), 255
+            ).to_uint8().get(0)
+        )
+    raw.append_bytes(noise)
+
+    # 128 bits behind two zero bits make exactly 26 five-bit digits.
+    let alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ".chars()
+    var out = ""
+    var pending = 0
+    var held = 2
+
+    for byte in raw.build().values():
+        pending = pending * 256 + byte.to_int()
+        held += 8
+
+        while held >= 5:
+            let digit = bit_and(shift_right_unsigned(pending, held - 5), 31)
+            out = "{out}{alphabet[digit]}"
+            held -= 5
+            pending = bit_and(pending, shift_left(1, held) - 1)
+
+    return ok(out)
+
+# Returns a random token of `size` bytes as unpadded URL-safe Base64, the shape of Python's `secrets.token_urlsafe`.
+# The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API keys and password-reset links.
+# `size` follows `random_bytes`: 0 through 16 MiB, otherwise InvalidInput.
+export fn token(size: Int = 32) String!RandomError:
+    let data = try random_bytes(size)
+    return ok(base64_encode_unpadded(data, url_safe: true))
 
 # Returns a secure Float at least 0.0 and below 1.0 with 53 random bits (JavaScript `Math.random`, but cryptographically secure).
 export fn float() Float!:
@@ -114,3 +162,22 @@ impl SeededRandom:
             return none
 
         return values.get(self.int(0, values.length()))
+
+    # Returns a standard normal Float (mean 0, standard deviation 1) using the Box-Muller transform.
+    var fn normal() Float:
+        let radius = sqrt(-2.0 * log(1.0 - self.float()))
+        return radius * cos(6.283185307179586 * self.float())
+
+    # Returns an exponentially distributed Float with rate 1 (mean 1), always positive or zero.
+    var fn exponential() Float:
+        return -log(1.0 - self.float())
+
+    # Returns a shuffled list of the Ints 0 through `count - 1`. A negative `count` faults.
+    var fn permutation(count: Int) List[Int]:
+        if count < 0:
+            panic("random permutation: count must not be negative")
+
+        var items: List[Int] = []
+        for index in 0..count:
+            items.append(index)
+        return self.shuffle(items)

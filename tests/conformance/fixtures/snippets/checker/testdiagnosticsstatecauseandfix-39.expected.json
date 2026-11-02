@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member foo on String; available starting with 'f': fields; 42 members in total",
+        "message": "unknown or ambiguous member foo on String; available starting with 'f': fields, fields_by, find_char; 56 members in total",
         "position": {
           "file": "testdiagnosticsstatecauseandfix-39.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-39.ms:5:19: resolution: unknown or ambiguous member foo on String; available starting with 'f': fields; 42 members in total\n   |\n 5 |     let n = \"abc\".foo()\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-39.ms:5:19: resolution: unknown or ambiguous member foo on String; available starting with 'f': fields, fields_by, find_char; 56 members in total\n   |\n 5 |     let n = \"abc\".foo()\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

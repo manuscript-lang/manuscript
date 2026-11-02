@@ -1,7 +1,7 @@
 //! Source inserted by completion must remain valid Manuscript.
 
 use ms_lsp::analysis::{Document, Documents, analyze};
-use ms_lsp::completion::completion_at;
+use ms_lsp::completion::{completion_at, signature_help};
 use ms_lsp::text::{Position, Range};
 use ms_rt as _;
 use std::path::Path;
@@ -445,4 +445,254 @@ fn alternative_cases_complete_bare_unless_opaque_elsewhere() {
         "import Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    let _a = Hidden.\n    return 0\n";
     let found = labels(source, 3, 19);
     assert!(!found.contains(&"Secret".to_string()), "{found:?}");
+}
+
+#[test]
+fn callable_snippets_preserve_mutable_arguments() {
+    let workspace = Workspace::new("completion-mutable");
+    let fixture = include_str!("completion/mutable-calls.ms");
+    for newline in ["\n", "\r\n"] {
+        let fixture = fixture.replace('\n', newline);
+        let baseline = Document::new(workspace.uri("mutable.ms"), fixture.clone());
+        let checked = analyze(&baseline, &Documents::new());
+        assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
+        for (call, prefix, label, expected) in [
+            (
+                "update(values: var values)",
+                "upd",
+                "update",
+                "update(values: var ${1:values})$0",
+            ),
+            (
+                "updater.adjust(values: values)",
+                "updater.adj",
+                "adjust",
+                "adjust(values: ${1:values})$0",
+            ),
+            (
+                "update_generic[Int](values: var values, value: 2)",
+                "update_ge",
+                "update_generic",
+                "update_generic[${1:T}](values: var ${2:values}, value: ${3:value})$0",
+            ),
+            (
+                "observe(values: values)",
+                "obs",
+                "observe",
+                "observe(values: ${1:values})$0",
+            ),
+        ] {
+            let source = fixture.replace(call, prefix);
+            let offset = source
+                .find(&format!("return {prefix}"))
+                .expect("edited use")
+                + "return ".len()
+                + prefix.len();
+            let mut document = Document::new(workspace.uri("mutable.ms"), source);
+            let item = completion_at(
+                &document,
+                &Documents::new(),
+                ms_lsp::text::position(&document.text, offset),
+                true,
+            )
+            .expect("completion")
+            .into_iter()
+            .map(|item| item.json())
+            .find(|item| item.get("label").and_then(|j| j.as_str()) == Some(label))
+            .expect("callable");
+            let edit = item.get("textEdit").expect("edit");
+            let insertion = edit
+                .get("newText")
+                .and_then(|j| j.as_str())
+                .expect("snippet");
+            assert_eq!(insertion, expected, "{call}");
+            let range = Range::from_json(edit.get("range").unwrap()).unwrap();
+            let start = ms_lsp::text::offset(&document.text, range.start).unwrap();
+            let end = ms_lsp::text::offset(&document.text, range.end).unwrap();
+            let insertion = insertion
+                .replace("${1:values}", "values")
+                .replace("${1:T}", "Int")
+                .replace("${2:values}", "values")
+                .replace("${3:value}", "2")
+                .replace("$0", "");
+            document.text.replace_range(start..end, &insertion);
+            let checked = analyze(&document, &Documents::new());
+            assert!(
+                checked.diagnostics.is_empty(),
+                "{call}: {:?}",
+                checked.diagnostics
+            );
+            assert!(checked.program.is_some());
+        }
+    }
+}
+
+#[test]
+fn imported_callable_snippets_preserve_mutation_and_auto_imports() {
+    let workspace = Workspace::new("completion-mutable-import");
+    std::fs::write(
+        workspace.path("mutators.ms"),
+        include_str!("completion/mutable-calls.ms"),
+    )
+    .unwrap();
+    let fixture = include_str!("completion/mutable-import.ms");
+    for auto_import in [false, true] {
+        for snippets in [false, true] {
+            let source = if auto_import {
+                fixture.lines().skip(2).collect::<Vec<_>>().join("\n")
+            } else {
+                fixture.to_string()
+            }
+            .replace("update(values: var values)", "upd");
+            let offset = source.rfind("upd").unwrap() + 3;
+            let mut document = Document::new(workspace.uri("use.ms"), source);
+            let item = completion_at(
+                &document,
+                &Documents::new(),
+                ms_lsp::text::position(&document.text, offset),
+                snippets,
+            )
+            .unwrap()
+            .into_iter()
+            .map(|item| item.json())
+            .find(|item| item.get("label").and_then(|j| j.as_str()) == Some("update"))
+            .expect("update");
+            let edit = item.get("textEdit").unwrap();
+            let insertion = edit.get("newText").and_then(|j| j.as_str()).unwrap();
+            assert_eq!(
+                insertion,
+                if snippets {
+                    "update(values: var ${1:values})$0"
+                } else {
+                    "update"
+                }
+            );
+            if !snippets {
+                continue;
+            }
+            let range = Range::from_json(edit.get("range").unwrap()).unwrap();
+            let start = ms_lsp::text::offset(&document.text, range.start).unwrap();
+            let end = ms_lsp::text::offset(&document.text, range.end).unwrap();
+            document.text.replace_range(
+                start..end,
+                &insertion.replace("${1:values}", "values").replace("$0", ""),
+            );
+            if auto_import {
+                let edits = item
+                    .get("additionalTextEdits")
+                    .and_then(|j| j.as_array())
+                    .unwrap();
+                assert_eq!(edits.len(), 1);
+                document
+                    .text
+                    .insert_str(0, edits[0].get("newText").and_then(|j| j.as_str()).unwrap());
+            } else {
+                assert!(item.get("additionalTextEdits").is_none());
+            }
+            let checked = analyze(&document, &Documents::new());
+            assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
+            assert!(checked.program.is_some());
+        }
+    }
+}
+
+#[test]
+fn argument_completion_and_signature_help_preserve_mutation() {
+    let workspace = Workspace::new("completion-mutable-arguments");
+    let fixture = include_str!("completion/mutable-calls.ms");
+    for newline in ["\n", "\r\n"] {
+        let fixture = fixture.replace('\n', newline);
+        for snippets in [false, true] {
+            let source = fixture.replace("update(values: var values)", "update(val)");
+            let offset = source.find("return update(val").unwrap() + "return update(val".len();
+            let mut document = Document::new(workspace.uri("mutable.ms"), source);
+            let item = completion_at(
+                &document,
+                &Documents::new(),
+                ms_lsp::text::position(&document.text, offset),
+                snippets,
+            )
+            .unwrap()
+            .into_iter()
+            .map(|item| item.json())
+            .find(|item| item.get("label").and_then(|j| j.as_str()) == Some("values"))
+            .expect("values");
+            let edit = item.get("textEdit").unwrap();
+            let insertion = edit.get("newText").and_then(|j| j.as_str()).unwrap();
+            assert_eq!(
+                insertion,
+                if snippets {
+                    "values: var ${1:values}"
+                } else {
+                    "values: var "
+                }
+            );
+            let insertion = if snippets {
+                insertion.replace("${1:values}", "values")
+            } else {
+                format!("{insertion}values")
+            };
+            let range = Range::from_json(edit.get("range").unwrap()).unwrap();
+            let start = ms_lsp::text::offset(&document.text, range.start).unwrap();
+            let end = ms_lsp::text::offset(&document.text, range.end).unwrap();
+            document.text.replace_range(start..end, &insertion);
+            let checked = analyze(&document, &Documents::new());
+            assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
+        }
+        let document = Document::new(workspace.uri("mutable.ms"), fixture.clone());
+        let offset = fixture.find("return update(").unwrap() + "return update(".len();
+        let help = signature_help(
+            &document,
+            &Documents::new(),
+            ms_lsp::text::position(&fixture, offset),
+        )
+        .unwrap();
+        let signature = &help.get("signatures").and_then(|j| j.as_array()).unwrap()[0];
+        assert_eq!(
+            signature.get("label").and_then(|j| j.as_str()),
+            Some("update(var values: List[Int], amount: Int = ...) Int")
+        );
+    }
+}
+
+#[test]
+fn mutable_positional_arguments_complete_local_bindings() {
+    let workspace = Workspace::new("completion-mutable-positional");
+    let fixture = include_str!("completion/mutable-calls.ms");
+    for newline in ["\n", "\r\n"] {
+        let fixture = fixture.replace('\n', newline);
+        for argument in ["var val", "var ", "values: var val"] {
+            for snippets in [false, true] {
+                let prefix = format!("return update({argument}");
+                let source =
+                    fixture.replace("return update(values: var values)", &format!("{prefix})"));
+                let offset = source.find(&prefix).unwrap() + prefix.len();
+                let mut document = Document::new(workspace.uri("mutable.ms"), source);
+                let item = completion_at(
+                    &document,
+                    &Documents::new(),
+                    ms_lsp::text::position(&document.text, offset),
+                    snippets,
+                )
+                .unwrap()
+                .into_iter()
+                .map(|item| item.json())
+                .find(|item| item.get("label").and_then(|j| j.as_str()) == Some("values"))
+                .expect("local values binding");
+                let edit = item.get("textEdit").unwrap();
+                let insertion = edit.get("newText").and_then(|j| j.as_str()).unwrap();
+                assert_eq!(insertion, "values");
+                let range = Range::from_json(edit.get("range").unwrap()).unwrap();
+                let start = ms_lsp::text::offset(&document.text, range.start).unwrap();
+                let end = ms_lsp::text::offset(&document.text, range.end).unwrap();
+                document.text.replace_range(start..end, insertion);
+                let checked = analyze(&document, &Documents::new());
+                assert!(
+                    checked.diagnostics.is_empty(),
+                    "{argument}: {:?}",
+                    checked.diagnostics
+                );
+            }
+        }
+    }
 }
