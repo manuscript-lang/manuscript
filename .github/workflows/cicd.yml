@@ -164,7 +164,16 @@ jobs:
           printf 'NATIVE_REPORTS=%s\n' "$reports" >> "$GITHUB_ENV"
           git rev-parse HEAD > "$reports/commit.txt"
           rustc -vV > "$reports/host.txt"
-          cargo build --locked -p ms-cli 2>&1 | tee "$reports/build.log"
+          # `-p ms-cli` unifies features differently from the workspace build and recompiles the
+          # cranelift crates, ms-clif, ms-build and ms-cli (about 40 s). Parts that ran the workspace
+          # build above reuse it: the same command is a no-op and relinks target/debug/ms. Windows
+          # keeps the separate build: its test build links with /FORCE:UNRESOLVED, which a shipped
+          # `ms` must not use.
+          if [ '${{ matrix.part }}' = a ] && [ '${{ matrix.full || matrix.tests }}' = true ] && [ "$RUNNER_OS" != Windows ]; then
+            cargo build --workspace --all-targets --locked 2>&1 | tee "$reports/build.log"
+          else
+            cargo build --locked -p ms-cli 2>&1 | tee "$reports/build.log"
+          fi
       - name: Native Windows project paths
         if: matrix.part == 'a' && runner.os == 'Windows'
         run: cargo test --locked -p ms-driver --test project_windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
