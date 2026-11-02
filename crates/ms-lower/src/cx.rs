@@ -69,6 +69,9 @@ pub struct FnAdaptJob {
     pub hir: Rc<ModuleHir>,
     /// The held function type.
     pub have: MTy,
+    /// The held value points into its maker's frame, so the adapter reads it through a pointer
+    /// and stays inside that frame too.
+    pub scoped: bool,
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.

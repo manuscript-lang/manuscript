@@ -1766,18 +1766,32 @@ impl FnLower<'_> {
             mode: Mode::Borrow,
         }));
         let mut f = ms_mir::ir::Func::new("<function adapter>", ps, wr);
+        // A held closure that points into this frame stays here: the adapter reads it through
+        // a pointer to a slot, and is itself scoped.
+        let scoped = self.b.is_scoped_closure(x.v);
         f.kind = FuncKind::Closure {
-            captures: vec![have],
+            captures: vec![if scoped { MTy::PTR } else { have }],
         };
+        f.scoped = scoped;
         let id = self.b.m.add_func(f);
         self.cx.queue.push(Job {
             func: id,
             kind: JobKind::FnAdapt(Rc::new(crate::cx::FnAdaptJob {
                 hir: self.hir.clone(),
                 have,
+                scoped,
             })),
         });
-        let held = self.owned(x);
+        let held = if scoped {
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], Imm::Ty(have), Some(MTy::PTR))
+                .expect("slot");
+            self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);
+            slot
+        } else {
+            self.owned(x)
+        };
         let v = self
             .b
             .emit(Op::ClosureNew, &[held], Imm::Func(id), Some(want))
@@ -1799,7 +1813,7 @@ pub(crate) fn build_fn_adapter(
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
-    let result = lower_fn_adapter(&mut fl, job.have);
+    let result = lower_fn_adapter(&mut fl, job.have, job.scoped);
     let mut f = fl.b.into_func();
     result?;
     f.compact_blocks();
@@ -1807,11 +1821,17 @@ pub(crate) fn build_fn_adapter(
     Ok(())
 }
 
-fn lower_fn_adapter(fl: &mut FnLower<'_>, have: MTy) -> Result<(), Error> {
+fn lower_fn_adapter(fl: &mut FnLower<'_>, have: MTy, scoped: bool) -> Result<(), Error> {
     let params = fl.b.params();
-    let held =
-        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(have))
+    let cap_ty = if scoped { MTy::PTR } else { have };
+    let mut held =
+        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(cap_ty))
             .expect("capture");
+    if scoped {
+        held =
+            fl.b.emit(Op::Load, &[held], Imm::Ty(have), Some(have))
+                .expect("load");
+    }
     let TyKind::Fn(hp, _) = fl.b.m.types.kind(have).clone() else {
         return Err(Error::new("function adapter without a function type"));
     };

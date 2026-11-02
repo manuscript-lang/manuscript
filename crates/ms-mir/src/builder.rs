@@ -87,6 +87,29 @@ impl<'m> FuncBuilder<'m> {
         insts.iter().rev().find(|i| i.res == Some(v)).map(|i| i.op)
     }
 
+    /// Whether `v` is, through copies, a closure whose environment points into this frame.
+    pub fn is_scoped_closure(&self, v: Value) -> bool {
+        let mut cur = v;
+        loop {
+            let Some(i) = self
+                .f
+                .blocks
+                .iter()
+                .flat_map(|b| &b.insts)
+                .find(|i| i.res == Some(cur))
+            else {
+                return false;
+            };
+            match (i.op, i.imm) {
+                (crate::ir::Op::ClosureNew, crate::ir::Imm::Func(g)) => {
+                    return self.m.funcs.get(g.index()).is_some_and(|c| c.scoped);
+                }
+                (crate::ir::Op::Copy, _) if !i.args.is_empty() => cur = i.args[0],
+                _ => return false,
+            }
+        }
+    }
+
     /// Whether `v` is a borrow: defined by an operation whose result borrows, or a borrowed
     /// parameter. Searches every block; an undefined value is not.
     pub fn is_borrowed(&self, v: Value) -> bool {
