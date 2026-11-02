@@ -41,13 +41,18 @@ export fn main() Int:
     if code != 0: return code
 
     let extra = arguments()
+
+    # Only `run` and `test` reach a code generator, so a second pass with `MS_BACKEND=cranelift` skips the
+    # check and parse phases: the LLVM pass already ran them, and their results do not depend on the backend.
+    let backend_only = env("MS_BACKEND", "") == "cranelift"
+    let phases = if backend_only: "run,test" else: "run,check,test"
     let main_run = [
-        "run", "--ms", ms.clone(), "--phase", "run,check,test", "--exclude-tag",
-        "aliasing", "--expect-fail", allow.clone(), "--strict", "--shard",
-        shard.clone(), "--quiet", "--markdown", ".artifacts/conform.md"
+        "run", "--ms", ms.clone(), "--phase", phases, "--exclude-tag", "aliasing",
+        "--expect-fail", allow.clone(), "--strict", "--shard", shard.clone(), "--quiet",
+        "--markdown", ".artifacts/conform.md"
     ]
     code = run_program(conform, main_run.concat(extra.clone()))
-    if code != 0: return code
+    if code != 0 or backend_only: return code
 
     # Parsing and formatting do not depend on aliasing, so the parse phase replays every fixture.
     let parse_run = [
