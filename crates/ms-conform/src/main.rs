@@ -140,12 +140,30 @@ fn print_summary(cases: &[runner::Case]) {
         s.all.rate()
     );
     for (p, t) in &s.by_phase {
+        let millis: u128 = cases
+            .iter()
+            .filter(|c| c.phase == *p)
+            .map(|c| c.millis)
+            .sum();
         println!(
-            "  {:<6} {:>5}/{:<5} {:.1}%",
+            "  {:<6} {:>5}/{:<5} {:.1}%  {:.0} s fixture time",
             p.name(),
             t.passing(),
             t.total,
-            t.rate()
+            t.rate(),
+            millis as f64 / 1000.0
+        );
+    }
+    // CI reads this to find the fixtures that dominate a corpus run.
+    let mut slowest: Vec<&runner::Case> = cases.iter().collect();
+    slowest.sort_by_key(|c| std::cmp::Reverse(c.millis));
+    println!("slowest fixtures:");
+    for c in slowest.iter().take(15) {
+        println!(
+            "  {:>7.2} s  {:<5} {}",
+            c.millis as f64 / 1000.0,
+            c.phase.name(),
+            c.id
         );
     }
     for c in cases
