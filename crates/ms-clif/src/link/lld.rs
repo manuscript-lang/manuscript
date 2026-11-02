@@ -176,11 +176,10 @@ pub fn link(
     windows_arguments(&mut command, &dir, object, inputs, out, strip);
     #[cfg(target_os = "macos")]
     let stubs = macos_arguments(&mut command, &dir, object, inputs, out, strip)?;
-    let o = command
-        .output()
-        .map_err(|e| Error(format!("cannot run the bundled linker: {e}")))?;
+    let result = command.output();
     #[cfg(target_os = "macos")]
     let _ = std::fs::remove_dir_all(stubs);
+    let o = result.map_err(|e| Error(format!("cannot run the bundled linker: {e}")))?;
     if o.status.success() {
         return Ok(());
     }
@@ -350,10 +349,7 @@ fn macos_arguments(
     } else {
         "x86_64"
     };
-    let sdk = dir.join(format!(".sdk-{}", std::process::id()));
-    macos_stubs::write(&sdk, arch, object, inputs).inspect_err(|_| {
-        let _ = std::fs::remove_dir_all(&sdk);
-    })?;
+    let sdk = sdk_stubs(dir, arch, object, inputs)?;
     command
         .args(["-flavor", "darwin", "-arch", arch])
         .args(["-platform_version", "macos", "12.0", "12.0"])
@@ -376,6 +372,15 @@ fn macos_arguments(
         "-framework",
         "CoreFoundation",
     ]);
+    Ok(sdk)
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn sdk_stubs(dir: &Path, arch: &str, object: &Path, inputs: &[&Path]) -> Result<PathBuf, Error> {
+    let sdk = staging(dir, "sdk").map_err(|e| Error(format!("cannot stage the SDK stubs: {e}")))?;
+    macos_stubs::write(&sdk, arch, object, inputs).inspect_err(|_| {
+        let _ = std::fs::remove_dir_all(&sdk);
+    })?;
     Ok(sdk)
 }
 
@@ -450,7 +455,7 @@ fn cache_root() -> PathBuf {
 
 #[cfg(target_os = "linux")]
 mod glibc_stubs;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", test))]
 mod macos_stubs;
 
 #[cfg(test)]

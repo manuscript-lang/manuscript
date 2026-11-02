@@ -183,3 +183,59 @@ fn failed_bundled_publication_cleans_only_its_own_stage() {
     assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);
     std::fs::remove_dir_all(root).unwrap();
 }
+
+fn imported_symbol_object(path: &Path, name: &[u8]) {
+    let mut object = object::write::Object::new(
+        object::BinaryFormat::MachO,
+        object::Architecture::X86_64,
+        object::Endianness::Little,
+    );
+    object.add_symbol(object::write::Symbol {
+        name: name.to_vec(),
+        value: 0,
+        size: 0,
+        kind: object::SymbolKind::Text,
+        scope: object::SymbolScope::Linkage,
+        weak: false,
+        section: object::write::SymbolSection::Undefined,
+        flags: object::SymbolFlags::None,
+    });
+    std::fs::write(path, object.write().unwrap()).unwrap();
+}
+
+#[test]
+fn sdk_builders_keep_independent_symbol_sets_and_cleanup() {
+    let root = scratch("sdk-independent");
+    let first = root.join("first.o");
+    let second = root.join("second.o");
+    imported_symbol_object(&first, b"_first_fixture_symbol");
+    imported_symbol_object(&second, b"_second_fixture_symbol");
+    let a = sdk_stubs(&root, "x86_64", &first, &[]).unwrap();
+    let b = sdk_stubs(&root, "x86_64", &second, &[]).unwrap();
+    assert_ne!(a, b);
+    let a_symbols = std::fs::read_to_string(a.join("usr/lib/libSystem.tbd")).unwrap();
+    let b_symbols = std::fs::read_to_string(b.join("usr/lib/libSystem.tbd")).unwrap();
+    assert!(a_symbols.contains("_first_fixture_symbol"));
+    assert!(!a_symbols.contains("_second_fixture_symbol"));
+    assert!(b_symbols.contains("_second_fixture_symbol"));
+    assert!(!b_symbols.contains("_first_fixture_symbol"));
+    std::fs::remove_dir_all(a).unwrap();
+    assert!(b.join("usr/lib/libSystem.tbd").is_file());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn failed_sdk_generation_retains_another_builders_stubs() {
+    let root = scratch("sdk-failure");
+    let object = root.join("input.o");
+    imported_symbol_object(&object, b"_retained_fixture_symbol");
+    let ready = sdk_stubs(&root, "x86_64", &object, &[]).unwrap();
+    assert!(sdk_stubs(&root, "x86_64", &root.join("missing.o"), &[]).is_err());
+    assert!(
+        std::fs::read_to_string(ready.join("usr/lib/libSystem.tbd"))
+            .unwrap()
+            .contains("_retained_fixture_symbol")
+    );
+    assert_eq!(std::fs::read_dir(&root).unwrap().count(), 2);
+    std::fs::remove_dir_all(root).unwrap();
+}

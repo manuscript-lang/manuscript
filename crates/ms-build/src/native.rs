@@ -6,6 +6,73 @@ use ms_clif::Options;
 use ms_mir::ir::Module;
 use ms_mir::opt::{Level, optimize};
 
+/// An exclusively owned temporary directory beside the final executable.
+/// Callers remove their artifacts; dropping this guard removes only an empty directory,
+/// preserving any recovery backup that publication deliberately retained.
+pub struct BuildStage {
+    directory: PathBuf,
+}
+
+impl BuildStage {
+    /// Allocate a fresh directory on the output's filesystem without reusing stale paths.
+    pub fn create(parent: &Path) -> std::io::Result<Self> {
+        use std::sync::atomic::AtomicUsize;
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
+        Self::create_with(parent, &NEXT)
+    }
+
+    /// Allocate beside `output` without occupying an alias of the requested executable name.
+    pub fn for_output(output: &Path) -> std::io::Result<Self> {
+        let parent = output
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+        loop {
+            let candidate = Self::create(parent)?;
+            let aliases_output = output.is_dir()
+                && std::fs::canonicalize(output)
+                    .ok()
+                    .and_then(|output| {
+                        std::fs::canonicalize(candidate.path())
+                            .ok()
+                            .map(|stage| output == stage)
+                    })
+                    .unwrap_or(false);
+            if !aliases_output {
+                return Ok(candidate);
+            }
+        }
+    }
+
+    fn create_with(parent: &Path, next: &std::sync::atomic::AtomicUsize) -> std::io::Result<Self> {
+        use std::sync::atomic::Ordering;
+        std::fs::create_dir_all(parent)?;
+        loop {
+            let directory = parent.join(format!(
+                ".ms-build-{}-{}",
+                std::process::id(),
+                next.fetch_add(1, Ordering::Relaxed)
+            ));
+            match std::fs::create_dir(&directory) {
+                Ok(()) => return Ok(Self { directory }),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => return Err(error),
+            }
+        }
+    }
+
+    /// The owned directory in which a caller writes its temporary artifacts.
+    pub fn path(&self) -> &Path {
+        &self.directory
+    }
+}
+
+impl Drop for BuildStage {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir(&self.directory);
+    }
+}
+
 /// The native build levels, in the CMake spelling.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Profile {
@@ -126,10 +193,15 @@ pub fn build_executable(
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
-    let stem = format!(".ms-build-{}", std::process::id());
-    let object_path = directory.join(format!("{stem}.o"));
-    let llvm_path = directory.join(format!("{stem}.llvm.o"));
-    let staged = directory.join(format!("{stem}.exe"));
+    let stage = BuildStage::for_output(output).map_err(|error| {
+        format!(
+            "cannot create build staging directory in {}: {error}",
+            directory.display()
+        )
+    })?;
+    let object_path = stage.path().join("program.o");
+    let llvm_path = stage.path().join("program.llvm.o");
+    let staged = stage.path().join("program.exe");
     let cleanup = || {
         let _ = std::fs::remove_file(&object_path);
         let _ = std::fs::remove_file(&llvm_path);
@@ -301,5 +373,128 @@ mod tests {
         assert!(!staged.exists());
         assert_eq!(std::fs::read_to_string(&output).unwrap(), "new executable");
         std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod stage_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    struct Scratch(PathBuf);
+
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn scratch(name: &str) -> Scratch {
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
+        loop {
+            let path = std::env::temp_dir().join(format!(
+                "ms-native-stage-{name}-{}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, Ordering::Relaxed)
+            ));
+            match std::fs::create_dir(&path) {
+                Ok(()) => return Scratch(path),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => panic!("cannot create test directory: {error}"),
+            }
+        }
+    }
+
+    fn candidate(parent: &Path, counter: usize) -> PathBuf {
+        parent.join(format!(".ms-build-{}-{counter}", std::process::id()))
+    }
+
+    #[test]
+    fn build_stages_skip_stale_files_and_directories() {
+        let root = scratch("stale");
+        let parent = &root.0;
+        let next = AtomicUsize::new(0);
+        std::fs::create_dir(candidate(parent, 0)).unwrap();
+        std::fs::write(candidate(parent, 0).join("retained"), b"old stage").unwrap();
+        let sentinel = parent.join("sentinel");
+        std::fs::write(&sentinel, b"original bytes").unwrap();
+        std::fs::hard_link(&sentinel, candidate(parent, 1)).unwrap();
+        let stage = BuildStage::create_with(parent, &next).unwrap();
+        assert_eq!(stage.path(), candidate(parent, 2));
+        assert_eq!(next.load(Ordering::Relaxed), 3);
+        assert_eq!(
+            std::fs::read(candidate(parent, 0).join("retained")).unwrap(),
+            b"old stage"
+        );
+        assert_eq!(
+            std::fs::read(candidate(parent, 1)).unwrap(),
+            b"original bytes"
+        );
+        assert_eq!(std::fs::read(sentinel).unwrap(), b"original bytes");
+        drop(stage);
+        assert!(!candidate(parent, 2).exists());
+        assert!(candidate(parent, 0).is_dir());
+        assert!(candidate(parent, 1).is_file());
+    }
+
+    #[test]
+    fn build_stage_creates_missing_output_parents() {
+        let root = scratch("missing-parent");
+        let parent = root.0.join("nested/output");
+        let stage = BuildStage::create(&parent).unwrap();
+        let path = stage.path().to_owned();
+        assert!(path.is_dir());
+        drop(stage);
+        assert!(parent.is_dir());
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn build_stage_drop_preserves_retained_recovery_resources() {
+        let root = scratch("recovery");
+        let stage = BuildStage::create(&root.0).unwrap();
+        let path = stage.path().to_owned();
+        let backup = path.join("program.exe.previous.dSYM");
+        std::fs::create_dir(&backup).unwrap();
+        std::fs::write(backup.join("resource"), b"previous debug resource").unwrap();
+        drop(stage);
+        assert!(path.is_dir());
+        assert_eq!(
+            std::fs::read(backup.join("resource")).unwrap(),
+            b"previous debug resource"
+        );
+    }
+
+    #[test]
+    fn concurrent_build_stages_are_distinct_and_remove_empty_directories() {
+        let root = scratch("concurrent");
+        let next = AtomicUsize::new(0);
+        let ready = std::sync::Barrier::new(9);
+        let finish = std::sync::Barrier::new(9);
+        std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..8)
+                .map(|_| {
+                    scope.spawn(|| {
+                        let stage = BuildStage::create_with(&root.0, &next);
+                        ready.wait();
+                        finish.wait();
+                        let stage = stage.unwrap();
+                        let path = stage.path().to_owned();
+                        drop(stage);
+                        path
+                    })
+                })
+                .collect();
+            ready.wait();
+            let count = std::fs::read_dir(&root.0).map(|entries| entries.count());
+            finish.wait();
+            let paths: std::collections::BTreeSet<_> = handles
+                .into_iter()
+                .map(|handle| handle.join().unwrap())
+                .collect();
+            assert_eq!(count.unwrap(), 8);
+            assert_eq!(paths.len(), 8);
+        });
+        assert_eq!(std::fs::read_dir(&root.0).unwrap().count(), 0);
     }
 }
