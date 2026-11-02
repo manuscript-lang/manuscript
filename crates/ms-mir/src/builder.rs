@@ -30,6 +30,14 @@ struct VarInfo {
     is_single: bool,
 }
 
+/// A position in a function under construction.
+#[derive(Clone, Copy, Debug)]
+pub struct Mark {
+    block: Block,
+    insts: usize,
+    blocks: usize,
+}
+
 /// Builds one function inside a module.
 pub struct FuncBuilder<'m> {
     /// The module being extended (types, strings and declarations are interned here).
@@ -420,6 +428,95 @@ impl<'m> FuncBuilder<'m> {
         let ret = self.m.funcs[f.index()].ret;
         self.val(Op::Call, args, Imm::Func(f), ret)
     }
+    /// A position in the current block, for [`FuncBuilder::outline`].
+    pub fn mark(&self) -> Mark {
+        Mark {
+            block: self.cur,
+            insts: self.f.blocks[self.cur.index()].insts.len(),
+            blocks: self.f.blocks.len(),
+        }
+    }
+
+    /// Moves the instructions emitted since `mark` into a new function and calls it, so one long
+    /// straight-line run does not become one long function body (register allocation, SLP and the
+    /// scheduler are all quadratic in that). The function takes the values the run reads from
+    /// outside as parameters and returns `result`, the one value the caller uses afterwards.
+    /// Returns the call's result, or `None` (leaving the code in place) when the run is not
+    /// self-contained: it spans blocks, defines a value that needs a drop besides `result`, reads
+    /// a value that needs one from outside, or uses frame-bound operations.
+    pub fn outline(&mut self, mark: Mark, result: Value, name: &str) -> Option<Value> {
+        let cur = self.cur.index();
+        if mark.block != self.cur || mark.blocks != self.f.blocks.len() {
+            return None;
+        }
+        let run = &self.f.blocks[cur].insts[mark.insts..];
+        if run.is_empty() || !run.iter().any(|i| i.res == Some(result)) {
+            return None;
+        }
+        let mut defined = std::collections::HashSet::new();
+        let mut free: Vec<Value> = Vec::new();
+        for i in run {
+            if matches!(
+                i.op,
+                Op::Slot | Op::CleanupPush | Op::CleanupRun | Op::DepthEnter | Op::DepthLeave
+            ) {
+                return None;
+            }
+            for a in &i.args {
+                if !defined.contains(a) && !free.contains(a) {
+                    if self.m.needs_drop(self.f.ty(*a)) {
+                        return None;
+                    }
+                    free.push(*a);
+                }
+            }
+            if let Some(r) = i.res {
+                if r != result && self.m.needs_drop(self.f.ty(r)) {
+                    return None;
+                }
+                defined.insert(r);
+            }
+        }
+        let ret = self.f.ty(result);
+        let params = free
+            .iter()
+            .map(|v| Param {
+                ty: self.f.ty(*v),
+                mode: Mode::Borrow,
+            })
+            .collect::<Vec<_>>();
+        let mut g = Func::new(name, params, ret);
+        g.inline = InlineHint::Never;
+        g.loc = run[0].loc;
+        let mut map: HashMap<Value, Value> = free.iter().copied().zip(g.param_values()).collect();
+        for i in run {
+            let mut j = i.clone();
+            j.args = i.args.iter().map(|a| map[a]).collect();
+            if let Some(r) = i.res {
+                let n = g.new_value(self.f.ty(r));
+                map.insert(r, n);
+                j.res = Some(n);
+            }
+            g.blocks[0].insts.push(j);
+        }
+        g.blocks[0].term = Term::Ret(Some(map[&result]));
+        let id = self.m.add_func(g);
+        self.f.blocks[cur].insts.truncate(mark.insts);
+        let loc = self.loc;
+        self.loc = if let Some(l) = self.m.funcs[id.index()].blocks[0]
+            .insts
+            .first()
+            .map(|i| i.loc)
+        {
+            l
+        } else {
+            loc
+        };
+        let v = self.call(id, &free);
+        self.loc = loc;
+        Some(v)
+    }
+
     /// `call.rt` a runtime function.
     pub fn call_rt(&mut self, e: ExtId, args: &[Value]) -> Value {
         let ret = self.m.externs[e.index()].ret;
