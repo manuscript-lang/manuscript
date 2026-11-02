@@ -170,7 +170,7 @@ fn find(m: &Module, f: &Func) -> Option<Plan> {
             let Some(add) = arg.and_then(|a| defs.get(&a)) else {
                 continue 'next;
             };
-            let s = match (add.op, consts.get(&add.args[1])) {
+            let s = match (add.op, add.args.get(1).and_then(|a| consts.get(a))) {
                 (Op::IAdd | Op::IAddChk, Some(&s)) if add.args[0] == i && s > 0 => s,
                 _ => continue 'next,
             };
