@@ -217,6 +217,13 @@ impl Error for ContextError:
 export fn wrap(context: String, cause: Error) ContextError:
     return ContextError(context, cause)
 
+# Returns the innermost error of a chain of `wrap` calls: the first cause that is not a `ContextError`.
+# An error that wraps nothing is returned as it is.
+export fn root_cause(cause: Error) Error:
+    match cause:
+        ContextError(wrapped): return root_cause(wrapped.cause)
+        _: return cause
+
 # Several errors reported together, such as the failures of tasks that all ran to completion.
 export type JoinedError:
     # The errors in the order they were collected; never empty when made by `join`.

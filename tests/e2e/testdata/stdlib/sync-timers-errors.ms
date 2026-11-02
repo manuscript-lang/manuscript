@@ -1,5 +1,5 @@
 import expect_equal, expect_true, expect_false from "@std/test/test.ms"
-import TextError, ContextError, wrap, join from "@std/core.ms"
+import TextError, ContextError, wrap, join, root_cause from "@std/core.ms"
 import share from "@std/concurrency/shared.ms"
 import once, lock from "@std/concurrency/sync.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
@@ -37,6 +37,11 @@ test "wrap adds context and keeps the cause":
     match outer.cause:
         ContextError(inner): try expect_equal(inner.context, "read")
         _: try expect_true(false)
+
+test "root_cause returns the innermost error":
+    let outer = wrap("load", wrap("read", TextError("gone")))
+    try expect_equal(root_cause(outer).message(), "gone")
+    try expect_equal(root_cause(TextError("plain")).message(), "plain")
 
 test "join reports each error and none for empty":
     let none_joined = join([])
