@@ -383,11 +383,39 @@ fn write_metadata(output: &Path, kind: BuildType) -> Result<(), String> {
         kind.as_str()
     );
     let path = PathBuf::from(name);
-    std::fs::write(&path, document).map_err(|error| {
+    let failed = |error| {
         format!(
             "cannot write build metadata {}: {error}; choose an output path whose .ms-build.json file can be written",
             path.display()
         )
+    };
+    // Replace the directory entry, as executable publication does. Writing through an existing
+    // metadata hard link or symlink could otherwise truncate a source file (also on cache hits).
+    static STAGED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let (staged, mut file) = loop {
+        let staged = path.with_file_name(format!(
+            ".ms-metadata-{}-{}.json",
+            std::process::id(),
+            STAGED.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&staged)
+        {
+            Ok(file) => break (staged, file),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(failed(error)),
+        }
+    };
+    let written = (|| {
+        std::io::Write::write_all(&mut file, document.as_bytes())?;
+        drop(file);
+        std::fs::rename(&staged, &path)
+    })();
+    written.map_err(|error| {
+        let _ = std::fs::remove_file(&staged);
+        failed(error)
     })
 }
 
