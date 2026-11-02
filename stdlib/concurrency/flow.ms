@@ -10,8 +10,10 @@ import float from "@std/os/random.ms"
 # How `retry` spaces and bounds its attempts. The wait before attempt `n + 1` is `delay` doubled `n - 1` times, never more than `max_delay`;
 # with `jitter` the wait is a random share of that, so many callers do not retry in step.
 #
-#     let policy = RetryPolicy(attempts: 5, delay: milliseconds(50))
-#     let body = retry(policy, fn attempt: fetch(url))
+# ```manuscript
+# let policy = RetryPolicy(attempts: 5, delay: milliseconds(50))
+# let body = retry(policy, fn attempt: fetch(url))
+# ```
 export type RetryPolicy:
     # Total tries, including the first; at least 1.
     attempts: Int = 3
@@ -72,10 +74,12 @@ fn jittered(policy: RetryPolicy, attempt: Int) Duration:
 
 # A token bucket: holds up to `burst` tokens and gains one every `interval`. Each use of the limited resource takes a token.
 #
-#     var limiter = rate_limiter(10, burst: 20)
-#     for url in urls:
-#         limiter.acquire()
-#         fetch(url)
+# ```manuscript
+# var limiter = rate_limiter(10, burst: 20)
+# for url in urls:
+#     limiter.acquire()
+#     fetch(url)
+# ```
 export type RateLimiter:
     # Most tokens held at once; at least 1.
     burst: Int
@@ -140,8 +144,10 @@ export type CircuitError[E]:
 # Stops calling something that keeps failing. After `threshold` failures in a row the circuit opens and calls fail at once with `Open`;
 # after `cooldown` one call is let through, and its result closes the circuit (success) or opens it again (failure).
 #
-#     var breaker = CircuitBreaker(threshold: 5, cooldown: seconds(10))
-#     let reply = breaker.call(fn: send(request))
+# ```manuscript
+# var breaker = CircuitBreaker(threshold: 5, cooldown: seconds(10))
+# let reply = breaker.call(fn: send(request))
+# ```
 export type CircuitBreaker:
     # Consecutive failures that open the circuit; at least 1.
     threshold: Int
@@ -180,7 +186,9 @@ impl CircuitBreaker:
 # Applies `work` to every item with at most `limit` running at once and returns the results in the order of `items`.
 # Items start in order; a worker takes the next as soon as it finishes one. Returns the task error if a worker is cancelled or timed out.
 #
-#     let pages = map_concurrent(urls, 4, fn url: fetch(url))
+# ```manuscript
+# let pages = map_concurrent(urls, 4, fn url: fetch(url))
+# ```
 export fn map_concurrent[T: Clonable, U: Clonable](
     items: List[T],
     limit: Int,
@@ -249,9 +257,11 @@ export opaque type Use[K]:
 # A bounded key-value cache that evicts the least recently used entry when full, and drops entries older than `ttl`.
 # `get` returns a copy of the value, so cached values are never shared with callers.
 #
-#     var cache = Cache[String, Int](capacity: 100, ttl: seconds(60))
-#     cache.set("a", 1)
-#     let hit = cache.get("a").get(0)
+# ```manuscript
+# var cache = Cache[String, Int](capacity: 100, ttl: seconds(60))
+# cache.set("a", 1)
+# let hit = cache.get("a").get(0)
+# ```
 export type Cache[K: Hashable & Clonable, V: Clonable]:
     # Most entries held; at least 1.
     capacity: Int
