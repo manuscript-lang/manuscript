@@ -6,13 +6,15 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 fn count_check(fixture: &str, compiler: &Path) -> Output {
+    // Cargo already supplies an absolute manifest directory. Canonicalizing it on Windows adds
+    // a verbatim prefix that the GNU archiver used by the stats runtime cannot handle.
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .canonicalize()
-        .unwrap();
+        .parent()
+        .and_then(Path::parent)
+        .expect("ms-cli must be under crates");
     let stats = std::env::var_os("LEAK_TARGET_DIR")
         .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| root.join("target/leak-stats"));
+        .unwrap_or_else(|| std::path::PathBuf::from("target/leak-stats"));
     Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(root)
         .args([
