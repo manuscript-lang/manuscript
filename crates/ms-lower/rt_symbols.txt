@@ -465,6 +465,8 @@ msstd_fs_file_set_times(h: *mut ObjCell<Stream>, accessed: *const Timestamp, mod
 msstd_fs_file_stat(h: *mut ObjCell<Stream>, out: *mut InfoOut) -> u8
 msstd_fs_file_sync(h: *mut ObjCell<Stream>) -> u8
 msstd_fs_file_truncate(h: *mut ObjCell<Stream>, size: i64) -> u8
+msstd_fs_file_try_lock(h: *mut ObjCell<Stream>, exclusive: u8, out: *mut i64) -> u8
+msstd_fs_file_unlock(h: *mut ObjCell<Stream>) -> u8
 msstd_fs_file_write_at(h: *mut ObjCell<Stream>, offset: i64, data: *const VecVal) -> u8
 msstd_fs_file_write_vectors(h: *mut ObjCell<Stream>, buffers: *const VecVal, offset: i64) -> u8
 msstd_fs_file_writer(h: *mut ObjCell<Stream>) -> *mut ObjCell<Stream>
