@@ -82,6 +82,8 @@ pub struct AnalysisRequest {
     pub fix: bool,
     /// `ms lint --deny-warnings`: warnings fail the command like errors.
     pub deny_warnings: bool,
+    /// `ms check --json --with-text`: also put the terminal output in the document.
+    pub with_text: bool,
 }
 
 /// `ms build <input> [-o output]`. `output` is empty for the default

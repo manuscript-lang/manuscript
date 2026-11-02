@@ -57,7 +57,11 @@ fn real_main() -> i32 {
     };
     let status = stdout.finish(&mut stderr, status);
     drop(stdout);
-    status
+    // Exit from this thread: its thread-local compiler state (the checked standard library, type
+    // interners) would otherwise be dropped one allocation at a time, about 6% of a short `ms check`.
+    // Output is flushed above; nothing thread-local holds a resource that needs cleanup.
+    let _ = std::io::stdout().flush();
+    std::process::exit(status)
 }
 
 /// Keep output failures even when a command ignores a write result, or when a
