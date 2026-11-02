@@ -11,7 +11,7 @@ use ms_syntax::ast::*;
 /// Element count above which a list literal of constants is emitted as static data.
 const CONST_LIST_LITERAL: usize = 64;
 const LONG_LIST_LITERAL: usize = 512;
-const LONG_LIST_CHUNK: usize = 256;
+const LONG_LIST_CHUNK: usize = 64;
 
 impl<'a> FnLower<'a> {
     /// A placeholder for the value of code that cannot run.
@@ -338,15 +338,19 @@ impl<'a> FnLower<'a> {
         Some(Val { v, own: true })
     }
 
-    /// A long literal of plain values is built from `list.lit` chunks joined by `list.concat`. One
-    /// `list.lit` over every element keeps all of them live until it runs, and the register
-    /// allocator is quadratic in that (40000 elements took 20s in a Debug build). Pushing each
-    /// element instead bloats the code (a Release build got 5x slower). Values that need no drop
-    /// are copied by the join exactly as they would be moved, and none of the items returns early.
+    /// A long literal of plain runtime values is built from `list.lit` chunks joined by
+    /// `list.concat`, and each chunk's code moves into its own helper function when it can
+    /// (`FuncBuilder::outline`: the values it reads become parameters). One function over every
+    /// element makes register allocation (40000 elements took 20s in a Debug build), the SLP
+    /// vectorizer and the scheduler (20000 took 127s) quadratic, and pushing each element instead
+    /// bloats the code. Values that need no drop are copied by the join exactly as they would be
+    /// moved, and none of the items returns early.
     fn long_list_literal(&mut self, lt: MTy, elem: MTy, items: &[Expr]) -> Result<Val, Error> {
         let d = self.type_desc(elem);
         let mut list: Option<Value> = None;
         for chunk in items.chunks(LONG_LIST_CHUNK) {
+            let mark = self.b.mark();
+            let temps = self.temps.len();
             let mut vals = Vec::with_capacity(chunk.len());
             for it in chunk {
                 let x = self.expr(it)?;
@@ -355,7 +359,11 @@ impl<'a> FnLower<'a> {
                 }
                 vals.push(self.owned(x));
             }
-            let part = self.b.list_lit(elem, &vals);
+            let mut part = self.b.list_lit(elem, &vals);
+            if self.temps.len() == temps {
+                let name = format!("list.literal.{}", self.b.m.funcs.len());
+                part = self.b.outline(mark, part, &name).unwrap_or(part);
+            }
             list = Some(match list {
                 None => part,
                 Some(head) => {
