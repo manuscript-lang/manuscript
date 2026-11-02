@@ -1,19 +1,16 @@
 name: CI/CD
 
 # One workflow, four triggers:
-#   pull request  two linux-amd64 jobs, so a green PR can auto-merge on its own checks:
-#                 `Build checks` (format, clippy, a build of every target, a smoke test, nextest and
-#                 doc tests) and `Corpus checks` (the LLVM conformance corpus and e2e fixtures, the
-#                 language checks and the book).
-#   merge queue   the same two jobs, in case a queue is still configured; the queue built every PR's
-#                 stacked ref with the full matrix (5 refs x 12 jobs per group) and restarted on every
-#                 outside merge, so pull requests auto-merge instead.
-#   push to main  the heavy checks: all six platforms in two parts each (see .github/actions/rust-checks),
-#   manual run    the language checks and the book, plus Pages and the sccache caches when on main. A newer
-#                 push to main cancels the running one, so the latest main is always the one being tested.
-# Require `Build checks`, `Corpus checks` and `Platform checks`: each is skipped (and so passes) where it
-# does not apply. A platform failure on main is fixed or reverted there.
-# The account runs 20 jobs at once and every extra job waits in the queue, so a pull request is two jobs.
+#   pull request  the Linux legs (amd64 and arm64, `tests` and `conformance` each), the language checks
+#                 and the book. A green pull request auto-merges on them; there is no merge queue, which
+#                 built every stacked ref with the full matrix and restarted on every outside merge.
+#   merge queue   the same as a pull request, in case a queue is configured again.
+#   push to main  all six platforms in two parts each (see .github/actions/rust-checks), the language
+#                 checks and the book, plus Pages and the sccache caches. A newer push cancels the running
+#                 one, so the latest main is the one being tested. A platform failure is fixed or reverted.
+#   manual run    the same as a push; its `os` input runs one platform's legs.
+# Require `Platform checks`, `Language checks` and `Build design book`.
+# The account runs 20 jobs at once and every extra job waits in the queue.
 
 on:
   pull_request:
@@ -54,12 +51,18 @@ defaults:
     shell: bash
 
 jobs:
-  # A pull request: format, clippy, the build, unit and integration tests.
-  build:
-    name: Build checks
-    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
+  # The platform legs of the Rust jobs. A job `if` cannot read the matrix, so the legs are picked here:
+  # Linux on pull requests, the `os` input on a manual run, all six on a push.
+  # `lint`: also format and clippy. `cranelift`: also the corpus and fixtures with
+  # `MS_BACKEND=cranelift`, so release builds use the Cranelift backend that Debug builds use.
+  # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
+  # in tests/conformance/expect-fail.<os>.txt with a reason.
+  legs:
+    name: Platform legs
+    runs-on: ubuntu-latest
+    outputs:
+      legs: ${{ steps.legs.outputs.legs }}
+      rust: ${{ steps.scope.outputs.rust }}
     steps:
       # A commit pushed within a minute cancels this run before any build starts.
       - name: Wait for a newer push
@@ -68,82 +71,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      - id: sccache
-        uses: ./.github/actions/sccache
-        with:
-          prefix: cargo-sccache-linux-amd64-a-
-      # Documentation-only changes skip the Rust checks.
+      # Documentation-only pull requests skip the Rust jobs.
       - id: scope
         uses: ./.github/actions/rust-scope
-      - uses: ./.github/actions/rust-env
-        if: steps.scope.outputs.rust == 'true'
-        with:
-          os: linux
-          arch: amd64
-          llvm-consumers: 'true'
-      - uses: ./.github/actions/build-checks
-        if: steps.scope.outputs.rust == 'true'
-      - uses: ./.github/actions/sccache-save
-        if: ${{ !cancelled() }}
-        with:
-          cache-hit: ${{ steps.sccache.outputs.cache-hit }}
-          primary-key: ${{ steps.sccache.outputs.primary-key }}
-
-  # A pull request: the LLVM corpus and e2e fixtures, the language checks and the book.
-  corpus:
-    name: Corpus checks
-    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - name: Wait for a newer push
-        if: github.event_name == 'pull_request'
-        run: sleep 60
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-      - id: sccache
-        uses: ./.github/actions/sccache
-        with:
-          prefix: cargo-sccache-linux-amd64-b-
-      - uses: ./.github/actions/rust-env
-        with:
-          os: linux
-          arch: amd64
-      # Language and book checks run for every change, documentation included.
-      - uses: ./.github/actions/language-checks
-      - uses: ./.github/actions/book-checks
-      - id: scope
-        uses: ./.github/actions/rust-scope
-      - name: Conformance corpus and e2e fixtures (LLVM)
-        if: steps.scope.outputs.rust == 'true'
-        run: |
-          cargo xtask runtime
-          cargo build --locked -p ms-cli -p ms-conform
-          target/debug/ms run tools/conform.ms
-          target/debug/ms run tools/e2e.ms
-      - uses: ./.github/actions/sccache-save
-        if: ${{ !cancelled() }}
-        with:
-          cache-hit: ${{ steps.sccache.outputs.cache-hit }}
-          primary-key: ${{ steps.sccache.outputs.primary-key }}
-
-  # The platform legs of the Rust jobs. A job `if` cannot read the matrix, so a manual run picks its
-  # platforms here; `all` (and every push) keeps all six.
-  # `lint`: also format and clippy. `cranelift`: also the corpus and fixtures with
-  # `MS_BACKEND=cranelift`, so release builds use the Cranelift backend that Debug builds use.
-  # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
-  # in tests/conformance/expect-fail.<os>.txt with a reason.
-  legs:
-    name: Platform legs
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    outputs:
-      legs: ${{ steps.legs.outputs.legs }}
-    steps:
       - id: legs
         env:
-          OS: ${{ inputs.os || 'all' }}
+          OS: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 'linux' || inputs.os || 'all' }}
           LEGS: >-
             [
             {"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": true},
@@ -155,10 +88,10 @@ jobs:
             ]
         run: echo "legs=$(jq -c --arg os "$OS" 'map(select($os == "all" or .os == $os))' <<<"$LEGS")" >> "$GITHUB_OUTPUT"
 
-  # Pushes to main and manual runs: the heavy checks.
   rust:
     name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }} · ${{ matrix.part == 'a' && 'tests' || 'conformance' }}
     needs: legs
+    if: needs.legs.outputs.rust == 'true'
     runs-on: ${{ matrix.leg.runner }}
     timeout-minutes: 75
     strategy:
@@ -192,26 +125,26 @@ jobs:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
 
-  # The sum of the Rust jobs above, one name for a ruleset to require; skipped (so passing) on pull requests.
+  # The sum of the jobs above, one name for a ruleset to require.
   platforms:
     name: Platform checks
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && always()
-    needs: rust
+    if: always()
+    needs: [legs, rust]
     runs-on: ubuntu-latest
     steps:
-      - name: Require every platform
+      - name: Require every platform leg
         env:
-          RESULT: ${{ needs.rust.result }}
-        run: test "$RESULT" = success
+          LEGS: ${{ needs.legs.result }}
+          RUST: ${{ needs.rust.result }}
+          SCOPE: ${{ needs.legs.outputs.rust }}
+        run: test "$LEGS" = success && { test "$RUST" = success || { test "$SCOPE" = false && test "$RUST" = skipped; }; }
 
   language:
     name: Language checks
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/test-language.yml
 
   book:
     name: Build design book
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -232,6 +165,7 @@ jobs:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
       - uses: actions/upload-pages-artifact@v5
+        if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
         with:
           path: .artifacts/book
 

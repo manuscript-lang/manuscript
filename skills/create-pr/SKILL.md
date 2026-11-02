@@ -31,4 +31,4 @@ Use these four sections, in this order, then Documentation and Compatibility lin
 - Auto-merge only waits for green CI, so keep the PR green: watch it, merge or rebase `main` on conflicts, and fix failures from the cause rather than re-running.
 - For host-specific changes, dispatch `cicd.yml` on the branch (its `os` input picks one platform) and read the Windows result before closing the issue ([why](../../wiki/repository/pr-checks-skip-windows-so-dispatch-the-full-matrix.md)).
 - If the user holds a PR, turn off its auto-merge and say so.
-- Pull requests squash auto-merge on `Build checks` and `Corpus checks`; do not merge by hand while checks are pending. The six-platform matrix runs on `main` after merge.
+- Pull requests run the Linux legs and squash auto-merge when they pass; do not merge by hand while checks are pending. macOS and Windows run on `main` after merge.
