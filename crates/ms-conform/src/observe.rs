@@ -236,7 +236,9 @@ fn check_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
 }
 
 fn parse_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
-    let json_out = ctx.invoke(fx, &["check", entry, "--json"], work, b"");
+    // `fmt --check` parses without loading and checking the standard library, which `check`
+    // does for every file that parses (about 55 of its 60 ms); the parse diagnostics are the same.
+    let json_out = ctx.invoke(fx, &["fmt", entry, "--check", "--json"], work, b"");
     let report = parse_json_output(&json_out, work);
     let parse_diags: Vec<Json> = diagnostics_of(&report)
         .as_array()
