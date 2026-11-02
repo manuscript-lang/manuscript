@@ -8,8 +8,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  merge_group:
-    types: [checks_requested]
   workflow_dispatch:
 
 permissions:
@@ -23,8 +21,8 @@ env:
   CARGO_INCREMENTAL: '0'
 
 concurrency:
-  # A new pull request commit or push to main cancels the earlier run of the same ref. Manual runs and
-  # merge groups never cancel or replace each other.
+  # A new pull request commit or push to main cancels the earlier run of the same ref. Manual runs
+  # never cancel or replace each other.
   group: ci-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref) || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
@@ -34,7 +32,7 @@ jobs:
     if: github.event_name != 'pull_request'
     uses: ./.github/workflows/test-language.yml
 
-  # Builds the matrix for pushes, merge groups and manual runs. A pull request has no such job: its
+  # Builds the matrix for pushes and manual runs. A pull request has no such job: its
   # two Linux jobs hold the matrix and skip their own Rust steps for documentation-only changes.
   changes:
     name: Detect code changes
@@ -49,7 +47,7 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
         run: |
-          # Merge groups and manual runs cover all six platforms. A push to main runs the four darwin
+          # Manual runs cover all six platforms. A push to main runs the four darwin
           # and windows legs only: every pull request already ran both Linux architectures, and the
           # hourly manual run covers Linux on main. Pull requests run
           # two Linux jobs written in the `rust` matrix; run the workflow by hand on a branch to test a
