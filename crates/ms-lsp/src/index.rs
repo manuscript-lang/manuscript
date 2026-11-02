@@ -135,6 +135,16 @@ fn source_key(root: &str, file: Name) -> String {
     }
 }
 
+/// Lowered suffixes and omitted arguments have checked facts but no name token.
+fn written_name(source: &str, offset: usize, name: &str) -> bool {
+    let end = offset + name.len();
+    source.get(offset..end) == Some(name)
+        && source
+            .as_bytes()
+            .get(end)
+            .is_none_or(|byte| !crate::text::identifier(*byte))
+}
+
 /// The key of a module symbol.
 pub fn symbol_key(root: &str, s: Option<&SymRef>) -> String {
     match s {
@@ -244,7 +254,10 @@ impl Builder {
         write: bool,
         info: OccInfo,
     ) {
-        if key.is_empty() || name.is_empty() {
+        if key.is_empty()
+            || name.is_empty()
+            || !written_name(&self.by_file[&file].source, offset, name)
+        {
             return;
         }
         if !self.seen.insert((file, offset, key.clone())) {
@@ -768,6 +781,49 @@ impl UseWalker<'_> {
         self.b.add(key, name, file, offset, false, write, info);
     }
 
+    /// Match paths bypass expression inference. Resolve their case identity
+    /// from the checked scrutinee, rather than treating a bare arm as a name
+    /// lookup (different alternatives may declare the same case spelling).
+    fn match_case(&mut self, scrutinee: &Expr, path: &Expr) {
+        let Some(ty) = self.info_of(scrutinee).and_then(|info| info.ty) else {
+            return;
+        };
+        if ty.kind != Kind::Alternative {
+            return;
+        }
+        let Some(parent) = ty.symbol() else { return };
+        let name = match &path.kind {
+            ExprKind::Name(name) => *name,
+            ExprKind::Member { left, name } => {
+                let qualifier = self.info_of(peel_apply(left)).and_then(|info| info.symbol);
+                if qualifier
+                    .as_ref()
+                    .is_none_or(|symbol| symbol.id != parent.id)
+                {
+                    return;
+                }
+                *name
+            }
+            _ => return,
+        };
+        let Some(def) = &ty.def else { return };
+        if !def.cases.borrow().iter().any(|case| case.name == name) {
+            return;
+        }
+        self.add(
+            format!("case:{}:{}", symbol_key(&self.b.root, Some(&parent)), name),
+            name.as_str(),
+            path.pos.offset as usize,
+            false,
+            OccInfo {
+                ty: Some(ty.clone()),
+                constructor: Some(ty),
+                case: Some(name),
+                ..OccInfo::default()
+            },
+        );
+    }
+
     fn expression(&mut self, e: &Expr) {
         let Some(info) = self.info_of(e) else { return };
         if hidden_structure(self.module, e, &info, &mut self.hidden) {
@@ -988,8 +1044,11 @@ impl Visitor for UseWalker<'_> {
 
     fn expr(&mut self, e: &Expr) {
         self.expression(e);
-        if let ExprKind::Match { arms, .. } = &e.kind {
+        if let ExprKind::Match { scrutinee, arms } = &e.kind {
             for arm in arms {
+                if !arm.bare && !arm.chain && !arm.from_if {
+                    self.match_case(scrutinee, &arm.path);
+                }
                 visit_arm_path(self, &arm.path);
             }
         }

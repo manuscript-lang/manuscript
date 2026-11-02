@@ -1,8 +1,8 @@
 //! CRC-32/ISO-HDLC for `@std/data/checksum.ms`.
 use ms_rt::ffi::native;
 
-const CRC_TABLE: [u32; 256] = {
-    let mut t = [0u32; 256];
+const CRC_TABLE: [[u32; 256]; 8] = {
+    let mut t = [[0u32; 256]; 8];
     let mut i = 0;
     while i < 256 {
         let mut c = i as u32;
@@ -15,17 +15,44 @@ const CRC_TABLE: [u32; 256] = {
             };
             k += 1;
         }
-        t[i] = c;
+        t[0][i] = c;
         i += 1;
+    }
+    let mut slice = 1;
+    while slice < t.len() {
+        i = 0;
+        while i < 256 {
+            let c = t[slice - 1][i];
+            t[slice][i] = t[0][(c & 0xff) as usize] ^ (c >> 8);
+            i += 1;
+        }
+        slice += 1;
     }
     t
 };
 
 /// CRC-32 (IEEE) of `data`, continuing from the finished checksum `crc` (0 for an empty prefix).
 pub fn crc32_update(crc: u32, data: &[u8]) -> u32 {
+    if data.is_empty() {
+        return crc;
+    }
     let mut c = !crc;
-    for &b in data {
-        c = CRC_TABLE[((c ^ u32::from(b)) & 0xff) as usize] ^ (c >> 8);
+    let (chunks, tail) = data.as_chunks::<8>();
+    // Slice by eight: each table advances its byte through the remaining bytes of the block.
+    // Explicit little-endian loads preserve the IEEE recurrence on every host and alignment.
+    for block in chunks {
+        c ^= u32::from_le_bytes([block[0], block[1], block[2], block[3]]);
+        c = CRC_TABLE[7][(c & 0xff) as usize]
+            ^ CRC_TABLE[6][((c >> 8) & 0xff) as usize]
+            ^ CRC_TABLE[5][((c >> 16) & 0xff) as usize]
+            ^ CRC_TABLE[4][(c >> 24) as usize]
+            ^ CRC_TABLE[3][usize::from(block[4])]
+            ^ CRC_TABLE[2][usize::from(block[5])]
+            ^ CRC_TABLE[1][usize::from(block[6])]
+            ^ CRC_TABLE[0][usize::from(block[7])];
+    }
+    for &b in tail {
+        c = CRC_TABLE[0][((c ^ u32::from(b)) & 0xff) as usize] ^ (c >> 8);
     }
     !c
 }
@@ -64,10 +91,11 @@ native! {
 
 #[cfg(test)]
 mod tests {
-    use super::crc32;
+    use super::{crc32, crc32_update};
+    use alloc::vec::Vec;
 
-    fn reference(data: &[u8]) -> u32 {
-        let mut crc = u32::MAX;
+    fn reference(initial: u32, data: &[u8]) -> u32 {
+        let mut crc = !initial;
         for &byte in data {
             crc ^= u32::from(byte);
             for _ in 0..8 {
@@ -75,6 +103,45 @@ mod tests {
             }
         }
         !crc
+    }
+
+    #[test]
+    fn crc32_matches_bitwise_for_unaligned_inputs_and_seeds() {
+        let data: Vec<u8> = (0..65_552u32)
+            .map(|i| (i.wrapping_mul(73) ^ (i >> 8)) as u8)
+            .collect();
+        for offset in 0..16 {
+            for len in (0..=256).chain([1023, 1024, 32767, 32768, 65536]) {
+                let input = &data[offset..offset + len];
+                for seed in [0, 1, u32::MAX, 0x1234_5678] {
+                    assert_eq!(
+                        crc32_update(seed, input),
+                        reference(seed, input),
+                        "offset={offset} len={len} seed={seed}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn crc32_chunk_boundaries_preserve_continuation() {
+        let data: Vec<u8> = (0..4096u32).map(|i| (i % 251) as u8).collect();
+        for seed in [0, u32::MAX, 0x8765_4321] {
+            let expected = reference(seed, &data);
+            assert_eq!(crc32_update(seed, &[]), seed);
+            for split in 0..=data.len() {
+                assert_eq!(
+                    crc32_update(crc32_update(seed, &data[..split]), &data[split..]),
+                    expected
+                );
+            }
+            for size in [1, 7, 8, 9, 15, 16, 17, 31, 32, 33, 511, 512, 513] {
+                let actual = data.chunks(size).fold(seed, crc32_update);
+                assert_eq!(actual, expected, "size={size} seed={seed}");
+            }
+        }
+        assert_eq!(crc32_update(0, b"123456789"), 0xcbf4_3926);
     }
 
     #[test]
@@ -93,7 +160,7 @@ mod tests {
                 let view = &data[offset..offset + length];
                 assert_eq!(
                     crc32(view),
-                    reference(view),
+                    reference(0, view),
                     "offset {offset}, length {length}"
                 );
             }
