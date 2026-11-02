@@ -230,6 +230,54 @@ mod tests {
         }
     }
 
+    #[test]
+    fn emitted_metadata_line_markers_do_not_trigger_huge_function_flags() {
+        use crate::llvm_ir::{LlvmModule, Symbols};
+        use cranelift_codegen::ir::{Function, InstBuilder, Signature, UserFuncName};
+        use cranelift_codegen::isa::{CallConv, TargetFrontendConfig};
+        use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+        use std::collections::HashSet;
+
+        struct NoSymbols;
+        impl Symbols for NoSymbols {
+            fn symbol(&self, _: u32, _: u32) -> String {
+                unreachable!()
+            }
+            fn loc(&self, _: u32) -> Option<(u32, u32, u32)> {
+                None
+            }
+            fn scope(&self, _: u32) -> Option<(String, u32, u32, u32)> {
+                None
+            }
+        }
+        let mut f = Function::with_name_signature(
+            UserFuncName::user(0, 0),
+            Signature::new(CallConv::SystemV),
+        );
+        let mut context = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut context);
+        let entry = b.create_block();
+        b.switch_to_block(entry);
+        b.ins().return_(&[]);
+        b.seal_all_blocks();
+        b.finalize(TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        let mut module = LlvmModule::new(
+            vec![Some("part\ndefine file.ms".into())],
+            "dir\ndefine cwd".into(),
+        );
+        for i in 0..8000 {
+            let name = format!("tiny_{i}");
+            module.add_function(&name, &name, (0, 1), &f, &NoSymbols, true);
+        }
+        let ir = module.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
+        assert_eq!(largest_function_lines(&ir), 4);
+        assert!(ir.lines().count() > HUGE_FUNCTION_LINE_LIMIT);
+    }
+
     const HOT: &str = "define noundef i64 @msrt_map_length(i64 noundef %m) alwaysinline #0 {\n\
                        define internal i64 @_ZN6ms_rt_hot3foo() #1 {\n";
 
