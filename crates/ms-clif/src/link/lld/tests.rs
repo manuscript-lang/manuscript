@@ -127,3 +127,59 @@ fn staging_does_not_reuse_or_remove_an_existing_directory() {
     );
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn bundled_extraction_preserves_existing_staging_links() {
+    let root = scratch("bundled-links");
+    let victim = root.join("victim");
+    std::fs::write(&victim, b"retained contents").unwrap();
+    let stale = root.join(format!(".support.txt-{}-0", std::process::id()));
+    std::fs::hard_link(&victim, &stale).unwrap();
+    let payload = b"tiny bundled support payload";
+    extract_at(&root, &[("support.txt", payload)]).unwrap();
+    assert_eq!(std::fs::read(&victim).unwrap(), b"retained contents");
+    assert_eq!(std::fs::read(&stale).unwrap(), b"retained contents");
+    assert_eq!(std::fs::read(root.join("support.txt")).unwrap(), payload);
+    assert_eq!(std::fs::read_dir(&root).unwrap().count(), 3);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn bundled_extraction_repairs_incomplete_files_and_reuses_complete_files() {
+    let root = scratch("bundled-repair");
+    let files: &[(&str, &[u8])] = &[("one", b"complete one"), ("two", b"complete two")];
+    std::fs::write(root.join("one"), b"partial").unwrap();
+    extract_at(&root, files).unwrap();
+    for (name, payload) in files {
+        assert_eq!(std::fs::read(root.join(name)).unwrap(), *payload);
+    }
+    let before = std::fs::metadata(root.join("one"))
+        .unwrap()
+        .modified()
+        .unwrap();
+    extract_at(&root, files).unwrap();
+    assert_eq!(
+        std::fs::metadata(root.join("one"))
+            .unwrap()
+            .modified()
+            .unwrap(),
+        before
+    );
+    assert_eq!(std::fs::read_dir(&root).unwrap().count(), 2);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn failed_bundled_publication_cleans_only_its_own_stage() {
+    let root = scratch("bundled-error");
+    let blocked = root.join("support.txt");
+    std::fs::create_dir(&blocked).unwrap();
+    std::fs::write(blocked.join("retained"), b"owned elsewhere").unwrap();
+    assert!(extract_at(&root, &[("support.txt", b"payload")]).is_err());
+    assert_eq!(
+        std::fs::read(blocked.join("retained")).unwrap(),
+        b"owned elsewhere"
+    );
+    assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);
+    std::fs::remove_dir_all(root).unwrap();
+}
