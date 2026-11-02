@@ -18,9 +18,9 @@ import DirectoryEntry, FileSystemError, list, read_file from "@std/os/fs.ms"
 # A directory tree whose files can be read and whose directories can be listed.
 export interface FileTree:
     # Reads a whole file; more than `max_bytes` bytes returns `LimitExceeded`. A missing path is `NotFound`.
-    fn read_file(path: String, max_bytes: Int?) Bytes!FileSystemError
+    fn read(path: String, max_bytes: Int?) Bytes!FileSystemError
     # Lists a directory's children, sorted by name. A missing path is `NotFound`, a file is `InvalidInput`.
-    fn list(path: String, max_entries: Int?) List[DirectoryEntry]!FileSystemError
+    fn children(path: String, max_entries: Int?) List[DirectoryEntry]!FileSystemError
 
 # Resolves `path` to its parts under the root. Returns the clean path joined by `/`; the root is the empty string.
 fn clean(path: String) String!FileSystemError:
@@ -81,12 +81,12 @@ export fn host_tree(root: String) HostTree:
 
 impl FileTree for HostTree:
     # Reads a file below the root from the host disk; failures are the host's `FileSystemError`.
-    fn read_file(path: String, max_bytes: Int?) Bytes!FileSystemError:
+    fn read(path: String, max_bytes: Int?) Bytes!FileSystemError:
         let inside = try clean(path)
         return read_file(child_path(self.root, inside), max_bytes)
 
     # Lists a directory below the root from the host disk, sorted by name.
-    fn list(path: String, max_entries: Int?) List[DirectoryEntry]!FileSystemError:
+    fn children(path: String, max_entries: Int?) List[DirectoryEntry]!FileSystemError:
         let inside = try clean(path)
         let entries = try list(child_path(self.root, inside), max_entries)
         return ok(entries.sorted(by_name))
@@ -169,7 +169,7 @@ impl MemoryTree:
 
 impl FileTree for MemoryTree:
     # Reads a file held in this tree.
-    fn read_file(path: String, max_bytes: Int?) Bytes!FileSystemError:
+    fn read(path: String, max_bytes: Int?) Bytes!FileSystemError:
         let inside = try clean(path)
         if self.directories.contains(inside): return error(FileSystemError.InvalidInput)
 
@@ -182,7 +182,7 @@ impl FileTree for MemoryTree:
         return ok(found.get().clone())
 
     # Lists the files and directories directly under `path`, sorted by name.
-    fn list(path: String, max_entries: Int?) List[DirectoryEntry]!FileSystemError:
+    fn children(path: String, max_entries: Int?) List[DirectoryEntry]!FileSystemError:
         let inside = try clean(path)
         if self.files.contains(inside): return error(FileSystemError.InvalidInput)
         if not self.directories.contains(inside): return error(FileSystemError.NotFound)
@@ -235,7 +235,7 @@ fn push_children(
     directory: String,
     var pending: List[WalkEntry]
 ) Unit!FileSystemError:
-    let children = try tree.list(directory, none)
+    let children = try tree.children(directory, none)
     var i = children.length()
 
     while i > 0:

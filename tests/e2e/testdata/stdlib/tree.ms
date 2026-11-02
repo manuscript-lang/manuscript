@@ -17,7 +17,7 @@ fn paths(found: List[WalkEntry]) List[String]:
 fn total_size(tree: FileTree, names: List[String]) Int!FileSystemError:
     var total = 0
     for name in names:
-        total += (try tree.read_file(name, none)).length()
+        total += (try tree.read(name, none)).length()
     return ok(total)
 
 fn sample() MemoryTree:
@@ -30,7 +30,7 @@ fn sample() MemoryTree:
 
 test "memory tree lists and reads":
     let tree = sample()
-    let top = tree.list("", none) | try expect_ok
+    let top = tree.children("", none) | try expect_ok
     if top.map(fn e: e.name.clone()) != ["docs", "empty", "main.ms"]: return panic(
         "top"
     )
@@ -38,7 +38,7 @@ test "memory tree lists and reads":
     if top[2].directory: return panic("main.ms is a file")
     if (
         (
-            tree.read_file("docs/./api/../guide.md", none) | try expect_ok
+            tree.read("docs/./api/../guide.md", none) | try expect_ok
         ) != "guide".to_bytes()
     ): return panic("clean path")
     if (total_size(tree, ["main.ms", "docs/guide.md"]) | try expect_ok) != 9: return panic(
@@ -47,19 +47,19 @@ test "memory tree lists and reads":
 
 test "memory tree reports precise errors":
     var tree = sample()
-    if tree.read_file("nope", none).err() != FileSystemError.NotFound: return panic(
+    if tree.read("nope", none).err() != FileSystemError.NotFound: return panic(
         "missing"
     )
-    if tree.read_file("docs", none).err() != FileSystemError.InvalidInput: return panic(
+    if tree.read("docs", none).err() != FileSystemError.InvalidInput: return panic(
         "read directory"
     )
-    if tree.list("main.ms", none).err() != FileSystemError.InvalidInput: return panic(
+    if tree.children("main.ms", none).err() != FileSystemError.InvalidInput: return panic(
         "list file"
     )
-    if tree.read_file("../x", none).err() != FileSystemError.InvalidInput: return panic(
+    if tree.read("../x", none).err() != FileSystemError.InvalidInput: return panic(
         "escape"
     )
-    if tree.read_file("main.ms", 2).err() != FileSystemError.LimitExceeded: return panic(
+    if tree.read("main.ms", 2).err() != FileSystemError.LimitExceeded: return panic(
         "limit"
     )
     if (
@@ -101,9 +101,9 @@ test "host tree walks the same way":
     if paths(walk(tree) | try expect_ok) != ["b/", "b/two.txt", "one.txt"]: return panic(
         "host walk"
     )
-    if (tree.read_file("b/two.txt", none) | try expect_ok) != "22".to_bytes(): return panic(
+    if (tree.read("b/two.txt", none) | try expect_ok) != "22".to_bytes(): return panic(
         "host read"
     )
-    if tree.read_file("../etc", none).err() != FileSystemError.InvalidInput: return panic(
+    if tree.read("../etc", none).err() != FileSystemError.InvalidInput: return panic(
         "host escape"
     )

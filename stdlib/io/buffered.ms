@@ -10,11 +10,11 @@ import ReadStream, WriteStream, IoError from "@std/io/io.ms"
 # split function you supply).
 #
 # ```manuscript
-# import buffered_reader, scan, Split from "@std/io/buffered.ms"
+# import buffered_reader, scan, ScanMode from "@std/io/buffered.ms"
 # import from_bytes from "@std/io/streams.ms"
 #
 # fn words_of(text: String) List[String]:
-#     var scanner = scan(from_bytes(text.to_bytes()), Split.Words)
+#     var scanner = scan(from_bytes(text.to_bytes()), ScanMode.Words)
 #     var out = List[String]()
 #     for word in scanner:
 #         out.append(word.clone())
@@ -227,7 +227,7 @@ impl WriteStream for BufferedWriter:
         return ok(unit)
 
 # How a `Scanner` cuts its input into tokens.
-export type Split:
+export type ScanMode:
     # Lines without their `\n` or `\r\n` terminator. A final unterminated line is a token.
     case Lines
     # Runs of non-space bytes; ASCII space, tab, newline, vertical tab, form feed and carriage return separate them.
@@ -241,12 +241,12 @@ export type Split:
     )
     # Tokens cut by your function, called with the unconsumed bytes and whether the stream has ended.
     case Custom(
-        # Returns how many bytes to consume and the token, if any. See `SplitStep`.
-        step: fn(Bytes, Bool) SplitStep
+        # Returns how many bytes to consume and the token, if any. See `ScanStep`.
+        step: fn(Bytes, Bool) ScanStep
     )
 
 # What a custom split function decides for the bytes it was shown.
-export type SplitStep:
+export type ScanStep:
     # Bytes to consume. Zero with no token asks for more input; at end of stream it ends the scan.
     advance: Int
     # The token to yield, or none to yield nothing for these bytes.
@@ -259,7 +259,7 @@ export type Scanner:
     # The buffered input being scanned.
     reader: BufferedReader
     # How tokens are cut.
-    split: Split
+    split: ScanMode
     # Per-token byte limit, or none for no limit.
     max_bytes: Int?
     # The error that ended the scan, if any.
@@ -268,7 +268,7 @@ export type Scanner:
 # Returns a scanner over `input`. Iterate a `var` scanner with `for` so `error()` can be read afterwards.
 export fn scan(
     input: ReadStream,
-    split: Split = Split.Lines,
+    split: ScanMode = ScanMode.Lines,
     max_bytes: Int? = none
 ) Scanner:
     return Scanner(buffered_reader(input), split, max_bytes, none)
@@ -277,20 +277,20 @@ fn is_space(byte: UInt8) Bool:
     let value = byte.to_int()
     return value == 32 or (value >= 9 and value <= 13)
 
-fn lines_step(data: Bytes, start: Int, at_eof: Bool) SplitStep:
+fn lines_step(data: Bytes, start: Int, at_eof: Bool) ScanStep:
     if let found = data.index_of_byte(10, start):
         var end = found
         if end > start and data.get(end - 1, 0).to_int() == 13: end -= 1
-        return SplitStep(found + 1 - start, (data.slice(start, end)).get())
+        return ScanStep(found + 1 - start, (data.slice(start, end)).get())
 
     if at_eof and data.length() > start:
         var end = data.length()
         if data.get(end - 1, 0).to_int() == 13: end -= 1
-        return SplitStep(data.length() - start, (data.slice(start, end)).get())
+        return ScanStep(data.length() - start, (data.slice(start, end)).get())
 
-    return SplitStep(0)
+    return ScanStep(0)
 
-fn words_step(data: Bytes, start: Int, at_eof: Bool) SplitStep:
+fn words_step(data: Bytes, start: Int, at_eof: Bool) ScanStep:
     var first = start
     while first < data.length() and is_space(data.get(first, 0)):
         first += 1
@@ -299,36 +299,36 @@ fn words_step(data: Bytes, start: Int, at_eof: Bool) SplitStep:
     while last < data.length() and not is_space(data.get(last, 0)):
         last += 1
     if last < data.length() or (at_eof and last > first):
-        return SplitStep(last - start, (data.slice(first, last)).get())
-    if at_eof: return SplitStep(data.length() - start)
+        return ScanStep(last - start, (data.slice(first, last)).get())
+    if at_eof: return ScanStep(data.length() - start)
 
-    return SplitStep(0)
+    return ScanStep(0)
 
-fn delimiter_step(data: Bytes, start: Int, mark: Bytes, at_eof: Bool) SplitStep:
+fn delimiter_step(data: Bytes, start: Int, mark: Bytes, at_eof: Bool) ScanStep:
     let window = (data.slice(start, data.length())).get()
     if let found = window.index_of(mark):
-        return SplitStep(found + mark.length(), (window.slice(0, found)).get())
+        return ScanStep(found + mark.length(), (window.slice(0, found)).get())
     if at_eof and window.length() > 0:
-        return SplitStep(window.length(), window)
+        return ScanStep(window.length(), window)
 
-    return SplitStep(0)
+    return ScanStep(0)
 
 impl Scanner:
     # Returns the I/O error that ended the scan, or none after a clean end of input.
     fn error() IoError?:
         return self.failure.clone()
 
-    # Cuts the next token at the front of the buffer as a `SplitStep`.
-    var fn cut(at_eof: Bool) SplitStep!IoError:
+    # Cuts the next token at the front of the buffer as a `ScanStep`.
+    var fn cut(at_eof: Bool) ScanStep!IoError:
         match self.split:
             Lines: return ok(lines_step(self.reader.buffer, self.reader.offset, at_eof))
             Words: return ok(words_step(self.reader.buffer, self.reader.offset, at_eof))
             Runes:
                 # read_rune consumes the scalar itself, so the step advances zero further bytes.
                 let rune = try self.reader.read_rune()
-                if rune.is_none(): return ok(SplitStep(0))
+                if rune.is_none(): return ok(ScanStep(0))
 
-                return ok(SplitStep(0, rune.get().to_bytes()))
+                return ok(ScanStep(0, rune.get().to_bytes()))
             Delimiter(separator):
                 if separator.is_empty(): return error(IoError.InvalidInput)
 

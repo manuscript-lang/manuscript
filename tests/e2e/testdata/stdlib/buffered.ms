@@ -2,8 +2,8 @@ import (
     buffered_reader,
     buffered_writer,
     scan,
-    Split,
-    SplitStep
+    ScanMode,
+    ScanStep
 ) from "@std/io/buffered.ms"
 import from_bytes from "@std/io/streams.ms"
 import read_all, IoError, ReadStream from "@std/io/io.ms"
@@ -83,7 +83,7 @@ test "writer batches small writes":
         "content"
     )
 
-fn collect(input: ReadStream, split: Split = Split.Lines) List[String]:
+fn collect(input: ReadStream, split: ScanMode = ScanMode.Lines) List[String]:
     var scanner = scan(input, split)
     var out = List[String]()
     for token in scanner:
@@ -96,31 +96,31 @@ test "scanner lines handles CRLF and an unterminated tail":
 
 test "scanner words and runes":
     let words = collect(
-        from_bytes("  the quick\t brown\nfox ".to_bytes(), 2), Split.Words
+        from_bytes("  the quick\t brown\nfox ".to_bytes(), 2), ScanMode.Words
     )
     if words != ["the", "quick", "brown", "fox"]: return panic("words")
 
-    let runes = collect(from_bytes("a\u{e9}z".to_bytes(), 1), Split.Runes)
+    let runes = collect(from_bytes("a\u{e9}z".to_bytes(), 1), ScanMode.Runes)
     if runes != ["a", "\u{e9}", "z"]: return panic("runes")
 
 test "scanner delimiter and custom split":
-    let parts = collect(from_bytes("a--b----c".to_bytes(), 2), Split.Delimiter("--"))
+    let parts = collect(from_bytes("a--b----c".to_bytes(), 2), ScanMode.Delimiter("--"))
     if parts != ["a", "b", "", "c"]: return panic("delimiter")
 
     # Tokens are runs of three bytes.
-    let threes = Split.Custom(
-        fn(window: Bytes, at_eof: Bool) SplitStep:
-            if window.length() >= 3: return SplitStep(3, (window.slice(0, 3)).get())
-            if at_eof and window.length() > 0: return SplitStep(window.length(), window)
+    let threes = ScanMode.Custom(
+        fn(window: Bytes, at_eof: Bool) ScanStep:
+            if window.length() >= 3: return ScanStep(3, (window.slice(0, 3)).get())
+            if at_eof and window.length() > 0: return ScanStep(window.length(), window)
 
-            return SplitStep(0)
+            return ScanStep(0)
     )
 
     let chunks = collect(from_bytes("abcdefgh".to_bytes(), 2), threes)
     if chunks != ["abc", "def", "gh"]: return panic("custom")
 
 test "scanner reports limits and bad data":
-    var long = scan(from_bytes("abcdefghij\nx".to_bytes(), 3), Split.Lines, 4)
+    var long = scan(from_bytes("abcdefghij\nx".to_bytes(), 3), ScanMode.Lines, 4)
     for token in long:
         return panic("token over the limit")
     if long.error() != IoError.LimitExceeded: return panic("limit error")
@@ -130,7 +130,7 @@ test "scanner reports limits and bad data":
         return panic("invalid utf8 token")
     if bad.error() != IoError.InvalidData: return panic("data error")
 
-    var empty = scan(from_bytes("x".to_bytes()), Split.Delimiter(""))
+    var empty = scan(from_bytes("x".to_bytes()), ScanMode.Delimiter(""))
     for token in empty:
         return panic("empty delimiter")
     if empty.error() != IoError.InvalidInput: return panic("delimiter error")
