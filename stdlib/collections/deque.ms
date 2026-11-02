@@ -101,6 +101,22 @@ impl Deque[T]:
         self.start = 0
         self.size = 0
 
+# Ring behaviour: a Deque is also a ring buffer that can be turned.
+impl Deque[T]:
+    # Moves `count` values from the front to the back, one at a time, so the value `count` places in becomes the front;
+    # a negative `count` moves values from the back to the front. Any magnitude is reduced modulo the length, and an empty deque is unchanged.
+    # Example: with 1, 2, 3, 4 queued, `rotate(1)` leaves 2, 3, 4, 1.
+    var fn rotate(count: Int) Unit:
+        if self.size < 2:
+            return
+
+        var steps = (count % self.size + self.size) % self.size
+
+        while steps > 0:
+            if let value = self.pop_front():
+                self.push_back(value)
+            steps -= 1
+
 interface DequeCopy[T: Clonable]:
     fn to_list() List[T]
 
