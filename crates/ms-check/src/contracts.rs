@@ -292,6 +292,16 @@ impl Checker {
                 .or_default()
                 .push(at);
         }
+        if let Some(contract) = &method.contract {
+            if contract.kind == Kind::Variable {
+                self.generic_contract_methods.push(at);
+            } else {
+                self.methods_by_contract
+                    .entry(contract.id)
+                    .or_default()
+                    .push(at);
+            }
+        }
         self.p.methods.push(method);
     }
 
@@ -750,7 +760,12 @@ impl Checker {
         if receiver.kind == Kind::Variable {
             return receiver.bounds().iter().any(|b| same(b, contract));
         }
-        for m in &self.p.methods {
+        let exact = self
+            .methods_by_contract
+            .get(&contract.id)
+            .map_or(&[][..], |v| v);
+        for &at in exact.iter().chain(&self.generic_contract_methods) {
+            let m = &self.p.methods[at];
             if !self.method_visible(m) {
                 continue;
             }

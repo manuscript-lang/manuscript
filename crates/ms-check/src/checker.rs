@@ -211,6 +211,9 @@ pub struct Checker {
     pub(crate) p: Program,
     /// Candidate positions in declaration order; type arguments are matched at use.
     pub(crate) methods_by_receiver: HashMap<Name, Vec<usize>>,
+    /// Method indices by implemented contract id; methods of a contract variable are in `generic_contract_methods`.
+    pub(crate) methods_by_contract: HashMap<Name, Vec<usize>>,
+    pub(crate) generic_contract_methods: Vec<usize>,
     pub(crate) methods_by_name: HashMap<(Name, Name), Vec<usize>>,
     pub(crate) module: Option<ModRef>,
     pub(crate) names: Names,
@@ -260,6 +263,8 @@ impl Checker {
             group: Vec::new(),
             p: Program::default(),
             methods_by_receiver: HashMap::new(),
+            methods_by_contract: HashMap::new(),
+            generic_contract_methods: Vec::new(),
             methods_by_name: HashMap::new(),
             module: None,
             names: Rc::new(RefCell::new(HashMap::new())),
