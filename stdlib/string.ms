@@ -279,28 +279,40 @@ impl StringTextOperations for String:
     # wins and its replacement is not rescanned; empty keys are ignored.
     fn replace_each(pairs: Map[String, String]) String:
         var out = StringBuilder()
-        let olds = pairs.keys()
         let news = pairs.values()
-        let n = self.length()
+        var needles = List[List[String]]()
+        for key in pairs.keys():
+            needles.append(key.chars())
+
+        let cs = self.chars()
+        let n = cs.length()
         var i = 0
 
         while i < n:
-            var hit = false
+            var hit = -1
 
-            for j in 0..olds.length():
-                let key = olds[j]
-
-                if not key.is_empty() and self.drop(i).starts_with(key):
-                    out.append(news[j])
-                    i += key.length()
-                    hit = true
+            for j in 0..needles.length():
+                if chars_start_at(cs, i, needles[j]):
+                    hit = j
                     break
 
-            if not hit:
-                out.append(self.slice(i, i + 1).get(""))
+            if hit < 0:
+                out.append(cs[i])
                 i += 1
+                continue
+
+            out.append(news[hit])
+            i += needles[hit].length()
 
         return out.build()
+
+# Tests whether the non-empty scalar list `needle` occurs in `cs` at index `at`.
+fn chars_start_at(cs: List[String], at: Int, needle: List[String]) Bool:
+    if needle.is_empty() or at + needle.length() > cs.length(): return false
+
+    for t in 0..needle.length():
+        if cs[at + t] != needle[t]: return false
+    return true
 
 fn is_word_scalar(c: String) Bool:
     return msstd_unicode_is_alphanumeric(c.scalar_at(0, -1)) or c == "'"

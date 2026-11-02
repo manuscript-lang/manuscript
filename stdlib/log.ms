@@ -227,7 +227,7 @@ impl Logger:
         if let text = data: line = "{line},\"data\":{text}"
         line = "{line}\}\n"
         if let max = self.max_bytes:
-            if line.to_bytes().length() > max: return error(LogError.LimitExceeded)
+            if line.byte_length() > max: return error(LogError.LimitExceeded)
         return self.transport.get().inner.write(line)
 
     # Writes a record at the selected level. `fields` is any `Data` value `stringify` accepts.

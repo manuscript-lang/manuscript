@@ -116,7 +116,10 @@ export fn percentile(values: List[Float], percent: Float) Float?:
     if values.is_empty():
         return none
 
-    let ordered = values.sorted()
+    return percentile_sorted(values.sorted(), percent)
+
+# Interpolates the percentile of an already sorted, non-empty list.
+fn percentile_sorted(ordered: List[Float], percent: Float) Float:
     let position = percent / 100.0 * (ordered.length() - 1).to_float()
     let below = position.truncate_to_int().get(0)
     let fraction = position - below.to_float()
@@ -136,12 +139,9 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
     if values.is_empty():
         return cuts
 
+    let ordered = values.sorted()
     for i in 1..parts:
-        cuts.append(
-            percentile(values, 100.0 * i.to_float() / parts.to_float()).get(
-                0.0
-            )
-        )
+        cuts.append(percentile_sorted(ordered, 100.0 * i.to_float() / parts.to_float()))
     return cuts
 
 # Counts the values into `bins` equal-width bins between the least and greatest value, or returns none for an empty list.
