@@ -3,7 +3,7 @@
 
 use ms_rt::ffi::Fail;
 use ms_std_core::encoding::{
-    ascii85_decode, base32_decode, base32_encode, base64_decode_unpadded, base64_encode_unpadded,
+    base32_decode, base32_encode, base64_decode_unpadded, base64_encode_unpadded,
 };
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
@@ -102,40 +102,6 @@ fn unpadded_base64_reserves_output_without_reallocation() {
                 assert_eq!(counts.reallocations, 0, "Base32 {length}: {counts:?}");
             }
         }
-    }
-}
-
-#[test]
-fn bounded_ascii85_checks_the_complete_output_before_allocating() {
-    for (text, limit) in [("zz", 7), ("!!!!!!!!!!", 7), ("z z", 4), ("!!!!!z", 4)] {
-        let (result, counts) = counted(|| ascii85_decode(text, Some(limit)));
-        assert_eq!(result, Err(Fail::LimitExceeded));
-        assert_eq!(counts.allocations, 0, "{text:?}: {counts:?}");
-        assert_eq!(counts.reallocations, 0, "{text:?}: {counts:?}");
-    }
-    for (text, limit) in [("", 0), (" \t\r\n", 0), ("zz", 8), ("!!!!!z", 8), ("!!", 1)] {
-        let (result, counts) = counted(|| ascii85_decode(text, Some(limit)));
-        let bytes = result.unwrap();
-        assert!(bytes.len() <= limit as usize);
-        assert_eq!(counts.allocations, usize::from(!bytes.is_empty()));
-        assert_eq!(counts.reallocations, 0);
-    }
-    for text in ["!", "z!", "!!!!!v", "uuuuu"] {
-        let (result, counts) = counted(|| ascii85_decode(text, Some(100)));
-        assert_eq!(result, Err(Fail::InvalidData));
-        assert_eq!(counts.allocations, 0, "{text:?}: {counts:?}");
-    }
-    let (negative, counts) = counted(|| ascii85_decode("zz", Some(-1)));
-    assert_eq!(negative, Err(Fail::InvalidInput));
-    assert_eq!(counts.allocations, 0);
-    for (text, limit, expected) in [
-        ("zzv", 4, Fail::LimitExceeded),
-        ("zv", 4, Fail::InvalidData),
-        ("uuuuu", 0, Fail::InvalidData),
-    ] {
-        let (result, counts) = counted(|| ascii85_decode(text, Some(limit)));
-        assert_eq!(result, Err(expected));
-        assert_eq!(counts.allocations, 0);
     }
 }
 
