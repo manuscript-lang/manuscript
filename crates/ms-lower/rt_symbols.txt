@@ -921,8 +921,6 @@ msstd_url_format_query(entries: *const RecList<QueryEntryRec>, out: *mut StrVal)
 msstd_url_parse(text: *const StrVal, out: *mut UrlRec) -> u8
 msstd_url_parse_query(text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
 msstd_url_resolve(base: *const UrlRec, reference: *const StrVal, out: *mut UrlRec) -> u8
-msstd_utf8_decode_first(data: *const VecVal, at: i64) -> i64
-msstd_utf8_decode_last(data: *const VecVal, end: i64) -> i64
 msstd_utf8_is_valid(data: *const VecVal) -> u8
 msstd_websocket_close(s: *const ObjCell<SocketH>)
 msstd_websocket_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: *mut StrVal)
