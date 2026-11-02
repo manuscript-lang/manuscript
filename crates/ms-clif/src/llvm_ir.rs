@@ -293,6 +293,17 @@ fn attr(t: Type) -> &'static str {
     if t == types::I8 { " zeroext" } else { "" }
 }
 
+/// The extension attribute of a signature parameter or return, as Cranelift records it: runtime
+/// bytes are zero-extended (`abi_param`), a user shim's narrow arguments carry their own, and
+/// a user shim's narrow results carry none, because the C callee need not extend them.
+fn param_attr(p: &ir::AbiParam) -> &'static str {
+    match p.extension {
+        ir::ArgumentExtension::Sext => " signext",
+        ir::ArgumentExtension::Uext => " zeroext",
+        ir::ArgumentExtension::None => "",
+    }
+}
+
 /// These runtime entry points terminate or unwind; none returns to its caller.
 fn fault_function(name: &str) -> bool {
     matches!(
@@ -346,8 +357,8 @@ fn ret_ty(rets: &[ir::AbiParam]) -> String {
         [] => "void".into(),
         [r] => format!(
             "{}{}",
-            attr(r.value_type).trim_start(),
-            if attr(r.value_type).is_empty() {
+            param_attr(r).trim_start(),
+            if param_attr(r).is_empty() {
                 llty(r.value_type).to_string()
             } else {
                 format!(" {}", llty(r.value_type))
@@ -363,7 +374,7 @@ fn ret_ty(rets: &[ir::AbiParam]) -> String {
 fn sig_params(sig: &ir::Signature) -> String {
     sig.params
         .iter()
-        .map(|p| format!("{}{}", llty(p.value_type), attr(p.value_type)))
+        .map(|p| format!("{}{}", llty(p.value_type), param_attr(p)))
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -966,7 +977,8 @@ impl<'a> Tr<'a> {
                 if exclusive.contains(&i) && t == types::I64 {
                     format!("ptr {}", self.ptr(*v, 0))
                 } else {
-                    format!("{}{} {}", llty(t), attr(t), self.op(*v))
+                    let a = sig.params.get(i).map_or(attr(t), param_attr);
+                    format!("{}{} {}", llty(t), a, self.op(*v))
                 }
             })
             .collect();

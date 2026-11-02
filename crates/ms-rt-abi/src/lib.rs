@@ -491,6 +491,88 @@ pub const STATUS_NONE: u8 = 16;
 pub const STATUS_BUSY: u8 = 17;
 
 // ---------------------------------------------------------------------------
+// The public C ABI of `include/ms_abi.h` (user `extern fn` shims)
+// ---------------------------------------------------------------------------
+
+/// Offset of the payload in an object from `ms_object_new`: the header, the shim's drop
+/// entry, then padding to 16-byte alignment.
+pub const NATIVE_OBJECT_PAYLOAD_OFFSET: usize = 32;
+/// Offset of the shim's drop entry (`void (*)(void *payload)`, may be null).
+pub const NATIVE_OBJECT_DROP_OFFSET: usize = 16;
+
+/// `ms_kind`: the kind of an `ms_value`.
+pub const VALUE_UNIT: u32 = 0;
+pub const VALUE_BOOL: u32 = 1;
+pub const VALUE_INT: u32 = 2;
+pub const VALUE_UINT: u32 = 3;
+pub const VALUE_FLOAT: u32 = 4;
+pub const VALUE_STRING: u32 = 5;
+pub const VALUE_BYTES: u32 = 6;
+pub const VALUE_OBJECT: u32 = 7;
+pub const VALUE_LIST: u32 = 8;
+pub const VALUE_FN: u32 = 9;
+
+/// Element type of a `List[T]` crossing to a shim. The low byte is the `ms_kind` of the
+/// element; the next byte is its size in bytes for integers and floats (0 otherwise).
+pub const ELEM_INT8: u64 = VALUE_INT as u64 | 1 << 8;
+pub const ELEM_INT16: u64 = VALUE_INT as u64 | 2 << 8;
+pub const ELEM_INT32: u64 = VALUE_INT as u64 | 4 << 8;
+pub const ELEM_INT64: u64 = VALUE_INT as u64 | 8 << 8;
+pub const ELEM_UINT8: u64 = VALUE_UINT as u64 | 1 << 8;
+pub const ELEM_UINT16: u64 = VALUE_UINT as u64 | 2 << 8;
+pub const ELEM_UINT32: u64 = VALUE_UINT as u64 | 4 << 8;
+pub const ELEM_UINT64: u64 = VALUE_UINT as u64 | 8 << 8;
+pub const ELEM_FLOAT32: u64 = VALUE_FLOAT as u64 | 4 << 8;
+pub const ELEM_FLOAT64: u64 = VALUE_FLOAT as u64 | 8 << 8;
+pub const ELEM_BOOL: u64 = VALUE_BOOL as u64 | 1 << 8;
+pub const ELEM_STRING: u64 = VALUE_STRING as u64;
+pub const ELEM_BYTES: u64 = VALUE_BYTES as u64;
+pub const ELEM_OBJECT: u64 = VALUE_OBJECT as u64;
+
+/// `ms_list`: what a shim receives for a `List[T]` parameter or result. Generated code builds
+/// it on the stack around the list value; the shim sees an opaque pointer.
+#[repr(C)]
+pub struct ListRef {
+    pub vec: *mut VecVal,
+    /// One of the `ELEM_*` constants.
+    pub elem: u64,
+}
+pub const LIST_REF_VEC_OFFSET: usize = 0;
+pub const LIST_REF_ELEM_OFFSET: usize = 8;
+pub const LIST_REF_SIZE: usize = 16;
+
+/// The `buf` member of an `ms_value`: a string's or bytes' data.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ValueBuf {
+    pub data: *const u8,
+    pub len: usize,
+}
+
+/// The payload of an `ms_value`.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union ValueAs {
+    pub b: bool,
+    pub i: i64,
+    pub u: u64,
+    pub f: f64,
+    pub buf: ValueBuf,
+    pub ptr: *mut u8,
+}
+
+/// `ms_value`: a tagged value passed to and from `ms_list_get` and `ms_list_push`.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Value {
+    /// One of the `VALUE_*` constants.
+    pub kind: u32,
+    pub as_: ValueAs,
+}
+pub const VALUE_AS_OFFSET: usize = 8;
+pub const VALUE_SIZE: usize = 24;
+
+// ---------------------------------------------------------------------------
 // Faults, call depth, tables
 // ---------------------------------------------------------------------------
 
@@ -605,104 +687,167 @@ mod tests {
     use super::*;
     use core::mem::{offset_of, size_of};
 
-    /// The `STATUS_*` constants as `(C name, value)`, in declaration order.
-    const STATUSES: &[(&str, u8)] = &[
-        ("OK", STATUS_OK),
-        ("INVALID_INPUT", STATUS_INVALID_INPUT),
-        ("OUT_OF_RANGE", STATUS_OUT_OF_RANGE),
-        ("LIMIT_EXCEEDED", STATUS_LIMIT_EXCEEDED),
-        ("INVALID_DATA", STATUS_INVALID_DATA),
-        ("NOT_FOUND", STATUS_NOT_FOUND),
-        ("ALREADY_EXISTS", STATUS_ALREADY_EXISTS),
-        ("NOT_EMPTY", STATUS_NOT_EMPTY),
-        ("PERMISSION_DENIED", STATUS_PERMISSION_DENIED),
-        ("UNSUPPORTED", STATUS_UNSUPPORTED),
-        ("CLOSED", STATUS_CLOSED),
-        ("FAILED", STATUS_FAILED),
-        ("UNAVAILABLE", STATUS_UNAVAILABLE),
-        ("TIMEOUT", STATUS_TIMEOUT),
-        ("OUTPUT_LIMIT", STATUS_OUTPUT_LIMIT),
-        ("NOT_TERMINAL", STATUS_NOT_TERMINAL),
-        ("NONE", STATUS_NONE),
-        ("BUSY", STATUS_BUSY),
-    ];
-
-    /// The C header for natives, built from this crate's constants and layouts so it cannot
-    /// drift from `StrVal`. `header_is_current` compares it with `include/ms_abi.h`.
+    /// The C header for `extern fn` shims. Layouts and constants come from this crate, so the
+    /// header cannot drift from the runtime; `header_is_current` compares it with
+    /// `include/ms_abi.h`.
     fn header() -> std::string::String {
-        let mut h = std::string::String::new();
-        let mut w = |line: std::string::String| {
-            h.push_str(&line);
-            h.push('\n');
-        };
-        w("/* Generated from crates/ms-rt-abi/src/lib.rs by the `header_is_current` test; do not edit.".into());
-        w(
-            " * Regenerate with: MS_UPDATE_HEADER=1 cargo test -p ms-rt-abi header_is_current"
-                .into(),
-        );
-        w(" *".into());
-        w(" * The Manuscript ABI for `extern fn` natives (ms-rt/ABI.md, section 1).".into());
-        w(" * Int is int64_t, Float is double, Bool is uint8_t (0 or 1). A String argument arrives as a".into());
-        w(" * borrowed `const ms_str *`: read it with ms_str_data/ms_str_len and do not keep the pointer".into());
-        w(" * after returning. A String result is written through a trailing `ms_str *out` that the native".into());
-        w(" * fills with msrt_string_from_bytes; never allocate or free string memory yourself. */".into());
-        w("#ifndef MS_ABI_H".into());
-        w("#define MS_ABI_H".into());
-        w("".into());
-        w("#include <stddef.h>".into());
-        w("#include <stdint.h>".into());
-        w("".into());
-        w(std::format!("#define MS_ABI_VERSION {ABI_VERSION}"));
-        w("".into());
-        w("/* Status byte returned by a fallible native; the ok value goes through the trailing out pointer. */".into());
-        for (name, value) in STATUSES {
-            w(std::format!("#define MS_STATUS_{name} {value}"));
+        let mut functions = std::string::String::new();
+        for name in FUNCTIONS {
+            functions.push_str(&std::format!("#define {name} {name}_v1\n"));
         }
-        w("".into());
-        w(std::format!("#define MS_STR_INLINE_MAX {STR_INLINE_MAX}"));
-        w("".into());
-        w("typedef struct ms_str {".into());
-        w("    void *ptr_word;".into());
-        w("    size_t tagged;".into());
-        w("} ms_str;".into());
-        w("".into());
-        w(std::format!(
-            "_Static_assert(sizeof(ms_str) == {}, \"ms_str is two words\");",
-            size_of::<StrVal>()
-        ));
-        w(std::format!(
-            "_Static_assert(offsetof(ms_str, tagged) == {}, \"ms_str layout\");",
-            offset_of!(StrVal, tagged)
-        ));
-        w("".into());
-        w("/* Tag in the top two bits of `tagged`: 1 is an inline string whose bytes live in the value. */".into());
-        w(std::format!(
-            "static inline int ms_str_is_inline(const ms_str *s) {{ return (s->tagged >> 62) == {}; }}",
-            STR_INLINE >> 62
-        ));
-        w("".into());
-        w("static inline size_t ms_str_len(const ms_str *s) {".into());
-        w(std::format!(
-            "    return ms_str_is_inline(s) ? (s->tagged >> {STR_INLINE_LEN_SHIFT}) & {STR_INLINE_MAX} : s->tagged & (((size_t)1 << 62) - 1);"
-        ));
-        w("}".into());
-        w("".into());
-        w("static inline const uint8_t *ms_str_data(const ms_str *s) {".into());
-        w(
-            "    return ms_str_is_inline(s) ? (const uint8_t *)s : (const uint8_t *)s->ptr_word;"
-                .into(),
-        );
-        w("}".into());
-        w("".into());
-        w(
-            "/* Builds an owned string from `len` bytes at `ptr` into uninitialised `out`. */"
-                .into(),
-        );
-        w("void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);".into());
-        w("".into());
-        w("#endif".into());
-        h
+        std::format!(
+            r#"/* Generated from crates/ms-rt-abi/src/lib.rs by the `header_is_current` test; do not edit.
+ * Regenerate with: MS_UPDATE_HEADER=1 cargo test -p ms-rt-abi header_is_current
+ *
+ * ms_abi.h: what a C shim behind a Manuscript `extern fn` may use. The signature types and
+ * rules are in documentation/core-language/functions/native-functions.md. Call these functions
+ * only on the thread that called the shim, while the extern call is running. */
+#ifndef MS_ABI_H
+#define MS_ABI_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {{
+#define MS_NORETURN [[noreturn]]
+#define MS_STATIC_ASSERT static_assert
+#else
+#define MS_NORETURN _Noreturn
+#define MS_STATIC_ASSERT _Static_assert
+#endif
+
+/* ---- 1. Version ---------------------------------------------------------------------- */
+/* Every function links under a versioned name (ms_string_new is ms_string_new_v1), so a shim
+   built against another version fails to link and names the function it needs. */
+#define MS_ABI_VERSION 1
+{functions}
+/* ---- 2. Status codes ----------------------------------------------------------------- */
+typedef enum ms_status {{
+    MS_OK = 0, MS_CANCELLED = 1, MS_TIMEOUT = 2, MS_CLOSED = 3, MS_FAULTED = 4,
+    MS_WOULD_DEADLOCK = 5, MS_FULL = 6, MS_INVALID = 7
+}} ms_status;
+
+/* ---- 3. Strings and bytes ------------------------------------------------------------ */
+/* String: a borrowed `const ms_str *` argument, or a trailing `ms_str *out` result. */
+typedef struct ms_str {{ void *ptr_word; size_t tagged; }} ms_str;
+/* Bytes: a borrowed `const ms_bytes *` argument, or a trailing `ms_bytes *out` result. */
+typedef struct ms_bytes {{ uint8_t *ptr; size_t len; size_t cap; }} ms_bytes;
+MS_STATIC_ASSERT(sizeof(ms_str) == {str_size}, "ms_str is two words");
+MS_STATIC_ASSERT(offsetof(ms_str, tagged) == {str_len}, "ms_str layout");
+MS_STATIC_ASSERT(sizeof(ms_bytes) == {vec_size}, "ms_bytes is three words");
+
+#define MS_STR_INLINE_MAX {inline_max}
+/* The top two bits of `tagged` are 1 for a string whose bytes are inside the value. */
+static inline int ms_str_is_inline(const ms_str *s) {{ return (s->tagged >> 62) == {inline_tag}; }}
+static inline size_t ms_str_len(const ms_str *s) {{
+    return ms_str_is_inline(s) ? (s->tagged >> {inline_shift}) & {inline_max} : s->tagged & (((size_t)1 << 62) - 1);
+}}
+/* The bytes: UTF-8, not NUL-terminated. */
+static inline const uint8_t *ms_str_data(const ms_str *s) {{
+    return ms_str_is_inline(s) ? (const uint8_t *)s : (const uint8_t *)s->ptr_word;
+}}
+static inline size_t ms_bytes_len(const ms_bytes *b) {{ return b->len; }}
+static inline const uint8_t *ms_bytes_data(const ms_bytes *b) {{ return b->ptr; }}
+/* A malloc'd NUL-terminated copy for C APIs that take `const char *`; NULL if the string
+   contains a NUL byte. Free it with free(). */
+char *ms_str_cstring(const ms_str *s);
+/* Replace the string in `out` with a copy of `len` bytes of UTF-8 (other bytes fault). */
+void ms_string_new(const uint8_t *data, size_t len, ms_str *out);
+/* Replace the bytes in `out` with a copy of `len` bytes. */
+void ms_bytes_new(const uint8_t *data, size_t len, ms_bytes *out);
+
+/* ---- 4. Values ----------------------------------------------------------------------- */
+typedef struct ms_object ms_object;
+typedef struct ms_list ms_list;
+typedef enum ms_kind {{
+    MS_UNIT = {unit}, MS_BOOL = {bool_}, MS_INT = {int}, MS_UINT = {uint}, MS_FLOAT = {float},
+    MS_STRING = {string}, MS_BYTES = {bytes}, MS_OBJECT = {object}, MS_LIST = {list}, MS_FN = {fn_}
+}} ms_kind;
+typedef union ms_value_as {{
+    bool b; int64_t i; uint64_t u; double f;           /* sized types widen               */
+    struct {{ const uint8_t *data; size_t len; }} buf;   /* MS_STRING, MS_BYTES             */
+    ms_object *object;
+}} ms_value_as;
+typedef struct ms_value {{ ms_kind kind; ms_value_as as; }} ms_value;
+MS_STATIC_ASSERT(sizeof(ms_value) == {value_size}, "ms_value layout");
+/* Free the malloc'd copy that a string or bytes value from ms_list_get holds. */
+void ms_value_free(ms_value *v);
+
+/* ---- 5. Lists ------------------------------------------------------------------------ */
+/* A List[T] argument is a borrowed `const ms_list *`; a List[T] result is a trailing
+   `ms_list *out` that starts empty. The list knows its element type: get widens it into an
+   ms_value, push checks the kind and the range and faults naming both types. */
+size_t   ms_list_len(const ms_list *l);
+ms_kind  ms_list_kind(const ms_list *l);
+/* Strings and bytes come back as malloc'd copies (ms_value_free); objects are borrowed. */
+ms_value ms_list_get(const ms_list *l, size_t i);
+/* Appends a copy of `v`; an object is retained. */
+void     ms_list_push(ms_list *out, const ms_value *v);
+
+/* ---- 6. Native objects (extern type) ------------------------------------------------- */
+/* An extern type value: `size` bytes of zeroed payload, 16-byte aligned, at a stable address.
+   `drop(payload)`, which may be NULL, runs once when the last reference goes; it may free C
+   memory, start a library's asynchronous close and call ms_release, nothing else. */
+ms_object *ms_object_new(size_t size, void (*drop)(void *payload));
+void      *ms_payload(ms_object *o);
+ms_object *ms_retain(ms_object *o);
+void       ms_release(ms_object *o);
+
+/* ---- 7. Errors and faults ------------------------------------------------------------ */
+/* A fallible extern returns uint8_t: 0 is ok, n is the n-th case of its error type. If any case
+   has a `code: Int` field a trailing `int64_t *code_out` follows; if any has `message: String`
+   a trailing `ms_str *message_out` follows. Every output arrives holding a valid empty value
+   (0, "", an empty list, NULL); the caller reads the fields of the returned case and drops the
+   rest. */
+/* An unrecoverable error: reported and cleaned up like a Manuscript fault. */
+MS_NORETURN void ms_fault(const char *text, size_t len);
+
+/* Before version 1: the same as ms_string_new on an empty `out`. */
+void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);
+
+#ifdef __cplusplus
+}}
+#endif
+#endif
+"#,
+            str_size = size_of::<StrVal>(),
+            str_len = offset_of!(StrVal, tagged),
+            vec_size = size_of::<VecVal>(),
+            inline_max = STR_INLINE_MAX,
+            inline_tag = STR_INLINE >> 62,
+            inline_shift = STR_INLINE_LEN_SHIFT,
+            unit = VALUE_UNIT,
+            bool_ = VALUE_BOOL,
+            int = VALUE_INT,
+            uint = VALUE_UINT,
+            float = VALUE_FLOAT,
+            string = VALUE_STRING,
+            bytes = VALUE_BYTES,
+            object = VALUE_OBJECT,
+            list = VALUE_LIST,
+            fn_ = VALUE_FN,
+            value_size = VALUE_SIZE,
+        )
     }
+
+    /// The functions `ms-rt` exports under `<name>_v1`.
+    const FUNCTIONS: &[&str] = &[
+        "ms_str_cstring",
+        "ms_string_new",
+        "ms_bytes_new",
+        "ms_value_free",
+        "ms_list_len",
+        "ms_list_kind",
+        "ms_list_get",
+        "ms_list_push",
+        "ms_object_new",
+        "ms_payload",
+        "ms_retain",
+        "ms_release",
+        "ms_fault",
+    ];
 
     #[test]
     fn header_is_current() {
@@ -775,6 +920,11 @@ mod tests {
         assert_eq!(size_of::<LineEntry>(), LINE_ENTRY_SIZE);
         assert_eq!(size_of::<ScopeEntry>(), SCOPE_ENTRY_SIZE);
         assert_eq!(size_of::<Tables>(), 80);
+        assert_eq!(offset_of!(ListRef, vec), LIST_REF_VEC_OFFSET);
+        assert_eq!(offset_of!(ListRef, elem), LIST_REF_ELEM_OFFSET);
+        assert_eq!(size_of::<ListRef>(), LIST_REF_SIZE);
+        assert_eq!(offset_of!(Value, as_), VALUE_AS_OFFSET);
+        assert_eq!(size_of::<Value>(), VALUE_SIZE);
         assert_eq!(size_of::<usize>(), 8, "64-bit targets only");
     }
 }

@@ -1089,6 +1089,9 @@ pub struct Module {
     /// Closers of `Shared` payloads holding resources: for the payload record type, a function
     /// `fn(ptr)` over the box's payload that closes the value the last holder's drop releases.
     pub shared_close: Vec<(Ty, FuncId)>,
+    /// Externs that are user `extern fn` shims (`ms_abi.h`): their sized numbers cross as the
+    /// same-width C types, extended per the platform ABI, instead of the runtime's 64-bit words.
+    pub c_externs: std::collections::BTreeSet<String>,
 }
 
 impl Default for Module {
@@ -1117,6 +1120,7 @@ impl Module {
             entry: None,
             desc_glue: Vec::new(),
             shared_close: Vec::new(),
+            c_externs: std::collections::BTreeSet::new(),
         }
     }
 
