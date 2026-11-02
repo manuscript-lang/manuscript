@@ -1,0 +1,5 @@
+# This test builds stats runtimes with nested Cargo invocations. Reserve the runner's
+# slots so those builds do not compete with compiler scaling tests.
+[[profile.default.overrides]]
+filter = 'package(=ms-cli) & binary(=count_check) & test(=count_gate_rejects_failed_children_even_with_zero_live_blocks)'
+threads-required = "num-test-threads"
