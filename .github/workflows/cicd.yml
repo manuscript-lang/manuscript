@@ -23,9 +23,10 @@ env:
   CARGO_INCREMENTAL: '0'
 
 concurrency:
-  # Manual runs never cancel or replace each other or a push run.
+  # A new pull request commit or push to main cancels the earlier run of the same ref. Manual runs and
+  # merge groups never cancel or replace each other.
   group: ci-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref) || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 jobs:
   language:
