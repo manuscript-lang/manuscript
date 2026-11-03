@@ -46,12 +46,16 @@ impl FnLower<'_> {
                 self.b.def_var(var, v);
                 return Ok(Some((var, true)));
             }
-            if self
-                .locals
-                .get(&b.uid)
-                .is_none_or(|l| l.slot.is_none() && !l.opt)
-            {
-                return Ok(Some((self.local(&b)?.var, false)));
+            if let Some(l) = self.locals.get(&b.uid).copied() {
+                if l.slot.is_none() && !l.opt {
+                    return Ok(Some((l.var, false)));
+                }
+                // A binding that lives in memory, or that a move may have emptied, is read in
+                // place: the match borrows it and leaves it to its scope end.
+                let v = self.local_get(&l);
+                let var = self.b.declare_var(l.ty, Mode::Borrow);
+                self.b.def_var(var, v);
+                return Ok(Some((var, false)));
             }
         }
         let x = self.expr(e)?;
@@ -294,9 +298,9 @@ impl FnLower<'_> {
             if let (Some(uid), false, false) = (owned_uid, takes, self.dead) {
                 // This arm left the scrutinee whole: it goes with the arm.
                 let l = self.locals[&uid];
-                let v = self.local_take(&l);
+                let mut v = self.local_take(&l);
                 if let Some(kind) = self.hidden_closers.get(&uid).cloned() {
-                    self.close_discarded_kind(&kind, v);
+                    v = self.close_discarded_kind(&kind, v);
                 }
                 self.drop_value(v);
                 self.closed_on_path.insert(uid);
@@ -369,8 +373,9 @@ impl FnLower<'_> {
         let Some(b) = b else {
             let ty = self.ty_of(v);
             if self.needs_drop(ty) {
+                let mut v = v;
                 if let Some(kind) = self.part_closer_mir(ty)? {
-                    self.close_discarded_kind(&kind, v);
+                    v = self.close_discarded_kind(&kind, v);
                 }
                 self.drop_value(v);
             }

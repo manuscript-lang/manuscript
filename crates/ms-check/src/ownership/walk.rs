@@ -1712,7 +1712,7 @@ impl Walker<'_> {
                     }
                     _ => None,
                 };
-                let scrutinee = self.scrutinee(s.id, probed.unwrap_or(cond));
+                let scrutinee = self.scrutinee(probed.unwrap_or(cond));
                 if mutable {
                     self.mutable_payload(p, cond, &scrutinee);
                     self.payload_resource(s, p, cond, &scrutinee);
@@ -1758,7 +1758,7 @@ impl Walker<'_> {
 
     fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) {
         let mark = self.declared.len();
-        let source = self.scrutinee(s.id, iter);
+        let source = self.scrutinee(iter);
         self.release_pending();
         // The iterable stays unchanged for the whole loop.
         let hidden = usize::MAX - self.hidden;
@@ -1810,7 +1810,7 @@ impl Walker<'_> {
 
     fn bind(&mut self, s: &Stmt, mutable: bool, pattern: &Pattern, value: &Expr) {
         let PatternKind::Name(_) = pattern.kind else {
-            let scrutinee = self.scrutinee(s.id, value);
+            let scrutinee = self.scrutinee(value);
             let role = if mutable { Role::Var } else { Role::Pattern };
             self.pattern_bindings(pattern, &scrutinee, role);
             return;
@@ -2389,7 +2389,7 @@ impl Walker<'_> {
     // ------------------------------------------------------ patterns
 
     /// Evaluates a matched or destructured value and says how its parts are held.
-    fn scrutinee(&mut self, stmt: NodeId, e: &Expr) -> Scrutinee {
+    fn scrutinee(&mut self, e: &Expr) -> Scrutinee {
         if self.is_place(e) {
             let class = self.class_of(e);
             let whole = matches!(e.kind, ExprKind::Name(_));
@@ -2409,8 +2409,6 @@ impl Walker<'_> {
                 let param = self.is_consumable_param(&b);
                 if owned_local || param && self.escaped.contains(&e.id) {
                     self.expr(e, Demand::Consume);
-                    self.facts.consumed_scrutinees.insert(stmt);
-                    self.facts.scrutinee_moves.insert(e.id);
                     return Scrutinee {
                         owned: true,
                         origins: Vec::new(),
@@ -3827,7 +3825,7 @@ impl Walker<'_> {
         // A `?.` chain only borrows its receiver, even at its last use: a change through the
         // chain (`c?.bump()`) lands in the receiver.
         self.keep_scrutinee = arms.first().is_some_and(|a| a.chain);
-        let source = self.scrutinee(e.id, scrutinee);
+        let source = self.scrutinee(scrutinee);
         self.keep_scrutinee = false;
         self.release_pending();
         // The value is a reference when every arm yields one and nothing consumes it: lowering

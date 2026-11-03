@@ -1379,8 +1379,7 @@ impl<'a> FnLower<'a> {
         let k = self.b.iconst(case as i64);
         let v = self.b.icmp(ms_mir::ir::Cc::Eq, tag, k);
         // Only read: an owned result holding a resource (`open().is_ok()`) closes it.
-        self.close_owned_temp(recv);
-        self.finish(recv);
+        self.close_finish(recv);
         Ok(Val { v, own: false })
     }
 
@@ -1824,9 +1823,17 @@ impl<'a> FnLower<'a> {
             if self.dead {
                 return Ok(());
             }
-            let map = self.borrow(x);
-            self.close_discarded_ty(&ty, map)?;
-            self.finish(x);
+            if x.own {
+                let map = self.close_discarded_ty(&ty, x.v)?;
+                self.drop_value(map);
+                return Ok(());
+            }
+            let Some(kind) = self.part_closer(&ty)? else {
+                return Ok(());
+            };
+            self.place_update(recv_expr, &mut |s, old| {
+                Ok(s.close_discarded_kind(&kind, old))
+            })?;
             return Ok(());
         }
         self.close_map_entry(recv_expr, &args[0])
@@ -1859,11 +1866,8 @@ impl<'a> FnLower<'a> {
         self.b.br_if(missing, absent, &[], present, &[]);
         self.b.seal_block(present);
         self.b.switch_to(present);
-        let old = self
-            .b
-            .emit(Op::Load, &[p], Imm::Ty(value_ty), Some(value_ty))
-            .expect("load");
-        self.close_discarded_ty(&value, old)?;
+        let _ = value_ty;
+        self.close_discarded_at(&value, p)?;
         self.b.br(absent, &[]);
         self.b.seal_block(absent);
         self.b.switch_to(absent);
@@ -1917,8 +1921,16 @@ impl<'a> FnLower<'a> {
         let one = self.b.iconst(1);
         let j = self.b.binop(Op::ISub, i, one);
         self.b.def_var(idx, j);
-        let e = self.b.list_get(list, j);
-        self.close_discarded_ty(&elem, e)?;
+        let ep = self
+            .b
+            .emit(
+                Op::ListAddrU,
+                &[list, j],
+                ms_mir::ir::Imm::None,
+                Some(MTy::PTR),
+            )
+            .expect("element address");
+        self.close_discarded_at(&elem, ep)?;
         self.b.br(header, &[]);
         self.b.seal_block(header);
         self.b.seal_block(done);
@@ -1959,8 +1971,16 @@ impl<'a> FnLower<'a> {
         self.b.br_if(inside, yes, &[], exit, &[]);
         self.b.seal_block(yes);
         self.b.switch_to(yes);
-        let e = self.b.list_get(list, r);
-        self.close_discarded_ty(elem, e)?;
+        let ep = self
+            .b
+            .emit(
+                Op::ListAddrU,
+                &[list, r],
+                ms_mir::ir::Imm::None,
+                Some(MTy::PTR),
+            )
+            .expect("element address");
+        self.close_discarded_at(elem, ep)?;
         self.b.br(exit, &[]);
         self.b.seal_block(exit);
         self.b.switch_to(exit);
@@ -1997,7 +2017,12 @@ impl<'a> FnLower<'a> {
         let v = self.element_value(&args[1]);
         let at = self
             .b
-            .emit(Op::ListAddrU, &[list, r], Imm::None, Some(MTy::PTR))
+            .emit(
+                Op::ListAddrU,
+                &[list, r],
+                ms_mir::ir::Imm::None,
+                Some(MTy::PTR),
+            )
             .expect("list.addr.u");
         if self.needs_drop(elem) {
             let old = self
@@ -2193,8 +2218,7 @@ impl<'a> FnLower<'a> {
                     self.b.unop(ms_mir::ir::Op::Not, some)
                 };
                 // Only read: an owned optional of a resource (`open().is_some()`) closes it.
-                self.close_owned_temp(recv);
-                self.finish(recv);
+                self.close_finish(recv);
                 Ok(Val { v, own: false })
             }
             "get" if args.is_empty() && self.needs_drop(inner) => {
@@ -2217,15 +2241,20 @@ impl<'a> FnLower<'a> {
                     some,
                     inner,
                     &mut |s| {
-                        let p = s.b.opt_get(r);
-                        let o = s.owned(Val { v: p, own: false });
-                        s.finish(recv);
+                        // An owned optional hands its payload over; a borrowed one is copied.
+                        let o = if recv.own {
+                            s.b.opt_unbox(r)
+                        } else {
+                            let p = s.b.opt_get(r);
+                            s.owned(Val { v: p, own: false })
+                        };
                         if let Some(d) = default {
                             // The default goes unused: an owned resource there closes now.
                             if d.wrapped {
-                                s.close_owned_temp(d.val);
+                                s.close_finish(d.val);
+                            } else {
+                                s.finish(d.val);
                             }
-                            s.finish(d.val);
                         }
                         Ok(Some(o))
                     },
@@ -2293,8 +2322,7 @@ impl<'a> FnLower<'a> {
                         let y = s.b.call_ind(fv, &[p]);
                         let v = if by_map { s.b.opt_some(y) } else { y };
                         // The callback only borrowed the payload: an owned temporary closes it.
-                        s.close_owned_temp(recv);
-                        s.finish(recv);
+                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -2417,15 +2445,22 @@ impl<'a> FnLower<'a> {
                     is_ok,
                     out,
                     &mut |s| {
-                        let p = s.b.alt_get(alt, ok, 0, r);
-                        let o = s.owned(Val { v: p, own: false });
-                        s.finish(recv);
+                        // An owned result hands its payload over; a borrowed one is copied.
+                        let o = if recv.own {
+                            let p = s.b.alt_take(alt, ok, 0, r);
+                            s.b.alt_release(alt, ok, 1, r);
+                            p
+                        } else {
+                            let p = s.b.alt_get(alt, ok, 0, r);
+                            s.owned(Val { v: p, own: false })
+                        };
                         if let Some(d) = default {
                             // The default goes unused: an owned resource there closes now.
                             if d.wrapped {
-                                s.close_owned_temp(d.val);
+                                s.close_finish(d.val);
+                            } else {
+                                s.finish(d.val);
                             }
-                            s.finish(d.val);
                         }
                         Ok(Some(o))
                     },
@@ -2476,8 +2511,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let v = s.b.call_ind(f.val.v, &[p]);
-                        s.close_owned_temp(recv);
-                        s.finish(recv);
+                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -2510,8 +2544,7 @@ impl<'a> FnLower<'a> {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let y = s.b.call_ind(f.val.v, &[p]);
                         let v = s.b.alt_new(oa, out_err, &[y]);
-                        s.close_owned_temp(recv);
-                        s.finish(recv);
+                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -2532,8 +2565,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let v = s.b.call_ind(f.val.v, &[p]);
-                        s.close_owned_temp(recv);
-                        s.finish(recv);
+                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -2566,8 +2598,7 @@ impl<'a> FnLower<'a> {
                         } else {
                             y
                         };
-                        s.close_owned_temp(recv);
-                        s.finish(recv);
+                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },

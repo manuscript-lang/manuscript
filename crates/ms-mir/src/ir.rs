@@ -884,6 +884,9 @@ pub struct Func {
     /// A closure function whose environment owns resources: the capture index and the function
     /// that closes it (taking the captured value by borrow), run when the closure is dropped.
     pub capture_closers: Vec<(u32, FuncId)>,
+    /// A cleanup thunk that takes the address of a value of this type and closes it in place:
+    /// the value is still there after the close, for the unwinding that registered it to drop.
+    pub slot_close: Option<Ty>,
 }
 
 impl Func {
@@ -908,6 +911,7 @@ impl Func {
             keeps_scoped: false,
             unwind_only: false,
             capture_closers: Vec::new(),
+            slot_close: None,
         };
         for p in params {
             let v = f.new_value(p.ty);

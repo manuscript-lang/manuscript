@@ -579,7 +579,8 @@ impl<'a> FnLower<'a> {
             .expect("copy result")
     }
 
-    /// An owned `none` of optional type `t` (a bare `opt.none` is a borrow).
+    /// An owned `none` of optional type `t` (a bare `opt.none` is a borrow; its copy owns
+    /// nothing, so the copy costs a null check and never touches an object).
     pub fn none_owned(&mut self, t: MTy) -> Value {
         let n = self.b.opt_none(t);
         self.owned(Val { v: n, own: false })
@@ -606,8 +607,7 @@ impl<'a> FnLower<'a> {
         while self.temps.len() > mark {
             let v = self.temps.pop().expect("temp");
             if !self.dead {
-                self.close_temp(v);
-                self.drop_value(v);
+                self.drop_temp(v);
             }
         }
     }
@@ -620,8 +620,7 @@ impl<'a> FnLower<'a> {
         }
         for i in (from..self.temps.len()).rev() {
             let v = self.temps[i];
-            self.close_temp(v);
-            self.drop_value(v);
+            self.drop_temp(v);
         }
     }
 
@@ -1044,8 +1043,7 @@ impl<'a> FnLower<'a> {
                 }
                 let l = self.locals[uid];
                 if let Some(kind) = self.hidden_closers.get(uid).cloned() {
-                    let v = self.local_get(&l);
-                    self.close_discarded_kind(&kind, v);
+                    self.close_local(&l, &kind);
                 }
                 if self.closers.get(uid).is_some_and(|c| c.split.is_some()) {
                     self.release_split(*uid);
@@ -1127,8 +1125,7 @@ impl<'a> FnLower<'a> {
             }
             // The temporaries stay registered: a conditional return leaves the others running.
             for t in self.temps.clone().into_iter().rev() {
-                self.close_temp(t);
-                self.drop_value(t);
+                self.drop_temp(t);
             }
             self.end_fixture();
         }

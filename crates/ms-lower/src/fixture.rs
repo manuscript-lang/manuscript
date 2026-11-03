@@ -85,11 +85,11 @@ impl FnLower<'_> {
         let writes_back = self.cx.var_positions(hook).contains(&0);
         let local = self.local(binding)?;
         let kind = CloseKind::Func { fid, writes_back };
-        let thunk = self.close_thunk(&kind, local.ty, local.slot.is_some());
-        let registered = match local.slot {
-            Some(ptr) => ptr,
-            None => self.read_local(binding)?.v,
-        };
+        // The fixture lives in memory while hooks are registered (see `bind_fixture`).
+        let registered = local
+            .slot
+            .ok_or_else(|| Error::new("a fixture with hooks lives in memory"))?;
+        let thunk = self.close_thunk(&kind, local.ty, true);
         let handle = self
             .b
             .emit(

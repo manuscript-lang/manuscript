@@ -228,17 +228,30 @@ impl FnLower<'_> {
             "expect_some" => {
                 let some = self.b.opt_is_some(vals[0]);
                 let actual = vals[0];
+                // An owned temporary (`make() | try expect_some`) hands its payload over
+                // instead of being copied and dropped.
+                let owned = args[0].val.own && self.needs_drop(self.ty_of(actual));
+                if owned {
+                    self.unhold_temp(actual);
+                }
                 self.two_ways(
                     some,
                     rty,
                     &mut |s| {
-                        let p = s.b.opt_get(actual);
-                        let o = s.owned(Val { v: p, own: false });
+                        let o = if owned {
+                            s.b.opt_unbox(actual)
+                        } else {
+                            let p = s.b.opt_get(actual);
+                            s.owned(Val { v: p, own: false })
+                        };
                         Ok(Some(s.testing_ok(rty, o)?))
                     },
                     &mut |s| {
                         let m = s.lit("expected some, got none");
                         let m = s.cat(&[m])?;
+                        if owned {
+                            s.drop_value(actual);
+                        }
                         Ok(Some(s.testing_fail(rty, m.v)?))
                     },
                 )
@@ -251,12 +264,22 @@ impl FnLower<'_> {
                 let k = self.b.iconst(if want_ok { ok } else { err } as i64);
                 let good = self.b.icmp(Cc::Eq, tag, k);
                 let case = if want_ok { ok } else { err };
+                let owned = args[0].val.own && self.needs_drop(self.ty_of(actual));
+                if owned {
+                    self.unhold_temp(actual);
+                }
                 self.two_ways(
                     good,
                     rty,
                     &mut |s| {
-                        let p = s.b.alt_get(a, case, 0, actual);
-                        let o = s.owned(Val { v: p, own: false });
+                        let o = if owned {
+                            let p = s.b.alt_take(a, case, 0, actual);
+                            s.b.alt_release(a, case, 1, actual);
+                            p
+                        } else {
+                            let p = s.b.alt_get(a, case, 0, actual);
+                            s.owned(Val { v: p, own: false })
+                        };
                         Ok(Some(s.testing_ok(rty, o)?))
                     },
                     &mut |s| {
@@ -267,6 +290,9 @@ impl FnLower<'_> {
                         });
                         let r = s.repr_text(actual);
                         let m = s.cat(&[head, r])?;
+                        if owned {
+                            s.drop_value(actual);
+                        }
                         Ok(Some(s.testing_fail(rty, m.v)?))
                     },
                 )

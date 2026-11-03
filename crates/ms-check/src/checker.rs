@@ -127,8 +127,6 @@ pub struct Program {
     pub moves: Rc<HashMap<usize, HashSet<NodeId>>>,
     /// The moved bindings some path keeps to the end of their scope.
     pub conditional_moves: Rc<HashSet<usize>>,
-    /// Statements whose scrutinee is a consumed local, by module file and statement node.
-    pub consumed_scrutinees: Rc<HashSet<(Name, NodeId)>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves: Rc<HashMap<usize, HashMap<NodeId, Vec<Name>>>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module

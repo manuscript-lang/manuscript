@@ -534,10 +534,11 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let lay = mem_layout(&leaves);
                     off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
                     if let Some((_, close)) = closers.iter().find(|(i, _)| *i as usize == k) {
-                        // A resource the environment owns is closed before it is released.
-                        let vs = self.load_leaves(obj, off, &leaves);
+                        // A resource the environment owns is closed in place before it is
+                        // released: the closer takes the capture's address.
+                        let at = self.b.ins().iadd_imm_s(obj, off);
                         let fid = self.g.funcs[close.index()];
-                        self.call_id(fid, &vs);
+                        self.call_id(fid, &[at]);
                     }
                     if self.g.m.needs_drop(c) {
                         let vs = self.load_leaves(obj, off, &leaves);
