@@ -2,6 +2,7 @@
 //! holder owns close with it.
 
 use crate::Error;
+use crate::cx::HelperKey;
 use crate::func::FnLower;
 use ms_check::types as ct;
 use ms_check::types::Builtin;
@@ -970,11 +971,7 @@ impl FnLower<'_> {
         };
         // The helper closes the holder in place, through its address: a part whose close
         // changes it is written back where it lives, with no copy of the holder.
-        let key = format!(
-            "close_parts:{}:{}",
-            self.cx.tys.intern(ty).index(),
-            own.is_some()
-        );
+        let key = HelperKey::CloseParts(self.cx.tys.intern(ty), own.is_some());
         if let Some(f) = self.cx.helpers.get(&key) {
             return Ok(Some(CloseKind::Func {
                 fid: *f,
@@ -1007,10 +1004,16 @@ impl FnLower<'_> {
     /// The function the cleanup stack calls with the registered value.
     pub(crate) fn close_thunk(&mut self, kind: &CloseKind, ty: MTy, in_slot: bool) -> FuncId {
         let key = match kind {
-            CloseKind::Iface(i, k) => format!("close:iface{}:{k}:{in_slot}", i.0),
-            CloseKind::Func { fid, writes_back } => {
-                format!("close:{}:{writes_back}:{in_slot}", fid.index())
-            }
+            CloseKind::Iface(i, k) => HelperKey::CloseIface {
+                iface: i.0,
+                k: *k,
+                in_slot,
+            },
+            CloseKind::Func { fid, writes_back } => HelperKey::CloseFunc {
+                fid: *fid,
+                writes_back: *writes_back,
+                in_slot,
+            },
         };
         if let Some(f) = self.cx.helpers.get(&key) {
             return *f;

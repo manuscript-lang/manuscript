@@ -5,6 +5,7 @@
 //! through the same marshalling as any native method, so statuses become `Result` values.
 
 use crate::Error;
+use crate::cx::VtableKey;
 use crate::cx::{Cx, Job, JobKind};
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
@@ -232,7 +233,10 @@ impl Cx {
         ity: &ct::Ty,
         iface: IfaceId,
     ) -> Result<VtableId, Error> {
-        let key = format!("handle:{}:{}", module, iface.0);
+        let key = VtableKey::Handle {
+            module: ct::Name::intern(module),
+            iface: iface.0,
+        };
         if let Some(v) = self.vtables.get(&key) {
             return Ok(*v);
         }

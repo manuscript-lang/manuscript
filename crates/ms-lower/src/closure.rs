@@ -4,6 +4,7 @@ use crate::Error;
 use crate::cx::{
     BoundNativeJob, Cx, Held, IfaceNativeJob, Job, JobKind, LambdaJob, NativeThunkJob,
 };
+use crate::cx::{BoundTarget, HelperKey};
 use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
@@ -233,7 +234,7 @@ impl FnLower<'_> {
                 .expect("closure");
             return Ok(Val { v, own: true });
         }
-        let key = format!("thunk:{}", fid.index());
+        let key = HelperKey::Thunk(fid);
         let thunk = match self.cx.helpers.get(&key) {
             Some(t) => *t,
             None => {
@@ -289,12 +290,11 @@ impl FnLower<'_> {
         if own.len() != ptys.len() || own == ptys {
             return Ok(None);
         }
-        let key = format!(
-            "default-thunk:{}:{}:{}",
-            fid.index(),
-            fty.0,
-            shared.is_some()
-        );
+        let key = HelperKey::DefaultThunk {
+            fid,
+            fty,
+            shared: shared.is_some(),
+        };
         Ok(Some(self.queue_default_thunk(
             key, fid, &ptys, ret, callee, subst, recv, shared,
         )))
@@ -305,7 +305,7 @@ impl FnLower<'_> {
     #[allow(clippy::too_many_arguments)]
     fn queue_default_thunk(
         &mut self,
-        key: String,
+        key: HelperKey,
         fid: FuncId,
         ptys: &[MTy],
         ret: MTy,
@@ -382,7 +382,7 @@ impl FnLower<'_> {
                 t
             });
         }
-        let key = format!("direct-default:{}", fid.index());
+        let key = HelperKey::DirectDefault(fid);
         let thunk = self.queue_default_thunk(key, fid, &ptys, ret, c, subst, None, None);
         let fty = self.b.m.types.func(ptys.clone(), ret);
         let mut slots: Vec<Option<Value>> = vec![None; ptys.len()];
@@ -477,7 +477,7 @@ impl FnLower<'_> {
     /// the closure holds as the address of the variable.
     fn shared_method_thunk(
         &mut self,
-        key: String,
+        key: HelperKey,
         name: &str,
         fid: FuncId,
         params: &[MTy],
@@ -545,7 +545,12 @@ impl FnLower<'_> {
                 let held_ty = if addr { MTy::PTR } else { recv_mty };
                 // A function type that takes optionals the interface method takes plainly.
                 if self.b.m.ifaces[iface.index()].methods[k].params != params {
-                    let key = format!("iface-thunk:{}:{k}:{}:{addr}", iface.0, fty.0);
+                    let key = HelperKey::IfaceThunk {
+                        iface: iface.0,
+                        k,
+                        fty,
+                        addr,
+                    };
                     let thunk = match self.cx.helpers.get(&key) {
                         Some(t) => *t,
                         None => {
@@ -585,7 +590,11 @@ impl FnLower<'_> {
                     return Ok(Val { v, own: true });
                 }
                 if let Receiver::Addr(slot, _) = recv {
-                    let key = format!("bound-shared:iface{}:{k}:{}", iface.0, fty.0);
+                    let key = HelperKey::BoundSharedIface {
+                        iface: iface.0,
+                        k,
+                        fty,
+                    };
                     let thunk = match self.cx.helpers.get(&key) {
                         Some(t) => *t,
                         None => {
@@ -622,11 +631,7 @@ impl FnLower<'_> {
                         .expect("closure");
                     return Ok(Val { v, own: true });
                 }
-                (
-                    format!("bound:iface{}:{k}", iface.0),
-                    Err((iface, k as u32)),
-                    recv,
-                )
+                (BoundTarget::Iface(iface.0, k), Err((iface, k as u32)), recv)
             } else {
                 let im = if m.native.as_str() == "contract" {
                     self.contract_impl(m, &recv_ty)
@@ -692,7 +697,7 @@ impl FnLower<'_> {
                     let thunk = match (thunk, changes) {
                         (Some(t), _) => Some(t),
                         (None, true) => {
-                            let key = format!("bound-shared:{}:{}", fid.index(), fty.0);
+                            let key = HelperKey::BoundSharedFunc { fid, fty };
                             Some(self.shared_method_thunk(key, &name, fid, &params, ret))
                         }
                         (None, false) => None,
@@ -714,11 +719,15 @@ impl FnLower<'_> {
                         .expect("closure");
                     return Ok(Val { v, own: true });
                 }
-                (format!("bound:{}", fid.index()), Ok((fid, changes)), recv)
+                (BoundTarget::Func(fid), Ok((fid, changes)), recv)
             };
         let addr = matches!(recv, Receiver::Addr(..));
         let held = self.captured(recv);
-        let key = format!("{key}:{}:{addr}", fty.0);
+        let key = HelperKey::Bound {
+            target: key,
+            fty,
+            addr,
+        };
         let thunk = match self.cx.helpers.get(&key) {
             Some(t) => *t,
             None => {
@@ -784,7 +793,10 @@ impl FnLower<'_> {
         let TyKind::Fn(ptys, ret) = self.b.m.types.kind(fty).clone() else {
             return Err(Error::new("native function value without function type"));
         };
-        let key = format!("native-thunk:{}:{}", sym.native, fty.0);
+        let key = HelperKey::NativeThunk {
+            native: sym.native,
+            fty,
+        };
         let thunk = match self.cx.helpers.get(&key) {
             Some(f) => *f,
             None => {
@@ -860,18 +872,15 @@ impl FnLower<'_> {
         let scope = self
             .evidence_of(&[self.hir.ty(left)])
             .unwrap_or(self.hir.data.file);
-        let key = format!(
-            "bound-native:{}:{}:{}:{:?}{}",
-            m.native,
-            rty.0,
-            fty.0,
+        let key = HelperKey::BoundNative {
+            native: m.native,
+            rty,
+            fty,
             held,
-            if self.cx.holds_extension(self.b.m, rty) || self.cx.holds_extension(self.b.m, fty) {
-                format!("@{scope}")
-            } else {
-                String::new()
-            }
-        );
+            scope: (self.cx.holds_extension(self.b.m, rty)
+                || self.cx.holds_extension(self.b.m, fty))
+            .then_some(scope),
+        };
         let thunk = match self.cx.helpers.get(&key) {
             Some(f) => *f,
             None => {
@@ -936,7 +945,7 @@ impl FnLower<'_> {
             Receiver::Value(v) => (self.ty_of(v.v), false),
         };
         let held_ty = if addr { MTy::PTR } else { t };
-        let key = format!("tostring-thunk:{}:{addr}", t.0);
+        let key = HelperKey::TostringThunk(t, addr);
         let thunk = match self.cx.helpers.get(&key) {
             Some(f) => *f,
             None => {

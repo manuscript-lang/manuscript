@@ -1,6 +1,7 @@
 //! Text forms: interpolation, `to_string` and the quoted form test failures print.
 
 use crate::Error;
+use crate::cx::HelperKey;
 use crate::cx::{Cx, Job, JobKind};
 use crate::func::{FnLower, Val};
 use ms_check::types::Kind;
@@ -88,7 +89,7 @@ fn format_params(t: MTy) -> Vec<Param> {
 impl Cx {
     /// The function formatting a value of `t` (reserved on first use); `repr` is the quoted form.
     pub(crate) fn format_fn(&mut self, m: &mut Module, t: MTy, repr: bool) -> FuncId {
-        let key = format!("fmt:{}:{repr}", t.0);
+        let key = HelperKey::Fmt(t, repr);
         if let Some(f) = self.helpers.get(&key) {
             return *f;
         }
