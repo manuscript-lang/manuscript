@@ -19,29 +19,42 @@ fn codes(source: &str) -> Vec<String> {
         .collect()
 }
 
-const HEAD: &str =
-    "import promise from \"@std/concurrency/promise.ms\"\nfn work() Int!:\n    return ok(1)\n";
+fn source(name: &str) -> String {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/lint_promises")
+        .join(name);
+    std::fs::read_to_string(path).expect("fixture")
+}
 
 #[test]
 fn a_promise_statement_is_reported() {
-    let source = format!("{HEAD}export fn main() Int:\n    promise(fn: work())\n    return 0\n");
-    assert_eq!(codes(&source), ["MSL115"]);
+    assert_eq!(codes(&source("statement.ms")), ["MSL115"]);
 }
 
 #[test]
 fn a_discarded_binding_is_reported() {
-    let source =
-        format!("{HEAD}export fn main() Int:\n    let _ = promise(fn: work())\n    return 0\n");
-    assert_eq!(codes(&source), ["MSL115"]);
+    assert_eq!(codes(&source("discarded.ms")), ["MSL115"]);
 }
 
 #[test]
 fn a_waited_promise_is_not_reported() {
-    let source = format!(
-        "{HEAD}export fn main() Int:\n    let p = promise(fn: work())\n    let n = p.wait().get(0)\n    return n\n"
+    assert!(codes(&source("waited.ms")).is_empty());
+    assert!(codes(&source("direct.ms")).is_empty());
+}
+
+#[test]
+fn the_fix_waits_for_a_dropped_call() {
+    let file: Arc<str> = Arc::from("lint.ms");
+    let source = source("statement.ms");
+    let module = ms_syntax::parser::parse(&file, &source).expect("parses");
+    let program = ms_check::check(
+        vec![ms_check::load_module(&module)],
+        ImportMap::default(),
+        CheckOptions::default(),
     );
-    assert!(codes(&source).is_empty());
-    let direct =
-        format!("{HEAD}export fn main() Int:\n    return promise(fn: work()).wait().get(0)\n");
-    assert!(codes(&direct).is_empty());
+    let findings = lint_program(&program);
+    let fix = findings[0].fix.as_ref().expect("a fix");
+    let mut fixed = source.clone();
+    fixed.insert_str(fix.pos.offset as usize, &fix.replacement);
+    assert!(fixed.contains("promise(fn: work()).wait()\n"), "{fixed}");
 }

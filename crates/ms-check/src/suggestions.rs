@@ -5,8 +5,22 @@
 //! the diagnostic also carries it as a `DiagnosticFix`.
 
 use crate::checker::Checker;
+use crate::types::{Ty, same};
 use ms_syntax::ast::{Expr, ExprKind};
 use ms_syntax::{DiagnosticFix, Phase, Pos};
+
+/// The module that declares `Promise`.
+pub(crate) const PROMISE_MODULE: &str = "@std/concurrency/promise.ms";
+
+/// Whether a `Promise[T]` used where `expected` is required gets its value from `wait()`:
+/// `expected` is `T!`, which is what `wait` returns.
+pub(crate) fn promise_wait_fits(actual: &Ty, expected: &Ty) -> bool {
+    actual.is_source_type(PROMISE_MODULE, "Promise")
+        && actual.args.len() == 1
+        && expected.is_std("Result")
+        && expected.args.len() == 2
+        && same(&actual.args[0], &expected.args[0])
+}
 
 /// The single replacement a `did you mean` hint names, if exactly one.
 fn single_suggestion(message: &str) -> Option<&str> {
@@ -193,6 +207,22 @@ impl Checker {
     ) {
         let count = self.p.diagnostics.len();
         self.error(pos, Phase::Type, message);
+        if self.p.diagnostics.len() > count
+            && let Some(last) = self.p.diagnostics.last_mut()
+        {
+            last.fix = fix;
+        }
+    }
+
+    /// A resolution diagnostic carrying an already-built fix.
+    pub(crate) fn res_error_with_fix(
+        &mut self,
+        pos: Pos,
+        message: String,
+        fix: Option<DiagnosticFix>,
+    ) {
+        let count = self.p.diagnostics.len();
+        self.error(pos, Phase::Resolution, message);
         if self.p.diagnostics.len() > count
             && let Some(last) = self.p.diagnostics.last_mut()
         {

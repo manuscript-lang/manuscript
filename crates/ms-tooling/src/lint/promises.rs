@@ -5,6 +5,7 @@
 use super::{Finding, finding, module_file};
 use crate::walk::walk_module;
 use ms_check::ModuleData;
+use ms_syntax::DiagnosticFix;
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
 
@@ -35,12 +36,21 @@ impl Scan<'_> {
     }
 
     fn report(&mut self, e: &Expr) {
-        self.findings.push(finding(
+        let mut found = finding(
             "MSL115",
             "This promise is dropped as soon as it is made, which cancels it; bind it and call wait() on it, or pass it to wait_all",
             self.file,
             e.pos,
-        ));
+        );
+        // A call that used to wait for its result and ignored it: wait for it, still ignoring the result.
+        if matches!(e.kind, ExprKind::Call { .. }) {
+            found.fix = Some(DiagnosticFix {
+                pos: e.end,
+                end: e.end,
+                replacement: ".wait()".to_string(),
+            });
+        }
+        self.findings.push(found);
     }
 }
 

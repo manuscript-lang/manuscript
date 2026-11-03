@@ -47,7 +47,9 @@ fn outcome(id: Int, code: Int) Error:
     if code == 3:
         return Error("promise: cancelled", kind: ErrorCategory.Other)
     if code == 4:
-        return Error("promise: the result was already taken", kind: ErrorCategory.Closed)
+        return Error(
+            "promise: the result was already taken", kind: ErrorCategory.Closed
+        )
 
     let report = msrt_promise_fault_report(id)
     return Error(
@@ -115,7 +117,6 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
     var results: List[T] = []
     for index in 0..pending.length():
         results.append(try pending[index].wait())
-
     return ok(results)
 
 # Waits for the first promise to finish and returns its result; the others are cancelled and waited for. Errors as

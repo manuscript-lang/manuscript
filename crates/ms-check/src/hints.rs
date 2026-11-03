@@ -283,6 +283,14 @@ pub fn result_use_hint(actual: &Ty, expected: &Ty) -> String {
     "unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'".to_string()
 }
 
+/// A promise where its result is required: `wait()` gives it.
+pub fn promise_use_hint(actual: &Ty, expected: &Ty) -> String {
+    if !crate::suggestions::promise_wait_fits(actual, expected) {
+        return String::new();
+    }
+    "a call that waits returns a Promise; call wait() on it to get the result".to_string()
+}
+
 /// Names the explicit conversion between Int and Float.
 pub fn number_conversion_hint(actual: &Ty, expected: &Ty) -> String {
     match (actual.id.as_str(), expected.id.as_str()) {
@@ -835,6 +843,7 @@ impl Checker {
             optional_use_hint(actual, expected),
             number_conversion_hint(actual, expected),
             ok_wrap_hint(actual, expected),
+            promise_use_hint(actual, expected),
             uncalled_function_hint(actual, expected),
         ] {
             if !hint.is_empty() {
