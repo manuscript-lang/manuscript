@@ -124,6 +124,7 @@ pub fn verify_func_with(m: &Module, f: &Func, opts: VerifyOptions) -> Result<(),
         f,
         opts,
         errs: Vec::new(),
+        drops: Default::default(),
     };
     v.run();
     if v.errs.is_empty() {
@@ -180,14 +181,35 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
     }
 }
 
+/// [`Module::needs_drop`] per type, shared so a closure can hold it while the verifier records errors.
+#[derive(Clone, Default)]
+struct DropCache(std::rc::Rc<std::cell::RefCell<std::collections::HashMap<Ty, bool>>>);
+
+impl DropCache {
+    fn needs_drop(&self, m: &Module, ty: Ty) -> bool {
+        *self
+            .0
+            .borrow_mut()
+            .entry(ty)
+            .or_insert_with(|| m.needs_drop(ty))
+    }
+}
+
 struct Verifier<'a> {
     m: &'a Module,
     f: &'a Func,
     opts: VerifyOptions,
     errs: Vec<VerifyError>,
+    /// [`Module::needs_drop`] per type, filled on first use: it scans every case of an enum, so
+    /// asking it again for each instruction makes a function over a large enum quadratic.
+    drops: DropCache,
 }
 
 impl Verifier<'_> {
+    fn needs_drop(&self, ty: Ty) -> bool {
+        self.drops.needs_drop(self.m, ty)
+    }
+
     fn err(&mut self, block: Option<usize>, msg: impl Into<String>) {
         self.errs.push(VerifyError {
             func: self.f.name.clone(),
@@ -302,7 +324,7 @@ impl Verifier<'_> {
         for (bp, p) in entry.params.iter().zip(&f.params) {
             if bp.value.index() >= f.values.len()
                 || f.ty(bp.value) != p.ty
-                || (self.m.needs_drop(p.ty) && bp.mode != p.mode)
+                || (self.needs_drop(p.ty) && bp.mode != p.mode)
             {
                 self.err(Some(0), "entry block parameter differs from the signature");
                 return;
@@ -316,7 +338,7 @@ impl Verifier<'_> {
                 }
                 if f.params
                     .iter()
-                    .any(|p| p.mode == Mode::Own && self.m.needs_drop(p.ty))
+                    .any(|p| p.mode == Mode::Own && self.needs_drop(p.ty))
                 {
                     self.err(
                         None,
@@ -734,7 +756,7 @@ impl Verifier<'_> {
             Op::Select => {
                 arity(3)?;
                 want(
-                    t(0) == Ty::BOOL && t(1) == t(2) && res == Some(t(1)) && !m.needs_drop(t(1)),
+                    t(0) == Ty::BOOL && t(1) == t(2) && res == Some(t(1)) && !self.needs_drop(t(1)),
                     "select takes bool, two equal non-reference values",
                 )
             }
@@ -1194,25 +1216,25 @@ impl Verifier<'_> {
             Op::Copy => {
                 arity(1)?;
                 want(
-                    res == Some(t(0)) && m.needs_drop(t(0)),
+                    res == Some(t(0)) && self.needs_drop(t(0)),
                     "copy duplicates a droppable value",
                 )
             }
             Op::MoveOut => {
                 arity(1)?;
                 want(
-                    res == Some(t(0)) && m.needs_drop(t(0)),
+                    res == Some(t(0)) && self.needs_drop(t(0)),
                     "move.out takes ownership of a droppable value",
                 )
             }
             Op::Drop => {
                 arity(1)?;
-                want(m.needs_drop(t(0)), "drop takes a droppable value")
+                want(self.needs_drop(t(0)), "drop takes a droppable value")
             }
             Op::DropIf => {
                 arity(2)?;
                 want(
-                    t(0) == Ty::BOOL && m.needs_drop(t(1)),
+                    t(0) == Ty::BOOL && self.needs_drop(t(1)),
                     "drop.if takes a flag and a droppable value",
                 )
             }
@@ -1339,7 +1361,8 @@ impl Verifier<'_> {
 
     fn check_ownership(&mut self, rpo: &[Block]) {
         let (m, f) = (self.m, self.f);
-        let rc = |v: Value| m.needs_drop(f.ty(v));
+        let drops = self.drops.clone();
+        let rc = |v: Value| drops.needs_drop(m, f.ty(v));
         // Ownership mode of every value from its definition.
         let mut owned_def = vec![false; f.values.len()];
         for b in &f.blocks {

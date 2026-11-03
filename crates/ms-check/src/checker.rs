@@ -1034,7 +1034,7 @@ impl Checker {
                         );
                     }
                     let fields = self.params(&cs.fields);
-                    def.cases.borrow_mut().push(Case {
+                    def.push_case(Case {
                         name: cs.name,
                         fields,
                     });

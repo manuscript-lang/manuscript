@@ -1320,7 +1320,7 @@ impl Loader<'_> {
                             .type_error(cs.pos, format!("duplicate case {}", cs.name));
                     }
                     let fields = self.c.params(&cs.fields);
-                    def.cases.borrow_mut().push(Case {
+                    def.push_case(Case {
                         name: cs.name,
                         fields,
                     });
