@@ -91,14 +91,32 @@ pub fn forget_fd(fd: i32) {
 /// runtime reads the low 32 bits, as it always has on Windows.)
 pub fn wait_fd(sock: Borrowed<'_>, events: u32, timeout_ns: i64) -> u32 {
     // SAFETY: parks the current task; no Rust borrow is held across the call by contract.
-    unsafe { msrt_task_wait_fd(sys::raw(sock) as _, events, timeout_ns) }
+    unsafe { msrt_task_wait_fd(sys::raw(sock) as _, events, within_waiter(timeout_ns)) }
+}
+
+/// Narrows `timeout_ns` (negative: none) to the deadline of the `wait(timeout:)` whose deferred
+/// work is running on this task, as `msrt_promise_wait` does for its own waits. Without it a
+/// `stream.read().wait(timeout: d)` on a silent socket blocks past `d`, because a deferred read
+/// runs on the waiter's stack and only its own waits can notice the limit. The wait then ends
+/// with the runtime's timeout bits, which every caller reports as its timeout.
+pub fn within_waiter(timeout_ns: i64) -> i64 {
+    let at = ms_rt::task::defer_deadline();
+    if at == i64::MAX {
+        return timeout_ns;
+    }
+    let left = at.saturating_sub(ms_rt::sys::monotonic_ns()).max(0);
+    if timeout_ns < 0 || left < timeout_ns {
+        left
+    } else {
+        timeout_ns
+    }
 }
 
 /// Parks the running task for `ns` nanoseconds without watching a socket. Returns the
 /// runtime's bits (8 timeout, 16 cancelled).
 pub fn sleep(ns: i64) -> u32 {
     // SAFETY: parks the current task; no Rust borrow is held across the call by contract.
-    unsafe { msrt_task_sleep(ns) }
+    unsafe { msrt_task_sleep(within_waiter(ns).max(0)) }
 }
 
 /// Holds SIGINT/SIGTERM back from the running task until [`stop_unshield`]. A cancel aimed at
@@ -179,7 +197,7 @@ impl Token {
     pub fn park(&self, timeout_ns: i64) -> u32 {
         // SAFETY: parks the current task on a live token; no Rust borrow is held across the
         // call by contract.
-        unsafe { msrt_token_park(self.0, timeout_ns, core::ptr::null_mut()) }
+        unsafe { msrt_token_park(self.0, within_waiter(timeout_ns), core::ptr::null_mut()) }
     }
 }
 

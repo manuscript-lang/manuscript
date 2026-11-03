@@ -198,18 +198,12 @@ test "file transport appends and flushes with scoped cleanup":
             data.decode_utf8() != "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
         )
     )
-    try expect_false(
-        (
-            (
-                try expect_error(
-                    file_transport(
-                        "{directory.path()}/missing/events.ndjson"
-                    )
-                )
-            ) != Error(
-                "filesystem: file or directory not found", kind: ErrorCategory.NotFound
-            )
-        )
+
+    let missing = "{directory.path()}/missing/events.ndjson"
+    let refused = try expect_error(file_transport(missing))
+    try expect_equal(refused.kind, ErrorCategory.NotFound)
+    try expect_equal(
+        refused.message, "filesystem: file or directory not found: {missing}"
     )
 
 test "stdout transport accepts records and leaves stdout open":

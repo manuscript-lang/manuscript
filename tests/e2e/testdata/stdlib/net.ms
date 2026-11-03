@@ -20,7 +20,7 @@ import (
     Connection
 ) from "@std/net/net.ms"
 import promise from "@std/concurrency/promise.ms"
-import sleep from "@std/os/time.ms"
+import sleep, monotonic from "@std/os/time.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -230,3 +230,18 @@ test "an empty host listens on every interface, with or without IPv6":
 
     let socket = try bind_datagram(":0")
     try expect_false(socket.address.is_empty())
+
+test "a read with a wait timeout ends on a silent connection":
+    let listener = try listen("127.0.0.1:0")
+    var client = try connect(listener.address(), 2.seconds).wait()
+    let started = monotonic()
+    let silent = client.input.read().wait(timeout: 100.milliseconds)
+    try expect_true(silent.is_error())
+    try expect_true(monotonic().difference(started).compare(2.seconds) < 0)
+
+test "a datagram read with a wait timeout ends on a silent socket":
+    var socket = try bind_datagram("127.0.0.1:0")
+    let started = monotonic()
+    let silent = socket.input.read().wait(timeout: 100.milliseconds)
+    try expect_true(silent.is_error())
+    try expect_true(monotonic().difference(started).compare(2.seconds) < 0)

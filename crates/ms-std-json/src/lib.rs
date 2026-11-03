@@ -416,6 +416,8 @@ struct Scanner<'a> {
     max_depth: usize,
     max_values: usize,
     limit_hit: bool,
+    /// Whether the scan stopped at an object with a repeated key.
+    duplicate: bool,
     /// Whether the last string was decoded into `doc.text` rather than read from `src`.
     decoded: bool,
     doc: Doc,
@@ -647,7 +649,10 @@ impl Scanner<'_> {
                         if array {
                             b.end_array();
                         } else {
-                            b.end_object().then_some(())?;
+                            if !b.end_object() {
+                                self.duplicate = true;
+                                return None;
+                            }
                         }
                     } else {
                         if !array {
@@ -673,7 +678,10 @@ impl Scanner<'_> {
                     if open == b'[' {
                         b.end_array();
                     } else {
-                        b.end_object().then_some(())?;
+                        if !b.end_object() {
+                            self.duplicate = true;
+                            return None;
+                        }
                     }
                     continue;
                 }
@@ -792,6 +800,7 @@ impl Scanner<'_> {
                         }
                         Frame::Object { start } => {
                             if self.has_duplicate(&mem[start..]) {
+                                self.duplicate = true;
                                 return None;
                             }
                             let at = self.doc.members.len() as u32;
@@ -844,6 +853,7 @@ fn scanner(text: &str, max_depth: usize, max_values: usize, doc: Doc) -> Scanner
         max_depth,
         max_values,
         limit_hit: false,
+        duplicate: false,
         decoded: false,
         doc,
         table: Vec::new(),
@@ -867,7 +877,12 @@ fn failure(text: &str, limit_hit: bool) -> Fail {
 
 /// Parses one JSON value, returning the document and the root node.
 pub fn parse(text: &str, limits: Limits) -> Result<(Doc, NodeId), Fail> {
-    let (max_depth, max_values) = budgets(text, limits)?;
+    parse_located(text, limits).map_err(|(fail, _)| fail)
+}
+
+/// Like [`parse`]; a failure also carries the byte offset where scanning stopped.
+pub fn parse_located(text: &str, limits: Limits) -> Result<(Doc, NodeId), (Fail, Where)> {
+    let (max_depth, max_values) = budgets(text, limits).map_err(|f| (f, Where::default()))?;
     let mut doc = Doc::default();
     doc.text.reserve(text.len() + text.len() / 16);
     doc.text.push_str(text);
@@ -883,16 +898,27 @@ pub fn parse(text: &str, limits: Limits) -> Result<(Doc, NodeId), Fail> {
     });
     match (ok, root) {
         // Decoded escapes grew the text past what a span can address.
-        (true, Some(_)) if u32::try_from(p.doc.text.len()).is_err() => Err(Fail::LimitExceeded),
+        (true, Some(_)) if u32::try_from(p.doc.text.len()).is_err() => {
+            Err((Fail::LimitExceeded, p.at()))
+        }
         (true, Some(root)) => Ok((p.doc, root)),
-        _ => Err(failure(text, p.limit_hit)),
+        _ => Err((failure(text, p.limit_hit), p.at())),
     }
 }
 
 /// Parses one JSON value into `b`, which holds the root afterwards; on failure `b` is left to be
 /// dropped.
 pub fn parse_tree(text: &str, limits: Limits, b: &mut TreeBuilder<'_>) -> Result<(), Fail> {
-    let (max_depth, max_values) = budgets(text, limits)?;
+    parse_tree_located(text, limits, b).map_err(|(fail, _)| fail)
+}
+
+/// Like [`parse_tree`]; a failure also carries the byte offset where scanning stopped.
+pub fn parse_tree_located(
+    text: &str,
+    limits: Limits,
+    b: &mut TreeBuilder<'_>,
+) -> Result<(), (Fail, Where)> {
+    let (max_depth, max_values) = budgets(text, limits).map_err(|f| (f, Where::default()))?;
     let mut p = scanner(text, max_depth, max_values, Doc::default());
     let ok = p.parse_tree(b).is_some() && {
         p.skip_space();
@@ -901,8 +927,43 @@ pub fn parse_tree(text: &str, limits: Limits, b: &mut TreeBuilder<'_>) -> Result
     if ok {
         Ok(())
     } else {
-        Err(failure(text, p.limit_hit))
+        Err((failure(text, p.limit_hit), p.at()))
     }
+}
+
+/// Where a scan stopped: the byte offset, and whether it stopped at a repeated object key.
+#[derive(Clone, Copy, Default)]
+pub struct Where {
+    pub at: usize,
+    pub duplicate: bool,
+}
+
+impl Scanner<'_> {
+    fn at(&self) -> Where {
+        Where {
+            at: self.pos,
+            duplicate: self.duplicate,
+        }
+    }
+}
+
+/// Where and why a syntax error stopped the scan: `line L, column C: <reason>` (one-based,
+/// columns in characters). Only an `InvalidData` failure has a position.
+pub fn explain(text: &str, stop: Where) -> String {
+    let mut at = stop.at.min(text.len());
+    while !text.is_char_boundary(at) {
+        at -= 1;
+    }
+    let before = &text[..at];
+    let line = before.matches('\n').count() + 1;
+    let column = before.rsplit('\n').next().map_or(0, |l| l.chars().count()) + 1;
+    let reason = match text[at..].chars().next() {
+        _ if stop.duplicate => String::from("duplicate object key"),
+        None => String::from("unexpected end of input"),
+        Some(c) if c.is_control() => alloc::format!("unexpected character U+{:04X}", c as u32),
+        Some(c) => alloc::format!("unexpected character `{c}`"),
+    };
+    alloc::format!("line {line}, column {column}: {reason}")
 }
 
 /// Whether `s` is exactly one JSON number.

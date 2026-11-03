@@ -1,28 +1,21 @@
 import parse, JsonValue, JsonLimits from "@std/data/json.ms"
-import expect_equal from "@std/test/test.ms"
+import expect_contains, expect_equal, expect_error from "@std/test/test.ms"
+
+fn expect_syntax_error[T](actual: T!) Unit!:
+    let cause = try expect_error(actual)
+    try expect_equal(cause.kind, ErrorCategory.InvalidData)
+    try expect_contains(cause.message, "JSON: invalid data: line ")
+    return ok(unit)
 
 test "JSON syntax errors keep their identity with unread Unicode suffixes":
-    let invalid: JsonValue! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
-    let typed_invalid: String! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
-
     for text in [
         "]plain", "]\\\\", "]\"\\u0041\"", "]\"\\uD800\"", "]\"\\u12",
         "true x\"\\uD800\""
     ]:
-        try expect_equal(parse(text), invalid)
-        try expect_equal(parse[String](text), typed_invalid)
+        try expect_syntax_error(parse(text))
+        try expect_syntax_error(parse[String](text))
 
 test "JSON value limits preserve Unicode precedence and byte admission":
-    let invalid: JsonValue! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
-    let typed_invalid: String! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
     let limited: JsonValue! = error(
         Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded)
     )
@@ -32,8 +25,8 @@ test "JSON value limits preserve Unicode precedence and byte admission":
     let zero = JsonLimits(max_values: 0)
 
     for text in ["\"\\uD800\"", "\"\\uDC00\"", "\"\\u12"]:
-        try expect_equal(parse(text, zero), invalid)
-        try expect_equal(parse[String](text, zero), typed_invalid)
+        try expect_syntax_error(parse(text, zero))
+        try expect_syntax_error(parse[String](text, zero))
 
     try expect_equal(parse("\"\\u0041\"", zero), limited)
     try expect_equal(parse[String]("\"\\u0041\"", zero), typed_limited)

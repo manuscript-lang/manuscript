@@ -323,13 +323,15 @@ pub unsafe fn release(p: *mut u8, len: usize) {
     }
 }
 
-/// Makes `len` bytes at `p` inaccessible (a stack guard).
+/// Makes `len` bytes at `p` inaccessible (a stack guard). False when the kernel refuses, which
+/// happens once the process has used up its memory mappings (`vm.max_map_count`): splitting a
+/// mapping needs a new one, so a stack without its guard must not be used.
 ///
 /// # Safety
 /// The range lies inside a live mapping that nothing is using.
-pub unsafe fn guard(p: *mut u8, len: usize) {
+pub unsafe fn guard(p: *mut u8, len: usize) -> bool {
     // SAFETY: forwarded; the caller guarantees the range.
-    unsafe { mprotect(p.cast(), len, 0) };
+    unsafe { mprotect(p.cast(), len, 0) == 0 }
 }
 
 /// Returns a [`map_anon`] mapping to the system.

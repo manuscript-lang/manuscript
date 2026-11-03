@@ -43,12 +43,14 @@ Cancellation is delivered at the next wait. A loop that never waits is not stopp
 
 ## Reading and changing shared values
 
-A promise created with `promise(fn: ...)` reads what it captures, and nothing it captures can be changed from inside it. A promise holding a borrow of a value keeps that value from changing until the promise is dropped or moved into `wait_all`. To change state from several promises, give it one owner and send it values:
+A promise created with `promise(fn: ...)` reads what it captures, and nothing it captures can be changed from inside it. The exception is a resource (a pipe writer, a file) the promise captures at its last use: the promise owns it from then on, runs once, and may write to it if it is declared `var`, pass it on with `var`, or close it. A promise holding a borrow of a value keeps that value from changing until the promise is dropped or moved into `wait_all`. To change state from several promises, give it one owner and send it values:
 
 ```manuscript
-let updates = pipe[Update](capacity: 64)
-let owner = promise(fn: apply_all(updates.reader(), state))
-let worker = promise(fn: produce(updates.writer()))
+var updates = pipe[Update](capacity: 64)
+var input = updates.reader()
+var out = updates.writer()
+let owner = promise(fn: apply_all(var input, state))
+let worker = promise(fn: produce(var out))
 ```
 
 I/O operations copy their small arguments (paths, URLs, headers), so their promises borrow nothing.

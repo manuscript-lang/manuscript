@@ -1,4 +1,11 @@
-import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
+import (
+    expect_contains,
+    expect_equal,
+    expect_error,
+    expect_false,
+    expect_not_equal,
+    fail
+) from "@std/test/test.ms"
 import (parse, stringify, JsonValue, JsonLimits, JsonEncode) from "@std/data/json.ms"
 import timestamp, nanoseconds, Timestamp, Duration, Instant from "@std/os/time.ms"
 import Url from "@std/net/net.ms"
@@ -13,14 +20,17 @@ test "JSON exact numbers Unicode and nested roundtrip":
     try expect_equal((try parse("\"\\uD83D\\uDE00\"")), JsonValue.StringValue("😀"))
     try expect_equal((try parse("null") | try stringify(4)), "null")
 
+fn expect_syntax_error[T](actual: T!) Unit!:
+    let cause = try expect_error(actual)
+    try expect_equal(cause.kind, ErrorCategory.InvalidData)
+    try expect_contains(cause.message, "JSON: invalid data: line ")
+    return ok(unit)
+
 test "JSON rejects duplicate keys malformed Unicode and trailing values":
-    let invalid: JsonValue! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
     for text in [
         "\{\"a\":1,\"\\u0061\":2\}", "\"\\uD800\"", "\"\\uDC00\"", "1 2", "NaN", "[1,]"
     ]:
-        try expect_equal(parse(text), invalid)
+        try expect_syntax_error(parse(text))
 
 test "JSON independently enforces byte depth and value budgets":
     let limited: JsonValue! = error(
@@ -59,12 +69,8 @@ test "JSON untyped parse keeps document shape and releases partial trees on fail
             + i.to_string()
             + "\}],"
         )
-
-    let invalid: JsonValue! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
-    try expect_equal(parse(wide + "\"k7\":0\}"), invalid)
-    try expect_equal(parse(wide + "\"k40\":["), invalid)
+    try expect_syntax_error(parse(wide + "\"k7\":0\}"))
+    try expect_syntax_error(parse(wide + "\"k40\":["))
 
     let fine = try parse(wide + "\"k40\":0\}")
     try expect_equal(try stringify(fine), wide + "\"k40\":0\}")
@@ -367,11 +373,7 @@ test "JSON parse rejects shape mismatches as InvalidData":
     let overflow = "\{\"name\":\"A\",\"age\":9223372036854775808,\"scores\":[]\}"
     try expect_equal(parse[Profile](overflow), invalid)
     try expect_equal(parse[Profile]("[]"), invalid)
-
-    let malformed: Profile! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
-    try expect_equal(parse[Profile]("\{"), malformed)
+    try expect_syntax_error(parse[Profile]("\{"))
 
     let limited: Profile! = error(
         Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded)

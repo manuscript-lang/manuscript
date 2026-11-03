@@ -43,8 +43,9 @@ use ms_rt::ffi::{
     TextList, abi_handle, abi_record, argv, monotonic_nanos, native, start_nanos,
 };
 use ms_rt_abi::STATUS_INVALID_INPUT;
+use ms_std_fs::err::Fail as FsFail;
 use ms_std_fs::err::{Fail, Res};
-use ms_std_fs::fs_status;
+use ms_std_fs::{fs_status, fs_status_at};
 use ms_std_io::stream::Stream;
 
 /// Nanoseconds since the runtime started (or since the first call when it did not record a start).
@@ -205,6 +206,39 @@ fn info_or_default() -> control::Info {
     })
 }
 
+/// [`fs_status`], naming `program` when it could not be started (not found, not allowed, not
+/// executable); invalid arguments, a timeout or an output limit are not about the program's name.
+fn command_status<T>(
+    program: &[u8],
+    cwd: Option<&[u8]>,
+    r: Res<T>,
+    err: &ErrOut,
+) -> Result<T, StatusCode> {
+    match r {
+        Err(FsFail {
+            status:
+                ms_rt_abi::STATUS_UNAVAILABLE
+                | ms_rt_abi::STATUS_NOT_FOUND
+                | ms_rt_abi::STATUS_PERMISSION_DENIED,
+            ..
+        }) => {
+            // A missing working directory fails the start the same way a missing program does.
+            let dir = cwd.filter(|d| {
+                core::str::from_utf8(d).is_ok_and(|d| !std::path::Path::new(d).is_dir())
+            });
+            match dir {
+                Some(dir) => {
+                    let mut named = b"working directory ".to_vec();
+                    named.extend_from_slice(dir);
+                    fs_status_at(&named, r, err)
+                }
+                None => fs_status_at(program, r, err),
+            }
+        }
+        r => fs_status(r, err),
+    }
+}
+
 native! {
     safe fn msstd_process_monotonic_time() -> i64 {
         uptime_ns()
@@ -357,7 +391,7 @@ native! {
         arguments: Vec<&str>,
         env_names: Vec<&str>,
         env_values: Vec<&str>; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(replace(
+        command_status(program.as_bytes(), None, replace(
             program.as_bytes(),
             &bytes_of(&arguments),
             &bytes_of(&env_names),
@@ -386,7 +420,7 @@ native! {
                 let env = valid_environment(cwd, &env_names, &env_values)?;
                 command::run(program, &args, input, limit, t, cwd, &env)
             });
-        fs_status(ran, &err).map(|o| CommandOut {
+        command_status(program, cwd, ran, &err).map(|o| CommandOut {
             exit_code: o.code,
             stdout: Bytes::new(&o.stdout),
             stderr: Bytes::new(&o.stderr),
@@ -411,7 +445,7 @@ native! {
             let env = valid_environment(cwd, &env_names, &env_values)?;
             command::spawn(program, &args, [stdin, stdout, stderr], cwd, &env)
         });
-        let mut p = fs_status(spawned, &err)?;
+        let mut p = command_status(program, cwd, spawned, &err)?;
         let streams = [
             ObjBox::new(parent_end(&mut p.stdin, b"|1")),
             ObjBox::new(parent_end(&mut p.stdout, b"|0")),
