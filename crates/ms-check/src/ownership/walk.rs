@@ -1652,10 +1652,14 @@ impl Walker<'_> {
 
     fn block(&mut self, body: &[Stmt]) {
         let mark = self.declared.len();
+        // Borrows the enclosing statement released at their last use stay held until that
+        // statement ends: a closure body in an argument must not release them early.
+        let outer = std::mem::take(&mut self.pending);
         for s in body {
             self.stmt(s);
             self.release_pending();
         }
+        self.pending.extend(outer);
         let ended: Vec<usize> = self.declared.drain(mark..).collect();
         self.promises_outliving(&ended);
         self.active.retain(|a| !ended.contains(&a.holder));
