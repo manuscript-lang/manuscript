@@ -90,3 +90,17 @@ export extern fn msrt_cells_full(id: Int) Bool
 
 // Moves the value out; Closed when the cell is empty or gone. A plain `try` binds it without a copy.
 export extern fn msrt_cells_take_result[T](id: Int) T!
+
+// An already finished promise with no value.
+export extern fn msrt_promise_finished() Int
+
+// The process-wide output buffers (crates/ms-rt/src/io.rs); standard output is flushed at exit.
+export extern fn msrt_io_write_stdout(text: String) Unit
+
+export extern fn msrt_io_write_stderr(text: String) Unit
+
+export extern fn msrt_io_write_bytes_stdout(data: Bytes) Unit
+
+export extern fn msrt_io_write_bytes_stderr(data: Bytes) Unit
+
+export extern fn msrt_io_flush() Unit
