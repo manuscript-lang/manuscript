@@ -2407,6 +2407,7 @@ impl Walker<'_> {
                 if owned_local || param && self.escaped.contains(&e.id) {
                     self.expr(e, Demand::Consume);
                     self.facts.consumed_scrutinees.insert(stmt);
+                    self.facts.scrutinee_moves.insert(e.id);
                     return Scrutinee {
                         owned: true,
                         origins: Vec::new(),
@@ -3820,6 +3821,11 @@ impl Walker<'_> {
             for b in self.cx.m.arm(arm).bindings.iter().flatten() {
                 if source.owned {
                     self.arm_payloads.push(b.uid);
+                    // The arm owns the part it names: the scope closes a resource among them
+                    // on the paths that do not move it on, like any other owned binding.
+                    if self.may_close(&b.ty) {
+                        self.resources.push((b.uid, b.name, arm.pos, true));
+                    }
                 }
                 self.payload(b, &source, Role::Arm, arm.pos);
                 if arm.chain

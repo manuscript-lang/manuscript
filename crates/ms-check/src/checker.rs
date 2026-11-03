@@ -124,6 +124,12 @@ pub struct Program {
     pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
     /// Payload bindings of a consumed match scrutinee that some path moves out.
     pub moved_payloads: Rc<HashSet<usize>>,
+    /// Every move of a whole binding, by binding: the nodes that take its value.
+    pub moves: Rc<HashMap<usize, HashSet<NodeId>>>,
+    /// The moved bindings some path keeps to the end of their scope.
+    pub conditional_moves: Rc<HashSet<usize>>,
+    /// Statements whose scrutinee is a consumed local, by module file and statement node.
+    pub consumed_scrutinees: Rc<HashSet<(Name, NodeId)>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves: Rc<HashMap<usize, HashMap<NodeId, Vec<Name>>>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module

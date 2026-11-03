@@ -10,6 +10,7 @@
 mod classify;
 mod live;
 mod modes;
+mod moved;
 pub(crate) mod places;
 mod walk;
 
@@ -152,6 +153,9 @@ pub struct CallableOwnership {
     /// Matches (and `if let`, by statement) whose scrutinee is consumed:
     /// payload bindings own their parts.
     pub consumed_scrutinees: HashSet<NodeId>,
+    /// The name expressions of consumed scrutinees: the match releases the value arm by arm, so
+    /// the local itself is not moved out there.
+    pub scrutinee_moves: HashSet<NodeId>,
     /// Assignments that store over a binding: the old value is dropped unless
     /// an earlier `Access::Move` of it cleared the binding's drop flag.
     pub drops_old: HashSet<NodeId>,
@@ -224,8 +228,16 @@ pub struct Ownership {
     pub resource_moves: HashMap<usize, HashMap<NodeId, Vec<Name>>>,
     /// Payload bindings of a consumed match scrutinee that some path moves out.
     pub moved_payloads: HashSet<usize>,
-    /// Calls bound with `var` as a mutable borrow, by module file and node: the fields from the
-    /// argument to the part they borrow.
+    /// Every move of a whole binding, by binding: the name expressions (or lambdas) that take
+    /// its value. Lowering moves the value out there instead of copying it, and drops the
+    /// binding at scope end only on the paths that kept it.
+    pub moves: HashMap<usize, HashSet<NodeId>>,
+    /// The moved bindings some path keeps to the end of their scope: lowering holds them so
+    /// that a move leaves them empty. The other moved bindings are consumed on every path.
+    pub conditional_moves: HashSet<usize>,
+    /// `match`, `if let` and `for` statements whose scrutinee is a local they consume, by
+    /// module file and statement node: the parts move into the pattern bindings.
+    pub consumed_scrutinees: HashSet<(Name, NodeId)>,
     /// Captures a non-escaping lambda only reads in place, by module file, lambda node and
     /// binding identity: the closure may point at the variable instead of copying it.
     pub borrowed_captures: HashSet<(Name, NodeId, usize)>,
@@ -330,6 +342,9 @@ impl Hir<'_> {
         let mut explicit_closes = HashSet::new();
         let mut close_moves = HashMap::new();
         let mut moved_payloads = HashSet::new();
+        let mut moves: HashMap<usize, HashSet<NodeId>> = HashMap::new();
+        let mut conditional_moves = HashSet::new();
+        let mut consumed_scrutinees = HashSet::new();
         let mut resource_moves = HashMap::new();
         let mut borrowed_captures = HashSet::new();
         let mut consumes = HashMap::new();
@@ -382,6 +397,22 @@ impl Hir<'_> {
             explicit_closes.extend(out.facts.explicit_closes.iter().copied());
             close_moves.extend(out.facts.close_moves.iter().map(|(k, v)| (*k, v.clone())));
             moved_payloads.extend(out.facts.moved_payloads.iter().copied());
+            let mut moved: HashSet<(NodeId, usize)> = HashSet::new();
+            for u in out.facts.uses.values() {
+                if u.access == Access::Move && !out.facts.scrutinee_moves.contains(&u.node) {
+                    moves.entry(u.binding).or_default().insert(u.node);
+                    moved.insert((u.node, u.binding));
+                }
+            }
+            if !moved.is_empty() {
+                conditional_moves.extend(moved::conditional(&modules[&c.module.file], c, &moved));
+            }
+            consumed_scrutinees.extend(
+                out.facts
+                    .consumed_scrutinees
+                    .iter()
+                    .map(|n| (c.module.file, *n)),
+            );
             resource_moves.extend(
                 out.facts
                     .resource_moves
@@ -410,6 +441,9 @@ impl Hir<'_> {
             close_moves,
             resource_moves,
             moved_payloads,
+            moves,
+            conditional_moves,
+            consumed_scrutinees,
             borrowed_captures,
             consumes,
             lenders,
