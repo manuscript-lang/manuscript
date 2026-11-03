@@ -79,6 +79,8 @@ handle_newtype! {
     HeadersH(crate::http::headers::Shared): clone;
     /// The settings every connection of one `serve` call shares.
     ServingH(std::rc::Rc<crate::ffi::http_server::Serving>);
+    /// The server of one `serve` worker thread.
+    WorkerH(std::rc::Rc<crate::http::server::Server>);
     /// An `HttpClient` handle.
     ClientH(std::rc::Rc<crate::http::client::Client>);
     /// An `HttpResponseBody` handle.

@@ -1,5 +1,14 @@
 import Closeable, Data from "@std/core.ms"
-import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
+import (
+    ReadStream,
+    WriteStream,
+    Source,
+    Sink,
+    stream,
+    writer,
+    pipe,
+    Pipe
+) from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import ClientResponse from "@std/net/http.ms"
 import Duration from "@std/os/time.ms"
@@ -9,7 +18,7 @@ import HttpExchange from "@std/net/http.ms"
 import HttpHeaders from "@std/net/http.ms"
 import HttpMethod from "@std/net/http.ms"
 import HttpServer from "@std/net/http.ms"
-import NativeServing from "@std/net/http.ms"
+import NativeServing, NativeWorker from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
 import Timestamp from "@std/os/time.ms"
 import (
@@ -73,7 +82,10 @@ import (
     msstd_http_serving_share,
     msstd_http_serving_address,
     msstd_http_serving_accept,
-    msstd_http_serving_connect,
+    msstd_http_serving_worker,
+    msstd_http_worker_adopt,
+    msstd_http_worker_close,
+    msrt_runtime_limit,
     msstd_http_serving_release,
     msrt_runtime_set_threads
 ) from "@std/internal/http.ms"
@@ -875,11 +887,16 @@ export fn serve(
     if let cores = options.cores:
         msrt_runtime_set_threads(cores)
 
-    // The accept loop owns the serving; each connection it accepts owns another handle on it.
-    let accepting = promise(fn: accept_loop(listening))
+    // The accept loop owns the listener; each worker owns a share of the serving and a pipe of accepted connections.
+    let workers = workers_for(options)
+    let accepting = promise(fn: accept_loop(listening, workers))
     return ok(HttpServer(accepting: accepting, bound: bound, stopped: false))
 
-// A handle on a serving, which a promise owns and closes when it ends. The accept loop's handle also releases the listener; each connection's handle only gives its share back.
+// The number of worker promises: `options.cores`, else one per core.
+fn workers_for(options: HttpServerOptions) Int:
+    return options.cores.get(msrt_runtime_limit())
+
+// A handle on a serving, which a promise owns and closes when it ends. The accept loop's handle also releases the listener.
 type ServingHandle:
     serving: NativeServing
     listener: Bool
@@ -890,34 +907,48 @@ impl Closeable for ServingHandle:
             msstd_http_serving_release(self.serving)
         return ok(unit)
 
-// The connections of `serve`'s accept loop. Its close, which runs when the loop returns, is cancelled or faults, cancels all connections first so they drain side by side, then joins them.
+// One worker's HTTP engine, which owns its connections as poller registrations rather than as tasks. Closing it drains them.
+type WorkerHandle:
+    worker: NativeWorker
+
+impl Closeable for WorkerHandle:
+    var fn close() Unit!:
+        msstd_http_worker_close(self.worker)
+        return ok(unit)
+
+// The accept loop's pipes and workers. Its close, which runs when the loop returns, is cancelled or faults, ends the pipes so the workers drain side by side, then joins them.
 type Accepting:
-    connections: List[Promise[Unit]]
+    deals: List[WriteStream[Int]]
+    workers: List[Promise[Unit]]
 
 impl Closeable for Accepting:
     var fn close() Unit!:
-        for connection in self.connections:
-            let _ = connection.wait(timeout: 0.seconds)
-        self.connections = []
+        while self.deals.length() > 0:
+            if let deal = self.deals.pop():
+                var closing = deal
+                let _ = closing.close()
+
+        for worker in self.workers:
+            let _ = worker.wait(timeout: 0.seconds)
+        self.workers = []
         return ok(unit)
 
-impl Accepting:
-    // Drops the promises of connections that have ended.
-    var fn sweep() Unit:
-        var i = self.connections.length() - 1
+// Accepts until the listener fails, dealing each connection to the next worker. An accept that fails for lack of descriptors or memory pauses briefly instead of ending the server.
+fn accept_loop(listening: ServingHandle, count: Int) Unit!:
+    var accepting = Accepting(deals: [], workers: [])
+    var i = 0
 
-        while i >= 0:
-            if self.connections[i].done():
-                self.connections.swap(i, self.connections.length() - 1)
+    while i < count:
+        let queue = pipe[Int](1024)
+        accepting.deals.append(queue.writer())
 
-                let _ = self.connections.pop()
+        let mine = ServingHandle(
+            serving: msstd_http_serving_share(listening.serving), listener: false
+        )
+        accepting.workers.append(promise(fn: serve_worker(mine, queue)))
+        i += 1
 
-            i -= 1
-
-// Accepts until the listener fails. An accept that fails for lack of descriptors or memory pauses briefly instead of ending the server.
-fn accept_loop(listening: ServingHandle) Unit!:
-    var accepting = Accepting(connections: [])
-    var sweep_at = 64
+    var next = 0
 
     while true:
         let accepted = msstd_http_serving_accept(listening.serving)
@@ -929,23 +960,25 @@ fn accept_loop(listening: ServingHandle) Unit!:
             sleep(50.milliseconds).wait().get(unit)
             continue
 
-        let raw = accepted.get()
-        let mine = ServingHandle(
-            serving: msstd_http_serving_share(listening.serving), listener: false
-        )
-        accepting.connections.append(promise(fn: serve_connection(mine, raw)))
-
-        if accepting.connections.length() >= sweep_at:
-            accepting.sweep()
-            sweep_at = 64
-            if accepting.connections.length() * 2 > sweep_at:
-                sweep_at = accepting.connections.length() * 2
+        let _ = accepting.deals[next].write(accepted.get())
+        next = (next + 1) % count
 
     return ok(unit)
 
-// Serves one accepted connection on the thread the runtime placed this promise on.
-fn serve_connection(handle: ServingHandle, raw: Int) Unit!:
-    msstd_http_serving_connect(handle.serving, raw)
+// Runs one worker on the thread the runtime placed this promise on: it adopts each connection it is dealt, and the poller drives them from there.
+fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
+    let engine = WorkerHandle(worker: try msstd_http_serving_worker(handle.serving))
+
+    while true:
+        let item = input.receive()
+        if item.is_error():
+            break
+
+        if let raw = item.get():
+            msstd_http_worker_adopt(engine.worker, raw)
+        else:
+            break
+
     return ok(unit)
 
 // Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.

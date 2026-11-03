@@ -217,3 +217,16 @@ Two and four threads are at parity. One thread is about 10% slower on `/health` 
 ## 2026-11-03, refcount removal
 
 Same server source on the pre-change integration head `d34af765` and the no-refcount head `d6052382`, 5 s rounds: `/health` 157.6k/155.3k against 168.0k/174.2k req/s, `/io` 1,577/1,455 against 1,570/1,504, resident memory after load 93.5 MB against 89.4 MB, 2.54 system calls per request on both. No change beyond noise; the full tables, including the older `632c42ba` run, are in [refcount-removal-2026-11-03.md](../refcount-removal-2026-11-03.md).
+
+## 2026-11-03, memory on the integration branch
+
+`MS_THREADS=2`, 64 keep-alive connections, 4 s rounds, servers on CPUs 0-1 and load on 2-3, compared against the code before the stream, promise and file changes (`e8caa9612`, `serve_cores`).
+
+| Row | Before (`e8caa9612`) | After (integration head) |
+| --- | ---: | ---: |
+| Resident memory after `/health`, `/user/42` and `/top` | 12 MB | 10 MB |
+| Resident memory after `/io` | 54 MB | 86 MB |
+| Resident memory, 10,000 idle connections | 59 MB | 205-284 MB |
+
+- `/io`: `write_file_bytes` and `read_file` return promises, so each of the 64 in-flight requests owns its own 1 MiB copy of the payload (and the 1 MiB read result) while it waits for a pool thread. The old blocking natives borrowed the payload and ran one job at a time. Moving the payload instead of cloning it only moves the copy to the caller (measured 111 to 129 MB), so the library keeps the clone. Capping queued file jobs would cut it; that belongs to the promise runtime.
+- Idle connections: each connection is a promise with its own task stack (two mappings, about 20 KB resident), where the old server kept connections in the reactor. A minimal `/health` server shows the same 205 MB at integration commit `a8ed3a5c0` and at the head, so the stream merges did not add it.

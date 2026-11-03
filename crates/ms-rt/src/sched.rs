@@ -213,6 +213,12 @@ pub extern "C-unwind" fn msrt_runtime_set_threads(n: i64) {
     LIMIT.store((n.max(1) as usize).min(MAX_THREADS), Ordering::SeqCst);
 }
 
+/// The most scheduler threads the program may run: the core count unless `msrt_runtime_set_threads` or `MS_THREADS` lowered it.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_runtime_limit() -> i64 {
+    limit() as i64
+}
+
 /// The number of scheduler threads started so far.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_runtime_threads() -> i64 {

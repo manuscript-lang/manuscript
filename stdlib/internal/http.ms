@@ -7,6 +7,7 @@ import (
     HttpExchange,
     HttpServerOptions,
     NativeServing,
+    NativeWorker,
     NativeResponseBody,
     RawResponse
 ) from "@std/net/http.ms"
@@ -49,10 +50,13 @@ export extern fn msstd_http_serving_address(serving: NativeServing) String
 
 export extern fn msstd_http_serving_accept(serving: NativeServing) Int!
 
-export extern fn msstd_http_serving_connect(
-    serving: NativeServing,
-    connection: Int
-) Unit
+// A worker engine on the calling thread; it adopts connections and serves them from the poller.
+export extern fn msstd_http_serving_worker(serving: NativeServing) NativeWorker!
+
+export extern fn msstd_http_worker_adopt(worker: NativeWorker, connection: Int) Unit
+
+// Drains the worker's connections and ends it.
+export extern fn msstd_http_worker_close(worker: NativeWorker) Unit
 
 export extern fn msstd_http_serving_release(serving: NativeServing) Unit
 
@@ -90,3 +94,5 @@ export extern fn msstd_http_headers_new() HttpHeaders
 
 // Limits the scheduler threads the runtime starts to `n` (at least 1).
 export extern fn msrt_runtime_set_threads(n: Int) Unit
+
+export extern fn msrt_runtime_limit() Int

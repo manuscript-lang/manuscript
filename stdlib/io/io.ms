@@ -327,6 +327,11 @@ impl Pipe[T]:
         self.taken = true
         return stream[T](PipeSource[T](self.id))
 
+    // Waits for the next value, none once every writer has closed. It reads the pipe's one reader place without taking a stream, for a consumer that only borrows the pipe, such as a promise: use it instead of `reader()`, never beside it.
+    fn receive() T?!:
+        var source = PipeSource[T](self.id)
+        return source.next()
+
 impl Closeable for Pipe[T]:
     // Releases the reading end if no one took it.
     var fn close() Unit!:

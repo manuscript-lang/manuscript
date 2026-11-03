@@ -594,8 +594,6 @@ struct ServerSt {
     closed: bool,
     /// Tokens of the tasks in [`Server::wait`], posted on close.
     waiters: Vec<u64>,
-    /// Token of the task in [`Server::serve_connection`], posted when a connection ends.
-    idle_waiter: Option<u64>,
     /// Request tasks started and not yet ended; a hijacked connection (WebSocket) outlives its entry in `conns` through one.
     running: usize,
     /// Token of a close waiting for responses to finish, posted when a connection closes or
@@ -659,7 +657,6 @@ impl Server {
                 closing: false,
                 closed: false,
                 waiters: Vec::new(),
-                idle_waiter: None,
                 running: 0,
                 draining: None,
             }),
@@ -689,33 +686,13 @@ impl Server {
         self.add_conn(sock, &Reactor::get());
     }
 
-    /// Serves the connection `raw` (from `Listener::accept_raw`) on this thread and returns once it
-    /// has ended. A cancellation of the caller closes the server first: an idle connection goes at
-    /// once, a request in flight finishes within the grace period, and then the cancellation
-    /// goes on.
-    pub fn serve_connection(&self, raw: i64) {
-        self.adopt(raw);
-        let token = rt::Token::new();
-        self.st.borrow_mut().idle_waiter = Some(token.id());
-        while self.busy() {
-            if token.park(-1) & 16 != 0 {
-                self.st.borrow_mut().idle_waiter = None;
-                rt::acknowledge_cancel();
-                // A stop request must not cut the drain short: this close is the cleanup.
-                rt::shield();
-                self.close_inner();
-                rt::unshield();
-                rt::cancelled();
-            }
-        }
-        self.st.borrow_mut().idle_waiter = None;
+    /// Drains and closes the server as the cleanup of the task that serves it: an idle connection
+    /// goes at once, a request in flight finishes within the grace period. A stop request must not
+    /// cut the drain short.
+    pub fn finish(&self) {
+        rt::shield();
         self.close_inner();
-    }
-
-    /// Whether a connection is open or a request task still runs.
-    fn busy(&self) -> bool {
-        let st = self.st.borrow();
-        !st.conns.is_empty() || st.running > 0
+        rt::unshield();
     }
 
     pub fn id(&self) -> usize {
@@ -880,12 +857,6 @@ impl Server {
     fn note_drain_progress(&self) {
         let st = self.st.borrow();
         if let Some(id) = st.draining {
-            rt::post(id);
-        }
-        if let Some(id) = st.idle_waiter
-            && st.conns.is_empty()
-            && st.running == 0
-        {
             rt::post(id);
         }
     }
