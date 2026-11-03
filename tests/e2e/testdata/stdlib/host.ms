@@ -93,3 +93,24 @@ test "managed subprocess streams incrementally and cleans up on scope exit":
     try input.close()
     try expect_equal((try child.wait()), 0)
     try expect_false((try output.read().wait()).is_some())
+
+test "run and spawn pass the environment to the child":
+    if os_type() == "windows": return
+
+    var env: Map[String, String] = Map[String, String]()
+    env.add("MS_CHILD_VALUE", "from-parent")
+
+    let output = try run(
+        "sh", ["-c", "printf %s \"$MS_CHILD_VALUE\""], "".to_bytes(), env: env.clone()
+    ).wait()
+    try expect_equal(output.stdout, "from-parent".to_bytes())
+
+    let child = try spawn(
+        "sh", ["-c", "printf %s \"$MS_CHILD_VALUE\" >&2"], stdin: Stdio.Null,
+        stdout: Stdio.Null, env: env
+    )
+    try expect_equal((try child.wait()), 0)
+
+    var errors = child.stderr()
+    let text = try errors.read().wait()
+    try expect_equal(text.get("".to_bytes()), "from-parent".to_bytes())
