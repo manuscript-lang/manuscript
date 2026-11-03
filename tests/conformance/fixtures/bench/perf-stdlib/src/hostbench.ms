@@ -2,7 +2,7 @@ import bench from "./harness.ms"
 import Bytes from "@std/bytes.ms"
 import pack, unpack, ArchiveEntry from "@std/io/archive.ms"
 import sse_events from "@std/net/sse.ms"
-import ReadStream, Source, stream from "@std/io/stream.ms"
+import ReadStream, Source, stream from "@std/io/io.ms"
 import parse_timestamp from "@std/os/time.ms"
 import uuid_v4 from "@std/os/random.ms"
 

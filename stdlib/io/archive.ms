@@ -1,5 +1,5 @@
 import Bytes, BytesBuilder, join from "@std/bytes.ms"
-import ReadStream, Transform, through from "@std/io/stream.ms"
+import ReadStream, Transform, through from "@std/io/io.ms"
 import (
     msstd_compress_encoder_new,
     msstd_compress_encoder_push,

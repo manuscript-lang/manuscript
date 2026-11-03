@@ -1,7 +1,8 @@
 import Data from "@std/core.ms"
 import parse_float from "@std/math/math.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, Transform, through from "@std/io/stream.ms"
+import ReadStream, WriteStream, Sink, Transform, through, writer from "@std/io/io.ms"
+import Promise from "@std/concurrency/promise.ms"
 import msstd_json_parse, msstd_json_stringify from "@std/internal/json.ms"
 
 // Optional bounds for JSON input bytes, nesting depth, and parsed values.
@@ -432,3 +433,33 @@ export fn json_reader[T: Data = JsonValue](
             in_string: false, escaped: false, finished: false, failure: none
         )
     )
+
+// A sink that encodes each value as one line of JSON (JSON Lines) and puts the bytes into `output`.
+type JsonLines[T: Data]:
+    output: WriteStream[Bytes]
+    max_bytes: Int?
+
+impl Sink[T] for JsonLines[T]:
+    var fn put(value: T) Unit!:
+        let text = try stringify[T](value, self.max_bytes, none)
+        return self.output.write("{text}\n".to_bytes())
+
+    var fn drain() Promise[Unit]:
+        return self.output.flush()
+
+    fn buffered() Int:
+        return self.output.buffered()
+
+    var fn close() Unit!:
+        return self.output.close()
+
+/*
+Writes values of type `T` to a byte stream as JSON Lines: each value is encoded as `stringify` does, on a
+single line, and ends with a line feed. `max_bytes` bounds one encoded value and fails the write with
+`LimitExceeded`. Writes never wait; `flush` waits for `output` to drain. Closing the result closes `output`.
+*/
+export fn json_writer[T: Data](
+    output: WriteStream[Bytes],
+    max_bytes: Int? = none
+) WriteStream[T]:
+    return writer[T](JsonLines[T](output: output, max_bytes: max_bytes))

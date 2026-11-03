@@ -1,6 +1,7 @@
 import StringBuilder from "@std/string.ms"
 import Bytes, join from "@std/bytes.ms"
-import ReadStream, Transform, through from "@std/io/stream.ms"
+import ReadStream, WriteStream, Sink, Transform, through, writer from "@std/io/io.ms"
+import Promise from "@std/concurrency/promise.ms"
 
 // Delimiter and line ending used when parsing or writing CSV; defaults are comma and LF.
 export type CsvOptions:
@@ -369,3 +370,33 @@ fn encode_field(field: String, delimiter: Int, crlf: Bool) String:
     var quoted = replaced(field, "\"", "\"\"")
     if crlf: quoted = replaced(replaced(quoted, "\r\n", "\n"), "\n", "\r\n")
     return "\"{quoted}\""
+
+// A sink that encodes each row as `stringify` does and puts the bytes into `output`.
+type CsvRowsSink:
+    output: WriteStream[Bytes]
+    options: CsvOptions
+
+impl Sink[List[String]] for CsvRowsSink:
+    var fn put(value: List[String]) Unit!:
+        let text = try stringify([value], self.options, none)
+        return self.output.write(text.to_bytes())
+
+    var fn drain() Promise[Unit]:
+        return self.output.flush()
+
+    fn buffered() Int:
+        return self.output.buffered()
+
+    var fn close() Unit!:
+        return self.output.close()
+
+/*
+Writes rows to a byte stream, each as `stringify` encodes it (quoting cells that need it, ending with the
+options' line ending). Invalid `options` fail the first write with `InvalidInput`. Writes never wait; `flush`
+waits for `output` to drain. Closing the result closes `output`.
+*/
+export fn csv_writer(
+    output: WriteStream[Bytes],
+    options: CsvOptions = CsvOptions()
+) WriteStream[List[String]]:
+    return writer[List[String]](CsvRowsSink(output: output, options: options))

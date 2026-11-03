@@ -11,7 +11,8 @@ import (
     CompressionFormat
 ) from "@std/io/archive.ms"
 import Bytes, join from "@std/bytes.ms"
-import ReadStream, Source, stream, lines from "@std/io/stream.ms"
+import ReadStream, Source, stream from "@std/io/io.ms"
+import lines from "@std/io/streams.ms"
 
 // Hands out the chunks in order, then ends.
 type Chunks:

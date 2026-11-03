@@ -3,7 +3,7 @@ import crc32, crc32_of, adler32, adler32_of from "@std/data/checksum.ms"
 import crc64, crc64_of, Crc64Polynomial from "@std/data/hash.ms"
 import digest, HashAlgorithm from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
-import ReadStream, Source, stream from "@std/io/stream.ms"
+import ReadStream, Source, stream from "@std/io/io.ms"
 
 // Hands out the chunks in order, then ends.
 type Chunks:

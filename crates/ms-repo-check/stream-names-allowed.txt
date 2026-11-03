@@ -2,7 +2,6 @@
 // moves its type onto a ReadStream or WriteStream; the list only shrinks.
 stdlib/collections/bitset.ms BitSet.next
 stdlib/concurrency/tasks.ms TaskChannel.receive
-stdlib/io/buffered.ms BufferedWriter.write_bytes
 stdlib/io/channels.ms Channel.receive
 stdlib/io/channels.ms Transport.receive
 stdlib/log.ms Transport.write_bytes

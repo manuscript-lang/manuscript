@@ -1,5 +1,6 @@
 import Data from "@std/core.ms"
 import StringBuilder from "@std/string.ms"
+import WriteStream from "@std/io/io.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
 import escape from "@std/data/html.ms"
 
@@ -202,6 +203,19 @@ impl Template:
         )
         try run.nodes(self.nodes.clone(), 0)
         return ok(run.out.build())
+
+// Renders `template` as its `render` method does and writes the text to `output`, which the caller keeps and closes.
+// A failed render writes nothing; a failed write returns the stream's error.
+export fn render_to(
+    template: Template,
+    data: JsonValue,
+    var output: WriteStream[String],
+    partials: Map[String, Template] = Map[String, Template](),
+    strict: Bool = true,
+    max_output: Int = 16777216
+) Unit!Error:
+    let text = try template.render(data, partials, strict, max_output)
+    return output.write(text)
 
 fn root_names(data: JsonValue) Map[String, JsonValue]:
     if let members = data.as_map(): return members

@@ -1,6 +1,6 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import panic from "@std/core.ms"
-import ReadStream from "@std/io/stream.ms"
+import ReadStream from "@std/io/io.ms"
 import bit_and, bit_not, bit_or, bit_xor, shift_right from "@std/math/math.ms"
 import (
     msstd_crypto_constant_time_equal,

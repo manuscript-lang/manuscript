@@ -15,11 +15,7 @@ use std::sync::Arc;
 // `Iterator` is for sequences that never wait, so its `next` is not a stream method.
 const ITERATOR: &str = "Iterator";
 const BANNED: [&str; 4] = ["next", "receive", "feed", "write_bytes"];
-const STREAM_MODULES: [&str; 3] = [
-    "stdlib/io/io.ms",
-    "stdlib/io/stream.ms",
-    "stdlib/io/streams.ms",
-];
+const STREAM_MODULES: [&str; 2] = ["stdlib/io/io.ms", "stdlib/io/streams.ms"];
 const ALLOWED: &str = include_str!("../stream-names-allowed.txt");
 
 pub fn check(files: &[String]) -> Vec<String> {

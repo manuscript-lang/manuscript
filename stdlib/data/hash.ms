@@ -1,5 +1,5 @@
 import Bytes from "@std/bytes.ms"
-import ReadStream from "@std/io/stream.ms"
+import ReadStream from "@std/io/io.ms"
 import (
     bit_and,
     bit_xor,

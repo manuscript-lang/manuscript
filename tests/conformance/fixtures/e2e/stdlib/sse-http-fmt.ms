@@ -11,7 +11,7 @@ import (
     ResponseBody
 ) from "@std/net/http.ms"
 import Bytes from "@std/bytes.ms"
-import ReadStream, Source, stream from "@std/io/stream.ms"
+import ReadStream, Source, stream from "@std/io/io.ms"
 import sse_events from "@std/net/sse.ms"
 import http_client, serve from "@std/net/net.ms"
 

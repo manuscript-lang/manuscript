@@ -1,5 +1,5 @@
 import Bytes from "@std/bytes.ms"
-import ReadStream from "@std/io/stream.ms"
+import ReadStream from "@std/io/io.ms"
 import (
     msstd_checksum_crc32,
     msstd_checksum_crc32_update,

@@ -7,7 +7,7 @@ import (
     Part
 ) from "@std/net/mime.ms"
 import Bytes from "@std/bytes.ms"
-import ReadStream, Source, stream from "@std/io/stream.ms"
+import ReadStream, Source, stream from "@std/io/io.ms"
 
 // Hands out the chunks in order, then ends.
 type Chunks:

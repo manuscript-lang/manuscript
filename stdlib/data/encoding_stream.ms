@@ -1,5 +1,5 @@
 import Bytes, join from "@std/bytes.ms"
-import ReadStream, Transform, through from "@std/io/stream.ms"
+import ReadStream, Transform, through from "@std/io/io.ms"
 import base64_encode, base64_decode, hex_encode, hex_decode from "@std/data/encoding.ms"
 
 // Stream steps for `@std/data/encoding.ms`, in their own module because the streams depend on `@std/bytes.ms`,
