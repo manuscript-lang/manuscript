@@ -37,15 +37,23 @@ pub(crate) enum Property {
 impl Property {
     /// The property a standard contract names, if it is one.
     pub(crate) fn of(contract: &Ty) -> Option<Property> {
-        [
-            ("Equal", Property::Equal),
-            ("Hashable", Property::Hashable),
-            ("Clonable", Property::Clonable),
-            ("Data", Property::Data),
-        ]
-        .into_iter()
-        .find(|(name, _)| contract.is_std(name))
-        .map(|(_, p)| p)
+        match contract.builtin? {
+            Builtin::Equal => Some(Property::Equal),
+            Builtin::Hashable => Some(Property::Hashable),
+            Builtin::Clonable => Some(Property::Clonable),
+            Builtin::Data => Some(Property::Data),
+            _ => None,
+        }
+    }
+
+    /// The standard contract this property is.
+    pub(crate) fn builtin(self) -> Builtin {
+        match self {
+            Property::Equal => Builtin::Equal,
+            Property::Hashable => Builtin::Hashable,
+            Property::Clonable => Builtin::Clonable,
+            Property::Data => Builtin::Data,
+        }
     }
 
     /// The standard contract's name.
@@ -1099,8 +1107,7 @@ impl Checker {
         }
         if t.kind == Kind::Variable {
             return t.bounds().iter().any(|b| {
-                b.is_std(property.name())
-                    || (b.is(Builtin::Hashable) && property == Property::Equal)
+                b.is(property.builtin()) || (b.is(Builtin::Hashable) && property == Property::Equal)
             });
         }
         // Explicit implementations take precedence over structural data semantics.
@@ -1109,7 +1116,7 @@ impl Checker {
                 || !m
                     .contract
                     .as_ref()
-                    .is_some_and(|c| c.is_std(property.name()))
+                    .is_some_and(|c| c.is(property.builtin()))
             {
                 continue;
             }

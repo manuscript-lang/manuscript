@@ -32,7 +32,10 @@ Stage 2 (lowering, this PR): `Cx` owns the `TyTable`. `tycache` becomes `Vec<Opt
 
 Stage 3 (checker, done): the checker builds `TyId`s from `unify`/`same` results where it keys types (`reported`, `seen`, `recursion.rs` ancestors, `stmts.rs:1119`), removing the other `type_key` users. Open hazard: `sub` clones variables to snapshot bounds, so a variable's identity is its `id`, not the clone; keys include `id` as today. Whether `RefCell`s can go after a one-pass declaration phase (audit item 27) is decided after this stage, not promised.
 
-Stage 4 (properties) is not in this proposal. Review found the property bits are not a function of the nominal type alone (visible impls differ per module via `method_visible`, generic instances depend on `bounds_satisfied`, `Data` depends on the ancestor, `Equal` and `Hashable` take opposite cycle assumptions, the 200-deep guard returns false). It needs its own proposal with a worked per-module design and a side-by-side run against `property_in` over the corpus before `PropertyState` is deleted.
+Stage 4 (properties), split by what is sound:
+- Done in stage 3: `Property::of` and the property bound checks use the `Builtin` tag, not contract-name text.
+- Not possible as the audit wrote it: `Comparable` for primitives cannot come from `impl Comparable for Int` declarations because none exist in `stdlib/` (the audit was wrong), and `builtin_comparable` also drives `scalar_extension` (`contracts.rs:380`). Adding them is a stdlib and lowering change of its own.
+- Not done: dense property bits with no memo. They are not a function of the nominal type alone: visible impls differ per module (`method_visible`), generic instances depend on `bounds_satisfied`, `Data` depends on the ancestor, `Equal` and `Hashable` take opposite cycle assumptions, and the 200-deep guard returns false. The memo (`completed`) also keeps shared-DAG types from going exponential (`type_graph_tests`). A replacement needs bits keyed by (`TyId`, visibility scope) filled in a bottom-up pass, validated side by side with `property_in` over the corpus. That is a separate proposal and PR.
 
 Invariants: diagnostics, emitted MIR and generated names are byte-identical; no cache, no new crate, no test gated.
 
