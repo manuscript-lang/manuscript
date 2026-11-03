@@ -57,6 +57,7 @@ mod tests {
             owner: "d.ms#fn#two".into(),
             target: "d.ms#fn#one".into(),
             kind: "function".into(),
+            spawn: false,
         };
         let inspection = InspectionRows {
             entities: vec![entity("d.ms#fn#one", "one"), entity("d.ms#fn#two", "two")],

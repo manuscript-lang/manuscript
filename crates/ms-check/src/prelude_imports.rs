@@ -23,6 +23,7 @@ impl Checker {
         );
         let name = &item.name;
         self.p.diagnostics.push(Diagnostic {
+            opener_line: 0,
             file: module.file.as_str().into(),
             pos: item.name_pos,
             phase: Phase::Resolution,

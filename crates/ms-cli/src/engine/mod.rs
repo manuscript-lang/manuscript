@@ -8,6 +8,8 @@
 //! [`Engine`] is generic over the [`Lower`] stage so tests can inject a lowering.
 
 mod build;
+mod options;
+pub use options::from_env as build_options_from_env;
 mod run;
 mod runtime;
 mod search;
@@ -39,6 +41,10 @@ pub struct Engine<L: Lower> {
     /// The native static library to link; `MS_RT_LIB`, then the archive
     /// embedded in `ms` (see [`runtime`]), when unset.
     pub runtime: Option<PathBuf>,
+    /// Codegen and link settings: the `MS_*` variables, read when the engine was created.
+    build: ms_build::BuildOptions,
+    /// `--static` of the current command: link static musl.
+    static_libc: std::cell::Cell<bool>,
 }
 
 impl<L: Lower> Engine<L> {
@@ -46,6 +52,21 @@ impl<L: Lower> Engine<L> {
         Engine {
             lowering,
             runtime: None,
+            build: options::from_env(),
+            static_libc: std::cell::Cell::new(false),
+        }
+    }
+
+    /// Select static musl (`--static`) or glibc for the commands that follow.
+    pub fn set_static_libc(&self, on: bool) {
+        self.static_libc.set(on);
+    }
+
+    /// The build settings of the current command.
+    pub(crate) fn build_options(&self) -> ms_build::BuildOptions {
+        ms_build::BuildOptions {
+            static_musl: self.static_libc.get(),
+            ..self.build.clone()
         }
     }
 
@@ -63,11 +84,12 @@ impl<L: Lower> Engine<L> {
         kind: BuildType,
         link: &[String],
     ) -> Result<(), String> {
+        let build = self.build_options();
         let runtime = match &self.runtime {
             Some(runtime) => runtime.clone(),
-            None => match ms_build::runtime_override()? {
+            None => match ms_build::runtime_override(&build)? {
                 Some(runtime) => runtime,
-                None => runtime::embedded(ms_build::static_libc())?,
+                None => runtime::embedded(build.static_musl)?,
             },
         };
         let extra: Vec<PathBuf> = link.iter().map(PathBuf::from).collect();
@@ -77,6 +99,7 @@ impl<L: Lower> Engine<L> {
             profile(kind),
             &runtime,
             &extra,
+            &build,
         )?;
         write_metadata(output, kind)
     }
@@ -333,6 +356,7 @@ pub(crate) fn compile_target<L: Lower>(
             let file = if entry.is_empty() { filename } else { &entry };
             Err(failure(
                 vec![Diagnostic {
+                    opener_line: 0,
                     file: file.into(),
                     pos: Pos::new(0, 1, 1),
                     phase: Phase::Lowering,
@@ -354,6 +378,7 @@ fn library_failure(graph: &Graph) -> Failure {
     Failure {
         source_root: graph.source_root.clone(),
         diagnostics: vec![Diagnostic {
+            opener_line: 0,
             file: file.as_str().into(),
             pos,
             phase: Phase::Resolution,

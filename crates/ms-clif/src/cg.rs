@@ -659,7 +659,7 @@ fn compile_with_isa(
         funcs: Vec::new(),
         rt: HashMap::new(),
         rt_data: HashMap::new(),
-        count_str: std::env::var_os("MS_COUNT_STR").is_some(),
+        count_str: opts.build.count_str,
         ext: HashMap::new(),
         strs: HashMap::new(),
         list_consts: HashMap::new(),
@@ -687,7 +687,7 @@ fn compile_with_isa(
             let cwd = std::env::current_dir()
                 .map_or_else(|_| ".".into(), |d| d.to_string_lossy().into_owned());
             let mut llvm = crate::llvm_ir::LlvmModule::new(files, cwd);
-            llvm.set_per_cpu(x86_64 && crate::vectorize());
+            llvm.set_per_cpu(x86_64 && opts.build.vectorize);
             llvm
         }),
     };
@@ -832,6 +832,7 @@ fn compile_with_isa(
         let obj = crate::llvm_obj::compile(
             &llvm.finish(&triple, &pinned, anchored),
             opts.llvm.unwrap_or("3"),
+            &opts.build,
         )?;
         let t = crate::llvm_tables::read(obj.path(), &g.llvm_funcs, &m.files, anchored)?;
         g.dbg = t.dbg;
