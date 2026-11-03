@@ -373,6 +373,17 @@ impl FnLower<'_> {
                 "a part-wise close of a borrowed value that is not a local",
             ));
         };
+        if let Some(a) = self.aliases.get(&b.uid).cloned() {
+            // A borrow of a part (`if var value = map[key]?`): the part is closed where it lies,
+            // taken out of its holder and put back closed.
+            let kind = kind.clone();
+            return self.alias_update(&a, &[], &mut |s, v| {
+                let ty = s.b.ty(v);
+                let (v, r) = close_owned_result(&mut s.b, &kind, v, ty);
+                close_error_fault(&mut s.b, r);
+                Ok(v)
+            });
+        }
         let l = self.local(&b)?;
         let r = self.close_local_result(&l, kind);
         close_error_fault(&mut self.b, r);
