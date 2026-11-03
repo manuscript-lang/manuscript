@@ -6,6 +6,7 @@ test "same display names keep nested resource cleanup":
     let path = "{try temporary_root()}/ms-nominal-cycle-identity.txt"
     let _gone = remove(path, false)
     exercise(path.clone())
+
     let seen = try read_file(path.clone(), none)
     let _cleaned = remove(path, false)
     seen.length() | try expect_equal(1)
