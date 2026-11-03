@@ -8,7 +8,7 @@ use crate::Error;
 use crate::close::CloseKind;
 use crate::func::FnLower;
 use ms_check::hir::Callable;
-use ms_check::types::{self as ct, BindingRef, Subst};
+use ms_check::types::{self as ct, BindingRef, Builtin, Subst};
 use ms_mir::ir::{Imm, Op, Value};
 use ms_mir::types::Ty as MTy;
 use std::rc::Rc;
@@ -126,7 +126,9 @@ impl FnLower<'_> {
     fn fixture_hook(&self, fixture: &ct::Ty, name: &str) -> Option<Rc<Callable>> {
         let key = ct::type_key(fixture);
         let m = self.cx.methods.iter().find(|m| {
-            m.contract.as_ref().is_some_and(|c| c.is_std("TestHooks"))
+            m.contract
+                .as_ref()
+                .is_some_and(|c| c.is(Builtin::TestHooks))
                 && ct::type_key(&m.receiver) == key
                 && m.name().is_some_and(|n| n.as_str() == name)
         })?;

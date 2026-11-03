@@ -11,6 +11,7 @@ use crate::native::NArg;
 use crate::text::runtime_fn;
 use ms_check::hir::ModuleHir;
 use ms_check::types as ct;
+use ms_check::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Param, VtableId};
 use ms_mir::types::{IfaceId, Ty as MTy, TyKind};
@@ -1270,12 +1271,12 @@ fn fit_result(fl: &mut FnLower<'_>, r: Val, ret: MTy) -> Result<Val, Error> {
 
 /// Whether a declared parameter type is a `Map`.
 fn is_map(ty: &ct::Ty) -> bool {
-    ty.is_std("Map")
+    ty.is(Builtin::Map)
 }
 
 /// Whether a declared parameter type is a `List`.
 fn is_list(ty: &ct::Ty) -> bool {
-    ty.is_std("List")
+    ty.is(Builtin::List)
 }
 
 /// Whether the runtime function `sym` takes the receiver's handle first.

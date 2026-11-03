@@ -296,6 +296,11 @@ impl TyTable {
         self.intern(TyKind::Obj(Native::from_name(name), args))
     }
 
+    /// A runtime object type of a known identity.
+    pub fn native(&mut self, native: Native, args: Vec<Ty>) -> Ty {
+        self.intern(TyKind::Obj(native, args))
+    }
+
     /// Whether values of `ty` own storage that must be dropped.
     pub fn is_rc(&self, ty: Ty) -> bool {
         match self.kind(ty) {

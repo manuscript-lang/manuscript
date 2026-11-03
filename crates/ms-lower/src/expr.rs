@@ -4,7 +4,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::nativerec::native_rec;
 use ms_check::hir::Resolution;
-use ms_check::types::{self as ct, Kind};
+use ms_check::types::{self as ct, Builtin, Kind};
 use ms_mir::ir::{Cc, Op, Value};
 use ms_mir::types::Native;
 use ms_mir::types::NativeRec;
@@ -432,7 +432,7 @@ impl<'a> FnLower<'a> {
         let Some(case) = case else {
             return Err(Error::new("type used as a value"));
         };
-        if t.is_std("Optional") {
+        if t.is(Builtin::Optional) {
             let v = self.b.opt_none(mt);
             return Ok(Val { v, own: false });
         }
@@ -529,7 +529,7 @@ impl<'a> FnLower<'a> {
     }
 
     fn index(&mut self, e: &Expr, left: &Expr, index: &Expr) -> Result<Val, Error> {
-        if self.ety(left).is_std("Map") {
+        if self.ety(left).is(Builtin::Map) {
             return self.map_index(e, left, index);
         }
         let l = self.expr(left)?;

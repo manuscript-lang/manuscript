@@ -4,6 +4,7 @@
 use super::{Finding, finding, module_file};
 use crate::walk::walk_module;
 use ms_check::ModuleData;
+use ms_check::types::Builtin;
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
 
@@ -47,14 +48,14 @@ impl Scan<'_> {
         let Some(ty) = ty.filter(|_| checked) else {
             return;
         };
-        let (code, message, first, second) = if ty.is_std("Optional") {
+        let (code, message, first, second) = if ty.is(Builtin::Optional) {
             (
                 "MSL108",
                 "Matching an Optional with only a payload arm and none; use 'if let value = ...:' with 'else:', or an Optional method such as get(default) or map",
                 "some",
                 "none",
             )
-        } else if ty.is_std("Result") {
+        } else if ty.is(Builtin::Result) {
             (
                 "MSL109",
                 "Matching a Result with only ok and error; use 'try', 'if let value = ...:' with 'else:', or a Result method such as get(default), is_error, or err",

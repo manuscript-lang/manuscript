@@ -5,7 +5,7 @@
 use super::{Finding, finding, module_file};
 use crate::walk::walk_module;
 use ms_check::editor::{MemberKind, members};
-use ms_check::types::{Name, Ty, n};
+use ms_check::types::{Builtin, Name, Ty, n};
 use ms_check::{ModuleData, Program};
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
@@ -52,7 +52,7 @@ fn finisher(program: &Program, module: &ModuleData, ty: &Ty) -> Option<Name> {
             m.kind == MemberKind::Method
                 && FINISHERS.iter().any(|f| m.name == n(f))
                 && m.ty.params.is_empty()
-                && m.ty.result_ty().is_std("Result")
+                && m.ty.result_ty().is(Builtin::Result)
         })
         .map(|m| m.name)
 }

@@ -7,6 +7,7 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
+use ms_check::types::Builtin;
 use ms_mir::ir::{Cc, Imm, Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::{Expr, ExprKind};
@@ -55,7 +56,7 @@ impl<'a> FnLower<'a> {
         };
         let recv = self.ety(left);
         let shape = match (name.as_str(), args.as_slice()) {
-            ("get", [key]) if key.name.is_none() && recv.is_std("Map") => {
+            ("get", [key]) if key.name.is_none() && recv.is(Builtin::Map) => {
                 // A key the checker converts on the way in (an `Optional` key given a plain
                 // value) takes the ordinary call, which applies the conversion.
                 let map_ty = self.emty(left)?;
@@ -68,8 +69,8 @@ impl<'a> FnLower<'a> {
                 }
                 Shape::MapGet
             }
-            ("first", []) if recv.is_std("List") => Shape::First,
-            ("last", []) if recv.is_std("List") => Shape::Last,
+            ("first", []) if recv.is(Builtin::List) => Shape::First,
+            ("last", []) if recv.is(Builtin::List) => Shape::Last,
             _ => return Ok(None),
         };
         let result = self.emty(e)?;

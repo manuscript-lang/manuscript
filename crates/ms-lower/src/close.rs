@@ -4,6 +4,7 @@
 use crate::Error;
 use crate::func::FnLower;
 use ms_check::types as ct;
+use ms_check::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Op, Param, Value};
 use ms_mir::types::{AltId, IfaceId, RecId, Ty as MTy, TyKind};
@@ -242,7 +243,7 @@ impl FnLower<'_> {
         // have had its payload moved out already, so it closes only when it is itself one.
         if self.cx.classes.class(&ty) != ms_check::ownership::Class::Resource
             || (self.closeable_impl(&ty).is_none()
-                && (ty.is_std("Optional") || ty.is_std("Result")))
+                && (ty.is(Builtin::Optional) || ty.is(Builtin::Result)))
         {
             return;
         }
@@ -705,7 +706,9 @@ impl FnLower<'_> {
             .iter()
             .find(|m| {
                 m.name().is_some_and(|n| n.as_str() == "close")
-                    && m.contract.as_ref().is_some_and(|c| c.is_std("Closeable"))
+                    && m.contract
+                        .as_ref()
+                        .is_some_and(|c| c.is(Builtin::Closeable))
                     && ct::unify(
                         &m.receiver,
                         ty,
@@ -791,7 +794,7 @@ impl FnLower<'_> {
                 Some(arg) => self.part_closer(arg)?.map(|k| Shape::List(elem, k)),
                 None => None,
             },
-            _ if ty.is_std("Map") => {
+            _ if ty.is(Builtin::Map) => {
                 let holds = ty.args.get(1).map(|v| self.part_closer(v)).transpose()?;
                 match holds.flatten() {
                     Some(_) => return Ok(Some(self.collection_method("close_values", ty)?)),
