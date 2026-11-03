@@ -8,22 +8,8 @@ use crate::types::Method;
 use crate::types::*;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
-use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-
-thread_local! {
-    /// Synthetic declarations need ids that never collide with parsed nodes.
-    static SYNTHETIC_ID: Cell<u32> = const { Cell::new(0x8000_0000) };
-}
-
-fn synthetic_id() -> NodeId {
-    SYNTHETIC_ID.with(|c| {
-        let id = c.get();
-        c.set(id + 1);
-        NodeId(id)
-    })
-}
 
 /// Whether an interface declares an operation with type parameters of its own. Such an operation
 /// dispatches statically, so the interface works as a bound but not as the type of a value.
@@ -38,11 +24,45 @@ pub(crate) fn has_generic_operation(contract: &Ty) -> bool {
     })
 }
 
+/// A structural property the language derives from a type's shape.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub(crate) enum Property {
+    Equal,
+    Hashable,
+    Clonable,
+    Data,
+}
+
+impl Property {
+    /// The property a standard contract names, if it is one.
+    pub(crate) fn of(contract: &Ty) -> Option<Property> {
+        [
+            ("Equal", Property::Equal),
+            ("Hashable", Property::Hashable),
+            ("Clonable", Property::Clonable),
+            ("Data", Property::Data),
+        ]
+        .into_iter()
+        .find(|(name, _)| contract.is_std(name))
+        .map(|(_, p)| p)
+    }
+
+    /// The standard contract's name.
+    pub(crate) fn name(self) -> &'static str {
+        match self {
+            Property::Equal => "Equal",
+            Property::Hashable => "Hashable",
+            Property::Clonable => "Clonable",
+            Property::Data => "Data",
+        }
+    }
+}
+
 /// Visit state of a structural property query.
 #[derive(Default)]
 pub(crate) struct PropertyState {
-    active: HashSet<String>,
-    completed: HashMap<String, bool>,
+    active: HashSet<(String, Property)>,
+    completed: HashMap<(String, Property), bool>,
 }
 
 /// Whether two implementations could apply to one receiver and contract.
@@ -364,7 +384,7 @@ impl Checker {
                     || matches!(receiver.kind, Kind::Record | Kind::Alternative)
                     || (self.m().is_standard() && receiver.kind == Kind::Native)))
         {
-            if receiver.id != "<invalid>" {
+            if !receiver.is_invalid() {
                 self.type_error(
                     d.pos(),
                     "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types",
@@ -408,7 +428,7 @@ impl Checker {
             *v.bounds.borrow_mut() = rewritten;
         }
         let mut contract = self.resolve(imp.contract.as_ref());
-        if contract.kind != Kind::Contract && contract.id != "<invalid>" {
+        if contract.kind != Kind::Contract && !contract.is_invalid() {
             self.type_error(
                 d.pos(),
                 "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
@@ -663,8 +683,10 @@ impl Checker {
             if contract.is_std("TestHooks") {
                 // This standard lifecycle contract has no-op defaults; retain ordinary
                 // checked methods so interface calls and generic bounds use normal dispatch.
+                let decl_id = self.m().facts_mut().fresh_id();
+                let result_id = self.m().facts_mut().fresh_id();
                 let decl = DeclRef::new(Decl {
-                    id: synthetic_id(),
+                    id: decl_id,
                     pos: d.pos(),
                     export: false,
                     synthetic: true,
@@ -673,7 +695,7 @@ impl Checker {
                         type_params: Vec::new(),
                         params: Vec::new(),
                         result: TypeRef {
-                            id: synthetic_id(),
+                            id: result_id,
                             pos: d.pos(),
                             kind: TypeKind::Named {
                                 name: n("Unit"),
@@ -750,12 +772,8 @@ impl Checker {
         if receiver.id == contract.id {
             return same(receiver, contract);
         }
-        if contract.is_std("Equal")
-            || contract.is_std("Hashable")
-            || contract.is_std("Clonable")
-            || contract.is_std("Data")
-        {
-            return self.property(receiver, contract.name.as_str(), None);
+        if let Some(property) = Property::of(contract) {
+            return self.property(receiver, property, None);
         }
         if receiver.kind == Kind::Variable {
             return receiver.bounds().iter().any(|b| same(b, contract));
@@ -798,12 +816,12 @@ impl Checker {
             return t
                 .args
                 .iter()
-                .all(|a| self.property_in(a, "Clonable", state));
+                .all(|a| self.property_in(a, Property::Clonable, state));
         }
         if t.def.is_some() {
             return fields(t)
                 .iter()
-                .all(|f| self.property_in(&f.ty, "Clonable", state));
+                .all(|f| self.property_in(&f.ty, Property::Clonable, state));
         }
         true
     }
@@ -898,7 +916,7 @@ impl Checker {
                 reason,
             })
         };
-        if t.id == "<invalid>" {
+        if t.is_invalid() {
             return None;
         }
         match t.kind {
@@ -909,7 +927,7 @@ impl Checker {
                     blocked(DataReason::Unbounded, path)
                 };
             }
-            Kind::Primitive if t.id.as_str() == "Never" => return blocked(DataReason::Never, path),
+            Kind::Primitive if t.is_never() => return blocked(DataReason::Never, path),
             Kind::Primitive => return None,
             Kind::Function => return blocked(DataReason::Function, path),
             Kind::Contract => return blocked(DataReason::Interface, path),
@@ -998,12 +1016,8 @@ impl Checker {
 
     /// Whether `t` meets `bound`.
     pub(crate) fn satisfies(&self, t: &Ty, bound: &Ty) -> bool {
-        if bound.is_std("Equal")
-            || bound.is_std("Hashable")
-            || bound.is_std("Clonable")
-            || bound.is_std("Data")
-        {
-            return self.property(t, bound.name.as_str(), None);
+        if let Some(property) = Property::of(bound) {
+            return self.property(t, property, None);
         }
         self.implements(t, bound)
     }
@@ -1012,7 +1026,7 @@ impl Checker {
     pub(crate) fn property(
         &self,
         t: &Ty,
-        property: &str,
+        property: Property,
         state: Option<&mut PropertyState>,
     ) -> bool {
         match state {
@@ -1021,11 +1035,11 @@ impl Checker {
         }
     }
 
-    fn property_in(&self, t: &Ty, property: &str, state: &mut PropertyState) -> bool {
-        if t.id == "<invalid>" {
+    fn property_in(&self, t: &Ty, property: Property, state: &mut PropertyState) -> bool {
+        if t.is_invalid() {
             return true;
         }
-        if property == "Data" {
+        if property == Property::Data {
             // Not cached: a result computed under an assumed ancestor must not outlive it.
             return self
                 .data_blocker(t, &mut Vec::new(), &mut Vec::new())
@@ -1033,18 +1047,18 @@ impl Checker {
         }
         // A resource anywhere in the value (a field, an alternative case, a type argument) has
         // one owner: it is never hashed as a key or duplicated.
-        if (property == "Hashable" || property == "Clonable")
+        if (property == Property::Hashable || property == Property::Clonable)
             && self.holds_resource(t, &mut Vec::new())
         {
             return false;
         }
-        let key = format!("{}{}", type_key(t), property);
+        let key = (type_key(t), property);
         if let Some(&r) = state.completed.get(&key) {
             return r;
         }
         if state.active.contains(&key) {
             // Equality handles cycles; structural hashing requires an acyclic shape.
-            return property != "Hashable";
+            return property != Property::Hashable;
         }
         if state.active.len() > 200 {
             return false;
@@ -1056,35 +1070,39 @@ impl Checker {
         result
     }
 
-    fn property_compute(&self, t: &Ty, property: &str, state: &mut PropertyState) -> bool {
-        if property == "Clonable" {
+    fn property_compute(&self, t: &Ty, property: Property, state: &mut PropertyState) -> bool {
+        if property == Property::Clonable {
             return self.clonable(t, state);
         }
         if t.kind == Kind::Variable {
-            return t
-                .bounds()
-                .iter()
-                .any(|b| b.is_std(property) || (b.is_std("Hashable") && property == "Equal"));
+            return t.bounds().iter().any(|b| {
+                b.is_std(property.name()) || (b.is_std("Hashable") && property == Property::Equal)
+            });
         }
         // Explicit implementations take precedence over structural data semantics.
         for m in &self.p.methods {
-            if !self.method_visible(m) || !m.contract.as_ref().is_some_and(|c| c.is_std(property)) {
+            if !self.method_visible(m)
+                || !m
+                    .contract
+                    .as_ref()
+                    .is_some_and(|c| c.is_std(property.name()))
+            {
                 continue;
             }
             let mut s = Subst::new();
             if unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
                 && self.bounds_satisfied(&m.variables, &s)
             {
-                if property == "Hashable"
+                if property == Property::Hashable
                     && (self.shares_state(t, &mut Vec::new())
                         || self.holds_resource(t, &mut Vec::new()))
                 {
                     return false;
                 }
-                return property != "Hashable" || self.property(t, "Equal", None);
+                return property != Property::Hashable || self.property(t, Property::Equal, None);
             }
         }
-        if property == "Hashable" {
+        if property == Property::Hashable {
             for m in &self.p.methods {
                 if !self.method_visible(m)
                     || !m.contract.as_ref().is_some_and(|c| c.is_std("Equal"))
@@ -1101,7 +1119,7 @@ impl Checker {
         }
         match t.kind {
             Kind::Function | Kind::Contract => return false,
-            Kind::Primitive => return float_bits(t).is_none() || property != "Hashable",
+            Kind::Primitive => return float_bits(t).is_none() || property != Property::Hashable,
             _ => {}
         }
         if t.is_std("Decimal") || t.is_std("Bytes") || t.is_time("Duration") || t.is_time("Instant")
@@ -1109,13 +1127,13 @@ impl Checker {
             return true;
         }
         if t.is_std("List") || t.is_std("Map") || t.is_std("Set") {
-            if property == "Hashable" {
+            if property == Property::Hashable {
                 return false;
             }
             return t.args.iter().all(|a| self.property_in(a, property, state));
         }
         if t.is_std("BigInt") || t.is_std("Regex") || t.is_time("Timestamp") {
-            return property == "Equal" && !t.is_std("Regex");
+            return property == Property::Equal && !t.is_std("Regex");
         }
         if t.kind == Kind::Native {
             return false;
@@ -1204,9 +1222,13 @@ impl Checker {
         }
         let result = self.implemented_methods(receiver, name);
         if result.is_empty() && (name == "equals" || name == "hash") {
-            let property = if name == "hash" { "Hashable" } else { "Equal" };
+            let property = if name == "hash" {
+                Property::Hashable
+            } else {
+                Property::Equal
+            };
             if self.property(receiver, property, None) {
-                let contract = standard(property, vec![]);
+                let contract = standard(property.name(), vec![]);
                 let mut operation = contract
                     .def
                     .as_ref()

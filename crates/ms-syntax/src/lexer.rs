@@ -741,10 +741,15 @@ impl Scanner<'_> {
                 b'[' => ']',
                 _ => '}',
             };
-            return self.fail(format!(
-                "unterminated delimiter '{}' opened at line {}:{}; add the matching '{}' before the end of the file",
-                open as char, where_.line, where_.column, close
-            ));
+            let mut d = self.err(
+                self.pos(),
+                format!(
+                    "unterminated delimiter '{}' opened at line {}:{}; add the matching '{}' before the end of the file",
+                    open as char, where_.line, where_.column, close
+                ),
+            );
+            d.opener_line = where_.line;
+            return Err(d);
         }
         while self.levels.len() > 1 {
             self.levels.pop();

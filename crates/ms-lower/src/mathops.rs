@@ -8,6 +8,7 @@ use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
 use ms_mir::ir::{Cc, Imm, Op, Value};
+use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 
 impl FnLower<'_> {
@@ -28,7 +29,7 @@ impl FnLower<'_> {
         let sym = match self.b.m.types.kind(t) {
             TyKind::Float | TyKind::Float32 => "msrt_float_compare",
             TyKind::Str => "msrt_string_compare",
-            TyKind::Obj(n, _) if n == "BigInt" => "msstd_bigint_compare",
+            TyKind::Obj(Native::BigInt, _) => "msstd_bigint_compare",
             _ => {
                 if let Some(sym) = self.ordering_symbol(t) {
                     return self.call_runtime(sym, &[a, b], MTy::INT);

@@ -165,7 +165,6 @@ pub fn desugar_inherent_impls(module: &Module) -> (Vec<Decl>, Vec<InherentError>
 /// Runs the passes that make checked trees ready for lowering.
 pub fn finish_modules(modules: &[ModRef]) {
     for m in modules {
-        fold_constants(m);
         order_arguments(m);
         mark_plain_try(m);
     }
@@ -178,67 +177,6 @@ fn each_decl_node<V: Visitor>(module: &ModRef, v: &mut V) {
         for m in &d.0.folded {
             visit::walk_callable(v, &m.func.params, &m.func.body);
         }
-    }
-}
-
-fn fold_constants(module: &ModRef) {
-    struct Fold<'a> {
-        module: &'a ModRef,
-    }
-    impl Visitor for Fold<'_> {
-        fn expr(&mut self, e: &Expr) {
-            fold_bool(self.module, e);
-        }
-    }
-    each_decl_node(module, &mut Fold { module });
-}
-
-/// Reports the constant value of `e` and whether `e` is a constant, recording
-/// it on `e`'s facts. Folding never evaluates calls or changes numeric fault
-/// behavior: only a constant left operand may drop the right operand.
-fn fold_bool(module: &ModRef, e: &Expr) -> (bool, bool) {
-    let info = module.facts().info(e.id).cloned();
-    let Some(info) = info else {
-        return (false, false);
-    };
-    if info.ty.as_ref().is_none_or(|t| t.id != "Bool") {
-        return (false, false);
-    }
-    if info.fold_done {
-        return (info.constant, info.folded);
-    }
-    let (value, constant) = fold(module, e);
-    let mut facts = module.facts_mut();
-    if let Some(Some(stored)) = facts.exprs.get_mut(e.id.index()) {
-        stored.constant = value;
-        stored.folded = constant;
-        stored.fold_done = true;
-    }
-    (value, constant)
-}
-
-fn fold(module: &ModRef, e: &Expr) -> (bool, bool) {
-    match &e.kind {
-        ExprKind::Bool(b) => (*b, true),
-        ExprKind::Unary {
-            op: UnaryOp::Not,
-            operand,
-        } => {
-            let (right, ok) = fold_bool(module, operand);
-            (!right, ok)
-        }
-        ExprKind::Binary { op, left, right } if matches!(op, BinaryOp::And | BinaryOp::Or) => {
-            let (l, ok) = fold_bool(module, left);
-            if !ok {
-                return (false, false);
-            }
-            // Only a constant left operand may eliminate the right operand.
-            if (*op == BinaryOp::And && !l) || (*op == BinaryOp::Or && l) {
-                return (l, true);
-            }
-            fold_bool(module, right)
-        }
-        _ => (false, false),
     }
 }
 

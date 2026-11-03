@@ -256,18 +256,15 @@ impl BuildCache {
         inputs
             .extend(ms_driver::load::enclosing_manifest(&source_dir).map(std::path::PathBuf::from));
         inputs.extend(backend.runtime.clone());
-        inputs.extend(ms_build::runtime_override().ok()?);
+        let options = backend.build_options();
+        inputs.extend(ms_build::runtime_override(&options).ok()?);
         inputs.extend(request.link.iter().map(std::path::PathBuf::from));
         let inputs: Vec<&Path> = inputs.iter().map(std::path::PathBuf::as_path).collect();
         let build_type = request.build_type.as_str();
         let mut parts = vec![build_type, filename.as_str(), output, crate::VERSION];
         parts.extend(request.link.iter().map(String::as_str));
-        parts.push(if ms_build::static_libc() {
-            "musl"
-        } else {
-            "libc"
-        });
-        let key = ms_build::cache::key(&parts, &inputs)?;
+        parts.push(if options.static_musl { "musl" } else { "libc" });
+        let key = ms_build::cache::key(&parts, &inputs, &options)?;
         Some(BuildCache {
             mode,
             directory,

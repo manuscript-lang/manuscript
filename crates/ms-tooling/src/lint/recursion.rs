@@ -156,7 +156,7 @@ impl Scan<'_> {
                 .facts()
                 .info(x.id)
                 .and_then(|i| i.ty.as_ref())
-                .is_some_and(|t| t.id == "Never");
+                .is_some_and(|t| t.is_never());
             found |= never && matches!(x.kind, ExprKind::Call { .. });
         });
         found

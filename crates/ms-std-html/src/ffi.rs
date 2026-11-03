@@ -17,15 +17,18 @@ pub const KIND_COMMENT: u8 = 3;
 pub const KIND_DOCTYPE: u8 = 4;
 
 native! {
+    // ms: leaf
     fn msstd_html_escape(text: &str) -> String {
         crate::escape(text)
     }
 
+    // ms: leaf
     fn msstd_html_unescape(text: &str) -> String {
         crate::unescape(text)
     }
 
     /// Writes the tree handle and the root node id through `out` and `root` when it succeeds.
+    // ms: leaf
     fn msstd_html_parse(
         text: &str,
         has_limits: bool,
@@ -54,6 +57,7 @@ native! {
         Ok(())
     }
 
+    // ms: leaf
     fn msstd_html_kind(t: ObjRef<Tree>, id: u32) -> u8 {
         match t.nodes[id as usize].ty {
             NodeType::Document | NodeType::ScopeMarker => KIND_DOCUMENT,
@@ -64,14 +68,17 @@ native! {
         }
     }
 
+    // ms: leaf
     fn msstd_html_data(t: ObjRef<Tree>, id: u32) -> String {
         t.nodes[id as usize].data.clone()
     }
 
+    // ms: leaf
     fn msstd_html_namespace(t: ObjRef<Tree>, id: u32) -> String {
         t.nodes[id as usize].namespace.clone()
     }
 
+    // ms: leaf
     fn msstd_html_doctype_id(t: ObjRef<Tree>, id: u32, which: u8) -> String {
         let key = if which == 0 { "public" } else { "system" };
         let mut value = "";
@@ -83,6 +90,7 @@ native! {
         String::from(value)
     }
 
+    // ms: leaf
     fn msstd_html_child_count(t: ObjRef<Tree>, id: u32) -> i64 {
         let mut n = 0;
         let mut c = t.nodes[id as usize].first;
@@ -93,6 +101,7 @@ native! {
         n
     }
 
+    // ms: leaf
     fn msstd_html_child(t: ObjRef<Tree>, id: u32, i: i64) -> u32 {
         let mut c = t.nodes[id as usize].first;
         for _ in 0..i {
@@ -101,18 +110,22 @@ native! {
         c.unwrap_or(0) as u32
     }
 
+    // ms: leaf
     fn msstd_html_first_child(t: ObjRef<Tree>, id: u32) -> u32 {
         t.nodes[id as usize].first.map_or(u32::MAX, |k| k as u32)
     }
 
+    // ms: leaf
     fn msstd_html_next_sibling(t: ObjRef<Tree>, id: u32) -> u32 {
         t.nodes[id as usize].next.map_or(u32::MAX, |k| k as u32)
     }
 
+    // ms: leaf
     fn msstd_html_attr_count(t: ObjRef<Tree>, id: u32) -> i64 {
         t.nodes[id as usize].attr.len() as i64
     }
 
+    // ms: leaf
     fn msstd_html_attr(t: ObjRef<Tree>, id: u32, i: i64, which: u8) -> String {
         let a = &t.nodes[id as usize].attr[i as usize];
         String::from(match which {

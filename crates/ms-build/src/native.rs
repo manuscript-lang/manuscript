@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use ms_clif::Options;
+use ms_clif::{BuildOptions, Options};
 use ms_mir::ir::Module;
 use ms_mir::opt::{Level, optimize};
 
@@ -82,8 +82,11 @@ pub enum Profile {
 }
 
 impl Profile {
-    fn options(self) -> (Level, Options) {
-        let mut options = Options::default();
+    fn options(self, build: &BuildOptions) -> (Level, Options) {
+        let mut options = Options {
+            build: build.clone(),
+            ..Options::default()
+        };
         let level = match self {
             // Debug keeps every check and skips MIR and Cranelift optimization so
             // locals and line tables stay faithful.
@@ -92,12 +95,12 @@ impl Profile {
                 Level::None
             }
             Profile::Release => {
-                options.llvm = llvm_level("3");
+                options.llvm = llvm_level(build, "3");
                 Level::Speed
             }
             Profile::MinSizeRel => {
                 options.opt_level = "speed_and_size";
-                options.llvm = llvm_level("s");
+                options.llvm = llvm_level(build, "s");
                 Level::Speed
             }
         };
@@ -106,23 +109,22 @@ impl Profile {
 }
 
 /// LLVM optimization for release builds: used when the LLVM tools can be fetched (or are named by
-/// `MS_LLVM_TOOLS`) and `MS_BACKEND` is not `cranelift`; otherwise release builds fall back to
+/// `build.llvm_tools`) and `build.cranelift_only` is off; otherwise release builds fall back to
 /// Cranelift.
-fn llvm_level(level: &'static str) -> Option<&'static str> {
-    if std::env::var("MS_BACKEND").is_ok_and(|b| b == "cranelift") {
+fn llvm_level(build: &BuildOptions, level: &'static str) -> Option<&'static str> {
+    if build.cranelift_only {
         return None;
     }
-    ms_clif::llvm_available().then_some(level)
+    ms_clif::llvm_available(build).then_some(level)
 }
 
-/// The runtime archive named by `MS_RT_LIB`, which replaces the one embedded in `ms`.
-pub fn runtime_override() -> Result<Option<PathBuf>, String> {
-    let Some(path) = std::env::var_os("MS_RT_LIB") else {
+/// The runtime archive named by `build.runtime` (`MS_RT_LIB`), which replaces the one embedded in `ms`.
+pub fn runtime_override(build: &BuildOptions) -> Result<Option<PathBuf>, String> {
+    let Some(path) = &build.runtime else {
         return Ok(None);
     };
-    let path = PathBuf::from(path);
     if path.is_file() {
-        Ok(Some(path))
+        Ok(Some(path.clone()))
     } else {
         Err(format!(
             "MS_RT_LIB={} does not name a file; point it at a libms_native.a",
@@ -150,6 +152,7 @@ pub fn build_executable(
     profile: Profile,
     runtime: &Path,
     extra: &[PathBuf],
+    build: &BuildOptions,
 ) -> Result<(), String> {
     if let Some(missing) = extra.iter().find(|p| !p.is_file()) {
         return Err(format!(
@@ -164,7 +167,7 @@ pub fn build_executable(
             text.join("\n")
         ));
     }
-    let timings = std::env::var_os("MS_TIMINGS").is_some_and(|v| v != "0");
+    let timings = build.timings;
     let started = std::time::Instant::now();
     let phase = |name: &str| {
         if timings {
@@ -174,7 +177,7 @@ pub fn build_executable(
             );
         }
     };
-    let (level, options) = profile.options();
+    let (level, options) = profile.options(build);
     optimize(module, level, cfg!(debug_assertions));
     // Not an optimization: it keeps cancellation from leaking, so every profile runs it.
     let unwound = ms_mir::unwind::run(module);
@@ -229,6 +232,7 @@ pub fn build_executable(
         &inputs,
         &staged,
         profile == Profile::MinSizeRel,
+        build,
     );
     phase("link");
     let _ = std::fs::remove_file(&object_path);

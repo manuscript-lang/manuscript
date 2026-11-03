@@ -131,6 +131,7 @@ impl FnLower<'_> {
                 expr: e.clone(),
                 hir: self.hir.clone(),
                 subst: self.subst.clone(),
+                variant: self.variant,
                 captures: saved,
             })),
         });
@@ -1497,6 +1498,7 @@ pub(crate) fn build_lambda(
     b.func_mut().scoped = proto.scoped;
     b.func_mut().capture_closers = proto.capture_closers.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), job.subst.clone(), file, proto.ret);
+    fl.variant = job.variant;
     let result = lower_lambda_body(&mut fl, job, &captures);
     let mut f = fl.b.into_func();
     result?;

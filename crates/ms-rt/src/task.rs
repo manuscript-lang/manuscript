@@ -17,6 +17,7 @@ use core::cmp::Reverse;
 use core::ptr::null_mut;
 use core::sync::atomic::Ordering;
 use ms_rt_abi::StrVal;
+use ms_rt_abi::record::FaultKind;
 use std::collections::{BinaryHeap, VecDeque};
 
 /// Results of a park, ORed together.
@@ -910,14 +911,14 @@ unsafe fn reactor_wait() {
             if timeout_ns < 0 && s.fd_waiting == 0 {
                 if s.remote_tokens == 0 {
                     abandon_wait();
-                    fault::fault(b"deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation");
+                    fault::fault_kind(FaultKind::Deadlock, b"deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation");
                 }
                 // Waiting only on other isolates: stuck if they all wait like this.
                 parked = s.remote_tokens == s.peer_tokens;
             }
             if parked && crate::isolate::enter_idle() {
                 abandon_wait();
-                fault::fault(CROSS_ISOLATE_DEADLOCK);
+                fault::fault_kind(FaultKind::Deadlock, CROSS_ISOLATE_DEADLOCK);
             }
             crate::sched::set_idle(true);
             // Work may have arrived between the last look and now.
@@ -929,7 +930,7 @@ unsafe fn reactor_wait() {
             crate::sched::set_idle(false);
             if parked && crate::isolate::leave_idle() {
                 abandon_wait();
-                fault::fault(CROSS_ISOLATE_DEADLOCK);
+                fault::fault_kind(FaultKind::Deadlock, CROSS_ISOLATE_DEADLOCK);
             }
         }
     }

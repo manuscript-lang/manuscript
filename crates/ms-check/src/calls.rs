@@ -409,7 +409,7 @@ impl Checker {
                     return self.finish_call(e, callee, args, i, signature, callable);
                 }
             };
-            if c.t().id == "<invalid>" {
+            if c.t().is_invalid() {
                 for arg in args {
                     self.expression(&arg.value, None);
                 }
@@ -477,7 +477,7 @@ impl Checker {
         callable: Info,
     ) -> Info {
         if let Some(sig) = &signature
-            && sig.id == "<invalid>"
+            && sig.is_invalid()
         {
             i.ty = Some(sig.clone());
             return i;
@@ -505,7 +505,7 @@ impl Checker {
         } else {
             result.clone()
         });
-        if result.id == "Never" {
+        if result.is_never() {
             i.no_return = true;
         }
         i
@@ -584,7 +584,7 @@ impl Checker {
         {
             return;
         }
-        if t.is_some_and(|t| t.to_string().contains("<invalid>")) {
+        if t.is_some_and(invalid_ty) {
             return;
         }
         self.unknown_type = true;
@@ -669,7 +669,7 @@ impl Checker {
         }
         for param in params {
             // An invalid parameter type means an earlier diagnostic already explained this call.
-            if param.ty.id == "<invalid>" {
+            if param.ty.is_invalid() {
                 continue;
             }
             let defaulted = defaults.as_ref().is_some_and(|d| d.contains(&param.name));

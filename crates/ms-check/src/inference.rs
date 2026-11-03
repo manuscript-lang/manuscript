@@ -56,7 +56,7 @@ pub(crate) fn inference_known_opt(t: &Option<Ty>, variables: &VarSet) -> bool {
 /// Whether `t` mentions no inference variable; invalid parts count as resolved
 /// when `allow_invalid` is set.
 pub(crate) fn inference_type_resolved(t: &Ty, variables: &VarSet, allow_invalid: bool) -> bool {
-    if (!allow_invalid && t.id == "<invalid>") || variables.contains(&t.id) {
+    if (!allow_invalid && t.is_invalid()) || variables.contains(&t.id) {
         return false;
     }
     t.args
@@ -83,13 +83,13 @@ pub(crate) fn infer_invalid_argument(
     };
     if vars.contains(&pattern.id) {
         let previous = s.get(&pattern.id).cloned();
-        if previous.as_ref().is_none_or(|p| p.id == "<invalid>") {
+        if previous.as_ref().is_none_or(|p| p.is_invalid()) {
             s.insert(pattern.id, required_type(actual));
             return true;
         }
-        return actual.id == "<invalid>" || same(&previous.expect("previous"), actual);
+        return actual.is_invalid() || same(&previous.expect("previous"), actual);
     }
-    if actual.id == "<invalid>" {
+    if actual.is_invalid() {
         for a in &pattern.args {
             infer_invalid_argument(Some(a), Some(actual), vars, s);
         }
@@ -128,7 +128,7 @@ impl Checker {
             }
             return;
         }
-        if typ.id == "Never" {
+        if typ.is_never() {
             return;
         }
         let Some(r) = self.return_inference.as_mut() else {
@@ -232,7 +232,8 @@ impl Checker {
                     .as_ref()
                     .is_some_and(|t| inference_type_resolved(t, &self.inference_variables, true));
                 if resolved
-                    && (!actual.inference_deferred || invalid_type(&actual.ty))
+                    && (!self.deferred_callbacks.contains(&arg.value.id)
+                        || invalid_type(&actual.ty))
                     && self.checked_arguments.is_some()
                 {
                     let diagnostics = self.p.diagnostics[checkpoint..].to_vec();

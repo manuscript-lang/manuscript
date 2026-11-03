@@ -257,14 +257,6 @@ pub struct Info {
     pub optional_argument: Option<Ty>,
     /// Wraps this value once into this Optional where a binding, return, field or element expects it.
     pub wrap_some: Option<Ty>,
-    /// A compile-time Bool constant.
-    pub folded: bool,
-    /// Its value.
-    pub constant: bool,
-    /// Fold pass bookkeeping.
-    pub fold_done: bool,
-    /// Body checks need a later callback result context.
-    pub inference_deferred: bool,
 }
 
 impl Info {

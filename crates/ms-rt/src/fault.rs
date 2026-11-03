@@ -4,6 +4,7 @@ use crate::global::Process;
 use crate::sys;
 use core::fmt;
 use core::sync::atomic::{AtomicU8, Ordering};
+use ms_rt_abi::record::{self, FaultKind, Record};
 use ms_rt_abi::{FuncEntry, LineEntry, MAX_FAULT_FRAMES, ScopeEntry, TABLES_WITH_SCOPES, Tables};
 use std::io::Write as _;
 
@@ -427,8 +428,14 @@ pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
 /// Fault reported while no frames or cleanup are meaningful (allocator exhaustion).
 #[cold]
 pub fn fatal(msg: &[u8]) -> ! {
+    fatal_kind(FaultKind::Fault, msg)
+}
+
+/// [`fatal`] for a failure of a specific family, which the structured record names.
+pub fn fatal_kind(kind: FaultKind, msg: &[u8]) -> ! {
     #[cfg(test)]
     {
+        let _ = kind;
         std::panic::panic_any(crate::testutil::FaultPayload(
             std::string::String::from_utf8_lossy(msg).into_owned(),
         ));
@@ -438,6 +445,7 @@ pub fn fatal(msg: &[u8]) -> ! {
         crate::io::flush_stdout();
         sys::write_all(sys::STDERR, msg);
         sys::write_all(sys::STDERR, b"\n");
+        write_record(&Record::new(kind, msg));
         // SAFETY: terminating the process.
         unsafe { sys::_exit(ms_rt_abi::EXIT_FAULT) }
     }
@@ -726,13 +734,33 @@ unsafe fn walk_fault_frames(fp: usize, _anchor: usize, _t: &Tables, f: impl FnMu
     unsafe { walk_frames(fp, f) }
 }
 
-/// Notes frames omitted because they repeat the line above, then resets the count.
-fn push_repeats(out: &mut Vec<u8>, repeated: &mut usize) {
-    if *repeated > 0 {
-        out.extend_from_slice(b"\n  ... previous frame repeated ");
-        crate::num::push_i64(out, *repeated as i64);
-        out.extend_from_slice(b" more times");
-        *repeated = 0;
+/// Source frames, innermost first; identical consecutive frames (deep recursion) collapse into one
+/// with a count.
+#[derive(Default)]
+struct Frames {
+    list: Vec<record::Frame>,
+    truncated: bool,
+}
+
+impl Frames {
+    /// Appends `\n  at file:line in function` lines, the repeat notes and the omission note.
+    fn render(&self, out: &mut Vec<u8>) {
+        for frame in &self.list {
+            out.extend_from_slice(b"\n  at ");
+            out.extend_from_slice(frame.file.as_bytes());
+            out.push(b':');
+            crate::num::push_i64(out, i64::from(frame.line));
+            out.extend_from_slice(b" in ");
+            out.extend_from_slice(frame.function.as_bytes());
+            if frame.repeated > 0 {
+                out.extend_from_slice(b"\n  ... previous frame repeated ");
+                crate::num::push_i64(out, i64::from(frame.repeated));
+                out.extend_from_slice(b" more times");
+            }
+        }
+        if self.truncated {
+            out.extend_from_slice(b"\n  ... outer frames omitted");
+        }
     }
 }
 
@@ -801,109 +829,95 @@ pub fn capture_frames() -> Vec<usize> {
     out
 }
 
-/// Appends the source frames of `captured` under a `task started by:` line.
+/// The source frames of `captured`, the return addresses a task was started from.
 #[cfg(not(test))]
-fn describe_started(out: &mut Vec<u8>, captured: &[usize]) {
-    let mark = out.len();
-    out.extend_from_slice(b"\n  task started by:");
-    let header = out.len();
-    describe_with(out, |_, visit| {
+fn started_frames(captured: &[usize]) -> Frames {
+    collect_with(|_, visit| {
         for &ret in captured {
             if !visit(ret) {
                 break;
             }
         }
-    });
-    if out.len() == header {
-        out.truncate(mark);
-    }
+    })
 }
 
-/// Appends `file:line in name` lines for the source frames found from `fp`.
-fn describe_frames(out: &mut Vec<u8>, fp: usize) {
+/// The source frames found from `fp`.
+fn collect_frames(fp: usize) -> Frames {
     // SAFETY: `fp` comes from `frame_pointer()` of the faulting thread.
-    describe_with(out, |t, visit| unsafe {
+    collect_with(|t, visit| unsafe {
         walk_fault_frames(fp, fault_vec as *const () as usize, t, visit)
-    });
+    })
 }
 
-/// Appends `file:line in name` lines for the source frames `drive` visits, innermost first.
-fn describe_with(out: &mut Vec<u8>, drive: impl FnOnce(&Tables, &mut dyn FnMut(usize) -> bool)) {
+/// The source frames `drive` visits, innermost first.
+fn collect_with(drive: impl FnOnce(&Tables, &mut dyn FnMut(usize) -> bool)) -> Frames {
+    let mut frames = Frames::default();
     // SAFETY: tables pointer is set once at start.
     let t = unsafe { *TABLES.ptr() };
     if t.is_null() {
-        return;
+        return frames;
     }
     // SAFETY: non-null table installed by `msrt_start`.
     let t = unsafe { &*t };
-    let mut shown = 0;
-    let mut truncated = false;
-    // Identical consecutive frames (deep recursion) collapse into one line and a count.
     let mut last = (u32::MAX, 0u32, u32::MAX);
-    let mut repeated = 0usize;
     let mut innermost = true;
-    {
-        drive(t, &mut |ret| {
-            let Some(func) = find_func(t, ret) else {
-                return true;
-            };
-            let (mut line, mut file, mut scope) = find_line(t, func, ret);
-            // The frame that raised the fault may sit in a call without a position of its own;
-            // it takes the nearest earlier line.
-            if line == 0 && innermost {
-                (line, file, scope) = find_line_before(t, func, ret);
+    drive(t, &mut |ret| {
+        let Some(func) = find_func(t, ret) else {
+            return true;
+        };
+        let (mut line, mut file, mut scope) = find_line(t, func, ret);
+        // The frame that raised the fault may sit in a call without a position of its own;
+        // it takes the nearest earlier line.
+        if line == 0 && innermost {
+            (line, file, scope) = find_line_before(t, func, ret);
+        }
+        innermost = false;
+        // Compiler-generated glue (function-value thunks) has no source position.
+        if line == 0 {
+            return true;
+        }
+        // Frames of inlined callees, innermost first, then the physical function.
+        let mut name = func.name_off;
+        loop {
+            let next = scope_entry(t, scope);
+            if let Some(sc) = &next {
+                name = sc.name_off;
+                if sc.file_off != u32::MAX {
+                    file = sc.file_off;
+                }
             }
-            innermost = false;
-            // Compiler-generated glue (function-value thunks) has no source position.
             if line == 0 {
-                return true;
+                // A thunk inlined into its caller has no position of its own.
+            } else if (file, line, name) == last {
+                if let Some(frame) = frames.list.last_mut() {
+                    frame.repeated += 1;
+                }
+            } else {
+                if frames.list.len() == MAX_FAULT_FRAMES {
+                    frames.truncated = true;
+                    return false;
+                }
+                frames.list.push(record::Frame {
+                    file: String::from_utf8_lossy(cstr(t, file)).into_owned(),
+                    line,
+                    function: String::from_utf8_lossy(cstr(t, name)).into_owned(),
+                    repeated: 0,
+                });
+                last = (file, line, name);
             }
-            // Frames of inlined callees, innermost first, then the physical function.
-            let mut name = func.name_off;
-            loop {
-                let next = scope_entry(t, scope);
-                if let Some(sc) = &next {
-                    name = sc.name_off;
-                    if sc.file_off != u32::MAX {
-                        file = sc.file_off;
-                    }
-                }
-                if line == 0 {
-                    // A thunk inlined into its caller has no position of its own.
-                } else if (file, line, name) == last {
-                    repeated += 1;
-                } else {
-                    if shown == MAX_FAULT_FRAMES {
-                        truncated = true;
-                        return false;
-                    }
-                    push_repeats(out, &mut repeated);
-                    out.extend_from_slice(b"\n  at ");
-                    out.extend_from_slice(cstr(t, file));
-                    out.push(b':');
-                    crate::num::push_i64(out, line as i64);
-                    out.extend_from_slice(b" in ");
-                    out.extend_from_slice(cstr(t, name));
-                    last = (file, line, name);
-                    shown += 1;
-                }
-                let Some(sc) = next else { break };
-                line = sc.call_line;
-                scope = sc.parent;
-                // A wrapper without a position of its own has no frame once its callee is shown.
-                if line == 0 && scope == 0 {
-                    break;
-                }
-                name = func.name_off;
-                file = func.file_off;
+            let Some(sc) = next else { break };
+            line = sc.call_line;
+            scope = sc.parent;
+            // A wrapper without a position of its own has no frame once its callee is shown.
+            if line == 0 && scope == 0 {
+                break;
             }
-            true
-        });
-    }
-    push_repeats(out, &mut repeated);
-    if truncated {
-        out.extend_from_slice(b"\n  ... outer frames omitted");
-    }
+            name = func.name_off;
+            file = func.file_off;
+        }
+        true
+    });
+    frames
 }
 
 /// Runs `f(arg)` with cancellation shielded.
@@ -924,6 +938,7 @@ fn run_shielded(f: CleanupFn, arg: *mut u8) {
 /// Shields the running task from stop requests until the matching `msrt_shield_exit`, for
 /// work that must drain after SIGINT/SIGTERM (a server finishing in-flight requests).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C" fn msrt_shield_enter() {
     SHIELD.set(SHIELD.get() + 1);
     cancel_flag().store(0, Ordering::Relaxed);
@@ -931,6 +946,7 @@ pub extern "C" fn msrt_shield_enter() {
 
 /// Ends one `msrt_shield_enter`; a stop request that arrived meanwhile applies again.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C" fn msrt_shield_exit() {
     SHIELD.set(SHIELD.get().saturating_sub(1));
     if SHIELD.get() == 0 {
@@ -995,6 +1011,55 @@ pub fn fault(msg: &[u8]) -> ! {
     fault_vec(report)
 }
 
+/// [`fault`] for a fault of a specific family, which the structured record names.
+// Inlined so it adds no stack frame: the report's repeat count is bounded by the frame walk
+// budget, and a fault at the recursion limit counts every frame between it and the fault.
+#[inline(always)]
+pub fn fault_kind(kind: FaultKind, msg: &[u8]) -> ! {
+    // SAFETY: single threaded access to the fault state.
+    unsafe { *NEXT_KIND.ptr() = kind };
+    fault(msg)
+}
+
+/// [`fault_fmt`] for a fault of a specific family.
+#[cold]
+pub fn fault_fmt_kind(kind: FaultKind, args: fmt::Arguments) -> ! {
+    // SAFETY: single threaded access to the fault state.
+    unsafe { *NEXT_KIND.ptr() = kind };
+    fault_fmt(args)
+}
+
+crate::isolate_static! {
+    /// The family of the fault being raised, set by [`fault_kind`] just before [`fault_vec`].
+    static NEXT_KIND: FaultKind = FaultKind::Fault;
+}
+
+/// The structured record of the last fault raised in the process: the CLI reads it through the
+/// side channel instead of parsing the text on standard error.
+static LAST_RECORD: std::sync::Mutex<Option<Record>> = std::sync::Mutex::new(None);
+
+/// Writes `record` to the file named by `MS_FAULT_RECORD`, when there is one.
+pub fn write_record(record: &Record) {
+    if let Some(path) = std::env::var_os(record::RECORD_ENV) {
+        let mut record = record.clone();
+        record.pid = std::process::id();
+        let _ = std::fs::write(path, record.encode());
+    }
+}
+
+/// Writes the last fault's record for the report `text` just printed. A record that does not
+/// describe `text` (an earlier recovered fault) is replaced by one holding only the text.
+#[cfg(not(test))]
+fn write_last_record(text: &[u8], started: Frames) {
+    let taken = LAST_RECORD.lock().ok().and_then(|mut r| r.take());
+    let mut record = match taken {
+        Some(r) if text.starts_with(&r.message) => r,
+        _ => Record::new(FaultKind::Fault, text),
+    };
+    record.frames.extend(started.list);
+    write_record(&record);
+}
+
 /// [`fault`] with the message already in an owned buffer, which becomes the report: a guarded
 /// fault leaves by a jump, so no caller frame gets to free a buffer of its own.
 #[cold]
@@ -1004,13 +1069,23 @@ pub fn fault_vec(mut report: Vec<u8>) -> ! {
     unsafe {
         if *FAULTING.ptr() {
             // A fault inside a cleanup action: record it and keep unwinding from here.
+            *NEXT_KIND.ptr() = FaultKind::Fault;
             (*SECONDARY.ptr()).push(report);
             while run_one_cleanup() {}
             finish_report(None)
         }
         *FAULTING.ptr() = true;
     }
-    describe_frames(&mut report, frame_pointer());
+    let frames = collect_frames(frame_pointer());
+    // SAFETY: single threaded access to the fault state.
+    let kind = unsafe { core::mem::replace(&mut *NEXT_KIND.ptr(), FaultKind::Fault) };
+    let mut record = Record::new(kind, &report);
+    record.frames.clone_from(&frames.list);
+    record.truncated = frames.truncated;
+    frames.render(&mut report);
+    if let Ok(mut last) = LAST_RECORD.lock() {
+        *last = Some(record);
+    }
     // SAFETY: single threaded; a fault inside a cleanup action finishes this report.
     unsafe { *PRIMARY.ptr() = Some(report) };
     #[cfg(not(test))]
@@ -1043,6 +1118,12 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
         for message in (*SECONDARY.ptr()).drain(..) {
             report.extend_from_slice(b"\ncleanup fault: ");
             report.extend_from_slice(&message);
+            #[cfg(not(test))]
+            if let Ok(mut last) = LAST_RECORD.lock()
+                && let Some(record) = last.as_mut()
+            {
+                record.cleanup_faults.push(message);
+            }
         }
         *FAULTING.ptr() = false;
     }
@@ -1079,6 +1160,7 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
         report.push(b'\n');
         crate::io::flush_stdout();
         sys::write_all(sys::STDERR, report.as_slice());
+        write_last_record(&report, Frames::default());
         crate::process::exit(ms_rt_abi::EXIT_FAULT)
     }
 }
@@ -1090,7 +1172,7 @@ pub fn fault_report(msg: &ms_rt_abi::StrVal, started: &[usize]) -> Vec<u8> {
     #[cfg(not(test))]
     let report = {
         let mut report = report;
-        describe_started(&mut report, started);
+        render_started(&mut report, &started_frames(started));
         report
     };
     #[cfg(test)]
@@ -1098,15 +1180,29 @@ pub fn fault_report(msg: &ms_rt_abi::StrVal, started: &[usize]) -> Vec<u8> {
     report
 }
 
+/// Appends the frames a task was started from under a `task started by:` line.
+#[cfg(not(test))]
+fn render_started(out: &mut Vec<u8>, started: &Frames) {
+    if !started.list.is_empty() {
+        out.extend_from_slice(b"\n  task started by:");
+        started.render(out);
+    }
+}
+
 /// Reports a fault that left a guarded task (its cleanups already ran) and ends the process
 /// with the fault status. A no-op under the unit-test runtime, which keeps faults as panics.
 pub fn exit_with_report(msg: &ms_rt_abi::StrVal, started: &[usize]) {
     #[cfg(not(test))]
     {
-        let mut report = fault_report(msg, started);
+        // SAFETY: `msg` is a string the guard just produced.
+        let mut report = unsafe { core::slice::from_raw_parts(msg.data(), msg.len()) }.to_vec();
+        let started = started_frames(started);
+        let text = report.clone();
+        render_started(&mut report, &started);
         report.push(b'\n');
         crate::io::flush_stdout();
         sys::write_all(sys::STDERR, report.as_slice());
+        write_last_record(&text, started);
         crate::process::exit(ms_rt_abi::EXIT_FAULT)
     }
     #[cfg(test)]
@@ -1136,12 +1232,14 @@ pub unsafe extern "C-unwind" fn msrt_fault(msg: *const u8, len: usize) -> ! {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_fault_string(s: *const ms_rt_abi::StrVal) -> ! {
     // SAFETY: caller passes a live string.
     fault(unsafe { crate::string::bytes(s) })
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_depth() -> ! {
     // SAFETY: single threaded limit change so cleanups can run calls in the reserve.
     unsafe {
@@ -1152,21 +1250,27 @@ pub extern "C-unwind" fn msrt_fault_depth() -> ! {
             lo + STACK_CLEANUP_RESERVE
         };
     }
-    fault(
+    fault_kind(
+        FaultKind::StackOverflow,
         b"stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead",
     )
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_index_fault(index: i64, length: i64) -> ! {
-    fault_fmt(format_args!(
-        "index {index} out of range for length {length}; pass a default: get(index:, default: ...)"
-    ))
+    fault_fmt_kind(
+        FaultKind::IndexOutOfRange,
+        format_args!(
+            "index {index} out of range for length {length}; pass a default: get(index:, default: ...)"
+        ),
+    )
 }
 
 /// Faults for an invalid index of a list mutator over `len` elements; `operation` is 0 for
 /// `insert` (which also accepts `len`), 1 for `remove` and 2 for `set`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_list_index_fault(operation: i64, index: i64, len: i64) -> ! {
     let (name, hi) = match operation {
         0 => ("List.insert", len),
@@ -1175,17 +1279,22 @@ pub extern "C-unwind" fn msrt_list_index_fault(operation: i64, index: i64, len: 
         _ => ("List.set", len - 1),
     };
     if operation != 0 && len == 0 {
-        fault_fmt(format_args!(
-            "{name}: index has no valid value for an empty collection, found {index}"
-        ))
+        fault_fmt_kind(
+            FaultKind::IndexOutOfRange,
+            format_args!("{name}: index has no valid value for an empty collection, found {index}"),
+        )
     }
-    fault_fmt(format_args!(
-        "{name}: index must be between {} and {hi} (negative indexes count from the end), found {index}",
-        -len
-    ))
+    fault_fmt_kind(
+        FaultKind::IndexOutOfRange,
+        format_args!(
+            "{name}: index must be between {} and {hi} (negative indexes count from the end), found {index}",
+            -len
+        ),
+    )
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_unwrap_none() -> ! {
     fault(
         b"called Optional.get() on none; check is_some first, or pass a default: get(default: ...)",
@@ -1193,45 +1302,62 @@ pub extern "C-unwind" fn msrt_fault_unwrap_none() -> ! {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_result_get() -> ! {
     fault(b"called Result.get() on error; check is_ok first, or pass a default: get(default: ...)")
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_result_err() -> ! {
     fault(b"called Result.err() on ok; check is_error first")
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_int_overflow() -> ! {
-    fault(b"Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
+    fault_kind(FaultKind::Overflow, b"Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_int_range() -> ! {
-    fault(b"Int overflow; the result does not fit the sized integer type's range, so bound the operands or use a wider type")
+    fault_kind(FaultKind::Overflow, b"Int overflow; the result does not fit the sized integer type's range, so bound the operands or use a wider type")
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_div_zero() -> ! {
-    fault(b"division by zero; right must be nonzero, found 0")
+    fault_kind(
+        FaultKind::DivisionByZero,
+        b"division by zero; right must be nonzero, found 0",
+    )
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_rem_zero() -> ! {
-    fault(b"remainder by zero; right must be nonzero, found 0")
+    fault_kind(
+        FaultKind::DivisionByZero,
+        b"remainder by zero; right must be nonzero, found 0",
+    )
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_div_overflow(a: i64, b: i64) -> ! {
-    fault_fmt(format_args!(
-        "division overflow; found left {a} and right {b}; result must be between {} and {}",
-        i64::MIN,
-        i64::MAX
-    ))
+    fault_fmt_kind(
+        FaultKind::Overflow,
+        format_args!(
+            "division overflow; found left {a} and right {b}; result must be between {} and {}",
+            i64::MIN,
+            i64::MAX
+        ),
+    )
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize {
     // SAFETY: single threaded access to the cleanup stack.
     unsafe {
@@ -1250,6 +1376,7 @@ pub(crate) fn has_cleanups() -> bool {
 
 /// Runs the action behind `handle` (and newer pending ones first).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_cleanup_run(handle: usize) {
     // SAFETY: single threaded access to the cleanup stack.
     while unsafe { (*CLEANUPS.ptr()).len() } >= handle && handle > 0 {
@@ -1261,6 +1388,7 @@ pub extern "C-unwind" fn msrt_cleanup_run(handle: usize) {
 
 /// Drops the action behind `handle` (and newer pending ones) without running them.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
     // SAFETY: single threaded access to the cleanup stack.
     unsafe {
@@ -1287,6 +1415,7 @@ unsafe extern "C-unwind" fn cleanup_nothing(_: *mut u8) {}
 /// Turns the action behind `handle` into one that does nothing, leaving newer actions in place.
 /// The entry stays on the stack until a `msrt_cleanup_discard` of it or of an older one pops it.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_cleanup_cancel(handle: usize) {
     // SAFETY: single threaded access to the cleanup stack.
     unsafe {
@@ -1303,6 +1432,7 @@ pub extern "C-unwind" fn msrt_cleanup_cancel(handle: usize) {
 /// Generated drop cleanups act only then: an unguarded fault ends the process and process exit
 /// needs no frees.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C" fn msrt_unwind_drops() -> u8 {
     // SAFETY: single threaded access.
     u8::from(unsafe { *UNWIND_DROPS.ptr() })
@@ -2266,7 +2396,7 @@ mod tests {
         // SAFETY: test-only access to globals; `t` outlives the use.
         unsafe { *TABLES.ptr() = &t };
         let mut out = Vec::new();
-        describe_frames(&mut out, base.expose_provenance());
+        collect_frames(base.expose_provenance()).render(&mut out);
         // SAFETY: restore.
         unsafe { *TABLES.ptr() = core::ptr::null() };
         assert_eq!(
