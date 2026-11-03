@@ -8,22 +8,8 @@ use crate::types::Method;
 use crate::types::*;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
-use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-
-thread_local! {
-    /// Synthetic declarations need ids that never collide with parsed nodes.
-    static SYNTHETIC_ID: Cell<u32> = const { Cell::new(0x8000_0000) };
-}
-
-fn synthetic_id() -> NodeId {
-    SYNTHETIC_ID.with(|c| {
-        let id = c.get();
-        c.set(id + 1);
-        NodeId(id)
-    })
-}
 
 /// Whether an interface declares an operation with type parameters of its own. Such an operation
 /// dispatches statically, so the interface works as a bound but not as the type of a value.
@@ -664,7 +650,7 @@ impl Checker {
                 // This standard lifecycle contract has no-op defaults; retain ordinary
                 // checked methods so interface calls and generic bounds use normal dispatch.
                 let decl = DeclRef::new(Decl {
-                    id: synthetic_id(),
+                    id: self.m().facts_mut().fresh_id(),
                     pos: d.pos(),
                     export: false,
                     synthetic: true,
@@ -673,7 +659,7 @@ impl Checker {
                         type_params: Vec::new(),
                         params: Vec::new(),
                         result: TypeRef {
-                            id: synthetic_id(),
+                            id: self.m().facts_mut().fresh_id(),
                             pos: d.pos(),
                             kind: TypeKind::Named {
                                 name: n("Unit"),
