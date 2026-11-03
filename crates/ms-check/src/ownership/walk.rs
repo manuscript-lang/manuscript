@@ -103,6 +103,13 @@ struct Meta {
     deferred: Option<NodeId>,
 }
 
+/// The module that declares `Promise`.
+const PROMISE_MODULE: &str = "@std/concurrency/promise.ms";
+
+/// The `why` of a borrow a promise holds on what its entry function captures. Unlike other borrows it
+/// lasts until its holder's scope ends, because dropping the promise is what ends the work.
+const PROMISE_WHY: &str = "promise capture";
+
 /// A live borrow: until `holder` is last used, its origins stay unchanged.
 #[derive(Clone)]
 struct Borrow {
@@ -171,6 +178,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         view_locals: HashSet::new(),
         view_calls: HashSet::new(),
         view_move: None,
+        entry_lambda: None,
     };
     w.run();
     w.mixed_returns();
@@ -286,6 +294,8 @@ struct Walker<'a> {
     /// The name of a view local being returned: moving it out of the function is allowed even
     /// though it borrows, because the result holds the same origins.
     view_move: Option<NodeId>,
+    /// The lambda argument of a promise-starting call being walked: concurrent code.
+    entry_lambda: Option<NodeId>,
 }
 
 /// A fix that inserts `text` at `pos`.
@@ -519,6 +529,17 @@ impl Walker<'_> {
             // A lambda never lends: an escaping closure owns its captures.
             self.expr(e, Demand::Consume);
             return;
+        }
+        let reads = self.returned_promise_reads(e);
+        if !reads.is_empty() {
+            let names: Vec<&str> = reads.iter().map(|n| n.as_str()).collect();
+            self.error(
+                e.pos,
+                format!(
+                    "this promise reads `{}`, which ends with this function; wait for the promise before returning, or start it from values that outlive the call",
+                    names.join("`, `")
+                ),
+            );
         }
         // Each branch of a conditional or match expression is a returned value of its own.
         if let ExprKind::Match { scrutinee, arms } = &e.kind
@@ -1385,8 +1406,18 @@ impl Walker<'_> {
                 last,
             },
         );
-        if last && self.active.iter().any(|a| a.holder == b.uid) {
+        if last
+            && self
+                .active
+                .iter()
+                .any(|a| a.holder == b.uid && a.why != PROMISE_WHY)
+        {
             self.pending.push(b.uid);
+        }
+        if last && access == Access::Move {
+            // A promise handed on (`wait_all([p, q])`) ends where its new owner does.
+            self.active
+                .retain(|a| !(a.holder == b.uid && a.why == PROMISE_WHY));
         }
     }
 
@@ -1412,6 +1443,8 @@ impl Walker<'_> {
             let held_ty = self.meta.get(&a.holder).map(|m| m.binding.ty.clone());
             let remedy = if holder.as_str() == "for" {
                 format!("iterate over a copy instead: `for ... in {shown}.{COPY}()`")
+            } else if why == PROMISE_WHY {
+                String::new()
             } else if held_ty.as_ref().and_then(no_clone).is_some() {
                 format!(
                     "or give `{holder}` its own value by converting a clone of the concrete value"
@@ -1421,6 +1454,16 @@ impl Walker<'_> {
                     "or give `{holder}` its own value by ending its initializer with `.{COPY}()`"
                 )
             };
+            if why == PROMISE_WHY {
+                self.error(
+                    pos,
+                    format!(
+                        "cannot {what} `{shown}` while promise `{holder}` (started at {}:{}) reads it; a promise reads what it captures until it is dropped, so wait for it and move it into `wait_all` first, or {what} a copy",
+                        bpos.line, bpos.column
+                    ),
+                );
+                return;
+            }
             self.error(
                 pos,
                 format!(
@@ -1459,7 +1502,8 @@ impl Walker<'_> {
 
     fn release_pending(&mut self) {
         let pending = std::mem::take(&mut self.pending);
-        self.active.retain(|a| !pending.contains(&a.holder));
+        self.active
+            .retain(|a| a.why == PROMISE_WHY || !pending.contains(&a.holder));
     }
 
     fn join_active(a: Vec<Borrow>, b: Vec<Borrow>) -> Vec<Borrow> {
@@ -1958,6 +2002,19 @@ impl Walker<'_> {
         if self.may_close(&b.ty) && !self.derived_from_resource(value) {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, pattern.pos, closable));
+        }
+        if self.entry_call(value) {
+            // The promise reads what its entry captures until it is dropped with its scope.
+            let origins = self.entry_places(value);
+            if !origins.is_empty() {
+                self.active.push(Borrow {
+                    holder: b.uid,
+                    holder_name: b.name,
+                    origins: origins.into_iter().map(|p| (p, false)).collect(),
+                    pos: value.pos,
+                    why: PROMISE_WHY.to_string(),
+                });
+            }
         }
     }
 
@@ -2601,6 +2658,75 @@ impl Walker<'_> {
             }
         }
         Some(out)
+    }
+
+    /// Whether `e` starts a promise whose entry function is written here: a call of a source function
+    /// or method that returns a `Promise` and is given a lambda. The promise reads the lambda's
+    /// captures in place until it is dropped, so they must outlive it and stay unchanged (the
+    /// declaration is the result type, not the callee's name).
+    fn entry_call(&self, e: &Expr) -> bool {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return false;
+        };
+        if !args
+            .iter()
+            .any(|a| matches!(a.value.kind, ExprKind::Lambda(_)))
+        {
+            return false;
+        }
+        if !self.cx.m.ty(e).is_source_type(PROMISE_MODULE, "Promise") {
+            return false;
+        }
+        match self.cx.m.resolution(e) {
+            Resolution::Function(s) => s.native.as_str().is_empty(),
+            Resolution::Method(m) => m.native.as_str().is_empty(),
+            _ => false,
+        }
+    }
+
+    /// The captured bindings of the lambda arguments of promise-starting call `e`.
+    fn entry_captures(&self, e: &Expr) -> Vec<BindingRef> {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return Vec::new();
+        };
+        args.iter()
+            .filter(|a| matches!(a.value.kind, ExprKind::Lambda(_)))
+            .flat_map(|a| self.cx.m.captures(&a.value))
+            .collect()
+    }
+
+    /// The places a promise-starting call `e` reads through its entry function.
+    fn entry_places(&self, e: &Expr) -> Vec<Place> {
+        let mut out = Vec::new();
+        for b in self.entry_captures(e) {
+            for p in self.with_held(self.resolve(&Place::local(b.uid))) {
+                if !out.contains(&p) {
+                    out.push(p);
+                }
+            }
+        }
+        out
+    }
+
+    /// The names a returned promise would still read after the function ends: the captures of a
+    /// promise started in the `return`, or the borrows of a local promise returned by name.
+    fn returned_promise_reads(&self, e: &Expr) -> Vec<Name> {
+        if self.entry_call(e) {
+            return self
+                .entry_captures(e)
+                .into_iter()
+                .filter(|b| self.cx.classes.class(&b.ty) != Class::Copy)
+                .map(|b| b.name)
+                .collect();
+        }
+        let Resolution::Local(b) = self.cx.m.resolution(e) else {
+            return Vec::new();
+        };
+        self.active
+            .iter()
+            .filter(|a| a.holder == b.uid && a.why == PROMISE_WHY)
+            .flat_map(|a| a.origins.iter().map(|(p, _)| self.name_of(p.root)))
+            .collect()
     }
 
     /// The resolved places of a place chain without evaluating it.
@@ -3300,10 +3426,17 @@ impl Walker<'_> {
             self.callees.insert(callee.id);
             self.expr(callee, Demand::Read);
         }
+        let starts_promise = self.entry_call(e);
         for (i, a) in args.iter().enumerate() {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             let mut held = self.held(&a.value, mode);
-            held.extend(self.argument(a, mode, &modes, i));
+            if starts_promise && let ExprKind::Lambda(l) = &a.value.kind {
+                // The entry of a promise reads what it captures, in place, while the promise lives.
+                self.entry_lambda = Some(a.value.id);
+                held.extend(self.lambda(&a.value, l, false));
+            } else {
+                held.extend(self.argument(a, mode, &modes, i));
+            }
             operands.push((Operand::Argument(&a.value), held, Vec::new()));
         }
         // An operand that already failed its own check is not reported twice. Only a held
@@ -3725,6 +3858,7 @@ impl Walker<'_> {
     fn lambda(&mut self, e: &Expr, l: &Lambda, escaping: bool) -> Vec<(Place, bool)> {
         let m = self.cx.m;
         let captures = m.captures(e);
+        let concurrent = self.entry_lambda.take() == Some(e.id);
         if escaping {
             self.escaped.insert(e.id);
         }
@@ -3807,7 +3941,17 @@ impl Walker<'_> {
             } else {
                 let place = Place::local(b.uid);
                 let resolved = self.resolve(&place);
-                if changed {
+                if changed && concurrent {
+                    self.error(
+                        e.pos,
+                        format!(
+                            "concurrent code never changes a shared value, and this promise changes `{0}`; return a new value from the promise instead, or give `{0}` one owner and send it values over a `pipe`",
+                            b.name
+                        ),
+                    );
+                    self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
+                    facts.push((b.uid, CaptureMode::Borrow));
+                } else if changed {
                     let info = PlaceInfo {
                         root: b.clone(),
                         root_node: e.id,

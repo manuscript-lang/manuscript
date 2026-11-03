@@ -1,0 +1,70 @@
+//! A promise dropped the moment it is made (`MSL115`). Dropping a promise cancels it, so
+//! `promise(fn: work())` as a statement, or `let _ = read(path)`, starts work that is ended
+//! before it can do anything. Keep the promise and `wait` for it.
+
+use super::{Finding, finding, module_file};
+use crate::walk::walk_module;
+use ms_check::ModuleData;
+use ms_syntax::DiagnosticFix;
+use ms_syntax::ast::*;
+use ms_syntax::visit::Visitor;
+
+pub(super) fn lint(module: &ModuleData, findings: &mut Vec<Finding>) {
+    let file = module_file(module);
+    let mut scan = Scan {
+        module,
+        file: &file,
+        findings,
+    };
+    walk_module(module, &mut scan);
+}
+
+struct Scan<'a> {
+    module: &'a ModuleData,
+    file: &'a std::sync::Arc<str>,
+    findings: &'a mut Vec<Finding>,
+}
+
+impl Scan<'_> {
+    /// Whether `e` has type `Promise[..]` of `@std/concurrency/promise.ms`.
+    fn is_promise(&self, e: &Expr) -> bool {
+        self.module
+            .facts()
+            .info(e.id)
+            .and_then(|i| i.ty.as_ref())
+            .is_some_and(|t| t.is_source_type("@std/concurrency/promise.ms", "Promise"))
+    }
+
+    fn report(&mut self, e: &Expr) {
+        let mut found = finding(
+            "MSL115",
+            "This promise is dropped as soon as it is made, which cancels it; bind it and call wait() on it, or pass it to wait_all",
+            self.file,
+            e.pos,
+        );
+        // A call that used to wait for its result and ignored it: wait for it, still ignoring the result.
+        if matches!(e.kind, ExprKind::Call { .. }) {
+            found.fix = Some(DiagnosticFix {
+                pos: e.end,
+                end: e.end,
+                replacement: ".wait()".to_string(),
+            });
+        }
+        self.findings.push(found);
+    }
+}
+
+impl Visitor for Scan<'_> {
+    fn stmt(&mut self, stmt: &Stmt) {
+        match &stmt.kind {
+            StmtKind::Call(e) if self.is_promise(e) => self.report(e),
+            StmtKind::Bind { pattern, value, .. }
+                if matches!(&pattern.kind, PatternKind::Name(n) if n.as_str() == "_")
+                    && self.is_promise(value) =>
+            {
+                self.report(value);
+            }
+            _ => {}
+        }
+    }
+}
