@@ -1,7 +1,6 @@
 // Server-Sent Events decoder implemented in Manuscript.
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream from "@std/io/io.ms"
-import ResponseBody from "@std/net/http.ms"
+import ReadStream, Source, stream from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 // One dispatched event, with the `message` type used when no `event:` field was sent.
@@ -260,59 +259,36 @@ fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Unit:
     decoder.event_bytes = 0
     decoder.open_block = false
 
-type OwnedBody:
-    body: ResponseBody
-
-impl ReadStream for OwnedBody:
-    var fn close() Unit:
-        self.body.close().get(none)
-
-    var fn read(max_bytes: Int? = none) Bytes?!:
-        return self.body.read(max_bytes)
-
-// Turns an HTTP response body into a ReadStream that owns it. Closing the stream closes the body.
-export fn body_stream(body: ResponseBody) ReadStream:
-    return OwnedBody(body)
-
 // Pulls events from a ReadStream it owns. Closing the reader closes the stream, and closing it
 // makes a blocked read fail with ReadFailed.
 export type SseReader:
-    // The stream, such as an HTTP response body made by `body_stream`.
-    input: ReadStream
+    // The stream, such as `StreamingResponse.body`.
+    input: ReadStream[Bytes]
     // The decoder, whose `retry()` is readable between events.
     decoder: SseDecoder
     // Internal: events decoded but not yet returned.
     ready: List[SseEvent]
     // Internal: index of the next ready event.
     next: Int
-    // Internal: requested read size, none for the stream default.
-    chunk_bytes: Int?
     // Internal: True after a clean end of stream.
     finished: Bool
 
-// Takes a stream and wraps it in an event reader. Supplied limits and chunk size must be positive.
+// Takes a stream and wraps it in an event reader.
 export fn reader(
-    input: ReadStream,
-    limits: SseLimits = SseLimits(),
-    chunk_bytes: Int?
+    input: ReadStream[Bytes],
+    limits: SseLimits = SseLimits()
 ) SseReader!:
-    if not positive(chunk_bytes): return error(
-        Error("SSE invalid input", kind: InvalidInput)
-    )
-
     let created = try decoder(limits)
     return ok(
         SseReader(
-            input: input, decoder: created, ready: List[SseEvent](), next: 0,
-            chunk_bytes: chunk_bytes, finished: false
+            input: input, decoder: created, ready: List[SseEvent](), next: 0, finished: false
         )
     )
 
 impl Closeable for SseReader:
     // Closes the stream the reader owns; reads after a close fail with ReadFailed.
     var fn close() Unit!:
-        self.input.close()
-        return ok(unit)
+        return self.input.close()
 
 // Returns the next event, or none after a clean end of stream.
 // A read failure, malformed line, exceeded limit or truncated event is an error.
@@ -330,7 +306,7 @@ export fn next_event(var reader: SseReader) SseEvent?!:
 
         var chunk: Bytes? = none
 
-        match reader.input.read(reader.chunk_bytes):
+        match reader.input.read().wait():
             ok(value): chunk = value
             error(cause): return error(
                 Error("SSE read failed: " + cause.message, kind: Failed)

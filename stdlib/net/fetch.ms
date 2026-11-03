@@ -7,7 +7,8 @@ import (
     HttpHeaders,
     HttpMethod,
     HttpResponseMetadata,
-    ResponseBody,
+    StreamingResponse,
+    RawResponse,
     headers
 ) from "@std/net/http.ms"
 import parse, stringify from "@std/data/json.ms"
@@ -111,11 +112,15 @@ impl Fetcher:
     // A `Raw` or `Text` body is resent on redirects that keep it.
     fn fetch(url: String, options: FetchOptions = FetchOptions()) FetchResponse!:
         let started = monotonic()
-        let body = try self.stream(url, options.clone())
+        let sent = outgoing(options.clone())
+        let body = try self.client.request_raw(
+            options.method.clone(), url, sent.headers, sent.body,
+            options.max_response_bytes, options.timeout
+        )
         return drain(body, options, started)
 
     // Sends the request and returns the streaming body. `options.timeout` is a whole-exchange deadline, so set it to none for long streams.
-    fn stream(url: String, options: FetchOptions = FetchOptions()) ResponseBody!:
+    fn stream(url: String, options: FetchOptions = FetchOptions()) StreamingResponse!:
         let sent = outgoing(options)
         return self.client.request_bytes(
             options.method.clone(), url, sent.headers, sent.body,
@@ -128,7 +133,7 @@ impl Closeable for Fetcher:
         return self.client.close()
 
 // Reads the body to its end within the options' size limit, then closes it.
-fn drain(body: ResponseBody, options: FetchOptions, started: Instant) FetchResponse!:
+fn drain(body: RawResponse, options: FetchOptions, started: Instant) FetchResponse!:
     let open = body
     let metadata = open.metadata()
     let whole = (
