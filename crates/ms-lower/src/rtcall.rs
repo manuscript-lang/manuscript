@@ -18,10 +18,11 @@ use ms_mir::types::{Ty as MTy, TyKind};
 /// by `build.rs` from the exported items of `ms-rt` and the `ms-std-*` crates.
 static SYMBOLS: &[RtEntry] = include!(concat!(env!("OUT_DIR"), "/rt_symbols.rs"));
 
-/// A runtime function in the generated table: name, parameters as (name, type), return type.
+/// A runtime function in the generated table: name, parameters as (name, type, is a handle),
+/// return type and flag bits.
 type RtEntry = (
     &'static str,
-    &'static [(&'static str, &'static str)],
+    &'static [(&'static str, &'static str, bool)],
     &'static str,
     u8,
 );
@@ -55,35 +56,29 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
 pub(crate) struct RtParam {
     pub name: String,
     pub ty: String,
+    /// Declared as a runtime handle object (`ObjCell<T>`) rather than a value.
+    pub handle: bool,
 }
 
 impl RtSig {
     /// Whether the function returns a new runtime handle object.
     pub(crate) fn returns_handle(&self) -> bool {
-        is_handle_type(&self.ret)
+        self.ret_handle
     }
 }
 
 impl RtParam {
-    /// Whether this parameter is a runtime handle object (`ObjCell<T>`) rather than a value.
+    /// Whether this parameter is a runtime handle object rather than a value.
     pub(crate) fn is_handle(&self) -> bool {
-        is_handle_type(&self.ty)
+        self.handle
     }
-}
-
-/// Whether a declared runtime type is a pointer to a handle object (`ObjCell<T>`). The one
-/// place that reads the handle role from the declaration; call sites ask [`RtParam::is_handle`]
-/// or [`RtSig::returns_handle`].
-fn is_handle_type(ty: &str) -> bool {
-    ty.trim_start_matches("*mut ")
-        .trim_start_matches("*const ")
-        .starts_with("ObjCell<")
 }
 
 /// A runtime function's parameters and return type (empty for none).
 pub(crate) struct RtSig {
     pub params: Vec<RtParam>,
     pub ret: String,
+    pub ret_handle: bool,
 }
 
 /// Bodiless natives the runtime implements directly, with their symbol. The loop lowering recognises `range` by its
@@ -97,16 +92,18 @@ pub(crate) fn function_symbol(native: &str) -> Option<String> {
 
 pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
     let at = SYMBOLS.binary_search_by_key(&sym, |s| s.0).ok()?;
-    let (_, params, ret, _) = SYMBOLS[at];
+    let (_, params, ret, bits) = SYMBOLS[at];
     Some(RtSig {
         params: params
             .iter()
-            .map(|(name, ty)| RtParam {
+            .map(|(name, ty, handle)| RtParam {
                 name: (*name).to_string(),
                 ty: (*ty).to_string(),
+                handle: *handle,
             })
             .collect(),
         ret: (*ret).to_string(),
+        ret_handle: bits & 8 != 0,
     })
 }
 
