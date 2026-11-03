@@ -1533,21 +1533,17 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
         receiver = intrinsic;
     }
     let key = format!("{}/{}", receiver.id, name);
-    let binding = stdlib::receiver_binding(&key);
+    let binding = stdlib::is_receiver_native(&key);
     let opaque_alternative = receiver.kind == Kind::Alternative
         && receiver
             .symbol()
             .is_some_and(|s| !s.native.as_str().is_empty());
-    if receiver.kind == Kind::Native
-        || !Rc::ptr_eq(&receiver, t)
-        || binding.is_some()
-        || opaque_alternative
-    {
+    if receiver.kind == Kind::Native || !Rc::ptr_eq(&receiver, t) || binding || opaque_alternative {
         let def = receiver.def.as_ref()?;
         let operations = def.operations.borrow();
         for operation in operations.iter() {
             if operation.name == name {
-                let native = binding.unwrap_or(name);
+                let native = name;
                 return Some(native_of(
                     native,
                     t,

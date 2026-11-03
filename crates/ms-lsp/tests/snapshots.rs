@@ -654,7 +654,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
     // contributes; implicit Optional defaults have no `none` token and must not add ranges. The
     // bundled sources shift constantly, so the pin is a count per module, not line numbers.
     let expected = std::collections::BTreeMap::from([
-        ("collections/collections.ms", 7),
+        ("collections/collections.ms", 6),
         ("concurrency/promise.ms", 1),
         ("io/io.ms", 11),
         ("internal/random.ms", 1),
