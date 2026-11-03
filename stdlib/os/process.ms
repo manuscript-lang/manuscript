@@ -3,7 +3,7 @@ import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
 import access, join, stat from "@std/os/fs.ms"
 import IpFamily from "@std/net/net.ms"
-import ReadStream from "@std/io/io.ms"
+import ReadStream, Source, stream from "@std/io/io.ms"
 import WriteStream from "@std/io/io.ms"
 import (
     msrt_args,
@@ -265,18 +265,23 @@ export type ResourceUsage:
     // Context switches where the scheduler preempted the process, as a count.
     involuntary_switches: Int
 
-/*
-A cancellable observer of operating-system signals selected by `watch_signals`.
-SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
-`next()` and following code have no shutdown guarantee; use registered `Closeable` cleanup.
-*/
-export interface SignalStream:
-    // Stops observing signals, wakes a pending `next` with Closed, and waits for it.
-    // Safe to call repeatedly.
+// The runtime observer behind `watch_signals`.
+interface SignalStream:
+    // Stops observing signals and wakes a pending `next` with Closed.
     fn close() Unit
-    // Waits for the next observed signal and returns its number. Signals arriving while no call waits are buffered up to the stream's capacity.
-    // Returns Closed after `close`. Cancelling the waiting task unwinds it.
+    // Waits for the next observed signal and returns its number; signals arriving while no read waits are buffered.
     fn next() Int!
+
+type SignalSource:
+    signals: SignalStream
+
+impl Source[Int] for SignalSource:
+    var fn next() Int?!:
+        return ok(try self.signals.next())
+
+    var fn close() Unit!:
+        self.signals.close()
+        return ok(unit)
 
 // The child-process operations of the current host.
 fn host_commands() Commands:
@@ -469,10 +474,12 @@ export fn monotonic_time() Int:
 Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
 Capacity must be 1..1048576; omission/none uses 128 buffered signals.
 Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
-Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
+Each read yields the next signal number; the stream never ends on its own. Dropping it unregisters the observer.
+Code after a read has no shutdown guarantee; use registered with/Closeable cleanup.
 */
-export fn watch_signals(signals: List[Int], capacity: Int?) SignalStream!:
-    return host_control().watch_signals(signals, capacity)
+export fn watch_signals(signals: List[Int], capacity: Int?) ReadStream[Int]!:
+    let observer = try host_control().watch_signals(signals, capacity)
+    return ok(stream[Int](SignalSource(observer)))
 
 // Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0 when no limit applies or the platform has no such limit.
 export fn constrained_memory() Int!:
