@@ -269,18 +269,18 @@ b0:
   %0: bytes = call.rt @msrt_list_new ()
   %1: bool = bconst false
   %2: SB = rec.new SB %1, %0
-  %3: Shared<SB> = shared.new %2
+  %3: ptr = slot SB
+  put %3, %2
   %4: int = iconst 0
   br b1(%4, %3)
-b1(%5: int, %6: own Shared<SB>):
+b1(%5: int, %6: ptr):
   %7: int = iconst 10
   %8: bool = icmp.lt %5, %7
   br_if %8, b2(), b5()
 b2():
   %9: str = str "x"
-  %10: ptr = shared.addr %6
-  %11: ptr = ptr.field SB.sealed %10
-  %12: ptr = ptr.field SB.items %10
+  %11: ptr = ptr.field SB.sealed %6
+  %12: ptr = ptr.field SB.items %6
   %13: bool = load bool %11
   br_if %13, b3(), b4()
 b3():
@@ -299,9 +299,8 @@ b4():
   %22: int = iadd.chk %5, %21
   br b1(%22, %6)
 b5():
-  %23: ptr = shared.addr %6
-  %24: ptr = ptr.field SB.sealed %23
-  %25: ptr = ptr.field SB.items %23
+  %24: ptr = ptr.field SB.sealed %6
+  %25: ptr = ptr.field SB.items %6
   %26: bool = bconst true
   store %24, %26
   %27: bytes = load bytes %25
@@ -311,7 +310,6 @@ b5():
   %30: str = call.rt @msrt_strbuilder_freeze (%29)
   %31: int = call.rt @msrt_string_byte_length (%30)
   drop %30
-  drop %6
   depth.leave
   ret %31
 }

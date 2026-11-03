@@ -183,10 +183,6 @@ pub fn call_modes(
                             .map(|i| {
                                 let p = label(i).and_then(|l| params.iter().find(|p| p.name == l));
                                 match p {
-                                    // `share` stores its payload.
-                                    Some(_) if s.native.as_str() == "shared/share" => {
-                                        ParamMode::Consume
-                                    }
                                     Some(p) if p.ty.kind == Kind::Function && !runs_now => {
                                         ParamMode::Consume
                                     }
@@ -355,7 +351,7 @@ fn native_method_modes(
                     ParamMode::Consume
                 };
             }
-            if (mutator && stored) || method.native.as_str() == "shared/put" {
+            if mutator && stored {
                 ParamMode::Consume
             } else {
                 ParamMode::Borrow

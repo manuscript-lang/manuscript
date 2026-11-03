@@ -1,6 +1,6 @@
-//! A `while True` loop that never waits (`MSL111`). Tasks share one thread and are
-//! cancelled at their next wait, so such a loop starves its siblings and ignores
-//! timeouts and `TaskGroup` close.
+//! A `while True` loop that never waits (`MSL111`). Promises on one thread run until they wait and
+//! are cancelled at their next wait, so such a loop starves its siblings and ignores
+//! timeouts.
 
 use super::{Finding, finding, module_file};
 use crate::walk::walk_module;
@@ -10,7 +10,7 @@ use ms_syntax::ast::*;
 use ms_syntax::visit::{Visitor, walk_block};
 
 pub(super) fn lint(module: &ModuleData, findings: &mut Vec<Finding>) {
-    if !module.imports.iter().any(|i| i.path.ends_with("tasks.ms")) {
+    if !module.imports.iter().any(|i| i.path.ends_with("promise.ms")) {
         return;
     }
     let file = module_file(module);
@@ -44,7 +44,7 @@ impl Visitor for Scan<'_> {
         if !body_scan.may_wait_or_exit {
             self.findings.push(finding(
                 "MSL111",
-                "This loop never waits or exits, so other tasks cannot run and a timeout cannot stop it; wait inside the loop (sleep or a channel call), or return once cancelled() is true",
+                "This loop never waits or exits, so other tasks cannot run and a timeout cannot stop it; wait inside the loop (sleep, or wait on a promise or a pipe), or return",
                 self.file,
                 cond.pos,
             ));

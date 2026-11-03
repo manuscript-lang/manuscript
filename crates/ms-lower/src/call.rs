@@ -562,9 +562,6 @@ impl<'a> FnLower<'a> {
         if ms_check::effects::is_text_builder(&m.receiver) && method == "build" {
             return self.text_builder_build(e, recv_expr);
         }
-        if m.receiver.is_std("Shared") {
-            return self.shared_method(e, view, recv_expr, &method);
-        }
         if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }

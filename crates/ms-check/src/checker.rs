@@ -228,7 +228,6 @@ pub struct Checker {
     pub(crate) serial: usize,
     pub(crate) loops: usize,
     /// `(function, place)` of each `lock` guard that is still held.
-    pub(crate) held_locks: Vec<(usize, String, Name)>,
     pub(crate) test_function: usize,
     pub(crate) rejected_names: HashSet<Name>,
     pub(crate) unknown_type: bool,
@@ -277,7 +276,6 @@ impl Checker {
             function: 0,
             serial: 0,
             loops: 0,
-            held_locks: Vec::new(),
             test_function: 0,
             rejected_names: HashSet::new(),
             unknown_type: false,

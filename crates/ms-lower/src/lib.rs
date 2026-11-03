@@ -40,7 +40,7 @@ mod random;
 mod rtcall;
 mod runner;
 mod scope;
-mod sharedbuilder;
+mod textbuilder;
 mod stdnative;
 mod stmt;
 mod streamloop;

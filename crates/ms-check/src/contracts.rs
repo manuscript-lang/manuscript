@@ -808,28 +808,6 @@ impl Checker {
         true
     }
 
-    /// Whether `t` holds a `Shared` handle anywhere in its data. Copies of such a
-    /// value alias one payload, so a key stored in a Map or Set could change its
-    /// hash through another handle.
-    fn shares_state(&self, t: &Ty, seen: &mut Vec<String>) -> bool {
-        if t.is_std("Shared") {
-            return true;
-        }
-        let key = type_key(t);
-        if seen.contains(&key) {
-            return false;
-        }
-        seen.push(key);
-        if t.args.iter().any(|a| self.shares_state(a, seen)) {
-            return true;
-        }
-        t.def.is_some()
-            && (fields(t).iter().any(|f| self.shares_state(&f.ty, seen))
-                || cases(t)
-                    .iter()
-                    .any(|c| c.fields.iter().any(|f| self.shares_state(&f.ty, seen))))
-    }
-
     /// Whether `t` is, or holds, a `Closeable` value. Such a value is an identity to close once,
     /// not a key to file by hash, and a set or map would drop a duplicate without closing it.
     fn holds_resource(&self, t: &Ty, seen: &mut Vec<String>) -> bool {
@@ -1075,10 +1053,7 @@ impl Checker {
             if unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
                 && self.bounds_satisfied(&m.variables, &s)
             {
-                if property == "Hashable"
-                    && (self.shares_state(t, &mut Vec::new())
-                        || self.holds_resource(t, &mut Vec::new()))
-                {
+                if property == "Hashable" && self.holds_resource(t, &mut Vec::new()) {
                     return false;
                 }
                 return property != "Hashable" || self.property(t, "Equal", None);
@@ -1393,11 +1368,6 @@ impl Checker {
         if bound.is_std("Hashable") && (t.is_std("List") || t.is_std("Map") || t.is_std("Set")) {
             return format!(
                 "{prefix}collections have no Hashable implementation, so use a record key or join the elements into a String"
-            );
-        }
-        if bound.is_std("Hashable") && self.shares_state(t, &mut Vec::new()) {
-            return format!(
-                "{prefix}it holds a Shared handle, and a key changed through another handle stays filed under its old hash; key on a plain value such as an Int id instead"
             );
         }
         if bound.is_std("Hashable") && self.holds_resource(t, &mut Vec::new()) {

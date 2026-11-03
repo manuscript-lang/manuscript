@@ -1469,13 +1469,6 @@ unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
     }
 }
 
-/// Unwinds the current task if it was cancelled before it got here.
-pub(crate) unsafe fn unwind_if_cancelled() {
-    if cancel_flag().load(Ordering::Relaxed) != 0 {
-        fault::msrt_cancelled();
-    }
-}
-
 /// Changes when the running task is cancelled for running too long: `limit_ns` from now, or
 /// never when negative. Replaces any earlier limit.
 pub(crate) fn limit_current(limit_ns: i64) {
@@ -1531,27 +1524,6 @@ pub(crate) unsafe fn spawn_scoped(entry: Entry, arg: *mut u8, limit_ns: i64, sco
     unsafe {
         let h = msrt_task_spawn(entry, arg, 0, 0);
         (*lookup(h)).scope = scope;
-        arm_kill(h, limit_ns);
-        h
-    }
-}
-
-/// Starts a task that runs `closure`, which the caller lends: the task retains it and releases it
-/// when it ends, by return, cancellation, or fault. A fault in the task ends the process. With a
-/// non-negative `limit_ns` the task is cancelled once it has run that long. Returns the handle.
-pub(crate) unsafe fn spawn_closure(
-    closure: *mut ms_rt_abi::Closure,
-    limit_ns: i64,
-    fatal: bool,
-) -> u64 {
-    // SAFETY: single threaded scheduler; `closure` is a live closure object.
-    unsafe {
-        crate::obj::msrt_retain(closure.cast());
-        let flags = if fatal { SPAWN_FATAL } else { 0 };
-        let h = msrt_task_spawn(closure_entry, closure.cast(), flags, TASK_GROUP_STACK);
-        let t = lookup(h);
-        (*t).owned = closure.cast();
-        (*t).started_by = fault::capture_frames();
         arm_kill(h, limit_ns);
         h
     }
@@ -1886,7 +1858,6 @@ pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
 /// live-block count.
 pub fn teardown() {
     fault::retire_hdr();
-    crate::channel::reset_wait_queues();
     // SAFETY: callers hold the global lock or run after main returned; no task is mid-switch.
     unsafe {
         let mut s = sched();
@@ -2031,26 +2002,6 @@ mod tests {
         unsafe { msrt_task_join(arg as u64, null_mut()) };
     }
 
-    unsafe extern "C-unwind" fn deadlocked_channel(arg: *mut u8) {
-        crate::channel::msrt_channel_park(arg as i64);
-    }
-
-    #[test]
-    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
-    fn a_deadlocked_channel_wait_frees_its_token() {
-        let _g = lock();
-        teardown();
-        // SAFETY: the guard contains the deliberate deadlock and the token belongs to it.
-        unsafe {
-            let token = crate::channel::msrt_channel_token() as u64;
-            let status = fault::msrt_guard_call(deadlocked_channel, token as *mut u8, null_mut());
-            let retained = token_mut(&mut sched(), token).is_some();
-            teardown();
-            assert_eq!(status, 1);
-            assert!(!retained, "a channel token lasts for only one wait");
-        }
-    }
-
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn a_deadlocked_token_wait_releases_its_registration() {
@@ -2088,8 +2039,6 @@ mod tests {
             assert!(running, "fault cleanup must run as a running task");
         }
     }
-
-    unsafe extern "C-unwind" fn returns(_: *mut ms_rt_abi::Closure) {}
 
     #[test]
     #[cfg(unix)]
@@ -2146,48 +2095,6 @@ mod tests {
     unsafe extern "C-unwind" fn long_wait(_: *mut u8) {
         // SAFETY: called on a live task; the test cancels it after checking the heap.
         unsafe { msrt_task_sleep(3_600_000_000_000) };
-    }
-
-    unsafe extern "C" fn drop_closure(obj: *mut ms_rt_abi::Obj) {
-        // SAFETY: the test closure has no captures and owns this allocation.
-        unsafe { alloc::free(obj.cast()) };
-    }
-
-    #[test]
-    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
-    fn completed_task_deadlines_do_not_accumulate() {
-        let _g = lock();
-        teardown();
-        // SAFETY: the closure stays live until every spawned task has been joined.
-        unsafe {
-            let closure =
-                crate::obj::new_obj(core::mem::size_of::<ms_rt_abi::Closure>(), drop_closure)
-                    .cast::<ms_rt_abi::Closure>();
-            (*closure).code = returns as *const u8;
-            let active = msrt_task_spawn(long_wait, null_mut(), 0, 0);
-            let deadline = clock_ns() + 3_600_000_000_000;
-            (*lookup(active)).kill_at = deadline;
-            sched().kills.push(Reverse((deadline, active)));
-            for _ in 0..4 * MIN_TIMER_LIMIT {
-                let task = spawn_closure(closure, 3_600_000_000_000, true);
-                assert_eq!(join_closure(task, false), 0);
-            }
-            crate::obj::release(closure.cast());
-            let retained = sched().kills.len();
-            let kept_active = sched().kills.iter().any(|&Reverse((_, h))| h == active);
-            msrt_task_cancel(active);
-            assert_eq!(msrt_task_join(active, null_mut()), 0);
-            teardown();
-            assert!(kept_active, "compaction must retain a live task's limit");
-            assert!(
-                retained <= MIN_TIMER_LIMIT,
-                "retained {retained} completed deadlines"
-            );
-            assert!(
-                sched().kills.is_empty(),
-                "teardown must release the deadline heap"
-            );
-        }
     }
 
     unsafe extern "C-unwind" fn short_sleeps(_: *mut u8) {

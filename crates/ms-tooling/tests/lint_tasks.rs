@@ -1,4 +1,4 @@
-//! `MSL111`: a `while True` loop in a tasks module that never waits.
+//! `MSL111`: a `while True` loop in a promise module that never waits.
 
 use ms_check::{CheckOptions, ImportMap};
 use ms_tooling::lint::lint_program;
@@ -19,7 +19,7 @@ fn codes(source: &str) -> Vec<String> {
         .collect()
 }
 
-const HEAD: &str = "import TaskGroup from \"@std/concurrency/tasks.ms\"\nimport nanoseconds, sleep from \"@std/os/time.ms\"\n";
+const HEAD: &str = "import promise from \"@std/concurrency/promise.ms\"\nimport nanoseconds, sleep from \"@std/os/time.ms\"\n";
 
 #[test]
 fn spinning_loop_is_reported() {
@@ -42,7 +42,7 @@ fn loops_that_wait_or_exit_are_not_reported() {
 }
 
 #[test]
-fn modules_without_tasks_are_not_reported() {
+fn modules_without_promises_are_not_reported() {
     let source = "fn spin() Int:\n    var n = 0\n    while true:\n        n += 1\n    return n\nexport fn main() Int:\n    return 0\n";
     assert!(!codes(source).contains(&"MSL111".to_string()));
 }

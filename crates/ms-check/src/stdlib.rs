@@ -95,9 +95,6 @@ const INTRINSIC_RECEIVERS: &[&str] = &[
 /// Externs that store their function arguments instead of running them before they return. A parameter-level
 /// marker would replace this list.
 const KEPT_CALLBACKS: &[&str] = &[
-    "extern:msstd_process_fork",
-    "extern:msrt_channel_group_add",
-    "extern:msrt_scope_spawn",
     "extern:msrt_promise_start",
 ];
 

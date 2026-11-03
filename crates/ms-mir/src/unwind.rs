@@ -32,8 +32,6 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 /// Runtime symbols whose presence means the program starts tasks that can be cancelled.
 const SPAWNERS: &[&str] = &[
-    "msrt_scope_spawn",
-    "msrt_worker_start",
     "msrt_promise_start",
 ];
 

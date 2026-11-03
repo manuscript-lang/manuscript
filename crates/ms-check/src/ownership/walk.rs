@@ -601,12 +601,6 @@ impl Walker<'_> {
         );
     }
 
-    /// Whether `e` is a `Copy` handle such as `Shared[T]`: it is not the storage it lends from,
-    /// and another copy of the handle can change that storage, so what it lends is a copy.
-    fn copy_handle(&self, e: &Expr) -> bool {
-        self.class_of(e) == Class::Copy && self.cx.m.ty(e).is_std("Shared")
-    }
-
     /// The fields from a variable to a place written as a plain chain of them.
     fn field_path(&self, e: &Expr) -> Option<Vec<Name>> {
         match &e.kind {
@@ -1801,25 +1795,6 @@ impl Walker<'_> {
             self.let_pos.insert(b.uid, s.pos);
         }
         let class = self.cx.classes.class(&b.ty);
-        // `var x = handle.get()` would change a copy, not the shared value.
-        if mutable
-            && class != Class::Copy
-            && let ExprKind::Call { callee, .. } = &value.kind
-            && let ExprKind::Member { left, .. } = &callee.kind
-            && self.copy_handle(left)
-        {
-            let text = self.expr_text(value);
-            self.expr(value, Demand::Read);
-            self.error(
-                pattern.pos,
-                format!(
-                    "`var {}` cannot borrow `{text}` mutably: it is a read-only result; copy it with `{text}.{COPY}()` to own it",
-                    b.name
-                ),
-            );
-            self.declare(&b, role, Perm::Mutable, None, false);
-            return;
-        }
         // A scalar copies, `let` or `var`; any other binding of a place borrows it, shared for
         // `let` and exclusive for `var`.
         if class != Class::Copy

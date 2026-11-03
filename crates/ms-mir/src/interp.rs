@@ -73,8 +73,6 @@ pub enum Val {
     Closure(FuncId, Rc<Vec<Val>>),
     /// An interface value: implementation table and erased data.
     Iface(VtableId, Rc<Val>),
-    /// `Shared[T]`.
-    Shared(Rc<Val>),
     /// A runtime object (maps, sets...) the interpreter does not model.
     Obj(Rc<str>, Rc<Vec<Val>>),
 }
@@ -106,7 +104,6 @@ impl PartialEq for Val {
             (Val::Rec(a), Val::Rec(b)) | (Val::List(a), Val::List(b)) => a == b,
             (Val::Alt(t, a), Val::Alt(u, b)) => t == u && a == b,
             (Val::Opt(a), Val::Opt(b)) => a == b,
-            (Val::Shared(a), Val::Shared(b)) => Rc::ptr_eq(a, b) || a == b,
             _ => false,
         }
     }
@@ -894,13 +891,6 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Str(((*b as u8) as char).to_string().into()));
             }
-            Op::SharedNew => set!(Val::Shared(Rc::new(arg(f, regs, a[0], true, m)))),
-            Op::SharedGet => {
-                let Val::Shared(s) = &regs[a[0].index()] else {
-                    return Err(Raw::internal("shared.get on a non-shared"));
-                };
-                set!((**s).clone());
-            }
             Op::ClosureNew => {
                 let Imm::Func(g) = inst.imm else {
                     return Err(Raw::internal("closure.new without function"));
@@ -966,7 +956,7 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Bool(*p == 0));
             }
-            Op::ListAddr | Op::ListAddrU | Op::PtrField | Op::SharedAddr => {
+            Op::ListAddr | Op::ListAddrU | Op::PtrField => {
                 return Err(Raw::internal(
                     "interior pointers are not supported by the interpreter",
                 ));

@@ -29,7 +29,6 @@ macro_rules! sym_prefix {
 pub mod alloc;
 pub mod bits;
 pub mod cabi;
-pub mod channel;
 pub mod desc;
 pub mod fault;
 pub mod ffi;
@@ -42,15 +41,14 @@ pub mod map;
 pub mod mem;
 pub mod num;
 pub mod obj;
-pub mod pipe;
 pub mod pipes;
 pub mod poller;
 pub mod process;
 pub mod profile;
 pub mod promise;
+pub mod scope;
 pub mod scan;
 pub mod sched;
-pub mod scope;
 pub mod start;
 pub mod string;
 #[cfg(not(windows))]
@@ -67,7 +65,6 @@ pub mod trap;
 pub mod tree;
 pub mod utf8;
 pub mod vec;
-pub mod worker;
 
 #[cfg(test)]
 mod model_tests;

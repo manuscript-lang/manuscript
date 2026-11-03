@@ -399,7 +399,6 @@ impl Checker {
                 None => {
                     let c = self.expression(callee, None);
                     i.method = c.method.clone();
-                    self.check_process_entry(callee, args, c.method.as_ref());
                     if c.native_str() != "index" {
                         // An indexed callee (callbacks[0](2)) must not make the call itself lower as an index.
                         i.native = c.native;
@@ -427,46 +426,6 @@ impl Checker {
         self.finish_call(e, callee, args, i, signature, callable)
     }
 
-    /// `ProcessGroup.spawn` runs its entry again in another process of this executable, which
-    /// finds the function by its code and cannot carry captured values: the entry must name a
-    /// top-level function.
-    fn check_process_entry(
-        &mut self,
-        callee: &Expr,
-        args: &[Argument],
-        method: Option<&MethodRef>,
-    ) {
-        let Some(m) = method else {
-            return;
-        };
-        let ExprKind::Member { name, .. } = &callee.kind else {
-            return;
-        };
-        if name.as_str() != "spawn"
-            || !m
-                .receiver
-                .is_source_type("@std/os/processes.ms", "ProcessGroup")
-        {
-            return;
-        }
-        let Some(entry) = args
-            .iter()
-            .find(|a| a.name.is_none_or(|n| n.as_str() == "entry"))
-        else {
-            return;
-        };
-        let named = match &entry.value.kind {
-            ExprKind::Apply { left, .. } => self.function_symbol(left).is_some(),
-            _ => self.function_symbol(&entry.value).is_some(),
-        };
-        if !named {
-            self.type_error(
-                entry.value.pos,
-                "process entry must name a top-level fn: it runs again in another process, which cannot carry a closure or the values it captures; move the work into a fn taking the channel".to_string(),
-            );
-        }
-    }
-
     fn finish_call(
         &mut self,
         e: &Expr,
@@ -489,8 +448,6 @@ impl Checker {
         };
         let resolved = function_arguments(args, &sig.params);
         i.arguments = slots(&resolved);
-        self.check_worker_entry(&callable, &resolved);
-        self.check_shared_use(e, callee, &callable);
         i.no_return = callable.no_return
             || self.arguments_for(
                 &callee_name(callee),
@@ -509,58 +466,6 @@ impl Checker {
             i.no_return = true;
         }
         i
-    }
-
-    /// `Shared` is changed through `lock` from `@std/concurrency/sync.ms`, which is the one place that may call
-    /// its raw `take`, `put`, `locked` and `id`. A `Shared` is not `Data`, so the `Data` bound on
-    /// worker and process messages already keeps it from crossing as a silent copy.
-    fn check_shared_use(&mut self, e: &Expr, callee: &Expr, callable: &Info) {
-        let name = match &callee.kind {
-            ExprKind::Member { name, .. } => name.as_str().to_string(),
-            _ => callee_name(callee),
-        };
-        if let Some(m) = callable.method.as_ref()
-            && m.receiver.is_std("Shared")
-            && matches!(name.as_str(), "take" | "put" | "locked" | "id")
-            && self.m().file.as_str() != "@std/concurrency/sync.ms"
-        {
-            self.type_error(
-                e.pos,
-                format!(
-                    "Shared.{name} is internal; change a Shared with `var guard = lock(box)` from \"@std/concurrency/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()"
-                ),
-            );
-        }
-    }
-
-    /// A worker runs on another thread with memory of its own, so its entry cannot be a closure
-    /// that captured anything: `WorkerGroup.spawn` and `spawn_many` take the name of a top-level `def`.
-    fn check_worker_entry(&mut self, callable: &Info, args: &[Arg]) {
-        let is_spawn = callable.method.as_ref().is_some_and(|m| {
-            m.receiver
-                .is_source_type("@std/concurrency/workers.ms", "WorkerGroup")
-                && m.decl
-                    .as_ref()
-                    .is_some_and(|d| matches!(d.name().as_str(), "spawn" | "spawn_many" | "start"))
-        }) && !matches!(
-            self.m().file.as_str(),
-            "@std/concurrency/workers.ms" | "@std/net/net.ms"
-        );
-        let is_serve_cores = callable.symbol.as_ref().is_some_and(|s| {
-            s.module.as_str() == "@std/net/net.ms" && s.name.as_str() == "serve_cores"
-        });
-        if !is_spawn && !is_serve_cores {
-            return;
-        }
-        let Some(entry) = args.iter().find(|a| a.name.as_str() == "entry") else {
-            return;
-        };
-        if self.function_symbol(entry.value).is_none() {
-            self.type_error(
-                entry.value.pos,
-                "a worker entry must be the name of a top-level fn; closures, local functions and captured values cannot run on another thread, so move the work into a fn and send what it needs through the worker's channel",
-            );
-        }
     }
 
     /// Checks a call to the named callable. A missing argument is reported at
