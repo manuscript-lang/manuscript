@@ -6,8 +6,11 @@
 //! (a read already running) answers no value.
 //!
 //! Cells live in a table of fixed pages that never move, so `take` and `put` read a cell with no
-//! lock: one atomic word per cell packs its generation and state, and a transition is one
-//! compare-and-swap. Only `new` and `drop` take the mutex that guards the free list of dead slots.
+//! lock. A cell's value belongs to the stream that owns it, and one owner uses it at a time (a move
+//! to another thread is a synchronized handoff), so `take` and `put` are a load and a store of the
+//! cell's word, which packs its generation and state, with no locked instruction. Only `new` and
+//! `drop` take the mutex that guards the free list of dead slots, and `drop` swaps the word so a
+//! cell dropped by another thread after a handoff still frees its block once.
 use crate::alloc;
 use crate::desc::slot_drop;
 use ms_rt_abi::TypeDesc;
@@ -20,8 +23,6 @@ const DEAD: u32 = 0;
 const FULL: u32 = 1;
 /// A read has the value out; the block is empty.
 const OUT: u32 = 2;
-/// A `put` is copying its value into the block.
-const PUTTING: u32 = 3;
 const STATE_BITS: u32 = 3;
 const STATE_MASK: u32 = (1 << STATE_BITS) - 1;
 const GENERATION_LIMIT: u32 = 1 << (32 - STATE_BITS);
@@ -161,13 +162,10 @@ pub unsafe extern "C-unwind" fn msrt_cells_take(
     let Some((c, full)) = lookup(id, FULL) else {
         return 0;
     };
-    let taken = full & !STATE_MASK | OUT;
-    if c.word
-        .compare_exchange(full, taken, Ordering::Acquire, Ordering::Relaxed)
-        .is_err()
-    {
+    if c.word.load(Ordering::Acquire) != full {
         return 0;
     }
+    c.word.store(full & !STATE_MASK | OUT, Ordering::Relaxed);
     // SAFETY: the block holds an owned value of `d`; it moves out and the block stays for `put`.
     unsafe {
         core::ptr::copy_nonoverlapping(
@@ -186,19 +184,14 @@ pub unsafe extern "C-unwind" fn msrt_cells_take(
 // ms: owns
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_cells_put(id: i64, value: *mut u8, d: ms_rt_abi::ValueDesc) {
-    if let Some((c, out)) = lookup(id, OUT) {
-        let putting = out & !STATE_MASK | PUTTING;
-        if c.word
-            .compare_exchange(out, putting, Ordering::Acquire, Ordering::Relaxed)
-            .is_ok()
-        {
-            let ptr = c.ptr.load(Ordering::Relaxed);
-            // SAFETY: the cell was out and is now ours alone; the block is empty and `new` sized
-            // it for `d`.
-            unsafe { core::ptr::copy_nonoverlapping(value, ptr as *mut u8, (*d).size as usize) };
-            c.word.store(out & !STATE_MASK | FULL, Ordering::Release);
-            return;
-        }
+    if let Some((c, out)) = lookup(id, OUT)
+        && c.word.load(Ordering::Acquire) == out
+    {
+        let ptr = c.ptr.load(Ordering::Relaxed);
+        // SAFETY: the cell is out, so the block is empty and the reader's; `new` sized it for `d`.
+        unsafe { core::ptr::copy_nonoverlapping(value, ptr as *mut u8, (*d).size as usize) };
+        c.word.store(out & !STATE_MASK | FULL, Ordering::Release);
+        return;
     }
     // SAFETY: `value` is an owned value of `d` that nothing keeps.
     unsafe { slot_drop(&*d, value) };
@@ -219,11 +212,6 @@ pub extern "C-unwind" fn msrt_cells_drop(id: i64) {
             return;
         }
         let state = word & STATE_MASK;
-        // A `put` is mid-copy: it ends in a few instructions with the cell full.
-        if state == PUTTING {
-            core::hint::spin_loop();
-            continue;
-        }
         if state == DEAD
             || c.word
                 .compare_exchange(word, dead, Ordering::Acquire, Ordering::Relaxed)
