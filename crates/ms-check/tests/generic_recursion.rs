@@ -138,3 +138,17 @@ fn recursive_record_with_list_of_itself_checks() {
     let found = diagnostics(&[("main.ms", source)]);
     assert!(found.is_empty(), "{found:?}");
 }
+
+/// Structural property queries recurse on type depth with no cutoff: a type nested 900 deep (under
+/// the parser's 1000 limit) is still `Clonable`.
+#[test]
+fn deeply_nested_type_keeps_structural_properties() {
+    let mut ty = String::from("Int");
+    for _ in 0..900 {
+        ty = format!("List[{ty}]");
+    }
+    let source = format!(
+        "fn f() Int:\n    let x: {ty} = []\n    let y = x.clone()\n    return y.length()\n"
+    );
+    assert_eq!(diagnostics(&[("deep.ms", &source)]), vec![]);
+}
