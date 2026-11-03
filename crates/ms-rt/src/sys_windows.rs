@@ -558,6 +558,14 @@ pub fn source_frame(
     None
 }
 
+/// Whether native unwind metadata covers `pc`: runtime and system code has it, generated code
+/// does not.
+pub fn has_unwind_info(pc: usize) -> bool {
+    let mut image = 0;
+    // SAFETY: a lookup only reads the loaded images' function tables.
+    unsafe { !RtlLookupFunctionEntry(pc, &mut image, core::ptr::null_mut()).is_null() }
+}
+
 /// A handle that lets one thread read another's registers.
 pub fn current_thread_for_sampling() -> *mut c_void {
     let mut out: HANDLE = core::ptr::null_mut();
