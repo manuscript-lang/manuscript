@@ -3,3 +3,19 @@
 [[profile.default.overrides]]
 filter = 'package(=ms-cli) & binary(=count_check) & test(=count_gate_rejects_failed_children_even_with_zero_live_blocks)'
 threads-required = "num-test-threads"
+
+# nextest starts tests in binary order, so a 100 s test that happens to start late leaves the other
+# slots idle at the end of the run. Start the slow ones first (higher priority runs earlier); the
+# count check goes first of all because it needs every slot and so waits for the running tests to
+# drain wherever it starts. Times are from the darwin-amd64 leg of dispatch run 41559474667.
+[[profile.default.overrides]]
+filter = 'package(=ms-cli) & binary(=count_check)'
+priority = 100
+
+[[profile.default.overrides]]
+filter = '(package(=ms-driver) & binary(=mutation)) | (package(=ms-clif) & binary(=native) & test(=random_programs_agree)) | (package(=ms-cli) & binary(=doc_examples)) | (package(=ms-check) & binary(=golden))'
+priority = 90
+
+[[profile.default.overrides]]
+filter = '(package(=ms-clif) & binary(=native)) | (package(=ms-lsp) & binary(=snapshots)) | (package(=ms-cli) & (binary(=llvm) | binary(=extern_link) | binary(=search_symbol))) | (package(=ms-std-crypto) & (binary(=oracle) | binary(=oracle_asym)))'
+priority = 50
