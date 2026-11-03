@@ -287,6 +287,30 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
     }
 }
 
+/// Waits until one of `ids` (a `List[Int]`) finishes or `timeout_ns` passes (negative: no limit) and
+/// returns the index of the first finished one, or -1 on timeout. Stub: only finished promises count.
+///
+/// # Safety
+/// `ids` is a live `List[Int]`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
+    ids: *const ms_rt_abi::VecVal,
+    timeout_ns: i64,
+) -> i64 {
+    let _ = timeout_ns;
+    let t = table();
+    // SAFETY: a live list of 8-byte integers by contract.
+    let list = unsafe { core::slice::from_raw_parts((*ids).ptr as *const i64, (*ids).len) };
+    for (k, id) in list.iter().enumerate() {
+        match index(t, *id) {
+            Some(i) if t.state[i] != State::Pending => return k as i64,
+            None => return k as i64,
+            Some(_) => {}
+        }
+    }
+    fault::fault(b"promise: wait_any is not implemented yet")
+}
+
 /// The report of a fault that ended `id` (empty otherwise).
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_fault_report(id: i64, out: *mut ms_rt_abi::StrVal) {

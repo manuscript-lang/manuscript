@@ -14,6 +14,9 @@ export extern fn msrt_promise_start(id: Int, work: fn() Unit) Unit
 
 export extern fn msrt_promise_wait(id: Int, timeout_ns: Int) Int
 
+# The index of the first of `ids` to finish, waiting up to `timeout_ns` (negative: no limit); -1 on timeout.
+export extern fn msrt_promise_wait_any(ids: List[Int], timeout_ns: Int) Int
+
 export extern fn msrt_promise_fault_report(id: Int) String
 
 export extern fn msrt_promise_drop(id: Int) Unit
