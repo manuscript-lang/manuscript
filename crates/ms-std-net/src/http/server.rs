@@ -433,6 +433,9 @@ impl Drop for DrainShield {
 impl Reactor {
     /// Whether any open server or connection asked to drain in-flight requests on a stop.
     fn drains(&self) -> bool {
+        if GRACED.with(Cell::get) == 0 {
+            return false;
+        }
         // Grace belongs to a server, not a connection. In particular, a server with no
         // grace must not revisit every idle connection before each reactor park.
         SERVERS.with(|servers| {
@@ -548,6 +551,17 @@ impl Reactor {
 thread_local! {
     static SERVERS: RefCell<HashMap<usize, Weak<Server>>> = RefCell::new(HashMap::new());
     static NEXT_ID: Cell<usize> = const { Cell::new(1) };
+    /// Servers of this thread that were created with a nonzero grace and are not dropped yet, so
+    /// a reactor without any skips the scan of every server before each park.
+    static GRACED: Cell<usize> = const { Cell::new(0) };
+}
+
+impl Drop for Server {
+    fn drop(&mut self) {
+        if self.limits.grace.is_some_and(|g| !g.is_zero()) {
+            GRACED.with(|g| g.set(g.get() - 1));
+        }
+    }
 }
 
 // --------------------------------------------------------------------- server
@@ -622,6 +636,9 @@ impl Server {
             id
         });
         let token = reactor.token();
+        if options.limits.grace.is_some_and(|g| !g.is_zero()) {
+            GRACED.with(|g| g.set(g.get() + 1));
+        }
         let server = Rc::new_cyclic(|me| Server {
             id,
             me: me.clone(),
@@ -711,6 +728,9 @@ impl Server {
 
     /// Admits one request unless the `serve` call already runs `limits.admission` of them.
     pub(super) fn admit(&self) -> bool {
+        if self.limits.admission == UNLIMITED {
+            return true;
+        }
         self.admitted
             .try_update(Ordering::AcqRel, Ordering::Acquire, |n| {
                 (n < self.limits.admission).then_some(n + 1)
@@ -720,6 +740,9 @@ impl Server {
 
     /// Returns `n` admissions.
     pub(super) fn unadmit(&self, n: usize) {
+        if self.limits.admission == UNLIMITED {
+            return;
+        }
         self.admitted.fetch_sub(n, Ordering::AcqRel);
     }
 
@@ -832,7 +855,10 @@ impl Server {
         if let Some(id) = st.draining {
             rt::post(id);
         }
-        if let Some(id) = st.idle_waiter {
+        if let Some(id) = st.idle_waiter
+            && st.conns.is_empty()
+            && st.running == 0
+        {
             rt::post(id);
         }
     }
