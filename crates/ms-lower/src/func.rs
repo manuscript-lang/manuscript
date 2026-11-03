@@ -573,7 +573,7 @@ impl<'a> FnLower<'a> {
     pub fn is_resource(&self, t: MTy) -> bool {
         self.cx
             .source_tys
-            .get(&t)
+            .get(t.0 as usize)
             .is_some_and(|ty| self.cx.classes.class(ty) == ms_check::ownership::Class::Resource)
     }
 

@@ -311,7 +311,7 @@ impl FnLower<'_> {
     /// Closes an owned temporary that is a resource; the value after the close.
     fn close_temp(&mut self, v: Value) -> Value {
         let mt = self.b.ty(v);
-        let Some(ty) = self.cx.source_tys.get(&mt).cloned() else {
+        let Some(ty) = self.cx.source_tys.get(mt.0 as usize).cloned() else {
             return v;
         };
         // A resource, or a record or list holding one (only read in place: the checker rejects
@@ -331,7 +331,7 @@ impl FnLower<'_> {
 
     /// The close operation of a value of the MIR type `ty` holding a resource, if it is one.
     pub(crate) fn part_closer_mir(&mut self, ty: MTy) -> Result<Option<CloseKind>, Error> {
-        let Some(ct) = self.cx.source_tys.get(&ty).cloned() else {
+        let Some(ct) = self.cx.source_tys.get(ty.0 as usize).cloned() else {
             return Ok(None);
         };
         self.part_closer(&ct)
@@ -402,7 +402,7 @@ impl FnLower<'_> {
         let kind = self
             .cx
             .source_tys
-            .get(&mt)
+            .get(mt.0 as usize)
             .cloned()
             .and_then(|ty| self.part_closer(&ty).ok().flatten());
         let v = match kind {
