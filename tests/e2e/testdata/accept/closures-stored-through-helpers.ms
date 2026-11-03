@@ -46,7 +46,8 @@ fn d4(text: String) Int:
 
     for p in text.split(","):
         let n = p.length()
-        let g = fn() Int: return n + i
+        let at = i
+        let g = fn() Int: return n + at
         relay(var fs, g)
         i += 1
 

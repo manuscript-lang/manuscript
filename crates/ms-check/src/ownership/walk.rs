@@ -3767,7 +3767,7 @@ impl Walker<'_> {
         self.declared.truncate(mark);
         self.captured.pop();
         let mutated = self.mutated.pop().unwrap_or_default();
-        for (uid, perm) in saved_meta {
+        for &(uid, perm) in &saved_meta {
             if let Some(m) = self.meta.get_mut(&uid) {
                 m.perm = perm;
             }
@@ -3800,6 +3800,21 @@ impl Walker<'_> {
                 // closure cannot take it over (it is borrowed or used again), `capture_move` asks
                 // for an explicit `.clone()` rather than copying it silently.
                 if class == Class::Copy {
+                    // A `var` used again would diverge from the closure's copy: the closure
+                    // cannot borrow it (it outlives the statement), so refuse the silent snapshot.
+                    if saved_perm(&saved_meta, b.uid) == Some(Perm::Mutable)
+                        && !self.is_last(e.id, b)
+                    {
+                        let name = b.name;
+                        let later = self
+                            .next_use(e.id, b)
+                            .map(|n| format!(" at {}", self.at(n)))
+                            .unwrap_or_default();
+                        self.error(
+                            e.pos,
+                            format!("this closure outlives the statement but captures the `var` `{name}`, which is used again{later}; the closure would keep a stale copy, so bind a `let` copy before the closure and capture that"),
+                        );
+                    }
                     self.record(e.id, b, Access::Copy);
                     facts.push((b.uid, CaptureMode::Copy));
                 } else {
@@ -3899,6 +3914,10 @@ impl Walker<'_> {
             self.escaped.insert(l);
         }
     }
+}
+
+fn saved_perm(saved: &[(usize, Perm)], uid: usize) -> Option<Perm> {
+    saved.iter().find(|(u, _)| *u == uid).map(|(_, p)| *p)
 }
 
 /// How the parts of a matched or destructured value are held.
