@@ -300,6 +300,7 @@ pub struct Connection {
     busy: Cell<u32>,
     local: String,
     peer: String,
+    pin: ms_rt::sched::Pin,
 }
 
 impl Resource for Connection {
@@ -317,6 +318,7 @@ impl Connection {
             busy: Cell::new(0),
             local,
             peer,
+            pin: ms_rt::sched::Pin::new(),
         }
     }
 
@@ -367,6 +369,7 @@ impl Connection {
     }
 
     fn parked<T>(&self, body: impl FnOnce() -> T) -> T {
+        self.pin.touch();
         parked(&self.busy, &|| self.release_if_idle(), body)
     }
 
@@ -771,6 +774,7 @@ pub struct Datagrams {
     address: String,
     /// Taken out for a receive, which can park; see ABI.md.
     scratch: Cell<Vec<u8>>,
+    pin: ms_rt::sched::Pin,
 }
 
 impl Resource for Datagrams {
@@ -789,6 +793,7 @@ impl Datagrams {
             busy: Cell::new(0),
             address,
             scratch: Cell::new(Vec::new()),
+            pin: ms_rt::sched::Pin::new(),
         }
     }
 
@@ -810,6 +815,7 @@ impl Datagrams {
     }
 
     fn parked_wait(&self, interest: Interest, deadline: Deadline) -> Wait {
+        self.pin.touch();
         parked(&self.busy, &|| self.release_if_idle(), || {
             wait_fd(self.sock.as_sock(), interest, deadline)
         })

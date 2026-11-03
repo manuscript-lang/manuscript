@@ -52,6 +52,21 @@ test "TCP loopback writes reads half close and EOF":
     try client.output.close()
     try expect_true((try server.input.read().wait(timeout: 2.seconds)).is_none())
 
+test "closing the input leaves the output open and closing both ends the connection":
+    let listener = try listen("127.0.0.1:0")
+    var client = try connect(listener.address(), 2.seconds)
+    var server = try listener.accept(2.seconds)
+
+    // Closing only the input does not end the stream the peer reads.
+    try client.input.close()
+    try client.output.write("still open".to_bytes())
+    try client.output.flush().wait()
+    try expect_equal((try server.input.read().wait(timeout: 2.seconds)).get(), "still open".to_bytes())
+
+    // Closing the output too closes the socket: the peer sees the end of the stream.
+    try client.output.close()
+    try expect_true((try server.input.read().wait(timeout: 2.seconds)).is_none())
+
 test "host names resolve whatever their case":
     let listener = try listen("127.0.0.1:0")
     let port = listener.address().split(":").last().get("")
