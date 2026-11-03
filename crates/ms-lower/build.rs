@@ -39,13 +39,13 @@ fn main() {
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        // Declared flags trail the signature: ` @leaf @pure @fresh`.
+        // Declared flags trail the signature: ` @handle @leaf @pure @fresh`.
         let (line, flags) = match line.split_once(" @") {
             Some((sig, flags)) => (sig, flags.split(" @").collect::<Vec<_>>()),
             None => (line, Vec::new()),
         };
         let bit = |f: &str| -> u8 { u8::from(flags.contains(&f)) };
-        let flags = bit("leaf") | bit("pure") << 1 | bit("fresh") << 2;
+        let flags = bit("leaf") | bit("pure") << 1 | bit("fresh") << 2 | bit("handle") << 3;
         let Some((name, rest)) = line.split_once('(') else {
             panic!("rt_symbols.txt:{}: not a function entry: {line}", n + 1);
         };
@@ -77,7 +77,14 @@ fn main() {
     for (name, params, ret, flags) in &table {
         let params: Vec<String> = params
             .iter()
-            .map(|(n, t)| format!("({n:?}, {t:?})"))
+            .map(|(n, t)| {
+                // A `handle` prefix on the name marks a runtime handle object parameter.
+                let (n, handle) = match n.strip_prefix("handle ") {
+                    Some(n) => (n.trim(), true),
+                    None => (n.as_str(), false),
+                };
+                format!("({n:?}, {t:?}, {handle})")
+            })
             .collect();
         writeln!(
             out,
