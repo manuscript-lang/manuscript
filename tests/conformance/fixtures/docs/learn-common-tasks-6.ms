@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,faults,interpolation,modules,stdlib-io,stdlib-process,tier-io,try-result
-# conform: phase=check
-# conform: origin=documentation/learn/common-tasks.md:150
+// conform: tags=control-flow,diagnostics,faults,interpolation,modules,stdlib-io,stdlib-process,tier-io,try-result
+// conform: phase=check
+// conform: origin=documentation/learn/common-tasks.md:150
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
 

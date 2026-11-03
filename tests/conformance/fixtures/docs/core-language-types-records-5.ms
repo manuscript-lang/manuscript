@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,interfaces,records,tier-core
-# conform: phase=check
-# conform: origin=documentation/core-language/types/records.md:52
+// conform: tags=control-flow,diagnostics,interfaces,records,tier-core
+// conform: phase=check
+// conform: origin=documentation/core-language/types/records.md:52
 interface Counter:
     var fn increment() Unit
 

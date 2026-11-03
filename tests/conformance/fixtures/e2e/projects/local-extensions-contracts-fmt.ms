@@ -1,6 +1,6 @@
-# conform: tags=faults,formatter,generics,interfaces,parser,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/local_extensions/contracts.ms
+// conform: tags=faults,formatter,generics,interfaces,parser,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/local_extensions/contracts.ms
 export interface Read[T]:
     fn get() T
 

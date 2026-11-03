@@ -39,7 +39,7 @@ type Payload:
     msg: String
     time: Int
 
-# The text a test's file sink received so far.
+// The text a test's file sink received so far.
 fn written(path: String) String?!:
     let data = try read_file(path)
     return ok(data.decode_utf8())
@@ -308,7 +308,7 @@ test "loggers on several threads never interleave a record":
             )
             try expect_true(line.ends_with("\}"))
 
-# A transport that appends every record to a file.
+// A transport that appends every record to a file.
 type Memory:
     path: String
 

@@ -8,7 +8,7 @@ fn is_lower(c: Int) Bool: c >= 97 and c <= 122
 
 fn is_letter(c: Int) Bool: is_upper(c) or is_lower(c)
 
-# Index 0 for 'A'/'a' through 25 for 'Z'/'z'; only valid for ASCII letters.
+// Index 0 for 'A'/'a' through 25 for 'Z'/'z'; only valid for ASCII letters.
 fn letter_index(c: Int) Int:
     if is_lower(c): return c - 97
 
@@ -16,14 +16,14 @@ fn letter_index(c: Int) Int:
 
 fn wrap(n: Int) Int: (n % 26 + 26) % 26
 
-# Shifts one scalar within its ASCII case; every other scalar is returned unchanged.
+// Shifts one scalar within its ASCII case; every other scalar is returned unchanged.
 fn rotate(c: Int, shift: Int) Int:
     if is_upper(c): return 65 + wrap(c - 65 + shift)
     if is_lower(c): return 97 + wrap(c - 97 + shift)
 
     return c
 
-# Parses an optional '-' followed by 1 through 7 ASCII digits.
+// Parses an optional '-' followed by 1 through 7 ASCII digits.
 fn caesar_key(key: String) Optional[Int]:
     let codes = key.scalar_values()
     let negative = codes.length() > 0 and codes[0] == 45

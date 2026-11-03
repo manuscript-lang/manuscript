@@ -3,14 +3,15 @@
 use super::handler::Program;
 use super::http_client::{chunk, limit};
 use super::tls::tls_options;
-use super::{ExchH, HeadersH, NetH, ServerH, opt, report};
+use super::{ExchH, HeadersH, ServingH, opt, report};
+use crate::conn::Listener;
 use crate::error::HttpErr;
-use crate::http::server::{CloseError, Limits, Options, Server};
+use crate::http::server::{Limits, Options, Server};
 use crate::tls;
 use ms_rt::ffi::{
-    ErrOut, Handler, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record, fault,
-    native,
+    ErrOut, Handler, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record, native,
 };
+use ms_rt_abi::Obj;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -33,6 +34,8 @@ abi_record! {
         pub tls_private_key_pem: Str,
         pub tls_alpn: StringList,
         pub tls_require_client_certificate: u8,
+        // Read by `serve` itself, not by the server: the runtime thread limit.
+        pub cores: OptInt,
     }
 }
 
@@ -94,72 +97,110 @@ fn server_options(opts: &HttpServerOptionsWire) -> Result<Options, HttpErr> {
     } else {
         None
     };
-    Ok(Options { limits, tls })
+    Ok(Options {
+        limits,
+        admitted: Default::default(),
+        tls,
+    })
+}
+
+/// What every connection of one `serve` call shares.
+pub struct Serving {
+    options: Options,
+    /// The handler closure, one reference held until the serving drops.
+    handler: *mut Obj,
+    listener: Rc<Listener>,
+}
+
+impl Serving {
+    fn new(options: Options, handler: *mut Obj, listener: Rc<Listener>) -> Serving {
+        // SAFETY: `handler` is a live closure object.
+        unsafe { ms_rt::obj::msrt_retain(handler) };
+        Serving {
+            options,
+            handler,
+            listener,
+        }
+    }
+
+    /// The serving whose identity (`msstd_http_serving_id`) is `id`. Workaround for promises that
+    /// cannot own resources yet: https://github.com/manuscript-lang/manuscript/issues/2409
+    ///
+    /// # Safety
+    /// The serving must be alive and stay so while the result is used.
+    unsafe fn get<'a>(id: i64) -> &'a Serving {
+        // SAFETY: caller contract.
+        unsafe { &*(id as *const Serving) }
+    }
+}
+
+impl Drop for Serving {
+    fn drop(&mut self) {
+        self.listener.close();
+        // SAFETY: the reference taken in `new`.
+        unsafe { ms_rt::obj::msrt_release(self.handler) };
+    }
 }
 
 native! {
     // -------------------------------------------------------------------- server
 
-    /// `Network.serve(address, handler, options) -> Result[HttpServer, Error]`; the server takes a
-    /// reference to the handler closure and releases it when dropped.
-    fn msstd_net_network_serve(
-        net: ObjRef<NetH>,
+    /// `serving(address, options, handler)`: binds the plain TCP listener of one `serve` call and
+    /// holds what every connection of the call shares: the limits, TLS settings, admission count
+    /// and handler.
+    fn msstd_http_serving_new(
         address: &str,
-        env: Handler,
         opts: &HttpServerOptionsWire,
-        out: Out<Object<ServerH>>,
+        env: Handler,
+        out: Out<Object<ServingH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        let program = Program::streaming(&env);
-        let result = (|| {
-            let options = server_options(opts)?;
-            if !net.listen_allowed(address) {
-                return Err(HttpErr::PermissionDenied);
-            }
-            Server::start(&net, address, program, options).map_err(HttpErr::from)
-        })();
-        out.write(Object(ServerH(report(result, &err)?)));
+        let options = report(server_options(opts), &err)?;
+        let root = crate::net::root();
+        let listener = report(root.listen(address), &err)?;
+        out.write(Object(ServingH(Serving::new(options, env.as_ptr(), listener))));
         Ok(())
     }
 
-    /// `Network.serve_connections(handler, options) -> Result[HttpServer, Error]`: a server
-    /// without a listener that serves what `HttpServer.adopt` hands it.
-    fn msstd_net_network_serve_connections(
-        net: ObjRef<NetH>,
-        env: Handler,
-        opts: &HttpServerOptionsWire,
-        out: Out<Object<ServerH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let program = Program::streaming(&env);
-        let result = server_options(opts).and_then(|options| {
-            Server::start_adopting(&net, program, options).map_err(HttpErr::from)
-        });
-        out.write(Object(ServerH(report(result, &err)?)));
+    /// The identity of a serving for the promises that use it: they cannot capture the object, but
+    /// can capture this number, and the `HttpServer` keeps the object alive until they ended.
+    fn msstd_http_serving_id(s: ObjRef<ServingH>) -> i64 {
+        std::ptr::from_ref::<Serving>(&s) as i64
+    }
+
+    /// The bound address of the listener of serving `id`.
+    fn msstd_http_serving_address(id: i64) -> String {
+        // SAFETY: `id` names a serving its owner keeps alive (see `msstd_http_serving_id`).
+        unsafe { Serving::get(id) }.listener.address().to_string()
+    }
+
+    /// Waits for the next connection of serving `id` and returns its socket handle.
+    fn msstd_http_serving_accept(id: i64, out: Out<i64>, err: ErrOut) -> Result<(), StatusCode> {
+        // SAFETY: as above.
+        let serving = unsafe { Serving::get(id) };
+        out.write(report(serving.listener.accept_raw(None), &err)?);
         Ok(())
     }
 
-    /// `HttpServer.adopt(connection)`: serves a handle from `Listener.accept_raw`.
-    fn msstd_http_server_adopt(s: ObjRef<ServerH>, connection: i64) -> () {
-        s.adopt(connection);
-    }
-
-    /// `HttpServer.address()`.
-    fn msstd_http_server_address(s: ObjRef<ServerH>) -> String {
-        s.address().to_string()
-    }
-
-    /// `HttpServer.close()`; closing from one of its own handlers faults.
-    fn msstd_http_server_close(s: ObjRef<ServerH>) -> () {
-        if let Err(CloseError::FromHandler) = s.close() {
-            fault("HTTP server cannot close from its own request");
+    /// Serves the socket handle `accept` returned, on this thread, and returns when the connection
+    /// has ended. The handler is only borrowed from the serving.
+    fn msstd_http_serving_connect(id: i64, connection: i64) -> () {
+        // SAFETY: as above.
+        let serving = unsafe { Serving::get(id) };
+        // SAFETY: the serving keeps the handler alive until every connection promise ended.
+        let program = unsafe { Program::borrowed(serving.handler) };
+        if let Ok(server) = Server::start_adopting(&crate::net::root(), program, serving.options.clone())
+        {
+            server.serve_connection(connection);
         }
     }
 
-    /// `HttpServer.wait()`.
-    fn msstd_http_server_wait(s: ObjRef<ServerH>) -> u8 {
-        s.wait();
-        0
+    /// Closes the listener of serving `id` and the connections accepted and never served.
+    fn msstd_http_serving_release(id: i64) -> () {
+        // SAFETY: as above.
+        let serving = unsafe { Serving::get(id) };
+        serving.listener.close();
+        crate::conn::release_unadopted(serving.listener.owner_key());
     }
 
     // ------------------------------------------------------------------ exchange

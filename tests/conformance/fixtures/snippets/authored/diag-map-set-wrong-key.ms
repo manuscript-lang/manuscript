@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,maps,tier-core
-# conform: phase=check
-# conform: origin=ms-check/tests/messages.rs
+// conform: tags=diagnostics,maps,tier-core
+// conform: phase=check
+// conform: origin=ms-check/tests/messages.rs
 export fn main() Int:
     let m = Map[String, Int]()
     m.set(1, 2)

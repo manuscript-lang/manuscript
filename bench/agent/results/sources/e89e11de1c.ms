@@ -1,11 +1,11 @@
 import read_lines from "@std/streams.ms"
 import stdin, stdout from "@std/io.ms"
 
-# Calendar days searched after START's date, inclusive.
+// Calendar days searched after START's date, inclusive.
 let WINDOW_DAYS = 3000
 
 type Start:
-    year: Int  # -1 when START is invalid
+    year: Int  // -1 when START is invalid
     month: Int
     day: Int
     minute_of_day: Int
@@ -17,7 +17,7 @@ type Schedule:
     months: List[Bool]
     weekdays: List[Bool]
 
-# Value of an unsigned ASCII digit string; -1 when empty or with any other character.
+// Value of an unsigned ASCII digit string; -1 when empty or with any other character.
 fn number(text: String) Int:
     if text.length() == 0: return -1
 
@@ -31,7 +31,7 @@ fn number(text: String) Int:
 
     return value
 
-# A 1-2 digit number within low..high; -1 otherwise.
+// A 1-2 digit number within low..high; -1 otherwise.
 fn small(text: String, low: Int, high: Int) Int:
     if text.length() == 0 or text.length() > 2: return -1
 
@@ -56,7 +56,7 @@ fn days_in_month(year: Int, month: Int) Int:
 
     return 31
 
-# Whole days from 1970-01-01 to the given date.
+// Whole days from 1970-01-01 to the given date.
 fn days_since_epoch(year: Int, month: Int, day: Int) Int:
     var days = 0
 
@@ -90,7 +90,7 @@ fn parse_start(text: String) Start:
 
     return Start(year: year, month: month, day: day, minute_of_day: hour * 60 + minute)
 
-# Allowed values as a list indexed by value (size high + 1); empty when the field is invalid.
+// Allowed values as a list indexed by value (size high + 1); empty when the field is invalid.
 fn parse_field(text: String, low: Int, high: Int) List[Bool]:
     var allowed = List[Bool]()
     for ignored in 0..high + 1:
@@ -131,7 +131,7 @@ fn parse_field(text: String, low: Int, high: Int) List[Bool]:
 
     return allowed
 
-# Formats a run as YYYY-MM-DD HH:MM.
+// Formats a run as YYYY-MM-DD HH:MM.
 fn two(n: Int) String:
     return "{n}".pad_start(2, "0")
 
@@ -152,7 +152,7 @@ fn find_runs(
     var year = start_year
     var month = start_month
     var day = start_day
-    var weekday = (4 + days_since_epoch(year, month, day)) % 7  # 1970-01-01 was a Thursday
+    var weekday = (4 + days_since_epoch(year, month, day)) % 7  // 1970-01-01 was a Thursday
     var offset = 0
 
     while offset <= WINDOW_DAYS and runs.length() < count:

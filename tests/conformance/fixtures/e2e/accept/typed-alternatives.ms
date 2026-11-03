@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,interpolation,modules,mutation,numbers,optional,stdlib-collections,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/typed-alternatives.ms
+// conform: tags=control-flow,faults,interpolation,modules,mutation,numbers,optional,stdlib-collections,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/typed-alternatives.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 
 fn checked(n: Int) Int!Error:

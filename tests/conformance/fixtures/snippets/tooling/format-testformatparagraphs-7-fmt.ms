@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,parser,tier-core,scope-cleanup
-# conform: phase=parse
-# conform: origin=pkg/tooling/format/format_paragraphs_test.go:83 TestFormatParagraphs
+// conform: tags=control-flow,formatter,parser,tier-core,scope-cleanup
+// conform: phase=parse
+// conform: origin=pkg/tooling/format/format_paragraphs_test.go:83 TestFormatParagraphs
 fn work(enabled: Bool) Int:
     let count = 2
 

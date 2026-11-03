@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,interpolation,maps,match,modules,mutation,optional,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/string-keyed-map-calls-keep-semantics.ms
+// conform: tags=control-flow,faults,interpolation,maps,match,modules,mutation,optional,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/string-keyed-map-calls-keep-semantics.ms
 import expect_true from "@std/test/test.ms"
 
 fn lookup(m: Map[String, Int], key: String) Int:

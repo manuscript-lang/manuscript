@@ -14,20 +14,20 @@
           "file": "foreign-capital-false.ms",
           "line": 5,
           "column": 12,
-          "offset": 136
+          "offset": 139
         },
         "fix": {
           "position": {
             "file": "foreign-capital-false.ms",
             "line": 5,
             "column": 12,
-            "offset": 136
+            "offset": 139
           },
           "end": {
             "file": "foreign-capital-false.ms",
             "line": 5,
             "column": 17,
-            "offset": 141
+            "offset": 144
           },
           "replacement": "false"
         }

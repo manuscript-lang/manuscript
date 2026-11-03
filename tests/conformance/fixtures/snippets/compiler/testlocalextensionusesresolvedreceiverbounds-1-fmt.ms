@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,generics,interfaces,modules,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/local_extensions_test.go:122 TestLocalExtensionUsesResolvedReceiverBounds
+// conform: tags=control-flow,formatter,generics,interfaces,modules,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/local_extensions_test.go:122 TestLocalExtensionUsesResolvedReceiverBounds
 import Box from "./domain.ms"
 
 interface Read:

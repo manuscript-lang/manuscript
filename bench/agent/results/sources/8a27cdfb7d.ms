@@ -214,7 +214,7 @@ fn op_arity(code: Int) Int:
 
     return 1
 
-# Operand classes allowed by the instruction shape, checked after the arity.
+// Operand classes allowed by the instruction shape, checked after the arity.
 fn shape_ok(code: Int, args: List[Arg]) Bool:
     if args.length() == 0:
         return true
@@ -240,7 +240,7 @@ fn shape_ok(code: Int, args: List[Arg]) Bool:
 
     return d == K_IMM
 
-# Character-literal length at i ('c' or '\c'), or 0 when there is none.
+// Character-literal length at i ('c' or '\c'), or 0 when there is none.
 fn char_lit_len(cs: List[String], i: Int) Int:
     if ch(cs, i) != "'":
         return 0
@@ -291,7 +291,7 @@ fn byte_values(s: String) List[Int]:
         out.append(b.to_int())
     return out
 
-# Removes a `;` comment that is not inside a string or character literal.
+// Removes a `;` comment that is not inside a string or character literal.
 fn strip_comment(line: String) String:
     let cs = line.chars()
     let n = cs.length()
@@ -324,7 +324,7 @@ fn skip_string(cs: List[String], i: Int) Int:
 
     return cs.length()
 
-# Splits operands at commas outside brackets and character literals.
+// Splits operands at commas outside brackets and character literals.
 fn split_operands(text: String) List[String]:
     var parts = List[String]()
     if text == "":
@@ -363,7 +363,7 @@ fn split_operands(text: String) List[String]:
     parts.append(cur.trim().clone())
     return parts
 
-# Splits the inside of [...] into signed terms; register terms are marked by reg.
+// Splits the inside of [...] into signed terms; register terms are marked by reg.
 fn split_terms(inner: String) Result[List[Term], Failure]:
     let cs = inner.chars()
     let n = cs.length()
@@ -467,7 +467,7 @@ fn parse_number(tok: String) Int:
 
     return acc
 
-# Parses a decimal integer for .budget; anything invalid or above the budget limit is out of range.
+// Parses a decimal integer for .budget; anything invalid or above the budget limit is out of range.
 fn parse_decimal(text: String) Int:
     let cs = text.chars()
     if cs.length() == 0:
@@ -545,7 +545,7 @@ fn read_term(
 
     return error(bad("invalid expression '{whole}'"))
 
-# Evaluates an expression: optional sign, terms joined by + and -, 32-bit wraparound.
+// Evaluates an expression: optional sign, terms joined by + and -, 32-bit wraparound.
 fn eval_expr(text: String, asm: Asm, stack: List[String]) Result[Int, Failure]:
     let whole = text.trim()
     let cs = whole.chars()
@@ -614,7 +614,7 @@ fn define_equ(var asm: Asm, args: String) Result[Unit, Failure]:
     asm.equs[name.clone()] = ops[1].clone()
     return ok(unit)
 
-# Parses a .ascii/.asciz string literal into its byte values.
+// Parses a .ascii/.asciz string literal into its byte values.
 fn parse_string(text: String) Result[List[Int], Failure]:
     let cs = text.chars()
     let n = cs.length()
@@ -771,7 +771,7 @@ fn instruction(var asm: Asm, name: String, args: String, line: Int) Result[
     asm.text_count += 1
     return ok(unit)
 
-# Label names are identifiers followed by ':'; returns the identifier length, or 0.
+// Label names are identifiers followed by ':'; returns the identifier length, or 0.
 fn label_len(cs: List[String]) Int:
     if not is_letter(ch(cs, 0)):
         return 0
@@ -1003,7 +1003,7 @@ fn write_arg(var vm: Machine, arg: Arg, v: Int) Result[Unit, Failure]:
 
     return mem_write(var vm, addr_of(vm, arg), v)
 
-# Runs one instruction and returns the next pc; the pc and steps are only updated by the caller on success.
+// Runs one instruction and returns the next pc; the pc and steps are only updated by the caller on success.
 fn execute(var vm: Machine, ins: Instr) Result[Int, Failure]:
     let code = ins.code
     var next = vm.pc + 1
@@ -1119,7 +1119,7 @@ fn parse_inputs(lines: List[String]) List[Int]:
 
     return values
 
-# Input tokens are optional '-' then decimal digits, wrapped to 32 bits; anything else is skipped.
+// Input tokens are optional '-' then decimal digits, wrapped to 32 bits; anything else is skipped.
 fn input_value(tok: String) Optional[Int]:
     let cs = tok.chars()
     let n = cs.length()

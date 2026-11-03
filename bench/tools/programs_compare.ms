@@ -1,5 +1,5 @@
-# Compares two already-built revisions against shared handwritten Go samples.
-# Usage: ms run bench/tools/programs_compare.ms -- --before B --after A --go G --input I --output DIR [--repeats 30]
+// Compares two already-built revisions against shared handwritten Go samples.
+// Usage: ms run bench/tools/programs_compare.ms -- --before B --after A --go G --input I --output DIR [--repeats 30]
 import (
     absolute,
     ensure_directory,

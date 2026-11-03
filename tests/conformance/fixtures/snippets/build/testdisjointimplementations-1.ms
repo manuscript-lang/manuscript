@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,generics,interfaces,lists,records,tier-core
-# conform: phase=check
-# conform: origin=pkg/build/compiler_test.go:338 TestDisjointImplementations
+// conform: tags=control-flow,diagnostics,generics,interfaces,lists,records,tier-core
+// conform: phase=check
+// conform: origin=pkg/build/compiler_test.go:338 TestDisjointImplementations
 interface Read[T]:
     fn get() Int
 

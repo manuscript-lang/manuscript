@@ -1,6 +1,6 @@
-# conform: tags=control-flow,match,modules,stdlib-fs,stdlib-testing,testing,tier-io
-# conform: phase=test
-# conform: origin=tests/e2e/test_directory_test.go:27 TestTestsRunInProjectDirectory
+// conform: tags=control-flow,match,modules,stdlib-fs,stdlib-testing,testing,tier-io
+// conform: phase=test
+// conform: origin=tests/e2e/test_directory_test.go:27 TestTestsRunInProjectDirectory
 import read_file from "@std/os/fs.ms"
 import expect_true, fail from "@std/test/test.ms"
 

@@ -14,7 +14,7 @@
           "file": "testboundedmatchnative-5.ms",
           "line": 5,
           "column": 19,
-          "offset": 205
+          "offset": 208
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testboundedmatchnative-5.ms",
           "line": 10,
           "column": 16,
-          "offset": 303
+          "offset": 306
         }
       }
     ],

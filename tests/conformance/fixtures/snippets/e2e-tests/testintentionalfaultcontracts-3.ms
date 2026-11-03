@@ -1,6 +1,6 @@
-# conform: tags=closures,faults,modules,stdlib-faults,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/intentional_faults_test.go:57 TestIntentionalFaultContracts
+// conform: tags=closures,faults,modules,stdlib-faults,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/intentional_faults_test.go:57 TestIntentionalFaultContracts
 import expect_contains, expect_fault from "@std/test/test.ms"
 import panic from "@std/core.ms"
 

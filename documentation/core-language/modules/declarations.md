@@ -76,7 +76,7 @@ An exported function, data type, or contract cannot expose an internal nominal t
 type PrivateToken:
     value: String
 
-# Rejected: callers cannot name the internal result type.
+// Rejected: callers cannot name the internal result type.
 export fn issue() PrivateToken:
     return PrivateToken("token")
 ```

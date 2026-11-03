@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,lists,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/format/format_layout_test.go:438 TestFormatExpressionLayouts
+// conform: tags=closures,diagnostics,lists,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/format/format_layout_test.go:438 TestFormatExpressionLayouts
 fn work() Bool:
     return (
         [[1, 2], [3]].flat_map(

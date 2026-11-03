@@ -1,6 +1,6 @@
-# conform: tags=alternatives,formatter,match,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/constant_before_type_test.go:8 TestConstantMayNameCaseOfLaterType
+// conform: tags=alternatives,formatter,match,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/constant_before_type_test.go:8 TestConstantMayNameCaseOfLaterType
 let initial = Mode.Idle
 
 type Mode:

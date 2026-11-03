@@ -1,7 +1,7 @@
-# expect-stdout: close b
-# expect-stdout: close a
-# expect-stdout: waited: true
-# A guarded task faults after moving one resource: the cleanup stack still closes the binding registered after it.
+// expect-stdout: close b
+// expect-stdout: close a
+// expect-stdout: waited: true
+// A guarded task faults after moving one resource: the cleanup stack still closes the binding registered after it.
 import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 import panic from "@std/core.ms"

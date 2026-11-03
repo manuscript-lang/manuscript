@@ -15,6 +15,7 @@ use crate::ir::{
     Cc, ExternDef, Func, FuncId, FuncKind, Imm, Inst, Mode, Module, Op, Param, Term, Value,
 };
 use crate::types::{Ty, TyKind};
+use crate::vmap::ValueMap;
 use std::collections::HashMap;
 
 /// Largest slice sorted by insertion, as in the runtime.
@@ -25,8 +26,8 @@ pub fn run(m: &mut Module) -> bool {
     let mut changed = false;
     let mut made: HashMap<FuncId, FuncId> = HashMap::new();
     for fi in 0..m.funcs.len() {
-        let mut known: HashMap<Value, FuncId> = HashMap::new();
-        let mut thunks: HashMap<Value, FuncId> = HashMap::new();
+        let mut known: ValueMap<FuncId> = ValueMap::new();
+        let mut thunks: ValueMap<FuncId> = ValueMap::new();
         for inst in m.funcs[fi].blocks.iter().flat_map(|b| b.insts.iter()) {
             match (inst.op, inst.imm, inst.res) {
                 (Op::ClosureNew, Imm::Func(g), Some(r)) if inst.args.is_empty() => {
@@ -223,7 +224,7 @@ fn plain_int_order(m: &Module, g: FuncId) -> Option<bool> {
             Boxed(i64),
             Payload(i64),
         }
-        let mut env: HashMap<Value, V> = HashMap::new();
+        let mut env: ValueMap<V> = ValueMap::new();
         env.insert(a, V::Arg(x));
         env.insert(b, V::Arg(y));
         let mut block = 0usize;

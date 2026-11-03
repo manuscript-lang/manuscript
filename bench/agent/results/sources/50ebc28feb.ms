@@ -3,7 +3,7 @@ import read_lines from "@std/streams.ms"
 import bit_and, bit_or, bit_xor, shift_left, shift_right, shift_right_unsigned from "@std/math.ms"
 import StringBuilder, from_scalars from "@std/string.ms"
 
-# ---- constants ----------------------------------------------------------
+// ---- constants ----------------------------------------------------------
 
 let OP_MOV = 0
 let OP_ADD = 1
@@ -55,7 +55,7 @@ let MAX_BUDGET = 10000000
 let IDENT_HEAD = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
 let IDENT_TAIL = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789."
 
-# ---- records ------------------------------------------------------------
+// ---- records ------------------------------------------------------------
 
 type Fault:
     text: String
@@ -73,7 +73,7 @@ type Operand:
     reg: Int
     expr: String
 
-# kind 0: instruction, 1: data words (exprs, one per word), 2: data fill (exprs[0], count words)
+// kind 0: instruction, 1: data words (exprs, one per word), 2: data fill (exprs[0], count words)
 type Stmt:
     line: Int
     kind: Int
@@ -123,7 +123,7 @@ type Trap:
     pc: Int
     line: String
 
-# ---- small helpers ------------------------------------------------------
+// ---- small helpers ------------------------------------------------------
 
 fn wrap32(x: Int) Int:
     let u = bit_and(x, MASK32)
@@ -160,7 +160,7 @@ fn skip_space(cs: List[String], start: Int) Int:
         i += 1
     return i
 
-# Length of the identifier starting at `start`, or 0 when none starts there.
+// Length of the identifier starting at `start`, or 0 when none starts there.
 fn ident_len(cs: List[String], start: Int) Int:
     if start >= cs.length() or not is_head(cs[start]):
         return 0
@@ -193,7 +193,7 @@ fn digit_value(c: String) Int:
 
     return -1
 
-# Removes a `;` comment, leaving `;` and `#` alone inside string or character literals.
+// Removes a `;` comment, leaving `;` and `#` alone inside string or character literals.
 fn strip_comment(line: String) String:
     var out = ""
     var in_str = false
@@ -222,7 +222,7 @@ fn strip_comment(line: String) String:
 
     return out
 
-# Splits operands at commas outside brackets and character literals.
+// Splits operands at commas outside brackets and character literals.
 fn split_operands(text: String) List[String]:
     var parts = List[String]()
     var cur = ""
@@ -258,7 +258,7 @@ fn split_operands(text: String) List[String]:
     parts.append(cur)
     return parts
 
-# Splits a bracket body into signed terms: "r2-1+a" -> ["+r2", "-1", "+a"].
+// Splits a bracket body into signed terms: "r2-1+a" -> ["+r2", "-1", "+a"].
 fn split_signed(text: String) List[String]:
     var parts = List[String]()
     var cur = "+"
@@ -307,7 +307,7 @@ fn split_words(line: String) List[String]:
         words.append(cur)
     return words
 
-# ---- expressions --------------------------------------------------------
+// ---- expressions --------------------------------------------------------
 
 fn byte_of(c: String) Int:
     if c.byte_length() != 1:
@@ -331,7 +331,7 @@ fn escape_of(c: String) Int:
 
     return -1
 
-# cs is a complete character literal such as 'a' or '\n'; -1 when malformed.
+// cs is a complete character literal such as 'a' or '\n'; -1 when malformed.
 fn char_value(cs: List[String]) Int:
     let n = cs.length()
     if n == 3 and cs[1] != "\\" and cs[1] != "'":
@@ -341,7 +341,7 @@ fn char_value(cs: List[String]) Int:
 
     return -1
 
-# End index (exclusive) of the term starting at i; i itself when there is none.
+// End index (exclusive) of the term starting at i; i itself when there is none.
 fn term_end(cs: List[String], i: Int) Int:
     let n = cs.length()
 
@@ -429,7 +429,7 @@ fn eval_token(
 
     return error(Fault(text: "invalid expression '{whole}'"))
 
-# Evaluates an expression: optional leading sign, then terms joined by + or -.
+// Evaluates an expression: optional leading sign, then terms joined by + or -.
 fn eval_expr(
     text: String,
     syms: Map[String, Sym],
@@ -472,7 +472,7 @@ fn eval_expr(
 
     return ok(total)
 
-# Value of a decimal integer input token (optional leading '-'), wrapped to 32 bits; none when invalid.
+// Value of a decimal integer input token (optional leading '-'), wrapped to 32 bits; none when invalid.
 fn input_value(tok: String) Optional[Int]:
     let cs = tok.chars()
     let n = cs.length()
@@ -498,7 +498,7 @@ fn input_value(tok: String) Optional[Int]:
         v = (TWO32 - v) % TWO32
     return wrap32(v)
 
-# ---- operands and statements (pass 1) -----------------------------------
+// ---- operands and statements (pass 1) -----------------------------------
 
 fn parse_memory(text: String) Result[Operand, Fault]:
     let cs = text.chars()
@@ -903,7 +903,7 @@ fn pass1_line(var a: Asm, line: Int, raw: String) Result[Unit, Fault]:
 
     return pass1_instruction(var a, line, head, tail)
 
-# ---- pass 2 -------------------------------------------------------------
+// ---- pass 2 -------------------------------------------------------------
 
 fn resolve_operand(
     o: Operand,
@@ -951,7 +951,7 @@ fn write_data(var mem: List[Int], s: Stmt, syms: Map[String, Sym]) Result[Unit, 
 
     return ok(unit)
 
-# ---- execution ----------------------------------------------------------
+// ---- execution ----------------------------------------------------------
 
 fn effective(m: Machine, o: Rop) Int:
     if o.reg < 0:
@@ -1127,7 +1127,7 @@ fn run_machine(var m: Machine, code: List[Instr], budget: Int) Trap:
 
     return Trap(msg: "", pc: 0, line: "")
 
-# ---- driver -------------------------------------------------------------
+// ---- driver -------------------------------------------------------------
 
 fn report_asm_error(line: Int, msg: String) Int:
     stdout().write("asm error line {line}: {msg}\n").get()

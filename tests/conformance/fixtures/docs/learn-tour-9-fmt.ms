@@ -1,6 +1,6 @@
-# conform: tags=alternatives,control-flow,formatter,parser,records,tier-core,try-result
-# conform: phase=parse
-# conform: origin=documentation/learn/tour.md:172
+// conform: tags=alternatives,control-flow,formatter,parser,records,tier-core,try-result
+// conform: phase=parse
+// conform: origin=documentation/learn/tour.md:172
 type QuantityError:
     case MustBePositive
 

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,modules,parser,stdlib-fs,stdlib-process,tier-io,try-result
-# conform: phase=parse
-# conform: origin=documentation/learn/common-tasks.md:94
+// conform: tags=control-flow,formatter,modules,parser,stdlib-fs,stdlib-process,tier-io,try-result
+// conform: phase=parse
+// conform: origin=documentation/learn/common-tasks.md:94
 import arguments from "@std/os/process.ms"
 import write_file from "@std/os/fs.ms"
 

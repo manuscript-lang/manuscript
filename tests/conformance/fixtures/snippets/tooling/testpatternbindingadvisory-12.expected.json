@@ -14,7 +14,7 @@
           "file": "testpatternbindingadvisory-12.ms",
           "line": 6,
           "column": 9,
-          "offset": 222
+          "offset": 225
         }
       },
       {
@@ -25,20 +25,20 @@
           "file": "testpatternbindingadvisory-12.ms",
           "line": 6,
           "column": 23,
-          "offset": 236
+          "offset": 239
         },
         "fix": {
           "position": {
             "file": "testpatternbindingadvisory-12.ms",
             "line": 6,
             "column": 23,
-            "offset": 236
+            "offset": 239
           },
           "end": {
             "file": "testpatternbindingadvisory-12.ms",
             "line": 6,
             "column": 28,
-            "offset": 241
+            "offset": 244
           },
           "replacement": "value"
         }
@@ -51,7 +51,7 @@
           "file": "testpatternbindingadvisory-12.ms",
           "line": 7,
           "column": 22,
-          "offset": 263
+          "offset": 266
         },
         "fix": {
           "position": {

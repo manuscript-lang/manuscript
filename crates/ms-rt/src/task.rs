@@ -117,8 +117,6 @@ struct Task {
     started_by: Vec<usize>,
     /// Set when the task was cancelled because `kill_at` passed.
     timed_out: bool,
-    /// The scope that frees the task's record when it ends (`spawn_native`), or 0.
-    scope: i64,
     /// The promise this task runs (`promise::msrt_promise_start`), or 0; told when the task ends.
     promise: i64,
 }
@@ -551,7 +549,6 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             kill_at: NO_DEADLINE,
             started_by: Vec::new(),
             timed_out: false,
-            scope: 0,
             promise: 0,
         });
     }
@@ -1046,21 +1043,6 @@ extern "C" fn task_main() -> ! {
             // A promise's task is never joined: the promise learns of its end by event.
             crate::string::release_opt(&core::mem::replace(&mut (*t).msg, crate::string::NO_STR));
             s.zombie_task = t;
-        } else if (*t).scope != 0 {
-            // A scope task nobody joins frees itself; one being joined is freed by its joiner.
-            crate::scope::task_ended((*t).scope, (*t).handle);
-            if (*t).joiner != 0 {
-                let j = lookup((*t).joiner);
-                if !j.is_null() {
-                    wake(j, 0);
-                }
-            } else {
-                crate::string::release_opt(&core::mem::replace(
-                    &mut (*t).msg,
-                    crate::string::NO_STR,
-                ));
-                s.zombie_task = t;
-            }
         } else if (*t).detached {
             s.zombie_task = t;
         } else if (*t).joiner != 0 {
@@ -1459,7 +1441,7 @@ crate::isolate_static! {
 /// environment, as every closure call does.
 unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
     let closure = arg as *mut ms_rt_abi::Closure;
-    // SAFETY: `arg` is the retained closure object `spawn_closure` stored.
+    // SAFETY: `arg` is the retained closure object `spawn_promise_task` stored.
     unsafe {
         // The closure itself checks for a cancellation that came before it first ran
         // (`msrt_scope_started`), once it has registered the cleanup that closes its channel end.
@@ -1471,19 +1453,13 @@ unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
 
 /// Changes when the running task is cancelled for running too long: `limit_ns` from now, or
 /// never when negative. Replaces any earlier limit.
-pub(crate) fn limit_current(limit_ns: i64) {
+pub fn limit_current(limit_ns: i64) {
     // SAFETY: single threaded scheduler; the running task's record is live.
     unsafe {
         let t = ensure_init();
         (*t).kill_at = NO_DEADLINE;
         arm_kill((*t).handle, limit_ns);
     }
-}
-
-/// The scope the running task was started in by `spawn_scoped`, or 0.
-pub(crate) fn current_scope() -> i64 {
-    // SAFETY: single threaded scheduler; the running task's record is live.
-    unsafe { (*ensure_init()).scope }
 }
 
 /// Cancels task `h` once it has run `limit_ns` nanoseconds; a negative limit means never.
@@ -1509,23 +1485,6 @@ unsafe fn arm_kill(h: u64, limit_ns: i64) {
             });
             s.kill_limit = (s.kills.len() * 2).max(MIN_TIMER_LIMIT);
         }
-    }
-}
-
-/// Starts `entry(arg)` as a task of `scope` on a default (pooled) stack. A fault in it is the
-/// entry's to contain. It leaves the scope and frees its own record when it ends unless
-/// something is joining it, so a server can start one per request. With a non-negative
-/// `limit_ns` it is cancelled once it has run that long. Returns the handle.
-///
-/// # Safety
-/// `arg` must be valid for `entry`, which owns it.
-pub(crate) unsafe fn spawn_scoped(entry: Entry, arg: *mut u8, limit_ns: i64, scope: i64) -> u64 {
-    // SAFETY: single threaded scheduler.
-    unsafe {
-        let h = msrt_task_spawn(entry, arg, 0, 0);
-        (*lookup(h)).scope = scope;
-        arm_kill(h, limit_ns);
-        h
     }
 }
 
@@ -1556,11 +1515,6 @@ pub(crate) unsafe fn pump() {
     unsafe { msrt_task_yield() };
 }
 
-/// How many tasks wait to run on this thread, not counting the running one.
-pub(crate) fn ready_count() -> usize {
-    sched().ready.len()
-}
-
 /// Cancels the task of promise `promise`, if it runs on this thread; answers whether it does.
 pub(crate) fn cancel_promise_task(promise: i64) -> bool {
     let s = sched();
@@ -1575,65 +1529,6 @@ pub(crate) fn cancel_promise_task(promise: i64) -> bool {
         }
     }
     false
-}
-
-/// Waits for a task started by `spawn_closure` and returns how it ended: 0 returned, 1 timed out,
-/// 2 cancelled, 3 no such task (collected or closed). With `keep` the task stays
-/// joinable. If the caller is cancelled while waiting, the cancellation unwinds the caller.
-pub(crate) unsafe fn join_closure(handle: u64, keep: bool) -> u8 {
-    // SAFETY: single threaded scheduler.
-    unsafe {
-        ensure_init();
-        if lookup(handle).is_null() {
-            return 3;
-        }
-        let started = (*lookup(handle)).started_by.clone();
-        let mut msg = crate::string::NO_STR;
-        let status = join(handle, &mut msg, keep);
-        if status == 2 && cancel_flag().load(Ordering::Relaxed) != 0 {
-            fault::msrt_cancelled();
-        }
-        match status {
-            0 => 0,
-            1 => {
-                // A contained fault. Collecting takes the report; a kept task still owns it.
-                let report = if keep {
-                    let t = lookup(handle);
-                    fault::fault_report(&(*t).msg, &(*t).started_by)
-                } else {
-                    let report = fault::fault_report(&msg, &started);
-                    crate::string::release_opt(&msg);
-                    report
-                };
-                set_fault_report(report);
-                4
-            }
-            _ if *TIMED_OUT.ptr() => 1,
-            _ => 2,
-        }
-    }
-}
-
-/// The report of the contained fault the last join or wait saw, taken once.
-pub(crate) fn take_fault_report() -> Vec<u8> {
-    // SAFETY: single threaded scheduler.
-    unsafe { core::mem::take(&mut *LAST_FAULT.ptr()) }
-}
-
-/// Publishes the report of a completed join or wait, after any scheduler switches it made.
-pub(crate) fn set_fault_report(report: Vec<u8>) {
-    // SAFETY: single threaded scheduler.
-    unsafe { *LAST_FAULT.ptr() = report };
-}
-
-crate::isolate_static! {
-    static LAST_FAULT: Vec<u8> = Vec::new();
-}
-
-/// Requests cancellation of a task started by `spawn_closure`.
-pub(crate) unsafe fn cancel_closure(handle: u64) {
-    // SAFETY: single threaded scheduler.
-    unsafe { msrt_task_cancel(handle) }
 }
 
 // ---- tokens ----
@@ -1915,7 +1810,6 @@ pub fn teardown() {
         s.remote_tokens = 0;
         s.peer_tokens = 0;
         isolate::clear_posts();
-        crate::scope::teardown();
     }
 }
 

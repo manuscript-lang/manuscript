@@ -48,7 +48,6 @@ pub mod profile;
 pub mod promise;
 pub mod scan;
 pub mod sched;
-pub mod scope;
 pub mod start;
 pub mod string;
 #[cfg(not(windows))]

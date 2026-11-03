@@ -1,6 +1,6 @@
 import headers, HttpHeaders from "@std/net/http.ms"
 
-# Explicit fixture migration from the old text maps; no runtime coercion.
+// Explicit fixture migration from the old text maps; no runtime coercion.
 export fn text_headers(fields: Map[String, String]) HttpHeaders!:
     var result = headers()
     for name in fields.keys():
@@ -14,7 +14,7 @@ export fn list_headers(fields: Map[String, List[String]]) HttpHeaders!:
             let _appended = try (result.append(name, item))
     return ok(result)
 
-# Streaming callbacks must fail with a Failed Error; retain the diagnostic text of another operation.
+// Streaming callbacks must fail with a Failed Error; retain the diagnostic text of another operation.
 export fn http_result[T](outcome: T!) T!:
     match outcome:
         ok(found): return ok(found)

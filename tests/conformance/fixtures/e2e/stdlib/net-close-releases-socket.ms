@@ -1,12 +1,12 @@
-# conform: tags=scope-cleanup,stdlib-net,tier-io
-# conform: phase=run
+// conform: tags=scope-cleanup,stdlib-net,tier-io
+// conform: phase=run
 import stdout from "@std/io/io.ms"
 import bind_datagram, connect, listen from "@std/net/net.ms"
 import promise from "@std/concurrency/promise.ms"
 import nanoseconds from "@std/os/time.ms"
 
-# `close` frees the socket, so its port can be bound again while the handle is still held and
-# after a cancelled `accept` or `read` ran its `with` cleanup.
+// `close` frees the socket, so its port can be bound again while the handle is still held and
+// after a cancelled `accept` or `read` ran its `with` cleanup.
 
 fn accept_one(address: String) Int:
     let listener = listen(address).get()

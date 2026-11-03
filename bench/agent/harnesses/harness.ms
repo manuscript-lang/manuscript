@@ -1,7 +1,7 @@
-# Harness adapter interface.
-#
-# A harness drives one coding agent CLI inside a workspace. To add one, implement `Harness` in its own file
-# next to this one and register it in `all.ms`.
+// Harness adapter interface.
+//
+// A harness drives one coding agent CLI inside a workspace. To add one, implement `Harness` in its own file
+// next to this one and register it in `all.ms`.
 import write_file from "@std/os/fs.ms"
 import JsonValue, parse from "@std/data/json.ms"
 import round from "@std/math/math.ms"
@@ -9,17 +9,17 @@ import cost_from_tokens from "../core/model.ms"
 import run_in from "../lib/text.ms"
 
 export type Usage:
-    # Uncached input tokens.
+    // Uncached input tokens.
     tokens_in: Int = 0
-    # Cache reads (and writes, where the harness reports them together).
+    // Cache reads (and writes, where the harness reports them together).
     tokens_cached: Int = 0
     tokens_out: Int = 0
     turns: Int = 0
     cost_usd: Float = 0.0
-    # `harness`, `estimated` or `none`.
+    // `harness`, `estimated` or `none`.
     cost_source: String = "none"
 
-# What one agent run produced.
+// What one agent run produced.
 export type AgentRun:
     usage: Usage
     wall_s: Float
@@ -28,12 +28,12 @@ export type AgentRun:
 
 export interface Harness:
     fn name() String
-    # The argv that runs the agent non-interactively in `workspace` and exits when done.
+    // The argv that runs the agent non-interactively in `workspace` and exits when done.
     fn command(prompt: String, model: String?, workspace: String) List[String]
-    # Extracts usage from the harness's raw standard output.
+    // Extracts usage from the harness's raw standard output.
     fn parse(transcript: String) Usage
 
-# The JSON event on each line of `transcript` that parses.
+// The JSON event on each line of `transcript` that parses.
 export fn events(transcript: String) List[JsonValue]:
     var out = List[JsonValue]()
     for line in transcript.split("\n"):
@@ -45,7 +45,7 @@ export fn int_at(doc: JsonValue, key: String) Int:
 
     return 0
 
-# Runs the agent in `workspace`, saves its output to `transcript` and returns the measured run.
+// Runs the agent in `workspace`, saves its output to `transcript` and returns the measured run.
 export fn run_agent(
     h: Harness,
     prompt: String,

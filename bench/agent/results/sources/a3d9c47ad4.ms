@@ -15,7 +15,7 @@ fn digits_value(text: String) BigInt:
         total = total * from_int(10) + from_int("0123456789".index_of(c).get(0))
     return total
 
-# Converts an amount such as `12`, `12.5` or `0.07` to exact cents.
+// Converts an amount such as `12`, `12.5` or `0.07` to exact cents.
 fn amount_cents(amount: String) Optional[BigInt]:
     let parts = amount.split(".")
     if parts.length() == 1:
@@ -32,7 +32,7 @@ fn amount_cents(amount: String) Optional[BigInt]:
         padded = fraction + "0"
     return some(digits_value(parts[0]) * from_int(100) + digits_value(padded))
 
-# A quoted category may contain commas; an unquoted one ends at the first comma.
+// A quoted category may contain commas; an unquoted one ends at the first comma.
 fn parse_line(line: String) Optional[Entry]:
     let chars = line.chars()
     var category = ""

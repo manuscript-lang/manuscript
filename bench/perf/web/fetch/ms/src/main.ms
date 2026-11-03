@@ -19,7 +19,7 @@ fn worker(url: String, nanos: Int) Int:
     f.close().get(none)
     return n
 
-# Runs `conns` fetching promises; the runtime spreads them over its threads.
+// Runs `conns` fetching promises; the runtime spreads them over its threads.
 export fn main() Int:
     let args = arguments()
     let url = args.get(0)

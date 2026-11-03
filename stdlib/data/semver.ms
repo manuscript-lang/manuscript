@@ -1,18 +1,18 @@
-# A parsed semantic version as defined by Semantic Versioning 2.0.0.
+// A parsed semantic version as defined by Semantic Versioning 2.0.0.
 export type Version:
-    # Major version number; incremented for incompatible changes.
+    // Major version number; incremented for incompatible changes.
     major: Int
-    # Minor version number; incremented for compatible additions.
+    // Minor version number; incremented for compatible additions.
     minor: Int
-    # Patch version number; incremented for compatible fixes.
+    // Patch version number; incremented for compatible fixes.
     patch: Int
-    # Dot-separated pre-release identifiers in input order; empty for a release version.
+    // Dot-separated pre-release identifiers in input order; empty for a release version.
     prerelease: List[String] = []
-    # Dot-separated build metadata identifiers in input order; ignored by compare.
+    // Dot-separated build metadata identifiers in input order; ignored by compare.
     build: List[String] = []
 
-# Compares two versions by SemVer precedence, returning -1, 0 or 1.
-# Build metadata is ignored, and a pre-release sorts before its release.
+// Compares two versions by SemVer precedence, returning -1, 0 or 1.
+// Build metadata is ignored, and a pre-release sorts before its release.
 export fn compare(left: Version, right: Version) Int:
     let core = compare_ints(left.major, right.major)
     if core != 0: return core
@@ -41,14 +41,14 @@ export fn compare(left: Version, right: Version) Int:
 
     return shared
 
-# Formats a version as `major.minor.patch[-prerelease][+build]`.
+// Formats a version as `major.minor.patch[-prerelease][+build]`.
 export fn format(version: Version) String:
     var text = "{version.major}.{version.minor}.{version.patch}"
     if not version.prerelease.is_empty(): text = "{text}-{version.prerelease.join(".")}"
     if not version.build.is_empty(): text = "{text}+{version.build.join(".")}"
     return text
 
-# Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are rejected.
+// Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are rejected.
 export fn parse(text: String) Version!:
     let build_parts = split_first(text, "+")
     let core_and_pre = split_first(build_parts[0].clone(), "-")
@@ -104,7 +104,7 @@ export fn parse(text: String) Version!:
         )
     )
 
-# Splits at the first separator only; `String.split` with a part cap drops the rest instead of keeping it.
+// Splits at the first separator only; `String.split` with a part cap drops the rest instead of keeping it.
 fn split_first(text: String, separator: String) List[String]:
     if let at = text.index_of(separator): return [text.take(at), text.drop(at + 1)]
 
@@ -116,7 +116,7 @@ fn compare_ints(left: Int, right: Int) Int:
 
     return 0
 
-# Digits only, at least one; the caller has already rejected non-ASCII through scalar values.
+// Digits only, at least one; the caller has already rejected non-ASCII through scalar values.
 fn all_digits(scalars: List[Int]) Bool:
     if scalars.is_empty(): return false
 
@@ -127,7 +127,7 @@ fn all_digits(scalars: List[Int]) Bool:
 fn has_leading_zero(scalars: List[Int]) Bool:
     return scalars.length() > 1 and scalars[0] == 48
 
-# ASCII letters, digits and hyphen, at least one.
+// ASCII letters, digits and hyphen, at least one.
 fn valid_identifier(scalars: List[Int]) Bool:
     if scalars.is_empty(): return false
 
@@ -139,7 +139,7 @@ fn valid_identifier(scalars: List[Int]) Bool:
 
     return true
 
-# Numeric identifiers sort numerically and before alphanumeric ones; others sort bytewise.
+// Numeric identifiers sort numerically and before alphanumeric ones; others sort bytewise.
 fn compare_identifier(left: String, right: String) Int:
     let left_numeric = all_digits(left.scalar_values())
     let right_numeric = all_digits(right.scalar_values())

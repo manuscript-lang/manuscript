@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/format/format_layout_test.go:340 TestFormatExpressionLayouts
+// conform: tags=diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/format/format_layout_test.go:340 TestFormatExpressionLayouts
 fn work() Int:
     return (
         initial_account_balance

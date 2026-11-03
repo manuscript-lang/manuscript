@@ -121,7 +121,7 @@ fn show_result(r: Result[String, Failure]) Unit:
     else:
         emit("error: " + r.err().message())
 
-# ---------- text helpers ----------
+// ---------- text helpers ----------
 
 fn is_ws(c: String) Bool:
     return c == " " or c == "\t"
@@ -162,7 +162,7 @@ fn drop_words(text: String, n: Int) String:
         i += 1
     return chars_to_str(cs, i, cs.length())
 
-# Char index of the first whitespace-delimited word equal to word, or -1.
+// Char index of the first whitespace-delimited word equal to word, or -1.
 fn word_pos(text: String, word: String) Int:
     let cs = text.chars()
     let n = word.length()
@@ -199,9 +199,9 @@ fn tail_list(xs: List[String], k: Int) List[String]:
 fn contains_ci(a: String, b: String) Bool:
     return a.lower().contains(b.lower())
 
-# ---------- values ----------
+// ---------- values ----------
 
-# Integer rule: digits only, no leading zeros, at most 1000000.
+// Integer rule: digits only, no leading zeros, at most 1000000.
 fn int_value(s: String) Optional[Int]:
     if s.length() == 0 or s.length() > 7:
         return none
@@ -338,7 +338,7 @@ fn normalize_labels(items: List[String]) Result[List[String], Failure]:
     out.sort()
     return ok(out)
 
-# ---------- ids and lookup ----------
+// ---------- ids and lookup ----------
 
 fn parse_id(arg: String) Result[Int, Failure]:
     var digits = arg.clone()
@@ -378,7 +378,7 @@ fn log_add(var st: Store, id: Int, detail: String) Unit:
         LogEntry(t: st.clock, actor: st.actor.clone(), id: id, detail: detail)
     )
 
-# ---------- patches, diffs and edits ----------
+// ---------- patches, diffs and edits ----------
 
 fn parse_patch(toks: List[String], start: Int) Result[Patch, Failure]:
     var p = Patch()
@@ -620,7 +620,7 @@ fn op_move(var st: Store, id: Int, to: String, comment: String) Result[String, F
 
     return ok("moved #{id}: {from} -> {to}")
 
-# ---------- workflow ----------
+// ---------- workflow ----------
 
 fn add_state(var states: List[String], name: String) Unit:
     if not states.contains(name):
@@ -712,7 +712,7 @@ fn cmd_workflow(var st: Store, block: List[String]) Result[String, Failure]:
     )
     return ok("workflow ok: {n_states} states, {n_trans} transitions")
 
-# ---------- filter language ----------
+// ---------- filter language ----------
 
 fn tok_punct(kind: Int, text: String) Tok:
     return Tok(kind: kind, field: "", op: "", value: "", quoted: false, text: text)
@@ -1161,7 +1161,7 @@ fn matches(n: Node, it: Issue, st: Store) Bool:
         Everything:
             return true
 
-# Splits "FILTER sort FIELDS limit N" textually; limit is recognised first.
+// Splits "FILTER sort FIELDS limit N" textually; limit is recognised first.
 fn split_query(text: String) Result[Clauses, Failure]:
     let t = text.trim()
     let cs = t.chars()
@@ -1319,7 +1319,7 @@ fn cmd_list(st: Store, rest: String) Result[String, Failure]:
     let keys = try sort_keys(cl.sort)
     return run_list(st, node, keys, cl.limit)
 
-# ---------- views ----------
+// ---------- views ----------
 
 fn view_refs(text: String) List[String]:
     var out = List[String]()
@@ -1445,7 +1445,7 @@ fn cmd_view(var st: Store, rest: String) Result[String, Failure]:
 
     return fail(general)
 
-# ---------- issue commands ----------
+// ---------- issue commands ----------
 
 fn cmd_actor(var st: Store, rest: String) Result[String, Failure]:
     let w = words(rest)
@@ -1671,7 +1671,7 @@ fn cmd_log(st: Store, rest: String) Result[String, Failure]:
 
     return ok(out.join("\n"))
 
-# ---------- bulk ----------
+// ---------- bulk ----------
 
 fn bulk_one(var st: Store, verb: String, args: List[String], id: Int) Result[
     String, Failure
@@ -1739,7 +1739,7 @@ fn cmd_bulk(var st: Store, rest: String) Result[String, Failure]:
     out.append("bulk: {ok_n} ok, {bad_n} failed")
     return ok(out.join("\n"))
 
-# ---------- reports ----------
+// ---------- reports ----------
 
 fn count_state(st: Store, s: String) Int:
     var n = 0
@@ -1927,7 +1927,7 @@ fn cmd_report(st: Store, rest: String) Result[String, Failure]:
 
     return fail(general)
 
-# ---------- dispatch ----------
+// ---------- dispatch ----------
 
 fn dispatch(var st: Store, word: String, rest: String) Result[String, Failure]:
     if word == "actor":

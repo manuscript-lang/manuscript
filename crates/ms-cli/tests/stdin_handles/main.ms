@@ -1,6 +1,6 @@
 import read_all, read_line, stdin, stdout from "@std/io/io.ms"
 
-# Each `stdin()` call reads where the previous handle stopped, read-ahead included.
+// Each `stdin()` call reads where the previous handle stopped, read-ahead included.
 export fn main() Int:
     var n = 0
 

@@ -1,7 +1,7 @@
-# Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-# expect-mir: "msstd_time_instant_shift"
-# expect-mir: "msstd_time_instant_difference"
-# expect-mir: "msstd_time_instant_unshift"
+// Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
+// expect-mir: "msstd_time_instant_shift"
+// expect-mir: "msstd_time_instant_difference"
+// expect-mir: "msstd_time_instant_unshift"
 
 import monotonic from "@std/os/time.ms"
 

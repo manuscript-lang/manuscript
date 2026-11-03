@@ -5,7 +5,7 @@ fn checked(value: Int) Int:
 
     consume(second)
 
-    # Prepare the next case.
+    // Prepare the next case.
     let third = second + 1
     let fourth = third + 1
     consume(fourth)

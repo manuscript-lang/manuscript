@@ -1,6 +1,6 @@
-# conform: tags=aliasing,formatter,lists,mutation,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/lower/list_items_test.go:22 TestListItemsCacheOnlyLoopsThatCannotReplaceItems
+// conform: tags=aliasing,formatter,lists,mutation,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/lower/list_items_test.go:22 TestListItemsCacheOnlyLoopsThatCannotReplaceItems
 fn grow(values: List[Int]) Unit:
     values.append(0)
 

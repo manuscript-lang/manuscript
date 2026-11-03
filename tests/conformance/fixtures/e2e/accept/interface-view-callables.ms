@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,generics,interfaces,match,modules,mutation,optional,records,stdlib-testing,strings,testing,tier-core,try-result,scope-cleanup
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/interface-view-callables.ms
+// conform: tags=closures,control-flow,generics,interfaces,match,modules,mutation,optional,records,stdlib-testing,strings,testing,tier-core,try-result,scope-cleanup
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/interface-view-callables.ms
 import expect_equal from "@std/test/test.ms"
 
 interface Read[T]:

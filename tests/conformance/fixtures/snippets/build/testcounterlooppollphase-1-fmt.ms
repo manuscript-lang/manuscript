@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,lists,mutation,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/build/loop_poll_test.go:17 TestCounterLoopPollPhase
+// conform: tags=control-flow,formatter,lists,mutation,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/build/loop_poll_test.go:17 TestCounterLoopPollPhase
 fn poll_literal_up(var log: List[Int], start: Int) Unit:
     var i = -137
 

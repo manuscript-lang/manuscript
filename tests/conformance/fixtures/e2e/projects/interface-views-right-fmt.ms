@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,formatter,interfaces,modules,parser,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/interface_views/right.ms
+// conform: tags=closures,control-flow,formatter,interfaces,modules,parser,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/interface_views/right.ms
 import Read, Reader from "./domain.ms"
 
 impl Read for Reader:

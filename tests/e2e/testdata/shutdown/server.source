@@ -7,7 +7,7 @@ import sleep from "@std/os/time.ms"
 fn say(text: String) Unit:
     let _written = stdout().write(text)
 
-    # Piped stdout is buffered until exit; flush so a parent sees each line when it is printed.
+    // Piped stdout is buffered until exit; flush so a parent sees each line when it is printed.
     let _flushed = stdout().flush()
 
 type WorkerCleanup:

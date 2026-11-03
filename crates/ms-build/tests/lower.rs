@@ -1,9 +1,9 @@
 //! Lowers the programs in `tests/lower/*.ms` and verifies the MIR.
 //!
 //! Header comments state what the printed MIR must contain:
-//! - `# expect-mir: "text"` appears somewhere;
-//! - `# expect-mir-count: N "text"` appears at least N times;
-//! - `# expect-mir-order: "anchor" "a" "b"` finds `a` then `b` after the first `anchor`.
+//! - `// expect-mir: "text"` appears somewhere;
+//! - `// expect-mir-count: N "text"` appears at least N times;
+//! - `// expect-mir-order: "anchor" "a" "b"` finds `a` then `b` after the first `anchor`.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
 use ms_driver::{CheckRequest, check_graph, load_file};
@@ -35,8 +35,8 @@ fn quoted(rest: &str) -> Vec<&str> {
 
 fn check_expectations(source: &str, mir: &str) -> Vec<String> {
     let mut failures = Vec::new();
-    for line in source.lines().take_while(|l| l.starts_with('#')) {
-        let line = line.trim_start_matches('#').trim();
+    for line in source.lines().take_while(|l| l.starts_with("//")) {
+        let line = line.trim_start_matches('/').trim();
         if let Some(rest) = line.strip_prefix("expect-mir-count:") {
             let rest = rest.trim();
             let (count, text) = rest.split_once(' ').expect("count and text");

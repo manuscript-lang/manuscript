@@ -47,7 +47,7 @@ export fn main() Int:
     fs.append(fn (): v.items[0] + v.items[2])
     let n = v.items.length()
     xs = [9]
-    # ... allocate other lists ...
+    // ... allocate other lists ...
     stdout().write("n={n} closure={fs[0]()}\n").get()
     return 0
 ```
@@ -86,8 +86,8 @@ impl Closeable for Res:
         stdout().write("close {self.id}\n").get()
 
 export fn main() Int:
-    let a = make(7).get_id()          # Res: Int field only
-    let b = make_named("heap").get_id() # Named: String field
+    let a = make(7).get_id()          // Res: Int field only
+    let b = make_named("heap").get_id() // Named: String field
     return 0
 ```
 
@@ -123,7 +123,7 @@ let _ = b.append("x-k", "v")
 let r = Req(a)
 let s = r
 let _ = s.h.append("x-j", "w")
-# a.names().length() == 2
+// a.names().length() == 2
 ```
 
 - `HttpHeaders` is an `extern type` with plain `fn append`. `classify.rs::native` (lines 76-78) defaults every other native to `Copy`, so `let b = a` shares the handle. `effects.rs::collection_mutation` lists mutators only for the five builders, by name, so `let` does not stop the change.

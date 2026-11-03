@@ -1,7 +1,7 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# Hard-break marker placed before a line break in paragraph text (two trailing spaces).
+// Hard-break marker placed before a line break in paragraph text (two trailing spaces).
 let SENT = "\u{1}"
 let PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
 let DIGITS = "0123456789"
@@ -50,7 +50,7 @@ type Node:
     case Link(dest: String, title: Optional[String], children: List[Node], image: Bool)
     case Emph(children: List[Node], strong: Bool)
 
-# ---------- small string and line helpers ----------
+// ---------- small string and line helpers ----------
 
 fn esc(s: String) String:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(
@@ -109,7 +109,7 @@ fn trim(s: String) String:
 fn is_digit(c: String) Bool:
     return c != "" and DIGITS.contains(c)
 
-# ---------- block constructs ----------
+// ---------- block constructs ----------
 
 fn open_fence(line: String) Optional[Fence]:
     let ind = indent_of(line)
@@ -595,7 +595,7 @@ fn parse_blocks(lines: List[String]) List[Blk]:
 
     return out
 
-# ---------- inline: scanning ----------
+// ---------- inline: scanning ----------
 
 fn is_ws(c: String) Bool:
     return c == "" or c == " " or c == "\n" or c == SENT
@@ -872,7 +872,7 @@ fn scan(cs: List[String]) List[Node]:
     resolve(var nodes)
     return nodes
 
-# ---------- inline: emphasis ----------
+// ---------- inline: emphasis ----------
 
 fn literal(node: Node) Node:
     match node:
@@ -947,7 +947,7 @@ fn resolve(var ns: List[Node]) Unit:
     while i < ns.length():
         i = resolve_at(var ns, i)
 
-# ---------- inline: rendering ----------
+// ---------- inline: rendering ----------
 
 fn plain_node(node: Node) String:
     match node:
@@ -1016,7 +1016,7 @@ fn render(ns: List[Node]) String:
 fn inline(text: String) String:
     return render(scan(text.chars()))
 
-# ---------- entry point ----------
+// ---------- entry point ----------
 
 export fn main() Int:
     let lines = read_lines(stdin()).get()

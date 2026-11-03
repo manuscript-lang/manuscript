@@ -8,7 +8,7 @@ impl Closeable for Door:
         return ok(unit)
 
 fn dupe[T](xs: List[T]) Int:
-    let ys = xs.reversed()  # error: reversed requires T to be Clonable
+    let ys = xs.reversed()  // error: reversed requires T to be Clonable
     return ys.length()
 
 fn outer[U](xs: List[U]) Int:

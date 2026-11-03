@@ -2,8 +2,8 @@ import stdout from "@std/io.ms"
 import stdin from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# Recursive-descent parser over the token list. Syntax errors set `bad`; division by zero sets `div0`
-# and keeps evaluating, so a later syntax error still takes precedence.
+// Recursive-descent parser over the token list. Syntax errors set `bad`; division by zero sets `div0`
+// and keeps evaluating, so a later syntax error still takes precedence.
 type Parser:
     toks: List[String]
     pos: Int
@@ -103,7 +103,7 @@ fn tokenize(line: String) Parser:
 
     return p
 
-# Returns the output line for one input line, or "" when the input line is blank.
+// Returns the output line for one input line, or "" when the input line is blank.
 fn answer(line: String) String:
     var p = tokenize(line)
     if p.bad:

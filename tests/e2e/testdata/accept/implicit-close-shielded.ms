@@ -10,15 +10,15 @@ import (
 ) from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
-# The scope-end close of a binding runs on every exit and is shielded like any other close: cancellation and a
-# pending fault do not interrupt it, and a fault inside it follows the cleanup-failure table.
+// The scope-end close of a binding runs on every exit and is shielded like any other close: cancellation and a
+// pending fault do not interrupt it, and a fault inside it follows the cleanup-failure table.
 type Holder:
     dir: String
     id: Int
     pause: Bool
     breaks: Bool
 
-# Close records itself by writing a marker file named after the holder.
+// Close records itself by writing a marker file named after the holder.
 impl Closeable for Holder:
     var fn close() Unit!:
         if self.pause:

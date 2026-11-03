@@ -2,12 +2,12 @@ import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 import range from "@std/collections.ms"
 
-# One script line: kind 0 is unchanged, 1 is a deletion from A, 2 is an insertion from B.
+// One script line: kind 0 is unchanged, 1 is a deletion from A, 2 is an insertion from B.
 type Op:
     kind: Int
     text: String
 
-# L(i, j) for suffixes, stored row-major with width b.length() + 1.
+// L(i, j) for suffixes, stored row-major with width b.length() + 1.
 fn lcs_table(a: List[String], b: List[String]) List[Int]:
     let w = b.length() + 1
     var t: List[Int] = []
@@ -64,7 +64,7 @@ fn edit_script(a: List[String], b: List[String], t: List[Int]) List[Op]:
 
     return ops
 
-# Start line of a hunk section given the lines consumed before it.
+// Start line of a hunk section given the lines consumed before it.
 fn hunk_start(before: Int, length: Int) Int:
     if length > 0: return before + 1
 
@@ -93,7 +93,7 @@ export fn main() Int:
     let ops = edit_script(a, b, lcs_table(a, b))
     let total = ops.length()
 
-    # apre[p] and bpre[p] count the A and B lines consumed by the first p script lines.
+    // apre[p] and bpre[p] count the A and B lines consumed by the first p script lines.
     var apre = [0]
     var bpre = [0]
 
@@ -106,7 +106,7 @@ export fn main() Int:
         apre.append(apre[p] + da)
         bpre.append(bpre[p] + db)
 
-    # Group changes into runs: a gap of unchanged lines above 2 * ctx starts a new hunk.
+    // Group changes into runs: a gap of unchanged lines above 2 * ctx starts a new hunk.
     var starts: List[Int] = []
     var ends: List[Int] = []
     var first = -1

@@ -14,7 +14,7 @@
           "file": "testsuccessfulresultboundsrejectdifferentreturn-6.ms",
           "line": 4,
           "column": 23,
-          "offset": 212
+          "offset": 215
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testsuccessfulresultboundsrejectdifferentreturn-6.ms",
           "line": 5,
           "column": 28,
-          "offset": 246
+          "offset": 249
         }
       }
     ],

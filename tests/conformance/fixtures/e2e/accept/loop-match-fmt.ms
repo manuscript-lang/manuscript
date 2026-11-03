@@ -1,6 +1,6 @@
-# conform: tags=alternatives,control-flow,formatter,match,modules,mutation,parser,records,stdlib-testing,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/loop-match.ms
+// conform: tags=alternatives,control-flow,formatter,match,modules,mutation,parser,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/loop-match.ms
 import expect_equal from "@std/test/test.ms"
 
 type State:

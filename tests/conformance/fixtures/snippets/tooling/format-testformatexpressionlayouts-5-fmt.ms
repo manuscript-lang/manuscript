@@ -1,6 +1,6 @@
-# conform: tags=formatter,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/format/format_layout_test.go:78 TestFormatExpressionLayouts
+// conform: tags=formatter,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/format/format_layout_test.go:78 TestFormatExpressionLayouts
 fn work() Unit:
     send(
         condition: account_is_active

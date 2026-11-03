@@ -1,6 +1,6 @@
-# conform: tags=formatter,generics,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/build/compiler_test.go:280 FuzzCompile
+// conform: tags=formatter,generics,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/build/compiler_test.go:280 FuzzCompile
 type Box[T]:
     value: T
 

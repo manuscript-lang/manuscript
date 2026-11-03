@@ -1,6 +1,6 @@
-# conform: tags=control-flow,modules,mutation,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
-# conform: origin=documentation/learn/tour.md:91
+// conform: tags=control-flow,modules,mutation,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
+// conform: origin=documentation/learn/tour.md:91
 import expect_equal from "@std/test/test.ms"
 
 test "count five iterations":

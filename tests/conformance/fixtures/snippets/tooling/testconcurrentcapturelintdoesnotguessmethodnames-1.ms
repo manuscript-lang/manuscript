@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,diagnostics,interfaces,records,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/capture_lint_test.go:79 TestConcurrentCaptureLintDoesNotGuessMethodNames
+// conform: tags=closures,control-flow,diagnostics,interfaces,records,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/capture_lint_test.go:79 TestConcurrentCaptureLintDoesNotGuessMethodNames
 interface Starter:
     fn start(operation: fn() Unit) Unit
 

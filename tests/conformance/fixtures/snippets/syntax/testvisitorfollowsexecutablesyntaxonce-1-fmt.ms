@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,formatter,interfaces,interpolation,match,parser,records,strings,tier-core
-# conform: phase=parse
-# conform: origin=pkg/syntax/walk_test.go:12 TestVisitorFollowsExecutableSyntaxOnce
+// conform: tags=closures,control-flow,formatter,interfaces,interpolation,match,parser,records,strings,tier-core
+// conform: phase=parse
+// conform: origin=pkg/syntax/walk_test.go:12 TestVisitorFollowsExecutableSyntaxOnce
 fn choose(value: Int) Int:
     return value
 

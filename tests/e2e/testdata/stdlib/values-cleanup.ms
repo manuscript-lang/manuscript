@@ -24,8 +24,8 @@ type Resource:
     dir: String
     id: Int
 
-# Resources own their state, so close records order through the filesystem:
-# resource 1 notes whether resource 2 had already closed.
+// Resources own their state, so close records order through the filesystem:
+// resource 1 notes whether resource 2 had already closed.
 impl Closeable for Resource:
     var fn close() Unit!:
         let inner_closed = read_file("{self.dir}/2").is_ok()

@@ -1,4 +1,4 @@
-# Generator for c09-ciphers. Deterministic; run: ms run bench/agent/gen.ms -- c09
+// Generator for c09-ciphers. Deterministic; run: ms run bench/agent/gen.ms -- c09
 import GenCase, make_case, write_cases from "../../lib/gen.ms"
 import seeded from "../../lib/pyrandom.ms"
 import from_scalars from "@std/string.ms"
@@ -24,7 +24,7 @@ fn shift(text: String, keys: List[Int], fixed: Int, use_keys: Bool, sign: Int) S
 
     return from_scalars(out).get("")
 
-# A caesar key: an optional minus sign and one to seven digits.
+// A caesar key: an optional minus sign and one to seven digits.
 fn caesar_key(key: String) Bool:
     let digits = if key.starts_with("-"): key.slice(1, key.length()).get("") else: key.clone()
     return (

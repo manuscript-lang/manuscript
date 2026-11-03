@@ -1,7 +1,8 @@
-# Benchmark server: main <port> <data-dir> [threads]. With threads above 1 the main thread accepts and hands each connection, round robin, to one of that many serving workers. The Go server in ../go answers the same requests.
+// Benchmark server: main <port> <data-dir> [threads]. `serve` places each connection on one of that many scheduler threads. The Go server in ../go answers the same requests.
 import Bytes from "@std/bytes.ms"
 import read_file, write_file_bytes from "@std/os/fs.ms"
 import (
+    HttpServerOptions,
     headers,
     HttpExchange,
     HttpRequest,
@@ -9,6 +10,7 @@ import (
     buffered
 ) from "@std/net/http.ms"
 import lookup, serve from "@std/net/net.ms"
+import max from "@std/math/math.ms"
 import arguments from "@std/os/process.ms"
 
 fn score(id: Int) Int:
@@ -17,7 +19,7 @@ fn score(id: Int) Int:
 fn reply(status: Int, text: String) HttpResponse:
     return HttpResponse(status, headers(), text.to_bytes())
 
-# Next entry after (prev_id, prev_score) in score-descending, id-ascending order.
+// Next entry after (prev_id, prev_score) in score-descending, id-ascending order.
 fn pick_after(prev_id: Int, prev_score: Int) Int:
     var best = -1
     var best_score = -1
@@ -74,7 +76,7 @@ fn user_reply(path: String) HttpResponse:
             )
     return reply(404, "not found\n")
 
-# Resolve localhost, write 1 MiB to the connection's own file, read it back.
+// Resolve localhost, write 1 MiB to the connection's own file, read it back.
 fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
     if let addresses = lookup("localhost"):
         let path = "{dir}/m{slot}.bin"
@@ -89,7 +91,7 @@ fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
     try write_file_bytes(path, payload, replace: true)
     return ok(try read_file(path))
 
-# The benchmark endpoints.
+// The benchmark endpoints.
 fn make_handler(dir: String) fn(HttpExchange) Result[Unit, Error]:
     var text = "0123456789abcdef"
     var i = 0
@@ -115,9 +117,13 @@ fn make_handler(dir: String) fn(HttpExchange) Result[Unit, Error]:
 
     return buffered(handler)
 
-# Serves the benchmark endpoints on 127.0.0.1:<port> until the server stops.
-fn serve_here(port: String, dir: String) Int:
-    if let acquired = serve(address: "127.0.0.1:{port}", handler: make_handler(dir)):
+// Serves the benchmark endpoints on 127.0.0.1:<port> on `threads` scheduler threads until the server stops.
+fn serve_here(port: String, dir: String, threads: Int) Int:
+    let options = HttpServerOptions(cores: threads)
+
+    if let acquired = serve(
+        address: "127.0.0.1:{port}", handler: make_handler(dir), options: options
+    ):
         let server = acquired
         let _ignored = server.wait()
         return 0
@@ -129,4 +135,7 @@ export fn main() Int:
     if args.length() < 2 or args.length() > 3:
         return 2
 
-    return serve_here(args.get(0), args.get(1))
+    var threads = 1
+    if args.length() == 3:
+        threads = args.get(2).parse_int().get(1)
+    return serve_here(args.get(0), args.get(1), max(threads, 1))

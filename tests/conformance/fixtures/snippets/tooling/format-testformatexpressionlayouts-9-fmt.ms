@@ -1,6 +1,6 @@
-# conform: tags=formatter,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/format/format_layout_test.go:103 TestFormatExpressionLayouts
+// conform: tags=formatter,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/format/format_layout_test.go:103 TestFormatExpressionLayouts
 fn work() Unit:
     let values = {
         "balance": initial_account_balance

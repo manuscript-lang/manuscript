@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/format/format_layout_test.go:90 TestFormatExpressionLayouts
+// conform: tags=diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/format/format_layout_test.go:90 TestFormatExpressionLayouts
 fn work(
     balance: Int = initial_account_balance
     + pending_deposit_total * applicable_exchange_rate

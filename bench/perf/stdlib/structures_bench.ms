@@ -4,7 +4,7 @@ import Deque from "@std/collections/deque.ms"
 import BitSet from "@std/collections/bitset.ms"
 import SortedMap from "@std/collections/sorted.ms"
 
-# Queue, PriorityQueue, Deque, BitSet and SortedMap at two sizes each, so ns/op staying flat shows the complexity class.
+// Queue, PriorityQueue, Deque, BitSet and SortedMap at two sizes each, so ns/op staying flat shows the complexity class.
 bench "queue.enqueue_dequeue_100000":
     fn work() Result[Unit, Error]:
         var queue = Queue[Int]()

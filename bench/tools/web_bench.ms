@@ -1,8 +1,8 @@
-# Web server and fetch client benchmarks against Go (bench/perf/web; replaces run.sh and fetch.sh). Linux only: it needs taskset, pgrep, ps, strace and /proc.
-#
-# Usage: ms run bench/tools/web_bench.ms -- run [SECONDS]     serves the same endpoints from Manuscript, Go and Rust and measures each
-#        ms run bench/tools/web_bench.ms -- fetch [SECONDS]  Manuscript's fetch and Go's net/http client against one Go file server
-# Environment: MS, GO, SERVER_CPUS (0,1), LOAD_CPUS (2,3), MS_THREADS (2). Without taskset or with fewer than 4 CPUs nothing is pinned.
+// Web server and fetch client benchmarks against Go (bench/perf/web; replaces run.sh and fetch.sh). Linux only: it needs taskset, pgrep, ps, strace and /proc.
+//
+// Usage: ms run bench/tools/web_bench.ms -- run [SECONDS]     serves the same endpoints from Manuscript, Go and Rust and measures each
+//        ms run bench/tools/web_bench.ms -- fetch [SECONDS]  Manuscript's fetch and Go's net/http client against one Go file server
+// Environment: MS, GO, SERVER_CPUS (0,1), LOAD_CPUS (2,3), MS_THREADS (2). Without taskset or with fewer than 4 CPUs nothing is pinned.
 import (
     absolute,
     build_go,
@@ -29,18 +29,18 @@ fn say(text: String) Unit:
 fn tail(text: String) String:
     return text.trim()
 
-# The command line with CPU pinning when `cpus` is set.
+// The command line with CPU pinning when `cpus` is set.
 fn pinned(cpus: String, argv: List[String]) List[String]:
     if cpus == "": return argv.clone()
 
     return ["taskset", "-c", cpus].concat(argv)
 
-# Runs `argv` after raising the open-file limit, as the shell scripts did.
+// Runs `argv` after raising the open-file limit, as the shell scripts did.
 fn raised(argv: List[String]) Ran:
     let script = "ulimit -n 20000 2>/dev/null; exec \"$@\""
     return capture("sh", ["-c", script, "sh"].concat(argv))
 
-# Starts `argv` with standard output in `out` and the open-file limit raised.
+// Starts `argv` with standard output in `out` and the open-file limit raised.
 fn background(argv: List[String], out: String) Subprocess!:
     let script = "out=$1; shift; ulimit -n 20000 2>/dev/null; exec \"$@\" >\"$out\" 2>/dev/null"
     let args = ["-c", script, "sh", out.clone()].concat(argv)
@@ -75,7 +75,7 @@ fn load_cmd(p: Plan, port: Int, args: List[String]) List[String]:
 fn load(p: Plan, port: Int, args: List[String]) String:
     return tail(raised(load_cmd(p, port, args)).stdout)
 
-# Whether the server answers `/health` within five seconds of starting.
+// Whether the server answers `/health` within five seconds of starting.
 fn wait_started(p: Plan, port: Int) Bool:
     for attempt in 0..50:
         let ran = raised(load_cmd(p, port, ["1", "1", "/health"]))
@@ -88,7 +88,7 @@ fn wait_started(p: Plan, port: Int) Bool:
 fn first_pid(pattern: String) String:
     return capture("pgrep", ["-f", pattern]).stdout.split("\n")[0].trim()
 
-# Total system calls of all threads while strace is attached for `seconds`.
+// Total system calls of all threads while strace is attached for `seconds`.
 fn syscalls(pid: String, seconds: Int, file: String) Int:
     let _ = capture(
         "timeout", ["{seconds}", "strace", "-f", "-c", "-p", pid, "-o", file.clone()]
@@ -305,7 +305,7 @@ fn fetch_all(here: String, seconds: Int) Unit!:
                 "{file} connections={conns} ms threads=2 {cell(p, ["{w}/ms/fetch", url.clone(), conns.clone(), "{seconds}", "2"])}"
             )
 
-    # Framings of the same 8 MiB: chunked (random) and gzip (compressible text), one connection.
+    // Framings of the same 8 MiB: chunked (random) and gzip (compressible text), one connection.
     for path in ["chunked/big", "gzip/text"]:
         let url = "http://127.0.0.1:18950/{path}"
         let go = tail(

@@ -2,7 +2,7 @@ import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 import parse, JsonLimits from "@std/data/json.ms"
 import hex_decode from "@std/data/encoding.ms"
 
-# Library failures are plain Error values: callers branch on `kind`, not on a domain type.
+// Library failures are plain Error values: callers branch on `kind`, not on a domain type.
 
 fn describe_error(cause: Error) String:
     if cause.kind == ErrorCategory.InvalidInput: return "bad limits"

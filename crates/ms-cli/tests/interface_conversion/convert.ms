@@ -23,13 +23,13 @@ fn through[T: Shape](x: T) String:
 export fn main() Int:
     let q = Sq(name: "sq")
 
-    # A read-only argument borrows, so `q` stays usable.
+    // A read-only argument borrows, so `q` stays usable.
     if describe(q) + q.name != "sqsq":
         return 1
     if through(q) != "sq":
         return 3
 
-    # Stored positions move at the last use or take a clone.
+    // Stored positions move at the last use or take a clone.
     let s: Shape = q.clone()
     let h = Holder(s: q.clone())
     if s.label() + h.s.label() != "sqsq":

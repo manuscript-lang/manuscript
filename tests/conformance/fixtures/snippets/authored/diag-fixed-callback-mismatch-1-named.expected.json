@@ -14,7 +14,7 @@
           "file": "diag-fixed-callback-mismatch-1-named.ms",
           "line": 8,
           "column": 21,
-          "offset": 229
+          "offset": 232
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "diag-fixed-callback-mismatch-1-named.ms",
           "line": 8,
           "column": 27,
-          "offset": 235
+          "offset": 238
         }
       }
     ],

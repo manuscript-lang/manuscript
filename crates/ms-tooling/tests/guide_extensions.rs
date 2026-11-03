@@ -47,7 +47,7 @@ fn bounded_source_methods_reach_list_pages_search_and_downloads() {
     assert!(to_json(std::slice::from_ref(module)).contains("fn min() T?"));
     let minimum = page("prelude.List.min").unwrap();
     assert!(
-        minimum.contains("# Receiver: List[T]; T: Comparable & Clonable"),
+        minimum.contains("// Receiver: List[T]; T: Comparable & Clonable"),
         "{minimum}"
     );
     let keyed = page("prelude.List.min_by").unwrap();
@@ -67,7 +67,7 @@ fn sorted_search_exposes_its_actual_result_and_comparable_bound_once() {
     assert_eq!(members.len(), 1, "{members:?}");
     assert_eq!(
         members[0].signature,
-        "# Receiver: List[T]; T: Comparable\nfn binary_search(value: T) SearchResult:"
+        "// Receiver: List[T]; T: Comparable\nfn binary_search(value: T) SearchResult:"
     );
     let text = page("prelude.List.binary_search").unwrap();
     assert!(text.contains(&members[0].signature), "{text}");
@@ -180,12 +180,12 @@ fn receiver_constraints_and_nominal_identity_survive_repeated_method_records() {
     assert!(
         signatures
             .iter()
-            .any(|signature| signature.contains("# Receiver: Box[Int]\nfn number() Int")),
+            .any(|signature| signature.contains("// Receiver: Box[Int]\nfn number() Int")),
         "{signatures:?}"
     );
     assert!(
         signatures.iter().any(|signature| signature
-            .contains("# Receiver: Box[T]; T: Comparable\nfn precedes(other: T) Bool")),
+            .contains("// Receiver: Box[T]; T: Comparable\nfn precedes(other: T) Bool")),
         "{signatures:?}"
     );
     let other = &documented

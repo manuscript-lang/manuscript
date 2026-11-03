@@ -1,7 +1,7 @@
-# Generates the same program in Manuscript and Go and times each build.
-# Usage: ms run bench/tools/compile_time.ms [-- packages files fns]   (default 40 25 10, about 122k lines of Manuscript)
-# OUT keeps the generated sources; MS picks the compiler; SKIP_LLVM=1 skips the release build.
-# Generated Manuscript and Go source contains many braces; `q` writes them as ‹ and › so the generator reads as source.
+// Generates the same program in Manuscript and Go and times each build.
+// Usage: ms run bench/tools/compile_time.ms [-- packages files fns]   (default 40 25 10, about 122k lines of Manuscript)
+// OUT keeps the generated sources; MS picks the compiler; SKIP_LLVM=1 skips the release build.
+// Generated Manuscript and Go source contains many braces; `q` writes them as ‹ and › so the generator reads as source.
 import (
     absolute,
     env,
@@ -21,7 +21,7 @@ import stdout from "@std/io/io.ms"
 fn q(text: String) String:
     return text.replace("‹", "\{").replace("›", "\}")
 
-# Whether the next draw picks a nearby dependency (70% of draws).
+// Whether the next draw picks a nearby dependency (70% of draws).
 fn chance(var rng: SeededRandom) Bool:
     return rng.int(0, 100) < 70
 
@@ -213,7 +213,7 @@ fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
     go.append("\tfmt.Println(t)\n" + q("›\n"))
     write_text("{out}/go/main.go", go.join(""))
 
-# Runs a build and prints its label with the elapsed seconds.
+// Runs a build and prints its label with the elapsed seconds.
 fn timed(
     label: String,
     dir: String,

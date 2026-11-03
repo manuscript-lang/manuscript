@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,formatter,generics,interfaces,interpolation,match,modules,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/runtime-3.ms
+// conform: tags=closures,control-flow,formatter,generics,interfaces,interpolation,match,modules,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/runtime-3.ms
 import expect_equal, expect_true, fail from "@std/test/test.ms"
 
 fn identity[T](value: T) T:

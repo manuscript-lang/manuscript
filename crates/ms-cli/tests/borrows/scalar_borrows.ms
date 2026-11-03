@@ -10,7 +10,7 @@ fn bump(var b: Box) Unit:
     _n = _n * 2
 
 impl Box:
-    # A `var` copy of a scalar field in a `var fn` is a copy too (#2193).
+    // A `var` copy of a scalar field in a `var fn` is a copy too (#2193).
     var fn mixed() Int:
         self.n = self.n + 1
         var z = self.n

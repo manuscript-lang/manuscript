@@ -1,6 +1,6 @@
-# conform: tags=control-flow,modules,numbers,optional,stdlib-numbers,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/stdlib/numbers.ms
+// conform: tags=control-flow,modules,numbers,optional,stdlib-numbers,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/stdlib/numbers.ms
 import expect_equal from "@std/test/test.ms"
 import parse_int, parse_float from "@std/math/math.ms"
 

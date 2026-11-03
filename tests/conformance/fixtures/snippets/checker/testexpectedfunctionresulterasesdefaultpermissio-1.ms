@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,generics,tier-core
-# conform: phase=check
-# conform: origin=pkg/checker/contextual_inference_test.go:46 TestExpectedFunctionResultErasesDefaultPermissions
+// conform: tags=closures,diagnostics,generics,tier-core
+// conform: phase=check
+// conform: origin=pkg/checker/contextual_inference_test.go:46 TestExpectedFunctionResultErasesDefaultPermissions
 fn from_callback[T](factory: fn() T) T: factory()
 
 fn first() Unit:

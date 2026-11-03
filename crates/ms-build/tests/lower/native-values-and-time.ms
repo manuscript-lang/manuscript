@@ -1,6 +1,6 @@
-# Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-# expect-mir: "closure.new"
-# expect-mir: "msstd_time_parse_timestamp"
+// Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
+// expect-mir: "closure.new"
+// expect-mir: "msstd_time_parse_timestamp"
 
 import stdout from "@std/io/io.ms"
 import sqrt, max from "@std/math/math.ms"

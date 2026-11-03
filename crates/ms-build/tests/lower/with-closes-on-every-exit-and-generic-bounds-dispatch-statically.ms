@@ -1,6 +1,6 @@
-# Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-# expect-mir: "cleanup.push"
-# expect-mir-count: 4 "call @Res.close"
+// Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
+// expect-mir: "cleanup.push"
+// expect-mir-count: 4 "call @Res.close"
 
 import Closeable from "@std/core.ms"
 

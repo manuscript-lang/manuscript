@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,faults,modules,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/local_extensions/conformance_test.ms
+// conform: tags=closures,diagnostics,faults,modules,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/local_extensions/conformance_test.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 import first_view, first_method, first_generic, first_resource from "./first.ms"
 import second_view, second_method, second_generic, second_resource from "./second.ms"

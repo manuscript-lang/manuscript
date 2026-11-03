@@ -1,6 +1,6 @@
-# conform: tags=closures,formatter,generics,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/contextual_inference_test.go:46 TestExpectedFunctionResultErasesDefaultPermissions
+// conform: tags=closures,formatter,generics,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/contextual_inference_test.go:46 TestExpectedFunctionResultErasesDefaultPermissions
 fn from_callback[T](factory: fn() T) T: factory()
 
 fn first() Unit:

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,formatter,lists,match,modules,mutation,optional,parser,records,stdlib-faults,testing,tier-stdlib
-# conform: phase=parse
-# conform: origin=pkg/lower/testdata/operand-captures.ms
+// conform: tags=control-flow,faults,formatter,lists,match,modules,mutation,optional,parser,records,stdlib-faults,testing,tier-stdlib
+// conform: phase=parse
+// conform: origin=pkg/lower/testdata/operand-captures.ms
 import panic from "@std/core.ms"
 
 type Counter:

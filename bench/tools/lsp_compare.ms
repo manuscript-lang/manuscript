@@ -1,7 +1,7 @@
-# Interleaves two already-built LSP harnesses and rejects mismatched output or work (replaces bench/perf/lsp*/compare.py).
-# Usage: ms run bench/tools/lsp_compare.ms -- <hover|outline|semantic> BEFORE AFTER --out FILE.csv [--samples 9] [--cpu N]
-# Suites are the case lists of the three studies: `hover` (bench/perf/lsp), `outline` (lsp-outline), `semantic` (lsp-semantic).
-# Harness output is `mode,count,rounds,shape,elapsed_ns,checksum,size,rss`. The CSV has a cpu column (empty without --cpu).
+// Interleaves two already-built LSP harnesses and rejects mismatched output or work (replaces bench/perf/lsp*/compare.py).
+// Usage: ms run bench/tools/lsp_compare.ms -- <hover|outline|semantic> BEFORE AFTER --out FILE.csv [--samples 9] [--cpu N]
+// Suites are the case lists of the three studies: `hover` (bench/perf/lsp), `outline` (lsp-outline), `semantic` (lsp-semantic).
+// Harness output is `mode,count,rounds,shape,elapsed_ns,checksum,size,rss`. The CSV has a cpu column (empty without --cpu).
 import (absolute, fail, invalid, median, options, sample, write_text) from "./lib.ms"
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"

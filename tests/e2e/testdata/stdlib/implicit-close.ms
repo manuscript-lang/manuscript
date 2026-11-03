@@ -6,7 +6,7 @@ type Resource:
     dir: String
     id: Int
 
-# Close records itself by writing a marker file named after the resource.
+// Close records itself by writing a marker file named after the resource.
 impl Closeable for Resource:
     var fn close() Unit!:
         let _ = write_file("{self.dir}/{self.id}", "closed", true)

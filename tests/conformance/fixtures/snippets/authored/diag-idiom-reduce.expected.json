@@ -14,20 +14,20 @@
           "file": "diag-idiom-reduce.ms",
           "line": 5,
           "column": 17,
-          "offset": 150
+          "offset": 153
         },
         "fix": {
           "position": {
             "file": "diag-idiom-reduce.ms",
             "line": 5,
             "column": 17,
-            "offset": 150
+            "offset": 153
           },
           "end": {
             "file": "diag-idiom-reduce.ms",
             "line": 5,
             "column": 23,
-            "offset": 156
+            "offset": 159
           },
           "replacement": "fold"
         }

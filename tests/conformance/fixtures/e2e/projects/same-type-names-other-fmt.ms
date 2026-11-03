@@ -1,6 +1,6 @@
-# conform: tags=alternatives,formatter,match,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/same_type_names/other.ms
+// conform: tags=alternatives,formatter,match,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/same_type_names/other.ms
 export type Point:
     x: Int
 

@@ -12,13 +12,13 @@
           "file": "foreign-finally.ms",
           "line": 5,
           "column": 5,
-          "offset": 130
+          "offset": 133
         },
         "end": {
           "file": "foreign-finally.ms",
           "line": 5,
           "column": 12,
-          "offset": 137
+          "offset": 140
         }
       }
     ],

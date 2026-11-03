@@ -15,7 +15,7 @@ let FUNCS = [
     "MAX"
 ]
 
-# ---------- values ----------
+// ---------- values ----------
 
 type Value:
     case VNull
@@ -36,7 +36,7 @@ fn is_null(v: Value) Bool:
         _:
             return false
 
-# Type rank used for NULL < BOOL < INT < TEXT ordering and type checks.
+// Type rank used for NULL < BOOL < INT < TEXT ordering and type checks.
 fn rank(v: Value) Int:
     match v:
         VNull:
@@ -90,7 +90,7 @@ fn show(v: Value) String:
 
             return "false"
 
-# Injective encoding of a value, used as a hash key where NULLs compare equal.
+// Injective encoding of a value, used as a hash key where NULLs compare equal.
 fn enc(v: Value) String:
     match v:
         VNull:
@@ -111,7 +111,7 @@ fn enc_row(vals: List[Value]) String:
         acc = acc + enc(v)
     return acc
 
-# Three-valued logic: 0 false, 1 true, 2 NULL. Non-boolean operands are type errors.
+// Three-valued logic: 0 false, 1 true, 2 NULL. Non-boolean operands are type errors.
 fn tri(v: Value) Result[Int, Fail]:
     match v:
         VNull:
@@ -152,7 +152,7 @@ fn tri_or(a: Int, b: Int) Int:
 
     return 2
 
-# Ordering used by ORDER BY: NULL < BOOL < INT < TEXT.
+// Ordering used by ORDER BY: NULL < BOOL < INT < TEXT.
 fn order_of(a: Value, b: Value) Int:
     let ra = rank(a)
     let rb = rank(b)
@@ -167,7 +167,7 @@ fn order_of(a: Value, b: Value) Int:
 
     return 0
 
-# Comparison of two non-NULL values of the same INT or TEXT type.
+// Comparison of two non-NULL values of the same INT or TEXT type.
 fn compare_values(a: Value, b: Value) Result[Int, Fail]:
     let ra = rank(a)
     if ra != rank(b) or ra < 2:
@@ -238,7 +238,7 @@ fn distinct_values(vals: List[Value]) List[Value]:
 
     return out
 
-# ---------- byte-level text helpers ----------
+// ---------- byte-level text helpers ----------
 
 fn bytes_of(s: String) List[Int]:
     var out = List[Int]()
@@ -253,7 +253,7 @@ fn text_of_bytes(bs: List[Int]) String:
             builder.append(u)
     return builder.build().decode_utf8().get("")
 
-# LIKE: '%' matches any run of bytes, '_' exactly one byte, everything else literally.
+// LIKE: '%' matches any run of bytes, '_' exactly one byte, everything else literally.
 fn like_match(s: List[Int], p: List[Int]) Bool:
     let n = s.length()
     let m = p.length()
@@ -281,7 +281,7 @@ fn like_match(s: List[Int], p: List[Int]) Bool:
         j += 1
     return j == m
 
-# ---------- syntax tree ----------
+// ---------- syntax tree ----------
 
 type Expr:
     case Lit(v: Value)
@@ -347,7 +347,7 @@ type Stmt:
     case DeleteRows(name: String, cond: Expr)
     case Query(sel: Select)
 
-# ---------- lexer ----------
+// ---------- lexer ----------
 
 type Tok:
     kind: String
@@ -368,8 +368,8 @@ fn is_digit(c: String) Bool:
 fn digit_value(c: String) Int:
     return c.scalar_values()[0] - 48
 
-# Lexes the whole script. Bad characters and unterminated strings become "err" tokens so that
-# only the statement containing them fails.
+// Lexes the whole script. Bad characters and unterminated strings become "err" tokens so that
+// only the statement containing them fails.
 fn lex(text: String) List[Tok]:
     let cs = text.chars()
     let n = cs.length()
@@ -450,7 +450,7 @@ fn lex(text: String) List[Tok]:
 
     return toks
 
-# Splits tokens at ';' operators. Empty statements are returned as empty lists.
+// Splits tokens at ';' operators. Empty statements are returned as empty lists.
 fn statements(toks: List[Tok]) List[List[Tok]]:
     var out = List[List[Tok]]()
     var cur = List[Tok]()
@@ -465,7 +465,7 @@ fn statements(toks: List[Tok]) List[List[Tok]]:
     out.append(cur)
     return out
 
-# ---------- parser ----------
+// ---------- parser ----------
 
 type Parser:
     toks: List[Tok]
@@ -1008,7 +1008,7 @@ impl Parser:
 
         return error(Fail("syntax error"))
 
-    # The current token is "(" after a function name.
+    // The current token is "(" after a function name.
     var fn call_rest(name: String) Result[Expr, Fail]:
         self.pos += 1
 
@@ -1033,7 +1033,7 @@ impl Parser:
         try self.expect_op(")")
         return ok(Call(name.upper(), args, distinct, star))
 
-# ---------- static checks (name resolution, aggregate placement) ----------
+// ---------- static checks (name resolution, aggregate placement) ----------
 
 type Slot:
     alias: String
@@ -1192,7 +1192,7 @@ fn check_expr(e: Expr, slots: List[Slot], cx: Check, in_agg: Bool) Result[Unit, 
                 try check_expr(a, slots, cx, in_agg or agg)
             return ok(unit)
 
-# ---------- evaluation ----------
+// ---------- evaluation ----------
 
 fn like_bytes(v: Value, p: Value) Result[Bool, Fail]:
     let s = try as_text(v)
@@ -1414,7 +1414,7 @@ fn scalar_call(name: String, vals: List[Value]) Result[Value, Fail]:
 
     return ok(VText(text_of_bytes(out)))
 
-# ---------- SELECT ----------
+// ---------- SELECT ----------
 
 type Group:
     row: List[Value]
@@ -1499,7 +1499,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
 
     let nsrc = sel.source.length()
 
-    # Step 1: tables exist, aliases are unique.
+    // Step 1: tables exist, aliases are unique.
     var tabs = List[Int]()
 
     for r in refs:
@@ -1523,7 +1523,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
             slots.append(Slot(alias.clone(), c.name.clone()))
         ends.append(slots.length())
 
-    # Step 2: name resolution, in the specified order.
+    // Step 2: name resolution, in the specified order.
     for j in 0..sel.joins.length():
         let pre = prefix_slots(slots, ends[nsrc + j])
         try check_expr(sel.joins[j].on, pre, plain_check(), false)
@@ -1593,7 +1593,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
         let k = try plan_order(o, names, slots, cx)
         keys.append(k)
 
-    # Step 3: FROM and JOIN rows.
+    // Step 3: FROM and JOIN rows.
     var rows = List[List[Value]]()
 
     if refs.length() == 0:
@@ -1632,7 +1632,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
 
         rows = nxt
 
-    # Step 4: WHERE.
+    // Step 4: WHERE.
     var filtered = List[List[Value]]()
 
     for r in rows:
@@ -1641,7 +1641,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
         if t == 1:
             filtered.append(r.clone())
 
-    # Step 5: grouping.
+    // Step 5: grouping.
     var units = List[Group]()
 
     if aggregated and sel.groups.length() > 0:
@@ -1677,7 +1677,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
         for r in filtered:
             units.append(Group(r.clone(), List[List[Value]]()))
 
-    # Step 6: HAVING per group.
+    // Step 6: HAVING per group.
     var kept = List[Group]()
 
     for u in units:
@@ -1686,7 +1686,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
         if ht == 1:
             kept.append(u.clone())
 
-    # Step 7: select list per row.
+    // Step 7: select list per row.
     var outs = List[List[Value]]()
 
     for u in kept:
@@ -1698,7 +1698,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
 
         outs.append(out)
 
-    # Step 8: ORDER BY keys per row.
+    // Step 8: ORDER BY keys per row.
     var recs = List[SortRec]()
 
     for i in 0..kept.length():
@@ -1713,7 +1713,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
 
         recs.append(SortRec(outs[i].clone(), ks))
 
-    # Step 9: DISTINCT, ORDER BY, OFFSET, LIMIT.
+    // Step 9: DISTINCT, ORDER BY, OFFSET, LIMIT.
     var uniq = List[SortRec]()
     var seen = Set[String]()
 
@@ -1750,14 +1750,14 @@ fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
     lines.append("({emitted} rows)")
     return ok(lines.join("\n") + "\n")
 
-# ---------- DDL and DML ----------
+// ---------- DDL and DML ----------
 
 type Table:
     name: String
     cols: List[ColDef]
     rows: List[List[Value]]
 
-# Column-level constraints for one full row, in declaration order.
+// Column-level constraints for one full row, in declaration order.
 fn check_row(cols: List[ColDef], row: List[Value]) Result[Unit, Fail]:
     for i in 0..cols.length():
         let c = cols[i]
@@ -1773,7 +1773,7 @@ fn check_row(cols: List[ColDef], row: List[Value]) Result[Unit, Fail]:
 
     return ok(unit)
 
-# Duplicate primary key check over existing rows followed by added rows.
+// Duplicate primary key check over existing rows followed by added rows.
 fn check_pk(
     cols: List[ColDef],
     existing: List[List[Value]],

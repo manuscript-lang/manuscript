@@ -1,6 +1,6 @@
-# conform: tags=control-flow,modules,stdlib-testing,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/bound-native-calls-omit-none-defaults.ms
+// conform: tags=control-flow,modules,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/bound-native-calls-omit-none-defaults.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
 test "omitted none defaults":

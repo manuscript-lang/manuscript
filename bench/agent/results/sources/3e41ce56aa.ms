@@ -8,10 +8,10 @@ let INSERT = 2
 
 type Step:
     kind: Int
-    a_before: Int  # lines of A consumed before this step
-    b_before: Int  # lines of B consumed before this step
+    a_before: Int  // lines of A consumed before this step
+    b_before: Int  // lines of B consumed before this step
 
-# t is flat: L(i, j) is at t[i * w + j], with w = b.length() + 1.
+// t is flat: L(i, j) is at t[i * w + j], with w = b.length() + 1.
 fn lcs_table(a: List[String], b: List[String]) List[Int]:
     let w = b.length() + 1
     var t = List[Int]()

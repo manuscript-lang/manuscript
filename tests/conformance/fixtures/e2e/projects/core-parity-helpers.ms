@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,generics,maps,optional,sets,tier-core,try-result
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/core_parity/helpers.ms
+// conform: tags=closures,diagnostics,generics,maps,optional,sets,tier-core,try-result
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/core_parity/helpers.ms
 export fn transform_set[T: Hashable, U: Hashable](
     values: Set[T],
     transform: fn(T) U

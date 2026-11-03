@@ -23,23 +23,25 @@ import (
     msstd_random_entropy
 ) from "@std/internal/random.ms"
 
-# A source of cryptographically secure random bytes.
+// A source of cryptographically secure random bytes.
 interface Entropy:
-    # Returns exactly `count` unpredictable bytes, with `count` from 0 through 16 MiB (16777216).
-    # A negative or larger count returns InvalidInput; a source failure returns Failed. The operating system source observes task cancellation between 64 KiB chunks.
+    // Returns exactly `count` unpredictable bytes, with `count` from 0 through 16 MiB (16777216).
+    // A negative or larger count returns InvalidInput; a source failure returns Failed. The operating system source observes task cancellation between 64 KiB chunks.
     var fn bytes(count: Int) Bytes!
 
-# Returns a secure integer at least `min` and below `max_exclusive` when supplied, from the operating system's entropy.
+// Returns a secure integer at least `min` and below `max_exclusive` when supplied, from the operating system's entropy.
 export fn secure_int(min: Int, max_exclusive: Int?) Int!:
     return msstd_random_draw_int(msstd_random_entropy(), min, max_exclusive)
 
-# Creates a version-4 UUID from the operating system's entropy.
+// Creates a version-4 UUID from the operating system's entropy.
 export fn uuid_v4() String!:
     return msstd_random_draw_uuid(msstd_random_entropy())
 
-# Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time in milliseconds and 80 random bits.
-# ULIDs made later sort after earlier ones as strings; two made in the same millisecond are ordered randomly.
-# Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return an `Error`.
+/*
+Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time in milliseconds and 80 random bits.
+ULIDs made later sort after earlier ones as strings; two made in the same millisecond are ordered randomly.
+Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return an `Error`.
+*/
 export fn ulid() String!:
     let moment = now()
     let millis = moment.seconds * 1000 + moment.nanos / 1000000
@@ -53,7 +55,7 @@ export fn ulid() String!:
         )
     raw.append_bytes(noise)
 
-    # 128 bits behind two zero bits make exactly 26 five-bit digits.
+    // 128 bits behind two zero bits make exactly 26 five-bit digits.
     let alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ".chars()
     var out = ""
     var pending = 0
@@ -71,27 +73,29 @@ export fn ulid() String!:
 
     return ok(out)
 
-# Returns a random token of `size` bytes as unpadded URL-safe Base64, the shape of Python's `secrets.token_urlsafe`.
-# The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API keys and password-reset links.
-# `size` follows `random_bytes`: 0 through 16 MiB, otherwise InvalidInput.
+/*
+Returns a random token of `size` bytes as unpadded URL-safe Base64, the shape of Python's `secrets.token_urlsafe`.
+The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API keys and password-reset links.
+`size` follows `random_bytes`: 0 through 16 MiB, otherwise InvalidInput.
+*/
 export fn token(size: Int = 32) String!:
     let data = try random_bytes(size)
     return ok(base64_encode_unpadded(data, url_safe: true))
 
-# Returns a secure Float at least 0.0 and below 1.0 with 53 random bits (JavaScript `Math.random`, but cryptographically secure).
+// Returns a secure Float at least 0.0 and below 1.0 with 53 random bits (JavaScript `Math.random`, but cryptographically secure).
 export fn float() Float!:
     return msstd_random_draw_float(msstd_random_entropy())
 
-# Shuffles the list in place with an unbiased Fisher-Yates shuffle and returns it.
+// Shuffles the list in place with an unbiased Fisher-Yates shuffle and returns it.
 export fn shuffle[T](values: List[T]) List[T]!:
     return msstd_random_draw_shuffle(msstd_random_entropy(), values)
 
-# Returns a uniformly chosen item, or none for an empty list.
+// Returns a uniformly chosen item, or none for an empty list.
 export fn choice[T](values: List[T]) T?!:
     return msstd_random_draw_choice(msstd_random_entropy(), values)
 
-# Returns `count` distinct positions' items chosen uniformly without replacement, in random order, as copies; the input is unchanged.
-# A `count` outside 0 through the list length returns InvalidInput.
+// Returns `count` distinct positions' items chosen uniformly without replacement, in random order, as copies; the input is unchanged.
+// A `count` outside 0 through the list length returns InvalidInput.
 export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
     if count < 0 or count > values.length():
         return error(Error("random: invalid input", kind: ErrorCategory.InvalidInput))
@@ -106,8 +110,8 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 
     return ok(out)
 
-# Returns an item chosen with probability proportional to its weight, or none for an empty list.
-# `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this returns InvalidInput.
+// Returns an item chosen with probability proportional to its weight, or none for an empty list.
+// `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this returns InvalidInput.
 export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?!:
     if values.is_empty() and weights.is_empty():
         return ok(none)
@@ -123,9 +127,11 @@ fn positions(count: Int) List[Int]:
         out.append(i)
     return out
 
-# Reports whether `weights` has `count` finite, non-negative entries with a positive total.
-# Sums the weights. A loop rather than `List.sum`, because `@std/math/math.ms` imports this module and the
-# modules the collection extensions import cannot use those extensions.
+/*
+Reports whether `weights` has `count` finite, non-negative entries with a positive total.
+Sums the weights. A loop rather than `List.sum`, because `@std/math/math.ms` imports this module and the
+modules the collection extensions import cannot use those extensions.
+*/
 fn weight_total(weights: List[Float]) Float:
     var total = 0.0
     for weight in weights:
@@ -146,8 +152,8 @@ fn valid_weights(count: Int, weights: List[Float]) Bool:
 
     return total > 0.0 and total.is_finite()
 
-# Returns the position whose share of the total weight contains `point`, which is at least 0.0 and below the total.
-# Zero-weight positions are never returned.
+// Returns the position whose share of the total weight contains `point`, which is at least 0.0 and below the total.
+// Zero-weight positions are never returned.
 fn weighted_position(weights: List[Float], point: Float) Int:
     var running = 0.0
     var last = 0
@@ -161,25 +167,27 @@ fn weighted_position(weights: List[Float], point: Float) Int:
 
     return last
 
-# Returns exactly `count` unpredictable bytes from the operating system, with `count` from 0 through 16 MiB (16777216).
-# A negative or larger count returns InvalidInput; a source failure returns Failed. The call observes task cancellation between 64 KiB chunks.
+// Returns exactly `count` unpredictable bytes from the operating system, with `count` from 0 through 16 MiB (16777216).
+// A negative or larger count returns InvalidInput; a source failure returns Failed. The call observes task cancellation between 64 KiB chunks.
 export fn random_bytes(count: Int) Bytes!:
     var source = msstd_random_entropy()
     return source.bytes(count)
 
-# A deterministic pseudo-random generator: the same seed always gives the same sequence, on every platform.
-# It is not secure; use `secure_int`, `float`, `shuffle` and `choice` when the values must be unpredictable.
-# `var rng = seeded(1)` then `rng.int(0, 10)` returns the same value on every run.
+/*
+A deterministic pseudo-random generator: the same seed always gives the same sequence, on every platform.
+It is not secure; use `secure_int`, `float`, `shuffle` and `choice` when the values must be unpredictable.
+`var rng = seeded(1)` then `rng.int(0, 10)` returns the same value on every run.
+*/
 export type SeededRandom:
-    # Internal state: the SplitMix64 counter, advanced on every draw.
+    // Internal state: the SplitMix64 counter, advanced on every draw.
     state: Int
 
-# Returns a generator that starts from `seed`; equal seeds give equal sequences (SplitMix64).
+// Returns a generator that starts from `seed`; equal seeds give equal sequences (SplitMix64).
 export fn seeded(seed: Int) SeededRandom:
     return SeededRandom(state: seed)
 
 impl SeededRandom:
-    # Returns the next 64 random bits as a signed Int.
+    // Returns the next 64 random bits as a signed Int.
     var fn next_bits() Int:
         self.state = wrapping_add(self.state, -7046029254386353131)
 
@@ -192,7 +200,7 @@ impl SeededRandom:
         )
         return bit_xor(z, shift_right_unsigned(z, 31))
 
-    # Returns an Int at least `min` and below `max_exclusive`, uniformly. A `min` not below `max_exclusive`, or a range wider than the largest Int, faults.
+    // Returns an Int at least `min` and below `max_exclusive`, uniformly. A `min` not below `max_exclusive`, or a range wider than the largest Int, faults.
     var fn int(min: Int, max_exclusive: Int) Int:
         if min >= max_exclusive:
             panic("random int: min must be below max_exclusive")
@@ -205,18 +213,18 @@ impl SeededRandom:
             let bits = shift_right_unsigned(self.next_bits(), 1)
             let rest = bits % span
 
-            # Redraw the few values past the last whole multiple of `span`, so none is likelier.
+            // Redraw the few values past the last whole multiple of `span`, so none is likelier.
             if bits - rest <= max_int - (span - 1):
                 return min + rest
 
         return min
 
-    # Returns a Float at least 0.0 and below 1.0 with 53 random bits.
+    // Returns a Float at least 0.0 and below 1.0 with 53 random bits.
     var fn float() Float:
         let bits = shift_right_unsigned(self.next_bits(), 11)
         return bits.to_float() / 9007199254740992.0
 
-    # Shuffles `values` with an unbiased Fisher-Yates shuffle and returns it.
+    // Shuffles `values` with an unbiased Fisher-Yates shuffle and returns it.
     var fn shuffle[T](values: List[T]) List[T]:
         var out = values
         var index = out.length() - 1
@@ -227,15 +235,15 @@ impl SeededRandom:
 
         return out
 
-    # Returns a uniformly chosen item, or none for an empty list.
+    // Returns a uniformly chosen item, or none for an empty list.
     var fn choice[T](values: List[T]) T?:
         if values.is_empty():
             return none
 
         return values.get(self.int(0, values.length()))
 
-    # Returns `count` items chosen uniformly without replacement, in random order, as copies; `values` is unchanged.
-    # A `count` outside 0 through the list length faults.
+    // Returns `count` items chosen uniformly without replacement, in random order, as copies; `values` is unchanged.
+    // A `count` outside 0 through the list length faults.
     var fn sample[T: Clonable](values: List[T], count: Int) List[T]:
         if count < 0 or count > values.length():
             panic("random sample: count must be from 0 to the list length")
@@ -249,8 +257,8 @@ impl SeededRandom:
 
         return out
 
-    # Returns an item chosen with probability proportional to its weight, or none for an empty list.
-    # `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this faults.
+    // Returns an item chosen with probability proportional to its weight, or none for an empty list.
+    // `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this faults.
     var fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?:
         if values.is_empty() and weights.is_empty():
             return none
@@ -263,16 +271,16 @@ impl SeededRandom:
         let point = self.float() * weight_total(weights)
         return values[weighted_position(weights, point)].clone()
 
-    # Returns a standard normal Float (mean 0, standard deviation 1) using the Box-Muller transform.
+    // Returns a standard normal Float (mean 0, standard deviation 1) using the Box-Muller transform.
     var fn normal() Float:
         let radius = sqrt(-2.0 * log(1.0 - self.float()))
         return radius * cos(6.283185307179586 * self.float())
 
-    # Returns an exponentially distributed Float with rate 1 (mean 1), always positive or zero.
+    // Returns an exponentially distributed Float with rate 1 (mean 1), always positive or zero.
     var fn exponential() Float:
         return -log(1.0 - self.float())
 
-    # Returns a shuffled list of the Ints 0 through `count - 1`. A negative `count` faults.
+    // Returns a shuffled list of the Ints 0 through `count - 1`. A negative `count` faults.
     var fn permutation(count: Int) List[Int]:
         if count < 0:
             panic("random permutation: count must not be negative")

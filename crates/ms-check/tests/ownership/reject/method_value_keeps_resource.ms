@@ -19,4 +19,4 @@ fn apply(f: fn(Door) Door?) Int:
 
 fn g() Int:
     let b = Bin(0)
-    return apply(b.keep)  # error: `b.keep` keeps its parameter `d`
+    return apply(b.keep)  // error: `b.keep` keeps its parameter `d`

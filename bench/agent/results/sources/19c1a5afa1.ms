@@ -1,8 +1,8 @@
-# Markdown subset to HTML converter (see TASK.md).
+// Markdown subset to HTML converter (see TASK.md).
 
 import read_line, stdin, stdout from "@std/io.ms"
 
-# Sentinel for a two-space hard break inside paragraph text; never occurs in input.
+// Sentinel for a two-space hard break inside paragraph text; never occurs in input.
 let HB = "§"
 let PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
 let DIGITS = "0123456789"
@@ -63,7 +63,7 @@ type Joined:
     nodes: List[Node]
     next: Int
 
-# ---------- string helpers ----------
+// ---------- string helpers ----------
 
 fn joinc(cs: List[String], a: Int, b: Int) String:
     var s = ""
@@ -75,7 +75,7 @@ fn joinc(cs: List[String], a: Int, b: Int) String:
 
     return s
 
-# Substring from index a (in scalars) to the end.
+// Substring from index a (in scalars) to the end.
 fn sub(s: String, a: Int) String:
     let cs = s.chars()
     return joinc(cs, a, cs.length())
@@ -101,7 +101,7 @@ fn isPunct(c: String) Bool:
 fn isWs(c: String) Bool:
     return c == " " or c == "\n" or c == HB
 
-# Number of leading spaces.
+// Number of leading spaces.
 fn lead(s: String) Int:
     let cs = s.chars()
     var n = 0
@@ -109,7 +109,7 @@ fn lead(s: String) Int:
         n += 1
     return n
 
-# Number of consecutive copies of c starting at p.
+// Number of consecutive copies of c starting at p.
 fn runAt(cs: List[String], p: Int, c: String) Int:
     var n = 0
     while p + n < cs.length() and cs[p + n] == c:
@@ -131,7 +131,7 @@ fn isThematic(line: String) Bool:
 
     return runAt(cs, 0, c) == cs.length()
 
-# Fence length of a line body (already left-trimmed), or 0 when it is not a fence opener.
+// Fence length of a line body (already left-trimmed), or 0 when it is not a fence opener.
 fn fenceOpen(body: String) Int:
     let cs = body.chars()
     if cs.length() == 0:
@@ -149,7 +149,7 @@ fn fenceOpen(body: String) Int:
 
     return f
 
-# ATX heading level of a left-trimmed body, or 0.
+// ATX heading level of a left-trimmed body, or 0.
 fn atxLevel(body: String) Int:
     let cs = body.chars()
     let h = runAt(cs, 0, "#")
@@ -163,7 +163,7 @@ fn atxLevel(body: String) Int:
 fn isQuoteLine(line: String) Bool:
     return lead(line) <= 3 and line.trim_start().starts_with(">")
 
-# Rules 1-4 tested for a line on its own (indent <= 3).
+// Rules 1-4 tested for a line on its own (indent <= 3).
 fn interruptsStruct(line: String) Bool:
     if lead(line) > 3:
         return false
@@ -264,7 +264,7 @@ fn alignOf(c: String) Int:
 
     return 0
 
-# Splits a table row into trimmed cells.
+// Splits a table row into trimmed cells.
 fn splitRow(line: String) List[String]:
     let cs = line.trim().chars()
     let n = cs.length()
@@ -305,7 +305,7 @@ fn isDelimRow(line: String) Bool:
 fn mkPara(text: String) Blk:
     return Blk(kind: 5, text: text)
 
-# ---------- block parsing ----------
+// ---------- block parsing ----------
 
 fn parseBlocks(lines: List[String]) Parsed:
     var blocks = List[Blk]()
@@ -583,7 +583,7 @@ fn parsePara(lines: List[String], i: Int) Step:
 
     return Step(blk: mkPara(text), next: j)
 
-# ---------- block rendering ----------
+// ---------- block rendering ----------
 
 fn renderBlocks(blocks: List[Blk]) String:
     var out = ""
@@ -691,7 +691,7 @@ fn renderBlock(b: Blk) String:
 
     return renderTable(b)
 
-# ---------- inline processing ----------
+// ---------- inline processing ----------
 
 fn nText(s: String) Node:
     return Node(kind: 0, text: s)
@@ -738,7 +738,7 @@ fn nLink(
 fn failTail() Tail:
     return Tail(ok: false, dest: "", title: "", hasTitle: false, end: 0)
 
-# Inline link tail starting just after "(".
+// Inline link tail starting just after "(".
 fn parseTail(cs: List[String], p0: Int) Tail:
     let n = cs.length()
     var p = p0
@@ -892,7 +892,7 @@ fn codeContent(cs: List[String], a: Int, b: Int) String:
 
     return s
 
-# Builds the inline node list for a paragraph, heading, or cell.
+// Builds the inline node list for a paragraph, heading, or cell.
 fn scan(text: String) List[Node]:
     let cs = text.chars()
     let n = cs.length()
@@ -970,7 +970,7 @@ fn scan(text: String) List[Node]:
 
     return nodes
 
-# Replaces the opener at k and the nodes after it with a link or image node.
+// Replaces the opener at k and the nodes after it with a link or image node.
 fn makeLink(var nodes: List[Node], k: Int, t: Tail) List[Node]:
     let image = nodes[k].image
     var children = List[Node]()
@@ -1055,7 +1055,7 @@ fn joinEmph(nodes: List[Node], f: Int, c: Int) Joined:
         next = f + 2
     return Joined(nodes: out, next: next)
 
-# Emphasis resolution over one node list (the paragraph, or a link's children).
+// Emphasis resolution over one node list (the paragraph, or a link's children).
 fn resolve(var nodes: List[Node]) List[Node]:
     var i = 0
 
@@ -1147,7 +1147,7 @@ fn inline(text: String) String:
     var parts = scan(text)
     return renderNodes(resolve(var parts))
 
-# ---------- entry point ----------
+// ---------- entry point ----------
 
 export fn main() Int:
     var lines = List[String]()

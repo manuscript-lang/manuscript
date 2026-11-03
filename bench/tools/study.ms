@@ -1,5 +1,5 @@
-# Building blocks for the per-experiment paired-trial drivers under bench/tools (names ending in a study topic). A study runs prebuilt
-# producer binaries in rotating order, validates every record, and keeps samples, environment and a summary.
+// Building blocks for the per-experiment paired-trial drivers under bench/tools (names ending in a study topic). A study runs prebuilt
+// producer binaries in rotating order, validates every record, and keeps samples, environment and a summary.
 import (
     absolute,
     dump,
@@ -18,7 +18,7 @@ import (
 import append_file, create_directory from "@std/os/fs.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
 
-# A labeled prebuilt binary.
+// A labeled prebuilt binary.
 export type Labeled:
     label: String
     path: String
@@ -26,14 +26,14 @@ export type Labeled:
 export fn labeled(label: String, path: String) Labeled:
     return Labeled(label, absolute(path))
 
-# Creates `path` and fails when it already exists (a study never overwrites earlier evidence).
+// Creates `path` and fails when it already exists (a study never overwrites earlier evidence).
 export fn fresh_directory(path: String) Unit!:
     if exists(path): return invalid("{path} already exists")
 
     create_directory(path, recursive: true).get()
     return ok(unit)
 
-# Trial order: rotated by the trial number and reversed on odd trials.
+// Trial order: rotated by the trial number and reversed on odd trials.
 export fn trial_order(labels: List[String], trial: Int) List[String]:
     let n = labels.length()
     var order = List[String]()
@@ -43,7 +43,7 @@ export fn trial_order(labels: List[String], trial: Int) List[String]:
 
     return order
 
-# Runs a producer and returns its integers.
+// Runs a producer and returns its integers.
 export fn run_ints(path: String, args: List[String]) List[Int]!:
     let text = try sample(path, args)
     let parts = text.replace("\n", " ").replace("\t", " ").split(" ").filter(
@@ -82,14 +82,14 @@ export fn distribution(values: List[Float]) JsonValue:
     )
     return jobject(d)
 
-# One JSON line appended to `path`.
+// One JSON line appended to `path`.
 export fn append_json_line(path: String, value: JsonValue) Unit:
     append_file(path, stringify(value, none, none).get("") + "\n").get()
 
 export fn write_json(path: String, value: JsonValue) Unit:
     write_text(path, dump(value))
 
-# `{label: {path, sha256}}` for binaries.json / environment.json.
+// `{label: {path, sha256}}` for binaries.json / environment.json.
 export fn binaries_json(items: List[Labeled]) JsonValue:
     var m = Map[String, JsonValue]()
 
@@ -101,14 +101,14 @@ export fn binaries_json(items: List[Labeled]) JsonValue:
 
     return jobject(m)
 
-# The parsed JSON file at `path`.
+// The parsed JSON file at `path`.
 export fn read_json(path: String) JsonValue!:
     let doc = parse[JsonValue](read_text(path))
     if doc.is_error(): return invalid("{path} is not valid JSON")
 
     return ok(doc.get(JsonValue.Null))
 
-# The `median_ns` of `before` in the summary row for `case` (summary lists `{case, distributions: {before: {median_ns}}}`).
+// The `median_ns` of `before` in the summary row for `case` (summary lists `{case, distributions: {before: {median_ns}}}`).
 export fn before_median(summary: JsonValue, name: String, operation: String) Float!:
     for row in summary.as_list().get([]):
         let c = row.get("case").get(JsonValue.Null).as_string().get("")
@@ -127,13 +127,13 @@ export fn before_median(summary: JsonValue, name: String, operation: String) Flo
 export fn platform_name() String:
     return platform()
 
-# Runs `binary args` and returns its standard output, pinned to one CPU with `taskset` (Linux) when `cpu` is not empty.
+// Runs `binary args` and returns its standard output, pinned to one CPU with `taskset` (Linux) when `cpu` is not empty.
 export fn run_pinned(binary: String, args: List[String], cpu: String) String!:
     if cpu == "": return sample(binary, args)
 
     return sample("taskset", ["--cpu-list", cpu.clone(), binary.clone()].concat(args))
 
-# Parses `values` as integers or fails.
+// Parses `values` as integers or fails.
 export fn all_ints(values: List[String]) List[Int]!:
     var out = List[Int]()
 
@@ -145,7 +145,7 @@ export fn all_ints(values: List[String]) List[Int]!:
 
     return ok(out)
 
-# How many rounds fill about 30 ms given one round took `elapsed` ns, within 1..100000.
+// How many rounds fill about 30 ms given one round took `elapsed` ns, within 1..100000.
 export fn rounds_for(elapsed: Int) Int:
     let want = (30000000 + elapsed - 1) / elapsed
     if want < 1: return 1

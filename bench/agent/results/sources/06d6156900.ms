@@ -1,4 +1,4 @@
-# Markdown subset to HTML, following the exact rules in TASK.md.
+// Markdown subset to HTML, following the exact rules in TASK.md.
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
@@ -6,7 +6,7 @@ let K_TEXT = 0
 let K_RAW = 1
 let K_DELIM = 2
 let K_BRACKET = 3
-# Marks a two-space hard break inside paragraph text; never occurs in the input.
+// Marks a two-space hard break inside paragraph text; never occurs in the input.
 let SENT = "\u{1}"
 let PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
 let DIGITS = "0123456789"
@@ -55,7 +55,7 @@ type Tail:
     has_title: Bool = false
     stop: Int = 0
 
-# ---------- string helpers ----------
+// ---------- string helpers ----------
 
 fn at(s: String, i: Int) String:
     if i < 0 or i >= s.length():
@@ -111,7 +111,7 @@ fn firstWord(s: String) String:
         k += 1
     return sub(s, 0, k)
 
-# ---------- block-level recognizers ----------
+// ---------- block-level recognizers ----------
 
 fn isHr(line: String) Bool:
     if indentOf(line) > 3:
@@ -337,7 +337,7 @@ fn interrupts(line: String) Bool:
             return true
     return false
 
-# ---------- block parsing ----------
+// ---------- block parsing ----------
 
 fn renderTop(blks: List[Blk]) String:
     var out = ""
@@ -619,7 +619,7 @@ fn parseList(lines: List[String], start: Int, first: Marker) Step:
     html += close
     return Step(nxt: last, blk: Blk(para: false, text: html))
 
-# ---------- inline processing ----------
+// ---------- inline processing ----------
 
 fn pushText(var toks: List[Tok], s: String) Unit:
     let k = toks.length() - 1
@@ -1019,7 +1019,7 @@ fn scanInline(text: String) List[Tok]:
 fn inline(text: String) String:
     return htmlOf(resolve(scanInline(text)))
 
-# ---------- entry point ----------
+// ---------- entry point ----------
 
 export fn main() Int:
     let lines = read_lines(stdin()).get()

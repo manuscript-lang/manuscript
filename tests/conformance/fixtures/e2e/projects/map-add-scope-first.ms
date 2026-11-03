@@ -1,6 +1,6 @@
-# conform: tags=aliasing,control-flow,diagnostics,faults,interfaces,maps,match,modules,stdlib-testing,tier-core,try-result
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/map_add_scope/first.ms
+// conform: tags=aliasing,control-flow,diagnostics,faults,interfaces,maps,match,modules,stdlib-testing,tier-core,try-result
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/map_add_scope/first.ms
 import Key from "./domain.ms"
 import insert, insert_bound from "./helper.ms"
 import expect_equal from "@std/test/test.ms"

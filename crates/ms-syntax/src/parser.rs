@@ -2503,12 +2503,6 @@ impl<'a> Parser<'a> {
                     (Tok::Colon, Tok::Try) => {
                         "'try' is a prefix on a call, not a block: write 'try f(x)' to unwrap a Result or return its error, and 'if let' to handle failure locally"
                     }
-                    (Tok::Star, Tok::Slash) => {
-                        "'/*' does not start a comment; comments start with '#'"
-                    }
-                    (Tok::Slash, Tok::Slash) => {
-                        "'//' does not start a comment; comments start with '#'"
-                    }
                     (Tok::Gt, Tok::Lt) => "'<>' is not an operator; write '!=' for inequality",
                     (Tok::Star, Tok::Star) => {
                         "there is no '**' power operator; multiply explicitly or call a function from @std/math/math.ms"

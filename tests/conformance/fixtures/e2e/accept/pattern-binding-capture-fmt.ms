@@ -1,13 +1,13 @@
-# conform: tags=alternatives,control-flow,formatter,generics,interfaces,match,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/pattern-binding-capture.ms
+// conform: tags=alternatives,control-flow,formatter,generics,interfaces,match,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/pattern-binding-capture.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
 type Failure[T]:
     case NotFound
     case Denied(reason: T)
 
-# An advisory preserves the semantics of this fresh, capitalized binding.
+// An advisory preserves the semantics of this fresh, capitalized binding.
 fn captured[T](result: Result[Int, Failure[T]]) Int:
     match result:
         error(NotFound): return 1

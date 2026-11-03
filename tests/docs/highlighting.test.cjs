@@ -33,10 +33,10 @@ test('Manuscript examples receive keyword, type, function, string, and number to
 });
 
 test('comments and strings do not highlight their contents as executable code', () => {
-  const source = 'let message = "# return true"\n# fn ignored() Int: return 123\n';
+  const source = 'let message = "// return true"\n// fn ignored() Int: return 123\n';
   const tokens = tokenize(source);
-  assert.ok(tokens.some(token => token.kind === 's' && token.text === '"# return true"'));
-  assert.ok(tokens.some(token => token.kind === 'c1' && token.text === '# fn ignored() Int: return 123'));
+  assert.ok(tokens.some(token => token.kind === 's' && token.text === '"// return true"'));
+  assert.ok(tokens.some(token => token.kind === 'c1' && token.text === '// fn ignored() Int: return 123'));
   assert.equal(tokens.filter(token => token.kind === 'k').map(token => token.text).join(''), 'let');
 });
 
@@ -125,16 +125,16 @@ test('all current numeric bases, separators, fractions, exponents and Decimal fo
 });
 
 test('shared nested rules scope escapes, interpolation expressions and nested strings', () => {
-  const source = String.raw`let text = "Hello \{world\} \u{1F600} {format(value: {"key": "{1 + 2}"})}!"` + '\r\nreturn 0 # Ω 🐈\r\n';
+  const source = String.raw`let text = "Hello \{world\} \u{1F600} {format(value: {"key": "{1 + 2}"})}!"` + '\r\nreturn 0 // Ω 🐈\r\n';
   assertScopes(source, [
     ['let', 'k'], ['"Hello ', 's'], [String.raw`\{`, 'se'], [String.raw`\}`, 'se'],
     [String.raw`\u{1F600}`, 'se'], ['format', 'nf'], ['"key"', 's'], ['2', 'mi'], ['+', 'o'],
-    ['return', 'k'], ['# Ω 🐈', 'c1'],
+    ['return', 'k'], ['// Ω 🐈', 'c1'],
   ]);
   const tokens = tokenize(source);
   assert.equal(tokens.filter(token => token.kind === 'si').map(token => token.text).join(''), '{{}}');
-  assertScopes(String.raw`"# True \{literal\} \" \\ \n \r \t \u{41}"`, [
-    ['# True ', 's'], [String.raw`\"`, 'se'], [String.raw`\\`, 'se'],
+  assertScopes(String.raw`"// True \{literal\} \" \\ \n \r \t \u{41}"`, [
+    ['// True ', 's'], [String.raw`\"`, 'se'], [String.raw`\\`, 'se'],
     [String.raw`\n`, 'se'], [String.raw`\r`, 'se'], [String.raw`\t`, 'se'], [String.raw`\u{41}`, 'se'],
   ]);
 });

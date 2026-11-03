@@ -1,7 +1,7 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# Returns line `index`, or "" when the input ended early (a final empty line may lack its terminator).
+// Returns line `index`, or "" when the input ended early (a final empty line may lack its terminator).
 fn line_at(lines: List[String], index: Int) String:
     if index < lines.length(): return lines[index].clone()
 
@@ -17,7 +17,7 @@ fn min_of(x: Int, y: Int) Int:
 
     return y
 
-# Formats a hunk range: the length is omitted when it is exactly 1.
+// Formats a hunk range: the length is omitted when it is exactly 1.
 fn span(start: Int, length: Int) String:
     if length == 1: return "{start}"
 
@@ -39,7 +39,7 @@ export fn main() Int:
     for j in 0..m:
         b.append(line_at(lines, 1 + n + j))
 
-    # table[i * width + j] is L(i, j), the LCS length of a[i..] and b[j..].
+    // table[i * width + j] is L(i, j), the LCS length of a[i..] and b[j..].
     let width = m + 1
     var table = List[Int](reserve: (n + 1) * width)
     for k in 0..(n + 1) * width:
@@ -58,7 +58,7 @@ export fn main() Int:
                 let right = table[i * width + j + 1]
                 table[i * width + j] = if down >= right: down else: right
 
-    # Edit script: kind 0 is unchanged, 1 is a deletion from a, 2 is an insertion from b.
+    // Edit script: kind 0 is unchanged, 1 is a deletion from a, 2 is an insertion from b.
     var kinds = List[Int]()
     var texts = List[String]()
     var i = 0
@@ -89,7 +89,7 @@ export fn main() Int:
 
     let total = kinds.length()
 
-    # pre_a[k] and pre_b[k] count the lines of a and b consumed before script position k.
+    // pre_a[k] and pre_b[k] count the lines of a and b consumed before script position k.
     var pre_a = List[Int]()
     var pre_b = List[Int]()
     var count_a = 0
@@ -106,7 +106,7 @@ export fn main() Int:
     pre_a.append(count_a)
     pre_b.append(count_b)
 
-    # Group changes into hunks, each widened by up to `context` unchanged lines on either side.
+    // Group changes into hunks, each widened by up to `context` unchanged lines on either side.
     var hunk_lo = List[Int]()
     var hunk_hi = List[Int]()
     var first = -1

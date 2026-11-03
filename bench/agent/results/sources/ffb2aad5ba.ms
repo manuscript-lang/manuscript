@@ -12,7 +12,7 @@ type Ledger:
     accounts: Map[String, Account]
     fees: Int
 
-# Plain decimal digits only: `parse_int` also accepts a sign, which the spec rejects.
+// Plain decimal digits only: `parse_int` also accepts a sign, which the spec rejects.
 fn digits(text: String) Optional[Int]:
     if text.is_empty() or text.starts_with("+") or text.starts_with("-"):
         return none
@@ -25,7 +25,7 @@ fn amount_of(text: String) Optional[Int]:
             return some(n)
     return none
 
-# A debit takes the fee only when it moves a non-negative balance below zero.
+// A debit takes the fee only when it moves a non-negative balance below zero.
 fn overdraft_fee(balance: Int, amount: Int) Int:
     if balance >= 0 and balance - amount < 0:
         return 5
@@ -39,7 +39,7 @@ fn fee_suffix(fee: Int) String:
     return ""
 
 impl Ledger:
-    # Callers check existence first; this only supplies a value for the lookup.
+    // Callers check existence first; this only supplies a value for the lookup.
     fn account(id: String) Account:
         return self.accounts.get(
             id

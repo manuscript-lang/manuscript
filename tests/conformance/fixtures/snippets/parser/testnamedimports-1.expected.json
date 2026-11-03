@@ -14,26 +14,26 @@
           "file": "testnamedimports-1.ms",
           "line": 4,
           "column": 8,
-          "offset": 162
+          "offset": 165
         },
         "end": {
           "file": "testnamedimports-1.ms",
           "line": 4,
           "column": 17,
-          "offset": 171
+          "offset": 174
         },
         "fix": {
           "position": {
             "file": "testnamedimports-1.ms",
             "line": 4,
             "column": 1,
-            "offset": 155
+            "offset": 158
           },
           "end": {
             "file": "testnamedimports-1.ms",
             "line": 5,
             "column": 1,
-            "offset": 211
+            "offset": 214
           },
           "replacement": ""
         }

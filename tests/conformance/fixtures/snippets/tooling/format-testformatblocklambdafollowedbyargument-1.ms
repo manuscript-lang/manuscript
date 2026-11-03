@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/format/format_lambda_comma_test.go:13 TestFormatBlockLambdaFollowedByArgument
+// conform: tags=closures,diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/format/format_lambda_comma_test.go:13 TestFormatBlockLambdaFollowedByArgument
 fn apply(transform: fn(Int) Int, value: Int) Int: transform(value)
 
 fn example() Int:

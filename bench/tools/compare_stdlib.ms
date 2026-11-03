@@ -1,5 +1,5 @@
-# Compares two `ms` builds on the bench/perf/stdlib bench blocks, alternating runs and checking the cases match.
-# Usage: ms run bench/tools/compare_stdlib.ms -- --before MS --after MS --output DIR [--repeats 5] [--samples 5] [--filter TEXT]
+// Compares two `ms` builds on the bench/perf/stdlib bench blocks, alternating runs and checking the cases match.
+// Usage: ms run bench/tools/compare_stdlib.ms -- --before MS --after MS --output DIR [--repeats 5] [--samples 5] [--filter TEXT]
 import (
     absolute,
     dump,
@@ -22,7 +22,7 @@ import Stats, case_labels, read_cases from "./stdlib_results.ms"
 import arguments from "@std/os/process.ms"
 import JsonValue from "@std/data/json.ms"
 
-# One document as `{case: operations}` and `{case: median ns/op}`.
+// One document as `{case: operations}` and `{case: median ns/op}`.
 export type Sample:
     operations: Map[String, Int]
     medians: Map[String, Float]

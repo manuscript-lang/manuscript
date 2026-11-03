@@ -11,7 +11,7 @@ fn quiet_strict_run_names_unexpected_passes_and_rejects_them() {
     fs::create_dir_all(&root).unwrap();
     let corpus = root.join("fixtures");
     fs::create_dir_all(&corpus).unwrap();
-    fs::write(corpus.join("fixed.ms"), "# conform: phase=run\n").unwrap();
+    fs::write(corpus.join("fixed.ms"), "// conform: phase=run\n").unwrap();
     fs::write(
         corpus.join("fixed.expected.json"),
         r#"{"expected":{"exit_code":0,"stdout":"","stderr":""}}"#,

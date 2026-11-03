@@ -1,6 +1,6 @@
-# conform: tags=strings,tier-io
-# conform: phase=run
-# conform: origin=string == short literal compiled inline
+// conform: tags=strings,tier-io
+// conform: phase=run
+// conform: origin=string == short literal compiled inline
 import stdout from "@std/io/io.ms"
 
 fn score(s: String) Int:

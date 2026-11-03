@@ -134,6 +134,6 @@ test "lexing handles openers inside actions and large sources":
     try expect_equal(render("\{\{ x \}\}\{\{ x \}\}", d).get(), "vv")
     try expect_true(compile("a \{\{ x \}\} \{\{ y").is_error())
 
-    # A quadratic lexer would take minutes on this many actions.
+    // A quadratic lexer would take minutes on this many actions.
     let big = compile("\{\{ x \}\},".repeat(60000).get()).get()
     try expect_equal(big.render(d).get().scalar_length(), 120000)

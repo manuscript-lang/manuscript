@@ -13,6 +13,7 @@ use crate::ir::{
     Mode, Module, Op, Param, Scope, Target, Term, Value,
 };
 use crate::types::{RecId, Ty, TyKind};
+use crate::vmap::{ValueMap, ValueSet};
 use std::collections::{HashMap, HashSet};
 
 /// Instruction count up to which an `Auto` callee is inlined.
@@ -51,8 +52,8 @@ fn specialize_sort_thunks(m: &mut Module) -> bool {
     let mut changed = false;
     let mut made: HashMap<(FuncId, FuncId), FuncId> = HashMap::new();
     for fi in 0..m.funcs.len() {
-        let mut known: HashMap<Value, FuncId> = HashMap::new();
-        let mut addrs: HashMap<Value, FuncId> = HashMap::new();
+        let mut known: ValueMap<FuncId> = ValueMap::new();
+        let mut addrs: ValueMap<FuncId> = ValueMap::new();
         for inst in m.funcs[fi].blocks.iter().flat_map(|b| b.insts.iter()) {
             match (inst.op, inst.imm, inst.res) {
                 (Op::ClosureNew, Imm::Func(g), Some(r)) => {
@@ -278,7 +279,7 @@ fn const_values(blocks: &[BlockData]) -> impl Iterator<Item = Value> + '_ {
 
 fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool {
     let budget = m.funcs[fi].inst_count() * GROWTH_FACTOR + GROWTH_SLACK;
-    let mut consts: HashSet<Value> = const_values(&m.funcs[fi].blocks).collect();
+    let mut consts: ValueSet = const_values(&m.funcs[fi].blocks).collect();
     let mut grown = 0usize;
     let mut changed = false;
     let mut work: Vec<usize> = (0..m.funcs[fi].blocks.len()).collect();
@@ -480,7 +481,7 @@ fn constant_closure_fields(m: &Module) -> HashMap<(RecId, u32), FuncId> {
     // `None` marks a field with two different closures or a write the analysis cannot see.
     let mut seen: HashMap<(RecId, u32), Option<FuncId>> = HashMap::new();
     for f in &m.funcs {
-        let mut defs: HashMap<Value, &Inst> = HashMap::new();
+        let mut defs: ValueMap<&Inst> = ValueMap::new();
         for inst in f.blocks.iter().flat_map(|b| b.insts.iter()) {
             if let Some(r) = inst.res {
                 defs.insert(r, inst);
@@ -527,9 +528,9 @@ fn inline_closures_in(m: &mut Module, fi: usize, fields: &HashMap<(RecId, u32), 
     let mut changed = false;
     let mut work: Vec<usize> = (0..m.funcs[fi].blocks.len()).collect();
     let roots = known_closures(m, fi);
-    let mut known: HashMap<Value, (FuncId, Vec<Value>)> = HashMap::new();
-    for (v, root) in closure_aliases(&m.funcs[fi], &roots) {
-        known.insert(v, roots[&root].clone());
+    let mut known: ValueMap<(FuncId, Vec<Value>)> = ValueMap::new();
+    for (v, root) in closure_aliases(&m.funcs[fi], &roots).iter() {
+        known.insert(*v, roots[root].clone());
     }
     for inst in m.funcs[fi].blocks.iter().flat_map(|b| b.insts.iter()) {
         if let (Op::RecGet, Imm::Field(r, k), Some(v)) = (inst.op, inst.imm, inst.res)
@@ -587,7 +588,7 @@ fn closure_body(f: &Func) -> Option<Func> {
     let mut c = f.clone();
     let env = c.blocks[0].params[0].value;
     let cap_params: Vec<Value> = captures.iter().map(|t| c.new_value(*t)).collect();
-    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut subst: ValueMap<Value> = ValueMap::new();
     for b in &mut c.blocks {
         b.insts.retain(|i| {
             let (Op::ClosureCap, Imm::Idx(k), Some(r)) = (i.op, i.imm, i.res) else {
@@ -627,9 +628,9 @@ fn closure_body(f: &Func) -> Option<Func> {
 
 /// The closures built in function `fi` by `closure.new` whose captures are all plain data, as
 /// result value -> (closure code, captured values).
-fn known_closures(m: &Module, fi: usize) -> HashMap<Value, (FuncId, Vec<Value>)> {
+fn known_closures(m: &Module, fi: usize) -> ValueMap<(FuncId, Vec<Value>)> {
     let f = &m.funcs[fi];
-    let mut known = HashMap::new();
+    let mut known = ValueMap::new();
     for inst in f.blocks.iter().flat_map(|b| b.insts.iter()) {
         if let (Op::ClosureNew, Imm::Func(g), Some(r)) = (inst.op, inst.imm, inst.res)
             && inst.args.iter().all(|a| !m.needs_drop(f.ty(*a)))
@@ -644,11 +645,8 @@ fn known_closures(m: &Module, fi: usize) -> HashMap<Value, (FuncId, Vec<Value>)>
 /// Maps every value that always holds the same known closure to that closure's `closure.new`
 /// result: the result itself, `copy` of such a value, and a block parameter each of whose
 /// incoming arguments is such a value (or the parameter itself, on a loop back edge).
-fn closure_aliases(
-    f: &Func,
-    roots: &HashMap<Value, (FuncId, Vec<Value>)>,
-) -> HashMap<Value, Value> {
-    let mut alias: HashMap<Value, Value> = roots.keys().map(|v| (*v, *v)).collect();
+fn closure_aliases(f: &Func, roots: &ValueMap<(FuncId, Vec<Value>)>) -> ValueMap<Value> {
+    let mut alias: ValueMap<Value> = roots.keys().map(|v| (*v, *v)).collect();
     let mut incoming: HashMap<(usize, usize), Vec<Value>> = HashMap::new();
     for b in &f.blocks {
         b.term.for_each_target(|t| {
@@ -708,8 +706,8 @@ fn delete_unused_closures(m: &mut Module, fi: usize) -> bool {
     }
     let f = &mut m.funcs[fi];
     let alias = closure_aliases(f, &roots);
-    let mut live: HashSet<Value> = HashSet::new();
-    let note = |v: Value, live: &mut HashSet<Value>| {
+    let mut live: ValueSet = ValueSet::new();
+    let note = |v: Value, live: &mut ValueSet| {
         if let Some(r) = alias.get(&v) {
             live.insert(*r);
         }
@@ -825,6 +823,7 @@ fn specialize_in(
             if ci == fi
                 || cyc.get(ci).copied().unwrap_or(false)
                 || !matches!(callee.kind, FuncKind::Normal)
+                || callee.keeps_scoped
                 || callee.inline == InlineHint::Never
                 || callee.inst_count() > SPECIALIZE_MAX_SIZE
                 || !callee

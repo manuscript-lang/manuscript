@@ -12,26 +12,26 @@
           "file": "foreign-arrow-result.ms",
           "line": 4,
           "column": 8,
-          "offset": 120
+          "offset": 123
         },
         "end": {
           "file": "foreign-arrow-result.ms",
           "line": 4,
           "column": 10,
-          "offset": 122
+          "offset": 125
         },
         "fix": {
           "position": {
             "file": "foreign-arrow-result.ms",
             "line": 4,
             "column": 8,
-            "offset": 120
+            "offset": 123
           },
           "end": {
             "file": "foreign-arrow-result.ms",
             "line": 4,
             "column": 10,
-            "offset": 122
+            "offset": 125
           },
           "replacement": ""
         }

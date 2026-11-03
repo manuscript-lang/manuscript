@@ -1,5 +1,5 @@
-# JSON text laid out like CPython's `json.dumps` (ASCII-only output, `", "` and `": "` separators, or one
-# item per line with `indent` spaces), so regenerated challenge files and result lines stay byte-identical.
+// JSON text laid out like CPython's `json.dumps` (ASCII-only output, `", "` and `": "` separators, or one
+// item per line with `indent` spaces), so regenerated challenge files and result lines stay byte-identical.
 import JsonValue, parse, stringify from "@std/data/json.ms"
 import Data from "@std/core.ms"
 import from_scalars from "@std/string.ms"
@@ -67,11 +67,11 @@ fn emit(value: JsonValue, indent: Int, level: Int) String:
 
             return "\{\n" + pad + parts.join(",\n" + pad) + "\n" + end + "\}"
 
-# Lays `value` out as `json.dumps(value, indent=indent)` does; `indent` 0 means the single-line form.
+// Lays `value` out as `json.dumps(value, indent=indent)` does; `indent` 0 means the single-line form.
 export fn dumps(value: JsonValue, indent: Int) String:
     return emit(value, indent, 0)
 
-# Encodes any `Data` value, then lays it out as `dumps` does.
+// Encodes any `Data` value, then lays it out as `dumps` does.
 export fn dumps_data[T: Data](value: T, indent: Int) String:
     let text = stringify(value).get("null")
     let tree = parse(text).get(JsonValue.Null)

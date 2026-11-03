@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/format/format_layout_test.go:415 TestFormatExpressionLayouts
+// conform: tags=closures,control-flow,diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/format/format_layout_test.go:415 TestFormatExpressionLayouts
 fn work() Int:
     return apply(
         value: 3,

@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,testing,tier-core
-# conform: phase=check
-# conform: origin=pkg/checker/test_fixture_test.go:58 TestFileFixtureContracts
+// conform: tags=diagnostics,testing,tier-core
+// conform: phase=check
+// conform: origin=pkg/checker/test_fixture_test.go:58 TestFileFixtureContracts
 fn make_fixture() State:
     return State(1)
 

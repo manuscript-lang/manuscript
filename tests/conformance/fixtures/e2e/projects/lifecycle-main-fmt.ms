@@ -1,6 +1,6 @@
-# conform: tags=aliasing,closures,control-flow,formatter,interfaces,interpolation,lists,match,modules,mutation,parser,records,stdlib-cleanup,stdlib-errors,stdlib-io,stdlib-testing,strings,tier-stdlib,try-result,scope-cleanup
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/lifecycle/main.ms
+// conform: tags=aliasing,closures,control-flow,formatter,interfaces,interpolation,lists,match,modules,mutation,parser,records,stdlib-cleanup,stdlib-errors,stdlib-io,stdlib-testing,strings,tier-stdlib,try-result,scope-cleanup
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/lifecycle/main.ms
 import expect_equal, fail from "@std/test/test.ms"
 import stderr from "@std/io/io.ms"
 import stdout from "@std/io/io.ms"

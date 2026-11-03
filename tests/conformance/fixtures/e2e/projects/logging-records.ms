@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,lists,modules,optional,records,stdlib-log,strings,tier-io,try-result
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/logging/records.ms
+// conform: tags=diagnostics,lists,modules,optional,records,stdlib-log,strings,tier-io,try-result
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/logging/records.ms
 import Logger from "@std/log.ms"
 
 type Request:

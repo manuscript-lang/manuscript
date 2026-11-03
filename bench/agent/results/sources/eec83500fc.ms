@@ -1,7 +1,7 @@
 import stdout, stdin, read_all from "@std/io.ms"
 import from_scalars from "@std/string.ms"
 
-# ---------- values and errors ----------
+// ---------- values and errors ----------
 
 type Value:
     case VNull
@@ -24,7 +24,7 @@ fn syntax_error() SqlError:
 fn type_error() SqlError:
     return SqlError(msg: "type error")
 
-# 0 NULL, 1 INT, 2 BOOL, 3 TEXT
+// 0 NULL, 1 INT, 2 BOOL, 3 TEXT
 fn rank(v: Value) Int:
     match v:
         VNull:
@@ -113,7 +113,7 @@ fn bool_int(v: Value) Int:
 
     return 0
 
-# Total order used by comparisons (after NULL checks) and by ORDER BY.
+// Total order used by comparisons (after NULL checks) and by ORDER BY.
 fn order_cmp(a: Value, b: Value) Int:
     let ra = rank(a)
     let rb = rank(b)
@@ -128,7 +128,7 @@ fn order_cmp(a: Value, b: Value) Int:
 
     return 0
 
-# Three-valued logic codes: 0 false, 1 true, 2 unknown (NULL).
+// Three-valued logic codes: 0 false, 1 true, 2 unknown (NULL).
 fn tri_of(v: Value) Result[Int, SqlError]:
     match v:
         VNull:
@@ -169,7 +169,7 @@ fn tri_not(a: Int) Int:
 
     return 1 - a
 
-# WHERE, HAVING and ON keep a row only when the condition is true.
+// WHERE, HAVING and ON keep a row only when the condition is true.
 fn truth(v: Value) Result[Bool, SqlError]:
     let t = try tri_of(v)
     return ok(t == 1)
@@ -243,7 +243,7 @@ fn dedupe(vals: List[Value]) List[Value]:
 
     return out
 
-# ---------- LIKE, string and math functions ----------
+// ---------- LIKE, string and math functions ----------
 
 fn byte_list(s: String) List[Int]:
     let raw = s.to_bytes()
@@ -252,7 +252,7 @@ fn byte_list(s: String) List[Int]:
         out.append(raw.get(k).to_int())
     return out
 
-# '%' is 37, '_' is 95.
+// '%' is 37, '_' is 95.
 fn like_at(text: List[Int], ti: Int, pat: List[Int], pi: Int) Bool:
     if pi == pat.length():
         return ti == text.length()
@@ -291,7 +291,7 @@ fn ascii_case(s: String, upper: Bool) String:
 
     return from_scalars(codes).get()
 
-# 1-based start; positions are bytes and clipped to the string.
+// 1-based start; positions are bytes and clipped to the string.
 fn substr(t: String, start: Int, count: Int) String:
     if count <= 0:
         return ""
@@ -313,7 +313,7 @@ fn substr(t: String, start: Int, count: Int) String:
 fn is_aggregate(name: String) Bool:
     return name == "COUNT" or name == "SUM" or name == "MIN" or name == "MAX"
 
-# -1 unknown function, -2 variadic (one or more), otherwise the exact count.
+// -1 unknown function, -2 variadic (one or more), otherwise the exact count.
 fn scalar_arity(name: String) Int:
     if name == "UPPER" or name == "LOWER" or name == "LENGTH" or name == "ABS":
         return 1
@@ -324,7 +324,7 @@ fn scalar_arity(name: String) Int:
 
     return -1
 
-# ---------- expressions and statements ----------
+// ---------- expressions and statements ----------
 
 type Expr:
     case ELit(v: Value)
@@ -394,7 +394,7 @@ type Stmt:
     case SDelete(name: String, cond: Optional[Expr])
     case SSelect(q: Query)
 
-# ---------- lexer ----------
+// ---------- lexer ----------
 
 type Tok:
     case TId(name: String)
@@ -518,7 +518,7 @@ fn lex(cs: List[String]) List[Tok]:
 
     return toks
 
-# Statements are separated by ';' tokens; empty statements are dropped.
+// Statements are separated by ';' tokens; empty statements are dropped.
 fn split_statements(toks: List[Tok]) List[List[Tok]]:
     var stmts = List[List[Tok]]()
     var cur = List[Tok]()
@@ -563,7 +563,7 @@ fn sym_op(t: Tok) String:
         _:
             return ""
 
-# ---------- parser ----------
+// ---------- parser ----------
 
 type Cur:
     toks: List[Tok]
@@ -1086,7 +1086,7 @@ fn parse_statement(var p: Cur) Result[Stmt, SqlError]:
 
     return error(syntax_error())
 
-# ---------- name resolution ----------
+// ---------- name resolution ----------
 
 type Source:
     alias: String
@@ -1285,7 +1285,7 @@ fn has_agg(e: Expr) Bool:
         _:
             return false
 
-# The literal N of `ORDER BY N`, or -1 when the expression is not an integer literal.
+// The literal N of `ORDER BY N`, or -1 when the expression is not an integer literal.
 fn int_literal(e: Expr) Int:
     match e:
         ELit(v):
@@ -1306,7 +1306,7 @@ fn plain_name(e: Expr) String:
         _:
             return ""
 
-# The output name of a select item: the alias, else the column name (qualifier dropped).
+// The output name of a select item: the alias, else the column name (qualifier dropped).
 fn item_name(alias: String, e: Expr) String:
     if alias != "":
         return alias.clone()
@@ -1317,7 +1317,7 @@ fn item_name(alias: String, e: Expr) String:
         _:
             return "?column?"
 
-# ---------- evaluation ----------
+// ---------- evaluation ----------
 
 fn eval_scalar(
     name: String,
@@ -1363,7 +1363,7 @@ fn eval_scalar(
 
         return ok(Value.VInt(v: n))
 
-    # SUBSTR(text, start, count)
+    // SUBSTR(text, start, count)
     if rank(vals[0]) != 3 or rank(vals[1]) != 1 or rank(vals[2]) != 1:
         return error(type_error())
 
@@ -1541,7 +1541,7 @@ fn eval_all(
 
     return ok(out)
 
-# ---------- SELECT ----------
+// ---------- SELECT ----------
 
 type Pending:
     expr: Expr
@@ -1551,7 +1551,7 @@ type OutRow:
     vals: List[Value]
     keys: List[Value]
 
-# position >= 0 reads that output column; otherwise expr is evaluated.
+// position >= 0 reads that output column; otherwise expr is evaluated.
 type OrderKey:
     position: Int
     expr: Expr
@@ -1651,7 +1651,7 @@ fn run_select(db: Map[String, Table], q: Query) Result[String, SqlError]:
         offset += names.length()
         tables.append(t.rows.clone())
 
-    # ON conditions see only the tables joined so far.
+    // ON conditions see only the tables joined so far.
     var on_exprs = List[Expr]()
 
     for k in 0..q.joins.length():
@@ -1659,7 +1659,7 @@ fn run_select(db: Map[String, Table], q: Query) Result[String, SqlError]:
         let on_r = try resolve(q.joins[k].on, on_scope, false)
         on_exprs.append(on_r)
 
-    # Stars expand before GROUP BY, WHERE and the select list are resolved.
+    // Stars expand before GROUP BY, WHERE and the select list are resolved.
     var pend = List[Pending]()
 
     for it in q.items:
@@ -1763,7 +1763,7 @@ fn run_select(db: Map[String, Table], q: Query) Result[String, SqlError]:
             let orr = try resolve(o.expr, agg_scope, false)
             keys.append(OrderKey(position: -1, expr: orr, desc: o.desc))
 
-    # FROM and JOIN: nested loops in order.
+    // FROM and JOIN: nested loops in order.
     let empty = List[List[Value]]()
     var rows = List[List[Value]]()
 
@@ -1872,7 +1872,7 @@ fn run_select(db: Map[String, Table], q: Query) Result[String, SqlError]:
     lines.append("({finish - begin} rows)")
     return ok(lines.join("\n") + "\n")
 
-# ---------- DDL and DML ----------
+// ---------- DDL and DML ----------
 
 fn table_scope(name: String, cols: List[ColDef]) List[Source]:
     var names = List[String]()
@@ -1901,7 +1901,7 @@ fn check_row(cols: List[ColDef], vals: List[Value]) Result[Unit, SqlError]:
 
     return ok(unit)
 
-# Checks the primary key of `added` rows against `existing` rows, in order.
+// Checks the primary key of `added` rows against `existing` rows, in order.
 fn check_primary(
     cols: List[ColDef],
     existing: List[List[Value]],

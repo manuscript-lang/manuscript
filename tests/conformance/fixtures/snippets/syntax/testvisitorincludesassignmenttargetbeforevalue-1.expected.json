@@ -14,7 +14,7 @@
           "file": "testvisitorincludesassignmenttargetbeforevalue-1.ms",
           "line": 5,
           "column": 5,
-          "offset": 175
+          "offset": 178
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testvisitorincludesassignmenttargetbeforevalue-1.ms",
           "line": 5,
           "column": 13,
-          "offset": 183
+          "offset": 186
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "testvisitorincludesassignmenttargetbeforevalue-1.ms",
           "line": 5,
           "column": 21,
-          "offset": 191
+          "offset": 194
         }
       }
     ],

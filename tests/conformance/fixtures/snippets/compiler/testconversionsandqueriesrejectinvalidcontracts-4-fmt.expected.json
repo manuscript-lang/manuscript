@@ -12,13 +12,13 @@
           "file": "testconversionsandqueriesrejectinvalidcontracts-4-fmt.ms",
           "line": 4,
           "column": 7,
-          "offset": 240
+          "offset": 243
         },
         "end": {
           "file": "testconversionsandqueriesrejectinvalidcontracts-4-fmt.ms",
           "line": 4,
           "column": 8,
-          "offset": 241
+          "offset": 244
         }
       }
     ],

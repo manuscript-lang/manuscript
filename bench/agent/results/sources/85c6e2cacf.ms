@@ -3,7 +3,7 @@ import read_lines from "@std/streams.ms"
 
 let DIGITS = "0123456789"
 
-# Splits one line into number tokens and operator tokens; `none` means an unknown character.
+// Splits one line into number tokens and operator tokens; `none` means an unknown character.
 fn tokenize(line: String) Optional[List[String]]:
     var tokens = List[String]()
     var digits = ""
@@ -29,8 +29,8 @@ fn tokenize(line: String) Optional[List[String]]:
         tokens.append(digits)
     return tokens
 
-# Recursive-descent parser. Division by zero is only recorded, so that a syntax error anywhere in
-# the line still takes precedence over it.
+// Recursive-descent parser. Division by zero is only recorded, so that a syntax error anywhere in
+// the line still takes precedence over it.
 type Parser:
     tokens: List[String]
     pos: Int
@@ -104,7 +104,7 @@ impl Parser:
         self.failed = true
         return 0
 
-# Returns the output line for one tokenized input line.
+// Returns the output line for one tokenized input line.
 fn evaluate(tokens: List[String]) String:
     let count = tokens.length()
     var parser = Parser(tokens: tokens, pos: 0, failed: false, div_zero: false)

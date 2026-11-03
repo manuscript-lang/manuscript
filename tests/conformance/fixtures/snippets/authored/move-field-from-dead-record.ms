@@ -1,6 +1,6 @@
-# conform: tags=records,lists,scope-cleanup
-# conform: phase=run
-# conform: origin=copyelim rec.release
+// conform: tags=records,lists,scope-cleanup
+// conform: phase=run
+// conform: origin=copyelim rec.release
 import stdout from "@std/io/io.ms"
 
 type Pair:

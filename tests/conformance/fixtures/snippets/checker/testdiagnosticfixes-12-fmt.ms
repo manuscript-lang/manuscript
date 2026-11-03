@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,records,strings,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/diagnostic_fixes_test.go:32 TestDiagnosticFixes
+// conform: tags=control-flow,formatter,interfaces,parser,records,strings,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/diagnostic_fixes_test.go:32 TestDiagnosticFixes
 interface I:
     fn n() Int
 

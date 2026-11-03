@@ -286,7 +286,7 @@ fn module_page(m: &ApiModule) -> String {
         b += &format!("{} {}", d.kind, bare(&d.name));
         let doc = first_line(&d.doc, 90);
         if !doc.is_empty() {
-            b += &format!(" # {doc}");
+            b += &format!(" // {doc}");
         }
         b.push('\n');
     }

@@ -1,6 +1,6 @@
 import JsonLimits from "@std/data/json.ms"
 
-# The compiler lowers these two calls from the type argument; see `json_parse` and `json_stringify` in ms-lower.
+// The compiler lowers these two calls from the type argument; see `json_parse` and `json_stringify` in ms-lower.
 export extern fn msstd_json_parse[T](
     text: String,
     limits: JsonLimits?,

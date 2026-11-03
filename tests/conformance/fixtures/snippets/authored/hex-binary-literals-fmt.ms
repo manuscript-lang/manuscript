@@ -1,6 +1,6 @@
-# conform: tags=numbers,lexer,formatter,tier-core
-# conform: phase=parse
-# conform: origin=literals format as written
+// conform: tags=numbers,lexer,formatter,tier-core
+// conform: phase=parse
+// conform: origin=literals format as written
 import stdout from "@std/io/io.ms"
 
 export fn main() Int:

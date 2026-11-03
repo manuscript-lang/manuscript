@@ -14,13 +14,13 @@
           "file": "literal-reject-upper-hex.ms",
           "line": 5,
           "column": 13,
-          "offset": 152
+          "offset": 155
         },
         "end": {
           "file": "literal-reject-upper-hex.ms",
           "line": 5,
           "column": 16,
-          "offset": 155
+          "offset": 158
         }
       }
     ],

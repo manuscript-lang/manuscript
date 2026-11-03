@@ -14,7 +14,7 @@
           "file": "sized-mixed-operands.ms",
           "line": 7,
           "column": 19,
-          "offset": 197
+          "offset": 200
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "sized-mixed-operands.ms",
           "line": 9,
           "column": 22,
-          "offset": 245
+          "offset": 248
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "sized-mixed-operands.ms",
           "line": 11,
           "column": 19,
-          "offset": 296
+          "offset": 299
         }
       }
     ],

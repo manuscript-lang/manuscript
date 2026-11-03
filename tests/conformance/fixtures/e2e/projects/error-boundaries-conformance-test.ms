@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,lists,match,modules,stdlib-testing,testing,tier-core,try-result
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/error_boundaries/conformance_test.ms
+// conform: tags=control-flow,diagnostics,lists,match,modules,stdlib-testing,testing,tier-core,try-result
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/error_boundaries/conformance_test.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 import DomainFailure from "./domain.ms"
 import (

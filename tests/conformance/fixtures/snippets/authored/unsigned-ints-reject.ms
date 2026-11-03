@@ -1,6 +1,6 @@
-# conform: tags=numbers,types,diagnostics,tier-core
-# conform: phase=check
-# conform: origin=unsigned integer types stage 1
+// conform: tags=numbers,types,diagnostics,tier-core
+// conform: phase=check
+// conform: origin=unsigned integer types stage 1
 fn main() Unit:
     let a: UInt8 = 256
     let b: UInt8 = -1

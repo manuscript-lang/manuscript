@@ -2,7 +2,7 @@ import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 import floor, pow, sqrt from "@std/math.ms"
 
-# ---------------------------------------------------------------- constants
+// ---------------------------------------------------------------- constants
 
 let ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 let DIGS = "0123456789"
@@ -16,9 +16,9 @@ let E_CYCLE = "#CYCLE!"
 let TWO53 = 9007199254740992.0
 let NARROW = 256
 
-# ---------------------------------------------------------------- types
+// ---------------------------------------------------------------- types
 
-# Cell keys are r * 100 + c (c in 0..25, r in 1..999), so ordering by key is row-major.
+// Cell keys are r * 100 + c (c in 0..25, r in 1..999), so ordering by key is row-major.
 type Value:
     case VEmpty
     case VNum(n: Float)
@@ -37,8 +37,8 @@ type Node:
     case NParen(x: Node)
     case NBad
 
-# kind: 0 number, 1 text, 2 identifier, 3 reference, 4 range, 5 operator,
-# 6 '(', 7 ')', 8 ',', 9 #REF! constant, 10 end, 11 bad character
+// kind: 0 number, 1 text, 2 identifier, 3 reference, 4 range, 5 operator,
+// 6 '(', 7 ')', 8 ',', 9 #REF! constant, 10 end, 11 bad character
 type Tok:
     kind: Int = 10
     text: String = ""
@@ -102,7 +102,7 @@ type Sheet:
     evals: Int
     out: List[String]
 
-# ---------------------------------------------------------------- small helpers
+// ---------------------------------------------------------------- small helpers
 
 fn is_ws(ch: String) Bool:
     return ch == " " or ch == "\t" or ch == "\r" or ch == "\n"
@@ -172,7 +172,7 @@ fn ident_shape(w: String) Bool:
             return false
     return true
 
-# Reference shape: optional $, letters, optional $, digits. ok = valid cell reference.
+// Reference shape: optional $, letters, optional $, digits. ok = valid cell reference.
 fn ref_parts(s: String) RefP:
     let cs = s.chars()
     let n = cs.length()
@@ -217,7 +217,7 @@ fn ref_parts(s: String) RefP:
 fn ref_shape(w: String) Bool:
     return ref_parts(w).shape
 
-# ---------------------------------------------------------------- number text
+// ---------------------------------------------------------------- number text
 
 fn numgram(s: String) Bool:
     let cs = s.chars()
@@ -258,7 +258,7 @@ fn numgram(s: String) Bool:
 
     return i == n
 
-# Value of text that satisfies numgram (may be infinite for huge exponents).
+// Value of text that satisfies numgram (may be infinite for huge exponents).
 fn numval(s: String) Float:
     let cs = s.chars()
     let n = cs.length()
@@ -374,7 +374,7 @@ fn strip_fixed(s: String) String:
 
     return res
 
-# Exact decimal expansion of a large integer-valued double.
+// Exact decimal expansion of a large integer-valued double.
 fn fmt_big(x: Float) String:
     let neg = x < 0.0
     var y = x.abs()
@@ -429,7 +429,7 @@ fn fmt_num(x: Float) String:
 
     return strip_fixed(x.to_fixed(10))
 
-# ---------------------------------------------------------------- values
+// ---------------------------------------------------------------- values
 
 fn kind_of(v: Value) Int:
     match v:
@@ -470,7 +470,7 @@ fn numres(x: Float) Value:
 
     return VErr(e: E_NUM)
 
-# String form (display text) of a non-error value.
+// String form (display text) of a non-error value.
 fn sf(v: Value) String:
     match v:
         VEmpty:
@@ -535,7 +535,7 @@ fn zero_of(v: Value) Value:
 
     return VBool(b: false)
 
-# Three-way comparison with the empty-cell and type-order rules. No errors expected.
+// Three-way comparison with the empty-cell and type-order rules. No errors expected.
 fn cmp3(a0: Value, b0: Value) Int:
     var a = a0.clone()
     var b = b0.clone()
@@ -669,7 +669,7 @@ fn collapse(s: String) String:
 fn textop(s: String) Value:
     return VText(s: s.clone())
 
-# ---------------------------------------------------------------- lexer
+// ---------------------------------------------------------------- lexer
 
 fn tk(kind: Int, text: String, s0: Int, s1: Int) Tok:
     return Tok(kind: kind, text: text, num: 0.0, s0: s0, s1: s1)
@@ -805,7 +805,7 @@ fn lex(cs: List[String]) List[Tok]:
     out.append(Tok(kind: 10, text: "", num: 0.0, s0: n, s1: n))
     return out
 
-# ---------------------------------------------------------------- parser
+// ---------------------------------------------------------------- parser
 
 impl Ps:
     fn cur() Tok:
@@ -1023,7 +1023,7 @@ fn parse_formula(src: String) Node:
 
     return e
 
-# Collects precedent rectangles (valid references and ranges), skipping ROW/COLUMN arguments.
+// Collects precedent rectangles (valid references and ranges), skipping ROW/COLUMN arguments.
 fn collect(n: Node, var out: List[Rect]) Unit:
     match n:
         NRef(c, r, ok):
@@ -1055,7 +1055,7 @@ fn rinfo(n: Node) RI:
         _:
             return RI(kind: 0, ok: false, c1: 0, r1: 0, c2: 0, r2: 0)
 
-# ---------------------------------------------------------------- formula-copy shifting
+// ---------------------------------------------------------------- formula-copy shifting
 
 fn shift_p(p: RefP, dc: Int, dr: Int) RefP:
     let pc = p.c
@@ -1107,7 +1107,7 @@ fn shift_ref_tok(text: String, dc: Int, dr: Int) String:
 
     return refstr(qa) + ":" + refstr(qb)
 
-# raw is a formula text starting with "=".
+// raw is a formula text starting with "=".
 fn shift_formula(raw: String, dc: Int, dr: Int) String:
     let cs = raw.drop(1).chars()
     let toks = lex(cs)
@@ -1127,7 +1127,7 @@ fn shift_formula(raw: String, dc: Int, dr: Int) String:
     out.append(sub(cs, pos, cs.length()))
     return "=" + out.join("")
 
-# ---------------------------------------------------------------- SCC (Tarjan)
+// ---------------------------------------------------------------- SCC (Tarjan)
 
 impl Scc:
     var fn visit(v: Int) Unit:
@@ -1170,9 +1170,9 @@ impl Scc:
                 return true
         return false
 
-# ---------------------------------------------------------------- CSV
+// ---------------------------------------------------------------- CSV
 
-# Records of a block; blank (whitespace-only, unquoted) records are skipped.
+// Records of a block; blank (whitespace-only, unquoted) records are skipped.
 fn csv_parse(block: List[String]) List[List[String]]:
     let joined = block.join("\n")
     let cs = joined.chars()
@@ -1238,7 +1238,7 @@ fn words(s: String) List[String]:
             out.append(p.clone())
     return out
 
-# First whitespace-separated word, and the rest of the line (trimmed).
+// First whitespace-separated word, and the rest of the line (trimmed).
 fn cut(s: String) Cut:
     let t = s.trim_start()
     let cs = t.chars()
@@ -1292,7 +1292,7 @@ fn csvq(s: String) String:
 
     return s.clone()
 
-# ---------------------------------------------------------------- aggregate helpers
+// ---------------------------------------------------------------- aggregate helpers
 
 fn agg(name: String, its: List[Item]) Value:
     for it in its:
@@ -1351,7 +1351,7 @@ fn agg(name: String, its: List[Item]) Value:
 
         return VNum(n: m)
 
-    # MEDIAN
+    // MEDIAN
     if nums.length() == 0:
         return VErr(e: E_NUM)
 
@@ -1458,7 +1458,7 @@ fn valuef(v: Value) Value:
 
     return c
 
-# ---------------------------------------------------------------- sheet evaluation
+// ---------------------------------------------------------------- sheet evaluation
 
 impl Sheet:
     fn val(k: Int) Value:
@@ -1951,7 +1951,7 @@ impl Sheet:
 
         return VNum(n: cnt.to_float())
 
-    # Value of a formula cell: empty result becomes 0; non-finite numbers are #NUM!.
+    // Value of a formula cell: empty result becomes 0; non-finite numbers are #NUM!.
     fn topv(ast: Node) Value:
         let v = self.ev(ast)
         if kind_of(v) == 0:
@@ -1962,12 +1962,12 @@ impl Sheet:
                 return VErr(e: E_NUM)
         return v
 
-    # ------------------------------------------------------------ mutation
+    // ------------------------------------------------------------ mutation
 
     var fn emit(s: String) Unit:
         self.out.append(s)
 
-    # Stores raw (already trimmed VALUE) into cell k, classifying it.
+    // Stores raw (already trimmed VALUE) into cell k, classifying it.
     var fn assign(k: Int, text: String) Unit:
         if text == "":
             self.rawm.remove(k)
@@ -2013,11 +2013,11 @@ impl Sheet:
 
         self.valm[k] = VText(s: text.clone())
 
-    # Recalculates the affected formula cells after the given cells changed.
-    # Returns the number of affected formula cells.
+    // Recalculates the affected formula cells after the given cells changed.
+    // Returns the number of affected formula cells.
     var fn recalc(changed: List[Int]) Int:
-        # Index of formula cells by the cells of their precedent rectangles.
-        # Narrow rectangles are expanded into a linked list per cell; wide ones are checked directly.
+        // Index of formula cells by the cells of their precedent rectangles.
+        // Narrow rectangles are expanded into a linked list per cell; wide ones are checked directly.
         var fl = List[Int]()
         var fr = List[List[Rect]]()
         var wide = List[Int]()
@@ -2100,7 +2100,7 @@ impl Sheet:
         for i in 0..n:
             apos[affected[i]] = i
 
-        # Edges: node i depends on node j when some precedent rectangle of i contains affected[j].
+        // Edges: node i depends on node j when some precedent rectangle of i contains affected[j].
         var succ = List[List[Int]]()
         var i = 0
 
@@ -2265,7 +2265,7 @@ impl Sheet:
             + n.to_string()
         )
 
-    # ------------------------------------------------------------ reporting
+    // ------------------------------------------------------------ reporting
 
     fn disp(k: Int) String:
         return sf(self.val(k))
@@ -2334,7 +2334,7 @@ impl Sheet:
 
         return self.names_of(seen)
 
-    # Default range: A1 to the largest column and row among non-empty cells.
+    // Default range: A1 to the largest column and row among non-empty cells.
     fn default_range() Rect:
         var maxc = 0
         var maxr = 1
@@ -2396,7 +2396,7 @@ impl Sheet:
             + self.evals.to_string()
         )
 
-    # ------------------------------------------------------------ dispatch
+    // ------------------------------------------------------------ dispatch
 
     var fn exec(line: String) Unit:
         let c = cut(line)
@@ -2534,7 +2534,7 @@ impl Sheet:
     var fn do_line(line: String) Unit:
         self.exec(line)
 
-# ---------------------------------------------------------------- main
+// ---------------------------------------------------------------- main
 
 export fn main() Int:
     let lines = read_lines(stdin()).get()

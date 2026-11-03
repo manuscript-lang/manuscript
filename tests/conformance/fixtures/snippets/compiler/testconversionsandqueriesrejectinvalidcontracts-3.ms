@@ -1,6 +1,6 @@
-# conform: tags=alternatives,diagnostics,generics,optional,records,strings,tier-core,try-result
-# conform: phase=check
-# conform: origin=pkg/compiler/conversions_queries_test.go:21 TestConversionsAndQueriesRejectInvalidContracts
+// conform: tags=alternatives,diagnostics,generics,optional,records,strings,tier-core,try-result
+// conform: phase=check
+// conform: origin=pkg/compiler/conversions_queries_test.go:21 TestConversionsAndQueriesRejectInvalidContracts
 type Optional[T]:
     case T
     case none

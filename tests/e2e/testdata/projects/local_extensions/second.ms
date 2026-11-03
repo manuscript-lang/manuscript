@@ -23,7 +23,7 @@ impl Read[Int] for Choice:
             Empty:
                 return delta()
 
-# A local interface can use the receiver's inherited bound.
+// A local interface can use the receiver's inherited bound.
 interface Extract:
     fn extract() Int
 

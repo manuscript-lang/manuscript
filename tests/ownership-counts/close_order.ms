@@ -1,7 +1,7 @@
-# expect-stdout: close 3
-# expect-stdout: close 2
-# expect-stdout: close 1
-# Fields close last-declared first; the record's own close would run before them.
+// expect-stdout: close 3
+// expect-stdout: close 2
+// expect-stdout: close 1
+// Fields close last-declared first; the record's own close would run before them.
 import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 

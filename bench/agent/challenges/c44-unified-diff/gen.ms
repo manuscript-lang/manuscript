@@ -1,10 +1,10 @@
-# Generator for c44-unified-diff. Deterministic; run: ms run bench/agent/gen.ms -- c44
+// Generator for c44-unified-diff. Deterministic; run: ms run bench/agent/gen.ms -- c44
 import GenCase, make_case, write_cases from "../../lib/gen.ms"
 import seeded from "../../lib/pyrandom.ms"
 import Random from "../../lib/pyrandom.ms"
 import words from "../../lib/text.ms"
 
-# One line of an edit script: a mark (space, `-` or `+`) and the text.
+// One line of an edit script: a mark (space, `-` or `+`) and the text.
 type Op:
     mark: String
     text: String
@@ -116,7 +116,7 @@ fn edit(var rnd: Random, a: List[String], k: Int) List[String]:
             b[at] = rnd.choice(pool)
     return b
 
-# `base` with the lines at `changes[k].0` replaced by `changes[k].1`.
+// `base` with the lines at `changes[k].0` replaced by `changes[k].1`.
 fn at(base: List[String], places: List[Int], values: List[String]) List[String]:
     var out = base.clone()
     for k in 0..places.length(): out[places[k]] = values[k].clone()

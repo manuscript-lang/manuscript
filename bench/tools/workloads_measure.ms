@@ -1,4 +1,4 @@
-# Times prebuilt CLI workloads, validating every version and trial's output (bench/perf/workloads).
+// Times prebuilt CLI workloads, validating every version and trial's output (bench/perf/workloads).
 import invalid, left, now_ns, right, rotate from "./lib.ms"
 
 export type Sample:
@@ -9,7 +9,7 @@ export type Sample:
 export fn versions() List[String]:
     return ["ms", "go", "rs"]
 
-# The samples of every trial plus the expected output (produced by the Go reference).
+// The samples of every trial plus the expected output (produced by the Go reference).
 export type Measured:
     samples: List[Sample]
     expected: String
@@ -20,12 +20,12 @@ fn best(samples: List[Sample], version: String) Float:
         if s.version == version and (low == 0 or s.elapsed_ns < low): low = s.elapsed_ns
     return low.to_float() / 1000000.0
 
-# `run(version)` executes one program with the workload's input and returns its standard output, or an error when it fails.
+// `run(version)` executes one program with the workload's input and returns its standard output, or an error when it fails.
 export fn measure(repeats: Int, name: String, run: fn(String) String!) Measured!:
     if repeats < 1: return invalid("repeats must be positive")
 
-    # One untimed run of each version warms executable and input pages. The Go reference establishes the expected output;
-    # every other output must match.
+    // One untimed run of each version warms executable and input pages. The Go reference establishes the expected output;
+    // every other output must match.
     let expected = try run("go")
 
     for v in ["ms", "rs"]:

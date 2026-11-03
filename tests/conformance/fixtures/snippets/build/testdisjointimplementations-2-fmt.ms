@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,formatter,generics,interfaces,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/build/compiler_test.go:350 TestDisjointImplementations
+// conform: tags=closures,control-flow,formatter,generics,interfaces,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/build/compiler_test.go:350 TestDisjointImplementations
 interface Read:
     fn get() Int
 

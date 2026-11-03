@@ -14,20 +14,20 @@
           "file": "testinterfaceandreceiverhints-8.ms",
           "line": 11,
           "column": 23,
-          "offset": 293
+          "offset": 296
         },
         "fix": {
           "position": {
             "file": "testinterfaceandreceiverhints-8.ms",
             "line": 11,
             "column": 23,
-            "offset": 293
+            "offset": 296
           },
           "end": {
             "file": "testinterfaceandreceiverhints-8.ms",
             "line": 11,
             "column": 27,
-            "offset": 297
+            "offset": 300
           },
           "replacement": "self"
         }

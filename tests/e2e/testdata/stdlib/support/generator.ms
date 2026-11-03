@@ -1,4 +1,4 @@
-# Deterministic generator so failures reproduce from the seed in the message.
+// Deterministic generator so failures reproduce from the seed in the message.
 export type Rng:
     state: Int
 
@@ -18,7 +18,7 @@ export fn text(var rng: Rng) String:
         out += pieces[next(var rng, pieces.length())]
     return out
 
-# Deletes, inserts or replaces one character-sized piece of source text.
+// Deletes, inserts or replaces one character-sized piece of source text.
 export fn mutate(var rng: Rng, source: String) String:
     var chars = source.chars()
     let at = next(var rng, chars.length() + 1)

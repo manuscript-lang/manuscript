@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,modules,stdlib-testing,testing,tier-core,try-result
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/interface_views/conformance_test.ms
+// conform: tags=diagnostics,modules,stdlib-testing,testing,tier-core,try-result
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/interface_views/conformance_test.ms
 import invoke from "./domain.ms"
 import left from "./left.ms"
 import right from "./right.ms"

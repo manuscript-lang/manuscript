@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,formatter,mutation,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/list_bounds_test.go:74 TestClosedIntListGenericAndLambdaIsolation
+// conform: tags=closures,control-flow,formatter,mutation,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/list_bounds_test.go:74 TestClosedIntListGenericAndLambdaIsolation
 fn probe(value: Int) Int:
     let values = [1, 2, 3]
 

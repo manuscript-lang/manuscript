@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,mutation,tier-core
-# conform: phase=check
-# conform: origin=pkg/parser/group_test.go:11 TestBindingGroupsParseAsIndividualBindings
+// conform: tags=closures,diagnostics,mutation,tier-core
+// conform: phase=check
+// conform: origin=pkg/parser/group_test.go:11 TestBindingGroupsParseAsIndividualBindings
 let (
     A = 1
     B: Int = A + 1

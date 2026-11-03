@@ -119,7 +119,7 @@ type LabelCnt:
     name: String
     n: Int
 
-# ---------- small helpers ----------
+// ---------- small helpers ----------
 
 fn ok_res(msg: String) Res:
     return Res(ok: true, msg: msg)
@@ -181,7 +181,7 @@ fn valid_view_name(s: String) Bool:
             return false
     return true
 
-# Integer rule: digits only, no leading zeros, at most 1000000. Returns -1 when invalid.
+// Integer rule: digits only, no leading zeros, at most 1000000. Returns -1 when invalid.
 fn int_value(s: String) Int:
     if s == "" or s.length() > 7:
         return -1
@@ -400,7 +400,7 @@ fn join_from(w: List[String], j: Int) String:
 fn words(text: String) List[String]:
     return text.replace("\t", " ").split(" ").filter(fn w: w != "")
 
-# Splits off the first whitespace separated word; rest starts after the following blanks.
+// Splits off the first whitespace separated word; rest starts after the following blanks.
 fn cut(text: String) Cut:
     let cs = text.chars()
     var i = 0
@@ -417,7 +417,7 @@ fn cut(text: String) Cut:
         i += 1
     return Cut(word: word, rest: text.drop(i))
 
-# Token style: whitespace separates tokens, double quotes group text inside a token.
+// Token style: whitespace separates tokens, double quotes group text inside a token.
 fn tokenize(text: String) Toks:
     var items = List[String]()
     var cur = ""
@@ -462,9 +462,9 @@ fn tokenize(text: String) Toks:
         items.append(cur.clone())
     return Toks(items: items, ok: true)
 
-# ---------- issue fields ----------
+// ---------- issue fields ----------
 
-# Parses a comma list of labels into acc (sorted, unique). Returns an error or "".
+// Parses a comma list of labels into acc (sorted, unique). Returns an error or "".
 fn read_labels(value: String, var acc: List[String]) String:
     for raw in value.split(","):
         let l = raw.lower()
@@ -486,7 +486,7 @@ fn remove_label(var labels: List[String], l: String) Unit:
     if p >= 0:
         labels.remove(p)
 
-# Applies one field=value token to an issue. Returns an error or "".
+// Applies one field=value token to an issue. Returns an error or "".
 fn set_field(var iss: Issue, tok: String) String:
     let ps = tok.split("=", 2)
     if ps.length() < 2 or ps[0] == "":
@@ -571,7 +571,7 @@ fn set_field(var iss: Issue, tok: String) String:
 
     return "unknown field '" + field + "'"
 
-# Lists the fields that differ, in the fixed log order.
+// Lists the fields that differ, in the fixed log order.
 fn diff(a: Issue, b: Issue) List[String]:
     var out = List[String]()
     if a.title != b.title:
@@ -620,7 +620,7 @@ fn count_line(n: Int) String:
 
     return "(" + str_i(n) + " issues)"
 
-# ---------- commands: workflow, actor, today ----------
+// ---------- commands: workflow, actor, today ----------
 
 fn add_state(var states: List[String], name: String) Unit:
     if not states.contains(name):
@@ -769,7 +769,7 @@ fn cmd_today(var st: St, args: String) Unit:
     st.today = w[0].clone()
     out_line(var st, "today is " + w[0])
 
-# ---------- create / edit / label / assign / move / comment / delete ----------
+// ---------- create / edit / label / assign / move / comment / delete ----------
 
 fn commit(var st: St, idx: Int, base: Issue, var cand: Issue) Res:
     let d = diff(base, cand)
@@ -1121,9 +1121,9 @@ fn cmd_show(var st: St, args: String) Unit:
     for c in iss.comments:
         out_line(var st, "    [t=" + str_i(c.t) + " " + c.actor + "] " + c.text)
 
-# ---------- query language ----------
+// ---------- query language ----------
 
-# Splits "FILTER [sort FIELDS] [limit N]" textually.
+// Splits "FILTER [sort FIELDS] [limit N]" textually.
 fn last_ws_index(s: String) Int:
     let cs = s.chars()
     var i = cs.length() - 1
@@ -1769,7 +1769,7 @@ fn cmd_list(var st: St, args: String) Unit:
 
     run_list(var st, pf.node, sp.keys, qt.limit)
 
-# ---------- views ----------
+// ---------- views ----------
 
 fn sorted_view_names(st: St) List[String]:
     var names = st.views.keys()
@@ -1976,9 +1976,9 @@ fn cmd_view(var st: St, args: String) Unit:
     else:
         out_err(var st, "usage: view save|run|list|show|delete")
 
-# ---------- bulk ----------
+// ---------- bulk ----------
 
-# Splits the bulk text at the first word `where`.
+// Splits the bulk text at the first word `where`.
 fn split_where(args: String) Split:
     let total = args.length()
     var rem = args.clone()
@@ -2081,7 +2081,7 @@ fn cmd_bulk(var st: St, args: String) Unit:
 
     out_line(var st, "bulk: " + str_i(good_n) + " ok, " + str_i(bad_n) + " failed")
 
-# ---------- log and reports ----------
+// ---------- log and reports ----------
 
 fn cmd_log(var st: St, args: String) Unit:
     let w = words(args)
@@ -2352,7 +2352,7 @@ fn cmd_report(var st: St, args: String) Unit:
     else:
         out_err(var st, "usage: report summary|workload|labels|timeline")
 
-# ---------- dispatch and main ----------
+// ---------- dispatch and main ----------
 
 fn run_line(var st: St, line: String) Unit:
     let c = cut(line)

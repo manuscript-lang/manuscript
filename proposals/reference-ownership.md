@@ -17,21 +17,21 @@ Implemented in the same PR (checker, lowering, MIR verifier, stdlib, docs); the 
 
 ```manuscript
 var a = [1, 2]
-let b = a                         # error: `a` is moved here but used again at 8:5
-a.append(3)                       # (OWNERSHIP.md "Borrows are lexical" says `let y = x` borrows)
+let b = a                         // error: `a` is moved here but used again at 8:5
+a.append(3)                       // (OWNERSHIP.md "Borrows are lexical" says `let y = x` borrows)
 
 impl Row:
     fn title() String:
-        return self.name          # error: cannot move `self.name` out of `self`: only a whole variable can move
+        return self.name          // error: cannot move `self.name` out of `self`: only a whole variable can move
 
 fn count(var seen: Map[String, Int], r: Row) Unit:
-    seen.add(r.name, 1)           # accepted: a partial move, so `count` consumes `r`
-count(var seen, rows[0])          # error: cannot move `rows[..]` out of `rows`; fix printed: `rows[0].clone()`
+    seen.add(r.name, 1)           // accepted: a partial move, so `count` consumes `r`
+count(var seen, rows[0])          // error: cannot move `rows[..]` out of `rows`; fix printed: `rows[0].clone()`
 
 var y = xs[0]
-y += 10                           # prints 11 11 (#2168)
+y += 10                           // prints 11 11 (#2168)
 if var q = m.get("a"):
-    q.append(1)                   # m unchanged, no diagnostic (#2164)
+    q.append(1)                   // m unchanged, no diagnostic (#2164)
 ```
 
 - Non-goals: two owners of one value (`Shared[T]` stays the only way), the `var` marker at declarations and calls, lending from `Shared.get` beyond its expression (`OWNERSHIP.md` Model, `wiki/language` Shared pages), lending through function values and lambdas (`one-borrow-model.md` stage 5: an escaping closure owns its captures).
@@ -68,12 +68,12 @@ Proposed behavior (unchecked: rejected at `a0f61d32`):
 
 ```manuscript
 fn label(r: Row) String:
-    return r.name                 # lends from `r`
+    return r.name                 // lends from `r`
 
 fn grow(var b: Box) Int:
-    var xs = b.items()            # exclusive borrow of b.items (one field path)
-    xs.append(1)                  # b.items changes
-    let n = label(b.row)          # shared borrow; b.row cannot change until n's last use
+    var xs = b.items()            // exclusive borrow of b.items (one field path)
+    xs.append(1)                  // b.items changes
+    let n = label(b.row)          // shared borrow; b.row cannot change until n's last use
     return b.items.length() + n.length()
 ```
 

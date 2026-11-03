@@ -1,6 +1,6 @@
-# conform: tags=numbers,types,tier-core
-# conform: phase=run
-# conform: origin=unsigned integer types UInt64 range analysis
+// conform: tags=numbers,types,tier-core
+// conform: phase=run
+// conform: origin=unsigned integer types UInt64 range analysis
 import stdout from "@std/io/io.ms"
 
 fn count(start: UInt64, stop: UInt64) UInt64:

@@ -14,14 +14,14 @@ type Ledger:
     accounts: Map[String, Account]
     fees: Int
 
-# Parses a non-empty run of ASCII digits; anything else is none.
+// Parses a non-empty run of ASCII digits; anything else is none.
 fn digits(text: String) Optional[Int]:
     for c in text.chars():
         if not "0123456789".contains(c):
             return none
     return text.parse_int()
 
-# Returns the value of a digit-only text, or 0 when it is not a valid amount (0 is never a valid amount).
+// Returns the value of a digit-only text, or 0 when it is not a valid amount (0 is never a valid amount).
 fn amount(text: String) Int:
     return digits(text).get(0)
 
@@ -37,7 +37,7 @@ fn unknown(id: String) String:
 fn empty_account() Account:
     return Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: false)
 
-# Records a rejection against the account that the error message names.
+// Records a rejection against the account that the error message names.
 fn blame(var ledger: Ledger, id: String, message: String) String:
     if let acct = ledger.accounts.get(id):
         var copy = acct
@@ -49,7 +49,7 @@ fn blame(var ledger: Ledger, id: String, message: String) String:
 fn is_frozen(ledger: Ledger, id: String) Bool:
     return ledger.accounts.get(id).get(empty_account()).frozen
 
-# The overdraft fee applies when a debit takes a non-negative balance below zero.
+// The overdraft fee applies when a debit takes a non-negative balance below zero.
 fn fee_due(balance: Int, debit: Int) Int:
     if balance >= 0 and balance < debit:
         return FEE

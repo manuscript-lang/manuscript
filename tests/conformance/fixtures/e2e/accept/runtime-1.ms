@@ -1,6 +1,6 @@
-# conform: tags=decimal,faults,modules,stdlib-decimal,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/runtime-1.ms
+// conform: tags=decimal,faults,modules,stdlib-decimal,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/runtime-1.ms
 import expect_equal from "@std/test/test.ms"
 import Decimal from "@std/math/decimal.ms"
 

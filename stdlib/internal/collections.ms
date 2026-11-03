@@ -1,4 +1,4 @@
-# The runtime keeps the first of equal elements, hashing them when the element type is hashable; the compiler lowers this call from the element type.
+// The runtime keeps the first of equal elements, hashing them when the element type is hashable; the compiler lowers this call from the element type.
 export extern fn msrt_list_distinct[T](values: List[T]) List[T]
 
 export extern fn msrt_list_filled[T](value: T, count: Int, max_items: Int?) List[T]!

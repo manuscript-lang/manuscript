@@ -2,7 +2,7 @@ import stdout from "@std/io.ms"
 import stdin from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# ---------------------------------------------------------------- types
+// ---------------------------------------------------------------- types
 
 type Fatal:
     msg: String
@@ -82,7 +82,7 @@ let FUNCS = [
     "addprefix", "addsuffix", "wildcard", "foreach", "if", "info", "error"
 ]
 
-# ---------------------------------------------------------------- output and string helpers
+// ---------------------------------------------------------------- output and string helpers
 
 fn out(s: String) Unit:
     stdout().write("{s}\n").get()
@@ -215,7 +215,7 @@ fn env(line: Int) Env:
         binds: Map[String, String](), stack: List[String]()
     )
 
-# ---------------------------------------------------------------- logical lines
+// ---------------------------------------------------------------- logical lines
 
 fn strip_comment(s: String) String:
     let cs = s.chars()
@@ -267,7 +267,7 @@ fn logical_lines(phys: List[String]) List[Line]:
 
     return res
 
-# ---------------------------------------------------------------- patterns
+// ---------------------------------------------------------------- patterns
 
 fn pmatch(pat: String, t: String) Bool:
     let pc = pat.chars()
@@ -372,7 +372,7 @@ fn dot_index(w: String) Int:
 
     return -1
 
-# ---------------------------------------------------------------- expansion
+// ---------------------------------------------------------------- expansion
 
 fn is_auto(name: String) Bool:
     return (
@@ -756,7 +756,7 @@ fn call_fn(name: String, args: List[String], e: Env, st: St) Result[String, Fata
 
     return ok("")
 
-# ---------------------------------------------------------------- Makefile parsing
+// ---------------------------------------------------------------- Makefile parsing
 
 fn directive_kw(text: String) String:
     let cs = text.chars()
@@ -1108,7 +1108,7 @@ fn parse_all(var st: St, lines: List[Line]) Result[Unit, Fatal]:
 
     return ok(unit)
 
-# ---------------------------------------------------------------- rule resolution
+// ---------------------------------------------------------------- rule resolution
 
 fn can_make(st: St, name: String, depth: Int) Bool:
     if st.files.contains(name) or st.explicit.contains(name) or st.phony.contains(name):
@@ -1191,7 +1191,7 @@ fn default_goal(st: St) String:
             return n.clone()
     return ""
 
-# ---------------------------------------------------------------- running recipes
+// ---------------------------------------------------------------- running recipes
 
 fn remove_quotes(s: String) String:
     var acc = ""
@@ -1519,7 +1519,7 @@ fn cmd_targets(st: St) Unit:
         out("phony: " + st.phony.join(" "))
     return
 
-# ---------------------------------------------------------------- requests
+// ---------------------------------------------------------------- requests
 
 fn reset_parse(var st: St, cmdv: Map[String, String], dry: Bool) Unit:
     st.vars = Map[String, Var]()

@@ -4,7 +4,7 @@ fn f() Int:
     var i = 0
 
     while i < 2:
-        rows.append([2])  # error: while `head` borrows it
+        rows.append([2])  // error: while `head` borrows it
         i += 1
 
     return head.length()

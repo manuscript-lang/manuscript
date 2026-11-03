@@ -80,7 +80,7 @@ fn statement_grouping_keeps_complete_inline_conditional_expressions() {
         let formatted = ms_syntax::format(&file, &input).unwrap();
         let after = ms_syntax::parser::parse(&file, &formatted).unwrap();
         assert_eq!(syntax_shape(&after), syntax_shape(&before));
-        assert!(formatted.contains("# keep the complete conditional"));
+        assert!(formatted.contains("// keep the complete conditional"));
         assert_eq!(ms_syntax::format(&file, &formatted).unwrap(), formatted);
     }
 }

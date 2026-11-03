@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,generics,interfaces,match,records,strings,tier-core
-# conform: phase=check
-# conform: origin=pkg/build/library_test.go:150 TestCommonErrorRejectsInvalidContractPatterns
+// conform: tags=control-flow,diagnostics,generics,interfaces,match,records,strings,tier-core
+// conform: phase=check
+// conform: origin=pkg/build/library_test.go:150 TestCommonErrorRejectsInvalidContractPatterns
 type Box[T]:
     item: T
 

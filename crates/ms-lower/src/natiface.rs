@@ -148,14 +148,6 @@ const METHODS: &[MethodRow] = &[
         "msstd_net_network_request_bytes",
         &[],
     ),
-    ("net", "Network", "serve", "msstd_net_network_serve", &[]),
-    (
-        "net",
-        "Network",
-        "serve_connections",
-        "msstd_net_network_serve_connections",
-        &[],
-    ),
     (
         "http",
         "HttpExchange",
@@ -1295,7 +1287,7 @@ mod tests {
         for line in source.lines() {
             if let Some(rest) = line.strip_prefix("export interface ") {
                 current = rest.split([':', '[']).next().map(|n| n.trim().to_string());
-            } else if !line.starts_with(' ') && !line.is_empty() && !line.starts_with('#') {
+            } else if !line.starts_with(' ') && !line.is_empty() && !line.starts_with("//") {
                 current = None;
             } else if let (Some(iface), Some(rest)) = (&current, line.strip_prefix("    def ")) {
                 let name: String = rest

@@ -1,6 +1,6 @@
-# conform: tags=formatter,match,optional,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/pattern_lint_test.go:23 TestPatternBindingAdvisory
+// conform: tags=formatter,match,optional,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/pattern_lint_test.go:23 TestPatternBindingAdvisory
 type Item:
     value: Int
 

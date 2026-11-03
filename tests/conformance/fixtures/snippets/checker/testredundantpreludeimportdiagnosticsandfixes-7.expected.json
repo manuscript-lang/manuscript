@@ -14,28 +14,28 @@
           "file": "testredundantpreludeimportdiagnosticsandfixes-7.ms",
           "line": 5,
           "column": 5,
-          "offset": 210
+          "offset": 213
         },
         "end": {
           "file": "testredundantpreludeimportdiagnosticsandfixes-7.ms",
           "line": 5,
           "column": 9,
-          "offset": 214
+          "offset": 217
         },
         "fix": {
           "position": {
             "file": "testredundantpreludeimportdiagnosticsandfixes-7.ms",
             "line": 5,
             "column": 5,
-            "offset": 210
+            "offset": 213
           },
           "end": {
             "file": "testredundantpreludeimportdiagnosticsandfixes-7.ms",
             "line": 6,
             "column": 6,
-            "offset": 234
+            "offset": 238
           },
-          "replacement": "  # collection\n    "
+          "replacement": "  // collection\n    "
         }
       },
       {
@@ -46,20 +46,20 @@
           "file": "testredundantpreludeimportdiagnosticsandfixes-7.ms",
           "line": 7,
           "column": 5,
-          "offset": 239
+          "offset": 243
         },
         "end": {
           "file": "testredundantpreludeimportdiagnosticsandfixes-7.ms",
           "line": 7,
           "column": 10,
-          "offset": 244
+          "offset": 248
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testredundantpreludeimportdiagnosticsandfixes-7.ms:5:5: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 5 |     List  # collection\n   |     ^^^^\n<DIR>/testredundantpreludeimportdiagnosticsandfixes-7.ms:7:5: resolution: module does not export range; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, Set, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 7 |     range\n   |     ^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testredundantpreludeimportdiagnosticsandfixes-7.ms:5:5: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 5 |     List  // collection\n   |     ^^^^\n<DIR>/testredundantpreludeimportdiagnosticsandfixes-7.ms:7:5: resolution: module does not export range; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, Set, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 7 |     range\n   |     ^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

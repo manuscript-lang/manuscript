@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,lists,modules,optional,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-fs,stdlib-process,stdlib-time,strings,tier-io,try-result
-# conform: phase=check
-# conform: origin=bench/lowering/native-defaults.ms
+// conform: tags=closures,diagnostics,lists,modules,optional,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-fs,stdlib-process,stdlib-time,strings,tier-io,try-result
+// conform: phase=check
+// conform: origin=bench/lowering/native-defaults.ms
 import base64_encode from "@std/data/encoding.ms"
 import CsvOptions from "@std/data/csv.ms"
 import Bytes from "@std/bytes.ms"

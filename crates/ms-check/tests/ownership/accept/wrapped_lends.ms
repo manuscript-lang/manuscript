@@ -8,7 +8,7 @@ type Bad:
 impl Reportable for Bad:
     fn message() String: self.why.clone()
 
-# A part wrapped into an Optional or a Result on the way out is a reference to it.
+// A part wrapped into an Optional or a Result on the way out is a reference to it.
 fn first_tag(r: Row) String?:
     return r.tags[0]
 
@@ -18,7 +18,7 @@ fn named(r: Row) String!Bad:
 fn relay(result: Row!Bad) Row!Bad:
     return result
 
-# `try` of a lending call hands a lent error on; its payload is a reference too.
+// `try` of a lending call hands a lent error on; its payload is a reference too.
 fn tail(result: Row!Bad) String!Bad:
     let row = try relay(result)
     return ok(row.name)
@@ -28,7 +28,7 @@ fn risky(n: Int) Int!Bad:
 
     return ok(n)
 
-# A wrapped part beside a new value (the error of `try risky`) is a new value, as before.
+// A wrapped part beside a new value (the error of `try risky`) is a new value, as before.
 fn checked(r: Row, n: Int) String!Bad:
     let _v = try risky(n)
     return ok(r.name)

@@ -216,7 +216,7 @@ import os_type from "@std/os/process.ms"
 test "unix permission bits":
     if os_type() == "Windows_NT":
         skip("Unix only")
-    # Unix-only assertions follow.
+    // Unix-only assertions follow.
 ```
 
 To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:

@@ -14,7 +14,7 @@
           "file": "extern-signature-rejected.ms",
           "line": 12,
           "column": 21,
-          "offset": 255
+          "offset": 258
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "extern-signature-rejected.ms",
           "line": 13,
           "column": 30,
-          "offset": 315
+          "offset": 318
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "extern-signature-rejected.ms",
           "line": 14,
           "column": 23,
-          "offset": 342
+          "offset": 345
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "extern-signature-rejected.ms",
           "line": 15,
           "column": 25,
-          "offset": 396
+          "offset": 399
         }
       },
       {
@@ -58,7 +58,7 @@
           "file": "extern-signature-rejected.ms",
           "line": 16,
           "column": 25,
-          "offset": 433
+          "offset": 436
         }
       },
       {
@@ -69,7 +69,7 @@
           "file": "extern-signature-rejected.ms",
           "line": 17,
           "column": 26,
-          "offset": 492
+          "offset": 495
         }
       }
     ],

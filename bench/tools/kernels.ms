@@ -1,7 +1,7 @@
-# Whole-kernel comparisons against hand-written Go, Rust and (kernels only) C, minimum of N runs (bench/perf/kernels, bench/perf/competence).
-# Usage: ms run bench/tools/kernels.ms -- <kernels|competence> [repeats]
-# kernels: c-ms is the C a no-GC Manuscript backend would emit; ABLATE=1 adds c-ms builds with one runtime check removed each.
-# MS, GO, RUSTC and CC pick the tools.
+// Whole-kernel comparisons against hand-written Go, Rust and (kernels only) C, minimum of N runs (bench/perf/kernels, bench/perf/competence).
+// Usage: ms run bench/tools/kernels.ms -- <kernels|competence> [repeats]
+// kernels: c-ms is the C a no-GC Manuscript backend would emit; ABLATE=1 adds c-ms builds with one runtime check removed each.
+// MS, GO, RUSTC and CC pick the tools.
 import ablations, base_versions, c_versions, summarize from "./kernels_table.ms"
 import (
     build_go,
@@ -69,7 +69,7 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
     var raw = List[String]()
 
     for i in 0..n:
-        # Rotate the order each round so no version always runs first.
+        // Rotate the order each round so no version always runs first.
         for v in rotate(versions, i):
             let out = try sample("{work}/{v}/bench", [])
             for line in out.split("\n"):

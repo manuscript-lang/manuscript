@@ -67,7 +67,7 @@ test "set_identity and set_groups validate input and apply or refuse":
     let info = try process_info()
 
     if info.uid < 0:
-        # Windows has no ids.
+        // Windows has no ids.
         try expect_process_error(
             set_identity(kind: "uid", id: 0),
             Error(
@@ -81,7 +81,7 @@ test "set_identity and set_groups validate input and apply or refuse":
             )
         )
     else:
-        # Setting the identity it already has changes nothing and needs no privilege.
+        // Setting the identity it already has changes nothing and needs no privilege.
         try set_identity(kind: "uid", id: info.uid)
         try set_identity(kind: "gid", id: info.gid)
         try set_identity(kind: "euid", id: info.effective_uid)
@@ -107,7 +107,7 @@ test "replace rejects invalid programs before leaving this process":
     )
 
     if info.uid < 0:
-        # Windows has no exec.
+        // Windows has no exec.
         try expect_process_error(
             empty,
             Error(

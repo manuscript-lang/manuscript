@@ -282,6 +282,12 @@ pub(crate) fn unshielded_cancel_flag() -> u8 {
     stop.max(task)
 }
 
+/// Forgets a cancel aimed at the running task, for a task that caught it with a guard and goes on.
+/// A stop request (SIGINT/SIGTERM) is not affected.
+pub fn acknowledge_cancel() {
+    set_live_task_cancel(0)
+}
+
 /// Records a stop request aimed at the running task.
 pub(crate) fn set_live_task_cancel(v: u8) {
     // SAFETY: single threaded access.

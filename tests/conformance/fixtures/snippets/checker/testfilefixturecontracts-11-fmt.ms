@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,records,testing,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/test_fixture_test.go:72 TestFileFixtureContracts
+// conform: tags=control-flow,formatter,interfaces,parser,records,testing,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/test_fixture_test.go:72 TestFileFixtureContracts
 interface TestHooks:
     fn after_all() Unit
 
