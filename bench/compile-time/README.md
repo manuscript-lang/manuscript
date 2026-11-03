@@ -49,3 +49,14 @@ Workload `gen.py 40 25 10` (122k lines; `@std/io/io.ms` import path), `ms check`
 | `methods_by_contract` index | 8.65G (-40%) | 2.4 s (noisy VM) |
 
 `Checker::implements` was 40% inclusive (32.2M calls, linear scan of all methods). Proposal: `proposals/checker-type-interning.md`.
+
+## Parallel LLVM units (2026-11-03)
+
+Base `a460b7ef`, 4-core Linux VM, `ms build --build-type Release`, cold `.ms-cache`, one run each (noisy VM). Workload `bench/tools/compile_time.ms` with `40 25 10` (122k lines) and `6 25 10` (18.6k lines).
+
+| Workload | before | after | 
+| --- | --- | --- |
+| 122k lines | 350 s | 60 s (user 157 s) |
+| 18.6k lines | 16.9 s | 6.4 s |
+
+Same program output. `opt -time-trace` on the 122k-line IR (142 s of `opt`) showed `ms_entry`, a 33k-line generated `main`, taking 60 s alone, so the serial part now bounds the large case. Programs under 2 MiB of function text per unit are unchanged. See `wiki/benchmarks-and-performance/release-llvm-builds-split-into-parallel-units.md`.
