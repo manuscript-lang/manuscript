@@ -230,3 +230,9 @@ Same server source on the pre-change integration head `d34af765` and the no-refc
 
 - `/io`: `write_file_bytes` and `read_file` return promises, so each of the 64 in-flight requests owns its own 1 MiB copy of the payload (and the 1 MiB read result) while it waits for a pool thread. The old blocking natives borrowed the payload and ran one job at a time. Moving the payload instead of cloning it only moves the copy to the caller (measured 111 to 129 MB), so the library keeps the clone. Capping queued file jobs would cut it; that belongs to the promise runtime.
 - Idle connections: each connection is a promise with its own task stack (two mappings, about 20 KB resident), where the old server kept connections in the reactor. A minimal `/health` server shows the same 205 MB at integration commit `a8ed3a5c0` and at the head, so the stream merges did not add it.
+
+## 2026-11-03, memory after `/io`, and `/health` CPU per request
+
+Revision `a460b7ef`, shared 4-CPU Linux VM, `/health` with 64 connections, 4 s, servers unpinned. Server CPU per request (user + system from `/proc/<pid>/stat`): Manuscript with 2 threads 15.1 µs (93k–104k req/s over two runs), hyper 12.3 µs (105k–114k req/s). System time is equal (about 8.5 µs); user time is 5.7 µs against 3.8 µs. The earlier 89k against 124k–143k came from a run where the servers shared cores with the load generator, and is not a stable gap.
+
+Resident memory after 64 `/io` connections, one serving thread: 8 MB after `/health`, 111 MB after `/io`, flat afterwards. Cause and rejected allocator changes: [wiki](../../../wiki/benchmarks-and-performance/freed-large-blocks-stay-resident-after-an-io-burst.md).
