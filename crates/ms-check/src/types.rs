@@ -457,6 +457,9 @@ pub struct Definition {
     pub fields: RefCell<Vec<Param>>,
     /// Alternative cases.
     pub cases: RefCell<Vec<Case>>,
+    /// Position in [`Definition::cases`] of each case name (the first on a duplicate), so finding a
+    /// case does not scan an enum with thousands of them once per match arm.
+    case_indices: RefCell<HashMap<Name, usize>>,
     /// Contract or native operations.
     pub operations: RefCell<Vec<Operation>>,
 }
@@ -478,8 +481,19 @@ impl Definition {
             variables: RefCell::new(Vec::new()),
             fields: RefCell::new(Vec::new()),
             cases: RefCell::new(Vec::new()),
+            case_indices: RefCell::new(HashMap::new()),
             operations: RefCell::new(Vec::new()),
         })
+    }
+
+    /// Appends a case; add cases only through this so the name index stays in step.
+    pub fn push_case(&self, case: Case) {
+        let mut cases = self.cases.borrow_mut();
+        self.case_indices
+            .borrow_mut()
+            .entry(case.name)
+            .or_insert(cases.len());
+        cases.push(case);
     }
 
     /// The owning symbol.
@@ -1169,7 +1183,7 @@ pub fn cases(t: &Ty) -> Vec<Case> {
 pub fn case_of(t: &Ty, name: Name) -> Option<Case> {
     let def = t.def.as_ref()?;
     let cs = def.cases.borrow();
-    let c = cs.iter().find(|c| c.name == name)?;
+    let c = cs.get(*def.case_indices.borrow().get(&name)?)?;
     let mut s = Subst::new();
     if !c.fields.is_empty() {
         bind_type_arguments(t, &mut s);

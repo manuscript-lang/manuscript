@@ -115,6 +115,14 @@ impl FnLower<'_> {
         let mut arm_cases: Vec<Option<usize>> = Vec::new();
         let by_type = matches!(kind, TyKind::Iface(_));
         let mut tests: Vec<(Block, &Arm)> = Vec::new();
+        // Tag of each case by name (the first on a duplicate): an arm looks its case up here
+        // instead of scanning every case, which made a match over thousands of cases quadratic.
+        let mut case_tags: std::collections::HashMap<String, usize> = Default::default();
+        if let TyKind::Alt(a) = &kind {
+            for (tag, c) in self.b.m.alts[a.index()].cases.iter().enumerate() {
+                case_tags.entry(c.name.clone()).or_insert(tag);
+            }
+        }
         for arm in arms {
             let blk = self.b.new_block();
             if literal && is_literal(&arm.path) {
@@ -140,10 +148,7 @@ impl FnLower<'_> {
                 }
                 Some(name) => {
                     let k = match &kind {
-                        TyKind::Alt(a) => self.b.m.alts[a.index()]
-                            .cases
-                            .iter()
-                            .position(|c| c.name == name),
+                        TyKind::Alt(_) => case_tags.get(name.as_str()).copied(),
                         TyKind::Opt(_) => match name.as_str() {
                             "none" => Some(0),
                             "some" => Some(1),
