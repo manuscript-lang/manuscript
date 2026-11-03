@@ -5,7 +5,7 @@
 import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 import panic from "@std/core.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import promise from "@std/concurrency/promise.ms"
 
 type Door:
     name: String
@@ -26,9 +26,7 @@ fn faulting() Unit:
     panic("fault after the move")
 
 export fn main() Int:
-    let group = TaskGroup[Unit](contain_faults: true)
-    group.spawn(fn ch: faulting())
-
-    let waited = group.wait()
+    let work = promise(fn: ok(faulting()))
+    let waited = work.wait()
     stdout().write("waited: {waited.is_error()}\n").get()
     return 0

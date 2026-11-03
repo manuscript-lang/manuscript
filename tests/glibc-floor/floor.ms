@@ -8,25 +8,13 @@ import secure_int from "@std/os/random.ms"
 import exp, hypot, log, pow from "@std/math/math.ms"
 import lookup from "@std/net/net.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
-import WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
+import promise from "@std/concurrency/promise.ms"
 
-fn squares() Unit:
-    var ch = worker_channel[Int, Int]()
-    if let n = ch.receive().get(none):
-        let _ = ch.send(n * n)
-
-fn ask(group: WorkerGroup[Int, Int], value: Int) Int!:
-    var worker = try group.spawn(squares)
-    let _ = worker.channel.send(value)
-    var answer = -1
-    if let got = worker.channel.receive().get(none):
-        answer = got
-    try worker.wait()
-    return ok(answer)
+fn square(n: Int) Int:
+    return n * n
 
 export fn main() Int:
-    let group = WorkerGroup[Int, Int]()
-    let squared = ask(group, 12).get(-1)
+    let squared = promise(fn: ok(square(12))).wait().get(-1)
     let file = stat("/etc/hosts", follow_links: true).is_ok()
     let child = run("true", []).is_ok()
     let entropy = secure_int(0, max_exclusive: 10).is_ok()

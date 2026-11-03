@@ -13,7 +13,7 @@ import (
 import stdout from "@std/io/io.ms"
 import arguments from "@std/os/process.ms"
 import uuid_v4 from "@std/os/random.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import Promise, promise, wait_all from "@std/concurrency/promise.ms"
 import now from "@std/os/time.ms"
 import Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms"
 import Grade, grade, make_workspace, read_log from "./core/workspace.ms"
@@ -206,7 +206,7 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
     let jobs = if oracle: 1 else: if o.jobs < 1: 1 else: o.jobs
     let tag = if oracle: "oracle" else: o.tag.clone()
     var bad = 0
-    var group = TaskGroup[Int]()
+    var running: List[Promise[Int]] = []
 
     for w in 0..jobs:
         let mine = todo.entries().filter(fn e: e.index % jobs == w).map(
@@ -215,9 +215,17 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
         let me = h.name()
         let own = o.clone()
         let label = tag.clone()
-        group.spawn(fn _c: work(mine, me, own, label), none)
+        running.append(
+            promise(
+                fn: ok(
+                    work(
+                        mine.clone(), me.clone(), own.clone(), label.clone()
+                    )
+                )
+            )
+        )
 
-    for n in group.results().get([]): bad += n
+    for n in wait_all(running).get([]): bad += n
     if oracle: remove(o.out, recursive: false).to_optional()
     return ok(if bad > 0 and oracle: 1 else: 0)
 
