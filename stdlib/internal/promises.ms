@@ -14,6 +14,9 @@ export extern fn msrt_promise_start(id: Int, work: fn() Unit) Unit
 
 export extern fn msrt_promise_wait(id: Int, timeout_ns: Int) Int
 
+# The index of the first of `ids` to finish, waiting up to `timeout_ns` (negative: no limit); -1 on timeout.
+export extern fn msrt_promise_wait_any(ids: List[Int], timeout_ns: Int) Int
+
 export extern fn msrt_promise_fault_report(id: Int) String
 
 export extern fn msrt_promise_drop(id: Int) Unit
@@ -25,7 +28,3 @@ export extern fn msrt_promise_sleep(ns: Int) Int
 # Int of the ready bits (8 for a timeout; `timeout_ns` negative means none). -1 when the
 # descriptor cannot be waited on.
 export extern fn msrt_promise_ready(fd: Int, events: Int, timeout_ns: Int) Int
-
-# Waits until one of the promises has finished or the timeout (nanoseconds, negative for none) passes.
-# Returns the index of the first finished promise, or -1 on a timeout. The others keep running.
-export extern fn msrt_promise_wait_any(ids: List[Int], timeout_ns: Int) Int
