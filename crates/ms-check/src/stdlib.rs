@@ -8,7 +8,6 @@
 pub use crate::bundled::EXTENSION_MODULES;
 use crate::bundled::{decl_has_body, is_mixed, is_pure_source};
 use crate::checker::{CheckOptions, Checker, Names};
-use crate::receivers::RECEIVER_BINDINGS;
 use crate::syntax::*;
 use crate::types::Case;
 use crate::types::*;
@@ -73,7 +72,7 @@ struct World {
     intrinsic: HashMap<Name, Ty>,
     implementations: Vec<MethodRef>,
     operation_variables: HashMap<String, Vec<Ty>>,
-    receiver_bindings: HashMap<String, Name>,
+    receiver_natives: HashSet<String>,
     done: HashMap<Name, Rc<StdResult>>,
     checking: HashSet<Name>,
 }
@@ -204,9 +203,11 @@ pub fn intrinsic_operations(id: Name) -> Option<Ty> {
     world(|w| w.intrinsic.get(&id).cloned())
 }
 
-/// The native identity of a receiver operation (`Receiver id/name`).
-pub fn receiver_binding(key: &str) -> Option<Name> {
-    world(|w| w.receiver_bindings.get(key).copied())
+/// Whether `Receiver id/name` is a native operation of a standard receiver: an inherent method the
+/// standard source declares without a body. Its native identity is the method's name; lowering tells
+/// receivers apart by type.
+pub fn is_receiver_native(key: &str) -> bool {
+    world(|w| w.receiver_natives.contains(key))
 }
 
 /// Records the type variables an operation declares for itself (`Receiver id/name`).
@@ -1424,9 +1425,8 @@ impl Loader<'_> {
         Ok(())
     }
 
-    /// Attaches native receiver bindings and their requirements.
+    /// Records the native operations of standard receivers: every bodiless inherent method.
     fn bind_receivers(&mut self) -> Result<(), String> {
-        let mut bound: HashSet<String> = HashSet::new();
         for module in self.native_sources() {
             self.scope_module(&module);
             for declaration in &module.decls {
@@ -1434,32 +1434,14 @@ impl Loader<'_> {
                     continue;
                 }
                 let symbol = self.module_symbol(&module, declaration);
-                let mut receiver = declaration.name().to_string();
-                if let Some(primitive) = receiver
-                    .strip_suffix("Operations")
-                    .filter(|p| INTRINSIC_RECEIVERS.contains(p))
-                {
-                    receiver = primitive.to_string();
+                if symbol.kind != SymKind::Type || symbol.ty().kind == Kind::Contract {
+                    continue;
                 }
                 for method in declaration.methods() {
-                    let mname = method.func.name;
-                    let sym_key = format!("{}/{}", symbol.id, mname);
-                    let native = RECEIVER_BINDINGS
-                        .iter()
-                        .find(|(r, _)| *r == receiver)
-                        .and_then(|(_, ops)| ops.iter().find(|(o, _)| *o == mname.as_str()))
-                        .map(|(_, id)| *id);
-                    if let Some(native) = native {
-                        world(|w| w.receiver_bindings.insert(sym_key.clone(), n(native)));
-                        bound.insert(format!("{receiver}.{mname}"));
+                    if method.func.body.is_empty() {
+                        let key = format!("{}/{}", symbol.id, method.func.name);
+                        world(|w| w.receiver_natives.insert(key));
                     }
-                }
-            }
-        }
-        for (receiver, ops) in RECEIVER_BINDINGS {
-            for (name, _) in ops.iter() {
-                if !bound.contains(&format!("{receiver}.{name}")) {
-                    return Err(format!("unused native receiver binding: {receiver}.{name}"));
                 }
             }
         }
