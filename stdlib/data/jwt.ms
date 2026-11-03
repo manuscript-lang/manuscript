@@ -14,53 +14,55 @@ import base64_encode_unpadded, base64_decode_unpadded from "@std/data/encoding.m
 import JsonValue, parse, stringify from "@std/data/json.ms"
 import now from "@std/os/time.ms"
 
-# Selects how a token is signed. A verifier names the one it accepts; it never trusts the algorithm a token claims.
+// Selects how a token is signed. A verifier names the one it accepts; it never trusts the algorithm a token claims.
 export type JwtAlgorithm:
-    # HMAC with SHA-256 and a shared secret of any length (use at least 32 random bytes).
+    // HMAC with SHA-256 and a shared secret of any length (use at least 32 random bytes).
     case Hs256
-    # HMAC with SHA-384 and a shared secret.
+    // HMAC with SHA-384 and a shared secret.
     case Hs384
-    # HMAC with SHA-512 and a shared secret.
+    // HMAC with SHA-512 and a shared secret.
     case Hs512
-    # RSASSA-PKCS1-v1_5 with SHA-256. Signing takes a PKCS#8 DER private key; verifying takes a PKIX DER public key.
+    // RSASSA-PKCS1-v1_5 with SHA-256. Signing takes a PKCS#8 DER private key; verifying takes a PKIX DER public key.
     case Rs256
-    # ECDSA over P-256 with SHA-256. Signing takes a PKCS#8 DER private key; verifying takes a PKIX DER public key.
+    // ECDSA over P-256 with SHA-256. Signing takes a PKCS#8 DER private key; verifying takes a PKIX DER public key.
     case Es256
-    # Ed25519. Signing takes the 32-byte private seed; verifying takes the 32-byte public key.
+    // Ed25519. Signing takes the 32-byte private seed; verifying takes the 32-byte public key.
     case EdDsa
 
-# What `verify_token` requires of a token beyond its signature.
+// What `verify_token` requires of a token beyond its signature.
 export type JwtCheck:
-    # The only algorithm accepted; a token whose header names another returns WrongAlgorithm.
+    // The only algorithm accepted; a token whose header names another returns WrongAlgorithm.
     algorithm: JwtAlgorithm = JwtAlgorithm.Hs256
-    # When set, the `iss` claim must equal it.
+    // When set, the `iss` claim must equal it.
     issuer: String? = none
-    # When set, the `aud` claim, a string or a list of strings, must include it.
+    // When set, the `aud` claim, a string or a list of strings, must include it.
     audience: String? = none
-    # Seconds of clock skew tolerated when checking `exp` and `nbf`.
+    // Seconds of clock skew tolerated when checking `exp` and `nbf`.
     leeway: Int = 0
-    # The Unix time in seconds to judge `exp` and `nbf` against; none uses the current time.
+    // The Unix time in seconds to judge `exp` and `nbf` against; none uses the current time.
     at: Int? = none
-    # The largest token in bytes accepted before any decoding; larger tokens return Malformed.
+    // The largest token in bytes accepted before any decoding; larger tokens return Malformed.
     max_bytes: Int = 16384
 
 type JwtHeader:
     alg: String
     typ: String
 
-# Creates a signed token from `claims`, a record or `JsonValue` object such as `Session(sub: "42", exp: 1900000000)`.
-# The result is the compact `header.claims.signature` form, ready for an `Authorization: Bearer` header or a cookie.
-# `key` is the secret for the HMAC algorithms and the private key for the others, in the form `JwtAlgorithm` describes.
-# Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library does not add any. A key that does not suit the algorithm returns InvalidKey.
-#
-# ```manuscript
-# type Session:
-#     sub: String
-#     exp: Int
-#
-# let token = sign_token(Session(sub: "42", exp: 1900000000), secret).get_or_fault()
-# let session = verify_token[Session](token, secret).get_or_fault()
-# ```
+/*
+Creates a signed token from `claims`, a record or `JsonValue` object such as `Session(sub: "42", exp: 1900000000)`.
+The result is the compact `header.claims.signature` form, ready for an `Authorization: Bearer` header or a cookie.
+`key` is the secret for the HMAC algorithms and the private key for the others, in the form `JwtAlgorithm` describes.
+Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library does not add any. A key that does not suit the algorithm returns InvalidKey.
+
+```manuscript
+type Session:
+    sub: String
+    exp: Int
+
+let token = sign_token(Session(sub: "42", exp: 1900000000), secret).get_or_fault()
+let session = verify_token[Session](token, secret).get_or_fault()
+```
+*/
 export fn sign_token[T: Data](
     claims: T,
     key: Bytes,
@@ -81,11 +83,13 @@ export fn sign_token[T: Data](
     let signature = try sign_bytes(algorithm, key, signing_input.to_bytes())
     return ok("{signing_input}.{base64_encode_unpadded(signature, url_safe: true)}")
 
-# Checks a token's signature and claims, and returns its claims decoded as `T` (a record, or `JsonValue` for the raw object).
-# The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `none`.
-# `exp` and `nbf` (seconds since the Unix epoch) are enforced when present; `iss` and `aud` are enforced when `check` names them.
-# `key` is the secret for the HMAC algorithms and the public key for the others, in the form `JwtAlgorithm` describes.
-# Failures return an `Error` that says which check failed; show a caller one generic message, as the specific cause helps an attacker.
+/*
+Checks a token's signature and claims, and returns its claims decoded as `T` (a record, or `JsonValue` for the raw object).
+The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `none`.
+`exp` and `nbf` (seconds since the Unix epoch) are enforced when present; `iss` and `aud` are enforced when `check` names them.
+`key` is the secret for the HMAC algorithms and the public key for the others, in the form `JwtAlgorithm` describes.
+Failures return an `Error` that says which check failed; show a caller one generic message, as the specific cause helps an attacker.
+*/
 export fn verify_token[T: Data = JsonValue](
     token: String,
     key: Bytes,
@@ -247,7 +251,7 @@ fn includes_audience(claim: JsonValue, audience: String) Bool:
 
     return false
 
-# Converts an ASN.1 DER ECDSA signature to the fixed-width `r || s` form JWS uses.
+// Converts an ASN.1 DER ECDSA signature to the fixed-width `r || s` form JWS uses.
 fn der_to_raw(der: Bytes, width: Int) Bytes!:
     if der.length() < 8 or der.get(0).to_int() != 48: return error(
         Error("jwt: invalid key", kind: ErrorCategory.InvalidInput)
@@ -281,7 +285,7 @@ fn der_to_raw(der: Bytes, width: Int) Bytes!:
 
     return ok(out.build())
 
-# Converts a fixed-width `r || s` signature to ASN.1 DER.
+// Converts a fixed-width `r || s` signature to ASN.1 DER.
 fn raw_to_der(raw: Bytes) Bytes:
     let half = raw.length() / 2
     var body = BytesBuilder()

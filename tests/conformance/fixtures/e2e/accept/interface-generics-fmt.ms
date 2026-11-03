@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,formatter,generics,interfaces,modules,parser,records,stdlib-testing,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/interface-generics.ms
+// conform: tags=control-flow,faults,formatter,generics,interfaces,modules,parser,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/interface-generics.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
 interface Read[V]:

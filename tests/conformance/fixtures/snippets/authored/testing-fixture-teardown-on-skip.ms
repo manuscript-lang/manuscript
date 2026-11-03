@@ -1,6 +1,6 @@
-# conform: tags=faults,stdlib-testing,testing,tier-core
-# conform: phase=test
-# conform: origin=stdlib/test.ms TestHooks
+// conform: tags=faults,stdlib-testing,testing,tier-core
+// conform: phase=test
+// conform: origin=stdlib/test.ms TestHooks
 import stdout from "@std/io/io.ms"
 import TestHooks, fail, skip from "@std/test/test.ms"
 

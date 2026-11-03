@@ -511,7 +511,7 @@ fn receiver_context(method: &MethodRef, declaration: &Ty) -> String {
     if bounds.is_empty() && same(&method.receiver, declaration) {
         return String::new();
     }
-    let mut context = format!("# Receiver: {}", method.receiver);
+    let mut context = format!("// Receiver: {}", method.receiver);
     if !bounds.is_empty() {
         context += &format!("; {}", bounds.join(", "));
     }

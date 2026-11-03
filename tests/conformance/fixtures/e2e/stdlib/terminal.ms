@@ -1,6 +1,6 @@
-# conform: tags=control-flow,modules,stdlib-terminal,stdlib-testing,testing,tier-io,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/stdlib/terminal.ms
+// conform: tags=control-flow,modules,stdlib-terminal,stdlib-testing,testing,tier-io,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/stdlib/terminal.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 import raw_mode, terminal_capabilities from "@std/io/io.ms"
 

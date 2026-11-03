@@ -20,7 +20,7 @@ fn emit(line: String) Unit:
 fn words(line: String) List[String]:
     return line.split("\t").join(" ").split(" ").filter(fn w: not w.is_empty())
 
-# The value of an ASCII digit string, or -1 when the text is not one.
+// The value of an ASCII digit string, or -1 when the text is not one.
 fn parse_digits(text: String) Int:
     if text.is_empty(): return -1
 
@@ -28,12 +28,12 @@ fn parse_digits(text: String) Int:
         if v < 48 or v > 57: return -1
     return text.parse_int().get(-1)
 
-# A positive amount, or 0 when the text is not a valid amount.
+// A positive amount, or 0 when the text is not a valid amount.
 fn parse_amount(text: String) Int:
     let v = parse_digits(text)
     return if v > 0: v else: 0
 
-# Whether a debit of `amount` from `balance` overdraws it and so pays the fee.
+// Whether a debit of `amount` from `balance` overdraws it and so pays the fee.
 fn charges_fee(balance: Int, amount: Int) Bool:
     return balance >= 0 and balance - amount < 0
 

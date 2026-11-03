@@ -1,6 +1,6 @@
-# conform: tags=formatter,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/effects_test.go:73 TestEffectsIncludeRecordDefaults
+// conform: tags=formatter,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/effects_test.go:73 TestEffectsIncludeRecordDefaults
 type State:
     count: Int
 

@@ -23,7 +23,7 @@ type Room:
 
 fn take(r: Room) List[Door]:
     var xs: List[Door] = []
-    xs.append(r.door)    # error: cannot move the resource `r.door` out of `r`
+    xs.append(r.door)    // error: cannot move the resource `r.door` out of `r`
     return xs
 ```
 
@@ -38,8 +38,8 @@ fn take(r: Room) List[Door]:
 ```manuscript
 fn take(r: Room) List[Door]:
     var xs: List[Door] = []
-    xs.append(r.door)    # accepted: r.door moves; r.tag still belongs to r
-    return xs            # r closes nothing: it holds no other resource
+    xs.append(r.door)    // accepted: r.door moves; r.tag still belongs to r
+    return xs            // r closes nothing: it holds no other resource
 ```
 
 Semantics, one per bullet:

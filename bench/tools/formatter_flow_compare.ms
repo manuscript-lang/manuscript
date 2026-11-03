@@ -1,6 +1,6 @@
-# Compares formatter binaries, retaining all output-checked paired samples (bench/perf/formatter-flow).
-# Usage: ms run bench/tools/formatter_flow_compare.ms -- BEFORE AFTER --out FILE.csv [--samples 10] [--cpu N]
-# Harness output is `count,rounds,shape,elapsed_ns,checksum,source_bytes,output_bytes,rss`.
+// Compares formatter binaries, retaining all output-checked paired samples (bench/perf/formatter-flow).
+// Usage: ms run bench/tools/formatter_flow_compare.ms -- BEFORE AFTER --out FILE.csv [--samples 10] [--cpu N]
+// Harness output is `count,rounds,shape,elapsed_ns,checksum,source_bytes,output_bytes,rss`.
 import absolute, fail, invalid, median, options, write_text from "./lib.ms"
 import all_ints, rounds_for, run_pinned from "./study.ms"
 import arguments from "@std/os/process.ms"
@@ -25,7 +25,7 @@ fn cases() List[Case]:
             out.append(Case(n, shape.clone()))
     return out
 
-# elapsed_ns, checksum, source_bytes, output_bytes, rss
+// elapsed_ns, checksum, source_bytes, output_bytes, rss
 fn run_one(binary: String, c: Case, rounds: Int, cpu: String) List[Int]!:
     let out = try run_pinned(binary, ["{c.count}", "{rounds}", c.shape.clone()], cpu)
     let fields = out.trim().split(",")

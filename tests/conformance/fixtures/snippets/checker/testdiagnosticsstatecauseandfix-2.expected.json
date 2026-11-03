@@ -14,7 +14,7 @@
           "file": "testdiagnosticsstatecauseandfix-2.ms",
           "line": 5,
           "column": 12,
-          "offset": 171
+          "offset": 174
         },
         "fix": {
           "position": {

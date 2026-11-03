@@ -1,6 +1,6 @@
-# conform: tags=closures,formatter,generics,match,parser,tier-core,try-result
-# conform: phase=parse
-# conform: origin=pkg/checker/optional_test.go:34 TestMatchArmBindingsSurviveRepeatedFunctionLiteralChecks
+// conform: tags=closures,formatter,generics,match,parser,tier-core,try-result
+// conform: phase=parse
+// conform: origin=pkg/checker/optional_test.go:34 TestMatchArmBindingsSurviveRepeatedFunctionLiteralChecks
 fn call[T](operation: fn() T) T:
     return operation()
 

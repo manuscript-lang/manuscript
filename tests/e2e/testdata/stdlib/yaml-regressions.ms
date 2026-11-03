@@ -1,7 +1,7 @@
 import expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test/test.ms"
 import parse, YamlValue from "@std/data/yaml.ms"
 
-# Regressions: block key.
+// Regressions: block key.
 
 fn invalid_block_key(source: String) Unit!:
     let cause = parse(source) | try expect_error
@@ -37,7 +37,7 @@ test "YAML explicit and complex mapping keys remain unsupported":
         if cause.kind != ErrorCategory.Unsupported:
             return fail("expected unsupported mapping key, got {cause}")
 
-# Regressions: colon.
+// Regressions: colon.
 
 fn object(keys: List[String], values: List[YamlValue]) YamlValue:
     var result = Map[String, YamlValue]()
@@ -106,7 +106,7 @@ test "YAML block plain scalars retain nonseparating colons and punctuation":
 test "YAML block scalar rejects a separator before a folded paragraph break":
     try invalid_colon("a: x:\n\n  b")
 
-# Regressions: comment continuation.
+// Regressions: comment continuation.
 
 fn rejects_continuation(text: String) Unit!Error:
     let cause = parse(text) | try expect_error
@@ -259,7 +259,7 @@ test "YAML flow comment stops follow quoted and alias nodes":
         "&items [&a café # first\n, \"quoted # hash\" # second\n, *a # third\n, last]"
     ) | try expect_ok | try expect_equal(expected)
 
-# Regressions: empty entry.
+// Regressions: empty entry.
 
 test "YAML flow mappings reject empty comma entries":
     for source in [
@@ -289,7 +289,7 @@ test "YAML flow mappings retain existing empty-key forms":
         values.add("", YamlValue.StringValue("value"))
         parse(source) | try expect_ok | try expect_equal(YamlValue.ObjectValue(values))
 
-# Regressions: error location.
+// Regressions: error location.
 
 fn error_at(text: String, line: Int, column: Int) Unit!Error:
     let cause = parse(text) | try expect_error
@@ -378,7 +378,7 @@ test "YAML block header origins distinguish identical quoted key text":
     try error_at("\"|bad\": |bad\n  x", 1, 10)
     try error_at("--- \"|bad\": |bad\n  x", 1, 14)
 
-# Regressions: key line.
+// Regressions: key line.
 
 fn invalid_key_line(source: String) Unit!:
     let cause = parse(source) | try expect_error
@@ -427,7 +427,7 @@ test "YAML flow values can begin on the line after their colon":
         YamlValue.ObjectValue(values)
     )
 
-# Regressions: node scan.
+// Regressions: node scan.
 
 test "YAML quotes inside a plain scalar do not hide comments":
     var values = Map[String, YamlValue]()

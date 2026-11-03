@@ -13,7 +13,7 @@ impl Table:
     fn head() Row:
         return self.rows[0]
 
-    # A field or element of a lending call's result is a part of the same source.
+    // A field or element of a lending call's result is a part of the same source.
     fn first_tag() String:
         return self.head().tags[0]
 
@@ -21,7 +21,7 @@ impl Table:
         return self.head().name
 
 impl Shape:
-    # Every arm of a returned match lends: the function lends.
+    // Every arm of a returned match lends: the function lends.
     fn label() String:
         return match self:
             Circle(label): label
@@ -33,7 +33,7 @@ fn label(r: Row) String:
 fn pick(a: Row, b: Row, flag: Bool) String:
     return if flag: a.name else: b.name
 
-# A binding of a conditional whose arms all lend borrows every source.
+// A binding of a conditional whose arms all lend borrows every source.
 fn pick_bound(a: Row, b: Row, flag: Bool) String:
     let x = if flag: label(a) else: label(b)
     return x

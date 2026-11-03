@@ -65,7 +65,7 @@ fn prelude_import_fix(module: &ModRef, item: &ms_syntax::ast::Import) -> Option<
     let text =
         |from: u32, to: u32| -> &str { source.get(from as usize..to as usize).unwrap_or("") };
     let trivia_of = |trivia: &str| -> String {
-        if trivia.contains('#') {
+        if trivia.contains("//") || trivia.contains("/*") {
             trivia.to_string()
         } else {
             String::new()
@@ -110,7 +110,7 @@ fn prelude_import_fix(module: &ModRef, item: &ms_syntax::ast::Import) -> Option<
             continue;
         }
         let trivia = text(previous, token.pos.offset);
-        if trivia.contains('#') {
+        if trivia.contains("//") || trivia.contains("/*") {
             comments.push_str(trivia);
         }
         previous = token.end.offset;

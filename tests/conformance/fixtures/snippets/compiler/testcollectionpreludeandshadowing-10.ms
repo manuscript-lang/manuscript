@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,maps,records,strings,tier-core
-# conform: phase=check
-# conform: origin=pkg/compiler/prelude_test.go:72 TestCollectionPreludeAndShadowing
+// conform: tags=diagnostics,maps,records,strings,tier-core
+// conform: phase=check
+// conform: origin=pkg/compiler/prelude_test.go:72 TestCollectionPreludeAndShadowing
 type Map[K, V]:
     value: V
 

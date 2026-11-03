@@ -1,14 +1,14 @@
-# conform: tags=scope-cleanup,stdlib-tasks,tier-io
-# conform: phase=run
+// conform: tags=scope-cleanup,stdlib-tasks,tier-io
+// conform: phase=run
 import stdout from "@std/io/io.ms"
 import memory_usage from "@std/os/process.ms"
 import TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
-# A task cancelled while parked in a channel receive must release the channel end it holds in a
-# stack slot while it waits. Debug builds keep that value in the slot, so the unwind pass has to
-# cover it: the heap must not grow across cancellations (#1513), and `make leak-check` finds no
-# live block at exit.
+// A task cancelled while parked in a channel receive must release the channel end it holds in a
+// stack slot while it waits. Debug builds keep that value in the slot, so the unwind pass has to
+// cover it: the heap must not grow across cancellations (#1513), and `make leak-check` finds no
+// live block at exit.
 
 fn echo(ch: TaskChannel[Int, Int]) Unit:
     var end = ch

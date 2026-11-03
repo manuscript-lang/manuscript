@@ -1,6 +1,6 @@
-# conform: tags=interpolation,modules,records,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=test
-# conform: origin=documentation/learn/best-practices.md:28
+// conform: tags=interpolation,modules,records,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test
+// conform: origin=documentation/learn/best-practices.md:28
 import expect_equal, expect_error from "@std/test/test.ms"
 import parse from "@std/data/json.ms"
 

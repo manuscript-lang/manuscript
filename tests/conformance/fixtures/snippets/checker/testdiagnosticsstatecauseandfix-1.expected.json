@@ -14,20 +14,20 @@
           "file": "testdiagnosticsstatecauseandfix-1.ms",
           "line": 5,
           "column": 12,
-          "offset": 173
+          "offset": 176
         },
         "fix": {
           "position": {
             "file": "testdiagnosticsstatecauseandfix-1.ms",
             "line": 5,
             "column": 12,
-            "offset": 173
+            "offset": 176
           },
           "end": {
             "file": "testdiagnosticsstatecauseandfix-1.ms",
             "line": 5,
             "column": 17,
-            "offset": 178
+            "offset": 181
           },
           "replacement": "count"
         }

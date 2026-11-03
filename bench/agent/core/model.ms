@@ -1,20 +1,20 @@
-# Data loading shared by the runner: challenges, languages, pricing. Paths are relative to the repository
-# root, where every command in README.md runs.
+// Data loading shared by the runner: challenges, languages, pricing. Paths are relative to the repository
+// root, where every command in README.md runs.
 import JsonValue, parse from "@std/data/json.ms"
 import panic from "@std/core.ms"
 import access, list, read_file from "@std/os/fs.ms"
 import env from "../lib/text.ms"
 
-# `bench/agent` when the command runs from the repository root, `.` when it runs inside this directory (as `ms test` does).
+// `bench/agent` when the command runs from the repository root, `.` when it runs inside this directory (as `ms test` does).
 export fn root() String:
     if access("bench/agent/languages.json", 0).is_ok(): return "bench/agent"
 
     return "."
 
-# Documentation for the Manuscript context bundle comes from here; override to pin a different checkout.
+// Documentation for the Manuscript context bundle comes from here; override to pin a different checkout.
 export fn repo() String: env("MSBENCH_REPO", if root() == ".": "../.." else: ".")
 
-# One input and the exact output expected for it.
+// One input and the exact output expected for it.
 export type Case:
     name: String = "?"
     stdin: String
@@ -37,7 +37,7 @@ export type Challenge:
 impl Challenge:
     fn spec() String: read_file("{self.dir}/spec.md").get().decode_utf8().get("")
 
-    # `which` is `examples` (visible to the agent) or `hidden`.
+    // `which` is `examples` (visible to the agent) or `hidden`.
     fn cases(which: String) List[Case]:
         let text = (
             read_file("{self.dir}/{which}/cases.json")
@@ -49,7 +49,7 @@ impl Challenge:
 
     fn solution(lang: String) String: "{self.dir}/solutions/{lang}"
 
-# A language the benchmark can be solved in, as `languages.json` describes it.
+// A language the benchmark can be solved in, as `languages.json` describes it.
 export type Lang:
     id: String
     name: String
@@ -60,7 +60,7 @@ export type Lang:
     template: String
     context: List[String]
 
-# The extension of the solution file, such as `.ms`.
+// The extension of the solution file, such as `.ms`.
 impl Lang:
     fn suffix() String:
         let base = self.solution.split("/").last().get("")
@@ -70,7 +70,7 @@ impl Lang:
 
         return ""
 
-    # The file name of the reference solution, such as `main.ms.ref`.
+    // The file name of the reference solution, such as `main.ms.ref`.
     fn reference() String: "{self.solution.split("/").last().get("")}.ref"
 
 fn text_of(file: String) String:
@@ -82,7 +82,7 @@ fn field(doc: JsonValue, key: String) String:
 
     return ""
 
-# Challenges whose id equals, or starts with, one of `ids` (all when `ids` is empty), in id order.
+// Challenges whose id equals, or starts with, one of `ids` (all when `ids` is empty), in id order.
 export fn load_challenges(ids: List[String]) List[Challenge]:
     var out = List[Challenge]()
     var names = List[String]()
@@ -110,7 +110,7 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
 
     return out
 
-# Languages named in `ids` (all when empty), in file order; an unknown id stops the program.
+// Languages named in `ids` (all when empty), in file order; an unknown id stops the program.
 export fn load_languages(ids: List[String]) List[Lang]:
     let doc = parse(text_of("{root()}/languages.json")).get(JsonValue.Null)
     var out = List[Lang]()
@@ -139,7 +139,7 @@ export fn load_languages(ids: List[String]) List[Lang]:
     if not unknown.is_empty(): panic("unknown languages: {unknown.join(", ")}")
     return out
 
-# Estimated USD from `pricing.json`; `tokens_in` excludes cached tokens.
+// Estimated USD from `pricing.json`; `tokens_in` excludes cached tokens.
 export fn cost_from_tokens(
     tokens_in: Int,
     cached: Int,

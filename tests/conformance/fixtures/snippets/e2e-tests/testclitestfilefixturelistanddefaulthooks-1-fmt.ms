@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,formatter,interfaces,interpolation,modules,parser,records,stdlib-io,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/test_fixture_test.go:106 TestCLITestFileFixtureListAndDefaultHooks
+// conform: tags=control-flow,faults,formatter,interfaces,interpolation,modules,parser,records,stdlib-io,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/test_fixture_test.go:106 TestCLITestFileFixtureListAndDefaultHooks
 import TestHooks, expect_equal from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 

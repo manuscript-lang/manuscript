@@ -2,8 +2,8 @@ import Bytes from "@std/bytes.ms"
 import (CommandOutput, Commands, Stdio, Subprocess) from "@std/os/process.ms"
 import Duration from "@std/os/time.ms"
 
-# Shifts the node ids below so that `Echo.run` has the id of a method in another module
-# (`second.ms` or the standard library): defaults must be found by module and id.
+// Shifts the node ids below so that `Echo.run` has the id of a method in another module
+// (`second.ms` or the standard library): defaults must be found by module and id.
 export fn padding() Int:
     var total = 0
     total += 0

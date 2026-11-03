@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,mutation,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/counter_aggregate_test.go:52 TestCounterAggregateRejectsUnsafePrefixes
+// conform: tags=control-flow,formatter,mutation,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/counter_aggregate_test.go:52 TestCounterAggregateRejectsUnsafePrefixes
 fn probe() Int:
     var sum = 0
     var i = -9223372036854775808

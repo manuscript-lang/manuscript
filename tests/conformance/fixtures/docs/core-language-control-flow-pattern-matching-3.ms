@@ -1,6 +1,6 @@
-# conform: tags=alternatives,diagnostics,match,records,tier-core
-# conform: phase=check
-# conform: origin=documentation/core-language/control-flow/pattern-matching.md:59
+// conform: tags=alternatives,diagnostics,match,records,tier-core
+// conform: phase=check
+// conform: origin=documentation/core-language/control-flow/pattern-matching.md:59
 type Position:
     case Point(x: Int, y: Int)
     case Unknown

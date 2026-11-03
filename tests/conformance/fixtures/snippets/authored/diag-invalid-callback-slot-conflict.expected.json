@@ -14,7 +14,7 @@
           "file": "diag-invalid-callback-slot-conflict.ms",
           "line": 4,
           "column": 18,
-          "offset": 141
+          "offset": 144
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "diag-invalid-callback-slot-conflict.ms",
           "line": 9,
           "column": 11,
-          "offset": 256
+          "offset": 259
         }
       }
     ],

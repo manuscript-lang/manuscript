@@ -1,10 +1,10 @@
-# conform: tags=scope-cleanup,generics,records,tier-io
-# conform: phase=run
-# conform: origin=value-semantics-audit
+// conform: tags=scope-cleanup,generics,records,tier-io
+// conform: phase=run
+// conform: origin=value-semantics-audit
 import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
-# A generic wrapper closes the resource its instance holds; a plain instance closes nothing.
+// A generic wrapper closes the resource its instance holds; a plain instance closes nothing.
 type Door:
     name: String
 

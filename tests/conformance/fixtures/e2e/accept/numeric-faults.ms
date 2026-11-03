@@ -1,6 +1,6 @@
-# conform: tags=closures,modules,mutation,numbers,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/numeric-faults.ms
+// conform: tags=closures,modules,mutation,numbers,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/numeric-faults.ms
 import expect_contains, expect_equal, expect_fault, expect_true from "@std/test/test.ms"
 import StringBuilder from "@std/string.ms"
 

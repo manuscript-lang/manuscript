@@ -1,6 +1,6 @@
-# conform: tags=numbers,types,tier-core
-# conform: phase=run
-# conform: origin=sized numeric types stage 3
+// conform: tags=numbers,types,tier-core
+// conform: phase=run
+// conform: origin=sized numeric types stage 3
 import stdout from "@std/io/io.ms"
 
 type Pix:

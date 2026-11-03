@@ -1,5 +1,5 @@
-# conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-processes,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
+// conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-processes,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
 import Channel from "@std/io/channels.ms"
 import os_type, run, spawn from "@std/os/process.ms"
 import ProcessGroup from "@std/os/processes.ms"
@@ -48,7 +48,7 @@ test "result waits while another task receives from the same child":
     let tasks = TaskGroup[Int]()
     tasks.spawn(fn ch: read_all(reader.clone()))
 
-    # The receiver is the one reading the pipe by now, so `result` waits for it.
+    // The receiver is the one reading the pipe by now, so `result` waits for it.
     sleep(nanoseconds(150000000))
     try expect_equal(child.result().get(-1), 42)
     try expect_equal(tasks.results().get([]), [3])
@@ -79,8 +79,8 @@ fn run_long() Int:
     let out = run(long_program(), long_args())
     return out.get().exit_code
 
-# Whether the long-running child is alive: a process listing for ping on Windows, where nothing
-# else in the run starts one, and the command line on other systems.
+// Whether the long-running child is alive: a process listing for ping on Windows, where nothing
+// else in the run starts one, and the command line on other systems.
 fn long_alive() Bool:
     if os_type() == "windows":
         let listed = run("tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"])
@@ -89,7 +89,7 @@ fn long_alive() Bool:
     let found = run("pgrep", ["-f", "sleep 30.717"])
     return found.get().exit_code == 0
 
-# Names the error when the listing command cannot run, instead of failing inside `long_alive`.
+// Names the error when the listing command cannot run, instead of failing inside `long_alive`.
 test "the process listing command runs":
     if os_type() == "windows":
         try expect_ok(run("tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"]))
@@ -116,8 +116,8 @@ test "cancelling a task inside Subprocess.wait kills the child":
     sleep(nanoseconds(200000000))
     try expect_equal(long_alive(), false)
 
-# The child belongs to the task's closure, not to a local of its frames, so the unwind pass has no
-# value to drop: only Subprocess.wait's own cleanup stops it.
+// The child belongs to the task's closure, not to a local of its frames, so the unwind pass has no
+// value to drop: only Subprocess.wait's own cleanup stops it.
 test "cancelling a task inside Subprocess.wait stops a child the task was handed":
     let child = spawn(long_program(), long_args()).get()
     var group = TaskGroup[Int](timeout: nanoseconds(200000000))

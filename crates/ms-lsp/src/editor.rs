@@ -200,7 +200,7 @@ pub(crate) fn interpolation_start(source: &str, offset: usize) -> Option<usize> 
         let b = bytes[at];
         match state {
             State::Code => match b {
-                b'#' => return None,
+                b'/' if bytes.get(at + 1) == Some(&b'/') => return None,
                 b'"' => state = State::Text,
                 _ => {}
             },
@@ -310,7 +310,7 @@ fn declaration_start(source: &str, at: usize) -> usize {
         if line
             .bytes()
             .next()
-            .is_some_and(|b| !matches!(b, b' ' | b'\t' | b'\r' | b'\n' | b'#' | b')' | b']' | b'}'))
+            .is_some_and(|b| !matches!(b, b' ' | b'\t' | b'\r' | b'\n' | b'/' | b')' | b']' | b'}'))
         {
             return start;
         }

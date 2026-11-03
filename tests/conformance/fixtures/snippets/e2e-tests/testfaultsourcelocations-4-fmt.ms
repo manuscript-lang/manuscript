@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/fault_locations_test.go:47 TestFaultSourceLocations
+// conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/fault_locations_test.go:47 TestFaultSourceLocations
 interface Counter:
     var fn bump(by: Int) Int
 

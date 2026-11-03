@@ -14,7 +14,7 @@
           "file": "testresultargumentinference-2.ms",
           "line": 6,
           "column": 18,
-          "offset": 236
+          "offset": 239
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testresultargumentinference-2.ms",
           "line": 6,
           "column": 26,
-          "offset": 244
+          "offset": 247
         }
       }
     ],

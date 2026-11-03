@@ -14,7 +14,7 @@
           "file": "diag-shadows-enclosing-lambda-parameter.ms",
           "line": 6,
           "column": 16,
-          "offset": 170
+          "offset": 173
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "diag-shadows-enclosing-lambda-parameter.ms",
           "line": 6,
           "column": 16,
-          "offset": 170
+          "offset": 173
         }
       }
     ],

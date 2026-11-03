@@ -26,6 +26,6 @@ test "a faulting handler releases the values its frames own":
         let head = reply_bytes.get(Bytes([])).decode_utf8().get("")
         if not head.starts_with("HTTP/1.1 500"): return error(Error(head))
 
-    # Each leaked fault kept 1 MB, so 60 faults would grow the process by 60 MB.
+    // Each leaked fault kept 1 MB, so 60 faults would grow the process by 60 MB.
     let grown = (memory_usage() | try expect_ok).resident - before
     if grown > 20000000: return error(Error("resident memory grew {grown} bytes"))

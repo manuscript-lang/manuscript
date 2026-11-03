@@ -2,7 +2,7 @@ import Bytes from "@std/bytes.ms"
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# Parses 1 to 6 unsigned decimal digits; anything else is malformed.
+// Parses 1 to 6 unsigned decimal digits; anything else is malformed.
 fn parse_num(text: String) Optional[Int]:
     if text.length() < 1 or text.length() > 6: return none
     if text.get(0) == "-" or text.get(0) == "+": return none
@@ -51,7 +51,7 @@ fn edit(a: Bytes, b: Bytes) Int:
 
     return prev[m]
 
-# 0/1 knapsack. dp[j] is the best value within weight j, so the table is monotone and dp[c] is the answer.
+// 0/1 knapsack. dp[j] is the best value within weight j, so the table is monotone and dp[c] is the answer.
 fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
     var total = 0
     for w in ws:
@@ -70,7 +70,7 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
 
     return dp[c]
 
-# Returns the fewest coins, or -1 when the amount cannot be made.
+// Returns the fewest coins, or -1 when the amount cannot be made.
 fn coins(amount: Int, cs: List[Int]) Int:
     let inf = amount + 1
     var dp = zeros(amount + 1)
@@ -86,7 +86,7 @@ fn coins(amount: Int, cs: List[Int]) Int:
 
     return dp[amount]
 
-# Returns the answer, or -1 for a malformed command.
+// Returns the answer, or -1 for a malformed command.
 fn knap_cmd(parts: List[String]) Int:
     let cap = parse_num(parts[1]).get(-1)
     if cap < 0: return -1
@@ -107,7 +107,7 @@ fn knap_cmd(parts: List[String]) Int:
 
     return knap(cap, ws, vs)
 
-# Returns the fewest coins (or -1 when impossible), or -2 for a malformed command.
+// Returns the fewest coins (or -1 when impossible), or -2 for a malformed command.
 fn coins_cmd(parts: List[String]) Int:
     let amount = parse_num(parts[1]).get(-1)
     if amount < 0: return -2
@@ -141,7 +141,7 @@ fn solve(parts: List[String]) String:
 
     return "error: bad command"
 
-# A line is blank when every space-separated part is empty.
+// A line is blank when every space-separated part is empty.
 fn is_blank(parts: List[String]) Bool:
     for p in parts:
         if p.length() > 0: return false

@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,lists,maps,strings,tier-core,try-result
-# conform: phase=check
-# conform: origin=pkg/tooling/lsp/prelude_imports_test.go:17 TestCollectionSupportPreludeEditorContracts
+// conform: tags=diagnostics,lists,maps,strings,tier-core,try-result
+// conform: phase=check
+// conform: origin=pkg/tooling/lsp/prelude_imports_test.go:17 TestCollectionSupportPreludeEditorContracts
 fn entries(values: List[Int]) List[ListEntry[Int]]: values.entries()
 
 fn pairs(values: Map[String, Int]) List[MapEntry[String, Int]]: values.entries()

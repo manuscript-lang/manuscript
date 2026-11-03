@@ -1,17 +1,17 @@
-# Ownership count gate (`make count-check`): runs the programs of tests/ownership-counts in Debug and Release against
-# a runtime built with counters (`ms-rt` feature `stats`) and compares what they report with the `# expect-debug:` and
-# `# expect-release:` headers (`key=value` pairs from the runtime's "ms-rt counts:" line; absent keys are not checked)
-# and `# expect-stdout:` lines (the program's stdout, in order, on both). Cleanup order is the stdout lines.
-# A fixture must exit successfully before its counts or output can satisfy the gate.
-# A change may not raise a count without a stated reason; update the header in the same change.
-# MS names the ms that runs the programs (default target/release/ms).
-# Usage: ms run tools/count-check.ms [-- files]
+// Ownership count gate (`make count-check`): runs the programs of tests/ownership-counts in Debug and Release against
+// a runtime built with counters (`ms-rt` feature `stats`) and compares what they report with the `// expect-debug:` and
+// `// expect-release:` headers (`key=value` pairs from the runtime's "ms-rt counts:" line; absent keys are not checked)
+// and `// expect-stdout:` lines (the program's stdout, in order, on both). Cleanup order is the stdout lines.
+// A fixture must exit successfully before its counts or output can satisfy the gate.
+// A change may not raise a count without a stated reason; update the header in the same change.
+// MS names the ms that runs the programs (default target/release/ms).
+// Usage: ms run tools/count-check.ms [-- files]
 import tool_ms, use_stats_runtime from "./lib.ms"
 import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
 import arguments, change_directory, working_directory, run from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
 
-# The text after `prefix` on every line that starts with it.
+// The text after `prefix` on every line that starts with it.
 fn after(text: String, prefix: String) List[String]:
     var found = List[String]()
     for line in text.split("\n"):
@@ -40,7 +40,7 @@ export fn main() Int:
 
     for f in files:
         let source = read_file("{root}/{f}").get().decode_utf8().get("")
-        let expected_out = after(source, "# expect-stdout: ")
+        let expected_out = after(source, "// expect-stdout: ")
 
         for build in ["debug", "release"]:
             let ran = run(
@@ -89,7 +89,7 @@ export fn main() Int:
             var have = List[String]()
             if counts.length() > 0: have = counts[0].split(" ")
 
-            for header in after(source, "# expect-{build}: "):
+            for header in after(source, "// expect-{build}: "):
                 for pair in header.split(" "):
                     if pair == "": continue
 

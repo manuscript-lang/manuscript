@@ -3,7 +3,7 @@ import range_by from "@std/collections/collections.ms"
 import canonicalize from "@std/os/fs.ms"
 import hex_decode from "@std/data/encoding.ms"
 
-# Standard failures are Error values whose kind callers compare, whatever package raised them.
+// Standard failures are Error values whose kind callers compare, whatever package raised them.
 
 fn is_missing(cause: Error) Bool:
     return cause.kind == ErrorCategory.NotFound

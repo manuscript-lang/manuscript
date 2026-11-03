@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,generics,tier-core
-# conform: phase=check
-# conform: origin=pkg/build/compiler_test.go:271 TestGenericRecursionAndNamespaceRules
+// conform: tags=control-flow,diagnostics,generics,tier-core
+// conform: phase=check
+// conform: origin=pkg/build/compiler_test.go:271 TestGenericRecursionAndNamespaceRules
 fn recurse[T](value: T, count: Int) T:
     if count == 0:
         return value

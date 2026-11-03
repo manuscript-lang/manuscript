@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,faults,modules,sets,stdlib-testing,testing,tier-core,try-result
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/preferred_names/conformance_test.ms
+// conform: tags=diagnostics,faults,modules,sets,stdlib-testing,testing,tier-core,try-result
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/preferred_names/conformance_test.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 import Key from "./domain.ms"
 import first_run, first_add, first_remove from "./first.ms"
@@ -18,8 +18,8 @@ test "bound and forwarded calls keep the equality of the collection creator":
         )
     )
 
-    # A collection keeps the equality of the module that created it, so
-    # bound operations from another module do not change how it matches.
+    // A collection keeps the equality of the module that created it, so
+    // bound operations from another module do not change how it matches.
     var items = Set[Key]()
     let add = first_add(items)
     let remove = first_remove(items)

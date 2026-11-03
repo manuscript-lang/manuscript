@@ -1,7 +1,7 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# Runs are searched over this many days after START, inclusive of START's own day.
+// Runs are searched over this many days after START, inclusive of START's own day.
 let SEARCH_DAYS = 3000
 
 type Moment:
@@ -18,7 +18,7 @@ type Schedule:
     months: List[Bool]
     weekdays: List[Bool]
 
-# A line that cannot be scheduled; the text is the message after `error: `.
+// A line that cannot be scheduled; the text is the message after `error: `.
 type LineError:
     case Bad(text: String)
 
@@ -31,7 +31,7 @@ impl Error for LineError:
 fn is_digit(c: String) Bool:
     return c.length() == 1 and "0123456789".contains(c)
 
-# One or two ASCII digits, no sign.
+// One or two ASCII digits, no sign.
 fn number(text: String) Optional[Int]:
     if text.length() < 1 or text.length() > 2: return none
 
@@ -53,7 +53,7 @@ fn days_in_month(year: Int, month: Int) Int:
 
     return lengths[month - 1]
 
-# Sunday is 0. Sakamoto's method.
+// Sunday is 0. Sakamoto's method.
 fn weekday(year: Int, month: Int, day: Int) Int:
     let offsets = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
 
@@ -81,7 +81,7 @@ fn valid_start(text: String) Optional[Moment]:
 
     return Moment(year: year, month: month, day: day, hour: hour, minute: minute)
 
-# The values picked out by one comma-separated item, or none if the item is malformed.
+// The values picked out by one comma-separated item, or none if the item is malformed.
 fn item_values(item: String, lo: Int, hi: Int) Optional[List[Int]]:
     let parts = item.split("/")
     if parts.length() > 2: return none
@@ -128,7 +128,7 @@ fn item_values(item: String, lo: Int, hi: Int) Optional[List[Int]]:
 
     return values
 
-# Index i is True when value i is allowed; the list covers 0 through hi.
+// Index i is True when value i is allowed; the list covers 0 through hi.
 fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
     var allowed = List[Bool](reserve: hi + 1)
     for i in 0..hi + 1:

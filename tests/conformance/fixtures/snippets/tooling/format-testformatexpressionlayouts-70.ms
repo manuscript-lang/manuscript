@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/format/format_layout_test.go:505 TestFormatExpressionLayouts
+// conform: tags=control-flow,diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/format/format_layout_test.go:505 TestFormatExpressionLayouts
 fn work() Int:
     if (
         tagged_detail(integer) != "integer 7"

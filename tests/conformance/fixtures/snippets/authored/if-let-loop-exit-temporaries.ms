@@ -1,6 +1,6 @@
-# conform: tags=control-flow,tier-core
-# conform: phase=run
-# conform: origin=break and continue in if let bodies and else branches with condition temporaries
+// conform: tags=control-flow,tier-core
+// conform: phase=run
+// conform: origin=break and continue in if let bodies and else branches with condition temporaries
 import stdout from "@std/io/io.ms"
 
 fn maybe(name: String, present: Bool) List[String]?:

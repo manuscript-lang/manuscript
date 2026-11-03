@@ -1,5 +1,5 @@
-# Validates every string/list sample before reducing to per-case minima (bench/perf/strappend).
-# Samples are whitespace-separated: `<trial> <version> <case> <elapsed> # <checksum>`.
+// Validates every string/list sample before reducing to per-case minima (bench/perf/strappend).
+// Samples are whitespace-separated: `<trial> <version> <case> <elapsed> # <checksum>`.
 import invalid, left, right from "./lib.ms"
 
 export fn case_names() List[String]:

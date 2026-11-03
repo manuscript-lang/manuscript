@@ -1,7 +1,7 @@
-# conform: tags=stdlib-processes,tier-io
-# conform: phase=run
-# conform: timeout=30
-# A group closing its child stops the child's own children, three levels down, even when the middle one is busy.
+// conform: tags=stdlib-processes,tier-io
+// conform: phase=run
+// conform: timeout=30
+// A group closing its child stops the child's own children, three levels down, even when the middle one is busy.
 import Channel from "@std/io/channels.ms"
 import read_file, remove, temporary_root, write_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
@@ -35,7 +35,7 @@ fn top(ch: Channel[Unit, Unit]) Int:
     sleep(nanoseconds(300000000))
     group.close().get(none)
 
-    # Leaving the block closed the middle process; the leaf must be gone with it.
+    // Leaving the block closed the middle process; the leaf must be gone with it.
     sleep(nanoseconds(3000000000))
     return 0
 

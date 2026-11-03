@@ -3,4 +3,4 @@ fn size(xs: List[Int]) Int:
 
 fn f() Int:
     var xs = [0]
-    return size(var xs)  # error: does not change
+    return size(var xs)  // error: does not change

@@ -110,7 +110,7 @@ fn methods_constructors_generics_and_nested_delimiters() {
         ("combine(\"😀\".length(),| 2)", "combine(", 1),
         ("combine(\"{combine(1,| 2)}\".length(), 3)", "combine(", 1),
         (
-            "combine(\n        1, # ignored ,):\n        |2\n    )",
+            "combine(\n        1, // ignored ,):\n        |2\n    )",
             "combine(",
             1,
         ),
@@ -156,8 +156,8 @@ fn signature_labels_exclude_preceding_operators_and_keywords() {
         ("\"{(pair).combine(1,| 2)}\".length()", "(pair).combine("),
         ("1 + ((pair)).combine(1,| 2)", "((pair)).combine("),
         (
-            "( # ignored (\n        pair\n    ).combine(1,| 2)",
-            "( # ignored (\n        pair\n    ).combine(",
+            "( // ignored (\n        pair\n    ).combine(1,| 2)",
+            "( // ignored (\n        pair\n    ).combine(",
         ),
         (
             "(pair.left + 1).to_string().length() + combine(1,| 2)",

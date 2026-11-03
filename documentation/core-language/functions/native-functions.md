@@ -51,7 +51,7 @@ A `Result[T, E]` return names its error type `E`, an alternative whose cases car
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-# A failed call, with the library's code and description.
+// A failed call, with the library's code and description.
 type LibraryError:
     case Failed(code: Int, message: String)
     case Busy
@@ -87,7 +87,7 @@ uint8_t lib_count(const ms_str *path, int64_t *out, int64_t *code_out, ms_str *m
 ```manuscript
 import Closeable from "@std/core.ms"
 
-# A connection the native library owns.
+// A connection the native library owns.
 export extern type Connection
 
 extern fn lib_connect(address: String) Connection
@@ -107,7 +107,7 @@ A native that keeps a function past the call, for a library that calls back late
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-# Calls `visit` once for each entry the library finds.
+// Calls `visit` once for each entry the library finds.
 extern fn lib_walk(root: String, visit: fn(String, Int) Unit) Unit
 ```
 

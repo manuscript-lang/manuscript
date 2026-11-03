@@ -1,6 +1,6 @@
-# conform: tags=closures,formatter,modules,parser,stdlib-queues,tier-stdlib
-# conform: phase=parse
-# conform: origin=pkg/checker/hints_test.go:50 TestDiagnosticsStateCauseAndFix
+// conform: tags=closures,formatter,modules,parser,stdlib-queues,tier-stdlib
+// conform: phase=parse
+// conform: origin=pkg/checker/hints_test.go:50 TestDiagnosticsStateCauseAndFix
 import PriorityQueue from "@std/collections/queue.ms"
 
 fn f() Int:

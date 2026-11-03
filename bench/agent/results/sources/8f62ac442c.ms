@@ -6,7 +6,7 @@ type Item:
     weight: Int
     value: Int
 
-# Parses a decimal number of 1 to 6 digits that is at least `floor`.
+// Parses a decimal number of 1 to 6 digits that is at least `floor`.
 fn parse_num(text: String, floor: Int) Optional[Int]:
     if text.length() < 1 or text.length() > 6: return none
 
@@ -105,7 +105,7 @@ fn knap(cap: Int, items: List[Item]) Int:
 
     return best.get(cap)
 
-# Fewest coins summing to `amount`, or -1 when no combination works.
+// Fewest coins summing to `amount`, or -1 when no combination works.
 fn fewest_coins(amount: Int, denoms: List[Int]) Int:
     var best = List[Int]()
     best.append(0)

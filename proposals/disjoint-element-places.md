@@ -24,7 +24,7 @@ fn bump(var a: Int, var b: Int) Unit:
 
 fn f(var xs: List[Int]) Unit:
     for i in 0..xs.length() - 1:
-        bump(var xs[i], var xs[i + 1])  # rejected today: argument `xs[..]` ... overlaps argument `xs[..]`
+        bump(var xs[i], var xs[i + 1])  // rejected today: argument `xs[..]` ... overlaps argument `xs[..]`
 ```
 
 - Cost: stencils, prefix sums and pairwise updates need `xs.swap` or an index copy through a temporary.
@@ -40,7 +40,7 @@ fn f(var xs: List[Int]) Unit:
 
 ```ms
 fn g(var xs: List[Int], i: Int) Unit:
-    bump(var xs[i], var xs[i + 1])  # stays rejected: i may be negative
+    bump(var xs[i], var xs[i + 1])  // stays rejected: i may be negative
 ```
 
 - Soundness argument: within one loop iteration the base value is fixed and shared by every place built from it. Different non-negative offsets of one value are different indexes of the same list, so different elements. A borrow cannot outlive the iteration that named the base.

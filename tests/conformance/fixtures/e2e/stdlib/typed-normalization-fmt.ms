@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,faults,formatter,generics,match,modules,optional,parser,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/stdlib/typed-normalization.ms
+// conform: tags=closures,control-flow,faults,formatter,generics,match,modules,optional,parser,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/stdlib/typed-normalization.ms
 import expect_equal from "@std/test/test.ms"
 import NormalizationForm from "@std/string.ms"
 

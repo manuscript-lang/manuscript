@@ -39,13 +39,13 @@ Programs do not change. Before and after is the same source with fewer runtime c
 
 ```manuscript
 fn stock_of(w: Warehouse, sku: String) Int:
-    let have = w.stock.get(sku)     # a pointer into the map, not a copy of the entry
+    let have = w.stock.get(sku)     // a pointer into the map, not a copy of the entry
     if have.is_none():
         return 0
     return have.get()
 
 fn first_sku(o: Order) ref String:
-    return o.items[0].sku           # returned as a borrow of o (stage 2)
+    return o.items[0].sku           // returned as a borrow of o (stage 2)
 ```
 
 - **Borrowed optional (MIR).** New op `opt.view %payload -> opt<T>`: wraps a borrowed payload into an `Optional` that is itself a borrow. Operand mode `Borrow`, result mode `Borrow` (`arg_modes`, `Module::result_mode` in `crates/ms-mir`). Codegen is identical to `opt.some`. The verifier's linear ownership is unchanged: a borrowed optional is never dropped and never passed to a consuming position. `simplify` folds `opt.is_some` and `opt.get` over it as over `opt.some`.

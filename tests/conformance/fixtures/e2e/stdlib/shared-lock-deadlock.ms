@@ -1,5 +1,5 @@
-# conform: tags=stdlib-shared,stdlib-tasks,tier-io
-# conform: phase=run
+// conform: tags=stdlib-shared,stdlib-tasks,tier-io
+// conform: phase=run
 import stdout from "@std/io/io.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"

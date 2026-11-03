@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,lists,modules,mutation,optional,parser,stdlib-testing,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/proven-index-narrows-and-executes.ms
+// conform: tags=control-flow,formatter,lists,modules,mutation,optional,parser,stdlib-testing,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/proven-index-narrows-and-executes.ms
 import expect_equal from "@std/test/test.ms"
 
 fn read(values: List[Int], index: Int) Int:

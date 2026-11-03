@@ -1,7 +1,7 @@
-# conform: tags=stdlib-http,stdlib-net,tier-io
-# conform: phase=run
-# conform: timeout=30
-# Closing a server lets a response in progress finish, and returns as soon as it has.
+// conform: tags=stdlib-http,stdlib-net,tier-io
+// conform: phase=run
+// conform: timeout=30
+// Closing a server lets a response in progress finish, and returns as soon as it has.
 import headers, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
 import stdout from "@std/io/io.ms"
 import connect, serve from "@std/net/net.ms"
@@ -19,7 +19,7 @@ export fn main() Int:
         if var conn = connect(server.address()):
             let _sent = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
-            # Let the handler start.
+            // Let the handler start.
             sleep(nanoseconds(50000000))
 
             let start = monotonic_time()

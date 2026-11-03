@@ -17,5 +17,5 @@ fn keep(d: Door) List[Door]:
     return xs
 
 fn take(r: Room) Room:
-    let xs = keep(r.door)  # error: is moved here but used again
+    let xs = keep(r.door)  // error: is moved here but used again
     return r

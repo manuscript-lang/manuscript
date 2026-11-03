@@ -1,6 +1,6 @@
-# conform: tags=formatter,modules,numbers,parser,records,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/record-constructors-with-defaults-match-dynamic-construction.ms
+// conform: tags=formatter,modules,numbers,parser,records,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/record-constructors-with-defaults-match-dynamic-construction.ms
 import expect_true from "@std/test/test.ms"
 
 fn twice(n: Int) Int: n * 2

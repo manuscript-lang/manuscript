@@ -1,6 +1,6 @@
-# conform: tags=formatter,parser,records,strings,tier-core,try-result
-# conform: phase=parse
-# conform: origin=pkg/checker/json_parse_test.go:22 TestParseTypeArgument
+// conform: tags=formatter,parser,records,strings,tier-core,try-result
+// conform: phase=parse
+// conform: origin=pkg/checker/json_parse_test.go:22 TestParseTypeArgument
 type Request:
     model: String
 

@@ -1,6 +1,6 @@
-# conform: tags=alternatives,formatter,match,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/collection_prelude_imports_test.go:187 TestMissingValuePreludeDefaultsAndShadowing
+// conform: tags=alternatives,formatter,match,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/collection_prelude_imports_test.go:187 TestMissingValuePreludeDefaultsAndShadowing
 type Other:
     case Missing(value: Int)
 

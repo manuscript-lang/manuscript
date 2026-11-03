@@ -1,6 +1,6 @@
-# conform: tags=control-flow,interfaces,interpolation,modules,mutation,records,stdlib-io,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/standard-contract-calls-reuse-operations-per-site.ms
+// conform: tags=control-flow,interfaces,interpolation,modules,mutation,records,stdlib-io,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/standard-contract-calls-reuse-operations-per-site.ms
 import expect_true from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 import monotonic from "@std/os/time.ms"

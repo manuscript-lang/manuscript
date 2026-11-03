@@ -1,6 +1,6 @@
-# conform: tags=alternatives,closures,formatter,interpolation,match,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result,scope-cleanup
-# conform: phase=parse
-# conform: origin=pkg/tooling/format/testdata/compact.golden.ms
+// conform: tags=alternatives,closures,formatter,interpolation,match,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result,scope-cleanup
+// conform: phase=parse
+// conform: origin=pkg/tooling/format/testdata/compact.golden.ms
 import expect_equal from "@std/test/test.ms"
 
 fn apply(value: Int, transform: fn(Int) Int) Int: transform(value)
@@ -14,7 +14,7 @@ fn choose(value: Choice) String:
     match value:
         Zero:
             return "zero # unchanged"
-        # Keep this comment with the arm.
+        // Keep this comment with the arm.
         One:
             return "one"
         Other(number):
@@ -26,7 +26,7 @@ fn count() Int:
     )
 
 test "compact formatting preserves behavior":
-    let values = [1, 2, 2, 4, 3, 6]  # Keep this list compact.
+    let values = [1, 2, 2, 4, 3, 6]  // Keep this list compact.
     let nested = [[1, 2], [3, 4]]
     let invalid = ["", "[1,", "\{\"a\" 1\}", "tru", "[1] x", "\"abc"]
     let mapped = [1, 2, 3, 4, 5, 6].map(

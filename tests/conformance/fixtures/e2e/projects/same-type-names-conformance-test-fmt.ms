@@ -1,10 +1,10 @@
-# conform: tags=alternatives,formatter,match,modules,parser,records,stdlib-testing,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/same_type_names/conformance_test.ms
+// conform: tags=alternatives,formatter,match,modules,parser,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/same_type_names/conformance_test.ms
 import expect_equal from "@std/test/test.ms"
 import flip, shifted from "./other.ms"
 
-# The same type names in two modules lower to distinct Go types.
+// The same type names in two modules lower to distinct Go types.
 type Point:
     x: Int
 

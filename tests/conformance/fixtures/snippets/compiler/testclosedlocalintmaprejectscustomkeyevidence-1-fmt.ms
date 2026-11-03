@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,maps,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/local_int_map_test.go:61 TestClosedLocalIntMapRejectsCustomKeyEvidence
+// conform: tags=control-flow,formatter,interfaces,maps,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/local_int_map_test.go:61 TestClosedLocalIntMapRejectsCustomKeyEvidence
 type Key:
     value: Int
 

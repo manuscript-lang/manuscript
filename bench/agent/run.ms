@@ -1,5 +1,5 @@
-# Agent-effectiveness benchmark runner. See README.md.
-# Usage (from the repository root): ms run bench/agent/run.ms -- <list|run|oracle> [options]
+// Agent-effectiveness benchmark runner. See README.md.
+// Usage (from the repository root): ms run bench/agent/run.ms -- <list|run|oracle> [options]
 import Command, Flag, FlagKind, command from "@std/cli.ms"
 import (
     append_file,
@@ -22,7 +22,7 @@ import find, names from "./harnesses/all.ms"
 import dumps_data from "./lib/pyjson.ms"
 import bash, read_text from "./lib/text.ms"
 
-# One line of `results/runs.jsonl`.
+// One line of `results/runs.jsonl`.
 type RunRecord:
     run_id: String
     ts: Int
@@ -60,7 +60,7 @@ type Options:
 fn split_ids(text: String) List[String]:
     return text.split(",").filter(fn x: not x.is_empty())
 
-# Source size in LLM tokens (tiktoken o200k_base, a proxy for Claude's tokenizer); none without tiktoken.
+// Source size in LLM tokens (tiktoken o200k_base, a proxy for Claude's tokenizer); none without tiktoken.
 fn llm_tokens(path: String) Int?:
     let program = "import sys, tiktoken; print(len(tiktoken.get_encoding('o200k_base').encode(open(sys.argv[1], errors='replace').read(), disallowed_special=())))"
     let ran = bash("python3 -c \"{program}\" \"{path}\"", ".", 60, "")
@@ -104,7 +104,7 @@ fn run_one(
 
     let log = read_log(ws)
 
-    # Cheap leak guard: flag runs whose transcript mentions the benchmark's own challenge tree.
+    // Cheap leak guard: flag runs whose transcript mentions the benchmark's own challenge tree.
     let said = read_text(transcript)
     let peeked = (
         said.contains("bench/agent/challenges")
@@ -138,7 +138,7 @@ type Job:
     challenge: Challenge
     language: Lang
 
-# Runs every job in `items`, printing one verdict line each; returns how many failed.
+// Runs every job in `items`, printing one verdict line each; returns how many failed.
 fn work(items: List[Job], harness: String, o: Options, tag: String) Int:
     let h = find(harness).get()
     var bad = 0

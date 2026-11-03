@@ -14,7 +14,7 @@
           "file": "testdiagnosticsstatecauseandfix-33.ms",
           "line": 10,
           "column": 9,
-          "offset": 290
+          "offset": 293
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testdiagnosticsstatecauseandfix-33.ms",
           "line": 11,
           "column": 9,
-          "offset": 332
+          "offset": 335
         }
       }
     ],

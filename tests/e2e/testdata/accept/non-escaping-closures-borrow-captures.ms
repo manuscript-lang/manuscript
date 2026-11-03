@@ -1,7 +1,7 @@
 import expect_equal from "@std/test/test.ms"
 
-# A closure that does not outlive its maker reads what it captures in place; one that is
-# returned or stored owns a copy and keeps the value it was made with.
+// A closure that does not outlive its maker reads what it captures in place; one that is
+// returned or stored owns a copy and keeps the value it was made with.
 type Matrix:
     data: List[Int]
     label: String

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,formatter,interfaces,modules,mutation,parser,records,stdlib-cleanup,tier-stdlib,scope-cleanup
-# conform: phase=parse
-# conform: origin=tests/e2e/match_bounds_test.go:32 TestBoundedMatchNative
+// conform: tags=control-flow,faults,formatter,interfaces,modules,mutation,parser,records,stdlib-cleanup,tier-stdlib,scope-cleanup
+// conform: phase=parse
+// conform: origin=tests/e2e/match_bounds_test.go:32 TestBoundedMatchNative
 import Closeable from "@std/core.ms"
 
 type Count:

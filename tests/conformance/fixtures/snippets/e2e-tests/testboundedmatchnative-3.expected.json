@@ -14,7 +14,7 @@
           "file": "testboundedmatchnative-3.ms",
           "line": 4,
           "column": 15,
-          "offset": 157
+          "offset": 160
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testboundedmatchnative-3.ms",
           "line": 4,
           "column": 34,
-          "offset": 176
+          "offset": 179
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "testboundedmatchnative-3.ms",
           "line": 7,
           "column": 19,
-          "offset": 225
+          "offset": 228
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "testboundedmatchnative-3.ms",
           "line": 8,
           "column": 16,
-          "offset": 257
+          "offset": 260
         }
       },
       {
@@ -58,20 +58,20 @@
           "file": "testboundedmatchnative-3.ms",
           "line": 9,
           "column": 20,
-          "offset": 296
+          "offset": 299
         },
         "fix": {
           "position": {
             "file": "testboundedmatchnative-3.ms",
             "line": 9,
             "column": 20,
-            "offset": 296
+            "offset": 299
           },
           "end": {
             "file": "testboundedmatchnative-3.ms",
             "line": 9,
             "column": 25,
-            "offset": 301
+            "offset": 304
           },
           "replacement": "shapes"
         }

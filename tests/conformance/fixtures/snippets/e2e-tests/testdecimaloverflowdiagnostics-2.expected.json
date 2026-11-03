@@ -14,7 +14,7 @@
           "file": "testdecimaloverflowdiagnostics-2.ms",
           "line": 5,
           "column": 18,
-          "offset": 226
+          "offset": 229
         },
         "fix": {
           "position": {

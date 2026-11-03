@@ -1,5 +1,5 @@
 export let (
-# A comment does not change the binding column.
+// A comment does not change the binding column.
     LOW = (
     1
 )

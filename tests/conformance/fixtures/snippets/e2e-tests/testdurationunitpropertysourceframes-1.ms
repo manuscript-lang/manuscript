@@ -1,6 +1,6 @@
-# conform: tags=testing,tier-core,scope-cleanup
-# conform: phase=test
-# conform: origin=tests/e2e/unit_property_locations_test.go:13 TestDurationUnitPropertySourceFrames
+// conform: tags=testing,tier-core,scope-cleanup
+// conform: phase=test
+// conform: origin=tests/e2e/unit_property_locations_test.go:13 TestDurationUnitPropertySourceFrames
 test "positive unit overflow":
     let _impossible = (153722868).minutes
 

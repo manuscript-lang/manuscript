@@ -1,6 +1,6 @@
-# conform: tags=closures,lists,tier-io
-# conform: phase=run
-# conform: origin=sorted with plain Int comparators uses the integer sort; other comparators stay stable
+// conform: tags=closures,lists,tier-io
+// conform: phase=run
+// conform: origin=sorted with plain Int comparators uses the integer sort; other comparators stay stable
 import stdout from "@std/io/io.ms"
 
 type Item:

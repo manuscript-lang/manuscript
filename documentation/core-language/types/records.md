@@ -27,9 +27,9 @@ let name = customer.name
 Positional arguments follow declaration order and labels are optional under the [call rules](../functions/declarations-and-calls.md#argument-names): `Box(3)` equals `Box(value: 3)`. Handle an optional field as described in [optional values](optionals.md).
 
 ```manuscript
-# Rejected: required email is missing.
+// Rejected: required email is missing.
 let incomplete = Customer(name: "Ada")
-# Accepted: let fixes the binding, not the record fields.
+// Accepted: let fixes the binding, not the record fields.
 customer.name = "Grace"
 ```
 
@@ -40,7 +40,7 @@ type Options:
     count: Int = 3
     total: Int = count + 1
 
-let options = Options(count: 5)  # total defaults to 6
+let options = Options(count: 5)  // total defaults to 6
 ```
 
 A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `()`, `none`, or zero, skips the default. Generic arguments never come from defaults.
@@ -130,7 +130,7 @@ type OrderId:
 
 ```manuscript
 let customer_id = CustomerId("42")
-# Rejected: equal field shapes do not make nominal types interchangeable.
+// Rejected: equal field shapes do not make nominal types interchangeable.
 let order_id: OrderId = customer_id
 ```
 

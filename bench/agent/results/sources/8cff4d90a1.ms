@@ -1,7 +1,7 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# AST node kinds
+// AST node kinds
 let K_CHR = 1
 let K_CLS = 2
 let K_BOL = 3
@@ -13,7 +13,7 @@ let K_LOOK = 8
 let K_REP = 9
 let K_SEQ = 10
 let K_ALT = 11
-# VM opcodes
+// VM opcodes
 let O_CHR = 1
 let O_CLS = 2
 let O_SPLIT = 3
@@ -131,7 +131,7 @@ fn bad_list() List[Int]:
 fn is_bad(l: List[Int]) Bool:
     return l.length() == 1 and l[0] == -1
 
-# Decodes \n \t \\ \xHH in a subject or replacement. Returns [-1] on error.
+// Decodes \n \t \\ \xHH in a subject or replacement. Returns [-1] on error.
 fn unescape(raw: List[Int]) List[Int]:
     var out = List[Int]()
     var i = 0
@@ -239,7 +239,7 @@ impl Re:
                 return g + 1
         return -1
 
-    # Returns index of '>' if a valid group name starts at `start`, else -1.
+    // Returns index of '>' if a valid group name starts at `start`, else -1.
     fn name_end(start: Int) Int:
         let L = self.pat.length()
         if start >= L:
@@ -740,7 +740,7 @@ impl Re:
                     self.err = "bad backreference"
                     return
 
-    # ---- code generation ----
+    // ---- code generation ----
 
     var fn newslot() Int:
         let s = self.nslots
@@ -840,7 +840,7 @@ impl Re:
         for i in 0..self.nslots:
             self.st.append(-1)
 
-    # ---- matching ----
+    // ---- matching ----
 
     var fn push(k: Int, a: Int, b: Int) Unit:
         if self.sp < self.sk.length():
@@ -858,14 +858,14 @@ impl Re:
         self.push(1, s, self.st[s])
         self.st[s] = v
 
-    # Pops everything above mark, restoring captures.
+    // Pops everything above mark, restoring captures.
     var fn unwind(mark: Int) Unit:
         while self.sp > mark:
             self.sp -= 1
             if self.sk[self.sp] == 1:
                 self.st[self.sa[self.sp]] = self.sb[self.sp]
 
-    # Drops backtrack points above mark but keeps capture restores.
+    // Drops backtrack points above mark but keeps capture restores.
     var fn compact(mark: Int) Unit:
         var w = mark
 
@@ -1044,7 +1044,7 @@ impl Re:
 
         return false
 
-    # Leftmost match starting at or after begin. Fills st on success.
+    // Leftmost match starting at or after begin. Fills st on success.
     var fn search(begin: Int) Bool:
         let L = self.subj.length()
         var s = begin
@@ -1273,7 +1273,7 @@ fn run_cmd(f: List[String]) String:
         pieces.append("({pieces.length()} pieces)")
         return pieces.join("\n")
 
-    # replace
+    // replace
     let ms = re.all_matches()
     var res = List[Int]()
     var last = 0

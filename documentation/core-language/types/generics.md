@@ -81,7 +81,7 @@ type Pair[A, B = A]:
 fn parse[T = String](text: String) T?:
     return none
 
-let same: Pair[Int] = Pair[Int](1, 2)    # Pair[Int, Int]
+let same: Pair[Int] = Pair[Int](1, 2)    // Pair[Int, Int]
 let mixed = Pair[Int, String](1, "x")
 ```
 
@@ -95,8 +95,8 @@ A call may omit type arguments when its arguments and expected result uniquely d
 fn choose[T](first: T, second: T) T:
     return first
 
-let value = choose(1, 2)  # T = Int
-# Rejected: conflicting evidence for T.
+let value = choose(1, 2)  // T = Int
+// Rejected: conflicting evidence for T.
 let mixed = choose(1, 2.0)
 ```
 
@@ -105,7 +105,7 @@ The expected result (return type, annotation, field, argument, or callback) fill
 ```manuscript
 fn fail[T](message: String) Result[T, Error]: error(Error(message))
 
-fn first() Result[Int, Error]: fail("empty")  # T = Int
+fn first() Result[Int, Error]: fail("empty")  // T = Int
 let failed: Result[Int, Error] = fail("empty")
 ```
 
@@ -118,7 +118,7 @@ fn count[T](values: List[T]) Int:
     return 0
 
 let known = count[Int]([])
-# Rejected: the empty list does not determine T.
+// Rejected: the empty list does not determine T.
 let unknown = count([])
 ```
 
@@ -129,7 +129,7 @@ Generic constructors infer from fields or payloads, or from an expected applicat
 A generic body is checked once against its declared bounds, which expose only their declared properties. An unconstrained `T` cannot use `==`, be a map key, or call contract operations.
 
 ```manuscript
-# Rejected at declaration: missing Equal bound.
+// Rejected at declaration: missing Equal bound.
 fn unchecked_same[T](left: T, right: T) Bool:
     return left == right
 
@@ -149,10 +149,10 @@ Generic function calls and specialized function values follow the same rule acro
 
 ```manuscript
 fn repeat[T](value: T) Never:
-    return repeat[T](value)  # Regular specialization; allowed.
+    return repeat[T](value)  // Regular specialization; allowed.
 
 fn grow[T](value: T) Never:
-    return grow[List[T]]([value])  # Rejected: expanding specialization.
+    return grow[List[T]]([value])  // Rejected: expanding specialization.
 ```
 
 The check also covers mutual recursion, function values such as `grow[List[T]]`, and generic implementation method calls.

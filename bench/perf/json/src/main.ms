@@ -4,7 +4,7 @@ import parse, stringify, JsonValue from "@std/data/json.ms"
 import arguments from "@std/os/process.ms"
 import monotonic from "@std/os/time.ms"
 
-# Median-of-runs timing; mirrors node.js: warm-up, then at least `runs` runs and `budget` ns.
+// Median-of-runs timing; mirrors node.js: warm-up, then at least `runs` runs and `budget` ns.
 fn median_ns(body: fn() Int, budget: Int, runs: Int) Int:
     let _warm = body()
     var samples: List[Int] = []
@@ -23,8 +23,8 @@ fn median_ns(body: fn() Int, budget: Int, runs: Int) Int:
 fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
-# The typed case: a list of records, written without building a `JsonValue` first. The size is
-# the text produced, the same 10,000 rows in `node.js` and `rust/`.
+// The typed case: a list of records, written without building a `JsonValue` first. The size is
+// the text produced, the same 10,000 rows in `node.js` and `rust/`.
 type Row:
     id: Int
     name: String
@@ -93,7 +93,7 @@ fn bench_text(
     else:
         say("{name}\tinvalid json\n")
 
-# Decodes to a record with no fields, so only the document build and its release are timed.
+// Decodes to a record with no fields, so only the document build and its release are timed.
 type Nothing:
     placeholder: Int? = none
 
@@ -115,7 +115,7 @@ fn stringify_body(tree: JsonValue) fn() Int:
 
         return 0
 
-# Arguments are `name` or `name:op` (op is parse or stringify); a leading `quick` makes it 5 runs, no time floor.
+// Arguments are `name` or `name:op` (op is parse or stringify); a leading `quick` makes it 5 runs, no time floor.
 export fn main() Int:
     var budget = 1000000000
     var runs = 5

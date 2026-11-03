@@ -14,7 +14,7 @@
           "file": "testpatternbindingadvisory-8.ms",
           "line": 9,
           "column": 25,
-          "offset": 278
+          "offset": 281
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testpatternbindingadvisory-8.ms",
           "line": 10,
           "column": 22,
-          "offset": 305
+          "offset": 308
         },
         "fix": {
           "position": {

@@ -1,13 +1,13 @@
-# conform: tags=closures,stdlib-tasks,tier-core
-# conform: phase=run
-# conform: origin=foreign-syntax diagnostics
+// conform: tags=closures,stdlib-tasks,tier-core
+// conform: phase=run
+// conform: origin=foreign-syntax diagnostics
 import stdout from "@std/io/io.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 
 fn show(xs: List[Int]) Int:
     var group = TaskGroup[Int]()
 
-    # Each task owns its capture, and `xs` is only borrowed, so each one takes a clone.
+    // Each task owns its capture, and `xs` is only borrowed, so each one takes a clone.
     let first = xs.clone()
     group.spawn(fn ch: first.length())
 

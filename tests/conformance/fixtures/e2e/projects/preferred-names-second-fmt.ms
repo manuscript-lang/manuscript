@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,match,modules,parser,sets,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/preferred_names/second.ms
+// conform: tags=control-flow,formatter,interfaces,match,modules,parser,sets,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/preferred_names/second.ms
 import Key from "./domain.ms"
 import add_generic, remove_generic from "./helpers.ms"
 

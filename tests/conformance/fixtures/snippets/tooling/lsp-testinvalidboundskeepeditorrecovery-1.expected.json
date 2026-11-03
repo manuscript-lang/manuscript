@@ -14,7 +14,7 @@
           "file": "lsp-testinvalidboundskeepeditorrecovery-1.ms",
           "line": 7,
           "column": 17,
-          "offset": 251
+          "offset": 254
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "lsp-testinvalidboundskeepeditorrecovery-1.ms",
           "line": 10,
           "column": 1,
-          "offset": 277
+          "offset": 280
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "lsp-testinvalidboundskeepeditorrecovery-1.ms",
           "line": 11,
           "column": 8,
-          "offset": 311
+          "offset": 314
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "lsp-testinvalidboundskeepeditorrecovery-1.ms",
           "line": 11,
           "column": 34,
-          "offset": 337
+          "offset": 340
         }
       }
     ],

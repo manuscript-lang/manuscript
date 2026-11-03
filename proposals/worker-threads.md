@@ -47,12 +47,12 @@ import WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
 fn hash_worker() Unit:
     var ch = worker_channel[String, Bytes]()
-    # receive chunks, send digests, until the starter closes its end
+    // receive chunks, send digests, until the starter closes its end
 
 fn hash_all(chunks: List[Bytes]) Result[List[String], WorkerError]:
     with let group = WorkerGroup[Bytes, String]():
         var worker = try group.spawn(hash_worker)
-        # send chunks, read digests, then worker.channel.close() and worker.join()
+        // send chunks, read digests, then worker.channel.close() and worker.join()
 ```
 
 - `WorkerGroup[In = Unit, Out = Unit]`: `Closeable`. `spawn(entry: Callable[[], Unit]) -> Result[Worker[In, Out], WorkerError]`. The starter's end is `worker.channel: Channel[In, Out]`; the worker takes the other with `worker_channel[Send, Receive]()` (`Channel` and `Transport` come from `@std/io/channels.ms`).

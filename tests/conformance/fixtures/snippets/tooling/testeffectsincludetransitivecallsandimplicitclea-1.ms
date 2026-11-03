@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,diagnostics,interfaces,modules,records,stdlib-cleanup,stdlib-queues,tier-stdlib,scope-cleanup
-# conform: phase=check
-# conform: origin=pkg/tooling/effects_test.go:13 TestEffectsIncludeTransitiveCallsAndImplicitCleanup
+// conform: tags=closures,control-flow,diagnostics,interfaces,modules,records,stdlib-cleanup,stdlib-queues,tier-stdlib,scope-cleanup
+// conform: phase=check
+// conform: origin=pkg/tooling/effects_test.go:13 TestEffectsIncludeTransitiveCallsAndImplicitCleanup
 import Closeable from "@std/core.ms"
 import Queue from "@std/collections/queue.ms"
 

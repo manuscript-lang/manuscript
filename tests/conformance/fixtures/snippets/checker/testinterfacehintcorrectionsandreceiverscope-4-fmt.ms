@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,records,strings,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/interface_hints_test.go:51 TestInterfaceHintCorrectionsAndReceiverScope
+// conform: tags=control-flow,formatter,interfaces,parser,records,strings,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/interface_hints_test.go:51 TestInterfaceHintCorrectionsAndReceiverScope
 interface Named:
     fn name() String
 

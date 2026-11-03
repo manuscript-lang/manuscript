@@ -1,7 +1,7 @@
-# Runs already-built programs in alternating pairs, rejecting failed or incomplete samples (bench/perf/string-lines, also used
-# by bench/tools/bytes_index_compare.ms).
-# Usage: ms run bench/tools/string_lines_compare.ms -- BEFORE AFTER OUTPUT.csv [--pairs 7] [--identity-file FILE.json]
-# A program prints CSV `case,input_bytes,iterations,elapsed_ns,checksum`; the identity file is `{case: [input bytes, iterations, checksum]}`.
+// Runs already-built programs in alternating pairs, rejecting failed or incomplete samples (bench/perf/string-lines, also used
+// by bench/tools/bytes_index_compare.ms).
+// Usage: ms run bench/tools/string_lines_compare.ms -- BEFORE AFTER OUTPUT.csv [--pairs 7] [--identity-file FILE.json]
+// A program prints CSV `case,input_bytes,iterations,elapsed_ns,checksum`; the identity file is `{case: [input bytes, iterations, checksum]}`.
 import (
     absolute,
     fail,
@@ -21,7 +21,7 @@ export type Identity:
     iterations: Int
     checksum: Int
 
-# One validated row of a program's CSV.
+// One validated row of a program's CSV.
 export type Row:
     name: String
     iterations: Int
@@ -45,7 +45,7 @@ export fn builtin_identities() Map[String, Identity]:
     rows.add("no_newline", Identity(1048576, 64, (1048576 + 17) * 64))
     return rows
 
-# Runs `executable` and validates its CSV against `expected`; returns the rows in the program's order.
+// Runs `executable` and validates its CSV against `expected`; returns the rows in the program's order.
 export fn run_rows(
     executable: String,
     expected: Map[String, Identity],

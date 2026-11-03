@@ -14,7 +14,7 @@
           "file": "testbytessplitlimitfaultlocations-3.ms",
           "line": 6,
           "column": 17,
-          "offset": 216
+          "offset": 219
         },
         "fix": {
           "position": {
@@ -40,7 +40,7 @@
           "file": "testbytessplitlimitfaultlocations-3.ms",
           "line": 6,
           "column": 34,
-          "offset": 233
+          "offset": 236
         },
         "fix": {
           "position": {

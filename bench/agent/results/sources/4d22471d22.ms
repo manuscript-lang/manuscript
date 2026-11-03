@@ -1,7 +1,7 @@
 import stdout, stdin from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# Parses `digits[.d]` or `digits[.dd]` into cents; none if the text does not match.
+// Parses `digits[.d]` or `digits[.dd]` into cents; none if the text does not match.
 fn parse_amount(text: String) Optional[Int]:
     let parts = text.split(".")
     if parts.length() > 2: return none
@@ -26,7 +26,7 @@ type Record:
     category: String
     cents: Int
 
-# Returns the category and cents of a record line, or none if the line is invalid.
+// Returns the category and cents of a record line, or none if the line is invalid.
 fn parse_record(line: String) Optional[Record]:
     var category = ""
     var amount = ""

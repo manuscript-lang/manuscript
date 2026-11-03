@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/lexer/lexer_test.go:132 TestDelimiterContinuationMayDedentBelowSuite
+// conform: tags=control-flow,diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/lexer/lexer_test.go:132 TestDelimiterContinuationMayDedentBelowSuite
 fn f() Int:
     if true:
         let _x = [1]

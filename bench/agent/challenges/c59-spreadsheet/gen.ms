@@ -1,5 +1,5 @@
-# Generator for c59-spreadsheet. The expected outputs come from the Go oracle in oracle/*.ref (built with the
-# local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c59
+// Generator for c59-spreadsheet. The expected outputs come from the Go oracle in oracle/*.ref (built with the
+// local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c59
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
 fn add(var cs: Cases, name: String, script: String) Unit:
@@ -15,7 +15,7 @@ fn strip_nl(text: String) String:
         end -= 1
     return chars.slice(start, end).get([]).join("") + "\n"
 
-# `set KEY VALUE` lines for the flat list `pairs` of keys and values.
+// `set KEY VALUE` lines for the flat list `pairs` of keys and values.
 fn sets(pairs: List[String]) String:
     var out = ""
     var k = 0

@@ -1,4 +1,4 @@
-# Request routing and middleware over `HttpExchange`, implemented in Manuscript.
+// Request routing and middleware over `HttpExchange`, implemented in Manuscript.
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import (
     headers,
@@ -17,71 +17,75 @@ import monotonic from "@std/os/time.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
 
-# The values a matched pattern captured, by name.
+// The values a matched pattern captured, by name.
 export type RouteParams:
-    # Names in pattern order.
+    // Names in pattern order.
     names: List[String]
-    # The captured text for each name; a wildcard holds the remaining segments joined by `/`.
+    // The captured text for each name; a wildcard holds the remaining segments joined by `/`.
     values: List[String]
 
 impl RouteParams:
-    # Returns the text captured for `name`, or none when the pattern has no such parameter.
+    // Returns the text captured for `name`, or none when the pattern has no such parameter.
     fn get(name: String) String?:
         if let index = self.names.index_of(name):
             return self.values[index].clone()
 
         return none
 
-    # Returns the text captured for `name`, or `fallback` when the pattern has no such parameter.
+    // Returns the text captured for `name`, or `fallback` when the pattern has no such parameter.
     fn get_or(name: String, fallback: String) String:
         return self.get(name).get(fallback)
 
-# One segment of a route pattern.
+// One segment of a route pattern.
 export type Segment:
-    # Matches exactly this text.
+    // Matches exactly this text.
     case Literal(
-        # The exact text a request path segment must equal, case-sensitively.
+        // The exact text a request path segment must equal, case-sensitively.
         text: String
     )
-    # Matches one nonempty segment and captures it.
+    // Matches one nonempty segment and captures it.
     case Param(
-        # The name `RouteParams.get` finds the captured segment under.
+        // The name `RouteParams.get` finds the captured segment under.
         name: String
     )
-    # Matches the rest of the path, possibly nothing, and captures it joined by `/`.
+    // Matches the rest of the path, possibly nothing, and captures it joined by `/`.
     case Rest(
-        # The name `RouteParams.get` finds the remaining path under.
+        // The name `RouteParams.get` finds the remaining path under.
         name: String
     )
 
-# A registered route: the method token and pattern it answers, and the handler that runs on a match.
+// A registered route: the method token and pattern it answers, and the handler that runs on a match.
 export type Route:
-    # The method token the route answers, such as `GET`.
+    // The method token the route answers, such as `GET`.
     method: String
-    # The pattern text as registered.
+    // The pattern text as registered.
     pattern: String
-    # The pattern split at `/` into segments, in path order.
+    // The pattern split at `/` into segments, in path order.
     segments: List[Segment]
-    # Middleware of the routers this route was mounted through, outermost first.
+    // Middleware of the routers this route was mounted through, outermost first.
     around: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!]
-    # Runs when the route matches, with the values the pattern captured.
+    // Runs when the route matches, with the values the pattern captured.
     handler: fn(HttpExchange, RouteParams) Unit!
 
-# Routes requests by method and path and wraps them in middleware.
-#
-# Patterns are `/` followed by literal segments, `:name` parameters that match one segment, and
-# a final `*name` that matches the rest of the path (possibly nothing). The first route
-# registered that matches wins, and a trailing slash is part of the path.
+/*
+Routes requests by method and path and wraps them in middleware.
+
+Patterns are `/` followed by literal segments, `:name` parameters that match one segment, and
+a final `*name` that matches the rest of the path (possibly nothing). The first route
+registered that matches wins, and a trailing slash is part of the path.
+*/
 export type Router:
-    # Registered routes in registration order.
+    // Registered routes in registration order.
     routes: List[Route] = []
-    # Middleware in the order it wraps requests: the first one added runs outermost.
+    // Middleware in the order it wraps requests: the first one added runs outermost.
     middleware: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!] = []
 
 impl Router:
-    # Registers `handler` for `method` and `pattern`.
-    # A route also answers HEAD when `method` is GET and no HEAD route matches. Registering the
-    # same method and pattern shape twice returns Duplicate.
+    /*
+    Registers `handler` for `method` and `pattern`.
+    A route also answers HEAD when `method` is GET and no HEAD route matches. Registering the
+    same method and pattern shape twice returns Duplicate.
+    */
     var fn route(
         method: HttpMethod,
         pattern: String,
@@ -90,38 +94,40 @@ impl Router:
         let segments = try parse_pattern(pattern.clone())
         return insert(var self.routes, method.text(), pattern, segments, [], handler)
 
-    # Registers `handler` for GET requests to `pattern`; shorthand for `route(HttpMethod.Get, pattern, handler)`.
+    // Registers `handler` for GET requests to `pattern`; shorthand for `route(HttpMethod.Get, pattern, handler)`.
     var fn get(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
         return self.route(HttpMethod.Get, pattern, handler)
 
-    # Registers `handler` for HEAD requests to `pattern`; shorthand for `route(HttpMethod.Head, pattern, handler)`.
+    // Registers `handler` for HEAD requests to `pattern`; shorthand for `route(HttpMethod.Head, pattern, handler)`.
     var fn head(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
         return self.route(HttpMethod.Head, pattern, handler)
 
-    # Registers `handler` for POST requests to `pattern`; shorthand for `route(HttpMethod.Post, pattern, handler)`.
+    // Registers `handler` for POST requests to `pattern`; shorthand for `route(HttpMethod.Post, pattern, handler)`.
     var fn post(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
         return self.route(HttpMethod.Post, pattern, handler)
 
-    # Registers `handler` for PUT requests to `pattern`; shorthand for `route(HttpMethod.Put, pattern, handler)`.
+    // Registers `handler` for PUT requests to `pattern`; shorthand for `route(HttpMethod.Put, pattern, handler)`.
     var fn put(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
         return self.route(HttpMethod.Put, pattern, handler)
 
-    # Registers `handler` for PATCH requests to `pattern`; shorthand for `route(HttpMethod.Patch, pattern, handler)`.
+    // Registers `handler` for PATCH requests to `pattern`; shorthand for `route(HttpMethod.Patch, pattern, handler)`.
     var fn patch(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
         return self.route(HttpMethod.Patch, pattern, handler)
 
-    # Registers `handler` for DELETE requests to `pattern`; shorthand for `route(HttpMethod.Delete, pattern, handler)`.
+    // Registers `handler` for DELETE requests to `pattern`; shorthand for `route(HttpMethod.Delete, pattern, handler)`.
     var fn delete(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
         return self.route(HttpMethod.Delete, pattern, handler)
 
-    # Registers `handler` for OPTIONS requests to `pattern`; shorthand for `route(HttpMethod.Options, pattern, handler)`.
+    // Registers `handler` for OPTIONS requests to `pattern`; shorthand for `route(HttpMethod.Options, pattern, handler)`.
     var fn options(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
         return self.route(HttpMethod.Options, pattern, handler)
 
-    # Registers every route of `routes` under `prefix`, wrapped in that router's own middleware.
-    # The prefix is `/` followed by segments with no trailing slash, and it may hold parameters.
-    # The mounted router's `/` route answers `prefix` itself. Later changes to `routes` do not
-    # reach this router.
+    /*
+    Registers every route of `routes` under `prefix`, wrapped in that router's own middleware.
+    The prefix is `/` followed by segments with no trailing slash, and it may hold parameters.
+    The mounted router's `/` route answers `prefix` itself. Later changes to `routes` do not
+    reach this router.
+    */
     var fn mount(prefix: String, routes: Router) Unit!:
         if prefix.ends_with("/") and prefix != "/":
             return error(invalid_pattern(prefix))
@@ -140,22 +146,26 @@ impl Router:
 
         return ok(unit)
 
-    # Adds middleware around every route and around the 404, 405 and OPTIONS answers.
-    # It receives the exchange and a continuation that runs the rest of the chain with the exchange
-    # it is given, so a middleware can pass on a wrapped one (see `request_id` and `access_log`).
+    /*
+    Adds middleware around every route and around the 404, 405 and OPTIONS answers.
+    It receives the exchange and a continuation that runs the rest of the chain with the exchange
+    it is given, so a middleware can pass on a wrapped one (see `request_id` and `access_log`).
+    */
     var fn use(middleware: fn(HttpExchange, fn(HttpExchange) Unit!) Unit!) Unit:
         self.middleware.append(middleware)
 
-    # Returns the function to pass to `serve`.
-    # Unmatched paths answer 404, a path matched only under other methods answers 405 with
-    # `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *` answers 204 with
-    # the `Allow` of every registered method.
+    /*
+    Returns the function to pass to `serve`.
+    Unmatched paths answer 404, a path matched only under other methods answers 405 with
+    `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *` answers 204 with
+    the `Allow` of every registered method.
+    */
     fn handler() fn(HttpExchange) Unit!:
         let routes = share(self.routes.clone())
         let middleware = self.middleware.clone()
         return fn exchange: dispatch(routes, middleware.clone(), exchange)
 
-# Adds a route unless one with the same method and shape exists.
+// Adds a route unless one with the same method and shape exists.
 fn insert(
     var routes: List[Route], token: String, pattern: String, segments: List[Segment],
     around: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!],
@@ -181,7 +191,7 @@ fn insert(
     )
     return ok(unit)
 
-# The end of a chain held by value so a closure can own it.
+// The end of a chain held by value so a closure can own it.
 type Tail:
     last: fn(HttpExchange) Unit!
 
@@ -191,7 +201,7 @@ fn invalid_pattern(pattern: String) Error:
         details: {"pattern": pattern.clone()}
     )
 
-# Parses `pattern` into segments, rejecting empty or repeated names and a wildcard that is not last.
+// Parses `pattern` into segments, rejecting empty or repeated names and a wildcard that is not last.
 fn parse_pattern(pattern: String) List[Segment]!:
     if not pattern.starts_with("/"): return error(invalid_pattern(pattern))
 
@@ -210,7 +220,7 @@ fn parse_pattern(pattern: String) List[Segment]!:
 
     return ok(segments)
 
-# The segments of an absolute path; "/" has none.
+// The segments of an absolute path; "/" has none.
 fn split_path(path: String) List[String]:
     if path == "/": return []
 
@@ -234,7 +244,7 @@ fn valid_segment(segment: Segment, names: List[String], last: Bool) Bool:
         Param(name): return not name.is_empty() and not names.contains(name)
         Rest(name): return (last and not name.is_empty() and not names.contains(name))
 
-# Patterns with the same shape match the same paths, whatever their parameter names.
+// Patterns with the same shape match the same paths, whatever their parameter names.
 fn shape_of(segments: List[Segment]) String:
     return segments.map(fn segment: shape_text(segment)).join("/")
 
@@ -244,13 +254,13 @@ fn shape_text(segment: Segment) String:
         Param(_): return ":"
         Rest(_): return "*"
 
-# What the routes say about one request path.
+// What the routes say about one request path.
 type Lookup:
-    # The matching route for the method, if any.
+    // The matching route for the method, if any.
     found: Int?
-    # Captures of that route.
+    // Captures of that route.
     params: RouteParams
-    # Methods that have a route for the path, for `Allow`.
+    // Methods that have a route for the path, for `Allow`.
     allow: List[String]
 
 fn lookup(routes: List[Route], method: String, parts: List[String]) Lookup:
@@ -281,7 +291,7 @@ fn lookup(routes: List[Route], method: String, parts: List[String]) Lookup:
 
     return Lookup(found: found, params: params, allow: allow)
 
-# A GET route also serves HEAD.
+// A GET route also serves HEAD.
 fn serves(registered: String, requested: String) Bool:
     return registered == requested or (registered == "GET" and requested == "HEAD")
 
@@ -293,7 +303,7 @@ fn name_list(segment: Segment) List[String]:
 
     return []
 
-# The captured values when `parts` match `segments`.
+// The captured values when `parts` match `segments`.
 fn capture(segments: List[Segment], parts: List[String]) List[String]?:
     var values: List[String] = []
 
@@ -314,7 +324,7 @@ fn take_rest(segment: Segment) Bool:
         Rest(_): return true
         _: return false
 
-# Whether `segment` matches `part`; a parameter adds the text to `values`.
+// Whether `segment` matches `part`; a parameter adds the text to `values`.
 fn accepts(segment: Segment, part: String, var values: List[String]) Bool:
     match segment:
         Literal(text): return text == part
@@ -344,7 +354,7 @@ fn chain(
 
     return middleware[at](exchange, next_step(middleware, at + 1, last))
 
-# The end of the chain: the matched route, or the 404, 405 or OPTIONS answer.
+// The end of the chain: the matched route, or the 404, 405 or OPTIONS answer.
 fn final_step(
     routes: Shared[List[Route]],
     method: String,
@@ -352,7 +362,7 @@ fn final_step(
 ) fn(HttpExchange) Unit!:
     return fn exchange: finish(routes, method.clone(), found.clone(), exchange)
 
-# The continuation handed to the middleware at `at - 1`.
+// The continuation handed to the middleware at `at - 1`.
 fn next_step(
     middleware: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!],
     at: Int,
@@ -361,7 +371,7 @@ fn next_step(
     let rest = Tail(last: last)
     return fn exchange: chain(middleware.clone(), at, exchange, rest.last)
 
-# The end of a route's own middleware: its handler.
+// The end of a route's own middleware: its handler.
 fn route_step(
     routes: Shared[List[Route]],
     index: Int,
@@ -369,7 +379,7 @@ fn route_step(
 ) fn(HttpExchange) Unit!:
     return fn exchange: routes.get()[index].handler(exchange, params)
 
-# Runs the matched route, or answers 404, 405 or the OPTIONS listing.
+// Runs the matched route, or answers 404, 405 or the OPTIONS listing.
 fn finish(
     routes: Shared[List[Route]],
     method: String,
@@ -394,7 +404,7 @@ fn finish(
     try response.headers.append("Allow", allow_text(found.allow))
     return reply(exchange, response)
 
-# Methods with a route for the path, sorted and without repeats; GET adds HEAD, and OPTIONS is always answered.
+// Methods with a route for the path, sorted and without repeats; GET adds HEAD, and OPTIONS is always answered.
 fn allow_text(methods: List[String]) String:
     var all = methods.clone()
     if all.contains("GET"): all.append("HEAD")
@@ -402,9 +412,11 @@ fn allow_text(methods: List[String]) String:
     return all.distinct().sorted().join(", ")
 
 impl Router:
-    # Runs `request` through the router without a socket and returns the response it produced.
-    # A handler error is returned as is; the server would answer it with a 500. A handler that
-    # sends nothing answers 204.
+    /*
+    Runs `request` through the router without a socket and returns the response it produced.
+    A handler error is returned as is; the server would answer it with a 500. A handler that
+    sends nothing answers 204.
+    */
     fn call(request: HttpRequest) HttpResponse!:
         let state = share(
             TestState(
@@ -416,7 +428,7 @@ impl Router:
         try self.handler()(exchange)
         return finished(state)
 
-# What an in-process handler has sent so far.
+// What an in-process handler has sent so far.
 type TestState:
     status: Int
     sent: Bool
@@ -552,16 +564,16 @@ impl HttpExchange for TestExchange:
         guard.value.body.append_bytes(data)
         return ok(unit)
 
-# Whether a response with this status may carry a body.
+// Whether a response with this status may carry a body.
 fn has_body(status: Int) Bool:
     return status >= 200 and status != 204 and status != 304
 
-# What a wrapped exchange has sent so far.
+// What a wrapped exchange has sent so far.
 type TapState:
     status: Int
     bytes: Int
 
-# An exchange that passes everything to `inner`, adds `extra` to the headers of its response, and counts the status and body bytes sent.
+// An exchange that passes everything to `inner`, adds `extra` to the headers of its response, and counts the status and body bytes sent.
 type Tap:
     inner: HttpExchange
     extra: HttpHeaders
@@ -574,8 +586,8 @@ fn new_tap(inner: HttpExchange, extra: HttpHeaders, request: HttpHeaders) Tap:
         state: share(TapState(status: 0, bytes: 0))
     )
 
-# Wraps `exchange` so that `headers()` reports `request` and everything else passes through.
-# Middleware uses it to hand later layers changed request headers, since a received header set is a copy.
+// Wraps `exchange` so that `headers()` reports `request` and everything else passes through.
+// Middleware uses it to hand later layers changed request headers, since a received header set is a copy.
 export fn with_request_headers(
     exchange: HttpExchange,
     request: HttpHeaders
@@ -591,7 +603,7 @@ fn snapshot(state: Shared[TapState]) TapState:
     var guard = lock(state)
     return TapState(status: guard.value.status, bytes: guard.value.bytes)
 
-# `sent` plus the `extra` headers it does not already have.
+// `sent` plus the `extra` headers it does not already have.
 fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
     var all = sent.clone()
     for name in extra.names():
@@ -649,9 +661,11 @@ impl HttpExchange for Tap:
         counted(self.state, 0, data.length())
         return ok(unit)
 
-# Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128
-# printable ASCII characters, otherwise a new UUID. The id is set on the request headers the wrapped exchange reports, where
-# handlers and later middleware read it, and added to the response as `X-Request-Id`.
+/*
+Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128
+printable ASCII characters, otherwise a new UUID. The id is set on the request headers the wrapped exchange reports, where
+handlers and later middleware read it, and added to the response as `X-Request-Id`.
+*/
 export fn request_id() fn(HttpExchange, fn(HttpExchange) Unit!) Unit!:
     return fn exchange, next: with_request_id(exchange, next)
 
@@ -681,7 +695,7 @@ fn new_id() String!:
 
     return ok(made.get().clone())
 
-# One request as `access_log` writes it.
+// One request as `access_log` writes it.
 type AccessEntry:
     method: String
     path: String
@@ -690,10 +704,12 @@ type AccessEntry:
     bytes: Int
     duration_ms: Int
 
-# Middleware that writes one Info record named `request` to `logger` after each request, with
-# the method, path, protocol, response status, body bytes written and duration in milliseconds.
-# A handler that sends nothing is logged as 204 and one that fails before sending as 500. A
-# logging failure never fails the request.
+/*
+Middleware that writes one Info record named `request` to `logger` after each request, with
+the method, path, protocol, response status, body bytes written and duration in milliseconds.
+A handler that sends nothing is logged as 204 and one that fails before sending as 500. A
+logging failure never fails the request.
+*/
 export fn access_log(logger: Logger) fn(HttpExchange, fn(HttpExchange) Unit!) Unit!:
     return fn exchange, next: with_access_log(logger, exchange, next)
 

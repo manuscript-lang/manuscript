@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,generics,interfaces,records,tier-core
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/interface_views/domain.ms
+// conform: tags=closures,diagnostics,generics,interfaces,records,tier-core
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/interface_views/domain.ms
 export interface Read:
     fn read() Int
 

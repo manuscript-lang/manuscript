@@ -9,7 +9,7 @@ fn is_digit(c: Int) Bool: c >= 48 and c <= 57
 
 fn is_space(c: Int) Bool: c == 32
 
-# Shifts one ASCII letter forward by `shift` (0-25), keeping its case; other scalars pass through.
+// Shifts one ASCII letter forward by `shift` (0-25), keeping its case; other scalars pass through.
 fn rotate(c: Int, shift: Int) Int:
     if c >= 65 and c <= 90: return 65 + (c - 65 + shift) % 26
     if c >= 97 and c <= 122: return 97 + (c - 97 + shift) % 26
@@ -32,7 +32,7 @@ fn caesar_key(key: String) Optional[Int]:
         if not is_digit(scalars[i]): return none
     return key.parse_int()
 
-# Returns the alphabet index (0-25) of each letter of a Vigenere key, or none if the key is empty or has a non-letter.
+// Returns the alphabet index (0-25) of each letter of a Vigenere key, or none if the key is empty or has a non-letter.
 fn vigenere_shifts(key: String) Optional[List[Int]]:
     let scalars = key.scalar_values()
     if scalars.length() == 0 or not all_scalars(scalars.clone(), is_letter): return none

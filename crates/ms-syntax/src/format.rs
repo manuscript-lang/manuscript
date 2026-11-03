@@ -20,14 +20,18 @@ const WIDTH: usize = 88;
 pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     parse(file, source)?;
     let normalized = source.replace("\r\n", "\n");
-    let tokens = lex(file, &normalized)?.tokens;
-    let multiline: Vec<&Token> = tokens
+    let lexed = lex(file, &normalized)?;
+    let mut spans: Vec<(usize, usize, bool)> = lexed
+        .tokens
         .iter()
         .filter(|t| {
             t.kind == Tok::String && normalized[t.lo as usize..t.hi as usize].contains('\n')
         })
+        .map(|t| (t.lo as usize, t.hi as usize, false))
         .collect();
-    if multiline.is_empty() {
+    spans.extend(lexed.block_comments.iter().map(|&(lo, hi)| (lo, hi, true)));
+    spans.sort_unstable();
+    if spans.is_empty() {
         return format_lines(file, source);
     }
     // The line-based passes cannot see inside a multi-line text literal, so a
@@ -36,19 +40,26 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     let marker = ('\u{e000}'..='\u{f8ff}')
         .find(|c| !normalized.contains(*c))
         .expect("source does not use the whole private use area");
-    let placeholder = |i: usize| format!("\"{marker}{i}\"");
+    // A block comment becomes a line comment, which the line passes already keep in place.
+    let placeholder = |i: usize| {
+        if spans[i].2 {
+            format!("//{marker}{i}{marker}")
+        } else {
+            format!("\"{marker}{i}\"")
+        }
+    };
     let mut masked = String::with_capacity(normalized.len());
     let mut copied = 0;
-    for (i, t) in multiline.iter().enumerate() {
-        masked.push_str(&normalized[copied..t.lo as usize]);
+    for (i, &(lo, hi, _)) in spans.iter().enumerate() {
+        masked.push_str(&normalized[copied..lo]);
         masked.push_str(&placeholder(i));
-        copied = t.hi as usize;
+        copied = hi;
     }
     masked.push_str(&normalized[copied..]);
     let mut result = format_lines(file, &masked)?;
-    for (i, t) in multiline.iter().enumerate() {
-        let text = &normalized[t.lo as usize..t.hi as usize];
-        let line_start = normalized[..t.lo as usize].rfind('\n').map_or(0, |n| n + 1);
+    for (i, &(lo, hi, _)) in spans.iter().enumerate() {
+        let text = &normalized[lo..hi];
+        let line_start = normalized[..lo].rfind('\n').map_or(0, |n| n + 1);
         let before = indent_of(&normalized[line_start..]);
         let at = result
             .find(&placeholder(i))
@@ -125,7 +136,7 @@ fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
                 if !blank
                     && lines[..index]
                         .last()
-                        .is_some_and(|l| l.trim().starts_with('#'))
+                        .is_some_and(|l| l.trim().starts_with("//"))
                 {
                     output.push(String::new());
                     blank = true;
@@ -156,7 +167,7 @@ fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
             formatted = rows;
         }
         if tail < line.len()
-            && let Some(comment) = line[tail..].find('#')
+            && let Some(comment) = line[tail..].find("//")
         {
             formatted.push_str("  ");
             formatted.push_str(line[tail + comment..].trim_end_matches([' ', '\t']));
@@ -430,7 +441,7 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
                     line -= 1;
                     continue;
                 }
-                if !previous.trim().starts_with('#') || indent_of(previous) != indent {
+                if !previous.trim().starts_with("//") || indent_of(previous) != indent {
                     break;
                 }
                 line -= 1;
@@ -444,7 +455,7 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
                 .iter()
                 .rev()
                 .find(|l| !l.trim().is_empty())
-                .is_some_and(|l| l.trim_start().starts_with('#') && indent_of(l) == indent)
+                .is_some_and(|l| l.trim_start().starts_with("//") && indent_of(l) == indent)
         }
     }
     impl Visitor for P<'_> {
@@ -847,7 +858,7 @@ impl<'a> Layout<'a> {
         self.typ(Some(&f.result));
     }
 
-    /// Recovers comment trivia only outside lexer tokens, so `#` and
+    /// Recovers comment trivia only outside lexer tokens, so `//` and
     /// interpolation inside strings never become formatter instructions.
     fn layout_tokens(&self, tokens: &[Token]) -> Vec<Token> {
         let mut last: HashMap<u32, usize> = HashMap::new();
@@ -863,7 +874,7 @@ impl<'a> Layout<'a> {
         let mut offset = 0usize;
         for (index, line) in self.lines.iter().enumerate() {
             let tail = last.get(&(index as u32 + 1)).copied().unwrap_or(0);
-            if let Some(at) = line[tail..].find('#') {
+            if let Some(at) = line[tail..].find("//") {
                 let column = tail + at;
                 let text = line[column..].trim_end_matches([' ', '\t']);
                 let pos = Pos::new(
@@ -1573,7 +1584,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                 }
             }
             let inner = &self.source[tokens[start].hi as usize..tokens[close].lo as usize];
-            if dots >= 1 && !inner.contains('#') && tokens[start + 1].kind != Tok::Dot {
+            if dots >= 1 && !inner.contains("//") && tokens[start + 1].kind != Tok::Dot {
                 let mut flat = String::new();
                 let mut code: Vec<Token> = Vec::new();
                 for t in &tokens[start + 1..close] {

@@ -12,26 +12,26 @@
           "file": "foreign-function.ms",
           "line": 4,
           "column": 1,
-          "offset": 113
+          "offset": 116
         },
         "end": {
           "file": "foreign-function.ms",
           "line": 4,
           "column": 9,
-          "offset": 121
+          "offset": 124
         },
         "fix": {
           "position": {
             "file": "foreign-function.ms",
             "line": 4,
             "column": 1,
-            "offset": 113
+            "offset": 116
           },
           "end": {
             "file": "foreign-function.ms",
             "line": 4,
             "column": 9,
-            "offset": 121
+            "offset": 124
           },
           "replacement": "fn"
         }

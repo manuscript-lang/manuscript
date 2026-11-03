@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,diagnostics,interfaces,match,modules,sets,tier-core
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/preferred_names/first.ms
+// conform: tags=closures,control-flow,diagnostics,interfaces,match,modules,sets,tier-core
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/preferred_names/first.ms
 import Key from "./domain.ms"
 import add_generic, remove_generic from "./helpers.ms"
 

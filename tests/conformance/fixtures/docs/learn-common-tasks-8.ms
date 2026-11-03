@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,faults,interpolation,modules,records,stdlib-io,stdlib-json,stdlib-process,strings,tier-io,try-result
-# conform: phase=check
-# conform: origin=documentation/learn/common-tasks.md:204
+// conform: tags=control-flow,diagnostics,faults,interpolation,modules,records,stdlib-io,stdlib-json,stdlib-process,strings,tier-io,try-result
+// conform: phase=check
+// conform: origin=documentation/learn/common-tasks.md:204
 import arguments from "@std/os/process.ms"
 import parse, stringify from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"

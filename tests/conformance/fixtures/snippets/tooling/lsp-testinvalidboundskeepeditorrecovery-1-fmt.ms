@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,records,strings,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/lsp/bound_recovery_test.go:9 TestInvalidBoundsKeepEditorRecovery
+// conform: tags=control-flow,formatter,interfaces,parser,records,strings,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/lsp/bound_recovery_test.go:9 TestInvalidBoundsKeepEditorRecovery
 interface Named:
     fn name() String
 

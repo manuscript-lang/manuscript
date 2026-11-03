@@ -1,6 +1,6 @@
-# conform: tags=formatter,maps,parser,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/fault_locations_test.go:74 TestFaultSourceLocations
+// conform: tags=formatter,maps,parser,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/fault_locations_test.go:74 TestFaultSourceLocations
 fn crash() Int:
     return 1 / "".byte_length()
 

@@ -2,7 +2,7 @@ import stdout, stdin, read_all from "@std/io.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import range from "@std/collections.ms"
 
-# A parsed pattern node. Children are referenced by index into Regex.nodes.
+// A parsed pattern node. Children are referenced by index into Regex.nodes.
 type Node:
     case ByteSet(members: List[Bool])
     case Concat(items: List[Int])
@@ -15,7 +15,7 @@ type Node:
     case Look(body: Int, negate: Bool)
     case BackRef(index: Int, name: Bytes)
 
-# A compiled pattern. names[i] is the name of group i + 1, or empty.
+// A compiled pattern. names[i] is the name of group i + 1, or empty.
 type Regex:
     nodes: List[Node]
     root: Int
@@ -56,7 +56,7 @@ type Ctx:
     re: Regex
     text: Bytes
 
-# ---------- byte helpers ----------
+// ---------- byte helpers ----------
 fn ch(s: String) Int:
     return s.to_bytes().get(0)
 
@@ -72,7 +72,7 @@ fn is_word(b: Int) Bool:
 fn is_space(b: Int) Bool:
     return b == 32 or (b >= 9 and b <= 13)
 
-# ASCII punctuation, control and other non-alphanumeric bytes below 128.
+// ASCII punctuation, control and other non-alphanumeric bytes below 128.
 fn is_ascii_punct(b: Int) Bool:
     return b >= 0 and b < 128 and not is_alpha(b) and not is_digit(b)
 
@@ -86,14 +86,14 @@ fn hex_value(b: Int) Int:
 
     return -1
 
-# Byte at index, or -1 when outside the bytes.
+// Byte at index, or -1 when outside the bytes.
 fn byte_or(data: Bytes, at: Int) Int:
     if at >= 0 and at < data.length():
         return data.get(at)
 
     return -1
 
-# The other ASCII case of a letter; other bytes are unchanged.
+// The other ASCII case of a letter; other bytes are unchanged.
 fn other_case(b: Int) Int:
     if b >= 97 and b <= 122:
         return b - 32
@@ -108,7 +108,7 @@ fn lower(b: Int) Int:
 
     return b
 
-# Whether byte b is in the shorthand class named by letter (d D w W s S).
+// Whether byte b is in the shorthand class named by letter (d D w W s S).
 fn shorthand_test(letter: Int, b: Int) Bool:
     let base = lower(letter)
     var hit = false
@@ -154,7 +154,7 @@ fn dot_set(dotall: Bool) List[Bool]:
         set.set(i, dotall or i != 10)
     return set
 
-# Adds one class member (byte or shorthand) to a set.
+// Adds one class member (byte or shorthand) to a set.
 fn add_member(var set: List[Bool], m: Member) Unit:
     if m.is_set:
         for i in range(0, 256):
@@ -163,7 +163,7 @@ fn add_member(var set: List[Bool], m: Member) Unit:
     else:
         set.set(m.byte, true)
 
-# ---------- parsing ----------
+// ---------- parsing ----------
 fn peek(ps: Parser, off: Int) Int:
     return byte_or(ps.pat, ps.pos + off)
 
@@ -181,7 +181,7 @@ fn grow(v: Int, d: Int) Int:
 
     return n
 
-# Reads a quantifier starting at `at`: *, +, ?, {n}, {n,}, {n,m}. None if there is none.
+// Reads a quantifier starting at `at`: *, +, ?, {n}, {n,}, {n,m}. None if there is none.
 fn read_quant(pat: Bytes, at: Int) Optional[Quant]:
     if at >= pat.length():
         return none
@@ -317,7 +317,7 @@ fn parse_atom(var ps: Parser) Result[Atom, PatError]:
     let lit = ByteSet(members: single_set(c, ps.icase))
     return ok(Atom(id: add(var ps, lit), quant: true))
 
-# Parses after '(' has been consumed.
+// Parses after '(' has been consumed.
 fn parse_group(var ps: Parser) Result[Atom, PatError]:
     ps.pos += 1
     if peek(ps, 0) != ch("?"):
@@ -375,7 +375,7 @@ fn find_name(names: List[Bytes], name: Bytes) Int:
             return i + 1
     return 0
 
-# Parses a capturing group body and its closing parenthesis.
+// Parses a capturing group body and its closing parenthesis.
 fn capture_group(var ps: Parser, name: Bytes) Result[Atom, PatError]:
     ps.names.append(name)
 
@@ -389,7 +389,7 @@ fn capture_group(var ps: Parser, name: Bytes) Result[Atom, PatError]:
     let cap = Capture(index: index, body: body)
     return ok(Atom(id: add(var ps, cap), quant: true))
 
-# Decodes the escape letter e (already consumed) as a single byte, or -1 when it is not one.
+// Decodes the escape letter e (already consumed) as a single byte, or -1 when it is not one.
 fn escape_byte(var ps: Parser, e: Int) Int:
     if e == ch("n"):
         return 10
@@ -412,7 +412,7 @@ fn escape_byte(var ps: Parser, e: Int) Int:
 
     return -1
 
-# Parses an escape outside a class; the backslash is already consumed.
+// Parses an escape outside a class; the backslash is already consumed.
 fn parse_escape(var ps: Parser) Result[Atom, PatError]:
     if ps.pos >= ps.pat.length():
         return error(PatError(msg: "bad escape"))
@@ -467,7 +467,7 @@ fn shorthand_set(letter: Int) List[Bool]:
         set.set(i, shorthand_test(letter, i))
     return set
 
-# One class member: a single byte, or a shorthand class.
+// One class member: a single byte, or a shorthand class.
 fn class_member(var ps: Parser) Result[Member, PatError]:
     let c = ps.pat.get(ps.pos)
 
@@ -490,7 +490,7 @@ fn class_member(var ps: Parser) Result[Member, PatError]:
 
     return ok(Member(is_set: false, byte: b, letter: 0))
 
-# Parses a character class; the '[' is still at ps.pos.
+// Parses a character class; the '[' is still at ps.pos.
 fn parse_class(var ps: Parser) Result[Atom, PatError]:
     ps.pos += 1
 
@@ -541,7 +541,7 @@ fn parse_class(var ps: Parser) Result[Atom, PatError]:
     let cls = ByteSet(members: set)
     return ok(Atom(id: add(var ps, cls), quant: true))
 
-# Resolves named back references and checks numbered ones, once the whole pattern has parsed.
+// Resolves named back references and checks numbered ones, once the whole pattern has parsed.
 fn resolve_refs(var ps: Parser) Result[Unit, PatError]:
     for i in range(0, ps.nodes.length()):
         let node = ps.nodes.get(i).clone()
@@ -568,7 +568,7 @@ fn compile(pat: Bytes) Result[Regex, PatError]:
         dotall: false
     )
 
-    # Leading flags such as (?ims) apply to the whole pattern.
+    // Leading flags such as (?ims) apply to the whole pattern.
     if (
         pat.length() >= 3
         and pat.get(0) == ch("(")
@@ -612,10 +612,10 @@ fn compile(pat: Bytes) Result[Regex, PatError]:
         )
     )
 
-# ---------- matching ----------
-# Continuation-passing backtracking matcher. The context is passed to every continuation
-# rather than captured, and captures are an immutable list, so backtracking restores them.
-# Result: the final captures (group 0 included), or none.
+// ---------- matching ----------
+// Continuation-passing backtracking matcher. The context is passed to every continuation
+// rather than captured, and captures are an immutable list, so backtracking restores them.
+// Result: the final captures (group 0 included), or none.
 fn run(
     var c: Ctx, id: Int, pos: Int, caps: List[Int],
     k: fn(Ctx, Int, List[Int]) Optional[List[Int]]
@@ -717,8 +717,8 @@ fn choice_from(
 
     return choice_from(var c, options, i + 1, pos, caps, k)
 
-# count is the number of iterations done so far. After min, an iteration that consumes
-# nothing ends the loop, so the match continues after it.
+// count is the number of iterations done so far. After min, an iteration that consumes
+// nothing ends the loop, so the match continues after it.
 fn repeat_from(
     var c: Ctx, body: Int, lo: Int, hi: Int, lazy: Bool, count: Int, pos: Int,
     caps: List[Int], k: fn(Ctx, Int, List[Int]) Optional[List[Int]]
@@ -752,7 +752,7 @@ fn repeat_from(
 
     return k(c, pos, caps)
 
-# Leftmost match at or after start. With full, only a match from 0 to the end counts.
+// Leftmost match at or after start. With full, only a match from 0 to the end counts.
 fn exec(var c: Ctx, start: Int, full: Bool) Optional[List[Int]]:
     let n = c.text.length()
     var blank: List[Int] = []
@@ -782,7 +782,7 @@ fn exec(var c: Ctx, start: Int, full: Bool) Optional[List[Int]]:
 
     return none
 
-# Every match in find-all order: an empty match moves the search on by one byte.
+// Every match in find-all order: an empty match moves the search on by one byte.
 fn find_all(var c: Ctx) List[List[Int]]:
     var found: List[List[Int]] = []
     var start = 0
@@ -802,7 +802,7 @@ fn find_all(var c: Ctx) List[List[Int]]:
 
     return found
 
-# ---------- output ----------
+// ---------- output ----------
 fn put(var out: BytesBuilder, text: String) Unit:
     out.concat(text.to_bytes())
 
@@ -812,7 +812,7 @@ fn hex_digit(v: Int) Int:
 
     return 97 + v - 10
 
-# Appends data[s..e) as a quoted string with the spec's escapes.
+// Appends data[s..e) as a quoted string with the spec's escapes.
 fn put_quoted(var out: BytesBuilder, data: Bytes, s: Int, e: Int) Unit:
     out.append(34)
 
@@ -838,7 +838,7 @@ fn put_quoted(var out: BytesBuilder, data: Bytes, s: Int, e: Int) Unit:
 
     out.append(34)
 
-# "S..E "quoted"" for a span of the subject.
+// "S..E "quoted"" for a span of the subject.
 fn put_span(var out: BytesBuilder, text: Bytes, s: Int, e: Int) Unit:
     put(var out, "{s}..{e} ")
     put_quoted(var out, text, s, e)
@@ -867,7 +867,7 @@ fn put_group(var out: BytesBuilder, text: Bytes, caps: List[Int], g: Int) Unit:
         for j in range(s, caps.get(2 * g + 1)):
             out.append(text.get(j))
 
-# Appends the expansion of repl for one match.
+// Appends the expansion of repl for one match.
 fn expand(
     re: Regex,
     text: Bytes,
@@ -930,7 +930,7 @@ fn replace_all(re: Regex, text: Bytes, repl: Bytes) Result[Bytes, PatError]:
         out.append(text.get(j))
     return ok(out.build())
 
-# Decodes the escapes of a subject or replacement field.
+// Decodes the escapes of a subject or replacement field.
 fn unescape(raw: Bytes) Result[Bytes, PatError]:
     var out = BytesBuilder()
     var i = 0
@@ -969,7 +969,7 @@ fn unescape(raw: Bytes) Result[Bytes, PatError]:
 
     return ok(out.build())
 
-# Runs one input line and returns its output, or the error to print.
+// Runs one input line and returns its output, or the error to print.
 fn process(line: Bytes) Result[Bytes, PatError]:
     let fields = line.split("\t".to_bytes())
     let cmd = fields.get(0).clone()

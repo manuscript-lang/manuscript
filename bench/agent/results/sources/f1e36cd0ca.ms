@@ -1,7 +1,7 @@
 import stdin, stdout, read_all from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 
-# ---------- values and errors ----------
+// ---------- values and errors ----------
 
 type Val:
     case VNull
@@ -27,7 +27,7 @@ impl Error for SqlErr:
     fn message() String:
         return self.msg.clone()
 
-# ---------- schema and statements ----------
+// ---------- schema and statements ----------
 
 type Tok:
     kind: Int
@@ -105,7 +105,7 @@ type Stmt:
     case Delete(name: String, wh: Expr, has_wh: Bool)
     case Select(q: SelQ)
 
-# ---------- lexer ----------
+// ---------- lexer ----------
 
 fn is_kw(w: String) Bool:
     return [
@@ -133,7 +133,7 @@ fn is_alnum(c: Int) Bool:
 fn op_tok(t: String) Tok:
     return Tok(kind: 4, text: t, num: 0)
 
-# Splits the script at top-level ';' (outside strings and comments).
+// Splits the script at top-level ';' (outside strings and comments).
 fn split_stmts(src: Bytes) List[Span]:
     var spans = List[Span]()
     let n = src.length()
@@ -258,7 +258,7 @@ fn lex(src: Bytes, s: Int, e: Int) Result[List[Tok], SqlErr]:
 
     return ok(toks)
 
-# ---------- parser ----------
+// ---------- parser ----------
 
 fn syn() SqlErr:
     return SqlErr(msg: "syntax error")
@@ -887,7 +887,7 @@ fn parse_stmt(var p: PS) Result[Stmt, SqlErr]:
 
     return error(syn())
 
-# ---------- value helpers ----------
+// ---------- value helpers ----------
 
 fn val_clone(v: Val) Val:
     match v:
@@ -977,7 +977,7 @@ fn bool_int(b: Bool) Int:
 
     return 0
 
-# Total order used for sorting: NULL < BOOL < INT < TEXT.
+// Total order used for sorting: NULL < BOOL < INT < TEXT.
 fn val_cmp(a: Val, b: Val) Int:
     let ka = kind_of(a)
     let kb = kind_of(b)
@@ -1006,7 +1006,7 @@ fn val_cmp(a: Val, b: Val) Int:
 
     return 0
 
-# SQL comparison of two non-NULL values: only INT/INT and TEXT/TEXT are allowed.
+// SQL comparison of two non-NULL values: only INT/INT and TEXT/TEXT are allowed.
 fn sql_cmp(a: Val, b: Val) Result[Int, SqlErr]:
     let ka = kind_of(a)
     let kb = kind_of(b)
@@ -1015,7 +1015,7 @@ fn sql_cmp(a: Val, b: Val) Result[Int, SqlErr]:
 
     return error(SqlErr(msg: "type error"))
 
-# 0 = false, 1 = true, 2 = NULL, -1 = not a boolean.
+// 0 = false, 1 = true, 2 = NULL, -1 = not a boolean.
 fn tri(v: Val) Int:
     let k = kind_of(v)
     if k == 0:
@@ -1066,7 +1066,7 @@ fn null_row(n: Int) List[Val]:
         out.append(VNull)
     return out
 
-# ---------- scalar functions ----------
+// ---------- scalar functions ----------
 
 fn to_bytes_list(s: String) List[Int]:
     var out = List[Int]()
@@ -1185,7 +1185,7 @@ fn eval_scalar(name: String, vals: List[Val]) Result[Val, SqlErr]:
 
     return ok(VText(s: ascii_case(as_text(vals[0]), false)))
 
-# ---------- expression evaluation ----------
+// ---------- expression evaluation ----------
 
 fn find_col(sc: List[Scol], qual: String, name: String) Int:
     for i in 0..sc.length():
@@ -1506,7 +1506,7 @@ fn eval(
 
             return eval_scalar(name, vals)
 
-# Evaluates in the context of a group (or a single row when the group is a one-row list).
+// Evaluates in the context of a group (or a single row when the group is a one-row list).
 fn eval_g(
     e: Expr,
     sc: List[Scol],
@@ -1518,7 +1518,7 @@ fn eval_g(
 
     return eval(e, sc, List[Val](), cur, grp)
 
-# ---------- static name resolution ----------
+// ---------- static name resolution ----------
 
 fn has_agg(e: Expr) Bool:
     match e:
@@ -1640,7 +1640,7 @@ fn resolve(
                 try resolve(args[k].clone(), sc, allow_agg, need_group, gidx, inside)
             return ok(unit)
 
-# ---------- schema helpers ----------
+// ---------- schema helpers ----------
 
 fn find_table(db: Db, name: String) Int:
     for i in 0..db.tables.length():
@@ -1660,7 +1660,7 @@ fn tab_scope(cols: List[ColDef], qual: String) List[Scol]:
         sc.append(Scol(qual: qual.clone(), name: cols[j].name.clone()))
     return sc
 
-# Scope of the first `upto` FROM/JOIN tables.
+// Scope of the first `upto` FROM/JOIN tables.
 fn scope_of(db: Db, q: SelQ, upto: Int) List[Scol]:
     var sc = List[Scol]()
 
@@ -1711,7 +1711,7 @@ fn check_pk(cols: List[ColDef], rows: List[List[Val]]) Result[Unit, SqlErr]:
 
     return ok(unit)
 
-# ---------- statements ----------
+// ---------- statements ----------
 
 fn exec_create(var db: Db, name: String, cols: List[ColDef]) Result[String, SqlErr]:
     if find_table(db, name) >= 0:
@@ -1970,7 +1970,7 @@ fn join_step(
 fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
     let nt = q.tables.length()
 
-    # 1. tables exist and aliases are unique
+    // 1. tables exist and aliases are unique
     for k in 0..nt:
         if find_table(db, q.tables[k].name) < 0:
             return error(SqlErr(msg: "no such table: {q.tables[k].name}"))
@@ -1979,7 +1979,7 @@ fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
             if q.tables[j].al == q.tables[k].al:
                 return error(SqlErr(msg: "duplicate alias: {q.tables[k].al}"))
 
-    # 2. join conditions, stars, GROUP BY, WHERE, items, HAVING, ORDER BY
+    // 2. join conditions, stars, GROUP BY, WHERE, items, HAVING, ORDER BY
     for k in 1..nt:
         let psc = scope_of(db, q, k + 1)
         try resolve(q.ons[k - 1].clone(), psc, false, false, List[Int](), false)
@@ -2086,7 +2086,7 @@ fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
                 try resolve(q.order[k].clone(), sc, true, is_agg, gidx, false)
                 ord_out.append(-1)
 
-    # 3. build rows: FROM and JOINs
+    // 3. build rows: FROM and JOINs
     var cur = List[List[Val]]()
 
     if nt == 0:
@@ -2108,7 +2108,7 @@ fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
 
         cur = stepped.get()
 
-    # 4. WHERE
+    // 4. WHERE
     var keep = List[Int]()
 
     for r in 0..cur.length():
@@ -2120,7 +2120,7 @@ fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
         else:
             keep.append(r)
 
-    # 5. groups
+    // 5. groups
     var groups = List[List[Int]]()
 
     if is_agg:
@@ -2166,7 +2166,7 @@ fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
         if pass_g:
             gsel.append(g)
 
-    # 6. select list
+    // 6. select list
     var outs = List[List[Val]]()
     var outg = List[Int]()
 
@@ -2190,7 +2190,7 @@ fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
         outs.append(rv)
         outg.append(g)
 
-    # 7. DISTINCT, then ORDER BY keys
+    // 7. DISTINCT, then ORDER BY keys
     var dist_outs = List[List[Val]]()
     var dist_g = List[Int]()
     var seen_rows = Set[String]()
@@ -2233,7 +2233,7 @@ fn exec_select(db: Db, q: SelQ) Result[String, SqlErr]:
     if nord > 0:
         idx.sort(fn(a: Int, b: Int) Int: cmp_keys(keys[a], keys[b], q.ordesc))
 
-    # 8. OFFSET and LIMIT
+    // 8. OFFSET and LIMIT
     let total = idx.length()
     let off0 = q.off
     var start = off0

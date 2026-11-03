@@ -1,11 +1,11 @@
-# Every fixture under tests/e2e/testdata against the Rust ms on this host (`make e2e`).
-# accept/ and stdlib/ fixtures pass `ms test`; reject/ fixtures fail `ms check`. A project directory runs its
-# conformance_test.ms with `ms test`; otherwise its main.ms must check, and run to expected-output.txt when that
-# exists. project_check is a project whose check must fail; projects/*/reject_*.ms are reject files beside the
-# modules they import. Known failures are listed in tests/e2e/expect-fail.txt (Windows-only ones in
-# expect-fail.windows.txt). E2E_BUILD_TYPE picks the build type (default Release, which the deep-nesting
-# fixtures need to finish quickly); E2E_JOBS the number of parallel workers.
-# Usage: ms run tools/e2e.ms [-- fixture paths to run instead]
+// Every fixture under tests/e2e/testdata against the Rust ms on this host (`make e2e`).
+// accept/ and stdlib/ fixtures pass `ms test`; reject/ fixtures fail `ms check`. A project directory runs its
+// conformance_test.ms with `ms test`; otherwise its main.ms must check, and run to expected-output.txt when that
+// exists. project_check is a project whose check must fail; projects/*/reject_*.ms are reject files beside the
+// modules they import. Known failures are listed in tests/e2e/expect-fail.txt (Windows-only ones in
+// expect-fail.windows.txt). E2E_BUILD_TYPE picks the build type (default Release, which the deep-nesting
+// fixtures need to finish quickly); E2E_JOBS the number of parallel workers.
+// Usage: ms run tools/e2e.ms [-- fixture paths to run instead]
 import env, exe, host, note, run_program from "./lib.ms"
 import DirectoryEntry, access, list, read_file, stat from "@std/os/fs.ms"
 import (
@@ -19,7 +19,7 @@ import TaskGroup, Task from "@std/concurrency/tasks.ms"
 import Instant, monotonic from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"
 
-# The exit status and combined output of one `ms` invocation.
+// The exit status and combined output of one `ms` invocation.
 type Ran:
     code: Int
     output: String
@@ -31,7 +31,7 @@ fn exec(ms: String, args: List[String]) Ran:
 
     return Ran(125, "cannot start {ms}\n")
 
-# The first lines of `output` that are not progress lines.
+// The first lines of `output` that are not progress lines.
 fn excerpt(output: String) String:
     let kept = output.split("\n").filter(
         fn l: (not l.starts_with("RUN") and not l.starts_with("PASS"))
@@ -41,7 +41,7 @@ fn excerpt(output: String) String:
         if shown.length() < 8: shown.append(line.clone())
     return shown.join("\n")
 
-# The listed failures: fixture path to the regex of failing test names (empty for the whole fixture).
+// The listed failures: fixture path to the regex of failing test names (empty for the whole fixture).
 fn read_expected(files: List[String]) Map[String, String]:
     var listed = Map[String, String]()
 
@@ -69,9 +69,9 @@ fn base(path: String) String:
     let parts = path.split("/")
     return parts[parts.length() - 1].clone()
 
-# The corpus replays a single-file accept/stdlib fixture under `ms test` with the same default build type when its
-# frozen copy under tests/conformance/fixtures/e2e is identical, so running it here again adds nothing. A fixture
-# listed as failing still runs, and so does one whose copy is tagged aliasing (the corpus run excludes those).
+// The corpus replays a single-file accept/stdlib fixture under `ms test` with the same default build type when its
+// frozen copy under tests/conformance/fixtures/e2e is identical, so running it here again adds nothing. A fixture
+// listed as failing still runs, and so does one whose copy is tagged aliasing (the corpus run excludes those).
 fn covered_by_corpus(ctx: Context, case_path: String) Bool:
     let parts = case_path.split("/")
     let twin = "tests/conformance/fixtures/e2e/{parts[parts.length() - 2]}/{parts[parts.length() - 1]}"
@@ -79,13 +79,13 @@ fn covered_by_corpus(ctx: Context, case_path: String) Bool:
     if ctx.expected.contains(case_path): return false
 
     let lines = read_file(twin).get().decode_utf8().get("").split("\n")
-    if not lines.contains("# conform: phase=test"): return false
-    if lines.any(fn l: l.starts_with("# conform: tags=") and l.contains("aliasing")): return false
+    if not lines.contains("// conform: phase=test"): return false
+    if lines.any(fn l: l.starts_with("// conform: tags=") and l.contains("aliasing")): return false
 
-    let body = lines.filter(fn l: not l.starts_with("# conform:")).join("\n")
+    let body = lines.filter(fn l: not l.starts_with("// conform:")).join("\n")
     return body == read_file(case_path).get().decode_utf8().get("")
 
-# Whether the project's tests pass, or its main.ms checks and prints expected-output.txt.
+// Whether the project's tests pass, or its main.ms checks and prints expected-output.txt.
 fn project_passes(ctx: Context, dir: String) Ran:
     if access("{dir}/conformance_test.ms", 0).is_ok():
         change_directory(dir).get()
@@ -118,16 +118,16 @@ fn project_passes(ctx: Context, dir: String) Ran:
 
     return Ran(1, "output differs from expected-output.txt\n")
 
-# The relative path from `dir` (below the repository root) back to the root.
+// The relative path from `dir` (below the repository root) back to the root.
 fn back(dir: String) String:
     return dir.split("/").map(fn _p: "..").join("/")
 
-# Runs one fixture and returns its failure messages (empty when it passes).
+// Runs one fixture and returns its failure messages (empty when it passes).
 fn check_fixture(ctx: Context, case_path: String) List[String]:
     var failures = List[String]()
 
     if case_path.contains("/projects/") and base(case_path).starts_with("reject_"):
-        # A project-local reject case imports its sibling modules, so it must live beside them.
+        // A project-local reject case imports its sibling modules, so it must live beside them.
         if exec(ctx.ms, ["check", case_path.clone()]).code == 0:
             failures.append("FAIL {case_path}: a reject case_path checked clean")
     else if case_path.ends_with("/projects/project_check"):
@@ -149,7 +149,7 @@ fn check_fixture(ctx: Context, case_path: String) List[String]:
 
     return failures
 
-# An accept or stdlib fixture; a listed failure is a whole fixture, or the tests its regex names.
+// An accept or stdlib fixture; a listed failure is a whole fixture, or the tests its regex names.
 fn check_test_fixture(ctx: Context, case_path: String) List[String]:
     var failures = List[String]()
     let build = ctx.build_type.clone()
@@ -167,7 +167,7 @@ fn check_test_fixture(ctx: Context, case_path: String) List[String]:
                 failures.append("FAIL {case_path}: listed as failing but passes")
             return failures
 
-        # A missing selection also exits nonzero; it is not evidence of a failing test.
+        // A missing selection also exits nonzero; it is not evidence of a failing test.
         let listing = exec(
             ctx.ms,
             [
@@ -227,8 +227,8 @@ export fn main() Int:
     var code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 
-    # `ms-cli` is not rebuilt here: this tool runs on `target/debug/ms`, and Windows cannot replace an
-    # executable that is running (`make e2e` and CI build it before they start the tool).
+    // `ms-cli` is not rebuilt here: this tool runs on `target/debug/ms`, and Windows cannot replace an
+    // executable that is running (`make e2e` and CI build it before they start the tool).
     let ctx = Context(
         "{root}/target/debug/ms{exe()}", build_type.clone(), read_expected(expect_files)
     )
@@ -261,7 +261,7 @@ export fn main() Int:
     var jobs = 2
 
     if let n = env("E2E_JOBS", "").parse_int(): jobs = n
-    # `cpus()` is Linux-only; on macOS and Windows it failed and the suite ran on one worker.
+    // `cpus()` is Linux-only; on macOS and Windows it failed and the suite ran on one worker.
     else: jobs = system_info().cpu_count
 
     if jobs < 1: jobs = 1
@@ -270,7 +270,7 @@ export fn main() Int:
     var failed = 0
     var messages = List[String]()
 
-    # Project fixtures change directory, which is process-wide, so they run alone after the parallel part.
+    // Project fixtures change directory, which is process-wide, so they run alone after the parallel part.
     var parallel = List[String]()
     var serial = List[String]()
 
@@ -329,7 +329,7 @@ export fn main() Int:
 
     return 0
 
-# Failure messages, then one `TIME <milliseconds> <fixture>` line per fixture.
+// Failure messages, then one `TIME <milliseconds> <fixture>` line per fixture.
 fn run_all(ctx: Context, fixtures: List[String]) List[String]:
     var out = List[String]()
     var times = List[String]()
@@ -345,7 +345,7 @@ fn timed(started: Instant, path: String) String:
     let millis = monotonic().difference(started).to_microseconds() / 1000
     return "TIME {millis} {path}"
 
-# The fixtures that dominate the run, from `<milliseconds> <fixture>` entries.
+// The fixtures that dominate the run, from `<milliseconds> <fixture>` entries.
 fn print_slowest(times: List[String]) Unit:
     let slowest = times.sorted(
         fn(a: String, b: String) Int: millis_of(b) - millis_of(a)

@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,interfaces,modules,stdlib-time,tier-io
-# conform: phase=check
-# conform: origin=tests/e2e/inherent_methods_test.go:34 TestInherentImplRejections
+// conform: tags=diagnostics,interfaces,modules,stdlib-time,tier-io
+// conform: phase=check
+// conform: origin=tests/e2e/inherent_methods_test.go:34 TestInherentImplRejections
 import Duration from "@std/os/time.ms"
 
 impl Duration:

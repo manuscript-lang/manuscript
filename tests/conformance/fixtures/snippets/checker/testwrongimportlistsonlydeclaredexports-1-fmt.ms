@@ -1,6 +1,6 @@
-# conform: tags=alternatives,formatter,parser,records,strings,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/hints_test.go:108 TestWrongImportListsOnlyDeclaredExports
+// conform: tags=alternatives,formatter,parser,records,strings,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/hints_test.go:108 TestWrongImportListsOnlyDeclaredExports
 export type MoneyError:
     case Invalid
 

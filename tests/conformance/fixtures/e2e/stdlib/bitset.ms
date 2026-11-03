@@ -1,5 +1,5 @@
-# conform: tags=stdlib-bitset,stdlib-testing,testing,tier-stdlib
-# conform: phase=test
+// conform: tags=stdlib-bitset,stdlib-testing,testing,tier-stdlib
+// conform: phase=test
 import expect_equal, expect_true, expect_false from "@std/test/test.ms"
 import BitSet from "@std/collections/bitset.ms"
 

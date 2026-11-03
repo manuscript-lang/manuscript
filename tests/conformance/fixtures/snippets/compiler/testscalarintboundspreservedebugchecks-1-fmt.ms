@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,mutation,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/int_bounds_test.go:83 TestScalarIntBoundsPreserveDebugChecks
+// conform: tags=control-flow,formatter,mutation,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/int_bounds_test.go:83 TestScalarIntBoundsPreserveDebugChecks
 fn probe() Int:
     var sum = 0
     var i = 0

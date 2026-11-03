@@ -14,7 +14,7 @@
           "file": "format-fuzzformat-1.ms",
           "line": 5,
           "column": 12,
-          "offset": 159
+          "offset": 162
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "format-fuzzformat-1.ms",
           "line": 5,
           "column": 22,
-          "offset": 169
+          "offset": 172
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "format-fuzzformat-1.ms",
           "line": 5,
           "column": 34,
-          "offset": 181
+          "offset": 184
         }
       }
     ],

@@ -17,7 +17,7 @@ impl Convert for Source:
     fn convert(cause: Error?) Int!Error:
         return ok(if cause.is_none(): self.sentinel else: 88)
 
-# Exact expectations deliberately identify invocation lines, not binding lines.
+// Exact expectations deliberately identify invocation lines, not binding lines.
 test "bound Error defaults use each invocation line":
     let absent: Int? = none
     let convert = absent.ok_or[Error]

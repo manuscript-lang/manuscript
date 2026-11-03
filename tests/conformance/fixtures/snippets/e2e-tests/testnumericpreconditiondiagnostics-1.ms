@@ -1,5 +1,5 @@
-# conform: tags=decimal,diagnostics,modules,stdlib-decimal,stdlib-time,tier-io
-# conform: phase=check
-# conform: origin=tests/e2e/numeric_diagnostics_test.go:39 TestNumericPreconditionDiagnostics
+// conform: tags=decimal,diagnostics,modules,stdlib-decimal,stdlib-time,tier-io
+// conform: phase=check
+// conform: origin=tests/e2e/numeric_diagnostics_test.go:39 TestNumericPreconditionDiagnostics
 import nanoseconds from "@std/os/time.ms"
 import Decimal from "@std/math/decimal.ms"

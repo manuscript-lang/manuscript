@@ -82,7 +82,7 @@ fn new_make() Make:
         dry: false
     )
 
-# ---------- small text helpers ----------
+// ---------- small text helpers ----------
 
 fn words(s: String) List[String]:
     var out = List[String]()
@@ -183,7 +183,7 @@ fn find_colon(cs: List[String]) Int:
 
     return -1
 
-# Splits at commas that are outside (), {} brackets. Pieces are not trimmed.
+// Splits at commas that are outside (), {} brackets. Pieces are not trimmed.
 fn split_top(s: String) List[String]:
     var out = List[String]()
     var cur = ""
@@ -261,7 +261,7 @@ fn strip_tabs(s: String) String:
         out = out.drop(1)
     return out
 
-# Removes an unescaped comment; `\#` becomes a literal `#`.
+// Removes an unescaped comment; `\#` becomes a literal `#`.
 fn strip_comment(s: String) String:
     let cs = s.chars()
     var out = ""
@@ -279,7 +279,7 @@ fn strip_comment(s: String) String:
 
     return out
 
-# Joins backslash-continued physical lines into logical lines.
+// Joins backslash-continued physical lines into logical lines.
 fn logical_lines(phys: List[String]) List[Line]:
     var out = List[Line]()
     var i = 0
@@ -310,9 +310,9 @@ fn slice_lines(all: List[String], a: Int, b: Int) List[String]:
 
     return out
 
-# ---------- pattern matching ----------
+// ---------- pattern matching ----------
 
-# Returns the stem when `word` matches `pat` (one `%` may stand for any stem).
+// Returns the stem when `word` matches `pat` (one `%` may stand for any stem).
 fn pmatch(pat: String, word: String) Optional[String]:
     let parts = pat.split("%")
 
@@ -359,7 +359,7 @@ fn subst_ref(value: String, from: String, to: String) String:
 
     return out.join(" ")
 
-# Shell-style glob used by wildcard: `*` any run without `/`, `?` one char without `/`.
+// Shell-style glob used by wildcard: `*` any run without `/`, `?` one char without `/`.
 fn glob(p: List[String], pi: Int, s: List[String], si: Int) Bool:
     if pi == p.length():
         return si == s.length()
@@ -441,7 +441,7 @@ fn eq_index(a: String) Int:
 
     return -1
 
-# ---------- the make state ----------
+// ---------- the make state ----------
 
 impl Make:
     var fn begin() Unit:
@@ -492,7 +492,7 @@ impl Make:
 
         return f.parent and f.cond
 
-    # ----- expansion -----
+    // ----- expansion -----
 
     var fn expand(text: String) Result[String, Stop]:
         let cs = text.chars()
@@ -740,7 +740,7 @@ impl Make:
 
         return ok("")
 
-    # ----- parsing -----
+    // ----- parsing -----
 
     var fn parse(mk: List[String]) Result[Unit, Stop]:
         for ln in logical_lines(mk):
@@ -1018,7 +1018,7 @@ impl Make:
 
         self.explicit.add(t.clone(), cur)
 
-    # ----- rule resolution -----
+    // ----- rule resolution -----
 
     fn can_make(name: String, depth: Int) Bool:
         if self.files.contains(name):
@@ -1113,7 +1113,7 @@ impl Make:
 
         return not self.phony.contains(g) and self.files.contains(g)
 
-    # ----- building -----
+    // ----- building -----
 
     var fn update(t: String, needed_by: String) Result[Bool, Stop]:
         if let m = self.memo.get(t).clone():
@@ -1342,7 +1342,7 @@ impl Make:
         let _s = self.stack.pop()
         return ok(unit)
 
-# ---------- requests ----------
+// ---------- requests ----------
 
 fn split_request(var m: Make, args: List[String]) List[String]:
     var goals = List[String]()

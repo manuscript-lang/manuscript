@@ -12,26 +12,26 @@
           "file": "foreign-def.ms",
           "line": 4,
           "column": 1,
-          "offset": 113
+          "offset": 116
         },
         "end": {
           "file": "foreign-def.ms",
           "line": 4,
           "column": 4,
-          "offset": 116
+          "offset": 119
         },
         "fix": {
           "position": {
             "file": "foreign-def.ms",
             "line": 4,
             "column": 1,
-            "offset": 113
+            "offset": 116
           },
           "end": {
             "file": "foreign-def.ms",
             "line": 4,
             "column": 4,
-            "offset": 116
+            "offset": 119
           },
           "replacement": "fn"
         }

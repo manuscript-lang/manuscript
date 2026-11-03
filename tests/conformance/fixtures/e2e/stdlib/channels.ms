@@ -1,5 +1,5 @@
-# conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
+// conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
 import TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
@@ -54,7 +54,7 @@ fn total(ch: TaskChannel[Unit, Int]) Int:
 
     return sum
 
-# Reads every value until the channel ends: the values, then how it ended.
+// Reads every value until the channel ends: the values, then how it ended.
 fn drain(var ch: TaskChannel[Unit, Int]) List[String]:
     var seen = List[String]()
 

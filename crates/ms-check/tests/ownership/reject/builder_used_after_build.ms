@@ -4,6 +4,6 @@ fn f() String:
     var sb = StringBuilder()
     sb.append("a")
 
-    let text = sb.build()  # error: used again
+    let text = sb.build()  // error: used again
     sb.append("b")
     return text

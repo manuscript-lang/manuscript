@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,faults,maps,modules,stdlib-faults,stdlib-http,stdlib-net,tier-io
-# conform: phase=check
-# conform: origin=internal/cli/advisory_lint_test.go:19 TestSafetyAdvisoriesDoNotBecomeCheckErrors
+// conform: tags=closures,diagnostics,faults,maps,modules,stdlib-faults,stdlib-http,stdlib-net,tier-io
+// conform: phase=check
+// conform: origin=internal/cli/advisory_lint_test.go:19 TestSafetyAdvisoriesDoNotBecomeCheckErrors
 import serve from "@std/net/net.ms"
 import HttpResponse, buffered from "@std/net/http.ms"
 import panic from "@std/core.ms"

@@ -1,4 +1,4 @@
-# Shared helpers for the standard-library micro-benchmarks in the `*_bench.ms` files.
+// Shared helpers for the standard-library micro-benchmarks in the `*_bench.ms` files.
 export type Point:
     x: Int
     y: Int

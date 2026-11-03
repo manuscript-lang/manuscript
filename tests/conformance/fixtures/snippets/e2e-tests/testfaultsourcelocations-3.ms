@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,modules,stdlib-errors,tier-stdlib,try-result
-# conform: phase=run
-# conform: origin=tests/e2e/fault_locations_test.go:35 TestFaultSourceLocations
+// conform: tags=control-flow,faults,modules,stdlib-errors,tier-stdlib,try-result
+// conform: phase=run
+// conform: origin=tests/e2e/fault_locations_test.go:35 TestFaultSourceLocations
 
 fn checked(n: Int) Int!Error:
     if n < 0:

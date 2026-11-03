@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,modules,stdlib-bytes,stdlib-fs,strings,tier-io,try-result,scope-cleanup
-# conform: phase=check
-# conform: origin=documentation/core-language/functions/function-values-and-closures.md:83
+// conform: tags=closures,diagnostics,modules,stdlib-bytes,stdlib-fs,strings,tier-io,try-result,scope-cleanup
+// conform: phase=check
+// conform: origin=documentation/core-language/functions/function-values-and-closures.md:83
 import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 

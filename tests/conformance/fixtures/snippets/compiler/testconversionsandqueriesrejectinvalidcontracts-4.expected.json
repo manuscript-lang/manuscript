@@ -14,13 +14,13 @@
           "file": "testconversionsandqueriesrejectinvalidcontracts-4.ms",
           "line": 4,
           "column": 7,
-          "offset": 235
+          "offset": 238
         },
         "end": {
           "file": "testconversionsandqueriesrejectinvalidcontracts-4.ms",
           "line": 4,
           "column": 8,
-          "offset": 236
+          "offset": 239
         }
       }
     ],

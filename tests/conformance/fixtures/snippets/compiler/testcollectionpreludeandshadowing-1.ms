@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,faults,lists,maps,strings,tier-core
-# conform: phase=check
-# conform: origin=pkg/compiler/prelude_test.go:32 TestCollectionPreludeAndShadowing
+// conform: tags=diagnostics,faults,lists,maps,strings,tier-core
+// conform: phase=check
+// conform: origin=pkg/compiler/prelude_test.go:32 TestCollectionPreludeAndShadowing
 fn use() Int:
     let nested: List[List[Int]] = [[], [1]]
     let _empty: Map[String, Int] = {}

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,modules,stdlib-testing,testing,tier-core
-# conform: phase=check
-# conform: origin=tests/e2e/e2e_test.go:510 TestDefaultArgumentsAcrossModules
+// conform: tags=control-flow,diagnostics,modules,stdlib-testing,testing,tier-core
+// conform: phase=check
+// conform: origin=tests/e2e/e2e_test.go:510 TestDefaultArgumentsAcrossModules
 import defaulted from "./library.ms"
 import expect_true, fail from "@std/test/test.ms"
 

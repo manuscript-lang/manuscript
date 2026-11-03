@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,faults,generics,interfaces,records,tier-core
-# conform: phase=check
-# conform: origin=pkg/build/compiler_test.go:505 TestImplementationDeclarationParameters
+// conform: tags=control-flow,diagnostics,faults,generics,interfaces,records,tier-core
+// conform: phase=check
+// conform: origin=pkg/build/compiler_test.go:505 TestImplementationDeclarationParameters
 interface Same[V: Equal]:
     fn same(other: V) Bool
 

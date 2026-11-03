@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,tier-core
-# conform: phase=check
-# conform: origin=tests/e2e/bytes_split_test.go:19 TestBytesSplitLimitFaultLocations
+// conform: tags=diagnostics,tier-core
+// conform: phase=check
+// conform: origin=tests/e2e/bytes_split_test.go:19 TestBytesSplitLimitFaultLocations
 export fn main() Int:
     let data = Bytes([1, 0, 2])
     let split = data.split

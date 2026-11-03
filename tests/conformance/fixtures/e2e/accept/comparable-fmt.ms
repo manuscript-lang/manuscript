@@ -1,6 +1,6 @@
-# conform: tags=control-flow,decimal,formatter,generics,interfaces,lists,match,modules,optional,parser,records,stdlib-decimal,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/comparable.ms
+// conform: tags=control-flow,decimal,formatter,generics,interfaces,lists,match,modules,optional,parser,records,stdlib-decimal,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/comparable.ms
 import expect_true from "@std/test/test.ms"
 import max, min from "@std/math/math.ms"
 import Decimal from "@std/math/decimal.ms"

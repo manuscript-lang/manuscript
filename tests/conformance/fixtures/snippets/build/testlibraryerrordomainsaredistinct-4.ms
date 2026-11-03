@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,modules,stdlib-encoding,tier-stdlib,try-result
-# conform: phase=check
-# conform: origin=pkg/build/library_test.go:54 TestLibraryErrorDomainsAreDistinct
+// conform: tags=diagnostics,modules,stdlib-encoding,tier-stdlib,try-result
+// conform: phase=check
+// conform: origin=pkg/build/library_test.go:54 TestLibraryErrorDomainsAreDistinct
 import hex_decode from "@std/data/encoding.ms"
 
 fn wrong() Unit!:

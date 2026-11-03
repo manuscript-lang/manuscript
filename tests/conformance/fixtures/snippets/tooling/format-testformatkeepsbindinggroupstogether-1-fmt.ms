@@ -1,6 +1,6 @@
-# conform: tags=closures,formatter,mutation,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/format/format_group_test.go:6 TestFormatKeepsBindingGroupsTogether
+// conform: tags=closures,formatter,mutation,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/format/format_group_test.go:6 TestFormatKeepsBindingGroupsTogether
 fn helper() Int: 1
 
 let (

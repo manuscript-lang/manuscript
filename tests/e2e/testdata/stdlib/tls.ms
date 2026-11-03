@@ -268,7 +268,7 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
     var client = try connect_tls_config(listener.get().address(), client_tls, 5.seconds)
     try client.write("y".repeat(20000000).get(), 20.seconds)
 
-    # No read first: the server's post-handshake bytes must not reset the connection.
+    // No read first: the server's post-handshake bytes must not reset the connection.
     try client.close()
 
     let counted = try group.results()

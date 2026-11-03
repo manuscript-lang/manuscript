@@ -1,6 +1,6 @@
-# conform: tags=interpolation,modules,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/cl-13.ms
+// conform: tags=interpolation,modules,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/cl-13.ms
 import expect_equal from "@std/test/test.ms"
 
 fn echo(value: String) String:

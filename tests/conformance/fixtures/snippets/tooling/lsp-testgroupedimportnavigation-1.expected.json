@@ -14,26 +14,26 @@
           "file": "lsp-testgroupedimportnavigation-1.ms",
           "line": 4,
           "column": 8,
-          "offset": 181
+          "offset": 184
         },
         "end": {
           "file": "lsp-testgroupedimportnavigation-1.ms",
           "line": 4,
           "column": 17,
-          "offset": 190
+          "offset": 193
         },
         "fix": {
           "position": {
             "file": "lsp-testgroupedimportnavigation-1.ms",
             "line": 4,
             "column": 8,
-            "offset": 181
+            "offset": 184
           },
           "end": {
             "file": "lsp-testgroupedimportnavigation-1.ms",
             "line": 4,
             "column": 19,
-            "offset": 192
+            "offset": 195
           },
           "replacement": ""
         }
@@ -46,26 +46,26 @@
           "file": "lsp-testgroupedimportnavigation-1.ms",
           "line": 4,
           "column": 19,
-          "offset": 192
+          "offset": 195
         },
         "end": {
           "file": "lsp-testgroupedimportnavigation-1.ms",
           "line": 4,
           "column": 27,
-          "offset": 200
+          "offset": 203
         },
         "fix": {
           "position": {
             "file": "lsp-testgroupedimportnavigation-1.ms",
             "line": 4,
             "column": 17,
-            "offset": 190
+            "offset": 193
           },
           "end": {
             "file": "lsp-testgroupedimportnavigation-1.ms",
             "line": 4,
             "column": 28,
-            "offset": 201
+            "offset": 204
           },
           "replacement": ""
         }

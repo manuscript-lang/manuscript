@@ -1,6 +1,6 @@
-# conform: tags=alternatives,formatter,match,modules,parser,records,stdlib-errors,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=documentation/core-language/control-flow/pattern-matching.md:36
+// conform: tags=alternatives,formatter,match,modules,parser,records,stdlib-errors,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=documentation/core-language/control-flow/pattern-matching.md:36
 
 type Cents:
     case Valid(amount: Int)

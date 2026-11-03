@@ -1,6 +1,6 @@
-# conform: tags=formatter,match,modules,parser,stdlib-fs,strings,tier-io
-# conform: phase=parse
-# conform: origin=internal/cli/advisory_lint_test.go:17 TestSafetyAdvisoriesDoNotBecomeCheckErrors
+// conform: tags=formatter,match,modules,parser,stdlib-fs,strings,tier-io
+// conform: phase=parse
+// conform: origin=internal/cli/advisory_lint_test.go:17 TestSafetyAdvisoriesDoNotBecomeCheckErrors
 import stat from "@std/os/fs.ms"
 
 fn use(path: String) Int:

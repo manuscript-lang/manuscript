@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,faults,formatter,interfaces,lists,maps,match,modules,mutation,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/stdlib/mutation-aliases.ms
+// conform: tags=closures,control-flow,faults,formatter,interfaces,lists,maps,match,modules,mutation,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/stdlib/mutation-aliases.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
 test "Map remove direct and bound preserve order and no-op absence":

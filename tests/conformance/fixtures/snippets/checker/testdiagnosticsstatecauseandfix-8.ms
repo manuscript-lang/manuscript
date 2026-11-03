@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,interfaces,records,tier-core
-# conform: phase=check
-# conform: origin=pkg/checker/hints_test.go:27 TestDiagnosticsStateCauseAndFix
+// conform: tags=control-flow,diagnostics,interfaces,records,tier-core
+// conform: phase=check
+// conform: origin=pkg/checker/hints_test.go:27 TestDiagnosticsStateCauseAndFix
 interface I:
     fn m() Int
 

@@ -1,6 +1,6 @@
-# conform: tags=decimal,formatter,modules,parser,stdlib-decimal,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/stdlib/decimal-overflow-boundaries.ms
+// conform: tags=decimal,formatter,modules,parser,stdlib-decimal,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/stdlib/decimal-overflow-boundaries.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 import Decimal from "@std/math/decimal.ms"
 
