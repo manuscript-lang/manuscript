@@ -638,14 +638,12 @@ unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut
     // where the register chain is discontinuous. Find each frame's own record by its contents
     // instead of following the register.
     // SAFETY: `sp` is the live stack pointer of the recovered frame, below `hi`.
-    unsafe {
-        let _ = fp;
-        walk_scanned_frames(pc, sp, t, lo, hi, remaining, f)
-    }
+    unsafe { walk_scanned_frames(pc, sp, fp, t, lo, hi, remaining, f) }
 }
 
-/// Visits the source frames above the one running at `pc` with stack pointer `sp`, finding each
-/// frame's record with [`frame_record`]. Ends at the first frame no record leads out of.
+/// Visits the source frames above the one running at `pc` with stack pointer `sp` and frame
+/// register `fp`, finding each frame's record with [`frame_record`]. Ends at the first frame no
+/// record leads out of.
 ///
 /// # Safety
 /// `sp..hi` is live stack memory.
@@ -653,6 +651,7 @@ unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut
 unsafe fn walk_scanned_frames(
     mut pc: usize,
     mut sp: usize,
+    mut fp: usize,
     t: &Tables,
     lo: usize,
     hi: usize,
@@ -667,6 +666,7 @@ unsafe fn walk_scanned_frames(
         let Some(at) = (unsafe {
             frame_record(
                 sp,
+                fp,
                 lo,
                 hi,
                 |pc| find_func(t, pc).is_some(),
@@ -676,27 +676,34 @@ unsafe fn walk_scanned_frames(
             break;
         };
         // SAFETY: `frame_record` checked `at + 16 <= hi`.
-        pc = unsafe { *((at + 8) as *const usize) };
+        (fp, pc) = unsafe { (*(at as *const usize), *((at + 8) as *const usize)) };
         sp = at + 16;
     }
 }
 
-/// The address of the first frame record `[saved fp, return address]` at or above `sp` whose
-/// return address `is_source` accepts and whose saved fp lies further up the stack. A record
-/// shaped like a frame whose return address `is_native` accepts first is a native caller (a
-/// callback's shim): the walk ends there rather than reading stale words beyond it.
+/// The address of the first frame record `[saved fp, return address]` at or above the frame's
+/// frame register `fp` (or `sp` when `fp` is not inside the stack above it) whose return address
+/// `is_source` accepts and whose saved fp lies further up the stack.
+///
+/// Cranelift points the frame register at or below its frame record, never above, so words below
+/// `fp` are locals and stale values, not records. Where the register points at the record itself
+/// (every frame up to a few hundred bytes), a record returning into native code (`is_native`) is a
+/// native caller, such as a callback's shim, and ends the walk. Above `fp` in a larger frame,
+/// locals can still look like records, so only a source return address counts there.
 ///
 /// # Safety
 /// `sp..hi` is live stack memory.
 #[cfg(any(windows, test))]
 unsafe fn frame_record(
     sp: usize,
+    fp: usize,
     lo: usize,
     hi: usize,
     mut is_source: impl FnMut(usize) -> bool,
     mut is_native: impl FnMut(usize) -> bool,
 ) -> Option<usize> {
-    let first = sp.checked_add(7)? & !7;
+    let from_fp = fp >= sp && fp < hi && fp.is_multiple_of(8);
+    let first = if from_fp { fp } else { sp.checked_add(7)? & !7 };
     let last = first
         .checked_add(FRAME_RECORD_SCAN)?
         .min(hi.checked_sub(16)?);
@@ -709,7 +716,7 @@ unsafe fn frame_record(
                 if is_source(ret) {
                     return Some(at);
                 }
-                if is_native(ret) {
+                if from_fp && at == fp && is_native(ret) {
                     return None;
                 }
             }
@@ -2004,7 +2011,8 @@ mod tests {
 
     #[test]
     fn frame_record_skips_stale_slots_to_the_first_valid_record() {
-        // [junk, junk, saved fp -> slot 5, return address, caller record...]
+        // [junk, junk, saved fp -> slot 6, return address 0x1010, saved fp -> slot 6, return
+        // address 0x2020, ...]
         let mut stack = [0usize; 8];
         let ptr = stack.as_mut_ptr();
         let base = ptr.expose_provenance();
@@ -2012,29 +2020,26 @@ mod tests {
         unsafe {
             *ptr = 0x1;
             *ptr.add(1) = 0x2;
-            *ptr.add(2) = base + 5 * 8;
+            *ptr.add(2) = base + 6 * 8;
             *ptr.add(3) = 0x1010;
+            *ptr.add(4) = base + 6 * 8;
+            *ptr.add(5) = 0x2020;
         }
         let hi = base + 8 * 8;
-        // SAFETY: the array outlives the scan and covers `base..hi`.
-        let found = unsafe { frame_record(base, base, hi, |pc| pc == 0x1010, |_| false) };
-        assert_eq!(found, Some(base + 2 * 8));
-        // SAFETY: as above.
-        assert_eq!(
-            unsafe { frame_record(base, base, hi, |_| false, |_| false) },
-            None
-        );
-        // A frame-shaped record returning into native code ends the scan before a later source one.
-        // SAFETY: as above.
-        assert_eq!(
-            unsafe { frame_record(base, base, hi, |pc| pc == 0x1010, |pc| pc == 0x1010) },
-            Some(base + 2 * 8)
-        );
-        // SAFETY: as above.
-        assert_eq!(
-            unsafe { frame_record(base, base, hi, |pc| pc == 0x2020, |pc| pc == 0x1010) },
-            None
-        );
+        let at = |fp: usize, source: usize, native: usize| {
+            // SAFETY: the array outlives the scan and covers `base..hi`.
+            unsafe { frame_record(base, fp, base, hi, |pc| pc == source, |pc| pc == native) }
+        };
+        // No frame register in range: scan from the stack pointer.
+        assert_eq!(at(0, 0x1010, 0), Some(base + 2 * 8));
+        assert_eq!(at(0, 0x3030, 0), None);
+        // The register points at the record itself: a native return ends the walk there.
+        assert_eq!(at(base + 2 * 8, 0x1010, 0x1010), Some(base + 2 * 8));
+        assert_eq!(at(base + 2 * 8, 0x2020, 0x1010), None);
+        // Above the register, a record-shaped native pair is only a local: keep scanning.
+        assert_eq!(at(base, 0x2020, 0x1010), Some(base + 4 * 8));
+        // Words below the register are never read as a record.
+        assert_eq!(at(base + 4 * 8, 0x1010, 0), None);
     }
 
     #[test]
