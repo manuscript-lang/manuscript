@@ -10,7 +10,7 @@
 //! `0` ok (the result is in the slot), `1` the operation's own error (the error value is in the slot),
 //! `2` timed out, `3` cancelled, `4` closed (the result was already taken), `5` failed (a fault inside).
 use crate::desc::slot_drop;
-use crate::{alloc, fault};
+use crate::{alloc, fault, task};
 use ms_rt_abi::TypeDesc;
 
 pub const OK: i64 = 0;
@@ -55,6 +55,10 @@ struct Table {
     /// The token a waiter parks on, or 0.
     token: Vec<u64>,
     result: Vec<Result>,
+    /// The task running the promise (`promise(fn)`), or 0.
+    task: Vec<u64>,
+    /// The report of the fault that ended the promise.
+    report: Vec<Vec<u8>>,
     free: Vec<usize>,
 }
 
@@ -64,6 +68,8 @@ crate::isolate_static! {
         generation: Vec::new(),
         token: Vec::new(),
         result: Vec::new(),
+        task: Vec::new(),
+        report: Vec::new(),
         free: Vec::new(),
     };
 }
@@ -104,6 +110,8 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
             t.generation.push(0);
             t.token.push(0);
             t.result.push(NO_RESULT);
+            t.task.push(0);
+            t.report.push(Vec::new());
             t.state.len() - 1
         }
     };
@@ -111,6 +119,8 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
     t.state[i] = State::Pending;
     t.token[i] = 0;
     t.result[i] = NO_RESULT;
+    t.task[i] = 0;
+    t.report[i] = Vec::new();
     (i64::from(t.generation[i]) << 32) | (i as i64 + 1)
 }
 
@@ -145,19 +155,30 @@ pub unsafe extern "C-unwind" fn msrt_promise_put(
         t.result[i] = Result { ptr, desc: d };
     }
     t.state[i] = if failed == 0 { State::Ok } else { State::Error };
+    wake(t, i);
 }
 
-/// Moves the result of a promise whose `wait` returned 0 or 1 into `out`; the promise reads as closed afterwards.
+/// Wakes the task waiting on slot `i`, if any.
+fn wake(t: &mut Table, i: usize) {
+    let token = core::mem::take(&mut t.token[i]);
+    if token != 0 {
+        // SAFETY: the waiter owns the token until it is woken or leaves.
+        unsafe { task::msrt_token_post(token, 1) };
+    }
+}
+
+/// Moves the result of a promise whose `wait` returned 0 or 1 into `out` and answers 1; the promise
+/// reads as closed afterwards. Answers 0 when there is no result to take.
 ///
 /// # Safety
 /// `out` is writable memory for a value of `d`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_promise_take(id: i64, d: *const TypeDesc, out: *mut u8) {
+pub unsafe extern "C-unwind" fn msrt_promise_take(id: i64, d: *const TypeDesc, out: *mut u8) -> u8 {
     let t = table();
-    let i = find(id);
+    let Some(i) = index(t, id) else { return 0 };
     let r = core::mem::replace(&mut t.result[i], NO_RESULT);
     if r.ptr.is_null() {
-        fault::fault(b"promise: the result is not available");
+        return 0;
     }
     // SAFETY: forwarded contract; the stored value is owned and moves out.
     unsafe {
@@ -165,6 +186,7 @@ pub unsafe extern "C-unwind" fn msrt_promise_take(id: i64, d: *const TypeDesc, o
         alloc::free(r.ptr);
     }
     t.state[i] = State::Taken;
+    1
 }
 
 /// Whether `id` has finished (any outcome). A closed id reads as done.
@@ -178,37 +200,100 @@ pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
 }
 
 /// Starts `work` as the task of promise `id`, on the thread the runtime picks. The closure
-/// completes the promise itself with `msrt_promise_put`. Stub: not yet scheduled.
+/// completes the promise itself with `msrt_promise_put`. A fault in it ends only this promise.
 ///
 /// # Safety
 /// `work` is a live closure object.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_promise_start(_id: i64, _work: *mut ms_rt_abi::Closure) {
-    fault::fault(b"promise: start is not implemented yet");
+pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi::Closure) {
+    let i = find(id);
+    if table().task[i] != 0 {
+        fault::fault(b"promise: already started");
+    }
+    // SAFETY: forwarded contract.
+    let handle = unsafe { task::spawn_promise(work, id) };
+    table().task[i] = handle;
+}
+
+/// The promise's task ended with `status` (0 returned, 1 fault, 2 cancelled): a promise that has
+/// no result by now was ended by the fault or the cancellation.
+pub(crate) fn ended(id: i64, status: u8, msg: &ms_rt_abi::StrVal, started: &[usize]) {
+    let t = table();
+    let Some(i) = index(t, id) else { return };
+    if t.state[i] == State::Pending {
+        match status {
+            1 => {
+                t.report[i] = fault::fault_report(msg, started);
+                t.state[i] = State::Failed;
+            }
+            2 => t.state[i] = State::Cancelled,
+            _ => {
+                t.report[i] = b"promise: the work ended without a result".to_vec();
+                t.state[i] = State::Failed;
+            }
+        }
+    }
+    wake(t, i);
+}
+
+fn outcome(state: State) -> Option<i64> {
+    match state {
+        State::Ok => Some(OK),
+        State::Error => Some(ERROR),
+        State::Failed => Some(FAILED),
+        State::Cancelled => Some(CANCELLED),
+        State::Taken => Some(CLOSED),
+        State::Pending | State::Free => None,
+    }
 }
 
 /// Waits until `id` finishes or `timeout_ns` passes (negative: no limit) and returns an outcome
-/// code. A timeout cancels the work. Stub: only finished promises can be waited on.
+/// code. A timeout cancels the work, which stops at its next wait. If the waiting task itself is
+/// cancelled, it unwinds; dropping the promise then cancels and joins the work.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
-    let _ = timeout_ns;
-    let t = table();
     let i = find(id);
-    match t.state[i] {
-        State::Ok => OK,
-        State::Error => ERROR,
-        State::Failed => FAILED,
-        State::Cancelled => CANCELLED,
-        State::Taken => CLOSED,
-        State::Pending | State::Free => fault::fault(b"promise: wait is not implemented yet"),
+    if let Some(code) = outcome(table().state[i]) {
+        return code;
+    }
+    // SAFETY: single scheduler per isolate; the token is ours until freed.
+    unsafe {
+        let token = task::msrt_token_new(0);
+        table().token[i] = token;
+        let mut value = 0;
+        let woke = task::msrt_token_park(token, timeout_ns, &mut value);
+        // The table may have moved while parked: look the slot up again.
+        let t = table();
+        if let Some(i) = index(t, id)
+            && t.token[i] == token
+        {
+            t.token[i] = 0;
+        }
+        task::msrt_token_free(token);
+        let t = table();
+        let Some(i) = index(t, id) else {
+            return CLOSED;
+        };
+        if woke == task::WAIT_CANCELLED {
+            fault::msrt_cancelled();
+        }
+        if woke == task::WAIT_TIMEOUT {
+            if t.task[i] != 0 {
+                task::msrt_task_cancel(t.task[i]);
+            }
+            return TIMEOUT;
+        }
+        outcome(t.state[i]).unwrap_or(FAILED)
     }
 }
 
 /// The report of a fault that ended `id` (empty otherwise).
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_promise_fault_report(_id: i64, out: *mut ms_rt_abi::StrVal) {
+pub extern "C-unwind" fn msrt_promise_fault_report(id: i64, out: *mut ms_rt_abi::StrVal) {
+    let t = table();
+    let report = index(t, id).map(|i| t.report[i].as_slice()).unwrap_or(&[]);
     // SAFETY: `out` is uninitialised memory for a string.
-    unsafe { *out = crate::string::NO_STR };
+    unsafe { *out = crate::string::from_bytes(report) };
 }
 
 /// Drops `id`: an unfinished promise is cancelled and joined first, then its slot and any
@@ -217,7 +302,135 @@ pub extern "C-unwind" fn msrt_promise_fault_report(_id: i64, out: *mut ms_rt_abi
 pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
     let t = table();
     let Some(i) = index(t, id) else { return };
+    let handle = t.task[i];
+    if handle != 0 {
+        // SAFETY: the handle names the promise's task, collected exactly once, here.
+        unsafe {
+            if t.state[i] == State::Pending {
+                task::msrt_task_cancel(handle);
+            }
+            task::collect(handle);
+        }
+    }
+    let t = table();
+    let Some(i) = index(t, id) else { return };
     release_result(t, i);
+    t.task[i] = 0;
     t.state[i] = State::Free;
     t.free.push(i);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::desc::msrt_desc_int;
+    use crate::testutil::lock;
+    use ms_rt_abi::Closure;
+
+    // The test closures carry the promise id in a static: they have no captures.
+    static ID: crate::global::Process<i64> = crate::global::Process::new(0);
+
+    unsafe extern "C" fn drop_closure(obj: *mut ms_rt_abi::Obj) {
+        // SAFETY: the test closure has no captures and owns this allocation.
+        unsafe { crate::alloc::free(obj.cast()) };
+    }
+
+    fn start(id: i64, code: unsafe extern "C-unwind" fn(*mut Closure)) {
+        // SAFETY: the task retains the capture-free closure until it ends.
+        unsafe {
+            *ID.ptr() = id;
+            let closure = crate::obj::new_obj(size_of::<Closure>(), drop_closure).cast::<Closure>();
+            (*closure).code = code as *const u8;
+            msrt_promise_start(id, closure);
+            crate::obj::release(closure.cast());
+        }
+    }
+
+    unsafe extern "C-unwind" fn answer(_: *mut Closure) {
+        // SAFETY: stores a stack Int the callee takes.
+        unsafe {
+            let mut v = 42i64;
+            msrt_promise_put(*ID.ptr(), (&raw mut v).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    unsafe extern "C-unwind" fn fails(_: *mut Closure) {
+        crate::fault::fault(b"boom");
+    }
+
+    unsafe extern "C-unwind" fn hangs(_: *mut Closure) {
+        // SAFETY: called from a running task.
+        unsafe { task::msrt_task_sleep(3_600_000_000_000) };
+    }
+
+    fn take_int(id: i64) -> i64 {
+        let mut v = 0i64;
+        // SAFETY: `v` is an Int slot.
+        assert_eq!(
+            unsafe { msrt_promise_take(id, &msrt_desc_int, (&raw mut v).cast()) },
+            1
+        );
+        v
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_promise_task_delivers_its_result_once() {
+        let _g = lock();
+        let id = msrt_promise_new();
+        start(id, answer);
+        assert_eq!(msrt_promise_done(id), 0);
+        assert_eq!(msrt_promise_wait(id, -1), OK);
+        assert_eq!(msrt_promise_done(id), 1);
+        assert_eq!(take_int(id), 42);
+        assert_eq!(msrt_promise_wait(id, -1), CLOSED);
+        msrt_promise_drop(id);
+        // A dropped id is stale: done reads as finished and the slot's next promise is distinct.
+        assert_eq!(msrt_promise_done(id), 1);
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_fault_inside_ends_only_that_promise() {
+        let _g = lock();
+        let id = msrt_promise_new();
+        start(id, fails);
+        assert_eq!(msrt_promise_wait(id, -1), FAILED);
+        let mut report = crate::string::NO_STR;
+        msrt_promise_fault_report(id, &mut report);
+        // SAFETY: `report` is the string the call just made.
+        unsafe {
+            assert!(crate::string::bytes(&report).starts_with(b"boom"));
+            crate::string::release_opt(&report);
+        }
+        msrt_promise_drop(id);
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_timeout_cancels_the_work_and_drop_joins_it() {
+        let _g = lock();
+        // SAFETY: tests hold the runtime lock.
+        let before = unsafe { task::msrt_task_count() };
+        let id = msrt_promise_new();
+        start(id, hangs);
+        assert_eq!(msrt_promise_wait(id, 5_000_000), TIMEOUT);
+        msrt_promise_drop(id);
+        // SAFETY: as above.
+        assert_eq!(unsafe { task::msrt_task_count() }, before);
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn dropping_an_unfinished_promise_cancels_it() {
+        let _g = lock();
+        let id = msrt_promise_new();
+        start(id, hangs);
+        msrt_promise_drop(id);
+        assert_eq!(msrt_promise_done(id), 1);
+        task::teardown();
+    }
 }

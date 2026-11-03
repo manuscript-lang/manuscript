@@ -299,14 +299,18 @@ impl FnLower<'_> {
             match p.name.as_str() {
                 "d" if recv_ty.is_none() && self.result_list(result).is_none() => {
                     // A generic function with no receiver and no list result: the descriptor is that of
-                    // its `value` argument, or of its result (`msrt_promise_put` / `msrt_promise_take`).
+                    // its `value` argument, or of its result (`msrt_promise_put`, and `msrt_promise_take` which returns `T?`).
                     let by_value = decl
                         .iter()
                         .position(|p| p.name == "value")
                         .and_then(|k| inputs.get(k))
                         .and_then(|input| input.val)
                         .map(|v| self.ty_of(v.v));
-                    let t = by_value.unwrap_or(result);
+                    let t = by_value.unwrap_or_else(|| match self.b.m.types.kind(result) {
+                        // A result that may be absent is `T?`: the descriptor is that of `T`.
+                        TyKind::Opt(inner) => *inner,
+                        _ => result,
+                    });
                     vals.push(self.type_desc(t));
                 }
                 "d" => {

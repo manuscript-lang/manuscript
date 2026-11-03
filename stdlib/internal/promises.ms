@@ -6,7 +6,7 @@ export extern fn msrt_promise_new() Int
 
 export extern fn msrt_promise_put[T](id: Int, value: T, failed: Int) Unit
 
-export extern fn msrt_promise_take[T](id: Int) T
+export extern fn msrt_promise_take[T](id: Int) T?
 
 export extern fn msrt_promise_done(id: Int) Bool
 

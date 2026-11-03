@@ -119,6 +119,8 @@ struct Task {
     timed_out: bool,
     /// The scope that frees the task's record when it ends (`spawn_native`), or 0.
     scope: i64,
+    /// The promise this task runs (`promise::msrt_promise_start`), or 0; told when the task ends.
+    promise: i64,
 }
 
 #[derive(Clone, Copy)]
@@ -533,6 +535,7 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             started_by: Vec::new(),
             timed_out: false,
             scope: 0,
+            promise: 0,
         });
     }
     s.live += 1;
@@ -977,6 +980,9 @@ extern "C" fn task_main() -> ! {
                 }
             }
             (*t).msg = msg;
+            if (*t).promise != 0 {
+                crate::promise::ended((*t).promise, (*t).status, &(*t).msg, &(*t).started_by);
+            }
         }
         if !(*t).owned.is_null() {
             crate::obj::msrt_release(core::mem::replace(&mut (*t).owned, null_mut()));
@@ -1444,6 +1450,32 @@ pub(crate) unsafe fn spawn_closure(
         (*t).started_by = fault::capture_frames();
         arm_kill(h, limit_ns);
         h
+    }
+}
+
+/// Starts `closure` as the task of promise `promise`: a fault in it is contained, and the
+/// promise is told when the task ends. Returns the task handle.
+///
+/// # Safety
+/// `closure` must be a live closure object.
+pub(crate) unsafe fn spawn_promise(closure: *mut ms_rt_abi::Closure, promise: i64) -> u64 {
+    // SAFETY: single threaded scheduler; forwarded contract.
+    unsafe {
+        let h = spawn_closure(closure, -1, false);
+        (*lookup(h)).promise = promise;
+        h
+    }
+}
+
+/// Waits for the task `handle` to end and frees its record. Used on a task that was already
+/// cancelled or has finished, so it returns once the task is gone.
+pub(crate) unsafe fn collect(handle: u64) {
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        ensure_init();
+        if !lookup(handle).is_null() {
+            join(handle, null_mut(), false);
+        }
     }
 }
 
