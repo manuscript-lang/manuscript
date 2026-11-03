@@ -4186,16 +4186,26 @@ impl Walker<'_> {
             .filter_map(|b| self.meta.get(&b.uid).map(|m| (b.uid, m.perm)))
             .collect();
         // The entry of a promise takes over the resources it captures: they are the promise's own,
-        // closed when it ends, and read-only inside like an escaping closure's captures.
-        let owned_by_entry = |w: &Self, uid: usize| {
-            concurrent && w.meta.get(&uid).is_some_and(|m| m.class == Class::Resource)
-        };
-        if escaping || concurrent {
+        // closed when it ends. It runs once, so inside it they behave like locals it owns: it may
+        // move one on (`produce(w)` for a writer `w`) and change one declared `var`.
+        if escaping && !concurrent {
             for (uid, _) in &saved_meta {
-                if (escaping || owned_by_entry(self, *uid))
-                    && let Some(m) = self.meta.get_mut(uid)
-                {
+                if let Some(m) = self.meta.get_mut(uid) {
                     m.perm = Perm::Captured;
+                }
+            }
+        } else if concurrent {
+            for (uid, _) in &saved_meta {
+                if let Some(m) = self.meta.get_mut(uid) {
+                    if m.class == Class::Resource {
+                        m.perm = if m.perm == Perm::Mutable {
+                            Perm::Mutable
+                        } else {
+                            Perm::Immutable
+                        };
+                    } else if escaping {
+                        m.perm = Perm::Captured;
+                    }
                 }
             }
         }
@@ -4272,15 +4282,6 @@ impl Walker<'_> {
                     facts.push((b.uid, CaptureMode::Move));
                 }
             } else if concurrent && class == Class::Resource {
-                if changed {
-                    self.error(
-                        e.pos,
-                        format!(
-                            "this promise owns `{0}` and cannot change it; build a new value inside the promise instead",
-                            b.name
-                        ),
-                    );
-                }
                 let resolved = self.resolve(&Place::local(b.uid));
                 self.capture_move(e, b, &resolved);
                 facts.push((b.uid, CaptureMode::Move));

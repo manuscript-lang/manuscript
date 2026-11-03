@@ -386,7 +386,12 @@ mod stack {
         // SAFETY: guards the gap below the stack inside the slot.
         unsafe {
             let len = len.min(DEFAULT_STACK);
-            sys::guard(base, STACK_SLOT - len + GUARD);
+            if !sys::guard(base, STACK_SLOT - len + GUARD) {
+                // No mapping left for the guard: running unguarded would let an overflow corrupt
+                // the neighboring stack, so give the slot back and report failure.
+                sys::unmap(base, STACK_SLOT);
+                return core::ptr::null_mut();
+            }
         }
         base
     }
@@ -612,7 +617,9 @@ unsafe fn alloc_stack(len: usize) -> *mut u8 {
     unsafe {
         let p = stack::create(len);
         if p.is_null() {
-            fault::fault(b"cannot allocate a task stack");
+            fault::fault(
+                b"cannot allocate a task stack: too many tasks at once (the process is out of memory mappings; see vm.max_map_count)",
+            );
         }
         p
     }
@@ -1515,7 +1522,7 @@ pub(crate) unsafe fn spawn_promise_task(closure: *mut ms_rt_abi::Closure, promis
 }
 
 /// The deadline of the deferred promise the running task is executing (`i64::MAX`: none).
-pub(crate) fn defer_deadline() -> i64 {
+pub fn defer_deadline() -> i64 {
     // SAFETY: single threaded scheduler; the running task's record is live.
     unsafe { (*ensure_init()).defer_deadline }
 }
