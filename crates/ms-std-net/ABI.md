@@ -41,16 +41,19 @@ release, cancellation) and never the other way around.
 
 ## Status tables
 
-| Status group | Kinds (status 1, 2, ...) |
+Every failing native returns a shared `ms_rt_abi::STATUS_*` number (`ms-rt/ABI.md`), not a number
+of its own. The status groups use these cases:
+
+| Status group | Kinds |
 | --- | --- |
 | `NetworkError` | InvalidInput, InvalidData, LimitExceeded, PermissionDenied, Unsupported, Closed, Timeout, Failed |
 | `IoError` | Closed, InvalidInput, Unavailable, InvalidData, LimitExceeded, Failed |
 | `HttpError` | InvalidInput, InvalidData, LimitExceeded, PermissionDenied, Closed, Timeout, Failed |
 | `WebSocketError` | InvalidInput, InvalidData, LimitExceeded, PermissionDenied, Closed, Timeout, Failed |
-| `TlsError` | InvalidInput, InvalidData, LimitExceeded, AuthenticationFailed |
+| `TlsError` | InvalidInput, InvalidData, LimitExceeded, AuthenticationFailed (`STATUS_AUTHENTICATION_FAILED`) |
 
 The message of a status is `msstd_net_error_message(status, failed_or_null)` for the `NetworkError` group
-(and `msstd_http_`, `msstd_websocket_`, `msstd_tls_` forms for the other groups). Lowering turns each status into an `Error` whose `kind` is the named `ErrorCategory`. Messages
+(and `msstd_http_`, `msstd_websocket_`, `msstd_tls_` forms for the other groups). Lowering turns each status into an `Error` whose `kind` is the `ErrorCategory` case in its one status table (`rtcall::status_table`). Messages
 carry no input values except `Failed` text, which is verbatim.
 
 ## net

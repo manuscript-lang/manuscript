@@ -148,6 +148,9 @@ pub fn import_hint(name: &str) -> String {
             "; use the prelude {name} declaration directly; rename any shadowing binding or declaration"
         );
     }
+    if stdlib::checking_sources() {
+        return String::new();
+    }
     for module in stdlib::standard_module_names() {
         if stdlib::standard_exports(module).contains_key(&n(name)) {
             return format!("; add: import {name} from \"{module}\"");

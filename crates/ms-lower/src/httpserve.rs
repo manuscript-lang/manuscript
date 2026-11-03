@@ -20,25 +20,23 @@ fn pointer(mode: Mode) -> Param {
     Param { ty: MTy::PTR, mode }
 }
 
-/// The kinds an HTTP handler failure maps to, numbered from 1; the last is `Failed`.
-pub(crate) const HTTP_KINDS: [&str; 7] = [
+/// The kinds an HTTP handler failure keeps; any other kind is `Failed`, which carries its text.
+pub(crate) const HTTP_KINDS: [&str; 6] = [
     "InvalidInput",
     "InvalidData",
     "LimitExceeded",
     "PermissionDenied",
     "Closed",
     "Timeout",
-    "Failed",
 ];
 
-/// The kinds a stream failure maps to, numbered from 1; the last is `Failed`.
-pub(crate) const IO_KINDS: [&str; 6] = [
+/// The kinds a stream failure keeps; any other kind is `Failed`, which carries its text.
+pub(crate) const IO_KINDS: [&str; 5] = [
     "Closed",
     "InvalidInput",
     "Unavailable",
     "InvalidData",
     "LimitExceeded",
-    "Failed",
 ];
 
 impl FnLower<'_> {
@@ -207,9 +205,8 @@ impl FnLower<'_> {
         Ok(fl.b.into_func())
     }
 
-    /// The status of an `Error` value `e` for a runtime that numbers failures from 1 in the
-    /// order of `kinds` (the last is `Failed`). A kind the list lacks becomes `Failed`; that
-    /// status also stores the message through `err`.
+    /// The shared `ms-rt-abi` status of an `Error` value `e` whose kind is one of `kinds`. Any
+    /// other kind becomes `STATUS_FAILED`, which also stores the message through `err`.
     pub(crate) fn error_status(
         &mut self,
         e: ms_mir::ir::Value,
@@ -238,8 +235,7 @@ impl FnLower<'_> {
         kinds: &[&str],
         at: usize,
     ) -> Result<ms_mir::ir::Value, Error> {
-        let failed = kinds.len() as i64;
-        let listed = at + 1 < kinds.len();
+        let listed = at < kinds.len();
         let case = if listed {
             self.b.m.alts[ka.index()]
                 .cases
@@ -258,16 +254,24 @@ impl FnLower<'_> {
                 own: false,
             });
             self.b.emit(Op::Put, &[err, text], Imm::None, None);
-            return Ok(self.b.iconst(failed));
+            return Ok(self.b.iconst(i64::from(ms_rt_abi::STATUS_FAILED)));
         };
         let k = self.b.iconst(case as i64);
         let hit = self.b.icmp(Cc::Eq, tag, k);
         let r = self.two_ways(
             hit,
             MTy::INT,
-            &mut |s| Ok(Some(s.b.iconst(at as i64 + 1))),
+            &mut |s| Ok(Some(s.b.iconst(kind_status_number(kinds[at])))),
             &mut |s| s.kind_status(er, ka, e, tag, err, kinds, at + 1).map(Some),
         )?;
         Ok(r.v)
     }
+}
+
+/// The shared status number of an `ErrorCategory` case name: the first row of the status table.
+fn kind_status_number(kind: &str) -> i64 {
+    crate::rtcall::status_table("")
+        .iter()
+        .find(|(_, k, _)| *k == kind)
+        .map_or(i64::from(ms_rt_abi::STATUS_FAILED), |(n, _, _)| *n)
 }

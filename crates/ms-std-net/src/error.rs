@@ -1,11 +1,16 @@
 //! Error types of the network modules and their diagnostics.
 //!
-//! The status byte a fallible native returns is `1 + the case's declaration
-//! index` in the corresponding `stdlib/*.ms` error type (`0` is success).
-//! The `Failed` case carries its message through a trailing `*mut StrVal`.
+//! The status byte a fallible native returns is the shared `ms_rt_abi::STATUS_*` number of the
+//! case (`0` is success). The `Failed` case carries its message through a trailing `*mut StrVal`.
 
 use std::fmt;
 use std::io;
+
+use ms_rt_abi::{
+    STATUS_AUTHENTICATION_FAILED, STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_DATA,
+    STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_PERMISSION_DENIED, STATUS_TIMEOUT,
+    STATUS_UNAVAILABLE, STATUS_UNSUPPORTED,
+};
 
 /// The `NetworkError` status group of `@std/net/net.ms`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -66,7 +71,7 @@ pub enum TlsErr {
 
 /// A status code and the optional message of a `Failed` case.
 pub trait Status {
-    /// Status byte (`1 + declaration index`).
+    /// Status byte (`ms_rt_abi::STATUS_*`).
     fn code(&self) -> u8;
     /// Message of the `Failed` case.
     fn failed_message(&self) -> Option<&str>;
@@ -75,14 +80,14 @@ pub trait Status {
 impl Status for NetErr {
     fn code(&self) -> u8 {
         match self {
-            NetErr::InvalidInput => 1,
-            NetErr::InvalidData => 2,
-            NetErr::LimitExceeded => 3,
-            NetErr::PermissionDenied => 4,
-            NetErr::Unsupported => 5,
-            NetErr::Closed => 6,
-            NetErr::Timeout => 7,
-            NetErr::Failed(_) => 8,
+            NetErr::InvalidInput => STATUS_INVALID_INPUT,
+            NetErr::InvalidData => STATUS_INVALID_DATA,
+            NetErr::LimitExceeded => STATUS_LIMIT_EXCEEDED,
+            NetErr::PermissionDenied => STATUS_PERMISSION_DENIED,
+            NetErr::Unsupported => STATUS_UNSUPPORTED,
+            NetErr::Closed => STATUS_CLOSED,
+            NetErr::Timeout => STATUS_TIMEOUT,
+            NetErr::Failed(_) => STATUS_FAILED,
         }
     }
     fn failed_message(&self) -> Option<&str> {
@@ -96,12 +101,12 @@ impl Status for NetErr {
 impl Status for IoErr {
     fn code(&self) -> u8 {
         match self {
-            IoErr::Closed => 1,
-            IoErr::InvalidInput => 2,
-            IoErr::Unavailable => 3,
-            IoErr::InvalidData => 4,
-            IoErr::LimitExceeded => 5,
-            IoErr::Failed(_) => 6,
+            IoErr::Closed => STATUS_CLOSED,
+            IoErr::InvalidInput => STATUS_INVALID_INPUT,
+            IoErr::Unavailable => STATUS_UNAVAILABLE,
+            IoErr::InvalidData => STATUS_INVALID_DATA,
+            IoErr::LimitExceeded => STATUS_LIMIT_EXCEEDED,
+            IoErr::Failed(_) => STATUS_FAILED,
         }
     }
     fn failed_message(&self) -> Option<&str> {
@@ -115,13 +120,13 @@ impl Status for IoErr {
 impl Status for HttpErr {
     fn code(&self) -> u8 {
         match self {
-            HttpErr::InvalidInput => 1,
-            HttpErr::InvalidData => 2,
-            HttpErr::LimitExceeded => 3,
-            HttpErr::PermissionDenied => 4,
-            HttpErr::Closed => 5,
-            HttpErr::Timeout => 6,
-            HttpErr::Failed(_) => 7,
+            HttpErr::InvalidInput => STATUS_INVALID_INPUT,
+            HttpErr::InvalidData => STATUS_INVALID_DATA,
+            HttpErr::LimitExceeded => STATUS_LIMIT_EXCEEDED,
+            HttpErr::PermissionDenied => STATUS_PERMISSION_DENIED,
+            HttpErr::Closed => STATUS_CLOSED,
+            HttpErr::Timeout => STATUS_TIMEOUT,
+            HttpErr::Failed(_) => STATUS_FAILED,
         }
     }
     fn failed_message(&self) -> Option<&str> {
@@ -135,13 +140,13 @@ impl Status for HttpErr {
 impl Status for WsErr {
     fn code(&self) -> u8 {
         match self {
-            WsErr::InvalidInput => 1,
-            WsErr::InvalidData => 2,
-            WsErr::LimitExceeded => 3,
-            WsErr::PermissionDenied => 4,
-            WsErr::Closed => 5,
-            WsErr::Timeout => 6,
-            WsErr::Failed(_) => 7,
+            WsErr::InvalidInput => STATUS_INVALID_INPUT,
+            WsErr::InvalidData => STATUS_INVALID_DATA,
+            WsErr::LimitExceeded => STATUS_LIMIT_EXCEEDED,
+            WsErr::PermissionDenied => STATUS_PERMISSION_DENIED,
+            WsErr::Closed => STATUS_CLOSED,
+            WsErr::Timeout => STATUS_TIMEOUT,
+            WsErr::Failed(_) => STATUS_FAILED,
         }
     }
     fn failed_message(&self) -> Option<&str> {
@@ -155,10 +160,10 @@ impl Status for WsErr {
 impl Status for TlsErr {
     fn code(&self) -> u8 {
         match self {
-            TlsErr::InvalidInput => 1,
-            TlsErr::InvalidData => 2,
-            TlsErr::LimitExceeded => 3,
-            TlsErr::AuthenticationFailed => 4,
+            TlsErr::InvalidInput => STATUS_INVALID_INPUT,
+            TlsErr::InvalidData => STATUS_INVALID_DATA,
+            TlsErr::LimitExceeded => STATUS_LIMIT_EXCEEDED,
+            TlsErr::AuthenticationFailed => STATUS_AUTHENTICATION_FAILED,
         }
     }
     fn failed_message(&self) -> Option<&str> {
@@ -323,13 +328,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn status_codes_follow_declaration_order() {
-        assert_eq!(NetErr::InvalidInput.code(), 1);
-        assert_eq!(NetErr::Failed("x".into()).code(), 8);
-        assert_eq!(IoErr::Failed("x".into()).code(), 6);
-        assert_eq!(HttpErr::Failed("x".into()).code(), 7);
-        assert_eq!(WsErr::Closed.code(), 5);
-        assert_eq!(TlsErr::AuthenticationFailed.code(), 4);
+    fn status_codes_are_the_shared_numbers() {
+        assert_eq!(NetErr::InvalidInput.code(), STATUS_INVALID_INPUT);
+        assert_eq!(NetErr::Failed("x".into()).code(), STATUS_FAILED);
+        assert_eq!(IoErr::Failed("x".into()).code(), STATUS_FAILED);
+        assert_eq!(HttpErr::Failed("x".into()).code(), STATUS_FAILED);
+        assert_eq!(WsErr::Closed.code(), STATUS_CLOSED);
+        assert_eq!(
+            TlsErr::AuthenticationFailed.code(),
+            STATUS_AUTHENTICATION_FAILED
+        );
     }
 
     #[test]
