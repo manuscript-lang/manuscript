@@ -539,7 +539,6 @@ unsafe extern "C" fn fn_clone(o: *mut Obj) -> *mut Obj {
 ///
 /// # Safety
 /// `closure` is a live closure of that shape, handed over.
-// ms: keeps
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_fn_new(closure: *mut Obj, sig: u64) -> *mut Obj {
     // SAFETY: a fresh block with room for the closure and the signature.

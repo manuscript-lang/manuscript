@@ -85,29 +85,31 @@ fn world<R>(f: impl FnOnce(&mut World) -> R) -> R {
     WORLD.with(|w| f(&mut w.borrow_mut()))
 }
 
-/// The generated runtime signature table; its `@keeps` and `@owns` flags come from the `// ms:` comments
-/// in the runtime source.
-const RUNTIME_SYMBOLS: &str = include_str!("../../ms-lower/rt_symbols.txt");
+/// Externs that store their function arguments instead of running them before they return.
+const KEPT_CALLBACKS: &[&str] = &[
+    "extern:msrt_promise_start",
+    "extern:msrt_promise_start_here",
+    "extern:msrt_promise_defer",
+    "extern:msstd_http_serving_new",
+    "extern:msrt_fn_new",
+];
 
-/// Whether the runtime function behind the native `extern:name` declares `@flag`.
-fn runtime_flag(native: &str, flag: &str) -> bool {
-    let Some(name) = native.strip_prefix("extern:") else {
-        return false;
-    };
-    RUNTIME_SYMBOLS
-        .lines()
-        .find(|l| l.split('(').next() == Some(name))
-        .is_some_and(|l| l.split(" @").skip(1).any(|f| f == flag))
-}
+/// Externs that take ownership of the generic value argument (it moves into the runtime).
+const OWNING_VALUES: &[&str] = &[
+    "extern:msrt_cells_new",
+    "extern:msrt_cells_put",
+    "extern:msrt_pipe_write",
+    "extern:msrt_promise_put",
+];
 
-/// Whether a native function (`extern:name`) moves its `value` argument into the runtime (`@owns`).
+/// Whether a native function (`extern:name`) moves its `value` argument into the runtime.
 pub fn owns_value(native: &str) -> bool {
-    runtime_flag(native, "owns")
+    OWNING_VALUES.contains(&native)
 }
 
-/// Whether a native function (`extern:name`) keeps the function values it is given (`@keeps`).
+/// Whether a native function (`module/name`, or `extern:name`) keeps the function values it is given.
 pub fn keeps_callbacks(native: &str) -> bool {
-    runtime_flag(native, "keeps")
+    KEPT_CALLBACKS.contains(&native)
 }
 
 /// Native types that declare fields, so they cannot be written `extern type`. A record in a native
@@ -1575,22 +1577,5 @@ mod tests {
     fn a_file_without_bodies_is_not_split() {
         let text = "export type Box: ...\n\nimpl Box:\n    fn native() Int: ...\n";
         assert!(halves(text).unwrap().is_none());
-    }
-}
-
-#[cfg(test)]
-mod runtime_flag_tests {
-    use super::*;
-
-    #[test]
-    fn runtime_flags_come_from_the_symbol_table() {
-        assert!(keeps_callbacks("extern:msrt_promise_start"));
-        assert!(keeps_callbacks("extern:msstd_http_serving_new"));
-        assert!(owns_value("extern:msrt_cells_put"));
-        assert!(owns_value("extern:msrt_pipe_write"));
-        assert!(!owns_value("extern:msrt_promise_start"));
-        assert!(!keeps_callbacks("extern:msrt_cells_put"));
-        assert!(!keeps_callbacks("extern:msrt_alloc"));
-        assert!(!keeps_callbacks("collections/map"));
     }
 }
