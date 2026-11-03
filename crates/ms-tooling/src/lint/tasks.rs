@@ -10,7 +10,11 @@ use ms_syntax::ast::*;
 use ms_syntax::visit::{Visitor, walk_block};
 
 pub(super) fn lint(module: &ModuleData, findings: &mut Vec<Finding>) {
-    if !module.imports.iter().any(|i| i.path.ends_with("promise.ms")) {
+    if !module
+        .imports
+        .iter()
+        .any(|i| i.path.ends_with("promise.ms"))
+    {
         return;
     }
     let file = module_file(module);

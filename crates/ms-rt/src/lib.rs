@@ -46,9 +46,9 @@ pub mod poller;
 pub mod process;
 pub mod profile;
 pub mod promise;
-pub mod scope;
 pub mod scan;
 pub mod sched;
+pub mod scope;
 pub mod start;
 pub mod string;
 #[cfg(not(windows))]

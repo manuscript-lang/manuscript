@@ -39,10 +39,7 @@ fn repeated_deadlocked_token_waits_reuse_their_token_storage() {
         }
         task::msrt_token_free(token);
         task::teardown();
-        assert!(
-            reused,
-            "faulted token waits must release their token slots"
-        );
+        assert!(reused, "faulted token waits must release their token slots");
     }
 }
 

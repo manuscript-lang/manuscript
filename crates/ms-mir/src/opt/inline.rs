@@ -296,7 +296,10 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
             let gi = g.index();
             let callee = &m.funcs[gi];
             // Inlining would hide the call that keeps a scoped closure from the verifier.
-            if gi == fi || cyc[gi] || !matches!(callee.kind, FuncKind::Normal) || callee.keeps_scoped
+            if gi == fi
+                || cyc[gi]
+                || !matches!(callee.kind, FuncKind::Normal)
+                || callee.keeps_scoped
             {
                 continue;
             }

@@ -31,9 +31,7 @@ use crate::types::Ty;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 /// Runtime symbols whose presence means the program starts tasks that can be cancelled.
-const SPAWNERS: &[&str] = &[
-    "msrt_promise_start",
-];
+const SPAWNERS: &[&str] = &["msrt_promise_start"];
 
 /// Runtime functions that never reach a cancellation point.
 const LEAF_PREFIXES: &[&str] = &[

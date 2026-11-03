@@ -94,9 +94,7 @@ const INTRINSIC_RECEIVERS: &[&str] = &[
 
 /// Externs that store their function arguments instead of running them before they return. A parameter-level
 /// marker would replace this list.
-const KEPT_CALLBACKS: &[&str] = &[
-    "extern:msrt_promise_start",
-];
+const KEPT_CALLBACKS: &[&str] = &["extern:msrt_promise_start"];
 
 /// Whether a native function (`module/name`, or `extern:name`) keeps the function values it is given.
 pub fn keeps_callbacks(native: &str) -> bool {

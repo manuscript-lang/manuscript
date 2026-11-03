@@ -372,10 +372,9 @@ impl<'m> Gen<'m> {
             Glue::Drop => self.sig(&leaves, &[]),
             Glue::Copy => self.sig(&leaves, &leaves),
             Glue::BlockCopy => self.sig(&[Leaf::I64], &[Leaf::I64]),
-            Glue::ClosureDrop(_)
-            | Glue::BlockDrop
-            | Glue::CleanupThunk(_)
-            | Glue::SlotDrop => self.sig(&[Leaf::I64], &[]),
+            Glue::ClosureDrop(_) | Glue::BlockDrop | Glue::CleanupThunk(_) | Glue::SlotDrop => {
+                self.sig(&[Leaf::I64], &[])
+            }
             Glue::SlotCopy => self.sig(&[Leaf::I64, Leaf::I64], &[]),
         };
         let name = format!(
