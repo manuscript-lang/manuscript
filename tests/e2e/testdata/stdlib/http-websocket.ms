@@ -20,7 +20,8 @@ fn echo(exchange: HttpExchange) Unit!:
         var socket = (
             try http_result(
                 upgrade(
-                    exchange, allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
+                    exchange, allowed_origins: [], subprotocols: ["echo"],
+                    max_message_bytes: 1024
                 )
             )
         )
@@ -28,7 +29,9 @@ fn echo(exchange: HttpExchange) Unit!:
         let _sent = (
             try http_result(
                 socket.output.write(
-                    WebSocketMessage(data: message.data, kind: message.kind)
+                    WebSocketMessage(
+                        data: message.data, kind: message.kind
+                    )
                 )
             )
         )
@@ -71,7 +74,9 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
         max_response_bytes: 5, timeout: 2.seconds
     ) | try expect_ok
     body.metadata.status | try expect_equal(201)
-    (body.body.read().wait() | try expect_ok).get() | try expect_equal("hello".to_bytes())
+    (body.body.read().wait() | try expect_ok).get() | try expect_equal(
+        "hello".to_bytes()
+    )
     ((body.body.read().wait() | try expect_ok).is_none()) | try expect_true
     try client.close()
 
@@ -107,7 +112,9 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     ) | try expect_ok
     socket.subprotocol | try expect_equal("echo")
 
-    let _sent = socket.output.write(WebSocketMessage(data: "é🙂".to_bytes(), kind: WebSocketKind.Text)) | try expect_ok
+    let _sent = socket.output.write(
+        WebSocketMessage(data: "é🙂".to_bytes(), kind: WebSocketKind.Text)
+    ) | try expect_ok
     let message = (socket.input.read().wait() | try expect_ok).get()
     (message.kind != WebSocketKind.Text or message.data != "é🙂".to_bytes()) | try expect_false
 

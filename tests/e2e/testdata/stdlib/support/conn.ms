@@ -20,10 +20,13 @@ export fn recv(var connection: Connection, timeout: Duration) Bytes?!:
 // Reads `input` to its end and joins the chunks.
 export fn read_to_end(var input: ReadStream[Bytes]) Bytes!:
     var chunks: List[Bytes] = []
+
     while true:
         let chunk = try input.read().wait()
+
         if let bytes = chunk:
             chunks.append(bytes)
         else:
             break
+
     return ok(join(chunks))

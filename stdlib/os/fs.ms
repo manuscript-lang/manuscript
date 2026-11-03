@@ -438,9 +438,11 @@ impl Source[FileEvent] for WatchSource:
         while true:
             if let event = self.pending.pop():
                 return ok(event)
+
             var batch = try msstd_fs_watch_next(self.watcher.native)
             batch.reverse()
             self.pending = batch
+
         return ok(none)
 
     // Stops the watcher and waits for its worker to stop.
@@ -795,7 +797,13 @@ export fn watch(
             )
         )
 
-        return ok(watch_stream(try host().watch(path, recursive, interval, options.max_entries)))
+        return ok(
+            watch_stream(
+                try host().watch(
+                    path, recursive, interval, options.max_entries
+                )
+            )
+        )
 
     return ok(
         watch_stream(

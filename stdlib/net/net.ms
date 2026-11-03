@@ -126,6 +126,7 @@ impl ConnectionInfo:
     fn tls_info() TlsInfo!:
         if let info = self.tls:
             return ok(info.clone())
+
         return error(Error("network: invalid input", kind: ErrorCategory.InvalidInput))
 
 /*
@@ -152,9 +153,11 @@ fn connection(raw: RawConnection) Connection:
     let local = msstd_net_connection_local_address(raw.native)
     let peer = msstd_net_connection_peer_address(raw.native)
     var tls: TlsInfo? = none
+
     match msstd_net_connection_tls_info(raw.native):
         ok(found): tls = found
         error(_): tls = none
+
     let other = RawConnection(msstd_net_connection_share(raw.native))
     return Connection(
         input: stream[Bytes](ConnectionSource(raw)),
@@ -195,7 +198,9 @@ type DatagramSink:
 impl Sink[Datagram] for DatagramSink:
     // Sends `value.data` as one datagram to `value.address`, resolving a host name with the network's resolver.
     var fn put(value: Datagram) Unit!:
-        return msstd_net_datagram_send_bytes(self.raw.native, value.data, value.address, none)
+        return msstd_net_datagram_send_bytes(
+            self.raw.native, value.data, value.address, none
+        )
 
     var fn drain() Promise[Unit]:
         return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
@@ -226,8 +231,7 @@ fn datagram_socket(raw: RawDatagramSocket) DatagramSocket:
     let other = RawDatagramSocket(msstd_net_datagram_share(raw.native))
     return DatagramSocket(
         input: stream[Datagram](DatagramSource(raw)),
-        output: writer[Datagram](DatagramSink(other)),
-        address: address
+        output: writer[Datagram](DatagramSink(other)), address: address
     )
 
 // Supported DNS query categories; unknown spellings are rejected by checking.
@@ -363,7 +367,11 @@ export interface Network:
     fn connect(address: String, timeout: Duration?) RawConnection!
     // Connects over TCP to `address` and completes a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2.
     // An empty `server_name` returns InvalidInput, and `timeout` bounds the whole attempt.
-    fn connect_tls(address: String, server_name: String, timeout: Duration?) RawConnection!
+    fn connect_tls(
+        address: String,
+        server_name: String,
+        timeout: Duration?
+    ) RawConnection!
     // Connects over TCP to `address` and completes a TLS handshake using `options`, with at least TLS 1.2.
     // Invalid options return InvalidInput, handshake and verification failures return Failed, and `timeout` bounds the whole attempt.
     fn connect_tls_config(
@@ -582,11 +590,13 @@ impl Source[WebSocketMessage] for WebSocketSource:
     // A larger message is `LimitExceeded` and a malformed text message `InvalidData`; after any failure the connection is closed.
     var fn next() WebSocketMessage?!:
         let raw = try msstd_websocket_receive(self.raw.native)
+
         if let message = raw:
             var kind = WebSocketKind.Binary
             if message.text:
                 kind = WebSocketKind.Text
             return ok(WebSocketMessage(message.data, kind))
+
         return ok(none)
 
     var fn close() Unit!:
@@ -601,7 +611,9 @@ impl Sink[WebSocketMessage] for WebSocketSink:
     var fn put(value: WebSocketMessage) Unit!:
         match value.kind:
             Text: return msstd_websocket_send_bytes(self.raw.native, value.data, true)
-            Binary: return msstd_websocket_send_bytes(self.raw.native, value.data, false)
+            Binary: return msstd_websocket_send_bytes(
+                self.raw.native, value.data, false
+            )
             Ping: return msstd_websocket_ping_bytes(self.raw.native, value.data)
 
     var fn drain() Promise[Unit]:
@@ -639,8 +651,7 @@ export fn web_socket_from(raw: RawWebSocket) WebSocket:
     let other = RawWebSocket(msstd_websocket_share(raw.native))
     return WebSocket(
         input: stream[WebSocketMessage](WebSocketSource(raw)),
-        output: writer[WebSocketMessage](WebSocketSink(other)),
-        subprotocol: subprotocol
+        output: writer[WebSocketMessage](WebSocketSink(other)), subprotocol: subprotocol
     )
 
 // WebSocket message, timeout, TLS, and per-message compression settings.
@@ -680,7 +691,11 @@ export fn connect_tls_config(
     options: TlsOptions,
     timeout: Duration?
 ) Connection!:
-    return ok(connection(try host_network().connect_tls_config(address, options, timeout)))
+    return ok(
+        connection(
+            try host_network().connect_tls_config(address, options, timeout)
+        )
+    )
 
 // Connects to the Unix domain socket at `path`.
 // Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path returns InvalidInput. `timeout` bounds the attempt.
@@ -866,7 +881,13 @@ export fn web_socket(
     subprotocols: List[String],
     options: WebSocketOptions
 ) WebSocket!:
-    return ok(web_socket_from(try host_network().web_socket(url, headers, subprotocols, options)))
+    return ok(
+        web_socket_from(
+            try host_network().web_socket(
+                url, headers, subprotocols, options
+            )
+        )
+    )
 
 // Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
 // The address must be allowed by this network's restrictions, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.

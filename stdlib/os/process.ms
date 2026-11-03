@@ -3,7 +3,14 @@ import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
 import access, join, stat from "@std/os/fs.ms"
 import IpFamily from "@std/net/net.ms"
-import ReadStream, WriteStream, Source, stream, descriptor_reader, descriptor_writer from "@std/io/io.ms"
+import (
+    ReadStream,
+    WriteStream,
+    Source,
+    stream,
+    descriptor_reader,
+    descriptor_writer
+) from "@std/io/io.ms"
 import (
     msrt_args,
     msstd_system_endianness,
