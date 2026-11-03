@@ -63,7 +63,7 @@ export fn main() Int:
 
 fn say(text: String) Result[Unit, Error]:
     try stdout().write("{text}\n")
-    return stdout().flush()
+    return stdout().flush().wait()
 
 test "addition":
     try expect_equal(add(1, 2), 3)

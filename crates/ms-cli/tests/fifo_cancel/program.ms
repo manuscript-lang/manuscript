@@ -1,6 +1,6 @@
 import open, read_file from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"
-import stdout, open_read from "@std/io/io.ms"
+import stdout from "@std/io/io.ms"
 import promise from "@std/concurrency/promise.ms"
 import milliseconds from "@std/os/time.ms"
 
@@ -22,11 +22,12 @@ fn open_then_read(path: String) Int:
     return -1
 
 fn open_io_then_read(path: String) Int:
-    let opened = open_read(path)
+    let opened = open(path, "r", 420)
 
-    if let file = opened:
-        let _data = file.read()
-        file.close()
+    if var file = opened:
+        if var input = file.reader():
+            let _data = input.read().wait()
+            let _closed = input.close()
         return 1
 
     return -1

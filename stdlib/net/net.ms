@@ -222,6 +222,7 @@ export type DatagramSocket:
     address: String
 
 impl Closeable for DatagramSocket:
+    // Closes both streams, and with them the socket.
     var fn close() Unit!:
         try self.input.close()
         return self.output.close()
@@ -568,18 +569,21 @@ export type RawWebSocket:
 // The kind of a WebSocket message.
 export type WebSocketKind:
     case Text  // A text frame: the payload is valid UTF-8.
-    case Binary  // A binary frame.
+    case Binary  // A binary frame: the payload is arbitrary bytes.
     case Ping  // A ping control frame, at most 125 bytes; written only, the peer's pongs are answered automatically.
 
 // One WebSocket message.
 export type WebSocketMessage:
     // The payload bytes; for a text message they are the UTF-8 encoding of the text.
     data: Bytes
+    // Whether the message is text or binary, or a ping.
     kind: WebSocketKind
 
 // A message as the native layer reports it.
 export type RawWebSocketMessage:
+    // The payload bytes; for a text frame they are the UTF-8 encoding of the text.
     data: Bytes
+    // True for a text frame, false for a binary frame.
     text: Bool
 
 type WebSocketSource:

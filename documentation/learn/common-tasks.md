@@ -72,7 +72,7 @@ type Greeting:
 fn greet(options: Greeting) Result[Int, Error]:
     for round in 0..options.times:
         try stdout().write("Hello, {options.name}!\n")
-    try stdout().flush()
+    try stdout().flush().wait()
     return ok(0)
 
 export fn main() Int:

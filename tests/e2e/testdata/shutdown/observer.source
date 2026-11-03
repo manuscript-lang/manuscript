@@ -10,10 +10,10 @@ fn say(text: String) Unit:
 
 export fn main() Int:
     if let watched = watch_signals([2, 15]):
-        let signals = watched
+        var signals = watched
         say("waiting\n")
 
-        let _observed = signals.next()
+        let _observed = signals.read().wait()
         say("got signal\n")
         sleep(100.milliseconds)
         say("after sleep\n")

@@ -64,6 +64,7 @@ impl Transform[Bytes, String] for LineSplitter:
 
         return ok(out)
 
+// Reads lines of text from a byte stream such as `stdin()`: splits `input` at `\n`, removing a trailing `\r`; a line longer than `max_bytes` is an error.
 export fn lines(input: ReadStream[Bytes], max_bytes: Int? = none) ReadStream[String]:
     return through[Bytes, String](input, LineSplitter(none, max_bytes))
 
@@ -78,6 +79,7 @@ impl Source[T] for ListSource[T]:
     var fn close() Unit!:
         return ok(unit)
 
+// A stream that yields the items of `items` in order and then ends.
 export fn from_list[T](items: List[T]) ReadStream[T]:
     var reversed = items.clone()
     reversed.reverse()
@@ -105,6 +107,7 @@ impl Source[Bytes] for BytesSource:
     var fn close() Unit!:
         return ok(unit)
 
+// A stream that yields `data` in chunks of at most `chunk_bytes` bytes and then ends.
 export fn from_bytes(data: Bytes, chunk_bytes: Int = 65536) ReadStream[Bytes]:
     return stream[Bytes](BytesSource(data, 0, chunk_bytes))
 
@@ -118,6 +121,7 @@ impl Transform[T, U] for Mapper[T, U]:
     var fn finish() List[U]!:
         return ok([])
 
+// A stream of `f` applied to each item of `input`; closing it closes `input`.
 export fn map[T, U](input: ReadStream[T], f: fn(T) U) ReadStream[U]:
     return through[T, U](input, Mapper[T, U](f))
 

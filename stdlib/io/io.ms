@@ -47,6 +47,7 @@ import (
 
 // A new stream: next may wait.
 export interface Source[T]:
+    // Waits for the next item; none at the end of the stream, an error when the source fails.
     var fn next() T?!
     // Releases what the source owns; the stream calls it once, when it closes.
     var fn close() Unit!
@@ -54,6 +55,7 @@ export interface Source[T]:
 // A stream of values over time. It owns its source, parked in a runtime cell so that a pending read carries only the
 // cell's id; dropping the stream drops the source and whatever it owns.
 export opaque type ReadStream[T]:
+    // The runtime cell that holds the source.
     cell: Int
 
 // Runs one `next` of `source`, which the caller took out of its cell, and puts it back.
@@ -91,10 +93,13 @@ impl ReadStream[T]:
 
 // The items of a stream, one read at a time; `for item in stream.wait()` waits for each.
 export type Waiting[T]:
+    // The runtime cell that holds the stream's source.
     cell: Int
+    // True after the end of the stream or a failure; later steps give none.
     ended: Bool
 
 impl Iterator[T!] for Waiting[T]:
+    // Waits for the next item: `ok(item)`, an error that ends the loop, or none at the end.
     var fn next() T!?:
         if self.ended:
             return none
@@ -123,6 +128,7 @@ impl Closeable for ReadStream[T]:
         msrt_cells_drop(self.cell)
         return ok(unit)
 
+// Wraps `source` as a ReadStream that owns it.
 export fn stream[T](source: Source[T]) ReadStream[T]:
     return ReadStream[T](cell: msrt_cells_new[Source[T]](source))
 
@@ -179,6 +185,7 @@ impl Sink[Bytes] for DescriptorSink:
         msrt_streams_close(self.id)
         return ok(unit)
 
+// A WriteStream over the runtime stream-table descriptor `id`.
 export fn descriptor_writer(id: Int) WriteStream[Bytes]:
     return writer[Bytes](DescriptorSink(id))
 
@@ -188,15 +195,19 @@ export fn stdin() ReadStream[Bytes]:
 
 // A place values are written to. `put` never waits.
 export interface Sink[T]:
+    // Moves `value` into the sink's buffer without waiting; an error once the sink is closed.
     var fn put(value: T) Unit!
     // A promise that finishes once everything put so far has drained.
     var fn drain() Promise[Unit]
+    // Items or bytes put and not yet drained.
     fn buffered() Int
+    // Drains what is buffered and releases what the sink owns; the stream calls it once, when it closes.
     var fn close() Unit!
 
 // A stream that accepts values over time. `write` moves the value into a buffer and never waits; `flush` is the
 // backpressure point.
 export opaque type WriteStream[T]:
+    // The destination the stream's writes go to.
     sink: Sink[T]
 
 impl WriteStream[T]:
@@ -217,6 +228,7 @@ impl Closeable for WriteStream[T]:
     var fn close() Unit!:
         return self.sink.close()
 
+// Wraps `sink` as a WriteStream that owns it.
 export fn writer[T](sink: Sink[T]) WriteStream[T]:
     return WriteStream[T](sink: sink)
 
@@ -301,15 +313,19 @@ export fn stdout_bytes() WriteStream[Bytes]:
 export fn stderr_bytes() WriteStream[Bytes]:
     return writer[Bytes](StderrBytesSink(true))
 
+// Standard output as text; writes are buffered until flushed or the process exits.
 export fn stdout() WriteStream[String]:
     return writer[String](StdoutSink(false))
 
+// Standard error as text.
 export fn stderr() WriteStream[String]:
     return writer[String](StderrSink(false))
 
 // A changed stream: never waits; appends zero or more items per input, and what it held back at the end.
 export interface Transform[A, B]:
+    // Takes one input item and returns the output items it completes, possibly none.
     var fn feed(value: A) List[B]!
+    // Called once at the end of the input; returns the items held back.
     var fn finish() List[B]!
 
 // Items a transform produced and the reader has not taken yet, newest first so `pop` moves the next one out.
@@ -344,6 +360,7 @@ impl Source[B] for Through[A, B]:
     var fn close() Unit!:
         return self.input.close()
 
+// A stream of `transform`'s output over `input`; closing it closes `input`.
 export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadStream[B]:
     return stream[B](Through[A, B](input, transform, [], false))
 
@@ -481,6 +498,7 @@ export type RawTerminal:
 
 // What the native `raw_mode` returns: the runtime handle itself.
 export type RawHandle:
+    // The runtime terminal handle.
     native: NativeRawTerminal
 
 impl Closeable for RawTerminal:
