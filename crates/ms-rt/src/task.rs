@@ -652,7 +652,7 @@ unsafe fn trim_idle_stacks() {
     let end = s.pool.len().saturating_sub(STACK_POOL_WARM);
     for at in s.pool_clean..end {
         let (base, _) = s.pool[at];
-        // SAFETY: a pooled slot is unused; its guard stays protected and the stack reads as zero.
+        // SAFETY: a pooled slot is unused; its guard stays protected and the stack stays mapped.
         unsafe { sys::release(base as *mut u8, STACK_SLOT) };
     }
     s.pool_clean = s.pool_clean.max(end);
@@ -2011,9 +2011,16 @@ mod tests {
             }
             trim_idle_stacks();
             assert_eq!(sched().pool_clean, 3);
+            // The warm stacks keep their contents. A trimmed stack's pages went back to the
+            // system, but macOS frees them lazily, so what they read as is unspecified; they
+            // must stay writable.
             for (at, &base) in slots.iter().enumerate() {
-                let byte = *((base + STACK_SLOT - 4096) as *const u8);
-                assert_eq!(byte, u8::from(at >= 3), "stack {at}");
+                let page = (base + STACK_SLOT - 4096) as *mut u8;
+                if at >= 3 {
+                    assert_eq!(*page, 1, "warm stack {at}");
+                }
+                *page = 2;
+                assert_eq!(*page, 2, "stack {at} stays usable");
             }
             // Taking a stack back lowers the clean mark only when an older entry moves.
             let _ = alloc_stack(DEFAULT_STACK);
