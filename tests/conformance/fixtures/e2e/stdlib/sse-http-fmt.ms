@@ -14,13 +14,14 @@ import http_client, serve from "@std/net/net.ms"
 
 // Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
 fn stream_events(exchange: HttpExchange) Unit!:
+    var live = exchange
     var sent = headers()
     try sent.append("Content-Type", "text/event-stream")
-    try exchange.send_headers(200, sent)
-    exchange.write("event: greet\r\ndata: h").get()
-    exchange.write_bytes("é".to_bytes().slice(0, 1).get()).get()
-    exchange.write_bytes("\u{e9}!\r".to_bytes().slice(1, 4).get()).get()
-    exchange.write("\n\r\n: keepalive\n\ndata: second\n\n").get()
+    try live.send_headers(200, sent)
+    try live.write("event: greet\r\ndata: h")
+    try live.write_bytes("é".to_bytes().slice(0, 1).get())
+    try live.write_bytes("\u{e9}!\r".to_bytes().slice(1, 4).get())
+    try live.write("\n\r\n: keepalive\n\ndata: second\n\n")
     return ok(unit)
 
 test "HTTP response bodies decode as SSE and close with the reader":
