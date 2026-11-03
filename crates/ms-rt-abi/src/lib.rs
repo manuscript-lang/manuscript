@@ -380,6 +380,13 @@ impl HasRaw {
     }
 }
 
+/// The trailing nullable `*mut StrVal` where a fallible native stores the text of a `Failed`
+/// status. It is that pointer in C; the distinct type is the declaration lowering reads the role
+/// from.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct ErrSlot(pub *mut StrVal);
+
 /// The slot descriptor of a list's or set's element type. A runtime function declares this role by
 /// taking the alias; lowering reads the role from the declared parameter type, not its name.
 pub type ElemDesc = *const TypeDesc;

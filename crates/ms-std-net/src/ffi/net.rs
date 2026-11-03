@@ -5,6 +5,8 @@ use crate::error::{NetErr, Status as _};
 use crate::ip::{Cidr, ip_text, normalize};
 use crate::net::{DnsKind, root};
 #[cfg(test)]
+use ms_rt::ffi::ErrSlot;
+#[cfg(test)]
 use ms_rt::ffi::HasRaw;
 use ms_rt::ffi::{
     Bytes, ErrOut, Has, ObjRef, Object, Out, RecList, StatusCode, Str, abi_handle, abi_record,
@@ -480,7 +482,7 @@ mod tests {
             let mut cidr = null_mut();
             let mut err = no_str();
             assert_eq!(
-                msstd_net_parse_ip(s("::ffff:192.0.2.1"), &mut ip, &mut err),
+                msstd_net_parse_ip(s("::ffff:192.0.2.1"), &mut ip, ErrSlot(&mut err)),
                 0
             );
             assert_eq!(
@@ -489,7 +491,7 @@ mod tests {
             );
             assert_eq!(msstd_net_ip_address_family(ip), 0);
             assert_eq!(
-                msstd_net_parse_cidr(s("192.0.2.3/24"), &mut cidr, &mut err),
+                msstd_net_parse_cidr(s("192.0.2.3/24"), &mut cidr, ErrSlot(&mut err)),
                 0
             );
             assert_eq!(
@@ -500,7 +502,7 @@ mod tests {
             assert_eq!(msstd_net_contains_ip(cidr, ip, &mut yes), 0);
             assert_eq!(yes, 1);
             assert_eq!(
-                msstd_net_parse_ip(s("fe80::1%eth0"), &mut ip, &mut err),
+                msstd_net_parse_ip(s("fe80::1%eth0"), &mut ip, ErrSlot(&mut err)),
                 STATUS_INVALID_DATA
             );
             assert_eq!(
@@ -524,7 +526,7 @@ mod tests {
             let (mut listener, mut client, mut server) = (null_mut(), null_mut(), null_mut());
             let mut err = no_str();
             assert_eq!(
-                msstd_net_network_listen(net, s("127.0.0.1:0"), &mut listener, &mut err),
+                msstd_net_network_listen(net, s("127.0.0.1:0"), &mut listener, ErrSlot(&mut err)),
                 0
             );
             let addr = Box::leak(Box::new(take_string_val(|o| {
@@ -537,7 +539,7 @@ mod tests {
                     HasRaw(1),
                     2_000_000_000,
                     &mut client,
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 0
             );
@@ -547,12 +549,18 @@ mod tests {
                     HasRaw(1),
                     2_000_000_000,
                     &mut server,
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 0
             );
             assert_eq!(
-                msstd_net_connection_write(client, s("hello"), HasRaw(1), 2_000_000_000, &mut err),
+                msstd_net_connection_write(
+                    client,
+                    s("hello"),
+                    HasRaw(1),
+                    2_000_000_000,
+                    ErrSlot(&mut err)
+                ),
                 0
             );
             let mut out = MaybeUninit::<VecVal>::uninit();
@@ -564,12 +572,15 @@ mod tests {
                     ms_rt_abi::HasRaw(1),
                     2_000_000_000,
                     out.as_mut_ptr(),
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 0
             );
             assert_eq!(bytes_ref(out.as_ptr()), &b"hello"[..]);
-            assert_eq!(msstd_net_connection_shutdown_write(client, &mut err), 0);
+            assert_eq!(
+                msstd_net_connection_shutdown_write(client, ErrSlot(&mut err)),
+                0
+            );
             assert_eq!(
                 msstd_net_connection_read(
                     server,
@@ -578,7 +589,7 @@ mod tests {
                     ms_rt_abi::HasRaw(1),
                     2_000_000_000,
                     out.as_mut_ptr(),
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 STATUS_NONE
             );
@@ -591,7 +602,7 @@ mod tests {
                     ms_rt_abi::HasRaw(1),
                     20_000_000,
                     out.as_mut_ptr(),
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 STATUS_FAILED
             );
@@ -627,13 +638,13 @@ mod tests {
                     cidrs.as_ptr(),
                     0,
                     &mut child,
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 0
             );
             let mut l = null_mut();
             assert_eq!(
-                msstd_net_network_listen(child, s("127.0.0.1:0"), &mut l, &mut err),
+                msstd_net_network_listen(child, s("127.0.0.1:0"), &mut l, ErrSlot(&mut err)),
                 STATUS_PERMISSION_DENIED
             );
             let mut out = MaybeUninit::<VecVal>::uninit();
@@ -646,7 +657,7 @@ mod tests {
                     ms_rt_abi::HasRaw(0),
                     0,
                     out.as_mut_ptr(),
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 0
             );
@@ -662,7 +673,7 @@ mod tests {
                     ms_rt_abi::HasRaw(0),
                     0,
                     records.as_mut_ptr(),
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 0
             );

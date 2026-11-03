@@ -12,7 +12,7 @@ use super::{
 };
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
-use ms_rt_abi::{Closure, HasRaw, MapVal, OptStr};
+use ms_rt_abi::{Closure, ErrSlot, HasRaw, MapVal, OptStr};
 use std::boxed::Box;
 use std::string::String;
 use std::vec::Vec;
@@ -943,11 +943,12 @@ impl ErrOut {
     }
 }
 impl AbiType for ErrOut {
-    type Raw = *mut StrVal;
+    type Raw = ErrSlot;
 }
 // SAFETY: the caller passes null or writable memory for one string.
 unsafe impl FromAbi<'_> for ErrOut {
-    unsafe fn from_raw(raw: *mut StrVal) -> ErrOut {
+    unsafe fn from_raw(raw: ErrSlot) -> ErrOut {
+        let raw = raw.0;
         if !raw.is_null() {
             // The slot may be read for any failure status: start it as the empty string, which
             // owns no allocation, so a status that sets no text leaves it valid.
