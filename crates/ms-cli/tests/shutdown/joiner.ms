@@ -10,7 +10,7 @@ fn long() Int:
 export fn main() Int:
     let w = promise(fn: ok(long()))
     stdout().write("joining\n").get()
-    stdout().flush().get()
+    let _flushed = stdout().flush().wait()
 
     let outcome = w.wait()
     stdout().write("joined {outcome.is_ok()}\n").get()
