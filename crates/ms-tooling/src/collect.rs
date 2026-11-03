@@ -28,6 +28,8 @@ pub struct CallRow {
     pub owner: String,
     pub target: String,
     pub kind: String,
+    /// A `TaskGroup.spawn` call.
+    pub spawn: bool,
 }
 
 /// The slice of an inspection that facts are derived from.
@@ -92,6 +94,7 @@ pub fn collect_facts(inspection: &InspectionRows, program: &Program) -> Facts {
                 Site {
                     target: c.target.clone(),
                     kind: c.kind.clone(),
+                    spawn: c.spawn,
                 },
             )
         })
@@ -311,6 +314,7 @@ mod tests {
                 owner: owner.into(),
                 target: target.into(),
                 kind: "function".into(),
+                spawn: false,
             })
             .collect(),
         };

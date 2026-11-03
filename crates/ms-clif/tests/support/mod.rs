@@ -58,7 +58,11 @@ pub fn link_fixture(object: &Path, runtime: &Path, out: &Path) -> Result<(), ms_
     let mut inputs = vec![runtime];
     inputs.extend(builtins.as_deref());
     // The C fixture runtimes define no process entry, so they link static musl, whose startup file does.
-    ms_clif::link::link_libc(object, &inputs, out, false, cfg!(target_os = "linux"))
+    let build = ms_clif::BuildOptions {
+        static_musl: cfg!(target_os = "linux"),
+        ..ms_clif::BuildOptions::default()
+    };
+    ms_clif::link::link_with(object, &inputs, out, false, &build)
 }
 
 fn builtins() -> Option<PathBuf> {

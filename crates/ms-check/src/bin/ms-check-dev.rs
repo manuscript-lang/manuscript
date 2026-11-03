@@ -51,15 +51,16 @@ struct Loader {
     diagnostics: Vec<Diagnostic>,
 }
 
-fn resolution(file: &Arc<str>, pos: Pos, message: String) -> Diagnostic {
-    Diagnostic {
+fn resolution(file: &Arc<str>, pos: Pos, message: String) -> Box<Diagnostic> {
+    Box::new(Diagnostic {
+        opener_line: 0,
         file: file.clone(),
         pos,
         phase: Phase::Resolution,
         message,
         end: None,
         fix: None,
-    }
+    })
 }
 
 fn clean(path: &Path) -> PathBuf {
@@ -77,7 +78,7 @@ fn clean(path: &Path) -> PathBuf {
 }
 
 impl Loader {
-    fn visit(&mut self, canonical: &Path) -> Result<ms_check::types::Name, Diagnostic> {
+    fn visit(&mut self, canonical: &Path) -> Result<ms_check::types::Name, Box<Diagnostic>> {
         let logical = canonical
             .strip_prefix(&self.root)
             .unwrap_or(canonical)
@@ -106,17 +107,17 @@ impl Loader {
         &mut self,
         canonical: &Path,
         file: &Arc<str>,
-    ) -> Result<ms_check::types::Name, Diagnostic> {
+    ) -> Result<ms_check::types::Name, Box<Diagnostic>> {
         let bytes = std::fs::read(canonical)
             .map_err(|e| resolution(file, Pos::new(0, 1, 1), e.to_string()))?;
         let text = String::from_utf8(bytes).map_err(|_| {
-            Diagnostic::parse(
+            Box::new(Diagnostic::parse(
                 file,
                 Pos::new(0, 1, 1),
                 "source must be valid UTF-8; re-save the file with UTF-8 encoding",
-            )
+            ))
         })?;
-        let module = ms_syntax::parser::parse(file, &text).map_err(|d| *d)?;
+        let module = ms_syntax::parser::parse(file, &text)?;
         let key = ms_check::types::n(file);
         let mut resolved: Vec<(ms_syntax::NodeId, ms_check::types::Name)> = Vec::new();
         for item in &module.imports {
@@ -208,7 +209,7 @@ fn check_file(path: &Path) -> Vec<Diagnostic> {
     let canonical = match std::fs::canonicalize(path) {
         Ok(p) => p,
         Err(_) => {
-            return vec![resolution(
+            return vec![*resolution(
                 &Arc::from(path.to_string_lossy().as_ref()),
                 Pos::new(0, 1, 1),
                 format!(
@@ -230,7 +231,7 @@ fn check_file(path: &Path) -> Vec<Diagnostic> {
         diagnostics: Vec::new(),
     };
     if let Err(d) = loader.visit(&canonical) {
-        return vec![d];
+        return vec![*d];
     }
     let program = ms_check::check(loader.modules, loader.imports, CheckOptions::default());
     let mut diagnostics = loader.diagnostics;

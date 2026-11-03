@@ -4,33 +4,28 @@
 //! links an executable over the mingw-w64 CRT and import libraries, so it needs neither the MSVC
 //! SDK nor a C compiler.
 
-use crate::Error;
+use crate::{BuildOptions, Error};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::bundled::{FILES, LINKER_ID};
 
-/// The directory holding `opt`, `llc` and `llvm-link`: `MS_LLVM_TOOLS`, else the pinned release fetched into
-/// the cache on first use. `None` when there is no such release for this target or it could not be
-/// fetched; release builds then use Cranelift.
+/// The directory holding `opt`, `llc` and `llvm-link`: `build.llvm_tools`, else the pinned release
+/// fetched into the cache on first use. `None` when there is no such release for this target or it
+/// could not be fetched; release builds then use Cranelift.
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
-pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
-    if let Some(dir) = std::env::var_os("MS_LLVM_TOOLS").filter(|v| !v.is_empty()) {
-        return Ok(Some(PathBuf::from(dir)));
+pub fn llvm_tools(build: &BuildOptions) -> Result<Option<PathBuf>, Error> {
+    if let Some(dir) = &build.llvm_tools {
+        return Ok(Some(dir.clone()));
     }
-    // One attempt per process: a failed download is not retried for every function or program.
-    static FETCHED: OnceLock<Option<PathBuf>> = OnceLock::new();
-    Ok(FETCHED
-        .get_or_init(|| match fetch_llvm_tools() {
-            Ok(dir) => dir,
-            Err(e) => {
-                eprintln!("ms: {e}; release builds use Cranelift");
-                None
-            }
-        })
-        .clone())
+    Ok(match fetch_llvm_tools() {
+        Ok(dir) => dir,
+        Err(e) => {
+            eprintln!("ms: {e}; release builds use Cranelift");
+            None
+        }
+    })
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
@@ -44,7 +39,7 @@ fn fetch_llvm_tools() -> Result<Option<PathBuf>, String> {
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
+pub fn llvm_tools(_build: &BuildOptions) -> Result<Option<PathBuf>, Error> {
     Ok(None)
 }
 
@@ -132,10 +127,10 @@ fn staging(parent: &Path, prefix: &str) -> std::io::Result<PathBuf> {
     }
 }
 
-/// The `lld` to link with: `MS_LLD`, else the pinned release fetched into the cache on first use.
-fn lld_path() -> Result<PathBuf, Error> {
-    if let Some(path) = std::env::var_os("MS_LLD").filter(|v| !v.is_empty()) {
-        return Ok(PathBuf::from(path));
+/// The `lld` to link with: `build.lld`, else the pinned release fetched into the cache on first use.
+fn lld_path(build: &BuildOptions) -> Result<PathBuf, Error> {
+    if let Some(path) = &build.lld {
+        return Ok(path.clone());
     }
     #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
     {
@@ -165,10 +160,11 @@ pub fn link(
     inputs: &[&Path],
     out: &Path,
     strip: bool,
-    musl: bool,
+    build: &BuildOptions,
 ) -> Result<(), Error> {
+    let musl = is_static(build);
     let dir = extract()?;
-    let lld = lld_path()?;
+    let lld = lld_path(build)?;
     let mut command = Command::new(&lld);
     #[cfg(target_os = "linux")]
     linux_arguments(&mut command, &dir, &lld, object, inputs, out, strip, musl)?;
@@ -214,18 +210,9 @@ pub fn link(
     )))
 }
 
-/// Whether Linux programs link static musl (`--static`) instead of glibc. Set once by the
-/// command line before any build; the default is glibc.
-static STATIC_MUSL: AtomicBool = AtomicBool::new(false);
-
-/// Selects static musl (`true`) or glibc (`false`, the default) for Linux links.
-pub fn set_static(on: bool) {
-    STATIC_MUSL.store(on, Ordering::Relaxed);
-}
-
 /// Whether Linux links static musl; the runtime archive must be the musl build to match.
-pub fn is_static() -> bool {
-    cfg!(target_os = "linux") && STATIC_MUSL.load(Ordering::Relaxed)
+pub fn is_static(build: &BuildOptions) -> bool {
+    cfg!(target_os = "linux") && build.static_musl
 }
 
 /// Drops runtime and standard-library code the program never reaches: the runtime archive is one

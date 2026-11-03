@@ -242,7 +242,7 @@ pub enum CryptoFail {
 }
 
 impl CryptoFail {
-    /// `CryptoError` case index in declaration order: InvalidInput, Unsupported, AuthenticationFailed.
+    /// The shared status number of the failure.
     pub fn status(self) -> u8 {
         match self {
             CryptoFail::InvalidInput => ms_rt::ffi::STATUS_INVALID_INPUT,
@@ -252,8 +252,7 @@ impl CryptoFail {
     }
 }
 
-/// `CryptoError.AuthenticationFailed`.
-pub const STATUS_AUTHENTICATION_FAILED: u8 = 6;
+pub use ms_rt_abi::STATUS_AUTHENTICATION_FAILED;
 
 trait Stream {
     fn update(&mut self, data: &[u8]);

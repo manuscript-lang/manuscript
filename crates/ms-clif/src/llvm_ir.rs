@@ -63,6 +63,8 @@ struct Def {
     name: String,
     /// Part of the program's external interface (exported or entry), so it stays visible.
     public: bool,
+    /// A glue function (drop, copy) generated on demand.
+    glue: bool,
     /// `define ` is followed by the linkage, then this: return type, name, parameters, attributes.
     header: String,
     /// The entry label, the stack slots, then the rest of the body.
@@ -1176,11 +1178,19 @@ impl LlvmModule {
         self.defs.push(Def {
             name: name.to_string(),
             public,
+            glue: false,
             header,
             body,
             avx2,
         });
         copies
+    }
+
+    /// Marks the function just added as glue.
+    pub fn mark_glue(&mut self) {
+        if let Some(d) = self.defs.last_mut() {
+            d.glue = true;
+        }
     }
 
     /// The `define` header (after the linkage) and body of `f` under `name`, and whether it
@@ -1338,15 +1348,15 @@ impl LlvmModule {
     /// optimizer quadratic in the nesting depth of a literal. Count a cycle's closing edge,
     /// then stop traversing it; direct self calls remain excluded. Shallow glue still inlines.
     fn deep_glue(&self) -> HashSet<String> {
-        const GLUE: &str = "@\"ms.glue.";
+        let glue_call = format!("@\"{}", crate::cg::GLUE_PREFIX);
         let callees: HashMap<&str, Vec<&str>> = self
             .defs
             .iter()
-            .filter(|d| d.name.starts_with("ms.glue."))
+            .filter(|d| d.glue)
             .map(|d| {
                 let calls = d
                     .body
-                    .match_indices(GLUE)
+                    .match_indices(glue_call.as_str())
                     .filter_map(|(at, _)| {
                         let rest = &d.body[at + 2..];
                         rest.split('"').next()
@@ -1548,7 +1558,7 @@ mod tests {
     fn glue_module(edges: &[Vec<usize>]) -> LlvmModule {
         let mut module = LlvmModule::new(vec![Some("glue.ms".into())], ".".into());
         for (node, calls) in edges.iter().enumerate() {
-            let name = format!("ms.glue.{node}.drop");
+            let name = format!("{}{node}.drop", crate::cg::GLUE_PREFIX);
             let mut body = "block0:\n".to_string();
             for callee in calls {
                 writeln!(body, "  call void @\"ms.glue.{callee}.drop\"()").unwrap();
@@ -1558,6 +1568,7 @@ mod tests {
                 header: format!("void @\"{name}\"() #0 {{\n"),
                 name,
                 public: false,
+                glue: true,
                 body,
                 avx2: None,
             });
@@ -1669,7 +1680,7 @@ mod tests {
         m.add_function("metadata", display, (0, 1), &f, &Inlined, true);
         let triple = format!("{}-unknown-linux-gnu", std::env::consts::ARCH);
         let text = m.finish(&triple, &HashSet::new(), false);
-        let object = crate::llvm_obj::compile(&text, "3").unwrap();
+        let object = crate::llvm_obj::compile(&text, "3", &crate::BuildOptions::default()).unwrap();
         let funcs = [crate::cg::LlvmFn {
             id: cranelift_module::FuncId::from_u32(0),
             symbol: "metadata".into(),
@@ -2206,7 +2217,7 @@ mod tests {
 
     #[test]
     fn checked_arithmetic_llvm_generates_objects_for_all_supported_targets() {
-        let Some(tools) = crate::link::llvm_tools().unwrap() else {
+        let Some(tools) = crate::link::llvm_tools(&crate::BuildOptions::default()).unwrap() else {
             return;
         };
         let dir = std::env::temp_dir().join(format!("ms-llvm-targets-{}", std::process::id()));
