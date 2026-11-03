@@ -21,11 +21,9 @@ fn slow(door: Door) Int!:
 test "a promise owns the resource moved into it and closes it when it ends":
     let dir = try temporary_directory("promise-owned")
     let log = dir + "/log"
-
-    if true:
-        let door = Door(name: "front", log: log.clone())
-        let p = promise(fn: size(door))
-        try expect_equal(try p.wait(), 5)
+    let door = Door(name: "front", log: log.clone())
+    let p = promise(fn: size(door))
+    try expect_equal(try p.wait(), 5)
 
     let data = try read_file(log, none)
     let text = data.decode_utf8().get("")
