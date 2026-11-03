@@ -33,6 +33,8 @@ test "run work at once and collect it":
 
 All threads share one heap and values move between them by pointer, so nothing is copied or encoded when a value crosses a thread. There are no channels, task groups, locks or shared cells.
 
+The terminal (raw mode and key events in `@std/io/io.ms`) belongs to the main thread: a promise on another thread that uses it faults with "only available on the main thread", so do terminal work in the main task and send it values.
+
 | Page | What you will learn |
 | --- | --- |
 | [Promises](promises.md) | Start work, wait with a timeout, cancel, and collect many results. |

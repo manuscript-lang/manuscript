@@ -658,7 +658,7 @@ impl<T> Global<T> {
     pub fn get(&self) -> &T {
         if crate::isolate::is_worker() {
             crate::fault::fault(
-                b"this part of the standard library is only available on the main thread, not in a worker",
+                b"this part of the standard library is only available on the main thread, not in a worker or in a promise running on another thread",
             );
         }
         &self.0
