@@ -34,16 +34,13 @@ impl FnLower<'_> {
         Ok(self.b.alt_new(a, ok, &[payload]))
     }
 
-    /// Remembers the source position that built a failure so the test report can name it.
-    fn record_failure_site(&mut self, message: Value) {
+    /// The `file:line:column` of the expression being lowered, which a failure carries in
+    /// `details["site"]` so the test report can name it.
+    fn failure_site(&mut self) -> Option<Value> {
         let loc = self.b.loc();
-        let Some(file) = self.b.m.files.get(loc.file as usize) else {
-            return;
-        };
+        let file = self.b.m.files.get(loc.file as usize)?;
         let site = format!("{file}:{}:{}", loc.line, loc.col);
-        let site = self.b.str_lit(&site);
-        let ext = runtime_fn(self.b.m, "msrt_test_site", &[MTy::STR, MTy::STR], MTy::UNIT);
-        self.b.call_rt(ext, &[message, site]);
+        Some(self.b.str_lit(&site))
     }
 
     /// `error(Error)` carrying `message` (owned).
@@ -53,8 +50,8 @@ impl FnLower<'_> {
         let TyKind::Rec(er) = self.b.m.types.kind(it).clone() else {
             return Err(Error::new("testing failures need an Error record"));
         };
-        self.record_failure_site(message);
-        let v = self.error_record(er, "Failed", message)?;
+        let site = self.failure_site();
+        let v = self.error_record(er, "Failed", message, site)?;
         Ok(self.b.alt_new(a, err, &[v]))
     }
 

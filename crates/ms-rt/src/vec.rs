@@ -7,6 +7,7 @@ use crate::alloc;
 use crate::desc::{self, is_plain, needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
 use crate::string::{self, from_bytes};
+use ms_rt_abi::record::FaultKind;
 use ms_rt_abi::*;
 
 /// Limit on native list sizes.
@@ -29,7 +30,7 @@ unsafe fn reserve(v: &mut VecVal, d: &TypeDesc, extra: usize) {
     let need = v
         .len
         .checked_add(extra)
-        .unwrap_or_else(|| fault::fault(b"list size overflow"));
+        .unwrap_or_else(|| fault::fault_kind(FaultKind::Overflow, b"list size overflow"));
     if need <= v.cap {
         return;
     }
@@ -40,7 +41,7 @@ unsafe fn reserve(v: &mut VecVal, d: &TypeDesc, extra: usize) {
     }
     let bytes = cap
         .checked_mul(size.max(1))
-        .unwrap_or_else(|| fault::fault(b"list size overflow"));
+        .unwrap_or_else(|| fault::fault_kind(FaultKind::Overflow, b"list size overflow"));
     // SAFETY: standard growth of an owned buffer.
     unsafe {
         v.ptr = if v.ptr.is_null() {
@@ -421,12 +422,15 @@ pub unsafe extern "C-unwind" fn msrt_list_insert(
         let n = v.len;
         let i = relative(n, index);
         if i < 0 || i > n as i64 {
-            fault::fault_fmt(format_args!(
-                "List.insert: index must be between {} and {} (negative indexes count from the end), found {}",
-                -(n as i64),
-                n,
-                index
-            ));
+            fault::fault_fmt_kind(
+                FaultKind::IndexOutOfRange,
+                format_args!(
+                    "List.insert: index must be between {} and {} (negative indexes count from the end), found {}",
+                    -(n as i64),
+                    n,
+                    index
+                ),
+            );
         }
         let i = i as usize;
         reserve(v, d, 1);
@@ -485,15 +489,21 @@ pub unsafe extern "C-unwind" fn msrt_list_pop(
 
 fn index_fault(operation: &str, len: usize, index: i64) -> ! {
     if len == 0 {
-        fault::fault_fmt(format_args!(
-            "{operation}: index has no valid value for an empty collection, found {index}"
-        ))
+        fault::fault_fmt_kind(
+            FaultKind::IndexOutOfRange,
+            format_args!(
+                "{operation}: index has no valid value for an empty collection, found {index}"
+            ),
+        )
     }
-    fault::fault_fmt(format_args!(
-        "{operation}: index must be between {} and {} (negative indexes count from the end), found {index}",
-        -(len as i64),
-        len as i64 - 1
-    ))
+    fault::fault_fmt_kind(
+        FaultKind::IndexOutOfRange,
+        format_args!(
+            "{operation}: index must be between {} and {} (negative indexes count from the end), found {index}",
+            -(len as i64),
+            len as i64 - 1
+        ),
+    )
 }
 
 /// Replaces the element at `index` with `e` (consumed); the old element is dropped.
@@ -907,7 +917,7 @@ pub unsafe extern "C-unwind" fn msrt_list_concat(
         let len = a
             .len
             .checked_add(b.len)
-            .unwrap_or_else(|| fault::fault(b"list size overflow"));
+            .unwrap_or_else(|| fault::fault_kind(FaultKind::Overflow, b"list size overflow"));
         if len == 0 {
             *out = EMPTY;
             return;
@@ -921,13 +931,13 @@ pub unsafe extern "C-unwind" fn msrt_list_concat(
         } else {
             a.len
                 .checked_mul(2)
-                .unwrap_or_else(|| fault::fault(b"list size overflow"))
+                .unwrap_or_else(|| fault::fault_kind(FaultKind::Overflow, b"list size overflow"))
                 .max(len)
         };
         let size = d.size as usize;
         let bytes = cap
             .checked_mul(size.max(1))
-            .unwrap_or_else(|| fault::fault(b"list size overflow"));
+            .unwrap_or_else(|| fault::fault_kind(FaultKind::Overflow, b"list size overflow"));
         let ptr = alloc::alloc(bytes);
         copy_range(d, a.ptr, ptr, a.len);
         copy_range(d, b.ptr, ptr.add(a.len * size), b.len);
@@ -1239,7 +1249,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
         let storage = if rollback {
             bytes
                 .checked_mul(2)
-                .unwrap_or_else(|| fault::fault(b"list size overflow"))
+                .unwrap_or_else(|| fault::fault_kind(FaultKind::Overflow, b"list size overflow"))
         } else {
             bytes
         };
@@ -1832,7 +1842,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_join(parts: *const VecVal, out: *mut 
         };
         let total = items.iter().fold(0usize, |sum, part| {
             sum.checked_add(part.len)
-                .unwrap_or_else(|| fault::fault(b"bytes size overflow"))
+                .unwrap_or_else(|| fault::fault_kind(FaultKind::Overflow, b"bytes size overflow"))
         });
         if total == 0 {
             *out = EMPTY;

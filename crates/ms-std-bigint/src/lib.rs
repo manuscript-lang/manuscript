@@ -13,7 +13,7 @@ extern crate alloc;
 
 use alloc::string::String;
 use ms_rt::ffi::{ObjRef, Object, Out, Status, abi_handle, native};
-use ms_rt::glue::{fault_fmt, poll_cancel};
+use ms_rt::glue::{FaultKind, fault_fmt, fault_fmt_kind, poll_cancel};
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 use num_bigint::{BigInt, Sign};
 use num_traits::{One, Signed, ToPrimitive, Zero};
@@ -250,7 +250,10 @@ native! {
     // ms: leaf
     fn msstd_bigint_quotient(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         if n(&other).is_zero() {
-            fault_fmt(format_args!("BigInt./: division by zero; right must be nonzero, found 0"));
+            fault_fmt_kind(
+                FaultKind::DivisionByZero,
+                format_args!("BigInt./: division by zero; right must be nonzero, found 0"),
+            );
         }
         make(n(&a) / n(&other))
     }
@@ -259,7 +262,10 @@ native! {
     // ms: leaf
     fn msstd_bigint_modulo(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         if n(&other).is_zero() {
-            fault_fmt(format_args!("BigInt.%: division by zero; right must be nonzero, found 0"));
+            fault_fmt_kind(
+                FaultKind::DivisionByZero,
+                format_args!("BigInt.%: division by zero; right must be nonzero, found 0"),
+            );
         }
         make(n(&a) % n(&other))
     }

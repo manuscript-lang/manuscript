@@ -4,7 +4,7 @@
 use crate::{Dec, Mode, Overflow, RoundFail, overflow_message};
 use alloc::string::String;
 use ms_rt::ffi::{
-    Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, Status, abi_record, fault, native,
+    Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, Status, abi_record, fault, fault_kind, native,
 };
 
 abi_record! {
@@ -39,7 +39,10 @@ impl From<Dec> for DecRec {
 fn checked(r: Result<Dec, Overflow>, operation: &str, left: Dec, right: Dec) -> Dec {
     match r {
         Ok(v) => v,
-        Err(Overflow::Magnitude) => fault(&overflow_message(operation, &left, &right)),
+        Err(Overflow::Magnitude) => fault_kind(
+            ms_rt::glue::FaultKind::Overflow,
+            &overflow_message(operation, &left, &right),
+        ),
     }
 }
 
@@ -107,7 +110,10 @@ native! {
     fn msstd_decimal_divide(a: &DecRec, b: &DecRec) -> out DecRec {
         let (a, b) = (Dec::from(a), Dec::from(b));
         if b.is_zero() {
-            fault("Decimal./: division by zero; right must be nonzero, found 0");
+            fault_kind(
+                ms_rt::glue::FaultKind::DivisionByZero,
+                "Decimal./: division by zero; right must be nonzero, found 0",
+            );
         }
         checked(a.divide(&b), "/", a, b).into()
     }

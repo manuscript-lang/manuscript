@@ -8,6 +8,7 @@
 use crate::alloc;
 use crate::desc::{needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
+use ms_rt_abi::record::FaultKind;
 use ms_rt_abi::*;
 
 use ms_rt_hot::{LIVE, Layout, is_word, key_desc, layout, slot};
@@ -311,7 +312,7 @@ unsafe fn grow(m: &mut MapVal, l: &Layout) {
         }
         let cap = if m.cap == 0 { 8 } else { m.cap * 2 };
         if cap > u32::MAX as usize / 2 {
-            fault::fault(b"map size overflow");
+            fault::fault_kind(FaultKind::Overflow, b"map size overflow");
         }
         m.slots = if m.slots.is_null() {
             alloc::alloc(cap * l.stride)

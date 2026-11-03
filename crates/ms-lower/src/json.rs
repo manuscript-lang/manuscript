@@ -1682,7 +1682,7 @@ impl FnLower<'_> {
             v: text,
             own: false,
         });
-        let e = self.error_record(er, case, text)?;
+        let e = self.error_record(er, case, text, None)?;
         Ok(self.b.alt_new(ra, err as u32, &[e]))
     }
 

@@ -1,7 +1,7 @@
 //! Buffered standard output and unbuffered standard error.
 use crate::global::Process;
 use crate::sys;
-use ms_rt_abi::{StrVal, VecVal};
+use ms_rt_abi::{MapVal, StrVal, VecVal};
 
 const BUF_LIMIT: usize = 64 * 1024;
 static OUT: Process<Vec<u8>> = Process::new(Vec::new());
@@ -64,52 +64,39 @@ pub unsafe extern "C-unwind" fn msrt_io_write_stderr(s: *const StrVal) {
     write_stderr(unsafe { crate::string::bytes(s) });
 }
 
-/// The last failure built by a test assertion: its message and source position.
-static TEST_SITE: std::sync::Mutex<Option<(Vec<u8>, Vec<u8>)>> = std::sync::Mutex::new(None);
+/// The `details` key under which a failed test expectation carries the `file:line:column` that
+/// built it.
+const SITE_KEY: &[u8] = b"site";
 
-/// Remembers where the assertion failure carrying `message` was built.
+/// Reports a failed test: the message and the site its `Error` carries in `details`, as text on
+/// standard error and as a structured record for the CLI.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_test_site(message: *const StrVal, site: *const StrVal) {
-    // SAFETY: caller passes live strings.
-    let entry = unsafe {
-        (
-            crate::string::bytes(message).to_vec(),
-            crate::string::bytes(site).to_vec(),
+pub unsafe extern "C-unwind" fn msrt_test_failure(message: *const StrVal, details: *const MapVal) {
+    // SAFETY: caller passes a live string and a live `Map[String, String]`.
+    let (message, site) = unsafe {
+        let key = crate::string::from_bytes(SITE_KEY);
+        let found = crate::map::msrt_map_get_ptr(
+            details,
+            &crate::desc::msrt_desc_string,
+            &crate::desc::msrt_desc_string,
+            (&raw const key).cast(),
         )
+        .cast::<StrVal>();
+        let site = (!found.is_null()).then(|| crate::string::bytes(found).to_vec());
+        crate::string::release(&key);
+        (crate::string::bytes(message).to_vec(), site)
     };
-    if let Ok(mut slot) = TEST_SITE.lock() {
-        // A failure the standard library builds around an earlier assertion's message (a
-        // property check reporting its counterexample) keeps the assertion's own position.
-        if entry.1.starts_with(b"@std/")
-            && let Some((earlier, site)) = slot.as_ref()
-            && !earlier.is_empty()
-            && !site.starts_with(b"@std/")
-            && entry
-                .0
-                .windows(earlier.len())
-                .any(|w| w == earlier.as_slice())
-        {
-            let site = site.clone();
-            *slot = Some((entry.0, site));
-            return;
-        }
-        *slot = Some(entry);
+    let mut text = message.clone();
+    if let Some(site) = &site {
+        text.extend_from_slice(b"\n  at ");
+        text.extend_from_slice(site);
     }
-}
-
-/// Writes `  at <position>` to stderr when `message` is the last recorded assertion failure.
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_test_site_report(message: *const StrVal) {
-    // SAFETY: caller passes a live string.
-    let message = unsafe { crate::string::bytes(message) };
-    let Ok(slot) = TEST_SITE.lock() else { return };
-    if let Some((recorded, site)) = slot.as_ref()
-        && recorded == message
-    {
-        let mut line = b"\n  at ".to_vec();
-        line.extend_from_slice(site);
-        write_stderr(&line);
-    }
+    text.push(b'\n');
+    write_stderr(&text);
+    let mut record =
+        ms_rt_abi::record::Record::new(ms_rt_abi::record::FaultKind::TestFailure, &message);
+    record.site = site;
+    crate::fault::write_record(&record);
 }
 
 /// The bytes of a live byte vector.

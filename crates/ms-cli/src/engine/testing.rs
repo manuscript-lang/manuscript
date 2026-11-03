@@ -11,11 +11,11 @@
 //!
 //! The lowering builds one executable per `ms test` ([`ms_build::Lower::lower_tests`])
 //! and returns the test names in index order. `exe <index> [program arguments]`
-//! runs test number `index` and exits: status 0 means passed; status 1 with
-//! the failure marker (`ms_build::FAILURE_MARKER`) on standard error means
-//! the test returned an error, and the text after the marker is the message;
-//! any other status (a fault, abort or signal) is a failure described by how
-//! the process ended, with its standard error text after the marker-free part.
+//! runs test number `index` and exits: status 0 means passed; status 1 means the test
+//! returned an error, whose message and source site the process wrote as a
+//! [`ms_rt_abi::record::Record`] to the file `MS_FAULT_RECORD` names (it also prints them to
+//! standard error). Any other status (a fault, abort or signal) is a failure described by
+//! how the process ended; a fault leaves its record in the same file.
 //! `skip` ends the test with status 0 after writing [`SKIP_MARKER`] and the
 //! reason to standard error; the test is reported skipped, not passed.
 //!
@@ -33,19 +33,18 @@ use std::time::{Duration, Instant};
 use ms_build::Lower;
 use ms_driver::project::pathops;
 
-use ms_build::FAILURE_MARKER;
-
 /// Written to standard error, ahead of the reason, by a test that skips itself and exits 0.
 pub const SKIP_MARKER: &str = "\u{1}SKIP\u{1}";
 
 use super::{Engine, Target, TempDir, compile_target};
 use crate::backend::{BackendResult, Io, TestRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
-use crate::fault::{EXIT_FAULT, Fault};
+use crate::fault::{EXIT_FAULT, Fault, RecordFile};
 use crate::json::Json;
 use crate::process::{Stops, wait_supervised};
 use crate::profile::base64;
 use crate::util::emit_json;
+use ms_rt_abi::record::FaultKind;
 
 /// Each test gets this long unless `--timeout` says otherwise.
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
@@ -236,6 +235,8 @@ struct Case {
     name: String,
     status: Status,
     failure: String,
+    /// Where the failed expectation was built.
+    position: Option<Position>,
     fault: Option<Fault>,
     duration: Duration,
     /// The bench driver's statistics (`ms bench`).
@@ -519,6 +520,13 @@ impl Runner<'_> {
                     case.status = Status::Failed;
                     case.failure = why;
                 }
+                Ran::Rejected(why, position) => {
+                    failed += 1;
+                    out.line(format!("FAIL {name}: {why}"));
+                    case.status = Status::Failed;
+                    case.failure = why;
+                    case.position = position;
+                }
             }
             if failed > 0 && options.fail_fast {
                 reason = "fail_fast".into();
@@ -550,7 +558,9 @@ impl Runner<'_> {
     /// Run test `index` in its own process.
     fn run_one(&self, index: usize, out: &mut Out) -> Ran {
         let stops = Stops::catch();
+        let record = RecordFile::create();
         let mut command = Command::new(self.executable);
+        record.attach(&mut command);
         command
             .arg(index.to_string())
             .args(&self.options.program)
@@ -611,6 +621,7 @@ impl Runner<'_> {
         while let Ok(chunk) = stderr.recv_timeout(Duration::from_millis(100)) {
             errors.extend_from_slice(&chunk);
         }
+        let pid = child.id();
         let waited = match waited {
             Ok(waited) => waited,
             Err(error) => return Ran::Failed(error.to_string()),
@@ -626,9 +637,28 @@ impl Runner<'_> {
             return Ran::Cancelled;
         }
         let errors = String::from_utf8_lossy(&errors).into_owned();
-        if let Some((before, message)) = errors.split_once(FAILURE_MARKER) {
-            let _ = out.io.stderr.write_all(before.as_bytes());
-            return Ran::Failed(message.trim_end_matches('\n').to_string());
+        let written = record.read(pid);
+        if let Some(failure) = written
+            .as_ref()
+            .filter(|r| r.kind == FaultKind::TestFailure)
+        {
+            // The expectation's message and site are in the record; standard error repeats them.
+            let message = String::from_utf8_lossy(&failure.message).into_owned();
+            let site = failure
+                .site
+                .as_deref()
+                .map(|site| String::from_utf8_lossy(site).into_owned());
+            let shown = match &site {
+                Some(site) => format!("{message}\n  at {site}"),
+                None => message,
+            };
+            let echoed = errors.trim_end_matches('\n').strip_suffix(&shown);
+            let _ = out
+                .io
+                .stderr
+                .write_all(echoed.unwrap_or_default().as_bytes());
+            let position = site.as_deref().and_then(position_of_site);
+            return Ran::Rejected(shown, position);
         }
         if waited.status.success() {
             if let Some((before, reason)) = errors.split_once(SKIP_MARKER) {
@@ -646,7 +676,9 @@ impl Runner<'_> {
         }
         let text = errors.trim_end_matches('\n');
         if waited.status.code() == Some(EXIT_FAULT)
-            && let Some(fault) = Fault::parse(text)
+            && let Some(fault) = written
+                .map(Fault::from_record)
+                .or_else(|| Fault::from_text(text))
         {
             return Ran::Faulted(text.to_string(), fault);
         }
@@ -717,6 +749,8 @@ enum Ran {
     Passed,
     Skipped(String),
     Failed(String),
+    /// An expectation failed: its message with the site appended, and the site as a position.
+    Rejected(String, Option<Position>),
     /// The test process ended in a runtime fault: the report text and its parse.
     Faulted(String, Fault),
     Cancelled,
@@ -753,14 +787,15 @@ fn shuffle<T>(items: &mut [T], seed: i64) {
     }
 }
 
-/// The first `  at file:line:column` location a failure names.
-fn failure_position(failure: &str) -> Option<Position> {
-    let pattern = regex::Regex::new(r"(?m)^\s+at (.+):(\d+):(\d+)(?: in |$)").ok()?;
-    let found = pattern.captures(failure)?;
+/// The position of a failed expectation's `file:line:column` site, split from the right because
+/// file names may hold colons.
+fn position_of_site(site: &str) -> Option<Position> {
+    let (rest, column) = site.rsplit_once(':')?;
+    let (file, line) = rest.rsplit_once(':')?;
     Some(Position::new(
-        found[1].to_string(),
-        found[2].parse().ok()?,
-        found[3].parse().ok()?,
+        file,
+        line.parse().ok()?,
+        column.parse().ok()?,
     ))
 }
 
@@ -819,6 +854,7 @@ impl Document {
                 name: (*name).clone(),
                 status: Status::NotRun,
                 failure: String::new(),
+                position: None,
                 fault: None,
                 duration: Duration::ZERO,
                 stats: None,
@@ -859,7 +895,7 @@ impl Document {
                     .with("status", Json::str(case.status.as_str()));
                 if !case.failure.is_empty() {
                     item = item.with("failure", Json::str(&case.failure));
-                    if let Some(position) = failure_position(&case.failure) {
+                    if let Some(position) = &case.position {
                         item = item.with("position", position.to_json());
                     }
                 }
@@ -990,13 +1026,15 @@ mod tests {
     }
 
     #[test]
-    fn failure_locations() {
-        let position = failure_position("assertion failed\n  at src/a.ms:12:5 in main::t").unwrap();
+    fn failure_sites() {
+        let position = position_of_site("src/a.ms:12:5").unwrap();
         assert_eq!(
             (position.file.as_str(), position.line, position.column),
             ("src/a.ms", 12, 5)
         );
-        assert!(failure_position("no location").is_none());
+        let position = position_of_site("C:\\w\\a.ms:3:9").unwrap();
+        assert_eq!(position.file, "C:\\w\\a.ms");
+        assert!(position_of_site("no location").is_none());
     }
 
     #[cfg(unix)]
@@ -1010,7 +1048,10 @@ mod tests {
         let text = r#"#!/bin/sh
 case "$1" in
 0) echo "hello from pass"; echo "note" >&2; exit 0;;
-1) printf '\001FAIL\001boom\n  at src/a.ms:3:4 in m::fail\n' >&2; exit 1;;
+1) b() { printf "\\$(printf %03o "$(($1 & 255))")"; }
+   { printf 'MSFR\001'; b $$; b $(($$ >> 8)); b $(($$ >> 16)); b $(($$ >> 24)); \
+     printf '\007\002\004\000\000\000boom\000\000\000\000\000\000\000\000\014\000\000\000src/a.ms:3:4'; } > "$MS_FAULT_RECORD"
+   printf 'boom\n  at src/a.ms:3:4\n' >&2; exit 1;;
 2) ulimit -c 0; kill -SEGV $$;;
 3) sleep 30;;
 4) printf '\001SKIP\001not today\n' >&2; exit 0;;
@@ -1072,7 +1113,7 @@ esac
         assert_eq!(status, 1, "failed + crashed + timed out: {text}");
         let expected = [
             "RUN m::pass\nhello from pass\nPASS m::pass\n",
-            "RUN m::fail\nFAIL m::fail: boom\n  at src/a.ms:3:4 in m::fail\n",
+            "RUN m::fail\nFAIL m::fail: boom\n  at src/a.ms:3:4\n",
             "RUN m::crash\nFAIL m::crash: test process was terminated by signal 11\n",
             "RUN m::hang\nFAIL m::hang: timed out after 3s; the test was cancelled (use --timeout to change the limit, 0 disables it)\n",
             "4 tests, 3 failed\n",
