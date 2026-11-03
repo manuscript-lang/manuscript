@@ -2778,22 +2778,30 @@ impl Walker<'_> {
     /// The names a returned promise would still read after the function ends: the captures of a
     /// promise started in the `return`, or the borrows of a local promise returned by name.
     fn returned_promise_reads(&self, e: &Expr) -> Vec<Name> {
-        if self.entry_call(e) {
-            return self
-                .entry_captures(e)
-                .into_iter()
-                .filter(|b| self.cx.classes.class(&b.ty) == Class::Move)
-                .map(|b| b.name)
-                .collect();
+        // A promise returned inside a larger value (`Server(running: p)`, `[promise(..)]`) still
+        // reads what it captured, so look at every part of the returned expression.
+        let mut parts = Vec::new();
+        collect_parts(e, &mut parts);
+        let mut out: Vec<Name> = Vec::new();
+        for part in parts {
+            if self.entry_call(part) {
+                out.extend(
+                    self.entry_captures(part)
+                        .into_iter()
+                        .filter(|b| self.cx.classes.class(&b.ty) == Class::Move)
+                        .map(|b| b.name),
+                );
+            } else if let Resolution::Local(b) = self.cx.m.resolution(part) {
+                out.extend(
+                    self.active
+                        .iter()
+                        .filter(|a| a.holder == b.uid && a.why == PROMISE_WHY)
+                        .flat_map(|a| a.origins.iter().map(|(p, _)| self.name_of(p.root))),
+                );
+            }
         }
-        let Resolution::Local(b) = self.cx.m.resolution(e) else {
-            return Vec::new();
-        };
-        self.active
-            .iter()
-            .filter(|a| a.holder == b.uid && a.why == PROMISE_WHY)
-            .flat_map(|a| a.origins.iter().map(|(p, _)| self.name_of(p.root)))
-            .collect()
+        out.dedup();
+        out
     }
 
     /// The resolved places of a place chain without evaluating it.
@@ -4334,6 +4342,28 @@ impl Walker<'_> {
 
 fn saved_perm(saved: &[(usize, Perm)], uid: usize) -> Option<Perm> {
     saved.iter().find(|(u, _)| *u == uid).map(|(_, p)| *p)
+}
+
+/// The expression and the value parts it builds (arguments, list and map elements, members), not
+/// the bodies of lambdas or the arms of a match.
+fn collect_parts<'e>(e: &'e Expr, out: &mut Vec<&'e Expr>) {
+    out.push(e);
+    match &e.kind {
+        ExprKind::Call { args, .. } => {
+            if !args
+                .iter()
+                .any(|a| matches!(a.value.kind, ExprKind::Lambda(_)))
+            {
+                args.iter().for_each(|a| collect_parts(&a.value, out));
+            }
+        }
+        ExprKind::List(items) => items.iter().for_each(|x| collect_parts(x, out)),
+        ExprKind::Map(entries) => entries.iter().for_each(|en| {
+            collect_parts(&en.key, out);
+            collect_parts(&en.value, out);
+        }),
+        _ => {}
+    }
 }
 
 /// How the parts of a matched or destructured value are held.
