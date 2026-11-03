@@ -4,6 +4,7 @@ use crate::stdlib::{self, StdResult};
 use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
+use crate::tytable::{TyId, TyTable};
 use ms_syntax::ast::*;
 use ms_syntax::{Diagnostic, Phase, Pos};
 use std::cell::RefCell;
@@ -223,7 +224,9 @@ pub struct Checker {
     pub(crate) methods_by_name: HashMap<(Name, Name), Vec<usize>>,
     /// Types whose own `clone` is being looked up; a recursive type meets itself through its
     /// `List[Self]` field, whose `clone` bounds ask whether the element is clonable.
-    pub(crate) clone_probes: RefCell<Vec<String>>,
+    pub(crate) clone_probes: RefCell<Vec<TyId>>,
+    /// Type identities for the visited sets and property queries of the checks below.
+    pub(crate) tys: RefCell<TyTable>,
     pub(crate) module: Option<ModRef>,
     pub(crate) names: Names,
     pub(crate) scope: Rc<Scope>,
@@ -277,6 +280,7 @@ impl Checker {
             generic_contract_methods: Vec::new(),
             methods_by_name: HashMap::new(),
             clone_probes: RefCell::new(Vec::new()),
+            tys: RefCell::new(TyTable::new()),
             module: None,
             names: Rc::new(RefCell::new(HashMap::new())),
             scope: Scope::new(None),

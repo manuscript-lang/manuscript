@@ -3,6 +3,7 @@
 use crate::checker::Checker;
 use crate::syntax::*;
 use crate::types::*;
+use crate::tytable::{TyId, TyTable};
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
@@ -103,9 +104,10 @@ fn components(edges: &HashMap<Name, Vec<Edge>>) -> HashMap<Name, usize> {
     result
 }
 
-type ApplicationKey = (Name, Vec<String>, Vec<(Name, Vec<String>)>);
+type ApplicationKey = (Name, Vec<TyId>, Vec<(Name, Vec<TyId>)>);
 
 fn application_key(
+    tys: &mut TyTable,
     id: Name,
     args: &[Ty],
     active: &HashMap<Name, Vec<Ty>>,
@@ -114,10 +116,10 @@ fn application_key(
     let mut ancestors: Vec<_> = active
         .iter()
         .filter(|(ancestor, _)| components[ancestor] == components[&id])
-        .map(|(&ancestor, args)| (ancestor, args.iter().map(type_key).collect()))
+        .map(|(&ancestor, args)| (ancestor, args.iter().map(|a| tys.shape(a)).collect()))
         .collect();
     ancestors.sort_unstable_by_key(|(id, _)| *id);
-    (id, args.iter().map(type_key).collect(), ancestors)
+    (id, args.iter().map(|a| tys.shape(a)).collect(), ancestors)
 }
 
 struct EdgeScan<'a> {
@@ -313,7 +315,7 @@ impl Checker {
         // Every active ancestor reaches this declaration. It can be reached back only
         // within the same SCC, so other ancestors cannot affect any cycle comparison.
         // Keep the complete SCC-local context: specialization alone is not sufficient.
-        let key = application_key(id, &args, active, components);
+        let key = application_key(&mut self.tys.borrow_mut(), id, &args, active, components);
         if completed.contains(&key) {
             return true;
         }
@@ -458,7 +460,7 @@ impl Checker {
         }
         // A specialization's reachable subgraph is explored once across all roots,
         // so checking N declarations is linear in the graph rather than N walks.
-        let mut visited: HashSet<String> = HashSet::new();
+        let mut visited: HashSet<TyId> = HashSet::new();
         for root in &roots {
             if !recursive.contains(root) {
                 continue;
@@ -486,14 +488,14 @@ impl Checker {
         edges: &HashMap<Name, Vec<Edge>>,
         names: &HashMap<(Name, Pos), String>,
         reported: &mut HashSet<(Name, Pos)>,
-        visited: &mut HashSet<String>,
+        visited: &mut HashSet<TyId>,
         active: &mut HashMap<Name, Vec<Ty>>,
     ) {
         // Shared dependencies need checking once for each specialization.
         // Check active cycles at the edge before consulting this cache.
         let mut probe = Type::new(id, id, Kind::Primitive);
         probe.args = args.clone();
-        if !visited.insert(type_key(&std::rc::Rc::new(probe))) {
+        if !visited.insert(self.shape(&std::rc::Rc::new(probe))) {
             return;
         }
         active.insert(id, args.clone());
