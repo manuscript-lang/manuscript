@@ -806,24 +806,17 @@ impl<'a> FnLower<'a> {
             let (a, b) = (self.duration_nanos(a)?, self.duration_nanos(b)?);
             return Ok(self.b.icmp(cc, a, b));
         }
-        let sym = if self.is_bigint(t) {
-            Some("msstd_bigint_compare")
+        let (a, b) = (self.borrow(l), self.borrow(r));
+        let c = if self.is_bigint(t) {
+            Some(self.call_runtime("msstd_bigint_compare", &[a, b], MTy::INT)?)
         } else {
-            self.ordering_symbol(t)
+            self.native_compare(t, a, b)?
         };
-        if let Some(sym) = sym {
-            let a = self.borrow(l);
-            let b = self.borrow(r);
-            let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
+        if let Some(c) = c {
             let zero = self.b.iconst(0);
             return Ok(self.b.icmp(cc, c, zero));
         }
         Err(Error::new("ordering this type is not supported yet"))
-    }
-
-    /// The runtime function ordering two values of a native record type (`-1`, `0` or `1`).
-    pub(crate) fn ordering_symbol(&self, t: MTy) -> Option<&'static str> {
-        crate::nativerec::compare_symbol(crate::nativerec::native_rec(self.b.m, t)?)
     }
 
     /// Whether `t` is the `Duration` record.
