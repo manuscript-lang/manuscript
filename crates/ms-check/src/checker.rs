@@ -222,6 +222,8 @@ pub struct Checker {
     pub(crate) result: Option<Ty>,
     pub(crate) return_inference: Option<CallbackReturns>,
     pub(crate) inference_variables: VarSet,
+    /// Callbacks whose body checks need a later result context.
+    pub(crate) deferred_callbacks: HashSet<NodeId>,
     pub(crate) checked_arguments: Option<HashMap<NodeId, CheckedArgument>>,
     /// The member expression that is a call's callee, with the call's argument count.
     pub(crate) call_arity: Option<(NodeId, usize)>,
@@ -273,6 +275,7 @@ impl Checker {
             result: None,
             return_inference: None,
             inference_variables: VarSet::new(),
+            deferred_callbacks: HashSet::new(),
             checked_arguments: None,
             call_arity: None,
             function: 0,
@@ -1123,7 +1126,7 @@ impl Checker {
                 DeclKind::Fn(_) | DeclKind::Const(_) => {
                     if let Some(s) = self.own_symbol(d) {
                         let t = s.ty();
-                        if d.is_constant() && t.result_ty().id == "<invalid>" {
+                        if d.is_constant() && t.result_ty().is_invalid() {
                             continue;
                         }
                         self.check_function(&FuncRef::of_decl(d.clone()), &t, &s.variables(), None);
@@ -1267,7 +1270,7 @@ impl Checker {
                                 b.name()
                             ),
                         );
-                    } else if t.id != "<invalid>" {
+                    } else if !t.is_invalid() {
                         self.type_error(
                             b.pos,
                             "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'",
@@ -1406,7 +1409,7 @@ impl Checker {
                         format!("extern parameter {} has type {}, which cannot cross the native boundary; a function an extern takes has at most {MAX_CALLBACK_PARAMS} parameters of sized numbers, Bool, String, Bytes or extern types this program declares, and returns a number, Bool, String, Bytes or Unit", p.name, ty.ty),
                     );
                 }
-            } else if ty.ty.id != "<invalid>" && !crosses_native(&ty.ty) {
+            } else if !ty.ty.is_invalid() && !crosses_native(&ty.ty) {
                 self.type_error(
                     p.pos,
                     format!("extern parameter {} has type {}, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, Lists of them, and functions of them", p.name, ty.ty.name),
@@ -1414,7 +1417,7 @@ impl Checker {
             }
         }
         let result = t.result_ty();
-        if result.id == "<invalid>" {
+        if result.is_invalid() {
             return;
         }
         if result.is_std("Result") && result.args.len() == 2 {
@@ -1553,7 +1556,7 @@ impl Checker {
             };
             fall = self.block(body, false).0;
         }
-        if fall && !is_test && result_ty.id != "Unit" && result_ty.id != "<invalid>" {
+        if fall && !is_test && result_ty.id != "Unit" && !result_ty.is_invalid() {
             self.type_error(
                 d.pos(),
                 format!(

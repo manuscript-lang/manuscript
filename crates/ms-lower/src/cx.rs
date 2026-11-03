@@ -337,6 +337,9 @@ impl Cx {
                     other => Err(Error::new(format!("unsupported primitive type {other}"))),
                 };
             }
+            Kind::Invalid | Kind::Inferred => {
+                return Err(Error::new(format!("unsupported primitive type {}", t.id)));
+            }
             Kind::Variable => {
                 return Err(Error::new(format!(
                     "unsubstituted type variable {}",
@@ -475,7 +478,9 @@ impl Cx {
                 m.ifaces[id.index()].methods = methods;
                 Ok(ty)
             }
-            Kind::Primitive | Kind::Variable => unreachable!("handled by lower_ty"),
+            Kind::Primitive | Kind::Invalid | Kind::Inferred | Kind::Variable => {
+                unreachable!("handled by lower_ty")
+            }
         }
     }
 

@@ -93,7 +93,7 @@ impl<'a> FnLower<'a> {
             Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
             _ => return Err(Error::new("unsupported call target")),
         };
-        if !self.dead && self.ety(e).id == "Never" {
+        if !self.dead && self.ety(e).is_never() {
             self.b.unreachable();
             self.terminated();
         }

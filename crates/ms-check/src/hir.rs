@@ -214,8 +214,10 @@ impl ModuleHir {
     }
 
     /// Checked facts of an expression.
-    pub fn info(&self, e: &Expr) -> Info {
-        self.data.facts().info(e.id).cloned().unwrap_or_default()
+    pub fn info(&self, e: &Expr) -> std::cell::Ref<'_, Info> {
+        std::cell::Ref::map(self.data.facts(), |f| {
+            f.info(e.id).unwrap_or_else(|| empty_info())
+        })
     }
 
     /// Type of an expression (`<invalid>` when unchecked).
@@ -226,16 +228,16 @@ impl ModuleHir {
     /// What a name or call expression resolves to.
     pub fn resolution(&self, e: &Expr) -> Resolution {
         let info = self.info(e);
-        if let Some(b) = info.binding {
+        if let Some(b) = info.binding.clone() {
             return Resolution::Local(b);
         }
-        if let Some(ty) = info.constructor {
+        if let Some(ty) = info.constructor.clone() {
             return Resolution::Constructor {
                 ty,
                 case: info.case,
             };
         }
-        if let Some(s) = info.symbol {
+        if let Some(s) = info.symbol.clone() {
             return match s.kind {
                 SymKind::Type => Resolution::Type(s),
                 SymKind::Fn if s.decl.as_ref().is_some_and(|d| d.is_constant()) => {
@@ -244,7 +246,7 @@ impl ModuleHir {
                 SymKind::Fn => Resolution::Function(s),
             };
         }
-        if let Some(m) = info.method {
+        if let Some(m) = info.method.clone() {
             return Resolution::Method(m);
         }
         match info.native {
@@ -284,14 +286,14 @@ impl ModuleHir {
         Some(CallView {
             target: self.resolution(e),
             arguments,
-            type_args: info.type_args,
+            type_args: info.type_args.clone(),
             constant_use,
         })
     }
 
     /// Variables a lambda captures (snapshotted at creation).
     pub fn captures(&self, lambda: &Expr) -> Vec<BindingRef> {
-        self.info(lambda).captures
+        self.info(lambda).captures.clone()
     }
 
     /// Parameter bindings of a lambda.
@@ -353,4 +355,12 @@ impl ModuleHir {
     pub fn type_ref(&self, id: NodeId) -> Option<Ty> {
         self.data.facts().type_refs.get(&id).cloned()
     }
+}
+
+/// The fact of an unchecked expression.
+fn empty_info() -> &'static Info {
+    thread_local! {
+        static EMPTY: &'static Info = Box::leak(Box::default());
+    }
+    EMPTY.with(|e| *e)
 }
