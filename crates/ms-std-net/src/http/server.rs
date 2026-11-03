@@ -296,8 +296,10 @@ impl Reactor {
             let limit = -1;
             let job = Box::into_raw(Box::new(Job { conn }));
             // SAFETY: `request_task` takes back the boxed job leaked here.
+            server.st.borrow_mut().running += 1;
             let started = unsafe { server.scope.spawn(request_task, job.cast(), limit) };
             if started.is_none() {
+                server.st.borrow_mut().running -= 1;
                 // SAFETY: the scope is closed, so the task never runs; the job is still ours.
                 drop(unsafe { Box::from_raw(job) });
             }
@@ -374,6 +376,8 @@ unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
     if shield {
         rt::stop_unshield();
     }
+    server.st.borrow_mut().running -= 1;
+    server.note_drain_progress();
 }
 
 /// Body of the reactor task: serve events until the program is cancelled.
@@ -571,6 +575,8 @@ struct ServerSt {
     waiters: Vec<u64>,
     /// Token of the task in [`Server::serve_connection`], posted when a connection ends.
     idle_waiter: Option<u64>,
+    /// Request tasks started and not yet ended; a hijacked connection (WebSocket) outlives its entry in `conns` through one.
+    running: usize,
     /// Token of a close waiting for responses to finish, posted when a connection closes or
     /// goes idle.
     draining: Option<u64>,
@@ -630,6 +636,7 @@ impl Server {
                 closed: false,
                 waiters: Vec::new(),
                 idle_waiter: None,
+                running: 0,
                 draining: None,
             }),
             token,
@@ -665,7 +672,7 @@ impl Server {
         self.adopt(raw);
         let token = rt::Token::new();
         self.st.borrow_mut().idle_waiter = Some(token.id());
-        while !self.st.borrow().conns.is_empty() {
+        while self.busy() {
             if token.park(-1) & 16 != 0 {
                 self.st.borrow_mut().idle_waiter = None;
                 rt::acknowledge_cancel();
@@ -675,6 +682,12 @@ impl Server {
         }
         self.st.borrow_mut().idle_waiter = None;
         self.close_inner();
+    }
+
+    /// Whether a connection is open or a request task still runs.
+    fn busy(&self) -> bool {
+        let st = self.st.borrow();
+        !st.conns.is_empty() || st.running > 0
     }
 
     pub fn id(&self) -> usize {

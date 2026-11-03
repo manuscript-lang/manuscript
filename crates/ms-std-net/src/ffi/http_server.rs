@@ -194,10 +194,11 @@ native! {
         }
     }
 
-    /// Closes the connections of serving `id` that were accepted and never served.
+    /// Closes the listener of serving `id` and the connections accepted and never served.
     fn msstd_http_serving_release(id: i64) -> () {
         // SAFETY: as above.
         let serving = unsafe { Serving::get(id) };
+        serving.listener.close();
         crate::conn::release_unadopted(serving.listener.owner_key());
     }
 
