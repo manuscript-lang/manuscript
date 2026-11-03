@@ -248,3 +248,18 @@ Resident memory after 64 `/io` connections, one serving thread: 8 MB after `/hea
 | 10,000 | 16.8k, 16.5k | 19.5k, 17.6k | 757, 722 ms | 641, 689 ms |
 
 Same load against the other servers (2 threads, same VM): 1,000 connections hyper 104k–111k req/s (p99 35–41 ms) and Go 56k (32–38 ms); 10,000 connections hyper 76k–82k (444–517 ms) and Go 38k–42k (436–715 ms). Manuscript is ahead of both at 1,000 connections and 4x behind hyper at 10,000. At 10,000 the profile no longer shows `work_over`; `strace -c` shows about one `munmap` and one `mprotect` per request: once more than 1,024 request tasks are in flight, finished task stacks are unmapped (`STACK_POOL`) and new ones are mapped, guarded and faulted in again. That is the next cliff.
+
+## 2026-11-03, task stack pool at 10,000 connections
+
+Once more than `STACK_POOL` (1,024) request tasks were in flight, every finished stack was unmapped and every new task mapped, guarded and faulted in a stack again (about one `munmap` and one `mprotect` per request, 3.5 minor faults per request, 9k–16k live mappings). The pool now holds up to 65,536 stacks, and when the scheduler is about to block it returns the pages of all but the newest 256 pooled stacks once (`trim_idle_stacks`), so a quiet server goes back to its working set. `/health`, 2 threads, shared 4-CPU VM, two rounds (before, after):
+
+| Measurement | Before | After |
+| --- | ---: | ---: |
+| 10,000 connections, req/s | 22.6k, 20.3k | 59.6k, 56.3k |
+| 10,000 connections, p50 | 528, 551 ms | 122, 131 ms |
+| 10,000 connections, p99 | 677, 681 ms | 666, 272 ms |
+| 1,000 connections, req/s | 77k, 87k | 84k, 91k |
+| Resident memory under 10,000 connections | 72 MB | 190–227 MB |
+| Resident memory 3 s after the load | 72 MB | 35 MB |
+
+hyper on the same VM: 76k–82k req/s at 10,000 connections, p50 17–21 ms. Peak memory is higher because 7,000 or so request tasks are alive at once, each with its touched stack pages; before, the same tasks existed but their stacks were remapped each time. This does not change the number of live tasks or the 2-mappings-per-task limit (#2483), which the growable-task work addresses.
