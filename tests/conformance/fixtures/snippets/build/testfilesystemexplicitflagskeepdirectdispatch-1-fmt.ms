@@ -4,7 +4,7 @@
 import copy, CopyOptions, create_directory, remove, write_file from "@std/os/fs.ms"
 
 fn explicit() Unit:
-    let _ = write_file("", "", false)
+    let _ = write_file("", "", false).wait()
     let _ = copy("", "", CopyOptions(replace: true))
     let _ = copy("", "", CopyOptions(recursive: true, max_bytes: 3))
     let _ = create_directory("", true)

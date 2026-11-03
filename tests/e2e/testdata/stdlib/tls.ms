@@ -26,10 +26,11 @@ import Listener, Connection from "@std/net/net.ms"
 import certificate, private_key from "./support/certificates.ms"
 
 fn hello(exchange: HttpExchange) Unit!:
-    let _started = try exchange.send_headers(
+    var live = exchange
+    let _started = try live.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
-    let _written = (try http_result(exchange.write("secure")))
+    let _written = (try http_result(live.write("secure")))
     return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
@@ -118,10 +119,11 @@ test "HTTPS trusts only the explicitly supplied local test root":
     )
 
 fn report_protocol(exchange: HttpExchange) Unit!:
-    let _started = try exchange.send_headers(
+    var live = exchange
+    let _started = try live.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
-    let _written = (try http_result(exchange.write(exchange.protocol())))
+    let _written = (try http_result(live.write(live.protocol())))
     return ok(unit)
 
 test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":

@@ -103,7 +103,7 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(Error("missing path", kind: ErrorCategory.InvalidInput))
-    let text = try read_file(path, max_bytes: 1048576)
+    let text = try read_file(path, max_bytes: 1048576).wait()
         | .decode_utf8().ok_or(Error("not UTF-8", kind: ErrorCategory.InvalidData))
         | try
     try stdout().write(text)
@@ -133,7 +133,7 @@ import read_file, write_file from "@std/os/fs.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(Error("missing path", kind: ErrorCategory.InvalidInput))
-    return write_file(path, "saved notes\n", replace: false)
+    return write_file(path, "saved notes\n", replace: false).wait()
 
 export fn main() Int:
     if run().is_error():
@@ -281,7 +281,7 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
     let url = try arguments().first().ok_or(Error("missing URL", kind: ErrorCategory.InvalidInput))
-    let response = try fetch(url, FetchOptions(max_response_bytes: 1048576))
+    let response = try fetch(url, FetchOptions(max_response_bytes: 1048576)).wait()
     try response.check_status()
     let text = try response.text()
     try stdout().write(text)

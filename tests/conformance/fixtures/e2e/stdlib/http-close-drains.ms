@@ -13,18 +13,18 @@ fn send(var conn: Connection, text: String) Unit!:
     return conn.output.flush().wait()
 
 fn handle(request: HttpRequest) HttpResponse:
-    sleep(nanoseconds(300000000))
+    let _ = sleep(nanoseconds(300000000)).wait()
     return HttpResponse(200, headers(), "done\n".to_bytes())
 
 export fn main() Int:
     if let acquired = serve(address: "127.0.0.1:0", handler: buffered(handle)):
         var server = acquired
 
-        if var conn = connect(server.address()):
+        if var conn = connect(server.address()).wait():
             let _sent = send(var conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
             // Let the handler start.
-            sleep(nanoseconds(50000000))
+            let _ = sleep(nanoseconds(50000000)).wait()
 
             let start = monotonic_time()
             server.close().get(none)

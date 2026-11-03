@@ -15,7 +15,7 @@ type Failure:
 // Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for State:
     var fn close() Unit!:
-        let _written = write_file(self.marker, "closed", true)
+        let _written = write_file(self.marker, "closed", true).wait()
         return ok(unit)
 
 fn operation(var state: State, fail: Bool) Unit!Failure:
@@ -38,7 +38,7 @@ fn widened(var state: State) Int!:
     return ok(0)
 
 fn closed(marker: String) Bool:
-    return read_file(marker).is_ok()
+    return read_file(marker).wait().is_ok()
 
 test "standalone try evaluates once and continues on Unit success":
     let temporary = temporary("manuscript-try-") | try expect_ok

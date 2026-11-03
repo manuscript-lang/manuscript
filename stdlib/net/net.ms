@@ -906,7 +906,7 @@ fn accept_loop(listening: ServingHandle) Unit!:
             if accepted.err().kind == ErrorCategory.Closed:
                 return ok(unit)
 
-            let _ = sleep(50.milliseconds).wait()
+            sleep(50.milliseconds).wait().get(unit)
             continue
 
         let raw = accepted.get()

@@ -71,7 +71,8 @@ test "one header type preserves repeated values through buffered requests":
     )
 
 fn echo_headers(exchange: HttpExchange) Unit!:
-    let received = exchange.headers()
+    var live = exchange
+    let received = live.headers()
     if received.values("X-DUP") != ["first", "second"]: return error(
         Error("HTTP: invalid data", kind: ErrorCategory.InvalidData)
     )
@@ -79,7 +80,7 @@ fn echo_headers(exchange: HttpExchange) Unit!:
     var output = received.clone()
     let _removed_connection = output.remove("Connection")
     let _removed_length = output.remove("Content-Length")
-    return exchange.send_headers(status: 200, headers: output)
+    return live.send_headers(status: 200, headers: output)
 
 test "streaming proxy uses the same byte-valued header type":
     let server = serve(

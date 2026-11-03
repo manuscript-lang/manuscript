@@ -10,7 +10,7 @@ with `jitter` the wait is a random share of that, so many callers do not retry i
 
 ```manuscript
 let policy = RetryPolicy(attempts: 5, delay: milliseconds(50))
-let body = retry(policy, fn attempt: fetch(url))
+let body = retry(policy, fn attempt: fetch(url).wait())
 ```
 */
 export type RetryPolicy:
@@ -80,7 +80,7 @@ A token bucket: holds up to `burst` tokens and gains one every `interval`. Each 
 var limiter = rate_limiter(10, burst: 20)
 for url in urls:
     limiter.acquire()
-    fetch(url)
+    fetch(url).wait()
 ```
 */
 export type RateLimiter:
