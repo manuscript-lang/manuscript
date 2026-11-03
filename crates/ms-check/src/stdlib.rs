@@ -85,12 +85,6 @@ fn world<R>(f: impl FnOnce(&mut World) -> R) -> R {
     WORLD.with(|w| f(&mut w.borrow_mut()))
 }
 
-/// The primitive types whose operations the `<Type>Operations` interfaces of `intrinsics.ms` declare.
-const INTRINSIC_RECEIVERS: &[&str] = &[
-    "Float", "Float32", "Int", "Int16", "Int32", "Int8", "String", "UInt16", "UInt32", "UInt64",
-    "UInt8",
-];
-
 /// The generated runtime signature table; its `@keeps` and `@owns` flags come from the `// ms:` comments
 /// in the runtime source.
 const RUNTIME_SYMBOLS: &str = include_str!("../../ms-lower/rt_symbols.txt");
@@ -116,7 +110,8 @@ pub fn keeps_callbacks(native: &str) -> bool {
     runtime_flag(native, "keeps")
 }
 
-/// Native types that declare fields, so they cannot be written `extern type`.
+/// Native types that declare fields, so they cannot be written `extern type`. A record in a native
+/// module is otherwise an ordinary record (`Error`), so the runtime's own `List` is named here.
 const NATIVE_WITH_FIELDS: &[&str] = &["List"];
 
 // -------------------------------------------------------------------- queries
@@ -1415,12 +1410,12 @@ impl Loader<'_> {
                 text.join("; ")
             ));
         }
-        for receiver in INTRINSIC_RECEIVERS {
+        // A primitive type's operations are the `<Type>Operations` interface `intrinsics.ms` declares.
+        for receiver in PRIMITIVE_NAMES {
             let name = format!("{receiver}Operations");
-            let Some(typ) = world(|w| w.symbols.get(&n(&name)).cloned()) else {
-                return Err(format!("missing intrinsic receiver declaration {name}"));
-            };
-            world(|w| w.intrinsic.insert(n(receiver), typ.ty()));
+            if let Some(typ) = world(|w| w.symbols.get(&n(&name)).cloned()) {
+                world(|w| w.intrinsic.insert(n(receiver), typ.ty()));
+            }
         }
         Ok(())
     }
