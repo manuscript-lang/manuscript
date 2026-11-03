@@ -26,7 +26,7 @@ pub struct Variant {
 pub struct InstKey {
     pub file: ms_check::types::Name,
     pub node: NodeId,
-    pub subst: Vec<(ms_check::types::Name, String)>,
+    pub subst: Vec<(ms_check::types::Name, ms_check::tytable::TyId)>,
     pub variant: Variant,
 }
 
@@ -191,12 +191,20 @@ pub struct Job {
 
 /// Whole-program lowering context.
 pub struct Cx {
+    /// `MS_STRICT_COPIES=1`: an owning position that receives a borrowed place is an error.
+    pub strict_copies: bool,
+    /// Lowering sites that copied a borrow into an owning position, with the producer op.
+    pub copy_gaps: Vec<String>,
     /// Module queries by file.
     pub mods: HashMap<Name, Rc<ModuleHir>>,
     /// Callables by (module file, declaration or method node id).
     pub callables: HashMap<(Name, NodeId), Rc<Callable>>,
     /// MIR types by checker type key.
-    pub tycache: HashMap<String, MTy>,
+    pub tycache: Vec<Option<MTy>>,
+    /// Checker type identities, interned on demand while lowering.
+    pub tys: ms_check::tytable::TyTable,
+    /// The runtime's raw `fs` info record, once built.
+    pub fs_info_raw: Option<MTy>,
     /// Function instances by key.
     pub insts: HashMap<InstKey, FuncId>,
     /// Bodies waiting to be lowered.
@@ -273,6 +281,21 @@ pub struct Cx {
 }
 
 impl Cx {
+    /// Fails when strict mode recorded an implicit copy of a borrow.
+    pub fn check_strict_copies(&self) -> Result<(), crate::Error> {
+        if self.copy_gaps.is_empty() {
+            return Ok(());
+        }
+        let mut sites = self.copy_gaps.clone();
+        sites.sort();
+        let total = sites.len();
+        sites.dedup();
+        Err(crate::Error::new(format!(
+            "internal: {total} implicit copies of a borrow at {}",
+            sites.join(", ")
+        )))
+    }
+
     /// The binding is a `var` borrow: it lowers as a path into its origin.
     pub fn exclusive(&self, uid: usize) -> bool {
         self.borrows.get(&uid) == Some(&BorrowKind::Exclusive)
@@ -302,6 +325,8 @@ impl Cx {
             .map(|m| m.receiver.id)
             .collect();
         Cx {
+            strict_copies: std::env::var_os("MS_STRICT_COPIES").is_some(),
+            copy_gaps: Vec::new(),
             extended,
             scope_names: Vec::new(),
             mods,
@@ -310,7 +335,9 @@ impl Cx {
             source_tys: HashMap::new(),
             native_ops,
             glue_seen: Default::default(),
-            tycache: HashMap::new(),
+            tycache: Vec::new(),
+            tys: Default::default(),
+            fs_info_raw: None,
             insts: HashMap::new(),
             queue: Vec::new(),
             opaque_tys: Default::default(),
@@ -383,11 +410,11 @@ impl Cx {
             }
             _ => {}
         }
-        let key = ct::lowering_key(t);
-        if let Some(found) = self.tycache.get(&key) {
+        let key = self.tys.intern(t);
+        if let Some(Some(found)) = self.tycache.get(key.index()) {
             return Ok(*found);
         }
-        let out = self.lower_ty_uncached(m, t, &key)?;
+        let out = self.lower_ty_uncached(m, t, key)?;
         if matches!(
             m.types.kind(out),
             ms_mir::types::TyKind::Rec(_)
@@ -400,11 +427,24 @@ impl Cx {
             // `Optional`, `List` or `Map` of a resource is one too.
             self.source_tys.entry(out).or_insert_with(|| t.clone());
         }
-        self.tycache.insert(key, out);
+        self.set_lowered(key, out);
         Ok(out)
     }
 
-    fn lower_ty_uncached(&mut self, m: &mut Module, t: &ct::Ty, key: &str) -> Result<MTy, Error> {
+    fn set_lowered(&mut self, key: ms_check::tytable::TyId, ty: MTy) {
+        if self.tycache.len() <= key.index() {
+            self.tycache
+                .resize(self.tys.len().max(key.index() + 1), None);
+        }
+        self.tycache[key.index()] = Some(ty);
+    }
+
+    fn lower_ty_uncached(
+        &mut self,
+        m: &mut Module,
+        t: &ct::Ty,
+        key: ms_check::tytable::TyId,
+    ) -> Result<MTy, Error> {
         match t.kind {
             Kind::Function => {
                 let mut params = Vec::new();
@@ -443,7 +483,7 @@ impl Cx {
                 } else {
                     None
                 };
-                self.tycache.insert(key.to_string(), ty);
+                self.set_lowered(key, ty);
                 if t.opaque_module().is_some() {
                     self.opaque_tys.insert(ty);
                 }
@@ -457,7 +497,7 @@ impl Cx {
             }
             Kind::Alternative => {
                 let (id, ty) = m.add_alt(&t.to_string(), Vec::new());
-                self.tycache.insert(key.to_string(), ty);
+                self.set_lowered(key, ty);
                 if t.opaque_module().is_some() {
                     self.opaque_tys.insert(ty);
                 }
@@ -487,7 +527,7 @@ impl Cx {
                     methods: Vec::new(),
                 });
                 let ty = m.types.iface(id);
-                self.tycache.insert(key.to_string(), ty);
+                self.set_lowered(key, ty);
                 self.contracts.insert(id, t.clone());
                 let mut subst = ct::substitution(t);
                 // `Self` in an operation is the interface value itself.

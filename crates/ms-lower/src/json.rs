@@ -75,7 +75,7 @@ impl Cx {
         let key = format!(
             "json-{}:{}",
             if encode { "enc" } else { "dec" },
-            ct::type_key(t)
+            self.tys.shape(t).index()
         );
         if let Some(f) = self.helpers.get(&key) {
             return Ok(*f);
@@ -1161,13 +1161,14 @@ impl FnLower<'_> {
     }
 
     /// The `to_json` of the type's `JsonEncode` implementation, when it has one.
-    fn json_encode_impl(&self, t: &ct::Ty) -> Option<Rc<ms_check::hir::Callable>> {
-        let key = ct::type_key(t);
+    fn json_encode_impl(&mut self, t: &ct::Ty) -> Option<Rc<ms_check::hir::Callable>> {
+        let key = self.cx.tys.shape(t);
+        let tys = &mut self.cx.tys;
         let m = self.cx.methods.iter().find(|m| {
             m.contract
                 .as_ref()
                 .is_some_and(|c| c.is_source_type("@std/data/json.ms", "JsonEncode"))
-                && ct::type_key(&m.receiver) == key
+                && tys.shape(&m.receiver) == key
         })?;
         let decl = m.decl.as_ref()?;
         self.callable_of_decl(m.module, Some(decl.id())).ok()
@@ -1494,7 +1495,7 @@ impl FnLower<'_> {
     /// `ctor(kind, payload, out)` moves the payload (`Bool` byte, `String`, list or map) into a
     /// new value of the case of that node kind written at `out`.
     fn json_tree_ctor(&mut self, t: &ct::Ty, mt: MTy) -> Result<FuncId, Error> {
-        let key = format!("json-tree:{}", ct::type_key(t));
+        let key = format!("json-tree:{}", self.cx.tys.shape(t).index());
         if let Some(f) = self.cx.helpers.get(&key) {
             return Ok(*f);
         }
@@ -1576,7 +1577,7 @@ impl FnLower<'_> {
     /// (a list or a map, whose members the runtime visits next). The one dispatch on the case
     /// is the thunk's; the runtime loop has none.
     fn json_tree_view(&mut self, t: &ct::Ty, mt: MTy) -> Result<FuncId, Error> {
-        let key = format!("json-tree-view:{}", ct::type_key(t));
+        let key = format!("json-tree-view:{}", self.cx.tys.shape(t).index());
         if let Some(f) = self.cx.helpers.get(&key) {
             return Ok(*f);
         }

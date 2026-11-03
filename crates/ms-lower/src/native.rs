@@ -1216,10 +1216,11 @@ impl<'a> FnLower<'a> {
             (_, "to_string") if m.receiver.is_time("Duration") => self.duration_text(recv),
             (_, "to_string") => self.format_value(recv),
             (_, "clone") => {
-                let v = self.owned(Val {
-                    v: recv.v,
-                    own: false,
-                });
+                let v = if self.needs_drop(self.ty_of(recv.v)) {
+                    self.clone_value(recv.v)
+                } else {
+                    recv.v
+                };
                 if recv.own {
                     self.drop_value(recv.v);
                 }
@@ -2379,9 +2380,7 @@ impl<'a> FnLower<'a> {
                     Ok(None)
                 },
                 &mut |s| {
-                    let p = s.b.alt_get(alt, err, 0, r);
-                    let o = s.owned(Val { v: p, own: false });
-                    s.finish(recv);
+                    let o = s.take_alt_field(alt, err, 0, recv);
                     Ok(Some(o))
                 },
             ),
@@ -2491,10 +2490,8 @@ impl<'a> FnLower<'a> {
                         Ok(Some(v))
                     },
                     &mut |s| {
-                        let p = s.b.alt_get(alt, err, 0, r);
-                        let po = s.owned(Val { v: p, own: false });
+                        let po = s.take_alt_field(alt, err, 0, recv);
                         let v = s.b.alt_new(oa, out_err, &[po]);
-                        s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
