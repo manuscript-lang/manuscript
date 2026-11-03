@@ -146,11 +146,6 @@ pub unsafe fn promise_start(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *m
     unsafe { ms_rt::promise::start_native(entry, arg) }
 }
 
-/// Whether the work of promise `id` is over, without letting other tasks run.
-pub fn promise_over(id: i64) -> bool {
-    ms_rt::promise::work_over(id)
-}
-
 /// Asks the promise `id` to stop at its next wait.
 pub fn promise_cancel(id: i64) {
     ms_rt::promise::cancel(id)

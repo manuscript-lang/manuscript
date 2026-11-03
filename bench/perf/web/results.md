@@ -236,3 +236,15 @@ Same server source on the pre-change integration head `d34af765` and the no-refc
 Revision `a460b7ef`, shared 4-CPU Linux VM, `/health` with 64 connections, 4 s, servers unpinned. Server CPU per request (user + system from `/proc/<pid>/stat`): Manuscript with 2 threads 15.1 µs (93k–104k req/s over two runs), hyper 12.3 µs (105k–114k req/s). System time is equal (about 8.5 µs); user time is 5.7 µs against 3.8 µs. The earlier 89k against 124k–143k came from a run where the servers shared cores with the load generator, and is not a stable gap.
 
 Resident memory after 64 `/io` connections, one serving thread: 8 MB after `/health`, 111 MB after `/io`, flat afterwards. Cause and rejected allocator changes: [wiki](../../../wiki/benchmarks-and-performance/freed-large-blocks-stay-resident-after-an-io-burst.md).
+
+## 2026-11-03, handler sweep and many connections
+
+`HttpServer` swept every live handler promise once per ready request, so a round cost (ready requests × running handlers). Handler promises now sit in a slab, and a finished request task reports its slot, so a sweep touches only tasks that finished. `/health`, 2 threads, 4 s, shared 4-CPU VM, unpinned, two rounds each (before, after):
+
+| Connections | req/s before | req/s after | p99 before | p99 after |
+| --- | ---: | ---: | ---: | ---: |
+| 64 | 113k, 111k | 122k, 115k | 3.4, 3.6 ms | 3.2, 4.4 ms |
+| 1,000 | 84k, 79k | 91k, 92k | 25, 27 ms | 23, 23 ms |
+| 10,000 | 16.8k, 16.5k | 19.5k, 17.6k | 757, 722 ms | 641, 689 ms |
+
+Same load against the other servers (2 threads, same VM): 1,000 connections hyper 104k–111k req/s (p99 35–41 ms) and Go 56k (32–38 ms); 10,000 connections hyper 76k–82k (444–517 ms) and Go 38k–42k (436–715 ms). Manuscript is ahead of both at 1,000 connections and 4x behind hyper at 10,000. At 10,000 the profile no longer shows `work_over`; `strace -c` shows about one `munmap` and one `mprotect` per request: once more than 1,024 request tasks are in flight, finished task stacks are unmapped (`STACK_POOL`) and new ones are mapped, guarded and faulted in again. That is the next cliff.
