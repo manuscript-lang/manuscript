@@ -725,6 +725,18 @@ pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi
     unsafe { start_on(id, work, false) }
 }
 
+/// Starts `work` as the task of promise `id`, on the calling thread and never elsewhere. For an I/O operation run as a
+/// task (a fetch, a connect, a file read): it only waits, so it gains nothing from another thread, and its native
+/// handles stay on the thread that made them. Otherwise as `msrt_promise_start`.
+///
+/// # Safety
+/// `work` is a live closure object.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_promise_start_here(id: i64, work: *mut ms_rt_abi::Closure) {
+    // SAFETY: forwarded contract.
+    unsafe { start_on(id, work, true) }
+}
+
 /// Starts `work` as the task of promise `id`, on this thread when `here` or when a live native
 /// stream is pinned to it, else where the runtime picks.
 ///
