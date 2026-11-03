@@ -254,7 +254,10 @@ impl Verifier<'_> {
                     if !family.contains(a) {
                         continue;
                     }
-                    let promise_entry = inst.op == Op::Call
+                    // A call to a function that keeps its closures, or the closure such a
+                    // function builds around one (it can be inlined into this frame), is held by
+                    // the checker until the promise is dropped.
+                    let promise_entry = matches!(inst.op, Op::Call | Op::ClosureNew)
                         && matches!(inst.imm, Imm::Func(g) if self.m.funcs[g.index()].keeps_scoped);
                     let keeps = match inst.op {
                         _ if promise_entry => false,

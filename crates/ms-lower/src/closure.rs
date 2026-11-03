@@ -122,6 +122,8 @@ impl FnLower<'_> {
         let mut f = ms_mir::ir::Func::new("<anonymous>", ps, ret);
         f.kind = FuncKind::Closure { captures: cap_tys };
         f.scoped = scoped;
+        // A closure made inside a function that keeps scoped closures is what keeps them.
+        f.keeps_scoped = self.b.func_mut().keeps_scoped;
         f.capture_closers = closers;
         let id = self.b.m.add_func(f);
         let _ = lam;
@@ -1495,6 +1497,7 @@ pub(crate) fn build_lambda(
     let mut b = FuncBuilder::new(m, "<anonymous>", proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     b.func_mut().scoped = proto.scoped;
+    b.func_mut().keeps_scoped = proto.keeps_scoped;
     b.func_mut().capture_closers = proto.capture_closers.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), job.subst.clone(), file, proto.ret);
     let result = lower_lambda_body(&mut fl, job, &captures);

@@ -863,7 +863,8 @@ pub struct Func {
     /// or returned, and the verifier rejects code that does.
     pub scoped: bool,
     /// A function that starts a promise from the closures it is given: it keeps them past its call, which
-    /// is sound because the checker holds what they borrow until the promise is dropped.
+    /// is sound because the checker holds what they borrow until the promise is dropped. Closures built
+    /// inside such a function carry the flag too, so inlining it keeps them valid in the caller.
     pub keeps_scoped: bool,
     /// A cleanup closer that acts only while a cancellation or fault unwinds a guarded task
     /// (see `unwind`). Registering it is skipped when no guard is open, where it would do nothing.

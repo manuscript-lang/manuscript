@@ -417,6 +417,8 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     // A lending function returns references as they are; `emit_return` reads the flag.
     fl.b.func_mut().ret_borrowed = proto.ret_borrowed;
     fl.b.func_mut().ret_view = proto.ret_view;
+    // Closures made here inherit the flag (see `lambda`).
+    fl.b.func_mut().keeps_scoped = proto.keeps_scoped;
     let result = fl.lower_callable(&c);
     let mut func = fl.b.into_func();
     result?;
@@ -424,10 +426,6 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     func.ret_borrowed = proto.ret_borrowed;
     func.ret_view = proto.ret_view;
     func.keeps_scoped = proto.keeps_scoped;
-    if proto.keeps_scoped {
-        // Inlining would move the closure it keeps into its caller's frame, where it cannot be kept.
-        func.inline = ms_mir::ir::InlineHint::Never;
-    }
     func.compact_blocks();
     m.funcs[job.func.index()] = func;
     Ok(())

@@ -296,13 +296,7 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
             };
             let gi = g.index();
             let callee = &m.funcs[gi];
-            // A callee that keeps a scoped closure (it starts a promise on it) stays a call: inlined,
-            // its closure would keep the scoped one, which the verifier rejects.
-            if gi == fi
-                || cyc[gi]
-                || callee.keeps_scoped
-                || !matches!(callee.kind, FuncKind::Normal)
-            {
+            if gi == fi || cyc[gi] || !matches!(callee.kind, FuncKind::Normal) {
                 continue;
             }
             let size = callee.inst_count();
