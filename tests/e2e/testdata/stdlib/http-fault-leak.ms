@@ -19,11 +19,9 @@ test "a faulting handler releases the values its frames own":
 
     for i in 0..60:
         var client = connect(server.address(), 2.seconds) | try expect_ok
-        client.write(
-            "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n", 2.seconds
-        ) | try expect_ok
+        try send(var client, "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
 
-        let reply_bytes = recv(var client, 3.seconds) | try expect_ok
+        let reply_bytes = try recv(var client, 3.seconds)
         let head = reply_bytes.get(Bytes([])).decode_utf8().get("")
         if not head.starts_with("HTTP/1.1 500"): return error(Error(head))
 

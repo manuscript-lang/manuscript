@@ -12,7 +12,7 @@ import (
     HttpClientOptions,
     HttpServerOptions
 ) from "@std/net/http.ms"
-import read_all from "@std/io/io.ms"
+import read_to_end from "./support/conn.ms"
 import http_client, serve from "@std/net/net.ms"
 import create, Transport from "@std/log.ms"
 import append_file, read_file, temporary from "@std/os/fs.ms"
@@ -24,7 +24,6 @@ import (
     Router,
     with_request_headers
 ) from "@std/net/router.ms"
-import body_stream from "@std/net/http.ms"
 
 fn get(path: String) HttpRequest:
     return request(HttpMethod.Get, path)
@@ -114,12 +113,12 @@ test "a streaming GET route answers HEAD, dropping the body writes":
 
     let server = try serve("127.0.0.1:0", r.handler(), HttpServerOptions())
     let client = try http_client(HttpClientOptions())
-    let over_socket = try client.request(
+    var over_socket = try client.request(
         HttpMethod.Head, "http://{server.address()}/s", headers()
     )
-    try expect_equal(over_socket.metadata().status, 200)
+    try expect_equal(over_socket.metadata.status, 200)
 
-    let rest = try read_all(body_stream(over_socket))
+    let rest = try read_to_end(var over_socket.body)
     try expect_equal(rest.length(), 0)
 
 test "the first matching route wins":
@@ -301,18 +300,18 @@ test "the router serves over a socket":
     let handler = router().handler()
     let server = try serve("127.0.0.1:0", handler, HttpServerOptions())
     let client = try http_client(HttpClientOptions())
-    let response = try client.request(
+    var response = try client.request(
         HttpMethod.Get, "http://{server.address()}/users/9", headers()
     )
-    try expect_equal(response.metadata().status, 200)
+    try expect_equal(response.metadata.status, 200)
 
-    let body = try read_all(body_stream(response))
+    let body = try read_to_end(var response.body)
     try expect_equal(body.decode_utf8().get(""), "9|-")
 
     let missing = try client.request(
         HttpMethod.Delete, "http://{server.address()}/users", headers()
     )
-    try expect_equal(missing.metadata().status, 405)
+    try expect_equal(missing.metadata.status, 405)
 
 test "mount places a router under a prefix with its own middleware":
     var api = Router()

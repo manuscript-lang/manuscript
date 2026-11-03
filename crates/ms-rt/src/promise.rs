@@ -775,7 +775,8 @@ fn run_deferred(id: i64, deadline: Option<i64>) {
     let closure = core::mem::take(&mut t.retry_state[i]) as *mut ms_rt_abi::Closure;
     // Waits inside the work stop at the waiter's deadline: the work runs on this stack, so only
     // its own waits can notice the limit.
-    let earlier = task::set_defer_deadline(deadline.map_or(i64::MAX, |d| d.min(task::defer_deadline())));
+    let earlier =
+        task::set_defer_deadline(deadline.map_or(i64::MAX, |d| d.min(task::defer_deadline())));
     // SAFETY: the reference taken in `msrt_promise_defer` is ours; the code is the closure's entry.
     unsafe {
         let code: unsafe extern "C-unwind" fn(*mut ms_rt_abi::Closure) =
