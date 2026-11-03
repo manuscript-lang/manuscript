@@ -209,7 +209,7 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
 pub unsafe extern "C-unwind" fn msrt_promise_put(
     id: i64,
     value: *mut u8,
-    d: *const TypeDesc,
+    d: ms_rt_abi::ValueDesc,
     failed: i64,
 ) {
     // SAFETY: forwarded contract.
@@ -404,7 +404,7 @@ fn wake(t: &mut Table, i: usize) {
 /// # Safety
 /// `out` is writable memory for a value of `d`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_promise_take(id: i64, d: *const TypeDesc, out: *mut u8) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_promise_take(id: i64, d: ms_rt_abi::ValueDesc, out: *mut u8) -> u8 {
     let t = table();
     let Some(i) = index(t, id) else { return 0 };
     let r = core::mem::replace(&mut t.result[i], NO_RESULT);
@@ -775,7 +775,8 @@ fn run_deferred(id: i64, deadline: Option<i64>) {
     let closure = core::mem::take(&mut t.retry_state[i]) as *mut ms_rt_abi::Closure;
     // Waits inside the work stop at the waiter's deadline: the work runs on this stack, so only
     // its own waits can notice the limit.
-    let earlier = task::set_defer_deadline(deadline.map_or(i64::MAX, |d| d.min(task::defer_deadline())));
+    let earlier =
+        task::set_defer_deadline(deadline.map_or(i64::MAX, |d| d.min(task::defer_deadline())));
     // SAFETY: the reference taken in `msrt_promise_defer` is ours; the code is the closure's entry.
     unsafe {
         let code: unsafe extern "C-unwind" fn(*mut ms_rt_abi::Closure) =

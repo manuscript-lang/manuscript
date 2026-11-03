@@ -696,7 +696,7 @@ pub unsafe extern "C-unwind" fn msrt_map_new(out: *mut MapVal) {
 /// `kd` and its nested descriptors and callbacks must be static.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_map_stamp(m: *mut MapVal, kd: *const TypeDesc) {
+pub unsafe extern "C-unwind" fn msrt_map_stamp(m: *mut MapVal, kd: KeyDesc) {
     // SAFETY: `m` is a live map; descriptors are static.
     unsafe {
         if (*m).desc.is_null() {
@@ -707,11 +707,7 @@ pub unsafe extern "C-unwind" fn msrt_map_stamp(m: *mut MapVal, kd: *const TypeDe
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_map_drop(
-    m: *mut MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
-) {
+pub unsafe extern "C-unwind" fn msrt_map_drop(m: *mut MapVal, kd: KeyDesc, vd: ValDesc) {
     let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe { drop_map(m, &*kd, opt(vd)) }
@@ -721,8 +717,8 @@ pub unsafe extern "C-unwind" fn msrt_map_drop(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_copy(
     m: *const MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     out: *mut MapVal,
 ) {
     let kd = key_desc(m, kd);
@@ -733,12 +729,7 @@ pub unsafe extern "C-unwind" fn msrt_map_copy(
 /// Makes room for `n` entries so that inserting that many never regrows the map.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_map_reserve(
-    m: *mut MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
-    n: i64,
-) {
+pub unsafe extern "C-unwind" fn msrt_map_reserve(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, n: i64) {
     let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe {
@@ -765,8 +756,8 @@ pub unsafe extern "C-unwind" fn msrt_map_reserve(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add(
     m: *mut MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     key: *mut u8,
     val: *mut u8,
 ) {
@@ -827,8 +818,8 @@ unsafe fn insert_word<K: KeyOps>(m: &mut MapVal, key: *mut u8, val: *mut u8, ksi
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_w8(
     m: *mut MapVal,
-    _kd: *const TypeDesc,
-    _vd: *const TypeDesc,
+    _kd: KeyDesc,
+    _vd: ValDesc,
     key: *mut u8,
     val: *mut u8,
 ) {
@@ -847,8 +838,8 @@ pub unsafe extern "C-unwind" fn msrt_map_add_w8(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_sw8(
     m: *mut MapVal,
-    _kd: *const TypeDesc,
-    _vd: *const TypeDesc,
+    _kd: KeyDesc,
+    _vd: ValDesc,
     key: *mut u8,
     val: *mut u8,
 ) {
@@ -869,8 +860,8 @@ pub unsafe extern "C-unwind" fn msrt_map_add_sw8(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_slot(
     m: *mut MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     key: *mut u8,
     default: *mut u8,
 ) -> *mut u8 {
@@ -889,8 +880,8 @@ pub unsafe extern "C-unwind" fn msrt_map_slot(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
     m: *mut MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     key: *const u8,
     default: *mut u8,
 ) -> *mut u8 {
@@ -920,8 +911,8 @@ pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_lent(
     m: *mut MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     key: *const u8,
     val: *mut u8,
 ) {
@@ -953,8 +944,8 @@ pub unsafe extern "C-unwind" fn msrt_map_add_lent(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_default_lent(
     m: *mut MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     key: *const u8,
     val: *mut u8,
 ) {
@@ -983,8 +974,8 @@ pub unsafe extern "C-unwind" fn msrt_map_add_default_lent(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_default(
     m: *mut MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     key: *mut u8,
     val: *mut u8,
 ) {
@@ -999,8 +990,8 @@ pub unsafe extern "C-unwind" fn msrt_map_add_default(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_remove(
     m: *mut MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     key: *const u8,
 ) {
     let kd = key_desc(m, kd);
@@ -1014,8 +1005,8 @@ pub unsafe extern "C-unwind" fn msrt_map_remove(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_contains(
     m: *const MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     key: *const u8,
 ) -> u8 {
     let kd = key_desc(m, kd);
@@ -1028,8 +1019,8 @@ pub unsafe extern "C-unwind" fn msrt_map_contains(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_get_ptr(
     m: *const MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     key: *const u8,
 ) -> *const u8 {
     let kd = key_desc(m, kd);
@@ -1070,8 +1061,8 @@ unsafe fn value_ptr_k<K: KeyOps>(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_get(
     m: *const MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     key: *const u8,
     out: *mut u8,
 ) -> u8 {
@@ -1096,11 +1087,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get(
 /// Removes every entry, keeping nothing allocated.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_map_clear(
-    m: *mut MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
-) {
+pub unsafe extern "C-unwind" fn msrt_map_clear(m: *mut MapVal, kd: KeyDesc, vd: ValDesc) {
     let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe { drop_map(m, &*kd, opt(vd)) }
@@ -1111,8 +1098,8 @@ pub unsafe extern "C-unwind" fn msrt_map_clear(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_keys(
     m: *const MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     out: *mut VecVal,
 ) {
     let kd = key_desc(m, kd);
@@ -1124,8 +1111,8 @@ pub unsafe extern "C-unwind" fn msrt_map_keys(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_values(
     m: *const MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     out: *mut VecVal,
 ) {
     let kd = key_desc(m, kd);
@@ -1139,8 +1126,8 @@ pub unsafe extern "C-unwind" fn msrt_map_values(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_keys_view(
     m: *const MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     out: *mut VecVal,
 ) {
     let kd = key_desc(m, kd);
@@ -1153,8 +1140,8 @@ pub unsafe extern "C-unwind" fn msrt_map_keys_view(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_values_view(
     m: *const MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
     out: *mut VecVal,
 ) {
     let kd = key_desc(m, kd);
@@ -1248,8 +1235,8 @@ unsafe fn collect(
 pub unsafe extern "C-unwind" fn msrt_map_merge(
     m: *mut MapVal,
     other: *const MapVal,
-    kd: *const TypeDesc,
-    vd: *const TypeDesc,
+    kd: KeyDesc,
+    vd: ValDesc,
 ) {
     let kd = key_desc(m, kd);
     // SAFETY: caller contract.
@@ -1344,11 +1331,7 @@ unsafe fn each_key_while(m: &MapVal, kd: &TypeDesc, mut f: impl FnMut(*const u8)
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_set_add_copy(
-    m: *mut MapVal,
-    kd: *const TypeDesc,
-    key: *const u8,
-) {
+pub unsafe extern "C-unwind" fn msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, key: *const u8) {
     let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe { add_copy::<true>(&mut *m, &*kd, key) }
@@ -1359,7 +1342,7 @@ pub unsafe extern "C-unwind" fn msrt_set_add_copy(
 pub unsafe extern "C-unwind" fn msrt_set_union(
     a: *const MapVal,
     b: *const MapVal,
-    kd: *const TypeDesc,
+    kd: KeyDesc,
     out: *mut MapVal,
 ) {
     let kd = key_desc(a, kd);
@@ -1395,7 +1378,7 @@ unsafe fn filter_into(
 pub unsafe extern "C-unwind" fn msrt_set_intersection(
     a: *const MapVal,
     b: *const MapVal,
-    kd: *const TypeDesc,
+    kd: KeyDesc,
     out: *mut MapVal,
 ) {
     let kd = key_desc(a, kd);
@@ -1411,7 +1394,7 @@ pub unsafe extern "C-unwind" fn msrt_set_intersection(
 pub unsafe extern "C-unwind" fn msrt_set_difference(
     a: *const MapVal,
     b: *const MapVal,
-    kd: *const TypeDesc,
+    kd: KeyDesc,
     out: *mut MapVal,
 ) {
     let kd = key_desc(a, kd);
@@ -1427,7 +1410,7 @@ pub unsafe extern "C-unwind" fn msrt_set_difference(
 pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(
     a: *const MapVal,
     b: *const MapVal,
-    kd: *const TypeDesc,
+    kd: KeyDesc,
     out: *mut MapVal,
 ) {
     let kd = key_desc(a, kd);
@@ -1448,7 +1431,7 @@ pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(
 pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(
     a: *const MapVal,
     b: *const MapVal,
-    kd: *const TypeDesc,
+    kd: KeyDesc,
 ) -> u8 {
     let kd = key_desc(a, kd);
     // SAFETY: caller contract.
@@ -1463,7 +1446,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(
 pub unsafe extern "C-unwind" fn msrt_set_is_superset_of(
     a: *const MapVal,
     b: *const MapVal,
-    kd: *const TypeDesc,
+    kd: KeyDesc,
 ) -> u8 {
     let kd = key_desc(a, kd);
     // SAFETY: caller contract.
@@ -1475,7 +1458,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_superset_of(
 pub unsafe extern "C-unwind" fn msrt_set_is_disjoint_from(
     a: *const MapVal,
     b: *const MapVal,
-    kd: *const TypeDesc,
+    kd: KeyDesc,
 ) -> u8 {
     let kd = key_desc(a, kd);
     // SAFETY: caller contract.

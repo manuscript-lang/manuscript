@@ -125,7 +125,7 @@ pub extern "C-unwind" fn msrt_pipe_add_writer(pipe: i64) {
 pub unsafe extern "C-unwind" fn msrt_pipe_write(
     pipe: i64,
     value: *mut u8,
-    d: *const TypeDesc,
+    d: ms_rt_abi::ValueDesc,
 ) -> i64 {
     // SAFETY: forwarded contract.
     let ptr = unsafe {

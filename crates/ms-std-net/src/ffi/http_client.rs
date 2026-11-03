@@ -14,7 +14,10 @@ use ms_rt::ffi::{
     Bytes, BytesList, ErrOut, ObjRef, ObjSlot, Object, OptInt, Out, StatusCode, Str, abi_record,
     native,
 };
-use ms_rt_abi::STATUS_NONE;
+use ms_rt_abi::{
+    STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
+    STATUS_PERMISSION_DENIED, STATUS_TIMEOUT,
+};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -75,12 +78,12 @@ pub(super) fn limit(v: Option<i64>) -> Result<Option<u64>, ()> {
 
 pub(super) fn http_from_code(status: u8, failed: String) -> HttpErr {
     match status {
-        1 => HttpErr::InvalidInput,
-        2 => HttpErr::InvalidData,
-        3 => HttpErr::LimitExceeded,
-        4 => HttpErr::PermissionDenied,
-        5 => HttpErr::Closed,
-        6 => HttpErr::Timeout,
+        STATUS_INVALID_INPUT => HttpErr::InvalidInput,
+        STATUS_INVALID_DATA => HttpErr::InvalidData,
+        STATUS_LIMIT_EXCEEDED => HttpErr::LimitExceeded,
+        STATUS_PERMISSION_DENIED => HttpErr::PermissionDenied,
+        STATUS_CLOSED => HttpErr::Closed,
+        STATUS_TIMEOUT => HttpErr::Timeout,
         _ => HttpErr::Failed(failed),
     }
 }

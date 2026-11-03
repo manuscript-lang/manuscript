@@ -53,17 +53,19 @@ fn release_slot(slot: Int) Unit:
 // The value of a slot while one holder works on it; it returns to the slot when the scope ends, however it ends.
 type Held[T]:
     slot: Int
-    value: T
+    // One item while held; moving it out through `pop` returns it to the slot.
+    items: List[T]
     held: Bool
 
 fn hold[T](slot: Int) Held[T]:
-    return Held[T](slot: slot, value: take_slot[T](slot), held: true)
+    return Held[T](slot: slot, items: [take_slot[T](slot)], held: true)
 
 impl Closeable for Held[T]:
     var fn close() Unit!:
         if self.held:
             self.held = false
-            put_slot(self.slot, self.value)
+            if let value = self.items.pop():
+                put_slot(self.slot, value)
 
         return ok(unit)
 
@@ -487,20 +489,20 @@ type TestExchange:
 
 fn finished(state: Int) HttpResponse!:
     var guard = hold[TestState](state)
-    if not guard.value.sent:
+    if not guard.items[0].sent:
         return ok(HttpResponse(status: 204, headers: headers(), body: "".to_bytes()))
 
     return ok(
         HttpResponse(
-            status: guard.value.status, headers: guard.value.head.clone(),
-            body: guard.value.body.drain()
+            status: guard.items[0].status, headers: guard.items[0].head.clone(),
+            body: guard.items[0].body.drain()
         )
     )
 
 impl HttpExchange for TestExchange:
     fn close() Unit:
         var guard = hold[TestState](self.state)
-        guard.value.closed = true
+        guard.items[0].closed = true
 
     fn headers() HttpHeaders:
         return self.request.headers.clone()
@@ -523,19 +525,19 @@ impl HttpExchange for TestExchange:
 
         let max = if requested > 65536: 65536 else: requested
         var guard = hold[TestState](self.state)
-        if guard.value.closed: return error(
+        if guard.items[0].closed: return error(
             Error("I/O: resource is closed", kind: Closed)
         )
 
-        let chunk = guard.value.unread.clone()
-        guard.value.unread = none
+        let chunk = guard.items[0].unread.clone()
+        guard.items[0].unread = none
 
         if let bytes = chunk:
             if bytes.length() == 0: return ok(none)
 
             let n = if max < bytes.length(): max else: bytes.length()
             if n < bytes.length():
-                guard.value.unread = bytes.slice(n, bytes.length()).get()
+                guard.items[0].unread = bytes.slice(n, bytes.length()).get()
             return ok(bytes.slice(0, n).get())
 
         return ok(none)
@@ -555,26 +557,26 @@ impl HttpExchange for TestExchange:
         )
 
         var guard = hold[TestState](self.state)
-        if guard.value.closed: return error(
+        if guard.items[0].closed: return error(
             Error("HTTP: resource is closed", kind: Closed)
         )
-        if guard.value.sent: return error(
+        if guard.items[0].sent: return error(
             Error("HTTP: invalid input", kind: InvalidInput)
         )
 
-        guard.value.status = status
-        guard.value.head = headers.clone()
-        guard.value.sent = true
+        guard.items[0].status = status
+        guard.items[0].head = headers.clone()
+        guard.items[0].sent = true
         return ok(unit)
 
     fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
         try self.send_headers(status, headers)
 
         var guard = hold[TestState](self.state)
-        guard.value.complete = true
+        guard.items[0].complete = true
         if self.request.method.text() == "HEAD" or not has_body(status): return ok(unit)
 
-        guard.value.body.append_bytes(body)
+        guard.items[0].body.append_bytes(body)
         return ok(unit)
 
     fn upgrade(
@@ -593,18 +595,18 @@ impl HttpExchange for TestExchange:
 
     fn write_bytes(data: Bytes) Unit!:
         var guard = hold[TestState](self.state)
-        if guard.value.closed: return error(
+        if guard.items[0].closed: return error(
             Error("I/O: resource is closed", kind: Closed)
         )
-        if not guard.value.sent or guard.value.complete: return error(
+        if not guard.items[0].sent or guard.items[0].complete: return error(
             Error("I/O: invalid input", kind: InvalidInput)
         )
-        if not has_body(guard.value.status): return error(
+        if not has_body(guard.items[0].status): return error(
             Error("I/O: invalid input", kind: InvalidInput)
         )
         if self.request.method.text() == "HEAD": return ok(unit)
 
-        guard.value.body.append_bytes(data)
+        guard.items[0].body.append_bytes(data)
         return ok(unit)
 
 // Whether a response with this status may carry a body.
@@ -646,12 +648,12 @@ export fn with_request_headers(
 fn counted(slot: Int?, status: Int, bytes: Int) Unit:
     if let state = slot:
         var guard = hold[TapState](state)
-        if status != 0: guard.value.status = status
-        guard.value.bytes += bytes
+        if status != 0: guard.items[0].status = status
+        guard.items[0].bytes += bytes
 
 fn snapshot(state: Int) TapState:
     var guard = hold[TapState](state)
-    return TapState(status: guard.value.status, bytes: guard.value.bytes)
+    return TapState(status: guard.items[0].status, bytes: guard.items[0].bytes)
 
 // `sent` plus the `extra` headers it does not already have.
 fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:

@@ -7,7 +7,10 @@ use crate::net::{DnsKind, root};
 use ms_rt::ffi::{
     Bytes, ErrOut, ObjRef, Object, Out, RecList, StatusCode, Str, abi_handle, abi_record, native,
 };
-use ms_rt_abi::STATUS_NONE;
+use ms_rt_abi::{
+    STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
+    STATUS_PERMISSION_DENIED, STATUS_TIMEOUT, STATUS_UNSUPPORTED,
+};
 use std::net::IpAddr;
 
 abi_handle!(Cidr);
@@ -94,13 +97,13 @@ native! {
     /// `NetworkError.message()` for a status and the `Failed` text (nullable).
     fn msstd_net_error_message(status: u8, has_failed: bool, failed: &str) -> String {
         let e = match status {
-            1 => NetErr::InvalidInput,
-            2 => NetErr::InvalidData,
-            3 => NetErr::LimitExceeded,
-            4 => NetErr::PermissionDenied,
-            5 => NetErr::Unsupported,
-            6 => NetErr::Closed,
-            7 => NetErr::Timeout,
+            STATUS_INVALID_INPUT => NetErr::InvalidInput,
+            STATUS_INVALID_DATA => NetErr::InvalidData,
+            STATUS_LIMIT_EXCEEDED => NetErr::LimitExceeded,
+            STATUS_PERMISSION_DENIED => NetErr::PermissionDenied,
+            STATUS_UNSUPPORTED => NetErr::Unsupported,
+            STATUS_CLOSED => NetErr::Closed,
+            STATUS_TIMEOUT => NetErr::Timeout,
             _ => NetErr::Failed((if has_failed { failed } else { "" }).to_string()),
         };
         e.message()
@@ -427,7 +430,7 @@ mod tests {
         bytes_ref, new_string, read_string_list, str_ref, str_release, take_string,
         write_string_list,
     };
-    use ms_rt_abi::{StrVal, VecVal};
+    use ms_rt_abi::{STATUS_FAILED, STATUS_INVALID_DATA, STATUS_PERMISSION_DENIED, StrVal, VecVal};
     use std::mem::MaybeUninit;
     use std::ptr::null_mut;
 
@@ -483,13 +486,16 @@ mod tests {
             let mut yes = 0;
             assert_eq!(msstd_net_contains_ip(cidr, ip, &mut yes), 0);
             assert_eq!(yes, 1);
-            assert_eq!(msstd_net_parse_ip(s("fe80::1%eth0"), &mut ip, &mut err), 2);
             assert_eq!(
-                take_string(|o| msstd_net_error_message(2, 0, s(""), o)),
+                msstd_net_parse_ip(s("fe80::1%eth0"), &mut ip, &mut err),
+                STATUS_INVALID_DATA
+            );
+            assert_eq!(
+                take_string(|o| msstd_net_error_message(STATUS_INVALID_DATA, 0, s(""), o)),
                 "network: invalid data"
             );
             assert_eq!(
-                take_string(|o| msstd_net_error_message(8, 1, s("boom"), o)),
+                take_string(|o| msstd_net_error_message(STATUS_FAILED, 1, s("boom"), o)),
                 "boom"
             );
             assert_eq!(take_string(|o| msstd_net_dns_kind_text(3, o)), "MX");
@@ -558,10 +564,10 @@ mod tests {
                 ),
                 STATUS_NONE
             );
-            // A timeout reports `Failed("operation timed out")` (status 6).
+            // A timeout reports `Failed("operation timed out")`.
             assert_eq!(
                 msstd_net_connection_read(client, 0, 0, 1, 20_000_000, out.as_mut_ptr(), &mut err),
-                6
+                STATUS_FAILED
             );
             assert_eq!(take(err), "operation timed out");
             assert_eq!(
@@ -602,7 +608,7 @@ mod tests {
             let mut l = null_mut();
             assert_eq!(
                 msstd_net_network_listen(child, s("127.0.0.1:0"), &mut l, &mut err),
-                4
+                STATUS_PERMISSION_DENIED
             );
             let mut out = MaybeUninit::<VecVal>::uninit();
             assert_eq!(

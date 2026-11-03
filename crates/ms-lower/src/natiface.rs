@@ -37,13 +37,33 @@ enum Extra {
     Bool(bool),
 }
 
-/// One row of `METHODS`: module, interface, operation, runtime symbol, constant extras.
+/// How an operation's runtime call is built, beyond calling its symbol with the operation's
+/// own arguments.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Shape {
+    /// One call of the runtime symbol.
+    Plain,
+    /// A record result read through the getters of `<symbol>_status` and `<symbol>_<field>`;
+    /// the row names the group without the status suffix.
+    Record,
+    /// A list of records read through the getters of the group named by the row's symbol.
+    Records,
+    /// The environment map argument crosses as the lists `env_names` and `env_values`.
+    SplitEnv,
+    /// A directory walk (`glob_entries`, `copy`) with a predicate closure.
+    Walk,
+    /// A path entry point: the rules flag leads its arguments.
+    Rules,
+}
+
+/// One row of `METHODS`: module, interface, operation, runtime symbol, constant extras, call shape.
 type MethodRow = (
     &'static str,
     &'static str,
     &'static str,
     &'static str,
     &'static [(&'static str, Extra)],
+    Shape,
 );
 
 const METHODS: &[MethodRow] = &[
@@ -53,14 +73,23 @@ const METHODS: &[MethodRow] = &[
         "bind_datagram",
         "msstd_net_network_bind_datagram",
         &[],
+        Shape::Plain,
     ),
-    ("net", "Network", "close", "msstd_net_network_close", &[]),
+    (
+        "net",
+        "Network",
+        "close",
+        "msstd_net_network_close",
+        &[],
+        Shape::Plain,
+    ),
     (
         "net",
         "Network",
         "connect",
         "msstd_net_network_connect",
         &[],
+        Shape::Plain,
     ),
     (
         "net",
@@ -68,14 +97,23 @@ const METHODS: &[MethodRow] = &[
         "connect_unix",
         "msstd_net_network_connect_unix",
         &[],
+        Shape::Plain,
     ),
-    ("net", "Network", "listen", "msstd_net_network_listen", &[]),
+    (
+        "net",
+        "Network",
+        "listen",
+        "msstd_net_network_listen",
+        &[],
+        Shape::Plain,
+    ),
     (
         "net",
         "Network",
         "connect_tls",
         "msstd_net_network_connect_tls",
         &[],
+        Shape::Plain,
     ),
     (
         "net",
@@ -83,6 +121,7 @@ const METHODS: &[MethodRow] = &[
         "connect_tls_config",
         "msstd_net_network_connect_tls_config",
         &[],
+        Shape::Plain,
     ),
     (
         "net",
@@ -90,6 +129,7 @@ const METHODS: &[MethodRow] = &[
         "listen_tls",
         "msstd_net_network_listen_tls",
         &[],
+        Shape::Plain,
     ),
     (
         "net",
@@ -97,6 +137,7 @@ const METHODS: &[MethodRow] = &[
         "listen_unix",
         "msstd_net_network_listen_unix",
         &[],
+        Shape::Plain,
     ),
     (
         "net",
@@ -104,6 +145,7 @@ const METHODS: &[MethodRow] = &[
         "restrict",
         "msstd_net_network_restrict",
         &[],
+        Shape::Plain,
     ),
     (
         "net",
@@ -111,14 +153,23 @@ const METHODS: &[MethodRow] = &[
         "with_resolver",
         "msstd_net_network_with_resolver",
         &[],
+        Shape::Plain,
     ),
-    ("net", "Network", "lookup", "msstd_net_network_lookup", &[]),
+    (
+        "net",
+        "Network",
+        "lookup",
+        "msstd_net_network_lookup",
+        &[],
+        Shape::Plain,
+    ),
     (
         "net",
         "Network",
         "resolve",
         "msstd_net_network_resolve",
         &[],
+        Shape::Plain,
     ),
     (
         "net",
@@ -126,6 +177,7 @@ const METHODS: &[MethodRow] = &[
         "http_client",
         "msstd_net_network_http_client",
         &[],
+        Shape::Plain,
     ),
     (
         "net",
@@ -133,6 +185,7 @@ const METHODS: &[MethodRow] = &[
         "web_socket",
         "msstd_net_network_web_socket",
         &[],
+        Shape::Plain,
     ),
     (
         "net",
@@ -140,6 +193,7 @@ const METHODS: &[MethodRow] = &[
         "request",
         "msstd_net_network_request",
         &[],
+        Shape::Plain,
     ),
     (
         "net",
@@ -147,6 +201,15 @@ const METHODS: &[MethodRow] = &[
         "request_bytes",
         "msstd_net_network_request_bytes",
         &[],
+        Shape::Plain,
+    ),
+    (
+        "net",
+        "Network",
+        "serve",
+        "msstd_net_network_serve",
+        &[],
+        Shape::Plain,
     ),
     (
         "http",
@@ -154,6 +217,7 @@ const METHODS: &[MethodRow] = &[
         "close",
         "msstd_http_exchange_close",
         &[],
+        Shape::Plain,
     ),
     (
         "http",
@@ -161,6 +225,7 @@ const METHODS: &[MethodRow] = &[
         "headers",
         "msstd_http_exchange_headers",
         &[],
+        Shape::Plain,
     ),
     (
         "http",
@@ -168,6 +233,7 @@ const METHODS: &[MethodRow] = &[
         "method",
         "msstd_http_exchange_method",
         &[],
+        Shape::Plain,
     ),
     (
         "http",
@@ -175,6 +241,7 @@ const METHODS: &[MethodRow] = &[
         "path",
         "msstd_http_exchange_path",
         &[],
+        Shape::Plain,
     ),
     (
         "http",
@@ -182,6 +249,7 @@ const METHODS: &[MethodRow] = &[
         "protocol",
         "msstd_http_exchange_protocol",
         &[],
+        Shape::Plain,
     ),
     (
         "http",
@@ -189,6 +257,7 @@ const METHODS: &[MethodRow] = &[
         "query",
         "msstd_http_exchange_query",
         &[],
+        Shape::Plain,
     ),
     (
         "http",
@@ -196,6 +265,7 @@ const METHODS: &[MethodRow] = &[
         "read",
         "msstd_http_exchange_read",
         &[],
+        Shape::Plain,
     ),
     (
         "http",
@@ -203,6 +273,7 @@ const METHODS: &[MethodRow] = &[
         "send",
         "msstd_http_exchange_send",
         &[],
+        Shape::Plain,
     ),
     (
         "http",
@@ -210,6 +281,7 @@ const METHODS: &[MethodRow] = &[
         "send_headers",
         "msstd_http_exchange_send_headers",
         &[],
+        Shape::Plain,
     ),
     (
         "http",
@@ -217,6 +289,7 @@ const METHODS: &[MethodRow] = &[
         "write",
         "msstd_http_exchange_write",
         &[],
+        Shape::Plain,
     ),
     (
         "http",
@@ -224,6 +297,7 @@ const METHODS: &[MethodRow] = &[
         "write_bytes",
         "msstd_http_exchange_write_bytes",
         &[],
+        Shape::Plain,
     ),
     (
         "http",
@@ -231,29 +305,74 @@ const METHODS: &[MethodRow] = &[
         "upgrade",
         "msstd_http_exchange_upgrade",
         &[],
+        Shape::Plain,
     ),
-    ("io", "Files", "open", "msstd_io_open", &[]),
-    ("random", "Entropy", "bytes", "msstd_random_os_bytes", &[]),
-    ("io", "File", "read", "msstd_io_read", &[]),
-    ("io", "File", "close", "msstd_io_close", &[]),
-    ("io", "ReadStream", "read", "msstd_io_read", &[]),
-    ("io", "ReadStream", "close", "msstd_io_close", &[]),
-    ("io", "WriteStream", "write", "msstd_io_write", &[]),
+    ("io", "Files", "open", "msstd_io_open", &[], Shape::Plain),
+    (
+        "random",
+        "Entropy",
+        "bytes",
+        "msstd_random_os_bytes",
+        &[],
+        Shape::Plain,
+    ),
+    ("io", "File", "read", "msstd_io_read", &[], Shape::Plain),
+    ("io", "File", "close", "msstd_io_close", &[], Shape::Plain),
+    (
+        "io",
+        "ReadStream",
+        "read",
+        "msstd_io_read",
+        &[],
+        Shape::Plain,
+    ),
+    (
+        "io",
+        "ReadStream",
+        "close",
+        "msstd_io_close",
+        &[],
+        Shape::Plain,
+    ),
+    (
+        "io",
+        "WriteStream",
+        "write",
+        "msstd_io_write",
+        &[],
+        Shape::Plain,
+    ),
     (
         "io",
         "WriteStream",
         "write_bytes",
         "msstd_io_write_bytes",
         &[],
+        Shape::Plain,
     ),
-    ("io", "WriteStream", "flush", "msstd_io_flush", &[]),
-    ("io", "WriteStream", "close", "msstd_io_close", &[]),
+    (
+        "io",
+        "WriteStream",
+        "flush",
+        "msstd_io_flush",
+        &[],
+        Shape::Plain,
+    ),
+    (
+        "io",
+        "WriteStream",
+        "close",
+        "msstd_io_close",
+        &[],
+        Shape::Plain,
+    ),
     (
         "fs",
         "FileSystem",
         "canonicalize",
         "msstd_fs_canonicalize",
         &[],
+        Shape::Plain,
     ),
     (
         "fs",
@@ -261,6 +380,7 @@ const METHODS: &[MethodRow] = &[
         "create_directory",
         "msstd_fs_create_directory",
         &[],
+        Shape::Plain,
     ),
     (
         "fs",
@@ -268,17 +388,47 @@ const METHODS: &[MethodRow] = &[
         "create_link",
         "msstd_fs_create_link",
         &[],
+        Shape::Plain,
     ),
-    ("fs", "FileSystem", "read_file", "msstd_fs_read_file", &[]),
-    ("fs", "FileSystem", "read_link", "msstd_fs_read_link", &[]),
-    ("fs", "FileSystem", "remove", "msstd_fs_remove", &[]),
-    ("fs", "FileSystem", "rename", "msstd_fs_rename", &[]),
+    (
+        "fs",
+        "FileSystem",
+        "read_file",
+        "msstd_fs_read_file",
+        &[],
+        Shape::Plain,
+    ),
+    (
+        "fs",
+        "FileSystem",
+        "read_link",
+        "msstd_fs_read_link",
+        &[],
+        Shape::Plain,
+    ),
+    (
+        "fs",
+        "FileSystem",
+        "remove",
+        "msstd_fs_remove",
+        &[],
+        Shape::Plain,
+    ),
+    (
+        "fs",
+        "FileSystem",
+        "rename",
+        "msstd_fs_rename",
+        &[],
+        Shape::Plain,
+    ),
     (
         "fs",
         "FileSystem",
         "temporary_root",
         "msstd_fs_temporary_root",
         &[],
+        Shape::Plain,
     ),
     (
         "fs",
@@ -286,22 +436,39 @@ const METHODS: &[MethodRow] = &[
         "temporary_directory",
         "msstd_fs_temporary_directory",
         &[],
+        Shape::Plain,
     ),
-    ("fs", "FileSystem", "write_file", "msstd_fs_write_file", &[]),
+    (
+        "fs",
+        "FileSystem",
+        "write_file",
+        "msstd_fs_write_file",
+        &[],
+        Shape::Plain,
+    ),
     (
         "fs",
         "FileSystem",
         "write_file_bytes",
         "msstd_fs_write_file",
         &[],
+        Shape::Plain,
     ),
-    ("fs", "FileSystem", "access", "msstd_fs_access", &[]),
+    (
+        "fs",
+        "FileSystem",
+        "access",
+        "msstd_fs_access",
+        &[],
+        Shape::Plain,
+    ),
     (
         "fs",
         "FileSystem",
         "append_file",
         "msstd_fs_append_file",
         &[],
+        Shape::Plain,
     ),
     (
         "fs",
@@ -309,6 +476,7 @@ const METHODS: &[MethodRow] = &[
         "append_file_bytes",
         "msstd_fs_append_file",
         &[],
+        Shape::Plain,
     ),
     (
         "fs",
@@ -316,6 +484,7 @@ const METHODS: &[MethodRow] = &[
         "chmod",
         "msstd_fs_chmod",
         &[("follow", Extra::Bool(true))],
+        Shape::Plain,
     ),
     (
         "fs",
@@ -323,16 +492,39 @@ const METHODS: &[MethodRow] = &[
         "chmod_link",
         "msstd_fs_chmod",
         &[("follow", Extra::Bool(false))],
+        Shape::Plain,
     ),
-    ("fs", "FileSystem", "chown", "msstd_fs_chown", &[]),
-    ("fs", "FileSystem", "truncate", "msstd_fs_truncate", &[]),
-    ("fs", "FileSystem", "hard_link", "msstd_fs_hard_link", &[]),
+    (
+        "fs",
+        "FileSystem",
+        "chown",
+        "msstd_fs_chown",
+        &[],
+        Shape::Plain,
+    ),
+    (
+        "fs",
+        "FileSystem",
+        "truncate",
+        "msstd_fs_truncate",
+        &[],
+        Shape::Plain,
+    ),
+    (
+        "fs",
+        "FileSystem",
+        "hard_link",
+        "msstd_fs_hard_link",
+        &[],
+        Shape::Plain,
+    ),
     (
         "fs",
         "FileSystem",
         "open_directory",
         "msstd_fs_directory_open",
         &[],
+        Shape::Plain,
     ),
     (
         "fs",
@@ -340,27 +532,79 @@ const METHODS: &[MethodRow] = &[
         "temporary",
         "msstd_fs_temporary_open",
         &[],
+        Shape::Plain,
     ),
-    ("fs", "FileSystem", "open", "msstd_fs_open", &[]),
-    ("fs", "FileSystem", "stat", "msstd_fs_stat", &[]),
-    ("fs", "FileSystem", "glob", "msstd_fs_glob_entries", &[]),
-    ("fs", "FileSystem", "copy", "msstd_fs_copy", &[]),
-    ("fs", "FileSystem", "list", "msstd_fs_list", &[]),
-    ("fs", "FileSystem", "set_times", "msstd_fs_set_times", &[]),
+    (
+        "fs",
+        "FileSystem",
+        "open",
+        "msstd_fs_open",
+        &[],
+        Shape::Plain,
+    ),
+    (
+        "fs",
+        "FileSystem",
+        "stat",
+        "msstd_fs_stat",
+        &[],
+        Shape::Plain,
+    ),
+    (
+        "fs",
+        "FileSystem",
+        "glob",
+        "msstd_fs_glob_entries",
+        &[],
+        Shape::Walk,
+    ),
+    (
+        "fs",
+        "FileSystem",
+        "copy",
+        "msstd_fs_copy",
+        &[],
+        Shape::Walk,
+    ),
+    (
+        "fs",
+        "FileSystem",
+        "list",
+        "msstd_fs_list",
+        &[],
+        Shape::Plain,
+    ),
+    (
+        "fs",
+        "FileSystem",
+        "set_times",
+        "msstd_fs_set_times",
+        &[],
+        Shape::Plain,
+    ),
     (
         "fs",
         "FileSystem",
         "stat_filesystem",
         "msstd_fs_stat_filesystem",
         &[],
+        Shape::Plain,
     ),
-    ("fs", "FileSystem", "watch", "msstd_fs_watch", &[]),
+    (
+        "fs",
+        "FileSystem",
+        "watch",
+        "msstd_fs_watch",
+        &[],
+        Shape::Plain,
+    ),
     (
         "fs",
         "FileSystem",
         "watch_native",
         "msstd_fs_watch_native",
         &[],
+        Shape::Plain,
     ),
     (
         "crypto",
@@ -368,6 +612,7 @@ const METHODS: &[MethodRow] = &[
         "update",
         "msstd_crypto_hasher_update",
         &[],
+        Shape::Plain,
     ),
     (
         "crypto",
@@ -375,15 +620,31 @@ const METHODS: &[MethodRow] = &[
         "finish",
         "msstd_crypto_hasher_finish",
         &[],
+        Shape::Plain,
     ),
-    ("time", "Clock", "now", "msstd_time_clock_now", &[]),
-    ("time", "WallClock", "now", "msstd_time_wall_clock_now", &[]),
+    (
+        "time",
+        "Clock",
+        "now",
+        "msstd_time_clock_now",
+        &[],
+        Shape::Plain,
+    ),
+    (
+        "time",
+        "WallClock",
+        "now",
+        "msstd_time_wall_clock_now",
+        &[],
+        Shape::Plain,
+    ),
     (
         "process",
         "Commands",
         "run",
         "msstd_process_command_run",
         &[],
+        Shape::SplitEnv,
     ),
     (
         "process",
@@ -391,6 +652,7 @@ const METHODS: &[MethodRow] = &[
         "spawn",
         "msstd_process_command_spawn",
         &[],
+        Shape::SplitEnv,
     ),
     (
         "process",
@@ -398,6 +660,7 @@ const METHODS: &[MethodRow] = &[
         "monotonic_time",
         "msstd_process_monotonic_time",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -405,6 +668,7 @@ const METHODS: &[MethodRow] = &[
         "uptime",
         "msstd_process_elapsed",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -412,6 +676,7 @@ const METHODS: &[MethodRow] = &[
         "environment",
         "msstd_process_environment_map",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -419,6 +684,7 @@ const METHODS: &[MethodRow] = &[
         "set_environment",
         "msstd_process_set_environment",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -426,6 +692,7 @@ const METHODS: &[MethodRow] = &[
         "load_environment",
         "msstd_process_load_environment",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -433,6 +700,7 @@ const METHODS: &[MethodRow] = &[
         "working_directory",
         "msstd_process_working_directory",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -440,6 +708,7 @@ const METHODS: &[MethodRow] = &[
         "change_directory",
         "msstd_process_change_directory",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -447,6 +716,7 @@ const METHODS: &[MethodRow] = &[
         "send_signal",
         "msstd_process_send_signal",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -454,6 +724,7 @@ const METHODS: &[MethodRow] = &[
         "groups",
         "msstd_process_groups",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -461,6 +732,7 @@ const METHODS: &[MethodRow] = &[
         "umask",
         "msstd_process_umask",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -468,6 +740,7 @@ const METHODS: &[MethodRow] = &[
         "title",
         "msstd_process_title",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -475,6 +748,7 @@ const METHODS: &[MethodRow] = &[
         "set_title",
         "msstd_process_set_title",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -482,6 +756,7 @@ const METHODS: &[MethodRow] = &[
         "constrained_memory",
         "msstd_process_constrained_memory",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -489,6 +764,7 @@ const METHODS: &[MethodRow] = &[
         "available_memory",
         "msstd_process_available_memory",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -496,13 +772,15 @@ const METHODS: &[MethodRow] = &[
         "initialize_groups",
         "msstd_process_initialize_groups",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
         "ProcessControl",
         "info",
-        "msstd_process_info_record",
+        "msstd_process_info",
         &[],
+        Shape::Record,
     ),
     (
         "process",
@@ -510,6 +788,7 @@ const METHODS: &[MethodRow] = &[
         "cpu_usage",
         "msstd_process_cpu_usage",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -517,6 +796,7 @@ const METHODS: &[MethodRow] = &[
         "replace",
         "msstd_process_replace",
         &[],
+        Shape::SplitEnv,
     ),
     (
         "process",
@@ -524,6 +804,7 @@ const METHODS: &[MethodRow] = &[
         "set_identity",
         "msstd_process_set_identity",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -531,6 +812,7 @@ const METHODS: &[MethodRow] = &[
         "set_groups",
         "msstd_process_set_groups",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -538,6 +820,7 @@ const METHODS: &[MethodRow] = &[
         "memory_usage",
         "msstd_process_memory_usage",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -545,29 +828,47 @@ const METHODS: &[MethodRow] = &[
         "resource_usage",
         "msstd_process_resource_usage",
         &[],
+        Shape::Plain,
     ),
-    ("system", "System", "info", "msstd_system_info_record", &[]),
+    (
+        "system",
+        "System",
+        "info",
+        "msstd_system_info",
+        &[],
+        Shape::Record,
+    ),
     (
         "system",
         "System",
         "working_directory",
         "msstd_system_working_directory",
         &[],
+        Shape::Plain,
     ),
-    ("system", "System", "hostname", "msstd_system_hostname", &[]),
+    (
+        "system",
+        "System",
+        "hostname",
+        "msstd_system_hostname",
+        &[],
+        Shape::Plain,
+    ),
     (
         "system",
         "System",
         "home_directory",
         "msstd_system_home_directory",
         &[],
+        Shape::Plain,
     ),
     (
         "system",
         "System",
         "user_info",
-        "msstd_system_user_info_record",
+        "msstd_system_user_info",
         &[],
+        Shape::Record,
     ),
     (
         "system",
@@ -575,6 +876,7 @@ const METHODS: &[MethodRow] = &[
         "os_release",
         "msstd_system_os_release",
         &[],
+        Shape::Plain,
     ),
     (
         "system",
@@ -582,22 +884,39 @@ const METHODS: &[MethodRow] = &[
         "os_version",
         "msstd_system_os_version",
         &[],
+        Shape::Plain,
     ),
-    ("system", "System", "machine", "msstd_system_machine", &[]),
+    (
+        "system",
+        "System",
+        "machine",
+        "msstd_system_machine",
+        &[],
+        Shape::Plain,
+    ),
     (
         "system",
         "System",
         "network_interfaces",
-        "msstd_system_network_interfaces_records",
+        "msstd_system_network_interfaces",
         &[],
+        Shape::Records,
     ),
-    ("system", "System", "cpus", "msstd_system_cpus_records", &[]),
+    (
+        "system",
+        "System",
+        "cpus",
+        "msstd_system_cpus",
+        &[],
+        Shape::Records,
+    ),
     (
         "system",
         "System",
         "metrics",
-        "msstd_system_metrics_record",
+        "msstd_system_metrics",
         &[],
+        Shape::Record,
     ),
     (
         "system",
@@ -605,6 +924,7 @@ const METHODS: &[MethodRow] = &[
         "get_priority",
         "msstd_system_get_priority",
         &[],
+        Shape::Plain,
     ),
     (
         "system",
@@ -612,20 +932,23 @@ const METHODS: &[MethodRow] = &[
         "set_priority",
         "msstd_system_set_priority",
         &[],
+        Shape::Plain,
     ),
     (
         "terminal",
         "Terminal",
         "capabilities",
-        "msstd_terminal_capabilities_record",
+        "msstd_terminal_capabilities",
         &[],
+        Shape::Record,
     ),
     (
         "terminal",
         "Terminal",
         "size",
-        "msstd_terminal_size_record",
+        "msstd_terminal_size",
         &[],
+        Shape::Record,
     ),
     (
         "terminal",
@@ -633,6 +956,7 @@ const METHODS: &[MethodRow] = &[
         "raw_mode",
         "msstd_terminal_raw_mode",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -640,6 +964,7 @@ const METHODS: &[MethodRow] = &[
         "watch_signals",
         "msstd_process_watch_signals",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -647,6 +972,7 @@ const METHODS: &[MethodRow] = &[
         "next",
         "msstd_process_signal_next",
         &[],
+        Shape::Plain,
     ),
     (
         "process",
@@ -654,6 +980,7 @@ const METHODS: &[MethodRow] = &[
         "close",
         "msstd_process_signal_close",
         &[],
+        Shape::Plain,
     ),
 ];
 
@@ -668,6 +995,8 @@ pub(crate) struct MethodJob {
     name: String,
     /// The runtime symbol, or none when the operation is not implemented yet.
     sym: Option<String>,
+    /// How the call is built beyond calling `sym`.
+    shape: Shape,
     decl: Vec<ct::Param>,
     /// Constant `Bool` arguments after the operation's own.
     extras: Vec<(&'static str, Extra)>,
@@ -742,17 +1071,19 @@ impl Cx {
             let row = METHODS
                 .iter()
                 .find(|(md, i, op, ..)| *md == module && *i == iface_name && *op == s.name);
-            let (sym, extras) =
+            let (sym, extras, shape) =
                 if let Some(windows) = module.strip_prefix("path").map(|r| r == "_win") {
                     // Every operation is the `msstd_path_<operation>` entry point with the rules flag.
                     (
                         Some(format!("msstd_path_{}", s.name)),
                         vec![("windows", Extra::Bool(windows))],
+                        Shape::Rules,
                     )
                 } else {
                     (
                         row.map(|r| r.3.to_string()),
                         row.map(|r| r.4.to_vec()).unwrap_or_default(),
+                        row.map_or(Shape::Plain, |r| r.5),
                     )
                 };
             let mut ps = vec![Param {
@@ -773,6 +1104,7 @@ impl Cx {
                     hir: hir.clone(),
                     name: format!("{iface_name}.{}", s.name),
                     sym,
+                    shape,
                     decl,
                     extras,
                     params: s.params.clone(),
@@ -818,17 +1150,17 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         return Ok(());
     };
     // The getters of a record result take the handle too when the status call does.
-    if let Some(base) = sym.strip_suffix("_record") {
-        let lead: Vec<_> = takes_handle(&format!("{base}_status"))
+    if job.shape == Shape::Record {
+        let lead: Vec<_> = takes_handle(&format!("{sym}_status"))
             .then(|| load_handle(fl, job, args))
             .into_iter()
             .collect();
-        let r = fl.record_getters(base, job.ret, &lead)?;
+        let r = fl.record_getters(sym, job.ret, &lead)?;
         fl.emit_return(Some(r));
         return Ok(());
     }
-    if let Some(base) = sym.strip_suffix("_records") {
-        let r = fl.record_list_getters(base, job.ret)?;
+    if job.shape == Shape::Records {
+        let r = fl.record_list_getters(sym, job.ret)?;
         fl.emit_return(Some(r));
         return Ok(());
     }
@@ -854,7 +1186,7 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
             Extra::Bool(b) => (ct::bool_(), fl.b.bconst(b)),
         };
         // The rules flag leads a path entry point's arguments.
-        let lead = sym.starts_with("msstd_path_");
+        let lead = job.shape == Shape::Rules;
         decl.insert(if lead { 0 } else { decl.len() }, ct::Param { name, ty });
         nargs.insert(
             if lead { 0 } else { nargs.len() },
@@ -865,18 +1197,26 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
             },
         );
     }
-    // The runtime takes a map argument as two parallel lists.
+    // The runtime takes the environment map as two parallel lists.
     let mut lists = Vec::new();
-    if sym == "msstd_process_replace" {
-        lists = fl.split_map_argument(&mut decl, &mut nargs, 2, 1, ["env_names", "env_values"])?;
+    if job.shape == Shape::SplitEnv {
+        let map_at = decl
+            .iter()
+            .position(|p| is_map(&p.ty))
+            .ok_or_else(|| Error::new(format!("{sym}: no environment map argument")))?;
+        let list_at = decl
+            .iter()
+            .position(|p| is_list(&p.ty))
+            .ok_or_else(|| Error::new(format!("{sym}: no list argument")))?;
+        lists = fl.split_map_argument(
+            &mut decl,
+            &mut nargs,
+            map_at,
+            list_at,
+            ["env_names", "env_values"],
+        )?;
     }
-    if matches!(
-        sym.as_str(),
-        "msstd_process_command_run" | "msstd_process_command_spawn"
-    ) {
-        lists = fl.split_map_argument(&mut decl, &mut nargs, 6, 1, ["env_names", "env_values"])?;
-    }
-    if matches!(sym.as_str(), "msstd_fs_glob_entries" | "msstd_fs_copy") {
+    if job.shape == Shape::Walk {
         let r = fl.fs_walk(sym, &decl, &nargs, job.ret)?;
         fl.emit_return(Some(r));
         return Ok(());
@@ -918,6 +1258,16 @@ fn fit_result(fl: &mut FnLower<'_>, r: Val, ret: MTy) -> Result<Val, Error> {
     let payload = fl.owned(r);
     let v = fl.b.alt_new(a, ok as u32, &[payload]);
     Ok(Val { v, own: true })
+}
+
+/// Whether a declared parameter type is a `Map`.
+fn is_map(ty: &ct::Ty) -> bool {
+    ty.is_std("Map")
+}
+
+/// Whether a declared parameter type is a `List`.
+fn is_list(ty: &ct::Ty) -> bool {
+    ty.is_std("List")
 }
 
 /// Whether the runtime function `sym` takes the receiver's handle first.

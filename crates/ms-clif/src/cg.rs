@@ -25,6 +25,9 @@ use ms_mir::types::{Ty, TyKind};
 use std::collections::{HashMap, HashSet};
 
 /// Offset of `code` in a closure object.
+/// The name prefix of generated glue functions, followed by a serial and the kind.
+pub(crate) const GLUE_PREFIX: &str = "ms.glue.";
+
 pub const CLOSURE_CODE: i32 = 16;
 /// Offset of the first capture in a closure object.
 pub const CLOSURE_CAPTURES: u32 = 24;
@@ -149,6 +152,8 @@ pub struct Gen<'m> {
     pub strs: HashMap<u32, DataId>,
     pub list_consts: HashMap<usize, DataId>,
     pub glue: HashMap<(Glue, Ty), FuncId>,
+    /// The ids of the glue functions, indexed by id.
+    pub glue_ids: std::collections::HashSet<FuncId>,
     pub queue: Vec<(Glue, Ty)>,
     pub vtables: Vec<DataId>,
     pub globals: Vec<DataId>,
@@ -384,7 +389,7 @@ impl<'m> Gen<'m> {
             Glue::SlotCopy => self.sig(&[Leaf::I64, Leaf::I64], &[]),
         };
         let name = format!(
-            "ms.glue.{}.{}",
+            "{GLUE_PREFIX}{}.{}",
             self.glue.len(),
             match kind {
                 Glue::Drop => "drop",
@@ -402,6 +407,7 @@ impl<'m> Gen<'m> {
             .declare_function(&name, self.func_linkage(false), &sig)
             .expect("declare glue");
         self.glue.insert((kind, ty), id);
+        self.glue_ids.insert(id);
         self.queue.push((kind, ty));
         id
     }
@@ -658,6 +664,7 @@ fn compile_with_isa(
         strs: HashMap::new(),
         list_consts: HashMap::new(),
         glue: HashMap::new(),
+        glue_ids: Default::default(),
         queue: Vec::new(),
         vtables: Vec::new(),
         globals: Vec::new(),
@@ -1165,7 +1172,7 @@ fn prepare(g: &mut Gen, ctx: &mut Context, id: FuncId, name: &str, source: Optio
         let sym = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs).symbol_of(id);
         let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
             && !sym.contains('#')
-            && !sym.starts_with("ms.glue.");
+            && !g.glue_ids.contains(&id);
         let (display, fn_loc) = match source {
             Some(f) if f.loc.file != u32::MAX => (f.name.as_str(), (f.loc.file, f.loc.line)),
             Some(f) => (f.name.as_str(), (0, f.loc.line)),
@@ -1179,6 +1186,9 @@ fn prepare(g: &mut Gen, ctx: &mut Context, id: FuncId, name: &str, source: Optio
             &ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs),
             exported,
         );
+        if g.glue_ids.contains(&id) {
+            llvm.mark_glue();
+        }
         // Glue is listed too: a cleanup thunk can hold an inlined callee that a trace must name.
         // A function with per-CPU copies is listed as them, under the same name: the dispatcher
         // between its caller and the copy is no frame of its own. Copies the optimizer drops

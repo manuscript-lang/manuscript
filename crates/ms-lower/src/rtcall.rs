@@ -340,9 +340,9 @@ impl FnLower<'_> {
         while i < end {
             let p = &sig.params[i];
             match p.name.as_str() {
-                "d" if recv_ty.is_none() && self.result_list(result).is_none() => {
-                    // A generic function with no receiver and no list result: the descriptor is that of
-                    // its `value` argument, or of its result (`msrt_promise_put`, and `msrt_promise_take` which returns `T?`).
+                _ if p.ty == "ValueDesc" => {
+                    // A generic value moved in or out of the runtime: the descriptor is that of the
+                    // `value` argument, or of the result (`T?` gives that of `T`).
                     let by_value = decl
                         .iter()
                         .position(|p| p.name == "value")
@@ -350,13 +350,12 @@ impl FnLower<'_> {
                         .and_then(|input| input.val)
                         .map(|v| self.ty_of(v.v));
                     let t = by_value.unwrap_or_else(|| match self.b.m.types.kind(result) {
-                        // A result that may be absent is `T?`: the descriptor is that of `T`.
                         TyKind::Opt(inner) => *inner,
                         _ => result,
                     });
                     vals.push(self.type_desc(t));
                 }
-                "d" => {
+                _ if p.ty == "ElemDesc" => {
                     // A function has no receiver: the descriptor is that of its list result.
                     let recv_ty = recv_ty
                         .or_else(|| self.result_list(result))
@@ -368,13 +367,13 @@ impl FnLower<'_> {
                     };
                     vals.push(self.type_desc(e));
                 }
-                "kd" | "vd" => {
+                _ if p.ty == "KeyDesc" || p.ty == "ValDesc" => {
                     let recv_ty = recv_ty
                         .ok_or_else(|| Error::new(format!("{sym}: descriptor without receiver")))?;
                     let TyKind::Obj(_, a) = self.b.m.types.kind(recv_ty).clone() else {
                         return Err(Error::new(format!("{sym}: not a map or set")));
                     };
-                    let k = usize::from(p.name == "vd");
+                    let k = usize::from(p.ty == "ValDesc");
                     match a.get(k) {
                         Some(t) => vals.push(self.type_desc(*t)),
                         // A set is a map without a value descriptor.
@@ -1273,61 +1272,9 @@ impl FnLower<'_> {
 }
 
 /// The `ErrorCategory` case and message words of each runtime status of `sym`'s module, as
-/// `(status, kind, words)`. Modules that number their failures from 1 in declaration order
-/// (`ms-std-net/ABI.md`) list their kinds in that order.
-fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> {
-    let words = |kind: &str| match kind {
-        "InvalidInput" => "invalid input",
-        "InvalidData" => "invalid data",
-        "LimitExceeded" => "limit exceeded",
-        "PermissionDenied" => "permission denied",
-        "Closed" => "resource is closed",
-        "Timeout" => "operation timed out",
-        "Unsupported" => "operation not supported",
-        _ => "failed",
-    };
-    let ordinal = |kinds: &[&'static str]| {
-        kinds
-            .iter()
-            .enumerate()
-            .map(|(i, k)| (i as i64 + 1, *k, words(k)))
-            .collect::<Vec<_>>()
-    };
-    if sym.starts_with("msstd_net_") {
-        return ordinal(&[
-            "InvalidInput",
-            "InvalidData",
-            "LimitExceeded",
-            "PermissionDenied",
-            "Unsupported",
-            "Closed",
-            "Timeout",
-            "Failed",
-        ]);
-    }
-    if sym.starts_with("msstd_http_") || sym.starts_with("msstd_websocket_") {
-        return ordinal(&[
-            "InvalidInput",
-            "InvalidData",
-            "LimitExceeded",
-            "PermissionDenied",
-            "Closed",
-            "Timeout",
-            "Failed",
-        ]);
-    }
-    if sym.starts_with("msstd_tls_") {
-        let mut t = ordinal(&["InvalidInput", "InvalidData", "LimitExceeded"]);
-        t.push((4, "Other", "authentication failed"));
-        return t;
-    }
-    if sym.starts_with("msstd_crypto_") {
-        return vec![
-            (1, "InvalidInput", "invalid input"),
-            (9, "Unsupported", "operation not supported"),
-            (6, "Other", "authentication failed"),
-        ];
-    }
+/// `(status, kind, words)`. Every runtime crate uses the shared `ms-rt-abi` `STATUS_*` numbers;
+/// only the `NotFound` words name the module.
+pub(crate) fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> {
     let not_found = if sym.starts_with("msstd_fs_") {
         "file or directory not found"
     } else {
@@ -1350,6 +1297,7 @@ fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> {
         (14, "LimitExceeded", "output limit exceeded"),
         (15, "Unsupported", "not a terminal"),
         (17, "Unavailable", "terminal is busy"),
+        (18, "Other", "authentication failed"),
     ]
 }
 

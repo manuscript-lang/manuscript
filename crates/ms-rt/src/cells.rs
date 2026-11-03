@@ -53,7 +53,7 @@ fn free_block(ptr: usize, desc: usize) {
 /// # Safety
 /// `value` holds an owned value of `d`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_cells_new(value: *mut u8, d: *const TypeDesc) -> i64 {
+pub unsafe extern "C-unwind" fn msrt_cells_new(value: *mut u8, d: ms_rt_abi::ValueDesc) -> i64 {
     // SAFETY: forwarded contract.
     let ptr = unsafe { block_of(value, d) };
     let mut table = cells();
@@ -85,7 +85,7 @@ pub unsafe extern "C-unwind" fn msrt_cells_new(value: *mut u8, d: *const TypeDes
 /// # Safety
 /// `out` is writable memory for a value of `d`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_cells_take(id: i64, d: *const TypeDesc, out: *mut u8) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_cells_take(id: i64, d: ms_rt_abi::ValueDesc, out: *mut u8) -> u8 {
     let mut table = cells();
     let Some(c) = slot(&mut table, id) else {
         return 0;
@@ -107,7 +107,7 @@ pub unsafe extern "C-unwind" fn msrt_cells_take(id: i64, d: *const TypeDesc, out
 /// # Safety
 /// `value` holds an owned value of `d`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_cells_put(id: i64, value: *mut u8, d: *const TypeDesc) {
+pub unsafe extern "C-unwind" fn msrt_cells_put(id: i64, value: *mut u8, d: ms_rt_abi::ValueDesc) {
     // SAFETY: forwarded contract.
     let ptr = unsafe { block_of(value, d) };
     let mut table = cells();
@@ -150,7 +150,7 @@ pub extern "C-unwind" fn msrt_cells_full(id: i64) -> u8 {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_cells_take_result(
     id: i64,
-    d: *const TypeDesc,
+    d: ms_rt_abi::ValueDesc,
     out: *mut u8,
 ) -> u8 {
     // SAFETY: forwarded contract.
