@@ -162,6 +162,10 @@ export extern fn msstd_fs_chmod(path: String, mode: Int, follow: Bool) Unit!
 
 export extern fn msstd_fs_chown(path: String, uid: Int, gid: Int, follow: Bool) Unit!
 
+export extern fn msstd_fs_admit(bytes: Int) Bool
+
+export extern fn msstd_fs_release() Unit
+
 export extern fn msstd_fs_truncate(path: String, size: Int) Unit!
 
 export extern fn msstd_fs_hard_link(source: String, destination: String) Unit!

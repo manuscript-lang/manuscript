@@ -647,11 +647,6 @@ impl Checker {
             i.ty = Some(f.ty);
             return i;
         }
-        if rt.id == "Int" && matches!(name.as_str(), "seconds" | "milliseconds" | "minutes") {
-            i.ty = Some(time_type("Duration"));
-            i.native = Some(name);
-            return i;
-        }
         // `m[key] = value` is `m.add(key, value)` and `xs[i] = value` is `xs.set(i, value)`.
         let index_set = name == ms_syntax::parser::INDEX_SET;
         let name = match index_set {

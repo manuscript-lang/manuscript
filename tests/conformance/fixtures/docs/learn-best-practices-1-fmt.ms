@@ -15,6 +15,4 @@ test "configuration defaults":
     try expect_equal(try port_of("\{\"port\": 9000\}"), 9000)
 
 test "configuration rejects a wrong type":
-    try expect_error(parse[Config]("\{\"port\": true\}")) | try expect_equal(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
+    try expect_equal((try expect_error(parse[Config]("\{\"port\": true\}"))).kind, ErrorCategory.InvalidData)

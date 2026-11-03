@@ -1188,8 +1188,6 @@ pub struct Module {
     pub list_consts: Vec<Vec<i64>>,
     /// Index of [`Module::strings`] by content; only [`Module::add_string`] writes both.
     string_ids: HashMap<String, StrId>,
-    /// The `Shared[T]` box record of each payload type, indexed by the payload [`Ty`].
-    shared_boxes: Vec<Option<RecId>>,
     /// Runtime functions called. Grow it only through [`Module::add_extern`] or
     /// [`Module::push_extern`], which keep [`Module::extern_ids`] in step.
     pub externs: Vec<ExternDef>,
@@ -1229,7 +1227,6 @@ impl Module {
             strings: Vec::new(),
             list_consts: Vec::new(),
             string_ids: HashMap::new(),
-            shared_boxes: Vec::new(),
             externs: Vec::new(),
             extern_ids: HashMap::new(),
             globals: Vec::new(),
@@ -1271,37 +1268,10 @@ impl Module {
         self.records.push(RecordDef {
             name: name.to_string(),
             fields,
-            shared_box: false,
-            shared_guard: false,
             native: None,
         });
         let id = RecId(self.records.len() as u32 - 1);
         (id, self.types.rec(id))
-    }
-
-    /// The `Shared[T]` handle type over `payload`: an object whose argument is the payload box
-    /// record `{items, sealed}`, created once per payload type.
-    pub fn shared_handle(&mut self, payload: Ty) -> Ty {
-        let slot = payload.index();
-        if self.shared_boxes.len() <= slot {
-            self.shared_boxes.resize(slot + 1, None);
-        }
-        let rec = match self.shared_boxes[slot] {
-            Some(r) => self.types.rec(r),
-            None => {
-                // The payload comes first: a field's address is read with the field's own layout,
-                // which matches its place in the record only when it starts the record.
-                let fields = vec![
-                    ("items".to_string(), payload),
-                    ("sealed".to_string(), Ty::BOOL),
-                ];
-                let (id, ty) = self.add_record(&format!("Shared#{}", payload.0), fields);
-                self.records[id.index()].shared_box = true;
-                self.shared_boxes[slot] = Some(id);
-                ty
-            }
-        };
-        self.types.obj("Shared", vec![rec])
     }
 
     /// Declares an alternative and returns its id and type.

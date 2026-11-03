@@ -5,7 +5,7 @@ use crate::func::{FnLower, Val};
 use crate::nativerec::native_rec;
 use ms_check::hir::Resolution;
 use ms_check::types::{self as ct, Builtin, Kind};
-use ms_mir::ir::{Cc, Op, Value};
+use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Native;
 use ms_mir::types::NativeRec;
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -88,7 +88,11 @@ impl<'a> FnLower<'a> {
             Some(_)
                 if !self.dead
                     && !x.own
-                    && self.cx.view_wraps.contains(&(self.hir.data.file, e.id)) =>
+                    && self.cx.fact(
+                        self.hir.data.file,
+                        e.id,
+                        ms_check::ownership::Fact::ViewWrap,
+                    ) =>
             {
                 Val {
                     v: self.b.opt_view(x.v),
@@ -388,7 +392,12 @@ impl<'a> FnLower<'a> {
     fn name(&mut self, e: &Expr) -> Result<Val, Error> {
         match self.hir.resolution(e) {
             Resolution::Local(b) => {
-                if self.cx.view_moves.contains(&(self.hir.data.file, e.id)) && !self.dead {
+                if self.cx.fact(
+                    self.hir.data.file,
+                    e.id,
+                    ms_check::ownership::Fact::ViewMove,
+                ) && !self.dead
+                {
                     // The interface view this local holds moves into the result; what stays
                     // behind owns nothing, so the scope's drop frees nothing.
                     let l = self.local(&b)?;
@@ -462,27 +471,10 @@ impl<'a> FnLower<'a> {
         if let Resolution::Constructor { ty, case } = self.hir.resolution(e) {
             return self.construct_unit(e, &ty, case);
         }
-        if let Resolution::Native(unit) = self.hir.resolution(e)
-            && matches!(unit.as_str(), "seconds" | "milliseconds" | "minutes")
-        {
-            let n = self.expr(left)?;
-            if self.dead {
-                return Ok(n);
-            }
-            return self.duration_unit(unit.as_str(), n);
-        }
         if let Resolution::Method(m) = self.hir.resolution(e) {
             return self.method_value(e, left, &m);
         }
         let lt = self.ety(left);
-        if lt.id == "Int" && matches!(name, "seconds" | "milliseconds" | "minutes") {
-            // `3.minutes`: a duration of that many units.
-            let n = self.expr(left)?;
-            if self.dead {
-                return Ok(n);
-            }
-            return self.duration_unit(name, n);
-        }
         if lt.kind != Kind::Record {
             return Err(Error::new(format!("unsupported member access .{name}")));
         }
@@ -511,9 +503,21 @@ impl<'a> FnLower<'a> {
             return Ok(Val { v: f, own: false });
         }
         if obj.own {
-            // Take a copy out of the temporary, then release the temporary.
-            let o = self.owned(Val { v: f, own: false });
-            self.drop_temp(obj.v);
+            // Move the field out of the temporary and release the rest of it.
+            let fty = self.ty_of(f);
+            let o = if self.needs_drop(fty) && self.b.m.records[rid.index()].fields.len() <= 32 {
+                let o = self
+                    .b
+                    .emit(Op::MoveOut, &[f], Imm::None, Some(fty))
+                    .expect("move out");
+                self.b
+                    .emit(Op::RecRelease, &[obj.v], Imm::RecMask(rid, 1 << idx), None);
+                o
+            } else {
+                let o = self.owned(Val { v: f, own: false });
+                self.drop_temp(obj.v);
+                o
+            };
             return Ok(Val {
                 v: o,
                 own: self.holds(self.ty_of(o)),

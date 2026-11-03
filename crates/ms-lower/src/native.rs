@@ -13,37 +13,29 @@ use ms_syntax::ast::*;
 /// String operations `fn(String) -> String` and their runtime symbols.
 /// Methods of format enums: native, runtime symbol, the runtime's format parameter, and whether
 /// the runtime wants the case index (else the lowercase case name).
-const FORMAT_METHODS: &[(&str, &str, &str, bool)] = &[(
-    "string/form_normalize",
-    "msrt_string_normalize_kind",
-    "kind",
-    true,
-)];
+const FORMAT_METHODS: &[(&str, &str, &str, bool)] =
+    &[("normalize", "msrt_string_normalize_kind", "kind", true)];
 
 const STRING_TO_STRING: &[(&str, &str)] = &[
-    ("string/reverse", "msrt_string_reverse"),
-    ("string/lower", "msrt_string_lower"),
-    ("string/upper", "msrt_string_upper"),
-    ("string/trim", "msrt_string_trim"),
-    ("string/trim_start", "msrt_string_trim_start"),
-    ("string/trim_end", "msrt_string_trim_end"),
+    ("reverse", "msrt_string_reverse"),
+    ("lower", "msrt_string_lower"),
+    ("upper", "msrt_string_upper"),
+    ("trim", "msrt_string_trim"),
+    ("trim_start", "msrt_string_trim_start"),
+    ("trim_end", "msrt_string_trim_end"),
 ];
 
 /// A string method that maps its borrowed operands straight to a runtime function.
 const PLAIN_STRING: &[(&str, &str, MTy)] = &[
-    ("string/length", "msrt_string_length", MTy::INT),
-    (
-        "string/scalar_length",
-        "msrt_string_scalar_length",
-        MTy::INT,
-    ),
-    ("string/byte_length", "msrt_string_byte_length", MTy::INT),
-    ("string/is_empty", "msrt_string_is_empty", MTy::BOOL),
-    ("string/contains", "msrt_string_contains", MTy::BOOL),
-    ("string/starts_with", "msrt_string_starts_with", MTy::BOOL),
-    ("string/ends_with", "msrt_string_ends_with", MTy::BOOL),
-    ("string/concat", "msrt_string_concat", MTy::STR),
-    ("string/compare", "msrt_string_compare", MTy::INT),
+    ("length", "msrt_string_length", MTy::INT),
+    ("scalar_length", "msrt_string_scalar_length", MTy::INT),
+    ("byte_length", "msrt_string_byte_length", MTy::INT),
+    ("is_empty", "msrt_string_is_empty", MTy::BOOL),
+    ("contains", "msrt_string_contains", MTy::BOOL),
+    ("starts_with", "msrt_string_starts_with", MTy::BOOL),
+    ("ends_with", "msrt_string_ends_with", MTy::BOOL),
+    ("concat", "msrt_string_concat", MTy::STR),
+    ("compare", "msrt_string_compare", MTy::INT),
 ];
 
 /// Loop body: `(index, element)` to an optional exit condition.
@@ -723,14 +715,14 @@ impl<'a> FnLower<'a> {
         let name = native.rsplit('/').next().unwrap_or(native);
         let v = self.borrow(recv);
         let out = match name {
-            "format_int" => {
+            "to_string_radix" => {
                 let radix = self.borrow(args[0].val);
                 self.call_runtime("msrt_uint_to_string_radix", &[v, radix], MTy::STR)?
             }
             "to_string" if args.is_empty() => {
                 self.call_runtime("msrt_uint_to_string", &[v], MTy::STR)?
             }
-            "compare_int" => {
+            "compare" => {
                 let other = self.borrow(args[0].val);
                 self.call_runtime("msrt_uint_compare", &[v, other], MTy::INT)?
             }
@@ -739,7 +731,7 @@ impl<'a> FnLower<'a> {
         };
         Ok(Some(Val {
             v: out,
-            own: name != "compare_int",
+            own: name != "compare",
         }))
     }
 
@@ -809,16 +801,19 @@ impl<'a> FnLower<'a> {
         let func = m.decl.as_ref().and_then(|d| d.func());
         self.fill_native_defaults(m.module, func, &m.ty.params, &mut args)?;
         self.at(e.pos);
+        let str_recv = matches!(self.b.m.types.kind(self.ty_of(recv.v)), TyKind::Str);
+        // `NormalizationForm` is the only alternative whose native `normalize` this lowers.
+        let form_recv = matches!(self.b.m.types.kind(self.ty_of(recv.v)), TyKind::Alt(_));
         if let Some(sym) = hash_algorithm_symbol(native) {
             let result = self.emty(e)?;
             return self.hash_algorithm_call(sym, recv, &args, result);
         }
-        if native == "string/chars" && self.chars_iter_for == Some(e as *const Expr) {
+        if str_recv && native == "chars" && self.chars_iter_for == Some(e as *const Expr) {
             // `for c in text.chars()`: the loop scans the string itself, so no list is built.
             self.chars_iter_for = None;
             return Ok(recv);
         }
-        if native == "string/scalar_values" && self.chars_iter_for == Some(e as *const Expr) {
+        if str_recv && native == "scalar_values" && self.chars_iter_for == Some(e as *const Expr) {
             // `for c in text.scalar_values()`: the loop decodes the string itself.
             self.chars_iter_for = None;
             self.scalars_scan = true;
@@ -842,7 +837,8 @@ impl<'a> FnLower<'a> {
             let result = self.emty(e)?;
             return self.rt_method(sym, recv, &[], &[], result);
         }
-        if native == "string/split"
+        if str_recv
+            && native == "split"
             && self.split_view_for == Some(e as *const Expr)
             && self.stable_place(recv_expr)
         {
@@ -852,13 +848,15 @@ impl<'a> FnLower<'a> {
             let result = self.emty(e)?;
             return self.rt_method("msrt_string_split_view", recv, &m.ty.params, &args, result);
         }
-        if native == "string/split" && self.split_iter_for == Some(e as *const Expr) {
+        if str_recv && native == "split" && self.split_iter_for == Some(e as *const Expr) {
             // `for piece in text.split(..)`: pieces are produced one at a time.
             self.split_iter_for = None;
             let iter = self.b.m.types.obj("SplitIter", Vec::new());
             return self.rt_method("msrt_string_split_iter", recv, &m.ty.params, &args, iter);
         }
-        if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS.iter().find(|(n, ..)| *n == native)
+        if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS
+            .iter()
+            .find(|(n, ..)| *n == native && form_recv)
         {
             let result = self.emty(e)?;
             return self.format_method(result, m, recv, args, (sym, param, as_text));
@@ -866,17 +864,23 @@ impl<'a> FnLower<'a> {
         if native == "hash" && !matches!(self.b.m.types.kind(self.ty_of(recv.v)), TyKind::Str) {
             return self.structural_hash(recv);
         }
-        if let Some((_, sym)) = STRING_TO_STRING.iter().find(|(n, _)| *n == native) {
+        if let Some((_, sym)) = STRING_TO_STRING
+            .iter()
+            .find(|(n, _)| str_recv && *n == native)
+        {
             let r = self.borrow(recv);
             let out = self.call_runtime(sym, &[r], MTy::STR)?;
             return Ok(Val { v: out, own: true });
         }
-        if native == "string/length" || native == "string/scalar_length" {
+        if str_recv && (native == "length" || native == "scalar_length") {
             let r = self.borrow(recv);
             let n = self.b.str_len(r);
             return Ok(Val { v: n, own: false });
         }
-        if let Some((_, sym, ret)) = PLAIN_STRING.iter().find(|(n, _, _)| *n == native) {
+        if let Some((_, sym, ret)) = PLAIN_STRING
+            .iter()
+            .find(|(n, _, _)| str_recv && *n == native)
+        {
             let mut vals = vec![self.borrow(recv)];
             for a in args {
                 vals.push(self.borrow(a.val));
@@ -884,7 +888,7 @@ impl<'a> FnLower<'a> {
             let out = self.call_runtime(sym, &vals, *ret)?;
             return Ok(self.val(out, *ret == MTy::STR));
         }
-        if native == "string/form_normalize" {
+        if native == "normalize" && form_recv {
             // The form is a payload-free alternative: its case index selects the algorithm.
             let result = self.emty(e)?;
             let find = |n: &str| args.iter().find(|a| a.name.as_str() == n).copied();
@@ -988,7 +992,7 @@ impl<'a> FnLower<'a> {
                 self.map_get_or(recv, &m.ty.params, &args, result)
             }
             (TyKind::Obj(Native::Map, _), "entries") => self.map_entries(recv_expr, recv, result),
-            (TyKind::List(_), "list_keys") => self.list_keys(recv_expr, recv, result),
+            (TyKind::List(_), "keys") => self.list_keys(recv_expr, recv, result),
             (TyKind::List(_), "entries") => self.list_entries(recv_expr, recv, result),
             (TyKind::List(_) | TyKind::Bytes, "length") => {
                 let r = self.borrow(recv);
@@ -1075,11 +1079,11 @@ impl<'a> FnLower<'a> {
                 let index = index.ok_or_else(|| Error::new("get without index"))?;
                 self.list_get_or(recv, elem, index, default)
             }
-            (_, "abs_int" | "sign_int") => {
+            (_, "abs" | "sign") if self.b.m.types.is_int(rty) => {
                 let x = self.borrow(recv);
                 let (zero, minus) = (self.b.iconst(0), self.b.iconst(-1));
                 let neg = self.b.icmp(ms_mir::ir::Cc::Lt, x, zero);
-                if name == "sign_int" {
+                if name == "sign" {
                     let (one, pos) = (self.b.iconst(1), self.b.icmp(ms_mir::ir::Cc::Gt, x, zero));
                     let upper = self.b.select(pos, one, zero);
                     let v = self.b.select(neg, minus, upper);
@@ -1096,9 +1100,9 @@ impl<'a> FnLower<'a> {
                 };
                 Ok(Val { v, own: false })
             }
-            (_, "abs_float" | "sign_float") => {
+            (_, "abs" | "sign") if self.b.m.types.is_float(rty) => {
                 let x = self.borrow(recv);
-                let v = if name == "abs_float" {
+                let v = if name == "abs" {
                     self.b
                         .emit(
                             ms_mir::ir::Op::FAbs,
@@ -1117,6 +1121,7 @@ impl<'a> FnLower<'a> {
                 };
                 Ok(Val { v, own: false })
             }
+            (TyKind::Int, "milliseconds" | "seconds" | "minutes") => self.duration_unit(name, recv),
             (TyKind::Int, "to_decimal") => {
                 let n = self.borrow(recv);
                 let v = self.call_runtime("msstd_decimal_from_int", &[n], result)?;
@@ -1152,10 +1157,10 @@ impl<'a> FnLower<'a> {
                 let v = self.b.fcmp(ms_mir::ir::Cc::Eq, d.expect("fsub"), zero);
                 Ok(Val { v, own: false })
             }
-            (_, "compare_int" | "compare_float") => {
+            (_, "compare") if self.b.m.types.is_int(rty) || self.b.m.types.is_float(rty) => {
                 let a = self.borrow(recv);
                 let b = self.borrow(args[0].val);
-                let (lt, gt) = if name == "compare_int" {
+                let (lt, gt) = if self.b.m.types.is_int(rty) {
                     (
                         self.b.icmp(ms_mir::ir::Cc::Lt, a, b),
                         self.b.icmp(ms_mir::ir::Cc::Gt, a, b),
@@ -1168,7 +1173,7 @@ impl<'a> FnLower<'a> {
                 };
                 let (m1, one, zero) = (self.b.iconst(-1), self.b.iconst(1), self.b.iconst(0));
                 // An unordered pair has a NaN: NaN equals NaN and sorts above every other value.
-                let unordered = if name == "compare_float" {
+                let unordered = if self.b.m.types.is_float(rty) {
                     let a_nan = self.b.fcmp(ms_mir::ir::Cc::Ne, a, a);
                     let b_nan = self.b.fcmp(ms_mir::ir::Cc::Ne, b, b);
                     let a_only = self.b.select(b_nan, zero, one);
@@ -2052,49 +2057,10 @@ impl<'a> FnLower<'a> {
         self.b.switch_to(good);
     }
 
-    /// `n.seconds`, `n.milliseconds`, `n.minutes`: nanoseconds, faulting beyond the range.
+    /// `n.seconds()`, `n.milliseconds()`, `n.minutes()`: the runtime's checked nanosecond count.
     pub(crate) fn duration_unit(&mut self, unit: &str, n: Val) -> Result<Val, Error> {
-        use ms_mir::ir::{Cc, Op};
-        let scale: i64 = match unit {
-            "seconds" => 1_000_000_000,
-            "milliseconds" => 1_000_000,
-            _ => 60_000_000_000,
-        };
         let v = self.borrow(n);
-        let (lo, hi) = (i64::MIN / scale, i64::MAX / scale);
-        let (lov, hiv) = (self.b.iconst(lo), self.b.iconst(hi));
-        let ge = self.b.icmp(Cc::Ge, v, lov);
-        let le = self.b.icmp(Cc::Le, v, hiv);
-        let ok = self.b.binop(Op::And, ge, le);
-        let (good, bad) = (self.b.new_block(), self.b.new_block());
-        self.b.br_if(ok, good, &[], bad, &[]);
-        self.b.seal_block(good);
-        self.b.seal_block(bad);
-        self.b.switch_to(bad);
-        let head = self.b.str_lit(&format!(
-            "Int.{unit}: value must be between {lo} and {hi}, found "
-        ));
-        let found = self.call_runtime("msrt_int_to_string", &[v], MTy::STR)?;
-        let msg = self.call_runtime("msrt_string_concat", &[head, found], MTy::STR)?;
-        let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
-            name: "msrt_fault_string".to_string(),
-            params: vec![Param {
-                ty: MTy::STR,
-                mode: Mode::Borrow,
-            }],
-            ret: MTy::UNIT,
-            noreturn: true,
-            pure_: false,
-            fresh: false,
-            role: ms_mir::ir::ExternRole::None,
-            leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
-            reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
-        });
-        self.b.call_rt(ext, &[msg]);
-        self.b.unreachable();
-        self.b.switch_to(good);
-        let k = self.b.iconst(scale);
-        let nanos = self.b.binop(Op::IMul, v, k);
+        let nanos = self.call_runtime(&format!("msstd_time_int_{unit}"), &[v], MTy::INT)?;
         let out = self.duration_of(nanos)?;
         Ok(Val { v: out, own: false })
     }
@@ -2423,9 +2389,7 @@ impl<'a> FnLower<'a> {
                     Ok(None)
                 },
                 &mut |s| {
-                    let p = s.b.alt_get(alt, err, 0, r);
-                    let o = s.owned(Val { v: p, own: false });
-                    s.finish(recv);
+                    let o = s.take_alt_field(alt, err, 0, recv);
                     Ok(Some(o))
                 },
             ),
@@ -2535,10 +2499,8 @@ impl<'a> FnLower<'a> {
                         Ok(Some(v))
                     },
                     &mut |s| {
-                        let p = s.b.alt_get(alt, err, 0, r);
-                        let po = s.owned(Val { v: p, own: false });
+                        let po = s.take_alt_field(alt, err, 0, recv);
                         let v = s.b.alt_new(oa, out_err, &[po]);
-                        s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },

@@ -228,11 +228,15 @@ pub fn build_executable(
         )
     })?;
     let object_path = stage.path().join("program.o");
-    let llvm_path = stage.path().join("program.llvm.o");
+    let llvm_paths: Vec<PathBuf> = (0..parts.llvm.len())
+        .map(|k| stage.path().join(format!("program.llvm{k}.o")))
+        .collect();
     let staged = stage.path().join("program.exe");
     let cleanup = || {
         let _ = std::fs::remove_file(&object_path);
-        let _ = std::fs::remove_file(&llvm_path);
+        for path in &llvm_paths {
+            let _ = std::fs::remove_file(path);
+        }
         let _ = std::fs::remove_file(&staged);
         if let Some(companion) = ms_clif::link::debug_companion_path(&staged) {
             let _ = std::fs::remove_dir_all(companion);
@@ -245,12 +249,12 @@ pub fn build_executable(
     // The functions LLVM compiled link beside the Cranelift object, ahead of the runtime.
     let mut inputs: Vec<&Path> = extra.iter().map(PathBuf::as_path).collect();
     inputs.push(runtime);
-    if let Some(llvm) = parts.llvm {
-        if let Err(error) = std::fs::write(&llvm_path, llvm) {
+    for (k, (path, llvm)) in llvm_paths.iter().zip(&parts.llvm).enumerate() {
+        if let Err(error) = std::fs::write(path, llvm) {
             cleanup();
-            return Err(format!("cannot write {}: {error}", llvm_path.display()));
+            return Err(format!("cannot write {}: {error}", path.display()));
         }
-        inputs.insert(0, &llvm_path);
+        inputs.insert(k, path);
     }
     let linked = ms_clif::link::link_with(
         &object_path,
@@ -261,7 +265,9 @@ pub fn build_executable(
     );
     phase("link");
     let _ = std::fs::remove_file(&object_path);
-    let _ = std::fs::remove_file(&llvm_path);
+    for path in &llvm_paths {
+        let _ = std::fs::remove_file(path);
+    }
     if let Err(error) = linked {
         cleanup();
         return Err(error.to_string());

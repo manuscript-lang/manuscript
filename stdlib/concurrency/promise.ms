@@ -35,10 +35,14 @@ export opaque type Promise[T]:
     // The runtime slot of this promise: a generation and an index, never reused while this id is live.
     id: Int
 
-// A limit in nanoseconds, or -1 for none.
+// A limit in nanoseconds, or -1 for none. A negative duration is no time at all, not "none".
 fn nanos(limit: Duration?) Int:
     if let own = limit:
-        return own.to_nanoseconds()
+        let total = own.to_nanoseconds()
+        if total < 0:
+            return 0
+
+        return total
 
     return -1
 

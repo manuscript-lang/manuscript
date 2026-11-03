@@ -22,13 +22,13 @@ pub mod native_defaults;
 pub mod ownership;
 pub mod passes;
 pub mod prelude_imports;
-pub mod receivers;
 pub mod recursion;
 pub mod stdlib;
 pub mod stmts;
 pub mod suggestions;
 pub mod syntax;
 pub mod types;
+pub mod tytable;
 mod unused;
 
 #[cfg(test)]
@@ -39,6 +39,8 @@ mod record_fields_tests;
 mod type_argument_defaults_tests;
 #[cfg(test)]
 mod type_graph_tests;
+#[cfg(test)]
+mod tytable_tests;
 
 pub use checker::{CheckOptions, ImportMap, Program, TestFixture, self_variable};
 pub use syntax::{ModRef, ModuleData};
@@ -81,23 +83,14 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         // Value semantics is part of the language: every program that type checks is also
         // checked for ownership and exclusivity.
         let own = program.hir().ownership();
-        program.borrows = Rc::new(own.borrows);
-        program.implicit_closes = Rc::new(own.closes);
-        program.explicit_closes = Rc::new(own.explicit_closes);
         program.close_moves = Rc::new(own.close_moves);
         program.resource_moves = Rc::new(own.resource_moves);
-        program.moved_payloads = Rc::new(own.moved_payloads);
         program.moves = Rc::new(own.moves);
-        program.conditional_moves = Rc::new(own.conditional_moves);
         program.borrowed_captures = Rc::new(own.borrowed_captures);
         program.consumes = Rc::new(own.consumes);
-        program.lenders = Rc::new(own.lenders);
-        program.view_lenders = Rc::new(own.view_lenders);
-        program.view_wraps = Rc::new(own.view_wraps);
-        program.bound_borrows = Rc::new(own.bound_borrows);
-        program.view_moves = Rc::new(own.view_moves);
+        program.node_facts = Rc::new(own.node_facts);
+        program.binding_facts = Rc::new(own.binding_facts);
         program.owned_lends = Rc::new(own.owned_lends);
-        program.lent_matches = Rc::new(own.lent_matches);
         program.getter_borrows = Rc::new(own.getter_borrows);
         program.diagnostics.extend(own.diagnostics);
     }

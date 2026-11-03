@@ -9,7 +9,7 @@ import stdout_bytes from "@std/io/io.ms"
 fn exercise() Int!:
     match run(
         program: "/bin/printf", arguments: ["hello"], input: "".to_bytes(),
-        max_output_bytes: 64, timeout: 1.seconds
+        max_output_bytes: 64, timeout: 1.seconds()
     ).wait():
         error(_):
             return ok(1)

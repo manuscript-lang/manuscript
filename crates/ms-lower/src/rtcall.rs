@@ -162,17 +162,9 @@ pub(crate) struct Input {
 /// The runtime symbol implementing a native method of a receiver type.
 pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> Option<String> {
     let name = native.rsplit('/').next().unwrap_or(native);
-    let name = match name {
-        "format_int" => "to_string_radix",
-        "format_precision" => "to_precision",
-        "format_exponential" => "to_exponential",
-        "format_fixed" => "to_fixed",
-        "format_float" => "to_string",
-        "compare_int" | "compare_float" => "compare",
-        other => other,
-    };
     let name = match (m.types.kind(recv), name) {
         (TyKind::Str, "drop") => "drop_n",
+        (TyKind::Obj(Native::Map, _), "map") => "transform",
         (TyKind::List(elem), "join") if matches!(m.types.kind(*elem), TyKind::Int) => "join_int",
         _ => name,
     };
@@ -1152,8 +1144,40 @@ impl FnLower<'_> {
                     }
                 }
             } else {
-                let l = s.lit(&format!("{domain}: {words}")).v;
-                s.owned(Val { v: l, own: false })
+                let fallback = format!("{domain}: {words}");
+                let literal = |s: &mut Self| {
+                    let l = s.lit(&fallback).v;
+                    s.owned(Val { v: l, own: false })
+                };
+                match s.err_slot {
+                    // A native with an `err` slot may explain the failure (a position, a path):
+                    // its non-empty text follows the status words.
+                    Some(slot) => {
+                        let said =
+                            s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
+                                .expect("take");
+                        let len = s.b.str_len(said);
+                        let zero = s.b.iconst(0);
+                        let has = s.b.icmp(Cc::Gt, len, zero);
+                        s.two_ways(
+                            has,
+                            MTy::STR,
+                            &mut |s| {
+                                let head = s.b.str_lit(&format!("{fallback}: "));
+                                let both =
+                                    s.call_runtime("msrt_string_concat", &[head, said], MTy::STR)?;
+                                s.drop_value(said);
+                                Ok(Some(both))
+                            },
+                            &mut |s| {
+                                s.drop_value(said);
+                                Ok(Some(literal(s)))
+                            },
+                        )?
+                        .v
+                    }
+                    None => literal(s),
+                }
             };
             s.error_record(er, kind, text, None)
         };

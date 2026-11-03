@@ -21,12 +21,149 @@ pub struct Variant {
     pub evidence: Option<ms_check::types::Name>,
 }
 
+/// A dense side column indexed by a MIR type or declaration number: a vector of slots, no hashing.
+#[derive(Clone, Debug)]
+pub struct Column<T>(Vec<Option<T>>);
+
+impl<T> Default for Column<T> {
+    fn default() -> Self {
+        Column(Vec::new())
+    }
+}
+
+impl<T> Column<T> {
+    /// The value at `at`, if set.
+    pub fn get(&self, at: usize) -> Option<&T> {
+        self.0.get(at)?.as_ref()
+    }
+
+    /// Whether `at` is set.
+    pub fn contains(&self, at: usize) -> bool {
+        self.get(at).is_some()
+    }
+
+    /// Sets `at` unless it already holds a value.
+    pub fn set_if_absent(&mut self, at: usize, value: T) {
+        if self.0.len() <= at {
+            self.0.resize_with(at + 1, || None);
+        }
+        self.0[at].get_or_insert(value);
+    }
+}
+
+/// What a bound-method thunk reaches the method through.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum BoundTarget {
+    /// Interface `iface`, method `k`.
+    Iface(u32, usize),
+    /// A source instance.
+    Func(FuncId),
+}
+
+/// Identity of a generated helper function: one variant per kind, with the types and flags
+/// that distinguish its instances.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum HelperKey {
+    Eq(MTy, u32),
+    Fmt(MTy, bool),
+    Json {
+        encode: bool,
+        ty: ms_check::tytable::TyId,
+    },
+    JsonTree(ms_check::tytable::TyId),
+    JsonTreeView(ms_check::tytable::TyId),
+    CloseParts(ms_check::tytable::TyId, bool),
+    CloseIface {
+        iface: u32,
+        k: u32,
+        in_slot: bool,
+    },
+    CloseFunc {
+        fid: FuncId,
+        writes_back: bool,
+        in_slot: bool,
+    },
+    Thunk(FuncId),
+    DefaultThunk {
+        fid: FuncId,
+        fty: MTy,
+        shared: bool,
+    },
+    DirectDefault(FuncId),
+    IfaceThunk {
+        iface: u32,
+        k: usize,
+        fty: MTy,
+        addr: bool,
+    },
+    BoundSharedIface {
+        iface: u32,
+        k: usize,
+        fty: MTy,
+    },
+    BoundSharedFunc {
+        fid: FuncId,
+        fty: MTy,
+    },
+    Bound {
+        target: BoundTarget,
+        fty: MTy,
+        addr: bool,
+    },
+    BoundNative {
+        native: Name,
+        rty: MTy,
+        fty: MTy,
+        held: Held,
+        scope: Option<Name>,
+    },
+    NativeThunk {
+        native: Name,
+        fty: MTy,
+    },
+    TostringThunk(MTy, bool),
+    MsFn(MTy),
+    WalkThunk(MTy, bool),
+    ServeThunk(MTy),
+    TestingTrap(MTy),
+}
+
+/// Identity of a generated interface implementation table.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum VtableKey {
+    Impl {
+        ty: ms_check::tytable::TyId,
+        iface: u32,
+        scope: Option<Name>,
+    },
+    Handle {
+        module: Name,
+        iface: u32,
+    },
+}
+
+impl std::fmt::Display for VtableKey {
+    /// The table's name in the module, as before keys were typed.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VtableKey::Impl { ty, iface, scope } => {
+                write!(f, "impl:{}:{iface}", ty.index())?;
+                match scope {
+                    Some(s) => write!(f, "@{s}"),
+                    None => Ok(()),
+                }
+            }
+            VtableKey::Handle { module, iface } => write!(f, "handle:{module}:{iface}"),
+        }
+    }
+}
+
 /// The key of a reserved instance: the callable, its type variables and its variant.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct InstKey {
     pub file: ms_check::types::Name,
     pub node: NodeId,
-    pub subst: Vec<(ms_check::types::Name, String)>,
+    pub subst: Vec<(ms_check::types::Name, ms_check::tytable::TyId)>,
     pub variant: Variant,
 }
 
@@ -84,7 +221,7 @@ pub struct IfaceThunkJob {
 }
 
 /// How a method value's closure holds its receiver.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Held {
     /// The receiver itself, owned by the closure.
     Value,
@@ -191,30 +328,40 @@ pub struct Job {
 
 /// Whole-program lowering context.
 pub struct Cx {
+    /// `MS_STRICT_COPIES=1`: an owning position that receives a borrowed place is an error.
+    pub strict_copies: bool,
+    /// Boolean ownership facts per node (lenders, view wraps, bound borrows, view moves, lent matches).
+    pub node_facts: Rc<ms_check::ownership::NodeFacts>,
+    /// Boolean ownership facts per binding (borrows, closes, conditional moves).
+    pub binding_facts: Rc<ms_check::ownership::BindingFlags>,
+    /// Lowering sites that copied a borrow into an owning position, with the producer op.
+    pub copy_gaps: Vec<String>,
     /// Module queries by file.
     pub mods: HashMap<Name, Rc<ModuleHir>>,
     /// Callables by (module file, declaration or method node id).
     pub callables: HashMap<(Name, NodeId), Rc<Callable>>,
     /// MIR types by checker type key.
-    pub tycache: HashMap<String, MTy>,
+    pub tycache: Vec<Option<MTy>>,
+    /// Checker type identities, interned on demand while lowering.
+    pub tys: ms_check::tytable::TyTable,
+    /// The runtime's raw `fs` info record, once built.
+    pub fs_info_raw: Option<MTy>,
     /// Function instances by key.
     pub insts: HashMap<InstKey, FuncId>,
     /// Bodies waiting to be lowered.
     pub queue: Vec<Job>,
     /// Records and alternatives declared `opaque type`; their text form is the type name.
-    pub opaque_tys: std::collections::HashSet<MTy>,
-    /// Alternatives declared by the standard library.
-    pub std_alts: std::collections::HashSet<usize>,
+    pub opaque_tys: Column<()>,
     /// Helper functions (formatting, equality, ...) by key.
-    pub helpers: HashMap<String, FuncId>,
+    pub helpers: HashMap<HelperKey, FuncId>,
     /// Interface implementation tables built by lowering.
-    pub vtables: HashMap<String, ms_mir::ir::VtableId>,
+    pub vtables: HashMap<VtableKey, ms_mir::ir::VtableId>,
     /// The checker type of every lowered interface.
     pub contracts: HashMap<ms_mir::types::IfaceId, ct::Ty>,
     /// Every implementation method of the program.
     pub methods: Vec<ct::MethodRef>,
     /// The checker type behind each lowered record or alternative.
-    pub source_tys: HashMap<MTy, ct::Ty>,
+    pub source_tys: Column<ct::Ty>,
     /// The `.ms` methods of the native records, built once from the program's methods.
     pub native_ops: crate::nativerec::NativeOps,
     /// Types whose descriptor glue is registered, per implementation scope.
@@ -227,20 +374,12 @@ pub struct Cx {
     pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
     /// The `make_fixture` factory and hooks type of each module with tests.
     pub fixtures: HashMap<Name, ms_check::TestFixture>,
-    /// Bindings that borrow a place another binding owns, and how.
-    pub borrows: Rc<HashMap<usize, BorrowKind>>,
-    /// Resource bindings closed implicitly when their scope ends.
-    pub implicit_closes: Rc<std::collections::HashSet<usize>>,
-    /// Closing bindings the program also closes with an explicit `.close()` call.
-    pub explicit_closes: Rc<std::collections::HashSet<usize>>,
     /// The name expressions that move a closed resource binding, by binding: the scope-end close
     /// runs only on the paths that never reach one.
     pub close_moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
     /// Every move of a whole binding, by binding: the name expressions (or lambdas) that take
     /// its value out of the local.
     pub moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
-    /// The moved bindings some path keeps to the end of their scope: their local can be empty.
-    pub conditional_moves: Rc<std::collections::HashSet<usize>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves:
         Rc<HashMap<usize, HashMap<ms_syntax::ast::NodeId, Vec<ms_check::types::Name>>>>,
@@ -250,37 +389,39 @@ pub struct Cx {
     pub consumes: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<bool>>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
     pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
-    /// Callables whose result is a reference into their arguments, by module file and node.
-    pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
-    /// Callables whose result is an interface view of their arguments (`ret_view`).
-    pub view_lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
-    /// Wrappers of lent values built as `opt.view` / `alt.view`, by module file and node.
-    pub view_wraps: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
-    /// Method values that stay local and borrow their receiver's place: the closure holds the
-    /// receiver's address instead of a copy.
-    pub bound_borrows: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
-    /// Name expressions moving an interface view out of the local holding it.
-    pub view_moves: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Lending calls whose result the caller owns because an argument is a temporary: the
     /// result is copied out before the temporary is dropped.
     pub owned_lends: Rc<
         std::collections::HashMap<(Name, ms_syntax::ast::NodeId), ms_check::ownership::OwnedLend>,
     >,
-    /// Conditional and match expressions whose value is a reference on every arm.
-    pub lent_matches: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Which types are resources, for the closers of records and collections that hold them.
     pub classes: ms_check::ownership::Classifier,
 }
 
 impl Cx {
+    /// Fails when strict mode recorded an implicit copy of a borrow.
+    pub fn check_strict_copies(&self) -> Result<(), crate::Error> {
+        if self.copy_gaps.is_empty() {
+            return Ok(());
+        }
+        let mut sites = self.copy_gaps.clone();
+        sites.sort();
+        let total = sites.len();
+        sites.dedup();
+        Err(crate::Error::new(format!(
+            "internal: {total} implicit copies of a borrow at {}",
+            sites.join(", ")
+        )))
+    }
+
     /// The binding is a `var` borrow: it lowers as a path into its origin.
     pub fn exclusive(&self, uid: usize) -> bool {
-        self.borrows.get(&uid) == Some(&BorrowKind::Exclusive)
+        self.binding_facts.borrow(uid) == Some(BorrowKind::Exclusive)
     }
 
     /// The binding is a `let` borrow of a place: it may point into its origin instead of copying.
     pub fn shared(&self, uid: usize) -> bool {
-        self.borrows.get(&uid) == Some(&BorrowKind::Shared)
+        self.binding_facts.borrow(uid) == Some(BorrowKind::Shared)
     }
 
     /// Indexes every module of the program.
@@ -302,41 +443,36 @@ impl Cx {
             .map(|m| m.receiver.id)
             .collect();
         Cx {
+            node_facts: program.node_facts.clone(),
+            binding_facts: program.binding_facts.clone(),
+            strict_copies: std::env::var_os("MS_STRICT_COPIES").is_some(),
+            copy_gaps: Vec::new(),
             extended,
             scope_names: Vec::new(),
             mods,
             callables,
             mutated,
-            source_tys: HashMap::new(),
+            source_tys: Default::default(),
             native_ops,
             glue_seen: Default::default(),
-            tycache: HashMap::new(),
+            tycache: Vec::new(),
+            tys: Default::default(),
+            fs_info_raw: None,
             insts: HashMap::new(),
             queue: Vec::new(),
             opaque_tys: Default::default(),
-            std_alts: Default::default(),
             helpers: HashMap::new(),
             vtables: HashMap::new(),
             contracts: HashMap::new(),
             methods: program.methods.clone(),
             fixtures: program.test_fixtures.clone(),
-            borrows: program.borrows.clone(),
-            implicit_closes: program.implicit_closes.clone(),
-            explicit_closes: program.explicit_closes.clone(),
             close_moves: program.close_moves.clone(),
             moves: program.moves.clone(),
-            conditional_moves: program.conditional_moves.clone(),
             resource_moves: program.resource_moves.clone(),
             borrowed_captures: program.borrowed_captures.clone(),
             consumes: program.consumes.clone(),
             getters: program.getter_borrows.clone(),
-            lenders: program.lenders.clone(),
-            view_lenders: program.view_lenders.clone(),
-            view_wraps: program.view_wraps.clone(),
-            bound_borrows: program.bound_borrows.clone(),
-            view_moves: program.view_moves.clone(),
             owned_lends: program.owned_lends.clone(),
-            lent_matches: program.lent_matches.clone(),
             classes: ms_check::ownership::Classifier::new(program),
         }
     }
@@ -383,11 +519,11 @@ impl Cx {
             }
             _ => {}
         }
-        let key = ct::lowering_key(t);
-        if let Some(found) = self.tycache.get(&key) {
+        let key = self.tys.intern(t);
+        if let Some(Some(found)) = self.tycache.get(key.index()) {
             return Ok(*found);
         }
-        let out = self.lower_ty_uncached(m, t, &key)?;
+        let out = self.lower_ty_uncached(m, t, key)?;
         if matches!(
             m.types.kind(out),
             ms_mir::types::TyKind::Rec(_)
@@ -398,13 +534,26 @@ impl Cx {
         ) {
             // The checker type behind a MIR type, so cleanup can ask for its class: an
             // `Optional`, `List` or `Map` of a resource is one too.
-            self.source_tys.entry(out).or_insert_with(|| t.clone());
+            self.source_tys.set_if_absent(out.0 as usize, t.clone());
         }
-        self.tycache.insert(key, out);
+        self.set_lowered(key, out);
         Ok(out)
     }
 
-    fn lower_ty_uncached(&mut self, m: &mut Module, t: &ct::Ty, key: &str) -> Result<MTy, Error> {
+    fn set_lowered(&mut self, key: ms_check::tytable::TyId, ty: MTy) {
+        if self.tycache.len() <= key.index() {
+            self.tycache
+                .resize(self.tys.len().max(key.index() + 1), None);
+        }
+        self.tycache[key.index()] = Some(ty);
+    }
+
+    fn lower_ty_uncached(
+        &mut self,
+        m: &mut Module,
+        t: &ct::Ty,
+        key: ms_check::tytable::TyId,
+    ) -> Result<MTy, Error> {
         match t.kind {
             Kind::Function => {
                 let mut params = Vec::new();
@@ -434,8 +583,6 @@ impl Cx {
             }
             Kind::Record => {
                 let (id, ty) = m.add_record(&t.to_string(), Vec::new());
-                m.records[id.index()].shared_guard =
-                    t.is_source_type("@std/concurrency/sync.ms", "SharedGuard");
                 m.records[id.index()].native = if t.is_time("Timestamp") {
                     Some(NativeRec::Timestamp)
                 } else if t.is_time("Instant") {
@@ -445,9 +592,9 @@ impl Cx {
                 } else {
                     None
                 };
-                self.tycache.insert(key.to_string(), ty);
+                self.set_lowered(key, ty);
                 if t.opaque_module().is_some() {
-                    self.opaque_tys.insert(ty);
+                    self.opaque_tys.set_if_absent(ty.0 as usize, ());
                 }
                 let mut fields = Vec::new();
                 for f in ct::fields(t) {
@@ -459,14 +606,9 @@ impl Cx {
             }
             Kind::Alternative => {
                 let (id, ty) = m.add_alt(&t.to_string(), Vec::new());
-                self.tycache.insert(key.to_string(), ty);
+                self.set_lowered(key, ty);
                 if t.opaque_module().is_some() {
-                    self.opaque_tys.insert(ty);
-                }
-                if t.symbol()
-                    .is_some_and(|s| s.module.as_str().starts_with("@std/"))
-                {
-                    self.std_alts.insert(id.index());
+                    self.opaque_tys.set_if_absent(ty.0 as usize, ());
                 }
                 let mut cases = Vec::new();
                 for c in ct::cases(t) {
@@ -489,7 +631,7 @@ impl Cx {
                     methods: Vec::new(),
                 });
                 let ty = m.types.iface(id);
-                self.tycache.insert(key.to_string(), ty);
+                self.set_lowered(key, ty);
                 self.contracts.insert(id, t.clone());
                 let mut subst = ct::substitution(t);
                 // `Self` in an operation is the interface value itself.
@@ -579,5 +721,17 @@ impl Cx {
         }
         // Any other opaque runtime type is a reference-counted handle.
         Ok(m.types.obj(t.name.as_str(), Vec::new()))
+    }
+}
+
+impl Cx {
+    /// Whether `fact` holds for node `id` of module `file`.
+    pub fn fact(
+        &self,
+        file: Name,
+        id: ms_syntax::ast::NodeId,
+        fact: ms_check::ownership::Fact,
+    ) -> bool {
+        self.node_facts.has(file, id, fact)
     }
 }

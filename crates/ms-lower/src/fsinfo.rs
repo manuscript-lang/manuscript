@@ -65,8 +65,7 @@ const TIMES: [(&str, &str); 4] = [
 impl FnLower<'_> {
     /// The record the runtime writes `InfoOut` as: the name and one `Int` per word.
     fn info_raw(&mut self) -> (RecId, MTy) {
-        let key = "native:FsInfoRaw";
-        if let Some(t) = self.cx.tycache.get(key).copied()
+        if let Some(t) = self.cx.fs_info_raw
             && let TyKind::Rec(r) = self.b.m.types.kind(t)
         {
             return (*r, t);
@@ -74,7 +73,7 @@ impl FnLower<'_> {
         let mut fields = vec![("name".to_string(), MTy::STR)];
         fields.extend(WORDS.iter().map(|w| (w.to_string(), MTy::INT)));
         let (id, ty) = self.b.m.add_record("FsInfoRaw", fields);
-        self.cx.tycache.insert(key.to_string(), ty);
+        self.cx.fs_info_raw = Some(ty);
         (id, ty)
     }
 

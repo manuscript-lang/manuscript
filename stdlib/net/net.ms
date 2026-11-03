@@ -38,6 +38,23 @@ import (
     msstd_net_parse_cidr,
     msstd_net_parse_ip,
     msstd_net_network,
+    msstd_net_network_bind_datagram,
+    msstd_net_network_close,
+    msstd_net_network_connect,
+    msstd_net_network_connect_tls,
+    msstd_net_network_connect_tls_config,
+    msstd_net_network_connect_unix,
+    msstd_net_network_http_client,
+    msstd_net_network_listen,
+    msstd_net_network_listen_tls,
+    msstd_net_network_listen_unix,
+    msstd_net_network_lookup,
+    msstd_net_network_request,
+    msstd_net_network_request_bytes,
+    msstd_net_network_resolve,
+    msstd_net_network_restrict,
+    msstd_net_network_web_socket,
+    msstd_net_network_with_resolver,
     msstd_tls_parse_certificates,
     msstd_tls_verify_certificates,
     msstd_url_decode_component,
@@ -392,56 +409,89 @@ export fn parse_cidr(text: String) Cidr!:
 export fn parse_ip(text: String) IpAddress!:
     return msstd_net_parse_ip(text)
 
-// Network, DNS, HTTP, and WebSocket operations for the current host.
-export interface Network:
+// The runtime handle behind a `Network`.
+export extern type NativeNetwork
+
+// A set of network permissions and a resolver for the connections, listeners, sockets, clients and servers opened through it. Nothing restricts the host network.
+export type Network:
+    // The runtime handle; it is released when the last reference to this network ends.
+    native: NativeNetwork
+
+impl Network:
     // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
     // A restricted network without listening permission, or an address outside its CIDRs, returns PermissionDenied.
-    fn bind_datagram(address: String) RawDatagramSocket!
+    fn bind_datagram(address: String) RawDatagramSocket!:
+        return msstd_net_network_bind_datagram(self.native, address)
+
     // Cancels in-flight calls and closes every connection, listener, socket, HTTP client, and server this network opened, including those of derived networks.
     // Safe to call repeatedly. A request handler of a server on this network cannot close it and faults.
-    fn close() Unit
+    fn close() Unit:
+        msstd_net_network_close(self.native)
+
     // Resolves `address` (`host:port`) and opens a TCP connection to the first reachable permitted address.
     // Returns PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
-    fn connect(address: String, timeout: Duration?) RawConnection!
+    fn connect(address: String, timeout: Duration?) RawConnection!:
+        return msstd_net_network_connect(self.native, address, timeout)
+
     // Connects over TCP to `address` and completes a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2.
     // An empty `server_name` returns InvalidInput, and `timeout` bounds the whole attempt.
     fn connect_tls(
         address: String,
         server_name: String,
         timeout: Duration?
-    ) RawConnection!
+    ) RawConnection!:
+        return msstd_net_network_connect_tls(self.native, address, server_name, timeout)
+
     // Connects over TCP to `address` and completes a TLS handshake using `options`, with at least TLS 1.2.
     // Invalid options return InvalidInput, handshake and verification failures return Failed, and `timeout` bounds the whole attempt.
     fn connect_tls_config(
         address: String,
         options: TlsOptions,
         timeout: Duration?
-    ) RawConnection!
+    ) RawConnection!:
+        return msstd_net_network_connect_tls_config(
+            self.native, address, options, timeout
+        )
+
     // Connects to the Unix domain socket at `path`.
     // Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path returns InvalidInput. `timeout` bounds the attempt.
-    fn connect_unix(path: String, timeout: Duration?) RawConnection!
+    fn connect_unix(path: String, timeout: Duration?) RawConnection!:
+        return msstd_net_network_connect_unix(self.native, path, timeout)
+
     // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
     // Invalid or negative options return InvalidInput. Closing the network closes the client.
-    fn http_client(options: HttpClientOptions) HttpClient!
+    fn http_client(options: HttpClientOptions) HttpClient!:
+        return msstd_net_network_http_client(self.native, options)
+
     // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
     // A restricted network needs `allow_listen` and an IP-literal address inside its CIDRs, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
-    fn listen(address: String) Listener!
+    fn listen(address: String) Listener!:
+        return msstd_net_network_listen(self.native, address)
+
     // Listens for TCP connections on `address` and completes a TLS handshake for each accepted connection, within `handshake_timeout` when supplied.
     // `options` must hold a certificate and key, otherwise InvalidInput is returned.
     fn listen_tls(
         address: String,
         options: TlsOptions,
         handshake_timeout: Duration?
-    ) Listener!
+    ) Listener!:
+        return msstd_net_network_listen_tls(
+            self.native, address, options, handshake_timeout
+        )
+
     // Listens on a Unix domain socket at `path`.
     // Any restricted network returns PermissionDenied, and an empty path returns InvalidInput.
-    fn listen_unix(path: String) Listener!
+    fn listen_unix(path: String) Listener!:
+        return msstd_net_network_listen_unix(self.native, path)
+
     /*
     Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
     More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
     System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
     */
-    fn lookup(name: String, max_records: Int?, timeout: Duration?) List[String]!
+    fn lookup(name: String, max_records: Int?, timeout: Duration?) List[String]!:
+        return msstd_net_network_lookup(self.native, name, max_records, timeout)
+
     // Performs one buffered HTTP request and returns the status, headers, and complete body.
     // Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `max_response_bytes` returns LimitExceeded; error statuses are ordinary responses.
     fn request(
@@ -451,7 +501,11 @@ export interface Network:
         body: String = "",
         max_response_bytes: Int?,
         timeout: Duration?
-    ) ClientResponse!
+    ) ClientResponse!:
+        return msstd_net_network_request(
+            self.native, method, url, headers, body, max_response_bytes, timeout
+        )
+
     // Performs the same buffered request with a raw bytes body.
     fn request_bytes(
         method: HttpMethod,
@@ -460,17 +514,25 @@ export interface Network:
         body: Bytes = "".to_bytes(),
         max_response_bytes: Int?,
         timeout: Duration?
-    ) ClientResponse!
+    ) ClientResponse!:
+        return msstd_net_network_request_bytes(
+            self.native, method, url, headers, body, max_response_bytes, timeout
+        )
+
     // Resolves the selected supported category, retaining it in each record.
     fn resolve(
         name: String,
         kind: DnsKind,
         max_records: Int?,
         timeout: Duration?
-    ) List[DnsRecord]!
+    ) List[DnsRecord]!:
+        return msstd_net_network_resolve(self.native, name, kind, max_records, timeout)
+
     // Returns a derived network limited to the given host names and CIDR ranges.
     // Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns InvalidInput.
-    fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) Network!
+    fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) Network!:
+        return msstd_net_network_restrict(self.native, hosts, cidrs, allow_listen)
+
     // Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
     // Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures are `Error` values.
     fn web_socket(
@@ -478,14 +540,19 @@ export interface Network:
         headers: HttpHeaders,
         subprotocols: List[String],
         options: WebSocketOptions
-    ) RawWebSocket!
+    ) RawWebSocket!:
+        return msstd_net_network_web_socket(
+            self.native, url, headers, subprotocols, options
+        )
+
     // Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
     // The address must be allowed by this network's restrictions, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
-    fn with_resolver(address: String) Network!
+    fn with_resolver(address: String) Network!:
+        return msstd_net_network_with_resolver(self.native, address)
 
 // The network of the current host.
 fn host_network() Network:
-    return msstd_net_network()
+    return Network(native: msstd_net_network())
 
 // Parsed certificate identity, validity range, and original DER bytes.
 export type CertificateInfo:
@@ -929,7 +996,7 @@ impl Closeable for Accepting:
                 let _ = closing.close()
 
         for worker in self.workers:
-            let _ = worker.wait(timeout: 0.seconds)
+            let _ = worker.wait(timeout: 0.seconds())
         self.workers = []
         return ok(unit)
 
@@ -957,7 +1024,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
             if accepted.err().kind == ErrorCategory.Closed:
                 return ok(unit)
 
-            sleep(50.milliseconds).wait().get(unit)
+            sleep(50.milliseconds()).wait().get(unit)
             continue
 
         let _ = accepting.deals[next].write(accepted.get())

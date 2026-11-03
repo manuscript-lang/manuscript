@@ -2,6 +2,7 @@
 
 use crate::Error;
 use crate::cx::Cx;
+use crate::cx::VtableKey;
 use crate::func::{FnLower, Val};
 use ms_check::types as ct;
 use ms_mir::builder::FuncBuilder;
@@ -13,14 +14,14 @@ impl Cx {
     pub(crate) fn intern_vtable(
         &mut self,
         m: &mut Module,
-        key: String,
+        key: VtableKey,
         iface: IfaceId,
         methods: Vec<ms_mir::ir::FuncId>,
         data_ty: MTy,
     ) -> VtableId {
         let id = VtableId(m.vtables.len() as u32);
         m.vtables.push(VtableDef {
-            name: key.clone(),
+            name: key.to_string(),
             iface,
             methods,
             data_ty,
@@ -51,12 +52,11 @@ impl Cx {
         iface: IfaceId,
         scope: ct::Name,
     ) -> Result<VtableId, Error> {
-        let key = format!(
-            "impl:{}:{}{}",
-            ct::type_key(concrete),
-            iface.0,
-            self.scope_key(concrete, scope)
-        );
+        let key = VtableKey::Impl {
+            ty: self.tys.shape(concrete),
+            iface: iface.0,
+            scope: self.mentions_extension(concrete).then_some(scope),
+        };
         if let Some(v) = self.vtables.get(&key) {
             return Ok(*v);
         }
@@ -97,7 +97,14 @@ impl Cx {
                 break;
             }
             if found.is_none() && s.name == "equals" && m.ifaces[iface.index()].name == "Equal" {
-                methods.push(self.builtin_equals(m, iface, data_ty, scope, own, key.as_str())?);
+                methods.push(self.builtin_equals(
+                    m,
+                    iface,
+                    data_ty,
+                    scope,
+                    own,
+                    &key.to_string(),
+                )?);
                 continue;
             }
             let (module, id, subst, native, mref) = found.ok_or_else(|| {

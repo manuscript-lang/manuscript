@@ -50,11 +50,16 @@ fn main() {
     let parts = compile_parts(&m, &opts).unwrap_or_else(|e| panic!("{e}"));
     let objp = out.with_extension("o");
     std::fs::write(&objp, parts.object).expect("write object");
-    let llvm_obj = parts.llvm.map(|bytes| {
-        let p = out.with_extension("llvm.o");
-        std::fs::write(&p, bytes).expect("write LLVM object");
-        p
-    });
+    let llvm_obj: Vec<PathBuf> = parts
+        .llvm
+        .iter()
+        .enumerate()
+        .map(|(k, bytes)| {
+            let p = out.with_extension(format!("llvm{k}.o"));
+            std::fs::write(&p, bytes).expect("write LLVM object");
+            p
+        })
+        .collect();
     let cc_obj = |name: &str| {
         let p = out.with_file_name(format!("{name}.o"));
         let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("tests/rt/{name}.c"));
@@ -68,7 +73,7 @@ fn main() {
         p
     };
     // The real runtime has no msrt_print_* hooks; the shim supplies them for fixtures.
-    let mut inputs = llvm_obj.into_iter().collect::<Vec<_>>();
+    let mut inputs = llvm_obj;
     match rt {
         Some(rt) => inputs.extend([cc_obj("printshim"), rt]),
         None => inputs.push(cc_obj("testrt")),

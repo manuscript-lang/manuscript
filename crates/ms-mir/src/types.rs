@@ -95,8 +95,6 @@ pub enum Native {
     Map,
     /// `Set[T]`.
     Set,
-    /// A shared handle over a payload record.
-    Shared,
     /// `BigInt`.
     BigInt,
     /// The string-split iterator.
@@ -111,7 +109,6 @@ impl Native {
         match name {
             "Map" => Native::Map,
             "Set" => Native::Set,
-            "Shared" => Native::Shared,
             "BigInt" => Native::BigInt,
             "SplitIter" => Native::SplitIter,
             other => Native::Opaque(other.to_string()),
@@ -123,7 +120,6 @@ impl Native {
         match self {
             Native::Map => "Map",
             Native::Set => "Set",
-            Native::Shared => "Shared",
             Native::BigInt => "BigInt",
             Native::SplitIter => "SplitIter",
             Native::Opaque(n) => n,
@@ -415,12 +411,6 @@ pub struct RecordDef {
     pub name: String,
     /// Fields in declaration (and layout) order.
     pub fields: Vec<(String, Ty)>,
-    /// Whether this is the `{items, sealed}` box of a `Shared[T]` handle
-    /// (see [`crate::ir::Module::shared_handle`]). Not part of the text format.
-    pub shared_box: bool,
-    /// Whether this is the `SharedGuard` record of a lock guard: fields `box`, `value`, `held`.
-    /// Set where the record is lowered; not part of the text format.
-    pub shared_guard: bool,
     /// Which plain-data native record this is, when the runtime implements its operations.
     /// Set where the record is lowered from its declaration; not part of the text format.
     pub native: Option<NativeRec>,

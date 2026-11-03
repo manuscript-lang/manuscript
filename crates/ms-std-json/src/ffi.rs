@@ -7,7 +7,9 @@
 use crate::{Doc, Limits, Node, Writer};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use ms_rt::ffi::{Fail, Has, ObjMut, ObjRef, Object, Out, Status, abi_handle, native};
+use ms_rt::ffi::{
+    ErrOut, Fail, Has, ObjMut, ObjRef, Object, Out, Status, StatusCode, Text, abi_handle, native,
+};
 use ms_rt::tree::{
     ListRef, MapRef, SinkObj, TreeBuilder, TreeCtor, TreeSink, TreeView, ValueDesc, ValueOut,
     ValueRef, WalkRef,
@@ -32,6 +34,14 @@ impl Status for NotNumber {
     }
 }
 
+/// The status of a failed parse; a syntax error also says where it stopped, in `err`.
+fn located(fail: Fail, text: &str, at: crate::Where, err: &ErrOut) -> StatusCode {
+    if fail == Fail::InvalidData {
+        err.set(&crate::explain(text, at));
+    }
+    StatusCode(fail.status())
+}
+
 native! {
     /// Writes the document handle and the root node id through `out` and `root` on success.
     // ms: leaf
@@ -44,14 +54,15 @@ native! {
         has_max_values: Has,
         max_values: i64,
         out: Out<Object<Doc>>,
-        root: Out<u32>,
-    ) -> Result<(), Fail> {
+        root: Out<u32>;
+        err: ErrOut,
+    ) -> Result<(), StatusCode> {
         let limits = Limits {
             max_bytes: has_max_bytes.then_some(max_bytes),
             max_depth: has_max_depth.then_some(max_depth),
             max_values: has_max_values.then_some(max_values),
         };
-        let (d, id) = crate::parse(text, limits)?;
+        let (d, id) = crate::parse_located(text, limits).map_err(|(f, at)| located(f, text, at, &err))?;
         out.write(Object(d));
         root.write(id);
         Ok(())
@@ -70,15 +81,17 @@ native! {
         max_values: i64,
         desc: ValueDesc,
         ctor: TreeCtor,
-        out: ValueOut,
-    ) -> Result<(), Fail> {
+        out: ValueOut;
+        err: ErrOut,
+    ) -> Result<(), StatusCode> {
         let limits = Limits {
             max_bytes: has_max_bytes.then_some(max_bytes),
             max_depth: has_max_depth.then_some(max_depth),
             max_values: has_max_values.then_some(max_values),
         };
         let mut b = TreeBuilder::new(desc, ctor, 64);
-        crate::parse_tree(text, limits, &mut b)?;
+        crate::parse_tree_located(text, limits, &mut b)
+            .map_err(|(f, at)| located(f, text, at, &err))?;
         b.finish(out);
         Ok(())
     }
@@ -103,6 +116,18 @@ native! {
     // ms: leaf
     fn msstd_json_text(d: ObjRef<'_, Doc>, id: u32) -> &str {
         d.0.text_of(id)
+    }
+
+    /// Cold path of a typed decode: records why node `id` was rejected.
+    // ms: leaf
+    fn msstd_json_mismatch(d: ObjRef<Doc>, id: u32, code: i64, text: &str) -> () {
+        d.note_mismatch(id, code as u8, text);
+    }
+
+    /// The error message of a failed typed decode of the document under `root`.
+    // ms: leaf
+    fn msstd_json_mismatch_text(d: ObjRef<Doc>, root: u32) -> Text {
+        Text(d.mismatch_text(root).into())
     }
 
     // ms: leaf
@@ -382,7 +407,8 @@ mod tests {
                     ms_rt_abi::HasRaw(0),
                     0,
                     d.as_mut_ptr(),
-                    &mut root
+                    &mut root,
+                    ms_rt_abi::ErrSlot(core::ptr::null_mut())
                 ),
                 STATUS_OK
             );

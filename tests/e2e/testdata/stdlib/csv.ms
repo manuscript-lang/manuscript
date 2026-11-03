@@ -1,4 +1,4 @@
-import expect_equal, expect_false from "@std/test/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import parse, stringify, CsvOptions from "@std/data/csv.ms"
 
 test "CSV retains single empty fields and distinguishes empty rows":
@@ -71,14 +71,44 @@ test "CSV quotes delimiters multiline cells and line endings":
     let windows = CsvOptions(";", "\r\n")
     try expect_equal((try stringify([["a", "b"]], windows)), "a;b\r\n")
 
+fn malformed(line: Int, column: Int, reason: String) List[List[String]]!:
+    return error(
+        Error(
+            "CSV {line}:{column}: {reason}",
+            kind: ErrorCategory.InvalidData,
+            details: {
+                "line": line.to_string(), "column": column.to_string(),
+                "reason": reason.clone()
+            }
+        )
+    )
+
+test "CSV malformed records name their line and column":
+    let options = CsvOptions(",", "\n")
+    try expect_equal(
+        parse("\"unterminated", options), malformed(1, 1, "unterminated quoted cell")
+    )
+    try expect_equal(
+        parse("a,b\nc,\"x\"y\n", options),
+        malformed(
+            2, 6, "expected a delimiter or line end after the closing quote"
+        )
+    )
+    try expect_equal(
+        parse("a,b\nc,d\"e\n", options),
+        malformed(2, 4, "quote inside an unquoted cell")
+    )
+    try expect_equal(
+        parse("é,\"ü\"x", options),
+        malformed(
+            1, 6, "expected a delimiter or line end after the closing quote"
+        )
+    )
+
 test "CSV rejects malformed records invalid options and limits":
     let options = CsvOptions(",", "\n")
-    let malformed: List[List[String]]! = error(
-        Error("CSV: invalid data", kind: ErrorCategory.InvalidData)
-    )
-    try expect_equal(parse("\"unterminated", options), malformed)
     for text in ["\"\"x\n", "x\"\"\n", "\"\"\"\n"]:
-        try expect_equal(parse(text, options), malformed)
+        try expect_true(parse(text, options).is_error())
 
     let limited: List[List[String]]! = error(
         Error("CSV: limit exceeded", kind: ErrorCategory.LimitExceeded)

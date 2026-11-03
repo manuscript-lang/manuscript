@@ -4,12 +4,17 @@
 use std::process::Command;
 
 fn build_and_run(backend: &str, out: &std::path::Path) -> (Option<i32>, String) {
+    build_and_run_units(backend, "1", out)
+}
+
+fn build_and_run_units(backend: &str, units: &str, out: &std::path::Path) -> (Option<i32>, String) {
     let source = format!(
         "{}/tests/llvm/overflow_frames.ms",
         env!("CARGO_MANIFEST_DIR")
     );
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .env("MS_BACKEND", backend)
+        .env("MS_LLVM_UNITS", units)
         .args(["build", &source, "-o"])
         .arg(out)
         .output()
@@ -50,6 +55,22 @@ fn llvm_release_matches_cranelift_fault_frames() {
         "{}",
         llvm.1
     );
+}
+
+#[test]
+fn llvm_units_keep_fault_frames() {
+    if !cfg!(any(target_os = "linux", target_os = "macos"))
+        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+    {
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("ms-llvm-units-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let whole = build_and_run_units("llvm", "1", &dir.join("whole"));
+    let split = build_and_run_units("llvm", "4", &dir.join("split"));
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(split.0, Some(67), "{}", split.1);
+    assert_eq!(split, whole);
 }
 
 #[test]

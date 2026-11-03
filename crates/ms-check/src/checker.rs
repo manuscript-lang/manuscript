@@ -4,6 +4,7 @@ use crate::stdlib::{self, StdResult};
 use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
+use crate::tytable::{TyId, TyTable};
 use ms_syntax::ast::*;
 use ms_syntax::{Diagnostic, Phase, Pos};
 use std::cell::RefCell;
@@ -112,46 +113,27 @@ pub struct Program {
     pub diagnostics: Vec<Diagnostic>,
     /// Identities handed out while checking.
     pub serial: usize,
-    /// Bindings that borrow a place another binding owns, and how, for lowering. Filled when
-    /// the ownership pass ran (every program that type checks).
-    pub borrows: Rc<HashMap<usize, crate::ownership::BorrowKind>>,
-    /// Resource bindings closed implicitly when their scope ends. Filled together with `borrows`.
-    pub implicit_closes: Rc<HashSet<usize>>,
-    /// Closed resource bindings that also have an explicit `.close()` call.
-    pub explicit_closes: Rc<HashSet<usize>>,
     /// The name expressions that move a closed resource binding, by binding.
     pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
-    /// Payload bindings of a consumed match scrutinee that some path moves out.
-    pub moved_payloads: Rc<HashSet<usize>>,
     /// Every move of a whole binding, by binding: the nodes that take its value.
     pub moves: Rc<HashMap<usize, HashSet<NodeId>>>,
-    /// The moved bindings some path keeps to the end of their scope.
-    pub conditional_moves: Rc<HashSet<usize>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves: Rc<HashMap<usize, HashMap<NodeId, Vec<Name>>>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
-    /// Callables whose result is a reference into their arguments (`ownership::Ownership`).
-    pub lenders: Rc<HashSet<(Name, NodeId)>>,
-    /// Callables whose result is an owned interface view of their arguments.
-    pub view_lenders: Rc<HashSet<(Name, NodeId)>>,
-    /// Wrappers (`x?`, `ok(x)`, `error(x)`) of lent values that stay references.
-    pub view_wraps: Rc<HashSet<(Name, NodeId)>>,
-    /// Method values that stay local and borrow their receiver's place, by module file and node.
-    pub bound_borrows: Rc<HashSet<(Name, NodeId)>>,
-    /// Name expressions moving an interface view out of the local holding it.
-    pub view_moves: Rc<HashSet<(Name, NodeId)>>,
     /// Lending calls whose result the caller owns, by module file and call node.
     pub owned_lends: Rc<HashMap<(Name, NodeId), crate::ownership::OwnedLend>>,
-    /// Conditional and match expressions whose value is a reference, by module file and node.
-    pub lent_matches: Rc<HashSet<(Name, NodeId)>>,
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
     /// identity. Filled together with `borrows`.
     pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
     /// Parameters each callable consumes (moves, stores or returns), by module file and node, for
     /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
     pub consumes: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
+    /// Boolean per-node ownership facts in a dense table (`ownership::NodeFacts`).
+    pub node_facts: Rc<crate::ownership::NodeFacts>,
+    /// Boolean per-binding ownership facts in a dense table (`ownership::BindingFlags`).
+    pub binding_facts: Rc<crate::ownership::BindingFlags>,
 }
 
 /// A body-check result retained from an inference probe.
@@ -221,6 +203,11 @@ pub struct Checker {
     pub(crate) methods_by_contract: HashMap<Name, Vec<usize>>,
     pub(crate) generic_contract_methods: Vec<usize>,
     pub(crate) methods_by_name: HashMap<(Name, Name), Vec<usize>>,
+    /// Types whose own `clone` is being looked up; a recursive type meets itself through its
+    /// `List[Self]` field, whose `clone` bounds ask whether the element is clonable.
+    pub(crate) clone_probes: RefCell<Vec<TyId>>,
+    /// Type identities for the visited sets and property queries of the checks below.
+    pub(crate) tys: RefCell<TyTable>,
     pub(crate) module: Option<ModRef>,
     pub(crate) names: Names,
     pub(crate) scope: Rc<Scope>,
@@ -273,6 +260,8 @@ impl Checker {
             methods_by_contract: HashMap::new(),
             generic_contract_methods: Vec::new(),
             methods_by_name: HashMap::new(),
+            clone_probes: RefCell::new(Vec::new()),
+            tys: RefCell::new(TyTable::new()),
             module: None,
             names: Rc::new(RefCell::new(HashMap::new())),
             scope: Scope::new(None),
@@ -1684,7 +1673,7 @@ impl Checker {
             return;
         }
         let result = t.result_ty();
-        let hooks = standard("TestHooks", vec![]);
+        let hooks = crate::types::test_hooks();
         if !matches!(result.kind, Kind::Record | Kind::Alternative)
             || !self.implements(&result, &hooks)
         {

@@ -118,7 +118,11 @@ pub fn collect_facts(inspection: &InspectionRows, program: &Program) -> Facts {
         let scoped: HashSet<NodeId> = module_facts
             .patterns
             .iter()
-            .filter(|(_, b)| program.implicit_closes.contains(&b.uid))
+            .filter(|(_, b)| {
+                program
+                    .binding_facts
+                    .has(b.uid, ms_check::ownership::BindingFact::ImplicitClose)
+            })
             .map(|(id, _)| *id)
             .collect();
         let flow = FlowBuilder {

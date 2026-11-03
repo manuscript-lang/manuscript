@@ -28,6 +28,8 @@ import (
     msstd_fs_temporary_root,
     msstd_fs_temporary_directory,
     msstd_fs_write_file,
+    msstd_fs_admit,
+    msstd_fs_release,
     msstd_fs_access,
     msstd_fs_append_file,
     msstd_fs_chmod,
@@ -590,9 +592,9 @@ Returns entries matching the include patterns of `options`, sorted by path. `pat
 returns True. A malformed pattern, one over 4096 bytes, or a negative limit returns InvalidInput.
 
 ```manuscript
+let sources = glob(".", GlobOptions(patterns: ["*.ms"]))
+```
 */
-// let sources = glob(".", GlobOptions(patterns: ["**/*.ms"]))
-// ```
 export fn glob(
     path: String,
     options: GlobOptions,
@@ -639,15 +641,33 @@ type ReadArgs:
     path: String
     max_bytes: Int?
 
+// A slot among the few in-flight copies of large write payloads. The blocking pool has a few threads, so a caller
+// that would copy a large payload parks until a slot is free instead of piling copies up; closing it frees the slot.
+type WritePermit:
+    held: Bool
+
+impl Closeable for WritePermit:
+    var fn close() Unit!:
+        if self.held:
+            self.held = false
+            msstd_fs_release()
+
+        return ok(unit)
+
+fn admit_write(bytes: Int) WritePermit:
+    return WritePermit(held: msstd_fs_admit(bytes))
+
 type WriteArgs:
     path: String
     data: String
     replace: Bool
+    permit: WritePermit
 
 type WriteBytesArgs:
     path: String
     data: Bytes
     replace: Bool
+    permit: WritePermit
 
 // Starts reading a file fully into memory and returns its promise. Supply `max_bytes` for untrusted or large files.
 export fn read_file(path: String, max_bytes: Int?) Promise[Bytes]:
@@ -686,8 +706,11 @@ export fn temporary_directory(prefix: String) String!:
 
 // Starts creating a file exclusively and returns its promise; replace defaults to False, retaining an existing file.
 export fn write_file(path: String, data: String, replace: Bool = false) Promise[Unit]:
+    let permit = admit_write(data.length())
     return owned_promise[WriteArgs, Unit](
-        WriteArgs(path: path.clone(), data: data.clone(), replace: replace),
+        WriteArgs(
+            path: path.clone(), data: data.clone(), replace: replace, permit: permit
+        ),
         fn a: msstd_fs_write_file(a.path, a.data.to_bytes(), a.replace)
     )
 
@@ -697,9 +720,10 @@ export fn write_file_bytes(
     data: Bytes,
     replace: Bool = false
 ) Promise[Unit]:
+    let permit = admit_write(data.length())
     return owned_promise[WriteBytesArgs, Unit](
         WriteBytesArgs(
-            path: path.clone(), data: data.clone(), replace: replace
+            path: path.clone(), data: data.clone(), replace: replace, permit: permit
         ),
         fn a: msstd_fs_write_file(a.path, a.data, a.replace)
     )

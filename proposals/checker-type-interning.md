@@ -3,54 +3,56 @@
 ## Summary
 
 - Problem: `ms check` spends 40% of its instructions in `Checker::implements`, a linear scan of every method per query, and 35% of the profile in hashing and malloc. Types are `Rc<Type>` trees compared and hashed structurally by `Name`.
-- Change: stage 1 indexes methods by contract. Interning types (`TyId`) and removing lowering's `tycache` are conditional follow-ups, not in this PR.
-- Decision requested: none (no language change). Each stage merges only if its before/after run beats the baseline below.
+- Change: stage 1 (done) indexed methods by contract. Stages 2 and 3 intern checker types as dense `TyId`s and replace the rendered-text keys with them; stage 4 replaces the name-dispatched structural properties with a dense table of property bits.
+- Decision requested: none (no language change). Output of `ms check`, `ms emit` and the conformance corpus stays byte-identical.
 
 ## Status
 
-Stage 1 implemented, 2026-11-02, checked against `c30abc7d`. Direction (Chinmay): "caching is cope for a slow design. do not add caches and delete all existing caches"; "ensure the perf gain is gate on these". Skeptic review (subagent, 2026-11-02): stage 2 unsupported by evidence, scoped out; stage 1 sound, index placement and generic bucket added.
+Stage 1 implemented, 2026-11-02 (`c30abc7d`). Stages 2 to 4 proposed 2026-11-03 against `e222a770`, from compiler-hacks audit items 7, 25 and 27. Direction (Chinmay): "caching is cope for a slow design. do not add caches and delete all existing caches". The earlier skeptic review scoped stage 2 out for lack of evidence; the audit now supplies it (below).
 
 ## Problem
 
-Measured (`c30abc7d`, release `ms check` on `bench/compile-time/gen.py 40 25 10`, 122k lines, callgrind, one machine): 14.45G instructions, 1.9 to 2.6 s wall.
+Stage 1 removed the `implements` scan. What remains is text standing in for type identity:
 
-| Where | Ir (inclusive) | Share |
-| --- | --- | --- |
-| `Checker::implements` (`contracts.rs:739`) | 5.81G | 40% |
-| of which `unify` | 1.62G | 11% |
-| `syntax::Info::clone` | 0.99G | 7% |
-| SipHash, hashbrown, malloc, free (self) | 6.39G | 44% |
-
-- `implements` ran 32.2M times. Past the fast paths it loops over all `self.p.methods`, and each iteration builds a `Subst` (a `HashMap`) and runs `unify`, `sub` and `same`.
-- Two lookup tables exist (`methods_by_receiver`, `methods_by_name`), but none by contract, so the loop cannot skip non-matching methods.
-- `Name` is `Symbol(&'static str)` (`ms-syntax/src/symbol.rs:12`), so every `HashMap<Name, _>` hashes a pointer with SipHash.
-- `same` (`types.rs:739`) walks trees, with a 64-step budget before it starts a pointer-pair `HashSet`; `type_graph_tests.rs` exists to bound this DAG blowup.
-- Lowering keys `tycache: HashMap<String, MTy>` by a formatted type string (`ms-lower/src/cx.rs:157,328`). Measured at 0.07% of `ms emit` by the lowering-table thread, so it is removed for design reasons, not speed; it needs a dense id, which only checker interning provides.
+- Lowering renders a type to a `String` (`lowering_key`, `types.rs:1262`) for `Cx::tycache: HashMap<String, MTy>` (`cx.rs:199`) and for every generic instance key (`InstKey.subst: Vec<(Name, String)>`, `cx.rs:29`, built in `func.rs:173`). Receiver matches in `json.rs`, `mathops.rs`, `fixture.rs`, `iface.rs` compare rendered `type_key` text (13 sites in `ms-lower`).
+- The checker memoizes `Equal`, `Hashable` and `Clonable` in `HashMap<(String, Property), bool>` keyed by `type_key(t)` (`contracts.rs:1061`), with `active.len() > 200` as a recursion guard, and special-cases the five properties by contract name (`implements`, `contracts.rs:753`; `builtin_comparable`, a list of primitive names). `PropertyState` is the cache the owner asked to remove.
+- `Type` is a mutable `Rc` tree (`bounds`, `default` in `RefCell`; `Definition` fields in `RefCell`), so no integer identity exists. Rendering a key allocates and walks the whole tree on every `lower_ty`.
+- Measured (`ms emit`, lowering-table thread): `tycache` is 0.07% of emit, so this is a design cleanup with a speed bonus, not a speed fix. `PropertyState` cost is measured in stage 4 before it merges.
 
 ## Design
 
-Stage 1, method index (no type change):
-- Add `methods_by_contract: HashMap<Name, Vec<usize>>` beside `methods_by_receiver`, filled in `add_method` (`contracts.rs:283`) so later standard methods are included. Key by the contract's `id`. Methods whose contract is a type variable go in one generic bucket scanned for every query, since `sub(mc, s)` can change the id.
-- Skip the `Subst` allocation when the method's receiver and the query share no variables (compare heads first).
-- Hypothesis: bucket sizes are small; measure methods per contract before building.
+`TyId(u32)` indexes `TyTable` (`ms-check/src/tytable.rs`), a struct of arrays of type constructors, append-only and owned by `Cx` (lowering substitutes new types, so ids are handed out on demand, never frozen):
 
-Stages 2 and 3 (interned `TyId`, dense `Symbol`, `lower_ty` by id, delete `tycache`) are conditional and get their own proposal only if the post-stage-1 profile still ranks `same`, `sub`, `unify` or `Name` hashing on top. No evidence supports them today. Known hazards for that proposal: `sub` clones variables to snapshot bounds and defaults (`types.rs:829`, `Type::clone`), so id identity conflicts; `same` ignores `def`, `defaults` and param names, so hash-consing must choose key fields; `Subst` is keyed by `Name`, not ordinal; `Definition` holds `RefCell`s and a `Weak`; hash-consing is a dedup table the owner may treat as a cache. `tycache` is 0.07% of `ms emit`, so stage 3 has no standalone value.
+- Columns: `ids: Vec<Name>`, `kinds: Vec<Kind>`, `starts`, `nparams`, `nargs`, and `pool: Vec<u32>` holding each row's function parameters (child `TyId` plus `var` and lifted flag bits), the function result, then type arguments.
+- Dedup is one open-addressed slot table over `(id, kind, params, result, args)` with children already `TyId`s: a lookup hashes integers and never renders text. A representative `Ty` per row serves callers that still need fields; identity never reads it (bounds, `defaults`, `builtin`, `def` are not part of identity, as in `write_type_key`).
+- Two identities, matching the two renderers: `intern` equals `lowering_key` equality (lifted parameters distinguish), `shape` equals `type_key` equality. A differential unit test checks both, and `same`, over generated types.
+- Types are interned after `required_type`, as `lowering_key` is today. Instance keys sort by variable name (unique in a substitution), not by id, so output does not depend on interning order.
 
-Invariants: diagnostics text and order are byte-identical (conformance corpus diff). `implements` is a pure bool, so first-match order does not matter.
+Stage 2 (lowering, this PR): `Cx` owns the `TyTable`. `tycache` becomes `Vec<Option<MTy>>` indexed by `TyId` (it is then a dense side column, not a text-keyed cache). `InstKey.subst` holds `(Name, TyId)`. The 13 `type_key` receiver comparisons become `TyId` equality. `$own` and `$evidence` stay for now (audit item 7, separate S change).
+
+Stage 3 (checker, done): the checker builds `TyId`s from `unify`/`same` results where it keys types (`reported`, `seen`, `recursion.rs` ancestors, `stmts.rs:1119`), removing the other `type_key` users. Open hazard: `sub` clones variables to snapshot bounds, so a variable's identity is its `id`, not the clone; keys include `id` as today. Whether `RefCell`s can go after a one-pass declaration phase (audit item 27) is decided after this stage, not promised.
+
+Stage 4 (properties) is measured and held. `ms check` on the 122k-line workload (`bench/compile-time/gen.py 40 25 10`, main at #2484, callgrind, release): 4.21G Ir total; `property_in` is 77M inclusive (1.8%), `property` 63M, `implements` 209M (5.0%) including its hash lookups. Removing `PropertyState` entirely would save under 2%, and the memo (`completed`) is what keeps shared-DAG types from going exponential (`type_graph_tests`).
+- Done: `Property::of` and the property bound checks use the `Builtin` tag, not contract-name text.
+- Not possible as the audit wrote it: `Comparable` for primitives cannot come from `impl Comparable for Int` declarations because none exist in `stdlib/`, and `builtin_comparable` also drives `scalar_extension` (`contracts.rs:380`).
+- Held: dense bits per (`TyId`, visibility scope) from a bottom-up pass. Property answers depend on module-visible impls (`method_visible`), `bounds_satisfied`, the `Data` ancestor, and opposite cycle assumptions for `Equal` and `Hashable`. The gain is under 2% for a semantic rewrite of the checker's most delicate rule; without a measured benefit the do-nothing case wins. Reopen only if a profile ranks property queries on top.
+
+Invariants: diagnostics, emitted MIR and generated names are byte-identical; no cache, no new crate, no test gated.
 
 ## Components touched
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `ms-check/src/contracts.rs`, `checker.rs` | contract index, head check before `Subst` | `cargo nextest run -p ms-check`, conformance corpus diff |
+| `ms-check/src/tytable.rs` (new), `types.rs` | `TyTable`, `intern` | unit tests: equal trees share an id, lifted flag and `var` flag distinguish, args order matters |
+| `ms-lower/src/cx.rs`, `func.rs`, `json.rs`, `mathops.rs`, `fixture.rs`, `iface.rs` | `TyId` keys | `cargo nextest run --workspace`, conformance diff |
+| `ms-check/src/contracts.rs`, `recursion.rs`, `stmts.rs`, `checker.rs` | stage 3 | `ms-check` tests, `generic_recursion`, conformance diff |
 
 ## Alternatives
 
-- Do nothing: leaves 40% of check time in one scan.
-- Memoize `implements`: rejected, it is a cache (owner rule).
-- Faster hasher: needs a new crate or in-house code and only shrinks the cost.
-- Interning now: no evidence; see Design.
+- Do nothing: text keys stay; the audit's items 7, 25 and 27 stay open.
+- Intern during checking by storing the id in `Type`: needs every `Type` construction (`Type::new`, struct literals, `sub`, `required_walk`) to allocate an id while bounds and definitions are still being filled; rejected for this change, revisited after stage 3.
+- Memoize properties by `TyId`: still a cache (owner rule); stage 4 needs its own design.
 
 ## Stages
 
-One PR. Gate: `ms check` on the 122k-line workload drops at least 20% in callgrind Ir against 14.45G (two runs, same machine), conformance output identical, full CI matrix green. Result recorded as a dated section in `bench/compile-time/README.md`. If the gate fails, do not merge.
+1. Done. 2. `TyTable` and lowering keys. 3. Checker keys. 4. Property bits (separate proposal). Each stage is one PR with auto-merge and full CI green; stage 3 also reports `ms check` Ir on the 122k-line workload. Helper and vtable keys are typed (`HelperKey`, `VtableKey` in `ms-lower/src/cx.rs`); a vtable's name in the module is still rendered from its key, so generated names are unchanged.
