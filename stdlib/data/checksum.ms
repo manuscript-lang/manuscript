@@ -1,4 +1,5 @@
 import Bytes from "@std/bytes.ms"
+import ReadStream from "@std/io/io.ms"
 import (
     msstd_checksum_crc32,
     msstd_checksum_crc32_update,
@@ -59,3 +60,41 @@ impl Adler32:
     // Returns the current checksum without resetting or otherwise changing it.
     fn value() UInt32:
         return self.state
+
+/*
+Reads `input` to the end and returns the CRC-32 of all its bytes, as `crc32` does for bytes in hand.
+Retains no input bytes, and consumes and closes the stream. A failed read returns its error.
+*/
+export fn crc32_of(input: ReadStream[Bytes]) UInt32!:
+    var sum = Crc32()
+    var source = input
+
+    while true:
+        let chunk = try source.read().wait()
+
+        if let data = chunk:
+            sum.update(data)
+        else:
+            break
+
+    try source.close()
+    return ok(sum.value())
+
+/*
+Reads `input` to the end and returns the Adler-32 of all its bytes, as `adler32` does for bytes in hand.
+Retains no input bytes, and consumes and closes the stream. A failed read returns its error.
+*/
+export fn adler32_of(input: ReadStream[Bytes]) UInt32!:
+    var sum = Adler32()
+    var source = input
+
+    while true:
+        let chunk = try source.read().wait()
+
+        if let data = chunk:
+            sum.update(data)
+        else:
+            break
+
+    try source.close()
+    return ok(sum.value())

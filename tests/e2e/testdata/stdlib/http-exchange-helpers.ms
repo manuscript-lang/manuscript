@@ -13,7 +13,7 @@ import (
     HttpServerOptions
 ) from "@std/net/http.ms"
 import read_all from "@std/io/io.ms"
-import body_stream from "@std/net/sse.ms"
+import body_stream from "@std/net/http.ms"
 import http_client, serve from "@std/net/net.ms"
 
 fn echo(request: HttpRequest) HttpResponse:

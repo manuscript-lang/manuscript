@@ -179,20 +179,6 @@ impl<'a> FnLower<'a> {
                 self.at(e.pos);
                 return self.bit_operation(name, &args);
             }
-            // Codec streams are built by the compiler: the format name, the input, and the limit.
-            if matches!(
-                symbol,
-                "msstd_archive_compress_stream" | "msstd_archive_decompress_stream"
-            ) {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let result = self.emty(e)?;
-                self.at(e.pos);
-                let decode = symbol == "msstd_archive_decompress_stream";
-                return self.codec_stream(args[0].val, &args[1..], decode, result);
-            }
             // A symbol that is lowered by hand keeps its native identity.
             if let Some(hand) = crate::stdnative::by_symbol(symbol) {
                 return self.native_function(e, view, hand.identity, params, sym);
@@ -325,20 +311,6 @@ impl<'a> FnLower<'a> {
                     .ok_or_else(|| Error::new("parse without a node type"))?;
                 self.html_parse(&node, rty, &args)
             }
-            "shared/share" => {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let result = self.emty(e)?;
-                self.at(e.pos);
-                let held = self.ety(e).args.first().cloned();
-                let shared = self.native_call(native, params, &args, result)?;
-                if let Some(held) = held {
-                    self.register_shared_close(&held, result)?;
-                }
-                Ok(shared)
-            }
             "collections/map_from_entries" => {
                 let args = self.native_args(view)?;
                 if self.dead {
@@ -401,7 +373,6 @@ impl<'a> FnLower<'a> {
             native,
             "math/min"
                 | "math/max"
-                | "shared/share"
                 | "math/bit_and"
                 | "math/bit_or"
                 | "math/bit_xor"
@@ -442,12 +413,6 @@ impl<'a> FnLower<'a> {
             )
         }) {
             return self.bit_operation(name, args);
-        }
-        if native == "shared/share" {
-            // The payload moves into a refcounted box; copies of the handle retain it.
-            let payload = self.owned(args[0].val);
-            let v = self.shared_new(payload, result);
-            return Ok(Val { v, own: true });
         }
         if native == "collections/map_from_entries" {
             return self.map_from_entries(args[0].val, result);
@@ -981,15 +946,6 @@ impl<'a> FnLower<'a> {
             self.split_iter_for = None;
             let iter = self.b.m.types.obj("SplitIter", Vec::new());
             return self.rt_method("msrt_string_split_iter", recv, &m.ty.params, &args, iter);
-        }
-        if let Some(decode) = match native {
-            "archive/format_compress_stream" => Some(false),
-            "archive/format_decompress_stream" => Some(true),
-            _ => None,
-        } {
-            let result = self.emty(e)?;
-            let name = self.format_argument(m, recv, false)?;
-            return self.codec_stream(name, &args, decode, result);
         }
         if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS.iter().find(|(n, ..)| *n == native)
         {
@@ -1604,6 +1560,7 @@ impl<'a> FnLower<'a> {
         if let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r))
             && !self.aliases.contains_key(&b.uid)
             && self.local(&b)?.slot.is_none()
+            && !self.local(&b)?.opt
         {
             return Ok((self.local(&b)?.var, false));
         }

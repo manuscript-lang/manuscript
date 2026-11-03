@@ -1,3 +1,4 @@
+import send, recv, send_bytes from "./support/conn.ms"
 import expect_ok from "@std/test/test.ms"
 import connect, listen from "@std/net/net.ms"
 import sleep from "@std/os/time.ms"
@@ -7,7 +8,7 @@ import sleep from "@std/os/time.ms"
 test "writing to a closed connection returns an error":
     let listener = listen("127.0.0.1:0") | try expect_ok
     var client = connect(listener.address(), 2.seconds) | try expect_ok
-    let accepted = listener.accept(2.seconds) | try expect_ok
+    var accepted = listener.accept(2.seconds) | try expect_ok
     try client.close()
 
     var attempts = 0
@@ -15,7 +16,7 @@ test "writing to a closed connection returns an error":
     while attempts < 200:
         sleep(10.milliseconds)
 
-        let written = accepted.write("ping", 1.seconds)
+        let written = send(var accepted, "ping")
 
         if let _sent = written:
             attempts += 0

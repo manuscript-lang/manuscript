@@ -1,6 +1,5 @@
 //! The checker state and the module-level passes.
 
-use crate::ownership::places::Place;
 use crate::stdlib::{self, StdResult};
 use crate::syntax::*;
 use crate::types::*;
@@ -124,6 +123,12 @@ pub struct Program {
     pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
     /// Payload bindings of a consumed match scrutinee that some path moves out.
     pub moved_payloads: Rc<HashSet<usize>>,
+    /// Every move of a whole binding, by binding: the nodes that take its value.
+    pub moves: Rc<HashMap<usize, HashSet<NodeId>>>,
+    /// The moved bindings some path keeps to the end of their scope.
+    pub conditional_moves: Rc<HashSet<usize>>,
+    /// Statements whose scrutinee is a consumed local, by module file and statement node.
+    pub consumed_scrutinees: Rc<HashSet<(Name, NodeId)>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves: Rc<HashMap<usize, HashMap<NodeId, Vec<Name>>>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
@@ -231,7 +236,6 @@ pub struct Checker {
     pub(crate) serial: usize,
     pub(crate) loops: usize,
     /// `(function, place)` of each `lock` guard that is still held.
-    pub(crate) held_locks: Vec<(usize, Place, Name)>,
     pub(crate) test_function: usize,
     pub(crate) rejected_names: HashSet<Name>,
     pub(crate) unknown_type: bool,
@@ -281,7 +285,6 @@ impl Checker {
             function: 0,
             serial: 0,
             loops: 0,
-            held_locks: Vec::new(),
             test_function: 0,
             rejected_names: HashSet::new(),
             unknown_type: false,

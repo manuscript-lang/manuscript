@@ -100,7 +100,14 @@ impl FnLower<'_> {
                 scoped = true;
                 continue;
             }
-            let x = self.read_local(b)?;
+            let x = if self.moves_at(b.uid, e.id) {
+                // An escaping closure takes the variable with it.
+                let l = self.local(b)?;
+                let v = self.take_local(b.uid, &l);
+                Val { v, own: true }
+            } else {
+                self.read_local(b)?
+            };
             let cap_ty = self.ty_of(x.v);
             // A resource the closure takes over is closed when the closure is dropped, no
             // longer by this scope.
@@ -122,6 +129,8 @@ impl FnLower<'_> {
         let mut f = ms_mir::ir::Func::new("<anonymous>", ps, ret);
         f.kind = FuncKind::Closure { captures: cap_tys };
         f.scoped = scoped;
+        // A closure made inside a function that keeps scoped closures is what keeps them.
+        f.keeps_scoped = self.b.func_mut().keeps_scoped;
         f.capture_closers = closers;
         let id = self.b.m.add_func(f);
         let _ = lam;
@@ -1496,6 +1505,7 @@ pub(crate) fn build_lambda(
     let mut b = FuncBuilder::new(m, "<anonymous>", proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     b.func_mut().scoped = proto.scoped;
+    b.func_mut().keeps_scoped = proto.keeps_scoped;
     b.func_mut().capture_closers = proto.capture_closers.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), job.subst.clone(), file, proto.ret);
     fl.variant = job.variant;
@@ -1531,6 +1541,7 @@ pub(crate) fn restore_alias_capture(
             var,
             ty,
             slot: Some(values[*slot]),
+            opt: false,
         },
     );
     let steps = steps
@@ -1600,6 +1611,7 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
                     var,
                     ty,
                     slot: Some(v),
+                    opt: false,
                 },
             );
         } else if mutated.contains(&b.uid) {

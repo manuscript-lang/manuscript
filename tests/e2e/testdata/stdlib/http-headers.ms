@@ -1,3 +1,4 @@
+import send, recv, send_bytes, read_to_end from "./support/conn.ms"
 import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import (
     buffered,
@@ -141,4 +142,4 @@ test "empty options and an omitted request body use checked defaults":
         method: HttpMethod.Get, url: "http://{server.address()}/",
         headers: (try repeated_headers())
     ) | try expect_ok
-    response.metadata().status | try expect_equal(200)
+    response.metadata.status | try expect_equal(200)

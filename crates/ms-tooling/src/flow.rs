@@ -274,7 +274,7 @@ struct Events<'a, 'b> {
     builder: &'a FlowBuilder<'b>,
     out: Vec<Node>,
     pending_try: bool,
-    /// Open `TaskGroup.spawn` calls: the expression and where its node sits in `out`.
+    /// Open `promise(fn: ...)` calls: the expression and where its node sits in `out`.
     spawns: Vec<(NodeId, usize)>,
 }
 

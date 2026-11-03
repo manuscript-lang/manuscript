@@ -21,8 +21,6 @@ import (
     write_file
 ) from "@std/os/fs.ms"
 import milliseconds, sleep from "@std/os/time.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
-import Shared, share from "@std/concurrency/shared.ms"
 
 fn expect_process_error[T](outcome: T!, expected: Error) Unit!:
     match outcome:
@@ -183,13 +181,6 @@ test "native watcher max_entries counts the paths under the root":
     )
     try w.close()
 
-fn wait_next(w: Shared[FileWatcher]) Int:
-    let r = w.get().next()
-    if r.is_ok():
-        return 1
-
-    return 2
-
 test "polling options reject native-only settings":
     let t = temporary("ms-wo-") | try expect_ok
     let polled = WatchOptions(interval: milliseconds(20))
@@ -216,35 +207,6 @@ test "polling options reject native-only settings":
 
     var w = try watch(path: t.path(), options: polled)
     try w.close()
-
-test "close wakes a pending native next with Closed":
-    let t = temporary("ms-r2-") | try expect_ok
-    let w: Shared[FileWatcher] = share(try watch(path: t.path(), recursive: false))
-    let group = TaskGroup[Int]()
-    let a = w
-    group.spawn(fn ch: wait_next(a))
-    sleep(100.milliseconds)
-    try w.get().close()
-
-    let got = try group.results()
-    try expect_equal(got[0], 2)
-
-test "a group timeout cancels a task waiting on a watcher":
-    let t = temporary("ms-r2-") | try expect_ok
-    let w: Shared[FileWatcher] = share(
-        try watch(
-            path: t.path(), recursive: false,
-            options: WatchOptions(interval: milliseconds(20))
-        )
-    )
-    var group = TaskGroup[Int](timeout: 300.milliseconds)
-    let a = w
-    let h = group.spawn(fn ch: wait_next(a))
-    let c = group.spawn(fn ch: 7)
-    try expect_equal(c.result().get(-1), 7)
-    try expect_true(h.result().is_error())
-    try group.close()
-    try w.get().close()
 
 test "recursive native watch sees a file in a new subdirectory":
     let t = temporary("ms-r2-") | try expect_ok

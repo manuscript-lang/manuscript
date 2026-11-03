@@ -10,7 +10,7 @@
 //! memory model: records, lists, optionals and the like are *values*, flattened
 //! into scalar leaves by the backend (see [`crate::layout`]), not heap objects
 //! with identity. A value whose type [needs a drop](Module::needs_drop) (lists,
-//! maps, strings, boxed alternatives, `Shared[T]`, records containing them) is
+//! maps, strings, boxed alternatives, records containing them) is
 //! either **owned** (it must be consumed exactly once: moved into a consuming
 //! position or `drop`ped) or **borrowed** (a read-only view the producer keeps
 //! alive). Ownership is determined by the defining instruction (see
@@ -282,13 +282,11 @@ pub enum Op {
     // Records and alternatives.
     RecNew, RecGet, RecSet, RecFill, AltNew, AltView, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
     // Lists.
-    ListNew, ListLit, ListConst, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast,
+    ListNew, ListLit, ListConst, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
     // Optionals.
     OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
     // Strings.
     StrLen, StrByte, StrAscii,
-    // Shared[T].
-    SharedNew, SharedGet, SharedAddr,
     // Closures and interface views.
     ClosureNew, ClosureCap, IfaceNew, IfaceLend, IfaceView, IfaceData, IfaceIs,
     // Ownership.
@@ -403,10 +401,10 @@ impl Op {
         Op::ICmp, Op::UICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
         Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltView, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
-        Op::ListNew, Op::ListLit, Op::ListConst, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
-        Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
+        Op::ListNew, Op::ListLit, Op::ListConst, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU, Op::ListTake,
+        Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast, Op::ListRelease,
         Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
-        Op::StrLen, Op::StrByte, Op::StrAscii, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
+        Op::StrLen, Op::StrByte, Op::StrAscii,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceLend, Op::IfaceView, Op::IfaceData, Op::IfaceIs,
         Op::Copy, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
@@ -495,12 +493,14 @@ impl Op {
             Op::ListGet => ("list.get", K::None, true, effects!(reads, faults)),
             Op::ListGetNn => ("list.get.nn", K::None, true, effects!(reads, faults)),
             Op::ListGetU => ("list.get.u", K::None, true, effects!(reads)),
+            Op::ListTake => ("list.take", K::None, true, effects!(reads)),
             Op::ListSet => ("list.set", K::None, true, effects!(reads, writes, faults, rc)),
             Op::ListSetNn => ("list.set.nn", K::None, true, effects!(reads, writes, faults, rc)),
             Op::ListSetU => ("list.set.u", K::None, true, effects!(reads, writes, rc)),
             Op::ListFill => ("list.fill", K::None, true, effects!(reads, writes, faults)),
             Op::ListPush => ("list.push", K::None, true, effects!(reads, writes, alloc, faults)),
             Op::ListDropLast => ("list.droplast", K::None, true, effects!(reads, writes, rc)),
+            Op::ListRelease => ("list.release", K::None, false, effects!(reads, writes, rc)),
             Op::OptSome => ("opt.some", K::None, true, effects!()),
             Op::OptView => ("opt.view", K::None, true, effects!()),
             Op::OptNone => ("opt.none", K::None, true, effects!()),
@@ -511,9 +511,6 @@ impl Op {
             Op::StrLen => ("str.len", K::None, true, effects!(reads, writes)),
             Op::StrByte => ("str.byte", K::None, true, effects!(reads)),
             Op::StrAscii => ("str.ascii", K::None, true, effects!()),
-            Op::SharedNew => ("shared.new", K::None, true, effects!(alloc)),
-            Op::SharedGet => ("shared.get", K::None, true, effects!(reads)),
-            Op::SharedAddr => ("shared.addr", K::None, true, effects!(reads)),
             Op::ClosureNew => ("closure.new", K::Func, true, effects!(alloc)),
             Op::ClosureCap => ("closure.cap", K::Idx, true, effects!(reads)),
             Op::IfaceNew => ("iface.new", K::Vtable, true, effects!()),
@@ -878,7 +875,8 @@ pub struct Func {
     /// or returned, and the verifier rejects code that does.
     pub scoped: bool,
     /// A function that starts a promise from the closures it is given: it keeps them past its call, which
-    /// is sound because the checker holds what they borrow until the promise is dropped.
+    /// is sound because the checker holds what they borrow until the promise is dropped. Closures built
+    /// inside such a function carry the flag too, so inlining it keeps them valid in the caller.
     pub keeps_scoped: bool,
     /// A cleanup closer that acts only while a cancellation or fault unwinds a guarded task
     /// (see `unwind`). Registering it is skipped when no guard is open, where it would do nothing.
@@ -1199,9 +1197,6 @@ pub struct Module {
     /// Equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) that the
     /// descriptor of an aggregate type points to.
     pub desc_glue: Vec<(Ty, FuncId, FuncId)>,
-    /// Closers of `Shared` payloads holding resources: for the payload record type, a function
-    /// `fn(ptr)` over the box's payload that closes the value the last holder's drop releases.
-    pub shared_close: Vec<(Ty, FuncId)>,
     /// Externs that are user `extern fn` shims (`ms_abi.h`): their sized numbers cross as the
     /// same-width C types, extended per the platform ABI, instead of the runtime's 64-bit words.
     pub c_externs: std::collections::BTreeSet<String>,
@@ -1233,7 +1228,6 @@ impl Module {
             funcs: Vec::new(),
             entry: None,
             desc_glue: Vec::new(),
-            shared_close: Vec::new(),
             c_externs: std::collections::BTreeSet::new(),
         }
     }

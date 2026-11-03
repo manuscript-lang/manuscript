@@ -16,7 +16,6 @@
 //!   `unreachable` end the program, so values held at that point are ignored.
 
 use crate::ir::*;
-use crate::types::Native;
 use crate::types::{Ty, TyKind};
 use std::collections::BTreeSet;
 use std::fmt;
@@ -160,8 +159,8 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         Op::OptSome
         | Op::IfaceNew
         | Op::Drop
+        | Op::ListRelease
         | Op::GlobalSet
-        | Op::SharedNew
         | Op::AltUnbox
         | Op::AltRelease
         | Op::RecRelease
@@ -255,7 +254,10 @@ impl Verifier<'_> {
                     if !family.contains(a) {
                         continue;
                     }
-                    let promise_entry = inst.op == Op::Call
+                    // A call to a function that keeps its closures, or the closure such a
+                    // function builds around one (it can be inlined into this frame), is held by
+                    // the checker until the promise is dropped.
+                    let promise_entry = matches!(inst.op, Op::Call | Op::ClosureNew)
                         && matches!(inst.imm, Imm::Func(g) if self.m.funcs[g.index()].keeps_scoped);
                     let keeps = match inst.op {
                         _ if promise_entry => false,
@@ -918,12 +920,20 @@ impl Verifier<'_> {
                     "list.len takes a list (or bytes) and yields int",
                 )
             }
-            Op::ListGet | Op::ListGetNn | Op::ListGetU => {
+            Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake => {
                 arity(2)?;
                 let elem = m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
                 want(
                     t(1) == Ty::INT && res == Some(elem),
                     "index must be int; result is the element type",
+                )
+            }
+            Op::ListRelease => {
+                arity(2)?;
+                m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
+                want(
+                    t(1) == Ty::INT && res.is_none(),
+                    "the first kept index must be int; no result",
                 )
             }
             Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
@@ -1177,22 +1187,6 @@ impl Verifier<'_> {
                     res == Some(sig.ret),
                     "call.method yields the method's result type",
                 )
-            }
-            Op::SharedNew => {
-                arity(1)?;
-                let ok = matches!(res.map(|r| m.types.kind(r)), Some(TyKind::Obj(Native::Shared, a)) if a.as_slice() == [t(0)]);
-                want(ok, "shared.new wraps a value into Shared[T]")
-            }
-            Op::SharedGet => {
-                arity(1)?;
-                let ok = matches!(m.types.kind(t(0)), TyKind::Obj(Native::Shared, a) if a.as_slice() == [res.unwrap_or(Ty::UNIT)]);
-                want(ok, "shared.get reads the payload of a Shared[T]")
-            }
-            Op::SharedAddr => {
-                arity(1)?;
-                let ok = matches!(m.types.kind(t(0)), TyKind::Obj(Native::Shared, _))
-                    && res == Some(Ty::PTR);
-                want(ok, "shared.addr yields a ptr to the payload of a Shared[T]")
             }
             Op::Copy => {
                 arity(1)?;

@@ -299,13 +299,7 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
             };
             let gi = g.index();
             let callee = &m.funcs[gi];
-            // A callee that keeps a scoped closure (it starts a promise on it) stays a call: inlined,
-            // its closure would keep the scoped one, which the verifier rejects.
-            if gi == fi
-                || cyc[gi]
-                || callee.keeps_scoped
-                || !matches!(callee.kind, FuncKind::Normal)
-            {
+            if gi == fi || cyc[gi] || !matches!(callee.kind, FuncKind::Normal) {
                 continue;
             }
             let size = callee.inst_count();
@@ -1021,7 +1015,6 @@ fn remove_dead(m: &mut Module) -> bool {
             .iter()
             .flat_map(|(_, eq, hash)| [eq.index(), hash.index()]),
     );
-    stack.extend(m.shared_close.iter().map(|(_, f)| f.index()));
     if stack.is_empty() {
         return false;
     }
@@ -1077,9 +1070,6 @@ fn remove_dead(m: &mut Module) -> bool {
     for (_, eq, hash) in &mut m.desc_glue {
         *eq = FuncId(map[eq.index()]);
         *hash = FuncId(map[hash.index()]);
-    }
-    for (_, f) in &mut m.shared_close {
-        *f = FuncId(map[f.index()]);
     }
     m.entry = m.entry.map(|e| FuncId(map[e.index()]));
     true

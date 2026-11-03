@@ -384,6 +384,25 @@ impl<'a> FnLower<'a> {
                 }
                 let l = self.local(&b)?;
                 let new = self.owned(x);
+                if self.must_move.contains(&b.uid) {
+                    // Every path moved the old value out before storing over it.
+                    self.local_put(&l, new);
+                    return Ok(());
+                }
+                if l.opt {
+                    // The variable holds `none` on the paths that moved the old value out.
+                    let old = self.b.use_var(l.var);
+                    self.local_put(&l, new);
+                    self.drop_value(old);
+                    return Ok(());
+                }
+                // Whether the local still holds a value: a move may have emptied it.
+                let was_held = self
+                    .held
+                    .get(&b.uid)
+                    .copied()
+                    .or_else(|| self.closers.get(&b.uid).and_then(|c| c.flag))
+                    .map(|flag| self.b.use_var(flag));
                 let old = self.local_take(&l);
                 // A registered resource closes the value it replaces; the scope closes the new one.
                 if let Some(closer) = self.closers.get(&b.uid).cloned() {
@@ -394,9 +413,14 @@ impl<'a> FnLower<'a> {
                     let ty = ms_check::types::sub(&b.ty, &self.subst);
                     self.close_discarded_ty(&ty, old)?;
                 }
-                self.local_put(&l, new);
+                self.refill_local(b.uid, &l, new);
                 if self.cx_needs_drop_ty(l.ty) {
-                    self.drop_value(old);
+                    match was_held {
+                        Some(held) => {
+                            self.b.emit(Op::DropIf, &[held, old], Imm::None, None);
+                        }
+                        None => self.drop_value(old),
+                    }
                 }
                 Ok(())
             }
@@ -725,10 +749,15 @@ impl<'a> FnLower<'a> {
                 let alias = accessor_alias.expect("exclusive accessor evaluated before branch");
                 self.aliases.insert(bnd.uid, alias);
             } else {
-                let payload = self.success_payload(o.v)?;
                 // The payload of a scrutinee that is itself a borrow is a lexical borrow for
-                // the branch (the checker rejects changing its origin meanwhile): no copy. An
-                // owned scrutinee is dropped here, so its payload is copied out first.
+                // the branch (the checker rejects changing its origin meanwhile): no copy. The
+                // payload of an owned scrutinee moves out of it, and the rest of the scrutinee
+                // is released.
+                let payload = if o.own {
+                    self.success_take(o.v)?
+                } else {
+                    self.success_payload(o.v)?
+                };
                 let closing = self
                     .cx
                     .implicit_closes
@@ -741,25 +770,16 @@ impl<'a> FnLower<'a> {
                     && self.ownership_checked()
                     && !self.slotted.contains(&bnd.uid)
                     && self.needs_drop(self.ty_of(payload));
+                let held = Val {
+                    v: payload,
+                    own: o.own,
+                };
                 if lend {
                     self.bind_lent(&bnd, payload);
                 } else if let Some(cleanup) = closing.as_ref() {
-                    let held = Val {
-                        v: payload,
-                        own: false,
-                    };
                     self.bind_closing(&bnd, held, cleanup.as_ref())?;
                 } else {
-                    self.bind_local(
-                        &bnd,
-                        Val {
-                            v: payload,
-                            own: false,
-                        },
-                    );
-                }
-                if o.own {
-                    self.drop_value(o.v);
+                    self.bind_local(&bnd, held);
                 }
             }
         }
@@ -796,6 +816,19 @@ impl<'a> FnLower<'a> {
                 Ok(self.b.icmp(Cc::Eq, tag, k))
             }
             _ => Err(Error::new("if let needs an Optional or a Result")),
+        }
+    }
+
+    /// Moves the `some` / `ok` payload out of the owned `v`, releasing what is left of it.
+    fn success_take(&mut self, v: ms_mir::ir::Value) -> Result<ms_mir::ir::Value, Error> {
+        match self.b.m.types.kind(self.ty_of(v)).clone() {
+            TyKind::Alt(a) => {
+                let ok = self.ok_case(a)?;
+                let payload = self.b.alt_take(a, ok as u32, 0, v);
+                self.b.alt_release(a, ok as u32, 1, v);
+                Ok(payload)
+            }
+            _ => Ok(self.b.opt_unbox(v)),
         }
     }
 
@@ -1333,6 +1366,27 @@ impl<'a> FnLower<'a> {
             self.rest_closers.insert(uid, (kind.clone(), list, idx));
             self.scopes.last_mut().expect("scope").push(uid);
         }
+        // A list the loop owns hands each element to the loop variable, which drops (and
+        // closes) it at the end of the iteration unless the body moves it on; leaving the loop
+        // releases the elements it never reached with the list.
+        let moving = list_var.is_some_and(|var| {
+            let ty = self.b.var_ty(var);
+            self.b.var_mode(var) == ms_mir::ir::Mode::Own
+                && self
+                    .b
+                    .m
+                    .list_elem(ty)
+                    .is_some_and(|e| self.b.m.needs_drop(e))
+        });
+        if let (true, Some(var)) = (moving, list_var) {
+            let uid = self
+                .locals
+                .iter()
+                .find(|(_, l)| l.var == var && l.slot.is_none())
+                .map(|(uid, _)| *uid)
+                .ok_or_else(|| Error::new("loop list without a hidden local"))?;
+            self.list_iters.insert(uid, idx);
+        }
         let (header, body_b, step, exit) = (
             self.b.new_block(),
             self.b.new_block(),
@@ -1358,13 +1412,24 @@ impl<'a> FnLower<'a> {
         self.push_scope();
         let i = self.b.use_var(idx);
         let e = match list_var {
+            Some(var) if moving => {
+                let list = self.b.use_var(var);
+                self.b.list_take(list, i)
+            }
             Some(var) => {
                 let list = self.b.use_var(var);
                 self.b.list_get(list, i)
             }
             None => i,
         };
-        if let Some(kind) = closing {
+        if moving {
+            match closing {
+                Some(kind) => {
+                    self.bind_closing_kind(&loop_var, Val { v: e, own: true }, kind)?;
+                }
+                None => self.bind_local(&loop_var, Val { v: e, own: true }),
+            }
+        } else if let Some(kind) = closing {
             // The loop owns its elements: the one in hand closes with the iteration.
             self.bind_closing_kind(&loop_var, Val { v: e, own: false }, kind)?;
         } else if list_var.is_some() && !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {

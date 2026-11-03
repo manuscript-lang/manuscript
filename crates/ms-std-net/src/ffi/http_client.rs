@@ -5,13 +5,13 @@ use super::tls::TlsOptionsWire;
 use super::{BodyH, ClientH, HeadersH, NetH, code, opt, report};
 use crate::error::{HttpErr, IoErr};
 use crate::http::client::{
-    self, Body, Client, ClientOptions, Request, Source, outgoing_headers, valid_method,
+    self, Body, Client, ClientOptions, Request, outgoing_headers, valid_method,
 };
 use crate::http::headers::Headers;
 use crate::http::url;
 use crate::wait::Deadline;
 use ms_rt::ffi::{
-    Bytes, BytesList, ErrOut, ObjRef, ObjSlot, Object, OptInt, Out, ReadSource, StatusCode, Str,
+    Bytes, BytesList, ErrOut, ObjRef, ObjSlot, Object, OptInt, Out, StatusCode, Str,
     abi_record, native,
 };
 use ms_rt_abi::STATUS_NONE;
@@ -194,24 +194,6 @@ fn client_send(
     Ok(())
 }
 
-/// A request body streamed from a compiled `ReadStream`.
-struct Upload(ReadSource);
-
-impl Source for Upload {
-    fn next(&mut self, max: usize) -> Result<Option<Vec<u8>>, String> {
-        let chunk = self
-            .0
-            .read(max)
-            .map_err(|_| "source stream read failed".to_string())?;
-        match chunk {
-            Some(data) if data.is_empty() || data.len() > max => {
-                Err("source stream violated chunk bound".into())
-            }
-            chunk => Ok(chunk),
-        }
-    }
-}
-
 /// Sends a buffered request on a one-shot client and reads the whole response.
 fn one_shot(
     net: &NetH,
@@ -368,30 +350,6 @@ native! {
         };
         let body = Body::Bytes(Rc::new(body.to_vec()));
         client_send(&c, &args, body, out, &err)
-    }
-
-    /// `HttpClient.request` with a streamed body.
-    fn msstd_http_client_request_stream(
-        c: ObjRef<ClientH>,
-        method: &str,
-        address: &str,
-        headers: ObjRef<HeadersH>,
-        src: ReadSource,
-        has_max: bool,
-        max: i64,
-        has_timeout: bool,
-        timeout: i64,
-        out: Out<Object<BodyH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let args = Args {
-            method,
-            address,
-            headers: &headers,
-            max: opt(has_max, max),
-            timeout: opt(has_timeout, timeout),
-        };
-        client_send(&c, &args, Body::Stream(Box::new(Upload(src))), out, &err)
     }
 
     // ------------------------------------------------------------ response body

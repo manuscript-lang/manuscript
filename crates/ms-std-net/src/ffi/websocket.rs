@@ -136,6 +136,18 @@ native! {
         s.close();
     }
 
+    /// Another handle on the same session, for the other end of a `WebSocket` record.
+    fn msstd_websocket_share(s: ObjRef<SocketH>) -> Object<SocketH> {
+        Object(SocketH(s.0.0.clone()))
+    }
+
+    /// Closes the session when `s` is its last handle.
+    fn msstd_websocket_close_if_last(s: ObjRef<SocketH>) -> () {
+        if std::rc::Rc::strong_count(&s.0.0) == 1 {
+            s.close();
+        }
+    }
+
     /// `WebSocket.subprotocol()`.
     fn msstd_websocket_subprotocol(s: ObjRef<SocketH>) -> String {
         s.subprotocol().to_string()
@@ -149,11 +161,6 @@ native! {
     /// `WebSocket.ping(data: Bytes)`.
     fn msstd_websocket_ping_bytes(s: ObjRef<SocketH>, data: &[u8], err: ErrOut) -> Result<(), StatusCode> {
         report(s.ping(data), &err)
-    }
-
-    /// `WebSocket.send(data)`.
-    fn msstd_websocket_send(s: ObjRef<SocketH>, data: &str, err: ErrOut) -> Result<(), StatusCode> {
-        report(s.send_text(data, None), &err)
     }
 
     /// `WebSocket.send(data: Bytes, text)`.

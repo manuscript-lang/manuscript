@@ -139,7 +139,7 @@ interface FileSystem:
         max_entries: Int?,
         max_events: Int?,
         overflow: String
-    ) FileWatcher!
+    ) RawWatcher!
     // Resolves symlinks and returns the canonical absolute path.
     fn canonicalize(path: String) String!
     // Creates one directory; recursive defaults to False, requiring its parent to exist.
@@ -209,7 +209,7 @@ interface FileSystem:
         recursive: Bool,
         interval: Duration,
         max_entries: Int?
-    ) FileWatcher!
+    ) RawWatcher!
     // Creates a new temp directory whose contents are removed by scoped close.
     // Prefix has the same validation as temporary_directory; this does not query the temp root.
     fn temporary(prefix: String) TemporaryDirectory!
@@ -422,23 +422,34 @@ impl Directory:
 // The runtime handle behind a `FileWatcher`.
 export extern type NativeWatcher
 
-// A change stream returned by a filesystem watch operation.
-export type FileWatcher:
-    // The runtime handle for the watch; it is released by `close` and owned by this value.
+// The native watcher a watch operation returns; `watch` wraps it into a stream.
+export type RawWatcher:
+    // The runtime handle for the watch; the stream releases it when it closes.
     native: NativeWatcher
 
-impl Closeable for FileWatcher:
-    // Stops the watcher, wakes a pending `next` with Closed, and waits for its worker to stop.
-    // Safe to call repeatedly.
+// Events one native call returned and the reader has not taken yet, newest first so `pop` moves the next one out.
+type WatchSource:
+    watcher: RawWatcher
+    pending: List[FileEvent]
+
+impl Source[FileEvent] for WatchSource:
+    // Waits for the next change. A closed watcher is `Closed`; a native watcher that overflowed with policy `error` is `LimitExceeded`.
+    var fn next() FileEvent?!:
+        while true:
+            if let event = self.pending.pop():
+                return ok(event)
+            var batch = try msstd_fs_watch_next(self.watcher.native)
+            batch.reverse()
+            self.pending = batch
+        return ok(none)
+
+    // Stops the watcher and waits for its worker to stop.
     var fn close() Unit!:
-        msstd_fs_watch_close(self.native)
+        msstd_fs_watch_close(self.watcher.native)
         return ok(unit)
 
-impl FileWatcher:
-    // Waits for filesystem activity and returns events. A native watcher returns one event per call; a polling watcher returns every difference seen after an interval.
-    // Cancelling the waiting task unwinds it, and a closed watcher returns Closed. A native watcher that overflowed with policy `error` returns LimitExceeded.
-    fn next() List[FileEvent]!:
-        return msstd_fs_watch_next(self.native)
+fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
+    return stream[FileEvent](WatchSource(watcher, []))
 
 // The runtime handle behind a `TemporaryDirectory`.
 export extern type NativeTemporary
@@ -761,7 +772,7 @@ fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
     return remove(source, true)
 
 /*
-Watches `path` for changes and returns a `FileWatcher`.
+Watches `path` for changes and returns the changes as a stream, one event per item. Dropping the stream stops the watcher.
 Without `options.interval` it uses native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows).
 With an interval it compares snapshots of the tree every `interval`, which must be positive, and can miss transient changes;
 `max_events` and `overflow` apply only to native events and return InvalidInput together with an interval.
@@ -776,7 +787,7 @@ export fn watch(
     path: String,
     recursive: Bool = false,
     options: WatchOptions = WatchOptions()
-) FileWatcher!:
+) ReadStream[FileEvent]!:
     if let interval = options.interval:
         if options.max_events.is_some() or options.overflow.is_some(): return error(
             Error(
@@ -784,11 +795,15 @@ export fn watch(
             )
         )
 
-        return host().watch(path, recursive, interval, options.max_entries)
+        return ok(watch_stream(try host().watch(path, recursive, interval, options.max_entries)))
 
-    return host().watch_native(
-        path, recursive, options.max_entries, options.max_events,
-        options.overflow.get("error")
+    return ok(
+        watch_stream(
+            try host().watch_native(
+                path, recursive, options.max_entries, options.max_events,
+                options.overflow.get("error")
+            )
+        )
     )
 
 // Creates a new temp directory whose contents are removed by scoped close.

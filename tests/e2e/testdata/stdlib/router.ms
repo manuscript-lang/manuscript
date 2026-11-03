@@ -1,4 +1,4 @@
-import expect_equal, expect_true from "@std/test/test.ms"
+import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
 import (
     headers,
     json,
@@ -15,8 +15,7 @@ import (
 import read_all from "@std/io/io.ms"
 import http_client, serve from "@std/net/net.ms"
 import create, Transport from "@std/log.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import append_file, read_file, temporary from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 import (
     access_log,
@@ -25,7 +24,7 @@ import (
     Router,
     with_request_headers
 ) from "@std/net/router.ms"
-import body_stream from "@std/net/sse.ms"
+import body_stream from "@std/net/http.ms"
 
 fn get(path: String) HttpRequest:
     return request(HttpMethod.Get, path)
@@ -394,14 +393,11 @@ test "request_id keeps a usable id and makes one otherwise":
     try expect_equal(id_of(try r.call(get("/missing"))).length(), 36)
 
 type Sink:
-    lines: Shared[List[String]]
+    path: String
 
 impl Transport for Sink:
     fn write(data: String) Unit!:
-        var guard = lock(self.lines)
-        guard.value.append(data.clone())
-        guard.close().get(none)
-        return ok(unit)
+        return append_file(self.path, data)
 
     fn write_bytes(data: Bytes) Unit!:
         return self.write(data.decode_utf8().get(""))
@@ -409,23 +405,30 @@ impl Transport for Sink:
     fn flush() Unit!:
         return ok(unit)
 
+    fn duplicate() Transport!:
+        return ok(Sink(self.path.clone()))
+
     fn close() Unit:
         return unit
 
-fn logged(lines: Shared[List[String]]) String:
-    var guard = lock(lines)
-    return guard.value.join("")
+fn logged(path: String) String:
+    let read = read_file(path)
+    if let bytes = read:
+        return bytes.decode_utf8().get("")
+
+    return ""
 
 test "access_log writes one record per request":
-    let lines = share(List[String]())
-    let logger = (create(Sink(lines: lines), timestamp: false)).get()
+    let dir = temporary("ms-router-log-") | try expect_ok
+    let lines = "{dir.path()}/lines"
+    let logger = (create(Sink(path: lines.clone()), timestamp: false)).get()
     var r = Router()
     r.use(access_log(logger))
     r.get("/a", say("hello")).get()
     try expect_equal((try r.call(get("/a"))).status, 200)
     try expect_equal((try r.call(get("/nope"))).status, 404)
 
-    let text_out = logged(lines)
+    let text_out = logged(lines.clone())
     try expect_true(text_out.contains("\"path\":\"/a\""))
     try expect_true(text_out.contains("\"status\":200"))
     try expect_true(text_out.contains("\"bytes\":5"))

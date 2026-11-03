@@ -94,20 +94,14 @@ const INTRINSIC_RECEIVERS: &[&str] = &[
 
 /// Externs that store their function arguments instead of running them before they return. A parameter-level
 /// marker would replace this list.
-const KEPT_CALLBACKS: &[&str] = &[
-    "extern:msstd_process_fork",
-    "extern:msrt_channel_group_add",
-    "extern:msrt_scope_spawn",
-    "extern:msrt_promise_start",
-    "extern:msrt_promise_defer",
-];
+const KEPT_CALLBACKS: &[&str] = &["extern:msrt_promise_start", "extern:msrt_promise_defer"];
 
 /// Externs that take ownership of the generic value argument (it moves into the runtime). Like
 /// `KEPT_CALLBACKS`, a parameter-level marker would replace this list.
 const OWNING_VALUES: &[&str] = &[
     "extern:msrt_cells_new",
     "extern:msrt_cells_put",
-    "extern:msrt_pipes_write",
+    "extern:msrt_pipe_write",
     "extern:msrt_promise_put",
 ];
 

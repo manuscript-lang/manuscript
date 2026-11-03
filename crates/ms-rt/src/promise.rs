@@ -57,6 +57,11 @@ pub type Retry = fn(id: i64, state: usize, bits: u32) -> bool;
 
 const NOT_STARTED: u8 = 255;
 const WANT_CANCEL: u8 = 1;
+/// The work's result is stored but the promise stays pending until the work's task has ended and
+/// its closure, with the resources it owns, is released: a waiter sees them closed.
+const HELD: u8 = 4;
+/// The held result is the operation's own error.
+const HELD_ERROR: u8 = 8;
 /// Another thread completes this promise (a pipe peer), so a waiter's token must be remote.
 const REMOTE_WAKE: u8 = 2;
 /// The promise has no task: its work runs in the first task that waits on it.
@@ -277,12 +282,17 @@ fn apply(event: Event) {
                             desc: desc as *const TypeDesc,
                         };
                     }
-                    t.state[i] = if failed { State::Error } else { State::Ok };
                     t.retry[i] = None;
+                    if t.closure[i] != 0 {
+                        // The work's task is still ending; its owned resources close first.
+                        t.flags[i] |= HELD | if failed { HELD_ERROR } else { 0 };
+                        return;
+                    }
+                    t.state[i] = if failed { State::Error } else { State::Ok };
                     wake(t, i);
                 }
                 _ if ptr == 0 => {}
-                _ if pipe != 0 => crate::pipes::unread(pipe, ptr, desc),
+                _ if pipe != 0 => crate::pipe::unread(pipe, ptr, desc),
                 _ => drop_block(ptr, desc),
             }
         }
@@ -295,7 +305,14 @@ fn apply(event: Event) {
                 unsafe { crate::obj::release(closure as *mut ms_rt_abi::Obj) };
             }
             t.thread[i] = NOT_STARTED;
-            if t.state[i] == State::Pending {
+            if t.state[i] == State::Pending && t.flags[i] & HELD != 0 {
+                t.state[i] = if t.flags[i] & HELD_ERROR != 0 {
+                    State::Error
+                } else {
+                    State::Ok
+                };
+                t.flags[i] &= !(HELD | HELD_ERROR);
+            } else if t.state[i] == State::Pending {
                 match status {
                     1 => {
                         t.report[i] = report;

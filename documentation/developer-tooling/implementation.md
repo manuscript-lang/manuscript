@@ -73,7 +73,7 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 | `modules` | Imports per module |
 | `flow` | One function's ordered steps: calls, `try`, branches, loops, `match` arms, resource scopes, exits (needs `--entity`) |
 | `scope` | `flow` pruned to resource scopes and the exits inside them (needs `--entity`) |
-| `tasks` | `flow` pruned to resource scopes that start tasks: each `TaskGroup.spawn` with the calls its work makes (needs `--entity`) |
+| `tasks` | `flow` pruned to resource scopes that start tasks: each `promise(fn: ...)` with the calls its work makes (needs `--entity`) |
 
 - `--entity name`, `file::name`, or a full entity ID roots the tree at one declaration (a project-relative path for `modules`). A missing or ambiguous name fails. Without it, roots are entities nothing relevant calls, plus roots for otherwise unreachable recursive groups. Tests are entry points too.
 - `--depth n` bounds expansion (default 3; 1 for `flow`, `scope` and `tasks`). Repeats print `(cycle)`. A view stops at 200 nodes and counts the rest.
@@ -236,7 +236,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL108 | warning | `match` on an Optional with only `some` and `none` arms; use `if let` or an Optional method |
 | MSL109 | warning | `match` on a Result with only `ok` and `error` arms; use `try`, `if let` or a Result method |
 | MSL110 | warning | `Optional.get()` without a default, which faults when the value is absent; use `if let`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
-| MSL111 | error | `while true` loop in a module that imports `@std/concurrency/tasks.ms` whose body neither waits nor exits; other tasks cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
+| MSL111 | error | `while true` loop in a module that imports `@std/concurrency/promise.ms` whose body neither waits nor exits; other promises cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
 | MSL112 | error | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
 | MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. `close` cannot report a failure, so call `try x.flush()` before the scope ends. See [scopes](../core-language/cleanup/scopes.md) |
 

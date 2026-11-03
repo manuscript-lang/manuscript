@@ -1,5 +1,8 @@
 import Data from "@std/core.ms"
 import parse_float from "@std/math/math.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
+import ReadStream, WriteStream, Sink, Transform, through, writer from "@std/io/io.ms"
+import Promise from "@std/concurrency/promise.ms"
 import msstd_json_parse, msstd_json_stringify from "@std/internal/json.ms"
 
 // Optional bounds for JSON input bytes, nesting depth, and parsed values.
@@ -256,3 +259,207 @@ fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:
         return member_path(next, keys, from + 1)
 
     return none
+
+// Scanner modes: between values, inside a container, inside a top-level string, and
+// inside a top-level scalar token.
+type JsonReading[T: Data]:
+    limits: JsonLimits
+    pending: BytesBuilder
+    size: Int
+    depth: Int
+    mode: Int
+    in_string: Bool
+    escaped: Bool
+    finished: Bool
+    failure: Error?
+
+fn is_space(byte: UInt8) Bool:
+    return (byte == 32 or byte == 9 or byte == 10 or byte == 13)
+
+fn starts_value(byte: UInt8) Bool:
+    // Object, array, string, minus sign, digits, and the first letters of the literals.
+    return (
+        byte == 123
+        or byte == 91
+        or byte == 34
+        or byte == 45
+        or byte >= 48 and byte <= 57
+        or byte == 116
+        or byte == 102
+        or byte == 110
+    )
+
+impl JsonReading[T]:
+    var fn reset() Unit:
+        self.pending = BytesBuilder()
+        self.size = 0
+        self.depth = 0
+        self.mode = 0
+        self.in_string = false
+        self.escaped = false
+
+    var fn fail(cause: Error) List[T]!:
+        // Dropping the partial value releases its buffered bytes.
+        self.reset()
+        self.failure = cause.clone()
+        return error(cause)
+
+    // Parses the buffered value and clears the scanner for the next one.
+    var fn complete() T!:
+        let bytes = self.pending.drain()
+        self.reset()
+        if let text = bytes.decode_utf8():
+            return parse[T](text, self.limits)
+
+        return error(Error("JSON: invalid data", kind: InvalidData))
+
+    // Consumes one byte and reports whether it finished a value.
+    var fn scan(byte: UInt8) Bool!:
+        if self.mode == 0:
+            if is_space(byte): return ok(false)
+            if not starts_value(byte): return error(
+                Error("JSON: invalid data", kind: InvalidData)
+            )
+
+            self.mode = 3
+
+            if byte == 123 or byte == 91:
+                self.mode = 1
+            else if byte == 34:
+                self.mode = 2
+
+        let limit = self.limits.max_bytes.get(-1)
+        if self.mode == 3 and is_space(byte): return ok(true)
+
+        self.size += 1
+        if limit >= 0 and self.size > limit: return error(
+            Error("JSON: limit exceeded", kind: LimitExceeded)
+        )
+
+        self.pending.append(byte)
+        if self.mode == 3: return ok(false)
+
+        if self.in_string:
+            if self.escaped:
+                self.escaped = false
+            else if byte == 92:
+                self.escaped = true
+            else if byte == 34:
+                self.in_string = false
+
+            return ok(self.mode == 2 and not self.in_string)
+
+        if byte == 34:
+            self.in_string = true
+            return ok(false)
+
+        if byte == 123 or byte == 91:
+            self.depth += 1
+            if self.depth > self.limits.max_depth.get(self.depth): return error(
+                Error("JSON: limit exceeded", kind: LimitExceeded)
+            )
+
+            return ok(false)
+
+        if byte == 125 or byte == 93:
+            self.depth -= 1
+            return ok(self.depth == 0)
+
+        return ok(false)
+
+    // Consumes one byte and returns the value it completes, if any.
+    var fn step(byte: UInt8) T?!:
+        let done = try self.scan(byte)
+        if not done: return ok(none)
+
+        let value = try self.complete()
+        return ok(value)
+
+impl Transform[Bytes, T] for JsonReading[T]:
+    var fn feed(value: Bytes) List[T]!:
+        if self.finished: return error(Error("JSON: invalid input", kind: InvalidInput))
+        if let failure = self.failure: return error(failure.clone())
+
+        var values: List[T] = []
+
+        for byte in value.values():
+            let stepped = self.step(byte)
+            if stepped.is_error(): return self.fail(stepped.err())
+
+            if let found = stepped.get(): values.append(found)
+
+        return ok(values)
+
+    var fn finish() List[T]!:
+        if self.finished: return error(Error("JSON: invalid input", kind: InvalidInput))
+        if let failure = self.failure: return error(failure.clone())
+
+        self.finished = true
+
+        var values: List[T] = []
+        if self.mode == 0: return ok(values)
+        if self.mode != 3: return self.fail(
+            Error("JSON: invalid data", kind: InvalidData)
+        )
+
+        let completed = self.complete()
+        if completed.is_error(): return self.fail(completed.err())
+
+        values.append(try completed)
+        return ok(values)
+
+/*
+Reads a sequence of JSON values of type `T` from a byte stream, such as JSON Lines or concatenated JSON.
+
+Values may be separated by JSON whitespace or directly adjacent when they are strings, arrays, or objects.
+Top-level numbers, `true`, `false`, and `null` end at whitespace or at the end of the stream. Chunk
+boundaries may fall anywhere, including inside a token, an escape, or a UTF-8 scalar, and only the value
+being read is buffered. `T` decodes as in `parse`; the default `JsonValue` keeps each value as a document.
+`limits` applies to each value separately: `max_bytes` counts its UTF-8 bytes, `max_depth` its nesting, and
+`max_values` its parsed values; an exceeded limit fails the read with `LimitExceeded`. Omit limits only for
+trusted input, because an unterminated value is otherwise buffered without bound. Malformed or truncated
+input fails the read with `InvalidData`, and negative limits with `InvalidInput`. Closing the result closes
+`input`.
+*/
+export fn json_reader[T: Data = JsonValue](
+    input: ReadStream[Bytes],
+    limits: JsonLimits? = none
+) ReadStream[T]:
+    let bounds = limits.get(JsonLimits())
+    return through[Bytes, T](
+        input,
+        JsonReading[T](
+            limits: bounds, pending: BytesBuilder(), size: 0, depth: 0, mode: 0,
+            in_string: false, escaped: false, finished: false, failure: none
+        )
+    )
+
+// A sink that encodes each value as one line of JSON (JSON Lines) and puts the bytes into `output`.
+type JsonLines[T: Data]:
+    output: WriteStream[Bytes]
+    max_bytes: Int?
+
+impl Sink[T] for JsonLines[T]:
+    var fn put(value: T) Unit!:
+        let text = try stringify[T](value, self.max_bytes, none)
+        return self.output.write("{text}\n".to_bytes())
+
+    var fn drain() Promise[Unit]:
+        return self.output.flush()
+
+    fn buffered() Int:
+        return self.output.buffered()
+
+    var fn close() Unit!:
+        return self.output.close()
+
+/*
+Writes values of type `T` to a byte stream as JSON Lines: each value is encoded as `stringify` does, on a
+single line, and ends with a line feed. `max_bytes` bounds one encoded value and fails the write with
+`LimitExceeded`. Writes never wait; `flush` waits for `output` to drain. Closing the result closes `output`.
+*/
+export fn json_writer[T: Data](
+    output: WriteStream[Bytes],
+    max_bytes: Int? = none
+) WriteStream[T]:
+    return writer[T](JsonLines[T](output: output, max_bytes: max_bytes))

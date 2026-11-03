@@ -79,12 +79,10 @@ msstd_net_network_resolve(net, name, kind: u8, has_max, max, has_timeout, timeou
                          records: *mut *mut DnsRecordWire, count: *mut usize, err) -> u8
 msstd_net_connection_{close, local_address, peer_address, shutdown_write(err) -> u8}
 msstd_net_connection_read(c, has_max, max, has_timeout, timeout, out: *mut VecVal, err) -> u8   # STATUS_NONE (16) at end of stream
-msstd_net_connection_write(c, data: String, has_timeout, timeout, err) -> u8
 msstd_net_connection_write_bytes(c, data: *const VecVal, has_timeout, timeout, err) -> u8
 msstd_net_listener_{accept(l, has_timeout, timeout, out, err) -> u8, address, close}
 msstd_net_datagram_{address, close}  # receiver `sock`
 msstd_net_datagram_receive(sock, has_max, max, has_timeout, timeout, out: *mut DatagramWire { data: VecVal, sender: StrVal }, err) -> u8
-msstd_net_datagram_send(sock, data: String, address, has_timeout, timeout, err) -> u8
 msstd_net_datagram_send_bytes(sock, data: *const VecVal, address, has_timeout, timeout, err) -> u8
 ```
 
@@ -149,9 +147,8 @@ Wire structs (`#[repr(C)]`, `ffi/http.rs`): `OptWire { present: u8, value: i64 }
 idle_timeout: OptWire, decompress: u8, cookies: u8, tls: TlsOptionsWire }`;
 `HttpServerOptionsWire { max_requests, max_body_bytes, max_response_bytes,
 max_header_bytes, timeout, grace: OptWire, tls_present: u8, tls }`; `ClientResponseWire { status, headers, protocol, body }`;
-`MetadataWire { status, headers, protocol }`; `request_stream` takes a `src`
-closure (compiler generated, borrowed for the call) wrapping the `ReadStream`; its code word
-follows the `Connection.read` convention: `read(env, has_max, max, out, present, err) -> status`.
+`MetadataWire { status, headers, protocol }`. Request bodies are buffered `Bytes`; natives never call back
+into a Manuscript stream.
 
 ```text
 msstd_net_network_http_client(net, opts, out, err) -> u8

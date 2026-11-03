@@ -1,4 +1,5 @@
 import Bytes from "@std/bytes.ms"
+import ReadStream from "@std/io/io.ms"
 import (
     bit_and,
     bit_xor,
@@ -145,3 +146,22 @@ impl MapHash:
     // Hashes a string's UTF-8 bytes with this seed.
     fn hash_string(text: String) UInt64:
         return self.hash(text.to_bytes())
+
+/*
+Reads `input` to the end and returns the CRC-64 of all its bytes with the given polynomial, as `crc64` does for
+bytes in hand. Retains no input bytes, and consumes and closes the stream. A failed read returns its error.
+*/
+export fn crc64_of(input: ReadStream[Bytes], polynomial: Crc64Polynomial) UInt64!:
+    var sum = Crc64(polynomial: polynomial)
+    var source = input
+
+    while true:
+        let chunk = try source.read().wait()
+
+        if let data = chunk:
+            sum.update(data)
+        else:
+            break
+
+    try source.close()
+    return ok(sum.value())
