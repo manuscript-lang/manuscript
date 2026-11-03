@@ -57,9 +57,15 @@ fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
     if mode == 6 or mode == 7: limit = length * 2
 
     var expected: Bytes! = ok(data.clone())
-    if mode == 1 or mode == 2 or mode == 7: expected = error(Error("encoding: invalid data", kind: ErrorCategory.InvalidData))
-    if mode == 3: expected = error(Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded))
-    if mode == 4: expected = error(Error("encoding: invalid input", kind: ErrorCategory.InvalidInput))
+    if mode == 1 or mode == 2 or mode == 7: expected = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
+    if mode == 3: expected = error(
+        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
+    if mode == 4: expected = error(
+        Error("encoding: invalid input", kind: ErrorCategory.InvalidInput)
+    )
 
     fn work() Unit!:
         let actual = base32_decode(text, hex, padded, limit)
@@ -98,8 +104,12 @@ fn decode85(
     if bounded: limit = if under: length - 1 else: length
 
     var expected: Bytes! = ok(data.clone())
-    if under: expected = error(Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded))
-    if bad != 0: expected = error(Error("encoding: invalid data", kind: ErrorCategory.InvalidData))
+    if under: expected = error(
+        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
+    if bad != 0: expected = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
 
     fn work() Unit!:
         let actual = ascii85_decode(text, limit)
