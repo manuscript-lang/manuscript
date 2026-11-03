@@ -7,7 +7,7 @@ use super::Format;
 use super::stream::{Decoder, Encoder, Poll};
 use alloc::vec::Vec;
 use core::cell::RefCell;
-use ms_rt::ffi::{Fail, ObjRef, Object, Out, Status, abi_handle, native};
+use ms_rt::ffi::{Fail, Has, ObjRef, Object, Out, Status, abi_handle, native};
 
 /// `decoder_poll` status: no output yet, feed more input.
 pub const POLL_NEED_INPUT: u8 = 64;
@@ -52,7 +52,7 @@ native! {
         data: &[u8],
         format: &str,
         level: i64,
-        has_max: bool,
+        has_max: Has,
         max: i64,
     ) -> Result<Vec<u8>, Fail> {
         super::compress(data, format, level, has_max.then_some(max))
@@ -61,7 +61,7 @@ native! {
     fn msstd_compress_decompress(
         data: &[u8],
         format: &str,
-        has_max: bool,
+        has_max: Has,
         max: i64,
     ) -> Result<Vec<u8>, Fail> {
         super::decompress_bytes(data, format, has_max.then_some(max))
@@ -69,7 +69,7 @@ native! {
 
     fn msstd_compress_decoder_new(
         name: &str,
-        has_max: bool,
+        has_max: Has,
         max: i64,
         out: Out<Object<DecoderObj>>,
     ) -> Result<(), Fail> {
@@ -157,15 +157,34 @@ mod tests {
         // SAFETY: all pointers are live; results are released below.
         unsafe {
             assert_eq!(
-                msstd_compress_compress(&input, &f, 6, 0, 0, packed.as_mut_ptr()),
+                msstd_compress_compress(
+                    &input,
+                    &f,
+                    6,
+                    ms_rt::ffi::HasRaw(0),
+                    0,
+                    packed.as_mut_ptr()
+                ),
                 0
             );
             assert_eq!(
-                msstd_compress_decompress(packed.as_ptr(), &f, 1, 16, plain.as_mut_ptr()),
+                msstd_compress_decompress(
+                    packed.as_ptr(),
+                    &f,
+                    ms_rt::ffi::HasRaw(1),
+                    16,
+                    plain.as_mut_ptr()
+                ),
                 ms_rt::ffi::STATUS_LIMIT_EXCEEDED
             );
             assert_eq!(
-                msstd_compress_decompress(packed.as_ptr(), &f, 0, 0, plain.as_mut_ptr()),
+                msstd_compress_decompress(
+                    packed.as_ptr(),
+                    &f,
+                    ms_rt::ffi::HasRaw(0),
+                    0,
+                    plain.as_mut_ptr()
+                ),
                 0
             );
             assert_eq!(bytes_ref(plain.as_ptr()), b"hello hello hello");
@@ -199,7 +218,10 @@ mod tests {
             msstd_compress_encoder_finish(enc);
             assert_eq!(msstd_compress_encoder_is_finished(enc), 1);
             msstd_compress_encoder_take(enc, 1 << 20, chunk.as_mut_ptr());
-            assert_eq!(msstd_compress_decoder_new(&f, 0, 0, dec.as_mut_ptr()), 0);
+            assert_eq!(
+                msstd_compress_decoder_new(&f, ms_rt::ffi::HasRaw(0), 0, dec.as_mut_ptr()),
+                0
+            );
             let dec = dec.assume_init();
             assert_eq!(
                 msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),

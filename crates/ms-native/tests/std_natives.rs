@@ -6,6 +6,7 @@
 )]
 use ms_rt::string::{bytes, from_bytes};
 use ms_rt::trap;
+use ms_rt_abi::HasRaw;
 use std::sync::{Mutex, MutexGuard};
 
 static LOCK: Mutex<()> = Mutex::new(());
@@ -258,7 +259,7 @@ mod fs_io {
                 STATUS_OK
             );
             assert_eq!(
-                msstd_fs_read_file(file, 0, 0, &mut out, core::ptr::null_mut()),
+                msstd_fs_read_file(file, HasRaw(0), 0, &mut out, core::ptr::null_mut()),
                 STATUS_OK
             );
             assert_eq!(contents(&out), b"hellohello");
@@ -274,13 +275,13 @@ mod fs_io {
                 cap: 0,
             };
             assert_eq!(
-                msstd_fs_list(dir, 0, 0, &mut listed, core::ptr::null_mut()),
+                msstd_fs_list(dir, HasRaw(0), 0, &mut listed, core::ptr::null_mut()),
                 STATUS_OK
             );
             assert_eq!(listed.len, 1);
             let missing = st("/tmp/msrt-fs-missing/none");
             assert_eq!(
-                msstd_fs_read_file(missing, 0, 0, &mut out, core::ptr::null_mut()),
+                msstd_fs_read_file(missing, HasRaw(0), 0, &mut out, core::ptr::null_mut()),
                 STATUS_NOT_FOUND
             );
             assert_eq!(msstd_fs_remove(dir, 1, core::ptr::null_mut()), STATUS_OK);
@@ -355,7 +356,7 @@ mod fs_io {
                 STATUS_OK
             );
             assert_eq!(
-                msstd_fs_file_read_at(handle, 2, 1, 2, &mut out, core::ptr::null_mut()),
+                msstd_fs_file_read_at(handle, 2, HasRaw(1), 2, &mut out, core::ptr::null_mut()),
                 STATUS_OK
             );
             assert_eq!(contents(&out), b"cd");
@@ -373,7 +374,7 @@ mod fs_io {
                 STATUS_OK
             );
             assert_eq!(
-                msstd_fs_file_read_file(handle, 0, 0, &mut out, core::ptr::null_mut()),
+                msstd_fs_file_read_file(handle, HasRaw(0), 0, &mut out, core::ptr::null_mut()),
                 STATUS_OK
             );
             assert_eq!(contents(&out), b"aXYd");
@@ -417,9 +418,9 @@ mod fs_io {
                     dest,
                     1 | 16,
                     clone,
+                    ms_rt_abi::HasRaw(0),
                     0,
-                    0,
-                    0,
+                    ms_rt_abi::HasRaw(0),
                     0,
                     core::ptr::addr_of_mut!(filter).cast(),
                     core::ptr::null_mut()
@@ -429,13 +430,13 @@ mod fs_io {
             assert_eq!(filter.count, 4);
             let copied = st(&std::format!("{root}-out/a.txt"));
             assert_eq!(
-                msstd_fs_read_file(copied, 0, 0, &mut out, core::ptr::null_mut()),
+                msstd_fs_read_file(copied, HasRaw(0), 0, &mut out, core::ptr::null_mut()),
                 STATUS_OK
             );
             assert_eq!(contents(&out), b"aXYd");
             let skipped = st(&std::format!("{root}-out/sub/deep"));
             assert_eq!(
-                msstd_fs_read_file(skipped, 0, 0, &mut out, core::ptr::null_mut()),
+                msstd_fs_read_file(skipped, HasRaw(0), 0, &mut out, core::ptr::null_mut()),
                 STATUS_NOT_FOUND
             );
 
@@ -460,11 +461,31 @@ mod fs_io {
                 STATUS_OK
             );
             assert_eq!(
-                msstd_fs_watch_native(r, 1, 0, 0, 0, 0, st("bogus"), &mut h, core::ptr::null_mut()),
+                msstd_fs_watch_native(
+                    r,
+                    1,
+                    ms_rt_abi::HasRaw(0),
+                    0,
+                    ms_rt_abi::HasRaw(0),
+                    0,
+                    st("bogus"),
+                    &mut h,
+                    core::ptr::null_mut()
+                ),
                 ms_rt_abi::STATUS_INVALID_INPUT
             );
             assert_eq!(
-                msstd_fs_watch_native(r, 1, 0, 0, 0, 0, overflow, &mut h, core::ptr::null_mut()),
+                msstd_fs_watch_native(
+                    r,
+                    1,
+                    ms_rt_abi::HasRaw(0),
+                    0,
+                    ms_rt_abi::HasRaw(0),
+                    0,
+                    overflow,
+                    &mut h,
+                    core::ptr::null_mut()
+                ),
                 STATUS_OK
             );
             let file = st(dir.join("x").to_str().unwrap());
@@ -507,14 +528,20 @@ mod fs_io {
                 ms_rt_abi::STATUS_UNAVAILABLE
             );
             assert_eq!(msstd_io_open(path, &mut h), STATUS_OK);
-            assert_eq!(msstd_io_read_line(h, 1, 0, &mut line), STATUS_INVALID_INPUT);
-            assert_eq!(msstd_io_read_line(h, 0, 0, &mut line), STATUS_OK);
+            assert_eq!(
+                msstd_io_read_line(h, HasRaw(1), 0, &mut line),
+                STATUS_INVALID_INPUT
+            );
+            assert_eq!(msstd_io_read_line(h, HasRaw(0), 0, &mut line), STATUS_OK);
             assert!(!text(&line).is_empty());
-            assert_eq!(msstd_io_read(h, 0, 0, &mut chunk), STATUS_NONE);
+            assert_eq!(msstd_io_read(h, HasRaw(0), 0, &mut chunk), STATUS_NONE);
             assert_eq!(msstd_io_is_closed(h), 0);
             msstd_io_close(h);
             assert_eq!(msstd_io_is_closed(h), 1);
-            assert_eq!(msstd_io_read(h, 0, 0, &mut chunk), ms_rt_abi::STATUS_CLOSED);
+            assert_eq!(
+                msstd_io_read(h, HasRaw(0), 0, &mut chunk),
+                ms_rt_abi::STATUS_CLOSED
+            );
             let err = msstd_io_standard(2);
             assert_eq!(msstd_io_flush(err), STATUS_OK);
             std::fs::remove_file(&one_line).unwrap();
@@ -596,7 +623,7 @@ mod process {
         // SAFETY: valid list, writable outputs and a live handle throughout.
         unsafe {
             assert_eq!(
-                msstd_process_watch_signals(&list, 0, 0, &mut h, core::ptr::null_mut()),
+                msstd_process_watch_signals(&list, HasRaw(0), 0, &mut h, core::ptr::null_mut()),
                 STATUS_OK
             );
             assert_eq!(raise(usr1 as i32), 0);
@@ -628,11 +655,11 @@ mod process {
                     st("sh"),
                     &args,
                     &input,
+                    ms_rt_abi::HasRaw(0),
                     0,
+                    ms_rt_abi::HasRaw(0),
                     0,
-                    0,
-                    0,
-                    0,
+                    ms_rt_abi::HasRaw(0),
                     st(""),
                     &empty(),
                     &empty(),
@@ -648,11 +675,11 @@ mod process {
                     st("nope-nope"),
                     &args,
                     &input,
+                    ms_rt_abi::HasRaw(0),
                     0,
+                    ms_rt_abi::HasRaw(0),
                     0,
-                    0,
-                    0,
-                    0,
+                    ms_rt_abi::HasRaw(0),
                     st(""),
                     &empty(),
                     &empty(),
@@ -667,11 +694,11 @@ mod process {
                     st("sh"),
                     &spin,
                     &input,
+                    ms_rt_abi::HasRaw(0),
                     0,
-                    0,
-                    1,
+                    ms_rt_abi::HasRaw(1),
                     50_000_000,
-                    0,
+                    ms_rt_abi::HasRaw(0),
                     st(""),
                     &empty(),
                     &empty(),
@@ -686,11 +713,11 @@ mod process {
                     st("sh"),
                     &flood,
                     &input,
-                    1,
+                    ms_rt_abi::HasRaw(1),
                     10,
+                    ms_rt_abi::HasRaw(0),
                     0,
-                    0,
-                    0,
+                    ms_rt_abi::HasRaw(0),
                     st(""),
                     &empty(),
                     &empty(),
@@ -704,11 +731,11 @@ mod process {
                     st("sh"),
                     &args,
                     &input,
-                    1,
+                    ms_rt_abi::HasRaw(1),
                     -1,
+                    ms_rt_abi::HasRaw(0),
                     0,
-                    0,
-                    0,
+                    ms_rt_abi::HasRaw(0),
                     st(""),
                     &empty(),
                     &empty(),
@@ -726,7 +753,7 @@ mod process {
                     0,
                     0,
                     0,
-                    0,
+                    HasRaw(0),
                     st(""),
                     &empty(),
                     &empty(),
@@ -742,13 +769,16 @@ mod process {
             assert_eq!(msstd_io_write_bytes(stdin.cast(), &data), STATUS_OK);
             msstd_io_close(stdin.cast());
             let mut chunk = empty();
-            assert_eq!(msstd_io_read(stdout.cast(), 0, 0, &mut chunk), STATUS_OK);
+            assert_eq!(
+                msstd_io_read(stdout.cast(), HasRaw(0), 0, &mut chunk),
+                STATUS_OK
+            );
             assert_eq!(ms_rt::glue::vec_bytes(&chunk), b"ping");
             let mut code = -9;
             assert_eq!(
                 msstd_process_subprocess_wait(
                     child,
-                    1,
+                    HasRaw(1),
                     5_000_000_000,
                     &mut code,
                     core::ptr::null_mut()
@@ -781,7 +811,12 @@ mod process {
             );
             assert!(!text(&cwd).is_empty());
             assert_eq!(
-                msstd_process_set_environment(st("MS_ABI_VAR"), 1, st("x"), core::ptr::null_mut()),
+                msstd_process_set_environment(
+                    st("MS_ABI_VAR"),
+                    HasRaw(1),
+                    st("x"),
+                    core::ptr::null_mut()
+                ),
                 STATUS_OK
             );
             let (mut names, mut values) = (empty(), empty());
@@ -791,7 +826,7 @@ mod process {
             );
             assert_eq!(names.len, values.len);
             assert_eq!(
-                msstd_process_set_environment(st("A=B"), 0, st(""), core::ptr::null_mut()),
+                msstd_process_set_environment(st("A=B"), HasRaw(0), st(""), core::ptr::null_mut()),
                 STATUS_INVALID_INPUT
             );
             let mut info = std::mem::MaybeUninit::<InfoOut>::uninit();

@@ -12,7 +12,7 @@ use super::{
 };
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
-use ms_rt_abi::{Closure, MapVal, OptStr};
+use ms_rt_abi::{Closure, HasRaw, MapVal, OptStr};
 use std::boxed::Box;
 use std::string::String;
 use std::vec::Vec;
@@ -90,6 +90,26 @@ impl IntoAbi for bool {
     type Raw = u8;
     fn into_raw(self) -> u8 {
         u8::from(self)
+    }
+}
+
+/// Whether an optional argument is present, for the `has_x` half of a flattened optional.
+#[derive(Clone, Copy)]
+pub struct Has(pub bool);
+
+impl std::ops::Deref for Has {
+    type Target = bool;
+    fn deref(&self) -> &bool {
+        &self.0
+    }
+}
+impl AbiType for Has {
+    type Raw = HasRaw;
+}
+// SAFETY: a presence flag is a byte, 0 or 1.
+unsafe impl FromAbi<'_> for Has {
+    unsafe fn from_raw(raw: HasRaw) -> Has {
+        Has(raw.0 != 0)
     }
 }
 

@@ -1,7 +1,7 @@
 //! Calls into `ms-rt` driven by the declared signature of the symbol (generated from the runtime sources).
 //!
 //! The runtime ABI is regular (`ms-rt/ABI.md`, section 1): optional scalars flatten into
-//! `has_x, x`, descriptors follow the receiver, constructed values and fallible results
+//! `has_x: HasRaw, x`, descriptors follow the receiver, constructed values and fallible results
 //! come back through a trailing `out` pointer, and `u8` statuses name the error case. This
 //! module marshals a call from the symbol's parameter names and types and the checked
 //! signature of the language-level method.
@@ -366,11 +366,7 @@ impl FnLower<'_> {
                         None => return Err(Error::new(format!("{sym}: no key type"))),
                     }
                 }
-                n if n.starts_with("has_")
-                    && i + 1 < end
-                    && sig.params[i + 1].name.starts_with("has_")
-                    && sig.params[i + 1].ty == "u8" =>
-                {
+                _ if p.ty == "HasRaw" && i + 1 < end && sig.params[i + 1].ty == "HasRaw" => {
                     // An optional record: its presence, then each field in turn.
                     let input = *inputs
                         .get(cursor)
@@ -383,7 +379,7 @@ impl FnLower<'_> {
                     )?;
                     continue;
                 }
-                n if n.starts_with("has_") && i + 1 < end => {
+                _ if p.ty == "HasRaw" && i + 1 < end => {
                     let input = *inputs
                         .get(cursor)
                         .ok_or_else(|| Error::new(format!("{sym}: missing argument")))?;
@@ -621,7 +617,7 @@ impl FnLower<'_> {
         let mut used = 0;
         let mut k = 0;
         // `params` begins at the first field's presence flag; pairs follow in field order.
-        while used + 1 < params.len() && params[used].name.starts_with("has_") {
+        while used + 1 < params.len() && params[used].ty == "HasRaw" {
             let payload = params[used + 1].ty.as_str();
             let zero = |s: &mut Self| match payload {
                 "i64" => s.b.iconst(0),

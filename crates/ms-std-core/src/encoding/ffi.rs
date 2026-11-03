@@ -2,7 +2,7 @@
 //! fallible functions return a status byte and write the ok value through `out` only on success.
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt::ffi::{Fail, native};
+use ms_rt::ffi::{Fail, Has, native};
 
 native! {
     // ms: leaf
@@ -12,7 +12,7 @@ native! {
 
     // ms: leaf
     fn msstd_encoding_ascii85_decode(
-        text: &str, has_max: bool, max: i64,
+        text: &str, has_max: Has, max: i64,
     ) -> Result<Vec<u8>, Fail> {
         super::ascii85_decode(text, has_max.then_some(max))
     }
@@ -24,7 +24,7 @@ native! {
 
     // ms: leaf
     fn msstd_encoding_base64_decode_unpadded(
-        text: &str, url_safe: bool, has_max: bool, max: i64,
+        text: &str, url_safe: bool, has_max: Has, max: i64,
     ) -> Result<Vec<u8>, Fail> {
         super::base64_decode_unpadded(text, url_safe, has_max.then_some(max))
     }
@@ -36,7 +36,7 @@ native! {
 
     // ms: leaf
     fn msstd_encoding_base32_decode(
-        text: &str, hex_alphabet: bool, padded: bool, has_max: bool, max: i64,
+        text: &str, hex_alphabet: bool, padded: bool, has_max: Has, max: i64,
     ) -> Result<Vec<u8>, Fail> {
         super::base32_decode(text, hex_alphabet, padded, has_max.then_some(max))
     }
@@ -50,7 +50,7 @@ native! {
     fn msstd_encoding_base64_decode(
         text: &str,
         url_safe: bool,
-        has_max: bool,
+        has_max: Has,
         max: i64,
     ) -> Result<Vec<u8>, Fail> {
         super::base64_decode(text, url_safe, has_max.then_some(max))
@@ -70,13 +70,16 @@ mod tests {
         let mut b = MaybeUninit::<VecVal>::uninit();
         // SAFETY: all pointers are live; the results are released below.
         unsafe {
-            assert_eq!(msstd_encoding_base64_decode(&t, 0, 0, 0, b.as_mut_ptr()), 0);
+            assert_eq!(
+                msstd_encoding_base64_decode(&t, 0, ms_rt_abi::HasRaw(0), 0, b.as_mut_ptr()),
+                0
+            );
             assert_eq!(bytes_ref(b.as_ptr()), b"foo");
             let again = take_string(|o| msstd_encoding_base64_encode(b.as_ptr(), 0, o));
             assert_eq!(again, "Zm9v");
             let bad = new_string("%");
             assert_eq!(
-                msstd_encoding_base64_decode(&bad, 0, 0, 0, b.as_mut_ptr()),
+                msstd_encoding_base64_decode(&bad, 0, ms_rt_abi::HasRaw(0), 0, b.as_mut_ptr()),
                 ms_rt::ffi::STATUS_INVALID_DATA
             );
             ms_rt::ffi::str_release(&t);

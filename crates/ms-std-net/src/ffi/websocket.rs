@@ -6,7 +6,8 @@ use crate::error::WsErr;
 use crate::http::headers::Headers;
 use crate::ws::dial::{self, Dial};
 use ms_rt::ffi::{
-    Bytes, ErrOut, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record, native,
+    Bytes, ErrOut, Has, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record,
+    native,
 };
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
@@ -75,8 +76,8 @@ fn handshake_headers(h: &Headers) -> Option<Vec<(String, Vec<u8>)>> {
 
 native! {
     /// `WebSocketError.message()` for a status and the `Failed` text (nullable).
-    fn msstd_websocket_error_message(status: u8, has_failed: bool, failed: &str) -> String {
-        ws_from_code(status, (if has_failed { failed } else { "" }).to_string()).message()
+    fn msstd_websocket_error_message(status: u8, has_failed: Has, failed: &str) -> String {
+        ws_from_code(status, (if *has_failed { failed } else { "" }).to_string()).message()
     }
 
     /// `Network.web_socket(address, headers, subprotocols, options)`.
@@ -122,14 +123,14 @@ native! {
         x: ObjRef<ExchH>,
         origins: Vec<&str>,
         subprotocols: Vec<&str>,
-        has_max: bool,
+        has_max: Has,
         max: i64,
         out: Out<Object<SocketH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         let origins: Vec<String> = origins.into_iter().map(str::to_string).collect();
         let protocols: Vec<String> = subprotocols.into_iter().map(str::to_string).collect();
-        let s = x.upgrade(&origins, &protocols, opt(has_max, max));
+        let s = x.upgrade(&origins, &protocols, opt(*has_max, max));
         out.write(Object(SocketH(report(s, &err)?)));
         Ok(())
     }

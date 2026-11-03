@@ -3,9 +3,11 @@
 use super::{ConnH, ListenerH, NetH, opt, report};
 use crate::error::{Status as _, TlsErr};
 use crate::tls::{self, TlsOptions};
+#[cfg(test)]
+use ms_rt::ffi::HasRaw;
 use ms_rt::ffi::{
-    Bytes, BytesVec, ErrOut, ObjRef, Object, Out, RecList, StatusCode, Str, StringList, abi_record,
-    native,
+    Bytes, BytesVec, ErrOut, Has, ObjRef, Object, Out, RecList, StatusCode, Str, StringList,
+    abi_record, native,
 };
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 
@@ -97,12 +99,12 @@ native! {
         net: ObjRef<NetH>,
         address: &str,
         server_name: &str,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<Object<ConnH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        let c = net.connect_tls(address, server_name, opt(has_timeout, timeout));
+        let c = net.connect_tls(address, server_name, opt(*has_timeout, timeout));
         out.write(Object(ConnH(report(c, &err)?)));
         Ok(())
     }
@@ -112,12 +114,12 @@ native! {
         net: ObjRef<NetH>,
         address: &str,
         opts: &TlsOptionsWire,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<Object<ConnH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        let c = net.connect_tls_config(address, &opts.to_options(), opt(has_timeout, timeout));
+        let c = net.connect_tls_config(address, &opts.to_options(), opt(*has_timeout, timeout));
         out.write(Object(ConnH(report(c, &err)?)));
         Ok(())
     }
@@ -127,12 +129,12 @@ native! {
         net: ObjRef<NetH>,
         address: &str,
         opts: &TlsOptionsWire,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<Object<ListenerH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        let l = net.listen_tls(address, &opts.to_options(), opt(has_timeout, timeout));
+        let l = net.listen_tls(address, &opts.to_options(), opt(*has_timeout, timeout));
         out.write(Object(ListenerH(report(l, &err)?)));
         Ok(())
     }
@@ -152,10 +154,10 @@ native! {
     /// `parse_certificates(pem, max)`: the certificates as a `List[CertificateInfo]`.
     fn msstd_tls_parse_certificates(
         pem: &str,
-        has_max: bool,
+        has_max: Has,
         max: i64,
     ) -> Result<RecList<CertificateRec>, StatusCode> {
-        let list = tls::parse_certificates(pem, opt(has_max, max)).map_err(|e| StatusCode(e.code()))?;
+        let list = tls::parse_certificates(pem, opt(*has_max, max)).map_err(|e| StatusCode(e.code()))?;
         Ok(RecList::new(list.iter().map(|c| CertificateRec {
             subject: Str::new(&c.subject),
             issuer: Str::new(&c.issuer),
@@ -212,7 +214,7 @@ mod tests {
         unsafe {
             let mut certs = std::mem::MaybeUninit::<ms_rt_abi::VecVal>::zeroed();
             assert_eq!(
-                msstd_tls_parse_certificates(s(pem), 0, 0, certs.as_mut_ptr()),
+                msstd_tls_parse_certificates(s(pem), HasRaw(0), 0, certs.as_mut_ptr()),
                 0
             );
             let certs = certs.assume_init();
@@ -221,7 +223,7 @@ mod tests {
             assert_eq!(first.not_after.seconds, 4_102_444_800);
             let mut limited = std::mem::MaybeUninit::<ms_rt_abi::VecVal>::zeroed();
             assert_eq!(
-                msstd_tls_parse_certificates(s(pem), 1, 0, limited.as_mut_ptr()),
+                msstd_tls_parse_certificates(s(pem), HasRaw(1), 0, limited.as_mut_ptr()),
                 3
             );
             let now = Timestamp {

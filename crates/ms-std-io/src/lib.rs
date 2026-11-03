@@ -16,7 +16,7 @@ mod accumulate;
 use alloc::vec::Vec;
 use core::cell::RefCell;
 use ms_rt::ffi::{
-    Global, Handed, IntoAbi, ObjBox, ObjMut, ObjRef, Object, StatusCode, Text, native,
+    Global, Handed, Has, IntoAbi, ObjBox, ObjMut, ObjRef, Object, StatusCode, Text, native,
 };
 use ms_rt::glue::{fault, record_failure};
 use ms_rt_abi::{STATUS_NONE, StrVal};
@@ -120,21 +120,21 @@ native! {
     /// Reads a chunk; `STATUS_NONE` at end of stream.
     fn msstd_io_read(
         h: ObjMut<Stream>,
-        has_max: bool,
+        has_max: Has,
         max: i64,
     ) -> Result<Vec<u8>, StatusCode> {
         let mut h = h;
-        chunk(h.read(optional(has_max, max)))
+        chunk(h.read(optional(*has_max, max)))
     }
 
     /// Reads one line without its ending; `STATUS_NONE` at end of stream.
     fn msstd_io_read_line(
         h: ObjMut<Stream>,
-        has_max: bool,
+        has_max: Has,
         max: i64,
     ) -> Result<Line, StatusCode> {
         let mut h = h;
-        let max = optional(has_max, max);
+        let max = optional(*has_max, max);
         if let Some(line) = h.read_buffered_line(max, ms_rt::ffi::new_string_bytes) {
             return status(line).map(Line::Made);
         }
