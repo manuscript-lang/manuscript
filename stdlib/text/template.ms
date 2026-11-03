@@ -858,7 +858,7 @@ impl Run:
 fn member(value: JsonValue, key: String) JsonValue?:
     if let found = value.get(key): return found
     if let index = key.parse_int():
-        return value.at(index)
+        return value.at(index).clone()
 
     return none
 

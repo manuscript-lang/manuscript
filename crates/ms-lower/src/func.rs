@@ -648,11 +648,15 @@ impl<'a> FnLower<'a> {
         o
     }
 
-    /// An explicit `.clone()`: a deep copy of `v`, owned by the caller.
+    /// The copy a written `.clone()` makes of the borrowed `v` (`copy 1`): the one copy of an
+    /// object value a program may write, which the copy sweep leaves out.
     pub fn clone_value(&mut self, v: Value) -> Value {
         let t = self.ty_of(v);
+        if !self.needs_drop(t) {
+            return v;
+        }
         self.b
-            .emit(Op::Copy, &[v], ms_mir::ir::Imm::None, Some(t))
+            .emit(Op::Copy, &[v], ms_mir::ir::Imm::Int(1), Some(t))
             .expect("copy result")
     }
 

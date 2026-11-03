@@ -499,7 +499,7 @@ impl Op {
             Op::ListSetU => ("list.set.u", K::None, true, effects!(reads, writes, rc)),
             Op::ListFill => ("list.fill", K::None, true, effects!(reads, writes, faults)),
             Op::ListPush => ("list.push", K::None, true, effects!(reads, writes, alloc, faults)),
-            Op::ListDropLast => ("list.droplast", K::None, true, effects!(reads, writes, rc)),
+            Op::ListDropLast => ("list.droplast", K::Int, true, effects!(reads, writes, rc)),
             Op::ListRelease => ("list.release", K::None, false, effects!(reads, writes, rc)),
             Op::OptSome => ("opt.some", K::None, true, effects!()),
             Op::OptView => ("opt.view", K::None, true, effects!()),
@@ -518,6 +518,7 @@ impl Op {
             Op::IfaceView => ("iface.view", K::None, true, effects!()),
             Op::IfaceData => ("iface.data", K::None, true, effects!()),
             Op::IfaceIs => ("iface.is", K::Vtable, true, effects!()),
+            // `copy 1` is the copy a written `.clone()` lowers to; a bare `copy` is implicit.
             Op::Copy => ("copy", K::None, true, effects!(reads, alloc, rc)),
             Op::Drop => ("drop", K::None, false, effects!(writes, rc)),
             Op::MoveOut => ("move.out", K::None, true, effects!(writes)),

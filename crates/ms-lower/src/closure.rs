@@ -1036,6 +1036,41 @@ impl FnLower<'_> {
         )
     }
 
+    /// `unlift_param` for a value passed on to a borrowing callee: the supplied value is read
+    /// in place and only an omitted parameter's default is built, held in the returned
+    /// optional, which the caller drops once the callee has returned.
+    pub(crate) fn unlift_param_borrowed(
+        &mut self,
+        opt: Value,
+        default: &mut dyn FnMut(&mut Self) -> Result<Val, Error>,
+    ) -> Result<(Val, Value), Error> {
+        let optty = self.ty_of(opt);
+        let TyKind::Opt(inner) = self.b.m.types.kind(optty).clone() else {
+            return Err(Error::new("parameter is not optional"));
+        };
+        let has = self.b.opt_is_some(opt);
+        let holder = self.b.declare_var(optty, Mode::Own);
+        let out = self.two_ways_mode(
+            has,
+            inner,
+            Mode::Borrow,
+            &mut |s| {
+                let none = s.none_owned(optty);
+                s.b.def_var(holder, none);
+                Ok(Some(s.b.opt_get(opt)))
+            },
+            &mut |s| {
+                let d = default(s)?;
+                let d = s.owned(d);
+                let some = s.b.opt_some(d);
+                s.b.def_var(holder, some);
+                Ok(Some(s.b.opt_get(some)))
+            },
+        )?;
+        let held = self.b.use_var(holder);
+        Ok((out, held))
+    }
+
     /// A call whose callee is a function value.
     pub fn call_value(&mut self, e: &Expr, view: &CallView<'_>) -> Result<Val, Error> {
         let ExprKind::Call { callee, .. } = &e.kind else {
@@ -1207,7 +1242,10 @@ fn lower_default_thunk(
             "a function value with defaults cannot change its parameters",
         ));
     }
+    // The callee borrows its arguments: a supplied value is passed as it is, and an omitted
+    // one's default lives in a holder until the callee returns.
     let mut slots: Vec<Option<Val>> = vec![None; callee.parameters.len()];
+    let mut holders: Vec<Value> = Vec::new();
     for i in 0..slots.len() {
         let v = params[i + 1];
         let declared = fl.mty(&callee.parameters[i].ty)?;
@@ -1215,10 +1253,12 @@ fn lower_default_thunk(
             Val { v, own: false }
         } else {
             let earlier = slots.clone();
-            fl.unlift_param(v, &mut |s| {
+            let (val, held) = fl.unlift_param_borrowed(v, &mut |s| {
                 let mut earlier = earlier.clone();
                 s.default_argument(&callee, i, &job.subst, &mut earlier, recv, None)
-            })?
+            })?;
+            holders.push(held);
+            val
         });
     }
     let fid = fl.instance(&callee, &job.subst)?;
@@ -1242,6 +1282,9 @@ fn lower_default_thunk(
             fl.b.call(fid, &all)
         }
     };
+    for held in holders {
+        fl.drop_value(held);
+    }
     let out = fl.val(r, true);
     fl.emit_return(Some(out));
     Ok(())

@@ -1543,7 +1543,7 @@ fn sequence_items(
                 level += 1
 
             // Keep comments in the virtual source line so plain continuation can see them.
-            let raw = context.lines.get(context.index)
+            let raw = context.lines.get(context.index).clone()
             context.simple.set(context.index, false)
             context.lines.set(
                 context.index,
