@@ -1655,6 +1655,22 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let tagged = self.iconst(len | STR_STATIC as i64);
                 vec![ptr, tagged]
             }
+            Op::BytesLit => {
+                let Imm::Int(i) = inst.imm else {
+                    unreachable!()
+                };
+                let n = self.g.m.blobs[i as usize].len() as i64;
+                if n == 0 {
+                    let z = self.iconst(0);
+                    vec![z, z, z]
+                } else {
+                    let data = self.g.blob(i as usize);
+                    let ptr = self.data_addr(data);
+                    // Capacity zero marks the bytes as borrowed: nothing frees them.
+                    let (len, cap) = (self.iconst(n), self.iconst(0));
+                    vec![ptr, len, cap]
+                }
+            }
             Op::IAdd => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 if let Some((Op::IAdd, _, _, v)) =

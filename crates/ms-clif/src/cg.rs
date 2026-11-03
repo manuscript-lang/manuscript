@@ -153,6 +153,7 @@ pub struct Gen<'m> {
     pub ext: HashMap<ExtId, FuncId>,
     pub strs: HashMap<u32, DataId>,
     pub list_consts: HashMap<usize, DataId>,
+    pub blobs: HashMap<usize, DataId>,
     pub glue: HashMap<(Glue, Ty), FuncId>,
     /// The ids of the glue functions, indexed by id.
     pub glue_ids: std::collections::HashSet<FuncId>,
@@ -569,6 +570,25 @@ impl<'m> Gen<'m> {
         id
     }
 
+    /// The read-only data of constant bytes `i`.
+    pub fn blob(&mut self, i: usize) -> DataId {
+        if let Some(id) = self.blobs.get(&i) {
+            return *id;
+        }
+        let id = self
+            .module
+            .declare_data(&format!("ms.blob.{i}"), self.private(), false, false)
+            .expect("declare constant bytes");
+        let mut d = DataDescription::new();
+        d.define(self.m.blobs[i].clone().into_boxed_slice());
+        d.set_align(16);
+        self.module
+            .define_data(id, &d)
+            .expect("define constant bytes");
+        self.blobs.insert(i, id);
+        id
+    }
+
     pub fn str_lit(&mut self, i: u32) -> DataId {
         if let Some(id) = self.strs.get(&i) {
             return *id;
@@ -667,6 +687,7 @@ fn compile_with_isa(
         ext: HashMap::new(),
         strs: HashMap::new(),
         list_consts: HashMap::new(),
+        blobs: HashMap::new(),
         glue: HashMap::new(),
         glue_ids: Default::default(),
         queue: Vec::new(),
