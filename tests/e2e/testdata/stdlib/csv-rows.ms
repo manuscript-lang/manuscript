@@ -12,8 +12,10 @@ type Chunks:
 impl Source[Bytes] for Chunks:
     var fn next() Bytes?!:
         if self.at >= self.data.length(): return ok(none)
+
         var end = self.at + self.size
         if end > self.data.length(): end = self.data.length()
+
         let piece = try self.data.slice(self.at, end)
         self.at = end
         return ok(piece)
@@ -24,15 +26,23 @@ impl Source[Bytes] for Chunks:
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
     return stream[Bytes](Chunks(data, size, 0))
 
-fn read_rows(text: String, size: Int, options: CsvOptions = CsvOptions(), max_record_bytes: Int? = none) List[List[String]]!:
+fn read_rows(
+    text: String,
+    size: Int,
+    options: CsvOptions = CsvOptions(),
+    max_record_bytes: Int? = none
+) List[List[String]]!:
     var rows = csv_rows(chunked(text.to_bytes(), size), options, max_record_bytes)
     var out: List[List[String]] = []
+
     while true:
         let next = try rows.read().wait()
+
         if let row = next:
             out.append(row)
         else:
             break
+
     return ok(out)
 
 test "rows match parse under every chunk size":
@@ -46,7 +56,9 @@ test "a final record without a line end is read at the end":
 
 test "options apply":
     let semicolons = CsvOptions(delimiter: ";")
-    try expect_equal(try read_rows("a;b\n\"c;d\";e\n", 2, semicolons), [["a", "b"], ["c;d", "e"]])
+    try expect_equal(
+        try read_rows("a;b\n\"c;d\";e\n", 2, semicolons), [["a", "b"], ["c;d", "e"]]
+    )
 
 test "an unterminated quote is InvalidData at the end":
     let outcome = read_rows("a,\"open\nmore", 4)
@@ -59,4 +71,7 @@ test "a quote inside an unquoted cell is InvalidData":
 test "the record budget reports LimitExceeded":
     let outcome = read_rows("a,\"never closed", 3, CsvOptions(), 8)
     try expect_equal(outcome.err().kind, ErrorCategory.LimitExceeded)
-    try expect_equal(try read_rows("ab,cd\nef,gh\n", 3, CsvOptions(), 8), [["ab", "cd"], ["ef", "gh"]])
+    try expect_equal(
+        try read_rows("ab,cd\nef,gh\n", 3, CsvOptions(), 8),
+        [["ab", "cd"], ["ef", "gh"]]
+    )

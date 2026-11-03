@@ -253,9 +253,7 @@ export fn multipart_boundary(content_type: String) String?:
 fn make_part(section: Bytes) Part!:
     let crlf = "\r\n".to_bytes()
     if not section.starts_with(crlf): return error(
-        Error(
-            "MIME: invalid multipart body", kind: ErrorCategory.InvalidData
-        )
+        Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData)
     )
 
     let inner = section.slice(2, section.length()).get("".to_bytes())
@@ -263,18 +261,14 @@ fn make_part(section: Bytes) Part!:
         "\r\n\r\n".to_bytes()
     ).get(-1)
     if blank < 0 and not inner.starts_with(crlf): return error(
-        Error(
-            "MIME: invalid multipart body", kind: ErrorCategory.InvalidData
-        )
+        Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData)
     )
 
     let skip = if blank == 0: 2 else: 4
     let headers = try parse_headers(inner.decode_utf8_range(0, blank).get(""))
     var part = Part(
         headers: headers,
-        data: inner.slice(blank + skip, inner.length()).get(
-            "".to_bytes()
-        )
+        data: inner.slice(blank + skip, inner.length()).get("".to_bytes())
     )
 
     if let disposition = part.headers.get("Content-Disposition"):
@@ -285,6 +279,7 @@ fn make_part(section: Bytes) Part!:
         if media.is_ok():
             part.name = media.get().params.get("name").get("")
             part.filename = media.get().params.get("filename").get("")
+
     return ok(part)
 
 /*
@@ -304,6 +299,7 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
     for i in 1..sections.length():
         let section = sections[i]
         if section.starts_with("--".to_bytes()): return ok(parts)
+
         let part = try make_part(section)
         parts.append(part)
 
@@ -322,31 +318,60 @@ impl Transform[Bytes, Part] for MultipartParts:
     var fn feed(value: Bytes) List[Part]!:
         var out: List[Part] = []
         if self.done: return ok(out)
+
         self.buffer = self.buffer.concat(value)
+
         while true:
-            if self.in_part and self.buffer.length() >= 2 and self.buffer.starts_with("--".to_bytes()):
+            if (
+                self.in_part
+                and self.buffer.length() >= 2
+                and self.buffer.starts_with("--".to_bytes())
+            ):
                 self.done = true
                 self.buffer = "".to_bytes()
                 break
+
             if self.in_part and self.buffer.length() < 2: break
+
             let at = self.buffer.index_of(self.delimiter)
+
             if at.is_none():
                 if let limit = self.max_part_bytes:
                     if self.buffer.length() > limit + self.delimiter.length():
-                        return error(Error("MIME: limit exceeded", kind: ErrorCategory.LimitExceeded))
+                        return error(
+                            Error(
+                                "MIME: limit exceeded",
+                                kind: ErrorCategory.LimitExceeded
+                            )
+                        )
                 break
+
             let end = at.get()
+
             if self.in_part:
                 if let limit = self.max_part_bytes:
-                    if end > limit: return error(Error("MIME: limit exceeded", kind: ErrorCategory.LimitExceeded))
+                    if end > limit: return error(
+                        Error(
+                            "MIME: limit exceeded", kind: ErrorCategory.LimitExceeded
+                        )
+                    )
                 out.append(try make_part(try self.buffer.slice(0, end)))
-            self.buffer = try self.buffer.slice(end + self.delimiter.length(), self.buffer.length())
+
+            self.buffer = try self.buffer.slice(
+                end + self.delimiter.length(), self.buffer.length()
+            )
             self.in_part = true
+
         return ok(out)
 
     var fn finish() List[Part]!:
         if self.done: return ok(List[Part]())
-        return error(Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData))
+
+        return error(
+            Error(
+                "MIME: invalid multipart body", kind: ErrorCategory.InvalidData
+            )
+        )
 
 /*
 Reads the parts of a multipart body from a byte stream, one at a time, for uploads too big to hold in memory.
@@ -354,7 +379,11 @@ Parts are built as `parse_multipart` builds them, and only the part being read i
 bounds one part's headers and body and fails the read with `LimitExceeded`. A body that ends without its closing
 delimiter fails with `InvalidData`. Closing the result closes `body`.
 */
-export fn multipart_parts(body: ReadStream[Bytes], boundary: String, max_part_bytes: Int?) ReadStream[Part]:
+export fn multipart_parts(
+    body: ReadStream[Bytes],
+    boundary: String,
+    max_part_bytes: Int?
+) ReadStream[Part]:
     return through[Bytes, Part](
         body,
         MultipartParts(

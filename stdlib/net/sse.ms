@@ -57,7 +57,10 @@ event ends cleanly; otherwise the final read fails with `InvalidData` and the un
 dispatched. A malformed line or an exceeded limit fails the read, and the failure is final. Supplied limits
 must be positive, otherwise the first read fails with `InvalidInput`. Closing the result closes `input`.
 */
-export fn sse_events(input: ReadStream[Bytes], limits: SseLimits = SseLimits()) ReadStream[SseEvent]:
+export fn sse_events(
+    input: ReadStream[Bytes],
+    limits: SseLimits = SseLimits()
+) ReadStream[SseEvent]:
     var failure: Error? = none
     if not positive(limits.max_line_bytes) or not positive(limits.max_event_bytes):
         failure = Error("SSE invalid input", kind: InvalidInput)
@@ -239,7 +242,11 @@ fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Unit:
     if decoder.data.length() > 0:
         var name = decoder.event_type.clone()
         if name == "": name = "message"
-        events.append(SseEvent(name, decoder.data.join("\n"), decoder.last_id.clone(), decoder.retry_ms))
+        events.append(
+            SseEvent(
+                name, decoder.data.join("\n"), decoder.last_id.clone(), decoder.retry_ms
+            )
+        )
 
     decoder.event_type = ""
     decoder.data = List[String]()

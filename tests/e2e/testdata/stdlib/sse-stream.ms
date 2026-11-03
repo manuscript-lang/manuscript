@@ -15,7 +15,9 @@ impl Source[Bytes] for Chunks:
             let part = self.parts[self.index].clone()
             self.index += 1
             return ok(part)
+
         if let cause = self.failure: return error(cause.clone())
+
         return ok(none)
 
     var fn close() Unit!:
@@ -30,6 +32,7 @@ fn splits(source: Bytes) List[List[Bytes]]:
     let size = source.length()
     for cut in 0..size + 1:
         all.append([source.slice(0, cut).get(), source.slice(cut, size).get()])
+
     var single = List[Bytes]()
     for index in 0..size:
         single.append(source.slice(index, index + 1).get())
@@ -40,21 +43,29 @@ fn splits(source: Bytes) List[List[Bytes]]:
 fn decode(parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEvent]!:
     var events = sse_events(chunks(parts), limits)
     var out = List[SseEvent]()
+
     while true:
         let next = try events.read().wait()
+
         if let event = next:
             out.append(event)
         else:
             break
+
     return ok(out)
 
 fn summary(events: List[SseEvent]) String:
-    return events.map(fn event: "{event.event}|{event.data}|{event.id.get("-")}").join(";")
+    return events.map(
+        fn event: "{event.event}|{event.data}|{event.id.get("-")}"
+    ).join(";")
 
 fn expect(source: String, want: String) Unit!:
     for parts in splits(source.to_bytes()):
         let got = summary(try decode(parts))
-        if got != want: return fail("{source.to_bytes().values()}: want {want}, got {got}")
+        if got != want: return fail(
+            "{source.to_bytes().values()}: want {want}, got {got}"
+        )
+
     return ok(unit)
 
 test "LF CRLF and CR endings decode identically under every chunk split":
@@ -88,8 +99,14 @@ test "events without data are not dispatched and reset the event type":
 test "events carry the latest valid retry time":
     let events = try decode(["retry: 1500\ndata: a\n\n".to_bytes()])
     try expect_equal(events[0].retry, 1500)
-    let kept = try decode(["retry: 1500\ndata: a\n\nretry: 12x\nretry: -5\nretry:\ndata: b\n\n".to_bytes()])
+
+    let kept = try decode(
+        [
+            "retry: 1500\ndata: a\n\nretry: 12x\nretry: -5\nretry:\ndata: b\n\n".to_bytes()
+        ]
+    )
     try expect_equal(kept[1].retry, 1500)
+
     let none_sent = try decode(["data: a\n\n".to_bytes()])
     try expect_equal(none_sent[0].retry, none)
 
@@ -105,6 +122,7 @@ test "invalid UTF-8 is InvalidData":
     builder.append_bytes("data: ".to_bytes())
     builder.append(255)
     builder.append_bytes("\n\n".to_bytes())
+
     for parts in splits(builder.build()):
         let outcome = decode(parts)
         try expect_false(outcome.is_ok())
@@ -113,11 +131,21 @@ test "invalid UTF-8 is InvalidData":
 test "line and event budgets report LimitExceeded":
     let tight = decode(["data: 12\n\n".to_bytes()], SseLimits(7))
     try expect_equal(tight.err().kind, ErrorCategory.LimitExceeded)
-    try expect_equal((try decode(["data: 12\n\n".to_bytes()], SseLimits(8))).length(), 1)
-    let event = decode(["data: 1\n".to_bytes(), "data: 2\n".to_bytes()], SseLimits(max_event_bytes: 10))
+    try expect_equal(
+        (try decode(["data: 12\n\n".to_bytes()], SseLimits(8))).length(), 1
+    )
+
+    let event = decode(
+        ["data: 1\n".to_bytes(), "data: 2\n".to_bytes()], SseLimits(max_event_bytes: 10)
+    )
     try expect_equal(event.err().kind, ErrorCategory.LimitExceeded)
-    let comments = decode([": a long comment is not counted\ndata: 1\n\n".to_bytes()], SseLimits(max_event_bytes: 10))
+
+    let comments = decode(
+        [": a long comment is not counted\ndata: 1\n\n".to_bytes()],
+        SseLimits(max_event_bytes: 10)
+    )
     try expect_equal((try comments).length(), 1)
+
     let zero = decode(["data: a\n\n".to_bytes()], SseLimits(0))
     try expect_equal(zero.err().kind, ErrorCategory.InvalidInput)
 
@@ -127,14 +155,21 @@ test "truncated streams fail and clean ends succeed":
         if outcome.is_ok() or outcome.err().kind != ErrorCategory.InvalidData: return fail(
             "{source} must be truncated"
         )
+
     for source in ["", "data: a\n\n", ": keepalive\n", "data: a\r\n\r\n", "\n"]:
         let _events = try decode([source.to_bytes()])
 
 test "a read failure is the stream's error and events before it arrive":
     var events = sse_events(
-        stream[Bytes](Chunks(["data: a\n\n".to_bytes()], 0, Error("I/O: closed", kind: ErrorCategory.Closed)))
+        stream[Bytes](
+            Chunks(
+                ["data: a\n\n".to_bytes()], 0,
+                Error("I/O: closed", kind: ErrorCategory.Closed)
+            )
+        )
     )
     let first = (try events.read().wait()).get()
     try expect_equal(first.data, "a")
+
     let failed = events.read().wait()
     try expect_equal(failed.err().kind, ErrorCategory.Closed)

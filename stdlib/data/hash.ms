@@ -154,11 +154,14 @@ bytes in hand. Retains no input bytes, and consumes and closes the stream. A fai
 export fn crc64_of(input: ReadStream[Bytes], polynomial: Crc64Polynomial) UInt64!:
     var sum = Crc64(polynomial: polynomial)
     var source = input
+
     while true:
         let chunk = try source.read().wait()
+
         if let data = chunk:
             sum.update(data)
         else:
             break
+
     try source.close()
     return ok(sum.value())

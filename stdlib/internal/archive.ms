@@ -1,5 +1,10 @@
 import Bytes from "@std/bytes.ms"
-import (ArchiveEntry, ArchiveLimits, NativeDecoder, NativeEncoder) from "@std/io/archive.ms"
+import (
+    ArchiveEntry,
+    ArchiveLimits,
+    NativeDecoder,
+    NativeEncoder
+) from "@std/io/archive.ms"
 
 export extern fn msstd_compress_encoder_new(format: String, level: Int) NativeEncoder!
 
@@ -7,7 +12,10 @@ export extern fn msstd_compress_encoder_push(encoder: NativeEncoder, data: Bytes
 
 export extern fn msstd_compress_encoder_end(encoder: NativeEncoder) Bytes
 
-export extern fn msstd_compress_decoder_new(format: String, max_bytes: Int?) NativeDecoder!
+export extern fn msstd_compress_decoder_new(
+    format: String,
+    max_bytes: Int?
+) NativeDecoder!
 
 export extern fn msstd_compress_decoder_push(decoder: NativeDecoder, data: Bytes) Bytes!
 

@@ -1,7 +1,8 @@
 import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
 import pack, unpack, ArchiveEntry from "@std/io/archive.ms"
-import decoder, SseDecoder from "@std/net/sse.ms"
+import sse_events from "@std/net/sse.ms"
+import ReadStream, Source, stream from "@std/io/stream.ms"
 import parse_timestamp from "@std/os/time.ms"
 import uuid_v4 from "@std/os/random.ms"
 
@@ -21,11 +22,34 @@ fn sse_stream(count: Int) Bytes:
         parts.append("event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
     return parts.join("").to_bytes()
 
-fn feed_all(var d: SseDecoder, stream: Bytes) Int:
-    if let events = d.feed(stream):
-        return events.length()
+// Hands out its bytes as one chunk.
+type Whole:
+    data: Bytes
+    done: Bool
 
-    return 0
+impl Source[Bytes] for Whole:
+    var fn next() Bytes?!:
+        if self.done: return ok(none)
+
+        self.done = true
+        return ok(self.data.clone())
+
+    var fn close() Unit!:
+        return ok(unit)
+
+fn count_events(data: Bytes) Int:
+    var events = sse_events(stream[Bytes](Whole(data, false)))
+    var count = 0
+
+    while true:
+        if let next = events.read().wait():
+            if next.is_none(): break
+
+            count += 1
+        else:
+            break
+
+    return count
 
 bench "archive.zip_pack":
     let list = entries(2000)
@@ -60,15 +84,9 @@ bench "archive.zip_unpack":
         try measure(2000, work)
 
 bench "sse.feed":
-    let stream = sse_stream(2000)
-
+    let data = sse_stream(2000)
     fn work() Result[Unit, Error]:
-        if let made = decoder():
-            var d = made
-            return keep(feed_all(var d, stream))
-
-        return keep(0)
-
+        return keep(count_events(data.clone()))
     try measure(2000, work)
 
 bench "time.timestamp_to_string":

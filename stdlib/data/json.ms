@@ -420,7 +420,10 @@ trusted input, because an unterminated value is otherwise buffered without bound
 input fails the read with `InvalidData`, and negative limits with `InvalidInput`. Closing the result closes
 `input`.
 */
-export fn json_reader[T: Data = JsonValue](input: ReadStream[Bytes], limits: JsonLimits? = none) ReadStream[T]:
+export fn json_reader[T: Data = JsonValue](
+    input: ReadStream[Bytes],
+    limits: JsonLimits? = none
+) ReadStream[T]:
     let bounds = limits.get(JsonLimits())
     return through[Bytes, T](
         input,
