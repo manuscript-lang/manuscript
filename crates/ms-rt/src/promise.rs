@@ -11,7 +11,9 @@
 //! `2` timed out, `3` cancelled, `4` closed (the result was already taken), `5` failed (a fault inside).
 use crate::desc::slot_drop;
 use crate::{alloc, fault, task};
+use core::cmp::Reverse;
 use ms_rt_abi::TypeDesc;
+use std::collections::BinaryHeap;
 
 pub const OK: i64 = 0;
 pub const ERROR: i64 = 1;
@@ -59,6 +61,14 @@ struct Table {
     task: Vec<u64>,
     /// The report of the fault that ended the promise.
     report: Vec<Vec<u8>>,
+    /// When a timer promise or a readiness wait times out, or `i64::MAX`.
+    deadline: Vec<i64>,
+    /// The descriptor a readiness wait watches, or -1.
+    fd: Vec<i32>,
+    /// What a readiness wait asks for.
+    events: Vec<u32>,
+    /// (deadline, id) of the timers armed; an entry whose promise is gone or finished is stale.
+    timers: BinaryHeap<Reverse<(i64, i64)>>,
     free: Vec<usize>,
 }
 
@@ -70,6 +80,10 @@ crate::isolate_static! {
         result: Vec::new(),
         task: Vec::new(),
         report: Vec::new(),
+        deadline: Vec::new(),
+        fd: Vec::new(),
+        events: Vec::new(),
+        timers: BinaryHeap::new(),
         free: Vec::new(),
     };
 }
@@ -112,15 +126,24 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
             t.result.push(NO_RESULT);
             t.task.push(0);
             t.report.push(Vec::new());
+            t.deadline.push(i64::MAX);
+            t.fd.push(-1);
+            t.events.push(0);
             t.state.len() - 1
         }
     };
-    t.generation[i] = t.generation[i].wrapping_add(1).max(1);
+    t.generation[i] = t.generation[i].wrapping_add(1) & 0x3fff_ffff;
+    if t.generation[i] == 0 {
+        t.generation[i] = 1;
+    }
     t.state[i] = State::Pending;
     t.token[i] = 0;
     t.result[i] = NO_RESULT;
     t.task[i] = 0;
     t.report[i] = Vec::new();
+    t.deadline[i] = i64::MAX;
+    t.fd[i] = -1;
+    t.events[i] = 0;
     (i64::from(t.generation[i]) << 32) | (i as i64 + 1)
 }
 
@@ -197,6 +220,140 @@ pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
         Some(i) => u8::from(t.state[i] != State::Pending),
         None => 1,
     }
+}
+
+/// Completes `i` with no value (a finished sleep): `wait` answers 0 and nothing is left to take.
+fn complete_unit(t: &mut Table, i: usize) {
+    if t.state[i] == State::Pending {
+        t.state[i] = State::Ok;
+        wake(t, i);
+    }
+}
+
+/// A promise that finishes after `ns` nanoseconds; it has no task and no result to take.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_promise_sleep(ns: i64) -> i64 {
+    let id = msrt_promise_new();
+    let t = table();
+    let i = find(id);
+    let deadline = crate::sys::monotonic_ns().saturating_add(ns.max(0));
+    t.deadline[i] = deadline;
+    t.timers.push(Reverse((deadline, id)));
+    id
+}
+
+/// A promise for the readiness of `fd` for `events` (`WAIT_READ`, `WAIT_WRITE`, ...), with a
+/// `timeout_ns` limit (negative: none). It finishes with an `Int` of the bits that were ready,
+/// `WAIT_TIMEOUT` when the limit passed. A descriptor that cannot be polled is ready at once.
+/// Returns -1 when `fd` cannot be waited on. It has no task: the poller completes the slot.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_promise_ready(fd: i64, events: i64, timeout_ns: i64) -> i64 {
+    let (fd, events) = (fd as i32, events as u32);
+    let id = msrt_promise_new();
+    // SAFETY: single scheduler per isolate.
+    let ready = unsafe { task::watch_fd_for_promise(fd, events, id) };
+    let t = table();
+    let i = find(id);
+    match ready {
+        None => {
+            msrt_promise_drop(id);
+            return -1;
+        }
+        Some(true) => {
+            put_int(
+                t,
+                i,
+                i64::from(events & (task::WAIT_READ | task::WAIT_WRITE)),
+            );
+        }
+        Some(false) => {
+            t.fd[i] = fd;
+            t.events[i] = events;
+            if timeout_ns >= 0 {
+                let deadline = crate::sys::monotonic_ns().saturating_add(timeout_ns);
+                t.deadline[i] = deadline;
+                t.timers.push(Reverse((deadline, id)));
+            }
+        }
+    }
+    id
+}
+
+fn put_int(t: &mut Table, i: usize, value: i64) {
+    let ptr = alloc::alloc(8);
+    // SAFETY: `ptr` is a fresh 8-byte block.
+    unsafe { ptr.cast::<i64>().write(value) };
+    t.result[i] = Result {
+        ptr,
+        desc: &crate::desc::msrt_desc_int,
+    };
+    t.state[i] = State::Ok;
+    wake(t, i);
+}
+
+/// What readiness wait `id` asks for (0 when it is not one).
+pub(crate) fn fd_events(id: i64) -> u32 {
+    let t = table();
+    index(t, id).map_or(0, |i| t.events[i])
+}
+
+/// The poller saw `bits` on the descriptor of readiness wait `id`; answers whether it finished.
+pub(crate) fn fd_ready(id: i64, bits: u32) -> bool {
+    let t = table();
+    let Some(i) = index(t, id) else { return true };
+    let wanted = bits & (t.events[i] | task::WAIT_HUP);
+    if wanted == 0 || t.state[i] != State::Pending {
+        return t.state[i] != State::Pending;
+    }
+    t.fd[i] = -1;
+    put_int(t, i, i64::from(wanted));
+    true
+}
+
+/// Finishes the timers due at `now`: a sleep ends, a readiness wait times out.
+pub(crate) fn expire(now: i64) {
+    loop {
+        let t = table();
+        let Some(&Reverse((deadline, id))) = t.timers.peek() else {
+            return;
+        };
+        if deadline > now {
+            return;
+        }
+        t.timers.pop();
+        let Some(i) = index(t, id) else { continue };
+        if t.state[i] != State::Pending || t.deadline[i] != deadline {
+            continue;
+        }
+        if t.fd[i] >= 0 {
+            let fd = core::mem::replace(&mut t.fd[i], -1);
+            // SAFETY: single scheduler per isolate.
+            unsafe { task::unwatch_fd_for_promise(fd, id) };
+            put_int(t, i, i64::from(task::WAIT_TIMEOUT));
+        } else {
+            complete_unit(t, i);
+        }
+    }
+}
+
+/// The earliest deadline of a live timer, dropping stale entries on the way.
+pub(crate) fn next_deadline() -> Option<i64> {
+    let t = table();
+    while let Some(&Reverse((deadline, id))) = t.timers.peek() {
+        if let Some(i) = index(t, id)
+            && t.state[i] == State::Pending
+            && t.deadline[i] == deadline
+        {
+            return Some(deadline);
+        }
+        t.timers.pop();
+    }
+    None
+}
+
+/// Whether any timer entry exists (live or stale).
+pub(crate) fn has_timers() -> bool {
+    !table().timers.is_empty()
 }
 
 /// Starts `work` as the task of promise `id`, on the thread the runtime picks. The closure
@@ -288,8 +445,11 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
 }
 
 /// The report of a fault that ended `id` (empty otherwise).
+///
+/// # Safety
+/// `out` is writable memory for a string.
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_promise_fault_report(id: i64, out: *mut ms_rt_abi::StrVal) {
+pub unsafe extern "C-unwind" fn msrt_promise_fault_report(id: i64, out: *mut ms_rt_abi::StrVal) {
     let t = table();
     let report = index(t, id).map(|i| t.report[i].as_slice()).unwrap_or(&[]);
     // SAFETY: `out` is uninitialised memory for a string.
@@ -302,6 +462,11 @@ pub extern "C-unwind" fn msrt_promise_fault_report(id: i64, out: *mut ms_rt_abi:
 pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
     let t = table();
     let Some(i) = index(t, id) else { return };
+    if t.fd[i] >= 0 && t.state[i] == State::Pending {
+        // SAFETY: single scheduler per isolate.
+        unsafe { task::unwatch_fd_for_promise(t.fd[i], id) };
+        t.fd[i] = -1;
+    }
     let handle = t.task[i];
     if handle != 0 {
         // SAFETY: the handle names the promise's task, collected exactly once, here.
@@ -398,9 +563,9 @@ mod tests {
         start(id, fails);
         assert_eq!(msrt_promise_wait(id, -1), FAILED);
         let mut report = crate::string::NO_STR;
-        msrt_promise_fault_report(id, &mut report);
-        // SAFETY: `report` is the string the call just made.
+        // SAFETY: `report` is writable, and the string the call makes is ours.
         unsafe {
+            msrt_promise_fault_report(id, &mut report);
             assert!(crate::string::bytes(&report).starts_with(b"boom"));
             crate::string::release_opt(&report);
         }
@@ -431,6 +596,75 @@ mod tests {
         start(id, hangs);
         msrt_promise_drop(id);
         assert_eq!(msrt_promise_done(id), 1);
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_sleep_promise_has_no_task_and_ends_on_time() {
+        let _g = lock();
+        // SAFETY: tests hold the runtime lock.
+        let before = unsafe { task::msrt_task_count() };
+        let id = msrt_promise_sleep(5_000_000);
+        // SAFETY: as above.
+        assert_eq!(unsafe { task::msrt_task_count() }, before);
+        assert_eq!(msrt_promise_done(id), 0);
+        let start = crate::sys::monotonic_ns();
+        assert_eq!(msrt_promise_wait(id, -1), OK);
+        assert!(crate::sys::monotonic_ns() - start >= 4_000_000);
+        msrt_promise_drop(id);
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn waiting_with_a_timeout_on_a_longer_sleep_times_out() {
+        let _g = lock();
+        let id = msrt_promise_sleep(3_600_000_000_000);
+        assert_eq!(msrt_promise_wait(id, 5_000_000), TIMEOUT);
+        // Dropping a sleep that never finished leaves a stale timer, which nothing waits for.
+        msrt_promise_drop(id);
+        assert_eq!(next_deadline(), None);
+        task::teardown();
+    }
+
+    fn raw(stream: &std::net::TcpStream) -> i32 {
+        #[cfg(unix)]
+        {
+            std::os::fd::AsRawFd::as_raw_fd(stream)
+        }
+        #[cfg(windows)]
+        {
+            std::os::windows::io::AsRawSocket::as_raw_socket(stream) as i32
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_readiness_promise_completes_when_the_descriptor_is() {
+        use std::io::{Read, Write};
+        let _g = lock();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let mut client = std::net::TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (mut server, _) = listener.accept().unwrap();
+        server.set_nonblocking(true).unwrap();
+        let fd = raw(&server);
+        let id = msrt_promise_ready(i64::from(fd), i64::from(task::WAIT_READ), -1);
+        assert!(id > 0);
+        assert_eq!(msrt_promise_done(id), 0);
+        client.write_all(b"x").unwrap();
+        assert_eq!(msrt_promise_wait(id, -1), OK);
+        assert_eq!(take_int(id) & i64::from(task::WAIT_READ), 1);
+        msrt_promise_drop(id);
+        // A wait nothing satisfies times out and leaves no registration behind.
+        let mut byte = [0u8; 1];
+        assert_eq!(server.read(&mut byte).unwrap(), 1);
+        let late = msrt_promise_ready(i64::from(fd), i64::from(task::WAIT_READ), 5_000_000);
+        assert_eq!(msrt_promise_wait(late, -1), OK);
+        assert_eq!(take_int(late), i64::from(task::WAIT_TIMEOUT));
+        msrt_promise_drop(late);
+        let dropped = msrt_promise_ready(i64::from(fd), i64::from(task::WAIT_READ), -1);
+        msrt_promise_drop(dropped);
         task::teardown();
     }
 }
