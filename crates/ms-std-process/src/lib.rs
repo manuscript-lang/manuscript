@@ -597,23 +597,15 @@ mod exec {
 pub(crate) fn stream_id(stream: &mut ObjBox<Stream>, id: &mut i64, writes: bool) -> i64 {
     if *id == -2 {
         let fd = stream.get_mut().take_fd();
-        #[cfg(not(windows))]
-        {
-            use ms_rt::streams::{NONBLOCK, OWNS, READS, WRITES};
-            *id = if fd < 0 {
-                -1
-            } else {
-                ms_rt::streams::msrt_streams_open(
-                    fd,
-                    OWNS | NONBLOCK | if writes { WRITES } else { READS },
-                )
-            };
-        }
-        #[cfg(windows)]
-        {
-            let _ = (fd, writes);
-            *id = -1;
-        }
+        use ms_rt::streams::{NONBLOCK, OWNS, READS, WRITES};
+        *id = if fd < 0 {
+            -1
+        } else {
+            ms_rt::streams::msrt_streams_open(
+                fd,
+                OWNS | NONBLOCK | if writes { WRITES } else { READS },
+            )
+        };
     }
     *id
 }

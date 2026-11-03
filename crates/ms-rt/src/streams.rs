@@ -43,7 +43,8 @@ struct Entry {
 }
 
 /// The system calls under the table. Unix works on any descriptor; Windows serves the three
-/// standard handles through `std::io`, whose calls block the calling thread until they finish.
+/// standard handles through `std::io`, whose calls block the calling thread until they finish,
+/// and a child's pipes through the poller's overlapped pipes.
 #[cfg(not(windows))]
 mod plat {
     use crate::sys;
@@ -103,6 +104,10 @@ mod plat {
         }
     }
 
+    pub fn write_key(fd: i32) -> i32 {
+        fd
+    }
+
     pub fn close(fd: i32) {
         // SAFETY: the entry owns the descriptor.
         unsafe { sys::close(fd) };
@@ -111,6 +116,7 @@ mod plat {
 
 #[cfg(windows)]
 mod plat {
+    use crate::glue::pipe;
     use std::io::{Read, Write};
 
     pub enum Fail {
@@ -127,19 +133,33 @@ mod plat {
         }
     }
 
-    /// Only the standard handles exist here, and they are shared, so nothing changes their mode.
+    /// The standard handles are shared, so nothing changes their mode; adopted pipes never block.
     pub fn set_nonblocking(_fd: i32) {}
 
-    /// A read blocks its thread until data or the end arrives.
+    /// A standard-input read blocks its thread until data or the end arrives; a pipe read
+    /// answers `WouldBlock` instead.
     pub fn readable_now(_fd: i32) -> bool {
         true
     }
 
-    pub fn read(fd: i32, buf: &mut [u8]) -> Result<usize, Fail> {
-        if fd != 0 {
-            return Err(Fail::Other(6));
+    /// The poller key a blocked write waits on: an adopted pipe's writer waits on the handle
+    /// plus one, so a reader can wait on the same pipe.
+    pub fn write_key(fd: i32) -> i32 {
+        if pipe::is_adopted(fd as isize) {
+            fd + 1
+        } else {
+            fd
         }
-        std::io::stdin().lock().read(buf).map_err(classify)
+    }
+
+    pub fn read(fd: i32, buf: &mut [u8]) -> Result<usize, Fail> {
+        if fd == 0 {
+            return std::io::stdin().lock().read(buf).map_err(classify);
+        }
+        if pipe::is_adopted(fd as isize) {
+            return pipe::try_read(fd as isize, buf).map_err(classify);
+        }
+        Err(Fail::Other(6))
     }
 
     pub fn write(fd: i32, buf: &[u8]) -> Result<usize, Fail> {
@@ -152,13 +172,18 @@ mod plat {
                 let mut err = std::io::stderr().lock();
                 err.write(buf).and_then(|n| err.flush().map(|()| n))
             }
+            _ if pipe::is_adopted(fd as isize) => pipe::try_write(fd as isize, buf),
             _ => return Err(Fail::Other(6)),
         }
         .map_err(classify)
     }
 
-    /// The process owns its standard handles; closing an entry never closes them.
-    pub fn close(_fd: i32) {}
+    /// Closes an adopted pipe the entry owns; the standard handles stay open.
+    pub fn close(fd: i32) {
+        if pipe::is_adopted(fd as isize) {
+            pipe::close(fd as isize);
+        }
+    }
 }
 
 static STREAMS: Mutex<Vec<Entry>> = Mutex::new(Vec::new());
@@ -422,7 +447,7 @@ pub extern "C-unwind" fn msrt_streams_flush(stream: i64) -> i64 {
         match slot(&mut table, stream) {
             Some(e) => {
                 e.error.clear();
-                (drain(e), e.fd)
+                (drain(e), plat::write_key(e.fd))
             }
             None => (true, -1),
         }

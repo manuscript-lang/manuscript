@@ -144,13 +144,9 @@ impl Stream {
     }
 
     /// Hands the descriptor of an owned stream to the caller and retires the stream without
-    /// closing it; -1 when the stream is closed, borrowed or not a plain descriptor (an adopted
-    /// Windows pipe).
+    /// closing it; -1 when the stream is closed or borrowed. An adopted Windows pipe moves with
+    /// its adoption, so the new owner reads and closes it through the poller.
     pub fn take_fd(&mut self) -> i64 {
-        #[cfg(windows)]
-        if self.adopted {
-            return -1;
-        }
         if self.closed || !self.owned {
             return -1;
         }
