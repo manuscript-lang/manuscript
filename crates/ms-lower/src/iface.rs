@@ -553,6 +553,7 @@ fn build_builtin_compare(
             noreturn: false,
             pure_: false,
             fresh: false,
+            role: crate::rtcall::extern_role(sym),
             leaf: crate::rtcall::rt_flags(sym).leaf,
             reads: crate::rtcall::rt_flags(sym).reads,
         });

@@ -95,6 +95,28 @@ pub(crate) fn fresh_result(sym: &str) -> bool {
     rt_flags(sym).fresh
 }
 
+/// The role of the runtime function `sym` for passes and code generation. This table is the one
+/// place lowering names those functions; passes read the role from the extern.
+pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
+    use ms_mir::ir::ExternRole as R;
+    match sym {
+        "msrt_strbuilder_append" => R::StrBuilderAppend,
+        "msrt_strbuilder_append_int" => R::StrBuilderAppendInt,
+        "msrt_string_concat" => R::StringConcat,
+        "msrt_string_append" => R::StringAppend,
+        "msrt_int_to_string" => R::IntToString,
+        "msrt_list_sorted" => R::ListSorted,
+        "msrt_list_new" => R::ListNew,
+        "msrt_bytes_values" => R::BytesValues,
+        "msrt_string_eq" => R::StringEq,
+        "msrt_cleanup_discard" => R::CleanupDiscard,
+        "msrt_bytes_append" => R::BytesAppend,
+        "msrt_scope_spawn" | "msrt_worker_start" => R::SpawnsTask,
+        s if s.contains("_serve") => R::SpawnsTask,
+        _ => R::None,
+    }
+}
+
 /// A language-level argument of the call being marshalled.
 #[derive(Clone, Copy)]
 pub(crate) struct Input {

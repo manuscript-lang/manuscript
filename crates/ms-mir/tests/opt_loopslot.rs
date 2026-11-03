@@ -5,8 +5,8 @@ use ms_mir::print::print_module;
 use ms_mir::verify::verify_module;
 
 const APPEND_LOOP: &str = r#"module "t"
-extern @msrt_list_new() -> bytes
-extern @msrt_strbuilder_append(ptr, str)
+extern @msrt_list_new() -> bytes list_new
+extern @msrt_strbuilder_append(ptr, str) strbuilder_append
 extern @msrt_strbuilder_freeze(ptr) -> str
 entry @main
 

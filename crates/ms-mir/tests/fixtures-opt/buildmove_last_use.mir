@@ -1,9 +1,9 @@
 module "main"
 file 0 "t.ms"
 record StringBuilder { items: bytes, sealed: bool }
-extern @msrt_list_new() -> bytes
+extern @msrt_list_new() -> bytes list_new
 extern @msrt_fault_string(str) -> unit noreturn
-extern @msrt_strbuilder_append(ptr, str) -> unit
+extern @msrt_strbuilder_append(ptr, str) -> unit strbuilder_append
 extern @msrt_strbuilder_freeze(ptr) -> str
 extern @msrt_string_byte_length(str) -> int
 entry @main
