@@ -31,7 +31,7 @@ fn echo(exchange: HttpExchange) Unit!:
     let _appended = try fields.append("X-Test", "stream")
     let _started = try exchange.send_headers(status: 200, headers: fields)
 
-    match exchange.write(data: "hello from streaming Manuscript"):
+    match exchange.write("hello from streaming Manuscript"):
         ok(_):
             return ok(unit)
         error(_):

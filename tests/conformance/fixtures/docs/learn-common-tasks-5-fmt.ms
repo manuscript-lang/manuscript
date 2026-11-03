@@ -1,20 +1,21 @@
 // conform: tags=control-flow,formatter,interpolation,modules,parser,stdlib-io,tier-core,try-result
 // conform: phase=parse
 // conform: origin=documentation/learn/common-tasks.md:120
-import stdin, stdout, read_line from "@std/io/io.ms"
+import stdin, stdout from "@std/io/io.ms"
+import lines from "@std/io/streams.ms"
 
 fn run() Result[Unit, Error]:
-    let input = stdin()
+    var input = lines(stdin())
 
     while true:
-        let line = try read_line(input, max_bytes: 4096)
+        let line = try input.read().wait()
 
         if let text = line:
             try stdout().write("{text}\n")
         else:
             break
 
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     if run().is_error():

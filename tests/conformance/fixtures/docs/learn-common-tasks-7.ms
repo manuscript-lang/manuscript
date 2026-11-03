@@ -8,7 +8,7 @@ import stdout from "@std/io/io.ms"
 fn run() Result[Unit, Error]:
     let text = try parse[String](arguments().get(0, default: "\"hello\""))
     try stdout().write("{text}\n")
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     if run().is_error():

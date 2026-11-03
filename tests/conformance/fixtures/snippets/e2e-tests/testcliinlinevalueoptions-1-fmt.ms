@@ -6,7 +6,7 @@ import stdout from "@std/io/io.ms"
 import stderr from "@std/io/io.ms"
 
 fn write_line(text: String) Unit!:
-    try stdout().write(data: "{text}\n")
+    try stdout().write("{text}\n")
     return ok(unit)
 
 fn exercise() Int!:

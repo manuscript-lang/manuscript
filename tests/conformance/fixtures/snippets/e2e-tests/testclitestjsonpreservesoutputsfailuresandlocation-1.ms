@@ -5,8 +5,8 @@ import stdout, stderr from "@std/io/io.ms"
 import fail from "@std/test/test.ms"
 
 test "first=pass":
-    let _out = stdout().write(data: "PASS fake test\nuser stdout\n")
-    let _err = stderr().write(data: "user stderr\n")
+    let _out = stdout().write("PASS fake test\nuser stdout\n")
+    let _err = stderr().write("user stderr\n")
 
 test "second=fails":
     return fail("expected failure")
