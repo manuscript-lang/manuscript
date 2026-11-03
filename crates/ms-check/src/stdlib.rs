@@ -55,7 +55,7 @@ pub struct StdResult {
 }
 
 #[derive(Default)]
-struct World {
+pub(crate) struct World {
     state: u8, // 0 unloaded, 1 loading, 2 loaded
     symbols: HashMap<Name, SymRef>,
     /// Exported records and alternatives of source modules, declared when the module is registered so
@@ -77,12 +77,32 @@ struct World {
     checking: HashSet<Name>,
 }
 
-thread_local! {
-    static WORLD: RefCell<World> = RefCell::new(World::default());
+/// The compiler session: the standard-library world and the binding counter. A checker, the
+/// standard-module checkers it starts, and the `Program` it returns share one session. It holds
+/// `Rc` types whose primitives are thread-local (`types.rs`), so a session stays on one thread.
+#[derive(Default)]
+pub struct Session {
+    world: RefCell<World>,
+    /// Source of `Binding::uid`, shared by the program and the standard modules it checks.
+    bindings: std::cell::Cell<usize>,
 }
 
-fn world<R>(f: impl FnOnce(&mut World) -> R) -> R {
-    WORLD.with(|w| f(&mut w.borrow_mut()))
+impl Session {
+    /// A new session with an unloaded standard library.
+    pub fn new() -> Rc<Session> {
+        Rc::new(Session::default())
+    }
+
+    /// The next binding identity.
+    pub(crate) fn next_binding(&self) -> usize {
+        let next = self.bindings.get() + 1;
+        self.bindings.set(next);
+        next
+    }
+
+    pub(crate) fn world<R>(&self, f: impl FnOnce(&mut World) -> R) -> R {
+        f(&mut self.world.borrow_mut())
+    }
 }
 
 /// Externs that store their function arguments instead of running them before they return.
@@ -143,124 +163,6 @@ pub fn module_stem(file: &str) -> &str {
     }
 }
 
-/// Loads the standard declarations on first use.
-pub fn ensure_standard() {
-    let state = world(|w| w.state);
-    if state != 0 {
-        return;
-    }
-    world(|w| w.state = 1);
-    if let Err(e) = load() {
-        panic!("standard declarations: {e}");
-    }
-    world(|w| w.state = 2);
-    // Types that native modules took from a source module are filled in by checking that module.
-    let stubs = world(|w| std::mem::take(&mut w.stub_modules));
-    for path in stubs {
-        if let Some(module) = standard_source_module(path) {
-            ensure_source(&module);
-        }
-    }
-}
-
-/// Every bundled module (native and source) in file-name order, with the
-/// original source text, for editors that show standard declarations.
-pub fn standard_modules() -> Vec<ModRef> {
-    load_deferred_all();
-    world(|w| w.sources.clone())
-}
-
-/// A standard type declared natively or as source, by name.
-pub fn standard_symbol(name: &str) -> Option<SymRef> {
-    ensure_standard();
-    world(|w| w.symbols.get(&n(name)).cloned())
-}
-
-/// Whether a symbol is a canonical source-backed prelude declaration.
-pub fn is_prelude_symbol(symbol: &SymRef) -> bool {
-    if !STANDARD_PRELUDE_NAMES.contains(&symbol.name.as_str()) {
-        return false;
-    }
-    world(|w| {
-        w.symbols
-            .get(&symbol.name)
-            .is_some_and(|s| Rc::ptr_eq(s, symbol))
-    })
-}
-
-/// Native implementations of contracts for standard types.
-pub fn standard_implementations() -> Vec<MethodRef> {
-    ensure_standard();
-    world(|w| w.implementations.clone())
-}
-
-/// The intrinsic declaration for a primitive receiver id.
-pub fn intrinsic_operations(id: Name) -> Option<Ty> {
-    ensure_standard();
-    world(|w| w.intrinsic.get(&id).cloned())
-}
-
-/// Whether `Receiver id/name` is a native operation of a standard receiver: an inherent method the
-/// standard source declares without a body. Its native identity is the method's name; lowering tells
-/// receivers apart by type.
-pub fn is_receiver_native(key: &str) -> bool {
-    world(|w| w.receiver_natives.contains(key))
-}
-
-/// Records the type variables an operation declares for itself (`Receiver id/name`).
-pub(crate) fn set_operation_variables(key: String, variables: Vec<Ty>) {
-    world(|w| {
-        w.operation_variables.insert(key, variables);
-    });
-}
-
-/// The operation's own type variables (`Receiver id/name`).
-pub fn operation_variables(key: &str) -> Vec<Ty> {
-    world(|w| w.operation_variables.get(key).cloned().unwrap_or_default())
-}
-
-/// Whether a bundled module is a source module (it has bodies).
-pub fn is_source_module(module: &ModRef) -> bool {
-    world(|w| {
-        w.source_modules
-            .get(&module.file)
-            .is_some_and(|m| Rc::ptr_eq(m, module))
-    })
-}
-
-/// A bundled source module by path.
-pub fn standard_source_module(path: Name) -> Option<ModRef> {
-    ensure_standard();
-    load_deferred(path);
-    world(|w| w.source_modules.get(&path).cloned())
-}
-
-/// The bundled source module an import reads from: the module itself, or for a name that only the source half of a mixed
-/// native file declares, that file's `+source` twin.
-pub fn import_source(item: &Import) -> Option<ModRef> {
-    let path = n(&item.path);
-    if let Some(module) = standard_source_module(path) {
-        return Some(module);
-    }
-    if standard_module_symbol(path, item.name).is_some() {
-        return None;
-    }
-    standard_source_module(n(&format!("{}+source", item.path)))
-}
-
-/// Whether the path names a native bundled module.
-pub fn is_native_module(path: Name) -> bool {
-    ensure_standard();
-    world(|w| w.modules.contains_key(&path))
-}
-
-/// The symbol of a record or alternative declared in a bundled source module, as registered at load.
-pub fn source_type(module: Name, name: Name) -> Option<SymRef> {
-    ensure_standard();
-    load_deferred(module);
-    world(|w| w.source_types.get(&(module, name)).cloned())
-}
-
 /// Declares the symbol of a record or alternative of a bundled source module. The checker of the
 /// module reuses it, so native modules and the source module agree on one type.
 pub(crate) fn source_type_symbol(module: &ModRef, d: &DeclRef) -> SymRef {
@@ -297,225 +199,9 @@ pub(crate) fn source_type_symbol(module: &ModRef, d: &DeclRef) -> SymRef {
     s
 }
 
-/// A native module's declaration by name.
-pub fn standard_module_symbol(path: Name, name: Name) -> Option<SymRef> {
-    ensure_standard();
-    load_deferred(path);
-    world(|w| {
-        w.modules
-            .get(&path)
-            .and_then(|m| m.get(&name).cloned())
-            .or_else(|| {
-                let stub = w.source_types.get(&(path, name)).cloned()?;
-                if w.state == 1 && !w.stub_modules.contains(&path) {
-                    w.stub_modules.push(path);
-                }
-                Some(stub)
-            })
-            // An `extern type` of a source module is canonical from the moment of loading.
-            .or_else(|| {
-                w.symbols
-                    .get(&name)
-                    .filter(|s| {
-                        s.module == path && s.export && w.source_modules.contains_key(&path)
-                    })
-                    .cloned()
-            })
-    })
-}
-
 /// Whether a bundled module is internal: it holds the native declarations of the public modules and is not importable by programs.
 pub fn is_internal(path: &str) -> bool {
     path.starts_with("@std/internal/")
-}
-
-/// Every public bundled module path in sorted order.
-pub fn standard_module_names() -> Vec<&'static str> {
-    load_deferred_all();
-    let mut names: BTreeSet<&'static str> = BTreeSet::new();
-    world(|w| {
-        names.extend(w.modules.keys().map(|k| k.as_str()));
-        names.extend(w.source_modules.keys().map(|k| k.as_str()));
-    });
-    names
-        .into_iter()
-        .filter(|path| !is_internal(path) && !path.ends_with("+source"))
-        .collect()
-}
-
-/// A standard module's exported declarations, checking a bundled source
-/// module on first use.
-pub fn standard_exports(path: &str) -> HashMap<Name, SymRef> {
-    let path = n(path);
-    if let Some(module) = standard_source_module(path) {
-        return ensure_source(&module)
-            .exports
-            .iter()
-            .filter(|(_, s)| s.export)
-            .map(|(k, v)| (*k, v.clone()))
-            .collect();
-    }
-    let mut exports: HashMap<Name, SymRef> = world(|w| {
-        w.modules
-            .get(&path)
-            .map(|m| {
-                m.iter()
-                    .filter(|(_, s)| s.export)
-                    .map(|(k, v)| (*k, v.clone()))
-                    .collect()
-            })
-            .unwrap_or_default()
-    });
-    // The bodies of a mixed file export under the file's own name too.
-    if let Some(twin) = standard_source_module(n(&format!("{path}+source"))) {
-        for (name, symbol) in standard_exports(twin.file.as_str()) {
-            if symbol.module == twin.file {
-                exports.entry(name).or_insert(symbol);
-            }
-        }
-    }
-    exports
-}
-
-/// Whether a bundled source module is being checked right now. Queries that visit every
-/// module (import hints) must not run then: they would re-enter modules of the open group
-/// and replace the real diagnostic with a cyclic-dependency panic.
-pub fn checking_sources() -> bool {
-    world(|w| !w.checking.is_empty())
-}
-
-/// The checked result of a bundled source module, if it has been checked.
-pub fn done(file: Name) -> Option<Rc<StdResult>> {
-    world(|w| w.done.get(&file).cloned())
-}
-
-fn source_reach(module: &ModRef) -> Vec<ModRef> {
-    let mut seen: Vec<ModRef> = Vec::new();
-    let mut stack: Vec<ModRef> = vec![module.clone()];
-    while let Some(m) = stack.pop() {
-        for item in &m.imports {
-            if let Some(dep) = import_source(item)
-                && !seen.iter().any(|s| s.file == dep.file)
-            {
-                seen.push(dep.clone());
-                stack.push(dep);
-            }
-        }
-    }
-    seen
-}
-
-/// The bundled source modules that import `module`, directly or not, and are imported back by it.
-fn source_group(module: &ModRef) -> Vec<ModRef> {
-    let mut group = vec![module.clone()];
-    for m in source_reach(module) {
-        if m.file != module.file && source_reach(&m).iter().any(|r| r.file == module.file) {
-            group.push(m);
-        }
-    }
-    group
-}
-
-/// Whether `module` is an extension module or one an extension module imports.
-fn extension_reach(module: &ModRef) -> bool {
-    EXTENSION_MODULES.iter().any(|path| {
-        module.file.as_str() == *path
-            || standard_source_module(n(path))
-                .is_some_and(|ext| source_reach(&ext).iter().any(|m| m.file == module.file))
-    })
-}
-
-/// Checks a bundled source module and the bundled modules it imports, once.
-/// Modules that import each other are checked together.
-pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
-    ensure_standard();
-    if let Some(r) = done(module.file) {
-        return r;
-    }
-    let group = source_group(module);
-    let cycle = world(|w| group.iter().any(|g| !w.checking.insert(g.file)));
-    if cycle {
-        panic!(
-            "cyclic standard source dependency at {} while checking {:?}",
-            module.file,
-            world(|w| w.checking.clone())
-        );
-    }
-    for g in &group {
-        for item in &g.imports {
-            if let Some(dep) = import_source(item)
-                && !group.iter().any(|m| m.file == dep.file)
-            {
-                ensure_source(&dep);
-            }
-        }
-    }
-    // An extension module and what it imports cannot depend on the extensions, so they are not loaded for them.
-    let extending = extension_reach(module);
-    for path in EXTENSION_MODULES.iter().filter(|_| !extending) {
-        if let Some(extension) = standard_source_module(n(path))
-            && !group.iter().any(|m| m.file == extension.file)
-        {
-            ensure_source(&extension);
-        }
-    }
-    let mut checker = Checker::new(&CheckOptions {
-        bundled: Some(module.file),
-        ..CheckOptions::default()
-    });
-    checker.id_scope = format!("standard_{}_", module_stem(module.file.as_str()));
-    if group.len() > 1 {
-        checker.group = group.clone();
-    }
-    let program = checker.check_modules(vec![module.clone()], Some(module.file));
-    if !program.diagnostics.is_empty() {
-        let text: Vec<String> = program.diagnostics.iter().map(|d| d.to_string()).collect();
-        panic!(
-            "invalid standard implementation {}: {}",
-            module.file,
-            text.join("; ")
-        );
-    }
-    for g in &group {
-        let symbols = program
-            .symbols
-            .get(&g.file)
-            .cloned()
-            .expect("module symbols");
-        let exports: HashMap<Name, SymRef> = symbols
-            .borrow()
-            .iter()
-            .filter(|(_, s)| s.module == g.file)
-            .map(|(k, v)| (*k, v.clone()))
-            .collect();
-        let methods: Vec<MethodRef> = program
-            .methods
-            .iter()
-            .filter(|m| m.module == g.file)
-            .cloned()
-            .collect();
-        let result = Rc::new(StdResult {
-            symbols,
-            exports,
-            methods,
-        });
-        world(|w| {
-            w.done.insert(g.file, result.clone());
-            w.checking.remove(&g.file);
-        });
-    }
-    done(module.file).expect("checked")
-}
-
-/// All bundled source modules, checked.
-pub fn ensure_all_sources() {
-    load_deferred_all();
-    let sources: Vec<ModRef> = world(|w| w.sources.clone());
-    for m in sources {
-        if is_source_module(&m) {
-            ensure_source(&m);
-        }
-    }
 }
 
 /// The declaration of a standard type's operation.
@@ -523,66 +209,6 @@ pub fn standard_method_declaration(t: &Ty, name: Name) -> Option<FuncRef> {
     let sym = t.def.as_ref()?.symbol()?;
     let decl = sym.decl.clone()?;
     decl.method_named(name)
-}
-
-/// Adds reachable bundled implementations to a module list in dependency order.
-pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<Diagnostic>) {
-    let mut ordered: Vec<ModRef> = Vec::new();
-    let mut diagnostics: Vec<Diagnostic> = Vec::new();
-    let mut state: HashMap<Name, u8> = HashMap::new();
-    fn visit(
-        module: &ModRef,
-        state: &mut HashMap<Name, u8>,
-        ordered: &mut Vec<ModRef>,
-        diagnostics: &mut Vec<Diagnostic>,
-    ) {
-        match state.get(&module.file) {
-            Some(2) => return,
-            Some(1) if is_source_module(module) => return,
-            Some(1) => {
-                diagnostics.push(Diagnostic {
-                    opener_line: 0,
-                    file: Arc::from(module.file.as_str()),
-                    pos: ms_syntax::Pos::new(0, 1, 1),
-                    phase: Phase::Resolution,
-                    message: "cyclic standard source dependency".to_string(),
-                    end: None,
-                    fix: None,
-                });
-                return;
-            }
-            _ => {}
-        }
-        state.insert(module.file, 1);
-        for item in &module.imports {
-            if let Some(dep) = import_source(item) {
-                visit(&dep, state, ordered, diagnostics);
-            }
-        }
-        state.insert(module.file, 2);
-        ordered.push(module.clone());
-    }
-    // The operations written in Manuscript on native types apply to every program.
-    // An extension module and what it imports do not depend on the extensions.
-    let extending = modules.iter().any(extension_reach);
-    for path in EXTENSION_MODULES.iter().filter(|_| !extending) {
-        if let Some(extension) = standard_source_module(n(path)) {
-            visit(&extension, &mut state, &mut ordered, &mut diagnostics);
-        }
-    }
-    // A `bench` block runs under the driver in `@std/test/bench.ms`, which its module need not import.
-    let benching = modules.iter().any(|m| {
-        m.decls
-            .iter()
-            .any(|d| matches!(&d.decl().kind, DeclKind::Test(t) if t.bench))
-    });
-    if benching && let Some(driver) = standard_source_module(n("@std/test/bench.ms")) {
-        visit(&driver, &mut state, &mut ordered, &mut diagnostics);
-    }
-    for m in &modules {
-        visit(m, &mut state, &mut ordered, &mut diagnostics);
-    }
-    (ordered, diagnostics)
 }
 
 // --------------------------------------------------------------------- loading
@@ -947,41 +573,6 @@ fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
     )))
 }
 
-/// Parses and registers a deferred pure source module, if `path` names one that has not loaded yet.
-fn load_deferred(path: Name) {
-    let Some(source) = world(|w| w.deferred.remove(&path)) else {
-        return;
-    };
-    let modules = parse_bundled(path.as_str(), source)
-        .and_then(|parsed| {
-            if !is_pure_source(&parsed) {
-                return Err(format!(
-                    "{path} is not pure source; build.rs must load it eagerly"
-                ));
-            }
-            bundled_modules(&parsed)
-        })
-        .unwrap_or_else(|e| panic!("standard declarations: {e}"));
-    for module in modules {
-        register_source(&module);
-        world(|w| w.sources.push(module));
-    }
-    world(|w| {
-        w.sources
-            .sort_by(|a, b| a.file.as_str().cmp(b.file.as_str()))
-    });
-}
-
-/// Loads every deferred module, for callers that list or check the whole standard library.
-fn load_deferred_all() {
-    ensure_standard();
-    let mut paths: Vec<Name> = world(|w| w.deferred.keys().copied().collect());
-    paths.sort_by(|a, b| a.as_str().cmp(b.as_str()));
-    for path in paths {
-        load_deferred(path);
-    }
-}
-
 fn parse_bundled(file: &str, source: &str) -> Result<Module, String> {
     let file: Arc<str> = Arc::from(file);
     ms_syntax::parser::parse(&file, source).map_err(|d| format!("parse {file}: {d}"))
@@ -1009,50 +600,6 @@ fn bundled_modules(parsed: &Module) -> Result<Vec<ModRef>, String> {
         decls,
         parsed.node_count,
     ))])
-}
-
-fn load() -> Result<(), String> {
-    let mut modules: Vec<ModRef> = Vec::new();
-    for (name, source, eager) in SOURCES {
-        let file = format!("@std/{name}");
-        if *eager {
-            modules.extend(bundled_modules(&parse_bundled(&file, source)?)?);
-        } else {
-            world(|w| w.deferred.insert(n(&file), source));
-        }
-    }
-    let mut checker = Checker::new(&CheckOptions::default());
-    checker.standard_declarations = true;
-    let mut loader = Loader { c: &mut checker };
-    for module in &modules {
-        loader.register(module)?;
-    }
-    loader.declare_identities();
-    loader.resolve_declarations();
-    loader.bind_implementations()?;
-    loader.bind_receivers()?;
-    loader.check_defaults()?;
-    Ok(())
-}
-
-/// Registers a source module: the exported types native modules can name before it is checked. The loader
-/// registers its `extern type`s; a deferred module has none, since `extern` anywhere in it keeps it eager.
-fn register_source(module: &ModRef) {
-    for d in &module.decls {
-        match &d.decl().kind {
-            DeclKind::Record(r) if r.external => {}
-            DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
-                if d.decl().export =>
-            {
-                let stub = source_type_symbol(module, d);
-                world(|w| w.source_types.insert((module.file, d.name()), stub));
-            }
-            _ => {}
-        }
-    }
-    world(|w| {
-        w.source_modules.insert(module.file, module.clone());
-    });
 }
 
 struct Loader<'a> {
@@ -1089,15 +636,15 @@ impl Loader<'_> {
         let mut t = Type::new(name, id, Kind::Native);
         t.def = Some(def);
         *s.ty.borrow_mut() = Some(Rc::new(t));
-        if world(|w| w.symbols.contains_key(&name)) {
+        if self.c.session.world(|w| w.symbols.contains_key(&name)) {
             return Err(format!("duplicate standard type {name}"));
         }
-        world(|w| w.symbols.insert(name, s));
+        self.c.session.world(|w| w.symbols.insert(name, s));
         Ok(())
     }
 
     fn register(&mut self, module: &ModRef) -> Result<(), String> {
-        world(|w| w.sources.push(module.clone()));
+        self.c.session.world(|w| w.sources.push(module.clone()));
         let source_implementation = module.decls.iter().any(has_implementation);
         if source_implementation {
             for d in &module.decls {
@@ -1107,7 +654,7 @@ impl Loader<'_> {
                     self.register_extern_type(module, d)?;
                 }
             }
-            register_source(module);
+            self.c.session.register_source(module);
             return Ok(());
         }
         let mut symbols: HashMap<Name, SymRef> = HashMap::new();
@@ -1172,11 +719,11 @@ impl Loader<'_> {
                 let mut t = Type::new(name, id, kind);
                 t.def = Some(def);
                 *s.ty.borrow_mut() = Some(Rc::new(t));
-                let duplicate = world(|w| w.symbols.contains_key(&name));
+                let duplicate = self.c.session.world(|w| w.symbols.contains_key(&name));
                 if duplicate {
                     return Err(format!("duplicate standard type {name}"));
                 }
-                world(|w| w.symbols.insert(name, s.clone()));
+                self.c.session.world(|w| w.symbols.insert(name, s.clone()));
             }
             if symbols.contains_key(&name) {
                 return Err(format!(
@@ -1186,7 +733,7 @@ impl Loader<'_> {
             }
             symbols.insert(name, s);
         }
-        world(|w| {
+        self.c.session.world(|w| {
             w.modules.insert(module.file, symbols);
             w.module_order.push(module.file);
         });
@@ -1194,7 +741,7 @@ impl Loader<'_> {
     }
 
     fn native_sources(&self) -> Vec<ModRef> {
-        world(|w| {
+        self.c.session.world(|w| {
             w.sources
                 .iter()
                 .filter(|m| !w.source_modules.contains_key(&m.file))
@@ -1204,7 +751,7 @@ impl Loader<'_> {
     }
 
     fn module_symbol(&self, module: &ModRef, d: &DeclRef) -> SymRef {
-        world(|w| {
+        self.c.session.world(|w| {
             w.modules
                 .get(&module.file)
                 .and_then(|m| m.get(&d.name()))
@@ -1237,7 +784,7 @@ impl Loader<'_> {
         }
         c.add_standard_prelude();
         for item in &module.imports {
-            let found = standard_module_symbol(n(&item.path), item.name);
+            let found = c.session.standard_module_symbol(n(&item.path), item.name);
             let Some(found) = found.filter(|f| f.export) else {
                 c.res_error(
                     item.name_pos,
@@ -1245,7 +792,7 @@ impl Loader<'_> {
                 );
                 continue;
             };
-            if is_prelude_symbol(&found) {
+            if c.session.is_prelude_symbol(&found) {
                 c.redundant_prelude_import(module, item);
             }
             c.add_symbol(item.name, found, item.name_pos);
@@ -1254,7 +801,7 @@ impl Loader<'_> {
             if matches!(d.decl().kind, DeclKind::Impl(_)) {
                 continue;
             }
-            let s = world(|w| {
+            let s = c.session.world(|w| {
                 w.modules
                     .get(&module.file)
                     .and_then(|m| m.get(&d.name()))
@@ -1391,8 +938,10 @@ impl Loader<'_> {
                     );
                     method.id = n(&key);
                     // A native contract method is the contract module's function of that name (`core/message`).
-                    let contract_module =
-                        world(|w| w.symbols.get(&n(&contract_name)).map(|c| c.module));
+                    let contract_module = self
+                        .c
+                        .session
+                        .world(|w| w.symbols.get(&n(&contract_name)).map(|c| c.module));
                     let native = format!(
                         "{}/{}",
                         module_stem(contract_module.unwrap_or(module.file).as_str()),
@@ -1404,7 +953,9 @@ impl Loader<'_> {
             }
         }
         let implementations = self.c.p.methods.clone();
-        world(|w| w.implementations = implementations);
+        self.c
+            .session
+            .world(|w| w.implementations = implementations);
         if !self.c.p.diagnostics.is_empty() {
             let text: Vec<String> = self.c.p.diagnostics.iter().map(|d| d.to_string()).collect();
             return Err(format!(
@@ -1415,8 +966,10 @@ impl Loader<'_> {
         // A primitive type's operations are the `<Type>Operations` interface `intrinsics.ms` declares.
         for receiver in PRIMITIVE_NAMES {
             let name = format!("{receiver}Operations");
-            if let Some(typ) = world(|w| w.symbols.get(&n(&name)).cloned()) {
-                world(|w| w.intrinsic.insert(n(receiver), typ.ty()));
+            if let Some(typ) = self.c.session.world(|w| w.symbols.get(&n(&name)).cloned()) {
+                self.c
+                    .session
+                    .world(|w| w.intrinsic.insert(n(receiver), typ.ty()));
             }
         }
         Ok(())
@@ -1437,7 +990,7 @@ impl Loader<'_> {
                 for method in declaration.methods() {
                     if method.func.body.is_empty() {
                         let key = format!("{}/{}", symbol.id, method.func.name);
-                        world(|w| w.receiver_natives.insert(key));
+                        self.c.session.world(|w| w.receiver_natives.insert(key));
                     }
                 }
             }
@@ -1468,7 +1021,7 @@ impl Loader<'_> {
                         false,
                     );
                 } else {
-                    let ctor = constructor_signature(&symbol.ty());
+                    let ctor = constructor_signature(&self.c.session, &symbol.ty());
                     self.c.check_native_defaults(
                         &FuncRef::of_decl(declaration.clone()),
                         declaration.record_fields(),
@@ -1491,10 +1044,11 @@ impl Loader<'_> {
                             continue;
                         };
                         let mut variables = symbol.variables();
-                        variables.extend(operation_variables(&format!(
-                            "{}/{}",
-                            symbol.id, operation.name
-                        )));
+                        variables.extend(
+                            self.c
+                                .session
+                                .operation_variables(&format!("{}/{}", symbol.id, operation.name)),
+                        );
                         let params = method.func().map(|f| f.params.as_slice()).unwrap_or(&[]);
                         self.c.check_native_defaults(
                             &method,
@@ -1517,6 +1071,527 @@ impl Loader<'_> {
     }
 }
 
+// ------------------------------------------------------------------ session
+
+impl Session {
+    /// Loads the standard declarations on first use.
+    pub fn ensure_standard(self: &Rc<Self>) {
+        let state = self.world(|w| w.state);
+        if state != 0 {
+            return;
+        }
+        self.world(|w| w.state = 1);
+        if let Err(e) = self.load() {
+            panic!("standard declarations: {e}");
+        }
+        self.world(|w| w.state = 2);
+        // Types that native modules took from a source module are filled in by checking that module.
+        let stubs = self.world(|w| std::mem::take(&mut w.stub_modules));
+        for path in stubs {
+            if let Some(module) = self.standard_source_module(path) {
+                self.ensure_source(&module);
+            }
+        }
+    }
+
+    /// Every bundled module (native and source) in file-name order, with the
+    /// original source text, for editors that show standard declarations.
+    pub fn standard_modules(self: &Rc<Self>) -> Vec<ModRef> {
+        self.load_deferred_all();
+        self.world(|w| w.sources.clone())
+    }
+
+    /// A standard type declared natively or as source, by name.
+    pub fn standard_symbol(self: &Rc<Self>, name: &str) -> Option<SymRef> {
+        self.ensure_standard();
+        self.world(|w| w.symbols.get(&n(name)).cloned())
+    }
+
+    /// Whether a symbol is a canonical source-backed prelude declaration.
+    pub fn is_prelude_symbol(self: &Rc<Self>, symbol: &SymRef) -> bool {
+        if !STANDARD_PRELUDE_NAMES.contains(&symbol.name.as_str()) {
+            return false;
+        }
+        self.world(|w| {
+            w.symbols
+                .get(&symbol.name)
+                .is_some_and(|s| Rc::ptr_eq(s, symbol))
+        })
+    }
+
+    /// Native implementations of contracts for standard types.
+    pub fn standard_implementations(self: &Rc<Self>) -> Vec<MethodRef> {
+        self.ensure_standard();
+        self.world(|w| w.implementations.clone())
+    }
+
+    /// The intrinsic declaration for a primitive receiver id.
+    pub fn intrinsic_operations(self: &Rc<Self>, id: Name) -> Option<Ty> {
+        self.ensure_standard();
+        self.world(|w| w.intrinsic.get(&id).cloned())
+    }
+
+    /// Whether `Receiver id/name` is a native operation of a standard receiver: an inherent method the
+    /// standard source declares without a body. Its native identity is the method's name; lowering tells
+    /// receivers apart by type.
+    pub fn is_receiver_native(self: &Rc<Self>, key: &str) -> bool {
+        self.world(|w| w.receiver_natives.contains(key))
+    }
+
+    /// Records the type variables an operation declares for itself (`Receiver id/name`).
+    pub(crate) fn set_operation_variables(self: &Rc<Self>, key: String, variables: Vec<Ty>) {
+        self.world(|w| {
+            w.operation_variables.insert(key, variables);
+        });
+    }
+
+    /// The operation's own type variables (`Receiver id/name`).
+    pub fn operation_variables(self: &Rc<Self>, key: &str) -> Vec<Ty> {
+        self.world(|w| w.operation_variables.get(key).cloned().unwrap_or_default())
+    }
+
+    /// Whether a bundled module is a source module (it has bodies).
+    pub fn is_source_module(self: &Rc<Self>, module: &ModRef) -> bool {
+        self.world(|w| {
+            w.source_modules
+                .get(&module.file)
+                .is_some_and(|m| Rc::ptr_eq(m, module))
+        })
+    }
+
+    /// A bundled source module by path.
+    pub fn standard_source_module(self: &Rc<Self>, path: Name) -> Option<ModRef> {
+        self.ensure_standard();
+        self.load_deferred(path);
+        self.world(|w| w.source_modules.get(&path).cloned())
+    }
+
+    /// The bundled source module an import reads from: the module itself, or for a name that only the source half of a mixed
+    /// native file declares, that file's `+source` twin.
+    pub fn import_source(self: &Rc<Self>, item: &Import) -> Option<ModRef> {
+        let path = n(&item.path);
+        if let Some(module) = self.standard_source_module(path) {
+            return Some(module);
+        }
+        if self.standard_module_symbol(path, item.name).is_some() {
+            return None;
+        }
+        self.standard_source_module(n(&format!("{}+source", item.path)))
+    }
+
+    /// Whether the path names a native bundled module.
+    pub fn is_native_module(self: &Rc<Self>, path: Name) -> bool {
+        self.ensure_standard();
+        self.world(|w| w.modules.contains_key(&path))
+    }
+
+    /// The symbol of a record or alternative declared in a bundled source module, as registered at load.
+    pub fn source_type(self: &Rc<Self>, module: Name, name: Name) -> Option<SymRef> {
+        self.ensure_standard();
+        self.load_deferred(module);
+        self.world(|w| w.source_types.get(&(module, name)).cloned())
+    }
+
+    /// A native module's declaration by name.
+    pub fn standard_module_symbol(self: &Rc<Self>, path: Name, name: Name) -> Option<SymRef> {
+        self.ensure_standard();
+        self.load_deferred(path);
+        self.world(|w| {
+            w.modules
+                .get(&path)
+                .and_then(|m| m.get(&name).cloned())
+                .or_else(|| {
+                    let stub = w.source_types.get(&(path, name)).cloned()?;
+                    if w.state == 1 && !w.stub_modules.contains(&path) {
+                        w.stub_modules.push(path);
+                    }
+                    Some(stub)
+                })
+                // An `extern type` of a source module is canonical from the moment of loading.
+                .or_else(|| {
+                    w.symbols
+                        .get(&name)
+                        .filter(|s| {
+                            s.module == path && s.export && w.source_modules.contains_key(&path)
+                        })
+                        .cloned()
+                })
+        })
+    }
+
+    /// Every public bundled module path in sorted order.
+    pub fn standard_module_names(self: &Rc<Self>) -> Vec<&'static str> {
+        self.load_deferred_all();
+        let mut names: BTreeSet<&'static str> = BTreeSet::new();
+        self.world(|w| {
+            names.extend(w.modules.keys().map(|k| k.as_str()));
+            names.extend(w.source_modules.keys().map(|k| k.as_str()));
+        });
+        names
+            .into_iter()
+            .filter(|path| !is_internal(path) && !path.ends_with("+source"))
+            .collect()
+    }
+
+    /// A standard module's exported declarations, checking a bundled source
+    /// module on first use.
+    pub fn standard_exports(self: &Rc<Self>, path: &str) -> HashMap<Name, SymRef> {
+        let path = n(path);
+        if let Some(module) = self.standard_source_module(path) {
+            return self
+                .ensure_source(&module)
+                .exports
+                .iter()
+                .filter(|(_, s)| s.export)
+                .map(|(k, v)| (*k, v.clone()))
+                .collect();
+        }
+        let mut exports: HashMap<Name, SymRef> = self.world(|w| {
+            w.modules
+                .get(&path)
+                .map(|m| {
+                    m.iter()
+                        .filter(|(_, s)| s.export)
+                        .map(|(k, v)| (*k, v.clone()))
+                        .collect()
+                })
+                .unwrap_or_default()
+        });
+        // The bodies of a mixed file export under the file's own name too.
+        if let Some(twin) = self.standard_source_module(n(&format!("{path}+source"))) {
+            for (name, symbol) in self.standard_exports(twin.file.as_str()) {
+                if symbol.module == twin.file {
+                    exports.entry(name).or_insert(symbol);
+                }
+            }
+        }
+        exports
+    }
+
+    /// Whether a bundled source module is being checked right now. Queries that visit every
+    /// module (import hints) must not run then: they would re-enter modules of the open group
+    /// and replace the real diagnostic with a cyclic-dependency panic.
+    pub fn checking_sources(self: &Rc<Self>) -> bool {
+        self.world(|w| !w.checking.is_empty())
+    }
+
+    /// The checked result of a bundled source module, if it has been checked.
+    pub fn done(self: &Rc<Self>, file: Name) -> Option<Rc<StdResult>> {
+        self.world(|w| w.done.get(&file).cloned())
+    }
+
+    fn source_reach(self: &Rc<Self>, module: &ModRef) -> Vec<ModRef> {
+        let mut seen: Vec<ModRef> = Vec::new();
+        let mut stack: Vec<ModRef> = vec![module.clone()];
+        while let Some(m) = stack.pop() {
+            for item in &m.imports {
+                if let Some(dep) = self.import_source(item)
+                    && !seen.iter().any(|s| s.file == dep.file)
+                {
+                    seen.push(dep.clone());
+                    stack.push(dep);
+                }
+            }
+        }
+        seen
+    }
+
+    /// The bundled source modules that import `module`, directly or not, and are imported back by it.
+    fn source_group(self: &Rc<Self>, module: &ModRef) -> Vec<ModRef> {
+        let mut group = vec![module.clone()];
+        for m in self.source_reach(module) {
+            if m.file != module.file && self.source_reach(&m).iter().any(|r| r.file == module.file)
+            {
+                group.push(m);
+            }
+        }
+        group
+    }
+
+    /// Whether `module` is an extension module or one an extension module imports.
+    fn extension_reach(self: &Rc<Self>, module: &ModRef) -> bool {
+        EXTENSION_MODULES.iter().any(|path| {
+            module.file.as_str() == *path
+                || self.standard_source_module(n(path)).is_some_and(|ext| {
+                    self.source_reach(&ext)
+                        .iter()
+                        .any(|m| m.file == module.file)
+                })
+        })
+    }
+
+    /// Checks a bundled source module and the bundled modules it imports, once.
+    /// Modules that import each other are checked together.
+    pub fn ensure_source(self: &Rc<Self>, module: &ModRef) -> Rc<StdResult> {
+        self.ensure_standard();
+        if let Some(r) = self.done(module.file) {
+            return r;
+        }
+        let group = self.source_group(module);
+        let cycle = self.world(|w| group.iter().any(|g| !w.checking.insert(g.file)));
+        if cycle {
+            panic!(
+                "cyclic standard source dependency at {} while checking {:?}",
+                module.file,
+                self.world(|w| w.checking.clone())
+            );
+        }
+        for g in &group {
+            for item in &g.imports {
+                if let Some(dep) = self.import_source(item)
+                    && !group.iter().any(|m| m.file == dep.file)
+                {
+                    self.ensure_source(&dep);
+                }
+            }
+        }
+        // An extension module and what it imports cannot depend on the extensions, so they are not loaded for them.
+        let extending = self.extension_reach(module);
+        for path in EXTENSION_MODULES.iter().filter(|_| !extending) {
+            if let Some(extension) = self.standard_source_module(n(path))
+                && !group.iter().any(|m| m.file == extension.file)
+            {
+                self.ensure_source(&extension);
+            }
+        }
+        let mut checker = Checker::new(
+            self,
+            &CheckOptions {
+                bundled: Some(module.file),
+                ..CheckOptions::default()
+            },
+        );
+        checker.id_scope = format!("standard_{}_", module_stem(module.file.as_str()));
+        if group.len() > 1 {
+            checker.group = group.clone();
+        }
+        let program = checker.check_modules(vec![module.clone()], Some(module.file));
+        if !program.diagnostics.is_empty() {
+            let text: Vec<String> = program.diagnostics.iter().map(|d| d.to_string()).collect();
+            panic!(
+                "invalid standard implementation {}: {}",
+                module.file,
+                text.join("; ")
+            );
+        }
+        for g in &group {
+            let symbols = program
+                .symbols
+                .get(&g.file)
+                .cloned()
+                .expect("module symbols");
+            let exports: HashMap<Name, SymRef> = symbols
+                .borrow()
+                .iter()
+                .filter(|(_, s)| s.module == g.file)
+                .map(|(k, v)| (*k, v.clone()))
+                .collect();
+            let methods: Vec<MethodRef> = program
+                .methods
+                .iter()
+                .filter(|m| m.module == g.file)
+                .cloned()
+                .collect();
+            let result = Rc::new(StdResult {
+                symbols,
+                exports,
+                methods,
+            });
+            self.world(|w| {
+                w.done.insert(g.file, result.clone());
+                w.checking.remove(&g.file);
+            });
+        }
+        self.done(module.file).expect("checked")
+    }
+
+    /// All bundled source modules, checked.
+    pub fn ensure_all_sources(self: &Rc<Self>) {
+        self.load_deferred_all();
+        let sources: Vec<ModRef> = self.world(|w| w.sources.clone());
+        for m in sources {
+            if self.is_source_module(&m) {
+                self.ensure_source(&m);
+            }
+        }
+    }
+
+    /// Adds reachable bundled implementations to a module list in dependency order.
+    pub fn source_standard_dependencies(
+        self: &Rc<Self>,
+        modules: Vec<ModRef>,
+    ) -> (Vec<ModRef>, Vec<Diagnostic>) {
+        let mut ordered: Vec<ModRef> = Vec::new();
+        let mut diagnostics: Vec<Diagnostic> = Vec::new();
+        let mut state: HashMap<Name, u8> = HashMap::new();
+        fn visit(
+            session: &Rc<Session>,
+            module: &ModRef,
+            state: &mut HashMap<Name, u8>,
+            ordered: &mut Vec<ModRef>,
+            diagnostics: &mut Vec<Diagnostic>,
+        ) {
+            match state.get(&module.file) {
+                Some(2) => return,
+                Some(1) if session.is_source_module(module) => return,
+                Some(1) => {
+                    diagnostics.push(Diagnostic {
+                        opener_line: 0,
+                        file: Arc::from(module.file.as_str()),
+                        pos: ms_syntax::Pos::new(0, 1, 1),
+                        phase: Phase::Resolution,
+                        message: "cyclic standard source dependency".to_string(),
+                        end: None,
+                        fix: None,
+                    });
+                    return;
+                }
+                _ => {}
+            }
+            state.insert(module.file, 1);
+            for item in &module.imports {
+                if let Some(dep) = session.import_source(item) {
+                    visit(session, &dep, state, ordered, diagnostics);
+                }
+            }
+            state.insert(module.file, 2);
+            ordered.push(module.clone());
+        }
+        // The operations written in Manuscript on native types apply to every program.
+        // An extension module and what it imports do not depend on the extensions.
+        let extending = modules.iter().any(|m| self.extension_reach(m));
+        for path in EXTENSION_MODULES.iter().filter(|_| !extending) {
+            if let Some(extension) = self.standard_source_module(n(path)) {
+                visit(self, &extension, &mut state, &mut ordered, &mut diagnostics);
+            }
+        }
+        // A `bench` block runs under the driver in `@std/test/bench.ms`, which its module need not import.
+        let benching = modules.iter().any(|m| {
+            m.decls
+                .iter()
+                .any(|d| matches!(&d.decl().kind, DeclKind::Test(t) if t.bench))
+        });
+        if benching && let Some(driver) = self.standard_source_module(n("@std/test/bench.ms")) {
+            visit(self, &driver, &mut state, &mut ordered, &mut diagnostics);
+        }
+        for m in &modules {
+            visit(self, m, &mut state, &mut ordered, &mut diagnostics);
+        }
+        (ordered, diagnostics)
+    }
+
+    /// Parses and registers a deferred pure source module, if `path` names one that has not loaded yet.
+    fn load_deferred(self: &Rc<Self>, path: Name) {
+        let Some(source) = self.world(|w| w.deferred.remove(&path)) else {
+            return;
+        };
+        let modules = parse_bundled(path.as_str(), source)
+            .and_then(|parsed| {
+                if !is_pure_source(&parsed) {
+                    return Err(format!(
+                        "{path} is not pure source; build.rs must load it eagerly"
+                    ));
+                }
+                bundled_modules(&parsed)
+            })
+            .unwrap_or_else(|e| panic!("standard declarations: {e}"));
+        for module in modules {
+            self.register_source(&module);
+            self.world(|w| w.sources.push(module));
+        }
+        self.world(|w| {
+            w.sources
+                .sort_by(|a, b| a.file.as_str().cmp(b.file.as_str()))
+        });
+    }
+
+    /// Loads every deferred module, for callers that list or check the whole standard library.
+    fn load_deferred_all(self: &Rc<Self>) {
+        self.ensure_standard();
+        let mut paths: Vec<Name> = self.world(|w| w.deferred.keys().copied().collect());
+        paths.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+        for path in paths {
+            self.load_deferred(path);
+        }
+    }
+
+    fn load(self: &Rc<Self>) -> Result<(), String> {
+        let mut modules: Vec<ModRef> = Vec::new();
+        for (name, source, eager) in SOURCES {
+            let file = format!("@std/{name}");
+            if *eager {
+                modules.extend(bundled_modules(&parse_bundled(&file, source)?)?);
+            } else {
+                self.world(|w| w.deferred.insert(n(&file), source));
+            }
+        }
+        let mut checker = Checker::new(self, &CheckOptions::default());
+        checker.standard_declarations = true;
+        let mut loader = Loader { c: &mut checker };
+        for module in &modules {
+            loader.register(module)?;
+        }
+        loader.declare_identities();
+        loader.resolve_declarations();
+        loader.bind_implementations()?;
+        loader.bind_receivers()?;
+        loader.check_defaults()?;
+        Ok(())
+    }
+
+    /// Registers a source module: the exported types native modules can name before it is checked. The loader
+    /// registers its `extern type`s; a deferred module has none, since `extern` anywhere in it keeps it eager.
+    fn register_source(self: &Rc<Self>, module: &ModRef) {
+        for d in &module.decls {
+            match &d.decl().kind {
+                DeclKind::Record(r) if r.external => {}
+                DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
+                    if d.decl().export =>
+                {
+                    let stub = source_type_symbol(module, d);
+                    self.world(|w| w.source_types.insert((module.file, d.name()), stub));
+                }
+                _ => {}
+            }
+        }
+        self.world(|w| {
+            w.source_modules.insert(module.file, module.clone());
+        });
+    }
+
+    /// A standard declaration by name, applied to `args`.
+    pub fn standard(self: &Rc<Self>, name: &str, args: Vec<Ty>) -> Ty {
+        let sym = self
+            .standard_symbol(name)
+            .unwrap_or_else(|| panic!("standard type {name}"));
+        with_args(&sym.ty(), args)
+    }
+
+    /// `Duration`, `Instant` or `Timestamp`, the records of `@std/os/time.ms`.
+    pub fn time_type(self: &Rc<Self>, name: &str) -> Ty {
+        // The module is checked on first use; its records have no fields before that.
+        self.standard_exports("@std/os/time.ms");
+        let sym = self
+            .source_type(n("@std/os/time.ms"), n(name))
+            .unwrap_or_else(|| panic!("standard time type {name}"));
+        sym.ty()
+    }
+
+    /// `TestHooks`, the interface of `@std/test/test.ms`, which a program loads only when it has a fixture.
+    pub fn test_hooks(self: &Rc<Self>) -> Ty {
+        self.standard_exports("@std/test/test.ms");
+        let sym = self
+            .source_type(n("@std/test/test.ms"), n("TestHooks"))
+            .unwrap_or_else(|| panic!("standard type TestHooks"));
+        sym.ty()
+    }
+
+    /// `TestOutcome`: the implicit `Result[Unit, Error]` of a test block.
+    pub fn test_outcome(self: &Rc<Self>) -> Ty {
+        self.standard("Result", vec![unit(), self.standard("Error", vec![])])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1527,18 +1602,35 @@ mod tests {
     }
 
     #[test]
+    fn sessions_on_one_thread_are_independent() {
+        let (a, b) = (Session::new(), Session::new());
+        let (la, lb) = (
+            a.standard_symbol("List").unwrap(),
+            b.standard_symbol("List").unwrap(),
+        );
+        assert!(!Rc::ptr_eq(&la, &lb), "each session loads its own world");
+        assert!(a.is_prelude_symbol(&la) && !a.is_prelude_symbol(&lb));
+        let (a1, b1) = (a.next_binding(), b.next_binding());
+        assert_eq!(a.next_binding(), a1 + 1);
+        assert_eq!(b.next_binding(), b1 + 1, "counters are per session");
+    }
+
+    #[test]
     fn pure_source_modules_load_on_first_lookup() {
-        ensure_standard();
+        let session = Session::new();
+        session.ensure_standard();
         let yaml = n("@std/data/yaml.ms");
-        assert!(world(|w| w.deferred.contains_key(&yaml)));
-        let module = standard_source_module(yaml).expect("yaml loads on lookup");
-        assert!(world(|w| !w.deferred.contains_key(&yaml)));
-        assert!(!ensure_source(&module).exports.is_empty());
-        let sources = standard_modules();
-        assert!(world(|w| w.deferred.is_empty()));
+        assert!(session.world(|w| w.deferred.contains_key(&yaml)));
+        let module = session
+            .standard_source_module(yaml)
+            .expect("yaml loads on lookup");
+        assert!(session.world(|w| !w.deferred.contains_key(&yaml)));
+        assert!(!session.ensure_source(&module).exports.is_empty());
+        let sources = session.standard_modules();
+        assert!(session.world(|w| w.deferred.is_empty()));
         assert_eq!(
             sources.len(),
-            world(|w| w.source_modules.len() + w.modules.len())
+            session.world(|w| w.source_modules.len() + w.modules.len())
         );
         assert!(
             sources

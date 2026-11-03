@@ -850,7 +850,7 @@ impl<'a> FnLower<'a> {
                     }
                     self.close_receiver(&kind, recv_expr, recv)?;
                     // The call is checked as `Unit!`: it succeeds, since a part that fails faults.
-                    let result = self.mty(&ms_check::types::test_outcome())?;
+                    let result = self.mty(&self.cx.session.test_outcome())?;
                     let TyKind::Alt(alt) = self.b.m.types.kind(result).clone() else {
                         return Err(Error::new("a close returns a Result"));
                     };

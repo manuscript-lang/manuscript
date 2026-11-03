@@ -39,6 +39,7 @@ pub fn search_symbols(
         root = ms_driver::project::pathops::dir(&manifest);
     }
     let symbols = workspace_symbols_matching(
+        &ms_check::Session::new(),
         &Documents::new(),
         &[root],
         &|name| name_rank(name, query) >= 0,
@@ -121,7 +122,7 @@ fn query_symbol(path: &str, line: usize, column: usize) -> Result<(String, Vec<S
     let d = Document::new(uri::file_uri(&absolute.to_string_lossy()), text);
     let at = character_position(&d.text, line, column)?;
     let docs = Documents::new();
-    let checked = analyze(&d, &docs);
+    let checked = analyze(&ms_check::Session::new(), &d, &docs);
     if checked.program.is_none() {
         return Err(format!("cannot analyze {path}; run check for diagnostics"));
     }

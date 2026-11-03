@@ -328,6 +328,8 @@ pub struct Job {
 
 /// Whole-program lowering context.
 pub struct Cx {
+    /// The session whose standard library the program was checked against.
+    pub session: Rc<ms_check::Session>,
     /// `MS_STRICT_COPIES=1`: an owning position that receives a borrowed place is an error.
     pub strict_copies: bool,
     /// Boolean ownership facts per node (lenders, view wraps, bound borrows, view moves, lent matches).
@@ -443,6 +445,7 @@ impl Cx {
             .map(|m| m.receiver.id)
             .collect();
         Cx {
+            session: program.session.clone(),
             node_facts: program.node_facts.clone(),
             binding_facts: program.binding_facts.clone(),
             strict_copies: std::env::var_os("MS_STRICT_COPIES").is_some(),

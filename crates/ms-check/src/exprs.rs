@@ -3,7 +3,6 @@
 use crate::checker::Checker;
 use crate::hints::*;
 use crate::inference::inference_type_known;
-use crate::stdlib;
 use crate::suggestions;
 use crate::syntax::*;
 use crate::types::*;
@@ -364,7 +363,7 @@ impl Checker {
         if text.ends_with('d') {
             let ok = self
                 .sym(n("Decimal"))
-                .zip(stdlib::standard_symbol("Decimal"))
+                .zip(self.session.standard_symbol("Decimal"))
                 .is_some_and(|(a, b)| Rc::ptr_eq(&a, &b));
             if !ok {
                 self.res_error_name(
@@ -373,7 +372,7 @@ impl Checker {
                     "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/math/decimal.ms\"".to_string(),
                 );
             }
-            i.ty = Some(standard("Decimal", vec![]));
+            i.ty = Some(self.session.standard("Decimal", vec![]));
             if !decimal_valid(text) {
                 self.type_error(
                     e.pos,
@@ -727,7 +726,7 @@ impl Checker {
     fn infer_list(&mut self, e: &Expr, items: &[Expr], expected: Option<&Ty>, mut i: Info) -> Info {
         let canonical = self
             .sym(n("List"))
-            .zip(stdlib::standard_symbol("List"))
+            .zip(self.session.standard_symbol("List"))
             .is_some_and(|(a, b)| Rc::ptr_eq(&a, &b));
         if !canonical {
             self.res_error(
@@ -763,7 +762,7 @@ impl Checker {
             }
         };
         self.literal_items(items, &independent, std::slice::from_ref(&element), &mut i);
-        i.ty = Some(standard("List", vec![element]));
+        i.ty = Some(self.session.standard("List", vec![element]));
         finish_info(i)
     }
 
@@ -776,7 +775,7 @@ impl Checker {
     ) -> Info {
         let canonical = self
             .sym(n("Map"))
-            .zip(stdlib::standard_symbol("Map"))
+            .zip(self.session.standard_symbol("Map"))
             .is_some_and(|(a, b)| Rc::ptr_eq(&a, &b));
         if !canonical {
             self.res_error(
@@ -815,7 +814,7 @@ impl Checker {
         }
         let resolved: Vec<Ty> = types.iter().map(|t| t.clone().expect("type")).collect();
         self.literal_refs(&items, &independent, &resolved, &mut i);
-        let map_type = standard("Map", resolved);
+        let map_type = self.session.standard("Map", resolved);
         i.ty = Some(map_type.clone());
         // Key and value types were checked where they were written or
         // instantiated; rechecking them makes nested literals quartic in depth.
@@ -1242,10 +1241,10 @@ impl Checker {
         let mut matches = 0;
         for (row_op, l, r, result) in TIME_ARITHMETIC {
             if row_op == op
-                && compatible(&Some(left.clone()), &time_type(l))
-                && compatible(&Some(right.clone()), &time_type(r))
+                && compatible(&Some(left.clone()), &self.session.time_type(l))
+                && compatible(&Some(right.clone()), &self.session.time_type(r))
             {
-                i.ty = Some(time_type(result));
+                i.ty = Some(self.session.time_type(result));
                 matches += 1;
             }
         }

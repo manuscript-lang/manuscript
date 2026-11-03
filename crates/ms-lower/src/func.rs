@@ -233,7 +233,7 @@ impl Cx {
                 let d = c.func.decl.constant().expect("constant");
                 Ok(hir.ty(&d.value))
             }
-            CallableKind::Test => Ok(ct::test_outcome()),
+            CallableKind::Test => Ok(self.session.test_outcome()),
             _ => Err(Error::new("callable without result")),
         }
     }

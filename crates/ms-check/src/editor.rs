@@ -34,8 +34,8 @@ pub struct Member {
 /// The fields and methods available on `receiver`, sorted by name. Local
 /// extensions are included only when `module` names the asking module.
 pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) -> Vec<Member> {
-    stdlib::ensure_standard();
-    let mut checker = Checker::new(&CheckOptions::default());
+    program.session.ensure_standard();
+    let mut checker = Checker::new(&program.session, &CheckOptions::default());
     for method in &program.methods {
         checker.add_method(method.clone());
     }
@@ -44,7 +44,7 @@ pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) ->
     }
     let mut candidates: BTreeSet<Name> = BTreeSet::new();
     candidates.insert(n("to_string"));
-    if native_method(receiver, n("clone")).is_some() {
+    if native_method(&program.session, receiver, n("clone")).is_some() {
         candidates.insert(n("clone"));
     }
     let mut seen: Vec<Ty> = Vec::new();
@@ -63,7 +63,7 @@ pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) ->
     };
     collect(receiver, &mut candidates);
     candidates.extend(program.methods.iter().filter_map(|m| m.name()));
-    if let Some(intrinsic) = stdlib::intrinsic_operations(receiver.id) {
+    if let Some(intrinsic) = program.session.intrinsic_operations(receiver.id) {
         collect(&intrinsic, &mut candidates);
     }
     let mut result: Vec<Member> = Vec::new();
@@ -91,7 +91,7 @@ pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) ->
             result.push(Member {
                 name: n(unit),
                 kind: MemberKind::Field,
-                ty: time_type("Duration"),
+                ty: program.session.time_type("Duration"),
                 declaration: None,
             });
         }
@@ -116,11 +116,14 @@ pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) ->
 
 /// Every exported standard declaration by module path, sorted by name, for
 /// import completion without introducing ambient names.
-pub fn standard_export_inventory() -> BTreeMap<String, Vec<SymRef>> {
-    stdlib::ensure_standard();
+pub fn standard_export_inventory(
+    session: &Rc<crate::stdlib::Session>,
+) -> BTreeMap<String, Vec<SymRef>> {
+    session.ensure_standard();
     let mut inventory = BTreeMap::new();
-    for path in stdlib::standard_module_names() {
-        let mut exports: Vec<SymRef> = stdlib::standard_exports(path)
+    for path in session.standard_module_names() {
+        let mut exports: Vec<SymRef> = session
+            .standard_exports(path)
             .into_values()
             .filter(|s| s.export)
             .collect();

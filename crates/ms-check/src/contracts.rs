@@ -185,7 +185,12 @@ fn instantiate_operation_variables(variables: &[Ty], bindings: &Subst) -> Vec<Ty
 }
 
 /// The operation `name` of `contract` as called on a value of type `implementor`.
-fn contract_operation(contract: &Ty, name: Name, implementor: &Ty) -> Option<MethodRef> {
+fn contract_operation(
+    session: &Rc<crate::stdlib::Session>,
+    contract: &Ty,
+    name: Name,
+    implementor: &Ty,
+) -> Option<MethodRef> {
     let def = contract.def.as_ref()?;
     let op = def
         .operations
@@ -203,7 +208,7 @@ fn contract_operation(contract: &Ty, name: Name, implementor: &Ty) -> Option<Met
         contract: Some(contract.clone()),
         ty: sub(&op.ty, &s),
         variables: instantiate_operation_variables(
-            &stdlib::operation_variables(&format!("{}/{}", contract.id, name)),
+            &session.operation_variables(&format!("{}/{}", contract.id, name)),
             &s,
         ),
         decl: op.decl.clone(),
@@ -546,7 +551,9 @@ impl Checker {
                     }
                     t.defaults = Some(Rc::new(ParameterDefaults::new(merged)));
                 }
-                let declared = stdlib::operation_variables(&format!("{}/{}", contract.id, op.name));
+                let declared = self
+                    .session
+                    .operation_variables(&format!("{}/{}", contract.id, op.name));
                 let renamed: Subst = declared
                     .iter()
                     .zip(&own)
@@ -1225,11 +1232,11 @@ impl Checker {
                 return own;
             }
         }
-        if let Some(m) = native_method(receiver, name) {
+        if let Some(m) = native_method(&self.session, receiver, name) {
             return vec![Rc::new(m)];
         }
         if receiver.kind == Kind::Contract
-            && let Some(method) = contract_operation(receiver, name, receiver)
+            && let Some(method) = contract_operation(&self.session, receiver, name, receiver)
         {
             return vec![method];
         }
@@ -1244,7 +1251,7 @@ impl Checker {
                 }
                 seen_bounds.push(b.clone());
                 // `Self` in a bound's operation is the bounded variable itself.
-                match contract_operation(&b, name, receiver) {
+                match contract_operation(&self.session, &b, name, receiver) {
                     Some(method) => result.push(method),
                     None => result.extend(self.methods(&b, name)),
                 }
@@ -1259,7 +1266,7 @@ impl Checker {
                 Property::Equal
             };
             if self.property(receiver, property, None) {
-                let contract = standard(property.name(), vec![]);
+                let contract = self.session.standard(property.name(), vec![]);
                 let mut operation = contract
                     .def
                     .as_ref()
@@ -1295,7 +1302,7 @@ impl Checker {
                 .iter()
                 .any(|m| m.ty.params.is_empty() && is_close_result(&m.ty.result_ty()));
         }
-        self.implements(t, &standard("Closeable", vec![]))
+        self.implements(t, &self.session.standard("Closeable", vec![]))
     }
 
     /// Checks every bound reachable from `t`. `seen` is keyed by pointer: a
@@ -1378,7 +1385,10 @@ impl Checker {
                 }
                 for op in def.operations.borrow().clone() {
                     self.check_declared(&op.ty, d.pos(), s.export);
-                    for v in stdlib::operation_variables(&format!("{}/{}", t.id, op.name)) {
+                    for v in self
+                        .session
+                        .operation_variables(&format!("{}/{}", t.id, op.name))
+                    {
                         for b in v.bounds() {
                             self.check_declared(&b, d.pos(), s.export);
                         }
@@ -1484,7 +1494,11 @@ impl Checker {
 }
 
 /// A standard method that exists without an impl.
-pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
+pub(crate) fn native_method(
+    session: &Rc<crate::stdlib::Session>,
+    t: &Ty,
+    name: Name,
+) -> Option<Method> {
     let native_of =
         |native: Name, receiver: &Ty, ty: Ty, variables: Vec<Ty>, decl: Option<FuncRef>| Method {
             id: n(""),
@@ -1511,7 +1525,7 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
             t.kind,
             Kind::Record | Kind::Alternative | Kind::Primitive | Kind::Variable
         ) {
-            owner = stdlib::standard_symbol("CloneOperations")?.ty();
+            owner = session.standard_symbol("CloneOperations")?.ty();
         }
         let decl = stdlib::standard_method_declaration(&owner, name);
         return Some(native_of(
@@ -1523,17 +1537,17 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
         ));
     }
     if name == "to_string" {
-        let owner = stdlib::standard_symbol("ValueOperations")?.ty();
+        let owner = session.standard_symbol("ValueOperations")?.ty();
         let ty = owner.def.as_ref()?.operations.borrow()[0].ty.clone();
         let decl = stdlib::standard_method_declaration(&owner, name);
         return Some(native_of(name, t, ty, Vec::new(), decl));
     }
     let mut receiver = t.clone();
-    if let Some(intrinsic) = stdlib::intrinsic_operations(t.id) {
+    if let Some(intrinsic) = session.intrinsic_operations(t.id) {
         receiver = intrinsic;
     }
     let key = format!("{}/{}", receiver.id, name);
-    let binding = stdlib::is_receiver_native(&key);
+    let binding = session.is_receiver_native(&key);
     let opaque_alternative = receiver.kind == Kind::Alternative
         && receiver
             .symbol()
@@ -1549,7 +1563,7 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
                     t,
                     sub(&operation.ty, &substitution(t)),
                     instantiate_operation_variables(
-                        &stdlib::operation_variables(&key),
+                        &session.operation_variables(&key),
                         &substitution(t),
                     ),
                     operation.decl.clone(),

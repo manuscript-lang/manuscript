@@ -284,7 +284,7 @@ pub fn editor_actions(
             .map(|(_, path)| format!("import {name} from \"{path}\""))
             .collect();
         // A project declaration is preferred over a standard-library one.
-        let standard = ms_check::hints::import_hint(name);
+        let standard = ms_check::hints::import_hint(&checked.session, name);
         if let Some((_, statement)) = standard.split_once("; add: ") {
             statements.push(statement.to_string());
         }

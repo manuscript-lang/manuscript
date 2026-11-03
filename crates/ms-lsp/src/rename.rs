@@ -86,7 +86,7 @@ pub fn rename(
         let (checked, entries): (&Analysis, &[Occurrence]) = if target.uri == d.uri {
             (analysis, index)
         } else {
-            other = workspace_analysis(target, &docs);
+            other = workspace_analysis(&analysis.session, target, &docs);
             canceled(cancel)?;
             (&other, other.index())
         };
@@ -130,7 +130,7 @@ pub fn rename(
         return Ok(obj([("documentChanges", Json::Arr(Vec::new()))]));
     }
     let (modified, changes) = rename_changes(&docs, &content, by_uri, name, cancel)?;
-    validate_rename(&targets, &docs, &modified, cancel)?;
+    validate_rename(&analysis.session, &targets, &docs, &modified, cancel)?;
     Ok(obj([("documentChanges", Json::Arr(changes))]))
 }
 
@@ -224,6 +224,7 @@ fn rename_changes(
 /// Signature labels, imports, constructors and type annotations participate in
 /// the same index, so a rename cannot quietly break another module's contract.
 fn validate_rename(
+    session: &std::rc::Rc<ms_check::Session>,
     targets: &[Document],
     docs: &Documents,
     modified: &Documents,
@@ -231,7 +232,7 @@ fn validate_rename(
 ) -> Result<(), String> {
     for target in targets {
         canceled(cancel)?;
-        let before = workspace_analysis(target, docs);
+        let before = workspace_analysis(session, target, docs);
         canceled(cancel)?;
         if !before.resolves() {
             return Err(format!(
@@ -240,7 +241,7 @@ fn validate_rename(
             ));
         }
         let updated = modified.get(&target.uri).unwrap_or(target);
-        let after = workspace_analysis(updated, modified);
+        let after = workspace_analysis(session, updated, modified);
         canceled(cancel)?;
         if !after.resolves() {
             let message = after

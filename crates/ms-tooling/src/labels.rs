@@ -21,6 +21,7 @@ pub fn drop_redundant_labels(program: &Program, source: &str) -> (String, usize)
         return (source.to_string(), 0);
     };
     let mut scan = Scan {
+        session: &program.session,
         module,
         source_len: source.len(),
         cuts: Vec::new(),
@@ -36,6 +37,7 @@ pub fn drop_redundant_labels(program: &Program, source: &str) -> (String, usize)
 }
 
 struct Scan<'a> {
+    session: &'a std::rc::Rc<ms_check::Session>,
     module: &'a ms_check::ModuleData,
     source_len: usize,
     cuts: Vec<(usize, usize)>,
@@ -44,6 +46,7 @@ struct Scan<'a> {
 /// The declared parameters of a function, method, or record constructor call.
 /// Alternative cases and contract views are skipped.
 fn call_parameters(
+    session: &std::rc::Rc<ms_check::Session>,
     module: &ms_check::ModuleData,
     callee: &Expr,
     info: &ms_check::syntax::Info,
@@ -52,7 +55,11 @@ fn call_parameters(
         return None;
     }
     if let Some(constructor) = &info.constructor {
-        return Some(types::constructor_signature(constructor).params.clone());
+        return Some(
+            types::constructor_signature(session, constructor)
+                .params
+                .clone(),
+        );
     }
     let facts = module.facts();
     let ty = facts.info(callee.id)?.ty.clone()?;
@@ -72,7 +79,9 @@ impl Visitor for Scan<'_> {
             return;
         };
         let info = self.module.facts().info(e.id).cloned();
-        let Some(params) = info.and_then(|i| call_parameters(self.module, callee, &i)) else {
+        let Some(params) =
+            info.and_then(|i| call_parameters(self.session, self.module, callee, &i))
+        else {
             return;
         };
         let mut seen: HashSet<&str> = HashSet::with_capacity(params.len());

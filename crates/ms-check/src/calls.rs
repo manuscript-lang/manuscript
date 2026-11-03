@@ -179,7 +179,7 @@ impl Checker {
                 return i;
             }
             self.opaque_denied(e.pos, &typ, "it cannot be constructed here");
-            let mut fields = constructor_signature(&typ).params.clone();
+            let mut fields = constructor_signature(&self.session, &typ).params.clone();
             if [
                 "BigInt",
                 "Regex",
@@ -202,7 +202,7 @@ impl Checker {
             let mut resolved = bind_arguments(args, &fields, !named_only);
             i.arguments = slots(&resolved);
             typ = self.instantiate(&typ, &fields, &resolved, expected, e.pos);
-            let signature = constructor_signature(&typ);
+            let signature = constructor_signature(&self.session, &typ);
             // Invalid type arity can recover to a different constructor signature.
             // Retain the original labels/positional errors and written slots, but
             // check those names against the recovered signature as before.
@@ -847,10 +847,11 @@ mod argument_tests {
     use std::sync::Arc;
 
     fn check(source: &str) -> crate::Program {
-        crate::stdlib::ensure_standard();
+        let session = crate::Session::new();
+        session.ensure_standard();
         let file: Arc<str> = Arc::from("arguments.ms");
         let ast = ms_syntax::parser::parse(&file, source).expect("valid syntax");
-        Checker::new(&crate::CheckOptions::default())
+        Checker::new(&session, &crate::CheckOptions::default())
             .check_modules(vec![crate::load_module(&ast)], None)
     }
 

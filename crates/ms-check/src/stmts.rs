@@ -464,7 +464,7 @@ impl Checker {
             }
         } else if t.is(Builtin::Map) {
             if t.args.len() == 2 {
-                element = standard("MapEntry", t.args.clone());
+                element = self.session.standard("MapEntry", t.args.clone());
             }
         } else if self.iterator_item(&t).is_some() {
             return self.check_iterator_for(s, name, iter, body, Vec::new());
@@ -1514,7 +1514,7 @@ impl Checker {
             (r.is(Builtin::List) && r.args.len() == 1) || (r.is(Builtin::Map) && r.args.len() == 2)
         });
         info.ty = match info.ty {
-            Some(t) if entries => Some(standard("Optional", vec![t])),
+            Some(t) if entries => Some(self.session.standard("Optional", vec![t])),
             Some(t) if t.is_invalid() => Some(t),
             _ => {
                 self.type_error(
@@ -1602,7 +1602,7 @@ impl Checker {
                         {
                             let t = required_type(&t);
                             result = Some(if arm.chain && !t.is(Builtin::Optional) {
-                                crate::types::standard("Optional", vec![t])
+                                self.session.standard("Optional", vec![t])
                             } else {
                                 t
                             });

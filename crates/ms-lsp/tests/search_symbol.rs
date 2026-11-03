@@ -60,7 +60,8 @@ fn workspace_search_keeps_declarations_from_imported_subdirectories() {
     let d = Document::new(ms_lsp::uri::file_uri(path.to_str().unwrap()), source);
     let docs = Documents::from([(d.uri.clone(), d)]);
     // Without a manifest, open-document discovery scans only its directory.
-    let found = workspace_symbols(&docs, &[], "hidden_reader", None).unwrap();
+    let found =
+        workspace_symbols(&ms_check::Session::new(), &docs, &[], "hidden_reader", None).unwrap();
     assert_eq!(found.len(), 1);
     assert_eq!(
         found[0].get("name").and_then(|v| v.as_str()),

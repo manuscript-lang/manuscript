@@ -5,7 +5,7 @@ use crate::index::Occurrence;
 use crate::lint::LintFinding;
 use crate::uri;
 use ms_check::syntax::ModRef;
-use ms_check::{Program, stdlib};
+use ms_check::{Program, Session};
 use ms_driver::project::Overlay;
 use ms_driver::{CheckRequest, EditorOptions, Graph, LoadOptions};
 use ms_syntax::{Diagnostic, Phase};
@@ -57,6 +57,8 @@ pub struct Options {
     pub recover: bool,
     /// Unsaved sources by absolute path.
     pub overlay: Overlay,
+    /// The session to check against; absent, each analysis loads its own standard library.
+    pub session: Option<Rc<Session>>,
 }
 
 /// A checked program with its diagnostics (`compiler.Result`).
@@ -68,6 +70,8 @@ pub struct Analysis {
     pub project_root: String,
     /// The program, absent when loading failed before checking.
     pub program: Option<Program>,
+    /// The session the analysis ran in; standard declarations are read through it.
+    pub session: Rc<Session>,
     /// Loading, parse and checker diagnostics in report order.
     pub diagnostics: Vec<Diagnostic>,
     pub(crate) index: OnceCell<Vec<Occurrence>>,
@@ -143,14 +147,14 @@ impl Analysis {
             .filter(|m| !m.file.as_str().starts_with("@std/"))
             .cloned()
             .collect();
-        modules.extend(stdlib::standard_modules());
+        modules.extend(self.session.standard_modules());
         modules
     }
 
     /// The module whose source a document is, if the program contains it.
     pub fn module(&self, d: &Document) -> Option<ModRef> {
         let program = self.program.as_ref()?;
-        if let Some(m) = standard_library_document(d) {
+        if let Some(m) = standard_library_document(&self.session, d) {
             return Some(m);
         }
         let mut path = d.path();
@@ -174,24 +178,25 @@ impl Analysis {
 
 /// The bundled module a document stands for: a `manuscript-stdlib:` URI, or a
 /// file that is byte-for-byte a bundled declaration file.
-pub fn standard_library_document(d: &Document) -> Option<ModRef> {
+pub fn standard_library_document(session: &Rc<Session>, d: &Document) -> Option<ModRef> {
     if uri::is_standard_library(&d.uri) {
-        return standard_library_module(&d.uri).ok();
+        return standard_library_module(session, &d.uri).ok();
     }
     let url = uri::parse(&d.uri)?;
     if url.scheme != "file" || url.query || url.fragment {
         return None;
     }
     let base = ms_driver::project::pathops::base(&d.path());
-    stdlib::standard_modules().into_iter().find(|m| {
+    session.standard_modules().into_iter().find(|m| {
         m.file.as_str().strip_prefix("@std/") == Some(base.as_str()) && *m.source == *d.text
     })
 }
 
 /// The bundled module a `manuscript-stdlib:` URI names.
-pub fn standard_library_module(uri: &str) -> Result<ModRef, &'static str> {
+pub fn standard_library_module(session: &Rc<Session>, uri: &str) -> Result<ModRef, &'static str> {
     let path = uri::standard_library_path(uri)?;
-    stdlib::standard_modules()
+    session
+        .standard_modules()
         .into_iter()
         .find(|m| {
             m.file
@@ -203,8 +208,8 @@ pub fn standard_library_module(uri: &str) -> Result<ModRef, &'static str> {
 }
 
 /// The source of a bundled module by URI.
-pub fn standard_library_source(uri: &str) -> Result<String, &'static str> {
-    standard_library_module(uri).map(|m| m.source.to_string())
+pub fn standard_library_source(session: &Rc<Session>, uri: &str) -> Result<String, &'static str> {
+    standard_library_module(session, uri).map(|m| m.source.to_string())
 }
 
 /// Checks a file or manifest with unsaved sources (`compiler.CompileFile`).
@@ -264,7 +269,9 @@ pub fn compile_source(filename: &str, source: &str, options: &Options) -> Analys
 }
 
 fn check(graph: Graph, options: &Options) -> Analysis {
-    let checked = ms_driver::check_graph_at(
+    let session = options.session.clone().unwrap_or_default();
+    let checked = ms_driver::check_graph_in(
+        &session,
         graph,
         CheckRequest::default(),
         options.scope_marker.as_deref(),
@@ -274,15 +281,20 @@ fn check(graph: Graph, options: &Options) -> Analysis {
         project_root: checked.project_root,
         program: checked.program,
         diagnostics: checked.diagnostics,
+        session,
         ..Analysis::default()
     }
 }
 
 /// The empty program used for standard-library documents, whose signatures the
 /// compiler already checked at startup.
-fn library_analysis() -> Analysis {
+fn library_analysis(session: Rc<Session>) -> Analysis {
     Analysis {
-        program: Some(Program::default()),
+        program: Some(Program {
+            session: session.clone(),
+            ..Program::default()
+        }),
+        session,
         ..Analysis::default()
     }
 }
@@ -294,16 +306,23 @@ pub fn analyze_with(
     mut options: Options,
     compile: &mut dyn FnMut(&str, &Options) -> Rc<Analysis>,
 ) -> Rc<Analysis> {
-    if standard_library_document(d).is_some() {
-        return Rc::new(library_analysis());
+    let session = options.session.clone().unwrap_or_default();
+    options.session = Some(session.clone());
+    if standard_library_document(&session, d).is_some() {
+        return Rc::new(library_analysis(session));
     }
     if uri::is_standard_library(&d.uri) {
-        return Rc::new(Analysis::default());
+        return Rc::new(Analysis {
+            session,
+            ..Analysis::default()
+        });
     }
     let path = d.path();
     let mut overlay = Overlay::new();
     for open in docs.values() {
-        if uri::is_standard_library(&open.uri) || standard_library_document(open).is_some() {
+        if uri::is_standard_library(&open.uri)
+            || standard_library_document(&session, open).is_some()
+        {
             continue;
         }
         overlay.insert(open.path(), open.text.clone());
@@ -326,12 +345,13 @@ pub fn analyze_with(
 }
 
 /// An uncached analysis of one document.
-pub fn analyze(d: &Document, docs: &Documents) -> Rc<Analysis> {
+pub fn analyze(session: &Rc<Session>, d: &Document, docs: &Documents) -> Rc<Analysis> {
     analyze_options(
         d,
         docs,
         Options {
             recover: true,
+            session: Some(session.clone()),
             ..Options::default()
         },
     )
@@ -345,12 +365,13 @@ pub fn analyze_options(d: &Document, docs: &Documents, options: Options) -> Rc<A
 }
 
 /// A strict analysis of a workspace file, for cross-file queries.
-pub fn workspace_analysis(d: &Document, docs: &Documents) -> Rc<Analysis> {
+pub fn workspace_analysis(session: &Rc<Session>, d: &Document, docs: &Documents) -> Rc<Analysis> {
     analyze_options(
         d,
         docs,
         Options {
             module: Some(d.path()),
+            session: Some(session.clone()),
             ..Options::default()
         },
     )
