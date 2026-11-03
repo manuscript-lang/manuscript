@@ -111,7 +111,7 @@ pub(crate) struct Closer {
     handle: ms_mir::ir::Value,
     /// Set while the binding still holds the resource; a move clears it. Present only for a
     /// binding some path moves.
-    flag: Option<ms_mir::builder::Var>,
+    pub(crate) flag: Option<ms_mir::builder::Var>,
     /// The current cleanup entry of a binding that can be reassigned after a move, which pushes
     /// a new one.
     entry: Option<ms_mir::builder::Var>,
@@ -252,6 +252,14 @@ impl FnLower<'_> {
         close_call(&mut self.b, &kind, v, mt);
     }
 
+    /// The close operation of a value of the MIR type `ty` holding a resource, if it is one.
+    pub(crate) fn part_closer_mir(&mut self, ty: MTy) -> Result<Option<CloseKind>, Error> {
+        let Some(ct) = self.cx.source_tys.get(&ty).cloned() else {
+            return Ok(None);
+        };
+        self.part_closer(&ct)
+    }
+
     /// Calls the close operation `kind` on `v` of MIR type `ty`.
     pub(crate) fn close_with(&mut self, kind: &CloseKind, v: Value, ty: MTy) {
         close_call(&mut self.b, kind, v, ty);
@@ -305,16 +313,24 @@ impl FnLower<'_> {
     ) -> Result<(), Error> {
         // A `var` binding that changes lives in memory, so a fault or cancellation closes its
         // value at that moment and not the one it started with.
-        if binding.mutable {
+        // A binding some path moves out of lives in memory too: its cleanup entry holds the
+        // slot, so the paths that keep the value register nothing twice.
+        let places = self
+            .cx
+            .resource_moves
+            .get(&binding.uid)
+            .filter(|p| !p.is_empty())
+            .cloned();
+        let split = places.is_some() && !binding.mutable;
+        if binding.mutable || (self.cx.close_moves.contains_key(&binding.uid) && !split) {
             self.slotted.insert(binding.uid);
         }
         self.redefined.insert(binding.uid);
         self.bind_local(binding, x);
         let ty = self.locals[&binding.uid].ty;
         let slot = self.locals[&binding.uid].slot;
-        if let Some(places) = self.cx.resource_moves.get(&binding.uid).cloned()
-            && !places.is_empty()
-            && slot.is_none()
+        if let Some(places) = places
+            && split
         {
             return self.bind_split(binding, kind, places);
         }
@@ -1256,10 +1272,7 @@ impl FnLower<'_> {
         // This binding is closed; release its value, then return through the enclosing scopes
         // without closing again what this path has already closed.
         let l = self.locals[&uid];
-        if self.needs_drop(l.ty) {
-            let v = self.local_take(&l);
-            self.b.emit(Op::Drop, &[v], Imm::None, None);
-        }
+        self.drop_local(uid, &l);
         let before = self.closed_on_path.clone();
         self.closed_on_path.insert(uid);
         let done = self.scope_done.clone();

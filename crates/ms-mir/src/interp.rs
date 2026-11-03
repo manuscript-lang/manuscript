@@ -814,13 +814,18 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Int(l.len() as i64));
             }
-            Op::ListGet | Op::ListGetNn | Op::ListGetU => {
+            Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake => {
                 let i = int!(1);
                 let Val::List(l) = &regs[a[0].index()] else {
                     return Err(Raw::internal("list.get on a non-list"));
                 };
                 let k = list_index(l.len(), i, inst.op == Op::ListGet)?;
                 set!(l[k].clone());
+            }
+            Op::ListRelease => {
+                // The elements before the index were taken out; the rest go with the list.
+                let _ = int!(1);
+                arg(f, regs, a[0], true, m);
             }
             Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
                 let i = int!(1);

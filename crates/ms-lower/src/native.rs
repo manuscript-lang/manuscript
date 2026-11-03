@@ -1599,6 +1599,7 @@ impl<'a> FnLower<'a> {
         if let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r))
             && !self.aliases.contains_key(&b.uid)
             && self.local(&b)?.slot.is_none()
+            && !self.local(&b)?.opt
         {
             return Ok((self.local(&b)?.var, false));
         }

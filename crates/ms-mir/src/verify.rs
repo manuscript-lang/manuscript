@@ -159,6 +159,7 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         Op::OptSome
         | Op::IfaceNew
         | Op::Drop
+        | Op::ListRelease
         | Op::GlobalSet
         | Op::SharedNew
         | Op::AltUnbox
@@ -914,12 +915,20 @@ impl Verifier<'_> {
                     "list.len takes a list (or bytes) and yields int",
                 )
             }
-            Op::ListGet | Op::ListGetNn | Op::ListGetU => {
+            Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::ListTake => {
                 arity(2)?;
                 let elem = m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
                 want(
                     t(1) == Ty::INT && res == Some(elem),
                     "index must be int; result is the element type",
+                )
+            }
+            Op::ListRelease => {
+                arity(2)?;
+                m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
+                want(
+                    t(1) == Ty::INT && res.is_none(),
+                    "the first kept index must be int; no result",
                 )
             }
             Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {

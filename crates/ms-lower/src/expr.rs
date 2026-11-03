@@ -392,6 +392,14 @@ impl<'a> FnLower<'a> {
                     self.closed_on_path.insert(b.uid);
                     return Ok(Val { v, own: true });
                 }
+                if self.moves_at(b.uid, e.id) && !self.dead {
+                    // The value leaves the binding here: the local is empty until it is stored
+                    // to again, and the scope end drops nothing for it on this path.
+                    let l = self.local(&b)?;
+                    let v = self.take_local(b.uid, &l);
+                    self.moved_closer(b.uid, e);
+                    return self.fit_function_value(e, Val { v, own: true });
+                }
                 let x = self.read_local(&b)?;
                 self.moved_closer(b.uid, e);
                 self.fit_function_value(e, x)

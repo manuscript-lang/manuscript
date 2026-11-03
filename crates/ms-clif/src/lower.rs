@@ -680,36 +680,49 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.g.lay.alt_fields(a)
     }
 
+    /// Drops the elements of a list or byte string from index `from` (0 when `None`; the
+    /// elements before it were moved out) and frees its buffer.
+    fn drop_list_from(&mut self, ty: Ty, ptr: Value, len: Value, from: Option<Value>) {
+        let m = self.g.m;
+        let elem = m.list_elem(ty);
+        if let Some(e) = elem.filter(|e| m.needs_drop(*e)) {
+            let leaves = self.g.lay.leaves(e);
+            let size = mem_layout(&leaves).size as i64;
+            let head = self.b.create_block();
+            let body = self.b.create_block();
+            let done = self.b.create_block();
+            self.b.append_block_param(head, types::I64);
+            let start = match from {
+                Some(from) => {
+                    let zero = self.iconst(0);
+                    let neg = self.b.ins().icmp_imm_s(IntCC::SignedLessThan, from, 0);
+                    self.b.ins().select(neg, zero, from)
+                }
+                None => self.iconst(0),
+            };
+            self.b.ins().jump(head, &[BlockArg::Value(start)]);
+            self.b.switch_to_block(head);
+            let i = self.b.block_params(head)[0];
+            let more = self.b.ins().icmp(IntCC::SignedLessThan, i, len);
+            self.b.ins().brif(more, body, &[], done, &[]);
+            self.b.switch_to_block(body);
+            let off = self.b.ins().imul_imm_s(i, size);
+            let at = self.b.ins().iadd(ptr, off);
+            let ev = self.load_leaves(at, 0, &leaves);
+            self.drop_value(e, &ev);
+            let next = self.b.ins().iadd_imm_s(i, 1);
+            self.b.ins().jump(head, &[BlockArg::Value(next)]);
+            self.b.switch_to_block(done);
+        }
+        let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, ptr, 0);
+        self.if_then(nn, |s| s.free(ptr));
+    }
+
     fn glue_drop(&mut self, ty: Ty, vs: &[Value]) {
         let m = self.g.m;
         match m.types.kind(ty).clone() {
             TyKind::Bytes | TyKind::List(_) => {
-                let elem = m.list_elem(ty);
-                let (ptr, len) = (vs[0], vs[1]);
-                if let Some(e) = elem.filter(|e| m.needs_drop(*e)) {
-                    let leaves = self.g.lay.leaves(e);
-                    let size = mem_layout(&leaves).size as i64;
-                    let head = self.b.create_block();
-                    let body = self.b.create_block();
-                    let done = self.b.create_block();
-                    self.b.append_block_param(head, types::I64);
-                    let zero = self.iconst(0);
-                    self.b.ins().jump(head, &[BlockArg::Value(zero)]);
-                    self.b.switch_to_block(head);
-                    let i = self.b.block_params(head)[0];
-                    let more = self.b.ins().icmp(IntCC::SignedLessThan, i, len);
-                    self.b.ins().brif(more, body, &[], done, &[]);
-                    self.b.switch_to_block(body);
-                    let off = self.b.ins().imul_imm_s(i, size);
-                    let at = self.b.ins().iadd(ptr, off);
-                    let ev = self.load_leaves(at, 0, &leaves);
-                    self.drop_value(e, &ev);
-                    let next = self.b.ins().iadd_imm_s(i, 1);
-                    self.b.ins().jump(head, &[BlockArg::Value(next)]);
-                    self.b.switch_to_block(done);
-                }
-                let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, ptr, 0);
-                self.if_then(nn, |s| s.free(ptr));
+                self.drop_list_from(ty, vs[0], vs[1], None);
             }
             TyKind::Obj(..) => {
                 // Map and Set are owned `MapVal`s the runtime knows how to drop.
@@ -2206,6 +2219,21 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::ListFill
             | Op::ListPush
             | Op::ListDropLast => self.lower_list(f, inst),
+            Op::ListTake => {
+                let lt = f.ty(inst.args[0]);
+                let (_, leaves, size) = self.elem_info(lt);
+                let l = self.a(inst, 0);
+                let i = self.a(inst, 1)[0];
+                let at = self.elem_addr(l[0], l[1], i, size, Op::ListGetU);
+                self.load_leaves(at, 0, &leaves)
+            }
+            Op::ListRelease => {
+                let lt = f.ty(inst.args[0]);
+                let l = self.a(inst, 0);
+                let from = self.a(inst, 1)[0];
+                self.drop_list_from(lt, l[0], l[1], Some(from));
+                vec![]
+            }
             Op::OptSome | Op::OptView => {
                 let ty = res_ty.expect("opt.some result");
                 let v = self.a(inst, 0);

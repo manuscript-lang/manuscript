@@ -100,7 +100,14 @@ impl FnLower<'_> {
                 scoped = true;
                 continue;
             }
-            let x = self.read_local(b)?;
+            let x = if self.moves_at(b.uid, e.id) {
+                // An escaping closure takes the variable with it.
+                let l = self.local(b)?;
+                let v = self.take_local(b.uid, &l);
+                Val { v, own: true }
+            } else {
+                self.read_local(b)?
+            };
             let cap_ty = self.ty_of(x.v);
             // A resource the closure takes over is closed when the closure is dropped, no
             // longer by this scope.
@@ -1529,6 +1536,7 @@ pub(crate) fn restore_alias_capture(
             var,
             ty,
             slot: Some(values[*slot]),
+            opt: false,
         },
     );
     let steps = steps
@@ -1598,6 +1606,7 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
                     var,
                     ty,
                     slot: Some(v),
+                    opt: false,
                 },
             );
         } else if mutated.contains(&b.uid) {
