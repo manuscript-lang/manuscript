@@ -68,9 +68,6 @@ test "List take and drop support generic and nested values":
     let values: List[Int?!Error] = [ok(1), error(Error("cause"))]
     try expect_equal(copy_window(values, 2, 1).get(0).err().message, "cause")
 
-    let callbacks = [fn(value: Int) Int: value + 1]
-    try expect_equal(callbacks.take(1).drop(0).get(0)(1), 2)
-
 test "List take and drop bound methods read the retained receiver":
     var values = [1, 2, 3, 4]
     let take = values.take

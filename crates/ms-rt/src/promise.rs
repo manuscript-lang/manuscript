@@ -104,24 +104,43 @@ struct Table {
     free: Vec<usize>,
 }
 
+impl Table {
+    const fn empty() -> Table {
+        Table {
+            state: Vec::new(),
+            generation: Vec::new(),
+            token: Vec::new(),
+            result: Vec::new(),
+            closure: Vec::new(),
+            thread: Vec::new(),
+            flags: Vec::new(),
+            report: Vec::new(),
+            deadline: Vec::new(),
+            fd: Vec::new(),
+            events: Vec::new(),
+            retry: Vec::new(),
+            retry_state: Vec::new(),
+            timers: BinaryHeap::new(),
+            free: Vec::new(),
+        }
+    }
+}
+
 crate::isolate_static! {
-    static TABLE: Table = Table {
-        state: Vec::new(),
-        generation: Vec::new(),
-        token: Vec::new(),
-        result: Vec::new(),
-        closure: Vec::new(),
-        thread: Vec::new(),
-        flags: Vec::new(),
-        report: Vec::new(),
-        deadline: Vec::new(),
-        fd: Vec::new(),
-        events: Vec::new(),
-        retry: Vec::new(),
-        retry_state: Vec::new(),
-        timers: BinaryHeap::new(),
-        free: Vec::new(),
-    };
+    static TABLE: Table = Table::empty();
+}
+
+/// Releases the calling isolate's promise table as its thread ends: the columns have no destructor
+/// (the table is thread-local state), so a leak checker would see them as lost. A result nobody
+/// took is dropped.
+pub(crate) fn teardown() {
+    let t = table();
+    for r in core::mem::take(&mut t.result) {
+        if !r.ptr.is_null() {
+            drop_block(r.ptr as usize, r.desc as usize);
+        }
+    }
+    *t = Table::empty();
 }
 
 fn table() -> &'static mut Table {
@@ -1212,6 +1231,20 @@ mod tests {
         msrt_promise_drop(id);
         assert_eq!(msrt_promise_done(id), 1);
         task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn teardown_releases_the_promise_table() {
+        let _g = lock();
+        let id = msrt_promise_sleep(1_000_000);
+        assert_eq!(msrt_promise_wait(id, -1), OK);
+        assert!(table().state.capacity() > 0);
+        task::teardown();
+        let t = table();
+        assert_eq!(t.state.capacity(), 0);
+        assert_eq!(t.result.capacity(), 0);
+        assert_eq!(t.free.capacity(), 0);
     }
 
     #[test]

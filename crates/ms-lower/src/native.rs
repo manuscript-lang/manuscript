@@ -5,7 +5,7 @@ use crate::func::{FnLower, Val};
 use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
 use ms_check::types::Builtin;
-use ms_mir::ir::{Mode, Param, Value};
+use ms_mir::ir::{Imm, Mode, Op, Param, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
@@ -997,6 +997,27 @@ impl<'a> FnLower<'a> {
             (TyKind::List(_) | TyKind::Bytes, "length") => {
                 let r = self.borrow(recv);
                 let v = self.b.list_len(r);
+                Ok(Val { v, own: false })
+            }
+            (TyKind::Bytes, "view") => {
+                // A borrow of the receiver's storage; a temporary receiver is copied out before
+                // it is dropped, as an element read of a temporary list is.
+                let r = self.borrow(recv);
+                let (start, end) = (self.borrow(args[0].val), self.borrow(args[1].val));
+                let slot = self
+                    .b
+                    .emit(Op::Slot, &[], Imm::Ty(MTy::BYTES), Some(MTy::PTR))
+                    .expect("slot");
+                self.call_runtime("msrt_bytes_view", &[r, start, end, slot], MTy::UNIT)?;
+                // Loading the header from the slot gives a value the MIR does not own.
+                let v = self
+                    .b
+                    .emit(Op::Load, &[slot], Imm::Ty(MTy::BYTES), Some(MTy::BYTES))
+                    .expect("load");
+                if recv.own {
+                    let o = self.owned(Val { v, own: false });
+                    return Ok(Val { v: o, own: true });
+                }
                 Ok(Val { v, own: false })
             }
             (TyKind::List(_) | TyKind::Bytes, "is_empty") => {
@@ -2583,7 +2604,7 @@ impl<'a> FnLower<'a> {
         }
         let (new, r) = self.mutate_list(name, old, args)?;
         if r.is_none() && copy_result {
-            let v = self.owned(Val { v: new, own: false });
+            let v = self.clone_value(new);
             return Ok((new, Some(Val { v, own: true })));
         }
         Ok((new, r))
@@ -2956,7 +2977,7 @@ impl<'a> FnLower<'a> {
                     let rv = s.fresh_var(rt);
                     s.b.def_var(rv, r);
                     s.each_element(rv, &mut |s, _, y| {
-                        let yo = s.owned(Val { v: y, own: false });
+                        let yo = s.clone_value(y);
                         let cur = s.b.use_var(acc);
                         let next = s.b.list_push(cur, yo);
                         s.b.def_var(acc, next);
@@ -3343,7 +3364,7 @@ impl<'a> FnLower<'a> {
         self.b.seal_block(miss);
         self.b.switch_to(hit);
         let x = self.b.list_get(l, i);
-        let xo = self.owned(Val { v: x, own: false });
+        let xo = self.clone_value(x);
         // The eager default is unused on this path.
         self.finish(default.val);
         self.b.def_var(out, xo);
@@ -3406,7 +3427,7 @@ impl<'a> FnLower<'a> {
         self.b.def_var(idx, j);
         let l = self.b.use_var(lv);
         let x = self.b.list_get(l, j);
-        let xo = self.owned(Val { v: x, own: false });
+        let xo = self.clone_value(x);
         let cur = self.b.use_var(acc);
         let next = self.b.list_push(cur, xo);
         self.b.def_var(acc, next);

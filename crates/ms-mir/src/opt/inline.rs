@@ -821,7 +821,6 @@ fn specialize_in(
             if ci == fi
                 || cyc.get(ci).copied().unwrap_or(false)
                 || !matches!(callee.kind, FuncKind::Normal)
-                || callee.keeps_scoped
                 || callee.inline == InlineHint::Never
                 || callee.inst_count() > SPECIALIZE_MAX_SIZE
                 || !callee

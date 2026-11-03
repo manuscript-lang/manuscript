@@ -95,6 +95,16 @@ impl<'m> FuncBuilder<'m> {
         insts.iter().rev().find(|i| i.res == Some(v)).map(|i| i.op)
     }
 
+    /// The op that defines `v`, looking through every block of the function.
+    pub fn defining_op_anywhere(&self, v: Value) -> Option<Op> {
+        self.f
+            .blocks
+            .iter()
+            .flat_map(|b| &b.insts)
+            .find(|i| i.res == Some(v))
+            .map(|i| i.op)
+    }
+
     /// Whether `v` is, through copies, a closure whose environment points into this frame.
     pub fn is_scoped_closure(&self, v: Value) -> bool {
         let mut cur = v;
