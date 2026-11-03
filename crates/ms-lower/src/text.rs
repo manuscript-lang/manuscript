@@ -266,7 +266,7 @@ pub(crate) fn build_format(
     let depth = b.params()[1];
     let declared_text = match crate::nativerec::native_rec(b.m, t) {
         Some(r) if crate::nativerec::has_declared_text(r) => {
-            cx.native_method(b.m, t, "to_string")?
+            cx.native_method(b.m, r, crate::nativerec::NativeOp::ToString)?
         }
         _ => None,
     };

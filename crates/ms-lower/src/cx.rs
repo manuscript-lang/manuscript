@@ -192,8 +192,8 @@ pub struct Cx {
     pub methods: Vec<ct::MethodRef>,
     /// The checker type behind each lowered record or alternative.
     pub source_tys: HashMap<MTy, ct::Ty>,
-    /// The method of a native record found by `Cx::native_method`, per type and method name.
-    pub native_methods: HashMap<(MTy, &'static str), Option<FuncId>>,
+    /// The `.ms` methods of the native records, built once from the program's methods.
+    pub native_ops: crate::nativerec::NativeOps,
     /// Types whose descriptor glue is registered, per implementation scope.
     pub glue_seen: std::collections::HashSet<(MTy, u32)>,
     /// Nominal types with an extension implemented outside their defining module.
@@ -264,6 +264,7 @@ impl Cx {
             mods.insert(m.data.file, Rc::new(m));
         }
         let mutated = crate::mutation::infer_mutated(&mods, &callables);
+        let native_ops = crate::nativerec::NativeOps::new(program, &callables);
         let extended = program
             .methods
             .iter()
@@ -277,7 +278,7 @@ impl Cx {
             callables,
             mutated,
             source_tys: HashMap::new(),
-            native_methods: HashMap::new(),
+            native_ops,
             glue_seen: Default::default(),
             tycache: HashMap::new(),
             insts: HashMap::new(),

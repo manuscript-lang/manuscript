@@ -2,8 +2,14 @@
 //! is whatever the record's `.ms` declaration calls; lowering calls the declared method.
 
 use crate::cx::Cx;
+use ms_check::Program;
+use ms_check::hir::Callable;
+use ms_check::types::Name;
 use ms_mir::ir::{FuncId, Module};
 use ms_mir::types::{NativeRec, Ty as MTy, TyKind};
+use ms_syntax::NodeId;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 /// The native record `t` is, if any; lowering sets it on the record when it declares it.
 pub(crate) fn native_rec(m: &Module, t: MTy) -> Option<NativeRec> {
@@ -26,54 +32,78 @@ pub(crate) fn has_declared_order(r: NativeRec) -> bool {
     )
 }
 
+/// The operations of a native record that lowering calls through its `.ms` declaration.
+#[derive(Clone, Copy)]
+pub(crate) enum NativeOp {
+    Compare,
+    ToString,
+}
+
+const NATIVE_RECS: usize = 4;
+const NATIVE_OPS: usize = 2;
+
+fn slot(r: NativeRec, op: NativeOp) -> usize {
+    let rec = match r {
+        NativeRec::Timestamp => 0,
+        NativeRec::Instant => 1,
+        NativeRec::Decimal => 2,
+        NativeRec::Duration => 3,
+    };
+    rec * NATIVE_OPS + op as usize
+}
+
+/// A flat table of the declared `compare` and `to_string` methods, indexed by record and operation.
+pub struct NativeOps {
+    table: [Option<Rc<Callable>>; NATIVE_RECS * NATIVE_OPS],
+}
+
+impl NativeOps {
+    pub(crate) fn new(
+        program: &Program,
+        callables: &HashMap<(Name, NodeId), Rc<Callable>>,
+    ) -> NativeOps {
+        let mut table: [Option<Rc<Callable>>; NATIVE_RECS * NATIVE_OPS] = Default::default();
+        for method in &program.methods {
+            let Some(decl) = method.decl.as_ref() else {
+                continue;
+            };
+            let op = match decl.name().as_str() {
+                "compare" => NativeOp::Compare,
+                "to_string" => NativeOp::ToString,
+                _ => continue,
+            };
+            let r = &method.receiver;
+            let rec = if r.is_time("Timestamp") {
+                NativeRec::Timestamp
+            } else if r.is_time("Instant") {
+                NativeRec::Instant
+            } else if r.is_time("Duration") {
+                NativeRec::Duration
+            } else if r.is_std("Decimal") {
+                NativeRec::Decimal
+            } else {
+                continue;
+            };
+            let entry = &mut table[slot(rec, op)];
+            if entry.is_none() {
+                *entry = callables.get(&(method.module, decl.id())).cloned();
+            }
+        }
+        NativeOps { table }
+    }
+}
+
 impl Cx {
-    /// The function of the method `name` declared on the native record `t`, found through the
-    /// checker type behind the MIR record.
+    /// The function of the declared `op` of native record `r`, if its `.ms` declaration has one.
     pub(crate) fn native_method(
         &mut self,
         m: &mut Module,
-        t: MTy,
-        name: &'static str,
+        r: NativeRec,
+        op: NativeOp,
     ) -> Result<Option<FuncId>, crate::Error> {
-        if let Some(found) = self.native_methods.get(&(t, name)) {
-            return Ok(*found);
-        }
-        let found = self.find_native_method(m, t, name)?;
-        self.native_methods.insert((t, name), found);
-        Ok(found)
-    }
-
-    fn find_native_method(
-        &mut self,
-        m: &mut Module,
-        t: MTy,
-        name: &str,
-    ) -> Result<Option<FuncId>, crate::Error> {
-        let Some(ty) = self.source_tys.get(&t).cloned() else {
+        let Some(callable) = self.native_ops.table[slot(r, op)].clone() else {
             return Ok(None);
         };
-        let key = ms_check::types::type_key(&ty);
-        let Some(method) = self
-            .methods
-            .iter()
-            .find(|im| {
-                im.decl.as_ref().is_some_and(|d| d.name() == name)
-                    && ms_check::types::type_key(&im.receiver) == key
-            })
-            .cloned()
-        else {
-            return Ok(None);
-        };
-        let id = method
-            .decl
-            .as_ref()
-            .map(|d| d.id())
-            .ok_or_else(|| crate::Error::new("method without declaration"))?;
-        let callable = self
-            .callables
-            .get(&(method.module, id))
-            .cloned()
-            .ok_or_else(|| crate::Error::new("callee not found"))?;
         Ok(Some(self.function_for(
             m,
             &callable,
@@ -91,10 +121,10 @@ impl crate::func::FnLower<'_> {
         a: ms_mir::ir::Value,
         b: ms_mir::ir::Value,
     ) -> Result<Option<ms_mir::ir::Value>, crate::Error> {
-        if !native_rec(self.b.m, t).is_some_and(has_declared_order) {
+        let Some(rec) = native_rec(self.b.m, t).filter(|r| has_declared_order(*r)) else {
             return Ok(None);
-        }
-        let Some(f) = self.cx.native_method(self.b.m, t, "compare")? else {
+        };
+        let Some(f) = self.cx.native_method(self.b.m, rec, NativeOp::Compare)? else {
             return Ok(None);
         };
         Ok(Some(self.b.call(f, &[a, b])))
