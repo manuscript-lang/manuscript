@@ -64,6 +64,7 @@ fn exercise() Unit!:
         none:
             return fail(message: "Unexpected case")
 
+    try response.close()
     try client.close()
 
     let websocket_options = WebSocketOptions(

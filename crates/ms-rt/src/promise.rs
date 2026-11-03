@@ -781,13 +781,19 @@ fn run_deferred(id: i64, deadline: Option<i64>) {
     // its own waits can notice the limit.
     let earlier =
         task::set_defer_deadline(deadline.map_or(i64::MAX, |d| d.min(task::defer_deadline())));
-    // SAFETY: the reference taken in `msrt_promise_defer` is ours; the code is the closure's entry.
-    unsafe {
+    // The reference is released when the work ends, and by the cleanup when a cancelled wait inside the
+    // work jumps out of it, which skips Rust destructors.
+    let release = || {
+        // SAFETY: the reference taken in `msrt_promise_defer` is ours, released once.
+        unsafe { crate::obj::release(closure.cast()) };
+    };
+    // SAFETY: the code is the closure's entry.
+    fault::with_cleanup(&mut || release(), || unsafe {
         let code: unsafe extern "C-unwind" fn(*mut ms_rt_abi::Closure) =
             core::mem::transmute((*closure).code);
         code(closure);
-        crate::obj::release(closure.cast());
-    }
+    });
+    release();
     task::set_defer_deadline(earlier);
 }
 
