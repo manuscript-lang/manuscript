@@ -85,7 +85,11 @@ pub unsafe extern "C-unwind" fn msrt_cells_new(value: *mut u8, d: ms_rt_abi::Val
 /// # Safety
 /// `out` is writable memory for a value of `d`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_cells_take(id: i64, d: ms_rt_abi::ValueDesc, out: *mut u8) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_cells_take(
+    id: i64,
+    d: ms_rt_abi::ValueDesc,
+    out: *mut u8,
+) -> u8 {
     let mut table = cells();
     let Some(c) = slot(&mut table, id) else {
         return 0;

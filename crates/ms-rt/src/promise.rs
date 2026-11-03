@@ -404,7 +404,11 @@ fn wake(t: &mut Table, i: usize) {
 /// # Safety
 /// `out` is writable memory for a value of `d`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_promise_take(id: i64, d: ms_rt_abi::ValueDesc, out: *mut u8) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_promise_take(
+    id: i64,
+    d: ms_rt_abi::ValueDesc,
+    out: *mut u8,
+) -> u8 {
     let t = table();
     let Some(i) = index(t, id) else { return 0 };
     let r = core::mem::replace(&mut t.result[i], NO_RESULT);
