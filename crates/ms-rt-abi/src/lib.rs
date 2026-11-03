@@ -493,6 +493,8 @@ pub const STATUS_NOT_TERMINAL: u8 = 15;
 pub const STATUS_NONE: u8 = 16;
 /// Another raw terminal holds the terminal.
 pub const STATUS_BUSY: u8 = 17;
+/// A credential or tag did not verify; surfaces as `ErrorCategory.Other` ("authentication failed").
+pub const STATUS_AUTHENTICATION_FAILED: u8 = 18;
 
 // ---------------------------------------------------------------------------
 // The public C ABI of `include/ms_abi.h` (user `extern fn` shims)

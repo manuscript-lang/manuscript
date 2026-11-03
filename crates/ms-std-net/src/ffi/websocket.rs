@@ -8,7 +8,10 @@ use crate::ws::dial::{self, Dial};
 use ms_rt::ffi::{
     Bytes, ErrOut, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record, native,
 };
-use ms_rt_abi::STATUS_NONE;
+use ms_rt_abi::{
+    STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
+    STATUS_PERMISSION_DENIED, STATUS_TIMEOUT,
+};
 
 abi_record! {
     /// `WebSocketOptions` as the compiler lays it out for natives.
@@ -36,12 +39,12 @@ abi_record! {
 
 fn ws_from_code(status: u8, failed: String) -> WsErr {
     match status {
-        1 => WsErr::InvalidInput,
-        2 => WsErr::InvalidData,
-        3 => WsErr::LimitExceeded,
-        4 => WsErr::PermissionDenied,
-        5 => WsErr::Closed,
-        6 => WsErr::Timeout,
+        STATUS_INVALID_INPUT => WsErr::InvalidInput,
+        STATUS_INVALID_DATA => WsErr::InvalidData,
+        STATUS_LIMIT_EXCEEDED => WsErr::LimitExceeded,
+        STATUS_PERMISSION_DENIED => WsErr::PermissionDenied,
+        STATUS_CLOSED => WsErr::Closed,
+        STATUS_TIMEOUT => WsErr::Timeout,
         _ => WsErr::Failed(failed),
     }
 }
