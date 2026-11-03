@@ -1,13 +1,11 @@
 # conform: tags=stdlib-http,stdlib-net,tier-io
 # conform: phase=run
 # conform: timeout=30
-# A handler whose client went away is cancelled: its wait ends and its cleanup runs with
-# tasks.cancelled() true.
+# A handler whose client went away is cancelled: its wait ends and its cleanup runs.
 import Closeable from "@std/core.ms"
 import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
 import stdout from "@std/io/io.ms"
 import connect, serve from "@std/net/net.ms"
-import cancelled from "@std/concurrency/tasks.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
 type Reporter:
@@ -15,9 +13,7 @@ type Reporter:
 
 impl Closeable for Reporter:
     var fn close() Unit!:
-        let _line = stdout().write(
-            "{self.name} cleanup sees cancelled: {cancelled()}\n"
-        )
+        let _line = stdout().write("{self.name} cleanup ran\n")
         return ok(unit)
 
 fn handle(request: HttpRequest) HttpResponse:

@@ -1,9 +1,9 @@
-import expect_equal, expect_false from "@std/test/test.ms"
+import expect_equal, expect_false, expect_ok from "@std/test/test.ms"
 import first_view, first_method, first_generic, first_resource from "./first.ms"
 import second_view, second_method, second_generic, second_resource from "./second.ms"
 import Item, Resource from "./domain.ms"
 import Read, read_view from "./contracts.ms"
-import share from "@std/concurrency/shared.ms"
+import read_file, temporary from "@std/os/fs.ms"
 
 fn close_first(resource: Resource) Unit:
     let _held = first_resource(resource)
@@ -28,12 +28,11 @@ test "views and functions retain local implementations across modules":
     let second_fn = second_generic()
     (first_fn(item) != 12 or second_fn(item) != 22) | try expect_false
 
-    let events = share(List[Int]())
-    let resource = Resource(events)
+    let dir = temporary("ms-ext-") | try expect_ok
+    let events = "{dir.path()}/events"
+    let resource = Resource(events.clone())
 
     # Each `Closeable` closes through its own module's implementation when its scope ends.
-    close_first(Resource(events))
+    close_first(Resource(events.clone()))
     close_second(resource)
-
-    let values = events.get()
-    (values.get(index: 0) != 10 or values.get(index: 1) != 20) | try expect_false
+    (try expect_ok(read_file(events))).decode_utf8() | try expect_equal("10,20,")
