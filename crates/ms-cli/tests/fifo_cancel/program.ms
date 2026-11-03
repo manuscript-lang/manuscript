@@ -43,10 +43,10 @@ export fn main() Int:
     let d = promise(fn: ok(open_io_then_read(third.clone())))
     let c = promise(fn: ok(5))
     let limit = milliseconds(300)
-    let c_result = c.with(options: PromiseOptions(timeout: limit)).wait()
-    let a_result = a.with(options: PromiseOptions(timeout: limit)).wait()
-    let b_result = b.with(options: PromiseOptions(timeout: limit)).wait()
-    let d_result = d.with(options: PromiseOptions(timeout: limit)).wait()
+    let c_result = c.with(options: PromiseOptions(timeout: limit.clone())).wait()
+    let a_result = a.with(options: PromiseOptions(timeout: limit.clone())).wait()
+    let b_result = b.with(options: PromiseOptions(timeout: limit.clone())).wait()
+    let d_result = d.with(options: PromiseOptions(timeout: limit.clone())).wait()
     (
         stdout()
         .write(
