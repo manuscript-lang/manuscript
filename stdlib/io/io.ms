@@ -2,7 +2,6 @@ import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Promise, deferred, complete, adopt from "@std/concurrency/promise.ms"
 import Duration from "@std/os/time.ms"
-import Shared, share from "@std/concurrency/shared.ms"
 import (
     msrt_promise_take,
     msrt_promise_wait,
@@ -36,6 +35,7 @@ import (
     msstd_io_redirect_null,
     msstd_io_terminal,
     msstd_terminal_raw_terminal_close,
+    msstd_terminal_raw_terminal_share,
     msstd_terminal_raw_terminal_next_event,
     msstd_terminal_raw_terminal_size_status,
     msstd_terminal_raw_terminal_size_columns,
@@ -369,11 +369,11 @@ interface Terminal:
 
 // Reads decoded events from a raw terminal's native handle.
 type TerminalEvents:
-    handle: Shared[RawHandle]
+    handle: RawHandle
 
 impl Source[TerminalEvent] for TerminalEvents:
     var fn next() TerminalEvent?!:
-        let ready = try msstd_terminal_raw_terminal_next_event(self.handle.get().native, none)
+        let ready = try msstd_terminal_raw_terminal_next_event(self.handle.native, none)
         if ready.is_none(): return ok(none)
 
         let kind = msstd_terminal_event_kind()
@@ -404,8 +404,8 @@ original terminal settings, shows the cursor, and leaves the alternate screen.
 In raw mode, Ctrl-C arrives as a `c` key with `ctrl` set instead of cancelling.
 */
 export type RawTerminal:
-    // The runtime handle, shared with the event stream; `close` releases it.
-    handle: Shared[RawHandle]
+    // The runtime handle; the event stream holds another on the same terminal.
+    handle: RawHandle
 
 // What the native `raw_mode` returns: the runtime handle itself.
 export type RawHandle:
@@ -414,42 +414,42 @@ export type RawHandle:
 impl Closeable for RawTerminal:
     // Restores the terminal; closing again does nothing.
     var fn close() Unit!:
-        msstd_terminal_raw_terminal_close(self.handle.get().native)
+        msstd_terminal_raw_terminal_close(self.handle.native)
         return ok(unit)
 
 impl RawTerminal:
     // Input events as a stream: keys, text and resizes, one per read. Waits honor cancellation and `wait(timeout:)`.
     // The stream ends with an error once the terminal is closed; closing the stream leaves the terminal open.
     fn events() ReadStream[TerminalEvent]:
-        return stream[TerminalEvent](TerminalEvents(self.handle))
+        return stream[TerminalEvent](TerminalEvents(RawHandle(msstd_terminal_raw_terminal_share(self.handle.native))))
 
     // Returns the current terminal size, or `Closed` after close.
     fn size() TerminalSize!:
-        try msstd_terminal_raw_terminal_size_status(self.handle.get().native)
+        try msstd_terminal_raw_terminal_size_status(self.handle.native)
         return ok(
             TerminalSize(
                 columns: msstd_terminal_raw_terminal_size_columns(
-                    self.handle.get().native
+                    self.handle.native
                 ),
-                rows: msstd_terminal_raw_terminal_size_rows(self.handle.get().native)
+                rows: msstd_terminal_raw_terminal_size_rows(self.handle.native)
             )
         )
 
     // Moves the cursor to a zero-based row and column; negative or very large values return `InvalidInput`.
     fn move_cursor(row: Int, column: Int) Unit!:
-        return msstd_terminal_raw_terminal_move_cursor(self.handle.get().native, row, column)
+        return msstd_terminal_raw_terminal_move_cursor(self.handle.native, row, column)
 
     // Shows or hides the cursor until the terminal is restored on close.
     fn show_cursor(visible: Bool) Unit!:
-        return msstd_terminal_raw_terminal_show_cursor(self.handle.get().native, visible)
+        return msstd_terminal_raw_terminal_show_cursor(self.handle.native, visible)
 
     // Erases the selected screen region without moving the cursor.
     fn erase(region: EraseRegion) Unit!:
         match region:
-            Screen: return msstd_terminal_raw_terminal_erase(self.handle.get().native, 0)
-            Line: return msstd_terminal_raw_terminal_erase(self.handle.get().native, 1)
-            LineEnd: return msstd_terminal_raw_terminal_erase(self.handle.get().native, 2)
-            LineStart: return msstd_terminal_raw_terminal_erase(self.handle.get().native, 3)
+            Screen: return msstd_terminal_raw_terminal_erase(self.handle.native, 0)
+            Line: return msstd_terminal_raw_terminal_erase(self.handle.native, 1)
+            LineEnd: return msstd_terminal_raw_terminal_erase(self.handle.native, 2)
+            LineStart: return msstd_terminal_raw_terminal_erase(self.handle.native, 3)
 
 // Returns terminal operations for the current process.
 fn host_terminal() Terminal:
@@ -466,4 +466,4 @@ export fn terminal_size() TerminalSize!:
 // Acquires raw input with an optional alternate screen; returns `Busy` while another raw terminal is open and `NotTerminal` when streams are redirected.
 export fn raw_mode(alternate_screen: Bool) RawTerminal!:
     let handle = try host_terminal().raw_mode(alternate_screen)
-    return ok(RawTerminal(handle: share(handle)))
+    return ok(RawTerminal(handle: handle))

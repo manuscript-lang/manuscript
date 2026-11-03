@@ -24,6 +24,8 @@ export extern fn msstd_io_terminal() Terminal
 
 export extern fn msstd_terminal_raw_terminal_close(handle: NativeRawTerminal) Unit
 
+export extern fn msstd_terminal_raw_terminal_share(handle: NativeRawTerminal) NativeRawTerminal
+
 export extern fn msstd_terminal_raw_terminal_next_event(
     handle: NativeRawTerminal,
     timeout: Duration?

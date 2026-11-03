@@ -15,7 +15,7 @@ import (
     QueryEntry,
     TlsInfo,
     Url,
-    WebSocketMessage
+    RawWebSocketMessage
 ) from "@std/net/net.ms"
 import Duration, Timestamp from "@std/os/time.ms"
 
@@ -64,6 +64,10 @@ export extern fn msstd_url_resolve(base: Url, reference: String) Url!
 
 export extern fn msstd_net_connection_close(handle: NativeConnection) Unit
 
+export extern fn msstd_net_connection_share(handle: NativeConnection) NativeConnection
+
+export extern fn msstd_net_connection_close_if_last(handle: NativeConnection) Unit
+
 export extern fn msstd_net_connection_local_address(handle: NativeConnection) String
 
 export extern fn msstd_net_connection_peer_address(handle: NativeConnection) String
@@ -87,6 +91,10 @@ export extern fn msstd_net_connection_write_bytes(
 export extern fn msstd_net_datagram_address(handle: NativeDatagramSocket) String
 
 export extern fn msstd_net_datagram_close(handle: NativeDatagramSocket) Unit
+
+export extern fn msstd_net_datagram_share(handle: NativeDatagramSocket) NativeDatagramSocket
+
+export extern fn msstd_net_datagram_close_if_last(handle: NativeDatagramSocket) Unit
 
 export extern fn msstd_net_datagram_receive(
     handle: NativeDatagramSocket,
@@ -121,11 +129,15 @@ export extern fn msstd_net_listener_close(handle: NativeListener) Unit
 
 export extern fn msstd_websocket_close(handle: NativeWebSocket) Unit
 
+export extern fn msstd_websocket_share(handle: NativeWebSocket) NativeWebSocket
+
+export extern fn msstd_websocket_close_if_last(handle: NativeWebSocket) Unit
+
 export extern fn msstd_websocket_ping(handle: NativeWebSocket, data: String) Unit!
 
 export extern fn msstd_websocket_ping_bytes(handle: NativeWebSocket, data: Bytes) Unit!
 
-export extern fn msstd_websocket_receive(handle: NativeWebSocket) WebSocketMessage?!
+export extern fn msstd_websocket_receive(handle: NativeWebSocket) RawWebSocketMessage?!
 
 export extern fn msstd_websocket_send_bytes(
     handle: NativeWebSocket,

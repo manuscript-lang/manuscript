@@ -6,7 +6,7 @@ import headers, HttpMethod, buffered, upgrade from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import connect, http_client, request, serve, web_socket from "@std/net/net.ms"
 import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
-import WebSocketOptions, WebSocketMessage from "@std/net/net.ms"
+import WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/net.ms"
 import TlsOptions from "@std/net/net.ms"
 
 fn tls_options() TlsOptions:
@@ -28,7 +28,7 @@ fn echo(exchange: HttpExchange) Unit!:
         let _sent = (
             try http_result(
                 socket.output.write(
-                    WebSocketMessage(data: message.data, text: message.text)
+                    WebSocketMessage(data: message.data, kind: message.kind)
                 )
             )
         )
@@ -107,9 +107,9 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     ) | try expect_ok
     socket.subprotocol | try expect_equal("echo")
 
-    let _sent = socket.output.write(WebSocketMessage(data: "é🙂".to_bytes(), text: true)) | try expect_ok
+    let _sent = socket.output.write(WebSocketMessage(data: "é🙂".to_bytes(), kind: WebSocketKind.Text)) | try expect_ok
     let message = (socket.input.read().wait() | try expect_ok).get()
-    (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
+    (message.kind != WebSocketKind.Text or message.data != "é🙂".to_bytes()) | try expect_false
 
 fn upgrade_status(address: String, version: String, extra: String) String!:
     var client = try connect(address, 2.seconds)

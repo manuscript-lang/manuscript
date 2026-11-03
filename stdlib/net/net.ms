@@ -1,7 +1,5 @@
 import Closeable, Data from "@std/core.ms"
 import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
 import Bytes from "@std/bytes.ms"
 import ClientResponse from "@std/net/http.ms"
 import Duration from "@std/os/time.ms"
@@ -34,6 +32,8 @@ import (
     msstd_url_parse_query,
     msstd_url_resolve,
     msstd_net_connection_close,
+    msstd_net_connection_share,
+    msstd_net_connection_close_if_last,
     msstd_net_connection_local_address,
     msstd_net_connection_peer_address,
     msstd_net_connection_read,
@@ -42,6 +42,8 @@ import (
     msstd_net_connection_write_bytes,
     msstd_net_datagram_address,
     msstd_net_datagram_close,
+    msstd_net_datagram_share,
+    msstd_net_datagram_close_if_last,
     msstd_net_datagram_receive,
     msstd_net_datagram_send_bytes,
     msstd_net_listener_accept,
@@ -51,6 +53,8 @@ import (
     msstd_net_listener_raw_owner,
     msstd_net_release_unadopted,
     msstd_websocket_close,
+    msstd_websocket_share,
+    msstd_websocket_close_if_last,
     msstd_websocket_ping,
     msstd_websocket_ping_bytes,
     msstd_websocket_receive,
@@ -75,37 +79,25 @@ export type RawConnection:
     // The runtime handle; it is released when the last end closes.
     native: NativeConnection
 
-// The socket shared by the two ends of a `Connection` and its `info`.
-export type SharedSocket:
-    raw: Shared[RawConnection]
-    // Ends still open; the socket closes with the last one.
-    open: Shared[Int]
-
-// Records that one end closed; true for the last one.
-fn last_end(open: Shared[Int]) Bool:
-    var guard = lock(open)
-    guard.value -= 1
-    return guard.value == 0
-
 type ConnectionSource:
-    socket: SharedSocket
+    raw: RawConnection
 
 impl Source[Bytes] for ConnectionSource:
     // Waits for the next chunk; none at the end of the stream.
     var fn next() Bytes?!:
-        return msstd_net_connection_read(self.socket.raw.get().native, none, none)
+        return msstd_net_connection_read(self.raw.native, none, none)
 
+    // Closes the socket when the output end is already closed.
     var fn close() Unit!:
-        if last_end(self.socket.open):
-            msstd_net_connection_close(self.socket.raw.get().native)
+        msstd_net_connection_close_if_last(self.raw.native)
         return ok(unit)
 
 type ConnectionSink:
-    socket: SharedSocket
+    raw: RawConnection
 
 impl Sink[Bytes] for ConnectionSink:
     var fn put(value: Bytes) Unit!:
-        return msstd_net_connection_write_bytes(self.socket.raw.get().native, value, none)
+        return msstd_net_connection_write_bytes(self.raw.native, value, none)
 
     var fn drain() Promise[Unit]:
         return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
@@ -115,28 +107,26 @@ impl Sink[Bytes] for ConnectionSink:
 
     // Half-closes the connection so the peer sees the end of the stream; the socket closes once the input is closed too.
     var fn close() Unit!:
-        let _ = msstd_net_connection_shutdown_write(self.socket.raw.get().native)
-        if last_end(self.socket.open):
-            msstd_net_connection_close(self.socket.raw.get().native)
+        let _ = msstd_net_connection_shutdown_write(self.raw.native)
+        msstd_net_connection_close_if_last(self.raw.native)
         return ok(unit)
 
 // What is known about a connection, available after its streams are moved elsewhere.
 export type ConnectionInfo:
-    socket: SharedSocket
+    // This end's address as `host:port` text, with IPv6 hosts in brackets; for Unix sockets it is the socket path.
+    local_address: String
+    // The remote end's address as `host:port` text, with IPv6 hosts in brackets.
+    peer_address: String
+    // The negotiated TLS version, cipher suite, protocol, and peer certificates; none when the connection is not TLS.
+    tls: TlsInfo?
 
 impl ConnectionInfo:
-    // Returns this end's address as `host:port` text, with IPv6 hosts in brackets; for Unix sockets it is the socket path.
-    fn local_address() String:
-        return msstd_net_connection_local_address(self.socket.raw.get().native)
-
-    // Returns the remote end's address as `host:port` text, with IPv6 hosts in brackets.
-    fn peer_address() String:
-        return msstd_net_connection_peer_address(self.socket.raw.get().native)
-
     // Returns the negotiated TLS version, cipher suite, protocol, and peer certificates.
     // A connection that is not TLS returns InvalidInput.
     fn tls_info() TlsInfo!:
-        return msstd_net_connection_tls_info(self.socket.raw.get().native)
+        if let info = self.tls:
+            return ok(info.clone())
+        return error(Error("network: invalid input", kind: ErrorCategory.InvalidInput))
 
 /*
 A connected stream socket, optionally protected by TLS: `input` reads chunks until the peer's end of stream, and
@@ -159,11 +149,17 @@ impl Closeable for Connection:
 
 // Wraps a native socket into a `Connection`.
 fn connection(raw: RawConnection) Connection:
-    let socket = SharedSocket(raw: share(raw), open: share(2))
+    let local = msstd_net_connection_local_address(raw.native)
+    let peer = msstd_net_connection_peer_address(raw.native)
+    var tls: TlsInfo? = none
+    match msstd_net_connection_tls_info(raw.native):
+        ok(found): tls = found
+        error(_): tls = none
+    let other = RawConnection(msstd_net_connection_share(raw.native))
     return Connection(
-        input: stream[Bytes](ConnectionSource(socket.clone())),
-        output: writer[Bytes](ConnectionSink(socket.clone())),
-        info: ConnectionInfo(socket)
+        input: stream[Bytes](ConnectionSource(raw)),
+        output: writer[Bytes](ConnectionSink(other)),
+        info: ConnectionInfo(local, peer, tls)
     )
 
 // One datagram. Received, `address` is where it came from; written, where it goes.
@@ -181,32 +177,25 @@ export type RawDatagramSocket:
     // The runtime handle; it is released when the last end closes.
     native: NativeDatagramSocket
 
-type SharedDatagram:
-    raw: Shared[RawDatagramSocket]
-    open: Shared[Int]
-
 type DatagramSource:
-    socket: SharedDatagram
+    raw: RawDatagramSocket
 
 impl Source[Datagram] for DatagramSource:
     // Waits for one datagram, at most 65535 bytes; a larger one is an error of kind `LimitExceeded` and is discarded.
     var fn next() Datagram?!:
-        return ok(try msstd_net_datagram_receive(self.socket.raw.get().native, none, none))
+        return ok(try msstd_net_datagram_receive(self.raw.native, none, none))
 
     var fn close() Unit!:
-        if last_end(self.socket.open):
-            msstd_net_datagram_close(self.socket.raw.get().native)
+        msstd_net_datagram_close_if_last(self.raw.native)
         return ok(unit)
 
 type DatagramSink:
-    socket: SharedDatagram
+    raw: RawDatagramSocket
 
 impl Sink[Datagram] for DatagramSink:
     // Sends `value.data` as one datagram to `value.address`, resolving a host name with the network's resolver.
     var fn put(value: Datagram) Unit!:
-        return msstd_net_datagram_send_bytes(
-            self.socket.raw.get().native, value.data, value.address, none
-        )
+        return msstd_net_datagram_send_bytes(self.raw.native, value.data, value.address, none)
 
     var fn drain() Promise[Unit]:
         return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
@@ -215,8 +204,7 @@ impl Sink[Datagram] for DatagramSink:
         return 0
 
     var fn close() Unit!:
-        if last_end(self.socket.open):
-            msstd_net_datagram_close(self.socket.raw.get().native)
+        msstd_net_datagram_close_if_last(self.raw.native)
         return ok(unit)
 
 // A connectionless socket for sending and receiving datagrams. Closing it closes both streams.
@@ -235,10 +223,10 @@ impl Closeable for DatagramSocket:
 
 fn datagram_socket(raw: RawDatagramSocket) DatagramSocket:
     let address = msstd_net_datagram_address(raw.native)
-    let socket = SharedDatagram(raw: share(raw), open: share(2))
+    let other = RawDatagramSocket(msstd_net_datagram_share(raw.native))
     return DatagramSocket(
-        input: stream[Datagram](DatagramSource(socket.clone())),
-        output: writer[Datagram](DatagramSink(socket)),
+        input: stream[Datagram](DatagramSource(raw)),
+        output: writer[Datagram](DatagramSink(other)),
         address: address
     )
 
@@ -569,31 +557,52 @@ export type RawWebSocket:
     // The runtime handle; it is released when the last end closes.
     native: NativeWebSocket
 
-export type SharedWebSocket:
-    raw: Shared[RawWebSocket]
-    open: Shared[Int]
+// The kind of a WebSocket message.
+export type WebSocketKind:
+    case Text  // A text frame: the payload is valid UTF-8.
+    case Binary  // A binary frame.
+    case Ping  // A ping control frame, at most 125 bytes; written only, the peer's pongs are answered automatically.
+
+// One WebSocket message.
+export type WebSocketMessage:
+    // The payload bytes; for a text message they are the UTF-8 encoding of the text.
+    data: Bytes
+    kind: WebSocketKind
+
+// A message as the native layer reports it.
+export type RawWebSocketMessage:
+    data: Bytes
+    text: Bool
 
 type WebSocketSource:
-    socket: SharedWebSocket
+    raw: RawWebSocket
 
 impl Source[WebSocketMessage] for WebSocketSource:
     // Waits for the next complete message; none once the peer closes normally.
     // A larger message is `LimitExceeded` and a malformed text message `InvalidData`; after any failure the connection is closed.
     var fn next() WebSocketMessage?!:
-        return msstd_websocket_receive(self.socket.raw.get().native)
+        let raw = try msstd_websocket_receive(self.raw.native)
+        if let message = raw:
+            var kind = WebSocketKind.Binary
+            if message.text:
+                kind = WebSocketKind.Text
+            return ok(WebSocketMessage(message.data, kind))
+        return ok(none)
 
     var fn close() Unit!:
-        if last_end(self.socket.open):
-            msstd_websocket_close(self.socket.raw.get().native)
+        msstd_websocket_close_if_last(self.raw.native)
         return ok(unit)
 
 type WebSocketSink:
-    socket: SharedWebSocket
+    raw: RawWebSocket
 
 impl Sink[WebSocketMessage] for WebSocketSink:
-    // Sends one message, a text frame when `text` is set and a binary frame otherwise; text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded.
+    // Sends one message. Text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded.
     var fn put(value: WebSocketMessage) Unit!:
-        return msstd_websocket_send_bytes(self.socket.raw.get().native, value.data, value.text)
+        match value.kind:
+            Text: return msstd_websocket_send_bytes(self.raw.native, value.data, true)
+            Binary: return msstd_websocket_send_bytes(self.raw.native, value.data, false)
+            Ping: return msstd_websocket_ping_bytes(self.raw.native, value.data)
 
     var fn drain() Promise[Unit]:
         return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
@@ -602,8 +611,7 @@ impl Sink[WebSocketMessage] for WebSocketSink:
         return 0
 
     var fn close() Unit!:
-        if last_end(self.socket.open):
-            msstd_websocket_close(self.socket.raw.get().native)
+        msstd_websocket_close_if_last(self.raw.native)
         return ok(unit)
 
 /*
@@ -618,22 +626,6 @@ export type WebSocket:
     output: WriteStream[WebSocketMessage]
     // The subprotocol the server selected during the handshake, or an empty string when none was negotiated.
     subprotocol: String
-    // Control frames, which are not messages.
-    control: WebSocketControl
-
-// Sends control frames on a WebSocket.
-export type WebSocketControl:
-    socket: SharedWebSocket
-
-impl WebSocketControl:
-    // Sends a ping frame carrying `data`, which must be at most 125 bytes, with a one-second write deadline.
-    // It does not wait for the pong. Returns Closed on a closed socket.
-    fn ping(data: String) Unit!:
-        return msstd_websocket_ping(self.socket.raw.get().native, data)
-
-    // Sends a ping frame carrying raw bytes, with the same limits and deadline as ping.
-    fn ping_bytes(data: Bytes) Unit!:
-        return msstd_websocket_ping_bytes(self.socket.raw.get().native, data)
 
 impl Closeable for WebSocket:
     // Closes both streams, and with them the connection.
@@ -644,20 +636,12 @@ impl Closeable for WebSocket:
 // Wraps a native WebSocket into a `WebSocket`.
 export fn web_socket_from(raw: RawWebSocket) WebSocket:
     let subprotocol = msstd_websocket_subprotocol(raw.native)
-    let socket = SharedWebSocket(raw: share(raw), open: share(2))
+    let other = RawWebSocket(msstd_websocket_share(raw.native))
     return WebSocket(
-        input: stream[WebSocketMessage](WebSocketSource(socket.clone())),
-        output: writer[WebSocketMessage](WebSocketSink(socket.clone())),
-        subprotocol: subprotocol,
-        control: WebSocketControl(socket)
+        input: stream[WebSocketMessage](WebSocketSource(raw)),
+        output: writer[WebSocketMessage](WebSocketSink(other)),
+        subprotocol: subprotocol
     )
-
-// A received message and whether its payload is UTF-8 text.
-export type WebSocketMessage:
-    // The message payload bytes; for a text message they are the UTF-8 encoding of the text.
-    data: Bytes
-    // True when the peer sent a text frame, which guarantees `data` is valid UTF-8; False for a binary frame.
-    text: Bool
 
 // WebSocket message, timeout, TLS, and per-message compression settings.
 export type WebSocketOptions:
