@@ -192,6 +192,8 @@ pub struct Cx {
     pub methods: Vec<ct::MethodRef>,
     /// The checker type behind each lowered record or alternative.
     pub source_tys: HashMap<MTy, ct::Ty>,
+    /// The method of a native record found by `Cx::native_method`, per type and method name.
+    pub native_methods: HashMap<(MTy, &'static str), Option<FuncId>>,
     /// Types whose descriptor glue is registered, per implementation scope.
     pub glue_seen: std::collections::HashSet<(MTy, u32)>,
     /// Nominal types with an extension implemented outside their defining module.
@@ -275,6 +277,7 @@ impl Cx {
             callables,
             mutated,
             source_tys: HashMap::new(),
+            native_methods: HashMap::new(),
             glue_seen: Default::default(),
             tycache: HashMap::new(),
             insts: HashMap::new(),
@@ -392,6 +395,8 @@ impl Cx {
             }
             Kind::Record => {
                 let (id, ty) = m.add_record(&t.to_string(), Vec::new());
+                m.records[id.index()].shared_guard =
+                    t.is_source_type("@std/concurrency/sync.ms", "SharedGuard");
                 m.records[id.index()].native = if t.is_time("Timestamp") {
                     Some(NativeRec::Timestamp)
                 } else if t.is_time("Instant") {

@@ -33,6 +33,20 @@ impl Cx {
         &mut self,
         m: &mut Module,
         t: MTy,
+        name: &'static str,
+    ) -> Result<Option<FuncId>, crate::Error> {
+        if let Some(found) = self.native_methods.get(&(t, name)) {
+            return Ok(*found);
+        }
+        let found = self.find_native_method(m, t, name)?;
+        self.native_methods.insert((t, name), found);
+        Ok(found)
+    }
+
+    fn find_native_method(
+        &mut self,
+        m: &mut Module,
+        t: MTy,
         name: &str,
     ) -> Result<Option<FuncId>, crate::Error> {
         let Some(ty) = self.source_tys.get(&t).cloned() else {

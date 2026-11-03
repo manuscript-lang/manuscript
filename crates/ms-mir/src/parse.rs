@@ -309,6 +309,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     name,
                     fields: Vec::new(),
                     shared_box: false,
+                    shared_guard: false,
                     native: None,
                 });
             }
