@@ -49,7 +49,6 @@ pub enum Glue {
     BlockCopy,
     /// `fn(arg: *mut u8)` thunk used by cleanup.push; key carries the closer function.
     CleanupThunk(u32),
-    /// Destructor of a MIR `Shared` box `fn(obj)`; the `Ty` is `T`. Drops the payload, frees the box.
     /// `fn(slot)` that drops the value stored in memory at `slot` (descriptor `drop`).
     SlotDrop,
     /// `fn(src, dst)` that copies the value at `src` into uninitialised `dst` (descriptor `copy`).

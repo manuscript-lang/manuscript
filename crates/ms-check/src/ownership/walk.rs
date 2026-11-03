@@ -715,10 +715,9 @@ impl Walker<'_> {
         let DeclKind::Impl(i) = &c.func.decl.0.decl.kind else {
             return false;
         };
-        // A type's own methods are checked as an implementation of a synthesized interface.
-        i.contract
-            .as_ref()
-            .is_some_and(|t| !t.name().ends_with(crate::passes::INHERENT_SUFFIX))
+        // A type's own methods are checked as an implementation of a synthesized interface;
+        // the desugaring marks that impl synthetic.
+        i.contract.is_some() && !c.func.decl.0.decl.synthetic
     }
 
     /// Whether the declared result type is an interface.
