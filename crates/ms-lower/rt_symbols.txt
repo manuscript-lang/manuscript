@@ -34,7 +34,7 @@ msrt_bytes_drop(b: *mut VecVal) @leaf
 msrt_bytes_ends_with(b: *const VecVal, v: *const VecVal) -> u8 @leaf
 msrt_bytes_extend(b: *mut VecVal, values: *const VecVal) @leaf
 msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal) @leaf
-msrt_bytes_get(b: *const VecVal, index: i64, has_default: u8, default: i64) -> i64 @leaf
+msrt_bytes_get(b: *const VecVal, index: i64, has_default: HasRaw, default: i64) -> i64 @leaf
 msrt_bytes_index_of(b: *const VecVal, v: *const VecVal, out: *mut i64) -> u8 @leaf
 msrt_bytes_index_of_byte(b: *const VecVal, value: i64, start: i64, out: *mut i64) -> u8 @leaf
 msrt_bytes_join(parts: *const VecVal, out: *mut VecVal) @leaf
@@ -42,7 +42,7 @@ msrt_bytes_last_index_of(b: *const VecVal, v: *const VecVal, out: *mut i64) -> u
 msrt_bytes_read_word(b: *const VecVal, at: i64, width: i64, little: u8, out: *mut i64) -> u8 @leaf
 msrt_bytes_reversed(b: *const VecVal, out: *mut VecVal) @leaf
 msrt_bytes_slice(b: *const VecVal, start: i64, end: i64, out: *mut VecVal) -> u8 @leaf
-msrt_bytes_split(b: *const VecVal, sep: *const VecVal, has_max: u8, max: i64, out: *mut VecVal) @leaf
+msrt_bytes_split(b: *const VecVal, sep: *const VecVal, has_max: HasRaw, max: i64, out: *mut VecVal) @leaf
 msrt_bytes_starts_with(b: *const VecVal, v: *const VecVal) -> u8 @leaf
 msrt_bytes_values(b: *const VecVal, out: *mut VecVal) @leaf
 msrt_bytes_with_value(b: *const VecVal, index: i64, value: i64, out: *mut VecVal) @leaf
@@ -116,7 +116,7 @@ msrt_list_drop(v: *mut VecVal, d: ElemDesc) @leaf
 msrt_list_drop_n(v: *const VecVal, d: ElemDesc, count: i64, out: *mut VecVal) @leaf
 msrt_list_extend(v: *mut VecVal, d: ElemDesc, other: *mut VecVal) @leaf
 msrt_list_fill(v: *mut VecVal, d: ElemDesc, value: *const u8, start: i64, end: i64) @leaf
-msrt_list_filled(value: *const u8, d: ElemDesc, count: i64, has_max: u8, max: i64, out: *mut VecVal) -> u8 @leaf
+msrt_list_filled(value: *const u8, d: ElemDesc, count: i64, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msrt_list_first(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 @leaf
 msrt_list_flatten(lists: *const VecVal, d: ElemDesc, out: *mut VecVal) @leaf
 msrt_list_get(v: *const VecVal, d: ElemDesc, index: i64, default: *const u8, out: *mut u8) @leaf
@@ -135,7 +135,7 @@ msrt_list_pop(v: *mut VecVal, d: ElemDesc, out: *mut u8) -> u8 @leaf
 msrt_list_prepend(v: *mut VecVal, d: ElemDesc, e: *const u8) @leaf
 msrt_list_push(v: *mut VecVal, d: ElemDesc, e: *const u8) @leaf
 msrt_list_range(start: i64, end: i64, out: *mut VecVal) @leaf
-msrt_list_range_by(start: i64, end: i64, step: i64, has_max: u8, max: i64, out: *mut VecVal) -> u8 @leaf
+msrt_list_range_by(start: i64, end: i64, step: i64, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msrt_list_remove(v: *mut VecVal, d: ElemDesc, index: i64) @leaf
 msrt_list_replace(v: *mut VecVal, d: ElemDesc, index: i64, e: *mut u8, out: *mut u8) @leaf
 msrt_list_reserve(v: *mut VecVal, d: ElemDesc, extra: i64) @leaf
@@ -276,7 +276,7 @@ msrt_string_fmt6(mask: i64, a: usize, b: usize, c: usize, d: usize, e: usize, f:
 msrt_string_free(s: *const StrVal) @leaf
 msrt_string_from_bytes(ptr: *const u8, len: usize, out: *mut StrVal) @leaf
 msrt_string_from_scalars(values: *const VecVal, out: *mut StrVal) -> u8 @leaf
-msrt_string_get(s: *const StrVal, index: i64, has_default: u8, default: *const StrVal, out: *mut StrVal) @leaf
+msrt_string_get(s: *const StrVal, index: i64, has_default: HasRaw, default: *const StrVal, out: *mut StrVal) @leaf
 msrt_string_hash(s: *const StrVal) -> i64 @leaf @pure
 msrt_string_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8 @leaf
 msrt_string_is_empty(s: *const StrVal) -> u8 @leaf @pure
@@ -284,26 +284,26 @@ msrt_string_last_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> 
 msrt_string_length(s: *const StrVal) -> i64 @leaf
 msrt_string_lines(s: *const StrVal, out: *mut VecVal) @leaf
 msrt_string_lower(s: *const StrVal, out: *mut StrVal) @leaf
-msrt_string_normalize(s: *const StrVal, form: *const StrVal, has_max: u8, max: i64, out: *mut StrVal) -> u8 @leaf
-msrt_string_normalize_kind(s: *const StrVal, kind: i64, has_max: u8, max: i64, out: *mut StrVal) -> u8 @leaf
+msrt_string_normalize(s: *const StrVal, form: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @leaf
+msrt_string_normalize_kind(s: *const StrVal, kind: i64, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @leaf
 msrt_string_pad_end(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal) @leaf
 msrt_string_pad_start(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal) @leaf
 msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 @leaf
 msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8 @leaf
 msrt_string_quote(s: *const StrVal, out: *mut StrVal) @leaf
-msrt_string_repeat(s: *const StrVal, count: i64, has_max: u8, max: i64, out: *mut StrVal) -> u8 @leaf
+msrt_string_repeat(s: *const StrVal, count: i64, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @leaf
 msrt_string_replace(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @leaf
 msrt_string_replace_first(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal) @leaf
 msrt_string_reverse(a: *const StrVal, out: *mut StrVal) @leaf
-msrt_string_scalar_at(s: *const StrVal, index: i64, has_default: u8, default: i64) -> i64 @leaf
+msrt_string_scalar_at(s: *const StrVal, index: i64, has_default: HasRaw, default: i64) -> i64 @leaf
 msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64 @leaf
 msrt_string_scalar_length(s: *const StrVal) -> i64 @leaf
 msrt_string_scalar_values(s: *const StrVal, out: *mut VecVal) @leaf
 msrt_string_slice(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) -> u8 @leaf
 msrt_string_slice_scalars(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) -> u8 @leaf
-msrt_string_split(s: *const StrVal, sep: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) @leaf
-msrt_string_split_iter(s: *const StrVal, sep: *const StrVal, has_max: u8, max: i64) -> *mut SplitIter @leaf
-msrt_string_split_view(s: *const StrVal, sep: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) @leaf
+msrt_string_split(s: *const StrVal, sep: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) @leaf
+msrt_string_split_iter(s: *const StrVal, sep: *const StrVal, has_max: HasRaw, max: i64) -> *mut SplitIter @leaf
+msrt_string_split_view(s: *const StrVal, sep: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) @leaf
 msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8 @leaf
 msrt_string_take(s: *const StrVal, count: i64, out: *mut StrVal) @leaf
 msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal) @leaf
@@ -339,8 +339,8 @@ msrt_uint_to_float(v: i64) -> f64
 msrt_uint_to_string(v: i64, out: *mut StrVal)
 msrt_uint_to_string_radix(v: i64, radix: i64, out: *mut StrVal)
 msrt_unwind_drops() -> u8 @leaf
-msstd_archive_pack(entries: *const RecList<EntryRec>, format: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
-msstd_archive_unpack(data: *const VecVal, format: *const StrVal, has_limits: u8, has_entries: u8, max_entries: i64, has_entry_bytes: u8, max_entry_bytes: i64, has_total: u8, max_total_bytes: i64, out: *mut VecVal) -> u8
+msstd_archive_pack(entries: *const RecList<EntryRec>, format: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8
+msstd_archive_unpack(data: *const VecVal, format: *const StrVal, has_limits: HasRaw, has_entries: HasRaw, max_entries: i64, has_entry_bytes: HasRaw, max_entry_bytes: i64, has_total: HasRaw, max_total_bytes: i64, out: *mut VecVal) -> u8
 msstd_bigint_abs(a: *const ObjCell<Big>) -> *mut ObjCell<Big> @leaf
 msstd_bigint_add(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mut ObjCell<Big> @leaf
 msstd_bigint_bit_and(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mut ObjCell<Big> @leaf
@@ -359,7 +359,7 @@ msstd_bigint_lcm(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mut Obj
 msstd_bigint_modulo(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mut ObjCell<Big> @leaf
 msstd_bigint_multiply(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mut ObjCell<Big> @leaf
 msstd_bigint_negate(a: *const ObjCell<Big>) -> *mut ObjCell<Big> @leaf
-msstd_bigint_parse(text: *const StrVal, radix: i64, has_max: u8, max: i64, out: *mut *mut ObjCell<Big>) -> u8 @leaf
+msstd_bigint_parse(text: *const StrVal, radix: i64, has_max: HasRaw, max: i64, out: *mut *mut ObjCell<Big>) -> u8 @leaf
 msstd_bigint_pow(a: *const ObjCell<Big>, exponent: i64, out: *mut *mut ObjCell<Big>) -> u8 @leaf
 msstd_bigint_pow_mod(a: *const ObjCell<Big>, exponent: *const ObjCell<Big>, modulus: *const ObjCell<Big>, out: *mut *mut ObjCell<Big>) -> u8 @leaf
 msstd_bigint_quotient(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mut ObjCell<Big> @leaf
@@ -375,11 +375,11 @@ msstd_bigint_to_string_radix(a: *const ObjCell<Big>, radix: i64, out: *mut StrVa
 msstd_checksum_adler32_update(initial: i64, data: *const VecVal) -> i64
 msstd_checksum_crc32(data: *const VecVal) -> i64
 msstd_checksum_crc32_update(initial: i64, data: *const VecVal) -> i64
-msstd_compress_compress(data: *const VecVal, format: *const StrVal, level: i64, has_max: u8, max: i64, out: *mut VecVal) -> u8
+msstd_compress_compress(data: *const VecVal, format: *const StrVal, level: i64, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8
 msstd_compress_decoder_end(decoder: *const ObjCell<DecoderObj>, out: *mut VecVal) -> u8
-msstd_compress_decoder_new(name: *const StrVal, has_max: u8, max: i64, out: *mut *mut ObjCell<DecoderObj>) -> u8
+msstd_compress_decoder_new(name: *const StrVal, has_max: HasRaw, max: i64, out: *mut *mut ObjCell<DecoderObj>) -> u8
 msstd_compress_decoder_push(decoder: *const ObjCell<DecoderObj>, data: *const VecVal, out: *mut VecVal) -> u8
-msstd_compress_decompress(data: *const VecVal, format: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
+msstd_compress_decompress(data: *const VecVal, format: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8
 msstd_compress_encoder_end(e: *const ObjCell<EncoderObj>, out: *mut VecVal)
 msstd_compress_encoder_new(name: *const StrVal, level: i64, out: *mut *mut ObjCell<EncoderObj>) -> u8
 msstd_compress_encoder_push(e: *const ObjCell<EncoderObj>, data: *const VecVal, out: *mut VecVal)
@@ -421,74 +421,74 @@ msstd_decimal_literal(text: *const StrVal, out: *mut DecRec) @leaf
 msstd_decimal_multiply(a: *const DecRec, b: *const DecRec, out: *mut DecRec) @leaf
 msstd_decimal_negate(a: *const DecRec, out: *mut DecRec) @leaf
 msstd_decimal_parse(text: *const StrVal, out: *mut DecRec) -> u8 @leaf
-msstd_decimal_round(value: *const DecRec, places: i64, has_mode: u8, mode: i64, out: *mut DecRec) -> u8 @leaf
+msstd_decimal_round(value: *const DecRec, places: i64, has_mode: HasRaw, mode: i64, out: *mut DecRec) -> u8 @leaf
 msstd_decimal_subtract(a: *const DecRec, b: *const DecRec, out: *mut DecRec) @leaf
-msstd_decimal_to_fixed(value: *const DecRec, digits: i64, has_mode: u8, mode: i64, out: *mut StrVal) -> u8 @leaf
+msstd_decimal_to_fixed(value: *const DecRec, digits: i64, has_mode: HasRaw, mode: i64, out: *mut StrVal) -> u8 @leaf
 msstd_decimal_to_float(a: *const DecRec) -> f64 @leaf
 msstd_decimal_to_string(a: *const DecRec, out: *mut StrVal) @leaf
 msstd_decimal_truncate_to_int(a: *const DecRec, out: *mut i64) -> u8 @leaf
-msstd_encoding_ascii85_decode(text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8 @leaf
+msstd_encoding_ascii85_decode(text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_encoding_ascii85_encode(data: *const VecVal, out: *mut StrVal) @leaf
-msstd_encoding_base32_decode(text: *const StrVal, hex_alphabet: u8, padded: u8, has_max: u8, max: i64, out: *mut VecVal) -> u8 @leaf
+msstd_encoding_base32_decode(text: *const StrVal, hex_alphabet: u8, padded: u8, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_encoding_base32_encode(data: *const VecVal, hex_alphabet: u8, padded: u8, out: *mut StrVal) @leaf
-msstd_encoding_base64_decode(text: *const StrVal, url_safe: u8, has_max: u8, max: i64, out: *mut VecVal) -> u8 @leaf
-msstd_encoding_base64_decode_unpadded(text: *const StrVal, url_safe: u8, has_max: u8, max: i64, out: *mut VecVal) -> u8 @leaf
+msstd_encoding_base64_decode(text: *const StrVal, url_safe: u8, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
+msstd_encoding_base64_decode_unpadded(text: *const StrVal, url_safe: u8, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_encoding_base64_encode(data: *const VecVal, url_safe: u8, out: *mut StrVal) @leaf
 msstd_encoding_base64_encode_unpadded(data: *const VecVal, url_safe: u8, out: *mut StrVal) @leaf
-msstd_fs_access(path: *const StrVal, mode: i64, err: *mut StrVal) -> u8
-msstd_fs_append_file(path: *const StrVal, data: *const VecVal, err: *mut StrVal) -> u8
-msstd_fs_canonicalize(path: *const StrVal, out: *mut StrVal, err: *mut StrVal) -> u8
-msstd_fs_chmod(path: *const StrVal, mode: i64, follow: u8, err: *mut StrVal) -> u8
-msstd_fs_chown(path: *const StrVal, uid: i64, gid: i64, follow: u8, err: *mut StrVal) -> u8
-msstd_fs_copy(source: *const StrVal, destination: *const StrVal, flags: i64, clone: *const StrVal, has_entries: u8, entries: i64, has_bytes: u8, bytes: i64, filter: *mut Closure, err: *mut StrVal) -> u8
-msstd_fs_create_directory(path: *const StrVal, recursive: u8, err: *mut StrVal) -> u8
-msstd_fs_create_link(path: *const StrVal, target: *const StrVal, err: *mut StrVal) -> u8
+msstd_fs_access(path: *const StrVal, mode: i64, err: ErrSlot) -> u8
+msstd_fs_append_file(path: *const StrVal, data: *const VecVal, err: ErrSlot) -> u8
+msstd_fs_canonicalize(path: *const StrVal, out: *mut StrVal, err: ErrSlot) -> u8
+msstd_fs_chmod(path: *const StrVal, mode: i64, follow: u8, err: ErrSlot) -> u8
+msstd_fs_chown(path: *const StrVal, uid: i64, gid: i64, follow: u8, err: ErrSlot) -> u8
+msstd_fs_copy(source: *const StrVal, destination: *const StrVal, flags: i64, clone: *const StrVal, has_entries: HasRaw, entries: i64, has_bytes: HasRaw, bytes: i64, filter: *mut Closure, err: ErrSlot) -> u8
+msstd_fs_create_directory(path: *const StrVal, recursive: u8, err: ErrSlot) -> u8
+msstd_fs_create_link(path: *const StrVal, target: *const StrVal, err: ErrSlot) -> u8
 msstd_fs_directory_close(h: *mut ObjCell<Directory>)
-msstd_fs_directory_open(path: *const StrVal, out: *mut *mut ObjCell<Directory>, err: *mut StrVal) -> u8
+msstd_fs_directory_open(path: *const StrVal, out: *mut *mut ObjCell<Directory>, err: ErrSlot) -> u8
 msstd_fs_directory_path(h: *const ObjCell<Directory>, out: *mut StrVal)
-msstd_fs_directory_read(h: *mut ObjCell<Directory>, out: *mut EntryOut, err: *mut StrVal) -> u8
-msstd_fs_file_chmod(h: *mut ObjCell<Stream>, mode: i64, err: *mut StrVal) -> u8
-msstd_fs_file_chown(h: *mut ObjCell<Stream>, uid: i64, gid: i64, err: *mut StrVal) -> u8
-msstd_fs_file_clone(h: *const ObjCell<Stream>, out: *mut *mut ObjCell<Stream>, err: *mut StrVal) -> u8
-msstd_fs_file_data_sync(h: *mut ObjCell<Stream>, err: *mut StrVal) -> u8
+msstd_fs_directory_read(h: *mut ObjCell<Directory>, out: *mut EntryOut, err: ErrSlot) -> u8
+msstd_fs_file_chmod(h: *mut ObjCell<Stream>, mode: i64, err: ErrSlot) -> u8
+msstd_fs_file_chown(h: *mut ObjCell<Stream>, uid: i64, gid: i64, err: ErrSlot) -> u8
+msstd_fs_file_clone(h: *const ObjCell<Stream>, out: *mut *mut ObjCell<Stream>, err: ErrSlot) -> u8
+msstd_fs_file_data_sync(h: *mut ObjCell<Stream>, err: ErrSlot) -> u8
 msstd_fs_file_path(h: *const ObjCell<Stream>, out: *mut StrVal)
-msstd_fs_file_read_at(h: *mut ObjCell<Stream>, offset: i64, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_fs_file_read_file(h: *mut ObjCell<Stream>, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_fs_file_read_lines(h: *mut ObjCell<Stream>, max_bytes: i64, max_lines: i64, out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_fs_file_read_vectors(h: *mut ObjCell<Stream>, sizes: *const VecVal, offset: i64, out: *mut VecVal, err: *mut StrVal) -> u8
+msstd_fs_file_read_at(h: *mut ObjCell<Stream>, offset: i64, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_fs_file_read_file(h: *mut ObjCell<Stream>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_fs_file_read_lines(h: *mut ObjCell<Stream>, max_bytes: i64, max_lines: i64, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_fs_file_read_vectors(h: *mut ObjCell<Stream>, sizes: *const VecVal, offset: i64, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_fs_file_reader(h: *mut ObjCell<Stream>) -> *mut ObjCell<Stream>
-msstd_fs_file_seek(h: *mut ObjCell<Stream>, offset: i64, origin: i64, out: *mut i64, err: *mut StrVal) -> u8
-msstd_fs_file_set_times(h: *mut ObjCell<Stream>, accessed: *const Timestamp, modified: *const Timestamp, err: *mut StrVal) -> u8
-msstd_fs_file_stat(h: *mut ObjCell<Stream>, out: *mut InfoOut, err: *mut StrVal) -> u8
-msstd_fs_file_sync(h: *mut ObjCell<Stream>, err: *mut StrVal) -> u8
-msstd_fs_file_truncate(h: *mut ObjCell<Stream>, size: i64, err: *mut StrVal) -> u8
-msstd_fs_file_try_lock(h: *mut ObjCell<Stream>, exclusive: u8, out: *mut i64, err: *mut StrVal) -> u8
-msstd_fs_file_unlock(h: *mut ObjCell<Stream>, err: *mut StrVal) -> u8
-msstd_fs_file_write_at(h: *mut ObjCell<Stream>, offset: i64, data: *const VecVal, err: *mut StrVal) -> u8
-msstd_fs_file_write_vectors(h: *mut ObjCell<Stream>, buffers: *const VecVal, offset: i64, err: *mut StrVal) -> u8
+msstd_fs_file_seek(h: *mut ObjCell<Stream>, offset: i64, origin: i64, out: *mut i64, err: ErrSlot) -> u8
+msstd_fs_file_set_times(h: *mut ObjCell<Stream>, accessed: *const Timestamp, modified: *const Timestamp, err: ErrSlot) -> u8
+msstd_fs_file_stat(h: *mut ObjCell<Stream>, out: *mut InfoOut, err: ErrSlot) -> u8
+msstd_fs_file_sync(h: *mut ObjCell<Stream>, err: ErrSlot) -> u8
+msstd_fs_file_truncate(h: *mut ObjCell<Stream>, size: i64, err: ErrSlot) -> u8
+msstd_fs_file_try_lock(h: *mut ObjCell<Stream>, exclusive: u8, out: *mut i64, err: ErrSlot) -> u8
+msstd_fs_file_unlock(h: *mut ObjCell<Stream>, err: ErrSlot) -> u8
+msstd_fs_file_write_at(h: *mut ObjCell<Stream>, offset: i64, data: *const VecVal, err: ErrSlot) -> u8
+msstd_fs_file_write_vectors(h: *mut ObjCell<Stream>, buffers: *const VecVal, offset: i64, err: ErrSlot) -> u8
 msstd_fs_file_writer(h: *mut ObjCell<Stream>) -> *mut ObjCell<Stream>
-msstd_fs_glob_entries(path: *const StrVal, patterns: *const VecVal, exclude: *const VecVal, follow_links: u8, has_max_entries: u8, max_entries: i64, has_max_results: u8, max_results: i64, filter: *mut Closure, out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_fs_hard_link(source: *const StrVal, destination: *const StrVal, err: *mut StrVal) -> u8
-msstd_fs_list(path: *const StrVal, has_limit: u8, limit: i64, out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_fs_open(path: *const StrVal, flags: *const StrVal, mode: i64, out: *mut *mut ObjCell<Stream>, err: *mut StrVal) -> u8
-msstd_fs_read_file(path: *const StrVal, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_fs_read_link(path: *const StrVal, out: *mut StrVal, err: *mut StrVal) -> u8
-msstd_fs_remove(path: *const StrVal, recursive: u8, err: *mut StrVal) -> u8
-msstd_fs_rename(source: *const StrVal, destination: *const StrVal, err: *mut StrVal) -> u8
-msstd_fs_set_times(path: *const StrVal, accessed: *const Timestamp, modified: *const Timestamp, follow: u8, err: *mut StrVal) -> u8
-msstd_fs_stat(path: *const StrVal, follow: u8, out: *mut InfoOut, err: *mut StrVal) -> u8
-msstd_fs_stat_filesystem(path: *const StrVal, out: *mut FsOut, err: *mut StrVal) -> u8
-msstd_fs_temporary_close(h: *mut ObjCell<Temporary>, err: *mut StrVal) -> u8
-msstd_fs_temporary_directory(pattern: *const StrVal, out: *mut StrVal, err: *mut StrVal) -> u8
-msstd_fs_temporary_open(prefix: *const StrVal, out: *mut *mut ObjCell<Temporary>, err: *mut StrVal) -> u8
+msstd_fs_glob_entries(path: *const StrVal, patterns: *const VecVal, exclude: *const VecVal, follow_links: u8, has_max_entries: HasRaw, max_entries: i64, has_max_results: HasRaw, max_results: i64, filter: *mut Closure, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_fs_hard_link(source: *const StrVal, destination: *const StrVal, err: ErrSlot) -> u8
+msstd_fs_list(path: *const StrVal, has_limit: HasRaw, limit: i64, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_fs_open(path: *const StrVal, flags: *const StrVal, mode: i64, out: *mut *mut ObjCell<Stream>, err: ErrSlot) -> u8
+msstd_fs_read_file(path: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_fs_read_link(path: *const StrVal, out: *mut StrVal, err: ErrSlot) -> u8
+msstd_fs_remove(path: *const StrVal, recursive: u8, err: ErrSlot) -> u8
+msstd_fs_rename(source: *const StrVal, destination: *const StrVal, err: ErrSlot) -> u8
+msstd_fs_set_times(path: *const StrVal, accessed: *const Timestamp, modified: *const Timestamp, follow: u8, err: ErrSlot) -> u8
+msstd_fs_stat(path: *const StrVal, follow: u8, out: *mut InfoOut, err: ErrSlot) -> u8
+msstd_fs_stat_filesystem(path: *const StrVal, out: *mut FsOut, err: ErrSlot) -> u8
+msstd_fs_temporary_close(h: *mut ObjCell<Temporary>, err: ErrSlot) -> u8
+msstd_fs_temporary_directory(pattern: *const StrVal, out: *mut StrVal, err: ErrSlot) -> u8
+msstd_fs_temporary_open(prefix: *const StrVal, out: *mut *mut ObjCell<Temporary>, err: ErrSlot) -> u8
 msstd_fs_temporary_path(h: *const ObjCell<Temporary>, out: *mut StrVal)
 msstd_fs_temporary_root(out: *mut StrVal)
-msstd_fs_truncate(path: *const StrVal, size: i64, err: *mut StrVal) -> u8
-msstd_fs_watch(path: *const StrVal, recursive: u8, interval_ns: i64, has_max: u8, max: i64, out: *mut *mut ObjCell<Watcher>, err: *mut StrVal) -> u8
+msstd_fs_truncate(path: *const StrVal, size: i64, err: ErrSlot) -> u8
+msstd_fs_watch(path: *const StrVal, recursive: u8, interval_ns: i64, has_max: HasRaw, max: i64, out: *mut *mut ObjCell<Watcher>, err: ErrSlot) -> u8
 msstd_fs_watch_close(h: *mut ObjCell<Watcher>)
-msstd_fs_watch_native(path: *const StrVal, recursive: u8, has_max: u8, max: i64, has_events: u8, events: i64, overflow: *const StrVal, out: *mut *mut ObjCell<Watcher>, err: *mut StrVal) -> u8
-msstd_fs_watch_next(h: *mut ObjCell<Watcher>, out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_fs_write_file(path: *const StrVal, data: *const VecVal, replace: u8, err: *mut StrVal) -> u8
+msstd_fs_watch_native(path: *const StrVal, recursive: u8, has_max: HasRaw, max: i64, has_events: HasRaw, events: i64, overflow: *const StrVal, out: *mut *mut ObjCell<Watcher>, err: ErrSlot) -> u8
+msstd_fs_watch_next(h: *mut ObjCell<Watcher>, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_fs_write_file(path: *const StrVal, data: *const VecVal, replace: u8, err: ErrSlot) -> u8
 msstd_html_attr(t: *const ObjCell<Tree>, id: u32, i: i64, which: u8, out: *mut StrVal) @leaf
 msstd_html_attr_count(t: *const ObjCell<Tree>, id: u32) -> i64 @leaf
 msstd_html_child(t: *const ObjCell<Tree>, id: u32, i: i64) -> u32 @leaf
@@ -500,57 +500,45 @@ msstd_html_first_child(t: *const ObjCell<Tree>, id: u32) -> u32 @leaf
 msstd_html_kind(t: *const ObjCell<Tree>, id: u32) -> u8 @leaf
 msstd_html_namespace(t: *const ObjCell<Tree>, id: u32, out: *mut StrVal) @leaf
 msstd_html_next_sibling(t: *const ObjCell<Tree>, id: u32) -> u32 @leaf
-msstd_html_parse(text: *const StrVal, has_limits: u8, has_max_bytes: u8, max_bytes: i64, has_max_depth: u8, max_depth: i64, has_max_nodes: u8, max_nodes: i64, out: *mut *mut ObjCell<Tree>, root: *mut u32) -> u8 @leaf
+msstd_html_parse(text: *const StrVal, has_limits: HasRaw, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth: HasRaw, max_depth: i64, has_max_nodes: HasRaw, max_nodes: i64, out: *mut *mut ObjCell<Tree>, root: *mut u32) -> u8 @leaf
 msstd_html_unescape(text: *const StrVal, out: *mut StrVal) @leaf
 msstd_http_body_close(b: *const ObjCell<BodyH>)
 msstd_http_body_metadata(b: *const ObjCell<BodyH>, out: *mut MetadataWire)
-msstd_http_body_read(b: *const ObjCell<BodyH>, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_http_body_read_all(b: *const ObjCell<BodyH>, out: *mut VecVal, err: *mut StrVal) -> u8
+msstd_http_body_read(b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_http_body_read_all(b: *const ObjCell<BodyH>, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_http_client_close(c: *const ObjCell<ClientH>)
-msstd_http_client_request(c: *const ObjCell<ClientH>, method: *const StrVal, address: *const StrVal, headers: *const ObjCell<HeadersH>, body: *const StrVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: *mut StrVal) -> u8
-msstd_http_client_request_bytes(c: *const ObjCell<ClientH>, method: *const StrVal, address: *const StrVal, headers: *const ObjCell<HeadersH>, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: *mut StrVal) -> u8
-msstd_http_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: *mut StrVal)
+msstd_http_client_request(c: *const ObjCell<ClientH>, method: *const StrVal, address: *const StrVal, headers: *const ObjCell<HeadersH>, body: *const StrVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8
+msstd_http_client_request_bytes(c: *const ObjCell<ClientH>, method: *const StrVal, address: *const StrVal, headers: *const ObjCell<HeadersH>, body: *const VecVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8
+msstd_http_error_message(status: u8, has_failed: HasRaw, failed: *const StrVal, out: *mut StrVal)
 msstd_http_exchange_close(x: *const ObjCell<ExchH>)
 msstd_http_exchange_headers(x: *const ObjCell<ExchH>) -> *mut ObjCell<HeadersH>
 msstd_http_exchange_method(x: *const ObjCell<ExchH>, out: *mut StrVal)
 msstd_http_exchange_path(x: *const ObjCell<ExchH>, out: *mut StrVal)
 msstd_http_exchange_protocol(x: *const ObjCell<ExchH>, out: *mut StrVal)
 msstd_http_exchange_query(x: *const ObjCell<ExchH>, out: *mut StrVal)
-msstd_http_exchange_read(x: *const ObjCell<ExchH>, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_http_exchange_send(x: *const ObjCell<ExchH>, status: i64, headers: *const ObjCell<HeadersH>, body: *const VecVal, err: *mut StrVal) -> u8
-msstd_http_exchange_send_headers(x: *const ObjCell<ExchH>, status: i64, headers: *const ObjCell<HeadersH>, err: *mut StrVal) -> u8
-msstd_http_exchange_upgrade(x: *const ObjCell<ExchH>, origins: *const VecVal, subprotocols: *const VecVal, has_max: u8, max: i64, out: *mut *mut ObjCell<SocketH>, err: *mut StrVal) -> u8
-msstd_http_exchange_write(x: *const ObjCell<ExchH>, data: *const StrVal, err: *mut StrVal) -> u8
-msstd_http_exchange_write_bytes(x: *const ObjCell<ExchH>, data: *const VecVal, err: *mut StrVal) -> u8
+msstd_http_exchange_read(x: *const ObjCell<ExchH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_http_exchange_send(x: *const ObjCell<ExchH>, status: i64, headers: *const ObjCell<HeadersH>, body: *const VecVal, err: ErrSlot) -> u8
+msstd_http_exchange_send_headers(x: *const ObjCell<ExchH>, status: i64, headers: *const ObjCell<HeadersH>, err: ErrSlot) -> u8
+msstd_http_exchange_upgrade(x: *const ObjCell<ExchH>, origins: *const VecVal, subprotocols: *const VecVal, has_max: HasRaw, max: i64, out: *mut *mut ObjCell<SocketH>, err: ErrSlot) -> u8
+msstd_http_exchange_write(x: *const ObjCell<ExchH>, data: *const StrVal, err: ErrSlot) -> u8
+msstd_http_exchange_write_bytes(x: *const ObjCell<ExchH>, data: *const VecVal, err: ErrSlot) -> u8
 msstd_http_headers_append(h: *const ObjCell<HeadersH>, name: *const StrVal, value: *const VecVal) -> u8
 msstd_http_headers_clone(h: *const ObjCell<HeadersH>) -> *mut ObjCell<HeadersH>
 msstd_http_headers_names(h: *const ObjCell<HeadersH>, out: *mut VecVal)
 msstd_http_headers_new() -> *mut ObjCell<HeadersH>
 msstd_http_headers_remove(h: *const ObjCell<HeadersH>, name: *const StrVal) -> u8
 msstd_http_headers_values(h: *const ObjCell<HeadersH>, name: *const StrVal, out: *mut VecVal) -> u8
-msstd_http_serving_accept(s: *const ObjCell<ServingH>, out: *mut i64, err: *mut StrVal) -> u8
+msstd_http_serving_accept(s: *const ObjCell<ServingH>, out: *mut i64, err: ErrSlot) -> u8
 msstd_http_serving_address(s: *const ObjCell<ServingH>, out: *mut StrVal)
 msstd_http_serving_connect(s: *const ObjCell<ServingH>, connection: i64)
-msstd_http_serving_new(address: *const StrVal, opts: *const HttpServerOptionsWire, env: *mut Obj, out: *mut *mut ObjCell<ServingH>, err: *mut StrVal) -> u8
+msstd_http_serving_new(address: *const StrVal, opts: *const HttpServerOptionsWire, env: *mut Obj, out: *mut *mut ObjCell<ServingH>, err: ErrSlot) -> u8
 msstd_http_serving_release(s: *const ObjCell<ServingH>)
 msstd_http_serving_share(s: *const ObjCell<ServingH>) -> *mut ObjCell<ServingH>
-msstd_io_acc_finish_bytes(a: *mut Acc, out: *mut VecVal) -> u8
-msstd_io_acc_finish_count(a: *mut Acc, out: *mut i64) -> u8
-msstd_io_acc_finish_line(a: *mut Acc, out: *mut StrVal) -> u8
-msstd_io_acc_new(kind: i64, has_max: u8, max: i64) -> *mut Acc
-msstd_io_acc_push(a: *mut Acc, data: *const VecVal) -> u8
-msstd_io_acc_want(a: *const Acc) -> i64
 msstd_io_close(h: *mut ObjCell<Stream>)
-msstd_io_failure_message(out: *mut StrVal)
-msstd_io_flush(h: *mut ObjCell<Stream>) -> u8
-msstd_io_is_closed(h: *const ObjCell<Stream>) -> u8
-msstd_io_open(path: *const StrVal, out: *mut *mut ObjCell<Stream>) -> u8
-msstd_io_read(h: *mut ObjCell<Stream>, has_max: u8, max: i64, out: *mut VecVal) -> u8
-msstd_io_read_line(h: *mut ObjCell<Stream>, has_max: u8, max: i64, out: *mut StrVal) -> u8
-msstd_io_redirect_null(which: i64) -> u8
-msstd_io_standard(which: i64) -> *mut ObjCell<Stream>
-msstd_io_write(h: *mut ObjCell<Stream>, data: *const StrVal) -> u8
-msstd_io_write_bytes(h: *mut ObjCell<Stream>, data: *const VecVal) -> u8
+msstd_io_read(h: *mut ObjCell<Stream>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_io_redirect_null(which: i64, err: ErrSlot) -> u8
+msstd_io_write(h: *mut ObjCell<Stream>, data: *const StrVal, err: ErrSlot) -> u8
+msstd_io_write_bytes(h: *mut ObjCell<Stream>, data: *const VecVal, err: ErrSlot) -> u8
 msstd_json_bool(d: *const ObjCell<Doc>, id: u32) -> u8 @leaf
 msstd_json_dec_cidr(text: *const StrVal, out: *mut *mut ObjCell<Cidr>) -> u8 @leaf
 msstd_json_dec_float(text: *const StrVal, out: *mut f64) -> u8 @leaf
@@ -565,8 +553,8 @@ msstd_json_item(d: *const ObjCell<Doc>, id: u32, i: i64) -> u32 @leaf
 msstd_json_key(d: *const ObjCell<Doc>, id: u32, i: i64, out: *mut StrVal) @leaf
 msstd_json_kind(d: *const ObjCell<Doc>, id: u32) -> u8 @leaf
 msstd_json_len(d: *const ObjCell<Doc>, id: u32) -> i64 @leaf
-msstd_json_parse(text: *const StrVal, has_max_bytes: u8, max_bytes: i64, has_max_depth: u8, max_depth: i64, has_max_values: u8, max_values: i64, out: *mut *mut ObjCell<Doc>, root: *mut u32) -> u8 @leaf
-msstd_json_parse_tree(text: *const StrVal, has_max_bytes: u8, max_bytes: i64, has_max_depth: u8, max_depth: i64, has_max_values: u8, max_values: i64, desc: *const TypeDesc, ctor: unsafe extern "C-unwind" fn(i64, *mut u8, *mut u8) -> i64, out: *mut u8) -> u8 @leaf
+msstd_json_parse(text: *const StrVal, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth: HasRaw, max_depth: i64, has_max_values: HasRaw, max_values: i64, out: *mut *mut ObjCell<Doc>, root: *mut u32) -> u8 @leaf
+msstd_json_parse_tree(text: *const StrVal, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth: HasRaw, max_depth: i64, has_max_values: HasRaw, max_values: i64, desc: *const TypeDesc, ctor: unsafe extern "C-unwind" fn(i64, *mut u8, *mut u8) -> i64, out: *mut u8) -> u8 @leaf
 msstd_json_text(d: *const ObjCell<Doc>, id: u32, out: *mut StrVal) @leaf
 msstd_json_tree_array(walk: *mut Walk<Writer>, list: *const VecVal) @leaf
 msstd_json_tree_object(walk: *mut Walk<Writer>, map: *const MapVal) @leaf
@@ -591,7 +579,7 @@ msstd_json_w_string(w: *mut ObjCell<Writer>, text: *const StrVal) @leaf
 msstd_json_w_tree(w: *mut ObjCell<Writer>, desc: *const TypeDesc, view: unsafe extern "C-unwind" fn(*const u8, *mut u8, *mut u8), root: *const u8) @leaf
 msstd_json_w_uint(w: *mut ObjCell<Writer>, v: i64) @leaf
 msstd_json_w_undo(w: *mut ObjCell<Writer>) @leaf
-msstd_json_writer_new(has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64) -> *mut ObjCell<Writer> @leaf
+msstd_json_writer_new(has_max_bytes: HasRaw, max_bytes: i64, has_indent: HasRaw, indent: i64) -> *mut ObjCell<Writer> @leaf
 msstd_math_acos(v: f64) -> f64 @leaf
 msstd_math_acosh(v: f64) -> f64 @leaf
 msstd_math_add_with_carry(left: u64, right: u64, carry: u8, out: *mut WordSumOut) @leaf
@@ -645,49 +633,49 @@ msstd_net_connection_close(c: *const ObjCell<ConnH>)
 msstd_net_connection_close_if_last(c: *const ObjCell<ConnH>)
 msstd_net_connection_local_address(c: *const ObjCell<ConnH>, out: *mut StrVal)
 msstd_net_connection_peer_address(c: *const ObjCell<ConnH>, out: *mut StrVal)
-msstd_net_connection_read(c: *const ObjCell<ConnH>, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, err: *mut StrVal) -> u8
+msstd_net_connection_read(c: *const ObjCell<ConnH>, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_net_connection_share(c: *const ObjCell<ConnH>) -> *mut ObjCell<ConnH>
-msstd_net_connection_shutdown_write(c: *const ObjCell<ConnH>, err: *mut StrVal) -> u8
+msstd_net_connection_shutdown_write(c: *const ObjCell<ConnH>, err: ErrSlot) -> u8
 msstd_net_connection_tls_info(c: *const ObjCell<ConnH>, out: *mut TlsInfoWire) -> u8
-msstd_net_connection_write_bytes(c: *const ObjCell<ConnH>, data: *const VecVal, has_timeout: u8, timeout: i64, err: *mut StrVal) -> u8
+msstd_net_connection_write_bytes(c: *const ObjCell<ConnH>, data: *const VecVal, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8
 msstd_net_contains_ip(cidr: *const ObjCell<Cidr>, ip: *const ObjCell<IpH>, out: *mut u8) -> u8
 msstd_net_datagram_address(sock: *const ObjCell<DgramH>, out: *mut StrVal)
 msstd_net_datagram_close(sock: *const ObjCell<DgramH>)
 msstd_net_datagram_close_if_last(sock: *const ObjCell<DgramH>)
-msstd_net_datagram_receive(sock: *const ObjCell<DgramH>, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut DatagramWire, err: *mut StrVal) -> u8
-msstd_net_datagram_send_bytes(sock: *const ObjCell<DgramH>, data: *const VecVal, address: *const StrVal, has_timeout: u8, timeout: i64, err: *mut StrVal) -> u8
+msstd_net_datagram_receive(sock: *const ObjCell<DgramH>, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut DatagramWire, err: ErrSlot) -> u8
+msstd_net_datagram_send_bytes(sock: *const ObjCell<DgramH>, data: *const VecVal, address: *const StrVal, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8
 msstd_net_datagram_share(sock: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH>
 msstd_net_dns_kind_text(kind: u8, out: *mut StrVal)
-msstd_net_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: *mut StrVal)
+msstd_net_error_message(status: u8, has_failed: HasRaw, failed: *const StrVal, out: *mut StrVal)
 msstd_net_ip_address_family(ip: *const ObjCell<IpH>) -> u8
 msstd_net_ip_address_text(ip: *const ObjCell<IpH>, out: *mut StrVal)
 msstd_net_ip_family_text(family: u8, out: *mut StrVal)
-msstd_net_listener_accept(l: *const ObjCell<ListenerH>, has_timeout: u8, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: *mut StrVal) -> u8
-msstd_net_listener_accept_raw(l: *const ObjCell<ListenerH>, has_timeout: u8, timeout: i64, out: *mut i64, err: *mut StrVal) -> u8
+msstd_net_listener_accept(l: *const ObjCell<ListenerH>, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8
+msstd_net_listener_accept_raw(l: *const ObjCell<ListenerH>, has_timeout: HasRaw, timeout: i64, out: *mut i64, err: ErrSlot) -> u8
 msstd_net_listener_address(l: *const ObjCell<ListenerH>, out: *mut StrVal)
 msstd_net_listener_close(l: *const ObjCell<ListenerH>)
 msstd_net_listener_raw_owner(l: *const ObjCell<ListenerH>) -> i64
 msstd_net_listener_share(l: *const ObjCell<ListenerH>) -> *mut ObjCell<ListenerH>
 msstd_net_network() -> *mut ObjCell<NetH>
-msstd_net_network_bind_datagram(net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<DgramH>, err: *mut StrVal) -> u8
+msstd_net_network_bind_datagram(net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<DgramH>, err: ErrSlot) -> u8
 msstd_net_network_close(net: *const ObjCell<NetH>)
-msstd_net_network_connect(net: *const ObjCell<NetH>, address: *const StrVal, has_timeout: u8, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: *mut StrVal) -> u8
-msstd_net_network_connect_tls(net: *const ObjCell<NetH>, address: *const StrVal, server_name: *const StrVal, has_timeout: u8, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: *mut StrVal) -> u8
-msstd_net_network_connect_tls_config(net: *const ObjCell<NetH>, address: *const StrVal, opts: *const TlsOptionsWire, has_timeout: u8, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: *mut StrVal) -> u8
-msstd_net_network_connect_unix(net: *const ObjCell<NetH>, path: *const StrVal, has_timeout: u8, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: *mut StrVal) -> u8
-msstd_net_network_http_client(net: *const ObjCell<NetH>, opts: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: *mut StrVal) -> u8
-msstd_net_network_listen(net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<ListenerH>, err: *mut StrVal) -> u8
-msstd_net_network_listen_tls(net: *const ObjCell<NetH>, address: *const StrVal, opts: *const TlsOptionsWire, has_timeout: u8, timeout: i64, out: *mut *mut ObjCell<ListenerH>, err: *mut StrVal) -> u8
-msstd_net_network_listen_unix(net: *const ObjCell<NetH>, path: *const StrVal, out: *mut *mut ObjCell<ListenerH>, err: *mut StrVal) -> u8
-msstd_net_network_lookup(net: *const ObjCell<NetH>, name: *const StrVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_net_network_request(net: *const ObjCell<NetH>, method: *const StrVal, address: *const StrVal, headers: *const ObjCell<HeadersH>, body: *const StrVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut StrVal) -> u8
-msstd_net_network_request_bytes(net: *const ObjCell<NetH>, method: *const StrVal, address: *const StrVal, headers: *const ObjCell<HeadersH>, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut StrVal) -> u8
-msstd_net_network_resolve(net: *const ObjCell<NetH>, name: *const StrVal, kind: i64, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_net_network_restrict(net: *const ObjCell<NetH>, hosts: *const VecVal, cidrs: *const VecVal, allow_listen: u8, out: *mut *mut ObjCell<NetH>, err: *mut StrVal) -> u8
-msstd_net_network_web_socket(net: *const ObjCell<NetH>, address: *const StrVal, headers: *const ObjCell<HeadersH>, subprotocols: *const VecVal, opts: *const WebSocketOptionsWire, out: *mut *mut ObjCell<SocketH>, err: *mut StrVal) -> u8
-msstd_net_network_with_resolver(net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<NetH>, err: *mut StrVal) -> u8
-msstd_net_parse_cidr(text: *const StrVal, out: *mut *mut ObjCell<Cidr>, err: *mut StrVal) -> u8
-msstd_net_parse_ip(text: *const StrVal, out: *mut *mut ObjCell<IpH>, err: *mut StrVal) -> u8
+msstd_net_network_connect(net: *const ObjCell<NetH>, address: *const StrVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8
+msstd_net_network_connect_tls(net: *const ObjCell<NetH>, address: *const StrVal, server_name: *const StrVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8
+msstd_net_network_connect_tls_config(net: *const ObjCell<NetH>, address: *const StrVal, opts: *const TlsOptionsWire, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8
+msstd_net_network_connect_unix(net: *const ObjCell<NetH>, path: *const StrVal, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ConnH>, err: ErrSlot) -> u8
+msstd_net_network_http_client(net: *const ObjCell<NetH>, opts: *const HttpClientOptionsWire, out: *mut *mut ObjCell<ClientH>, err: ErrSlot) -> u8
+msstd_net_network_listen(net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<ListenerH>, err: ErrSlot) -> u8
+msstd_net_network_listen_tls(net: *const ObjCell<NetH>, address: *const StrVal, opts: *const TlsOptionsWire, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ListenerH>, err: ErrSlot) -> u8
+msstd_net_network_listen_unix(net: *const ObjCell<NetH>, path: *const StrVal, out: *mut *mut ObjCell<ListenerH>, err: ErrSlot) -> u8
+msstd_net_network_lookup(net: *const ObjCell<NetH>, name: *const StrVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_net_network_request(net: *const ObjCell<NetH>, method: *const StrVal, address: *const StrVal, headers: *const ObjCell<HeadersH>, body: *const StrVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut ClientResponseWire, err: ErrSlot) -> u8
+msstd_net_network_request_bytes(net: *const ObjCell<NetH>, method: *const StrVal, address: *const StrVal, headers: *const ObjCell<HeadersH>, body: *const VecVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut ClientResponseWire, err: ErrSlot) -> u8
+msstd_net_network_resolve(net: *const ObjCell<NetH>, name: *const StrVal, kind: i64, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_net_network_restrict(net: *const ObjCell<NetH>, hosts: *const VecVal, cidrs: *const VecVal, allow_listen: u8, out: *mut *mut ObjCell<NetH>, err: ErrSlot) -> u8
+msstd_net_network_web_socket(net: *const ObjCell<NetH>, address: *const StrVal, headers: *const ObjCell<HeadersH>, subprotocols: *const VecVal, opts: *const WebSocketOptionsWire, out: *mut *mut ObjCell<SocketH>, err: ErrSlot) -> u8
+msstd_net_network_with_resolver(net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<NetH>, err: ErrSlot) -> u8
+msstd_net_parse_cidr(text: *const StrVal, out: *mut *mut ObjCell<Cidr>, err: ErrSlot) -> u8
+msstd_net_parse_ip(text: *const StrVal, out: *mut *mut ObjCell<IpH>, err: ErrSlot) -> u8
 msstd_net_release_unadopted(owner: i64)
 msstd_path_basename(windows: u8, path: *const StrVal, out: *mut StrVal) @leaf
 msstd_path_basename_without(windows: u8, path: *const StrVal, suffix: *const StrVal, out: *mut StrVal) @leaf
@@ -704,17 +692,17 @@ msstd_path_relative(windows: u8, base: *const StrVal, target: *const StrVal, out
 msstd_path_resolve(windows: u8, base: *const StrVal, parts: *const VecVal, out: *mut StrVal) -> u8 @leaf
 msstd_path_separator(windows: u8, out: *mut StrVal) @leaf
 msstd_path_to_namespaced_path(windows: u8, path: *const StrVal, out: *mut StrVal) @leaf
-msstd_process_available_memory(out: *mut i64, err: *mut StrVal) -> u8
-msstd_process_change_directory(path: *const StrVal, err: *mut StrVal) -> u8
-msstd_process_command_run(program: *const StrVal, arguments: *const VecVal, input: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout_ns: i64, has_cwd: u8, cwd: *const StrVal, env_names: *const VecVal, env_values: *const VecVal, out: *mut CommandOut, err: *mut StrVal) -> u8
-msstd_process_command_spawn(program: *const StrVal, arguments: *const VecVal, stdin: i64, stdout: i64, stderr: i64, has_cwd: u8, cwd: *const StrVal, env_names: *const VecVal, env_values: *const VecVal, out: *mut *mut ObjCell<Child>, err: *mut StrVal) -> u8
-msstd_process_constrained_memory(out: *mut i64, err: *mut StrVal) -> u8
-msstd_process_cpu_usage(out: *mut CpuOut, err: *mut StrVal) -> u8
+msstd_process_available_memory(out: *mut i64, err: ErrSlot) -> u8
+msstd_process_change_directory(path: *const StrVal, err: ErrSlot) -> u8
+msstd_process_command_run(program: *const StrVal, arguments: *const VecVal, input: *const VecVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout_ns: i64, has_cwd: HasRaw, cwd: *const StrVal, env_names: *const VecVal, env_values: *const VecVal, out: *mut CommandOut, err: ErrSlot) -> u8
+msstd_process_command_spawn(program: *const StrVal, arguments: *const VecVal, stdin: i64, stdout: i64, stderr: i64, has_cwd: HasRaw, cwd: *const StrVal, env_names: *const VecVal, env_values: *const VecVal, out: *mut *mut ObjCell<Child>, err: ErrSlot) -> u8
+msstd_process_constrained_memory(out: *mut i64, err: ErrSlot) -> u8
+msstd_process_cpu_usage(out: *mut CpuOut, err: ErrSlot) -> u8
 msstd_process_elapsed(out: *mut i64) -> u8
-msstd_process_environment(out: *mut VecVal, out2: *mut VecVal, err: *mut StrVal) -> u8
-msstd_process_environment_map(out: *mut MapVal, err: *mut StrVal) -> u8
-msstd_process_groups(out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_process_info(out: *mut InfoOut, err: *mut StrVal) -> u8
+msstd_process_environment(out: *mut VecVal, out2: *mut VecVal, err: ErrSlot) -> u8
+msstd_process_environment_map(out: *mut MapVal, err: ErrSlot) -> u8
+msstd_process_groups(out: *mut VecVal, err: ErrSlot) -> u8
+msstd_process_info(out: *mut InfoOut, err: ErrSlot) -> u8
 msstd_process_info_architecture(out: *mut StrVal)
 msstd_process_info_arguments(out: *mut VecVal)
 msstd_process_info_effective_gid() -> i64
@@ -725,19 +713,19 @@ msstd_process_info_os(out: *mut StrVal)
 msstd_process_info_parent_pid() -> i64
 msstd_process_info_pid() -> i64
 msstd_process_info_uid() -> i64
-msstd_process_initialize_groups(username: *const StrVal, gid: i64, err: *mut StrVal) -> u8
-msstd_process_load_environment(path: *const StrVal, has_max: u8, max: i64, err: *mut StrVal) -> u8
-msstd_process_memory_usage(out: *mut MemoryOut, err: *mut StrVal) -> u8
+msstd_process_initialize_groups(username: *const StrVal, gid: i64, err: ErrSlot) -> u8
+msstd_process_load_environment(path: *const StrVal, has_max: HasRaw, max: i64, err: ErrSlot) -> u8
+msstd_process_memory_usage(out: *mut MemoryOut, err: ErrSlot) -> u8
 msstd_process_monotonic_time() -> i64
-msstd_process_replace(program: *const StrVal, arguments: *const VecVal, env_names: *const VecVal, env_values: *const VecVal, err: *mut StrVal) -> u8
-msstd_process_resource_usage(out: *mut ResourceOut, err: *mut StrVal) -> u8
-msstd_process_send_signal(pid: i64, signal: i64, err: *mut StrVal) -> u8
-msstd_process_set_environment(name: *const StrVal, has_value: u8, value: *const StrVal, err: *mut StrVal) -> u8
-msstd_process_set_groups(groups: *const VecVal, err: *mut StrVal) -> u8
-msstd_process_set_identity(kind: *const StrVal, id: i64, err: *mut StrVal) -> u8
-msstd_process_set_title(title: *const StrVal, err: *mut StrVal) -> u8
+msstd_process_replace(program: *const StrVal, arguments: *const VecVal, env_names: *const VecVal, env_values: *const VecVal, err: ErrSlot) -> u8
+msstd_process_resource_usage(out: *mut ResourceOut, err: ErrSlot) -> u8
+msstd_process_send_signal(pid: i64, signal: i64, err: ErrSlot) -> u8
+msstd_process_set_environment(name: *const StrVal, has_value: HasRaw, value: *const StrVal, err: ErrSlot) -> u8
+msstd_process_set_groups(groups: *const VecVal, err: ErrSlot) -> u8
+msstd_process_set_identity(kind: *const StrVal, id: i64, err: ErrSlot) -> u8
+msstd_process_set_title(title: *const StrVal, err: ErrSlot) -> u8
 msstd_process_signal_close(h: *mut ObjCell<Watcher>)
-msstd_process_signal_next(h: *mut ObjCell<Watcher>, out: *mut i64, err: *mut StrVal) -> u8
+msstd_process_signal_next(h: *mut ObjCell<Watcher>, out: *mut i64, err: ErrSlot) -> u8
 msstd_process_subprocess_close(h: *mut ObjCell<Child>)
 msstd_process_subprocess_kill(h: *mut ObjCell<Child>)
 msstd_process_subprocess_max_resident(h: *const ObjCell<Child>) -> i64
@@ -745,36 +733,35 @@ msstd_process_subprocess_stdin(h: *const ObjCell<Child>) -> *mut ObjCell<Stream>
 msstd_process_subprocess_stream(h: *const ObjCell<Child>, which: i64) -> *mut ObjCell<Stream>
 msstd_process_subprocess_stream_id(h: *mut ObjCell<Child>, which: i64) -> i64
 msstd_process_subprocess_terminate(h: *mut ObjCell<Child>)
-msstd_process_subprocess_wait(h: *mut ObjCell<Child>, has_timeout: u8, timeout_ns: i64, out: *mut i64, err: *mut StrVal) -> u8
-msstd_process_title(out: *mut StrVal, err: *mut StrVal) -> u8
-msstd_process_umask(mask: i64, out: *mut i64, err: *mut StrVal) -> u8
+msstd_process_subprocess_wait(h: *mut ObjCell<Child>, has_timeout: HasRaw, timeout_ns: i64, out: *mut i64, err: ErrSlot) -> u8
+msstd_process_title(out: *mut StrVal, err: ErrSlot) -> u8
+msstd_process_umask(mask: i64, out: *mut i64, err: ErrSlot) -> u8
 msstd_process_uptime() -> i64
-msstd_process_watch_signals(signals: *const VecVal, has_capacity: u8, capacity: i64, out: *mut *mut ObjCell<Watcher>, err: *mut StrVal) -> u8
-msstd_process_working_directory(out: *mut StrVal, err: *mut StrVal) -> u8
+msstd_process_watch_signals(signals: *const VecVal, has_capacity: HasRaw, capacity: i64, out: *mut *mut ObjCell<Watcher>, err: ErrSlot) -> u8
+msstd_process_working_directory(out: *mut StrVal, err: ErrSlot) -> u8
 msstd_random_draw_float(d: *const Draw) -> f64
 msstd_random_draw_free(d: *mut Draw)
 msstd_random_draw_int(d: *const Draw) -> i64
-msstd_random_draw_new(kind: i64, a: i64, has_b: u8, b: i64) -> *mut Draw
+msstd_random_draw_new(kind: i64, a: i64, has_b: HasRaw, b: i64) -> *mut Draw
 msstd_random_draw_push(d: *mut Draw, data: *const VecVal) -> u8
-msstd_random_draw_status(d: *const Draw) -> u8
+msstd_random_draw_status(d: *const Draw, err: ErrSlot) -> u8
 msstd_random_draw_swap(d: *const Draw, which: i64) -> i64
 msstd_random_draw_text(d: *const Draw, out: *mut StrVal)
 msstd_random_draw_want(d: *const Draw) -> i64
-msstd_random_failure_message(out: *mut StrVal)
-msstd_random_os_bytes(count: i64, out: *mut VecVal) -> u8
-msstd_regex_capture_all_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_matches: u8, max_matches: i64, has_captures: u8, max_captures: i64, out: *mut VecVal) -> u8 @leaf
-msstd_regex_capture_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8 @leaf
+msstd_random_os_bytes(count: i64, out: *mut VecVal, err: ErrSlot) -> u8
+msstd_regex_capture_all_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_matches: HasRaw, max_matches: i64, has_captures: HasRaw, max_captures: i64, out: *mut VecVal) -> u8 @leaf
+msstd_regex_capture_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_regex_captures(re: *const ObjCell<Regex>, text: *const StrVal, out: *mut VecVal) @leaf
-msstd_regex_captures_all(re: *const ObjCell<Regex>, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8 @leaf
+msstd_regex_captures_all(re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_regex_compile(pattern: *const StrVal, out: *mut *mut ObjCell<Regex>) -> u8 @leaf
-msstd_regex_find_all(re: *const ObjCell<Regex>, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8 @leaf
-msstd_regex_find_all_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8 @leaf
+msstd_regex_find_all(re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
+msstd_regex_find_all_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_regex_find_span(re: *const ObjCell<Regex>, text: *const StrVal, out: *mut VecVal) -> u8 @leaf
 msstd_regex_matches(re: *const ObjCell<Regex>, text: *const StrVal) -> u8 @leaf
 msstd_regex_named_captures(re: *const ObjCell<Regex>, text: *const StrVal, out: *mut MapVal) @leaf
-msstd_regex_replace_all(re: *const ObjCell<Regex>, text: *const StrVal, replacement: *const StrVal, has_max: u8, max: i64, out: *mut StrVal) -> u8 @leaf
-msstd_regex_replace_template(re: *const ObjCell<Regex>, text: *const StrVal, template: *const StrVal, has_max: u8, max: i64, out: *mut StrVal) -> u8 @leaf
-msstd_regex_split(re: *const ObjCell<Regex>, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8 @leaf
+msstd_regex_replace_all(re: *const ObjCell<Regex>, text: *const StrVal, replacement: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @leaf
+msstd_regex_replace_template(re: *const ObjCell<Regex>, text: *const StrVal, template: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @leaf
+msstd_regex_split(re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_system_constants(out: *mut MapVal)
 msstd_system_cpus_count() -> i64
 msstd_system_cpus_idle(i: i64) -> i64
@@ -782,25 +769,24 @@ msstd_system_cpus_irq(i: i64) -> i64
 msstd_system_cpus_model(i: i64, out: *mut StrVal)
 msstd_system_cpus_nice(i: i64) -> i64
 msstd_system_cpus_speed_mhz(i: i64) -> i64
-msstd_system_cpus_status() -> u8
+msstd_system_cpus_status(err: ErrSlot) -> u8
 msstd_system_cpus_system(i: i64) -> i64
 msstd_system_cpus_user(i: i64) -> i64
 msstd_system_dev_null(out: *mut StrVal)
 msstd_system_end_of_line(out: *mut StrVal)
 msstd_system_endianness(out: *mut StrVal)
-msstd_system_failure_message(out: *mut StrVal)
-msstd_system_get_priority(pid: i64, out: *mut i64) -> u8
-msstd_system_home_directory(out: *mut StrVal) -> u8
-msstd_system_hostname(out: *mut StrVal) -> u8
+msstd_system_get_priority(pid: i64, out: *mut i64, err: ErrSlot) -> u8
+msstd_system_home_directory(out: *mut StrVal, err: ErrSlot) -> u8
+msstd_system_hostname(out: *mut StrVal, err: ErrSlot) -> u8
 msstd_system_info_architecture(out: *mut StrVal)
 msstd_system_info_cpu_count() -> i64
 msstd_system_info_os(out: *mut StrVal)
-msstd_system_machine(out: *mut StrVal) -> u8
+msstd_system_machine(out: *mut StrVal, err: ErrSlot) -> u8
 msstd_system_metrics_available_memory() -> i64
 msstd_system_metrics_available_parallelism() -> i64
 msstd_system_metrics_free_memory() -> i64
 msstd_system_metrics_load_average(window: i64) -> f64
-msstd_system_metrics_status() -> u8
+msstd_system_metrics_status(err: ErrSlot) -> u8
 msstd_system_metrics_total_memory() -> i64
 msstd_system_metrics_uptime() -> i64
 msstd_system_network_interfaces_address(i: i64, out: *mut StrVal)
@@ -811,15 +797,15 @@ msstd_system_network_interfaces_mac(i: i64, out: *mut StrVal)
 msstd_system_network_interfaces_name(i: i64, out: *mut StrVal)
 msstd_system_network_interfaces_netmask(i: i64, out: *mut StrVal)
 msstd_system_network_interfaces_scope_id(i: i64) -> i64
-msstd_system_network_interfaces_status() -> u8
-msstd_system_os_release(out: *mut StrVal) -> u8
+msstd_system_network_interfaces_status(err: ErrSlot) -> u8
+msstd_system_os_release(out: *mut StrVal, err: ErrSlot) -> u8
 msstd_system_os_type(out: *mut StrVal)
-msstd_system_os_version(out: *mut StrVal) -> u8
-msstd_system_set_priority(pid: i64, priority: i64) -> u8
+msstd_system_os_version(out: *mut StrVal, err: ErrSlot) -> u8
+msstd_system_set_priority(pid: i64, priority: i64, err: ErrSlot) -> u8
 msstd_system_user_info_gid() -> i64
 msstd_system_user_info_home(out: *mut StrVal)
 msstd_system_user_info_shell(out: *mut StrVal)
-msstd_system_user_info_status() -> u8
+msstd_system_user_info_status(err: ErrSlot) -> u8
 msstd_system_user_info_uid() -> i64
 msstd_system_user_info_username(out: *mut StrVal)
 msstd_system_working_directory(out: *mut StrVal)
@@ -837,14 +823,13 @@ msstd_terminal_event_kind() -> i64
 msstd_terminal_event_rows() -> i64
 msstd_terminal_event_shift() -> u8
 msstd_terminal_event_text(out: *mut StrVal)
-msstd_terminal_failure_message(out: *mut StrVal)
-msstd_terminal_raw_mode(alternate_screen: u8, out: *mut *mut ObjCell<RawH>) -> u8
+msstd_terminal_raw_mode(alternate_screen: u8, out: *mut *mut ObjCell<RawH>, err: ErrSlot) -> u8
 msstd_terminal_raw_terminal_close(h: *const ObjCell<RawH>)
-msstd_terminal_raw_terminal_erase(h: *const ObjCell<RawH>, region: i64) -> u8
-msstd_terminal_raw_terminal_move_cursor(h: *const ObjCell<RawH>, row: i64, column: i64) -> u8
-msstd_terminal_raw_terminal_next_event(h: *const ObjCell<RawH>, has_timeout: u8, timeout_ns: i64) -> u8
+msstd_terminal_raw_terminal_erase(h: *const ObjCell<RawH>, region: i64, err: ErrSlot) -> u8
+msstd_terminal_raw_terminal_move_cursor(h: *const ObjCell<RawH>, row: i64, column: i64, err: ErrSlot) -> u8
+msstd_terminal_raw_terminal_next_event(h: *const ObjCell<RawH>, has_timeout: HasRaw, timeout_ns: i64) -> u8
 msstd_terminal_raw_terminal_share(h: *const ObjCell<RawH>) -> *mut ObjCell<RawH>
-msstd_terminal_raw_terminal_show_cursor(h: *const ObjCell<RawH>, visible: u8) -> u8
+msstd_terminal_raw_terminal_show_cursor(h: *const ObjCell<RawH>, visible: u8, err: ErrSlot) -> u8
 msstd_terminal_raw_terminal_size_columns(h: *const ObjCell<RawH>) -> i64
 msstd_terminal_raw_terminal_size_rows(h: *const ObjCell<RawH>) -> i64
 msstd_terminal_raw_terminal_size_status(h: *const ObjCell<RawH>) -> u8
@@ -888,7 +873,7 @@ msstd_time_timestamp_shift(value: *const Timestamp, duration: i64, out: *mut Tim
 msstd_time_timestamp_to_string(value: *const Timestamp, out: *mut StrVal)
 msstd_time_wall_clock_now(out: *mut Timestamp)
 msstd_tls_error_message(status: u8, out: *mut StrVal)
-msstd_tls_parse_certificates(pem: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
+msstd_tls_parse_certificates(pem: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8
 msstd_tls_verify_certificates(chain: *const StrVal, roots: *const StrVal, server_name: *const StrVal, now: *const Timestamp) -> u8
 msstd_unicode_fields(text: *const StrVal, out: *mut VecVal)
 msstd_unicode_is_alphabetic(value: i64) -> u8
@@ -904,15 +889,15 @@ msstd_url_encode_component(text: *const StrVal, out: *mut StrVal) @leaf
 msstd_url_format(value: *const UrlRec, out: *mut StrVal) -> u8 @leaf
 msstd_url_format_query(entries: *const RecList<QueryEntryRec>, out: *mut StrVal) @leaf
 msstd_url_parse(text: *const StrVal, out: *mut UrlRec) -> u8 @leaf
-msstd_url_parse_query(text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8 @leaf
+msstd_url_parse_query(text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_url_resolve(base: *const UrlRec, reference: *const StrVal, out: *mut UrlRec) -> u8 @leaf
 msstd_utf8_is_valid(data: *const VecVal) -> u8
 msstd_websocket_close(s: *const ObjCell<SocketH>)
 msstd_websocket_close_if_last(s: *const ObjCell<SocketH>)
-msstd_websocket_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: *mut StrVal)
-msstd_websocket_ping(s: *const ObjCell<SocketH>, data: *const StrVal, err: *mut StrVal) -> u8
-msstd_websocket_ping_bytes(s: *const ObjCell<SocketH>, data: *const VecVal, err: *mut StrVal) -> u8
-msstd_websocket_receive(s: *const ObjCell<SocketH>, out: *mut WebSocketMessageRec, err: *mut StrVal) -> u8
-msstd_websocket_send_bytes(s: *const ObjCell<SocketH>, data: *const VecVal, text: u8, err: *mut StrVal) -> u8
+msstd_websocket_error_message(status: u8, has_failed: HasRaw, failed: *const StrVal, out: *mut StrVal)
+msstd_websocket_ping(s: *const ObjCell<SocketH>, data: *const StrVal, err: ErrSlot) -> u8
+msstd_websocket_ping_bytes(s: *const ObjCell<SocketH>, data: *const VecVal, err: ErrSlot) -> u8
+msstd_websocket_receive(s: *const ObjCell<SocketH>, out: *mut WebSocketMessageRec, err: ErrSlot) -> u8
+msstd_websocket_send_bytes(s: *const ObjCell<SocketH>, data: *const VecVal, text: u8, err: ErrSlot) -> u8
 msstd_websocket_share(s: *const ObjCell<SocketH>) -> *mut ObjCell<SocketH>
 msstd_websocket_subprotocol(s: *const ObjCell<SocketH>, out: *mut StrVal)

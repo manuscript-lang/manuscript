@@ -81,8 +81,8 @@ fn exercise(path: String) Unit!:
         )
     )
     let _appended = try common_result(result: append_file(path: path, data: "!"))
-    let events = try common_result(result: watcher.next())
-    (events.length() > 0) | try expect_true
+    let events = try watcher.read().wait()
+    events.is_some() | try expect_true
     try watcher.close()
 
     let paths = posix()

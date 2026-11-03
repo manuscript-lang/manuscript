@@ -11,7 +11,7 @@ use crate::obj;
 use crate::utf8;
 use core::ptr::null_mut;
 use ms_rt_abi::{
-    Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STATUS_OUT_OF_RANGE,
+    HasRaw, Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STATUS_OUT_OF_RANGE,
     STR_INLINE_MAX, STR_LEN_MASK, StrVal, VecVal,
 };
 pub use ms_rt_hot::{bytes, bytes_eq, equal, hash_bytes, hash_int, mix};
@@ -312,12 +312,12 @@ fn relative(count: usize, index: i64) -> Option<usize> {
 pub unsafe extern "C-unwind" fn msrt_string_get(
     s: *const StrVal,
     index: i64,
-    has_default: u8,
+    has_default: HasRaw,
     default: *const StrVal,
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (string_get(s, index, has_default != 0, default)).write_to(out) }
+    unsafe { (string_get(s, index, has_default.is_set(), default)).write_to(out) }
 }
 
 unsafe fn string_get(
@@ -354,14 +354,14 @@ unsafe fn string_get(
 pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
     s: *const StrVal,
     index: i64,
-    has_default: u8,
+    has_default: HasRaw,
     default: i64,
 ) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe {
         let n = scalar_count(s);
         let Some(i) = relative(n, index) else {
-            if has_default == 0 {
+            if !has_default.is_set() {
                 fault::msrt_index_fault(index, n as i64);
             }
             return default;
@@ -1113,13 +1113,13 @@ unsafe fn msrt_string_lower_val(s: *const StrVal) -> StrVal {
 pub unsafe extern "C-unwind" fn msrt_string_repeat(
     s: *const StrVal,
     count: i64,
-    has_max: u8,
+    has_max: HasRaw,
     max: i64,
     out: *mut StrVal,
 ) -> u8 {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        let limit = if has_max != 0 { max } else { i64::MAX };
+        let limit = if has_max.is_set() { max } else { i64::MAX };
         if count < 0 || limit < 0 {
             return STATUS_INVALID_INPUT;
         }
@@ -1731,7 +1731,7 @@ fn find_newline(text: &[u8]) -> Option<usize> {
 pub unsafe extern "C-unwind" fn msrt_string_split(
     s: *const StrVal,
     sep: *const StrVal,
-    has_max: u8,
+    has_max: HasRaw,
     max: i64,
     out: *mut VecVal,
 ) {
@@ -1746,7 +1746,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
 pub unsafe extern "C-unwind" fn msrt_string_split_view(
     s: *const StrVal,
     sep: *const StrVal,
-    has_max: u8,
+    has_max: HasRaw,
     max: i64,
     out: *mut VecVal,
 ) {
@@ -1763,7 +1763,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split_view(
 unsafe fn split_into(
     s: *const StrVal,
     sep: *const StrVal,
-    has_max: u8,
+    has_max: HasRaw,
     max: i64,
     out: *mut VecVal,
     piece: impl Fn(&[u8]) -> StrVal,
@@ -1772,7 +1772,7 @@ unsafe fn split_into(
     unsafe {
         let (text, sepb) = (bytes(s), bytes(sep));
         let mut limit = usize::MAX;
-        if has_max != 0 {
+        if has_max.is_set() {
             if max < 0 {
                 fault::fault_fmt(format_args!(
                     "split: max_parts must be nonnegative, found {max}"
@@ -1853,13 +1853,13 @@ unsafe extern "C" fn split_iter_drop(o: *mut Obj) {
 pub unsafe extern "C-unwind" fn msrt_string_split_iter(
     s: *const StrVal,
     sep: *const StrVal,
-    has_max: u8,
+    has_max: HasRaw,
     max: i64,
 ) -> *mut SplitIter {
     // SAFETY: caller passes live strings.
     unsafe {
         let mut left = usize::MAX;
-        if has_max != 0 {
+        if has_max.is_set() {
             if max < 0 {
                 fault::fault_fmt(format_args!(
                     "split: max_parts must be nonnegative, found {max}"
@@ -2116,13 +2116,13 @@ pub unsafe extern "C-unwind" fn msrt_string_parse_float(s: *const StrVal, out: *
 pub unsafe extern "C-unwind" fn msrt_string_normalize(
     s: *const StrVal,
     form: *const StrVal,
-    has_max: u8,
+    has_max: HasRaw,
     max: i64,
     out: *mut StrVal,
 ) -> u8 {
     // SAFETY: caller passes live strings and a writable out.
     unsafe {
-        if has_max != 0 && max < 0 {
+        if has_max.is_set() && max < 0 {
             return STATUS_INVALID_INPUT;
         }
         let kind = match bytes(form) {
@@ -2142,7 +2142,7 @@ pub unsafe extern "C-unwind" fn msrt_string_normalize(
 pub unsafe extern "C-unwind" fn msrt_string_normalize_kind(
     s: *const StrVal,
     kind: i64,
-    has_max: u8,
+    has_max: HasRaw,
     max: i64,
     out: *mut StrVal,
 ) -> u8 {
@@ -2153,17 +2153,17 @@ pub unsafe extern "C-unwind" fn msrt_string_normalize_kind(
 unsafe fn normalize_kind(
     s: *const StrVal,
     kind: i64,
-    has_max: u8,
+    has_max: HasRaw,
     max: i64,
     out: *mut StrVal,
 ) -> u8 {
     use unicode_normalization::UnicodeNormalization;
-    if has_max != 0 && max < 0 {
+    if has_max.is_set() && max < 0 {
         return STATUS_INVALID_INPUT;
     }
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        let limit = if has_max != 0 {
+        let limit = if has_max.is_set() {
             max as usize
         } else {
             usize::MAX
@@ -2480,9 +2480,9 @@ mod tests {
             let s = from_bytes(b"alpha-is-a-long-piece,b,,gamma\xc3\xa9");
             let sep = from_bytes(b",");
             let mut views = EMPTY_VEC;
-            msrt_string_split_view(&s, &sep, 0, 0, &mut views);
+            msrt_string_split_view(&s, &sep, HasRaw(0), 0, &mut views);
             let mut copies = EMPTY_VEC;
-            msrt_string_split(&s, &sep, 0, 0, &mut copies);
+            msrt_string_split(&s, &sep, HasRaw(0), 0, &mut copies);
             assert_eq!(views.len, 4);
             for i in 0..views.len {
                 let (v, c) = (
@@ -2722,13 +2722,13 @@ mod tests {
             let s = st("héllo");
             assert_eq!(msrt_string_length(s), 5);
             assert_eq!(crate::testutil::hot::msrt_string_byte_length(s), 6);
-            assert_eq!(ret(|o| msrt_string_get(s, 1, 0, st(""), o)), "é");
-            assert_eq!(ret(|o| msrt_string_get(s, -1, 0, st(""), o)), "o");
-            assert_eq!(msrt_string_scalar_at(s, 1, 0, 0), 0xE9);
+            assert_eq!(ret(|o| msrt_string_get(s, 1, HasRaw(0), st(""), o)), "é");
+            assert_eq!(ret(|o| msrt_string_get(s, -1, HasRaw(0), st(""), o)), "o");
+            assert_eq!(msrt_string_scalar_at(s, 1, HasRaw(0), 0), 0xE9);
             testutil::assert_fault(
                 "index 9 out of range for length 5; pass a default: get(index:, default: ...)",
                 || {
-                    ret(|o| msrt_string_get(s, 9, 0, st(""), o));
+                    ret(|o| msrt_string_get(s, 9, HasRaw(0), st(""), o));
                 },
             );
         }
@@ -2739,9 +2739,9 @@ mod tests {
         let _g = testutil::lock();
         unsafe {
             let mut v = EMPTY_VEC;
-            msrt_string_split(st("a,b,c"), st(","), 1, 2, &mut v);
+            msrt_string_split(st("a,b,c"), st(","), HasRaw(1), 2, &mut v);
             assert_eq!(list(v), ["a", "b"]);
-            msrt_string_split(st("héy"), st(""), 0, 0, &mut v);
+            msrt_string_split(st("héy"), st(""), HasRaw(0), 0, &mut v);
             assert_eq!(list(v), ["h", "é", "y"]);
             assert_eq!(
                 ret(|o| msrt_string_replace_first(st("aaa"), st("a"), st("b"), o)),
@@ -2852,7 +2852,7 @@ mod tests {
                 for count in [0, 1, 2, 3, 5, 9, 17, 257] {
                     let mut out = NO_STR;
                     assert_eq!(
-                        msrt_string_repeat(st(pattern), count, 0, 0, &mut out),
+                        msrt_string_repeat(st(pattern), count, HasRaw(0), 0, &mut out),
                         STATUS_OK
                     );
                     assert_eq!(txt(&out), pattern.repeat(count as usize));
@@ -2873,14 +2873,17 @@ mod tests {
             );
             let mut out = NO_STR;
             assert_eq!(
-                msrt_string_repeat(st("ab"), -1, 0, 0, &mut out),
+                msrt_string_repeat(st("ab"), -1, HasRaw(0), 0, &mut out),
                 STATUS_INVALID_INPUT
             );
             assert_eq!(
-                msrt_string_repeat(st("ab"), 3, 1, 5, &mut out),
+                msrt_string_repeat(st("ab"), 3, HasRaw(1), 5, &mut out),
                 STATUS_LIMIT_EXCEEDED
             );
-            assert_eq!(msrt_string_repeat(st(""), 3, 1, 0, &mut out), STATUS_OK);
+            assert_eq!(
+                msrt_string_repeat(st(""), 3, HasRaw(1), 0, &mut out),
+                STATUS_OK
+            );
             assert_eq!(txt(&out), "");
         }
     }
@@ -2941,7 +2944,7 @@ mod tests {
                         let status = msrt_string_normalize_kind(
                             &input,
                             kind as i64,
-                            u8::from(limit.is_some()),
+                            HasRaw(u8::from(limit.is_some())),
                             limit.unwrap_or(0) as i64,
                             &mut actual,
                         );
@@ -2974,7 +2977,13 @@ mod tests {
                 for (has_max, max) in [(0, 0), (1, -1)] {
                     let mut actual = from_bytes(b"sentinel");
                     assert_eq!(
-                        msrt_string_normalize(st("é"), st(form), has_max, max, &mut actual),
+                        msrt_string_normalize(
+                            st("é"),
+                            st(form),
+                            ms_rt_abi::HasRaw(has_max),
+                            max,
+                            &mut actual
+                        ),
                         STATUS_INVALID_INPUT
                     );
                     assert_eq!(bytes(&actual), b"sentinel");
@@ -2983,7 +2992,7 @@ mod tests {
             for form in ["NFC", "NFD", "NFKC", "NFKD"] {
                 let mut actual = from_bytes(b"sentinel");
                 assert_eq!(
-                    msrt_string_normalize(st("é"), st(form), 1, -1, &mut actual),
+                    msrt_string_normalize(st("é"), st(form), HasRaw(1), -1, &mut actual),
                     STATUS_INVALID_INPUT
                 );
                 assert_eq!(bytes(&actual), b"sentinel");
@@ -2997,12 +3006,12 @@ mod tests {
         unsafe {
             let mut o = NO_STR;
             assert_eq!(
-                msrt_string_normalize(st("é"), st("NFD"), 0, 0, &mut o),
+                msrt_string_normalize(st("é"), st("NFD"), HasRaw(0), 0, &mut o),
                 STATUS_OK
             );
             assert_eq!(txt(&o), "e\u{301}");
             assert_eq!(
-                msrt_string_normalize(st("é"), st("NFD"), 1, 2, &mut o),
+                msrt_string_normalize(st("é"), st("NFD"), HasRaw(1), 2, &mut o),
                 STATUS_LIMIT_EXCEEDED
             );
         }

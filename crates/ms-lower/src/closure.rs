@@ -977,17 +977,8 @@ impl FnLower<'_> {
         if self.dead {
             return Ok(f);
         }
-        // The callee is fixed before the arguments run, which may reassign its variable.
-        let f = if !f.own
-            && matches!(
-                self.hir.resolution(callee),
-                ms_check::hir::Resolution::Local(_)
-            ) {
-            let v = self.owned(f);
-            Val { v, own: true }
-        } else {
-            f
-        };
+        // A function value a local holds is called in place: the checker rejects an argument
+        // that changes or moves that local while the call runs.
         let fv = self.borrow(f);
         let checked = self.ety(callee);
         let declared = &checked.params;
@@ -1288,24 +1279,8 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
             fl.emit_return(Some(out));
             return Ok(());
         }
-        "io/stdout" | "io/stderr" => {
-            let out = fl.std_stream(ret, job.native == "io/stderr")?;
-            fl.emit_return(Some(out));
-            return Ok(());
-        }
         "time/clock" | "time/wall_clock" => {
             let out = fl.time_clock(ret, job.native == "time/wall_clock")?;
-            fl.emit_return(Some(out));
-            return Ok(());
-        }
-        "io/read_all" | "io/copy" => {
-            fl.fill_native_defaults(job.sym.module, func, &job.params, &mut args)?;
-            let kind = if job.native == "io/copy" {
-                crate::streamloop::Loop::Copy
-            } else {
-                crate::streamloop::Loop::ReadAll
-            };
-            let out = fl.stream_with(kind, &args, ret)?;
             fl.emit_return(Some(out));
             return Ok(());
         }

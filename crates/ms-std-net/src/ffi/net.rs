@@ -4,8 +4,13 @@ use super::{ConnH, DgramH, IpH, ListenerH, NetH, opt, report};
 use crate::error::{NetErr, Status as _};
 use crate::ip::{Cidr, ip_text, normalize};
 use crate::net::{DnsKind, root};
+#[cfg(test)]
+use ms_rt::ffi::ErrSlot;
+#[cfg(test)]
+use ms_rt::ffi::HasRaw;
 use ms_rt::ffi::{
-    Bytes, ErrOut, ObjRef, Object, Out, RecList, StatusCode, Str, abi_handle, abi_record, native,
+    Bytes, ErrOut, Has, ObjRef, Object, Out, RecList, StatusCode, Str, abi_handle, abi_record,
+    native,
 };
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
@@ -95,7 +100,7 @@ native! {
     }
 
     /// `NetworkError.message()` for a status and the `Failed` text (nullable).
-    fn msstd_net_error_message(status: u8, has_failed: bool, failed: &str) -> String {
+    fn msstd_net_error_message(status: u8, has_failed: Has, failed: &str) -> String {
         let e = match status {
             STATUS_INVALID_INPUT => NetErr::InvalidInput,
             STATUS_INVALID_DATA => NetErr::InvalidData,
@@ -104,7 +109,7 @@ native! {
             STATUS_UNSUPPORTED => NetErr::Unsupported,
             STATUS_CLOSED => NetErr::Closed,
             STATUS_TIMEOUT => NetErr::Timeout,
-            _ => NetErr::Failed((if has_failed { failed } else { "" }).to_string()),
+            _ => NetErr::Failed((if *has_failed { failed } else { "" }).to_string()),
         };
         e.message()
     }
@@ -129,12 +134,12 @@ native! {
     fn msstd_net_network_connect(
         net: ObjRef<NetH>,
         address: &str,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<Object<ConnH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        let c = report(net.connect(address, opt(has_timeout, timeout)), &err)?;
+        let c = report(net.connect(address, opt(*has_timeout, timeout)), &err)?;
         out.write(Object(ConnH(c)));
         Ok(())
     }
@@ -143,12 +148,12 @@ native! {
     fn msstd_net_network_connect_unix(
         net: ObjRef<NetH>,
         path: &str,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<Object<ConnH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        let c = report(net.connect_unix(path, opt(has_timeout, timeout)), &err)?;
+        let c = report(net.connect_unix(path, opt(*has_timeout, timeout)), &err)?;
         out.write(Object(ConnH(c)));
         Ok(())
     }
@@ -214,14 +219,14 @@ native! {
     fn msstd_net_network_lookup(
         net: ObjRef<NetH>,
         name: &str,
-        has_max: bool,
+        has_max: Has,
         max: i64,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<Vec<String>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        let names = net.lookup(name, opt(has_max, max), opt(has_timeout, timeout));
+        let names = net.lookup(name, opt(*has_max, max), opt(*has_timeout, timeout));
         out.write(report(names, &err)?);
         Ok(())
     }
@@ -231,9 +236,9 @@ native! {
         net: ObjRef<NetH>,
         name: &str,
         kind: i64,
-        has_max: bool,
+        has_max: Has,
         max: i64,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<RecList<DnsRecordWire>>,
         err: ErrOut,
@@ -243,7 +248,7 @@ native! {
         };
         let list = net
             .0
-            .resolve(name, kind, opt(has_max, max), opt(has_timeout, timeout));
+            .resolve(name, kind, opt(*has_max, max), opt(*has_timeout, timeout));
         let list = report(list, &err)?;
         out.write(RecList::new(list.iter().map(|rec| DnsRecordWire {
             kind: i64::from(DnsKind::index(rec.kind)),
@@ -287,14 +292,14 @@ native! {
     /// `Connection.read(max, timeout)`; end of stream is `STATUS_NONE`.
     fn msstd_net_connection_read(
         c: ObjRef<ConnH>,
-        has_max: bool,
+        has_max: Has,
         max: i64,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<Vec<u8>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        match report(c.read(opt(has_max, max), opt(has_timeout, timeout)), &err)? {
+        match report(c.read(opt(*has_max, max), opt(*has_timeout, timeout)), &err)? {
             Some(bytes) => out.write(bytes),
             None => return Err(StatusCode(STATUS_NONE)),
         }
@@ -305,11 +310,11 @@ native! {
     fn msstd_net_connection_write_bytes(
         c: ObjRef<ConnH>,
         data: &[u8],
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        report(c.write(data, opt(has_timeout, timeout)), &err)
+        report(c.write(data, opt(*has_timeout, timeout)), &err)
     }
 
     /// `Connection.shutdown_write()`.
@@ -322,24 +327,24 @@ native! {
     /// `Listener.accept(timeout)`.
     fn msstd_net_listener_accept(
         l: ObjRef<ListenerH>,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<Object<ConnH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        out.write(Object(ConnH(report(l.accept(opt(has_timeout, timeout)), &err)?)));
+        out.write(Object(ConnH(report(l.accept(opt(*has_timeout, timeout)), &err)?)));
         Ok(())
     }
 
     /// `Listener.accept_raw(timeout)`: the accepted socket's handle, for `HttpServer.adopt`.
     fn msstd_net_listener_accept_raw(
         l: ObjRef<ListenerH>,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<i64>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        out.write(report(l.accept_raw(opt(has_timeout, timeout)), &err)?);
+        out.write(report(l.accept_raw(opt(*has_timeout, timeout)), &err)?);
         Ok(())
     }
 
@@ -396,14 +401,14 @@ native! {
     /// `DatagramSocket.receive(max, timeout)`.
     fn msstd_net_datagram_receive(
         sock: ObjRef<DgramH>,
-        has_max: bool,
+        has_max: Has,
         max: i64,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<DatagramWire>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        let dg = report(sock.receive(opt(has_max, max), opt(has_timeout, timeout)), &err)?;
+        let dg = report(sock.receive(opt(*has_max, max), opt(*has_timeout, timeout)), &err)?;
         out.write(DatagramWire {
             data: Bytes::new(&dg.data),
             sender: Str::new(&dg.sender),
@@ -416,11 +421,11 @@ native! {
         sock: ObjRef<DgramH>,
         data: &[u8],
         address: &str,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        report(sock.send(data, address, opt(has_timeout, timeout)), &err)
+        report(sock.send(data, address, opt(*has_timeout, timeout)), &err)
     }
 }
 
@@ -473,7 +478,7 @@ mod tests {
             let mut cidr = null_mut();
             let mut err = no_str();
             assert_eq!(
-                msstd_net_parse_ip(s("::ffff:192.0.2.1"), &mut ip, &mut err),
+                msstd_net_parse_ip(s("::ffff:192.0.2.1"), &mut ip, ErrSlot(&mut err)),
                 0
             );
             assert_eq!(
@@ -482,7 +487,7 @@ mod tests {
             );
             assert_eq!(msstd_net_ip_address_family(ip), 0);
             assert_eq!(
-                msstd_net_parse_cidr(s("192.0.2.3/24"), &mut cidr, &mut err),
+                msstd_net_parse_cidr(s("192.0.2.3/24"), &mut cidr, ErrSlot(&mut err)),
                 0
             );
             assert_eq!(
@@ -493,15 +498,15 @@ mod tests {
             assert_eq!(msstd_net_contains_ip(cidr, ip, &mut yes), 0);
             assert_eq!(yes, 1);
             assert_eq!(
-                msstd_net_parse_ip(s("fe80::1%eth0"), &mut ip, &mut err),
+                msstd_net_parse_ip(s("fe80::1%eth0"), &mut ip, ErrSlot(&mut err)),
                 STATUS_INVALID_DATA
             );
             assert_eq!(
-                take_string(|o| msstd_net_error_message(STATUS_INVALID_DATA, 0, s(""), o)),
+                take_string(|o| msstd_net_error_message(STATUS_INVALID_DATA, HasRaw(0), s(""), o)),
                 "network: invalid data"
             );
             assert_eq!(
-                take_string(|o| msstd_net_error_message(STATUS_FAILED, 1, s("boom"), o)),
+                take_string(|o| msstd_net_error_message(STATUS_FAILED, HasRaw(1), s("boom"), o)),
                 "boom"
             );
             assert_eq!(take_string(|o| msstd_net_dns_kind_text(3, o)), "MX");
@@ -517,18 +522,31 @@ mod tests {
             let (mut listener, mut client, mut server) = (null_mut(), null_mut(), null_mut());
             let mut err = no_str();
             assert_eq!(
-                msstd_net_network_listen(net, s("127.0.0.1:0"), &mut listener, &mut err),
+                msstd_net_network_listen(net, s("127.0.0.1:0"), &mut listener, ErrSlot(&mut err)),
                 0
             );
             let addr = Box::leak(Box::new(take_string_val(|o| {
                 msstd_net_listener_address(listener, o)
             })));
             assert_eq!(
-                msstd_net_network_connect(net, addr, 1, 2_000_000_000, &mut client, &mut err),
+                msstd_net_network_connect(
+                    net,
+                    addr,
+                    HasRaw(1),
+                    2_000_000_000,
+                    &mut client,
+                    ErrSlot(&mut err)
+                ),
                 0
             );
             assert_eq!(
-                msstd_net_listener_accept(listener, 1, 2_000_000_000, &mut server, &mut err),
+                msstd_net_listener_accept(
+                    listener,
+                    HasRaw(1),
+                    2_000_000_000,
+                    &mut server,
+                    ErrSlot(&mut err)
+                ),
                 0
             );
             let mut hello = MaybeUninit::<VecVal>::uninit();
@@ -537,9 +555,9 @@ mod tests {
                 msstd_net_connection_write_bytes(
                     client,
                     hello.as_ptr(),
-                    1,
+                    HasRaw(1),
                     2_000_000_000,
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 0
             );
@@ -547,32 +565,43 @@ mod tests {
             assert_eq!(
                 msstd_net_connection_read(
                     server,
-                    1,
+                    ms_rt_abi::HasRaw(1),
                     5,
-                    1,
+                    ms_rt_abi::HasRaw(1),
                     2_000_000_000,
                     out.as_mut_ptr(),
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 0
             );
             assert_eq!(bytes_ref(out.as_ptr()), &b"hello"[..]);
-            assert_eq!(msstd_net_connection_shutdown_write(client, &mut err), 0);
+            assert_eq!(
+                msstd_net_connection_shutdown_write(client, ErrSlot(&mut err)),
+                0
+            );
             assert_eq!(
                 msstd_net_connection_read(
                     server,
+                    ms_rt_abi::HasRaw(0),
                     0,
-                    0,
-                    1,
+                    ms_rt_abi::HasRaw(1),
                     2_000_000_000,
                     out.as_mut_ptr(),
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 STATUS_NONE
             );
             // A timeout reports `Failed("operation timed out")`.
             assert_eq!(
-                msstd_net_connection_read(client, 0, 0, 1, 20_000_000, out.as_mut_ptr(), &mut err),
+                msstd_net_connection_read(
+                    client,
+                    ms_rt_abi::HasRaw(0),
+                    0,
+                    ms_rt_abi::HasRaw(1),
+                    20_000_000,
+                    out.as_mut_ptr(),
+                    ErrSlot(&mut err)
+                ),
                 STATUS_FAILED
             );
             assert_eq!(take(err), "operation timed out");
@@ -607,13 +636,13 @@ mod tests {
                     cidrs.as_ptr(),
                     0,
                     &mut child,
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 0
             );
             let mut l = null_mut();
             assert_eq!(
-                msstd_net_network_listen(child, s("127.0.0.1:0"), &mut l, &mut err),
+                msstd_net_network_listen(child, s("127.0.0.1:0"), &mut l, ErrSlot(&mut err)),
                 STATUS_PERMISSION_DENIED
             );
             let mut out = MaybeUninit::<VecVal>::uninit();
@@ -621,12 +650,12 @@ mod tests {
                 msstd_net_network_lookup(
                     net,
                     s("127.0.0.1"),
+                    ms_rt_abi::HasRaw(0),
                     0,
-                    0,
-                    0,
+                    ms_rt_abi::HasRaw(0),
                     0,
                     out.as_mut_ptr(),
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 0
             );
@@ -637,12 +666,12 @@ mod tests {
                     net,
                     s("127.0.0.1"),
                     0,
+                    ms_rt_abi::HasRaw(0),
                     0,
-                    0,
-                    0,
+                    ms_rt_abi::HasRaw(0),
                     0,
                     records.as_mut_ptr(),
-                    &mut err
+                    ErrSlot(&mut err)
                 ),
                 0
             );

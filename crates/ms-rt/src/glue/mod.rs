@@ -7,8 +7,7 @@ pub mod pool;
 
 use core::fmt::{self, Write};
 use core::sync::atomic::Ordering;
-use ms_rt_abi::{STATUS_FAILED, StrVal};
-use std::vec::Vec;
+use ms_rt_abi::StrVal;
 
 use crate::fault::{cancel_flag, msrt_cancelled, msrt_fault};
 use crate::obj::{msrt_release, msrt_retain};
@@ -392,54 +391,6 @@ pub fn new_handle<T>(value: T) -> *mut Handle<T> {
         );
         ptr
     }
-}
-
-crate::isolate_static! {
-    /// Diagnostic text of the most recent `STATUS_FAILED` result of this isolate.
-    static FAILURE: Vec<u8> = Vec::new();
-}
-
-/// Records the text a later `failure_message` returns.
-pub fn record_failure(message: Vec<u8>) {
-    // SAFETY: single-threaded runtime; no reference into FAILURE outlives a call.
-    unsafe { *FAILURE.ptr() = message };
-}
-
-/// Records `message` and returns `STATUS_FAILED`.
-pub fn failed(message: &[u8]) -> u8 {
-    record_failure(message.to_vec());
-    STATUS_FAILED
-}
-
-/// A fresh string holding the most recently recorded failure text.
-pub fn failure_message() -> StrVal {
-    // SAFETY: single-threaded runtime.
-    new_string(unsafe { &*FAILURE.ptr() })
-}
-
-crate::isolate_static! {
-    /// Read-ahead standard input a dropped `stdin()` handle left: the bytes, and the offset of the first unread one.
-    static STDIN_PENDING: (Vec<u8>, usize) = (Vec::new(), 0);
-}
-
-/// Keeps read-ahead standard input for the next `stdin()` handle: `bytes[head..]` is unread.
-///
-/// The buffer is handed over without copying unless an earlier stash is still unread.
-pub fn stash_stdin_pending(bytes: Vec<u8>, head: usize) {
-    // SAFETY: single-threaded runtime; no reference into STDIN_PENDING outlives a call.
-    let (held, held_head) = unsafe { &mut *STDIN_PENDING.ptr() };
-    if *held_head >= held.len() {
-        *held = bytes;
-        *held_head = head;
-    } else {
-        held.extend_from_slice(&bytes[head..]);
-    }
-}
-
-/// Takes the read-ahead standard input a previous handle left, with the offset of its first unread byte.
-pub fn take_stdin_pending() -> (Vec<u8>, usize) {
-    // SAFETY: single-threaded runtime.
-    unsafe { core::mem::take(&mut *STDIN_PENDING.ptr()) }
 }
 
 /// Adds a reference to a runtime object.

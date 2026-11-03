@@ -1,51 +1,35 @@
-//! `@std/io` natives for host streams. Symbols are `msstd_io_<name>`.
+//! `@std/io` natives. Symbols are `msstd_io_<name>`.
 //!
-//! A stream is a refcounted handle (`stdin`, `stdout`, `stderr` borrow their descriptors, `open`
-//! owns one). Operations return an `ErrorCategory` status: `0` ok, `STATUS_NONE` for end of stream,
-//! `CLOSED`, `INVALID_INPUT`, `UNAVAILABLE`, `INVALID_DATA`, `LIMIT_EXCEEDED`, or `FAILED` with
-//! its Go-style text from `msstd_io_failure_message`. Outputs are written only on success.
-//! Generic `copy`/`read_all`/`read_line` over user-defined `ReadStream`s stay compiler-lowered.
+//! The `ReadStream` and `WriteStream` types are Manuscript over the runtime stream table
+//! (`ms-rt/src/streams.rs`). What remains here is the file-handle read and write that `NativeFile`
+//! uses and the standard-stream redirect. Operations return an `ErrorCategory` status: `0` ok,
+//! `STATUS_NONE` for end of stream, or `FAILED` with its text stored through `err`.
 #![no_std]
 
 extern crate alloc;
 
 pub use ms_std_fs::stream;
 
-mod accumulate;
-
 use alloc::vec::Vec;
-use ms_rt::ffi::{IntoAbi, ObjMut, ObjRef, Object, StatusCode, Text, native};
-use ms_rt::glue::{fault, record_failure};
-use ms_rt_abi::{STATUS_NONE, StrVal};
+use ms_rt::ffi::{ErrOut, Has, ObjMut, StatusCode, native};
+use ms_rt::glue::fault;
+use ms_rt_abi::{STATUS_FAILED, STATUS_NONE};
 use stream::{IoFail, IoRes, Stream};
 
-/// A stream result as a status: a failure records its text for `msstd_io_failure_message`.
-fn status<T>(r: IoRes<T>) -> Result<T, StatusCode> {
+/// A stream result as a status: a failure stores its text in `err`, which the caller reads for
+/// `STATUS_FAILED`.
+fn status<T>(r: IoRes<T>, err: &ErrOut) -> Result<T, StatusCode> {
     r.map_err(|IoFail { status, message }| {
-        record_failure(message);
+        if status == STATUS_FAILED {
+            err.set_bytes(&message);
+        }
         StatusCode(status)
     })
 }
 
 /// Like [`status`], with end of stream (`None`) as `STATUS_NONE`.
-fn chunk(r: IoRes<Option<Vec<u8>>>) -> Result<Vec<u8>, StatusCode> {
-    status(r)?.ok_or(StatusCode(STATUS_NONE))
-}
-
-/// A line read: built in place from the read-ahead buffer, or collected from several reads.
-pub enum Line {
-    Made(StrVal),
-    Bytes(Text),
-}
-
-impl IntoAbi for Line {
-    type Raw = StrVal;
-    fn into_raw(self) -> StrVal {
-        match self {
-            Line::Made(s) => s,
-            Line::Bytes(t) => t.into_raw(),
-        }
-    }
+fn chunk(r: IoRes<Option<Vec<u8>>>, err: &ErrOut) -> Result<Vec<u8>, StatusCode> {
+    status(r, err)?.ok_or(StatusCode(STATUS_NONE))
 }
 
 fn optional(has: bool, v: i64) -> Option<i64> {
@@ -53,69 +37,37 @@ fn optional(has: bool, v: i64) -> Option<i64> {
 }
 
 native! {
-    /// The text of the last `FAILED` stream result.
-    fn msstd_io_failure_message() -> out StrVal {
-        ms_rt::glue::failure_message()
-    }
-
-    /// `which`: 0 standard input, 1 standard output, 2 standard error. The descriptor stays open.
-    safe fn msstd_io_standard(which: i64) -> Object<Stream> {
-        Object(Stream::standard(which))
-    }
-
     /// Points this process's standard stream `which` (0 input, 1 output, 2 error) at the null device. Pending buffered output is written first.
-    fn msstd_io_redirect_null(which: i64) -> Result<(), StatusCode> {
+    fn msstd_io_redirect_null(which: i64; err: ErrOut) -> Result<(), StatusCode> {
         if !(0..=2).contains(&which) {
             return Err(StatusCode(ms_rt_abi::STATUS_INVALID_INPUT));
         }
         ms_rt::io::flush_stdout();
         ms_std_fs::sys::redirect_standard_to_null(which).map_err(|errno| {
-            record_failure(alloc::format!("redirect standard stream: errno {errno}").into_bytes());
-            StatusCode(ms_rt_abi::STATUS_FAILED)
+            err.set(&alloc::format!("redirect standard stream: errno {errno}"));
+            StatusCode(STATUS_FAILED)
         })
-    }
-
-    fn msstd_io_open(path: &str) -> Result<Object<Stream>, StatusCode> {
-        status(Stream::open(path.as_bytes())).map(Object)
     }
 
     /// Reads a chunk; `STATUS_NONE` at end of stream.
     fn msstd_io_read(
         h: ObjMut<Stream>,
-        has_max: bool,
-        max: i64,
+        has_max: Has,
+        max: i64;
+        err: ErrOut
     ) -> Result<Vec<u8>, StatusCode> {
         let mut h = h;
-        chunk(h.read(optional(has_max, max)))
+        chunk(h.read(optional(*has_max, max)), &err)
     }
 
-    /// Reads one line without its ending; `STATUS_NONE` at end of stream.
-    fn msstd_io_read_line(
-        h: ObjMut<Stream>,
-        has_max: bool,
-        max: i64,
-    ) -> Result<Line, StatusCode> {
+    fn msstd_io_write_bytes(h: ObjMut<Stream>, data: &[u8]; err: ErrOut) -> Result<(), StatusCode> {
         let mut h = h;
-        let max = optional(has_max, max);
-        if let Some(line) = h.read_buffered_line(max, ms_rt::ffi::new_string_bytes) {
-            return status(line).map(Line::Made);
-        }
-        chunk(h.read_line(max)).map(|b| Line::Bytes(Text(b)))
+        status(h.write(data), &err)
     }
 
-    fn msstd_io_write_bytes(h: ObjMut<Stream>, data: &[u8]) -> Result<(), StatusCode> {
+    fn msstd_io_write(h: ObjMut<Stream>, data: &str; err: ErrOut) -> Result<(), StatusCode> {
         let mut h = h;
-        status(h.write(data))
-    }
-
-    fn msstd_io_write(h: ObjMut<Stream>, data: &str) -> Result<(), StatusCode> {
-        let mut h = h;
-        status(h.write(data.as_bytes()))
-    }
-
-    fn msstd_io_flush(h: ObjMut<Stream>) -> Result<(), StatusCode> {
-        let mut h = h;
-        status(h.flush())
+        status(h.write(data.as_bytes()), &err)
     }
 
     /// Closes the stream; a failing descriptor release raises a fault with its text.
@@ -124,9 +76,5 @@ native! {
         if let Err(IoFail { message, .. }) = h.close() {
             fault(core::str::from_utf8(&message).unwrap_or("close failed"));
         }
-    }
-
-    fn msstd_io_is_closed(h: ObjRef<Stream>) -> bool {
-        h.is_closed()
     }
 }

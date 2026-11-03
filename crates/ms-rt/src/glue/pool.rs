@@ -506,7 +506,12 @@ mod tests {
         let start = Instant::now();
         assert_eq!(run(Lane::Dns, 300u64, slow_dns, 20_000_000), None);
         assert!(start.elapsed() < Duration::from_millis(250));
-        std::thread::sleep(Duration::from_millis(400));
+        // The job sleeps 300 ms on a pool thread; wait for it to finish rather than for a fixed time,
+        // since a loaded runner can start that thread late (darwin-arm64 saw 0 finished after 400 ms).
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while lock().finished.is_empty() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(10));
+        }
         assert_eq!(lock().finished.len(), 1);
         assert_eq!(
             run(Lane::General, std::vec![1u8], doubled, -1),

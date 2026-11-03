@@ -104,6 +104,7 @@ impl CompressionFormat:
 // A codec held by a stream step; `failure` is a construction error returned by every read.
 export extern type NativeEncoder
 
+// A native decompression codec held by a stream step.
 export extern type NativeDecoder
 
 type Compressing:

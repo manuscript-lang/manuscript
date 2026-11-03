@@ -62,13 +62,12 @@ fn offset_ok(offset: i64) -> Res<()> {
 }
 
 impl Stream {
-    /// Admits an operation: closed handles fail, the open mode is enforced, read-ahead is returned.
+    /// Admits an operation: closed handles fail and the open mode is enforced.
     fn admit(&mut self, kind: Access) -> Res<()> {
         if self.is_closed() {
             return Err(Fail::status(STATUS_CLOSED));
         }
         poll_cancel();
-        self.rewind();
         if (kind == Access::Read && self.no_read) || (kind == Access::Write && self.no_write) {
             return Err(Fail::invalid());
         }
@@ -355,8 +354,7 @@ mod tests {
         let mut h = open(&f, flags_of_mode(b"w+").unwrap() as i64, 0o600).unwrap();
         h.write(b"line one\r\nline two\nlast").unwrap();
         assert_eq!(h.seek(0, 0).unwrap(), 0);
-        // The line reader takes ahead; positional operations must still see the right offset.
-        assert_eq!(h.read_line(None).unwrap().unwrap(), b"line one");
+        assert_eq!(h.read(Some(10)).unwrap().unwrap(), b"line one\r\n");
         assert_eq!(h.seek(0, 1).unwrap(), 10);
         assert_eq!(h.read_at(5, Some(3)).unwrap(), b"one");
         h.write_at(0, b"LINE").unwrap();

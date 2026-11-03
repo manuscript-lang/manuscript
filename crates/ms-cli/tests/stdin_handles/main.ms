@@ -1,17 +1,15 @@
-import read_all, read_line, stdin, stdout from "@std/io/io.ms"
+import stdin, stdout from "@std/io/io.ms"
+import read_all from "@std/io/streams.ms"
 
-// Each `stdin()` call reads where the previous handle stopped, read-ahead included.
+// Each `stdin()` call continues the one stream: bytes a first handle took are not seen again, and a
+// later handle sees the rest, so the two reads together are the whole input in order.
 export fn main() Int:
-    var n = 0
-
-    while n < 3:
-        let next = read_line(input: stdin(), max_bytes: 100).get(none)
-        if next.is_none():
-            return 1
-
-        stdout().write("{n}:{next.get()}\n").get()
-        n += 1
+    var first = stdin()
+    let chunk = first.read().wait().get(none)
+    if chunk.is_none():
+        return 1
 
     let rest = read_all(input: stdin()).get()
-    stdout().write("rest:{rest.decode_utf8().get("")}").get()
+    let text = chunk.get().decode_utf8().get("") + rest.decode_utf8().get("")
+    stdout().write(text).get()
     return 0

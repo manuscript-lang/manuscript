@@ -2,22 +2,20 @@
 use super::{Draw, Kind, RandomFail};
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt::ffi::{Mut, Own, Ref, Status, StrVal, abi_handle, native};
+use ms_rt::ffi::{ErrOut, Has, Mut, Own, Ref, StatusCode, abi_handle, native};
 
 abi_handle!(Draw);
 
-/// `RandomFail::Failed` also records its text for `msstd_random_failure_message`.
-impl Status for RandomFail {
-    fn status(self) -> u8 {
-        match self {
-            RandomFail::InvalidInput => ms_rt_abi::STATUS_INVALID_INPUT,
-            RandomFail::LimitExceeded => ms_rt_abi::STATUS_LIMIT_EXCEEDED,
-            RandomFail::Failed(m) => {
-                ms_rt::glue::record_failure(m.into_bytes());
-                ms_rt_abi::STATUS_FAILED
-            }
+/// The status of `fail`; a `Failed` one stores its text in `err`.
+fn fail_status(fail: RandomFail, err: &ErrOut) -> StatusCode {
+    StatusCode(match fail {
+        RandomFail::InvalidInput => ms_rt_abi::STATUS_INVALID_INPUT,
+        RandomFail::LimitExceeded => ms_rt_abi::STATUS_LIMIT_EXCEEDED,
+        RandomFail::Failed(m) => {
+            err.set(&m);
+            ms_rt_abi::STATUS_FAILED
         }
-    }
+    })
 }
 
 fn kind_of(kind: i64) -> Kind {
@@ -31,20 +29,15 @@ fn kind_of(kind: i64) -> Kind {
 }
 
 native! {
-    /// The text of the last `Failed` status (a fresh string).
-    fn msstd_random_failure_message() -> out StrVal {
-        ms_rt::glue::failure_message()
-    }
-
     /// `Entropy.bytes` of the operating-system source.
-    fn msstd_random_os_bytes(count: i64) -> Result<Vec<u8>, RandomFail> {
-        super::os_bytes(count)
+    fn msstd_random_os_bytes(count: i64; err: ErrOut) -> Result<Vec<u8>, StatusCode> {
+        super::os_bytes(count).map_err(|f| fail_status(f, &err))
     }
 
     /// Starts a [`Draw`]; `kind` is 0 `secure_int` (`a` min, `b` optional max), 1 `uuid_v4`,
     /// 2 `float`, 3 `shuffle` of `a` items, 4 `choice` over `a` items. Freed by
     /// `msstd_random_draw_free`.
-    safe fn msstd_random_draw_new(kind: i64, a: i64, has_b: bool, b: i64) -> Own<Draw> {
+    safe fn msstd_random_draw_new(kind: i64, a: i64, has_b: Has, b: i64) -> Own<Draw> {
         Own(alloc::boxed::Box::new(Draw::new(kind_of(kind), a, has_b.then_some(b))))
     }
 
@@ -65,9 +58,13 @@ native! {
         if which == 0 { i } else { j }
     }
 
-    /// The outcome: `0` on success, otherwise the `RandomError` status.
-    fn msstd_random_draw_status(d: Ref<Draw>) -> u8 {
-        d.status()
+    /// The outcome: `0` on success, otherwise the `RandomError` status (`Failed` writes `err`).
+    fn msstd_random_draw_status(d: Ref<Draw>; err: ErrOut) -> Result<(), StatusCode> {
+        let status = d.status();
+        if status == ms_rt_abi::STATUS_FAILED {
+            err.set(super::SHORT_ENTROPY);
+        }
+        if status == 0 { Ok(()) } else { Err(StatusCode(status)) }
     }
 
     fn msstd_random_draw_int(d: Ref<Draw>) -> i64 {
@@ -95,17 +92,19 @@ mod tests {
     use ms_rt as _;
     use ms_rt::ffi::VecVal; // links the msrt_* runtime symbols
 
+    const NO_ERR: ms_rt::ffi::ErrSlot = ms_rt::ffi::ErrSlot(core::ptr::null_mut());
+
     #[test]
     fn os_bytes_bounds() {
         let mut out = MaybeUninit::<VecVal>::uninit();
         // SAFETY: pointers are writable.
         unsafe {
-            assert_eq!(msstd_random_os_bytes(-1, out.as_mut_ptr()), 1);
+            assert_eq!(msstd_random_os_bytes(-1, out.as_mut_ptr(), NO_ERR), 1);
             assert_eq!(
-                msstd_random_os_bytes(crate::random::MAX_BYTES + 1, out.as_mut_ptr()),
+                msstd_random_os_bytes(crate::random::MAX_BYTES + 1, out.as_mut_ptr(), NO_ERR),
                 1
             );
-            assert_eq!(msstd_random_os_bytes(32, out.as_mut_ptr()), 0);
+            assert_eq!(msstd_random_os_bytes(32, out.as_mut_ptr(), NO_ERR), 0);
             assert_eq!(out.assume_init().len, 32);
         }
     }

@@ -390,6 +390,11 @@ export type StreamingResponse:
     // The body, at most 64 KiB per item. Reading past the request's `max_response_bytes` is an `Error` of kind `Failed`.
     body: ReadStream[Bytes]
 
+impl Closeable for StreamingResponse:
+    // Closes the body, which cancels what is unread and releases the connection.
+    var fn close() Unit!:
+        return self.body.close()
+
 type ResponseSource:
     raw: RawResponse
 

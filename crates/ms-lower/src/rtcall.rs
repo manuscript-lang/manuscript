@@ -1,7 +1,7 @@
 //! Calls into `ms-rt` driven by the declared signature of the symbol (generated from the runtime sources).
 //!
 //! The runtime ABI is regular (`ms-rt/ABI.md`, section 1): optional scalars flatten into
-//! `has_x, x`, descriptors follow the receiver, constructed values and fallible results
+//! `has_x: HasRaw, x`, descriptors follow the receiver, constructed values and fallible results
 //! come back through a trailing `out` pointer, and `u8` statuses name the error case. This
 //! module marshals a call from the symbol's parameter names and types and the checked
 //! signature of the language-level method.
@@ -49,6 +49,17 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
         reads: bits & 2 != 0,
         fresh: bits & 4 != 0,
     }
+}
+
+/// Whether the runtime function `sym` takes ownership of its parameter `i`: a function value an
+/// extern keeps after it returns (the checker consumes the argument; the runtime drops it once).
+pub(crate) fn hands_over(sym: &str, i: usize) -> bool {
+    ms_check::stdlib::keeps_callbacks(&format!("extern:{sym}"))
+        && rt_sig(sym).is_some_and(|sig| {
+            sig.params
+                .get(i)
+                .is_some_and(|p| p.ty == "*mut Closure" || p.name == "env")
+        })
 }
 
 /// One declared runtime parameter.
@@ -330,7 +341,7 @@ impl FnLower<'_> {
         let recv_ty = recv.map(|r| self.ty_of(r.v));
         // A trailing `err` receives the text of a `Failed` status, after any `out`.
         let body =
-            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.name == "err"));
+            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.ty == "ErrSlot"));
         let has_out = sig.params[..body].last().is_some_and(|p| p.name == "out");
         let end = body - usize::from(has_out);
         let mut vals: Vec<Value> = Vec::new();
@@ -381,11 +392,7 @@ impl FnLower<'_> {
                         None => return Err(Error::new(format!("{sym}: no key type"))),
                     }
                 }
-                n if n.starts_with("has_")
-                    && i + 1 < end
-                    && sig.params[i + 1].name.starts_with("has_")
-                    && sig.params[i + 1].ty == "u8" =>
-                {
+                _ if p.ty == "HasRaw" && i + 1 < end && sig.params[i + 1].ty == "HasRaw" => {
                     // An optional record: its presence, then each field in turn.
                     let input = *inputs
                         .get(cursor)
@@ -398,7 +405,7 @@ impl FnLower<'_> {
                     )?;
                     continue;
                 }
-                n if n.starts_with("has_") && i + 1 < end => {
+                _ if p.ty == "HasRaw" && i + 1 < end => {
                     let input = *inputs
                         .get(cursor)
                         .ok_or_else(|| Error::new(format!("{sym}: missing argument")))?;
@@ -408,18 +415,6 @@ impl FnLower<'_> {
                     vals.push(has);
                     vals.push(value);
                     i += 1;
-                }
-                "src" => {
-                    // The upload of a request: the closure the runtime reads chunks through.
-                    let input = *inputs
-                        .get(cursor)
-                        .ok_or_else(|| Error::new(format!("{sym}: missing upload")))?;
-                    cursor += 1;
-                    let stream = input
-                        .val
-                        .ok_or_else(|| Error::new(format!("{sym}: missing upload")))?;
-                    let env = self.upload_env(stream)?;
-                    vals.push(env);
                 }
                 "env" => {
                     // The handler of a server: the closure the runtime calls per request.
@@ -532,6 +527,10 @@ impl FnLower<'_> {
                             self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);
                         }
                         vals.push(slot);
+                    } else if hands_over(sym, i) {
+                        // A function value the runtime keeps: handed over, dropped by the runtime.
+                        let v = self.owned(x);
+                        vals.push(v);
                     } else {
                         let v = self.borrow(x);
                         let v = match self.b.m.types.kind(self.ty_of(v)).clone() {
@@ -636,7 +635,7 @@ impl FnLower<'_> {
         let mut used = 0;
         let mut k = 0;
         // `params` begins at the first field's presence flag; pairs follow in field order.
-        while used + 1 < params.len() && params[used].name.starts_with("has_") {
+        while used + 1 < params.len() && params[used].ty == "HasRaw" {
             let payload = params[used + 1].ty.as_str();
             let zero = |s: &mut Self| match payload {
                 "i64" => s.b.iconst(0),
@@ -746,7 +745,7 @@ impl FnLower<'_> {
 
     /// Passes the slot a trailing `err` parameter writes the `Failed` text to.
     pub(crate) fn push_err_slot(&mut self, sig: &RtSig, vals: &mut Vec<Value>) {
-        if sig.params.last().is_some_and(|p| p.name == "err") {
+        if sig.params.last().is_some_and(|p| p.ty == "ErrSlot") {
             let slot = self
                 .b
                 .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
@@ -773,7 +772,7 @@ impl FnLower<'_> {
         };
         // A string comes back through a trailing `out: *mut StrVal` and no status.
         let body =
-            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.name == "err"));
+            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.ty == "ErrSlot"));
         let string_ret = has_out
             && direct(&sig.ret) == Some(MTy::UNIT)
             && sig.params[..body]
@@ -871,7 +870,7 @@ impl FnLower<'_> {
         }
         // `InfoOut` is flat words that become a `FileInfo` record.
         let body =
-            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.name == "err"));
+            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.ty == "ErrSlot"));
         if sig.params[..body]
             .last()
             .is_some_and(|p| p.ty == "*mut InfoOut")
@@ -965,38 +964,41 @@ impl FnLower<'_> {
     /// The `u8` status a runtime function returns, as an `Int` (a `Bool` would make the
     /// optimizer assume 0 or 1). Only the low byte of the return register is defined.
     pub(crate) fn status_code(&mut self, sym: &str, vals: &[Value]) -> Result<Value, Error> {
-        let raw = self.call_runtime(sym, vals, MTy::INT)?;
+        let mut vals = vals.to_vec();
+        // A trailing `err` slot receives the text of a `Failed` status, read by `status_failure`;
+        // a caller that marshalled its own arguments has already passed it.
+        if let Some(sig) = rt_sig(sym)
+            && vals.len() < sig.params.len()
+        {
+            self.err_slot = None;
+            self.push_err_slot(&sig, &mut vals);
+        }
+        let raw = self.call_runtime(sym, &vals, MTy::INT)?;
         let mask = self.b.iconst(0xff);
         Ok(self.b.binop(Op::And, raw, mask))
     }
 
     /// The error case of `ea` that the status `code` names; the last listed case otherwise.
-    /// `failure` is the symbol returning the text of a `Failed` status.
+    /// A `Failed` status carries the text the native stored in the `err` slot.
     pub(crate) fn status_error(
         &mut self,
         ea: ms_mir::types::AltId,
         code: Value,
         cases: &[(i64, usize)],
-        failure: Option<&str>,
     ) -> Result<Value, Error> {
         let (&(n, idx), rest) = cases
             .split_first()
             .ok_or_else(|| Error::new("no error case for a runtime status"))?;
         let build = |s: &mut Self| -> Result<Value, Error> {
             let carries_text = s.b.m.alts[ea.index()].cases[idx].fields.len() == 1;
-            match failure {
-                _ if carries_text && s.err_slot.is_some() => {
-                    let slot = s.err_slot.expect("checked");
+            match s.err_slot {
+                Some(slot) if carries_text => {
                     let text =
                         s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
                             .expect("take");
                     Ok(s.b.alt_new(ea, idx as u32, &[text]))
                 }
-                Some(sym) if n == 11 && carries_text => {
-                    let text = s.call_runtime(sym, &[], MTy::STR)?;
-                    Ok(s.b.alt_new(ea, idx as u32, &[text]))
-                }
-                // A `Failed(message)` of a module without a failure text.
+                // A `Failed(message)` of a native without an `err` slot.
                 _ if carries_text => {
                     let text = s.lit("").v;
                     let text = s.owned(Val {
@@ -1015,7 +1017,7 @@ impl FnLower<'_> {
         let hit = self.b.icmp(Cc::Eq, code, k);
         let ty = self.b.m.types.alt(ea);
         let r = self.two_ways(hit, ty, &mut |s| build(s).map(Some), &mut |s| {
-            s.status_error(ea, code, rest, failure).map(Some)
+            s.status_error(ea, code, rest).map(Some)
         })?;
         Ok(r.v)
     }
@@ -1080,8 +1082,7 @@ impl FnLower<'_> {
         let cases: Vec<(i64, usize)> = (0..self.b.m.alts[ea.index()].cases.len())
             .map(|i| (i as i64 + 1, i))
             .collect();
-        let failure = failure_symbol(sym);
-        let e = self.status_error(ea, code, &cases, failure.as_deref())?;
+        let e = self.status_error(ea, code, &cases)?;
         Ok(self.b.alt_new(a, err as u32, &[e]))
     }
 
@@ -1095,8 +1096,7 @@ impl FnLower<'_> {
     ) -> Result<Value, Error> {
         let table = status_table(sym);
         let domain = domain_of(sym);
-        let failure = failure_symbol(sym);
-        self.status_chain(er, code, &table, &domain, failure.as_deref())
+        self.status_chain(er, code, &table, &domain)
     }
 
     fn status_chain(
@@ -1105,20 +1105,18 @@ impl FnLower<'_> {
         code: Value,
         table: &[(i64, &'static str, &'static str)],
         domain: &str,
-        failure: Option<&str>,
     ) -> Result<Value, Error> {
         let (&(n, kind, words), rest) = table
             .split_first()
             .ok_or_else(|| Error::new("no error kind for a runtime status"))?;
         let build = |s: &mut Self| -> Result<Value, Error> {
             let text = if kind == "Failed" {
-                match (s.err_slot, failure) {
-                    (Some(slot), _) => {
+                match s.err_slot {
+                    Some(slot) => {
                         s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
                             .expect("take")
                     }
-                    (None, Some(sym)) => s.call_runtime(sym, &[], MTy::STR)?,
-                    (None, None) => {
+                    None => {
                         let l = s.lit(&format!("{domain}: failed")).v;
                         s.owned(Val { v: l, own: false })
                     }
@@ -1136,7 +1134,7 @@ impl FnLower<'_> {
         let hit = self.b.icmp(Cc::Eq, code, k);
         let ty = self.b.m.types.rec(er);
         let r = self.two_ways(hit, ty, &mut |s| build(s).map(Some), &mut |s| {
-            s.status_chain(er, code, rest, domain, failure).map(Some)
+            s.status_chain(er, code, rest, domain).map(Some)
         })?;
         Ok(r.v)
     }
@@ -1345,13 +1343,6 @@ fn domain_of(sym: &str) -> String {
                 .unwrap_or("error")
                 .to_string()
         })
-}
-
-/// The symbol returning the text of a `Failed` status of `sym`'s module, when it has one.
-fn failure_symbol(sym: &str) -> Option<String> {
-    let module = sym.strip_prefix("msstd_")?.split('_').next()?;
-    let failure = format!("msstd_{module}_failure_message");
-    rt_sig(&failure).map(|_| failure)
 }
 
 /// Whether a runtime function returns a new runtime handle object for an interface value.

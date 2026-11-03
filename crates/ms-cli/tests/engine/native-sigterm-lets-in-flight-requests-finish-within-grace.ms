@@ -1,16 +1,10 @@
-import (
-    buffered,
-    headers,
-    HttpRequest,
-    HttpResponse,
-    HttpServerOptions
-) from "@std/net/http.ms"
+import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 import stdout from "@std/io/io.ms"
 import sleep, nanoseconds from "@std/os/time.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
-    let _ = sleep(nanoseconds(600000000)).wait()
+    sleep(nanoseconds(600000000))
     return HttpResponse(200, headers(), "done".to_bytes())
 
 export fn main() Int:
@@ -20,7 +14,7 @@ export fn main() Int:
     ):
         let server = acquired
         stdout().write("{server.address()}\n").get()
-        stdout().flush().wait().get()
+        let _flushed = stdout().flush().wait()
 
         let _ignored = server.wait()
         return 0

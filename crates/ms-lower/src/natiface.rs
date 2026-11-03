@@ -307,62 +307,11 @@ const METHODS: &[MethodRow] = &[
         &[],
         Shape::Plain,
     ),
-    ("io", "Files", "open", "msstd_io_open", &[], Shape::Plain),
     (
         "random",
         "Entropy",
         "bytes",
         "msstd_random_os_bytes",
-        &[],
-        Shape::Plain,
-    ),
-    ("io", "File", "read", "msstd_io_read", &[], Shape::Plain),
-    ("io", "File", "close", "msstd_io_close", &[], Shape::Plain),
-    (
-        "io",
-        "ReadStream",
-        "read",
-        "msstd_io_read",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "io",
-        "ReadStream",
-        "close",
-        "msstd_io_close",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "io",
-        "WriteStream",
-        "write",
-        "msstd_io_write",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "io",
-        "WriteStream",
-        "write_bytes",
-        "msstd_io_write_bytes",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "io",
-        "WriteStream",
-        "flush",
-        "msstd_io_flush",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "io",
-        "WriteStream",
-        "close",
-        "msstd_io_close",
         &[],
         Shape::Plain,
     ),
@@ -1369,79 +1318,7 @@ impl FnLower<'_> {
     }
 }
 
-impl FnLower<'_> {
-    /// `io.read_line(input, max_bytes)`: a runtime call over the handle behind a native
-    /// `ReadStream`; other implementations are read byte by byte through their `read`.
-    pub(crate) fn read_line_native(
-        &mut self,
-        e: &ms_syntax::ast::Expr,
-        view: &ms_check::hir::CallView<'_>,
-        params: &[ct::Param],
-    ) -> Result<Val, Error> {
-        let args = self.native_args(view)?;
-        if self.dead {
-            return Ok(self.dummy(MTy::UNIT));
-        }
-        let result = self.emty(e)?;
-        let stream = params
-            .iter()
-            .find(|p| p.name.as_str() == "input")
-            .ok_or_else(|| Error::new("read_line without an input"))?;
-        let input = args
-            .iter()
-            .find(|a| a.name.as_str() == "input")
-            .ok_or_else(|| Error::new("read_line without an input"))?;
-        let TyKind::Iface(iface) = self.mty_kind(&stream.ty)? else {
-            return Err(Error::new("read_line input is not an interface"));
-        };
-        let hir = self.hir.clone();
-        let vt = self
-            .cx
-            .handle_vtable(self.b.m, &hir, "io", &stream.ty, iface)?;
-        let stream_v = self.borrow(input.val);
-        let is_handle = self
-            .b
-            .emit(Op::IfaceIs, &[stream_v], Imm::Vtable(vt), Some(MTy::BOOL));
-        let is_handle = is_handle.expect("iface.is");
-        let max: Vec<NArg> = args
-            .iter()
-            .filter(|a| a.name.as_str() == "max_bytes")
-            .copied()
-            .collect();
-        let decl: Vec<ct::Param> = params
-            .iter()
-            .filter(|p| p.name.as_str() == "max_bytes")
-            .cloned()
-            .collect();
-        let ht = handle_ty(self.b.m);
-        self.two_ways(
-            is_handle,
-            result,
-            &mut |s| {
-                let data =
-                    s.b.emit(Op::IfaceData, &[stream_v], Imm::None, Some(MTy::PTR))
-                        .expect("iface.data");
-                let h =
-                    s.b.emit(Op::Load, &[data], Imm::Ty(ht), Some(ht))
-                        .expect("load");
-                let recv = Val { v: h, own: false };
-                s.rt_method("msstd_io_read_line", recv, &decl, &max, result)
-                    .map(|r| Some(s.owned(r)))
-            },
-            &mut |s| {
-                let (has, n) = s.optional_int(max.first().copied())?;
-                let line = crate::streamloop::Loop::ReadLine;
-                s.stream_loop(line, stream_v, None, has, n, result)
-                    .map(|r| Some(s.owned(r)))
-            },
-        )
-    }
-
-    fn mty_kind(&mut self, t: &ct::Ty) -> Result<TyKind, Error> {
-        let m = self.mty(t)?;
-        Ok(self.b.m.types.kind(m).clone())
-    }
-}
+impl FnLower<'_> {}
 
 impl FnLower<'_> {
     /// A record (or `Result` of one) built from one runtime getter per field, `<base>_<name>`.
