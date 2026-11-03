@@ -4,8 +4,7 @@ import (
     base32_encode,
     base32_decode,
     ascii85_encode,
-    ascii85_decode,
-    EncodingError
+    ascii85_decode
 ) from "@std/data/encoding.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import keep, measure from "@std/test/bench.ms"
@@ -57,10 +56,10 @@ fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
     if mode == 5: limit = length
     if mode == 6 or mode == 7: limit = length * 2
 
-    var expected: Bytes!EncodingError = ok(data.clone())
-    if mode == 1 or mode == 2 or mode == 7: expected = error(EncodingError.InvalidData)
-    if mode == 3: expected = error(EncodingError.LimitExceeded)
-    if mode == 4: expected = error(EncodingError.InvalidInput)
+    var expected: Bytes! = ok(data.clone())
+    if mode == 1 or mode == 2 or mode == 7: expected = error(Error("encoding: invalid data", kind: ErrorCategory.InvalidData))
+    if mode == 3: expected = error(Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded))
+    if mode == 4: expected = error(Error("encoding: invalid input", kind: ErrorCategory.InvalidInput))
 
     fn work() Unit!:
         let actual = base32_decode(text, hex, padded, limit)
@@ -98,9 +97,9 @@ fn decode85(
     var limit: Int? = none
     if bounded: limit = if under: length - 1 else: length
 
-    var expected: Bytes!EncodingError = ok(data.clone())
-    if under: expected = error(EncodingError.LimitExceeded)
-    if bad != 0: expected = error(EncodingError.InvalidData)
+    var expected: Bytes! = ok(data.clone())
+    if under: expected = error(Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded))
+    if bad != 0: expected = error(Error("encoding: invalid data", kind: ErrorCategory.InvalidData))
 
     fn work() Unit!:
         let actual = ascii85_decode(text, limit)
@@ -112,7 +111,9 @@ fn decode85(
 
 fn zero_budget85() Unit!:
     let text = ascii85_encode(sample(4096))
-    let expected: Bytes!EncodingError = error(EncodingError.LimitExceeded)
+    let expected: Bytes! = error(
+        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
 
     fn work() Unit!:
         try expect_equal(ascii85_decode(text, 0), expected)
@@ -124,7 +125,7 @@ fn zero_budget85() Unit!:
 fn whitespace85(bounded: Bool) Unit!:
     let text = try " \t\r\n".repeat(16384)
     let limit: Int? = if bounded: 0 else: none
-    let expected: Bytes!EncodingError = ok(Bytes([]))
+    let expected: Bytes! = ok(Bytes([]))
 
     fn work() Unit!:
         try expect_equal(ascii85_decode(text, limit), expected)

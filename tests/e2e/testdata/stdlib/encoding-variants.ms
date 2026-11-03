@@ -157,9 +157,15 @@ test "encoding variant function values retain defaults":
     try expect_equal(try raw_decode("Zg"), "f".to_bytes())
 
 test "Base32 rejects interior padding before output budgets":
-    let invalid: Bytes!EncodingError = error(EncodingError.InvalidData)
-    let negative: Bytes!EncodingError = error(EncodingError.InvalidInput)
-    let limited: Bytes!EncodingError = error(EncodingError.LimitExceeded)
+    let invalid: Bytes! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
+    let negative: Bytes! = error(
+        Error("encoding: invalid input", kind: ErrorCategory.InvalidInput)
+    )
+    let limited: Bytes! = error(
+        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
 
     for hex in [false, true]:
         for text in ["A=AAAAAA", "AA======AA======"]:
