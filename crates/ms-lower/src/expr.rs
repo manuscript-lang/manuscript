@@ -34,7 +34,7 @@ impl<'a> FnLower<'a> {
     /// The type of the value an expression computes: while it is lowered ahead of a conversion
     /// to an interface, its own type rather than the interface.
     fn value_ty(&self, e: &Expr) -> ct::Ty {
-        match self.hir.info(e).interface_source {
+        match self.hir.info(e).interface_source.clone() {
             Some(src) if self.converting == Some(e as *const Expr) => src,
             _ => self.hir.ty(e),
         }
@@ -49,7 +49,8 @@ impl<'a> FnLower<'a> {
         let x = self.expr_value(e);
         self.converting = saved;
         let x = x?;
-        let x = match self.hir.info(e).interface_source {
+        let source = self.hir.info(e).interface_source.clone();
+        let x = match source {
             Some(src) if !self.dead => {
                 let want = self.emty(e)?;
                 // An owned resource converted to an interface without `close` is only read (the
@@ -78,7 +79,8 @@ impl<'a> FnLower<'a> {
             _ => x,
         };
         // The conversion to the interface comes first: `Shape?` takes a `Sq` as `some(Shape(sq))`.
-        let x = match self.hir.info(e).wrap_some {
+        let wrap = self.hir.info(e).wrap_some.clone();
+        let x = match wrap {
             // A reference wrapped on its way to a binding or a return stays one: `opt.view`.
             Some(_)
                 if !self.dead

@@ -631,7 +631,7 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
                 && ty.kind == Kind::Function
             {
                 let mut signature = ty.clone();
-                if ty.to_string().contains("<invalid>")
+                if ms_check::types::invalid_ty(ty)
                     && let Some(symbol) = &info.symbol
                     && let Some(t) = symbol.ty_opt()
                 {

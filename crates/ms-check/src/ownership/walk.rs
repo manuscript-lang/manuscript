@@ -3246,6 +3246,7 @@ impl Walker<'_> {
         let param_names: Vec<Name> =
             cx.m.info(e)
                 .arguments
+                .clone()
                 .unwrap_or_default()
                 .iter()
                 .map(|s| s.name)

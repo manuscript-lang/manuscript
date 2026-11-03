@@ -364,7 +364,7 @@ impl Checker {
                     || matches!(receiver.kind, Kind::Record | Kind::Alternative)
                     || (self.m().is_standard() && receiver.kind == Kind::Native)))
         {
-            if receiver.id != "<invalid>" {
+            if !receiver.is_invalid() {
                 self.type_error(
                     d.pos(),
                     "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types",
@@ -408,7 +408,7 @@ impl Checker {
             *v.bounds.borrow_mut() = rewritten;
         }
         let mut contract = self.resolve(imp.contract.as_ref());
-        if contract.kind != Kind::Contract && contract.id != "<invalid>" {
+        if contract.kind != Kind::Contract && !contract.is_invalid() {
             self.type_error(
                 d.pos(),
                 "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
@@ -898,7 +898,7 @@ impl Checker {
                 reason,
             })
         };
-        if t.id == "<invalid>" {
+        if t.is_invalid() {
             return None;
         }
         match t.kind {
@@ -909,7 +909,7 @@ impl Checker {
                     blocked(DataReason::Unbounded, path)
                 };
             }
-            Kind::Primitive if t.id.as_str() == "Never" => return blocked(DataReason::Never, path),
+            Kind::Primitive if t.is_never() => return blocked(DataReason::Never, path),
             Kind::Primitive => return None,
             Kind::Function => return blocked(DataReason::Function, path),
             Kind::Contract => return blocked(DataReason::Interface, path),
@@ -1022,7 +1022,7 @@ impl Checker {
     }
 
     fn property_in(&self, t: &Ty, property: &str, state: &mut PropertyState) -> bool {
-        if t.id == "<invalid>" {
+        if t.is_invalid() {
             return true;
         }
         if property == "Data" {

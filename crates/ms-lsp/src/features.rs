@@ -61,7 +61,7 @@ impl Visitor for Hints<'_> {
         };
         let binding: Option<BindingRef> = self.module.facts().patterns.get(&pattern.id).cloned();
         let Some(binding) = binding else { return };
-        if binding.ty.id.as_str() == "<invalid>" {
+        if binding.ty.is_invalid() {
             return;
         }
         let p = self
