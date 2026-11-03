@@ -1163,6 +1163,41 @@ mod tests {
         task::teardown();
     }
 
+    fn slow_job(ms: &u64) -> u64 {
+        std::thread::sleep(std::time::Duration::from_millis(*ms));
+        *ms
+    }
+
+    /// Hands a blocking job to the pool and answers its result, from whichever thread runs it.
+    unsafe extern "C-unwind" fn pool_job(closure: *mut Closure) {
+        let got = crate::glue::pool::run(crate::glue::pool::Lane::General, 40u64, slow_job, -1);
+        // SAFETY: called from a running task with the closure `start_with_id` made.
+        unsafe {
+            let mut v = got.unwrap_or(0) as i64;
+            msrt_promise_put(id_of(closure), (&raw mut v).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn promises_on_scheduler_threads_hand_blocking_work_to_the_pool() {
+        let _g = lock();
+        sched::msrt_runtime_set_threads(4);
+        let ids: Vec<i64> = (0..6).map(|_| msrt_promise_new()).collect();
+        for &id in &ids {
+            start_with_id(id, pool_job);
+        }
+        for &id in &ids {
+            assert_eq!(msrt_promise_wait(id, -1), OK);
+            assert_eq!(take_int(id), 40);
+        }
+        for id in ids {
+            msrt_promise_drop(id);
+        }
+        sched::shutdown();
+        task::teardown();
+    }
+
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn idle_threads_take_promises_that_have_not_started() {
