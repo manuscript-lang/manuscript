@@ -57,6 +57,8 @@ pub type Retry = fn(id: i64, state: usize, bits: u32) -> bool;
 
 const NOT_STARTED: u8 = 255;
 const WANT_CANCEL: u8 = 1;
+/// Another thread completes this promise (a pipe peer), so a waiter's token must be remote.
+const REMOTE_WAKE: u8 = 2;
 
 const NO_RESULT: Result = Result {
     ptr: core::ptr::null_mut(),
@@ -535,6 +537,7 @@ pub(crate) fn on_drop(id: i64, cancel: Retry, state: usize) {
     if let Some(i) = index(t, id) {
         t.retry[i] = Some(cancel);
         t.retry_state[i] = state;
+        t.flags[i] |= REMOTE_WAKE;
     }
 }
 
@@ -710,7 +713,7 @@ fn park_on(id: i64, timeout_ns: i64) -> u32 {
         return 0;
     };
     // The work may finish on another thread, so the scheduler must not call this a deadlock.
-    let flags = if t.closure[i] != 0 {
+    let flags = if t.closure[i] != 0 || t.flags[i] & REMOTE_WAKE != 0 {
         task::TOKEN_REMOTE
     } else {
         0
@@ -790,9 +793,10 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
         }
         // SAFETY: single scheduler per isolate; the token is ours until freed.
         unsafe {
-            let remote = list
-                .iter()
-                .any(|&id| index(table(), id).is_some_and(|i| table().closure[i] != 0));
+            let remote = list.iter().any(|&id| {
+                index(table(), id)
+                    .is_some_and(|i| table().closure[i] != 0 || table().flags[i] & REMOTE_WAKE != 0)
+            });
             let token = task::msrt_token_new(if remote { task::TOKEN_REMOTE } else { 0 });
             let t = table();
             for &id in &list {
@@ -1109,11 +1113,23 @@ mod tests {
         unsafe { closure.add(1).cast::<i64>().read() }
     }
 
-    /// Sleeps a little so the promises of a test overlap, then answers the number of the thread.
+    static SEEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+    /// Waits for a second thread to join in, then answers the number of its own thread.
     unsafe extern "C-unwind" fn answer_thread(closure: *mut Closure) {
         // SAFETY: called from a running task with the closure `start_with_id` made.
         unsafe {
-            task::msrt_task_sleep(30_000_000);
+            // Stay until a second thread has joined in, so a slow operating system cannot hand
+            // every promise to the first thread that gets to run.
+            SEEN.fetch_or(1 << sched::current(), std::sync::atomic::Ordering::SeqCst);
+            let end = crate::sys::monotonic_ns() + 3_000_000_000;
+            while SEEN.load(std::sync::atomic::Ordering::SeqCst).count_ones() < 2
+                && crate::sys::monotonic_ns() < end
+            {
+                // Busy, not asleep: an idle thread takes work that has not started, and a thread
+                // full of sleepers still counts as idle.
+                std::hint::spin_loop();
+            }
             let mut v = sched::current() as i64;
             msrt_promise_put(id_of(closure), (&raw mut v).cast(), &msrt_desc_int, 0);
         }
@@ -1146,6 +1162,8 @@ mod tests {
     fn promises_spread_over_threads_and_deliver_by_event() {
         let _g = lock();
         sched::msrt_runtime_set_threads(4);
+        SEEN.store(0, std::sync::atomic::Ordering::SeqCst);
+        sched::warm(4);
         let ids: Vec<i64> = (0..8).map(|_| msrt_promise_new()).collect();
         for &id in &ids {
             start_with_id(id, answer_thread);
@@ -1163,11 +1181,47 @@ mod tests {
         task::teardown();
     }
 
+    fn slow_job(ms: &u64) -> u64 {
+        std::thread::sleep(std::time::Duration::from_millis(*ms));
+        *ms
+    }
+
+    /// Hands a blocking job to the pool and answers its result, from whichever thread runs it.
+    unsafe extern "C-unwind" fn pool_job(closure: *mut Closure) {
+        let got = crate::glue::pool::run(crate::glue::pool::Lane::General, 40u64, slow_job, -1);
+        // SAFETY: called from a running task with the closure `start_with_id` made.
+        unsafe {
+            let mut v = got.unwrap_or(0) as i64;
+            msrt_promise_put(id_of(closure), (&raw mut v).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn promises_on_scheduler_threads_hand_blocking_work_to_the_pool() {
+        let _g = lock();
+        sched::msrt_runtime_set_threads(4);
+        let ids: Vec<i64> = (0..6).map(|_| msrt_promise_new()).collect();
+        for &id in &ids {
+            start_with_id(id, pool_job);
+        }
+        for &id in &ids {
+            assert_eq!(msrt_promise_wait(id, -1), OK);
+            assert_eq!(take_int(id), 40);
+        }
+        for id in ids {
+            msrt_promise_drop(id);
+        }
+        sched::shutdown();
+        task::teardown();
+    }
+
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn idle_threads_take_promises_that_have_not_started() {
         let _g = lock();
         sched::msrt_runtime_set_threads(4);
+        sched::warm(4);
         let ids: Vec<i64> = (0..3).map(|_| msrt_promise_new()).collect();
         let began = crate::sys::monotonic_ns();
         for &id in &ids {

@@ -253,7 +253,10 @@ impl Verifier<'_> {
                     if !family.contains(a) {
                         continue;
                     }
+                    let promise_entry = inst.op == Op::Call
+                        && matches!(inst.imm, Imm::Func(g) if self.m.funcs[g.index()].keeps_scoped);
                     let keeps = match inst.op {
+                        _ if promise_entry => false,
                         Op::Drop | Op::DropIf | Op::Copy | Op::CallInd => false,
                         // A stack slot of this frame cannot outlive it: a closure that reads
                         // another one through a borrowed capture stores it there.

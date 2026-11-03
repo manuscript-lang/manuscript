@@ -857,6 +857,9 @@ pub struct Func {
     /// or a shared variable): the closure may be called, copied and dropped, but never stored
     /// or returned, and the verifier rejects code that does.
     pub scoped: bool,
+    /// A function that starts a promise from the closures it is given: it keeps them past its call, which
+    /// is sound because the checker holds what they borrow until the promise is dropped.
+    pub keeps_scoped: bool,
     /// A cleanup closer that acts only while a cancellation or fault unwinds a guarded task
     /// (see `unwind`). Registering it is skipped when no guard is open, where it would do nothing.
     pub unwind_only: bool,
@@ -883,6 +886,7 @@ impl Func {
             scopes: Vec::new(),
             noalias: Vec::new(),
             scoped: false,
+            keeps_scoped: false,
             unwind_only: false,
             capture_closers: Vec::new(),
         };
