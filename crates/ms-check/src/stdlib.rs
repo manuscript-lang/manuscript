@@ -104,7 +104,7 @@ fn runtime_flag(native: &str, flag: &str) -> bool {
     RUNTIME_SYMBOLS
         .lines()
         .find(|l| l.split('(').next() == Some(name))
-        .is_some_and(|l| l.rsplit(" @").skip(1).any(|f| f == flag))
+        .is_some_and(|l| l.split(" @").skip(1).any(|f| f == flag))
 }
 
 /// Whether a native function (`extern:name`) moves its `value` argument into the runtime (`@owns`).
@@ -1598,5 +1598,22 @@ mod tests {
     fn a_file_without_bodies_is_not_split() {
         let text = "export type Box: ...\n\nimpl Box:\n    fn native() Int: ...\n";
         assert!(halves(text).unwrap().is_none());
+    }
+}
+
+#[cfg(test)]
+mod runtime_flag_tests {
+    use super::*;
+
+    #[test]
+    fn runtime_flags_come_from_the_symbol_table() {
+        assert!(keeps_callbacks("extern:msrt_promise_start"));
+        assert!(keeps_callbacks("extern:msstd_http_serving_new"));
+        assert!(owns_value("extern:msrt_cells_put"));
+        assert!(owns_value("extern:msrt_pipe_write"));
+        assert!(!owns_value("extern:msrt_promise_start"));
+        assert!(!keeps_callbacks("extern:msrt_cells_put"));
+        assert!(!keeps_callbacks("extern:msrt_alloc"));
+        assert!(!keeps_callbacks("collections/map"));
     }
 }
