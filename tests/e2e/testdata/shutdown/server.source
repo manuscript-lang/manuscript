@@ -32,7 +32,10 @@ impl Closeable for Server:
         try self.listener.close()
         sleep(10.milliseconds)
 
-        let farewell = self.client.write("farewell\n", timeout: 1.seconds)
+        var farewell = self.client.output.write("farewell\n".to_bytes())
+        if farewell.is_ok():
+            let drained = self.client.output.flush().wait(timeout: 1.seconds)
+            farewell = drained
 
         if farewell.is_error():
             say("farewell failed: {farewell.err().message}\n")
@@ -43,7 +46,7 @@ impl Closeable for Server:
         return ok(unit)
 
 fn serve() Result[Unit, Error]:
-    let signals = try watch_signals([2, 15])
+    var signals = try watch_signals([2, 15])
     let listener = try listen("127.0.0.1:0")
     say("{listener.address()}\n")
 
@@ -52,7 +55,7 @@ fn serve() Result[Unit, Error]:
     let _cleanup = WorkerCleanup(label: "worker")
     say("ready\n")
 
-    let _observed = signals.next()
+    let _observed = signals.read().wait()
     return ok(unit)
 
 export fn main() Int:
