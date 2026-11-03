@@ -9,7 +9,6 @@ use alloc::borrow::Cow;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;
-use core::sync::atomic::{AtomicU8, Ordering};
 use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE, STATUS_UNAVAILABLE,
@@ -101,31 +100,6 @@ impl Stream {
             file: false,
             name,
         }
-    }
-
-    /// Standard input (0), output (1) or error (2); the descriptor stays open.
-    pub fn standard(which: i64) -> Stream {
-        let name: &'static [u8] = match which {
-            0 => b"/dev/stdin",
-            1 => b"/dev/stdout",
-            _ => b"/dev/stderr",
-        };
-        // Programs call `stdin()` once per read: classify each standard descriptor once, not per handle.
-        static KIND: [AtomicU8; 3] = [const { AtomicU8::new(0) }; 3];
-        let fd = sys::standard(which);
-        let slot = &KIND[which.clamp(0, 2) as usize];
-        let pollable = match slot.load(Ordering::Relaxed) {
-            1 => false,
-            2 => true,
-            _ => {
-                let p = sys::fstat(fd)
-                    .map(|st| sys::is_pollable(&st))
-                    .unwrap_or(true);
-                slot.store(if p { 2 } else { 1 }, Ordering::Relaxed);
-                p
-            }
-        };
-        Stream::with_pollable(fd, false, Cow::Borrowed(name), pollable)
     }
 
     /// Opens a file read-only; every failure is `Unavailable` except an embedded NUL.
