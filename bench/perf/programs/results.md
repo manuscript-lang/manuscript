@@ -39,3 +39,7 @@ Median of 7 runs with alternating order; linux/amd64, four cores, Go 1.24.7, rus
 | for_list | 100000000 | 0.52 | 1.06 | 0.30 | 0.51 | 0.49x | 1.75x | 1.02x |
 
 Release builds use LLVM (bundled `opt`/`llc`, `-O3`). Manuscript is faster than Go on 7 of 10 rows (method_call and builtin_length fold to constants), ties on map_put_get and is slower on string_append (1.4x) and read_line (1.2x). Against Rust with overflow checks it is slower on string_append (3.8x: a call per append against an inlined push), read_line (1.9x) and generic_call (1.2x), and level or ahead elsewhere; for_list is level with checks on. Whole-program kernels: see [`../kernels/README.md`](../kernels/README.md) and [`../competence/README.md`](../competence/README.md).
+
+## 2026-11-03, refcount removal
+
+`bench_read_line` now reads `lines(stdin())`. Min of three 15-run passes per binary, `d34af765` against `d6052382`: every row within 1.13x, including `int_eq`, which touches no object, so the spread is the VM's noise. Table in [refcount-removal-2026-11-03.md](../refcount-removal-2026-11-03.md).

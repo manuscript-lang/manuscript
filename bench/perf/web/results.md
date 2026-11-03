@@ -213,3 +213,7 @@ Two workers scale the CPU-bound `/top` row 2.3x and tiny requests 1.4x to 1.6x, 
 | 4 | `/top?n=10` req/s | 92k, 93k | 89k, 89k |
 
 Two and four threads are at parity. One thread is about 10% slower on `/health` (the tiny-request row); CPU-bound rows are unchanged. Not yet explained: the keep-alive path is the same Rust code, and the extra costs per connection (a server object, a promise) do not repeat per request. The 2026-10-31 table above ran on another day and is not comparable row for row.
+
+## 2026-11-03, refcount removal
+
+Same server source on the pre-change integration head `d34af765` and the no-refcount head `d6052382`, 5 s rounds: `/health` 157.6k/155.3k against 168.0k/174.2k req/s, `/io` 1,577/1,455 against 1,570/1,504, resident memory after load 93.5 MB against 89.4 MB, 2.54 system calls per request on both. No change beyond noise; the full tables, including the older `632c42ba` run, are in [refcount-removal-2026-11-03.md](../refcount-removal-2026-11-03.md).

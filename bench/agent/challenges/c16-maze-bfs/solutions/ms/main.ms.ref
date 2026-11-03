@@ -1,4 +1,5 @@
-import stdin, stdout, read_line from "@std/io/io.ms"
+import stdin, stdout from "@std/io/io.ms"
+import lines from "@std/io/streams.ms"
 
 // Returns an error message for an invalid grid, or "" when the grid is valid.
 fn validate(rows: List[List[Int]]) String:
@@ -97,10 +98,11 @@ fn solve(rows: List[List[Int]]) String:
     return "no path"
 
 fn run() Result[Unit, Error]:
+    var input = lines(stdin(), 1048576)
     var rows = List[List[Int]]()
 
     while true:
-        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        let next = try input.read().wait()
         if next.is_none():
             break
 
@@ -109,7 +111,7 @@ fn run() Result[Unit, Error]:
     while rows.length() > 0 and rows.get(rows.length() - 1).is_empty():
         rows.remove(rows.length() - 1)
     try stdout().write("{solve(rows)}\n")
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     match run():
