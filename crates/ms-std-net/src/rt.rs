@@ -94,9 +94,9 @@ pub fn wait_fd(sock: Borrowed<'_>, events: u32, timeout_ns: i64) -> u32 {
     unsafe { msrt_task_wait_fd(sys::raw(sock) as _, events, within_waiter(timeout_ns)) }
 }
 
-/// Narrows `timeout_ns` (negative: none) to the deadline of the `wait(timeout:)` whose deferred
+/// Narrows `timeout_ns` (negative: none) to the deadline of the wait (or promise limit) whose deferred
 /// work is running on this task, as `msrt_promise_wait` does for its own waits. Without it a
-/// `stream.read().wait(timeout: d)` on a silent socket blocks past `d`, because a deferred read
+/// `stream.read().with(options: PromiseOptions(timeout: d)).wait()` on a silent socket blocks past `d`, because a deferred read
 /// runs on the waiter's stack and only its own waits can notice the limit. The wait then ends
 /// with the runtime's timeout bits, which every caller reports as its timeout.
 pub fn within_waiter(timeout_ns: i64) -> i64 {

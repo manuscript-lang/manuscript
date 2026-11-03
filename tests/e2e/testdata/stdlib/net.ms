@@ -19,7 +19,7 @@ import (
     Listener,
     Connection
 ) from "@std/net/net.ms"
-import promise from "@std/concurrency/promise.ms"
+import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import sleep, monotonic from "@std/os/time.ms"
 
 test "IP parsing CIDR normalization and containment":
@@ -48,11 +48,26 @@ test "TCP loopback writes reads half close and EOF":
     try client.output.write("hello".to_bytes())
     try client.output.flush().wait()
     try expect_equal(
-        (try server.input.read().wait(timeout: 2.seconds())).get(), "hello".to_bytes()
+        (
+            try server
+            .input
+            .read()
+            .with(options: PromiseOptions(timeout: 2.seconds()))
+            .wait()
+        ).get(),
+        "hello".to_bytes()
     )
     try expect_equal(server.info.peer_address, client.info.local_address)
     try client.output.close()
-    try expect_true((try server.input.read().wait(timeout: 2.seconds())).is_none())
+    try expect_true(
+        (
+            try server
+            .input
+            .read()
+            .with(options: PromiseOptions(timeout: 2.seconds()))
+            .wait()
+        ).is_none()
+    )
 
 test "closing the input leaves the output open and closing both ends the connection":
     let listener = try listen("127.0.0.1:0")
@@ -64,13 +79,27 @@ test "closing the input leaves the output open and closing both ends the connect
     try client.output.write("still open".to_bytes())
     try client.output.flush().wait()
     try expect_equal(
-        (try server.input.read().wait(timeout: 2.seconds())).get(),
+        (
+            try server
+            .input
+            .read()
+            .with(options: PromiseOptions(timeout: 2.seconds()))
+            .wait()
+        ).get(),
         "still open".to_bytes()
     )
 
     // Closing the output too closes the socket: the peer sees the end of the stream.
     try client.output.close()
-    try expect_true((try server.input.read().wait(timeout: 2.seconds())).is_none())
+    try expect_true(
+        (
+            try server
+            .input
+            .read()
+            .with(options: PromiseOptions(timeout: 2.seconds()))
+            .wait()
+        ).is_none()
+    )
 
 test "host names resolve whatever their case":
     let listener = try listen("127.0.0.1:0")
@@ -94,7 +123,13 @@ test "UDP loopback preserves datagram data and sender":
     var sender = try bind_datagram("127.0.0.1:0")
     try sender.output.write(Datagram("packet".to_bytes(), receiver.address.clone()))
 
-    let packet = (try receiver.input.read().wait(timeout: 2.seconds())).get()
+    let packet = (
+        try receiver
+        .input
+        .read()
+        .with(options: PromiseOptions(timeout: 2.seconds()))
+        .wait()
+    ).get()
     try expect_false(
         (packet.data != "packet".to_bytes() or packet.address != sender.address)
     )
@@ -157,7 +192,7 @@ test "a promise accepts on a listener it owns":
 // Accepts one connection and reads from it, all inside the promise that owns the connection.
 fn accept_and_read(listener: Listener) Int:
     var conn = listener.accept(2.seconds()).wait().get()
-    let r = conn.input.read().wait(timeout: 2.seconds())
+    let r = conn.input.read().with(options: PromiseOptions(timeout: 2.seconds())).wait()
     if r.is_ok() and r.get().is_some():
         return 1
 
@@ -175,7 +210,13 @@ test "a promise reads a connection it owns":
 
 // Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
 fn answer_mx(var served: DatagramSocket) Int!:
-    let query = (try served.input.read().wait(timeout: 2.seconds())).get()
+    let query = (
+        try served
+        .input
+        .read()
+        .with(options: PromiseOptions(timeout: 2.seconds()))
+        .wait()
+    ).get()
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
     let header = Bytes(
         [query.data.get(0), query.data.get(1), 129, 128, 0, 1, 0, 1, 0, 0, 0, 0]
@@ -224,7 +265,14 @@ test "an empty host listens on every interface, with or without IPv6":
     try client.output.write("hi".to_bytes())
     try client.output.flush().wait()
     try expect_equal(
-        (try server.input.read().wait(timeout: 2.seconds())).get(), "hi".to_bytes()
+        (
+            try server
+            .input
+            .read()
+            .with(options: PromiseOptions(timeout: 2.seconds()))
+            .wait()
+        ).get(),
+        "hi".to_bytes()
     )
     try listener.close()
 
@@ -235,13 +283,17 @@ test "a read with a wait timeout ends on a silent connection":
     let listener = try listen("127.0.0.1:0")
     var client = try connect(listener.address(), 2.seconds()).wait()
     let started = monotonic()
-    let silent = client.input.read().wait(timeout: 100.milliseconds())
+    let silent = client.input.read().with(
+        options: PromiseOptions(timeout: 100.milliseconds())
+    ).wait()
     try expect_true(silent.is_error())
     try expect_true(monotonic().difference(started).compare(2.seconds()) < 0)
 
 test "a datagram read with a wait timeout ends on a silent socket":
     var socket = try bind_datagram("127.0.0.1:0")
     let started = monotonic()
-    let silent = socket.input.read().wait(timeout: 100.milliseconds())
+    let silent = socket.input.read().with(
+        options: PromiseOptions(timeout: 100.milliseconds())
+    ).wait()
     try expect_true(silent.is_error())
     try expect_true(monotonic().difference(started).compare(2.seconds()) < 0)

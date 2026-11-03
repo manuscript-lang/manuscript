@@ -9,6 +9,13 @@ import (
     msrt_promise_start_here,
     msrt_promise_defer,
     msrt_promise_wait,
+    msrt_promise_limit,
+    msrt_promise_cancel,
+    msrt_promise_on_cancel,
+    msrt_cancel_new,
+    msrt_cancel_fire,
+    msrt_cancel_fired,
+    msrt_cancel_free,
     msrt_promise_wait_any,
     msrt_promise_fault_report,
     msrt_promise_drop
@@ -24,9 +31,11 @@ import (
 //
 // ```manuscript
 // let config = read("config.json")  // Promise[Bytes], already running
-// let words = promise(fn: count_words(text))  // may run on another thread
+// let words = promise(
+//     fn: count_words(text), options: PromiseOptions(timeout: seconds(5))
+// )  // may run on another thread, ends with Timeout after 5 s
 // let bytes = try config.wait()
-// let total = try words.wait(timeout: seconds(5))
+// let total = try words.wait()
 // ```
 
 // Work that has started; its result arrives later. Each `wait` takes the result once.
@@ -34,6 +43,49 @@ import (
 export opaque type Promise[T]:
     // The runtime slot of this promise: a generation and an index, never reused while this id is live.
     id: Int
+
+// What bounds a promise, fixed when it is made: `timeout` counts from construction and is enforced whether or not anyone
+// waits; when it passes the work is cancelled and `wait` reports `Timeout`. A negative timeout is no time at all.
+export type PromiseOptions:
+    // How long the work may run, counted from construction; none means no limit.
+    timeout: Duration? = none
+    // When this signal's `Cancel` fires, the work is cancelled and `wait` reports `Cancelled`.
+    cancel: Signal? = none
+
+// One switch that cancels every promise made with its `signal()`. `cancel()` never waits; the work stops at its next wait
+// and `wait` reports `Cancelled`. Dropping the switch does not cancel anything: promises made with its signals keep running.
+export opaque type Cancel:
+    // The runtime slot of this switch: a generation and an index.
+    id: Int
+
+// A new switch that has not fired.
+export fn cancel_switch() Cancel:
+    return Cancel(id: msrt_cancel_new())
+
+// A copyable handle to a `Cancel`, passed in `PromiseOptions`. It reads as not cancelled once its `Cancel` is gone.
+export opaque type Signal:
+    // The slot of the `Cancel` it belongs to; a freed slot never matches.
+    id: Int
+
+impl Cancel:
+    // A handle for `PromiseOptions(cancel: ...)`; make as many as you need.
+    fn signal() Signal:
+        return Signal(id: self.id)
+
+    // Cancels every promise made with a signal of this switch, now and later. Safe to call again.
+    fn cancel() Unit:
+        msrt_cancel_fire(self.id)
+
+impl Closeable for Cancel:
+    // Frees the switch. Promises made with its signals keep running; they just cannot be cancelled by it any more.
+    var fn close() Unit!:
+        msrt_cancel_free(self.id)
+        return ok(unit)
+
+impl Signal:
+    // Whether the switch has fired, for work that loops without waiting.
+    fn cancelled() Bool:
+        return msrt_cancel_fired(self.id)
 
 // A limit in nanoseconds, or -1 for none. A negative duration is no time at all, not "none".
 fn nanos(limit: Duration?) Int:
@@ -63,6 +115,18 @@ fn outcome(id: Int, code: Int) Error:
         details: {"report": report.clone()}
     )
 
+// Applies `options` to the promise `id`.
+fn limit(id: Int, options: PromiseOptions) Unit:
+    if options.timeout.is_some():
+        msrt_promise_limit(id, nanos(options.timeout))
+    if let signal = options.cancel:
+        msrt_promise_on_cancel(id, signal.id)
+
+// Applies `options` to a promise in place, for an owner that keeps the promise (a server's accept loop). The timeout counts
+// from now; `with` is the chaining form.
+export fn set_options[T](target: Promise[T], options: PromiseOptions) Unit:
+    limit(target.id, options)
+
 // The result in the slot of `id`, moved out; `Closed` when it is gone.
 fn taken_result[V](id: Int) V!:
     if let value = msrt_promise_take[V](id):
@@ -79,16 +143,27 @@ fn taken_error(id: Int) Error:
 
 impl Promise[T]:
     // Waits for the result and moves it out. Errors: the operation's own error; `Failed` (a fault inside, with its
-    // report in `details`); `Cancelled`; `Closed` (an earlier wait already took the result); `Timeout` once `timeout`
-    // passes, which also cancels the work. A negative timeout waits no time.
-    fn wait(timeout: Duration? = none) T!:
-        let code = msrt_promise_wait(self.id, nanos(timeout))
+// report in `details`); `Cancelled`; `Closed` (an earlier wait already took the result); `Timeout` once the promise's
+    // `timeout` option has passed, which also cancelled the work.
+    fn wait() T!:
+        let code = msrt_promise_wait(self.id, -1)
         if code == 0:
             return taken_result[T](self.id)
         if code == 1:
             return error(taken_error(self.id))
 
         return error(outcome(self.id, code))
+
+    // Applies `options` to a promise made elsewhere (`read`, `fetch`, `sleep`, `exec`) and returns it, so
+    // `read(path).with(options: PromiseOptions(timeout: seconds(5))).wait()` bounds the read. The timeout counts from now.
+    fn with(options: PromiseOptions) Promise[T]:
+        limit(self.id, options)
+        return self
+
+    // Asks the work to stop at its next wait; `wait` then reports `Cancelled`. It returns at once, and dropping the promise
+    // joins the work. A finished promise is unchanged.
+    fn cancel() Unit:
+        msrt_promise_cancel(self.id)
 
     // Whether the work has finished, however it ended. It never waits.
     fn done() Bool:
@@ -111,9 +186,13 @@ export fn complete[U](id: Int, result: U!) Unit:
 // Runs `entry` on a thread the runtime picks and returns its promise. The promise reads what `entry` captures, so the
 // values it reads must outlive it and cannot change while it lives; nothing the entry captures can be changed from
 // inside it. A fault inside ends only this promise: `wait` reports it as `Failed`.
-export fn promise[U](entry: fn() U!) Promise[U]:
+export fn promise[U](
+    entry: fn() U!,
+    options: PromiseOptions = PromiseOptions()
+) Promise[U]:
     let id = msrt_promise_new()
     msrt_promise_start(id, fn: complete(id, entry()))
+    limit(id, options)
     return Promise[U](id: id)
 
 // The values an operation copied for its promise, with the function that uses them. It is a resource, so the promise

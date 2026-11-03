@@ -3,6 +3,7 @@
 // conform: timeout=30
 // Closing a server lets a response in progress finish; `wait` returns as soon as it has.
 import headers, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
+import PromiseOptions from "@std/concurrency/promise.ms"
 import stdout from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
 import monotonic_time from "@std/os/process.ms"
@@ -25,7 +26,6 @@ export fn main() Int:
 
             // Let the handler start.
             let _ = sleep(nanoseconds(50000000)).wait()
-
             let start = monotonic_time()
             server.close().get(none)
             server.wait().get(none)
@@ -34,7 +34,11 @@ export fn main() Int:
             var text = ""
 
             while true:
-                if let chunk = conn.input.read().wait(timeout: nanoseconds(5000000000)):
+                if let chunk = conn.input.read().with(
+                    options: PromiseOptions(
+                        timeout: nanoseconds(5000000000)
+                    )
+                ).wait():
                     if let data = chunk:
                         text = "{text}{data.decode_utf8().get("?")}"
                         continue

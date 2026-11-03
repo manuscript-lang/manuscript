@@ -1,4 +1,5 @@
 import Bytes, join from "@std/bytes.ms"
+import PromiseOptions from "@std/concurrency/promise.ms"
 import Connection from "@std/net/net.ms"
 import Duration from "@std/os/time.ms"
 import ReadStream from "@std/io/io.ms"
@@ -15,7 +16,9 @@ export fn send_bytes(var connection: Connection, data: Bytes) Unit!:
 
 // The next chunk, or none at the peer's end of stream; a read that waits longer than `timeout` fails.
 export fn recv(var connection: Connection, timeout: Duration) Bytes?!:
-    return connection.input.read().wait(timeout: timeout)
+    return connection.input.read().with(
+        options: PromiseOptions(timeout: timeout)
+    ).wait()
 
 // Reads `input` to its end and joins the chunks.
 export fn read_to_end(var input: ReadStream[Bytes]) Bytes!:

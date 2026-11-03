@@ -4,6 +4,7 @@
 // A request that arrives on a connection while its handler is parked is served as soon as
 // the handler's response is sent, not after a timeout.
 import headers, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
+import PromiseOptions from "@std/concurrency/promise.ms"
 import stdout from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
 import monotonic_time from "@std/os/process.ms"
@@ -24,14 +25,17 @@ fn exchange(address: String) String:
 
         // The slow handler is parked by now; the second request arrives while it waits.
         let _ = sleep(nanoseconds(50000000)).wait()
-
         let _second = send(
             var conn, "GET /fast HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
         )
         var text = ""
 
         while true:
-            if let chunk = conn.input.read().wait(timeout: nanoseconds(5000000000)):
+            if let chunk = conn.input.read().with(
+                options: PromiseOptions(
+                    timeout: nanoseconds(5000000000)
+                )
+            ).wait():
                 if let data = chunk:
                     text = "{text}{data.decode_utf8().get("?")}"
                     continue

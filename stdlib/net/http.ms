@@ -1,7 +1,13 @@
 import Closeable, Data from "@std/core.ms"
 import Bytes, join from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
-import Promise, deferred, complete from "@std/concurrency/promise.ms"
+import (
+    Promise,
+    PromiseOptions,
+    deferred,
+    complete,
+    set_options
+) from "@std/concurrency/promise.ms"
 import stringify from "@std/data/json.ms"
 import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
 import TlsOptions from "@std/net/net.ms"
@@ -323,8 +329,7 @@ impl Closeable for HttpServer:
     // Stops accepting and asks every connection to finish: idle ones close at once, requests in flight finish within `grace`, then the rest are cancelled. It returns without waiting; `wait` or dropping the server joins. Safe to call repeatedly.
     var fn close() Unit!:
         self.stopped = true
-
-        let _ = self.accepting.wait(timeout: 0.seconds())
+        self.accepting.cancel()
         return ok(unit)
 
 impl HttpServer:
@@ -334,7 +339,9 @@ impl HttpServer:
 
     // Waits until the server has stopped. Returns Ok after `close`, or the error that ended accepting (`Failed` with the host's text). `timeout` bounds the wait and cancels the server when it passes.
     fn wait(timeout: Duration? = none) Unit!:
-        let ended = self.accepting.wait(timeout)
+        set_options(self.accepting, PromiseOptions(timeout: timeout.clone()))
+
+        let ended = self.accepting.wait()
         if self.stopped:
             return ok(unit)
 

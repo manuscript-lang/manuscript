@@ -2,7 +2,7 @@
 // conform: phase=run
 import stdout from "@std/io/io.ms"
 import bind_datagram, connect, listen from "@std/net/net.ms"
-import promise from "@std/concurrency/promise.ms"
+import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import nanoseconds from "@std/os/time.ms"
 
 // `close` frees the socket, so its port can be bound again while the handle is still held and
@@ -47,15 +47,15 @@ fn rebound(address: String) Int:
 
 fn cancel_accept(address: String) Unit:
     let work = promise(fn: ok(accept_one(address.clone())))
-    let _ = work.wait(timeout: nanoseconds(2000000))
+    let _ = work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
 fn cancel_read(address: String) Unit:
     let work = promise(fn: ok(read_one(address.clone())))
-    let _ = work.wait(timeout: nanoseconds(2000000))
+    let _ = work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
 fn cancel_receive(address: String) Unit:
     let work = promise(fn: ok(receive_one(address.clone())))
-    let _ = work.wait(timeout: nanoseconds(2000000))
+    let _ = work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
 export fn main() Int:
     var first = listen("127.0.0.1:0").get()

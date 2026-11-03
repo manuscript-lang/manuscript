@@ -1,6 +1,6 @@
 import Closeable from "@std/core.ms"
 import append_file, read_file, temporary from "@std/os/fs.ms"
-import promise from "@std/concurrency/promise.ms"
+import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import expect_equal, expect_ok from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
@@ -38,7 +38,9 @@ test "a var binding closes the value it ended with":
 
 fn cancel_counter(log: String) Unit:
     let work = promise(fn: ok(count_then_wait(log.clone())))
-    let _ignored = work.wait(timeout: nanoseconds(20000000))
+    let _ignored = work.with(
+        options: PromiseOptions(timeout: nanoseconds(20000000))
+    ).wait()
 
 test "a cancelled var binding closes the value it had reached":
     let tmp = temporary("ms-log-") | try expect_ok

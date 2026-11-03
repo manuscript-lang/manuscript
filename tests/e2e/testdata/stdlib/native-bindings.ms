@@ -1,4 +1,5 @@
 import expect_false, expect_ok, expect_true from "@std/test/test.ms"
+import PromiseOptions from "@std/concurrency/promise.ms"
 import (
     cpu_usage,
     groups,
@@ -145,7 +146,9 @@ test "stat_filesystem describes the filesystem under a path":
 // Reads events until one has `path` and `kind`, or `tries` events passed.
 fn saw(var events: ReadStream[FileEvent], path: String, kind: String, tries: Int) Bool!:
     for attempt in 0..tries:
-        let next = try events.read().wait(timeout: 2.seconds())
+        let next = try events.read().with(
+            options: PromiseOptions(timeout: 2.seconds())
+        ).wait()
 
         if let event = next:
             if event.path == path and event.kind == kind: return ok(true)
@@ -220,6 +223,8 @@ test "recursive native watch sees a file in a new subdirectory":
     var seen = false
     for i in 0..8:
         if not seen:
-            if let e = try w.read().wait(timeout: 2.seconds()):
+            if let e = try w.read().with(
+                options: PromiseOptions(timeout: 2.seconds())
+            ).wait():
                 if e.path == join([r.clone(), "d", "f"]): seen = true
     try expect_true(seen)

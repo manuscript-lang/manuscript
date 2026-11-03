@@ -1,6 +1,6 @@
 import list, read_file from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"
-import promise from "@std/concurrency/promise.ms"
+import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import milliseconds from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"
 
@@ -10,7 +10,7 @@ fn read_pipe(path: String) Int:
 
 fn cancel_read(path: String) Int:
     let task = promise(fn: ok(read_pipe(path.clone())))
-    if task.wait(timeout: milliseconds(10)).is_error():
+    if task.with(options: PromiseOptions(timeout: milliseconds(10))).wait().is_error():
         return 1
 
     return 0
