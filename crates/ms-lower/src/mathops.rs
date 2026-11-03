@@ -7,6 +7,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
+use ms_check::types::Builtin;
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -48,7 +49,9 @@ impl FnLower<'_> {
             .methods
             .iter()
             .find(|m| {
-                m.contract.as_ref().is_some_and(|c| c.is_std("Comparable"))
+                m.contract
+                    .as_ref()
+                    .is_some_and(|c| c.is(Builtin::Comparable))
                     && m.name().is_some_and(|n| n.as_str() == "compare")
                     && ct::type_key(&m.receiver) == key
             })

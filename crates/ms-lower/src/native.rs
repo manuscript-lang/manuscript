@@ -5,6 +5,7 @@ use crate::func::{FnLower, Val};
 use crate::text::runtime_fn;
 use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
+use ms_check::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncId, FuncKind, Linkage, Mode, Param, Value};
 use ms_mir::types::Native;
@@ -1768,7 +1769,9 @@ impl<'a> FnLower<'a> {
         let result_ty = self.ety(e);
         let result_mty = self.emty(e)?;
         let hands_back = !discarded
-            && (result_ty.is_std("List") || result_ty.is_std("Map") || result_ty.is_std("Set"));
+            && (result_ty.is(Builtin::List)
+                || result_ty.is(Builtin::Map)
+                || result_ty.is(Builtin::Set));
         // A mutator that discards an entry closes a resource in it first; the fast paths below
         // overwrite entries without a look at the old one.
         let discards = self.discards_resource(recv_expr, name)?;
@@ -1834,9 +1837,9 @@ impl<'a> FnLower<'a> {
             return Ok(false);
         }
         let ty = self.ety(recv_expr);
-        let held = if ty.is_std("List") && matches!(name, "set" | "remove" | "splice") {
+        let held = if ty.is(Builtin::List) && matches!(name, "set" | "remove" | "splice") {
             ty.args.first()
-        } else if ty.is_std("Map") && matches!(name, "add" | "remove" | "clear") {
+        } else if ty.is(Builtin::Map) && matches!(name, "add" | "remove" | "clear") {
             ty.args.get(1)
         } else {
             None
@@ -1858,7 +1861,7 @@ impl<'a> FnLower<'a> {
         if name == "splice" {
             return self.close_list_range(recv_expr, &args[0], &args[1]);
         }
-        if ty.is_std("List") {
+        if ty.is(Builtin::List) {
             return self.close_list_entry(recv_expr, &args[0]);
         }
         if name == "clear" {
@@ -1978,7 +1981,7 @@ impl<'a> FnLower<'a> {
     fn close_list_entry(&mut self, recv_expr: &Expr, index: &NArg) -> Result<(), Error> {
         use ms_mir::ir::{Cc, Op};
         let list_ty = self.ety(recv_expr);
-        let Some(elem) = list_ty.args.first().filter(|_| list_ty.is_std("List")) else {
+        let Some(elem) = list_ty.args.first().filter(|_| list_ty.is(Builtin::List)) else {
             return Ok(());
         };
         if self.part_closer(elem)?.is_none() {
@@ -3328,7 +3331,7 @@ impl<'a> FnLower<'a> {
                 }
             };
             let mut val = r?;
-            if p.ty.is_std("Optional") {
+            if p.ty.is(Builtin::Optional) {
                 let o = self.owned(val);
                 val = Val {
                     v: self.b.opt_some(o),

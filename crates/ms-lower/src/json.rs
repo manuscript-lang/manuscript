@@ -12,6 +12,7 @@ use crate::native::NArg;
 use crate::rtcall::Input;
 use ms_check::hir::ModuleHir;
 use ms_check::types as ct;
+use ms_check::types::Builtin;
 use ms_mir::builder::{FuncBuilder, Var};
 use ms_mir::ir::{Cc, FuncId, Imm, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -386,7 +387,7 @@ impl FnLower<'_> {
             }
             _ => {}
         }
-        if t.is_std("Optional") {
+        if t.is(Builtin::Optional) {
             let null = self.jkind(doc, id)?;
             let k = self.b.iconst(KIND_NULL);
             let is_null = null_cmp(self, null, k);
@@ -410,7 +411,7 @@ impl FnLower<'_> {
             Some((KIND_NUMBER, "msstd_json_dec_int", false))
         } else if t.is_time("Timestamp") {
             Some((KIND_STRING, "msstd_time_parse_timestamp", false))
-        } else if t.is_std("Bytes") {
+        } else if t.is(Builtin::Bytes) {
             Some((KIND_STRING, "msstd_encoding_base64_decode", true))
         } else if t.is_source_type("@std/net/net.ms", "Url") {
             Some((KIND_STRING, "msstd_url_parse", false))
@@ -418,9 +419,9 @@ impl FnLower<'_> {
             Some((KIND_STRING, "msstd_json_dec_ip", false))
         } else if t.is_source_type("@std/net/net.ms", "Cidr") {
             Some((KIND_STRING, "msstd_json_dec_cidr", false))
-        } else if t.is_std("Decimal") {
+        } else if t.is(Builtin::Decimal) {
             Some((KIND_NUMBER, "msstd_decimal_parse", false))
-        } else if t.is_std("BigInt") {
+        } else if t.is(Builtin::BigInt) {
             Some((KIND_NUMBER, "msstd_bigint_parse", false))
         } else {
             None
@@ -452,13 +453,13 @@ impl FnLower<'_> {
             self.jfinish(v);
             return Ok(());
         }
-        if t.is_std("List") {
+        if t.is(Builtin::List) {
             self.jexpect_kind(doc, id, KIND_ARRAY)?;
             let l = self.jdecode_items(&t.args[0], mt, doc, id, strict)?;
             self.jfinish(l);
             return Ok(());
         }
-        if t.is_std("Set") {
+        if t.is(Builtin::Set) {
             self.jexpect_kind(doc, id, KIND_ARRAY)?;
             let lt = self
                 .cx
@@ -471,7 +472,7 @@ impl FnLower<'_> {
             self.jfinish(set);
             return Ok(());
         }
-        if t.is_std("Map") {
+        if t.is(Builtin::Map) {
             let key = &t.args[0];
             let readable = matches!(key.id.as_str(), "String" | "Int" | "Bool")
                 || key.is_time("Duration")
@@ -774,14 +775,14 @@ impl FnLower<'_> {
             return Ok(Some(self.b.unit()));
         }
         if case.is_some() {
-            return Ok(ty.is_std("Optional").then(|| self.none_owned(mt)));
+            return Ok(ty.is(Builtin::Optional).then(|| self.none_owned(mt)));
         }
         let has_default = owner
             .symbol()
             .and_then(|s| s.decl.clone())
             .and_then(|d| d.record_fields().get(i).map(|f| f.default.is_some()))
             .unwrap_or(false);
-        if has_default || ty.is_std("Optional") {
+        if has_default || ty.is(Builtin::Optional) {
             // Temporaries of the default end with it: this value joins other paths.
             let mark = self.temps.len();
             let v = self.field_default(owner, None, i, earlier)?;
@@ -993,7 +994,7 @@ impl FnLower<'_> {
             "Unit" | "Never" => return self.jno_form(w),
             _ => {}
         }
-        if t.is_std("Optional") {
+        if t.is(Builtin::Optional) {
             let has = self.b.opt_is_some(value);
             let out = self.b.declare_var(MTy::INT, Mode::Borrow);
             let (yes, no, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
@@ -1014,13 +1015,13 @@ impl FnLower<'_> {
             self.b.switch_to(join);
             return Ok(self.b.use_var(out));
         }
-        if t.is_std("List") {
+        if t.is(Builtin::List) {
             return self.jencode_list(&t.args[0], w, value);
         }
-        if t.is_std("Set") {
+        if t.is(Builtin::Set) {
             return self.jencode_set(&t.args[0], w, value);
         }
-        if t.is_std("Map") {
+        if t.is(Builtin::Map) {
             return self.jencode_map(&t.args[0], &t.args[1], w, value);
         }
         if t.is_time("Duration") {
@@ -1037,12 +1038,12 @@ impl FnLower<'_> {
             self.drop_value(tree);
             return Ok(written);
         }
-        if t.is_time("Timestamp") || t.is_std("Decimal") {
+        if t.is_time("Timestamp") || t.is(Builtin::Decimal) {
             let text = self.format_value(Val {
                 v: value,
                 own: false,
             })?;
-            let sym = if t.is_std("Decimal") {
+            let sym = if t.is(Builtin::Decimal) {
                 "msstd_json_w_number"
             } else {
                 "msstd_json_w_string"
@@ -1054,7 +1055,7 @@ impl FnLower<'_> {
             return Ok(self.jwritten());
         }
         // Bytes are standard base64 text.
-        if mt == MTy::BYTES && t.is_std("Bytes") {
+        if mt == MTy::BYTES && t.is(Builtin::Bytes) {
             let no_url = self.b.bconst(false);
             let text =
                 self.call_runtime("msstd_encoding_base64_encode", &[value, no_url], MTy::STR)?;
@@ -1063,7 +1064,7 @@ impl FnLower<'_> {
             return Ok(self.jwritten());
         }
         // A BigInt is its digits.
-        if t.is_std("BigInt") {
+        if t.is(Builtin::BigInt) {
             let radix = self.b.iconst(10);
             let text =
                 self.call_runtime("msstd_bigint_to_string_radix", &[value, radix], MTy::STR)?;
@@ -1139,7 +1140,7 @@ impl FnLower<'_> {
         value: Value,
     ) -> Result<(), Error> {
         let after = self.b.new_block();
-        let (inner_ty, inner) = if ty.is_std("Optional") {
+        let (inner_ty, inner) = if ty.is(Builtin::Optional) {
             let some = self.b.opt_is_some(value);
             let present = self.b.new_block();
             self.b.br_if(some, present, &[], after, &[]);
@@ -1286,7 +1287,7 @@ impl FnLower<'_> {
         let keyable = matches!(key.id.as_str(), "String" | "Int" | "Bool" | "Float")
             || key.is_time("Duration")
             || key.is_time("Timestamp")
-            || key.is_std("Decimal")
+            || key.is(Builtin::Decimal)
             || jplain_alt(key);
         if !keyable {
             return self.jno_form(w);
@@ -1831,13 +1832,13 @@ fn jfields(params: &[ct::Param]) -> Vec<JField> {
 /// An alternative a member name can select: some case has no payload.
 fn jkey_alt(t: &ct::Ty) -> bool {
     t.kind == ct::Kind::Alternative
-        && !t.is_std("Optional")
+        && !t.is(Builtin::Optional)
         && ct::cases(t).iter().any(|c| c.fields.is_empty())
 }
 
 fn jplain_alt(t: &ct::Ty) -> bool {
     t.kind == ct::Kind::Alternative
-        && !t.is_std("Optional")
+        && !t.is(Builtin::Optional)
         && !ct::cases(t).is_empty()
         && ct::cases(t).iter().all(|c| c.fields.is_empty())
 }
