@@ -1669,7 +1669,7 @@ mod tests {
         m.add_function("metadata", display, (0, 1), &f, &Inlined, true);
         let triple = format!("{}-unknown-linux-gnu", std::env::consts::ARCH);
         let text = m.finish(&triple, &HashSet::new(), false);
-        let object = crate::llvm_obj::compile(&text, "3").unwrap();
+        let object = crate::llvm_obj::compile(&text, "3", &crate::BuildOptions::default()).unwrap();
         let funcs = [crate::cg::LlvmFn {
             id: cranelift_module::FuncId::from_u32(0),
             symbol: "metadata".into(),
@@ -2206,7 +2206,7 @@ mod tests {
 
     #[test]
     fn checked_arithmetic_llvm_generates_objects_for_all_supported_targets() {
-        let Some(tools) = crate::link::llvm_tools().unwrap() else {
+        let Some(tools) = crate::link::llvm_tools(&crate::BuildOptions::default()).unwrap() else {
             return;
         };
         let dir = std::env::temp_dir().join(format!("ms-llvm-targets-{}", std::process::id()));

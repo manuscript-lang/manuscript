@@ -8,10 +8,10 @@ const KERNELS: &str = include_str!("vectorized_loops/k.ms");
 
 #[test]
 fn element_wise_list_loops_are_vectorized() {
-    if !ms_clif::llvm_available() {
+    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
-    let tools = ms_clif::link::llvm_tools().unwrap().unwrap();
+    let tools = ms_clif::link::llvm_tools(&ms_cli::engine::build_options_from_env()).unwrap().unwrap();
     let dir = std::env::temp_dir().join(format!("ms-vectorized-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("k.ms"), KERNELS).unwrap();
@@ -62,7 +62,7 @@ fn element_wise_list_loops_are_vectorized() {
 /// frames as the baseline copy.
 #[test]
 fn per_cpu_copies_report_the_same_fault_frames() {
-    if !ms_clif::llvm_available() {
+    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-cpu-copies-{}", std::process::id()));
@@ -106,7 +106,7 @@ fn per_cpu_copies_report_the_same_fault_frames() {
 /// `MS_VECTORIZE=off` leaves the list loops scalar.
 #[test]
 fn vectorize_off_keeps_loops_scalar() {
-    if !ms_clif::llvm_available() {
+    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-vectorize-off-{}", std::process::id()));
@@ -137,7 +137,7 @@ fn vectorize_off_keeps_loops_scalar() {
 /// dispatcher; a single-exit sum loop gets both copies.
 #[test]
 fn only_vectorizable_loops_get_per_cpu_copies() {
-    if !ms_clif::llvm_available() {
+    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-search-loop-{}", std::process::id()));
@@ -177,10 +177,10 @@ fn only_vectorizable_loops_get_per_cpu_copies() {
 #[cfg(target_arch = "aarch64")]
 #[test]
 fn element_wise_list_loops_use_neon() {
-    if !ms_clif::llvm_available() {
+    if !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env()) {
         return;
     }
-    let tools = ms_clif::link::llvm_tools().unwrap().unwrap();
+    let tools = ms_clif::link::llvm_tools(&ms_cli::engine::build_options_from_env()).unwrap().unwrap();
     let dir = std::env::temp_dir().join(format!("ms-neon-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("k.ms"), KERNELS).unwrap();
