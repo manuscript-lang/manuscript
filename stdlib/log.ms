@@ -1,5 +1,5 @@
 import Closeable, Data from "@std/core.ms"
-import WriteStream from "@std/io/io.ms"
+import WriteStream, stdout_bytes from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
@@ -111,7 +111,7 @@ fn encode_error(cause: Error) Error:
 
 // The open stream of a stream transport and whether the transport was closed.
 type StreamState:
-    stream: WriteStream
+    stream: WriteStream[Bytes]
     closed: Bool
 
 // Writes to a byte stream. Child loggers share one transport, so the state is guarded here: the
@@ -126,7 +126,7 @@ impl Transport for StreamTransport:
             Error("logging: resource is closed", kind: ErrorCategory.Closed)
         )
 
-        match guard.value.stream.write(data):
+        match guard.value.stream.write(data.to_bytes()):
             ok(_): return ok(unit)
             error(cause): return error(cause)
 
@@ -136,7 +136,7 @@ impl Transport for StreamTransport:
             Error("logging: resource is closed", kind: ErrorCategory.Closed)
         )
 
-        match guard.value.stream.write_bytes(data):
+        match guard.value.stream.write(data):
             ok(_): return ok(unit)
             error(cause): return error(cause)
 
@@ -146,7 +146,7 @@ impl Transport for StreamTransport:
             Error("logging: resource is closed", kind: ErrorCategory.Closed)
         )
 
-        match guard.value.stream.flush():
+        match guard.value.stream.flush().wait():
             ok(_): return ok(unit)
             error(cause): return error(cause)
 
@@ -338,22 +338,22 @@ export fn create(
     )
 
 // Writes log records to an existing byte stream.
-export fn stream_transport(output: WriteStream) Transport:
+export fn stream_transport(output: WriteStream[Bytes]) Transport:
     return StreamTransport(share(StreamState(output, false)))
 
 // Writes log records to the process standard-output stream.
 export fn stdout_transport() Transport:
-    return stream_transport(stdout())
+    return stream_transport(stdout_bytes())
 
 // Appends log records to a file at `path`.
 export fn file_transport(path: String) Transport!:
     match open(path, "a", 420):
-        ok(file): return ok(file_stream_transport(file))
+        ok(file): return file_stream_transport(file)
         error(cause): return error(cause)
 
-fn file_stream_transport(file: FileHandle) Transport:
-    let stream = StreamTransport(share(StreamState(file.writer(), false)))
-    return FileTransport(share(file), stream)
+fn file_stream_transport(file: FileHandle) Transport!:
+    let stream = StreamTransport(share(StreamState(try file.writer(), false)))
+    return ok(FileTransport(share(file), stream))
 
 // The open file of a rotating transport with its running size in bytes.
 type RotatingState:
