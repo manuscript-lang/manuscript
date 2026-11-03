@@ -12,6 +12,7 @@
 //!   or none, leaves nothing undefined.
 
 use crate::Error;
+use crate::cx::HelperKey;
 use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
@@ -453,7 +454,7 @@ impl FnLower<'_> {
     /// runtime's 24-byte cells, calls the captured function, and puts the result in the cell
     /// after the last argument slot.
     fn invoke_thunk(&mut self, fty: MTy, ps: &[MTy], ret: MTy) -> FuncId {
-        let key = format!("ms_fn:{}", fty.index());
+        let key = HelperKey::MsFn(fty);
         if let Some(t) = self.cx.helpers.get(&key) {
             return *t;
         }

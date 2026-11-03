@@ -6,6 +6,7 @@
 //! and a value and returns the node id, or -1 for a value without a JSON form.
 
 use crate::Error;
+use crate::cx::HelperKey;
 use crate::cx::{Cx, Job, JobKind};
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
@@ -72,11 +73,10 @@ impl Cx {
         t: &ct::Ty,
         encode: bool,
     ) -> Result<FuncId, Error> {
-        let key = format!(
-            "json-{}:{}",
-            if encode { "enc" } else { "dec" },
-            self.tys.shape(t).index()
-        );
+        let key = HelperKey::Json {
+            encode,
+            ty: self.tys.shape(t),
+        };
         if let Some(f) = self.helpers.get(&key) {
             return Ok(*f);
         }
@@ -1495,7 +1495,7 @@ impl FnLower<'_> {
     /// `ctor(kind, payload, out)` moves the payload (`Bool` byte, `String`, list or map) into a
     /// new value of the case of that node kind written at `out`.
     fn json_tree_ctor(&mut self, t: &ct::Ty, mt: MTy) -> Result<FuncId, Error> {
-        let key = format!("json-tree:{}", self.cx.tys.shape(t).index());
+        let key = HelperKey::JsonTree(self.cx.tys.shape(t));
         if let Some(f) = self.cx.helpers.get(&key) {
             return Ok(*f);
         }
@@ -1577,7 +1577,7 @@ impl FnLower<'_> {
     /// (a list or a map, whose members the runtime visits next). The one dispatch on the case
     /// is the thunk's; the runtime loop has none.
     fn json_tree_view(&mut self, t: &ct::Ty, mt: MTy) -> Result<FuncId, Error> {
-        let key = format!("json-tree-view:{}", self.cx.tys.shape(t).index());
+        let key = HelperKey::JsonTreeView(self.cx.tys.shape(t));
         if let Some(f) = self.cx.helpers.get(&key) {
             return Ok(*f);
         }

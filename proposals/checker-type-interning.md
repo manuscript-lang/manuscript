@@ -55,4 +55,4 @@ Invariants: diagnostics, emitted MIR and generated names are byte-identical; no 
 
 ## Stages
 
-1. Done. 2. `TyTable` and lowering keys. 3. Checker keys. 4. Property bits (separate proposal). Each stage is one PR with auto-merge and full CI green; stage 3 also reports `ms check` Ir on the 122k-line workload. The helper and vtable string keys that embed a type id (`json-tree:`, `impl:`, `close_parts:`) stay strings until a helper-key enum lands.
+1. Done. 2. `TyTable` and lowering keys. 3. Checker keys. 4. Property bits (separate proposal). Each stage is one PR with auto-merge and full CI green; stage 3 also reports `ms check` Ir on the 122k-line workload. Helper and vtable keys are typed (`HelperKey`, `VtableKey` in `ms-lower/src/cx.rs`); a vtable's name in the module is still rendered from its key, so generated names are unchanged.

@@ -21,6 +21,113 @@ pub struct Variant {
     pub evidence: Option<ms_check::types::Name>,
 }
 
+/// What a bound-method thunk reaches the method through.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum BoundTarget {
+    /// Interface `iface`, method `k`.
+    Iface(u32, usize),
+    /// A source instance.
+    Func(FuncId),
+}
+
+/// Identity of a generated helper function: one variant per kind, with the types and flags
+/// that distinguish its instances.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum HelperKey {
+    Eq(MTy, u32),
+    Fmt(MTy, bool),
+    Json {
+        encode: bool,
+        ty: ms_check::tytable::TyId,
+    },
+    JsonTree(ms_check::tytable::TyId),
+    JsonTreeView(ms_check::tytable::TyId),
+    CloseParts(ms_check::tytable::TyId, bool),
+    CloseIface {
+        iface: u32,
+        k: u32,
+        in_slot: bool,
+    },
+    CloseFunc {
+        fid: FuncId,
+        writes_back: bool,
+        in_slot: bool,
+    },
+    Thunk(FuncId),
+    DefaultThunk {
+        fid: FuncId,
+        fty: MTy,
+        shared: bool,
+    },
+    DirectDefault(FuncId),
+    IfaceThunk {
+        iface: u32,
+        k: usize,
+        fty: MTy,
+        addr: bool,
+    },
+    BoundSharedIface {
+        iface: u32,
+        k: usize,
+        fty: MTy,
+    },
+    BoundSharedFunc {
+        fid: FuncId,
+        fty: MTy,
+    },
+    Bound {
+        target: BoundTarget,
+        fty: MTy,
+        addr: bool,
+    },
+    BoundNative {
+        native: Name,
+        rty: MTy,
+        fty: MTy,
+        held: Held,
+        scope: Option<Name>,
+    },
+    NativeThunk {
+        native: Name,
+        fty: MTy,
+    },
+    TostringThunk(MTy, bool),
+    MsFn(MTy),
+    WalkThunk(MTy, bool),
+    ServeThunk(MTy),
+    TestingTrap(MTy),
+}
+
+/// Identity of a generated interface implementation table.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum VtableKey {
+    Impl {
+        ty: ms_check::tytable::TyId,
+        iface: u32,
+        scope: Option<Name>,
+    },
+    Handle {
+        module: Name,
+        iface: u32,
+    },
+}
+
+impl std::fmt::Display for VtableKey {
+    /// The table's name in the module, as before keys were typed.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VtableKey::Impl { ty, iface, scope } => {
+                write!(f, "impl:{}:{iface}", ty.index())?;
+                match scope {
+                    Some(s) => write!(f, "@{s}"),
+                    None => Ok(()),
+                }
+            }
+            VtableKey::Handle { module, iface } => write!(f, "handle:{module}:{iface}"),
+        }
+    }
+}
+
 /// The key of a reserved instance: the callable, its type variables and its variant.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct InstKey {
@@ -84,7 +191,7 @@ pub struct IfaceThunkJob {
 }
 
 /// How a method value's closure holds its receiver.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Held {
     /// The receiver itself, owned by the closure.
     Value,
@@ -214,9 +321,9 @@ pub struct Cx {
     /// Alternatives declared by the standard library.
     pub std_alts: std::collections::HashSet<usize>,
     /// Helper functions (formatting, equality, ...) by key.
-    pub helpers: HashMap<String, FuncId>,
+    pub helpers: HashMap<HelperKey, FuncId>,
     /// Interface implementation tables built by lowering.
-    pub vtables: HashMap<String, ms_mir::ir::VtableId>,
+    pub vtables: HashMap<VtableKey, ms_mir::ir::VtableId>,
     /// The checker type of every lowered interface.
     pub contracts: HashMap<ms_mir::types::IfaceId, ct::Ty>,
     /// Every implementation method of the program.

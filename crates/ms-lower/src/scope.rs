@@ -107,15 +107,6 @@ impl Cx {
                 .is_some_and(|r| self.mentions_extension(r))
     }
 
-    /// The key suffix that separates `t`'s per-module tables.
-    pub(crate) fn scope_key(&self, t: &ct::Ty, scope: Name) -> String {
-        if self.mentions_extension(t) {
-            format!("@{scope}")
-        } else {
-            String::new()
-        }
-    }
-
     /// Whether values of the MIR type hold a type with a local extension.
     pub(crate) fn holds_extension(&self, m: &Module, t: MTy) -> bool {
         self.holds_extension_in(m, t, &mut Vec::new())

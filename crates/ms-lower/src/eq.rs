@@ -1,6 +1,7 @@
 //! Structural equality helpers for aggregate types.
 
 use crate::Error;
+use crate::cx::HelperKey;
 use crate::cx::{Cx, Job, JobKind};
 use crate::text::{runtime_fn, ty_name};
 use ms_check::types as ct;
@@ -13,7 +14,7 @@ impl Cx {
     /// The function comparing two values of `t` (reserved on first use). `scope` is the
     /// number of the module whose local implementations it calls, `0` for none.
     pub(crate) fn eq_fn(&mut self, m: &mut Module, t: MTy, scope: u32) -> FuncId {
-        let key = format!("eq:{}:{scope}", t.0);
+        let key = HelperKey::Eq(t, scope);
         if let Some(f) = self.helpers.get(&key) {
             return *f;
         }
