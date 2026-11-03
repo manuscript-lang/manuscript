@@ -118,8 +118,10 @@ fn build_time_for_cases(cases: usize) -> std::time::Duration {
 /// when linear and about 16x when quadratic.
 #[test]
 fn a_match_over_thousands_of_cases_builds_in_linear_time() {
-    let small = build_time_for_cases(2_500);
-    let large = build_time_for_cases(10_000);
+    // The small build takes about 0.3 s, so one scheduling hiccup on a loaded runner moves the ratio
+    // a lot (3.15 s against 0.30 s failed main once). Each size takes its best of a few builds.
+    let small = (0..3).map(|_| build_time_for_cases(2_500)).min().unwrap();
+    let large = (0..2).map(|_| build_time_for_cases(10_000)).min().unwrap();
     assert!(
         large < small * 10,
         "4x the cases took {large:?} against {small:?}"
