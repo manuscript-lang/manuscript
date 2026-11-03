@@ -6,7 +6,7 @@
 use crate::Components;
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt::ffi::{Fail, OptInt, RecList, Str, abi_record, native};
+use ms_rt::ffi::{Fail, Has, OptInt, RecList, Str, abi_record, native};
 
 abi_record! {
     /// `Url` record: `scheme, host, port: Int?, path, query, fragment`.
@@ -79,7 +79,7 @@ native! {
     // ms: leaf
     fn msstd_url_parse_query(
         text: &str,
-        has_max: bool,
+        has_max: Has,
         max: i64,
     ) -> Result<RecList<QueryEntryRec>, Fail> {
         crate::parse_query(text, has_max.then_some(max)).map(|items| {
@@ -124,7 +124,7 @@ mod tests {
             assert_eq!(msstd_url_format(rec.as_ptr(), s.as_mut_ptr()), STATUS_OK);
             assert_eq!(str_ref(s.as_ptr()), "https://example.com:81/p?a=1&a=2#f");
             assert_eq!(
-                msstd_url_parse_query(r.query.as_ptr(), 0, 0, q.as_mut_ptr()),
+                msstd_url_parse_query(r.query.as_ptr(), ms_rt_abi::HasRaw(0), 0, q.as_mut_ptr()),
                 STATUS_OK
             );
             assert_eq!((*q.as_ptr()).len, 2);

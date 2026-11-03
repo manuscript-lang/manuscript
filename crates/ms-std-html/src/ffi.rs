@@ -6,7 +6,7 @@
 
 use crate::{Limits, NodeType, Tree};
 use alloc::string::String;
-use ms_rt::ffi::{Fail, ObjRef, Object, Out, abi_handle, native};
+use ms_rt::ffi::{Fail, Has, ObjRef, Object, Out, abi_handle, native};
 
 abi_handle!(Tree);
 
@@ -31,18 +31,18 @@ native! {
     // ms: leaf
     fn msstd_html_parse(
         text: &str,
-        has_limits: bool,
-        has_max_bytes: bool,
+        has_limits: Has,
+        has_max_bytes: Has,
         max_bytes: i64,
-        has_max_depth: bool,
+        has_max_depth: Has,
         max_depth: i64,
-        has_max_nodes: bool,
+        has_max_nodes: Has,
         max_nodes: i64,
         out: Out<Object<Tree>>,
         root: Out<u32>,
     ) -> Result<(), Fail> {
         // Without a limits record the defaults apply; a record's none fields stay unlimited.
-        let limits = if has_limits {
+        let limits = if *has_limits {
             Limits {
                 max_bytes: has_max_bytes.then_some(max_bytes),
                 max_depth: has_max_depth.then_some(max_depth),
@@ -153,7 +153,18 @@ mod tests {
         // SAFETY: all pointers are live; results are released below.
         unsafe {
             assert_eq!(
-                msstd_html_parse(&text, 0, 0, 0, 0, 0, 0, 0, t.as_mut_ptr(), &mut root),
+                msstd_html_parse(
+                    &text,
+                    ms_rt_abi::HasRaw(0),
+                    ms_rt_abi::HasRaw(0),
+                    0,
+                    ms_rt_abi::HasRaw(0),
+                    0,
+                    ms_rt_abi::HasRaw(0),
+                    0,
+                    t.as_mut_ptr(),
+                    &mut root
+                ),
                 STATUS_OK
             );
             let t = t.assume_init();

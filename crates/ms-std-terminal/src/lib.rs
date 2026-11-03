@@ -21,7 +21,7 @@ mod raw;
 mod raw;
 
 use core::cell::RefCell;
-use ms_rt::ffi::{Global, ObjRef, Object, Out, StatusCode, abi_handle, native};
+use ms_rt::ffi::{Global, Has, ObjRef, Object, Out, StatusCode, abi_handle, native};
 use ms_rt::glue::poll_cancel;
 use ms_rt_abi::StrVal;
 use ms_rt_abi::{STATUS_NOT_TERMINAL, STATUS_OK, STATUS_UNSUPPORTED};
@@ -209,7 +209,7 @@ native! {
 
     fn msstd_terminal_raw_terminal_next_event(
         h: ObjRef<raw::Raw>,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout_ns: i64,
     ) -> u8 {
         poll_cancel();

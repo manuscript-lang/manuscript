@@ -8,7 +8,7 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
-use ms_rt::ffi::{Mut, Own, Ref, StatusCode, Text, abi_handle, native};
+use ms_rt::ffi::{Has, Mut, Own, Ref, StatusCode, Text, abi_handle, native};
 use ms_rt::glue::record_failure;
 use ms_rt_abi::{
     STATUS_FAILED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
@@ -139,8 +139,8 @@ fn finish<T>(a: Own<Acc>, ok: impl FnOnce(Acc) -> T) -> Result<T, StatusCode> {
 }
 
 native! {
-    fn msstd_io_acc_new(kind: i64, has_max: bool, max: i64) -> Own<Acc> {
-        start(kind, has_max, max)
+    fn msstd_io_acc_new(kind: i64, has_max: Has, max: i64) -> Own<Acc> {
+        start(kind, *has_max, max)
     }
 
     /// The next read size, or `0` when the loop should stop.

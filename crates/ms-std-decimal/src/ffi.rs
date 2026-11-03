@@ -4,7 +4,8 @@
 use crate::{Dec, Mode, Overflow, RoundFail, overflow_message};
 use alloc::string::String;
 use ms_rt::ffi::{
-    Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, Status, abi_record, fault, fault_kind, native,
+    Has, Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, Status, abi_record, fault, fault_kind,
+    native,
 };
 
 abi_record! {
@@ -154,11 +155,11 @@ native! {
     fn msstd_decimal_round(
         value: &DecRec,
         places: i64,
-        has_mode: bool,
+        has_mode: Has,
         mode: i64,
     ) -> Result<DecRec, RoundFail> {
         Dec::from(value)
-            .round(places, mode_of(has_mode, mode)?)
+            .round(places, mode_of(*has_mode, mode)?)
             .map(DecRec::from)
     }
 
@@ -166,9 +167,9 @@ native! {
     fn msstd_decimal_to_fixed(
         value: &DecRec,
         digits: i64,
-        has_mode: bool,
+        has_mode: Has,
         mode: i64,
     ) -> Result<String, RoundFail> {
-        Dec::from(value).to_fixed(digits, mode_of(has_mode, mode)?)
+        Dec::from(value).to_fixed(digits, mode_of(*has_mode, mode)?)
     }
 }

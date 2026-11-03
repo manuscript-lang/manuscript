@@ -367,6 +367,19 @@ pub type SlotEqFn = unsafe extern "C" fn(a: *const u8, b: *const u8) -> u8;
 /// Hash of a slot. Equal values must hash equally.
 pub type SlotHashFn = unsafe extern "C" fn(slot: *const u8) -> i64;
 
+/// The presence byte that precedes the value of a flattened optional (`has_x: HasRaw, x: T`). It is
+/// the C byte `u8`; the distinct type is the declaration lowering reads the role from.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct HasRaw(pub u8);
+
+impl HasRaw {
+    /// Whether the optional is present.
+    pub fn is_set(self) -> bool {
+        self.0 != 0
+    }
+}
+
 /// The slot descriptor of a list's or set's element type. A runtime function declares this role by
 /// taking the alias; lowering reads the role from the declared parameter type, not its name.
 pub type ElemDesc = *const TypeDesc;

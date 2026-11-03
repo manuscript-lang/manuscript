@@ -2,7 +2,7 @@
 use super::{Draw, Kind, RandomFail};
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt::ffi::{Mut, Own, Ref, Status, StrVal, abi_handle, native};
+use ms_rt::ffi::{Has, Mut, Own, Ref, Status, StrVal, abi_handle, native};
 
 abi_handle!(Draw);
 
@@ -44,7 +44,7 @@ native! {
     /// Starts a [`Draw`]; `kind` is 0 `secure_int` (`a` min, `b` optional max), 1 `uuid_v4`,
     /// 2 `float`, 3 `shuffle` of `a` items, 4 `choice` over `a` items. Freed by
     /// `msstd_random_draw_free`.
-    safe fn msstd_random_draw_new(kind: i64, a: i64, has_b: bool, b: i64) -> Own<Draw> {
+    safe fn msstd_random_draw_new(kind: i64, a: i64, has_b: Has, b: i64) -> Own<Draw> {
         Own(alloc::boxed::Box::new(Draw::new(kind_of(kind), a, has_b.then_some(b))))
     }
 
