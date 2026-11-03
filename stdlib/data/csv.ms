@@ -268,7 +268,7 @@ impl Transform[Bytes, List[String]] for CsvRows:
         return parse(text, self.options, none, none)
 
     var fn finish() List[List[String]]!:
-        let data = self.tail
+        let data = self.tail.clone()
         self.tail = join([])
         self.scanned = 0
         if data.is_empty(): return ok(List[List[String]]())

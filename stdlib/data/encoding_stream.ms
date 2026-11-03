@@ -21,7 +21,7 @@ impl Transform[Bytes, String] for Base64Encoding:
 
     var fn finish() List[String]!:
         if self.tail.is_empty(): return ok(List[String]())
-        let last = self.tail
+        let last = self.tail.clone()
         self.tail = join([])
         return ok([base64_encode(last, self.url_safe)])
 
@@ -44,7 +44,7 @@ impl Transform[String, Bytes] for Base64Decoding:
         return ok([try base64_decode(text.slice(0, whole).get(""), self.url_safe, none)])
 
     var fn finish() List[Bytes]!:
-        let last = self.tail
+        let last = self.tail.clone()
         self.tail = ""
         if last == "": return ok(List[Bytes]())
         return ok([try base64_decode(last, self.url_safe, none)])
@@ -81,7 +81,7 @@ impl Transform[String, Bytes] for HexDecoding:
         return ok([try hex_decode(text.slice(0, whole).get(""), none)])
 
     var fn finish() List[Bytes]!:
-        let last = self.tail
+        let last = self.tail.clone()
         self.tail = ""
         if last == "": return ok(List[Bytes]())
         return ok([try hex_decode(last, none)])
