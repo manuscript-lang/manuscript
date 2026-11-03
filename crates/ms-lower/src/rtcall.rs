@@ -1084,7 +1084,7 @@ impl FnLower<'_> {
                 let l = s.lit(&format!("{domain}: {words}")).v;
                 s.owned(Val { v: l, own: false })
             };
-            s.error_record(er, kind, text)
+            s.error_record(er, kind, text, None)
         };
         if rest.is_empty() {
             return build(self);
@@ -1098,12 +1098,14 @@ impl FnLower<'_> {
         Ok(r.v)
     }
 
-    /// An `Error` record: the owned `message`, the `ErrorCategory` case named `kind`, no details.
+    /// An `Error` record: the owned `message`, the `ErrorCategory` case named `kind`, and the
+    /// details `{"site": site}` when a failed test expectation passes its source `site`.
     pub(crate) fn error_record(
         &mut self,
         er: ms_mir::types::RecId,
         kind: &str,
         message: Value,
+        site: Option<Value>,
     ) -> Result<Value, Error> {
         let fields = self.b.m.records[er.index()].fields.clone();
         let kind_ty = fields[1].1;
@@ -1116,8 +1118,21 @@ impl FnLower<'_> {
             .position(|c| c.name == kind)
             .ok_or_else(|| Error::new(format!("ErrorCategory lacks {kind}")))?;
         let kind_value = self.b.alt_new(ka, idx as u32, &[]);
-        let details = self.map_new(fields[2].1)?;
+        let mut details = self.map_new(fields[2].1)?;
+        if let Some(site) = site {
+            let key = self.b.str_lit("site");
+            // The map takes owned strings; literals are borrowed.
+            let (key, site) = (self.owned_copy(key), self.owned_copy(site));
+            details = self.map_insert(details, key, site)?;
+        }
         Ok(self.b.rec_new(er, &[message, kind_value, details]))
+    }
+
+    /// An owned copy of the borrowed string `v`.
+    fn owned_copy(&mut self, v: Value) -> Value {
+        self.b
+            .emit(Op::Copy, &[v], Imm::None, Some(MTy::STR))
+            .expect("copy")
     }
 
     /// Whether the `ok` payload of `result` is `Unit?`.

@@ -2426,7 +2426,7 @@ impl<'a> FnLower<'a> {
             v: text,
             own: false,
         });
-        let v = self.error_record(er, "NotFound", text)?;
+        let v = self.error_record(er, "NotFound", text, None)?;
         Ok(Val { v, own: true })
     }
 

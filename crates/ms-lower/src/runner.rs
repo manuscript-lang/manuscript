@@ -6,9 +6,6 @@ use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Param};
 use ms_mir::types::{Ty as MTy, TyKind};
 
-/// Marks a failure message on stderr, ahead of the message.
-pub const FAILURE_MARKER: &str = "\u{1}FAIL\u{1}";
-
 /// Marks a skip: the fault message of `skip(reason)`, which the report turns into a skipped test.
 pub const SKIP_MARKER: &str = "\u{1}SKIP\u{1}";
 
@@ -63,7 +60,7 @@ pub(crate) fn bench_entries(
 }
 
 /// Builds `main`: argument `i` selects test `i`, which must return `Result[Unit, Error]`.
-/// A failed test writes `FAILURE_MARKER` and its message to stderr and exits with 1.
+/// A failed test reports its message and site through `msrt_test_failure` and exits with 1.
 pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, Error> {
     let mut b = FuncBuilder::new(m, "main", Vec::new(), MTy::INT);
     let args_ty = b.m.types.list(MTy::STR);
@@ -111,14 +108,11 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
         let message = b
             .emit(Op::Copy, &[field], Imm::None, Some(MTy::STR))
             .expect("copy");
-        let marker = b.str_lit(FAILURE_MARKER);
-        let cat = runtime_fn(b.m, "msrt_string_concat", &[MTy::STR, MTy::STR], MTy::STR);
-        let line = b.call_rt(cat, &[marker, message]);
-        let write = runtime_fn(b.m, "msrt_io_write_stderr", &[MTy::STR], MTy::UNIT);
-        b.call_rt(write, &[line]);
-        let site = runtime_fn(b.m, "msrt_test_site_report", &[MTy::STR], MTy::UNIT);
-        b.call_rt(site, &[message]);
-        for v in [line, message, r] {
+        let details = b.rec_get(er, 2, payload);
+        let details_ty = b.ty(details);
+        let report = runtime_fn(b.m, "msrt_test_failure", &[MTy::STR, details_ty], MTy::UNIT);
+        b.call_rt(report, &[message, details]);
+        for v in [message, r] {
             b.emit(Op::Drop, &[v], Imm::None, None);
         }
         let one = b.iconst(1);

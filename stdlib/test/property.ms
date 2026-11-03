@@ -287,7 +287,7 @@ export fn settings(runs: Int = 100) Settings:
 // Result of running one case: the replayed source, and the failure when the property did not hold.
 type Outcome:
     source: Source
-    failure: String?
+    failure: Error?
 
 fn run_case[T](gen: Gen[T], property: fn(T) Unit!, s: Source) Outcome:
     let {value, source} = gen.make(s)
@@ -305,12 +305,12 @@ fn run_case[T](gen: Gen[T], property: fn(T) Unit!, s: Source) Outcome:
 
     let message = faulted.get("")
     if message != property_failed:
-        return Outcome(source, "fault: {message}")
+        return Outcome(source, Error("fault: {message}"))
 
     let replayed = Source(source.choices.take(source.pos), 0, 0, false, false)
     let {value: again} = gen.make(replayed)
     let outcome = property(again)
-    return Outcome(source, outcome.err().message)
+    return Outcome(source, outcome.err())
 
 let property_failed = "property returned an error"
 
@@ -465,7 +465,7 @@ fn report[T](
     gen: Gen[T],
     property: fn(T) Unit!,
     failing: Source,
-    message: String,
+    message: Error,
     seed: Int,
     executed: Int
 ) Unit!:
@@ -474,6 +474,11 @@ fn report[T](
     let final = replay(gen, property, small)
     let {value: shown} = gen.make(Source(small.clone(), 0, 0, false, false))
     let reason = final.failure.get(message)
-    return fail(
-        "property '{name}' failed after {executed} cases (case seed {seed}; rerun with --seed {seed})\ncounterexample: {shown}\n{reason}"
+    # The failure keeps the details of the assertion that failed, which name its source position.
+    return error(
+        Error(
+            "property '{name}' failed after {executed} cases (case seed {seed}; rerun with --seed {seed})\ncounterexample: {shown}\n{reason.message}",
+            kind: Failed,
+            details: reason.details
+        )
     )
