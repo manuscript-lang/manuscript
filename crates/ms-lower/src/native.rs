@@ -5,7 +5,7 @@ use crate::func::{FnLower, Val};
 use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
 use ms_check::types::Builtin;
-use ms_mir::ir::{Mode, Param, Value};
+use ms_mir::ir::{Imm, Mode, Op, Param, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
@@ -997,6 +997,27 @@ impl<'a> FnLower<'a> {
             (TyKind::List(_) | TyKind::Bytes, "length") => {
                 let r = self.borrow(recv);
                 let v = self.b.list_len(r);
+                Ok(Val { v, own: false })
+            }
+            (TyKind::Bytes, "view") => {
+                // A borrow of the receiver's storage; a temporary receiver is copied out before
+                // it is dropped, as an element read of a temporary list is.
+                let r = self.borrow(recv);
+                let (start, end) = (self.borrow(args[0].val), self.borrow(args[1].val));
+                let slot = self
+                    .b
+                    .emit(Op::Slot, &[], Imm::Ty(MTy::BYTES), Some(MTy::PTR))
+                    .expect("slot");
+                self.call_runtime("msrt_bytes_view", &[r, start, end, slot], MTy::UNIT)?;
+                // Loading the header from the slot gives a value the MIR does not own.
+                let v = self
+                    .b
+                    .emit(Op::Load, &[slot], Imm::Ty(MTy::BYTES), Some(MTy::BYTES))
+                    .expect("load");
+                if recv.own {
+                    let o = self.owned(Val { v, own: false });
+                    return Ok(Val { v: o, own: true });
+                }
                 Ok(Val { v, own: false })
             }
             (TyKind::List(_) | TyKind::Bytes, "is_empty") => {

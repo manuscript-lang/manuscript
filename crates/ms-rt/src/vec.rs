@@ -1511,7 +1511,8 @@ pub(crate) unsafe fn bytes_from(data: &[u8], out: *mut VecVal) {
 pub unsafe extern "C-unwind" fn msrt_bytes_drop(b: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
-        if !(*b).ptr.is_null() {
+        // A view (`cap == 0` with bytes) borrows its storage and frees nothing.
+        if !(*b).ptr.is_null() && (*b).cap != 0 {
             alloc::free((*b).ptr);
         }
         *b = EMPTY;
@@ -1662,6 +1663,39 @@ pub unsafe extern "C-unwind" fn msrt_bytes_slice(
         }
         bytes_from(&s[a as usize..e as usize], out);
         STATUS_OK
+    }
+}
+
+/// `Bytes.view(start, end)`: a borrowed view of `[start, end)` that shares the receiver's storage
+/// (`cap == 0` marks a view, which is never freed). Bounds as in `slice`; a bound outside the
+/// receiver faults.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_bytes_view(
+    b: *const VecVal,
+    start: i64,
+    end: i64,
+    out: *mut VecVal,
+) {
+    // SAFETY: caller contract; the result borrows `b`.
+    unsafe {
+        let s = bslice(b);
+        let (a, e) = (relative(s.len(), start), relative(s.len(), end));
+        if a < 0 || e < a || e > s.len() as i64 {
+            fault::fault_fmt(format_args!(
+                "Bytes.view: bounds {start}..{end} are outside a length of {}",
+                s.len()
+            ));
+        }
+        *out = if a == e {
+            EMPTY
+        } else {
+            VecVal {
+                ptr: s.as_ptr().add(a as usize) as *mut u8,
+                len: (e - a) as usize,
+                cap: 0,
+            }
+        };
     }
 }
 
