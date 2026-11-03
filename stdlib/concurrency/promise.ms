@@ -141,3 +141,7 @@ export fn deferred[U](work: fn(Int) Unit) Promise[U]:
     let id = msrt_promise_new()
     msrt_promise_defer(id, fn: work(id))
     return Promise[U](id: id)
+
+// A promise over the runtime promise `id` that a native operation completes (a stream read or flush).
+export fn adopt[U](id: Int) Promise[U]:
+    return Promise[U](id: id)

@@ -488,6 +488,23 @@ fn put_int(t: &mut Table, i: usize, value: i64) {
     wake(t, i);
 }
 
+/// Completes `id` with a unit result: a block `wait` can take as `Unit` (an empty result reads as
+/// closed, so a flush or write promise ends this way).
+pub fn io_done_unit(id: i64) {
+    let ptr = alloc::alloc(8);
+    // SAFETY: `ptr` is a fresh 8-byte block.
+    unsafe { ptr.cast::<i64>().write(0) };
+    io_done_block(id, ptr as usize, &crate::desc::msrt_desc_int as *const _ as usize, 0);
+}
+
+/// A promise that is already finished with no value: the answer of a flush with nothing to drain.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_promise_finished() -> i64 {
+    let id = msrt_promise_new();
+    io_done_unit(id);
+    id
+}
+
 /// A new pending promise for a native operation to complete.
 pub fn io_new() -> i64 {
     msrt_promise_new()
