@@ -1,5 +1,6 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
+import ReadStream, Transform, through from "@std/io/stream.ms"
 
 /*
 MIME building blocks: media types, header blocks, and multipart bodies.
@@ -248,6 +249,44 @@ export fn multipart_boundary(content_type: String) String?:
 
     return media.params.get("boundary")
 
+// Builds one part from the bytes after a delimiter line's boundary: a CRLF, headers, a blank line and the body.
+fn make_part(section: Bytes) Part!:
+    let crlf = "\r\n".to_bytes()
+    if not section.starts_with(crlf): return error(
+        Error(
+            "MIME: invalid multipart body", kind: ErrorCategory.InvalidData
+        )
+    )
+
+    let inner = section.slice(2, section.length()).get("".to_bytes())
+    let blank = if inner.starts_with(crlf): 0 else: inner.index_of(
+        "\r\n\r\n".to_bytes()
+    ).get(-1)
+    if blank < 0 and not inner.starts_with(crlf): return error(
+        Error(
+            "MIME: invalid multipart body", kind: ErrorCategory.InvalidData
+        )
+    )
+
+    let skip = if blank == 0: 2 else: 4
+    let headers = try parse_headers(inner.decode_utf8_range(0, blank).get(""))
+    var part = Part(
+        headers: headers,
+        data: inner.slice(blank + skip, inner.length()).get(
+            "".to_bytes()
+        )
+    )
+
+    if let disposition = part.headers.get("Content-Disposition"):
+        let media = parse_media_type(
+            "x/x{disposition.drop(disposition.index_of(";").get(disposition.length()))}"
+        )
+
+        if media.is_ok():
+            part.name = media.get().params.get("name").get("")
+            part.filename = media.get().params.get("filename").get("")
+    return ok(part)
+
 /*
 Splits a multipart body into parts using `boundary`. Text before the first delimiter and after the
 closing delimiter is ignored. Parts keep their body bytes exactly; headers are parsed as `Headers`.
@@ -265,43 +304,64 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
     for i in 1..sections.length():
         let section = sections[i]
         if section.starts_with("--".to_bytes()): return ok(parts)
-        if not section.starts_with(crlf): return error(
-            Error(
-                "MIME: invalid multipart body", kind: ErrorCategory.InvalidData
-            )
-        )
-
-        let inner = section.slice(2, section.length()).get("".to_bytes())
-        let blank = if inner.starts_with(crlf): 0 else: inner.index_of(
-            "\r\n\r\n".to_bytes()
-        ).get(-1)
-        if blank < 0 and not inner.starts_with(crlf): return error(
-            Error(
-                "MIME: invalid multipart body", kind: ErrorCategory.InvalidData
-            )
-        )
-
-        let skip = if blank == 0: 2 else: 4
-        let headers = try parse_headers(inner.decode_utf8_range(0, blank).get(""))
-        var part = Part(
-            headers: headers,
-            data: inner.slice(blank + skip, inner.length()).get(
-                "".to_bytes()
-            )
-        )
-
-        if let disposition = part.headers.get("Content-Disposition"):
-            let media = parse_media_type(
-                "x/x{disposition.drop(disposition.index_of(";").get(disposition.length()))}"
-            )
-
-            if media.is_ok():
-                part.name = media.get().params.get("name").get("")
-                part.filename = media.get().params.get("filename").get("")
-
+        let part = try make_part(section)
         parts.append(part)
 
     return error(Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData))
+
+// Cuts a byte stream at its delimiter lines and builds each part with `make_part`, buffering one part at a time.
+// `in_part` is false until the first delimiter has passed; `done` after the closing delimiter.
+type MultipartParts:
+    delimiter: Bytes
+    max_part_bytes: Int?
+    buffer: Bytes
+    in_part: Bool
+    done: Bool
+
+impl Transform[Bytes, Part] for MultipartParts:
+    var fn feed(value: Bytes) List[Part]!:
+        var out: List[Part] = []
+        if self.done: return ok(out)
+        self.buffer = self.buffer.concat(value)
+        while true:
+            if self.in_part and self.buffer.length() >= 2 and self.buffer.starts_with("--".to_bytes()):
+                self.done = true
+                self.buffer = "".to_bytes()
+                break
+            if self.in_part and self.buffer.length() < 2: break
+            let at = self.buffer.index_of(self.delimiter)
+            if at.is_none():
+                if let limit = self.max_part_bytes:
+                    if self.buffer.length() > limit + self.delimiter.length():
+                        return error(Error("MIME: limit exceeded", kind: ErrorCategory.LimitExceeded))
+                break
+            let end = at.get()
+            if self.in_part:
+                if let limit = self.max_part_bytes:
+                    if end > limit: return error(Error("MIME: limit exceeded", kind: ErrorCategory.LimitExceeded))
+                out.append(try make_part(try self.buffer.slice(0, end)))
+            self.buffer = try self.buffer.slice(end + self.delimiter.length(), self.buffer.length())
+            self.in_part = true
+        return ok(out)
+
+    var fn finish() List[Part]!:
+        if self.done: return ok(List[Part]())
+        return error(Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData))
+
+/*
+Reads the parts of a multipart body from a byte stream, one at a time, for uploads too big to hold in memory.
+Parts are built as `parse_multipart` builds them, and only the part being read is buffered. `max_part_bytes`
+bounds one part's headers and body and fails the read with `LimitExceeded`. A body that ends without its closing
+delimiter fails with `InvalidData`. Closing the result closes `body`.
+*/
+export fn multipart_parts(body: ReadStream[Bytes], boundary: String, max_part_bytes: Int?) ReadStream[Part]:
+    return through[Bytes, Part](
+        body,
+        MultipartParts(
+            delimiter: "\r\n--{boundary}".to_bytes(), max_part_bytes: max_part_bytes,
+            buffer: "\r\n".to_bytes(), in_part: false, done: false
+        )
+    )
 
 // Encodes parts as a multipart body closed with the final delimiter. Each part's headers are
 // written as given, then a blank line and the data.

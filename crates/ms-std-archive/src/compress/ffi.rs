@@ -7,29 +7,7 @@ use super::Format;
 use super::stream::{Decoder, Encoder, Poll};
 use alloc::vec::Vec;
 use core::cell::RefCell;
-use ms_rt::ffi::{Fail, ObjRef, Object, Out, Status, abi_handle, native};
-
-/// `decoder_poll` status: no output yet, feed more input.
-pub const POLL_NEED_INPUT: u8 = 64;
-/// `decoder_poll` status: the stream ended cleanly.
-pub const POLL_DONE: u8 = 65;
-
-/// Why a poll produced no output.
-pub enum Stop {
-    NeedInput,
-    Done,
-    Fail(Fail),
-}
-
-impl Status for Stop {
-    fn status(self) -> u8 {
-        match self {
-            Stop::NeedInput => POLL_NEED_INPUT,
-            Stop::Done => POLL_DONE,
-            Stop::Fail(e) => e.status(),
-        }
-    }
-}
+use ms_rt::ffi::{Fail, ObjRef, Object, Out, abi_handle, native};
 
 // A stream codec is a refcounted handle. The generated code owns the input `ReadStream` and the
 // pull loop: on `POLL_NEED_INPUT` it reads a chunk and calls `feed` (or `finish_input` at the end
@@ -80,21 +58,18 @@ native! {
         Ok(())
     }
 
-    fn msstd_compress_decoder_feed(d: ObjRef<DecoderObj>, data: &[u8]) -> () {
-        d.codec.borrow_mut().feed(data);
+    // Feeds a chunk and returns the output it completes; empty while the codec needs more input.
+    fn msstd_compress_decoder_push(d: ObjRef<DecoderObj>, data: &[u8]) -> Result<Vec<u8>, Fail> {
+        let mut codec = d.codec.borrow_mut();
+        codec.feed(data);
+        drain(&mut codec, false)
     }
 
-    fn msstd_compress_decoder_finish_input(d: ObjRef<DecoderObj>) -> () {
-        d.codec.borrow_mut().finish_input();
-    }
-
-    fn msstd_compress_decoder_poll(d: ObjRef<DecoderObj>, max: i64) -> Result<Vec<u8>, Stop> {
-        match d.codec.borrow_mut().poll(usize::try_from(max).unwrap_or(1)) {
-            Ok(Poll::Output(b)) => Ok(b),
-            Ok(Poll::NeedInput) => Err(Stop::NeedInput),
-            Ok(Poll::Done) => Err(Stop::Done),
-            Err(e) => Err(Stop::Fail(e)),
-        }
+    // Ends the input and returns the rest of the output; input that ends inside the format is `InvalidData`.
+    fn msstd_compress_decoder_end(d: ObjRef<DecoderObj>) -> Result<Vec<u8>, Fail> {
+        let mut codec = d.codec.borrow_mut();
+        codec.finish_input();
+        drain(&mut codec, true)
     }
 
     fn msstd_compress_encoder_new(
@@ -109,24 +84,31 @@ native! {
         Ok(())
     }
 
-    fn msstd_compress_encoder_feed(e: ObjRef<EncoderObj>, data: &[u8]) -> () {
-        e.codec.borrow_mut().feed(data);
+    // Feeds a chunk and returns the compressed bytes it completes, possibly none.
+    fn msstd_compress_encoder_push(e: ObjRef<EncoderObj>, data: &[u8]) -> out Vec<u8> {
+        let mut codec = e.codec.borrow_mut();
+        codec.feed(data);
+        codec.take(usize::MAX)
     }
 
-    fn msstd_compress_encoder_finish(e: ObjRef<EncoderObj>) -> () {
-        e.codec.borrow_mut().finish();
+    // Finishes the stream and returns the remaining compressed bytes.
+    fn msstd_compress_encoder_end(e: ObjRef<EncoderObj>) -> out Vec<u8> {
+        let mut codec = e.codec.borrow_mut();
+        codec.finish();
+        codec.take(usize::MAX)
     }
+}
 
-    fn msstd_compress_encoder_has_output(e: ObjRef<EncoderObj>) -> bool {
-        e.codec.borrow().has_output()
-    }
-
-    fn msstd_compress_encoder_is_finished(e: ObjRef<EncoderObj>) -> bool {
-        e.codec.borrow().is_finished()
-    }
-
-    fn msstd_compress_encoder_take(e: ObjRef<EncoderObj>, max: i64) -> out Vec<u8> {
-        e.codec.borrow_mut().take(usize::try_from(max).unwrap_or(0))
+/// Polls the decoder until it needs input (or, after the input ended, until it is done), joining the output.
+fn drain(codec: &mut Decoder, ended: bool) -> Result<Vec<u8>, Fail> {
+    let mut out = Vec::new();
+    loop {
+        match codec.poll(1 << 16)? {
+            Poll::Output(b) => out.extend_from_slice(&b),
+            Poll::Done => return Ok(out),
+            Poll::NeedInput if !ended => return Ok(out),
+            Poll::NeedInput => return Err(Fail::InvalidData),
+        }
     }
 }
 
@@ -178,47 +160,6 @@ mod tests {
                 ms_rt::vec::msrt_bytes_drop(v);
             }
             ms_rt::ffi::str_release(&f);
-        }
-    }
-
-    #[test]
-    fn stream_roundtrip() {
-        let f = new_string("gzip");
-        let mut enc = MaybeUninit::<*mut ObjCell<EncoderObj>>::uninit();
-        let mut dec = MaybeUninit::<*mut ObjCell<DecoderObj>>::uninit();
-        let (data, mut chunk, mut plain) = (bytes(b"hello hello hello"), blank(), blank());
-        // SAFETY: all pointers are live; handles are released at the end.
-        unsafe {
-            assert_eq!(
-                msstd_compress_encoder_new(&f, 10, enc.as_mut_ptr()),
-                ms_rt::ffi::STATUS_INVALID_INPUT
-            );
-            assert_eq!(msstd_compress_encoder_new(&f, 6, enc.as_mut_ptr()), 0);
-            let enc = enc.assume_init();
-            msstd_compress_encoder_feed(enc, &data);
-            msstd_compress_encoder_finish(enc);
-            assert_eq!(msstd_compress_encoder_is_finished(enc), 1);
-            msstd_compress_encoder_take(enc, 1 << 20, chunk.as_mut_ptr());
-            assert_eq!(msstd_compress_decoder_new(&f, 0, 0, dec.as_mut_ptr()), 0);
-            let dec = dec.assume_init();
-            assert_eq!(
-                msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
-                POLL_NEED_INPUT
-            );
-            msstd_compress_decoder_feed(dec, chunk.as_ptr());
-            assert_eq!(msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()), 0);
-            assert_eq!(bytes_ref(plain.as_ptr()), b"hello hello hello");
-            assert_eq!(
-                msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
-                POLL_NEED_INPUT
-            );
-            msstd_compress_decoder_finish_input(dec);
-            assert_eq!(
-                msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
-                POLL_DONE
-            );
-            ms_rt::obj::msrt_release(enc.cast());
-            ms_rt::obj::msrt_release(dec.cast());
         }
     }
 }

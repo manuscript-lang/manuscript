@@ -11,7 +11,7 @@ import (
     buffered
 ) from "@std/net/http.ms"
 import ReadStream, read_all from "@std/io/io.ms"
-import body_stream from "@std/net/sse.ms"
+import body_stream from "@std/net/http.ms"
 import http_client, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 

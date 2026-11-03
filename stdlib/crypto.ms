@@ -1,5 +1,6 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import panic from "@std/core.ms"
+import ReadStream from "@std/io/stream.ms"
 import bit_and, bit_not, bit_or, bit_xor, shift_right from "@std/math/math.ms"
 import (
     msstd_crypto_constant_time_equal,
@@ -133,6 +134,22 @@ export interface Hasher:
     fn update(data: Bytes) Unit
     // Returns the digest of all data supplied since creation or the last finish, then resets the state.
     fn finish() Bytes
+
+/*
+Reads `input` to the end and returns its digest under `algorithm`, as `HashAlgorithm.digest` does for bytes in
+hand. Retains no input bytes, and consumes and closes the stream. A failed read returns its error.
+*/
+export fn digest(input: ReadStream[Bytes], algorithm: HashAlgorithm) Bytes!:
+    var hasher = algorithm.hasher()
+    var source = input
+    while true:
+        let chunk = try source.read().wait()
+        if let data = chunk:
+            hasher.update(data)
+        else:
+            break
+    try source.close()
+    return ok(hasher.finish())
 
 // Encrypts or decrypts data with AES in CTR mode. The same call encrypts and decrypts.
 // `key` is 16, 24 or 32 bytes and `iv` is the 16-byte initial counter block.

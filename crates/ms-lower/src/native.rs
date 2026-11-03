@@ -178,20 +178,6 @@ impl<'a> FnLower<'a> {
                 self.at(e.pos);
                 return self.bit_operation(name, &args);
             }
-            // Codec streams are built by the compiler: the format name, the input, and the limit.
-            if matches!(
-                symbol,
-                "msstd_archive_compress_stream" | "msstd_archive_decompress_stream"
-            ) {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let result = self.emty(e)?;
-                self.at(e.pos);
-                let decode = symbol == "msstd_archive_decompress_stream";
-                return self.codec_stream(args[0].val, &args[1..], decode, result);
-            }
             // A symbol that is lowered by hand keeps its native identity.
             if let Some(hand) = crate::stdnative::by_symbol(symbol) {
                 return self.native_function(e, view, hand.identity, params, sym);
@@ -974,15 +960,6 @@ impl<'a> FnLower<'a> {
             self.split_iter_for = None;
             let iter = self.b.m.types.obj("SplitIter", Vec::new());
             return self.rt_method("msrt_string_split_iter", recv, &m.ty.params, &args, iter);
-        }
-        if let Some(decode) = match native {
-            "archive/format_compress_stream" => Some(false),
-            "archive/format_decompress_stream" => Some(true),
-            _ => None,
-        } {
-            let result = self.emty(e)?;
-            let name = self.format_argument(m, recv, false)?;
-            return self.codec_stream(name, &args, decode, result);
         }
         if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS.iter().find(|(n, ..)| *n == native)
         {

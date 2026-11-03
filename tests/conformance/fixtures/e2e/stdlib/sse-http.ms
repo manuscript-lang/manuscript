@@ -7,10 +7,24 @@ import (
     HttpClientOptions,
     HttpExchange,
     HttpMethod,
-    HttpServerOptions
+    HttpServerOptions,
+    ResponseBody
 ) from "@std/net/http.ms"
-import body_stream, reader, next_event from "@std/net/sse.ms"
+import Bytes from "@std/bytes.ms"
+import ReadStream, Source, stream from "@std/io/stream.ms"
+import sse_events from "@std/net/sse.ms"
 import http_client, serve from "@std/net/net.ms"
+
+// A response body as a stream source, until response bodies are streams themselves.
+type BodySource:
+    body: ResponseBody
+
+impl Source[Bytes] for BodySource:
+    var fn next() Bytes?!:
+        return self.body.read(none)
+
+    var fn close() Unit!:
+        return self.body.close()
 
 // Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
 fn stream_events(exchange: HttpExchange) Unit!:
@@ -30,14 +44,14 @@ test "HTTP response bodies decode as SSE and close with the reader":
         HttpMethod.Get, "http://{server.address()}/", headers()
     )
     let status = response.metadata().status
-    var events = try reader(body_stream(response))
-    let first = (try next_event(var events)).get()
-    let second = (try next_event(var events)).get()
+    var events = sse_events(stream[Bytes](BodySource(response)))
+    let first = (try events.read().wait()).get()
+    let second = (try events.read().wait()).get()
     if first.event != "greet" or first.data != "h\u{e9}!": return fail(
         "first event {first.data}"
     )
 
     try expect_false(second.event != "message" or second.data != "second")
-    try expect_false((try next_event(var events)).is_some())
+    try expect_false((try events.read().wait()).is_some())
     try events.close()
     try expect_equal(status, 200)

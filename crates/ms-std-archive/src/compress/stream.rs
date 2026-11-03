@@ -1,4 +1,4 @@
-//! Incremental gzip/zlib/deflate coding behind `compress_stream` and `decompress_stream`.
+//! Incremental gzip/zlib/deflate coding behind the `compressed` and `decompressed` stream steps.
 //!
 //! The generated code owns the input `ReadStream`: it pulls chunks and calls [`Decoder::feed`] /
 //! [`Decoder::finish_input`] (or [`Encoder::feed`] / [`Encoder::finish`]) and drains the codec

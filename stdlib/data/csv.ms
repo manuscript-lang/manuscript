@@ -1,5 +1,6 @@
 import StringBuilder from "@std/string.ms"
-import Bytes from "@std/bytes.ms"
+import Bytes, join from "@std/bytes.ms"
+import ReadStream, Transform, through from "@std/io/stream.ms"
 
 // Delimiter and line ending used when parsing or writing CSV; defaults are comma and LF.
 export type CsvOptions:
@@ -212,6 +213,84 @@ impl Reader:
 
             row.append(self.text_between(at, end))
             self.at = end + 1
+
+// Cuts a byte stream at the line ends outside quotes and parses each complete block of records with `parse`.
+// `tail` holds the unfinished last record; `scanned` is how much of it has been searched, and `quoted`
+// whether the scan ended inside a quoted cell.
+type CsvRows:
+    options: CsvOptions
+    max_record_bytes: Int?
+    tail: Bytes
+    scanned: Int
+    quoted: Bool
+
+impl CsvRows:
+    // Offset just past the last line end outside quotes in `data`, or 0 when the block holds none.
+    var fn boundary(data: Bytes) Int:
+        let total = data.length()
+        var pos = self.scanned
+        var cut = 0
+        var quote = data.index_of_byte(34, pos).get(total)
+        var line = data.index_of_byte(10, pos).get(total)
+        while pos < total:
+            if self.quoted:
+                if quote >= total: break
+                self.quoted = false
+                pos = quote + 1
+                quote = data.index_of_byte(34, pos).get(total)
+                continue
+            if line < pos: line = data.index_of_byte(10, pos).get(total)
+            if quote < pos: quote = data.index_of_byte(34, pos).get(total)
+            if line < quote:
+                cut = line + 1
+                pos = line + 1
+                continue
+            if quote >= total: break
+            self.quoted = true
+            pos = quote + 1
+            quote = data.index_of_byte(34, pos).get(total)
+        return cut
+
+    fn check_size(size: Int) Unit!:
+        if let limit = self.max_record_bytes:
+            if size > limit: return error(Error("CSV: limit exceeded", kind: LimitExceeded))
+        return ok(unit)
+
+impl Transform[Bytes, List[String]] for CsvRows:
+    var fn feed(value: Bytes) List[List[String]]!:
+        let data = self.tail.concat(value)
+        let cut = self.boundary(data)
+        self.scanned = data.length() - cut
+        self.tail = try data.slice(cut, data.length())
+        try self.check_size(self.tail.length())
+        if cut == 0: return ok(List[List[String]]())
+        let text = data.decode_utf8_range(0, cut).get("")
+        return parse(text, self.options, none, none)
+
+    var fn finish() List[List[String]]!:
+        let data = self.tail
+        self.tail = join([])
+        self.scanned = 0
+        if data.is_empty(): return ok(List[List[String]]())
+        let text = data.decode_utf8().get("")
+        return parse(text, self.options, none, none)
+
+/*
+Reads CSV rows from a byte stream, one `List[String]` per record, with the cells `parse` returns.
+
+Chunks may end anywhere, including inside a quoted cell, a CRLF or a UTF-8 scalar; only the unfinished
+record is buffered. `max_record_bytes` bounds that record and fails the read with `LimitExceeded`. A
+malformed record fails the read with `InvalidData`, and invalid `options` with `InvalidInput`. Closing the
+result closes `input`.
+*/
+export fn csv_rows(
+    input: ReadStream[Bytes],
+    options: CsvOptions = CsvOptions(),
+    max_record_bytes: Int?
+) ReadStream[List[String]]:
+    return through[Bytes, List[String]](
+        input, CsvRows(options: options, max_record_bytes: max_record_bytes, tail: join([]), scanned: 0, quoted: false)
+    )
 
 // Encodes rows as CSV with comma delimiters and LF endings by default.
 // Quotes cells when required by the delimiter or line ending.
