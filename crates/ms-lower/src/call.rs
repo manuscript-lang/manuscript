@@ -785,7 +785,7 @@ impl<'a> FnLower<'a> {
                     if self.dead {
                         return Ok(recv);
                     }
-                    self.close_with(&kind, recv.v, want);
+                    self.close_receiver(&kind, recv_expr, recv)?;
                     // The call is checked as `Unit!`: it succeeds, since a part that fails faults.
                     let result = self.mty(&ms_check::types::test_outcome())?;
                     let TyKind::Alt(alt) = self.b.m.types.kind(result).clone() else {

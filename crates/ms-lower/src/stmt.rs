@@ -144,8 +144,7 @@ impl<'a> FnLower<'a> {
                 let x = self.expr(e)?;
                 if x.own {
                     let ty = self.ety(e);
-                    self.close_unused(x.v, &ty);
-                    self.drop_value(x.v);
+                    self.drop_unused(x.v, &ty);
                 }
             }
             StmtKind::Return(e) => {
@@ -402,15 +401,15 @@ impl<'a> FnLower<'a> {
                     .copied()
                     .or_else(|| self.closers.get(&b.uid).and_then(|c| c.flag))
                     .map(|flag| self.b.use_var(flag));
-                let old = self.local_take(&l);
+                let mut old = self.local_take(&l);
                 // A registered resource closes the value it replaces; the scope closes the new one.
                 if let Some(closer) = self.closers.get(&b.uid).cloned() {
-                    self.assign_closing(b.uid, &closer, old, l.ty)?;
+                    old = self.assign_closing(b.uid, &closer, old, l.ty)?;
                 } else if self.var_slots.iter().any(|v| v.uid == b.uid) {
                     // A `var` parameter holds the caller's value, which the caller closes at
                     // the end, but a value this assignment replaces is the callee's to close.
                     let ty = ms_check::types::sub(&b.ty, &self.subst);
-                    self.close_discarded_ty(&ty, old)?;
+                    old = self.close_discarded_ty(&ty, old)?;
                 }
                 self.refill_local(b.uid, &l, new);
                 if self.cx_needs_drop_ty(l.ty) {
@@ -635,29 +634,20 @@ impl<'a> FnLower<'a> {
             .iter()
             .position(|f| f.0 == name.as_str())
             .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
-        let mut moved = false;
-        let inner = if rest.is_empty() {
-            // The field's old value dies here: a resource in it closes first.
-            let cur = self.b.rec_get(rid, idx, obj);
-            self.close_discarded(first, cur)?;
-            new
-        } else {
-            let cur = self.b.rec_get(rid, idx, obj);
-            let cur_own = if obj_own {
-                let (v, was_moved) = self.take_projection(cur);
-                moved = was_moved;
-                v
-            } else if self.needs_drop(self.ty_of(cur)) {
-                self.owned(Val { v: cur, own: false })
-            } else {
-                cur
-            };
-            self.set_path(cur_own, true, rest, new)?
-        };
         let base = if obj_own {
             obj
         } else {
             self.owned(Val { v: obj, own: false })
+        };
+        let cur = self.b.rec_get(rid, idx, base);
+        let (cur_own, moved) = self.take_projection(cur);
+        let inner = if rest.is_empty() {
+            // The field's old value dies here: a resource in it closes first.
+            let cur_own = self.close_discarded(first, cur_own)?;
+            self.drop_value(cur_own);
+            new
+        } else {
+            self.set_path(cur_own, true, rest, new)?
         };
         Ok(if moved {
             self.b.rec_fill(rid, idx, base, inner)
@@ -1494,8 +1484,12 @@ impl<'a> FnLower<'a> {
         self.enter(body);
         let j = self.b.use_var(next);
         let l = self.b.use_var(list);
-        let v = self.b.list_get(l, j);
-        self.close_discarded_kind(kind, v);
+        let elem = self.b.m.list_elem(self.b.ty(l)).expect("a list");
+        let ep = self
+            .b
+            .emit(Op::ListAddrU, &[l, j], Imm::None, Some(MTy::PTR))
+            .expect("element address");
+        self.close_at_shielded(kind, ep, elem);
         let j = self.b.use_var(next);
         let one = self.b.iconst(1);
         let bumped = self

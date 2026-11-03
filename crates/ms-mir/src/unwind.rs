@@ -312,30 +312,14 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
     Some(id)
 }
 
-/// The type of the value a scope close reads from the slot it is registered with, when `close` is
-/// the thunk of a `var` binding that lives in memory: it takes the slot's address and loads first.
+/// The type of the value a scope close works on in place, when `close` is the thunk of a
+/// binding that lives in memory: it takes the slot's address and leaves the value there.
 fn slot_close_value(m: &Module, close: FuncId) -> Option<Ty> {
-    let f = m.funcs.get(close.index())?;
-    let [param] = f.params.as_slice() else {
-        return None;
-    };
-    if param.ty != Ty::PTR {
-        return None;
-    }
-    let first = f.blocks.first()?.insts.first()?;
-    match (first.op, first.imm) {
-        (Op::Load, Imm::Ty(ty))
-            if first.args.first().copied() == f.param_values().first().copied()
-                && m.needs_drop(ty) =>
-        {
-            Some(ty)
-        }
-        _ => None,
-    }
+    m.funcs.get(close.index())?.slot_close
 }
 
 /// [`with_closer`] for a slot-held value: runs the thunk, then drops what the slot still holds.
-/// The thunk closes a copy or borrows, so the original is left for this drop.
+/// The thunk closes the value in place, so it is still there for this drop.
 fn slot_with_closer(m: &mut Module, cx: &mut Cx, close: FuncId, ty: Ty) -> Option<FuncId> {
     let gate = m.add_extern(ExternDef {
         name: "msrt_unwind_drops".into(),
