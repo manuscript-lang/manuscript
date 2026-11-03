@@ -1673,7 +1673,7 @@ impl Checker {
             return;
         }
         let result = t.result_ty();
-        let hooks = standard("TestHooks", vec![]);
+        let hooks = crate::types::test_hooks();
         if !matches!(result.kind, Kind::Record | Kind::Alternative)
             || !self.implements(&result, &hooks)
         {

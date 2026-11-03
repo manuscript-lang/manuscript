@@ -183,8 +183,6 @@ pub enum Builtin {
     BytesBuilder,
     /// `Regex`.
     Regex,
-    /// `TestHooks`.
-    TestHooks,
 }
 
 impl Builtin {
@@ -211,7 +209,6 @@ impl Builtin {
             "Iterable" => Some(Builtin::Iterable),
             "BytesBuilder" => Some(Builtin::BytesBuilder),
             "Regex" => Some(Builtin::Regex),
-            "TestHooks" => Some(Builtin::TestHooks),
             _ => None,
         }
     }
@@ -389,6 +386,11 @@ impl Type {
     /// Whether this is the built-in standard type `b`.
     pub fn is(&self, b: Builtin) -> bool {
         self.builtin == Some(b)
+    }
+
+    /// Whether this is `TestHooks` of `@std/test/test.ms`.
+    pub fn is_test_hooks(&self) -> bool {
+        self.is_source_type("@std/test/test.ms", "TestHooks")
     }
 
     /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/os/time.ms`.
@@ -859,6 +861,14 @@ pub fn time_type(name: &str) -> Ty {
     crate::stdlib::standard_exports("@std/os/time.ms");
     let sym = crate::stdlib::source_type(n("@std/os/time.ms"), n(name))
         .unwrap_or_else(|| panic!("standard time type {name}"));
+    sym.ty()
+}
+
+/// `TestHooks`, the interface of `@std/test/test.ms`, which a program loads only when it has a fixture.
+pub fn test_hooks() -> Ty {
+    crate::stdlib::standard_exports("@std/test/test.ms");
+    let sym = crate::stdlib::source_type(n("@std/test/test.ms"), n("TestHooks"))
+        .unwrap_or_else(|| panic!("standard type TestHooks"));
     sym.ty()
 }
 

@@ -692,7 +692,7 @@ impl Checker {
             if seen.contains(&op.name) {
                 continue;
             }
-            if contract.is(Builtin::TestHooks) {
+            if contract.is_test_hooks() {
                 // This standard lifecycle contract has no-op defaults; retain ordinary
                 // checked methods so interface calls and generic bounds use normal dispatch.
                 let decl_id = self.m().facts_mut().fresh_id();

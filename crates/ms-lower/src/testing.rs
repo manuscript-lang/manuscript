@@ -1,4 +1,5 @@
-//! `@std/test/test.ms` expectations, lowered inline.
+//! The two externs of `@std/test/test.ms` that need the compiler: the debug text of a value and a
+//! fault trap. The expectations themselves are Manuscript source.
 
 use crate::Error;
 use crate::cx::HelperKey;
@@ -6,7 +7,7 @@ use crate::func::{FnLower, Val};
 use crate::text::runtime_fn;
 use ms_check::hir::CallView;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{Cc, FuncId, Imm, InlineHint, Linkage, Mode, Op, Param, Value};
+use ms_mir::ir::{FuncId, Imm, InlineHint, Linkage, Mode, Op, Param, Value};
 use ms_mir::types::{AltId, Ty as MTy, TyKind};
 use ms_syntax::ast::Expr;
 
@@ -35,83 +36,13 @@ impl FnLower<'_> {
         Ok(self.b.alt_new(a, ok, &[payload]))
     }
 
-    /// The `file:line:column` of the expression being lowered, which a failure carries in
-    /// `details["site"]` so the test report can name it.
-    fn failure_site(&mut self) -> Option<Value> {
-        let loc = self.b.loc();
-        let file = self.b.m.files.get(loc.file as usize)?;
-        let site = format!("{file}:{}:{}", loc.line, loc.col);
-        Some(self.b.str_lit(&site))
-    }
-
-    /// `error(Error)` carrying `message` (owned).
-    fn testing_fail(&mut self, rty: MTy, message: Value) -> Result<Value, Error> {
-        let (a, _, err) = self.result_cases(rty)?;
-        let it = self.b.m.alts[a.index()].cases[err as usize].fields[0].1;
-        let TyKind::Rec(er) = self.b.m.types.kind(it).clone() else {
-            return Err(Error::new("testing failures need an Error record"));
-        };
-        let site = self.failure_site();
-        let v = self.error_record(er, "Failed", message, site)?;
-        Ok(self.b.alt_new(a, err, &[v]))
-    }
-
-    /// Concatenates text pieces into one owned string, releasing owned pieces.
-    fn cat(&mut self, parts: &[Val]) -> Result<Val, Error> {
-        let mut acc: Option<Val> = None;
-        for p in parts {
-            acc = Some(match acc {
-                None => {
-                    if p.own {
-                        *p
-                    } else {
-                        let v = self
-                            .b
-                            .emit(Op::Copy, &[p.v], Imm::None, Some(MTy::STR))
-                            .expect("copy");
-                        Val { v, own: true }
-                    }
-                }
-                Some(a) => {
-                    let r = self.call_runtime("msrt_string_concat", &[a.v, p.v], MTy::STR)?;
-                    self.drop_value(a.v);
-                    if p.own {
-                        self.drop_value(p.v);
-                    }
-                    Val { v: r, own: true }
-                }
-            });
-        }
-        acc.ok_or_else(|| Error::new("empty message"))
-    }
-
+    /// A borrowed string literal.
     pub(crate) fn lit(&mut self, text: &str) -> Val {
         let v = self.b.str_lit(text);
         Val { v, own: false }
     }
 
-    /// `Result[Unit, Error]`: `ok(unit)` when `cond`, else `error(message())`.
-    fn expectation(
-        &mut self,
-        cond: Value,
-        rty: MTy,
-        message: &mut dyn FnMut(&mut Self) -> Result<Val, Error>,
-    ) -> Result<Val, Error> {
-        self.two_ways(
-            cond,
-            rty,
-            &mut |s| {
-                let u = s.b.unit();
-                Ok(Some(s.testing_ok(rty, u)?))
-            },
-            &mut |s| {
-                let m = message(s)?;
-                Ok(Some(s.testing_fail(rty, m.v)?))
-            },
-        )
-    }
-
-    /// An expectation of `@std/test/test.ms`.
+    /// The hand-lowered externs of `@std/internal/test.ms`: `repr` and `catch_fault`.
     pub fn testing_native(
         &mut self,
         e: &Expr,
@@ -124,181 +55,10 @@ impl FnLower<'_> {
         }
         let rty = self.emty(e)?;
         self.at(e.pos);
-        let name = name.replacen("assert_", "expect_", 1);
-        if name == "skip" {
-            // A fault whose message names the skip; the report recovers the reason.
-            let marker = self.lit(crate::SKIP_MARKER);
-            let msg = self.cat(&[marker, args[0].val])?;
-            let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
-                name: "msrt_fault_string".to_string(),
-                params: vec![ms_mir::ir::Param {
-                    ty: MTy::STR,
-                    mode: ms_mir::ir::Mode::Borrow,
-                }],
-                ret: MTy::UNIT,
-                noreturn: true,
-                pure_: false,
-                fresh: false,
-                role: ms_mir::ir::ExternRole::None,
-                leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
-                reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
-            });
-            self.b.call_rt(ext, &[msg.v]);
-            return Ok(self.dummy(MTy::UNIT));
-        }
-        if name == "fail" {
-            // The message is consumed, not borrowed.
-            let m = self.cat(&[args[0].val])?;
-            let v = self.testing_fail(rty, m.v)?;
-            return Ok(Val { v, own: true });
-        }
-        // A plain value compared with an optional is wrapped to the shared `T?`.
-        let equality = matches!(name.as_str(), "expect_equal" | "expect_not_equal");
-        let vals: Vec<Value> = args
-            .iter()
-            .map(|a| {
-                if equality && a.wrapped {
-                    let o = self.owned(a.val);
-                    let v = self.b.opt_some(o);
-                    return self.borrow(Val { v, own: true });
-                }
-                self.borrow(a.val)
-            })
-            .collect();
-        match name.as_str() {
-            "expect_true" | "expect_false" => {
-                let want = name == "expect_true";
-                let cond = if want {
-                    vals[0]
-                } else {
-                    self.b.unop(Op::Not, vals[0])
-                };
-                let text = if want {
-                    "expected true, got false"
-                } else {
-                    "expected false, got true"
-                };
-                self.expectation(cond, rty, &mut |s| {
-                    let l = s.lit(text);
-                    s.cat(&[l])
-                })
-            }
-            "expect_equal" | "expect_not_equal" => {
-                let t = self.ty_of(vals[0]);
-                let scope = self.glue_scope(t);
-                let eq = crate::eq::element_eq(self.cx, &mut self.b, scope, t, vals[0], vals[1])?;
-                let eq = if name == "expect_equal" {
-                    eq
-                } else {
-                    self.b.unop(Op::Not, eq)
-                };
-                let (actual, expected) = (vals[0], vals[1]);
-                let equal = name == "expect_equal";
-                self.expectation(eq, rty, &mut |s| {
-                    if equal {
-                        let (head, mid) = (s.lit("expected "), s.lit(", got "));
-                        let (ex, ac) = (s.repr_text(expected), s.repr_text(actual));
-                        s.cat(&[head, ex, mid, ac])
-                    } else {
-                        let head = s.lit("expected different values, got ");
-                        let ac = s.repr_text(actual);
-                        s.cat(&[head, ac])
-                    }
-                })
-            }
-            "expect_contains" => {
-                let c = self.call_runtime("msrt_string_contains", &vals[..2], MTy::BOOL)?;
-                let (actual, expected) = (vals[0], vals[1]);
-                self.expectation(c, rty, &mut |s| {
-                    let (head, mid) = (s.lit("expected "), s.lit(" to contain "));
-                    let (a, x) = (s.repr_text(actual), s.repr_text(expected));
-                    s.cat(&[head, a, mid, x])
-                })
-            }
-            "expect_close" => self.expect_close(rty, &vals),
-            "expect_none" => {
-                let none = self.b.opt_is_some(vals[0]);
-                let none = self.b.unop(Op::Not, none);
-                let actual = vals[0];
-                self.expectation(none, rty, &mut |s| {
-                    let head = s.lit("expected none, got ");
-                    let a = s.repr_text(actual);
-                    s.cat(&[head, a])
-                })
-            }
-            "expect_some" => {
-                let some = self.b.opt_is_some(vals[0]);
-                let actual = vals[0];
-                // An owned temporary (`make() | try expect_some`) hands its payload over
-                // instead of being copied and dropped.
-                let owned = args[0].val.own && self.needs_drop(self.ty_of(actual));
-                if owned {
-                    self.unhold_temp(actual);
-                }
-                self.two_ways(
-                    some,
-                    rty,
-                    &mut |s| {
-                        let o = if owned {
-                            s.b.opt_unbox(actual)
-                        } else {
-                            let p = s.b.opt_get(actual);
-                            s.owned(Val { v: p, own: false })
-                        };
-                        Ok(Some(s.testing_ok(rty, o)?))
-                    },
-                    &mut |s| {
-                        let m = s.lit("expected some, got none");
-                        let m = s.cat(&[m])?;
-                        if owned {
-                            s.drop_value(actual);
-                        }
-                        Ok(Some(s.testing_fail(rty, m.v)?))
-                    },
-                )
-            }
-            "expect_ok" | "expect_error" => {
-                let want_ok = name == "expect_ok";
-                let actual = vals[0];
-                let (a, ok, err) = self.result_cases(self.ty_of(actual))?;
-                let tag = self.b.alt_tag(actual);
-                let k = self.b.iconst(if want_ok { ok } else { err } as i64);
-                let good = self.b.icmp(Cc::Eq, tag, k);
-                let case = if want_ok { ok } else { err };
-                let owned = args[0].val.own && self.needs_drop(self.ty_of(actual));
-                if owned {
-                    self.unhold_temp(actual);
-                }
-                self.two_ways(
-                    good,
-                    rty,
-                    &mut |s| {
-                        let o = if owned {
-                            let p = s.b.alt_take(a, case, 0, actual);
-                            s.b.alt_release(a, case, 1, actual);
-                            p
-                        } else {
-                            let p = s.b.alt_get(a, case, 0, actual);
-                            s.owned(Val { v: p, own: false })
-                        };
-                        Ok(Some(s.testing_ok(rty, o)?))
-                    },
-                    &mut |s| {
-                        let head = s.lit(if want_ok {
-                            "expected ok, got "
-                        } else {
-                            "expected error, got "
-                        });
-                        let r = s.repr_text(actual);
-                        let m = s.cat(&[head, r])?;
-                        if owned {
-                            s.drop_value(actual);
-                        }
-                        Ok(Some(s.testing_fail(rty, m.v)?))
-                    },
-                )
-            }
-            "expect_fault" => self.expect_fault(rty, vals[0]),
+        let operand = self.borrow(args[0].val);
+        match name {
+            "repr" => Ok(self.repr_text(operand)),
+            "catch_fault" => self.catch_fault(rty, operand),
             other => Err(Error::new(format!("unsupported testing function {other}"))),
         }
     }
@@ -350,8 +110,8 @@ impl FnLower<'_> {
         id
     }
 
-    /// Runs `operation` behind the platform's fault trap and reports its fault message.
-    fn expect_fault(&mut self, rty: MTy, operation: Value) -> Result<Val, Error> {
+    /// Runs `operation` behind the platform's fault trap: the fault message, or none when it returns.
+    fn catch_fault(&mut self, rty: MTy, operation: Value) -> Result<Val, Error> {
         let trap = self.fault_trap(self.ty_of(operation));
         let slot = self
             .b
@@ -365,53 +125,14 @@ impl FnLower<'_> {
                 let m =
                     s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
                         .expect("take");
-                Ok(Some(s.testing_ok(rty, m)?))
+                Ok(Some(s.b.opt_some(m)))
             },
             &mut |s| {
-                let m = s.lit("expected a programming fault, operation returned normally");
-                let m = s.cat(&[m])?;
-                Ok(Some(s.testing_fail(rty, m.v)?))
-            },
-        )
-    }
-
-    fn expect_close(&mut self, rty: MTy, vals: &[Value]) -> Result<Val, Error> {
-        let (actual, expected, tol) = (vals[0], vals[1], vals[2]);
-        let zero = self.b.fconst(0.0);
-        let valid_lo = self.b.fcmp(Cc::Ge, tol, zero);
-        let spread = self.b.binop(Op::FSub, tol, tol);
-        let valid_hi = self.b.fcmp(Cc::Eq, spread, zero);
-        let no = self.b.bconst(false);
-        let valid = self.b.select(valid_lo, valid_hi, no);
-        let diff = self.b.binop(Op::FSub, actual, expected);
-        let neg = self.b.fcmp(Cc::Lt, diff, zero);
-        let flipped = self.b.binop(Op::FSub, zero, diff);
-        let ad = self.b.select(neg, flipped, diff);
-        let near = self.b.fcmp(Cc::Le, ad, tol);
-        let same = self.b.fcmp(Cc::Eq, actual, expected);
-        let yes = self.b.bconst(true);
-        let close = self.b.select(same, yes, near);
-        self.two_ways(
-            valid,
-            rty,
-            &mut |s| {
-                let r = s.expectation(close, rty, &mut |s| {
-                    let parts = [
-                        s.lit("expected "),
-                        s.repr_text(expected),
-                        s.lit(" within "),
-                        s.repr_text(tol),
-                        s.lit(", got "),
-                        s.repr_text(actual),
-                    ];
-                    s.cat(&parts)
-                })?;
-                Ok(Some(r.v))
-            },
-            &mut |s| {
-                let m = s.lit("expect_close: tolerance must be finite and nonnegative");
-                let m = s.cat(&[m])?;
-                Ok(Some(s.testing_fail(rty, m.v)?))
+                let none = s.b.opt_none(rty);
+                Ok(Some(s.owned(Val {
+                    v: none,
+                    own: false,
+                })))
             },
         )
     }
