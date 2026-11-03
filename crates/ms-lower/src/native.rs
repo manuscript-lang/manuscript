@@ -331,10 +331,6 @@ impl<'a> FnLower<'a> {
                 let it = self.emty(e)?;
                 self.std_stream(it, native == "io/stderr")
             }
-            "time/clock" | "time/wall_clock" => {
-                let it = self.emty(e)?;
-                self.time_clock(it, native == "time/wall_clock")
-            }
             "io/read_line" => self.read_line_native(e, view, params),
             "math/min" => self.math_extreme(view, false),
             "math/max" => self.math_extreme(view, true),
@@ -604,14 +600,6 @@ impl<'a> FnLower<'a> {
         let name = if stderr { "stderr" } else { "stdout" };
         self.native_iface(it, name, &mut |m, method, params, ret| {
             build_stream_method(m, method, params, ret, stderr)
-        })
-    }
-
-    /// `clock()` / `wall_clock()`: an interface whose `now` reads the runtime clock.
-    pub(crate) fn time_clock(&mut self, it: MTy, wall: bool) -> Result<Val, Error> {
-        let name = if wall { "wall_clock" } else { "clock" };
-        self.native_iface(it, name, &mut |m, method, params, ret| {
-            build_clock_method(m, method, params, ret, wall)
         })
     }
 
@@ -3566,37 +3554,6 @@ fn build_stream_method(
             b.ret(Some(u));
         }
     }
-    let f = b.into_func();
-    m.add_func(f)
-}
-
-/// A method of the clock vtable: `now` writes the reading through the runtime's out pointer.
-fn build_clock_method(
-    m: &mut ms_mir::ir::Module,
-    name: &str,
-    params: &[MTy],
-    ret: MTy,
-    wall: bool,
-) -> FuncId {
-    let mut ps = vec![Param {
-        ty: MTy::PTR,
-        mode: Mode::Borrow,
-    }];
-    ps.extend(params.iter().map(|t| Param {
-        ty: *t,
-        mode: Mode::Borrow,
-    }));
-    let mut b = FuncBuilder::new(m, &format!("clock.{name}"), ps, ret);
-    b.func_mut().kind = FuncKind::Method;
-    b.func_mut().linkage = Linkage::Internal;
-    let sym = if wall {
-        "msstd_time_wall_clock_now"
-    } else {
-        "msstd_time_clock_now"
-    };
-    let ext = runtime_fn(b.m, sym, &[], ret);
-    let reading = b.call_rt(ext, &[]);
-    b.ret(Some(reading));
     let f = b.into_func();
     m.add_func(f)
 }
