@@ -8,6 +8,7 @@
 use crate::alloc;
 use crate::desc::{needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
+use ms_rt_abi::record::FaultKind;
 use ms_rt_abi::*;
 
 use ms_rt_hot::{LIVE, Layout, is_word, key_desc, layout, slot};
@@ -311,7 +312,7 @@ unsafe fn grow(m: &mut MapVal, l: &Layout) {
         }
         let cap = if m.cap == 0 { 8 } else { m.cap * 2 };
         if cap > u32::MAX as usize / 2 {
-            fault::fault(b"map size overflow");
+            fault::fault_kind(FaultKind::Overflow, b"map size overflow");
         }
         m.slots = if m.slots.is_null() {
             alloc::alloc(cap * l.stride)
@@ -684,6 +685,7 @@ fn opt<'a>(p: *const TypeDesc) -> Option<&'a TypeDesc> {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_new(out: *mut MapVal) {
     // SAFETY: `out` is writable.
     unsafe { *out = empty() }
@@ -693,6 +695,7 @@ pub unsafe extern "C-unwind" fn msrt_map_new(out: *mut MapVal) {
 /// return a copy or derived collection retaining its original creator.
 /// `kd` and its nested descriptors and callbacks must be static.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_stamp(m: *mut MapVal, kd: *const TypeDesc) {
     // SAFETY: `m` is a live map; descriptors are static.
     unsafe {
@@ -703,6 +706,7 @@ pub unsafe extern "C-unwind" fn msrt_map_stamp(m: *mut MapVal, kd: *const TypeDe
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_drop(
     m: *mut MapVal,
     kd: *const TypeDesc,
@@ -714,6 +718,7 @@ pub unsafe extern "C-unwind" fn msrt_map_drop(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_copy(
     m: *const MapVal,
     kd: *const TypeDesc,
@@ -727,6 +732,7 @@ pub unsafe extern "C-unwind" fn msrt_map_copy(
 
 /// Makes room for `n` entries so that inserting that many never regrows the map.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_reserve(
     m: *mut MapVal,
     kd: *const TypeDesc,
@@ -756,6 +762,7 @@ pub unsafe extern "C-unwind" fn msrt_map_reserve(
 
 /// `add(key, value)` / `Set.add`: `key` and `val` are consumed.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add(
     m: *mut MapVal,
     kd: *const TypeDesc,
@@ -817,6 +824,7 @@ unsafe fn insert_word<K: KeyOps>(m: &mut MapVal, key: *mut u8, val: *mut u8, ksi
 
 /// [`msrt_map_add`] for an `Int` key and a plain 8-byte scalar value (`Int` or `Float`).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_w8(
     m: *mut MapVal,
     _kd: *const TypeDesc,
@@ -836,6 +844,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_w8(
 
 /// [`msrt_map_add`] for a `String` key and a plain 8-byte scalar value (`Int` or `Float`).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_sw8(
     m: *mut MapVal,
     _kd: *const TypeDesc,
@@ -857,6 +866,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_sw8(
 /// absent; `key` is consumed. One hash and probe serve a read-modify-write such as `m[k] += 1`:
 /// the caller loads, changes and stores through the returned pointer before the map is used again.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_slot(
     m: *mut MapVal,
     kd: *const TypeDesc,
@@ -876,6 +886,7 @@ pub unsafe extern "C-unwind" fn msrt_map_slot(
 /// Like [`msrt_map_slot`] but `key` is only borrowed: it is copied into the map when the entry is
 /// absent, so a lookup that hits never allocates a key.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
     m: *mut MapVal,
     kd: *const TypeDesc,
@@ -906,6 +917,7 @@ pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
 /// `add(key, value)` with a borrowed `key`: it is copied into the map only when the entry is
 /// absent, so replacing the value of an existing key allocates nothing. `val` is consumed.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_lent(
     m: *mut MapVal,
     kd: *const TypeDesc,
@@ -938,6 +950,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_lent(
 /// `add_default(key, value)` with a borrowed `key`: nothing is copied or stored when the entry
 /// exists. `val` is consumed.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_default_lent(
     m: *mut MapVal,
     kd: *const TypeDesc,
@@ -967,6 +980,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_default_lent(
 
 /// `add_default(key, value)`: stores only when absent; both consumed.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_add_default(
     m: *mut MapVal,
     kd: *const TypeDesc,
@@ -982,6 +996,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_default(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_remove(
     m: *mut MapVal,
     kd: *const TypeDesc,
@@ -996,6 +1011,7 @@ pub unsafe extern "C-unwind" fn msrt_map_remove(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_contains(
     m: *const MapVal,
     kd: *const TypeDesc,
@@ -1009,6 +1025,7 @@ pub unsafe extern "C-unwind" fn msrt_map_contains(
 
 /// Borrowed pointer to the value of `key`, or null.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_get_ptr(
     m: *const MapVal,
     kd: *const TypeDesc,
@@ -1050,6 +1067,7 @@ unsafe fn value_ptr_k<K: KeyOps>(
 
 /// `get(key)`: copies the value into `out`; 0 when absent.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_get(
     m: *const MapVal,
     kd: *const TypeDesc,
@@ -1077,6 +1095,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get(
 
 /// Removes every entry, keeping nothing allocated.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_clear(
     m: *mut MapVal,
     kd: *const TypeDesc,
@@ -1089,6 +1108,7 @@ pub unsafe extern "C-unwind" fn msrt_map_clear(
 
 /// `keys()` / `Set.values()` as a fresh list of copies.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_keys(
     m: *const MapVal,
     kd: *const TypeDesc,
@@ -1101,6 +1121,7 @@ pub unsafe extern "C-unwind" fn msrt_map_keys(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_values(
     m: *const MapVal,
     kd: *const TypeDesc,
@@ -1115,6 +1136,7 @@ pub unsafe extern "C-unwind" fn msrt_map_values(
 /// `for k in m.keys()` over a map that outlives the loop unchanged: string keys come back as
 /// views of the map's own strings, so nothing is copied. Other keys are copied as by `keys`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_keys_view(
     m: *const MapVal,
     kd: *const TypeDesc,
@@ -1128,6 +1150,7 @@ pub unsafe extern "C-unwind" fn msrt_map_keys_view(
 
 /// `for v in m.values()` over a map that outlives the loop unchanged (see [`msrt_map_keys_view`]).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_values_view(
     m: *const MapVal,
     kd: *const TypeDesc,
@@ -1221,6 +1244,7 @@ unsafe fn collect(
 
 /// `merge(other)`: entries of `other` (borrowed, copied) replace or append.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_merge(
     m: *mut MapVal,
     other: *const MapVal,
@@ -1319,6 +1343,7 @@ unsafe fn each_key_while(m: &MapVal, kd: &TypeDesc, mut f: impl FnMut(*const u8)
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_set_add_copy(
     m: *mut MapVal,
     kd: *const TypeDesc,
@@ -1330,6 +1355,7 @@ pub unsafe extern "C-unwind" fn msrt_set_add_copy(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_set_union(
     a: *const MapVal,
     b: *const MapVal,
@@ -1365,6 +1391,7 @@ unsafe fn filter_into(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_set_intersection(
     a: *const MapVal,
     b: *const MapVal,
@@ -1380,6 +1407,7 @@ pub unsafe extern "C-unwind" fn msrt_set_intersection(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_set_difference(
     a: *const MapVal,
     b: *const MapVal,
@@ -1395,6 +1423,7 @@ pub unsafe extern "C-unwind" fn msrt_set_difference(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(
     a: *const MapVal,
     b: *const MapVal,
@@ -1415,6 +1444,7 @@ pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(
     a: *const MapVal,
     b: *const MapVal,
@@ -1429,6 +1459,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_set_is_superset_of(
     a: *const MapVal,
     b: *const MapVal,
@@ -1440,6 +1471,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_superset_of(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_set_is_disjoint_from(
     a: *const MapVal,
     b: *const MapVal,

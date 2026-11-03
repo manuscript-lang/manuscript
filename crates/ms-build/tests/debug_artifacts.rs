@@ -29,7 +29,10 @@ fn final_build_keeps_source_lines_after_staging_and_object_cleanup() {
     )
     .unwrap();
     // The C runtime below has no process entry; static musl supplies one (this test binary links nothing else).
-    ms_clif::link::set_static(true);
+    let build = ms_build::BuildOptions {
+        static_musl: true,
+        ..ms_build::BuildOptions::default()
+    };
     let c = root.join("start.c");
     std::fs::write(&c, "#include <stdint.h>\n#ifdef _WIN32\n/* mingw's startup code asks for the stack probe; this runtime has no compiler-builtins. */\n#ifdef __aarch64__\nvoid __chkstk(void) {}\n#else\nvoid ___chkstk_ms(void) {}\n#endif\n#endif\nint msrt_start(int64_t (*entry)(void), const void *tables, int argc, char **argv) { return (int)entry(); }\n").unwrap();
     let runtime = root.join("start.o");
@@ -68,7 +71,7 @@ b0:
     // Replacing an existing output also exercises replacement of its companion.
     for profile in [Profile::Debug, Profile::Release] {
         let mut module = parse_module(&text).unwrap();
-        build_executable(&mut module, &output, profile, &runtime, &[]).unwrap();
+        build_executable(&mut module, &output, profile, &runtime, &[], &build).unwrap();
         assert_eq!(Command::new(&output).status().unwrap().code(), Some(42));
         let companion = ms_clif::link::debug_companion_path(&output);
         let debug = if let Some(bundle) = &companion {

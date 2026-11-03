@@ -23,9 +23,15 @@ use ms_rt::ffi::{IntMap, StatusCode, Text, native};
 use ms_rt_abi::{STATUS_OK, STATUS_UNSUPPORTED, StrVal};
 use ms_std_process::control;
 
-static INTERFACES: Slot<Vec<Interface>> = Slot::new();
-static CPUS: Slot<Vec<Cpu>> = Slot::new();
-static METRICS: Slot<Metrics> = Slot::new();
+ms_rt::isolate_static! {
+    static INTERFACE_CELL: Option<Vec<Interface>> = None;
+    static CPU_CELL: Option<Vec<Cpu>> = None;
+    static METRIC_CELL: Option<Metrics> = None;
+}
+
+static INTERFACES: Slot<Vec<Interface>> = Slot::new(|| INTERFACE_CELL.ptr());
+static CPUS: Slot<Vec<Cpu>> = Slot::new(|| CPU_CELL.ptr());
+static METRICS: Slot<Metrics> = Slot::new(|| METRIC_CELL.ptr());
 
 fn text(r: Result<Vec<u8>, u8>) -> Result<Text, StatusCode> {
     r.map(Text).map_err(StatusCode)

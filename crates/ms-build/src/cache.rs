@@ -10,21 +10,11 @@
 //! A new file that would shadow an imported one (a different resolution of the same import) is
 //! not noticed until some listed file changes; `MS_CACHE=off` or deleting `.ms-cache` covers it.
 
+use ms_clif::BuildOptions;
 use std::fmt::Write as _;
 use std::hash::{DefaultHasher, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
-
-/// Environment variables that change generated code or the link.
-const ENV: &[&str] = &[
-    "MS_BACKEND",
-    "MS_COUNT_STR",
-    "MS_LLVM_TOOLS",
-    "MS_RT_HOT",
-    "MS_VECTORIZE",
-    "MS_KEEP_LL",
-    "MS_RT_LIB",
-];
 
 /// How the cache is used for one build.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -70,16 +60,14 @@ pub fn stamp(path: &Path) -> Option<Stamp> {
 /// The entry name for a build: a digest of `parts`, the codegen environment, the working
 /// directory and the stamps of `inputs` (the `ms` executable, the runtime, `--link` files).
 /// `None` when an input cannot be stamped.
-pub fn key(parts: &[&str], inputs: &[&Path]) -> Option<String> {
+pub fn key(parts: &[&str], inputs: &[&Path], build: &BuildOptions) -> Option<String> {
     let mut text = String::from("ms-build-cache-v2\n");
     for part in parts {
         let _ = writeln!(text, "{part}");
     }
     let _ = writeln!(text, "{}", std::env::current_dir().ok()?.display());
     let _ = writeln!(text, "{}", std::env::consts::OS);
-    for name in ENV {
-        let _ = writeln!(text, "{name}={:?}", std::env::var_os(name));
-    }
+    let _ = writeln!(text, "{build:?}");
     for input in inputs {
         let s = stamp(input)?;
         let _ = writeln!(text, "{} {} {}", input.display(), s.mtime, s.size);
@@ -320,13 +308,14 @@ mod tests {
         let dir = scratch("key");
         let input = dir.join("rt.a");
         std::fs::write(&input, b"one").unwrap();
-        let base = key(&["Debug", "out"], &[&input]).unwrap();
-        assert_eq!(base, key(&["Debug", "out"], &[&input]).unwrap());
-        assert_ne!(base, key(&["Release", "out"], &[&input]).unwrap());
-        assert_ne!(base, key(&["Debug", "other"], &[&input]).unwrap());
+        let build = BuildOptions::default();
+        let base = key(&["Debug", "out"], &[&input], &build).unwrap();
+        assert_eq!(base, key(&["Debug", "out"], &[&input], &build).unwrap());
+        assert_ne!(base, key(&["Release", "out"], &[&input], &build).unwrap());
+        assert_ne!(base, key(&["Debug", "other"], &[&input], &build).unwrap());
         std::fs::write(&input, b"longer").unwrap();
-        assert_ne!(base, key(&["Debug", "out"], &[&input]).unwrap());
-        assert!(key(&["Debug"], &[&dir.join("missing")]).is_none());
+        assert_ne!(base, key(&["Debug", "out"], &[&input], &build).unwrap());
+        assert!(key(&["Debug"], &[&dir.join("missing")], &build).is_none());
         let _ = std::fs::remove_dir_all(dir);
     }
 

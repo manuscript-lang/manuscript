@@ -14,15 +14,11 @@
 //! `s = s.concat(piece)` lowers to a concat and a drop of the old `s`. When the drop follows
 //! with no use of `s` in between, `string_append` consumes `s` and grows it in place.
 
-use crate::ir::{Block, ExternDef, Func, Imm, Inst, Loc, Mode, Module, Op, Param, Value};
+use crate::ir::{
+    Block, ExternDef, ExternRole, Func, Imm, Inst, Loc, Mode, Module, Op, Param, Value,
+};
 use crate::types::Ty;
 use std::collections::HashSet;
-
-const APPEND: &str = "msrt_strbuilder_append";
-const APPEND_INT: &str = "msrt_strbuilder_append_int";
-const CONCAT: &str = "msrt_string_concat";
-const APPEND_STR: &str = "msrt_string_append";
-const INT_TO_STRING: &str = "msrt_int_to_string";
 
 /// Only the in-place `s = s + piece` append, which an unoptimized build needs to keep a loop that
 /// grows a string linear.
@@ -88,9 +84,9 @@ fn info(f: &Func) -> Info {
     d
 }
 
-fn ext_name<'a>(m: &'a Module, i: &Inst) -> Option<&'a str> {
+fn ext_role(m: &Module, i: &Inst) -> Option<ExternRole> {
     match (i.op, i.imm) {
-        (Op::CallRt, Imm::Ext(e)) => Some(m.externs[e.index()].name.as_str()),
+        (Op::CallRt, Imm::Ext(e)) => Some(m.externs[e.index()].role),
         _ => None,
     }
 }
@@ -135,12 +131,12 @@ fn collect(
 ) -> bool {
     let fused = info.defs[v.index()].and_then(|(db, di)| {
         let inst = &f.blocks[db].insts[di];
-        let name = ext_name(m, inst)?;
+        let role = ext_role(m, inst)?;
         let single = info.uses[v.index()] == 2 && info.drops[v.index()].len() == 1;
-        (single && fusable(f, inst, name) && straight_line(f, info, db, at)).then_some((
+        (single && fusable(f, inst, role) && straight_line(f, info, db, at)).then_some((
             db,
             di,
-            name == CONCAT,
+            role == ExternRole::StringConcat,
         ))
     });
     let Some((db, di, concat)) = fused else {
@@ -168,7 +164,7 @@ fn fuse_one(m: &mut Module, fi: usize) -> bool {
     let info = info(f);
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate() {
-            if ext_name(m, inst) != Some(APPEND) {
+            if ext_role(m, inst) != Some(ExternRole::StrBuilderAppend) {
                 continue;
             }
             let mut plan = Plan {
@@ -203,7 +199,7 @@ fn apply(m: &mut Module, fi: usize, bi: usize, ii: usize, plan: Plan) {
     let sb = app.args[0];
     let sb_ty = m.funcs[fi].ty(sb);
     let int_ext = m.add_extern(ExternDef {
-        name: APPEND_INT.to_string(),
+        name: "msrt_strbuilder_append_int".to_string(),
         params: vec![
             Param {
                 ty: sb_ty,
@@ -218,6 +214,9 @@ fn apply(m: &mut Module, fi: usize, bi: usize, ii: usize, plan: Plan) {
         noreturn: false,
         pure_: false,
         fresh: false,
+        role: ExternRole::StrBuilderAppendInt,
+        leaf: true,
+        reads: false,
     });
     let f = &mut m.funcs[fi];
     let last = plan.pieces.len() - 1;
@@ -272,12 +271,12 @@ fn fmt_name(n: usize) -> String {
     format!("msrt_string_fmt{n}")
 }
 
-/// Whether a call named `name` can join a fused chain: a concatenation, or the text of a plain
+/// Whether a call with this role can join a fused chain: a concatenation, or the text of a plain
 /// `Int` (a sized integer is declared with its own width, which `string_fmtN` does not take).
-fn fusable(f: &Func, inst: &Inst, name: &str) -> bool {
-    match name {
-        CONCAT => true,
-        INT_TO_STRING => inst.args.first().is_some_and(|a| f.ty(*a) == Ty::INT),
+fn fusable(f: &Func, inst: &Inst, role: ExternRole) -> bool {
+    match role {
+        ExternRole::StringConcat => true,
+        ExternRole::IntToString => inst.args.first().is_some_and(|a| f.ty(*a) == Ty::INT),
         _ => false,
     }
 }
@@ -306,12 +305,12 @@ fn chain(
         let single = info.uses[v.index()] == 2 && info.drops[v.index()].len() == 1;
         let (dbi, ddi) = info.drops[v.index()].first().copied()?;
         let inst = &f.blocks[db].insts[di];
-        let name = ext_name(m, inst)?;
-        let ok = fusable(f, inst, name)
+        let role = ext_role(m, inst)?;
+        let ok = fusable(f, inst, role)
             && single
             && straight_line(f, info, db, at.0)
             && (dbi != at.0 || ddi > at.1 || db != at.0 || di < at.1);
-        ok.then_some((db, di, name == CONCAT))
+        ok.then_some((db, di, role == ExternRole::StringConcat))
     });
     let Some((db, di, concat)) = inner else {
         leaves.push(Piece::Str(v));
@@ -346,7 +345,7 @@ fn fuse_concat(m: &mut Module, fi: usize) -> bool {
     let mut fusions = Vec::new();
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate().rev() {
-            if ext_name(m, inst) != Some(CONCAT) || claimed.contains(&(bi, ii)) {
+            if ext_role(m, inst) != Some(ExternRole::StringConcat) || claimed.contains(&(bi, ii)) {
                 continue;
             }
             let mut leaves = Vec::new();
@@ -423,6 +422,9 @@ fn apply_concats(m: &mut Module, fi: usize, fusions: Vec<Fusion>) {
             noreturn: false,
             pure_: false,
             fresh: true,
+            role: ExternRole::None,
+            leaf: true,
+            reads: false,
         });
         let f = &mut m.funcs[fi];
         let mut mask = 0i64;
@@ -519,8 +521,9 @@ fn append_in_place(m: &mut Module, fi: usize) -> bool {
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate() {
             let a = inst.args.first().copied();
-            let Some(a) = a.filter(|a| ext_name(m, inst) == Some(CONCAT) && owned[a.index()])
-            else {
+            let Some(a) = a.filter(|a| {
+                ext_role(m, inst) == Some(ExternRole::StringConcat) && owned[a.index()]
+            }) else {
                 continue;
             };
             if inst.args[1] == a {
@@ -539,7 +542,7 @@ fn append_in_place(m: &mut Module, fi: usize) -> bool {
         return false;
     }
     let ext = m.add_extern(ExternDef {
-        name: APPEND_STR.to_string(),
+        name: "msrt_string_append".to_string(),
         params: vec![
             Param {
                 ty: Ty::STR,
@@ -554,6 +557,9 @@ fn append_in_place(m: &mut Module, fi: usize) -> bool {
         noreturn: false,
         pure_: false,
         fresh: true,
+        role: ExternRole::StringAppend,
+        leaf: true,
+        reads: false,
     });
     let f = &mut m.funcs[fi];
     let remove: HashSet<(usize, usize)> = sites.iter().map(|s| s.1).collect();

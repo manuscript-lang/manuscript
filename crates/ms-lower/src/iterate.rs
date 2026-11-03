@@ -6,6 +6,7 @@ use crate::func::{FnLower, Val};
 use crate::native::NArg;
 use ms_mir::builder::Var;
 use ms_mir::ir::{Cc, Imm, Op, Value};
+use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::Expr;
 
@@ -33,7 +34,7 @@ pub(crate) fn handles(m: &ms_mir::ir::Module, recv: MTy, name: &str) -> bool {
     let name = method(name);
     match m.types.kind(recv) {
         TyKind::List(_) => matches!(name, "fold" | "fold_right" | "find_last"),
-        TyKind::Obj(n, _) if n == "Map" => matches!(
+        TyKind::Obj(Native::Map, _) => matches!(
             name,
             "filter"
                 | "map"
@@ -46,7 +47,7 @@ pub(crate) fn handles(m: &ms_mir::ir::Module, recv: MTy, name: &str) -> bool {
                 | "all"
                 | "for_each"
         ),
-        TyKind::Obj(n, _) if n == "Set" => matches!(
+        TyKind::Obj(Native::Set, _) => matches!(
             name,
             "filter"
                 | "map"
@@ -119,7 +120,7 @@ impl FnLower<'_> {
                 let TyKind::Obj(name, a) = self.b.m.types.kind(mt).clone() else {
                     return Err(Error::new("not a map or set"));
                 };
-                let is_map = name == "Map";
+                let is_map = name == Native::Map;
                 let m = self.b.use_var(mv);
                 let kd = self.type_desc(a[0]);
                 let vd = match a.get(1) {
@@ -209,7 +210,7 @@ impl FnLower<'_> {
             TyKind::List(_) => Items::List(sv),
             _ => Items::Slots(sv, rty),
         };
-        let is_set = matches!(self.b.m.types.kind(rty), TyKind::Obj(n, _) if n == "Set");
+        let is_set = matches!(self.b.m.types.kind(rty), TyKind::Obj(Native::Set, _));
         let result = match name {
             "fold" | "fold_right" => {
                 let init = callback("initial").ok_or_else(|| Error::new("fold without initial"))?;

@@ -23,7 +23,18 @@ pub trait Symbols {
     fn loc(&self, bits: u32) -> Option<(u32, u32, u32)>;
     /// Inlined-callee scope `idx` (1-based): `(name, file, parent, call_line)`.
     fn scope(&self, idx: u32) -> Option<(String, u32, u32, u32)>;
+    /// Whether the runtime function `symbol` only reads memory: it returns, does not unwind and
+    /// writes nothing, so calls to it do not clobber the caller's memory and loads of list
+    /// lengths, record fields and map headers survive them. Declared `// ms: pure` on the
+    /// function, which only lookups with no descriptor callbacks (that could run user code)
+    /// and no fault may be.
+    fn reads_only(&self, _symbol: &str) -> bool {
+        false
+    }
 }
+
+/// Attributes of a call to a function that only reads memory.
+const READS_ONLY: &str = " nounwind willreturn memory(read)";
 
 /// An LLVM module under construction.
 pub struct LlvmModule {
@@ -323,28 +334,6 @@ fn fault_function(name: &str) -> bool {
             | "msrt_list_index_fault"
             | "msrt_cancelled"
     )
-}
-
-/// What LLVM may assume about a runtime entry point that only inspects memory: it returns,
-/// does not unwind, and writes nothing except, for `argmem`, the outputs its pointer arguments
-/// name. Calls to these no longer clobber the caller's memory, so loads of list lengths, record
-/// fields and map headers survive them. Only lookups with no descriptor callbacks (which could
-/// run user code) and no fault belong here.
-fn pure_runtime_attrs(name: &str) -> Option<&'static str> {
-    match name {
-        "msrt_map_slot_count"
-        | "msrt_map_length"
-        | "msrt_map_get_ptr_sw8"
-        | "msrt_map_get_ptr_w8"
-        | "msrt_map_contains_sw8"
-        | "msrt_map_contains_w8"
-        | "msrt_string_eq"
-        | "msrt_string_hash"
-        | "msrt_string_compare"
-        | "msrt_string_is_empty"
-        | "msrt_string_byte_length" => Some(" nounwind willreturn memory(read)"),
-        _ => None,
-    }
 }
 
 /// Returned scalar leaves above which a function is marked `noimplicitfloat`. The SLP vectorizer
@@ -852,7 +841,7 @@ impl<'a> Tr<'a> {
             }
             InstructionData::Call { args, func_ref, .. } => {
                 let name = self.callee(func_ref);
-                if !fault_function(&name) && pure_runtime_attrs(&name).is_none() {
+                if !fault_function(&name) && !self.syms.reads_only(&name) {
                     self.calls[self.at] = true;
                 }
                 if fault_function(&name) {
@@ -947,8 +936,10 @@ impl<'a> Tr<'a> {
         let sig = &self.f.dfg.signatures[data.signature];
         let attrs = if fault_function(&name) {
             " cold noreturn"
+        } else if self.syms.reads_only(&name) {
+            READS_ONLY
         } else {
-            pure_runtime_attrs(&name).unwrap_or("")
+            ""
         };
         let decl = format!(
             "declare {} @\"{name}\"({}){attrs}",
@@ -1678,7 +1669,7 @@ mod tests {
         m.add_function("metadata", display, (0, 1), &f, &Inlined, true);
         let triple = format!("{}-unknown-linux-gnu", std::env::consts::ARCH);
         let text = m.finish(&triple, &HashSet::new(), false);
-        let object = crate::llvm_obj::compile(&text, "3").unwrap();
+        let object = crate::llvm_obj::compile(&text, "3", &crate::BuildOptions::default()).unwrap();
         let funcs = [crate::cg::LlvmFn {
             id: cranelift_module::FuncId::from_u32(0),
             symbol: "metadata".into(),
@@ -2215,7 +2206,7 @@ mod tests {
 
     #[test]
     fn checked_arithmetic_llvm_generates_objects_for_all_supported_targets() {
-        let Some(tools) = crate::link::llvm_tools().unwrap() else {
+        let Some(tools) = crate::link::llvm_tools(&crate::BuildOptions::default()).unwrap() else {
             return;
         };
         let dir = std::env::temp_dir().join(format!("ms-llvm-targets-{}", std::process::id()));

@@ -105,11 +105,13 @@ pub unsafe extern "C-unwind" fn msrt_heap_stats(out: *mut i64) {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_alloc(size: usize) -> *mut u8 {
     alloc::alloc(size)
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_alloc_zeroed(size: usize) -> *mut u8 {
     alloc::alloc_zeroed(size)
 }
@@ -151,6 +153,7 @@ pub unsafe extern "C-unwind" fn msrt_release(o: *mut Obj) {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_drop_slow(o: *mut Obj) {
     // SAFETY: forwarded contract.
     unsafe { drop_slow(o) }

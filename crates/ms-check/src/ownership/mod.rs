@@ -10,7 +10,7 @@
 mod classify;
 mod live;
 mod modes;
-mod places;
+pub(crate) mod places;
 mod walk;
 
 pub use classify::{Class, Classifier};

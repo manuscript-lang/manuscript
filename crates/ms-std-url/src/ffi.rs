@@ -51,26 +51,32 @@ fn write_url(c: Components) -> UrlRec {
 }
 
 native! {
+    // ms: leaf
     fn msstd_url_encode_component(text: &str) -> String {
         crate::encode_component(text)
     }
 
+    // ms: leaf
     fn msstd_url_decode_component(text: &str) -> Result<String, Fail> {
         crate::decode_component(text)
     }
 
+    // ms: leaf
     fn msstd_url_parse(text: &str) -> Result<UrlRec, Fail> {
         crate::parse(text).map(write_url)
     }
 
+    // ms: leaf
     fn msstd_url_resolve(base: &UrlRec, reference: &str) -> Result<UrlRec, Fail> {
         crate::resolve(&read_url(base), reference).map(write_url)
     }
 
+    // ms: leaf
     fn msstd_url_format(value: &UrlRec) -> Result<String, Fail> {
         crate::format(&read_url(value))
     }
 
+    // ms: leaf
     fn msstd_url_parse_query(
         text: &str,
         has_max: bool,
@@ -84,6 +90,7 @@ native! {
         })
     }
 
+    // ms: leaf
     fn msstd_url_format_query(entries: &RecList<QueryEntryRec>) -> String {
         let items: Vec<(&str, &str)> = entries
             .as_slice()

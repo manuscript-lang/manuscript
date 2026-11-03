@@ -857,6 +857,9 @@ impl FnLower<'_> {
                 noreturn: false,
                 pure_: false,
                 fresh: false,
+                role: ms_mir::ir::ExternRole::None,
+                leaf: crate::rtcall::rt_flags(name).leaf,
+                reads: crate::rtcall::rt_flags(name).reads,
             })
         };
         let (enter, exit) = (

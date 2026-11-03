@@ -466,7 +466,7 @@ b0:
 #[test]
 fn capturing_sort_comparators_are_called_not_inlined() {
     let src = r#"module "i"
-extern @msrt_list_sorted(list<int>, ptr, ptr, fn(int, int) -> int) -> list<int>
+extern @msrt_list_sorted(list<int>, ptr, ptr, fn(int, int) -> int) -> list<int> list_sorted
 entry @main
 fn @cmp(%env: ptr, %a: int, %b: int) -> int closure(int) {
 b0:
@@ -475,7 +475,7 @@ b0:
   %r: int = imul %d, %k
   ret %r
 }
-fn @sort.cmp(%f: fn(int, int) -> int, %p: ptr, %q: ptr) -> int {
+fn @sort.cmp(%f: fn(int, int) -> int, %p: ptr, %q: ptr) -> int sort_cmp {
 b0:
   %a: int = load int %p
   %b: int = load int %q

@@ -241,13 +241,31 @@ mod fs_io {
         let mut info = std::mem::MaybeUninit::<InfoOut>::uninit();
         // SAFETY: valid runtime strings and out pointers throughout.
         unsafe {
-            assert_eq!(msstd_fs_create_directory(dir, 1), STATUS_OK);
-            assert_eq!(msstd_fs_write_file(file, &data, 0), STATUS_OK);
-            assert_eq!(msstd_fs_write_file(file, &data, 0), STATUS_ALREADY_EXISTS);
-            assert_eq!(msstd_fs_append_file(file, &data), STATUS_OK);
-            assert_eq!(msstd_fs_read_file(file, 0, 0, &mut out), STATUS_OK);
+            assert_eq!(
+                msstd_fs_create_directory(dir, 1, core::ptr::null_mut()),
+                STATUS_OK
+            );
+            assert_eq!(
+                msstd_fs_write_file(file, &data, 0, core::ptr::null_mut()),
+                STATUS_OK
+            );
+            assert_eq!(
+                msstd_fs_write_file(file, &data, 0, core::ptr::null_mut()),
+                STATUS_ALREADY_EXISTS
+            );
+            assert_eq!(
+                msstd_fs_append_file(file, &data, core::ptr::null_mut()),
+                STATUS_OK
+            );
+            assert_eq!(
+                msstd_fs_read_file(file, 0, 0, &mut out, core::ptr::null_mut()),
+                STATUS_OK
+            );
             assert_eq!(contents(&out), b"hellohello");
-            assert_eq!(msstd_fs_stat(file, 1, info.as_mut_ptr()), STATUS_OK);
+            assert_eq!(
+                msstd_fs_stat(file, 1, info.as_mut_ptr(), core::ptr::null_mut()),
+                STATUS_OK
+            );
             let i = info.assume_init();
             assert_eq!((i.size, text(i.name.as_ptr()).as_str()), (10, "a.txt"));
             let mut listed = VecVal {
@@ -255,17 +273,23 @@ mod fs_io {
                 len: 0,
                 cap: 0,
             };
-            assert_eq!(msstd_fs_list(dir, 0, 0, &mut listed), STATUS_OK);
+            assert_eq!(
+                msstd_fs_list(dir, 0, 0, &mut listed, core::ptr::null_mut()),
+                STATUS_OK
+            );
             assert_eq!(listed.len, 1);
             let missing = st("/tmp/msrt-fs-missing/none");
             assert_eq!(
-                msstd_fs_read_file(missing, 0, 0, &mut out),
+                msstd_fs_read_file(missing, 0, 0, &mut out, core::ptr::null_mut()),
                 STATUS_NOT_FOUND
             );
-            assert_eq!(msstd_fs_remove(dir, 1), STATUS_OK);
-            assert_eq!(msstd_fs_remove(dir, 1), STATUS_OK);
+            assert_eq!(msstd_fs_remove(dir, 1, core::ptr::null_mut()), STATUS_OK);
+            assert_eq!(msstd_fs_remove(dir, 1, core::ptr::null_mut()), STATUS_OK);
             let mut s = ms_rt::string::NO_STR;
-            assert_eq!(msstd_fs_read_link(file, &mut s), STATUS_NOT_FOUND);
+            assert_eq!(
+                msstd_fs_read_link(file, &mut s, core::ptr::null_mut()),
+                STATUS_NOT_FOUND
+            );
         }
     }
 
@@ -316,29 +340,61 @@ mod fs_io {
         let data = vec_of(b"abcdef");
         // SAFETY: valid runtime strings, live handles and writable out pointers throughout.
         unsafe {
-            assert_eq!(msstd_fs_create_directory(deep, 1), STATUS_OK);
-            assert_eq!(msstd_fs_write_file(a, &data, 0), STATUS_OK);
+            assert_eq!(
+                msstd_fs_create_directory(deep, 1, core::ptr::null_mut()),
+                STATUS_OK
+            );
+            assert_eq!(
+                msstd_fs_write_file(a, &data, 0, core::ptr::null_mut()),
+                STATUS_OK
+            );
 
             let mode = st("r+");
-            assert_eq!(msstd_fs_open(a, mode, 0o600, &mut handle), STATUS_OK);
-            assert_eq!(msstd_fs_file_read_at(handle, 2, 1, 2, &mut out), STATUS_OK);
+            assert_eq!(
+                msstd_fs_open(a, mode, 0o600, &mut handle, core::ptr::null_mut()),
+                STATUS_OK
+            );
+            assert_eq!(
+                msstd_fs_file_read_at(handle, 2, 1, 2, &mut out, core::ptr::null_mut()),
+                STATUS_OK
+            );
             assert_eq!(contents(&out), b"cd");
             let x = vec_of(b"XY");
-            assert_eq!(msstd_fs_file_write_at(handle, 1, &x), STATUS_OK);
-            assert_eq!(msstd_fs_file_truncate(handle, 4), STATUS_OK);
-            assert_eq!(msstd_fs_file_seek(handle, 0, 0, &mut size), STATUS_OK);
-            assert_eq!(msstd_fs_file_read_file(handle, 0, 0, &mut out), STATUS_OK);
+            assert_eq!(
+                msstd_fs_file_write_at(handle, 1, &x, core::ptr::null_mut()),
+                STATUS_OK
+            );
+            assert_eq!(
+                msstd_fs_file_truncate(handle, 4, core::ptr::null_mut()),
+                STATUS_OK
+            );
+            assert_eq!(
+                msstd_fs_file_seek(handle, 0, 0, &mut size, core::ptr::null_mut()),
+                STATUS_OK
+            );
+            assert_eq!(
+                msstd_fs_file_read_file(handle, 0, 0, &mut out, core::ptr::null_mut()),
+                STATUS_OK
+            );
             assert_eq!(contents(&out), b"aXYd");
             msstd_io_close(handle.cast());
-            assert_eq!(msstd_fs_file_sync(handle), ms_rt_abi::STATUS_CLOSED);
+            assert_eq!(
+                msstd_fs_file_sync(handle, core::ptr::null_mut()),
+                ms_rt_abi::STATUS_CLOSED
+            );
             ms_rt::glue::release(handle.cast());
 
             let mut cursor: *mut ms_rt::ffi::ObjCell<ms_std_fs::dir::Directory> =
                 core::ptr::null_mut();
-            assert_eq!(msstd_fs_directory_open(r, &mut cursor), STATUS_OK);
+            assert_eq!(
+                msstd_fs_directory_open(r, &mut cursor, core::ptr::null_mut()),
+                STATUS_OK
+            );
             let mut entry = std::mem::MaybeUninit::<ms_std_fs::EntryOut>::uninit();
             let mut seen = Vec::new();
-            while msstd_fs_directory_read(cursor, entry.as_mut_ptr()) == STATUS_OK {
+            while msstd_fs_directory_read(cursor, entry.as_mut_ptr(), core::ptr::null_mut())
+                == STATUS_OK
+            {
                 let e = entry.assume_init_read();
                 seen.push((text(e.name.as_ptr()), e.directory));
             }
@@ -365,22 +421,26 @@ mod fs_io {
                     0,
                     0,
                     0,
-                    core::ptr::addr_of_mut!(filter).cast()
+                    core::ptr::addr_of_mut!(filter).cast(),
+                    core::ptr::null_mut()
                 ),
                 STATUS_OK
             );
             assert_eq!(filter.count, 4);
             let copied = st(&std::format!("{root}-out/a.txt"));
-            assert_eq!(msstd_fs_read_file(copied, 0, 0, &mut out), STATUS_OK);
+            assert_eq!(
+                msstd_fs_read_file(copied, 0, 0, &mut out, core::ptr::null_mut()),
+                STATUS_OK
+            );
             assert_eq!(contents(&out), b"aXYd");
             let skipped = st(&std::format!("{root}-out/sub/deep"));
             assert_eq!(
-                msstd_fs_read_file(skipped, 0, 0, &mut out),
+                msstd_fs_read_file(skipped, 0, 0, &mut out, core::ptr::null_mut()),
                 STATUS_NOT_FOUND
             );
 
-            assert_eq!(msstd_fs_remove(r, 1), STATUS_OK);
-            assert_eq!(msstd_fs_remove(dest, 1), STATUS_OK);
+            assert_eq!(msstd_fs_remove(r, 1, core::ptr::null_mut()), STATUS_OK);
+            assert_eq!(msstd_fs_remove(dest, 1, core::ptr::null_mut()), STATUS_OK);
         }
     }
 
@@ -395,26 +455,35 @@ mod fs_io {
         let mut events = empty();
         // SAFETY: valid runtime strings, live handles and writable outputs throughout.
         unsafe {
-            assert_eq!(msstd_fs_create_directory(r, 1), STATUS_OK);
             assert_eq!(
-                msstd_fs_watch_native(r, 1, 0, 0, 0, 0, st("bogus"), &mut h),
+                msstd_fs_create_directory(r, 1, core::ptr::null_mut()),
+                STATUS_OK
+            );
+            assert_eq!(
+                msstd_fs_watch_native(r, 1, 0, 0, 0, 0, st("bogus"), &mut h, core::ptr::null_mut()),
                 ms_rt_abi::STATUS_INVALID_INPUT
             );
             assert_eq!(
-                msstd_fs_watch_native(r, 1, 0, 0, 0, 0, overflow, &mut h),
+                msstd_fs_watch_native(r, 1, 0, 0, 0, 0, overflow, &mut h, core::ptr::null_mut()),
                 STATUS_OK
             );
             let file = st(dir.join("x").to_str().unwrap());
-            assert_eq!(msstd_fs_write_file(file, &vec_of(b"1"), 0), STATUS_OK);
-            assert_eq!(msstd_fs_watch_next(h, &mut events), STATUS_OK);
+            assert_eq!(
+                msstd_fs_write_file(file, &vec_of(b"1"), 0, core::ptr::null_mut()),
+                STATUS_OK
+            );
+            assert_eq!(
+                msstd_fs_watch_next(h, &mut events, core::ptr::null_mut()),
+                STATUS_OK
+            );
             assert!(events.len >= 1);
             msstd_fs_watch_close(h);
             assert_eq!(
-                msstd_fs_watch_next(h, &mut events),
+                msstd_fs_watch_next(h, &mut events, core::ptr::null_mut()),
                 ms_rt_abi::STATUS_CLOSED
             );
             ms_rt::glue::release(h.cast());
-            assert_eq!(msstd_fs_remove(r, 1), STATUS_OK);
+            assert_eq!(msstd_fs_remove(r, 1, core::ptr::null_mut()), STATUS_OK);
         }
     }
 
@@ -488,7 +557,7 @@ mod process {
         let mut out = std::mem::MaybeUninit::<MemoryOut>::uninit();
         // SAFETY: `out` is writable.
         let (status, m) = unsafe {
-            let s = msstd_process_memory_usage(out.as_mut_ptr());
+            let s = msstd_process_memory_usage(out.as_mut_ptr(), core::ptr::null_mut());
             (s, out.assume_init_read())
         };
         for b in blocks {
@@ -526,13 +595,19 @@ mod process {
         let mut n = 0i64;
         // SAFETY: valid list, writable outputs and a live handle throughout.
         unsafe {
-            assert_eq!(msstd_process_watch_signals(&list, 0, 0, &mut h), STATUS_OK);
+            assert_eq!(
+                msstd_process_watch_signals(&list, 0, 0, &mut h, core::ptr::null_mut()),
+                STATUS_OK
+            );
             assert_eq!(raise(usr1 as i32), 0);
-            assert_eq!(msstd_process_signal_next(h, &mut n), STATUS_OK);
+            assert_eq!(
+                msstd_process_signal_next(h, &mut n, core::ptr::null_mut()),
+                STATUS_OK
+            );
             assert_eq!(n, usr1);
             msstd_process_signal_close(h);
             assert_eq!(
-                msstd_process_signal_next(h, &mut n),
+                msstd_process_signal_next(h, &mut n, core::ptr::null_mut()),
                 ms_rt_abi::STATUS_CLOSED
             );
             ms_rt::glue::release(h.cast());
@@ -561,7 +636,8 @@ mod process {
                     st(""),
                     &empty(),
                     &empty(),
-                    out.as_mut_ptr()
+                    out.as_mut_ptr(),
+                    core::ptr::null_mut()
                 ),
                 STATUS_OK
             );
@@ -580,7 +656,8 @@ mod process {
                     st(""),
                     &empty(),
                     &empty(),
-                    out.as_mut_ptr()
+                    out.as_mut_ptr(),
+                    core::ptr::null_mut()
                 ),
                 STATUS_UNAVAILABLE
             );
@@ -598,7 +675,8 @@ mod process {
                     st(""),
                     &empty(),
                     &empty(),
-                    out.as_mut_ptr()
+                    out.as_mut_ptr(),
+                    core::ptr::null_mut()
                 ),
                 STATUS_TIMEOUT
             );
@@ -616,7 +694,8 @@ mod process {
                     st(""),
                     &empty(),
                     &empty(),
-                    out.as_mut_ptr()
+                    out.as_mut_ptr(),
+                    core::ptr::null_mut()
                 ),
                 STATUS_OUTPUT_LIMIT
             );
@@ -633,7 +712,8 @@ mod process {
                     st(""),
                     &empty(),
                     &empty(),
-                    out.as_mut_ptr()
+                    out.as_mut_ptr(),
+                    core::ptr::null_mut()
                 ),
                 STATUS_INVALID_INPUT
             );
@@ -650,7 +730,8 @@ mod process {
                     st(""),
                     &empty(),
                     &empty(),
-                    &mut child
+                    &mut child,
+                    core::ptr::null_mut()
                 ),
                 STATUS_OK
             );
@@ -665,7 +746,13 @@ mod process {
             assert_eq!(ms_rt::glue::vec_bytes(&chunk), b"ping");
             let mut code = -9;
             assert_eq!(
-                msstd_process_subprocess_wait(child, 1, 5_000_000_000, &mut code),
+                msstd_process_subprocess_wait(
+                    child,
+                    1,
+                    5_000_000_000,
+                    &mut code,
+                    core::ptr::null_mut()
+                ),
                 STATUS_OK
             );
             assert_eq!(code, 0);
@@ -688,24 +775,30 @@ mod process {
             let uptime = msstd_process_uptime();
             assert!(started >= 0 && a >= 0 && uptime >= a && uptime >= started);
             let mut cwd = ms_rt::string::NO_STR;
-            assert_eq!(msstd_process_working_directory(&mut cwd), STATUS_OK);
+            assert_eq!(
+                msstd_process_working_directory(&mut cwd, core::ptr::null_mut()),
+                STATUS_OK
+            );
             assert!(!text(&cwd).is_empty());
             assert_eq!(
-                msstd_process_set_environment(st("MS_ABI_VAR"), 1, st("x")),
+                msstd_process_set_environment(st("MS_ABI_VAR"), 1, st("x"), core::ptr::null_mut()),
                 STATUS_OK
             );
             let (mut names, mut values) = (empty(), empty());
             assert_eq!(
-                msstd_process_environment(&mut names, &mut values),
+                msstd_process_environment(&mut names, &mut values, core::ptr::null_mut()),
                 STATUS_OK
             );
             assert_eq!(names.len, values.len);
             assert_eq!(
-                msstd_process_set_environment(st("A=B"), 0, st("")),
+                msstd_process_set_environment(st("A=B"), 0, st(""), core::ptr::null_mut()),
                 STATUS_INVALID_INPUT
             );
             let mut info = std::mem::MaybeUninit::<InfoOut>::uninit();
-            assert_eq!(msstd_process_info(info.as_mut_ptr()), STATUS_OK);
+            assert_eq!(
+                msstd_process_info(info.as_mut_ptr(), core::ptr::null_mut()),
+                STATUS_OK
+            );
             let i = info.assume_init();
             let os = if cfg!(target_os = "macos") {
                 "darwin"

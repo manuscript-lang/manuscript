@@ -38,62 +38,77 @@ fn rules(windows: bool) -> Rules {
 }
 
 native! {
+    // ms: leaf
     fn msstd_path_basename(windows: bool, path: &str) -> String {
         rules(windows).basename(path)
     }
 
+    // ms: leaf
     fn msstd_path_basename_without(windows: bool, path: &str, suffix: &str) -> String {
         rules(windows).basename_without(path, suffix)
     }
 
+    // ms: leaf
     fn msstd_path_dirname(windows: bool, path: &str) -> String {
         rules(windows).dirname(path)
     }
 
+    // ms: leaf
     fn msstd_path_extension(windows: bool, path: &str) -> String {
         rules(windows).extension(path)
     }
 
+    // ms: leaf
     fn msstd_path_is_absolute(windows: bool, path: &str) -> bool {
         rules(windows).is_absolute(path)
     }
 
+    // ms: leaf
     fn msstd_path_join(windows: bool, parts: Vec<&str>) -> String {
         rules(windows).join(&parts)
     }
 
+    // ms: leaf
     fn msstd_path_normalize(windows: bool, path: &str) -> String {
         rules(windows).normalize(path)
     }
 
+    // ms: leaf
     fn msstd_path_relative(windows: bool, base: &str, target: &str) -> Result<String, InvalidInput> {
         rules(windows).relative(base, target)
     }
 
+    // ms: leaf
     fn msstd_path_resolve(windows: bool, base: &str, parts: Vec<&str>) -> Result<String, InvalidInput> {
         rules(windows).resolve(base, &parts)
     }
 
+    // ms: leaf
     fn msstd_path_parse(windows: bool, path: &str) -> out PartsRec<String> {
         parts_to(rules(windows).parse(path))
     }
 
+    // ms: leaf
     fn msstd_path_format(windows: bool, parts: PartsRec<&str>) -> String {
         rules(windows).format(&parts_from(parts))
     }
 
+    // ms: leaf
     fn msstd_path_separator(windows: bool) -> &'static str {
         rules(windows).separator()
     }
 
+    // ms: leaf
     fn msstd_path_delimiter(windows: bool) -> &'static str {
         rules(windows).delimiter()
     }
 
+    // ms: leaf
     fn msstd_path_to_namespaced_path(windows: bool, path: &str) -> String {
         rules(windows).to_namespaced_path(path)
     }
 
+    // ms: leaf
     fn msstd_path_matches_glob(windows: bool, value: &str, pattern: &str) -> Result<bool, InvalidInput> {
         rules(windows).matches_glob(value, pattern)
     }

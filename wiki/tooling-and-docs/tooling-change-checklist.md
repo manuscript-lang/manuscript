@@ -20,3 +20,4 @@ Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, or line t
 - Native builds emit DWARF line tables and `app.ms-build.json`; `ms profile` provides folded stacks, pprof, and a top report. Check native artifacts rather than only metadata. There is no `ms debug` or `ms emit`.
 - CLI text, JSON shape, and exit codes are pinned by the conformance corpus (`make conform`); update `tests/conformance/` expectations deliberately.
 - Run affected crate tests (`cargo nextest run -p ms-tooling` etc.); client changes need extension tests with pinned Node dependencies. Standalone claims need `make dist-check`.
+- `tools/e2e.ms` builds a debug `ms` with MIR verification on, so a fixture can fail there and pass in a release `ms`. Reproduce with `target/debug/ms test <file>`; a pass that rewrites a function (inline, specialize) must skip callees flagged `keeps_scoped`.

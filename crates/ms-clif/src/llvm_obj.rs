@@ -1,13 +1,13 @@
 //! Compiles LLVM IR text to an object file.
 
-use crate::Error;
 use crate::link::llvm_tools;
+use crate::{BuildOptions, Error, RtHot};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Whether release builds can use LLVM: the tools are fetched (once) or named by `MS_LLVM_TOOLS`.
-pub fn available() -> bool {
-    llvm_tools().is_ok_and(|tools| tools.is_some())
+/// Whether release builds can use LLVM: the tools are fetched or named by `build.llvm_tools`.
+pub fn available(build: &BuildOptions) -> bool {
+    llvm_tools(build).is_ok_and(|tools| tools.is_some())
 }
 
 fn run(mut c: Command, what: &str) -> Result<(), Error> {
@@ -39,7 +39,7 @@ impl Drop for LlvmObject {
 }
 
 /// Optimizes and assembles `ir` at `-O<level>`.
-pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
+pub fn compile(ir: &str, level: &str, build: &BuildOptions) -> Result<LlvmObject, Error> {
     let dir: PathBuf = std::env::temp_dir().join(format!(
         "ms-llvm-{}-{}",
         std::process::id(),
@@ -64,10 +64,10 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
         ir
     };
     std::fs::write(&ll, ir).map_err(|e| Error(e.to_string()))?;
-    if std::env::var_os("MS_KEEP_LL").is_some() {
+    if build.keep_ll {
         let _ = std::fs::copy(&ll, "ms-keep.ll");
     }
-    let tools = llvm_tools()?.ok_or_else(|| {
+    let tools = llvm_tools(build)?.ok_or_else(|| {
         Error(
             "no LLVM tools are available for this platform; set MS_LLVM_TOOLS to a directory with opt, llc and llvm-link".into(),
         )
@@ -81,7 +81,7 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
     let tool =
         |name: &str| Command::new(tools.join(format!("{name}{}", std::env::consts::EXE_SUFFIX)));
     let mut input = ll;
-    if let Some(hot) = hot_library(&dir, &tools, ir) {
+    if let Some(hot) = hot_library(build, &dir, &tools, ir) {
         // The runtime's pure helpers (`ms-rt-hot`): only the definitions the program calls are
         // linked, internalized so the archive's copies stay the only exported ones, and LLVM
         // inlines them.
@@ -96,7 +96,7 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
         input = linked;
     }
     let mut opt = tool("opt");
-    if !crate::vectorize() {
+    if !build.vectorize {
         opt.args(["-vectorize-loops=false", "-vectorize-slp=false"]);
     }
     opt.arg(format!("-passes={pipeline}"))
@@ -126,21 +126,18 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
     Ok(this)
 }
 
-/// The runtime helper IR written into `dir`, or `None` when this `ms` has none, `MS_RT_HOT=0` turns
-/// it off (to compare against a build without inlined helpers) or names another file, `llvm-link` is not in `tools`, or the
-/// `program` IR calls none of the helpers (linking would only cost time).
-fn hot_library(dir: &Path, tools: &Path, program: &str) -> Option<PathBuf> {
-    // `MS_RT_HOT=<file>` links another helper library, for experiments.
-    let custom = std::env::var_os("MS_RT_HOT")
-        .filter(|v| v != "0" && v != "1")
-        .and_then(|path| std::fs::read_to_string(path).ok());
+/// The runtime helper IR written into `dir`, or `None` when this `ms` has none, `build.rt_hot` turns
+/// it off or names another file, `llvm-link` is not in `tools`, or the `program` IR calls none of
+/// the helpers (linking would only cost time).
+fn hot_library(build: &BuildOptions, dir: &Path, tools: &Path, program: &str) -> Option<PathBuf> {
+    let custom = match &build.rt_hot {
+        RtHot::Embedded => None,
+        RtHot::Off => return None,
+        RtHot::File(path) => std::fs::read_to_string(path).ok(),
+    };
     let ir = custom.as_deref().unwrap_or(crate::link::RUNTIME_HOT_IR);
     let linker = tools.join(format!("llvm-link{}", std::env::consts::EXE_SUFFIX));
-    if ir.is_empty()
-        || std::env::var_os("MS_RT_HOT").is_some_and(|v| v == "0")
-        || !linker.is_file()
-        || !calls_hot_helper(ir, program)
-    {
+    if ir.is_empty() || !linker.is_file() || !calls_hot_helper(ir, program) {
         return None;
     }
     let path = dir.join("ms_rt_hot.ll");

@@ -69,6 +69,9 @@ struct Mail {
 struct Slot {
     /// Tasks ready or running, published by the thread at each switch.
     busy: AtomicU32,
+    /// Promise tasks started here and not yet ended, running or waiting. A thread with none is free
+    /// to take work from another; one with some is not, so a sleeper's thread is not given a spinner.
+    live: AtomicU32,
     /// Promises waiting in `mail.pending`.
     pending: AtomicU32,
     /// Whether `mail.events` may hold events.
@@ -84,6 +87,7 @@ impl Slot {
     const fn new() -> Self {
         Slot {
             busy: AtomicU32::new(0),
+            live: AtomicU32::new(0),
             pending: AtomicU32::new(0),
             signalled: AtomicU32::new(0),
             isolate: AtomicUsize::new(usize::MAX),
@@ -164,13 +168,13 @@ pub extern "C-unwind" fn msrt_runtime_threads() -> i64 {
 }
 
 fn load_of(thread: usize) -> u32 {
-    SLOTS[thread].busy.load(Ordering::SeqCst) + SLOTS[thread].pending.load(Ordering::SeqCst)
+    SLOTS[thread].live.load(Ordering::SeqCst) + SLOTS[thread].pending.load(Ordering::SeqCst)
 }
 
 /// Chooses the thread for a new promise: the caller's, or the next one in round-robin order if
-/// it has less to do. `ready_here` is the number of tasks waiting on the caller's thread, not
-/// counting the running caller.
-fn place(me: usize, ready_here: usize) -> usize {
+/// it has less to do. A thread's load is its promise tasks (running or waiting) plus the starts
+/// queued for it.
+fn place(me: usize) -> usize {
     let n = limit();
     if n <= 1 {
         return me;
@@ -182,7 +186,7 @@ fn place(me: usize, ready_here: usize) -> usize {
         next = (next + 1) % n;
     }
     *cursor = next;
-    let mine = ready_here as u32 + SLOTS[me].pending.load(Ordering::SeqCst);
+    let mine = load_of(me);
     if load_of(next) < mine { next } else { me }
 }
 
@@ -221,15 +225,10 @@ pub(crate) fn warm(n: usize) {
     }
 }
 
-/// Sends a start to a scheduler thread, placed by load. `ready_here` counts the tasks waiting on
-/// the calling thread.
-pub(crate) fn submit(start: Start, ready_here: usize) {
+/// Sends a start to a scheduler thread, placed by load.
+pub(crate) fn submit(start: Start) {
     let me = current();
-    let target = if me == NONE {
-        me
-    } else {
-        place(me, ready_here)
-    };
+    let target = if me == NONE { me } else { place(me) };
     debug_assert!(target < MAX_THREADS || me == NONE);
     if target == NONE {
         unreachable!("submit is for scheduler threads");
@@ -327,6 +326,9 @@ pub(crate) fn next_pending() -> Option<Start> {
             return start;
         }
     }
+    if SLOTS[me].live.load(Ordering::SeqCst) != 0 {
+        return None;
+    }
     let started = STARTED.load(Ordering::Acquire);
     let (mut best, mut most) = (usize::MAX, 0);
     for thread in (0..started).filter(|&t| t != me) {
@@ -352,7 +354,24 @@ pub(crate) fn work_available() -> bool {
     if me == NONE {
         return false;
     }
-    (0..STARTED.load(Ordering::Acquire)).any(|t| SLOTS[t].pending.load(Ordering::SeqCst) != 0)
+    if SLOTS[me].pending.load(Ordering::SeqCst) != 0 {
+        return true;
+    }
+    SLOTS[me].live.load(Ordering::SeqCst) == 0
+        && (0..STARTED.load(Ordering::Acquire))
+            .any(|t| SLOTS[t].pending.load(Ordering::SeqCst) != 0)
+}
+
+/// Counts a promise task started (`1`) or ended (`-1`) on the calling thread.
+pub(crate) fn live_add(delta: i32) {
+    let me = current();
+    if me != NONE {
+        if delta > 0 {
+            SLOTS[me].live.fetch_add(1, Ordering::SeqCst);
+        } else {
+            SLOTS[me].live.fetch_sub(1, Ordering::SeqCst);
+        }
+    }
 }
 
 /// Publishes how many tasks are ready or running on the calling thread.
@@ -370,7 +389,9 @@ pub(crate) fn set_idle(idle: bool) {
         return;
     }
     if idle {
-        IDLE.fetch_or(1 << me, Ordering::AcqRel);
+        if SLOTS[me].live.load(Ordering::SeqCst) == 0 {
+            IDLE.fetch_or(1 << me, Ordering::AcqRel);
+        }
     } else {
         IDLE.fetch_and(!(1 << me), Ordering::AcqRel);
     }
@@ -440,6 +461,7 @@ pub fn shutdown() {
         slot.pending.store(0, Ordering::SeqCst);
         slot.signalled.store(0, Ordering::SeqCst);
         slot.busy.store(0, Ordering::SeqCst);
+        slot.live.store(0, Ordering::SeqCst);
     }
     IDLE.store(0, Ordering::SeqCst);
 }

@@ -39,11 +39,13 @@ pub fn assert_fault<R>(message: &str, f: impl FnOnce() -> R) {
 pub mod hot {
     use ms_rt_abi::{MapVal, StrVal, TypeDesc};
 
+    // ms: leaf pure
     pub unsafe fn msrt_map_length(m: *const MapVal) -> i64 {
         // SAFETY: caller contract.
         unsafe { ms_rt_hot::msrt_map_length(m as usize) }
     }
 
+    // ms: leaf pure
     pub unsafe fn msrt_string_byte_length(s: *const StrVal) -> i64 {
         // SAFETY: caller contract.
         unsafe { ms_rt_hot::msrt_string_byte_length(s as usize) }

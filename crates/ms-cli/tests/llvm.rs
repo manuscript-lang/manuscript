@@ -28,7 +28,9 @@ fn build_and_run(backend: &str, out: &std::path::Path) -> (Option<i32>, String) 
 
 #[test]
 fn llvm_release_matches_cranelift_fault_frames() {
-    if !cfg!(any(target_os = "linux", target_os = "macos")) || !ms_clif::llvm_available() {
+    if !cfg!(any(target_os = "linux", target_os = "macos"))
+        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+    {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-llvm-test-{}", std::process::id()));
@@ -52,7 +54,9 @@ fn llvm_release_matches_cranelift_fault_frames() {
 
 #[test]
 fn llvm_native_calls_keep_distinct_fault_sites() {
-    if !cfg!(any(target_os = "linux", target_os = "macos")) || !ms_clif::llvm_available() {
+    if !cfg!(any(target_os = "linux", target_os = "macos"))
+        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+    {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-llvm-sites-{}", std::process::id()));
@@ -122,7 +126,9 @@ fn deeply_nested_literal_builds_quickly() {
 /// off for huge functions, so the build takes seconds.
 #[test]
 fn llvm_builds_a_huge_straight_line_function_in_bounded_time() {
-    if !cfg!(any(target_os = "linux", target_os = "macos")) || !ms_clif::llvm_available() {
+    if !cfg!(any(target_os = "linux", target_os = "macos"))
+        || !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+    {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-llvm-huge-{}", std::process::id()));
@@ -265,7 +271,8 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
         if backend == "llvm" && !cfg!(any(target_os = "linux", target_os = "macos")) {
             continue;
         }
-        if backend == "llvm" && !ms_clif::llvm_available() {
+        if backend == "llvm" && !ms_clif::llvm_available(&ms_cli::engine::build_options_from_env())
+        {
             continue;
         }
         let started = std::time::Instant::now();

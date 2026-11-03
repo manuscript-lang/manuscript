@@ -96,7 +96,10 @@ impl FnLower<'_> {
         let user = self.borrow(user);
         let wrapped = self.predicate_closure(user, copy)?;
         vals.push(wrapped);
-        let has_out = sig.params.last().is_some_and(|p| p.name == "out");
+        // A trailing `err` follows any `out`; the call helper appends its slot.
+        let body =
+            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.name == "err"));
+        let has_out = sig.params[..body].last().is_some_and(|p| p.name == "out");
         let r = self.finish_rt_call(sym, &sig, has_out, vals, result)?;
         self.b.emit(Op::Drop, &[wrapped], Imm::None, None);
         Ok(r)

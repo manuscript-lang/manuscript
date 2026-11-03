@@ -2,7 +2,6 @@
 
 use crate::analysis::{Analysis, Document};
 use crate::json::{Json, obj};
-use crate::lexical;
 use crate::text::{Range, SourcePositions};
 use ms_check::syntax::DeclRef;
 use ms_syntax::ast::*;
@@ -20,13 +19,12 @@ struct Outline<'a> {
     d: &'a Document,
     file: ms_check::types::Name,
     positions: SourcePositions<'a>,
-    tokens: Option<std::rc::Rc<lexical::Lexical>>,
 }
 
 impl Outline<'_> {
     /// The range of `name` on the declaration's line, else an empty range.
     fn selection(&self, offset: usize, name: &str) -> Range {
-        if let Some(at) = lexical::header(self.tokens.as_deref(), &self.d.text, offset, name) {
+        if let Some(at) = crate::text::header(&self.d.text, offset, name) {
             return self.positions.range(at, at + name.len());
         }
         Range::at(self.positions.position(offset))
@@ -175,7 +173,6 @@ pub fn document_symbols(analysis: &Analysis, d: &Document) -> Json {
         d,
         file: module.file,
         positions: SourcePositions::new(&d.text),
-        tokens: lexical::tokens(&module),
     };
     let declarations = &module.decls;
     let mut out = Vec::new();

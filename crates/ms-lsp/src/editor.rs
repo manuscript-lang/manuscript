@@ -144,14 +144,19 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
         .iter()
         .rposition(|&b| b == b'\n')
         .map_or(0, |at| at + 1);
-    let line = String::from_utf8_lossy(&bytes[line_start..c.start]);
-    let line = line.trim();
-    let function_header = line.starts_with("fn ") || line.starts_with("export fn ");
-    c.type_context = (function_header && line.ends_with(')'))
-        || ((line.contains("let ") || line.contains("var "))
-            && line.contains(':')
-            && !line.contains('='))
-        || (function_header && line.contains(':'));
+    let line: Vec<&EditorToken> = before.iter().filter(|t| t.start >= line_start).collect();
+    let has = |c: u8| line.iter().any(|t| t.is(c));
+    let function_header = match line.as_slice() {
+        [first, ..] if first.is_name("fn") => true,
+        [first, second, ..] => first.is_name("export") && second.is_name("fn"),
+        _ => false,
+    };
+    let binding = line
+        .first()
+        .is_some_and(|t| t.is_name("let") || t.is_name("var"));
+    c.type_context = (function_header && line.last().is_some_and(|t| t.is(b')')))
+        || (binding && has(b':') && !has(b'='))
+        || (function_header && has(b':'));
     // A default is an expression inside a function header. Track only separators
     // at that parameter list's depth so nested calls and types keep their context.
     for &at in stack.iter().rev() {
@@ -631,7 +636,7 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
                 && ty.kind == Kind::Function
             {
                 let mut signature = ty.clone();
-                if ty.to_string().contains("<invalid>")
+                if ms_check::types::invalid_ty(ty)
                     && let Some(symbol) = &info.symbol
                     && let Some(t) = symbol.ty_opt()
                 {

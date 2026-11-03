@@ -833,7 +833,7 @@ impl Checker {
 
     /// Adds a view hint only when the expected type itself is an interface.
     pub(crate) fn assignment_mismatch(&mut self, actual: &Ty, expected: &Ty) -> String {
-        if actual.is_std("Optional") && actual.args.len() == 1 && actual.args[0].id == "<invalid>" {
+        if actual.is_std("Optional") && actual.args.len() == 1 && actual.args[0].is_invalid() {
             return format!(
                 "expected {expected}, found none; none is absent, so it fits only an Optional position: declare the target {expected}? or give a value"
             );
@@ -850,7 +850,7 @@ impl Checker {
                 return format!("{message}; {hint}");
             }
         }
-        if expected.kind != Kind::Contract || actual.id == "<invalid>" {
+        if expected.kind != Kind::Contract || actual.is_invalid() {
             return message;
         }
         if crate::contracts::has_generic_operation(expected) {
