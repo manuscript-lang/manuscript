@@ -54,7 +54,7 @@ test "logger writes typed escaped records and protects metadata":
     let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"data\":\{\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\},\"level\":0,\"msg\":\"fake\",\"time\":0\}\}\n"
     try expect_equal((try written(path)), expected)
     try logger.flush()
-    logger.close()
+    try logger.close()
     try expect_true(logger.info("late").is_error())
 
 test "non-object values are written under data":
@@ -172,8 +172,8 @@ test "limits and unencodable values reject before writing":
 test "closing a logger twice keeps reporting Closed":
     let directory = try temporary("manuscript-log-")
     var logger = try create(try file_transport("{directory.path()}/out.ndjson"))
-    logger.close()
-    logger.close()
+    try logger.close()
+    try logger.close()
 
     let closed: Unit! = error(
         Error("logging: resource is closed", kind: ErrorCategory.Closed)
@@ -187,11 +187,11 @@ test "file transport appends and flushes with scoped cleanup":
     var logger = try create(try file_transport(path), timestamp: false)
     try logger.info("first")
     try logger.flush()
-    logger.close()
+    try logger.close()
 
     var logger2 = try create(try file_transport(path), timestamp: false)
     try logger2.warn("second")
-    logger2.close()
+    try logger2.close()
 
     let data = try read_file(path)
     try expect_false(
@@ -258,8 +258,24 @@ test "source transports receive complete records and close through their contrac
         (read_file(path) | try expect_ok).decode_utf8(),
         "\{\"level\":30,\"msg\":\"source transport\"\}\n"
     )
-    logger.close()
+    try logger.close()
     try expect_true(read_file("{path}.closed").is_ok())
+
+fn log_from_child(logger: Logger) Unit!:
+    let child = try logger.child("worker")
+    return child.info("from child")
+
+fn log_in_scope(path: String) Unit!:
+    let logger = try create(CaptureTransport(path.clone(), ".closed"), timestamp: false)
+    try log_from_child(logger)
+    return logger.info("parent after child")
+
+test "a logger scope closes its transport and a dropped child closes only its own":
+    let temporary = temporary("manuscript-log-scope-") | try expect_ok
+    let path = "{temporary.path()}/records.ndjson"
+    try expect_ok(log_in_scope(path.clone()))
+    try expect_true(read_file("{path}.closed").is_ok())
+    try expect_true(read_file("{path}.closed.child").is_ok())
 
 test "unencodable fields are rejected and fields keep their shape under data":
     let directory = try temporary("manuscript-log-")
@@ -405,7 +421,7 @@ test "rotating transport moves a full file aside and keeps a bounded number of g
     try expect_true(current.to_bytes().length() <= 80)
     try expect_true(read_file("{path}.3").is_error())
     try expect_true(current.contains("record number 11"))
-    logger.close()
+    try logger.close()
     try expect_true(logger.info("late").is_error())
 
 test "rotating transport rejects invalid sizes":

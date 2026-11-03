@@ -291,9 +291,11 @@ impl Logger:
     fn flush() Unit!:
         return self.transport.flush()
 
-    // Closes this logger's transport; later records return `Closed`. Children and the parent are not affected.
-    var fn close() Unit:
+impl Closeable for Logger:
+    // Closes this logger's transport, which consumes the logger; a scope that owns one closes it on every exit. Children and the parent are not affected.
+    var fn close() Unit!:
         self.transport.close()
+        return ok(unit)
 
 // Creates a logger that owns `transport`. Defaults to `Info`, timestamps enabled, and no record-size limit.
 export fn create(
