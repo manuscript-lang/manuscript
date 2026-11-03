@@ -76,7 +76,7 @@ fn run(argv: List[String]) Matches!:
     if parsed.is_error(): return error(parsed.err().clone())
 
     match parsed.get():
-        Run(_, matches): return ok(matches.clone())
+        Run(matches): return ok(matches.clone())
         Help(text): return ok(Matches(path: [text.clone()]))
 
 fn failure(argv: List[String]) String!:
@@ -217,11 +217,12 @@ test "schema mistakes are reported before parsing":
     )
 
 fn handled(argv: List[String]) Int!:
-    let parsed = app().parse(argv)
+    let tool = app()
+    let parsed = tool.parse(argv)
     if parsed.is_error(): return error(parsed.err().clone())
 
     match parsed.get():
-        Run(node, matches): return node.exec(matches)
+        Run(matches): return tool.run(matches)
         Help(_): return ok(-1)
 
 test "handlers receive the decoded options record":
@@ -237,12 +238,12 @@ test "optional, rest and dashed names decode into record fields":
 
 test "a record that does not match the schema is reported when the handler runs":
     let mismatched = command[ServeOptions](name: "bad", run: fn options: ok(0))
-    let result = Command(name: "tool", children: [mismatched]).parse(["bad"])
-    let parsed = (result | try expect_ok)
+    let tool = Command(name: "tool", children: [mismatched])
+    let parsed = (tool.parse(["bad"]) | try expect_ok)
 
     match parsed:
-        Run(node, matches):
-            (node.exec(matches) | try expect_error).message | try expect_contains(
+        Run(matches):
+            (tool.run(matches) | try expect_error).message | try expect_contains(
                 "does not match"
             )
         Help(_): return fail("help")

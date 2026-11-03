@@ -237,6 +237,13 @@ pub extern "C-unwind" fn msrt_cells_full(id: i64) -> u8 {
     lookup(id, FULL).is_some_and(|(c, full)| c.word.load(Ordering::Acquire) == full) as u8
 }
 
+/// Whether the cell is live with its value out (a holder has it and may put it back); false once
+/// the cell is dropped, so a holder whose stream closed closes the value itself.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_cells_out(id: i64) -> u8 {
+    lookup(id, OUT).is_some_and(|(c, out)| c.word.load(Ordering::Acquire) == out) as u8
+}
+
 /// `take` for a caller that binds the value with `try`: moves the value into `out` and answers
 /// `STATUS_OK`, or answers `STATUS_CLOSED` when the cell is empty or gone.
 ///

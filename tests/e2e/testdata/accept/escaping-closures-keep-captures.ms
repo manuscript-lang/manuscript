@@ -59,7 +59,7 @@ fn c4(text: String) Int:
     return b.f()
 
 fn c5(text: String) Int:
-    var sink: Sink = ListSink(fs: [])
+    var sink = ListSink(fs: [])
     for p in text.split(","):
         sink.put(fn() Int: return p.length())
     return sink.total()

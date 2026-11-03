@@ -783,6 +783,18 @@ fn compile_with_isa(
             d.write_function_addr(8 * (1 + k as u32), r);
         }
         g.module.define_data(id, &d).map_err(|e| e.to_string())?;
+        // LLVM sees the contents too, so a call through a vtable it can name folds to a direct call.
+        if g.llvm.is_some() {
+            let decls = g.module.declarations();
+            let sym = |f: FuncId| decls.get_function_decl(f).linkage_name(f).into_owned();
+            let mut slots = vec![sym(drop)];
+            slots.extend(vt.methods.iter().map(|mf| sym(g.funcs[mf.index()])));
+            slots.push(sym(copy));
+            let name = decls.get_data_decl(id).linkage_name(id).into_owned();
+            if let Some(llvm) = g.llvm.as_mut() {
+                llvm.set_vtable(name, slots);
+            }
+        }
     }
     let mut ctx = Context::new();
     let mut fctx = FunctionBuilderContext::new();

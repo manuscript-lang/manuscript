@@ -187,23 +187,16 @@ test "clone slice and nested values keep their own contracts":
 
 test "function values can replace later backing elements":
     var seen: List[Int] = []
-    let original = fn() Int: 7
-    let twin = fn() Int: 7
-    var functions = [original, twin]
-    let clone = functions.clone()
+    var functions = [fn() Int: 7, fn() Int: 7]
 
     (
-        functions.clone().for_each(
-            fn value:
-                seen.append(value())
-                functions.fill(fn() Int: 9, 0, 2)
+        [0, 1].for_each(
+            fn index:
+                seen.append(functions[index]())
+                functions.set(index, fn() Int: 9)
         )
     )
 
     try expect_false(
-        not (
-            seen == [7, 7]
-            and clone.first().get()() == 7
-            and functions.first().get()() == 9
-        )
+        not (seen == [7, 7] and functions[0]() == 9 and functions[1]() == 9)
     )

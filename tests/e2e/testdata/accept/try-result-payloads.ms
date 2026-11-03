@@ -85,6 +85,6 @@ test "tail Results preserve cleanup on success and failure":
 
 test "function Result payloads keep their calling convention":
     let original = fn() Int: 42
-    let result = function_tail(Result[fn() Int, Error].ok(original))
-    let value = result.get()
+    let wrapped = Result[fn() Int, Error].ok(original)
+    let value = try function_tail(wrapped)
     value() | try expect_equal(42)

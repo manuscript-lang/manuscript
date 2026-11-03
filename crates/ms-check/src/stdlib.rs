@@ -1103,7 +1103,8 @@ impl Session {
         let stubs = self.world(|w| std::mem::take(&mut w.stub_modules));
         for path in stubs {
             if let Some(module) = self.standard_source_module(path) {
-                self.ensure_source(&module);
+                // An invalid module is reported where a program imports it.
+                let _ = self.ensure_source(&module);
             }
         }
     }
@@ -1258,8 +1259,11 @@ impl Session {
     pub fn standard_exports(self: &Rc<Self>, path: &str) -> HashMap<Name, SymRef> {
         let path = n(path);
         if let Some(module) = self.standard_source_module(path) {
-            return self
-                .ensure_source(&module)
+            // An invalid module is reported where a program imports it.
+            let Ok(checked) = self.ensure_source(&module) else {
+                return HashMap::new();
+            };
+            return checked
                 .exports
                 .iter()
                 .filter(|(_, s)| s.export)
@@ -1342,10 +1346,12 @@ impl Session {
 
     /// Checks a bundled source module and the bundled modules it imports, once.
     /// Modules that import each other are checked together.
-    pub fn ensure_source(self: &Rc<Self>, module: &ModRef) -> Rc<StdResult> {
+    /// A module that does not check is a defect in the bundled library, reported as an error
+    /// naming the module rather than a panic.
+    pub fn ensure_source(self: &Rc<Self>, module: &ModRef) -> Result<Rc<StdResult>, String> {
         self.ensure_standard();
         if let Some(r) = self.done(module.file) {
-            return r;
+            return Ok(r);
         }
         let group = self.source_group(module);
         let cycle = self.world(|w| group.iter().any(|g| !w.checking.insert(g.file)));
@@ -1356,12 +1362,28 @@ impl Session {
                 self.world(|w| w.checking.clone())
             );
         }
-        for g in &group {
+        let result = self.check_group_sources(module, &group);
+        if result.is_err() {
+            self.world(|w| {
+                for g in &group {
+                    w.checking.remove(&g.file);
+                }
+            });
+        }
+        result
+    }
+
+    fn check_group_sources(
+        self: &Rc<Self>,
+        module: &ModRef,
+        group: &[ModRef],
+    ) -> Result<Rc<StdResult>, String> {
+        for g in group {
             for item in &g.imports {
                 if let Some(dep) = self.import_source(item)
                     && !group.iter().any(|m| m.file == dep.file)
                 {
-                    self.ensure_source(&dep);
+                    self.ensure_source(&dep)?;
                 }
             }
         }
@@ -1371,7 +1393,7 @@ impl Session {
             if let Some(extension) = self.standard_source_module(n(path))
                 && !group.iter().any(|m| m.file == extension.file)
             {
-                self.ensure_source(&extension);
+                self.ensure_source(&extension)?;
             }
         }
         let mut checker = Checker::new(
@@ -1383,18 +1405,18 @@ impl Session {
         );
         checker.id_scope = format!("standard_{}_", module_stem(module.file.as_str()));
         if group.len() > 1 {
-            checker.group = group.clone();
+            checker.group = group.to_vec();
         }
         let program = checker.check_modules(vec![module.clone()], Some(module.file));
         if !program.diagnostics.is_empty() {
             let text: Vec<String> = program.diagnostics.iter().map(|d| d.to_string()).collect();
-            panic!(
+            return Err(format!(
                 "invalid standard implementation {}: {}",
                 module.file,
                 text.join("; ")
-            );
+            ));
         }
-        for g in &group {
+        for g in group {
             let symbols = program
                 .symbols
                 .get(&g.file)
@@ -1422,18 +1444,24 @@ impl Session {
                 w.checking.remove(&g.file);
             });
         }
-        self.done(module.file).expect("checked")
+        Ok(self.done(module.file).expect("checked"))
     }
 
-    /// All bundled source modules, checked.
-    pub fn ensure_all_sources(self: &Rc<Self>) {
+    /// Checks every bundled source module and returns the error of each one that is invalid.
+    pub fn check_all_sources(self: &Rc<Self>) -> Vec<String> {
         self.load_deferred_all();
         let sources: Vec<ModRef> = self.world(|w| w.sources.clone());
-        for m in sources {
-            if self.is_source_module(&m) {
-                self.ensure_source(&m);
-            }
-        }
+        sources
+            .iter()
+            .filter(|m| self.is_source_module(m))
+            .filter_map(|m| self.ensure_source(m).err())
+            .collect()
+    }
+
+    /// All bundled source modules, checked; panics if one is invalid.
+    pub fn ensure_all_sources(self: &Rc<Self>) {
+        let errors = self.check_all_sources();
+        assert!(errors.is_empty(), "{}", errors.join("\n"));
     }
 
     /// Adds reachable bundled implementations to a module list in dependency order.
@@ -1630,6 +1658,12 @@ mod tests {
     }
 
     #[test]
+    fn every_embedded_module_type_checks() {
+        let errors = Session::new().check_all_sources();
+        assert!(errors.is_empty(), "{}", errors.join("\n"));
+    }
+
+    #[test]
     fn sessions_on_one_thread_are_independent() {
         let (a, b) = (Session::new(), Session::new());
         let (la, lb) = (
@@ -1653,7 +1687,7 @@ mod tests {
             .standard_source_module(yaml)
             .expect("yaml loads on lookup");
         assert!(session.world(|w| !w.deferred.contains_key(&yaml)));
-        assert!(!session.ensure_source(&module).exports.is_empty());
+        assert!(!session.ensure_source(&module).unwrap().exports.is_empty());
         let sources = session.standard_modules();
         assert!(session.world(|w| w.deferred.is_empty()));
         assert_eq!(

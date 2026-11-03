@@ -7,10 +7,14 @@ import expect_equal, expect_true from "@std/test/test.ms"
 // `make copy-check` sweeps this fixture for implicit copies.
 
 type Counter:
-    read: fn() Int
+    values: List[Int]
+
+impl Counter:
+    fn read() Int:
+        return self.values[0]
 
 fn counter(n: Int) Counter:
-    return Counter(read: fn: n)
+    return Counter(values: [n])
 
 type Ring:
     slots: List[Counter?]

@@ -27,6 +27,7 @@ import (
     msrt_cells_take,
     msrt_cells_put,
     msrt_cells_drop,
+    msrt_cells_out,
     msrt_io_write_stdout,
     msrt_io_write_stderr,
     msrt_io_write_bytes_stdout,
@@ -110,13 +111,19 @@ impl ReadStream[T]:
         return adopt[T?](id)
 
     // The items as an iterator for `for x in s.wait()`: each is `T!`, so a failure arrives in the loop and ends it.
+    // The loop holds the source until it ends, breaks or fails, then hands it back to the stream.
     var fn wait() Waiting[T]:
-        return Waiting[T](self.cell, false)
+        var held: List[Source[T]] = []
+        if let source = msrt_cells_take[Source[T]](self.cell):
+            held.append(source)
+        return Waiting[T](self.cell, held, false)
 
 // The items of a stream, one read at a time; `for item in stream.wait()` waits for each.
-export type Waiting[T]:
-    // The runtime cell that holds the stream's source.
+export opaque type Waiting[T]:
+    // The runtime cell the source goes back to.
     cell: Int
+    // The stream's source while the loop runs; empty when a read was already waiting.
+    held: List[Source[T]]
     // True after the end of the stream or a failure; later steps give none.
     ended: Bool
 
@@ -126,21 +133,16 @@ impl Iterator[T!] for Waiting[T]:
         if self.ended:
             return none
 
-        // The waiter runs the source's step itself: the same work a deferred read would run on this stack, without a
-        // promise, a closure or a result copy per item.
-        var result: T?! = ok(none)
-
-        match msrt_cells_take[Source[T]](self.cell):
-            source:
-                var running = source
-                result = running.next()
-                msrt_cells_put[Source[T]](self.cell, running)
-            none:
-                result = error(
-                    Error(
-                        "stream: a read is already waiting", kind: ErrorCategory.Closed
-                    )
+        if self.held.length() == 0:
+            self.ended = true
+            return error(
+                Error(
+                    "stream: a read is already waiting", kind: ErrorCategory.Closed
                 )
+            )
+
+        // The loop runs the source's step itself, on this stack: no promise, closure or cell round trip per item.
+        let result = self.held[0].next()
 
         if result.is_error():
             self.ended = true
@@ -151,6 +153,35 @@ impl Iterator[T!] for Waiting[T]:
 
         self.ended = true
         return none
+
+impl Closeable for Waiting[T]:
+    // Hands the source back to the stream when the loop ends, so the stream reads on from there or closes it. When
+    // the stream was closed or dropped during the loop, the source closes here, at the end of this scope.
+    var fn close() Unit!:
+        if let source = self.held.pop():
+            if msrt_cells_out(self.cell):
+                msrt_cells_put[Source[T]](self.cell, source)
+        return ok(unit)
+
+// A stream's source, moved out so a stage pulls it with a plain call. When a read already holds the source, the
+// stage reads through the stream instead, as before.
+fn source_of[T](input: ReadStream[T]) Source[T]:
+    var owned = input
+    if let source = msrt_cells_take[Source[T]](owned.cell):
+        return source
+
+    return Reading[T](owned)
+
+// A source that reads through a stream whose source a pending read holds.
+type Reading[T]:
+    input: ReadStream[T]
+
+impl Source[T] for Reading[T]:
+    var fn next() T?!:
+        return self.input.read().wait()
+
+    var fn close() Unit!:
+        return self.input.close()
 
 impl Closeable for ReadStream[T]:
     // Drops the source and everything it owns. A read in flight ends with an error.
@@ -462,7 +493,7 @@ export interface Transform[A, B]:
 
 // Items a transform produced and the reader has not taken yet, newest first so `pop` moves the next one out.
 type Through[A, B]:
-    input: ReadStream[A]
+    input: Source[A]
     transform: Transform[A, B]
     pending: List[B]
     finished: Bool
@@ -475,7 +506,7 @@ impl Source[B] for Through[A, B]:
             if self.finished:
                 return ok(none)
 
-            let step = try self.input.read().wait()
+            let step = try self.input.next()
             var produced: List[B] = []
 
             if let value = step:
@@ -494,7 +525,7 @@ impl Source[B] for Through[A, B]:
 
 // A stream of `transform`'s output over `input`; closing it closes `input`.
 export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadStream[B]:
-    return stream[B](Through[A, B](input, transform, [], false))
+    return stream[B](Through[A, B](source_of[A](input), transform, [], false))
 
 // One of this process's three standard streams.
 export type StdStream:

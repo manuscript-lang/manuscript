@@ -1,6 +1,7 @@
 use ms_mir::ir::{Imm, Module, Op};
 use ms_mir::parse::parse_module;
 use ms_mir::print::print_module;
+use ms_mir::types::Ty;
 use ms_mir::unwind;
 use ms_mir::verify::verify_module;
 
@@ -404,6 +405,67 @@ b0:
     // Two windows around the checked additions: one discard must not pop the scope entry.
     assert_eq!(
         calls(&m, "main", "msrt_cleanup_discard"),
+        2,
+        "{}",
+        print_module(&m)
+    );
+}
+
+const SLOT_CLOSED: &str = r#"
+extern @msrt_cleanup_discard(int) -> unit leaf cleanup_discard
+
+fn @close(%p: ptr) -> unit {
+b0:
+  %u: unit = unit
+  ret %u
+}
+
+fn @main() -> int {
+b0:
+  %b: str = str "held"
+  %s: str = copy %b
+  %slot: ptr = slot str
+  put %slot, %s
+  %h: int = cleanup.push @close %slot
+  %t: str = take str %slot
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  put %slot, %t
+  %HOLD
+}
+"#;
+
+fn rewrite_slot_closed(tail: &str) -> Module {
+    let mut m = module(&SLOT_CLOSED.replace("%HOLD", tail), true);
+    let close = m.func_by_name("close").expect("close");
+    m.funcs[close.index()].slot_close = Some(Ty::STR);
+    unwind::run(&mut m);
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    m
+}
+
+#[test]
+fn leaves_a_slot_value_to_its_active_scope_close() {
+    // A drop registered for the taken value would run before the slot's close and free the
+    // receiver the close still uses; the close drops what the slot holds.
+    let m = rewrite_slot_closed("%d: unit = call.rt @msrt_cleanup_discard (%h)\n  ret %r");
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        1,
+        "{}",
+        print_module(&m)
+    );
+}
+
+#[test]
+fn registers_a_slot_value_again_once_its_scope_close_is_discarded() {
+    let m = rewrite_slot_closed(
+        "%d: unit = call.rt @msrt_cleanup_discard (%h)\n  %u: str = take str %slot\n  %k: int = call.rt @msrt_task_sleep (%n)\n  drop %u\n  ret %k",
+    );
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
         2,
         "{}",
         print_module(&m)

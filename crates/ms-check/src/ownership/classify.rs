@@ -101,6 +101,9 @@ impl Classifier {
             // native without a `clone` (an `HttpExchange`) faults when copied, a guard the
             // runtime keeps until wrappers can borrow (middleware `Tap`s copy their exchange).
             Kind::Contract => !t.is_std("Closeable"),
+            // A function value owns its captures and has no `clone`, so a type holding one
+            // cannot be duplicated (walk.rs `no_clone`).
+            Kind::Function => false,
             Kind::Native => {
                 (self.copyable.contains(&t.id)
                     || self.clonable.contains(&t.id)
