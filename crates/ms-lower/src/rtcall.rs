@@ -946,7 +946,16 @@ impl FnLower<'_> {
     /// The `u8` status a runtime function returns, as an `Int` (a `Bool` would make the
     /// optimizer assume 0 or 1). Only the low byte of the return register is defined.
     pub(crate) fn status_code(&mut self, sym: &str, vals: &[Value]) -> Result<Value, Error> {
-        let raw = self.call_runtime(sym, vals, MTy::INT)?;
+        let mut vals = vals.to_vec();
+        // A trailing `err` slot receives the text of a `Failed` status, read by `status_failure`;
+        // a caller that marshalled its own arguments has already passed it.
+        if let Some(sig) = rt_sig(sym)
+            && vals.len() < sig.params.len()
+        {
+            self.err_slot = None;
+            self.push_err_slot(&sig, &mut vals);
+        }
+        let raw = self.call_runtime(sym, &vals, MTy::INT)?;
         let mask = self.b.iconst(0xff);
         Ok(self.b.binop(Op::And, raw, mask))
     }

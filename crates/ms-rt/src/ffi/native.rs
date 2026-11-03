@@ -925,7 +925,38 @@ impl IntoAbi for Vec<String> {
 /// The nullable `err: *mut StrVal` slot where a fallible native stores a `Failed` message.
 pub struct ErrOut(*mut StrVal);
 
+/// A failed native: the status byte and, for `STATUS_FAILED`, its fixed diagnostic text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Failure {
+    pub status: u8,
+    pub text: &'static str,
+}
+
+impl Failure {
+    /// `STATUS_FAILED` with the diagnostic `text`.
+    pub const fn failed(text: &'static str) -> Failure {
+        Failure {
+            status: ms_rt_abi::STATUS_FAILED,
+            text,
+        }
+    }
+}
+
+impl From<u8> for Failure {
+    fn from(status: u8) -> Failure {
+        Failure { status, text: "" }
+    }
+}
+
 impl ErrOut {
+    /// The status of `failure`, storing its text in the slot for `STATUS_FAILED`.
+    pub fn fail(&self, failure: Failure) -> StatusCode {
+        if failure.status == ms_rt_abi::STATUS_FAILED {
+            self.set(failure.text);
+        }
+        StatusCode(failure.status)
+    }
+
     /// Stores `msg` as a fresh string, unless the caller passed no slot.
     pub fn set(&self, msg: &str) {
         if !self.0.is_null() {

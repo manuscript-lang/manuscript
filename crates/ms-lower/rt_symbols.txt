@@ -767,12 +767,11 @@ msstd_random_draw_free(d: *mut Draw)
 msstd_random_draw_int(d: *const Draw) -> i64
 msstd_random_draw_new(kind: i64, a: i64, has_b: HasRaw, b: i64) -> *mut Draw
 msstd_random_draw_push(d: *mut Draw, data: *const VecVal) -> u8
-msstd_random_draw_status(d: *const Draw) -> u8
+msstd_random_draw_status(d: *const Draw, err: ErrSlot) -> u8
 msstd_random_draw_swap(d: *const Draw, which: i64) -> i64
 msstd_random_draw_text(d: *const Draw, out: *mut StrVal)
 msstd_random_draw_want(d: *const Draw) -> i64
-msstd_random_failure_message(out: *mut StrVal)
-msstd_random_os_bytes(count: i64, out: *mut VecVal) -> u8
+msstd_random_os_bytes(count: i64, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_regex_capture_all_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_matches: HasRaw, max_matches: i64, has_captures: HasRaw, max_captures: i64, out: *mut VecVal) -> u8 @leaf
 msstd_regex_capture_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_regex_captures(re: *const ObjCell<Regex>, text: *const StrVal, out: *mut VecVal) @leaf
@@ -793,25 +792,24 @@ msstd_system_cpus_irq(i: i64) -> i64
 msstd_system_cpus_model(i: i64, out: *mut StrVal)
 msstd_system_cpus_nice(i: i64) -> i64
 msstd_system_cpus_speed_mhz(i: i64) -> i64
-msstd_system_cpus_status() -> u8
+msstd_system_cpus_status(err: ErrSlot) -> u8
 msstd_system_cpus_system(i: i64) -> i64
 msstd_system_cpus_user(i: i64) -> i64
 msstd_system_dev_null(out: *mut StrVal)
 msstd_system_end_of_line(out: *mut StrVal)
 msstd_system_endianness(out: *mut StrVal)
-msstd_system_failure_message(out: *mut StrVal)
-msstd_system_get_priority(pid: i64, out: *mut i64) -> u8
-msstd_system_home_directory(out: *mut StrVal) -> u8
-msstd_system_hostname(out: *mut StrVal) -> u8
+msstd_system_get_priority(pid: i64, out: *mut i64, err: ErrSlot) -> u8
+msstd_system_home_directory(out: *mut StrVal, err: ErrSlot) -> u8
+msstd_system_hostname(out: *mut StrVal, err: ErrSlot) -> u8
 msstd_system_info_architecture(out: *mut StrVal)
 msstd_system_info_cpu_count() -> i64
 msstd_system_info_os(out: *mut StrVal)
-msstd_system_machine(out: *mut StrVal) -> u8
+msstd_system_machine(out: *mut StrVal, err: ErrSlot) -> u8
 msstd_system_metrics_available_memory() -> i64
 msstd_system_metrics_available_parallelism() -> i64
 msstd_system_metrics_free_memory() -> i64
 msstd_system_metrics_load_average(window: i64) -> f64
-msstd_system_metrics_status() -> u8
+msstd_system_metrics_status(err: ErrSlot) -> u8
 msstd_system_metrics_total_memory() -> i64
 msstd_system_metrics_uptime() -> i64
 msstd_system_network_interfaces_address(i: i64, out: *mut StrVal)
@@ -822,15 +820,15 @@ msstd_system_network_interfaces_mac(i: i64, out: *mut StrVal)
 msstd_system_network_interfaces_name(i: i64, out: *mut StrVal)
 msstd_system_network_interfaces_netmask(i: i64, out: *mut StrVal)
 msstd_system_network_interfaces_scope_id(i: i64) -> i64
-msstd_system_network_interfaces_status() -> u8
-msstd_system_os_release(out: *mut StrVal) -> u8
+msstd_system_network_interfaces_status(err: ErrSlot) -> u8
+msstd_system_os_release(out: *mut StrVal, err: ErrSlot) -> u8
 msstd_system_os_type(out: *mut StrVal)
-msstd_system_os_version(out: *mut StrVal) -> u8
-msstd_system_set_priority(pid: i64, priority: i64) -> u8
+msstd_system_os_version(out: *mut StrVal, err: ErrSlot) -> u8
+msstd_system_set_priority(pid: i64, priority: i64, err: ErrSlot) -> u8
 msstd_system_user_info_gid() -> i64
 msstd_system_user_info_home(out: *mut StrVal)
 msstd_system_user_info_shell(out: *mut StrVal)
-msstd_system_user_info_status() -> u8
+msstd_system_user_info_status(err: ErrSlot) -> u8
 msstd_system_user_info_uid() -> i64
 msstd_system_user_info_username(out: *mut StrVal)
 msstd_system_working_directory(out: *mut StrVal)
@@ -848,13 +846,12 @@ msstd_terminal_event_kind() -> i64
 msstd_terminal_event_rows() -> i64
 msstd_terminal_event_shift() -> u8
 msstd_terminal_event_text(out: *mut StrVal)
-msstd_terminal_failure_message(out: *mut StrVal)
-msstd_terminal_raw_mode(alternate_screen: u8, out: *mut *mut ObjCell<Raw>) -> u8
+msstd_terminal_raw_mode(alternate_screen: u8, out: *mut *mut ObjCell<Raw>, err: ErrSlot) -> u8
 msstd_terminal_raw_terminal_close(h: *const ObjCell<Raw>)
-msstd_terminal_raw_terminal_erase(h: *const ObjCell<Raw>, region: i64) -> u8
-msstd_terminal_raw_terminal_move_cursor(h: *const ObjCell<Raw>, row: i64, column: i64) -> u8
+msstd_terminal_raw_terminal_erase(h: *const ObjCell<Raw>, region: i64, err: ErrSlot) -> u8
+msstd_terminal_raw_terminal_move_cursor(h: *const ObjCell<Raw>, row: i64, column: i64, err: ErrSlot) -> u8
 msstd_terminal_raw_terminal_next_event(h: *const ObjCell<Raw>, has_timeout: HasRaw, timeout_ns: i64) -> u8
-msstd_terminal_raw_terminal_show_cursor(h: *const ObjCell<Raw>, visible: u8) -> u8
+msstd_terminal_raw_terminal_show_cursor(h: *const ObjCell<Raw>, visible: u8, err: ErrSlot) -> u8
 msstd_terminal_raw_terminal_size_columns(h: *const ObjCell<Raw>) -> i64
 msstd_terminal_raw_terminal_size_rows(h: *const ObjCell<Raw>) -> i64
 msstd_terminal_raw_terminal_size_status(h: *const ObjCell<Raw>) -> u8
