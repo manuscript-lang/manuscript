@@ -120,13 +120,13 @@ pub struct Program {
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
     /// Lending calls whose result the caller owns, by module file and call node.
-    pub owned_lends: Rc<HashMap<(Name, NodeId), crate::ownership::OwnedLend>>,
+    pub owned_borrows: Rc<HashMap<(Name, NodeId), crate::ownership::OwnedBorrow>>,
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
     /// identity. Filled together with `borrows`.
     pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
-    /// Parameters each callable consumes (moves, stores or returns), by module file and node, for
+    /// Parameters each callable moving_params (moves, stores or returns), by module file and node, for
     /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
-    pub consumes: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
+    pub moving_params: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
     /// Boolean per-node ownership facts in a dense table (`ownership::NodeFacts`).
     pub node_facts: Rc<crate::ownership::NodeFacts>,
     /// Boolean per-binding ownership facts in a dense table (`ownership::BindingFlags`).

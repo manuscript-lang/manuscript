@@ -522,7 +522,7 @@ pub fn source_frame(
                 return None;
             }
             if is_source(pc) {
-                // The generated walker consumes this first source frame. A
+                // The generated walker moving_params this first source frame. A
                 // missing anchor must never grant it a fresh/full budget.
                 return Some((pc, sp, fp, budget.remaining()?));
             }
@@ -556,6 +556,14 @@ pub fn source_frame(
         }
     }
     None
+}
+
+/// Whether native unwind metadata covers `pc`: runtime and system code has it, generated code
+/// does not.
+pub fn has_unwind_info(pc: usize) -> bool {
+    let mut image = 0;
+    // SAFETY: a lookup only reads the loaded images' function tables.
+    unsafe { !RtlLookupFunctionEntry(pc, &mut image, core::ptr::null_mut()).is_null() }
 }
 
 /// A handle that lets one thread read another's registers.

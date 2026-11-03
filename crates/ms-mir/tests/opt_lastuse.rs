@@ -114,10 +114,10 @@ b3(%r: opt<str>):
 "#;
 
 /// A map read in place (`let x = m.get(k)` lowers to the entry pointer, a `load` and
-/// `opt.view`) keeps the map alive until the lent optional's last use: the pointer and the
+/// `opt.view`) keeps the map alive until the borrowed optional's last use: the pointer and the
 /// values read through it belong to the map's family, so `drop %m` cannot move above them.
 #[test]
-fn a_lent_entry_keeps_its_container_alive() {
+fn a_borrowed_entry_keeps_its_container_alive() {
     let m = optimized(LENT);
     let all = ops(&m, "main");
     assert!(!all[0].contains(&Op::Drop), "{all:?}");
@@ -283,12 +283,12 @@ entry @main
 fn @main() -> int export {
 b0:
   %lit: str = str "a"
-  %k: str = copy %lit
+  %k: str = clone %lit
   %out: ptr = slot str
   %c: int = call.rt @msrt_fill (%k, %out)
   %t: str = take str %out
   br b1(%t)
-b1(%p: own str):
+b1(%p: move str):
   drop %p
   drop %k
   ret %c

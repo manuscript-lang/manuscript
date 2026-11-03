@@ -451,7 +451,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
     }
 
-    fn copy_value(&mut self, ty: Ty, vs: &[Value]) -> Vs {
+    fn clone_value(&mut self, ty: Ty, vs: &[Value]) -> Vs {
         let m = self.g.m;
         if !m.needs_drop(ty) {
             return vs.to_vec();
@@ -486,7 +486,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Fn(..) => vec![self.clone_obj(vs[0])],
             TyKind::Obj(n, _) if !n.is_map_or_set() => vec![self.clone_obj(vs[0])],
             _ => {
-                let id = self.g.glue(Glue::Copy, ty);
+                let id = self.g.glue(Glue::Clone, ty);
                 self.call_id(id, vs)
             }
         }
@@ -504,7 +504,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.glue_drop(ty, &params);
                 self.b.ins().return_(&[]);
             }
-            Glue::Copy => {
+            Glue::Clone => {
                 let out = self.glue_copy(ty, &params);
                 self.b.ins().return_(&out);
             }
@@ -557,7 +557,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let mut copies = Vec::new();
                 for (cty, (off, leaves)) in caps.iter().zip(&layouts) {
                     let vs = self.load_leaves(src, *off, leaves);
-                    copies.push(self.copy_value(*cty, &vs));
+                    copies.push(self.clone_value(*cty, &vs));
                 }
                 let obj = self.alloc(total);
                 for at in [0, 8, CLOSURE_CODE] {
@@ -580,11 +580,11 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.free(blk);
                 self.b.ins().return_(&[]);
             }
-            Glue::BlockCopy => {
+            Glue::BlockClone => {
                 // Interface payload block holding a `ty` value.
                 let leaves = self.g.lay.leaves(ty);
                 let vs = self.load_leaves(params[0], 0, &leaves);
-                let copied = self.copy_value(ty, &vs);
+                let copied = self.clone_value(ty, &vs);
                 let blk = self.alloc(mem_layout(&leaves).size as i64);
                 self.store_leaves(blk, 0, &leaves, &copied);
                 self.b.ins().return_(&[blk]);
@@ -600,7 +600,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             Glue::SlotCopy => {
                 let leaves = self.g.lay.leaves(ty);
                 let vs = self.load_leaves(params[0], 0, &leaves);
-                let out = self.copy_value(ty, &vs);
+                let out = self.clone_value(ty, &vs);
                 self.store_leaves(params[1], 0, &leaves, &out);
                 self.b.ins().return_(&[]);
             }
@@ -718,7 +718,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Alt(a) => self.glue_drop_alt(ty, a, vs),
             TyKind::Iface(_) => {
                 // The vtable word's low bits say what the value owns: 0 the box and its payload
-                // (vtable[0] is the payload destructor), 1 only the box (`iface.lend`), 2
+                // (vtable[0] is the payload destructor), 1 only the box (`iface.borrow`), 2
                 // nothing (`iface.view`).
                 let (data, vt) = (vs[0], vs[1]);
                 let tag = self.b.ins().band_imm_s(vt, 3);
@@ -730,8 +730,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let sr = s.b.import_signature(sig);
                     s.b.ins().call_indirect(sr, f, &[data]);
                 });
-                let lent = self.b.ins().icmp_imm_s(IntCC::Equal, tag, 1);
-                self.if_then(lent, |s| s.free(data));
+                let borrowed = self.b.ins().icmp_imm_s(IntCC::Equal, tag, 1);
+                self.if_then(borrowed, |s| s.free(data));
             }
             _ => {}
         }
@@ -1013,7 +1013,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     continue;
                 }
                 let fv: Vs = idx.iter().map(|k| sv[*k]).collect();
-                let cv = self.copy_value(*fty, &fv);
+                let cv = self.clone_value(*fty, &fv);
                 for (k, v) in idx.iter().zip(cv) {
                     out[*k] = v;
                 }
@@ -1049,7 +1049,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Rec(_) => {
                 let mut out = Vec::new();
                 for (fty, at, w) in self.fields_of(ty) {
-                    out.extend(self.copy_value(fty, &vs[at..at + w]));
+                    out.extend(self.clone_value(fty, &vs[at..at + w]));
                 }
                 out
             }
@@ -1064,14 +1064,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.ins().brif(p, yes, &[], join, &[BlockArg::Value(p)]);
                 self.b.switch_to_block(yes);
                 let payload = self.load_leaves(p, 0, &leaves);
-                let c = self.copy_value(inner, &payload);
+                let c = self.clone_value(inner, &payload);
                 let q = self.alloc(size);
                 self.store_leaves(q, 0, &leaves, &c);
                 self.b.ins().jump(join, &[BlockArg::Value(q)]);
                 self.b.switch_to_block(join);
                 vec![self.b.block_params(join)[0]]
             }
-            TyKind::Opt(_) if self.g.lay.is_str_like(ty) => self.copy_value(ty, vs),
+            TyKind::Opt(_) if self.g.lay.is_str_like(ty) => self.clone_value(ty, vs),
             TyKind::Opt(inner) => {
                 if self.g.lay.opt_is_nullable(inner) {
                     // A `none` is null, which the clone entry call passes through.
@@ -1088,7 +1088,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let yes = self.b.create_block();
                     self.b.ins().brif(present, yes, &[], join, &bargs(&payload));
                     self.b.switch_to_block(yes);
-                    let c = self.copy_value(inner, &payload);
+                    let c = self.clone_value(inner, &payload);
                     self.b.ins().jump(join, &bargs(&c));
                     self.b.switch_to_block(join);
                     let mut out = vec![present];
@@ -1160,7 +1160,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let src = self.b.ins().iadd(ptr, off);
                 let dst = self.b.ins().iadd(np, off);
                 let ev = self.load_leaves(src, 0, &leaves);
-                let cv = self.copy_value(e, &ev);
+                let cv = self.clone_value(e, &ev);
                 self.store_leaves(dst, 0, &leaves, &cv);
                 let next = self.b.ins().iadd_imm_s(i, 1);
                 self.b.ins().jump(head, &[BlockArg::Value(next)]);
@@ -1213,7 +1213,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     continue;
                 }
                 let fv: Vs = idx.iter().map(|i| src[*i]).collect();
-                let cv = self.copy_value(*fty, &fv);
+                let cv = self.clone_value(*fty, &fv);
                 for (i, v) in idx.iter().zip(cv) {
                     out[*i] = v;
                 }
@@ -2231,7 +2231,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 // `unwrap` returns an owned value; `get` borrows.
                 if inst.op == Op::OptUnwrap {
-                    self.copy_value(inner, &payload)
+                    self.clone_value(inner, &payload)
                 } else {
                     payload
                 }
@@ -2338,7 +2338,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let addr = self.data_addr(id);
                 vec![blk, addr]
             }
-            Op::IfaceLend => {
+            Op::IfaceBorrow => {
                 // A box holding the borrowed leaves as they are; the tag says only the box is
                 // freed.
                 let Imm::Vtable(vt) = inst.imm else {
@@ -2371,10 +2371,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![self.b.ins().icmp(IntCC::Equal, have, want)]
             }
             Op::MoveOut => self.a(inst, 0),
-            Op::Copy => {
+            Op::Clone => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
-                self.copy_value(ty, &v)
+                self.clone_value(ty, &v)
             }
             Op::Drop => {
                 let ty = f.ty(inst.args[0]);

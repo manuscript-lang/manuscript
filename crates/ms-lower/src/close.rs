@@ -774,7 +774,7 @@ impl FnLower<'_> {
         let l = self.locals[&uid];
         let v = self.local_take(&l);
         self.release_leaves(v, &[], &split.moved);
-        // Every part is dropped or moved; this only consumes the record.
+        // Every part is dropped or moved; this only moving_params the record.
         let TyKind::Rec(r) = self.b.m.types.kind(l.ty).clone() else {
             return;
         };
@@ -1130,7 +1130,7 @@ impl FnLower<'_> {
     /// A variable to merge an owned value of type `ty` from several paths.
     fn owned_var(&mut self, ty: MTy) -> ms_mir::builder::Var {
         let mode = if self.b.m.needs_drop(ty) {
-            Mode::Own
+            Mode::Move
         } else {
             Mode::Borrow
         };

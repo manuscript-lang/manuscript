@@ -4,7 +4,7 @@
 //! through a block parameter moves it into a slot, calls, and moves it back on every pass:
 //!
 //! ```text
-//! b1(%p: own T):  ..  s = slot T;  put s, %p;  call.rt f(s, ..);  t = take T s;  br b1(t)
+//! b1(%p: move T):  ..  s = slot T;  put s, %p;  call.rt f(s, ..);  t = take T s;  br b1(t)
 //! ```
 //!
 //! When every use of the parameter is such a `put` into a slot of its own block, the value can
@@ -45,7 +45,7 @@ fn carry_one(f: &mut Func) -> bool {
     }
     for l in 1..f.blocks.len() {
         for k in 0..f.blocks[l].params.len() {
-            if f.blocks[l].params[k].mode != Mode::Own {
+            if f.blocks[l].params[k].mode != Mode::Move {
                 continue;
             }
             if let Some(pairs) = plan(f, Block(l as u32), k, &uses) {

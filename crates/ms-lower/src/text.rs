@@ -152,7 +152,7 @@ fn element_text(
     let child = b.binop(Op::IAdd, depth, one);
     let limit = b.iconst(MAX_TEXT_DEPTH);
     let too_deep = b.icmp(Cc::Ge, child, limit);
-    let out = b.declare_var(MTy::STR, Mode::Own);
+    let out = b.declare_var(MTy::STR, Mode::Move);
     let (cut, fmt, join) = (b.new_block(), b.new_block(), b.new_block());
     b.br_if(too_deep, cut, &[], fmt, &[]);
     b.seal_block(cut);
@@ -160,7 +160,7 @@ fn element_text(
     b.switch_to(cut);
     let dots = b.str_lit("...");
     let dots = b
-        .emit(Op::Copy, &[dots], Imm::None, Some(MTy::STR))
+        .emit(Op::Clone, &[dots], Imm::None, Some(MTy::STR))
         .expect("copy");
     b.def_var(out, dots);
     b.br(join, &[]);
@@ -175,7 +175,7 @@ fn element_text(
     let txt = if owned {
         txt
     } else {
-        b.emit(Op::Copy, &[txt], Imm::None, Some(MTy::STR))
+        b.emit(Op::Clone, &[txt], Imm::None, Some(MTy::STR))
             .expect("copy")
     };
     b.def_var(out, txt);
@@ -484,7 +484,7 @@ pub(crate) fn build_format(
             };
             let lit = b.str_lit(text);
             let r = b
-                .emit(Op::Copy, &[lit], Imm::None, Some(MTy::STR))
+                .emit(Op::Clone, &[lit], Imm::None, Some(MTy::STR))
                 .expect("copy");
             b.ret(Some(r));
         }

@@ -87,7 +87,7 @@ fn rows_of_copy(rows: List[Int]) Int:
     return rows.length()
 ```
 
-- Each function above consumes the record; `r.title` stays usable after `r.rows` moved because fields are tracked separately. Using `r.rows` again, or the whole `r`, after the move is `is moved here but used again`; `r.rows = value` makes the field usable again.
+- Each function above moving_params the record; `r.title` stays usable after `r.rows` moved because fields are tracked separately. Using `r.rows` again, or the whole `r`, after the move is `is moved here but used again`; `r.rows = value` makes the field usable again.
 - It applies to owned fields (strings, lists, records, resources) of a `let` binding or parameter. Elements (`xs[i]`), `ref` fields, borrowed values, `var` bindings and parameters, `for` variables, closure captures, and records that declare `close` still need `.clone()` or a whole-value move.
 - `let x = r.rows` stays a borrow of the field; pass `r.rows` directly to the consuming call or `return` instead.
 - A parameter with a field moved out is consumed: the caller gives the record up (`.clone()` at the call keeps it).

@@ -144,7 +144,7 @@ impl FnLower<'_> {
                 "name" => {
                     let n = self.b.rec_get(raw_id, 0, raw);
                     self.b
-                        .emit(Op::Copy, &[n], Imm::None, Some(MTy::STR))
+                        .emit(Op::Clone, &[n], Imm::None, Some(MTy::STR))
                         .expect("copy")
                 }
                 "directory" | "symlink" | "regular" | "fifo" | "socket" | "block_device"
@@ -243,7 +243,7 @@ impl FnLower<'_> {
             let lit = self.b.str_lit(key);
             let key = self
                 .b
-                .emit(Op::Copy, &[lit], Imm::None, Some(MTy::STR))
+                .emit(Op::Clone, &[lit], Imm::None, Some(MTy::STR))
                 .expect("copy");
             map = self.map_insert(map, key, value)?;
         }

@@ -28,7 +28,7 @@ pub enum Class {
     /// Duplicated implicitly: scalars, records of those,
     /// and handle types whose identity is shared (native handles).
     Copy,
-    /// One owner. Moves at its last use into a consuming position; `.clone()`
+    /// One owner. Moves at its last use into a moving position; `.clone()`
     /// duplicates it explicitly. Strings, lists, maps, sets, bytes, records and
     /// alternatives holding any of those, recursive types, closures,
     /// interface values and unconstrained type parameters.

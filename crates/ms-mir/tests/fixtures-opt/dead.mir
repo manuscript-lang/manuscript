@@ -32,7 +32,7 @@ b0:
   %k: int = iconst 10
   %f: fn(int) -> int = closure.new @add %k
   br b1(%f)
-b1(%g: own fn(int) -> int):
+b1(%g: move fn(int) -> int):
   %x: int = iconst 5
   %r: int = call.ind (%g, %x)
   drop %g

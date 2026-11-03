@@ -65,10 +65,10 @@ An interface value is `{data, vtable}`; `data` is a heap box of the payload's le
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-check/src/ownership/{walk,mod}.rs`, `checker.rs`, `lib.rs` | `wrapped_lend`, `result_payload`, `try_return`, `plain_lent` withdrawal, `view_wraps` facts | `tests/ownership/accept/wrapped_lends.ms`, `reject/wrapped_lend_held.ms` |
+| `crates/ms-check/src/ownership/{walk,mod}.rs`, `checker.rs`, `lib.rs` | `wrapped_lend`, `result_payload`, `try_return`, `plain_lent` withdrawal, `view_wraps` facts | `tests/ownership/accept/wrapped_borrows.ms`, `reject/wrapped_borrow_held.ms` |
 | `crates/ms-mir` (`ir.rs`, `builder.rs`, `verify.rs`, `interp.rs`) | `Op::AltView` | `cargo test -p ms-mir`, verifier rule |
 | `crates/ms-clif/src/lower.rs` | `AltView` lowers like `AltNew` | `make count-check`, `make leak-check`, valgrind on the e2e fixture, Debug and Release |
-| `crates/ms-lower` (`cx.rs`, `expr.rs`, `call.rs`, `matching.rs`) | view ops where `view_wraps` says so | `tests/e2e/testdata/accept/wrapped-lends.ms`, conformance `e2e/accept/wrapped-lends` |
+| `crates/ms-lower` (`cx.rs`, `expr.rs`, `call.rs`, `matching.rs`) | view ops where `view_wraps` says so | `tests/e2e/testdata/accept/wrapped-borrows.ms`, conformance `e2e/accept/wrapped-borrows` |
 | fixtures | 12 `.clone()` removed (`result-argument-inference.ms`, `try-result-payloads.ms`) | `make conform`, `make e2e` |
 | `OWNERSHIP.md`, `crates/DESIGN.md`, `references.md`, wiki | the wrapping rule and what still clones | `make docs-check`, `make repo-check` |
 | `crates/ms-mir` (`ir.rs`, `builder.rs`, `verify.rs`, `interp.rs`, `opt/{copyelim,lastuse}.rs`) | `Op::IfaceLend`, `Op::IfaceView`, `Func.ret_view`, `result_views`, view taint | `cargo test -p ms-mir`, `make count-check` |

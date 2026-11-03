@@ -53,7 +53,7 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
 }
 
 /// Whether the runtime function `sym` takes ownership of its parameter `i`: a function value an
-/// extern keeps after it returns (the checker consumes the argument; the runtime drops it once).
+/// extern keeps after it returns (the checker moving_params the argument; the runtime drops it once).
 pub(crate) fn hands_over(sym: &str, i: usize) -> bool {
     ms_check::stdlib::keeps_callbacks(&format!("extern:{sym}"))
         && rt_sig(sym).is_some_and(|sig| {
@@ -524,7 +524,7 @@ impl FnLower<'_> {
                         || wire
                     {
                         // A generic element slot: pass the address of the value in memory.
-                        // `*mut` hands the value over; `*const` is lent.
+                        // `*mut` hands the value over; `*const` is borrowed.
                         let x = if input.wrapped {
                             // The checker converted the argument to an optional element.
                             let o = self.owned(x);
@@ -539,7 +539,7 @@ impl FnLower<'_> {
                             .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
                             .expect("slot");
                         if self.needs_drop(t) && p.ty.starts_with("*const ") {
-                            // Only read by the runtime: lend the value itself.
+                            // Only read by the runtime: borrow the value itself.
                             let v = self.borrow(x);
                             self.b.emit(Op::Store, &[slot, v], Imm::None, None);
                         } else if self.needs_drop(t) {
@@ -1223,10 +1223,10 @@ impl FnLower<'_> {
         Ok(self.b.rec_new(er, &[message, kind_value, details]))
     }
 
-    /// An owned copy of the borrowed string `v`.
+    /// An clone of the borrowed string `v`.
     fn owned_copy(&mut self, v: Value) -> Value {
         self.b
-            .emit(Op::Copy, &[v], Imm::None, Some(MTy::STR))
+            .emit(Op::Clone, &[v], Imm::None, Some(MTy::STR))
             .expect("copy")
     }
 

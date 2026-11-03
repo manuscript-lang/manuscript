@@ -11,7 +11,7 @@ A machine value must keep the behavior its Manuscript type promises: `Int` arith
 | --- | --- |
 | Checked `Int` | `i64` with checked operations that fault on overflow |
 | Valid UTF-8 `String` | Validated construction and conversion; header, length, bytes |
-| Records and collections | Flattened record fields; owned collection headers and buffers; `.clone()` makes a deep copy (the current spelling of planned `.copy()`) |
+| Records and collections | Flattened record fields; owned collection headers and buffers; `.clone()` makes a deep clone |
 | Tagged alternatives | Tag and payload slots; recursive alternatives use a heap pointer; exhaustive frontend checking |
 | Optional and `Result` | Null pointer or `{ present, value }`; tag plus payload |
 | Value equality and hashing | Direct comparison for scalars, strings, handles; otherwise `eq`, `hash`, `copy` entries in a compiler-emitted element descriptor |

@@ -11,7 +11,7 @@
         "phase": "type",
         "message": "cannot change `m` while `x` borrows it (binding of a part of it, at 8:9); finish using `x` before this, or give `x` its own value by ending its initializer with `.clone()`",
         "position": {
-          "file": "diag-lent-entry-held-across-remove.ms",
+          "file": "diag-borrowed-entry-held-across-remove.ms",
           "line": 9,
           "column": 5,
           "offset": 213
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-lent-entry-held-across-remove.ms:9:5: type: cannot change `m` while `x` borrows it (binding of a part of it, at 8:9); finish using `x` before this, or give `x` its own value by ending its initializer with `.clone()`\n   |\n 9 |     m.remove(\"a\")\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-borrowed-entry-held-across-remove.ms:9:5: type: cannot change `m` while `x` borrows it (binding of a part of it, at 8:9); finish using `x` before this, or give `x` its own value by ending its initializer with `.clone()`\n   |\n 9 |     m.remove(\"a\")\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

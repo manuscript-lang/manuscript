@@ -48,7 +48,7 @@ const HOLDS_STRING: &str = r#"
 fn @main() -> int {
 b0:
   %s: str = str "held"
-  %s2: str = copy %s
+  %s2: str = clone %s
   %n: int = iconst 5
   %r: int = call.rt @msrt_task_sleep (%n)
   drop %s2
@@ -83,7 +83,7 @@ fn skips_instructions_that_cannot_be_cancelled_or_fault() {
 fn @main() -> int {
 b0:
   %s: str = str "held"
-  %t: str = copy %s
+  %t: str = clone %s
   %a: int = iconst 2
   %b: int = iadd %a, %a
   drop %t
@@ -100,7 +100,7 @@ fn registers_an_owned_value_around_a_faulting_operation() {
 fn @main() -> int {
 b0:
   %s: str = str "held"
-  %t: str = copy %s
+  %t: str = clone %s
   %a: int = iconst 2
   %b: int = iadd.chk %a, %a
   %c: int = iadd.chk %b, %a
@@ -126,7 +126,7 @@ fn registers_an_owned_value_before_an_explicit_fault() {
 fn @main() -> int {
 b0:
   %s: str = str "held"
-  %t: str = copy %s
+  %t: str = clone %s
   fault index_out_of_range
 }
 "#;
@@ -153,7 +153,7 @@ b0:
 fn @main() -> int {
 b0:
   %s: str = str "held"
-  %t: str = copy %s
+  %t: str = clone %s
   %h: int = cleanup.push @close %t
   %n: int = iconst 5
   %r: int = call.rt @msrt_task_sleep (%n)
@@ -202,7 +202,7 @@ const SLOT_CALLER: &str = r#"
 fn @main() -> int {
 b0:
   %s: str = str "held"
-  %t: str = copy %s
+  %t: str = clone %s
   %slot: ptr = slot str
   put %slot, %t
   %r: int = call @hold (%slot)
@@ -246,7 +246,7 @@ fn @hold(%slot: ptr) -> int {{
 b0:
   %s: str = take str %slot
   br b1(%s)
-b1(%own: own str):
+b1(%own: move str):
   %n: int = iconst 5
   %r: int = call.rt @msrt_task_sleep (%n)
   put %slot, %own
@@ -282,7 +282,7 @@ b0:
   %n: int = iconst 5
   %r: int = call.rt @msrt_task_sleep (%n)
   %lit: str = str "new"
-  %u: str = copy %lit
+  %u: str = clone %lit
   put %slot, %u
   ret %r
 }}
@@ -302,7 +302,7 @@ const LOOP_HOLDING_STRING: &str = r#"
 fn @main() -> int {
 b0:
   %s: str = str "held"
-  %t: str = copy %s
+  %t: str = clone %s
   %zero: int = iconst 0
   br b1(%zero)
 b1(%i: int):
@@ -356,7 +356,7 @@ b1(%i: int):
   br_if %more, b2(), b3()
 b2():
   %s: str = str "held"
-  %t: str = copy %s
+  %t: str = clone %s
   %one: int = iconst 1
   %next: int = iadd.chk %i, %one
   drop %t
@@ -387,9 +387,9 @@ b0:
 fn @main() -> int {
 b0:
   %s: str = str "held"
-  %t: str = copy %s
+  %t: str = clone %s
   %w: str = str "with"
-  %v: str = copy %w
+  %v: str = clone %w
   %a: int = iconst 2
   %b: int = iadd.chk %a, %a
   %h: int = cleanup.push @close %v
@@ -423,7 +423,7 @@ b0:
 fn @main() -> int {
 b0:
   %b: str = str "held"
-  %s: str = copy %b
+  %s: str = clone %b
   %slot: ptr = slot str
   put %slot, %s
   %h: int = cleanup.push @close %slot

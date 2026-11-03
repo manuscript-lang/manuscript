@@ -18,7 +18,7 @@
 //! A value a function parks while it sits in a stack slot (`put` into a slot, a call that takes it
 //! out and puts it back, `take`) is registered the same way when every callee that receives the
 //! slot only borrows what it takes from it (a "cell"). The registration keeps a bitwise copy of
-//! the slot's contents, which stays valid because no such callee consumes or moves a part out of
+//! the slot's contents, which stays valid because no such callee moving_params or moves a part out of
 //! them. Any other use of the slot leaves its contents to leak.
 //!
 //! Only programs that start tasks or workers are rewritten. A value moved out of a field and
@@ -201,7 +201,7 @@ fn closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
         "unwind.drop",
         vec![Param {
             ty,
-            mode: Mode::Own,
+            mode: Mode::Move,
         }],
         Ty::UNIT,
     );
@@ -232,8 +232,8 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
     if let Some(ty) = slot_close_value(m, close) {
         return slot_with_closer(m, cx, close, ty);
     }
-    // Closing that consumes the value, or yields one that needs a drop, leaves nothing to add.
-    if param.mode == Mode::Own || callee.ret != Ty::UNIT {
+    // Closing that moving_params the value, or yields one that needs a drop, leaves nothing to add.
+    if param.mode == Mode::Move || callee.ret != Ty::UNIT {
         return None;
     }
     let ty = param.ty;
@@ -256,7 +256,7 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
         "unwind.close_drop",
         vec![Param {
             ty,
-            mode: Mode::Own,
+            mode: Mode::Move,
         }],
         Ty::UNIT,
     );
@@ -381,7 +381,7 @@ fn analyze(
                 .args
                 .iter()
                 .zip(&modes)
-                .filter(|(a, mode)| **mode == Mode::Own && owned_def[a.index()])
+                .filter(|(a, mode)| **mode == Mode::Move && owned_def[a.index()])
                 .map(|(a, _)| a.0)
                 .collect();
             for c in &consumed {
@@ -438,7 +438,7 @@ fn analyze(
             let dest = &f.blocks[t.block.index()];
             let mut after = live.clone();
             for (a, p) in t.args.iter().zip(&dest.params) {
-                if p.mode == Mode::Own && owned_def[a.index()] {
+                if p.mode == Mode::Move && owned_def[a.index()] {
                     after.remove(&a.0);
                 }
             }
@@ -652,7 +652,7 @@ fn consumed_inside(m: &Module, f: &Func, owned_def: &[bool], body: &[usize]) -> 
         for inst in &blk.insts {
             let modes = crate::verify::arg_modes(m, inst);
             for (a, mode) in inst.args.iter().zip(&modes) {
-                if *mode == Mode::Own && owned_def[a.index()] {
+                if *mode == Mode::Move && owned_def[a.index()] {
                     used.insert(a.0);
                 }
             }
@@ -662,7 +662,7 @@ fn consumed_inside(m: &Module, f: &Func, owned_def: &[bool], body: &[usize]) -> 
                 return;
             }
             for (a, p) in t.args.iter().zip(&f.blocks[t.block.index()].params) {
-                if p.mode == Mode::Own && owned_def[a.index()] {
+                if p.mode == Mode::Move && owned_def[a.index()] {
                     used.insert(a.0);
                 }
             }
@@ -682,7 +682,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
     let mut from_slot: BTreeSet<u32> = BTreeSet::new();
     for b in &f.blocks {
         for p in &b.params {
-            owned_def[p.value.index()] = rc(p.value) && p.mode == Mode::Own;
+            owned_def[p.value.index()] = rc(p.value) && p.mode == Mode::Move;
         }
         for i in &b.insts {
             // A value taken out of a slot the caller passed in stays the caller's: the slot still
@@ -691,7 +691,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
             let from_caller_slot = i.op == Op::Take
                 && (i.args.first().is_some_and(|a| slot_params.contains(&a.0))
                     || i.res.is_some_and(|r| covered_takes.contains(&r.0)));
-            if let (Some(r), Some(Mode::Own)) = (i.res, m.result_mode(f, i)) {
+            if let (Some(r), Some(Mode::Move)) = (i.res, m.result_mode(f, i)) {
                 owned_def[r.index()] = !from_caller_slot;
                 if from_caller_slot {
                     from_slot.insert(r.0);
@@ -1101,7 +1101,7 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
             let view = inst.op == Op::Load && inst.args.first() == Some(&p);
             if (from_held || view)
                 && !taken.contains(&r.0)
-                && m.result_mode(f, inst) != Some(Mode::Own)
+                && m.result_mode(f, inst) != Some(Mode::Move)
                 && derived.insert(r.0)
             {
                 grew = true;

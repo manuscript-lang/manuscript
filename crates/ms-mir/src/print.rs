@@ -109,8 +109,8 @@ pub fn quote(s: &str) -> String {
 }
 
 fn mode_prefix(m: &Module, ty: Ty, mode: Mode) -> &'static str {
-    if mode == Mode::Own && m.needs_drop(ty) {
-        "own "
+    if mode == Mode::Move && m.needs_drop(ty) {
+        "move "
     } else {
         ""
     }

@@ -2087,7 +2087,7 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append_int(b: *mut VecVal, n: i6
     }
 }
 
-/// Builds the string and consumes the builder (its buffer is freed).
+/// Builds the string and moving_params the builder (its buffer is freed).
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal) {
@@ -2156,7 +2156,7 @@ mod tests {
     fn strbuilder_freeze_adopts_long_buffers() {
         for len in [0usize, 1, 15, 16, 17, 100, 5000] {
             for cap_extra in [0usize, 1, len, 10 * len + 7] {
-                // SAFETY: the builder is a fresh owned buffer that freeze consumes.
+                // SAFETY: the builder is a fresh owned buffer that freeze moving_params.
                 unsafe {
                     let mut b = EMPTY;
                     let want: Vec<u8> = (0..len).map(|i| b'a' + (i % 26) as u8).collect();

@@ -238,7 +238,7 @@ fn plain_int_order(m: &Module, g: FuncId) -> Option<bool> {
             for inst in &bd.insts {
                 let (res, v) = match (inst.op, inst.imm) {
                     (Op::IConst, Imm::Int(i)) => (inst.res?, V::Num(i)),
-                    (Op::Copy, _) => (inst.res?, *env.get(inst.args.first()?)?),
+                    (Op::Clone, _) => (inst.res?, *env.get(inst.args.first()?)?),
                     (Op::ICmp, Imm::Cc(cc)) => {
                         let (l, r) =
                             match (env.get(inst.args.first()?)?, env.get(inst.args.get(1)?)?) {
@@ -327,7 +327,7 @@ fn rewrite_plain(f: &mut Func, bi: usize, ii: usize, ext: crate::ir::ExtId, desc
     let call = f.blocks[bi].insts[ii].clone();
     let out = call.res.expect("sorted result");
     let copy_out = Inst {
-        op: Op::Copy,
+        op: Op::Clone,
         args: vec![call.args[0]],
         imm: Imm::None,
         res: Some(out),
@@ -374,13 +374,13 @@ fn rewrite(f: &mut Func, bi: usize, ii: usize, sort: FuncId, elem: Ty) {
         )
     };
     let copy_out = Inst {
-        op: Op::Copy,
+        op: Op::Clone,
         args: vec![list],
         imm: Imm::None,
         res: Some(out),
         loc: call.loc,
     };
-    let (copy_buf, buf) = new(f, Op::Copy, vec![out], Imm::None, Some(list_ty));
+    let (copy_buf, buf) = new(f, Op::Clone, vec![out], Imm::None, Some(list_ty));
     let buf = buf.expect("buffer");
     let (len, len_v) = new(f, Op::ListLen, vec![out], Imm::None, Some(Ty::INT));
     let (zero, zero_v) = new(f, Op::IConst, vec![], Imm::Int(0), Some(Ty::INT));

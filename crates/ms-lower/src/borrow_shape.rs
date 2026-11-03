@@ -12,7 +12,7 @@ use ms_mir::ir::{Cc, Imm, Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::{Expr, ExprKind};
 
-/// A read whose result can be lent.
+/// A read whose result can be borrowed.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Shape {
     /// `m.get(key)` on a `Map`.
@@ -40,11 +40,11 @@ impl Entry {
 }
 
 impl<'a> FnLower<'a> {
-    /// Whether `e` is a container read whose result can be lent: `m.get(k)` on a `Map` with a key
+    /// Whether `e` is a container read whose result can be borrowed: `m.get(k)` on a `Map` with a key
     /// of the map's key type, or `xs.first()` / `xs.last()` on a `List`, in a function the
     /// ownership checker vetted, with a payload `opt.view` can hold (not a boxed optional).
     /// Emits nothing.
-    pub(crate) fn lent_shape(&mut self, e: &Expr) -> Result<Option<Shape>, Error> {
+    pub(crate) fn borrowed_shape(&mut self, e: &Expr) -> Result<Option<Shape>, Error> {
         if !self.ownership_checked() {
             return Ok(None);
         }
@@ -83,18 +83,18 @@ impl<'a> FnLower<'a> {
         Ok(Some(shape))
     }
 
-    /// Evaluates the container and key of a lent read: the presence test and the entry. `None`
+    /// Evaluates the container and key of a borrowed read: the presence test and the entry. `None`
     /// when evaluation ended the block.
-    pub(crate) fn lent_read(
+    pub(crate) fn borrowed_read(
         &mut self,
         shape: Shape,
         e: &Expr,
     ) -> Result<Option<(Value, Entry)>, Error> {
         let ExprKind::Call { callee, args } = &e.kind else {
-            return Err(Error::new("a lent read is a call"));
+            return Err(Error::new("a borrowed read is a call"));
         };
         let ExprKind::Member { left, .. } = &callee.kind else {
-            return Err(Error::new("a lent read is a method call"));
+            return Err(Error::new("a borrowed read is a method call"));
         };
         let recv = self.expr(left)?;
         if self.dead {
@@ -111,8 +111,8 @@ impl<'a> FnLower<'a> {
             let ty = self.map_value_type(recv)?;
             let (kd, vd) = self.map_descs(mt)?;
             let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
-            // The lookup only reads the key, so it lends the key itself.
-            let ks = self.lend_slot(key);
+            // The lookup only reads the key, so it borrows the key itself.
+            let ks = self.borrow_slot(key);
             let sym = self
                 .word_map_symbol("msrt_map_get_ptr", mt)
                 .unwrap_or("msrt_map_get_ptr");
@@ -150,7 +150,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// The entry's value, a borrow. Emitted where `present` holds.
-    pub(crate) fn lent_payload(&mut self, entry: &Entry) -> Value {
+    pub(crate) fn borrowed_payload(&mut self, entry: &Entry) -> Value {
         match entry {
             Entry::Map { ptr, ty } => self
                 .b
@@ -163,18 +163,22 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// The read as a lent `Optional`: `opt.view` of the entry where present, else `opt.none`.
-    pub(crate) fn lent_optional(&mut self, present: Value, entry: &Entry) -> Result<Val, Error> {
+    /// The read as a borrowed `Optional`: `opt.view` of the entry where present, else `opt.none`.
+    pub(crate) fn borrowed_optional(
+        &mut self,
+        present: Value,
+        entry: &Entry,
+    ) -> Result<Val, Error> {
         let ty = entry.ty();
         let opt_ty = self.b.m.types.opt(ty);
-        let lend = self.needs_drop(ty);
+        let borrowed = self.needs_drop(ty);
         self.two_ways_mode(
             present,
             opt_ty,
             Mode::Borrow,
             &mut |s| {
-                let p = s.lent_payload(entry);
-                Ok(Some(if lend {
+                let p = s.borrowed_payload(entry);
+                Ok(Some(if borrowed {
                     s.b.opt_view(p)
                 } else {
                     s.b.opt_some(p)

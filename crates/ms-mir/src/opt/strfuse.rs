@@ -12,7 +12,7 @@
 //! its digits into the result: `f"w{i}"` builds no temporary string.
 //!
 //! `s = s.concat(piece)` lowers to a concat and a drop of the old `s`. When the drop follows
-//! with no use of `s` in between, `string_append` consumes `s` and grows it in place.
+//! with no use of `s` in between, `string_append` moving_params `s` and grows it in place.
 
 use crate::ir::{
     Block, ExternDef, ExternRole, Func, Imm, Inst, Loc, Mode, Module, Op, Param, Value,
@@ -507,13 +507,13 @@ fn append_in_place(m: &mut Module, fi: usize) -> bool {
     let mut owned = vec![false; f.values.len()];
     for b in &f.blocks[1..] {
         for p in &b.params {
-            owned[p.value.index()] = p.mode == Mode::Own;
+            owned[p.value.index()] = p.mode == Mode::Move;
         }
     }
     for b in &f.blocks {
         for i in &b.insts {
             if let Some(r) = i.res {
-                owned[r.index()] = m.result_mode(f, i) == Some(Mode::Own);
+                owned[r.index()] = m.result_mode(f, i) == Some(Mode::Move);
             }
         }
     }
@@ -546,7 +546,7 @@ fn append_in_place(m: &mut Module, fi: usize) -> bool {
         params: vec![
             Param {
                 ty: Ty::STR,
-                mode: Mode::Own,
+                mode: Mode::Move,
             },
             Param {
                 ty: Ty::STR,

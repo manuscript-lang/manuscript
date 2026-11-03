@@ -21,7 +21,7 @@ b0:
   %e: list<int> = list.new %cap
   %b0: Box = rec.new Box %e
   br head(%zero, %b0)
-head(%i: int, %box: own Box):
+head(%i: int, %box: move Box):
   %more: bool = icmp.lt %i, %three
   br_if %more, body(), done()
 body:

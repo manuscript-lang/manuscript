@@ -74,7 +74,7 @@ fn port(lookup: Result[Int, Error]) Int:
     return 8080
 ```
 
-`if var name = place[key]?:` borrows a map or list entry in place. `place[key]?` is the entry when it exists, and `name` is a mutable borrow of it: `if var entry = entries[key]?:` then `entry.count = entry.count + 1` changes the value in `entries`, and `if var n = counts[key]?: n += 1` updates `counts` without copying a scalar. A missing key or out-of-range index takes the `else` branch. The origin must be `var`, and nothing else may use it until the last use of `name`. `place[key]?` is written only here. `if var name = expression:` on any other value binds an owned copy of the payload.
+`if var name = place[key]?:` borrows a map or list entry in place. `place[key]?` is the entry when it exists, and `name` is a mutable borrow of it: `if var entry = entries[key]?:` then `entry.count = entry.count + 1` changes the value in `entries`, and `if var n = counts[key]?: n += 1` updates `counts` without copying a scalar. A missing key or out-of-range index takes the `else` branch. The origin must be `var`, and nothing else may use it until the last use of `name`. `place[key]?` is written only here. `if var name = expression:` on any other value binds a clone of the payload.
 
 A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if let` to a two-arm `match` on a payload name and `none` (**MSL108**).
 

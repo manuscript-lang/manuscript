@@ -11,6 +11,7 @@
 use ms_rt as _;
 
 mod alias;
+mod borrow_shape;
 mod bound_alias;
 mod call;
 mod close;
@@ -27,7 +28,6 @@ mod httpserve;
 mod iface;
 mod iterate;
 mod json;
-mod lend;
 mod mapset;
 mod matching;
 mod mathops;

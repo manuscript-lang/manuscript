@@ -637,7 +637,7 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
             _ => Act::Keep,
         },
         Op::OptGet | Op::OptUnwrap => {
-            // A lent optional borrows its payload, so `opt.get` of it is the payload itself.
+            // A borrowed optional borrows its payload, so `opt.get` of it is the payload itself.
             // `opt.unwrap` owns its result, so it keeps copying.
             if let (Op::OptGet, Some((Op::OptView, args, _))) = (inst.op, env.defs.get(&a(0))) {
                 return Act::Alias(args[0]);
@@ -827,7 +827,7 @@ fn phis(m: &Module, f: &mut Func) -> bool {
     for bi in 1..n {
         for (pi, p) in f.blocks[bi].params.iter().enumerate() {
             let droppable = m.needs_drop(f.ty(p.value));
-            if uses[p.value.index()] == 0 && (p.mode != Mode::Own || !droppable) {
+            if uses[p.value.index()] == 0 && (p.mode != Mode::Move || !droppable) {
                 drop_param[bi].push(pi);
                 continue;
             }
@@ -1126,7 +1126,7 @@ fn roundtrips(f: &mut Func) -> bool {
 
 /// A value put into a slot and taken straight back out (inlining a callee that receives its
 /// argument through a slot leaves `put S, v; r = take S`) is `v` itself: the pair is deleted and
-/// `r` renamed to `v`, which is then a value the analyses can follow. `put` consumes `v`, so `r`
+/// `r` renamed to `v`, which is then a value the analyses can follow. `put` moving_params `v`, so `r`
 /// takes over its one owning use, and only pure instructions may sit between the two.
 fn put_takes(f: &mut Func) -> bool {
     let mut subst: ValueMap<Value> = ValueMap::new();
@@ -1252,7 +1252,7 @@ fn dce(m: &Module, f: &mut Func) -> bool {
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate() {
             let Some(r) = inst.res else { continue };
-            if inst.op.info().effects.removable() && m.result_mode(f, inst) != Some(Mode::Own) {
+            if inst.op.info().effects.removable() && m.result_mode(f, inst) != Some(Mode::Move) {
                 removable[r.index()] = Some((bi, ii));
                 if uses[r.index()] == 0 {
                     work.push(r);
