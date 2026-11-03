@@ -269,7 +269,7 @@ The checker accepts these in a user `extern fn`. Records, alternatives, maps, op
   - a hold flag;
   - a pointer to a compiler-emitted invoke thunk for its type. The thunk is written once at the Cranelift IR level, which the LLVM backend translates. It converts `ms_value` arguments to the closure's own convention and back, and checks kinds and ranges.
 
-  The ownership pass treats the function as escaping, so it owns its captures (the rule the `@keeps` flag in `crates/ms-lower/rt_symbols.txt` applies to bundled natives).
+  The ownership pass treats the function as escaping, so it owns its captures (the rule the `KEPT_CALLBACKS` list in `crates/ms-check/src/stdlib.rs` applies to bundled natives).
 - **`ms_call`.**
   - It checks that the current thread is the `ms_fn`'s isolate and that an extern call is active, using a per-task count.
   - It runs the thunk under `msrt_guard_call` and `stop_shield` (ABI.md section 7, `fault.rs:85`). The guard's jump target is inside `ms_call`, so a fault skips only Manuscript frames.

@@ -10,7 +10,7 @@ Verify: exercise stored, bound, and generic calls that omit a defaulted argument
 
 ## Native receiver operations are derived from the declaration
 
-Verified: a bodiless inherent method of a standard type is a native receiver operation, found by the loader (`is_receiver_native` in `ms-check/src/stdlib.rs`); there is no table of bindings. Its native identity is the method name, so lowering tells receivers apart by type: a `native == "chars"` test also needs `str_recv`, and `abs`, `sign` and `compare` check `is_int` or `is_float`. `// ms: keeps` and `// ms: owns` on a runtime function replace name lists for kept callbacks and owned values (`@keeps`, `@owns` in `rt_symbols.txt`).
+Verified: a bodiless inherent method of a standard type is a native receiver operation, found by the loader (`is_receiver_native` in `ms-check/src/stdlib.rs`); there is no table of bindings. Its native identity is the method name, so lowering tells receivers apart by type: a `native == "chars"` test also needs `str_recv`, and `abs`, `sign` and `compare` check `is_int` or `is_float`. Kept callbacks and owned values stay Rust name lists (`KEPT_CALLBACKS`, `OWNING_VALUES` in `ms-check/src/stdlib.rs`): Chinmay declined `// ms:` markers and a parameter-level `move` modifier for them because they pull C ownership complexity into the language (2026-11-03). Add a runtime function that keeps a callback or owns its `value` to those lists.
 Apply when: adding a native method or a receiver-specific lowering arm; a name-only match collides with other receivers.
 Verify: `make conform`; `runtime_flags_come_from_the_symbol_table`.
 
