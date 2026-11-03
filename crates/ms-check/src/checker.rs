@@ -1,5 +1,6 @@
 //! The checker state and the module-level passes.
 
+use crate::ownership::places::Place;
 use crate::stdlib::{self, StdResult};
 use crate::syntax::*;
 use crate::types::*;
@@ -228,7 +229,7 @@ pub struct Checker {
     pub(crate) serial: usize,
     pub(crate) loops: usize,
     /// `(function, place)` of each `lock` guard that is still held.
-    pub(crate) held_locks: Vec<(usize, String, Name)>,
+    pub(crate) held_locks: Vec<(usize, Place, Name)>,
     pub(crate) test_function: usize,
     pub(crate) rejected_names: HashSet<Name>,
     pub(crate) unknown_type: bool,
