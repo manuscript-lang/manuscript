@@ -677,6 +677,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
     }
     let rc = |v: Value| m.needs_drop(f.ty(v));
     let slot_params: BTreeSet<u32> = f.blocks[0].params.iter().map(|p| p.value.0).collect();
+    let covered_takes = covered_slot_takes(m, f);
     let mut owned_def = vec![false; f.values.len()];
     let mut from_slot: BTreeSet<u32> = BTreeSet::new();
     for b in &f.blocks {
@@ -687,8 +688,9 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
             // A value taken out of a slot the caller passed in stays the caller's: the slot still
             // holds it while the call runs, and the caller (or its owner) drops it. Dropping it
             // here too would drop it twice.
-            let from_caller_slot =
-                i.op == Op::Take && i.args.first().is_some_and(|a| slot_params.contains(&a.0));
+            let from_caller_slot = i.op == Op::Take
+                && (i.args.first().is_some_and(|a| slot_params.contains(&a.0))
+                    || i.res.is_some_and(|r| covered_takes.contains(&r.0)));
             if let (Some(r), Some(Mode::Own)) = (i.res, m.result_mode(f, i)) {
                 owned_def[r.index()] = !from_caller_slot;
                 if from_caller_slot {
@@ -773,6 +775,129 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
             push_all(m, cx, f, &mut out, &values, loc);
         }
         f.blocks[bi].insts = out;
+    }
+    true
+}
+
+/// The results of `take`s from a local slot whose scope close is registered and not yet
+/// discarded, when the value is only borrowed until it is put back. The close drops what the
+/// slot holds, and the slot still holds the same value while the call runs; registering a
+/// drop for the taken value as well would run first and free it before that close uses it.
+/// The coverage ends at the discard, where the value is owned again.
+fn covered_slot_takes(m: &Module, f: &Func) -> BTreeSet<u32> {
+    let mut out = BTreeSet::new();
+    let slot_push = |inst: &Inst| match (inst.op, inst.imm) {
+        (Op::CleanupPush, Imm::Func(g)) if slot_close_value(m, g).is_some() => {
+            inst.args.first().map(|a| a.0)
+        }
+        _ => None,
+    };
+    if !f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .any(|i| slot_push(i).is_some())
+    {
+        return out;
+    }
+    let mut handle: HashMap<u32, u32> = HashMap::new();
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Some(slot), Some(h)) = (slot_push(inst), inst.res) {
+            handle.insert(h.0, slot);
+        }
+    }
+    // Slots covered on entry to each block: covered on every path that reaches it.
+    let step = |covered: &mut BTreeSet<u32>, inst: &Inst| match (inst.op, inst.imm) {
+        (Op::CleanupRun, _) => covered.clear(),
+        (Op::CallRt, Imm::Ext(e)) if inst.args.len() == 1 => {
+            if m.externs[e.index()].name == "msrt_cleanup_discard"
+                && let Some(slot) = handle.get(&inst.args[0].0)
+            {
+                covered.remove(slot);
+            }
+        }
+        _ => {
+            if let Some(slot) = slot_push(inst) {
+                covered.insert(slot);
+            }
+        }
+    };
+    let mut entry: Vec<Option<BTreeSet<u32>>> = vec![None; f.blocks.len()];
+    entry[0] = Some(BTreeSet::new());
+    let order = f.rpo();
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for b in &order {
+            let Some(mut covered) = entry[b.index()].clone() else {
+                continue;
+            };
+            for inst in &f.blocks[b.index()].insts {
+                step(&mut covered, inst);
+            }
+            f.blocks[b.index()].term.for_each_target(|t| {
+                let slot = &mut entry[t.block.index()];
+                let next = match &*slot {
+                    None => covered.clone(),
+                    Some(old) => old.intersection(&covered).copied().collect(),
+                };
+                if slot.as_ref() != Some(&next) {
+                    changed = true;
+                    *slot = Some(next);
+                }
+            });
+        }
+    }
+    for b in &order {
+        let Some(mut covered) = entry[b.index()].clone() else {
+            continue;
+        };
+        for inst in &f.blocks[b.index()].insts {
+            if inst.op == Op::Take
+                && let (Some(slot), Some(r)) = (inst.args.first(), inst.res)
+                && covered.contains(&slot.0)
+                && only_borrowed_until_put(m, f, r, *slot)
+            {
+                out.insert(r.0);
+            }
+            step(&mut covered, inst);
+        }
+    }
+    out
+}
+
+/// Whether every use of `taken` borrows it or puts it back into `slot`.
+fn only_borrowed_until_put(m: &Module, f: &Func, taken: Value, slot: Value) -> bool {
+    for blk in &f.blocks {
+        for inst in &blk.insts {
+            let modes = crate::verify::arg_modes(m, inst);
+            for (i, a) in inst.args.iter().enumerate() {
+                if *a != taken {
+                    continue;
+                }
+                let putback = inst.op == Op::Put && i == 1 && inst.args[0] == slot;
+                let borrowed = modes.get(i) == Some(&Mode::Borrow)
+                    && !matches!(
+                        inst.op,
+                        Op::MoveOut
+                            | Op::Store
+                            | Op::Put
+                            | Op::CleanupPush
+                            | Op::RecFill
+                            | Op::ListFill
+                            | Op::CallInd
+                    );
+                if !putback && !borrowed {
+                    return false;
+                }
+            }
+        }
+        let mut leaves = matches!(blk.term, Term::Ret(Some(v)) if v == taken);
+        blk.term
+            .for_each_target(|t| leaves |= t.args.contains(&taken));
+        if leaves {
+            return false;
+        }
     }
     true
 }
