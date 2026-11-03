@@ -119,6 +119,8 @@ struct Task {
     timed_out: bool,
     /// The scope that frees the task's record when it ends (`spawn_native`), or 0.
     scope: i64,
+    /// The promise this task runs (`promise::msrt_promise_start`), or 0; told when the task ends.
+    promise: i64,
 }
 
 #[derive(Clone, Copy)]
@@ -177,6 +179,23 @@ struct Sched {
     remote_tokens: usize,
     /// Those of `remote_tokens` that another isolate will post.
     peer_tokens: usize,
+}
+
+/// Set in an `fd_waiters` entry that names a promise, not a task (`promise::msrt_promise_ready`).
+pub(crate) const PROMISE_TAG: u64 = 1 << 62;
+
+/// What the waiter `h` of a descriptor asks for: a task's park, or a promise's readiness wait.
+unsafe fn waiter_events(h: u64) -> u32 {
+    if h & PROMISE_TAG != 0 {
+        return crate::promise::fd_events((h & !PROMISE_TAG) as i64);
+    }
+    let t = lookup(h);
+    if t.is_null() {
+        0
+    } else {
+        // SAFETY: `t` is a live record.
+        unsafe { (*t).wait_events }
+    }
 }
 
 /// Token generations are 20 bits: the id's high 12 bits name the owning isolate (see `isolate`).
@@ -533,6 +552,7 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             started_by: Vec::new(),
             timed_out: false,
             scope: 0,
+            promise: 0,
         });
     }
     s.live += 1;
@@ -697,6 +717,7 @@ unsafe fn expire_kills(now: i64) {
 unsafe fn expire_timers(now: i64) {
     // SAFETY: forwarded contract.
     unsafe { expire_kills(now) };
+    crate::promise::expire(now);
     let mut s = sched();
     while let Some(&Reverse((deadline, h))) = s.timers.peek()
         && deadline <= now
@@ -765,7 +786,7 @@ unsafe fn cancel_all_waiters() -> bool {
 /// Delivers descriptor readiness, waiting at most `timeout_ns` nanoseconds (0 never blocks, -1
 /// waits for an event).
 unsafe fn poll_ready(timeout_ns: i64) {
-    let s = sched();
+    let mut s = sched();
     let mut ready = [crate::poller::Ready { fd: 0, bits: 0 }; 64];
     // SAFETY: the poller owns its registrations; handles are checked before waking tasks.
     unsafe {
@@ -780,6 +801,18 @@ unsafe fn poll_ready(timeout_ns: i64) {
             // and the others wait again. `wake` re-arms for those that stay.
             let queue = s.fd_waiters[ev.fd].clone();
             for h in queue {
+                if h & PROMISE_TAG != 0 {
+                    let id = (h & !PROMISE_TAG) as i64;
+                    if crate::promise::fd_ready(id, ev.bits) {
+                        let q = &mut s.fd_waiters[ev.fd];
+                        q.retain(|&w| w != h);
+                        s.fd_waiting -= 1;
+                        if s.fd_waiters[ev.fd].is_empty() {
+                            crate::poller::unwatch(ev.fd as i32);
+                        }
+                    }
+                    continue;
+                }
                 let t = lookup(h);
                 if t.is_null() {
                     continue;
@@ -868,6 +901,14 @@ unsafe fn reactor_wait() {
                 };
                 break;
             }
+            if let Some(deadline) = crate::promise::next_deadline() {
+                let ns = (deadline - now).max(0);
+                timeout_ns = if timeout_ns < 0 {
+                    ns
+                } else {
+                    timeout_ns.min(ns)
+                };
+            }
             let mut parked = false;
             if timeout_ns < 0 && s.fd_waiting == 0 {
                 if s.remote_tokens == 0 {
@@ -912,7 +953,7 @@ unsafe fn switch_away() {
         if !s.tokens.is_empty() {
             deliver_remote_posts();
         }
-        if !s.kills.is_empty() || !s.timers.is_empty() {
+        if !s.kills.is_empty() || !s.timers.is_empty() || crate::promise::has_timers() {
             expire_timers(clock_ns());
         }
         if s.fd_waiting != 0 {
@@ -977,6 +1018,9 @@ extern "C" fn task_main() -> ! {
                 }
             }
             (*t).msg = msg;
+            if (*t).promise != 0 {
+                crate::promise::ended((*t).promise, (*t).status, &(*t).msg, &(*t).started_by);
+            }
         }
         if !(*t).owned.is_null() {
             crate::obj::msrt_release(core::mem::replace(&mut (*t).owned, null_mut()));
@@ -1146,8 +1190,7 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
             // Tasks already waiting keep their place; the poller watches what all of them ask.
             let mut asked = events;
             for &h in &s.fd_waiters[fd_idx] {
-                let t = lookup(h);
-                let other = if t.is_null() { 0 } else { (*t).wait_events };
+                let other = waiter_events(h);
                 asked = ((asked | other) & !WAIT_KEEP) | (asked & other & WAIT_KEEP);
             }
             match crate::poller::watch(poller_fd(), fd, asked) {
@@ -1170,6 +1213,55 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
     }
 }
 
+/// Registers promise `id` as a waiter of `fd` for `events`. Returns whether `fd` is ready at once
+/// (it cannot be polled, like a regular file), or `None` when it cannot be waited on.
+pub(crate) unsafe fn watch_fd_for_promise(fd: i32, events: u32, id: i64) -> Option<bool> {
+    let mut s = sched();
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        let fd_idx = fd as usize;
+        while s.fd_waiters.len() <= fd_idx {
+            s.fd_waiters.push(Vec::new());
+        }
+        let mut asked = events;
+        for &h in &s.fd_waiters[fd_idx] {
+            let other = waiter_events(h);
+            asked = ((asked | other) & !WAIT_KEEP) | (asked & other & WAIT_KEEP);
+        }
+        match crate::poller::watch(poller_fd(), fd, asked) {
+            crate::poller::Watch::Armed => {}
+            crate::poller::Watch::Always => return Some(true),
+            crate::poller::Watch::Failed => return None,
+        }
+        s.fd_waiters[fd_idx].push(id as u64 | PROMISE_TAG);
+        s.fd_waiting += 1;
+        Some(false)
+    }
+}
+
+/// Removes promise `id` from the waiters of `fd`, if it is still one.
+pub(crate) unsafe fn unwatch_fd_for_promise(fd: i32, id: i64) {
+    let mut s = sched();
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        let Some(queue) = s.fd_waiters.get_mut(fd as usize) else {
+            return;
+        };
+        let before = queue.len();
+        queue.retain(|&h| h != id as u64 | PROMISE_TAG);
+        if queue.len() == before {
+            return;
+        }
+        let empty = queue.is_empty();
+        s.fd_waiting -= 1;
+        if empty {
+            crate::poller::unwatch(fd);
+        } else {
+            rearm(fd);
+        }
+    }
+}
+
 /// Registers `fd` with the poller for what its waiters ask, or for nothing when none remain.
 unsafe fn rearm(fd: i32) {
     let s = sched();
@@ -1178,10 +1270,10 @@ unsafe fn rearm(fd: i32) {
         let mut asked = 0;
         let mut keep = WAIT_KEEP;
         for &h in &s.fd_waiters[fd as usize] {
-            let t = lookup(h);
-            if !t.is_null() {
-                asked |= (*t).wait_events & (WAIT_READ | WAIT_WRITE);
-                keep &= (*t).wait_events;
+            let events = waiter_events(h);
+            if events != 0 {
+                asked |= events & (WAIT_READ | WAIT_WRITE);
+                keep &= events;
             }
         }
         if asked == 0 {
@@ -1444,6 +1536,32 @@ pub(crate) unsafe fn spawn_closure(
         (*t).started_by = fault::capture_frames();
         arm_kill(h, limit_ns);
         h
+    }
+}
+
+/// Starts `closure` as the task of promise `promise`: a fault in it is contained, and the
+/// promise is told when the task ends. Returns the task handle.
+///
+/// # Safety
+/// `closure` must be a live closure object.
+pub(crate) unsafe fn spawn_promise(closure: *mut ms_rt_abi::Closure, promise: i64) -> u64 {
+    // SAFETY: single threaded scheduler; forwarded contract.
+    unsafe {
+        let h = spawn_closure(closure, -1, false);
+        (*lookup(h)).promise = promise;
+        h
+    }
+}
+
+/// Waits for the task `handle` to end and frees its record. Used on a task that was already
+/// cancelled or has finished, so it returns once the task is gone.
+pub(crate) unsafe fn collect(handle: u64) {
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        ensure_init();
+        if !lookup(handle).is_null() {
+            join(handle, null_mut(), false);
+        }
     }
 }
 
