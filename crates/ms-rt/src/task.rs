@@ -1782,6 +1782,7 @@ pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
 /// scenarios in one process; the leak sweep calls it at exit so only real leaks remain in the
 /// live-block count.
 pub fn teardown() {
+    crate::promise::teardown();
     fault::retire_hdr();
     // SAFETY: callers hold the global lock or run after main returned; no task is mid-switch.
     unsafe {

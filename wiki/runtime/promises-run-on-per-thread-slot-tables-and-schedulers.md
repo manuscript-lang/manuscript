@@ -13,5 +13,7 @@ Verified: a native that blocks hands its work to the blocking pool itself (`pool
 Verified: a Unix task stack is a 256 MB slot whose last 16 bytes are the `fault::Hdr` (generated code finds it as `(sp & !(SLOT-1)) + SLOT - 16`), so an idle task costs one resident page, about 5 KB with its records, and two mappings (guard plus stack); vm.max_map_count (65530) bounds a process at about 32,000 tasks. A header in its own page doubled the cost. A connection that holds no stack needs the work to start on readiness (`msrt_promise_ready` with `wait_any`) rather than a task that blocks.
 
 Apply when: changing `promise.rs`, `sched.rs`, `pipes.rs`, the poller, or adding a native that completes a promise.
+Thread-local tables have no destructor, so every one must be released in `task::teardown` (`promise::teardown` frees the promise table). The `stats` leak count and `make leak-check` cannot see it (the table's `Vec`s are plain std allocations); a plain `valgrind --leak-check=full` on any program that starts a promise or reads stdin can (#2472: 14 lost blocks, frames unwindable only with `--trace-malloc` plus the unfreed-address diff, since valgrind cannot unwind task stacks).
+
 Evidence: `crates/ms-rt/src/promise.rs` tests (spread, steal, remote cancel, remote fault, pool jobs from scheduler threads); `tools/leak-check.ms` on cancel and fault programs.
 Verify: `cargo test -p ms-rt --lib` repeated; leak-check clean after a dropped running promise.
