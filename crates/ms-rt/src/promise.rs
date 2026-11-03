@@ -1,7 +1,7 @@
 //! Promise slots for `@std/concurrency/promise.ms`.
 //!
-//! A promise is one entry of a flat per-isolate table, named by an id `(generation << 32) | (index + 1)`;
-//! a stale id never matches. The columns are separate arrays (state, generation, park token, result
+//! A promise is one entry of a flat table of the thread that made it, named by an id
+//! `(thread << 56) | (generation << 32) | (index + 1)`; a stale id never matches. The columns are separate arrays (state, generation, park token, result
 //! slot), so the scheduler touches only what it needs. An I/O promise has no task or stack: the
 //! operation tries its system call at once and registers with the poller only when it would block.
 //! Only `promise(fn)` runs a task.
@@ -10,6 +10,7 @@
 //! `0` ok (the result is in the slot), `1` the operation's own error (the error value is in the slot),
 //! `2` timed out, `3` cancelled, `4` closed (the result was already taken), `5` failed (a fault inside).
 use crate::desc::slot_drop;
+use crate::sched::{self, Event, Start};
 use crate::{alloc, fault, task};
 use core::cmp::Reverse;
 use ms_rt_abi::TypeDesc;
@@ -46,6 +47,9 @@ struct Result {
     desc: *const TypeDesc,
 }
 
+const NOT_STARTED: u8 = 255;
+const WANT_CANCEL: u8 = 1;
+
 const NO_RESULT: Result = Result {
     ptr: core::ptr::null_mut(),
     desc: core::ptr::null(),
@@ -57,8 +61,13 @@ struct Table {
     /// The token a waiter parks on, or 0.
     token: Vec<u64>,
     result: Vec<Result>,
-    /// The task running the promise (`promise(fn)`), or 0.
-    task: Vec<u64>,
+    /// The closure of the promise's work (`promise(fn)`) while its task may still run, else 0.
+    /// The creator holds a reference to it until the task has ended.
+    closure: Vec<usize>,
+    /// The scheduler thread the work runs on once it has started, else `NOT_STARTED`.
+    thread: Vec<u8>,
+    /// `WANT_CANCEL`: cancel the work as soon as it has started.
+    flags: Vec<u8>,
     /// The report of the fault that ended the promise.
     report: Vec<Vec<u8>>,
     /// When a timer promise or a readiness wait times out, or `i64::MAX`.
@@ -78,7 +87,9 @@ crate::isolate_static! {
         generation: Vec::new(),
         token: Vec::new(),
         result: Vec::new(),
-        task: Vec::new(),
+        closure: Vec::new(),
+        thread: Vec::new(),
+        flags: Vec::new(),
         report: Vec::new(),
         deadline: Vec::new(),
         fd: Vec::new(),
@@ -93,9 +104,21 @@ fn table() -> &'static mut Table {
     unsafe { &mut *TABLE.ptr() }
 }
 
+/// Generations are 24 bits, above the 32-bit index.
+const GEN_MASK: u32 = 0xff_ffff;
+
+/// The thread whose table holds promise `id`.
+fn owner_of(id: i64) -> usize {
+    ((id >> 56) & 0x3f) as usize
+}
+
 fn index(t: &Table, id: i64) -> Option<usize> {
+    if owner_of(id) != sched::current() {
+        return None;
+    }
     let i = usize::try_from((id & 0xffff_ffff) - 1).ok()?;
-    (*t.generation.get(i)? == (id >> 32) as u32 && t.state[i] != State::Free).then_some(i)
+    (*t.generation.get(i)? == ((id >> 32) as u32 & GEN_MASK) && t.state[i] != State::Free)
+        .then_some(i)
 }
 
 fn find(id: i64) -> usize {
@@ -124,7 +147,9 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
             t.generation.push(0);
             t.token.push(0);
             t.result.push(NO_RESULT);
-            t.task.push(0);
+            t.closure.push(0);
+            t.thread.push(NOT_STARTED);
+            t.flags.push(0);
             t.report.push(Vec::new());
             t.deadline.push(i64::MAX);
             t.fd.push(-1);
@@ -132,23 +157,26 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
             t.state.len() - 1
         }
     };
-    t.generation[i] = t.generation[i].wrapping_add(1) & 0x3fff_ffff;
+    t.generation[i] = t.generation[i].wrapping_add(1) & GEN_MASK;
     if t.generation[i] == 0 {
         t.generation[i] = 1;
     }
     t.state[i] = State::Pending;
     t.token[i] = 0;
     t.result[i] = NO_RESULT;
-    t.task[i] = 0;
+    t.closure[i] = 0;
+    t.thread[i] = NOT_STARTED;
+    t.flags[i] = 0;
     t.report[i] = Vec::new();
     t.deadline[i] = i64::MAX;
     t.fd[i] = -1;
     t.events[i] = 0;
-    (i64::from(t.generation[i]) << 32) | (i as i64 + 1)
+    ((sched::current() as i64) << 56) | (i64::from(t.generation[i]) << 32) | (i as i64 + 1)
 }
 
 /// Completes `id` with the value in `value`, which moves into the promise: `failed` 0 for the
 /// result, 1 for the operation's error value. A promise completes once; later calls drop the value.
+/// The value crosses to the promise's thread as a block of the process heap, never copied deeper.
 ///
 /// # Safety
 /// `value` holds an owned value of `d`, which the callee takes.
@@ -159,26 +187,160 @@ pub unsafe extern "C-unwind" fn msrt_promise_put(
     d: *const TypeDesc,
     failed: i64,
 ) {
-    let t = table();
-    let Some(i) = index(t, id) else {
-        // SAFETY: forwarded contract; the promise is gone, so the value has no owner.
-        unsafe { slot_drop(&*d, value) };
-        return;
-    };
-    if t.state[i] != State::Pending {
-        // SAFETY: as above.
-        unsafe { slot_drop(&*d, value) };
-        return;
-    }
     // SAFETY: forwarded contract.
     unsafe {
-        let dd = &*d;
-        let ptr = alloc::alloc((dd.size as usize).max(1));
-        core::ptr::copy_nonoverlapping(value, ptr, dd.size as usize);
-        t.result[i] = Result { ptr, desc: d };
+        let size = (*d).size as usize;
+        let ptr = alloc::alloc(size.max(1));
+        core::ptr::copy_nonoverlapping(value, ptr, size);
+        deliver(
+            id,
+            Event::Done {
+                id,
+                failed: failed != 0,
+                ptr: ptr as usize,
+                desc: d as usize,
+            },
+        );
     }
-    t.state[i] = if failed == 0 { State::Ok } else { State::Error };
-    wake(t, i);
+}
+
+/// Hands `event` to the thread the promise `id` belongs to, or applies it here when that is this one.
+fn deliver(id: i64, event: Event) {
+    let owner = owner_of(id);
+    if owner == sched::current() {
+        apply(event);
+    } else {
+        sched::post(owner, event);
+    }
+}
+
+/// Applies the events other threads sent to this one.
+pub(crate) fn apply_events() {
+    for event in sched::take_events() {
+        apply(event);
+    }
+}
+
+fn drop_block(ptr: usize, desc: usize) {
+    // SAFETY: the block holds an owned value of `desc` that nobody took.
+    unsafe {
+        slot_drop(&*(desc as *const TypeDesc), ptr as *mut u8);
+        alloc::free(ptr as *mut u8);
+    }
+}
+
+fn apply(event: Event) {
+    match event {
+        Event::Started { id, thread } => {
+            let t = table();
+            let Some(i) = index(t, id) else { return };
+            t.thread[i] = thread;
+            if t.flags[i] & WANT_CANCEL != 0 {
+                request_cancel(id);
+            }
+            wake(table(), i);
+        }
+        Event::Done {
+            id,
+            failed,
+            ptr,
+            desc,
+        } => {
+            let t = table();
+            match index(t, id) {
+                Some(i) if t.state[i] == State::Pending => {
+                    t.result[i] = Result {
+                        ptr: ptr as *mut u8,
+                        desc: desc as *const TypeDesc,
+                    };
+                    t.state[i] = if failed { State::Error } else { State::Ok };
+                    wake(t, i);
+                }
+                _ => drop_block(ptr, desc),
+            }
+        }
+        Event::Ended { id, status, report } => {
+            let t = table();
+            let Some(i) = index(t, id) else { return };
+            let closure = core::mem::take(&mut t.closure[i]);
+            if closure != 0 {
+                // SAFETY: the reference taken at start; the task is over, so this is its last use.
+                unsafe { crate::obj::release(closure as *mut ms_rt_abi::Obj) };
+            }
+            t.thread[i] = NOT_STARTED;
+            if t.state[i] == State::Pending {
+                match status {
+                    1 => {
+                        t.report[i] = report;
+                        t.state[i] = State::Failed;
+                    }
+                    2 => t.state[i] = State::Cancelled,
+                    _ => {
+                        t.report[i] = b"promise: the work ended without a result".to_vec();
+                        t.state[i] = State::Failed;
+                    }
+                }
+            }
+            wake(t, i);
+        }
+        Event::Cancel { id } => {
+            task::cancel_promise_task(id);
+        }
+    }
+}
+
+/// Asks for the work of promise `id` to stop at its next wait. Work that has not started is
+/// removed from its queue and ends here; work that has started is told to cancel on its thread;
+/// work that is between the two is cancelled as soon as it starts.
+fn request_cancel(id: i64) {
+    let t = table();
+    let Some(i) = index(t, id) else { return };
+    if t.closure[i] == 0 {
+        return;
+    }
+    if t.thread[i] != NOT_STARTED {
+        let thread = t.thread[i] as usize;
+        if thread == sched::current() {
+            apply(Event::Cancel { id });
+        } else {
+            sched::post(thread, Event::Cancel { id });
+        }
+        return;
+    }
+    if let Some(closure) = sched::remove_pending(id) {
+        // Never started: nothing runs, so it ends here.
+        debug_assert_eq!(closure, t.closure[i]);
+        apply(Event::Ended {
+            id,
+            status: 2,
+            report: Vec::new(),
+        });
+        return;
+    }
+    t.flags[i] |= WANT_CANCEL;
+}
+
+/// Starts the promise `start` as a task on this thread and tells its creator.
+pub(crate) fn execute(start: Start) {
+    // SAFETY: the creator holds a reference to the closure until it is told the task ended.
+    unsafe { task::spawn_promise_task(start.closure as *mut ms_rt_abi::Closure, start.id) };
+    deliver(
+        start.id,
+        Event::Started {
+            id: start.id,
+            thread: sched::current() as u8,
+        },
+    );
+}
+
+/// The task of promise `id` ended with `status` (0 returned, 1 fault, 2 cancelled).
+pub(crate) fn task_ended(id: i64, status: u8, msg: &ms_rt_abi::StrVal, started: &[usize]) {
+    let report = if status == 1 {
+        fault::fault_report(msg, started)
+    } else {
+        Vec::new()
+    };
+    deliver(id, Event::Ended { id, status, report });
 }
 
 /// Wakes the task waiting on slot `i`, if any.
@@ -217,8 +379,16 @@ pub unsafe extern "C-unwind" fn msrt_promise_take(id: i64, d: *const TypeDesc, o
 pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
     let t = table();
     match index(t, id) {
-        Some(i) => u8::from(t.state[i] != State::Pending),
-        None => 1,
+        Some(i) if t.state[i] == State::Pending => {
+            if t.closure[i] != 0 {
+                // A task that has not started gets its turn, so polling `done` makes progress.
+                // SAFETY: single scheduler per isolate.
+                unsafe { task::pump() };
+            }
+            let t = table();
+            index(t, id).map_or(1, |i| u8::from(t.state[i] != State::Pending))
+        }
+        Some(_) | None => 1,
     }
 }
 
@@ -364,33 +534,23 @@ pub(crate) fn has_timers() -> bool {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi::Closure) {
     let i = find(id);
-    if table().task[i] != 0 {
+    let t = table();
+    if t.closure[i] != 0 || t.thread[i] != NOT_STARTED {
         fault::fault(b"promise: already started");
     }
-    // SAFETY: forwarded contract.
-    let handle = unsafe { task::spawn_promise(work, id) };
-    table().task[i] = handle;
-}
-
-/// The promise's task ended with `status` (0 returned, 1 fault, 2 cancelled): a promise that has
-/// no result by now was ended by the fault or the cancellation.
-pub(crate) fn ended(id: i64, status: u8, msg: &ms_rt_abi::StrVal, started: &[usize]) {
-    let t = table();
-    let Some(i) = index(t, id) else { return };
-    if t.state[i] == State::Pending {
-        match status {
-            1 => {
-                t.report[i] = fault::fault_report(msg, started);
-                t.state[i] = State::Failed;
-            }
-            2 => t.state[i] = State::Cancelled,
-            _ => {
-                t.report[i] = b"promise: the work ended without a result".to_vec();
-                t.state[i] = State::Failed;
-            }
-        }
+    // SAFETY: forwarded contract. The promise keeps a reference to the closure until the task has
+    // ended, so no other thread ever changes its count.
+    unsafe { crate::obj::msrt_retain(work.cast()) };
+    t.closure[i] = work as usize;
+    let start = Start {
+        id,
+        closure: work as usize,
+    };
+    if sched::current() == sched::NONE {
+        execute(start);
+    } else {
+        sched::submit(start, task::ready_count());
     }
-    wake(t, i);
 }
 
 fn outcome(state: State) -> Option<i64> {
@@ -404,22 +564,25 @@ fn outcome(state: State) -> Option<i64> {
     }
 }
 
-/// Waits until `id` finishes or `timeout_ns` passes (negative: no limit) and returns an outcome
-/// code. A timeout cancels the work, which stops at its next wait. If the waiting task itself is
-/// cancelled, it unwinds; dropping the promise then cancels and joins the work.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
-    let i = find(id);
-    if let Some(code) = outcome(table().state[i]) {
-        return code;
-    }
+/// Parks until promise `id` changes (an event, a completion, a timeout, a cancellation) and
+/// returns how the park ended. The slot is looked up again afterwards, so the caller does too.
+fn park_on(id: i64, timeout_ns: i64) -> u32 {
+    let t = table();
+    let Some(i) = index(t, id) else {
+        return 0;
+    };
+    // The work may finish on another thread, so the scheduler must not call this a deadlock.
+    let flags = if t.closure[i] != 0 {
+        task::TOKEN_REMOTE
+    } else {
+        0
+    };
     // SAFETY: single scheduler per isolate; the token is ours until freed.
     unsafe {
-        let token = task::msrt_token_new(0);
-        table().token[i] = token;
+        let token = task::msrt_token_new(flags);
+        t.token[i] = token;
         let mut value = 0;
         let woke = task::msrt_token_park(token, timeout_ns, &mut value);
-        // The table may have moved while parked: look the slot up again.
         let t = table();
         if let Some(i) = index(t, id)
             && t.token[i] == token
@@ -427,20 +590,38 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
             t.token[i] = 0;
         }
         task::msrt_token_free(token);
+        woke
+    }
+}
+
+/// Waits until `id` finishes or `timeout_ns` passes (negative: no limit) and returns an outcome
+/// code. A timeout cancels the work, which stops at its next wait. If the waiting task itself is
+/// cancelled, it unwinds; dropping the promise then cancels and joins the work.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
+    let deadline = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
+    loop {
+        let t = table();
+        let i = find(id);
+        if let Some(code) = outcome(t.state[i]) {
+            return code;
+        }
+        let remaining = deadline.map_or(-1, |d| (d - crate::sys::monotonic_ns()).max(0));
+        let woke = park_on(id, remaining);
+        if woke == task::WAIT_CANCELLED {
+            fault::msrt_cancelled();
+        }
         let t = table();
         let Some(i) = index(t, id) else {
             return CLOSED;
         };
-        if woke == task::WAIT_CANCELLED {
-            fault::msrt_cancelled();
+        if let Some(code) = outcome(t.state[i]) {
+            return code;
         }
         if woke == task::WAIT_TIMEOUT {
-            if t.task[i] != 0 {
-                task::msrt_task_cancel(t.task[i]);
-            }
+            request_cancel(id);
             return TIMEOUT;
         }
-        outcome(t.state[i]).unwrap_or(FAILED)
     }
 }
 
@@ -464,36 +645,48 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
         list.iter()
             .position(|&id| index(t, id).is_none_or(|i| t.state[i] != State::Pending))
     };
-    if let Some(at) = first_done(&list) {
-        return at as i64;
-    }
-    // SAFETY: single scheduler per isolate; the token is ours until freed.
-    unsafe {
-        let token = task::msrt_token_new(0);
-        let t = table();
-        for &id in &list {
-            if let Some(i) = index(t, id) {
-                if t.token[i] != 0 {
-                    fault::fault(b"promise: another task is already waiting on this promise");
+    let deadline = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
+    loop {
+        if let Some(at) = first_done(&list) {
+            return at as i64;
+        }
+        // SAFETY: single scheduler per isolate; the token is ours until freed.
+        unsafe {
+            let remote = list
+                .iter()
+                .any(|&id| index(table(), id).is_some_and(|i| table().closure[i] != 0));
+            let token = task::msrt_token_new(if remote { task::TOKEN_REMOTE } else { 0 });
+            let t = table();
+            for &id in &list {
+                if let Some(i) = index(t, id) {
+                    if t.token[i] != 0 {
+                        fault::fault(b"promise: another task is already waiting on this promise");
+                    }
+                    t.token[i] = token;
                 }
-                t.token[i] = token;
+            }
+            let remaining = deadline.map_or(-1, |d| (d - crate::sys::monotonic_ns()).max(0));
+            let mut value = 0;
+            let woke = task::msrt_token_park(token, remaining, &mut value);
+            let t = table();
+            for &id in &list {
+                if let Some(i) = index(t, id)
+                    && t.token[i] == token
+                {
+                    t.token[i] = 0;
+                }
+            }
+            task::msrt_token_free(token);
+            if woke == task::WAIT_CANCELLED {
+                fault::msrt_cancelled();
+            }
+            if let Some(at) = first_done(&list) {
+                return at as i64;
+            }
+            if woke == task::WAIT_TIMEOUT {
+                return -1;
             }
         }
-        let mut value = 0;
-        let woke = task::msrt_token_park(token, timeout_ns, &mut value);
-        let t = table();
-        for &id in &list {
-            if let Some(i) = index(t, id)
-                && t.token[i] == token
-            {
-                t.token[i] = 0;
-            }
-        }
-        task::msrt_token_free(token);
-        if woke == task::WAIT_CANCELLED {
-            fault::msrt_cancelled();
-        }
-        first_done(&list).map_or(-1, |at| at as i64)
     }
 }
 
@@ -520,20 +713,26 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
         unsafe { task::unwatch_fd_for_promise(t.fd[i], id) };
         t.fd[i] = -1;
     }
-    let handle = t.task[i];
-    if handle != 0 {
-        // SAFETY: the handle names the promise's task, collected exactly once, here.
-        unsafe {
-            if t.state[i] == State::Pending {
-                task::msrt_task_cancel(handle);
-            }
-            task::collect(handle);
+    if t.closure[i] != 0 {
+        if t.state[i] == State::Pending {
+            request_cancel(id);
         }
+        // Join: the task is over when the runner has told us so. Cleanup is not interrupted.
+        fault::msrt_shield_enter();
+        loop {
+            let t = table();
+            match index(t, id) {
+                Some(i) if t.closure[i] != 0 => {
+                    park_on(id, -1);
+                }
+                _ => break,
+            }
+        }
+        fault::msrt_shield_exit();
     }
     let t = table();
     let Some(i) = index(t, id) else { return };
     release_result(t, i);
-    t.task[i] = 0;
     t.state[i] = State::Free;
     t.free.push(i);
 }
@@ -597,7 +796,6 @@ mod tests {
         let _g = lock();
         let id = msrt_promise_new();
         start(id, answer);
-        assert_eq!(msrt_promise_done(id), 0);
         assert_eq!(msrt_promise_wait(id, -1), OK);
         assert_eq!(msrt_promise_done(id), 1);
         assert_eq!(take_int(id), 42);
@@ -747,6 +945,151 @@ mod tests {
             assert_eq!(msrt_promise_wait_any(&only, 5_000_000), -1);
         }
         msrt_promise_drop(slow);
+        task::teardown();
+    }
+
+    // Closures that carry the id of their promise after the header.
+    fn start_with_id(id: i64, code: unsafe extern "C-unwind" fn(*mut Closure)) {
+        // SAFETY: the promise keeps a reference to the closure until its task has ended.
+        unsafe {
+            let size = size_of::<Closure>() + 8;
+            let closure = crate::obj::new_obj(size, drop_closure).cast::<Closure>();
+            (*closure).code = code as *const u8;
+            closure.add(1).cast::<i64>().write(id);
+            msrt_promise_start(id, closure);
+            crate::obj::release(closure.cast());
+        }
+    }
+
+    unsafe fn id_of(closure: *mut Closure) -> i64 {
+        // SAFETY: `start_with_id` stored the id after the header.
+        unsafe { closure.add(1).cast::<i64>().read() }
+    }
+
+    /// Sleeps a little so the promises of a test overlap, then answers the number of the thread.
+    unsafe extern "C-unwind" fn answer_thread(closure: *mut Closure) {
+        // SAFETY: called from a running task with the closure `start_with_id` made.
+        unsafe {
+            task::msrt_task_sleep(30_000_000);
+            let mut v = sched::current() as i64;
+            msrt_promise_put(id_of(closure), (&raw mut v).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    unsafe extern "C-unwind" fn hang_with_id(_: *mut Closure) {
+        // SAFETY: called from a running task.
+        unsafe { task::msrt_task_sleep(3_600_000_000_000) };
+    }
+
+    unsafe extern "C-unwind" fn fail_with_id(_: *mut Closure) {
+        crate::fault::fault(b"remote boom");
+    }
+
+    /// Runs until `ms` milliseconds have passed, without ever waiting.
+    unsafe extern "C-unwind" fn spin_thread(closure: *mut Closure) {
+        let end = crate::sys::monotonic_ns() + 40_000_000;
+        while crate::sys::monotonic_ns() < end {
+            std::hint::spin_loop();
+        }
+        // SAFETY: called from a running task with the closure `start_with_id` made.
+        unsafe {
+            let mut v = sched::current() as i64;
+            msrt_promise_put(id_of(closure), (&raw mut v).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn promises_spread_over_threads_and_deliver_by_event() {
+        let _g = lock();
+        sched::msrt_runtime_set_threads(4);
+        let ids: Vec<i64> = (0..8).map(|_| msrt_promise_new()).collect();
+        for &id in &ids {
+            start_with_id(id, answer_thread);
+        }
+        let mut threads = std::collections::BTreeSet::new();
+        for &id in &ids {
+            assert_eq!(msrt_promise_wait(id, -1), OK);
+            threads.insert(take_int(id));
+        }
+        assert!(threads.len() >= 2, "ran on {threads:?}");
+        for id in ids {
+            msrt_promise_drop(id);
+        }
+        sched::shutdown();
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn idle_threads_take_promises_that_have_not_started() {
+        let _g = lock();
+        sched::msrt_runtime_set_threads(4);
+        let ids: Vec<i64> = (0..3).map(|_| msrt_promise_new()).collect();
+        let began = crate::sys::monotonic_ns();
+        for &id in &ids {
+            start_with_id(id, spin_thread);
+        }
+        let mut threads = std::collections::BTreeSet::new();
+        for &id in &ids {
+            assert_eq!(msrt_promise_wait(id, -1), OK);
+            threads.insert(take_int(id));
+        }
+        // Three 40 ms spins on one thread would take 120 ms.
+        let took = crate::sys::monotonic_ns() - began;
+        assert!(threads.len() >= 2, "ran on {threads:?} in {took} ns");
+        for id in ids {
+            msrt_promise_drop(id);
+        }
+        sched::shutdown();
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn dropping_running_promises_cancels_them_on_their_threads() {
+        let _g = lock();
+        sched::msrt_runtime_set_threads(4);
+        let ids: Vec<i64> = (0..6).map(|_| msrt_promise_new()).collect();
+        for &id in &ids {
+            start_with_id(id, hang_with_id);
+        }
+        // Let some of them start.
+        let nap = msrt_promise_sleep(20_000_000);
+        assert_eq!(msrt_promise_wait(nap, -1), OK);
+        msrt_promise_drop(nap);
+        let began = crate::sys::monotonic_ns();
+        for id in ids {
+            msrt_promise_drop(id);
+        }
+        assert!(crate::sys::monotonic_ns() - began < 2_000_000_000);
+        sched::shutdown();
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_fault_on_another_thread_ends_only_that_promise() {
+        let _g = lock();
+        sched::msrt_runtime_set_threads(4);
+        let ids: Vec<i64> = (0..4).map(|_| msrt_promise_new()).collect();
+        for &id in &ids {
+            start_with_id(id, fail_with_id);
+        }
+        for &id in &ids {
+            assert_eq!(msrt_promise_wait(id, -1), FAILED);
+            let mut report = crate::string::NO_STR;
+            // SAFETY: `report` is writable, and the string the call makes is ours.
+            unsafe {
+                msrt_promise_fault_report(id, &mut report);
+                assert!(crate::string::bytes(&report).starts_with(b"remote boom"));
+                crate::string::release_opt(&report);
+            }
+        }
+        for id in ids {
+            msrt_promise_drop(id);
+        }
+        sched::shutdown();
         task::teardown();
     }
 }

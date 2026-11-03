@@ -182,7 +182,7 @@ struct Sched {
 }
 
 /// Set in an `fd_waiters` entry that names a promise, not a task (`promise::msrt_promise_ready`).
-pub(crate) const PROMISE_TAG: u64 = 1 << 62;
+pub(crate) const PROMISE_TAG: u64 = 1 << 63;
 
 /// What the waiter `h` of a descriptor asks for: a task's park, or a promise's readiness wait.
 unsafe fn waiter_events(h: u64) -> u32 {
@@ -517,7 +517,7 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
     let (idx, gen_) = match s.free_slots.pop() {
         Some(i) => {
             let slot = &mut s.slots[i];
-            slot.gen_ = slot.gen_.wrapping_add(1).max(1);
+            slot.gen_ = (slot.gen_.wrapping_add(1) & 0x7fff_ffff).max(1);
             slot.task = t;
             (i, slot.gen_)
         }
@@ -874,7 +874,7 @@ unsafe fn reactor_wait() {
             deliver_remote_posts();
             let now = clock_ns();
             expire_timers(now);
-            if !s.ready.is_empty() {
+            if !s.ready.is_empty() || crate::sched::work_available() {
                 return;
             }
             let mut timeout_ns = -1;
@@ -922,7 +922,14 @@ unsafe fn reactor_wait() {
                 abandon_wait();
                 fault::fault(CROSS_ISOLATE_DEADLOCK);
             }
+            crate::sched::set_idle(true);
+            // Work may have arrived between the last look and now.
+            if crate::sched::work_available() || crate::sched::signalled() {
+                crate::sched::set_idle(false);
+                continue;
+            }
             poll_ready(timeout_ns);
+            crate::sched::set_idle(false);
             if parked && crate::isolate::leave_idle() {
                 abandon_wait();
                 fault::fault(CROSS_ISOLATE_DEADLOCK);
@@ -950,7 +957,7 @@ unsafe fn switch_away() {
         if crate::isolate::pending_cancel() != 0 {
             cancel_all_waiters();
         }
-        if !s.tokens.is_empty() {
+        if !s.tokens.is_empty() || crate::sched::signalled() {
             deliver_remote_posts();
         }
         if !s.kills.is_empty() || !s.timers.is_empty() || crate::promise::has_timers() {
@@ -970,6 +977,7 @@ unsafe fn switch_away() {
                     return;
                 }
                 (*next).state = State::Running;
+                crate::sched::publish_busy(s.ready.len() + 1);
                 fault::swap_ctx(&mut (*cur).ctx);
                 fault::swap_ctx(&mut (*next).ctx);
                 fault::publish_current_hdr();
@@ -978,6 +986,12 @@ unsafe fn switch_away() {
                 after_switch();
                 return;
             }
+            // Nothing is ready: start a promise, this thread's own or one taken from a busy thread.
+            if let Some(start) = crate::sched::next_pending() {
+                crate::promise::execute(start);
+                continue;
+            }
+            crate::sched::publish_busy(0);
             reactor_wait();
         }
     }
@@ -1019,7 +1033,7 @@ extern "C" fn task_main() -> ! {
             }
             (*t).msg = msg;
             if (*t).promise != 0 {
-                crate::promise::ended((*t).promise, (*t).status, &(*t).msg, &(*t).started_by);
+                crate::promise::task_ended((*t).promise, (*t).status, &(*t).msg, &(*t).started_by);
             }
         }
         if !(*t).owned.is_null() {
@@ -1028,7 +1042,11 @@ extern "C" fn task_main() -> ! {
         (*t).state = State::Done;
         s.zombie_stack = ((*t).stack as usize, (*t).stack_len);
         (*t).stack = null_mut();
-        if (*t).scope != 0 {
+        if (*t).promise != 0 {
+            // A promise's task is never joined: the promise learns of its end by event.
+            crate::string::release_opt(&core::mem::replace(&mut (*t).msg, crate::string::NO_STR));
+            s.zombie_task = t;
+        } else if (*t).scope != 0 {
             // A scope task nobody joins frees itself; one being joined is freed by its joiner.
             crate::scope::task_ended((*t).scope, (*t).handle);
             if (*t).joiner != 0 {
@@ -1539,30 +1557,52 @@ pub(crate) unsafe fn spawn_closure(
     }
 }
 
-/// Starts `closure` as the task of promise `promise`: a fault in it is contained, and the
-/// promise is told when the task ends. Returns the task handle.
+/// Starts `closure` as the task of promise `promise`, which frees itself when it ends. A fault in
+/// it ends only the promise. The closure stays owned by whoever created the promise, who releases
+/// it when told the task is over. Returns the task handle.
 ///
 /// # Safety
-/// `closure` must be a live closure object.
-pub(crate) unsafe fn spawn_promise(closure: *mut ms_rt_abi::Closure, promise: i64) -> u64 {
+/// `closure` must be a live closure object that outlives the task.
+pub(crate) unsafe fn spawn_promise_task(closure: *mut ms_rt_abi::Closure, promise: i64) -> u64 {
     // SAFETY: single threaded scheduler; forwarded contract.
     unsafe {
-        let h = spawn_closure(closure, -1, false);
-        (*lookup(h)).promise = promise;
+        let h = msrt_task_spawn(closure_entry, closure.cast(), 0, TASK_GROUP_STACK);
+        let t = lookup(h);
+        (*t).promise = promise;
+        (*t).started_by = fault::capture_frames();
         h
     }
 }
 
-/// Waits for the task `handle` to end and frees its record. Used on a task that was already
-/// cancelled or has finished, so it returns once the task is gone.
-pub(crate) unsafe fn collect(handle: u64) {
-    // SAFETY: single threaded scheduler.
+/// Lets a promise that has not started begin, then lets the ready tasks run: polling `done`
+/// makes progress even when the polling task never waits.
+pub(crate) unsafe fn pump() {
+    if let Some(start) = crate::sched::next_pending() {
+        crate::promise::execute(start);
+    }
+    // SAFETY: forwards to the yield path.
+    unsafe { msrt_task_yield() };
+}
+
+/// How many tasks wait to run on this thread, not counting the running one.
+pub(crate) fn ready_count() -> usize {
+    sched().ready.len()
+}
+
+/// Cancels the task of promise `promise`, if it runs on this thread; answers whether it does.
+pub(crate) fn cancel_promise_task(promise: i64) -> bool {
+    let s = sched();
+    // SAFETY: slots hold live records or null.
     unsafe {
-        ensure_init();
-        if !lookup(handle).is_null() {
-            join(handle, null_mut(), false);
+        for slot in &s.slots {
+            let t = slot.task;
+            if !t.is_null() && (*t).promise == promise && (*t).state != State::Done {
+                msrt_task_cancel((*t).handle);
+                return true;
+            }
         }
     }
+    false
 }
 
 /// Waits for a task started by `spawn_closure` and returns how it ended: 0 returned, 1 timed out,
@@ -1670,6 +1710,9 @@ unsafe fn deliver_remote_posts() {
     for (id, value) in isolate::take_posts() {
         // SAFETY: runs on the runtime thread.
         unsafe { post(id, value, true) };
+    }
+    if crate::sched::signalled() {
+        crate::promise::apply_events();
     }
 }
 
