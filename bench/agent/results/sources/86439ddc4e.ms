@@ -10,10 +10,10 @@ fn is_letter(c: Int) Bool: is_upper(c) or is_lower(c)
 
 fn is_digit(c: Int) Bool: c >= 48 and c <= 57
 
-# Code point of the first letter of the alphabet in the same case as `c`.
+// Code point of the first letter of the alphabet in the same case as `c`.
 fn base_of(c: Int) Int: (if is_lower(c): 97 else: 65)
 
-# Shifts an ASCII letter by `amount` positions, wrapping within its case.
+// Shifts an ASCII letter by `amount` positions, wrapping within its case.
 fn shift_letter(c: Int, amount: Int) Int:
     let base = base_of(c)
     return base + (c - base + amount % 26 + 26) % 26
@@ -63,7 +63,7 @@ fn vigenere(text: List[Int], key: List[Int], decrypt: Bool) List[Int]:
 
     return out
 
-# Rejoins the fields from `start` on with single spaces, restoring the text that was split on spaces.
+// Rejoins the fields from `start` on with single spaces, restoring the text that was split on spaces.
 fn join_from(parts: List[String], start: Int) String:
     var out = ""
 

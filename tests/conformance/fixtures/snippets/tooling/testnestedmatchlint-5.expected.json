@@ -14,7 +14,7 @@
           "file": "testnestedmatchlint-5.ms",
           "line": 10,
           "column": 9,
-          "offset": 272
+          "offset": 275
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testnestedmatchlint-5.ms",
           "line": 10,
           "column": 9,
-          "offset": 272
+          "offset": 275
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "testnestedmatchlint-5.ms",
           "line": 11,
           "column": 9,
-          "offset": 285
+          "offset": 288
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "testnestedmatchlint-5.ms",
           "line": 5,
           "column": 12,
-          "offset": 191
+          "offset": 194
         }
       },
       {
@@ -58,7 +58,7 @@
           "file": "testnestedmatchlint-5.ms",
           "line": 10,
           "column": 12,
-          "offset": 275
+          "offset": 278
         }
       }
     ],

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,modules,stdlib-errors,tier-stdlib,try-result
-# conform: phase=check
-# conform: origin=documentation/core-language/control-flow/conditionals.md:59
+// conform: tags=control-flow,diagnostics,modules,stdlib-errors,tier-stdlib,try-result
+// conform: phase=check
+// conform: origin=documentation/core-language/control-flow/conditionals.md:59
 
 fn port(lookup: Result[Int, Error]) Int:
     if let value = lookup:

@@ -3,7 +3,7 @@ import read_lines from "@std/streams.ms"
 import range from "@std/collections.ms"
 import SortedMap from "@std/sorted.ms"
 
-# A valid record: its category and its amount as a string of cents (digits only, no leading zeros).
+// A valid record: its category and its amount as a string of cents (digits only, no leading zeros).
 type Record:
     category: String
     cents: String
@@ -19,7 +19,7 @@ fn is_digits(text: String) Bool:
 
     return true
 
-# Converts "12", "12.5" or "0.07" into cents as digits; none when the text is not a valid amount.
+// Converts "12", "12.5" or "0.07" into cents as digits; none when the text is not a valid amount.
 fn amount_cents(text: String) Optional[String]:
     let parts = text.split(".")
     if parts.length() > 2:
@@ -50,7 +50,7 @@ fn strip_zeros(digits: String) String:
         start += 1
     return digits.slice_scalars(start, digits.length()).get()
 
-# Splits one line into its two fields, honouring double quotes around the category.
+// Splits one line into its two fields, honouring double quotes around the category.
 fn parse_line(line: String) Optional[Record]:
     var category = ""
     var amount = ""
@@ -100,7 +100,7 @@ fn add_digits(a: String, b: String) String:
 
     return strip_zeros(out)
 
-# Formats cents digits as a plain decimal with exactly two fraction digits.
+// Formats cents digits as a plain decimal with exactly two fraction digits.
 fn format_total(cents: String) String:
     var padded = cents
     while padded.length() < 3:

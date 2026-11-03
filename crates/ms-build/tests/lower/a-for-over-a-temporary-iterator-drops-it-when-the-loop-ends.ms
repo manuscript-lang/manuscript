@@ -1,5 +1,5 @@
-# Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-# expect-mir-order: "fn @main" "drop " "@after"
+// Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
+// expect-mir-order: "fn @main" "drop " "@after"
 
 import Iterator from "@std/core.ms"
 

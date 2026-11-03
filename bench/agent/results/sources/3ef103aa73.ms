@@ -92,7 +92,7 @@ type Sheet:
     tarjan_on: Set[Int]
     tarjan_counter: Int
 
-# ---------- small helpers ----------
+// ---------- small helpers ----------
 fn emit(text: String) Unit:
     stdout().write(text.concat("\n")).get()
 
@@ -182,7 +182,7 @@ fn split_head(text: String) Split:
 
     return Split(head: head, rest: rest.join("").trim())
 
-# ---------- values ----------
+// ---------- values ----------
 fn rank_of(v: Value) Int:
     match v:
         Empty:
@@ -244,8 +244,8 @@ fn finite_result(r: Float) Value:
 
     return Failure(code: "#NUM!")
 
-# Parses the number grammar [+-]?(digits[.digits]|.digits)([eE][+-]?digits)?
-# and returns the value only when it is finite.
+// Parses the number grammar [+-]?(digits[.digits]|.digits)([eE][+-]?digits)?
+// and returns the value only when it is finite.
 fn number_text(text: String) Optional[Float]:
     let chars = text.chars()
     var i = 0
@@ -358,7 +358,7 @@ fn truth_value(v: Value) Value:
         Failure(code):
             return Failure(code: code)
 
-# Display text of a value (also the string form used by &).
+// Display text of a value (also the string form used by &).
 fn text_of(v: Value) String:
     match v:
         Empty:
@@ -395,7 +395,7 @@ fn format_number(x: Float) String:
 
     return text
 
-# Exact decimal text of a large integer-valued double.
+// Exact decimal text of a large integer-valued double.
 fn integer_text(x: Float) String:
     var y = abs(x)
     var shift = 0
@@ -589,7 +589,7 @@ fn criterion_of(v: Value) Criterion:
         _:
             return Criterion(op: "=", operand: v)
 
-# ---------- addresses and references ----------
+// ---------- addresses and references ----------
 fn parse_address(text: String) Address:
     let chars = text.chars()
     var i = 0
@@ -635,7 +635,7 @@ fn parse_address(text: String) Address:
         col_absolute: col_absolute, row_absolute: row_absolute
     )
 
-# Key of a plain cell argument (no $ markers); 0 when invalid.
+// Key of a plain cell argument (no $ markers); 0 when invalid.
 fn cell_key(text: String) Int:
     if text.contains("$"):
         return 0
@@ -652,7 +652,7 @@ fn rect_of(a: Int, b: Int) Rect:
         right: higher_of(a / 1000, b / 1000), bottom: higher_of(a % 1000, b % 1000)
     )
 
-# Range argument: one cell or two cells joined by a colon.
+// Range argument: one cell or two cells joined by a colon.
 fn range_arg(text: String) Optional[Rect]:
     let parts = text.split(":")
 
@@ -673,7 +673,7 @@ fn range_arg(text: String) Optional[Rect]:
 
     return none
 
-# ---------- tokenizer ----------
+// ---------- tokenizer ----------
 fn reference_end(chars: List[String], start: Int) Int:
     var i = start
     if char_at(chars, i) == "$":
@@ -725,7 +725,7 @@ fn number_end(chars: List[String], start: Int) Int:
 
     return i
 
-# Returns None when the source contains a character that cannot be tokenized.
+// Returns None when the source contains a character that cannot be tokenized.
 fn tokenize(chars: List[String]) Optional[List[Token]]:
     var tokens: List[Token] = []
     let n = chars.length()
@@ -818,7 +818,7 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
 
     return some(tokens)
 
-# ---------- parser ----------
+// ---------- parser ----------
 fn span_node(text: String) Node:
     let parts = text.split(":")
     let a = parse_address(parts.get(0))
@@ -1004,7 +1004,7 @@ impl Parser:
 
         return CallNode(name: name, args: args)
 
-# Parses formula source (the text after '='); None means #PARSE!.
+// Parses formula source (the text after '='); None means #PARSE!.
 fn parse_formula(source: List[String]) Optional[Node]:
     if let tokens = tokenize(source):
         var parser = Parser(tokens: tokens, pos: 0, failed: false)
@@ -1017,7 +1017,7 @@ fn parse_formula(source: List[String]) Optional[Node]:
     return none
 
 impl Collector:
-    # Gathers the cells a formula depends on; ROW and COLUMN arguments are not dependencies.
+    // Gathers the cells a formula depends on; ROW and COLUMN arguments are not dependencies.
     var fn visit(node: Node) Unit:
         match node:
             RefNode(col, row, valid):
@@ -1046,7 +1046,7 @@ fn precedents_of(node: Node) List[Int]:
     collector.visit(node)
     return collector.keys.values()
 
-# Shifts a formula (raw text starting with '=') for copy; tokens keep their text.
+// Shifts a formula (raw text starting with '=') for copy; tokens keep their text.
 fn shift_formula(raw: String, column_shift: Int, row_shift: Int) String:
     let source = raw.chars().drop(1)
 
@@ -1125,7 +1125,7 @@ fn shift_span(text: String, column_shift: Int, row_shift: Int) String:
 
     return first.concat(":").concat(second)
 
-# ---------- CSV ----------
+// ---------- CSV ----------
 fn parse_csv(block: List[String]) List[List[String]]:
     var records: List[List[String]] = []
     var fields: List[String] = []
@@ -1186,7 +1186,7 @@ fn with_value(cell: Cell, value: Value) Cell:
         precedents: precedents
     )
 
-# Value of a constant cell, from its trimmed raw text.
+// Value of a constant cell, from its trimmed raw text.
 fn constant_value(text: String) Value:
     if text.starts_with("'"):
         return Text(value: text_after(text, 1))
@@ -1214,7 +1214,7 @@ fn csv_field(text: String) String:
 
     return text
 
-# ---------- sheet ----------
+// ---------- sheet ----------
 impl Sheet:
     fn value_at(key: Int) Value:
         if let cell = self.cells.get(key):
@@ -1253,7 +1253,7 @@ impl Sheet:
                     deps.remove(key)
                     self.dependents.add(p, deps)
 
-    # Stores a cell from its raw VALUE text without recalculating.
+    // Stores a cell from its raw VALUE text without recalculating.
     var fn assign(key: Int, raw: String) Unit:
         self.unlink(key)
 
@@ -1349,7 +1349,7 @@ impl Sheet:
 
         return arithmetic(op, number_of(x), number_of(y))
 
-    # Items of the aggregate arguments: range cells are ranged items, anything else is a direct item.
+    // Items of the aggregate arguments: range cells are ranged items, anything else is a direct item.
     fn items_of(args: List[Node]) List[Item]:
         var items: List[Item] = []
 
@@ -1918,7 +1918,7 @@ impl Sheet:
         if self.low_of(key) == self.index_of_node(key):
             self.emit_component(key)
 
-    # Tarjan emits components after their precedents, so evaluation order is correct.
+    // Tarjan emits components after their precedents, so evaluation order is correct.
     var fn emit_component(key: Int) Unit:
         let position = self.tarjan_stack.index_of(key).get(0)
         let members = self.tarjan_stack.drop(position)
@@ -1932,7 +1932,7 @@ impl Sheet:
         else:
             self.store_value(key, self.compute(key))
 
-    # Recalculates everything affected by the changed cells; returns the number of affected formulas.
+    // Recalculates everything affected by the changed cells; returns the number of affected formulas.
     var fn recalc(changed: List[Int]) Int:
         var visited = Set[Int]()
         var queue: List[Int] = []
@@ -2069,7 +2069,7 @@ impl Sheet:
         else:
             emit("{name}: (empty)")
 
-    # Bounding rectangle of the non-empty cells; None when the sheet is empty.
+    // Bounding rectangle of the non-empty cells; None when the sheet is empty.
     fn used_rect() Optional[Rect]:
         var max_col = 0
         var max_row = 0
@@ -2310,7 +2310,7 @@ impl Sheet:
                 formulas += 1
         emit("cells {self.cells.length()} formulas {formulas} evals {self.evals}")
 
-# Classifies a function argument: 0 not a range, 1 range with an invalid corner, 2 valid range.
+// Classifies a function argument: 0 not a range, 1 range with an invalid corner, 2 valid range.
 fn span_info(node: Node) SpanInfo:
     match node:
         SpanNode(left, top, right, bottom, valid):

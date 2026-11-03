@@ -37,7 +37,7 @@ export fn main() Int:
     let a = read_lines(n)
     let b = read_lines(m)
 
-    # table[i * width + j] holds L(i, j); row n and column m are all zero.
+    // table[i * width + j] holds L(i, j); row n and column m are all zero.
     let width = m + 1
     var table = List[Int]()
     for k in range(0, (n + 1) * width):
@@ -55,7 +55,7 @@ export fn main() Int:
                     )
                 )
 
-    # The edit script: kind is 0 for unchanged, 1 for deletion, 2 for insertion.
+    // The edit script: kind is 0 for unchanged, 1 for deletion, 2 for insertion.
     var kinds = List[Int]()
     var texts = List[String]()
     var a_before = List[Int]()
@@ -89,7 +89,7 @@ export fn main() Int:
                 b_before.append(j)
                 j += 1
 
-    # Group the changes into hunks as [start, end] ranges over the script.
+    // Group the changes into hunks as [start, end] ranges over the script.
     let count = kinds.length()
     var starts = List[Int]()
     var ends = List[Int]()

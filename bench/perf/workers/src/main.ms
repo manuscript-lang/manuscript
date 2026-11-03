@@ -3,7 +3,7 @@ import stdout from "@std/io/io.ms"
 import arguments from "@std/os/process.ms"
 import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
-# Eight CPU-bound jobs spread over N workers. Usage: app <workers> [jobs] [n]
+// Eight CPU-bound jobs spread over N workers. Usage: app <workers> [jobs] [n]
 fn fib(n: Int) Int:
     if n < 2:
         return n

@@ -109,7 +109,7 @@ test "scanner delimiter and custom split":
     let parts = collect(from_bytes("a--b----c".to_bytes(), 2), ScanMode.Delimiter("--"))
     if parts != ["a", "b", "", "c"]: return panic("delimiter")
 
-    # Tokens are runs of three bytes.
+    // Tokens are runs of three bytes.
     let threes = ScanMode.Custom(
         fn(window: Bytes, at_eof: Bool) ScanStep:
             if window.length() >= 3: return ScanStep(3, (window.slice(0, 3)).get())

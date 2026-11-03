@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,generics,interfaces,tier-core
-# conform: phase=check
-# conform: origin=documentation/core-language/types/contracts.md:99
+// conform: tags=control-flow,diagnostics,generics,interfaces,tier-core
+// conform: phase=check
+// conform: origin=documentation/core-language/types/contracts.md:99
 interface SameValue[T: Equal]:
     fn same(other: T) Bool
 

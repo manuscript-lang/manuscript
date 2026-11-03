@@ -7,7 +7,7 @@ use ms_syntax::parser::parse;
 use ms_syntax::visit::{Visitor, walk_decl};
 use std::sync::Arc;
 
-const ALLOWANCE: &str = "# manuscript:allow-nested-match ";
+const ALLOWANCE: &str = "// manuscript:allow-nested-match ";
 
 pub fn check(files: &[String]) -> Vec<String> {
     let mut issues = Vec::new();

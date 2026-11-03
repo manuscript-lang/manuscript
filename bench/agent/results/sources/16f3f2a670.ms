@@ -2,7 +2,7 @@ import stdin, stdout from "@std/io.ms"
 import BigInt, parse from "@std/math.ms"
 import read_lines from "@std/streams.ms"
 
-# True when `text` is one or more ASCII digits.
+// True when `text` is one or more ASCII digits.
 fn is_digits(text: String) Bool:
     if text.length() == 0:
         return false
@@ -12,7 +12,7 @@ fn is_digits(text: String) Bool:
             return false
     return true
 
-# Converts a valid amount such as `12.5` into whole cents, or none when it does not match the spec.
+// Converts a valid amount such as `12.5` into whole cents, or none when it does not match the spec.
 fn amount_cents(text: String) Optional[BigInt]:
     let parts = text.split(".")
     if parts.length() > 2 or not is_digits(parts[0]):
@@ -31,10 +31,10 @@ fn amount_cents(text: String) Optional[BigInt]:
         frac = "00"
     return parse(parts[0].concat(frac), 10).get()
 
-# Splits a line into its category and amount text, or none when the line is invalid.
+// Splits a line into its category and amount text, or none when the line is invalid.
 fn split_record(line: String) Optional[List[String]]:
     if line.starts_with("\""):
-        # A quoted category: the only quotes allowed are the two wrapping it.
+        // A quoted category: the only quotes allowed are the two wrapping it.
         let quoted = line.split("\"")
         if quoted.length() != 3 or quoted[1].length() == 0:
             return none

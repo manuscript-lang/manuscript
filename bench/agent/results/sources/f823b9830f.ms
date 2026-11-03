@@ -2,7 +2,7 @@ import read_all, stdin, stdout from "@std/io.ms"
 import from_scalars from "@std/string.ms"
 import Bytes from "@std/bytes.ms"
 
-# Value tags.
+// Value tags.
 let TAG_NUM = 0
 let TAG_BOOL = 1
 let TAG_STR = 2
@@ -16,7 +16,7 @@ let TAG_UNBOUND = 9
 let MAX_INT = 9223372036854775807
 let MIN_INT = -9223372036854775807 - 1
 let MAX_DEPTH = 10000
-# Symbols with ids below SPECIAL_COUNT name special forms; they are interned first, in this order.
+// Symbols with ids below SPECIAL_COUNT name special forms; they are interned first, in this order.
 let S_QUOTE = 0
 let S_IF = 1
 let S_DEFINE = 2
@@ -34,7 +34,7 @@ let S_UNLESS = 13
 let S_TRY = 14
 let SPECIAL_COUNT = 15
 let S_ELSE = 15
-# Builtin opcodes; the index is the position in `PRIMS`, which install_prims registers in this order.
+// Builtin opcodes; the index is the position in `PRIMS`, which install_prims registers in this order.
 let P_ADD = 0
 let P_SUB = 1
 let P_MUL = 2
@@ -110,8 +110,8 @@ let P_NEWLINE = 71
 let P_VOID = 72
 let P_ERROR = 73
 
-# A Scheme value. `num` holds integers, booleans (0 or 1), symbol ids, pair/closure
-# indexes and builtin opcodes; `text` holds string contents and is "" otherwise.
+// A Scheme value. `num` holds integers, booleans (0 or 1), symbol ids, pair/closure
+// indexes and builtin opcodes; `text` holds string contents and is "" otherwise.
 type Value:
     tag: Int
     num: Int
@@ -124,11 +124,11 @@ type Closure:
     body: Value
     env: Int
 
-# Interpreter state.
-# - Pairs live in `cars`/`cdrs`; closures in `clos`.
-# - Symbols are interned: `syms` maps id to name. `globals` holds each symbol's global value.
-# - Frame 0 is the global frame. Other frames are chains of binding nodes (`node_*`) that
-#   start at `frame_head`; `frame_parent` links frames to their enclosing frame.
+// Interpreter state.
+// - Pairs live in `cars`/`cdrs`; closures in `clos`.
+// - Symbols are interned: `syms` maps id to name. `globals` holds each symbol's global value.
+// - Frame 0 is the global frame. Other frames are chains of binding nodes (`node_*`) that
+//   start at `frame_head`; `frame_parent` links frames to their enclosing frame.
 type Machine:
     syms: List[String]
     sym_ids: Map[String, Int]
@@ -154,7 +154,7 @@ impl Error for Fail:
     fn message() String:
         return self.msg
 
-# What `special_form` tells the evaluation loop to do next.
+// What `special_form` tells the evaluation loop to do next.
 type Step:
     done: Bool
     value: Value
@@ -221,7 +221,7 @@ fn next_step(x: Value, env: Int) Step:
 fn call_step(x: Value, env: Int) Step:
     return Step(done: false, value: x, env: env, call: true)
 
-# ---------------------------------------------------------------- symbols and environments
+// ---------------------------------------------------------------- symbols and environments
 fn intern(var m: Machine, name: String) Int:
     if let id = m.sym_ids.get(name):
         return id
@@ -248,7 +248,7 @@ fn add_binding(var m: Machine, f: Int, sym: Int, v: Value) Unit:
     m.node_next.append(m.frame_head.get(f))
     m.frame_head.set(f, m.node_sym.length() - 1)
 
-# The value bound to `sym`, or an UNBOUND value when there is none.
+// The value bound to `sym`, or an UNBOUND value when there is none.
 fn lookup(m: Machine, env: Int, sym: Int) Value:
     var f = env
 
@@ -265,7 +265,7 @@ fn lookup(m: Machine, env: Int, sym: Int) Value:
 
     return m.globals.get(sym)
 
-# Assigns an existing binding; false when the symbol is unbound.
+// Assigns an existing binding; false when the symbol is unbound.
 fn assign(var m: Machine, env: Int, sym: Int, v: Value) Bool:
     var f = env
 
@@ -287,7 +287,7 @@ fn assign(var m: Machine, env: Int, sym: Int, v: Value) Bool:
     m.globals.set(sym, v)
     return true
 
-# ---------------------------------------------------------------- pairs and lists
+// ---------------------------------------------------------------- pairs and lists
 fn cons(var m: Machine, a: Value, d: Value) Value:
     m.cars.append(a)
     m.cdrs.append(d)
@@ -299,7 +299,7 @@ fn car(m: Machine, p: Value) Value:
 fn cdr(m: Machine, p: Value) Value:
     return m.cdrs.get(p.num)
 
-# The elements of a proper list, or none when the chain ends in a non-empty tail.
+// The elements of a proper list, or none when the chain ends in a non-empty tail.
 fn list_items(m: Machine, v: Value) Optional[List[Value]]:
     var out = List[Value]()
     var cur = v
@@ -319,7 +319,7 @@ fn require_list(m: Machine, name: String, v: Value) Result[List[Value], Fail]:
 
     return error(type_fail(m, name, "list", v))
 
-# Builds a list from items[start..] ending in `tail`.
+// Builds a list from items[start..] ending in `tail`.
 fn build_list(var m: Machine, items: List[Value], start: Int, tail: Value) Value:
     var result = tail
     var i = items.length() - 1
@@ -330,12 +330,12 @@ fn build_list(var m: Machine, items: List[Value], start: Int, tail: Value) Value
 
     return result
 
-# (begin forms...) built from items[start..], used as a body in tail position.
+// (begin forms...) built from items[start..], used as a body in tail position.
 fn body_form(var m: Machine, items: List[Value], start: Int) Value:
     let forms = build_list(var m, items, start, nil_v())
     return cons(var m, sym_v(S_BEGIN), forms)
 
-# ---------------------------------------------------------------- printing and equality
+// ---------------------------------------------------------------- printing and equality
 fn quote_str(s: String) String:
     var out = "\""
 
@@ -443,7 +443,7 @@ fn emit(var m: Machine, s: String) Unit:
         m.line_start = s.ends_with("\n")
     stdout().write(s).get()
 
-# ---------------------------------------------------------------- reader
+// ---------------------------------------------------------------- reader
 fn is_ws(c: Int) Bool:
     return c == 32 or c == 9 or c == 10 or c == 13
 
@@ -484,7 +484,7 @@ fn int_shape(codes: List[Int]) Bool:
 
     return true
 
-# Parses a token that has int_shape; none when the value does not fit in int64.
+// Parses a token that has int_shape; none when the value does not fit in int64.
 fn parse_int(codes: List[Int]) Optional[Int]:
     var i = 0
     var neg = false
@@ -643,7 +643,7 @@ fn read_datum(var m: Machine, var r: Reader) Result[Value, Fail]:
 
     return read_atom(var m, var r)
 
-# ---------------------------------------------------------------- evaluator
+// ---------------------------------------------------------------- evaluator
 fn is_proper(m: Machine, x: Value) Bool:
     var cur = x
     while cur.tag == TAG_PAIR:
@@ -693,7 +693,7 @@ fn make_closure(var m: Machine, name: String, p: Params, body: Value, env: Int) 
     )
     return mk(TAG_CLO, m.clos.length() - 1, "")
 
-# Parses (closure params body...) given the form's items.
+// Parses (closure params body...) given the form's items.
 fn make_lambda(var m: Machine, items: List[Value], env: Int, name: String) Result[
     Value, Fail
 ]:
@@ -704,7 +704,7 @@ fn make_lambda(var m: Machine, items: List[Value], env: Int, name: String) Resul
     let body = body_form(var m, items, 2)
     return ok(make_closure(var m, name, p, body, env))
 
-# Creates a frame for a call to closure `id`, binding its parameters.
+// Creates a frame for a call to closure `id`, binding its parameters.
 fn bind_args(var m: Machine, id: Int, args: List[Value]) Result[Int, Fail]:
     let params = m.clos.get(id).params.clone()
     let rest = m.clos.get(id).rest
@@ -742,8 +742,8 @@ fn bind_args(var m: Machine, id: Int, args: List[Value]) Result[Int, Fail]:
 
     return ok(fid)
 
-# Calls any procedure from a non-tail position.
-# Calls any procedure from a non-tail position; `d` is the current call depth.
+// Calls any procedure from a non-tail position.
+// Calls any procedure from a non-tail position; `d` is the current call depth.
 fn apply_proc(var m: Machine, f: Value, args: List[Value], d: Int) Result[Value, Fail]:
     if f.tag == TAG_PRIM:
         return call_prim(var m, f.num, args, d)
@@ -757,8 +757,8 @@ fn apply_proc(var m: Machine, f: Value, args: List[Value], d: Int) Result[Value,
     let body = m.clos.get(f.num).body
     return eval(var m, body, fid, d + 1, true)
 
-# Evaluates x in env. `d0` is the call depth of the caller; `entered0` says the body
-# being run was already counted as a call, so tail calls here do not count again.
+// Evaluates x in env. `d0` is the call depth of the caller; `entered0` says the body
+// being run was already counted as a call, so tail calls here do not count again.
 fn eval(var m: Machine, start_x: Value, start_env: Int, d0: Int, entered0: Bool) Result[
     Value, Fail
 ]:
@@ -1133,7 +1133,7 @@ fn sf_try(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fai
     let v = try apply_proc(var m, handler, args, d)
     return ok(done_step(v))
 
-# ---------------------------------------------------------------- builtins
+// ---------------------------------------------------------------- builtins
 fn define_prim(var m: Machine, name: String, lo: Int, hi: Int) Unit:
     m.prim_names.append(name)
     m.prim_min.append(lo)
@@ -1690,7 +1690,7 @@ fn higher_order(var m: Machine, op: Int, name: String, args: List[Value], d: Int
 
     return string_prims(var m, op, name, args)
 
-# Stable merge sort; `less` is called as (less later earlier).
+// Stable merge sort; `less` is called as (less later earlier).
 fn sort_values(var m: Machine, items: List[Value], less: Value, d: Int) Result[
     List[Value], Fail
 ]:
@@ -1878,7 +1878,7 @@ fn text_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result[
     if op == P_VOID:
         return ok(void_v())
 
-    # error
+    // error
     let first = args.get(0)
     if first.tag != TAG_STR:
         return error(type_fail(m, "error", "string", first))
@@ -1892,7 +1892,7 @@ fn text_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result[
 
     return error(rt(msg))
 
-# ---------------------------------------------------------------- driver
+// ---------------------------------------------------------------- driver
 fn new_machine() Machine:
     var m = Machine(
         syms: List[String](), sym_ids: Map[String, Int](), globals: List[Value](),

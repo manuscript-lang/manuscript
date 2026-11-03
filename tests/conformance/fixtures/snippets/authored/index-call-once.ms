@@ -1,5 +1,5 @@
-# conform: tags=lists,mutation,tier-stdlib
-# conform: phase=run
+// conform: tags=lists,mutation,tier-stdlib
+// conform: phase=run
 import stdout from "@std/io/io.ms"
 
 type Counter:

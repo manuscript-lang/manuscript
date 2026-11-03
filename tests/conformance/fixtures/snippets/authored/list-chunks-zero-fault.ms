@@ -1,6 +1,6 @@
-# conform: tags=lists,faults,tier-core
-# conform: phase=run
-# conform: origin=List.chunks rejects a non-positive size
+// conform: tags=lists,faults,tier-core
+// conform: phase=run
+// conform: origin=List.chunks rejects a non-positive size
 import stdout from "@std/io/io.ms"
 
 export fn main() Int:

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,interpolation,modules,mutation,stdlib-collections,stdlib-faults,testing,tier-stdlib
-# conform: phase=test
-# conform: origin=documentation/core-language/control-flow/loops.md:26
+// conform: tags=control-flow,faults,interpolation,modules,mutation,stdlib-collections,stdlib-faults,testing,tier-stdlib
+// conform: phase=test
+// conform: origin=documentation/core-language/control-flow/loops.md:26
 import panic from "@std/core.ms"
 
 test "sum indexes":

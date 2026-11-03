@@ -15,7 +15,7 @@ interface Dup:
 
 impl Dup for Bag[U]:
     fn dup() Int:
-        return self.items.take(1).length()  # error: take requires U to be Clonable
+        return self.items.take(1).length()  // error: take requires U to be Clonable
 
 fn via[T: Dup](x: T) Int:
     return x.dup()

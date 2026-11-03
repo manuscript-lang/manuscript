@@ -1,6 +1,6 @@
-# Validates complete trials before printing per-kernel minimum microseconds (bench/perf/kernels and competence).
-# Rows are `<version> <kernel> <microseconds> <checksum>`; each successful producer ends its trial with `<version> # end`.
-# Times below two microseconds are reported as folded rather than used in ratios.
+// Validates complete trials before printing per-kernel minimum microseconds (bench/perf/kernels and competence).
+// Rows are `<version> <kernel> <microseconds> <checksum>`; each successful producer ends its trial with `<version> # end`.
+// Times below two microseconds are reported as folded rather than used in ratios.
 import invalid, minimum from "./lib.ms"
 
 export fn suite_names(suite: String) List[String]:

@@ -5,7 +5,7 @@ import values from "@std/bytes.ms"
 let BAD = "error: bad command"
 let INF = 1000000000
 
-# Returns the value of a 1-6 digit decimal token, or -1 when malformed.
+// Returns the value of a 1-6 digit decimal token, or -1 when malformed.
 fn num(t: String) Int:
     if t.length() < 1 or t.length() > 6:
         return -1
@@ -102,7 +102,7 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
 
     return dp[top]
 
-# Returns the minimum coin count, or -1 when the amount cannot be made.
+// Returns the minimum coin count, or -1 when the amount cannot be made.
 fn coins(amount: Int, cs: List[Int]) Int:
     let size = amount + 1
     var dp = List[Int](reserve: size)

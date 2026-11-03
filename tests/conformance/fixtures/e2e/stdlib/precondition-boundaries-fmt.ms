@@ -1,6 +1,6 @@
-# conform: tags=faults,formatter,modules,optional,parser,stdlib-bigint,stdlib-bytes,stdlib-numbers,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/stdlib/precondition-boundaries.ms
+// conform: tags=faults,formatter,modules,optional,parser,stdlib-bigint,stdlib-bytes,stdlib-numbers,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/stdlib/precondition-boundaries.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import PriorityQueue, Queue from "@std/collections/queue.ms"

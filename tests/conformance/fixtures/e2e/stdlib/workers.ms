@@ -1,5 +1,5 @@
-# conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
+// conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
 import Channel from "@std/io/channels.ms"
 import panic from "@std/core.ms"
 import fetch from "@std/net/fetch.ms"
@@ -79,7 +79,7 @@ fn announce_then_wait() Unit:
     let _ = ch.send(1)
     let _got = ch.receive()
 
-# Runs without parking for long enough that the cancel always lands while it is computing.
+// Runs without parking for long enough that the cancel always lands while it is computing.
 fn spin_then_wait() Unit:
     var ch = worker_channel[Int, Int]()
     let _ = ch.send(1)

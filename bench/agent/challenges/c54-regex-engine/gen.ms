@@ -1,5 +1,5 @@
-# Generator for c54-regex-engine. The expected outputs come from the Go oracle in oracle/*.ref (built with the
-# local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c54
+// Generator for c54-regex-engine. The expected outputs come from the Go oracle in oracle/*.ref (built with the
+// local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c54
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
 fn rep(text: String, count: Int) String:

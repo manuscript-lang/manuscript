@@ -1,6 +1,6 @@
-# conform: tags=alternatives,closures,control-flow,formatter,generics,interfaces,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/build/compiler_test.go:33 TestCallArgumentLabelRejections
+// conform: tags=alternatives,closures,control-flow,formatter,generics,interfaces,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/build/compiler_test.go:33 TestCallArgumentLabelRejections
 fn one(value: Int) Int:
     return value
 

@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,closures,mutation,tier-core
-# conform: phase=check
-# conform: origin=ms-check/tests/messages.rs
+// conform: tags=diagnostics,closures,mutation,tier-core
+// conform: phase=check
+// conform: origin=ms-check/tests/messages.rs
 type Ch:
     buf: List[String]
 

@@ -35,7 +35,7 @@ type Payload:
     msg: String
     time: Int
 
-# The text a test's file sink received so far.
+// The text a test's file sink received so far.
 fn written(path: String) String?!:
     let data = try read_file(path)
     return ok(data.decode_utf8())
@@ -296,7 +296,7 @@ test "unencodable fields are rejected and fields keep their shape under data":
     let expected = "\{\"level\":30,\"msg\":\"m\",\"data\":\{\"service\":\"a\"\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
     try expect_equal((try written(path)), expected)
 
-# A stream that suspends in the middle of a write, so only the transport keeps records whole.
+// A stream that suspends in the middle of a write, so only the transport keeps records whole.
 type SlowStream:
     parts: Shared[List[String]]
 
@@ -349,7 +349,7 @@ test "concurrent tasks never interleave a record":
                 true
             )
 
-# A transport that keeps every record in memory.
+// A transport that keeps every record in memory.
 type Memory:
     out: Shared[List[String]]
 

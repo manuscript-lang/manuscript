@@ -1,8 +1,8 @@
 import read_all, stdin, stdout from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 
-# Value kinds. A value is a copyable (kind, n) pair; heap objects live in
-# the Heap arenas and `n` is an index into the matching arena.
+// Value kinds. A value is a copyable (kind, n) pair; heap objects live in
+// the Heap arenas and `n` is an index into the matching arena.
 let K_VOID = 0
 let K_BOOL = 1
 let K_INT = 2
@@ -12,8 +12,8 @@ let K_STR = 5
 let K_SYM = 6
 let K_PRIM = 7
 let K_CLO = 8
-# Special forms are interned first, so their symbol ids are these constants.
-# Ids below NSPECIAL are special form keywords.
+// Special forms are interned first, so their symbol ids are these constants.
+// Ids below NSPECIAL are special form keywords.
 let S_QUOTE = 0
 let S_IF = 1
 let S_DEFINE = 2
@@ -31,7 +31,7 @@ let S_UNLESS = 13
 let S_TRY = 14
 let S_ELSE = 15
 let NSPECIAL = 15
-# Primitive codes, in registration order (see reg_prims).
+// Primitive codes, in registration order (see reg_prims).
 let P_ADD = 0
 let P_SUB = 1
 let P_MUL = 2
@@ -106,7 +106,7 @@ let P_WRITE = 70
 let P_NEWLINE = 71
 let P_VOID = 72
 let P_ERROR = 73
-# Groups of primitive codes, used to dispatch in prim_apply.
+// Groups of primitive codes, used to dispatch in prim_apply.
 let P_PRED = 17
 let P_PAIR = 28
 let P_HO = 45
@@ -157,8 +157,8 @@ type Heap:
     out_any: Bool
     out_nl: Bool
 
-# What a special form leaves behind: either a finished value, or an
-# expression to continue evaluating in the loop of eval_expr.
+// What a special form leaves behind: either a finished value, or an
+// expression to continue evaluating in the loop of eval_expr.
 type Step:
     done: Bool
     value: V
@@ -232,7 +232,7 @@ fn car_of(h: Heap, v: V) V:
 fn cdr_of(h: Heap, v: V) V:
     return h.cdrs[v.n]
 
-# Element i of a list (0 is the car of the list itself).
+// Element i of a list (0 is the car of the list itself).
 fn nth(h: Heap, v: V, i: Int) V:
     var cur = v
     var k = 0
@@ -243,7 +243,7 @@ fn nth(h: Heap, v: V, i: Int) V:
 
     return car_of(h, cur)
 
-# The list after its first k pairs.
+// The list after its first k pairs.
 fn drop(h: Heap, v: V, k: Int) V:
     var cur = v
     var i = 0
@@ -254,7 +254,7 @@ fn drop(h: Heap, v: V, k: Int) V:
 
     return cur
 
-# Number of pairs in a proper list, or -1 when the list is not proper.
+// Number of pairs in a proper list, or -1 when the list is not proper.
 fn list_len(h: Heap, v: V) Int:
     var n = 0
     var cur = v
@@ -278,7 +278,7 @@ fn to_vec(h: Heap, v: V) List[V]:
 
     return out
 
-# Conses items[0..] in front of tail, keeping their order.
+// Conses items[0..] in front of tail, keeping their order.
 fn prepend_list(var h: Heap, items: List[V], tail: V) V:
     var acc = tail
     var i = items.length() - 1
@@ -366,7 +366,7 @@ fn report_error(var h: Heap, msg: String) Unit:
         emit(var h, "\n")
     emit(var h, "error: {msg}\n")
 
-# ---- Argument checks for primitives ----
+// ---- Argument checks for primitives ----
 
 fn tyerr(h: Heap, code: Int, kind: String, v: V) Fail:
     return Fail("{h.pnames[code]}: expected {kind}, got {show(h, v, true)}", false)
@@ -392,7 +392,7 @@ fn want_int(h: Heap, code: Int, v: V) Result[Int, Fail]:
 
     return ok(v.n)
 
-# Returns the index of the string in h.strs.
+// Returns the index of the string in h.strs.
 fn want_str(h: Heap, code: Int, v: V) Result[Int, Fail]:
     if v.kind != K_STR:
         return error(tyerr(h, code, "string", v))
@@ -411,7 +411,7 @@ fn check_proc(h: Heap, code: Int, v: V) Result[Unit, Fail]:
 
     return ok(unit)
 
-# ---- Overflow-checked integer arithmetic ----
+// ---- Overflow-checked integer arithmetic ----
 
 fn add_checked(a: Int, b: Int) Result[Int, Fail]:
     if b > 0 and a > MAX_INT - b:
@@ -456,7 +456,7 @@ fn mul_checked(a: Int, b: Int) Result[Int, Fail]:
 
     return ok(a * b)
 
-# ---- Equality ----
+// ---- Equality ----
 
 fn same_v(a: V, b: V) Bool:
     if a.kind != b.kind:
@@ -486,7 +486,7 @@ fn equal_v(h: Heap, a: V, b: V) Bool:
 
     return x.n == y.n
 
-# ---- Environments ----
+// ---- Environments ----
 
 fn lookup(h: Heap, env: Int, sym: Int) Optional[V]:
     var f = env
@@ -499,7 +499,7 @@ fn lookup(h: Heap, env: Int, sym: Int) Optional[V]:
 
     return none
 
-# Frame that holds sym, or -1 when no frame does.
+// Frame that holds sym, or -1 when no frame does.
 fn find_frame(h: Heap, env: Int, sym: Int) Int:
     var f = env
 
@@ -524,7 +524,7 @@ fn call_depth(depth: Int, tail: Bool) Result[Int, Fail]:
 
     return ok(nd)
 
-# Creates the frame for calling closure ci with args and returns its id.
+// Creates the frame for calling closure ci with args and returns its id.
 fn bind_call(var h: Heap, ci: Int, args: List[V]) Result[Int, Fail]:
     let formals = h.clos[ci].formals
     let env = h.clos[ci].env
@@ -574,7 +574,7 @@ fn bind_call(var h: Heap, ci: Int, args: List[V]) Result[Int, Fail]:
 
     return ok(frame)
 
-# Validates formals and stores a closure. sid names the form for errors.
+// Validates formals and stores a closure. sid names the form for errors.
 fn make_closure(var h: Heap, sid: Int, formals: V, body: V, env: Int, name: Int) Result[
     V, Fail
 ]:
@@ -603,14 +603,14 @@ fn lambda_form(var h: Heap, x: V, env: Int, name: Int) Result[V, Fail]:
     let body = drop(h, x, 2)
     return make_closure(var h, S_LAMBDA, params, body, env, name)
 
-# Last expression of a non-empty body.
+// Last expression of a non-empty body.
 fn body_last(h: Heap, body: V) V:
     var cur = body
     while cdr_of(h, cur).kind == K_PAIR:
         cur = cdr_of(h, cur)
     return car_of(h, cur)
 
-# Evaluates every expression of a body except the last, in non-tail position.
+// Evaluates every expression of a body except the last, in non-tail position.
 fn run_init(var h: Heap, body: V, env: Int, depth: Int) Result[Unit, Fail]:
     var cur = body
 
@@ -621,7 +621,7 @@ fn run_init(var h: Heap, body: V, env: Int, depth: Int) Result[Unit, Fail]:
 
     return ok(unit)
 
-# Checks a let-style binding list and returns its (name init) entries.
+// Checks a let-style binding list and returns its (name init) entries.
 fn binding_list(h: Heap, sid: Int, bindings: V) Result[List[V], Fail]:
     let items = to_vec(h, bindings)
     if list_len(h, bindings) < 0:
@@ -632,7 +632,7 @@ fn binding_list(h: Heap, sid: Int, bindings: V) Result[List[V], Fail]:
             return error(bad_form(h, sid))
     return ok(items)
 
-# Evaluates a special form. `x` is a proper list whose head is special.
+// Evaluates a special form. `x` is a proper list whose head is special.
 fn special(var h: Heap, sid: Int, x: V, env: Int, depth: Int, tail: Bool) Result[
     Step, Fail
 ]:
@@ -871,7 +871,7 @@ fn sf_try(var h: Heap, x: V, len: Int, env: Int, depth: Int) Result[Step, Fail]:
     let v = try r
     return ok(finish(v))
 
-# (let ((name init) ...) body ...)
+// (let ((name init) ...) body ...)
 fn plain_let(var h: Heap, x: V, env: Int, depth: Int, tail: Bool) Result[Step, Fail]:
     let items = try binding_list(h, S_LET, nth(h, x, 1))
     var vals = List[V]()
@@ -892,7 +892,7 @@ fn plain_let(var h: Heap, x: V, env: Int, depth: Int, tail: Bool) Result[Step, F
     try run_init(var h, body, frame, depth)
     return ok(jump(body_last(h, body), frame, depth, tail))
 
-# (let name ((var init) ...) body ...): name is a procedure over the body.
+// (let name ((var init) ...) body ...): name is a procedure over the body.
 fn named_let(var h: Heap, x: V, len: Int, env: Int, depth: Int, tail: Bool) Result[
     Step, Fail
 ]:
@@ -922,8 +922,8 @@ fn named_let(var h: Heap, x: V, len: Int, env: Int, depth: Int, tail: Bool) Resu
     try run_init(var h, body, frame, nd)
     return ok(jump(body_last(h, body), frame, nd, true))
 
-# Applies a procedure to already evaluated arguments, in non-tail position
-# of a builtin. Used by higher-order primitives and the try handler.
+// Applies a procedure to already evaluated arguments, in non-tail position
+// of a builtin. Used by higher-order primitives and the try handler.
 fn apply_proc(var h: Heap, f: V, args: List[V], depth: Int) Result[V, Fail]:
     if f.kind == K_PRIM:
         return prim_apply(var h, f.n, args, depth)
@@ -938,9 +938,9 @@ fn apply_proc(var h: Heap, f: V, args: List[V], depth: Int) Result[V, Fail]:
     let last = body_last(h, body)
     return eval_expr(var h, last, frame, nd, true)
 
-# Evaluates expr in env. `depth` counts procedure bodies entered from
-# non-tail positions; `tail` says whether expr is in tail position of the
-# body that is running. Tail calls loop here instead of recursing.
+// Evaluates expr in env. `depth` counts procedure bodies entered from
+// non-tail positions; `tail` says whether expr is in tail position of the
+// body that is running. Tail calls loop here instead of recursing.
 fn eval_expr(var h: Heap, expr: V, env0: Int, depth0: Int, tail0: Bool) Result[V, Fail]:
     var x = expr
     var env = env0
@@ -1014,7 +1014,7 @@ fn prim_apply(var h: Heap, code: Int, args: List[V], depth: Int) Result[V, Fail]
 
     return misc_prim(var h, code, args)
 
-# ---- Numbers ----
+// ---- Numbers ----
 
 fn num_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
     if code == P_ADD or code == P_MUL:
@@ -1125,7 +1125,7 @@ fn num_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
 
     return ok(vbool(a % 2 != 0))
 
-# ---- Predicates and equality ----
+// ---- Predicates and equality ----
 
 fn pred_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
     let v = args[0]
@@ -1152,7 +1152,7 @@ fn pred_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
 
     return ok(vbool(equal_v(h, v, args[1])))
 
-# ---- Pairs and lists ----
+// ---- Pairs and lists ----
 
 fn car_checked(h: Heap, code: Int, v: V) Result[V, Fail]:
     if v.kind != K_PAIR:
@@ -1276,7 +1276,7 @@ fn pair_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
 
         return ok(vbool(false))
 
-    # member
+    // member
     let _m = try check_list(h, code, args[1])
     let second = args[1]
     var cur = second
@@ -1307,9 +1307,9 @@ fn append_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
 
     return ok(acc)
 
-# ---- Higher-order primitives ----
+// ---- Higher-order primitives ----
 
-# Calls f on the i-th elements of the lists in args[1..], stopping at the shortest.
+// Calls f on the i-th elements of the lists in args[1..], stopping at the shortest.
 fn map_lists(var h: Heap, code: Int, args: List[V], depth: Int) Result[List[V], Fail]:
     let f = args[0]
     let _p = try check_proc(h, code, f)
@@ -1337,7 +1337,7 @@ fn map_lists(var h: Heap, code: Int, args: List[V], depth: Int) Result[List[V], 
 
     return ok(results)
 
-# Stable merge sort; less? is called as (less? later earlier).
+// Stable merge sort; less? is called as (less? later earlier).
 fn sort_list(var h: Heap, items: List[V], less: V, depth: Int) Result[List[V], Fail]:
     let n = items.length()
     var out = List[V]()
@@ -1463,7 +1463,7 @@ fn ho_apply(var h: Heap, args: List[V], depth: Int) Result[V, Fail]:
         cargs.append(x)
     return apply_proc(var h, args[0], cargs, depth)
 
-# The procedure is checked before the list.
+// The procedure is checked before the list.
 fn ho_sort(var h: Heap, args: List[V], depth: Int) Result[V, Fail]:
     let _p = try check_proc(h, P_SORT, args[1])
     let _l = try check_list(h, P_SORT, args[0])
@@ -1471,7 +1471,7 @@ fn ho_sort(var h: Heap, args: List[V], depth: Int) Result[V, Fail]:
     let sorted = try sort_list(var h, items, args[1], depth)
     return ok(prepend_list(var h, sorted, nil_v()))
 
-# ---- Strings ----
+// ---- Strings ----
 
 fn str_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
     if code == P_STRLEN:
@@ -1594,14 +1594,14 @@ fn str_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
             items.append(str_val(var h, piece.clone()))
         return ok(prepend_list(var h, items, nil_v()))
 
-    # string-contains?
+    // string-contains?
     let si = try want_str(h, code, args[0])
     let sb = try want_str(h, code, args[1])
     let s = h.strs[si].clone()
     let t = h.strs[sb].clone()
     return ok(vbool(s.contains(t)))
 
-# ---- Output and miscellaneous ----
+// ---- Output and miscellaneous ----
 
 fn misc_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
     if code == P_DISPLAY or code == P_WRITE:
@@ -1616,7 +1616,7 @@ fn misc_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
     if code == P_VOID:
         return ok(void_v())
 
-    # error
+    // error
     let si = try want_str(h, code, args[0])
     var parts = List[String]()
     parts.append(h.strs[si].clone())
@@ -1627,7 +1627,7 @@ fn misc_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
 
     return error(rt_err(parts.join("")))
 
-# ---- Reader ----
+// ---- Reader ----
 
 fn peek(h: Heap) Int:
     if h.pos >= h.n:
@@ -1811,7 +1811,7 @@ fn atom_value(var h: Heap, t: String) Result[V, Fail]:
 
     return ok(V(K_SYM, intern(var h, t)))
 
-# True for an optional '-' followed by one or more digits.
+// True for an optional '-' followed by one or more digits.
 fn is_int_text(text: String) Bool:
     let b = text.to_bytes()
     let n = b.length()
@@ -1830,8 +1830,8 @@ fn is_int_text(text: String) Bool:
 
     return true
 
-# Parses text that passed is_int_text. Accumulates as a negative number so
-# that MIN_INT is representable; none when the value is out of range.
+// Parses text that passed is_int_text. Accumulates as a negative number so
+// that MIN_INT is representable; none when the value is out of range.
 fn parse_int_text(text: String) Optional[Int]:
     let b = text.to_bytes()
     let n = b.length()
@@ -1859,7 +1859,7 @@ fn parse_int_text(text: String) Optional[Int]:
 
     return some(-acc)
 
-# ---- Driver ----
+// ---- Driver ----
 
 fn run_top(var h: Heap) Result[Unit, Fail]:
     while true:
@@ -1881,7 +1881,7 @@ fn reg(var h: Heap, name: String, lo: Int, hi: Int) Unit:
     let id = intern(var h, name)
     h.binds.add(key(0, id), V(K_PRIM, code))
 
-# Registration order must match the P_* constants.
+// Registration order must match the P_* constants.
 fn reg_prims(var h: Heap) Unit:
     reg(var h, "+", 0, -1)
     reg(var h, "-", 1, -1)

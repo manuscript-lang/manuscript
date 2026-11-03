@@ -1,6 +1,6 @@
-# conform: tags=alternatives,formatter,lists,maps,parser,records,strings,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/checker_test.go:83 TestNestedCollectionsPreserveFiniteRecursiveApplications
+// conform: tags=alternatives,formatter,lists,maps,parser,records,strings,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/checker_test.go:83 TestNestedCollectionsPreserveFiniteRecursiveApplications
 type Value:
     children: Map[String, Value]
 

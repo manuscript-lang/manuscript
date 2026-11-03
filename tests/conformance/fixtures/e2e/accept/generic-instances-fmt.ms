@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,generics,modules,mutation,parser,records,stdlib-testing,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/generic-instances.ms
+// conform: tags=control-flow,formatter,generics,modules,mutation,parser,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/generic-instances.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
 type Point:

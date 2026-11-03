@@ -10,6 +10,7 @@
 use crate::ir::*;
 use crate::types::Ty;
 use crate::verify::dominators;
+use crate::vmap::{ValueMap, ValueSet};
 use std::collections::{HashMap, HashSet};
 
 /// Runs the pass over every function; returns whether anything changed.
@@ -72,7 +73,7 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
     any
 }
 
-fn resolve(subst: &HashMap<Value, Value>, mut v: Value) -> Value {
+fn resolve(subst: &ValueMap<Value>, mut v: Value) -> Value {
     while let Some(n) = subst.get(&v) {
         v = *n;
     }
@@ -80,7 +81,7 @@ fn resolve(subst: &HashMap<Value, Value>, mut v: Value) -> Value {
 }
 
 /// Rewrites every use through `subst`.
-fn apply_subst(f: &mut Func, subst: &HashMap<Value, Value>) {
+fn apply_subst(f: &mut Func, subst: &ValueMap<Value>) {
     if subst.is_empty() {
         return;
     }
@@ -99,7 +100,7 @@ fn apply_subst(f: &mut Func, subst: &HashMap<Value, Value>) {
 /// case becomes the payload operand, and when only drops remain the construction and the
 /// drops are deleted (a plain-data case owns nothing, so ownership stays linear).
 fn known_alts(m: &Module, f: &mut Func) -> bool {
-    let mut known: HashMap<Value, (u32, Vec<Value>)> = HashMap::new();
+    let mut known: ValueMap<(u32, Vec<Value>)> = ValueMap::new();
     for b in &f.blocks {
         for i in &b.insts {
             let (Op::AltNew, Imm::Case(_, case), Some(r)) = (i.op, i.imm, i.res) else {
@@ -114,7 +115,7 @@ fn known_alts(m: &Module, f: &mut Func) -> bool {
         return false;
     }
     let mut changed = false;
-    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut subst: ValueMap<Value> = ValueMap::new();
     let mut blocks = std::mem::take(&mut f.blocks);
     for b in &mut blocks {
         for i in &mut b.insts {
@@ -148,13 +149,13 @@ fn known_alts(m: &Module, f: &mut Func) -> bool {
     }
     // A value left with only its drop is never observed: delete both.
     let uses = f.use_counts();
-    let mut drops: HashMap<Value, usize> = HashMap::new();
+    let mut drops: ValueMap<usize> = ValueMap::new();
     for i in f.blocks.iter().flat_map(|b| &b.insts) {
         if i.op == Op::Drop && known.contains_key(&i.args[0]) {
-            *drops.entry(i.args[0]).or_default() += 1;
+            *drops.get_or_default(i.args[0]) += 1;
         }
     }
-    let dead: HashSet<Value> = known
+    let dead: ValueSet = known
         .keys()
         .copied()
         .filter(|v| {
@@ -180,7 +181,7 @@ fn known_alts(m: &Module, f: &mut Func) -> bool {
 /// `a.compare(b)` on an element type inlines to a load of the boxed argument, so each load
 /// becomes the payload operand and the allocation, the pointer and the drops are deleted.
 fn known_ifaces(m: &Module, f: &mut Func) -> bool {
-    let mut boxed: HashMap<Value, Value> = HashMap::new();
+    let mut boxed: ValueMap<Value> = ValueMap::new();
     for i in f.blocks.iter().flat_map(|b| &b.insts) {
         if let (Op::IfaceNew, [x], Some(r)) = (i.op, i.args.as_slice(), i.res)
             && !m.needs_drop(f.ty(*x))
@@ -191,7 +192,7 @@ fn known_ifaces(m: &Module, f: &mut Func) -> bool {
     if boxed.is_empty() {
         return false;
     }
-    let mut pointers: HashMap<Value, Value> = HashMap::new();
+    let mut pointers: ValueMap<Value> = ValueMap::new();
     for i in f.blocks.iter().flat_map(|b| &b.insts) {
         if let (Op::IfaceData, [b], Some(r)) = (i.op, i.args.as_slice(), i.res)
             && boxed.contains_key(b)
@@ -200,24 +201,24 @@ fn known_ifaces(m: &Module, f: &mut Func) -> bool {
         }
     }
     let uses = f.use_counts();
-    let mut handled: HashMap<Value, u32> = HashMap::new();
+    let mut handled: ValueMap<u32> = ValueMap::new();
     for i in f.blocks.iter().flat_map(|b| &b.insts) {
         match (i.op, i.args.as_slice()) {
             (Op::Drop | Op::IfaceData, [b]) if boxed.contains_key(b) => {
-                *handled.entry(*b).or_default() += 1;
+                *handled.get_or_default(*b) += 1;
             }
             (Op::Load, [p]) => {
                 if let (Some(b), Some(r)) = (pointers.get(p), i.res)
                     && f.ty(r) == f.ty(boxed[b])
                 {
-                    *handled.entry(*p).or_default() += 1;
+                    *handled.get_or_default(*p) += 1;
                 }
             }
             _ => {}
         }
     }
     let plain = |v: &Value| handled.get(v).copied().unwrap_or(0) == uses[v.index()];
-    let unplain_owners: HashSet<Value> = pointers
+    let unplain_owners: ValueSet = pointers
         .iter()
         .filter(|(p, _)| !plain(p))
         .map(|(_, owner)| *owner)
@@ -227,7 +228,7 @@ fn known_ifaces(m: &Module, f: &mut Func) -> bool {
         return false;
     }
     pointers.retain(|_, b| boxed.contains_key(b));
-    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut subst: ValueMap<Value> = ValueMap::new();
     for i in f.blocks.iter().flat_map(|b| &b.insts) {
         if let (Op::Load, [p], Some(r)) = (i.op, i.args.as_slice(), i.res)
             && let Some(b) = pointers.get(p)
@@ -255,8 +256,8 @@ fn known_ifaces(m: &Module, f: &mut Func) -> bool {
 /// so a function returning `[y, m, d]` that the caller reads back by index allocates nothing
 /// once inlined. With every read folded, the literal and its drops are deleted.
 fn known_lists(m: &Module, f: &mut Func) -> bool {
-    let mut consts: HashMap<Value, i64> = HashMap::new();
-    let mut known: HashMap<Value, Vec<Value>> = HashMap::new();
+    let mut consts: ValueMap<i64> = ValueMap::new();
+    let mut known: ValueMap<Vec<Value>> = ValueMap::new();
     for i in f.blocks.iter().flat_map(|b| &b.insts) {
         match (i.op, i.imm, i.res) {
             (Op::IConst, Imm::Int(c), Some(r)) => {
@@ -273,23 +274,23 @@ fn known_lists(m: &Module, f: &mut Func) -> bool {
     }
     // Only literals nothing but these reads, `list.len` and drops touch.
     let uses = f.use_counts();
-    let mut folded: HashMap<Value, u32> = HashMap::new();
+    let mut folded: ValueMap<u32> = ValueMap::new();
     for i in f.blocks.iter().flat_map(|b| &b.insts) {
-        let Some(list) = i.args.first().filter(|a| known.contains_key(*a)) else {
+        let Some(list) = i.args.first().filter(|a| known.contains_key(a)) else {
             continue;
         };
         let plain = (i.op == Op::ListLen && i.args.len() == 1)
             || (i.op == Op::Drop && i.args.len() == 1)
             || list_element(&known, &consts, i).is_some();
         if plain {
-            *folded.entry(*list).or_default() += 1;
+            *folded.get_or_default(*list) += 1;
         }
     }
     known.retain(|v, _| folded.get(v) == Some(&uses[v.index()]));
     if known.is_empty() {
         return false;
     }
-    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut subst: ValueMap<Value> = ValueMap::new();
     let mut blocks = std::mem::take(&mut f.blocks);
     for i in blocks.iter_mut().flat_map(|b| &mut b.insts) {
         if let (Some(r), Some(v)) = (i.res, list_element(&known, &consts, i)) {
@@ -316,11 +317,7 @@ fn known_lists(m: &Module, f: &mut Func) -> bool {
 }
 
 /// The element of a known list literal that `i`, a read at a constant index in range, yields.
-fn list_element(
-    known: &HashMap<Value, Vec<Value>>,
-    consts: &HashMap<Value, i64>,
-    i: &Inst,
-) -> Option<Value> {
+fn list_element(known: &ValueMap<Vec<Value>>, consts: &ValueMap<i64>, i: &Inst) -> Option<Value> {
     let [list, at] = i.args.as_slice() else {
         return None;
     };
@@ -342,8 +339,8 @@ enum Act {
 
 #[derive(Default)]
 struct Env {
-    consts: HashMap<Value, K>,
-    defs: HashMap<Value, (Op, Vec<Value>, Imm)>,
+    consts: ValueMap<K>,
+    defs: ValueMap<(Op, Vec<Value>, Imm)>,
 }
 
 impl Env {
@@ -700,7 +697,7 @@ fn fold(f: &mut Func) -> bool {
             env.defs.insert(r, (i.op, i.args.clone(), i.imm));
         }
     }
-    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut subst: ValueMap<Value> = ValueMap::new();
     let mut blocks = std::mem::take(&mut f.blocks);
     for b in blocks.iter_mut() {
         let old = std::mem::take(&mut b.insts);
@@ -826,7 +823,7 @@ fn phis(m: &Module, f: &mut Func) -> bool {
     }
     let uses = f.use_counts();
     let mut drop_param: Vec<Vec<usize>> = vec![Vec::new(); n];
-    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut subst: ValueMap<Value> = ValueMap::new();
     for bi in 1..n {
         for (pi, p) in f.blocks[bi].params.iter().enumerate() {
             let droppable = m.needs_drop(f.ty(p.value));
@@ -898,7 +895,7 @@ fn branches(f: &mut Func) -> bool {
     // Merge a block into its unique predecessor when that predecessor falls into it.
     loop {
         let edges = incoming_edges(f);
-        let mut subst: HashMap<Value, Value> = HashMap::new();
+        let mut subst: ValueMap<Value> = ValueMap::new();
         let mut merged = false;
         for p in 0..f.blocks.len() {
             // A consumed block was emptied and ends in `Unreachable`, so it is skipped.
@@ -1003,7 +1000,7 @@ fn cse(m: &Module, f: &mut Func) -> bool {
         }
     }
     let mut table: HashMap<Key, Value> = HashMap::new();
-    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut subst: ValueMap<Value> = ValueMap::new();
     let mut removed: Vec<(usize, usize)> = Vec::new();
     // Explicit walk of the dominator tree; `Exit` unwinds a block's table entries.
     enum Step {
@@ -1132,7 +1129,7 @@ fn roundtrips(f: &mut Func) -> bool {
 /// `r` renamed to `v`, which is then a value the analyses can follow. `put` consumes `v`, so `r`
 /// takes over its one owning use, and only pure instructions may sit between the two.
 fn put_takes(f: &mut Func) -> bool {
-    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut subst: ValueMap<Value> = ValueMap::new();
     let mut removed: HashSet<(usize, usize)> = HashSet::new();
     for (bi, b) in f.blocks.iter().enumerate() {
         for (pi, put) in b.insts.iter().enumerate() {

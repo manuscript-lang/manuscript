@@ -4,32 +4,34 @@ import parse_int_radix from "@std/text.ms"
 import base64_decode, latin1_decode from "@std/data/encoding.ms"
 import Headers, HeaderField, parse_headers from "@std/net/mime.ms"
 
-# Internet mail messages (RFC 5322): addresses, address lists, and message parsing.
-# `parse_address("Ada <ada@example.com>")` gives name and address; `parse_message` splits a raw
-# message into `Headers` and body and decodes RFC 2047 encoded words on request.
-#
-#     import parse_address, parse_message from "@std/net/mail.ms"
-#     let from = parse_address("Ada Lovelace <ada@example.com>").get()
-#     from.name                      # "Ada Lovelace"
-#     let mail = parse_message(raw).get()
-#     mail.headers.get("Subject")
+/*
+Internet mail messages (RFC 5322): addresses, address lists, and message parsing.
+`parse_address("Ada <ada@example.com>")` gives name and address; `parse_message` splits a raw
+message into `Headers` and body and decodes RFC 2047 encoded words on request.
 
-# A mailbox: optional display name and the `local@domain` address.
+    import parse_address, parse_message from "@std/net/mail.ms"
+    let from = parse_address("Ada Lovelace <ada@example.com>").get()
+    from.name                      # "Ada Lovelace"
+    let mail = parse_message(raw).get()
+    mail.headers.get("Subject")
+*/
+
+// A mailbox: optional display name and the `local@domain` address.
 export type Address:
-    # Display name with quotes removed; empty when none was given.
+    // Display name with quotes removed; empty when none was given.
     name: String = ""
-    # The `local@domain` address without angle brackets.
+    // The `local@domain` address without angle brackets.
     address: String
 
-# A parsed message: header fields and the body after the first blank line.
+// A parsed message: header fields and the body after the first blank line.
 export type Message:
-    # Header block with folded lines joined.
+    // Header block with folded lines joined.
     headers: Headers
-    # Body text exactly as written after the blank line, with line endings kept.
+    // Body text exactly as written after the blank line, with line endings kept.
     body: String
 
 impl Address:
-    # Formats as `Name <addr>` (quoting the name when it has specials) or the bare address when unnamed.
+    // Formats as `Name <addr>` (quoting the name when it has specials) or the bare address when unnamed.
     fn to_text() String:
         if self.name.is_empty(): return self.address.clone()
 
@@ -41,8 +43,8 @@ impl Address:
 
         return "{self.name} <{self.address}>"
 
-# Parses one mailbox: `addr`, `<addr>`, `Name <addr>` or `"Quoted, Name" <addr>`. Encoded words in
-# the name are decoded. Comments are not supported.
+// Parses one mailbox: `addr`, `<addr>`, `Name <addr>` or `"Quoted, Name" <addr>`. Encoded words in
+// the name are decoded. Comments are not supported.
 export fn parse_address(text: String) Address!:
     let trimmed = text.trim()
     if trimmed.is_empty(): return error(
@@ -87,8 +89,8 @@ fn valid_address(address: String) Bool:
 
     return not address.contains_any(" \t<>,;")
 
-# Parses a comma-separated address list, honoring quoted names and angle brackets.
-# Empty items (a trailing comma) are skipped; an empty list is an empty result.
+// Parses a comma-separated address list, honoring quoted names and angle brackets.
+// Empty items (a trailing comma) are skipped; an empty list is an empty result.
 export fn parse_address_list(text: String) List[Address]!:
     var out = List[Address]()
     var current = StringBuilder()
@@ -115,8 +117,8 @@ export fn parse_address_list(text: String) List[Address]!:
 
     return ok(out)
 
-# Splits a raw message at the first blank line into headers and body.
-# Both CRLF and LF line endings are accepted; a message without a blank line has an empty body.
+// Splits a raw message at the first blank line into headers and body.
+// Both CRLF and LF line endings are accepted; a message without a blank line has an empty body.
 export fn parse_message(raw: String) Message!:
     if raw.trim().is_empty(): return error(
         Error("mail: invalid message", kind: ErrorCategory.InvalidData)
@@ -143,13 +145,13 @@ export fn parse_message(raw: String) Message!:
 
     return ok(Message(headers: headers.get(), body: body))
 
-# Decodes RFC 2047 encoded words (`=?utf-8?B?...?=` and `=?utf-8?Q?...?=`) in header text.
-# Only UTF-8, US-ASCII and ISO-8859-1 charsets are decoded; any other word is left as written.
+// Decodes RFC 2047 encoded words (`=?utf-8?B?...?=` and `=?utf-8?Q?...?=`) in header text.
+// Only UTF-8, US-ASCII and ISO-8859-1 charsets are decoded; any other word is left as written.
 export fn decode_words(text: String) String:
     if not text.contains("=?"): return text.clone()
 
-    # Splitting at `?` once keeps decoding linear. A word starts where a field ends in `=` and takes the
-    # next three fields (charset, encoding, payload); the field after them must start with the closing `=`.
+    // Splitting at `?` once keeps decoding linear. A word starts where a field ends in `=` and takes the
+    // next three fields (charset, encoding, payload); the field after them must start with the closing `=`.
     let fields = text.split("?")
     var out = StringBuilder()
     var head = StringBuilder()
@@ -184,7 +186,7 @@ export fn decode_words(text: String) String:
             seg = fields[index].clone()
             continue
 
-        # Whitespace between two adjacent encoded words is dropped.
+        // Whitespace between two adjacent encoded words is dropped.
         if not (previous_encoded and literal.trim().is_empty()): out.append(literal)
         out.append(decoded.get(""))
         previous_encoded = true

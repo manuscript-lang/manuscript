@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,modules,mutation,stdlib-faults,testing,tier-stdlib
-# conform: phase=test
-# conform: origin=documentation/core-language/control-flow/loops.md:43
+// conform: tags=control-flow,faults,modules,mutation,stdlib-faults,testing,tier-stdlib
+// conform: phase=test
+// conform: origin=documentation/core-language/control-flow/loops.md:43
 import panic from "@std/core.ms"
 
 test "five iterations":

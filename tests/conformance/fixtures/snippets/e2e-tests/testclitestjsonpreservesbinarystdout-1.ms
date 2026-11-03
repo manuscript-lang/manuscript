@@ -1,6 +1,6 @@
-# conform: tags=modules,stdlib-bytes,stdlib-io,testing,tier-stdlib
-# conform: phase=test
-# conform: origin=tests/e2e/cli_json_test.go:157 TestCLITestJSONPreservesBinaryStdout
+// conform: tags=modules,stdlib-bytes,stdlib-io,testing,tier-stdlib
+// conform: phase=test
+// conform: origin=tests/e2e/cli_json_test.go:157 TestCLITestJSONPreservesBinaryStdout
 import stdout from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 

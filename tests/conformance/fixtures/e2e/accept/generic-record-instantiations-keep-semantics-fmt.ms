@@ -1,6 +1,6 @@
-# conform: tags=formatter,generics,lists,modules,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/generic-record-instantiations-keep-semantics.ms
+// conform: tags=formatter,generics,lists,modules,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/generic-record-instantiations-keep-semantics.ms
 import expect_true from "@std/test/test.ms"
 
 type Box[T]:

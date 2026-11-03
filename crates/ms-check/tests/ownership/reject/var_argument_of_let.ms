@@ -3,4 +3,4 @@ fn fill(var xs: List[Int]) Unit:
 
 fn f() Unit:
     let xs = [1]
-    fill(var xs)  # error: declared with let
+    fill(var xs)  // error: declared with let

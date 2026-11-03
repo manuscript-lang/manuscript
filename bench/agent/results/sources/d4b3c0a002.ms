@@ -22,7 +22,7 @@ fn is_blank(line: String) Bool:
             return false
     return true
 
-# Returns the value of an unsigned ASCII number of min_width to max_width digits, or -1.
+// Returns the value of an unsigned ASCII number of min_width to max_width digits, or -1.
 fn number(text: String, min_width: Int, max_width: Int) Int:
     if text.length() < min_width or text.length() > max_width:
         return -1
@@ -49,7 +49,7 @@ fn days_in_month(year: Int, month: Int) Int:
 
     return 31
 
-# Day of the week for a date, where 0 is Sunday. 1970-01-01 was a Thursday.
+// Day of the week for a date, where 0 is Sunday. 1970-01-01 was a Thursday.
 fn weekday_of(year: Int, month: Int, day: Int) Int:
     var days = 0
 
@@ -88,7 +88,7 @@ fn parse_start(text: String) Optional[Moment]:
 
     return some(Moment(year: year, month: month, day: day, hour: hour, minute: minute))
 
-# The [first, last] span named by a base item, or an empty list when it is invalid.
+// The [first, last] span named by a base item, or an empty list when it is invalid.
 fn bounds(base: String, low: Int, high: Int, stepped: Bool) List[Int]:
     if base == "*":
         return [low, high]
@@ -135,7 +135,7 @@ fn item_values(item: String, low: Int, high: Int) List[Int]:
             values.append(value)
     return values
 
-# Marks the allowed values of one cron field, or returns an empty list when the field is invalid.
+// Marks the allowed values of one cron field, or returns an empty list when the field is invalid.
 fn parse_field(text: String, low: Int, high: Int) List[Bool]:
     var allowed: List[Bool] = []
     for value in range(0, high + 1):

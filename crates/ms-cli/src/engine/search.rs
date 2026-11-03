@@ -66,7 +66,7 @@ pub fn search_symbol(request: &SearchSymbolRequest, io: &mut Io) -> BackendResul
             out += &format!("  {}\n", clip(&m.symbol_type, 200));
         }
         if !m.doc.is_empty() {
-            out += &format!("  # {}\n", clip(&m.doc, 160));
+            out += &format!("  // {}\n", clip(&m.doc, 160));
         }
         if m.std {
             out += &format!("  details: ms search_symbol {}\n", m.name);

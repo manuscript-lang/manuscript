@@ -1,59 +1,59 @@
-# TOML 1.0 parser implemented in Manuscript.
+// TOML 1.0 parser implemented in Manuscript.
 import parse_int, parse_float from "@std/math/math.ms"
 import from_scalars, StringBuilder, Regex, compile from "@std/string.ms"
 import Bytes from "@std/bytes.ms"
 import log, sqrt from "@std/math/math.ms"
 
-# A TOML value. Date and time values retain their original TOML text.
+// A TOML value. Date and time values retain their original TOML text.
 export type TomlValue:
-    # Text decoded from TOML basic or literal string syntax.
+    // Text decoded from TOML basic or literal string syntax.
     case StringValue(
-        # Unicode contents after the applicable escapes and multiline rules.
+        // Unicode contents after the applicable escapes and multiline rules.
         value: String
     )
-    # A parsed whole number; out-of-range input is rejected rather than truncated.
+    // A parsed whole number; out-of-range input is rejected rather than truncated.
     case IntValue(
-        # Exact signed integer value of the accepted TOML numeric token.
+        // Exact signed integer value of the accepted TOML numeric token.
         value: Int
     )
-    # A parsed floating-point number, including TOML infinity and NaN spellings.
+    // A parsed floating-point number, including TOML infinity and NaN spellings.
     case FloatValue(
-        # Numeric value of the accepted floating token, preserving signed zero.
+        // Numeric value of the accepted floating token, preserving signed zero.
         value: Float
     )
-    # A TOML true or false value; other capitalizations are invalid.
+    // A TOML true or false value; other capitalizations are invalid.
     case BoolValue(
-        # The decoded boolean from the lowercase TOML token.
+        // The decoded boolean from the lowercase TOML token.
         value: Bool
     )
-    # A validated local/offset date or time token, retained as text.
+    // A validated local/offset date or time token, retained as text.
     case DateTimeValue(
-        # Original accepted TOML date/time spelling, without a timezone conversion.
+        // Original accepted TOML date/time spelling, without a timezone conversion.
         text: String
     )
-    # An ordered array; elements can have different TOML value kinds.
+    // An ordered array; elements can have different TOML value kinds.
     case ArrayValue(
-        # Element values in document order, with ordinary mutable list storage.
+        // Element values in document order, with ordinary mutable list storage.
         values: List[TomlValue]
     )
-    # An insertion-ordered table; parse returns this case even for an empty document.
+    // An insertion-ordered table; parse returns this case even for an empty document.
     case TableValue(
-        # String-keyed entries produced by assignments, dotted keys and table headers.
+        // String-keyed entries produced by assignments, dotted keys and table headers.
         values: Map[String, TomlValue]
     )
 
-# Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
-# Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `TomlLimits` to change that.
+// Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
+// Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `TomlLimits` to change that.
 export type TomlLimits:
-    # Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
+    // Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
     max_bytes: Int?
-    # Maximum value depth, including scalar leaves and implicit tables, with the root at one.
+    // Maximum value depth, including scalar leaves and implicit tables, with the root at one.
     max_depth: Int?
-    # Maximum containers and leaves, excluding keys; checked during parsing and materialization.
+    // Maximum containers and leaves, excluding keys; checked during parsing and materialization.
     max_values: Int?
 
-# The document is read as UTF-8 bytes; `pos` is a byte offset and line/column are derived from it
-# only when an error is reported.
+// The document is read as UTF-8 bytes; `pos` is a byte offset and line/column are derived from it
+// only when an error is reported.
 type Reader:
     data: Bytes
     pos: Int
@@ -62,14 +62,14 @@ type Reader:
     tables: List[Table]
     entries: List[Map[String, Node]]
 
-# Table flags. A table's entries live at the same index of `Reader.entries`.
+// Table flags. A table's entries live at the same index of `Reader.entries`.
 type Table:
     explicit: Bool
     dotted: Bool
     sealed: Bool
 
-# Tables are stored in the reader and referenced by index, so a parent can name a child that
-# later keys keep extending without two copies of the same table.
+// Tables are stored in the reader and referenced by index, so a parent can name a child that
+// later keys keep extending without two copies of the same table.
 type Node:
     case Leaf(value: TomlValue)
     case TableNode(id: Int)
@@ -93,14 +93,14 @@ fn lookup(reader: Reader, id: Int, key: String) Node?:
 fn contains_key(reader: Reader, id: Int, key: String) Bool:
     return reader.entries.get(id).contains(key)
 
-# Adds an entry to the table's map in place.
+// Adds an entry to the table's map in place.
 fn put(var reader: Reader, id: Int, key: String, node: Node) Unit:
     reader.entries[id].add(key, node)
 
 fn put_array(var reader: Reader, id: Int, key: String, ids: List[Int]) Unit:
     put(var reader, id, key, Node.TableArray(ids))
 
-# Byte values the parser tests.
+// Byte values the parser tests.
 let TAB = 9
 let NEWLINE = 10
 let SPACE = 32
@@ -116,30 +116,30 @@ let RIGHT_BRACKET = 93
 let LEFT_BRACE = 123
 let RIGHT_BRACE = 125
 
-# The byte at `pos` as an Int, or -1 past either end of the document.
+// The byte at `pos` as an Int, or -1 past either end of the document.
 fn byte_at(data: Bytes, pos: Int) Int:
     if pos < 0 or pos >= data.length(): return -1
 
     return data.get(pos).to_int()
 
-# The cursor as its own value, which stays valid while the reader moves.
+// The cursor as its own value, which stays valid while the reader moves.
 fn cursor(reader: Reader) Int:
     return reader.pos
 
-# The byte at the cursor, or -1 at the end of the document.
+// The byte at the cursor, or -1 at the end of the document.
 fn peek(reader: Reader) Int:
     return byte_at(reader.data, reader.pos)
 
 fn ahead(reader: Reader, offset: Int) Int:
     return byte_at(reader.data, reader.pos + offset)
 
-# Consumes one byte and returns it, or returns -1 without moving at the end.
+// Consumes one byte and returns it, or returns -1 without moving at the end.
 fn advance(var reader: Reader) Int:
     let b = byte_at(reader.data, reader.pos)
     if b >= 0: reader.pos += 1
     return b
 
-# The 1-based line and scalar column of the byte offset.
+// The 1-based line and scalar column of the byte offset.
 fn locate(data: Bytes, pos: Int) List[Int]:
     var line = 1
     var column = 1
@@ -158,7 +158,7 @@ fn locate(data: Bytes, pos: Int) List[Int]:
 
     return [line, column]
 
-# A malformed-input error at a one-based source position.
+// A malformed-input error at a one-based source position.
 fn toml_invalid(line: Int, column: Int, reason: String) Error:
     return Error(
         "TOML {line}:{column}: {reason}", kind: InvalidData,
@@ -172,7 +172,7 @@ fn invalid_at(reader: Reader, pos: Int, reason: String) Error:
 fn invalid(reader: Reader, reason: String) Error:
     return invalid_at(reader, reader.pos, reason)
 
-# The text between two byte offsets of the document.
+// The text between two byte offsets of the document.
 fn slice_text(reader: Reader, start: Int, end: Int) String:
     return reader.data.slice(start, end).get().decode_utf8().get("")
 
@@ -193,8 +193,8 @@ fn space(var reader: Reader, multiline: Bool) Unit:
 
     reader.pos = pos
 
-# Limits applied when `parse` is called without any: deep nesting and alias expansion are
-# the usual resource attacks. Pass a `TomlLimits` (even an empty one) to lift or change them.
+// Limits applied when `parse` is called without any: deep nesting and alias expansion are
+// the usual resource attacks. Pass a `TomlLimits` (even an empty one) to lift or change them.
 fn default_limits() TomlLimits:
     return TomlLimits(max_depth: 10000, max_values: 1000000)
 
@@ -219,7 +219,7 @@ fn budget(reader: Reader, depth: Int) Unit!:
 
     return ok(unit)
 
-# Whether a byte is a control character that a string may not contain unescaped.
+// Whether a byte is a control character that a string may not contain unescaped.
 fn string_control(b: Int, multiline: Bool) Bool:
     return (b < 32 and b != TAB and not (multiline and b == NEWLINE)) or b == 127
 
@@ -228,7 +228,7 @@ fn quote_char(quote: Int) String:
 
     return "'"
 
-# Basic and literal strings, including multiline delimiters and escaped newline folding.
+// Basic and literal strings, including multiline delimiters and escaped newline folding.
 fn string_value(var reader: Reader, key: Bool) String!:
     let quote = advance(var reader)
     var multiline = false
@@ -239,7 +239,7 @@ fn string_value(var reader: Reader, key: Bool) String!:
         multiline = true
         if peek(reader) == NEWLINE: advance(var reader)
 
-    # A single-line string without escapes is one slice of the document.
+    // A single-line string without escapes is one slice of the document.
     if not multiline:
         var end = cursor(reader)
         var b = byte_at(reader.data, end)
@@ -258,7 +258,7 @@ fn string_value(var reader: Reader, key: Bool) String!:
             reader.pos = end + 1
             return ok(text)
 
-    # Append through a builder: per-character concatenation is quadratic on long strings.
+    // Append through a builder: per-character concatenation is quadratic on long strings.
     var result = StringBuilder()
     var run = cursor(reader)
 
@@ -456,7 +456,7 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
         reader: var reader, parent: current, key: keys.last().get(), value: value
     )
 
-# Adds a key that must not exist yet to an open table.
+// Adds a key that must not exist yet to an open table.
 fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
     Unit, Error
 ]:
@@ -472,7 +472,7 @@ fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
 
     return ok(unit)
 
-# Reads `key =` when the key is one plain bare word; otherwise leaves the cursor where it was.
+// Reads `key =` when the key is one plain bare word; otherwise leaves the cursor where it was.
 fn simple_key(var reader: Reader) String?:
     space(var reader, multiline: false)
 
@@ -493,7 +493,7 @@ fn simple_key(var reader: Reader) String?:
     reader.pos = after + 1
     return slice_text(reader, start, end)
 
-# Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
+// Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
 fn key_value(var reader: Reader, table: Int, depth: Int) Unit!:
     if let key = simple_key(var reader):
         let value = try read_value(var reader, depth + 1)
@@ -665,8 +665,8 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 
         return error(invalid_at(reader, at, "integer out of range"))
 
-    # Bare words such as True, yes, or abc are not numbers, even when they
-    # contain an e.
+    // Bare words such as True, yes, or abc are not numbers, even when they
+    // contain an e.
     if (
         clean != "inf"
         and clean != "nan"
@@ -724,7 +724,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 
     return error(invalid_at(reader, at, "integer out of range"))
 
-# Whether a byte ends a bare value token.
+// Whether a byte ends a bare value token.
 fn token_end(b: Int) Bool:
     return (
         b < 0
@@ -737,7 +737,7 @@ fn token_end(b: Int) Bool:
         or b == SPACE
     )
 
-# The byte offset after `count` scalars from the cursor.
+// The byte offset after `count` scalars from the cursor.
 fn scalar_offset(reader: Reader, count: Int) Int:
     var pos = cursor(reader)
     var left = count
@@ -808,7 +808,7 @@ fn read_value(var reader: Reader, depth: Int) Node!:
     var end = start
     while not token_end(byte_at(reader.data, end)): end += 1
 
-    # Short plain decimal integers, the common scalar, skip the general classifier.
+    // Short plain decimal integers, the common scalar, skip the general classifier.
     var sign = 0
     if c == 45 or c == 43: sign = 1
 
@@ -840,7 +840,7 @@ fn read_value(var reader: Reader, depth: Int) Node!:
     var text = slice_text(reader, start, end)
     reader.pos = end
 
-    # A space may separate date and time, but otherwise ends the token.
+    // A space may separate date and time, but otherwise ends the token.
     if (
         date_valid(text)
         and peek(reader) == SPACE
@@ -851,10 +851,10 @@ fn read_value(var reader: Reader, depth: Int) Node!:
         text = slice_text(reader, start, end)
         reader.pos = end
 
-    # Report token errors where the token starts, not where it ended.
+    // Report token errors where the token starts, not where it ended.
     return scalar(reader, text, start)
 
-# Counts the values of the finished document against the limits.
+// Counts the values of the finished document against the limits.
 type Budget:
     limits: TomlLimits
     values: Int
@@ -901,11 +901,11 @@ fn materialize(
             )
             return ok(TomlValue.ArrayValue(result))
 
-# ASCII control characters other than tab and newline, which no TOML document may contain.
+// ASCII control characters other than tab and newline, which no TOML document may contain.
 fn control_pattern() Regex:
     return compile("[\\x00-\\x08\\x0b-\\x1f\\x7f]").get()
 
-# Parses a TOML document into a table value and reports source line and column on invalid input.
+// Parses a TOML document into a table value and reports source line and column on invalid input.
 export fn parse(text: String, limits: TomlLimits?) TomlValue!:
     var options = default_limits()
     if let value = limits:
@@ -917,8 +917,8 @@ export fn parse(text: String, limits: TomlLimits?) TomlValue!:
         Error("TOML limit exceeded", kind: LimitExceeded)
     )
 
-    # TOML permits CR only as part of CRLF. Report the first offending scalar
-    # at its own line and column.
+    // TOML permits CR only as part of CRLF. Report the first offending scalar
+    // at its own line and column.
     var normalized = text.clone()
     if text.contains("\r"): normalized = text.replace("\r\n", "\n")
 
@@ -1176,7 +1176,7 @@ fn datetimes_valid(value: TomlValue) Bool:
             return true
         _: return true
 
-# Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
+// Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
 export fn stringify(value: TomlValue, max_bytes: Int?) String!:
     if let limit = max_bytes:
         if limit < 0: return error(Error("invalid TOML input", kind: InvalidInput))

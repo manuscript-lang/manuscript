@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,faults,formatter,lists,modules,mutation,parser,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/try-statement.ms
+// conform: tags=closures,control-flow,faults,formatter,lists,modules,mutation,parser,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/try-statement.ms
 import expect_equal from "@std/test/test.ms"
 
 fn parse(n: Int) Int!Error:

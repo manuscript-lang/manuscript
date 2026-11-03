@@ -14,7 +14,7 @@
           "file": "testgenericrecursionandnamespacerules-5.ms",
           "line": 8,
           "column": 8,
-          "offset": 235
+          "offset": 238
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testgenericrecursionandnamespacerules-5.ms",
           "line": 7,
           "column": 1,
-          "offset": 207
+          "offset": 210
         }
       }
     ],

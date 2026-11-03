@@ -1,6 +1,6 @@
-# conform: tags=formatter,lists,modules,mutation,optional,parser,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/string-split-replace-join-match-dynamic-calls.ms
+// conform: tags=formatter,lists,modules,mutation,optional,parser,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/string-split-replace-join-match-dynamic-calls.ms
 import expect_true from "@std/test/test.ms"
 
 test "omitted and supplied caps":

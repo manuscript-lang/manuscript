@@ -1,6 +1,6 @@
-# conform: tags=alternatives,control-flow,diagnostics,faults,generics,interfaces,modules,records,stdlib-collections,tier-stdlib
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/local_extensions/domain.ms
+// conform: tags=alternatives,control-flow,diagnostics,faults,generics,interfaces,modules,records,stdlib-collections,tier-stdlib
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/local_extensions/domain.ms
 import Shared from "@std/concurrency/shared.ms"
 import Read from "./contracts.ms"
 

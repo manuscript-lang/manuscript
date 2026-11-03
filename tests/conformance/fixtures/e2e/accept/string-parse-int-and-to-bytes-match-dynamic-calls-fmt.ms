@@ -1,6 +1,6 @@
-# conform: tags=formatter,match,modules,optional,parser,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/string-parse-int-and-to-bytes-match-dynamic-calls.ms
+// conform: tags=formatter,match,modules,optional,parser,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/string-parse-int-and-to-bytes-match-dynamic-calls.ms
 import expect_true from "@std/test/test.ms"
 
 fn parsed(text: String) Int:

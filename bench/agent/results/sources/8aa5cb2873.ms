@@ -19,7 +19,7 @@ fn valid_id(s: String) Bool:
         if not ID_CHARS.contains(c): return false
     return true
 
-# Returns the value of a 1-7 digit ASCII number, or -1 when the syntax is wrong.
+// Returns the value of a 1-7 digit ASCII number, or -1 when the syntax is wrong.
 fn parse_num(s: String) Int:
     if s.length() < 1 or s.length() > 7: return -1
 
@@ -39,9 +39,9 @@ type Store:
     stk: Map[String, Int]
     prc: Map[String, Int]
     resv: Map[String, Int]
-    state: Map[String, Int]  # 0 placed, 1 shipped, 2 cancelled
+    state: Map[String, Int]  // 0 placed, 1 shipped, 2 cancelled
     tot: Map[String, Int]
-    items: Map[String, String]  # "sku:qty sku:qty"
+    items: Map[String, String]  // "sku:qty sku:qty"
     placed_n: Int
     shipped_n: Int
     cancelled_n: Int
@@ -110,7 +110,7 @@ impl Store:
         let id = tokens[1]
         if not valid_id(id): return "error: bad order id"
 
-        # Syntax of every item first.
+        // Syntax of every item first.
         for i in 2..tokens.length():
             let parts = tokens[i].split(":")
             if (
@@ -123,7 +123,7 @@ impl Store:
 
         if self.state.contains(id): return "error: order {id} already exists"
 
-        # Semantic checks, item by item in the order given.
+        // Semantic checks, item by item in the order given.
         var seen = List[String]()
 
         for i in 2..tokens.length():
@@ -138,7 +138,7 @@ impl Store:
 
             seen.append(sku.clone())
 
-        # All fine: apply.
+        // All fine: apply.
         var total = 0
         var spec = List[String]()
 

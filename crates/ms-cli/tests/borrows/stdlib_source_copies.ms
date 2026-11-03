@@ -1,5 +1,5 @@
-# Standard-library source is not ownership checked, so its `let` bindings must copy: `Deque.pop_back`
-# reads a slot, overwrites it, then returns the read, which once handed back a freed string.
+// Standard-library source is not ownership checked, so its `let` bindings must copy: `Deque.pop_back`
+// reads a slot, overwrites it, then returns the read, which once handed back a freed string.
 import stdout from "@std/io/io.ms"
 import Deque from "@std/collections/deque.ms"
 

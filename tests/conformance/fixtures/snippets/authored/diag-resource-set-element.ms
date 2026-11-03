@@ -1,5 +1,5 @@
-# conform: tags=diagnostics,sets,tier-core
-# conform: phase=check
+// conform: tags=diagnostics,sets,tier-core
+// conform: phase=check
 import Closeable from "@std/core.ms"
 
 type Door:

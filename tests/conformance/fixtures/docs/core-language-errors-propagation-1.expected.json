@@ -14,7 +14,7 @@
           "file": "core-language-errors-propagation-1.ms",
           "line": 4,
           "column": 28,
-          "offset": 200
+          "offset": 203
         },
         "fix": {
           "position": {
@@ -40,7 +40,7 @@
           "file": "core-language-errors-propagation-1.ms",
           "line": 4,
           "column": 46,
-          "offset": 218
+          "offset": 221
         },
         "fix": {
           "position": {
@@ -66,7 +66,7 @@
           "file": "core-language-errors-propagation-1.ms",
           "line": 4,
           "column": 70,
-          "offset": 242
+          "offset": 245
         }
       },
       {
@@ -77,7 +77,7 @@
           "file": "core-language-errors-propagation-1.ms",
           "line": 5,
           "column": 21,
-          "offset": 278
+          "offset": 281
         }
       }
     ],

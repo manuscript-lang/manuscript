@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,parser,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/test_fixture_test.go:196 TestCLITestFixtureInterruptCleansUp
+// conform: tags=control-flow,formatter,parser,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/test_fixture_test.go:196 TestCLITestFixtureInterruptCleansUp
 test "interruptible":
     println("READY")
     while true:

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,numbers,parser,records,sets,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/diagnostic_fixes_test.go:27 TestDiagnosticFixes
+// conform: tags=control-flow,formatter,interfaces,numbers,parser,records,sets,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/diagnostic_fixes_test.go:27 TestDiagnosticFixes
 type K:
     v: Float
 

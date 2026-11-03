@@ -1,6 +1,6 @@
-# conform: tags=formatter,modules,parser,stdlib-queues,testing,tier-stdlib
-# conform: phase=parse
-# conform: origin=pkg/build/compiler_test.go:447 TestServiceBoundaries
+// conform: tags=formatter,modules,parser,stdlib-queues,testing,tier-stdlib
+// conform: phase=parse
+// conform: origin=pkg/build/compiler_test.go:447 TestServiceBoundaries
 import Queue from "@std/collections/queue.ms"
 
 test "opaque":

@@ -40,17 +40,17 @@ Implemented (stages 1 to 4). Deviations from the draft: `truncate_to_uintN()` wa
 ```manuscript
 let data = Bytes.from_string("hi")
 let first: UInt8 = data.get(0, default: 0)
-let next = first + 1          # UInt8; faults at 255 + 1
-let wide: Int = first.to_int()  # widening is infallible
-let narrow = wide.to_uint8()  # Optional[UInt8]
+let next = first + 1          // UInt8; faults at 255 + 1
+let wide: Int = first.to_int()  // widening is infallible
+let narrow = wide.to_uint8()  // Optional[UInt8]
 ```
 
 Rejected:
 
 ```manuscript
-let a: UInt8 = 256   # error: literal 256 is out of range for UInt8 (0 to 255)
-let b: UInt8 = -1    # error: literal -1 is out of range for UInt8 (0 to 255)
-let c = -first       # error: unary - is not defined for UInt8
+let a: UInt8 = 256   // error: literal 256 is out of range for UInt8 (0 to 255)
+let b: UInt8 = -1    // error: literal -1 is out of range for UInt8 (0 to 255)
+let c = -first       // error: unary - is not defined for UInt8
 ```
 
 ## Components touched

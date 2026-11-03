@@ -2,13 +2,13 @@ import read_lines from "@std/streams.ms"
 import stdin from "@std/io.ms"
 import stdout from "@std/io.ms"
 
-# Stands in for a hard break inside paragraph text. Input is ASCII, so it cannot clash with source text.
+// Stands in for a hard break inside paragraph text. Input is ASCII, so it cannot clash with source text.
 let HARD = "\u{E000}"
 let DIGITS = "0123456789"
 let PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
 
-# kind: 0 ready HTML in text, 1 paragraph (text is the paragraph text), 2 list, 3 list item.
-# next_line is the index of the first line after the block.
+// kind: 0 ready HTML in text, 1 paragraph (text is the paragraph text), 2 list, 3 list item.
+// next_line is the index of the first line after the block.
 type Block:
     kind: Int = 0
     text: String = ""
@@ -38,8 +38,8 @@ type Marker:
     width: Int = 0
     blank_item: Bool = true
 
-# kind: 0 text, 1 code, 2 hard break, 3 soft break, 4 delimiter run, 5 bracket opener,
-# 6 link, 7 image, 8 emphasis, 9 strong.
+// kind: 0 text, 1 code, 2 hard break, 3 soft break, 4 delimiter run, 5 bracket opener,
+// 6 link, 7 image, 8 emphasis, 9 strong.
 type Node:
     kind: Int = 0
     text: String = ""
@@ -61,7 +61,7 @@ type Tail:
     has_title: Bool = false
     end: Int = 0
 
-# ---- string helpers ----
+// ---- string helpers ----
 
 fn sub2(s: String, a: Int, b: Int) String:
     var stop = b
@@ -134,7 +134,7 @@ fn esc(s: String) String:
 fn html_block(html: String, next_line: Int) Block:
     return Block(text: html, children: List[Block](), next_line: next_line)
 
-# ---- block recognizers ----
+// ---- block recognizers ----
 
 fn fence_of(s: String) Fence:
     let ind = indent_of(s)
@@ -341,7 +341,7 @@ fn align_of(cell: String) String:
 
     return ""
 
-# ---- block parsing ----
+// ---- block parsing ----
 
 fn parse_blocks(lines: List[String]) List[Block]:
     var out = List[Block]()
@@ -556,7 +556,7 @@ fn parse_list(lines: List[String], i: Int) Block:
         loose: loose, next_line: next
     )
 
-# ---- block rendering ----
+// ---- block rendering ----
 
 fn render_blocks(blocks: List[Block]) String:
     var html = ""
@@ -603,7 +603,7 @@ fn render_body(children: List[Block], tight: Bool) String:
 
     return body
 
-# ---- inline scanning ----
+// ---- inline scanning ----
 
 fn is_ws(c: String) Bool:
     return c == " " or c == "\n" or c == HARD
@@ -878,7 +878,7 @@ fn scan(text: String) List[Node]:
 
     return resolve_emphasis(nodes)
 
-# ---- emphasis ----
+// ---- emphasis ----
 
 fn is_closer(x: Node) Bool:
     return x.kind == 4 and x.can_close and x.count > 0
@@ -976,7 +976,7 @@ fn resolve_emphasis(nodes: List[Node]) List[Node]:
 
     return cur
 
-# ---- inline rendering ----
+// ---- inline rendering ----
 
 fn title_attr(n: Node) String:
     if n.has_title:

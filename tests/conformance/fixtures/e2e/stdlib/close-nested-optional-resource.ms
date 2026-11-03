@@ -1,10 +1,10 @@
-# conform: tags=scope-cleanup,tier-io
-# conform: phase=run
-# conform: origin=value-semantics-audit
+// conform: tags=scope-cleanup,tier-io
+// conform: phase=run
+// conform: origin=value-semantics-audit
 import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
-# An optional nested in an optional still owns the resource inside it.
+// An optional nested in an optional still owns the resource inside it.
 type Door:
     name: String
 

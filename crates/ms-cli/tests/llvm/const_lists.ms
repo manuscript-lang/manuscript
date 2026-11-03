@@ -1,6 +1,6 @@
 import stdout from "@std/io/io.ms"
 
-# The test replaces each placeholder list with 100 constants.
+// The test replaces each placeholder list with 100 constants.
 export fn main() Int:
     var o = stdout()
     let a: List[Int] = [100]

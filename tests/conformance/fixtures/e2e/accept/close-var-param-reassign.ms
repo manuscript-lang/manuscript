@@ -1,6 +1,6 @@
-# conform: tags=scope-cleanup,records,tier-io
-# conform: phase=run
-# A var parameter that is assigned closes the value it replaces; the caller closes the final one.
+// conform: tags=scope-cleanup,records,tier-io
+// conform: phase=run
+// A var parameter that is assigned closes the value it replaces; the caller closes the final one.
 import Closeable from "@std/core.ms"
 import stdout from "@std/io/io.ms"
 

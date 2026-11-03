@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/redundant_labels_test.go:11 TestDropRedundantLabels
+// conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/redundant_labels_test.go:11 TestDropRedundantLabels
 type Point:
     x: Int
     y: Int

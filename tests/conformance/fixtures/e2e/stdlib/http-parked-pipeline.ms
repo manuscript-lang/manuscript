@@ -1,8 +1,8 @@
-# conform: tags=stdlib-http,stdlib-net,tier-io
-# conform: phase=run
-# conform: timeout=30
-# A request that arrives on a connection while its handler is parked is served as soon as
-# the handler's response is sent, not after a timeout.
+// conform: tags=stdlib-http,stdlib-net,tier-io
+// conform: phase=run
+// conform: timeout=30
+// A request that arrives on a connection while its handler is parked is served as soon as
+// the handler's response is sent, not after a timeout.
 import headers, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
 import stdout from "@std/io/io.ms"
 import connect, serve from "@std/net/net.ms"
@@ -18,7 +18,7 @@ fn exchange(address: String) String:
     if var conn = connect(address):
         let _first = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
-        # The slow handler is parked by now; the second request arrives while it waits.
+        // The slow handler is parked by now; the second request arrives while it waits.
         sleep(nanoseconds(50000000))
 
         let _second = conn.write(

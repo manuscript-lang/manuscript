@@ -1,56 +1,56 @@
-# Small helpers shared by the benchmark tools: environment, files, shell commands.
+// Small helpers shared by the benchmark tools: environment, files, shell commands.
 import read_file, write_file, create_directory, dirname from "@std/os/fs.ms"
 import compile from "@std/string.ms"
 import seconds from "@std/os/time.ms"
 import environment, monotonic_time, run from "@std/os/process.ms"
 
-# The value of environment variable `name`, or `fallback`.
+// The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
     let all = environment().get(Map[String, String]())
     if let value = all.get(name): return value.clone()
 
     return fallback.clone()
 
-# The text of the file at `path`; empty when it cannot be read.
+// The text of the file at `path`; empty when it cannot be read.
 export fn read_text(path: String) String:
     if let data = read_file(path).to_optional(): return data.decode_utf8().get("")
 
     return ""
 
-# The text of the file at `path`; a missing file stops the program.
+// The text of the file at `path`; a missing file stops the program.
 export fn must_read(path: String) String:
     return read_file(path).get().decode_utf8().get("")
 
-# Replaces the file at `path`, creating its directory first.
+// Replaces the file at `path`, creating its directory first.
 export fn write_text(path: String, text: String) Unit:
     create_directory(dirname(path), recursive: true).get()
     write_file(path, text, replace: true).get()
 
-# Trailing whitespace removed from every line and from the whole text, as the graders compare output.
+// Trailing whitespace removed from every line and from the whole text, as the graders compare output.
 export fn norm(text: String) String:
     if text.trim().is_empty(): return ""
 
     return text.trim_end().split("\n").map(fn line: line.trim_end()).join("\n")
 
-# The nonblank lines of `text`.
+// The nonblank lines of `text`.
 export fn nonblank_lines(text: String) List[String]:
     return text.split("\n").filter(fn l: not l.trim().is_empty())
 
-# What a finished shell command left behind.
+// What a finished shell command left behind.
 export type Ran:
     code: Int
     out: String
     err: String
     seconds: Float
 
-# Runs `command` with `bash -c` in directory `cwd`, feeding it `input`. A command still running after
-# `timeout_s` seconds is killed and reports status 124 with "timeout" on standard error.
+// Runs `command` with `bash -c` in directory `cwd`, feeding it `input`. A command still running after
+// `timeout_s` seconds is killed and reports status 124 with "timeout" on standard error.
 export fn bash(command: String, cwd: String, timeout_s: Int, input: String) Ran:
     return run_in(
         "bash", ["-c", "cd \"$0\" && {command}", cwd.clone()], timeout_s, input
     )
 
-# Runs `program` with `arguments` and the same timeout rule as `bash`.
+// Runs `program` with `arguments` and the same timeout rule as `bash`.
 export fn run_in(
     program: String,
     arguments: List[String],
@@ -73,7 +73,7 @@ export fn run_in(
 
     return Ran(127, "", "cannot start {program}", elapsed)
 
-# `text.split(separator, maxsplit)` as Python defines it: at most `splits` splits, the rest stays in the last piece.
+// `text.split(separator, maxsplit)` as Python defines it: at most `splits` splits, the rest stays in the last piece.
 export fn split_max(text: String, separator: String, splits: Int) List[String]:
     var out = List[String]()
     var rest = text.clone()
@@ -88,7 +88,7 @@ export fn split_max(text: String, separator: String, splits: Int) List[String]:
     out.append(rest)
     return out
 
-# `text.strip(" ")`: the spaces at both ends removed.
+// `text.strip(" ")`: the spaces at both ends removed.
 export fn strip_spaces(text: String) String:
     var start = 0
     var end = text.length()
@@ -96,13 +96,13 @@ export fn strip_spaces(text: String) String:
     while end > start and text.get(end - 1) == " ": end -= 1
     return text.slice(start, end).get("")
 
-# Whether the regular expression `pattern` matches all of `text`, as Python's `re.fullmatch`.
+// Whether the regular expression `pattern` matches all of `text`, as Python's `re.fullmatch`.
 export fn full_match(pattern: String, text: String) Bool:
     if let re = compile("^(?:{pattern})$").to_optional(): return re.matches(text)
 
     return false
 
-# `text.split()`: the words between runs of whitespace.
+// `text.split()`: the words between runs of whitespace.
 export fn words(text: String) List[String]:
     var out = List[String]()
     var current = ""

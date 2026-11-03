@@ -14,20 +14,20 @@
           "file": "diag-idiom-to-upper-case.ms",
           "line": 5,
           "column": 17,
-          "offset": 150
+          "offset": 153
         },
         "fix": {
           "position": {
             "file": "diag-idiom-to-upper-case.ms",
             "line": 5,
             "column": 17,
-            "offset": 150
+            "offset": 153
           },
           "end": {
             "file": "diag-idiom-to-upper-case.ms",
             "line": 5,
             "column": 28,
-            "offset": 161
+            "offset": 164
           },
           "replacement": "upper"
         }

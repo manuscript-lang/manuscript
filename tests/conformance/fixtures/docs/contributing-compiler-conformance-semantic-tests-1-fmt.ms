@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,formatter,modules,parser,stdlib-faults,testing,tier-stdlib
-# conform: phase=parse
-# conform: origin=documentation/contributing/compiler/conformance/semantic-tests.md:14
+// conform: tags=control-flow,faults,formatter,modules,parser,stdlib-faults,testing,tier-stdlib
+// conform: phase=parse
+// conform: origin=documentation/contributing/compiler/conformance/semantic-tests.md:14
 import panic from "@std/core.ms"
 
 test "checked decrement":

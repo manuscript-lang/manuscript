@@ -93,5 +93,5 @@ export extern fn msstd_http_headers_clone(value: HttpHeaders) HttpHeaders
 
 export extern fn msstd_http_headers_new() HttpHeaders
 
-# Limits the scheduler threads the runtime starts to `n` (at least 1).
+// Limits the scheduler threads the runtime starts to `n` (at least 1).
 export extern fn msrt_runtime_set_threads(n: Int) Unit

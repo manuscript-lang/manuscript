@@ -1,7 +1,7 @@
-# Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-# expect-mir: "list.addr.u"
-# expect-mir: "store "
-# expect-mir-count: 1 "load list<int>"
+// Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
+// expect-mir: "list.addr.u"
+// expect-mir: "store "
+// expect-mir-count: 1 "load list<int>"
 fn fill(f: fn(Int) Unit) Unit:
     f(0)
     f(1)

@@ -298,7 +298,7 @@ import lock from "@std/concurrency/sync.ms"
 export extern type Loop
 export extern type Timer
 
-# A failed libuv call, with libuv's description.
+// A failed libuv call, with libuv's description.
 export type UvError:
     case Failed(message: String)
 
@@ -315,7 +315,7 @@ extern fn msuv_timer_start(timer: Timer, every_ms: UInt64, on_tick: fn() Bool) U
 extern fn msuv_timer_close(timer: Timer) Unit
 
 impl Closeable for Loop:
-    # Runs the loop until every closed handle has finished, then frees it.
+    // Runs the loop until every closed handle has finished, then frees it.
     var fn close() Unit!:
         try msuv_loop_close(self)
         return ok(unit)
@@ -325,13 +325,13 @@ impl Closeable for Timer:
         msuv_timer_close(self)
         return ok(unit)
 
-# Adds one tick; the timer keeps firing while this returns true.
+// Adds one tick; the timer keeps firing while this returns true.
 fn tick(count: Shared[Int], limit: Int) Bool:
     var guard = lock(count)
     guard.value += 1
     return guard.value < limit
 
-# Fires every `every_ms` until `limit` ticks, then returns the count.
+// Fires every `every_ms` until `limit` ticks, then returns the count.
 export fn count_ticks(limit: Int, every_ms: UInt64) Int!UvError:
     let loop = try msuv_loop_new()
     let timer = try msuv_timer_new(loop)

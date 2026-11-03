@@ -1,4 +1,4 @@
-# Parser fixture: lexical forms, independent of name resolution.
+// Parser fixture: lexical forms, independent of name resolution.
 import stdout from "@std/io/io.ms"
 import Sample from "./support.ms"
 

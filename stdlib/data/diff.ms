@@ -1,12 +1,14 @@
 import panic from "@std/core.ms"
 import StringBuilder from "@std/string.ms"
 
-# Text comparison: how far apart two strings are, how alike, which candidate is closest, and a line diff in unified format (Python `difflib`).
-# Strings are compared by Unicode scalar, lines by exact equality.
-# `diff.edit_distance("kitten", "sitting")` is `3`.
+/*
+Text comparison: how far apart two strings are, how alike, which candidate is closest, and a line diff in unified format (Python `difflib`).
+Strings are compared by Unicode scalar, lines by exact equality.
+`diff.edit_distance("kitten", "sitting")` is `3`.
+*/
 
-# Returns the number of single-scalar insertions, deletions and substitutions that turn `left` into `right` (Levenshtein distance).
-# Example: `edit_distance("kitten", "sitting")` is `3`; equal strings give 0.
+// Returns the number of single-scalar insertions, deletions and substitutions that turn `left` into `right` (Levenshtein distance).
+// Example: `edit_distance("kitten", "sitting")` is `3`; equal strings give 0.
 export fn edit_distance(left: String, right: String) Int:
     let a = left.chars()
     let b = right.chars()
@@ -31,7 +33,7 @@ export fn edit_distance(left: String, right: String) Int:
 
     return previous[b.length()]
 
-# Returns the length of the longest common subsequence of two lists of text.
+// Returns the length of the longest common subsequence of two lists of text.
 fn common_length(a: List[String], b: List[String]) Int:
     var previous: List[Int] = []
     for unused1 in 0..b.length() + 1:
@@ -50,9 +52,11 @@ fn common_length(a: List[String], b: List[String]) Int:
 
     return previous[b.length()]
 
-# Returns how alike two strings are, from 0.0 (nothing shared) to 1.0 (equal): twice the length of their longest common subsequence of scalars, divided by the total length.
-# Two empty strings give 1.0. This measures the same idea as Python's `SequenceMatcher.ratio` with a different matching rule, so the values can differ.
-# Example: `similarity_ratio("abcd", "abd")` is about `0.857`.
+/*
+Returns how alike two strings are, from 0.0 (nothing shared) to 1.0 (equal): twice the length of their longest common subsequence of scalars, divided by the total length.
+Two empty strings give 1.0. This measures the same idea as Python's `SequenceMatcher.ratio` with a different matching rule, so the values can differ.
+Example: `similarity_ratio("abcd", "abd")` is about `0.857`.
+*/
 export fn similarity_ratio(left: String, right: String) Float:
     let a = left.chars()
     let b = right.chars()
@@ -62,14 +66,16 @@ export fn similarity_ratio(left: String, right: String) Float:
 
     return 2.0 * common_length(a, b).to_float() / total.to_float()
 
-# A candidate string with its similarity to the word searched for.
+// A candidate string with its similarity to the word searched for.
 type Scored:
     text: String
     score: Float
 
-# Returns up to `limit` candidates whose `similarity_ratio` with `word` is at least `cutoff`, best match first; ties keep the candidates' order.
-# A `limit` below 1 or a `cutoff` outside 0.0 to 1.0 faults.
-# Example: `close_matches("appel", ["ape", "apple", "peach"], 2, 0.6)` is `["apple", "ape"]`.
+/*
+Returns up to `limit` candidates whose `similarity_ratio` with `word` is at least `cutoff`, best match first; ties keep the candidates' order.
+A `limit` below 1 or a `cutoff` outside 0.0 to 1.0 faults.
+Example: `close_matches("appel", ["ape", "apple", "peach"], 2, 0.6)` is `["apple", "ape"]`.
+*/
 export fn close_matches(
     word: String,
     candidates: List[String],
@@ -99,16 +105,16 @@ fn compare_scores(left: Float, right: Float) Int:
 
     return 0
 
-# One step of a line diff: a line kept (0), removed from the old text (1) or added in the new text (2).
+// One step of a line diff: a line kept (0), removed from the old text (1) or added in the new text (2).
 type Step:
     kind: Int
     text: String
-    # Lines of the old text consumed before this step.
+    // Lines of the old text consumed before this step.
     old_at: Int
-    # Lines of the new text consumed before this step.
+    // Lines of the new text consumed before this step.
     new_at: Int
 
-# Walks the longest common subsequence table to list the steps that turn `old` into `new`, deletions before insertions within a change.
+// Walks the longest common subsequence table to list the steps that turn `old` into `new`, deletions before insertions within a change.
 fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
     var table: List[List[Int]] = []
 
@@ -166,8 +172,8 @@ fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
 
     return steps
 
-# Formats a hunk range like unified diff: the 1-based start and length, with an empty range counted from the line before it.
-# Matches common leading and trailing lines directly, so only the differing middle pays for the quadratic table.
+// Formats a hunk range like unified diff: the 1-based start and length, with an empty range counted from the line before it.
+// Matches common leading and trailing lines directly, so only the differing middle pays for the quadratic table.
 fn line_steps(old: List[String], new: List[String]) List[Step]:
     var head = 0
     while head < old.length() and head < new.length() and old[head] == new[head]:
@@ -209,10 +215,12 @@ fn hunk_range(start: Int, length: Int) String:
 
     return "{start + 1},{length}"
 
-# Compares two lists of lines and returns the differences in unified diff format, or an empty string when the lists are equal.
-# Lines carry no trailing newline, and the result lines are joined with "\n" with a final newline. `context` is the number of unchanged lines kept around each change (default 3) and must not be negative.
-# `old_name` and `new_name` label the `---` and `+++` headers.
-# Example: `unified_diff(["a", "b"], ["a", "c"], 1)` is `"--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n"`.
+/*
+Compares two lists of lines and returns the differences in unified diff format, or an empty string when the lists are equal.
+Lines carry no trailing newline, and the result lines are joined with "\n" with a final newline. `context` is the number of unchanged lines kept around each change (default 3) and must not be negative.
+`old_name` and `new_name` label the `---` and `+++` headers.
+Example: `unified_diff(["a", "b"], ["a", "c"], 1)` is `"--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n"`.
+*/
 export fn unified_diff(
     old: List[String],
     new: List[String],

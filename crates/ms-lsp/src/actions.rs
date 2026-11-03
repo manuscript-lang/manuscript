@@ -144,7 +144,7 @@ fn import_insertion(source: &str, statement: &str) -> (Position, String) {
                 at += 1;
             }
             last = Some(at - 1);
-        } else if line.is_empty() || line.starts_with('#') {
+        } else if line.is_empty() || line.starts_with("//") || line.starts_with("/*") {
             at += 1;
         } else {
             break;

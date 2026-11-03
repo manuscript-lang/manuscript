@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,tier-core,scope-cleanup
-# conform: phase=check
-# conform: origin=pkg/tooling/format/format_paragraphs_test.go:16 TestFormatParagraphs
+// conform: tags=control-flow,diagnostics,tier-core,scope-cleanup
+// conform: phase=check
+// conform: origin=pkg/tooling/format/format_paragraphs_test.go:16 TestFormatParagraphs
 fn work(enabled: Bool) Int:
     let count = 2
     if enabled:

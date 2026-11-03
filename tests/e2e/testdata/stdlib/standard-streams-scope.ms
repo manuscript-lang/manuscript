@@ -1,7 +1,7 @@
 import stderr, stdout from "@std/io/io.ms"
 import expect_true from "@std/test/test.ms"
 
-# The process's standard streams belong to the process: leaving a scope that bound one must not close it.
+// The process's standard streams belong to the process: leaving a scope that bound one must not close it.
 fn writes_through_a_binding() Bool:
     var out = stdout()
     return out.write("").is_ok()

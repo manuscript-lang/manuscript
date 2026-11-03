@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/format/format_layout_test.go:235 TestFormatExpressionLayouts
+// conform: tags=diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/format/format_layout_test.go:235 TestFormatExpressionLayouts
 fn work() Unit:
     send(
         destination: resolve(name: service, region: region),

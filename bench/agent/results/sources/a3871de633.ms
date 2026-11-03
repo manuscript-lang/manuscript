@@ -6,7 +6,7 @@ type Script:
     kinds: List[Int]
     texts: List[String]
 
-# LCS lengths of every suffix pair, flattened: table[i * (m + 1) + j] is L(i, j).
+// LCS lengths of every suffix pair, flattened: table[i * (m + 1) + j] is L(i, j).
 fn suffix_lcs(a: List[String], b: List[String]) List[Int]:
     let n = a.length()
     let m = b.length()
@@ -30,7 +30,7 @@ fn suffix_lcs(a: List[String], b: List[String]) List[Int]:
 
     return table
 
-# Walks the edit script exactly as the spec's rules describe. Kind 0 is unchanged, 1 deletion, 2 insertion.
+// Walks the edit script exactly as the spec's rules describe. Kind 0 is unchanged, 1 deletion, 2 insertion.
 fn edit_script(a: List[String], b: List[String]) Script:
     let n = a.length()
     let m = b.length()

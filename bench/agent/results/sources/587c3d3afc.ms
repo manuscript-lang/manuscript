@@ -31,7 +31,7 @@ fn id_ok(text: String) Bool:
         if not (is_digit(v) or (v >= 97 and v <= 122) or v == 45): return false
     return true
 
-# Returns the value of a well-formed number in [low, high], or -1 when it is not one.
+// Returns the value of a well-formed number in [low, high], or -1 when it is not one.
 fn number(text: String, low: Int, high: Int) Int:
     if text.length() == 0 or text.length() > 7: return -1
 

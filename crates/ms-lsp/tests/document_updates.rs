@@ -81,15 +81,15 @@ fn incremental_changes_use_each_prior_utf16_snapshot_and_clamp_endpoints() {
             &uri,
             2,
             vec![
-                edit((0, 2), (0, 4), "é"),
-                edit((0, 3), (0, 8), "日本\n# split"),
+                edit((0, 3), (0, 5), "é"),
+                edit((0, 4), (0, 9), "日本\n// split"),
                 edit((1, 999), (1, 1000), "!"),
-                edit((999, 0), (1000, 0), "# done\n"),
+                edit((999, 0), (1000, 0), "// done\n"),
             ],
         );
         let sources = Sources::default();
         let messages = script.rust_with(&sources);
-        let expected = source.replacen("😀alpha", "é日本\n# split!", 1) + "# done\n";
+        let expected = source.replacen("😀alpha", "é日本\n// split!", 1) + "// done\n";
         assert_eq!(*sources.0.borrow(), [source, expected]);
         assert_eq!(versions(&messages), [1, 2]);
     }
@@ -105,7 +105,7 @@ fn equal_byte_replacements_can_change_subsequent_utf16_columns() {
         &mut script,
         &uri,
         2,
-        vec![edit((0, 2), (0, 4), "abcd"), edit((0, 6), (0, 11), "βeta")],
+        vec![edit((0, 3), (0, 5), "abcd"), edit((0, 7), (0, 12), "βeta")],
     );
     let sources = Sources::default();
     let messages = script.rust_with(&sources);
@@ -126,18 +126,18 @@ fn rejected_later_changes_preserve_the_entire_document_and_version() {
     let mut script = Script::initialize(ws.root.to_str().unwrap(), false);
     script.open(&uri, SOURCE, 1);
     for invalid in [
-        edit((0, 3), (0, 4), "split surrogate"),
-        edit((0, 5), (0, 2), "reversed"),
+        edit((0, 4), (0, 5), "split surrogate"),
+        edit((0, 6), (0, 3), "reversed"),
     ] {
         change(
             &mut script,
             &uri,
             2,
-            vec![edit((1, 2), (1, 6), "changed"), invalid],
+            vec![edit((1, 3), (1, 7), "changed"), invalid],
         );
     }
     // Reusing version 2 must still work: both rejected transactions kept version 1.
-    change(&mut script, &uri, 2, vec![edit((0, 4), (0, 9), "beta")]);
+    change(&mut script, &uri, 2, vec![edit((0, 5), (0, 10), "beta")]);
     // A stale replacement must neither overwrite the text nor publish a version.
     change(&mut script, &uri, 2, vec![obj([("text", "stale".into())])]);
     let sources = Sources::default();
@@ -160,9 +160,9 @@ fn full_replacements_and_incremental_changes_share_one_transaction() {
         &uri,
         2,
         vec![
-            edit((0, 4), (0, 9), "discarded"),
+            edit((0, 5), (0, 10), "discarded"),
             obj([("text", SOURCE.into())]),
-            edit((1, 2), (1, 6), "kept"),
+            edit((1, 3), (1, 7), "kept"),
         ],
     );
     change(
@@ -171,7 +171,7 @@ fn full_replacements_and_incremental_changes_share_one_transaction() {
         3,
         vec![
             obj([("text", SOURCE.into())]),
-            edit((0, 3), (0, 4), "invalid"),
+            edit((0, 4), (0, 5), "invalid"),
         ],
     );
     let sources = Sources::default();

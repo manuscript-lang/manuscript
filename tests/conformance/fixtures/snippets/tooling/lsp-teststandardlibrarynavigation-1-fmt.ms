@@ -1,6 +1,6 @@
-# conform: tags=formatter,lists,modules,parser,stdlib-collections,stdlib-system,strings,tier-io
-# conform: phase=parse
-# conform: origin=pkg/tooling/lsp/navigation_test.go:53 TestStandardLibraryNavigation
+// conform: tags=formatter,lists,modules,parser,stdlib-collections,stdlib-system,strings,tier-io
+// conform: phase=parse
+// conform: origin=pkg/tooling/lsp/navigation_test.go:53 TestStandardLibraryNavigation
 import ListEntry from "@std/collections/collections.ms"
 import system_info from "@std/os/process.ms"
 

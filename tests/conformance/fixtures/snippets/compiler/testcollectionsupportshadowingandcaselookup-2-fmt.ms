@@ -1,6 +1,6 @@
-# conform: tags=formatter,lists,modules,parser,stdlib-bytes,stdlib-collections,stdlib-errors,strings,tier-stdlib
-# conform: phase=parse
-# conform: origin=pkg/compiler/collection_prelude_imports_test.go:92 TestCollectionSupportShadowingAndCaseLookup
+// conform: tags=formatter,lists,modules,parser,stdlib-bytes,stdlib-collections,stdlib-errors,strings,tier-stdlib
+// conform: phase=parse
+// conform: origin=pkg/compiler/collection_prelude_imports_test.go:92 TestCollectionSupportShadowingAndCaseLookup
 import (
     ListEntry,
     MapEntry,

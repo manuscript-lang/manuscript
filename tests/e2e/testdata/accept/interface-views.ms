@@ -4,7 +4,7 @@ type Cause:
     code: Int
     text: String
 
-# The interface the views convert to; `Reportable` is a plain record.
+// The interface the views convert to; `Reportable` is a plain record.
 interface Reportable:
     fn message() String
 

@@ -1,5 +1,5 @@
-# conform: tags=scope-cleanup,faults,stdlib-tasks,tier-io
-# conform: phase=run
+// conform: tags=scope-cleanup,faults,stdlib-tasks,tier-io
+// conform: phase=run
 import Closeable from "@std/core.ms"
 import stdout from "@std/io/io.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"

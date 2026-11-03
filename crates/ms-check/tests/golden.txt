@@ -31,7 +31,7 @@ fn use() Unit:
 resolution	3	8	89	unknown standard module @std/faults.ms
 resolution	6	19	183	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 type	6	71	235	cannot infer callback parameter request; provide a type or a known function context
-resolution	8	16	310	unknown binding panic; add: import panic from "@std/core.ms"# Doubles a number.
+resolution	8	16	310	unknown binding panic; add: import panic from "@std/core.ms"// Doubles a number.
 export fn double(value: Int) Int:
     return value * 2
 
@@ -54,7 +54,7 @@ export fn main() Int:
 fn g() Int:
     let x = 1
     return 2
-type	5	9	49	local binding x is never read; remove it, use it, or name it with a leading '_' to ignore it# Local value.
+type	5	9	49	local binding x is never read; remove it, use it, or name it with a leading '_' to ignore it// Local value.
 export fn value() Int:
     return 0
 export fn value() Int:
@@ -243,7 +243,7 @@ export fn main() Int:
 fn main():
     let value = 42
     print(value)
-parse	1	10	9	every fn declares its result type after the parameter list, e.g. fn f() Unit:    let value = 42 # source statement
+parse	1	10	9	every fn declares its result type after the parameter list, e.g. fn f() Unit:    let value = 42 // source statement
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn one(value: Int) Int:
     return value
 fn two(left: Int, right: Int) Int:
@@ -1171,38 +1171,38 @@ type	9	5	166	cannot change `xs`: parameter `xs` is not declared var; write `var 
             xs.set(index: 0, value: v)
         none:
             xs.length()
-type	6	16	135	expected Unit, found Int# A described record.
+type	6	16	135	expected Unit, found Int// A described record.
 export type Counter:
-    # Current count in items.
-    # May start at zero.
+    // Current count in items.
+    // May start at zero.
     count: Int = 0
-    # Detached description.
+    // Detached description.
 
     undocumented: Int = 1
 
 export type Outcome:
-    # A completed count.
+    // A completed count.
     case Ready(value: Int)
-    # Work is pending.
+    // Work is pending.
     case Pending
-    # Work failed with source context.
+    // Work failed with source context.
     case Failed(
-        # Original failure diagnostic.
+        // Original failure diagnostic.
         message: String
     )
 
 export interface Countable:
-    # Reads the count without mutation.
+    // Reads the count without mutation.
     fn count() Int
 
 impl Countable for Counter:
-    # Returns the stored count.
+    // Returns the stored count.
     fn count() Int:
         return self.count
 
-# Private declarations stay private.
+// Private declarations stay private.
 type Hidden:
-    # Hidden member documentation.
+    // Hidden member documentation.
     value: Int
 
 impl parse	2	6	6	expected a name, found end of lineinterface DatagramSocket:
@@ -1251,17 +1251,17 @@ export fn defaults(first: Int = -3, second: Int = helper(left: first, right: 2),
     count: Int = 3
     total: Int = count + 1
     label: String = "literal, )"
-# Adds two numbers.
-# Never rounds.
+// Adds two numbers.
+// Never rounds.
 export fn add(a: Int, b: Int) Int:
     return a + b
 
-# Detached by a blank line.
+// Detached by a blank line.
 
 export fn sub(a: Int, b: Int) Int:
     return a - b
 
-# Not a doc comment: private declaration.
+// Not a doc comment: private declaration.
 fn helper() Int:
     return 1
 
@@ -3082,10 +3082,10 @@ type	3	12	57	missing argument other: String in call to compare; add 'other: <Str
     return unit
 test "c":
     return unit
-# module
+// module
 fn value() Int:
 
-    # comment
+    // comment
     if true:
         return 3
     else:
@@ -3094,7 +3094,7 @@ fn value() Int:
     return
 parse	1	1	0	a byte-order mark is not allowed; save the file as UTF-8 without BOMfn café() Unit:
     return
-parse	1	7	6	unexpected source character 'é'; non-ASCII characters are only allowed inside text and '#' comments, and identifiers are ASCIIfn value() Unit:
+parse	1	7	6	unexpected source character 'é'; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCIIfn value() Unit:
 	return
 parse	2	1	17	tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)fn value() Unit:
         return
@@ -3117,8 +3117,8 @@ fn value() Int:
 fn value() String:
     return "héllo \u{1F600} {1 + 2} \{literal\}"
 let é = 1
-parse	1	5	4	unexpected source character 'é'; non-ASCII characters are only allowed inside text and '#' comments, and identifiers are ASCIIlet x = 1 + 日
-parse	1	13	12	unexpected source character '日'; non-ASCII characters are only allowed inside text and '#' comments, and identifiers are ASCIIlet s = "a\qb"
+parse	1	5	4	unexpected source character 'é'; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCIIlet x = 1 + 日
+parse	1	13	12	unexpected source character '日'; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCIIlet s = "a\qb"
 parse	1	11	10	unknown text escape \\q; valid escapes are \\n \\t \\r \\\\ \\" \\{ \\} and \\u{H}fn f() Int:
     let x = [
 1,
@@ -3308,7 +3308,7 @@ impl Counter:
     count: Int = 3
     total: Int = count + 1
 fn empty() Unit: ...
-# empty body
+// empty body
 fn answer() Int: return 3
 export fn commands() Commands
 parse	1	30	29	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodytype List[T]:
@@ -3685,7 +3685,7 @@ fn later() Int:
 parse	10	1	144	unterminated delimiter '(' opened at line 7:10; add the matching ')' before the end of the filefn broken(
 fn later(first: Int = 3, second: Int = first + 1) Int:
     return second
-parse	4	1	84	unterminated delimiter '(' opened at line 1:10; add the matching ')' before the end of the file# prefix
+parse	4	1	84	unterminated delimiter '(' opened at line 1:10; add the matching ')' before the end of the file// prefix
 fn first() Int:
     return 1
 export fn echo(
@@ -3702,7 +3702,7 @@ right: Int,
 fn broken(
 fn later() Int:
     return 2
-parse	18	1	204	unterminated delimiter '(' opened at line 15:10; add the matching ')' before the end of the filefn broken(
+parse	18	1	205	unterminated delimiter '(' opened at line 15:10; add the matching ')' before the end of the filefn broken(
 fn later(values: List[Int]) Int:
     let result = match values[0]:
         number:
@@ -3728,14 +3728,14 @@ fn ok() Int:
         let z = 1
     let w = = 4
     return 1
-parse	3	17	41	expected an expression, found '='; write a value, name, call, or literal here# café 🦀
+parse	3	17	41	expected an expression, found '='; write a value, name, call, or literal here// café 🦀
 fn use(value: Envelope) Int:
     match value:
         Pair(
             _,
             NotFound,
         ): return 1
-resolution	2	15	27	unknown type Envelope; declare it with 'type Envelope:' / 'interface Envelope:', declare it as a type parameter, or import itfn value() String:
+resolution	2	15	28	unknown type Envelope; declare it with 'type Envelope:' / 'interface Envelope:', declare it as a type parameter, or import itfn value() String:
     return "parse	2	13	31	unterminated text literalfn broken(
 fn later(
 parse	3	1	21	unterminated delimiter '(' opened at line 2:9; add the matching ')' before the end of the filefn later() Int: ...
@@ -3747,13 +3747,13 @@ fn later(
 parse	1	9	8	expected '(', found '%'; a call or parameter list starts with '('fn f() Int:
     let v = parse	2	13	24	expected an expression, found end of line; write a value, name, call, or literal herefn f() Int:
     let v = x
-        | f # first
+        | f // first
 
-        # explain
+        // explain
         | g(a: 1)
         .size()
     return 0
-resolution	6	11	75	unknown binding g; declare it with 'let g = ...' before use, define 'fn g(...) T:', or import it from a modulefn f() Int:
+resolution	6	11	77	unknown binding g; declare it with 'let g = ...' before use, define 'fn g(...) T:', or import it from a modulefn f() Int:
     let v = x
 resolution	2	13	24	unknown binding x; declare it with 'let x = ...' before use, define 'fn x(...) T:', or import it from a module
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)fn run() Int:
@@ -4091,11 +4091,11 @@ resolution	4	3	133	unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type B
 
     return 0
 fn work() Unit:
-    let values = [1, # Keep the first value explained.
+    let values = [1, // Keep the first value explained.
         2, 3, 4]
 type	2	9	24	local binding values is never read; remove it, use it, or name it with a leading '_' to ignore itfn work() Unit:
     let values = [
-        1,  # Keep the first value explained.
+        1,  // Keep the first value explained.
         2,
         3,
         4
@@ -4243,17 +4243,17 @@ resolution	2	18	101	unknown binding cause; declare it with 'let cause = ...' bef
     return error(cause)
 resolution	4	32	75	unknown type ApplicationError; declare it with 'type ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it
 resolution	5	18	111	unknown binding cause; declare it with 'let cause = ...' before use, define 'fn cause(...) T:', or import it from a modulefn work() Unit:
-    send(  # Delivery settings.
-            first: 1, # First setting.
-        # Second setting.
+    send(  // Delivery settings.
+            first: 1, // First setting.
+        // Second setting.
             second: 2,
-        ) # Completed settings.
+        ) // Completed settings.
 resolution	2	5	20	unknown binding send; declare it with 'let send = ...' before use, define 'fn send(...) T:', or import it from a modulefn work() Unit:
-    send(  # Delivery settings.
-        first: 1,  # First setting.
-        # Second setting.
+    send(  // Delivery settings.
+        first: 1,  // First setting.
+        // Second setting.
         second: 2,
-    )  # Completed settings.
+    )  // Completed settings.
 resolution	2	5	20	unknown binding send; declare it with 'let send = ...' before use, define 'fn send(...) T:', or import it from a modulefn work() Int:
     return apply(value: 3, transform: fn(value: Int) Int: return value + 1)
 resolution	2	12	26	unknown binding apply; declare it with 'let apply = ...' before use, define 'fn apply(...) T:', or import it from a modulefn work() Int:
@@ -4411,49 +4411,49 @@ resolution	9	11	222	unknown binding save; declare it with 'let save = ...' befor
         _: return 0
 
     return 3
-resolution	1	18	17	unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import it# A public contract.
+resolution	1	18	17	unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import it// A public contract.
 export interface Run:
     fn first() Int
     fn second() Int
-# The implementation.
+// The implementation.
 impl Run for Runner:
     fn first() Int: return 1
-    # Explain the second operation.
+    // Explain the second operation.
     fn second() Int:
         let value = 2
-        # Handle both outcomes.
-        # Keep these comments together.
+        // Handle both outcomes.
+        // Keep these comments together.
         match value:
             one: return 1
-            # Fallback explanation.
+            // Fallback explanation.
             _:
                 return 2
-# Application entry.
+// Application entry.
 fn main() Int: return 0
-resolution	6	14	117	unknown type Runner; declare it with 'type Runner:' / 'interface Runner:', declare it as a type parameter, or import it# A public contract.
+resolution	6	14	119	unknown type Runner; declare it with 'type Runner:' / 'interface Runner:', declare it as a type parameter, or import it// A public contract.
 export interface Run:
     fn first() Int
     fn second() Int
 
-# The implementation.
+// The implementation.
 impl Run for Runner:
     fn first() Int: return 1
 
-    # Explain the second operation.
+    // Explain the second operation.
     fn second() Int:
         let value = 2
 
-        # Handle both outcomes.
-        # Keep these comments together.
+        // Handle both outcomes.
+        // Keep these comments together.
         match value:
             one: return 1
-            # Fallback explanation.
+            // Fallback explanation.
             _:
                 return 2
 
-# Application entry.
+// Application entry.
 fn main() Int: return 0
-resolution	7	14	118	unknown type Runner; declare it with 'type Runner:' / 'interface Runner:', declare it as a type parameter, or import itfn example() Int:
+resolution	7	14	120	unknown type Runner; declare it with 'type Runner:' / 'interface Runner:', declare it as a type parameter, or import itfn example() Int:
     let result = apply(
         value: 3,
         transform: (
@@ -4476,29 +4476,29 @@ fn main() Int: return 0
         )
     )
     return result
-resolution	2	18	35	unknown binding apply; declare it with 'let apply = ...' before use, define 'fn apply(...) T:', or import it from a module# File introduction.
+resolution	2	18	35	unknown binding apply; declare it with 'let apply = ...' before use, define 'fn apply(...) T:', or import it from a module// File introduction.
 fn example() Int:
     let first = 1
 
 
-    # A deliberate new step.
+    // A deliberate new step.
     let second = first + 1
     if second > 2:
         run(second)
-        # A comment inside the branch.
-    # A comment on the next step.
+        // A comment inside the branch.
+    // A comment on the next step.
     return second
-resolution	9	9	142	unknown binding run; add: import run from "@std/os/process.ms"# File introduction.
+resolution	9	9	144	unknown binding run; add: import run from "@std/os/process.ms"// File introduction.
 fn example() Int:
     let first = 1
-    # A deliberate new step.
+    // A deliberate new step.
     let second = first + 1
     if second > 2:
         run(second)
-        # A comment inside the branch.
-    # A comment on the next step.
+        // A comment inside the branch.
+    // A comment on the next step.
     return second
-resolution	7	9	140	unknown binding run; add: import run from "@std/os/process.ms"fn example(
+resolution	7	9	142	unknown binding run; add: import run from "@std/os/process.ms"fn example(
     value: Int = choose(
         first: 1,
         second: 2
@@ -4507,7 +4507,7 @@ fn example() Int:
     let text = "# if value: return {value}"
     let next = choose(
         first: value,
-        # Explain this argument.
+        // Explain this argument.
         second: 2
     )
     if (
@@ -4520,7 +4520,7 @@ resolution	8	16	145	unknown binding choose; declare it with 'let choose = ...' b
     let text = "# if value: return {value}"
     let next = choose(
         first: value,
-        # Explain this argument.
+        // Explain this argument.
         second: 2
     )
     if (next > 0 and value > 0): return next
@@ -4532,8 +4532,8 @@ resolution	3	16	117	unknown binding choose; declare it with 'let choose = ...' b
 fn run(n: Int) Int:
     let a = n|double|double
     let b = n
-        |double   # first
-        # second
+        |double   // first
+        // second
         |double
     return a+b
 fn double(n: Int) Int: n * 2
@@ -4541,8 +4541,8 @@ fn run(n: Int) Int:
 fn run(n: Int) Int:
     let a = n | double | double
     let b = n
-        | double  # first
-        # second
+        | double  // first
+        // second
         | double
     return a + b
 fn run(n: Int) Int:
@@ -4599,13 +4599,13 @@ resolution	4	13	51	unknown binding foo; declare it with 'let foo = ...' before u
     return 3
 resolution	2	8	19	unknown binding a; declare it with 'let a = ...' before use, define 'fn a(...) T:', or import it from a module
 resolution	4	13	51	unknown binding foo; declare it with 'let foo = ...' before use, define 'fn foo(...) T:', or import it from a modulefn sum(first_value: Int, second_value: Int, third_value: Int, fourth_value: Int) Int: first_value + second_value + third_value + fourth_value
-# leading
-fn sum(left: Int, right: Int) Int:  # sum
-    return left + right  # trailing
+// leading
+fn sum(left: Int, right: Int) Int:  // sum
+    return left + right  // trailing
 fn bad():
   return
 parse	2	3	12	indentation must be a multiple of four spaces, found 2; use 0 or 4export fn render(
-    arguments: List[String],  # arguments
+    arguments: List[String],  // arguments
     output: WriteStream,
 ) Int:
     let message = "Arguments: {arguments.join(",")}\n"
@@ -4615,7 +4615,7 @@ fn sum(left: Int, right: Int) Int:  # sum
             return 0
         error(_):
             return 1
-resolution	3	13	72	unknown type WriteStream; add: import WriteStream from "@std/io/io.ms"fn double(x:Int) Int:return x*2
+resolution	3	13	73	unknown type WriteStream; add: import WriteStream from "@std/io/io.ms"fn double(x:Int) Int:return x*2
 fn f(x:Int) Int:
     if x>0:return double(x)
     else:return 0
@@ -4832,7 +4832,7 @@ fn answer(input: Int) Int:
 parse	5	1	112	unterminated delimiter '(' opened at line 4:15; add the matching ')' before the end of the filefn work() Unit:
     Que|
 parse	2	9	24	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'fn work() Unit:
-    # Que|
+    // Que|
     unit
 fn work() String:
     return "Que|"
@@ -4914,7 +4914,7 @@ fn make_fixture() State:
 impl TestHooks for State:
 test "one":
     fixture.|
-parse	8	13	164	expected a name, found '|'# max items
+parse	8	13	164	expected a name, found '|'// max items
 export let MAX_ITEMS = 100
 let NAMES: List[String] = ["a"]
 let LIMIT = MAX_ITEMS * 2
@@ -4985,28 +4985,28 @@ fn read() Int: return Options().first
     count: Int = 3
 fn read() Options:
     return Options(required: 1, |)
-parse	5	33	102	expected an expression, found '|'; write a value, name, call, or literal here# α😀 heading
-#
-# second line
+parse	5	33	102	expected an expression, found '|'; write a value, name, call, or literal here// α😀 heading
+//
+// second line
 fn documented() Int: 1
-# detached
+// detached
 
 fn blank() Int: 2
-# ordinary
+// ordinary
 fn first() Int: 3
 fn bare() Int: 4
-# neighboring recovered declaration
+// neighboring recovered declaration
 fn neighbor() Int: 5
 fn broken(
-parse	14	1	200	unterminated delimiter '(' opened at line 13:10; add the matching ')' before the end of the filefn f%d() Int: 1
-parse	1	5	4	expected '(', found '%'; a call or parameter list starts with '('# Add two numbers.
+parse	14	1	206	unterminated delimiter '(' opened at line 13:10; add the matching ')' before the end of the filefn f%d() Int: 1
+parse	1	5	4	expected '(', found '%'; a call or parameter list starts with '('// Add two numbers.
 fn sum(left: Int, right: Int) Int:
     return left + right
 fn answer() Int:
     return sum(left: 1, ri|
-parse	6	1	123	unterminated delimiter '(' opened at line 5:15; add the matching ')' before the end of the filefn work(values: List[String]) Unit:
+parse	6	1	124	unterminated delimiter '(' opened at line 5:15; add the matching ')' before the end of the filefn work(values: List[String]) Unit:
     values.append(value: |
-parse	3	1	63	unterminated delimiter '(' opened at line 2:18; add the matching ')' before the end of the file# 😀 comment
+parse	3	1	63	unterminated delimiter '(' opened at line 2:18; add the matching ')' before the end of the file// 😀 comment
 fn answer(input: Int) Int:
     return input
 export fn add(value: Int) Int:
@@ -5142,11 +5142,11 @@ fn named(value: Int = read()) Int:
 export fn main() Int:
     let result = f_0_0(1)
     return result
-resolution	3	18	40	unknown binding f_0_0; declare it with 'let f_0_0 = ...' before use, define 'fn f_0_0(...) T:', or import it from a module# α😀
+resolution	3	18	40	unknown binding f_0_0; declare it with 'let f_0_0 = ...' before use, define 'fn f_0_0(...) T:', or import it from a module// α😀
 interface Read:
     fn get() Int
 type Box:
-    value: Int # 😀é
+    value: Int // 😀é
 impl Read for Box:
     fn get() Int:
         return self.value
@@ -5167,23 +5167,23 @@ fn run() Int:
     let pair = parse	3	16	50	expected an expression, found end of line; write a value, name, call, or literal herefn entries(values: List[Int]) List[ListEntry[Int]]: values.entries()
 fn pairs(values: Map[String, Int]) List[MapEntry[String, Int]]: values.entries()
 fn cut(values: List[Int]) Result[List[Int], CollectionError]: values.slice(0, 1)
-resolution	3	45	194	unknown type CollectionError; declare it with 'type CollectionError:' / 'interface CollectionError:', declare it as a type parameter, or import itimport MissingValue from "@std/errors.ms" # keep
+resolution	3	45	194	unknown type CollectionError; declare it with 'type CollectionError:' / 'interface CollectionError:', declare it as a type parameter, or import itimport MissingValue from "@std/errors.ms" // keep
 fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	41	89	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import itimport List from "@std/collections/collections.ms" # keep
+resolution	2	41	90	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import itimport List from "@std/collections/collections.ms" // keep
 fn count() Int: List[Int]().length()
 resolution	1	8	7	redundant prelude import List; remove List from this import and use its prelude declaration directlyimport ListBuilder, List from "@std/collections/collections.ms"
 fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
 resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, Set, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	1	21	20	redundant prelude import List; remove List from this import and use its prelude declaration directly
 resolution	2	17	80	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a moduleimport (
-    List, # keep
+    List, // keep
     ListBuilder,
 ) from "@std/collections/collections.ms"
 fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
 resolution	2	5	13	redundant prelude import List; remove List from this import and use its prelude declaration directly
-resolution	3	5	30	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, Set, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
-resolution	5	17	100	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a modulefn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
+resolution	3	5	31	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, Set, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	5	17	101	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a modulefn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 resolution	1	41	40	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import itfn bad() Unit:
    unit
 import ListBuilder, List from "@std/collections/collections.ms"
@@ -5707,7 +5707,7 @@ var invalid = 3
 parse	2	1	17	suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declarationfn broken() String: return "unterminated
 parse	1	28	27	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakfn fragment() Unit: ...
     fn use(value: Int?) Unit: ...
-# match match
+// match match
 fn use() String: "match match"
 type Box[Error: Error]:
     cause: Error
@@ -6025,7 +6025,7 @@ test "fault":
 test "fault":
     let impossible = difference(values: [1])
 type	5	9	119	local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore itfn one( ) Int:
-    return 1 # keep
+    return 1 // keep
 fn wrong() Int:
     return missing
 resolution	2	12	27	unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...) T:', or import it from a modulefn wrong():

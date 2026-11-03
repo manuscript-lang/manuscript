@@ -2,7 +2,7 @@ import expect_equal, expect_ok from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
 import append_file, read_file, temporary from "@std/os/fs.ms"
 
-# Close appends the id to a log file, so the log is the order in which the closes ran.
+// Close appends the id to a log file, so the log is the order in which the closes ran.
 type Tracked:
     log: String
     id: Int
@@ -34,7 +34,7 @@ type Slot:
     case Full(item: Tracked)
     case Both(left: Tracked, right: Tracked)
 
-# Closes itself, then the field it owns.
+// Closes itself, then the field it owns.
 type Wrapper:
     log: String
     inner: Tracked

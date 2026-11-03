@@ -17,5 +17,5 @@ fn keep(d: Door) List[Door]:
     return xs
 
 fn twice(r: Room) Int:
-    let xs = keep(r.door)  # error: is moved here but used again
+    let xs = keep(r.door)  // error: is moved here but used again
     return xs.length() + keep(r.door).length()

@@ -12,13 +12,13 @@
           "file": "foreign-class.ms",
           "line": 5,
           "column": 5,
-          "offset": 130
+          "offset": 133
         },
         "end": {
           "file": "foreign-class.ms",
           "line": 5,
           "column": 10,
-          "offset": 135
+          "offset": 138
         }
       }
     ],

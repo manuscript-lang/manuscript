@@ -1,6 +1,6 @@
-# conform: tags=stdlib-process,testing,tier-io
-# conform: phase=test
-# conform: origin=issue 2165
+// conform: tags=stdlib-process,testing,tier-io
+// conform: phase=test
+// conform: origin=issue 2165
 import expect_equal, expect_true, expect_contains from "@std/test/test.ms"
 import run, spawn, os_type, CommandOutput from "@std/os/process.ms"
 

@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,modules,mutation,stdlib-testing,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/inline-suites.ms
+// conform: tags=closures,control-flow,modules,mutation,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/inline-suites.ms
 import expect_equal from "@std/test/test.ms"
 
 fn double(value: Int) Int: value * 2

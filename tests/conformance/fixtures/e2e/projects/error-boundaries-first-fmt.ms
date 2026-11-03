@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,generics,interfaces,interpolation,modules,parser,strings,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/error_boundaries/first.ms
+// conform: tags=control-flow,formatter,generics,interfaces,interpolation,modules,parser,strings,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/error_boundaries/first.ms
 import DomainFailure, BoxFailure, box_error from "./domain.ms"
 
 export fn first_error(cause: DomainFailure) Error:

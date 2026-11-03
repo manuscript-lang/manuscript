@@ -1,6 +1,6 @@
-# conform: tags=control-flow,decimal,diagnostics,faults,modules,stdlib-faults,tier-stdlib
-# conform: phase=check
-# conform: origin=documentation/core-language/errors/faults.md:14
+// conform: tags=control-flow,decimal,diagnostics,faults,modules,stdlib-faults,tier-stdlib
+// conform: phase=check
+// conform: origin=documentation/core-language/errors/faults.md:14
 import panic from "@std/core.ms"
 
 fn discount_validated(price: Decimal, percent: Decimal) Decimal:

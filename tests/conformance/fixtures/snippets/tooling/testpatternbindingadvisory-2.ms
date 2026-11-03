@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,match,optional,records,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/pattern_lint_test.go:23 TestPatternBindingAdvisory
+// conform: tags=diagnostics,match,optional,records,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/pattern_lint_test.go:23 TestPatternBindingAdvisory
 type Item:
     value: Int
 

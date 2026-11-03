@@ -1,5 +1,5 @@
-# Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-# expect-mir: "msrt_string_to_bytes"
+// Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
+// expect-mir: "msrt_string_to_bytes"
 
 import Subprocess, CommandOutput from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"

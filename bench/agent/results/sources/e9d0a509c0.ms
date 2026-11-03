@@ -10,14 +10,14 @@ type Ledger:
     frozen: Map[String, Bool]
     fees: Int
 
-# Value of a plain digit token, or -1 when it is not one (signs, decimals, letters, overflow).
+// Value of a plain digit token, or -1 when it is not one (signs, decimals, letters, overflow).
 fn number(s: String) Int:
     if s.contains("+") or s.contains("-"): return -1
     if let v = s.parse_int(): return v
 
     return -1
 
-# Overdraft fee charged when a debit takes a non-negative balance below zero.
+// Overdraft fee charged when a debit takes a non-negative balance below zero.
 fn fee_for(balance: Int, amount: Int) Int:
     if balance >= 0 and balance - amount < 0: return 5
 

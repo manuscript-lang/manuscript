@@ -47,7 +47,7 @@ fn valid_oid(s: String) Bool:
             return false
     return true
 
-# 1 to 7 ASCII digits.
+// 1 to 7 ASCII digits.
 fn number(s: String) Int?:
     let codes = s.scalar_values()
     if codes.length() < 1 or codes.length() > 7:

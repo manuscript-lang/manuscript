@@ -116,7 +116,7 @@ type Group:
     count: Int
     points: Int
 
-# ---------- small text helpers ----------
+// ---------- small text helpers ----------
 
 fn say(line: String) Unit:
     stdout().write(line + "\n").get()
@@ -189,7 +189,7 @@ fn first_word(text: String) String:
 
     return ws[0].clone()
 
-# Text after the first n whitespace-separated words, leading blanks removed.
+// Text after the first n whitespace-separated words, leading blanks removed.
 fn rest_after(text: String, n: Int) String:
     let cs = text.chars()
     var i = 0
@@ -220,7 +220,7 @@ fn drop_last_word(text: String) String:
         i -= 1
     return sub(text, 0, i).trim_end()
 
-# Index of the first occurrence of `w` as a whole word, or -1.
+// Index of the first occurrence of `w` as a whole word, or -1.
 fn find_word(text: String, w: String, end_ok: Bool) Int:
     let n = text.scalar_length()
     let m = w.scalar_length()
@@ -239,7 +239,7 @@ fn find_word(text: String, w: String, end_ok: Bool) Int:
 
     return -1
 
-# Splits on whitespace; quoted sections join the token. Used by token-style commands.
+// Splits on whitespace; quoted sections join the token. Used by token-style commands.
 fn tokenize(text: String) Result[List[String], Fail]:
     let cs = text.chars()
     var out = List[String]()
@@ -291,7 +291,7 @@ fn tokenize(text: String) Result[List[String], Fail]:
         out.append(cur.clone())
     return ok(out)
 
-# ---------- validation helpers ----------
+// ---------- validation helpers ----------
 
 fn valid_label(l: String) Bool:
     if l == "":
@@ -409,7 +409,7 @@ fn labels_list(l: List[String]) String:
 
     return l.join(", ")
 
-# ---------- ids and lookup ----------
+// ---------- ids and lookup ----------
 
 fn parse_id(arg: String) Result[Int, Fail]:
     var digits = arg.clone()
@@ -445,7 +445,7 @@ fn is_open(st: Tracker, iss: Issue) Bool:
 fn state_index(st: Tracker, state: String) Int:
     return st.wf.states.index_of(state).get(0)
 
-# ---------- field assignment ----------
+// ---------- field assignment ----------
 
 fn set_field(var iss: Issue, field: String, value: String) Result[Unit, Fail]:
     if field == "state":
@@ -517,7 +517,7 @@ fn apply_fields(var iss: Issue, toks: List[String], from: Int) Result[Unit, Fail
 
     return ok(unit)
 
-# Describes what differs between two versions of an issue, in the fixed field order.
+// Describes what differs between two versions of an issue, in the fixed field order.
 fn changes(old: Issue, next: Issue) List[String]:
     var out = List[String]()
     if old.title != next.title:
@@ -543,7 +543,7 @@ fn record(var st: Tracker, id: Int, detail: String) Unit:
         )
     )
 
-# Applies the changes of an edit: reports "unchanged" or bumps the clock and logs them.
+// Applies the changes of an edit: reports "unchanged" or bumps the clock and logs them.
 fn commit(var st: Tracker, idx: Int, old: Issue, next: Issue) Unit:
     let ch = changes(old, next)
 
@@ -692,7 +692,7 @@ fn add_comment(var st: Tracker, idx: Int, text: String) Unit:
     record(var st, id, "comment: {text}")
     say("commented #{id}")
 
-# ---------- workflow definition ----------
+// ---------- workflow definition ----------
 
 fn add_state(var states: List[String], name: String) Unit:
     if not states.contains(name):
@@ -785,7 +785,7 @@ fn parse_workflow(lines: List[String], start: Int, stop: Int) Result[Workflow, F
         )
     )
 
-# Consumes the block that starts at `start` and returns the index after its `end` line.
+// Consumes the block that starts at `start` and returns the index after its `end` line.
 fn define_workflow(var st: Tracker, lines: List[String], start: Int) Int:
     var stop = start
     while stop < lines.length() and lines[stop].trim() != "end":
@@ -809,7 +809,7 @@ fn define_workflow(var st: Tracker, lines: List[String], start: Int) Int:
 
     return stop + 1
 
-# ---------- query language ----------
+// ---------- query language ----------
 
 fn word_kind(w: String) Int:
     if w == "AND":
@@ -884,7 +884,7 @@ fn lex_query(text: String) Result[List[Token], Fail]:
 
     return ok(toks)
 
-# Splits a raw value into alternatives on unquoted `|`; quotes are removed.
+// Splits a raw value into alternatives on unquoted `|`; quotes are removed.
 fn split_alts(raw: String) List[String]:
     let cs = raw.chars()
     var alts = List[String]()
@@ -1130,7 +1130,7 @@ fn compile_filter(st: Tracker, text: String) Result[Filter, Fail]:
 
     return ok(Filter(clauses: p.clauses.clone(), refs: p.refs.clone()))
 
-# Splits "FILTER sort FIELDS limit N" into its parts; checks the limit only.
+// Splits "FILTER sort FIELDS limit N" into its parts; checks the limit only.
 fn split_query(raw: String) Result[Parts, Fail]:
     var text = raw.trim().clone()
     var limit = -1
@@ -1372,7 +1372,7 @@ fn view_uses(st: Tracker, view_name: String, target: String) Bool:
             return refs_reach(st, g.refs, target)
     return false
 
-# ---------- sorting and listing ----------
+// ---------- sorting and listing ----------
 
 fn cmp_absent_int(a: Int, b: Int) Int:
     if a < 0 and b < 0:
@@ -1467,7 +1467,7 @@ fn print_matches(st: Tracker, f: Filter, keys: List[SortKey], limit: Int) Unit:
     else:
         say("({shown} issues)")
 
-# ---------- commands ----------
+// ---------- commands ----------
 
 fn cmd_actor(var st: Tracker, rest: String) Result[Unit, Fail]:
     let ws = words(rest)

@@ -1,5 +1,5 @@
-# conform: tags=closures,faults,stdlib-tasks,tier-stdlib,scope-cleanup
-# conform: phase=run
+// conform: tags=closures,faults,stdlib-tasks,tier-stdlib,scope-cleanup
+// conform: phase=run
 import stdout from "@std/io/io.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 
@@ -15,7 +15,7 @@ fn describe(error: Error) String:
 fn say(text: String) Unit:
     let _ = stdout().write(text + "\n")
 
-# A fault in a contained group ends only that task: siblings keep their results.
+// A fault in a contained group ends only that task: siblings keep their results.
 export fn main() Int:
     var group = TaskGroup[Int](contain_faults: true)
     let bad = group.spawn(fn ch: boom([1]))

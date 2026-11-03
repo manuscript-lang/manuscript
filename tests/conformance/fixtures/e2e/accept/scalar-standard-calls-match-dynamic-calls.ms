@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,modules,mutation,numbers,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/scalar-standard-calls-match-dynamic-calls.ms
+// conform: tags=closures,control-flow,modules,mutation,numbers,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/scalar-standard-calls-match-dynamic-calls.ms
 import expect_true from "@std/test/test.ms"
 import (
     atan2,

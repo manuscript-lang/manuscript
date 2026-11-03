@@ -3,7 +3,7 @@ import read_lines from "@std/streams.ms"
 import range from "@std/collections.ms"
 import max, min from "@std/math.ms"
 
-# Sentinel for any malformed number; every valid number in the spec is at least 0.
+// Sentinel for any malformed number; every valid number in the spec is at least 0.
 fn bad() Int:
     return -1
 
@@ -63,7 +63,7 @@ fn knap(cap: Int, weights: List[Int], values: List[Int]) Int:
     for w in weights:
         total += w
 
-    # Capacity beyond the total weight never changes the answer.
+    // Capacity beyond the total weight never changes the answer.
     let limit = min(cap, total)
     var best: List[Int] = []
     for c in range(0, limit + 1):
@@ -73,7 +73,7 @@ fn knap(cap: Int, weights: List[Int], values: List[Int]) Int:
         let w = weights[k]
         let v = values[k]
 
-        # Walk capacities downward so each item is used at most once.
+        // Walk capacities downward so each item is used at most once.
         for step in range(0, limit - w + 1):
             let c = limit - step
             best[c] = max(best[c], best[c - w] + v)
@@ -81,7 +81,7 @@ fn knap(cap: Int, weights: List[Int], values: List[Int]) Int:
     return best[limit]
 
 fn coins(amount: Int, denominations: List[Int]) String:
-    # Any real count is at most `amount`, so `amount + 1` marks unreachable sums.
+    // Any real count is at most `amount`, so `amount + 1` marks unreachable sums.
     let unreachable = amount + 1
     var best: List[Int] = [0]
 

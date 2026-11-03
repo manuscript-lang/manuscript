@@ -313,7 +313,7 @@ fn check_switch(repo: Repo, target: Map[String, String]) Result[Unit, Fail]:
 
     return untracked_check(repo, sorted_keys(target))
 
-# Manuscript has no Unit literal; nop() supplies one for ok(...) results.
+// Manuscript has no Unit literal; nop() supplies one for ok(...) results.
 fn nop() Unit:
     return
 

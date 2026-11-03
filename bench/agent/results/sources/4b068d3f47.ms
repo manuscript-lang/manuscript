@@ -1,8 +1,8 @@
 import stdout, stdin from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# Simulator state for one run of the program. Persistent across requests:
-# files and clock. Everything else is rebuilt by each make invocation.
+// Simulator state for one run of the program. Persistent across requests:
+// files and clock. Everything else is rebuilt by each make invocation.
 type Variable:
     recursive: Bool
     value: String
@@ -17,8 +17,8 @@ type Rule:
     order_only: List[String]
     recipe: List[Line]
 
-# A rule whose logical line has been read but not yet stored; it stays open
-# until a non-recipe line closes it.
+// A rule whose logical line has been read but not yet stored; it stays open
+// until a non-recipe line closes it.
 type Open:
     has: Bool
     phony: Bool
@@ -50,7 +50,7 @@ type Bind:
     name: String
     value: String
 
-# A fatal error. `text` is the complete line to print.
+// A fatal error. `text` is the complete line to print.
 type Fail:
     text: String
 
@@ -121,7 +121,7 @@ export fn main() Int:
     o.write(text).get()
     return 0
 
-# ---------------------------------------------------------------- text helpers
+// ---------------------------------------------------------------- text helpers
 
 fn strip_cr(line: String) String:
     if line.ends_with("\r"):
@@ -224,8 +224,8 @@ fn fmt_rule(name: String, normal: List[String], order_only: List[String]) String
         out += " | " + order_only.join(" ")
     return out
 
-# Index of the matching closer for the opener at `at` ("(" or "{"), counting
-# only brackets of the same kind. -1 if unterminated.
+// Index of the matching closer for the opener at `at` ("(" or "{"), counting
+// only brackets of the same kind. -1 if unterminated.
 fn find_close(cs: List[String], at: Int) Int:
     let opener = cs[at]
     var closer = ")"
@@ -247,8 +247,8 @@ fn find_close(cs: List[String], at: Int) Int:
 
     return -1
 
-# Index of the first ':' outside any $(...) / ${...} reference and before any
-# ';', or -1.
+// Index of the first ':' outside any $(...) / ${...} reference and before any
+// ';', or -1.
 fn top_colon(cs: List[String]) Int:
     var i = 0
 
@@ -275,7 +275,7 @@ fn top_colon(cs: List[String]) Int:
 
     return -1
 
-# Splits at top-level commas (parentheses and braces nest); each part trimmed.
+// Splits at top-level commas (parentheses and braces nest); each part trimmed.
 fn split_args(t: String) List[String]:
     let cs = t.chars()
     var out = List[String]()
@@ -305,7 +305,7 @@ fn arg_at(args: List[String], i: Int) String:
 
     return ""
 
-# Stem of `word` against `pat`; a pattern without % must match exactly.
+// Stem of `word` against `pat`; a pattern without % must match exactly.
 fn pat_stem(pat: String, word: String) Optional[String]:
     let pcs = pat.chars()
     let pc = find_char(pcs, "%", 0)
@@ -460,7 +460,7 @@ fn is_auto(name: String) Bool:
         or name == "|"
     )
 
-# ---------------------------------------------------------------- output
+// ---------------------------------------------------------------- output
 
 fn say(var s: Sim, text: String) Unit:
     s.out.append(text)
@@ -481,7 +481,7 @@ fn report(var s: Sim, r: Result[Bool, Fail]) Unit:
     if r.is_error():
         say(var s, r.err().message())
 
-# ---------------------------------------------------------------- variables and expansion
+// ---------------------------------------------------------------- variables and expansion
 
 fn is_defined(s: Sim, name: String) Bool:
     if s.cmd.contains(name):
@@ -565,7 +565,7 @@ fn expand(var s: Sim, text: String) Result[String, Fail]:
 
     return ok(out)
 
-# The text inside $( ) or ${ }: a function call, a substitution reference or a variable name.
+// The text inside $( ) or ${ }: a function call, a substitution reference or a variable name.
 fn reference(var s: Sim, inner: String) Result[String, Fail]:
     let cs = inner.chars()
     var k = 0
@@ -723,7 +723,7 @@ fn call_func(var s: Sim, name: String, raw: String) Result[String, Fail]:
     let text = try expand(var s, arg_at(args, 0))
     return error(fail_at(s, text))
 
-# ---------------------------------------------------------------- parsing
+// ---------------------------------------------------------------- parsing
 
 fn new_open() Open:
     return Open(
@@ -737,7 +737,7 @@ fn is_active(s: Sim) Bool:
 
     return s.frames[s.frames.length() - 1].active
 
-# Joins physical lines ending in a backslash into logical lines.
+// Joins physical lines ending in a backslash into logical lines.
 fn logical_lines(raw: List[String]) List[Line]:
     var out = List[Line]()
     var k = 0
@@ -757,7 +757,7 @@ fn logical_lines(raw: List[String]) List[Line]:
 
     return out
 
-# Removes comments; `\#` stands for a literal '#'.
+// Removes comments; `\#` stands for a literal '#'.
 fn strip_comment(text: String) String:
     let cs = text.chars()
     var out = ""
@@ -784,7 +784,7 @@ fn strip_tabs(text: String) String:
         i += 1
     return join_range(cs, i, cs.length())
 
-# Recognises conditional directives. Kind is "" when the line is not one.
+// Recognises conditional directives. Kind is "" when the line is not one.
 fn directive_of(text: String) Directive:
     let cs = text.chars()
     var k = 0
@@ -891,7 +891,7 @@ fn add_explicit(var s: Sim, t: String, op: Open) Unit:
         )
     )
 
-# Stores the open rule (if any) into the makefile tables.
+// Stores the open rule (if any) into the makefile tables.
 fn close_open(var s: Sim) Unit:
     if not s.pending.has:
         return
@@ -1064,7 +1064,7 @@ fn default_goal(s: Sim) String:
             return r.name.clone()
     return ""
 
-# ---------------------------------------------------------------- rule resolution
+// ---------------------------------------------------------------- rule resolution
 
 fn can_make(s: Sim, name: String, level: Int) Bool:
     if s.files.contains(name) or s.rule_index.contains(name) or s.phony.contains(name):
@@ -1144,7 +1144,7 @@ fn resolve(s: Sim, t: String) Plan:
         recipe: List[Line](), stem: ""
     )
 
-# ---------------------------------------------------------------- building
+// ---------------------------------------------------------------- building
 
 fn cycle_text(stack: List[String], t: String) String:
     var parts = List[String]()
@@ -1450,7 +1450,7 @@ fn run_expand(var s: Sim, text: String) Result[Bool, Fail]:
     say(var s, "[{v}]")
     return ok(true)
 
-# ---------------------------------------------------------------- requests
+// ---------------------------------------------------------------- requests
 
 fn load_table(var s: Sim, lines: List[String]) Unit:
     for ln in lines:
@@ -1462,7 +1462,7 @@ fn load_table(var s: Sim, lines: List[String]) Unit:
                 if m > s.clock:
                     s.clock = m
 
-# Sets command-line variables from the arguments and returns the other arguments.
+// Sets command-line variables from the arguments and returns the other arguments.
 fn set_cmd(var s: Sim, args: List[String]) List[String]:
     s.cmd = Map[String, String]()
 

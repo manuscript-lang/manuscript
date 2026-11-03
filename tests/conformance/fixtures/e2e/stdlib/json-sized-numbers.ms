@@ -1,5 +1,5 @@
-# conform: tags=records,stdlib-json,testing
-# conform: phase=test
+// conform: tags=records,stdlib-json,testing
+// conform: phase=test
 import expect_equal from "@std/test/test.ms"
 import parse, stringify from "@std/data/json.ms"
 

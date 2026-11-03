@@ -6,7 +6,7 @@ let UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 let LOWER = "abcdefghijklmnopqrstuvwxyz"
 let DIGITS = "0123456789"
 
-# Returns the alphabet index (0 through 25) of an ASCII letter, or -1 for any other text.
+// Returns the alphabet index (0 through 25) of an ASCII letter, or -1 for any other text.
 fn letter_index(c: String) Int:
     let code = c.to_bytes().get(0, -1)
     if code >= 65 and code <= 90:
@@ -16,7 +16,7 @@ fn letter_index(c: String) Int:
 
     return -1
 
-# Shifts one character by `shift` places, keeping its case; other characters are returned unchanged.
+// Shifts one character by `shift` places, keeping its case; other characters are returned unchanged.
 fn shift_char(c: String, shift: Int) String:
     let index = letter_index(c)
     if index < 0:
@@ -34,7 +34,7 @@ fn is_blank(line: String) Bool:
             return false
     return true
 
-# Returns the caesar shift for a key, or none when the key is not an integer of at most 7 digits.
+// Returns the caesar shift for a key, or none when the key is not an integer of at most 7 digits.
 fn caesar_shift(key: String) Optional[Int]:
     var digits = 0
     var sign = 0
@@ -52,7 +52,7 @@ fn caesar_shift(key: String) Optional[Int]:
 
     return key.parse_int()
 
-# Returns the shift of each key letter, or none when the key is empty or has a non-letter.
+// Returns the shift of each key letter, or none when the key is empty or has a non-letter.
 fn vigenere_shifts(key: String) Optional[List[Int]]:
     var shifts: List[Int] = []
 

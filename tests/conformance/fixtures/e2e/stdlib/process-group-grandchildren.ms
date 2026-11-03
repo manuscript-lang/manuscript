@@ -1,7 +1,7 @@
-# conform: tags=stdlib-processes,tier-io
-# conform: phase=run
-# conform: timeout=30
-# Leaving a ProcessGroup block stops the children's own children too.
+// conform: tags=stdlib-processes,tier-io
+// conform: phase=run
+// conform: timeout=30
+// Leaving a ProcessGroup block stops the children's own children too.
 import Channel from "@std/io/channels.ms"
 import read_file, remove, temporary_root, write_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"

@@ -12,13 +12,13 @@
           "file": "foreign-nonlocal.ms",
           "line": 5,
           "column": 5,
-          "offset": 130
+          "offset": 133
         },
         "end": {
           "file": "foreign-nonlocal.ms",
           "line": 5,
           "column": 13,
-          "offset": 138
+          "offset": 141
         }
       }
     ],

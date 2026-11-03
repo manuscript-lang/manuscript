@@ -14,7 +14,7 @@
           "file": "testknownstandardtypeimporthint-1.ms",
           "line": 4,
           "column": 17,
-          "offset": 166
+          "offset": 169
         },
         "fix": {
           "position": {

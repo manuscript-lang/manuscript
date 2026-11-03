@@ -7,5 +7,5 @@ fn first_tag(p: Person) String:
 
 fn collect(p: Person) List[String]:
     var out: List[String] = []
-    out.append(first_tag(p))  # error: returns a reference into `p`
+    out.append(first_tag(p))  // error: returns a reference into `p`
     return out

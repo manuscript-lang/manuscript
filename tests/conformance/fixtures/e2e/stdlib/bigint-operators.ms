@@ -1,5 +1,5 @@
-# conform: tags=stdlib-bigint,stdlib-testing,testing,tier-stdlib,numbers
-# conform: phase=test
+// conform: tags=stdlib-bigint,stdlib-testing,testing,tier-stdlib,numbers
+// conform: phase=test
 import expect_equal, expect_true from "@std/test/test.ms"
 import from_int, BigInt from "@std/math/math.ms"
 

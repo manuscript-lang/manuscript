@@ -1,6 +1,6 @@
-# conform: tags=lists,strings,tier-core
-# conform: phase=run
-# conform: origin=agent token study: List[Int].join
+// conform: tags=lists,strings,tier-core
+// conform: phase=run
+// conform: origin=agent token study: List[Int].join
 import stdout from "@std/io/io.ms"
 
 export fn main() Int:

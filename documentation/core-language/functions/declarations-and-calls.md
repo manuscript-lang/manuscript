@@ -146,7 +146,7 @@ Typing is separate: `1 + panic(message: "stop")` has type `Int` ([operators](../
 fn incomplete(active: Bool) Int:
     if active:
         return 1
-    # Rejected: the false path reaches the end without returning Int.
+    // Rejected: the false path reaches the end without returning Int.
 ```
 
 Unreachable statements are still parsed, resolved, and type-checked. A `Never` function has no reachable normal exit. A bare call may be a statement; other expressions cannot.

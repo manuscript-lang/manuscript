@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,formatter,interpolation,match,modules,mutation,optional,parser,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/typed-alternative-lets-keep-semantics.ms
+// conform: tags=closures,control-flow,formatter,interpolation,match,modules,mutation,optional,parser,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/typed-alternative-lets-keep-semantics.ms
 import expect_true from "@std/test/test.ms"
 
 fn halve(n: Int) Int?:

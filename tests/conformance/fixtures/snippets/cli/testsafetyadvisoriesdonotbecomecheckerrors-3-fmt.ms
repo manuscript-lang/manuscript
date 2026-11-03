@@ -1,6 +1,6 @@
-# conform: tags=formatter,modules,parser,stdlib-errors,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=internal/cli/advisory_lint_test.go:18 TestSafetyAdvisoriesDoNotBecomeCheckErrors
+// conform: tags=formatter,modules,parser,stdlib-errors,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=internal/cli/advisory_lint_test.go:18 TestSafetyAdvisoriesDoNotBecomeCheckErrors
 
 fn fail() Int!Error:
     return error(Error("boom"))

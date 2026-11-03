@@ -28,7 +28,7 @@ fn identity(value: Int) Int:
     return value
 
 let exact: fn(Int) Int = identity
-# Rejected: the result type differs.
+// Rejected: the result type differs.
 let wrong: fn(Int) String = identity
 ```
 
@@ -48,7 +48,7 @@ let input = Input([none, "Ada"])
 let nested: List[List[Int]] = [[], [1]]
 let success: Result[Int, Error] = ok(1)
 let failure: Result[Int, Error] = error(Error("unavailable"))
-# Rejected: the result error type cannot be inferred from ok's payload.
+// Rejected: the result error type cannot be inferred from ok's payload.
 let incomplete = ok(1)
 ```
 
@@ -71,7 +71,7 @@ fn known() Result[Int, Error]:
     return ok(number)
 
 fn unknown() Result[Int, Error]:
-    # Rejected: the try operand's error type is undetermined.
+    // Rejected: the try operand's error type is undetermined.
     let number: Int = try ok(1)
     return ok(number)
 ```

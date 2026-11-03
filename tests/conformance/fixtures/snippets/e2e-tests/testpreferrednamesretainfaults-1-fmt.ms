@@ -1,6 +1,6 @@
-# conform: tags=formatter,lists,parser,testing,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/preferred_names_test.go:11 TestPreferredNamesRetainFaults
+// conform: tags=formatter,lists,parser,testing,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/preferred_names_test.go:11 TestPreferredNamesRetainFaults
 test "new set":
     [1].set(1, 2)
 

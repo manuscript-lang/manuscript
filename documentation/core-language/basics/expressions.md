@@ -145,8 +145,8 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 
 ```manuscript
 fn calculated(value: Int, active: Bool) Int:
-    let product = 1 + 2 * 3             # 7
-    let same = not value == product     # not (value == product)
+    let product = 1 + 2 * 3             // 7
+    let same = not value == product     // not (value == product)
     if active and same:
         return product
     return value
@@ -154,8 +154,8 @@ fn calculated(value: Int, active: Bool) Int:
 
 ```manuscript
 fn invalid(value: Int, ratio: Float) Bool:
-    let mixed = value + ratio           # Type error: exact numeric types differ.
-    return 0 < value < 10               # Syntax error: comparison chain.
+    let mixed = value + ratio           // Type error: exact numeric types differ.
+    return 0 < value < 10               // Syntax error: comparison chain.
 ```
 
 Not expressions: assignment (a [statement](grammar.md#statements-and-patterns)), bitwise operators, exponentiation, tuples, and general expression-valued blocks. Conditional expressions use `a if condition else b`.

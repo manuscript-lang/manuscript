@@ -2,19 +2,19 @@ import stdout, stdin from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 import parse_int from "@std/math.ms"
 
-# One recipe line: the physical line number of its logical line and its text.
+// One recipe line: the physical line number of its logical line and its text.
 type Rl:
     line: Int
     text: String
 
-# A stored explicit or pattern target with its accumulated prerequisites.
+// A stored explicit or pattern target with its accumulated prerequisites.
 type Tgt:
     name: String
     pre: List[String]
     oo: List[String]
     recipe: List[Rl]
 
-# The rule currently open for recipe lines.
+// The rule currently open for recipe lines.
 type Rule:
     names: List[String]
     pre: List[String]
@@ -22,19 +22,19 @@ type Rule:
     recipe: List[Rl]
     line: Int
 
-# An open conditional block.
+// An open conditional block.
 type Blk:
     parent: Bool
     branch: Bool
     seen_else: Bool
     line: Int
 
-# A foreach binding.
+// A foreach binding.
 type Bind:
     name: String
     value: String
 
-# The result of resolving a target to its rule.
+// The result of resolving a target to its rule.
 type Res:
     found: Bool
     pre: List[String]
@@ -42,18 +42,18 @@ type Res:
     recipe: List[Rl]
     stem: String
 
-# A logical Makefile line, with the index of the next physical line.
+// A logical Makefile line, with the index of the next physical line.
 type Logical:
     line: Int
     text: String
     next: Int
 
-# Parsed request arguments.
+// Parsed request arguments.
 type Args:
     cmd: Map[String, String]
     goals: List[String]
 
-# Two sides of an ifeq comparison.
+// Two sides of an ifeq comparison.
 type Pair:
     a: String
     b: String
@@ -104,7 +104,7 @@ fn empty_rule() Rule:
         recipe: List[Rl](), line: 0
     )
 
-# ---------- small text helpers ----------
+// ---------- small text helpers ----------
 
 fn isSp(c: String) Bool:
     return c == " " or c == "\t"
@@ -243,7 +243,7 @@ fn to_int(s: String) Optional[Int]:
 
     return none
 
-# ---------- output and errors ----------
+// ---------- output and errors ----------
 
 fn say(var st: Sim, s: String) Unit:
     st.outs.append(s + "\n")
@@ -252,16 +252,16 @@ fn halt(var st: Sim, line: String) Unit:
     say(var st, line)
     st.stop = true
 
-# A fatal error from the Makefile, or from make itself when no line is current.
+// A fatal error from the Makefile, or from make itself when no line is current.
 fn fail(var st: Sim, msg: String) Unit:
     if st.line > 0:
         halt(var st, "Makefile:{st.line}: *** {msg}.  Stop.")
     else:
         halt(var st, "make: *** {msg}.  Stop.")
 
-# ---------- pattern helpers ----------
+// ---------- pattern helpers ----------
 
-# The stem if `word` matches `pat` (one % stands for any text), else none.
+// The stem if `word` matches `pat` (one % stands for any text), else none.
 fn match_stem(pat: String, word: String) Optional[String]:
     let pcs = pat.chars()
     let wcs = word.chars()
@@ -290,7 +290,7 @@ fn matches(pat: String, word: String) Bool:
 
     return false
 
-# Replaces the first % of x by stem; x without % is returned unchanged.
+// Replaces the first % of x by stem; x without % is returned unchanged.
 fn pct_sub(x: String, stem: String) String:
     let cs = x.chars()
     let p = find_char(cs, "%", 0)
@@ -310,7 +310,7 @@ fn patsubst_words(pat: String, rep: String, text: String) String:
 
     return out.join(" ")
 
-# ---------- expansion ----------
+// ---------- expansion ----------
 
 fn is_func(name: String) Bool:
     return (
@@ -339,7 +339,7 @@ fn is_func(name: String) Bool:
         or name == "error"
     )
 
-# Index of the closer matching an opener that has already been read before `start`.
+// Index of the closer matching an opener that has already been read before `start`.
 fn match_close(cs: List[String], start: Int, b: Int, open: String, close: String) Int:
     var depth = 1
     var k = start
@@ -405,7 +405,7 @@ fn expand_range(var st: Sim, cs: List[String], a: Int, b: Int) String:
 
     return out
 
-# The value of a $(...) reference whose raw text is `inner`.
+// The value of a $(...) reference whose raw text is `inner`.
 fn reference(var st: Sim, inner: String) String:
     let cs = inner.chars()
     let n = cs.length()
@@ -472,7 +472,7 @@ fn recursive_value(var st: Sim, name: String, from_cmd: Bool) String:
     st.expanding.remove(-1)
     return r
 
-# Splits function arguments at commas outside nested brackets; each is still raw.
+// Splits function arguments at commas outside nested brackets; each is still raw.
 fn split_args(rest: String) List[String]:
     var out = List[String]()
     var cur = ""
@@ -494,7 +494,7 @@ fn split_args(rest: String) List[String]:
     out.append(cur)
     return out
 
-# Argument i, trimmed and expanded; missing arguments are empty.
+// Argument i, trimmed and expanded; missing arguments are empty.
 fn arg(var st: Sim, raw: List[String], i: Int) String:
     if i >= raw.length():
         return ""
@@ -646,7 +646,7 @@ fn call_fn(var st: Sim, name: String, raw: List[String]) String:
 
     return ""
 
-# dir, notdir, suffix and basename of one word.
+// dir, notdir, suffix and basename of one word.
 fn file_part(name: String, w: String) String:
     let cs = w.chars()
     let slash = last_char(cs, "/")
@@ -676,7 +676,7 @@ fn file_part(name: String, w: String) String:
 
     return sub(cs, 0, slash + 1 + dot)
 
-# Shell-style glob: * and ? do not match "/".
+// Shell-style glob: * and ? do not match "/".
 fn glob_at(p: List[String], pi: Int, s: List[String], si: Int) Bool:
     if pi == p.length():
         return si == s.length()
@@ -723,9 +723,9 @@ fn fn_foreach(var st: Sim, raw: List[String]) String:
 
     return parts.join(" ")
 
-# ---------- Makefile parsing ----------
+// ---------- Makefile parsing ----------
 
-# Joins continuation lines starting at physical line i.
+// Joins continuation lines starting at physical line i.
 fn logical(phys: List[String], i: Int) Logical:
     var text = phys[i].clone()
     var j = i
@@ -738,7 +738,7 @@ fn logical(phys: List[String], i: Int) Logical:
 
     return Logical(line: i + 1, text: text, next: j + 1)
 
-# Removes a comment, where \# stands for a literal #.
+// Removes a comment, where \# stands for a literal #.
 fn strip_comment(s: String) String:
     let cs = s.chars()
     var out = ""
@@ -817,7 +817,7 @@ fn ifeq_args(var st: Sim, rest: String) Pair:
     let right = trimsp(expand(var st, trimsp(sub(ic, at + 1, ic.length()))))
     return Pair(a: left, b: right, ok: true)
 
-# Handles a conditional line. Returns false when the line is not a directive.
+// Handles a conditional line. Returns false when the line is not a directive.
 fn directive(var st: Sim, text: String) Bool:
     let w = word_of(text)
 
@@ -892,7 +892,7 @@ fn directive(var st: Sim, text: String) Bool:
 
     return false
 
-# Index of the first `:` outside $(...) and ${...} references and before any `;`, or -1.
+// Index of the first `:` outside $(...) and ${...} references and before any `;`, or -1.
 fn top_colon(cs: List[String]) Int:
     let n = cs.length()
     var i = 0
@@ -923,7 +923,7 @@ fn top_colon(cs: List[String]) Int:
 
     return -1
 
-# Closes the open rule, recording its targets.
+// Closes the open rule, recording its targets.
 fn close_rule(var st: Sim) Unit:
     if not st.is_open:
         return
@@ -970,7 +970,7 @@ fn close_rule(var st: Sim) Unit:
                 )
             )
 
-# Handles `NAME op value`; eq is the index of the first `=`.
+// Handles `NAME op value`; eq is the index of the first `=`.
 fn assign(var st: Sim, cs: List[String], eq: Int) Unit:
     var op = "="
     var nend = eq
@@ -1016,7 +1016,7 @@ fn assign(var st: Sim, cs: List[String], eq: Int) Unit:
         else:
             st.vals[name.clone()] = join2(st.vals.get(name.clone()).get(""), value)
 
-# Handles `TARGETS : PREREQS [; COMMAND]`; col is the index of the top-level colon.
+// Handles `TARGETS : PREREQS [; COMMAND]`; col is the index of the top-level colon.
 fn rule_line(var st: Sim, cs: List[String], col: Int) Unit:
     let n = cs.length()
     var semi = -1
@@ -1061,14 +1061,14 @@ fn rule_line(var st: Sim, cs: List[String], col: Int) Unit:
             if not st.phony.contains(p):
                 st.phony.append(p.clone())
 
-    # A .PHONY rule has no effect beyond marking its prerequisites, so it is not stored as a target.
+    // A .PHONY rule has no effect beyond marking its prerequisites, so it is not stored as a target.
     var kept = names.clone()
     if names.length() == 1 and names[0] == ".PHONY":
         kept = List[String]()
     st.is_open = true
     st.rule = Rule(names: kept, pre: pre, oo: oo, recipe: rec, line: st.line)
 
-# A line that is neither a directive nor a recipe line.
+// A line that is neither a directive nor a recipe line.
 fn plain_line(var st: Sim, text: String) Unit:
     let cs = text.chars()
     let eq = find_char(cs, "=", 0)
@@ -1130,7 +1130,7 @@ fn parse_all(var st: Sim, phys: List[String]) Unit:
 
     st.line = 0
 
-# Parses the Makefile afresh with the given command-line variables.
+// Parses the Makefile afresh with the given command-line variables.
 fn load(var st: Sim, cmd: Map[String, String]) Unit:
     st.cmd = cmd
     st.stop = false
@@ -1156,7 +1156,7 @@ fn load(var st: Sim, cmd: Map[String, String]) Unit:
     let phys = st.mk.clone()
     parse_all(var st, phys)
 
-# ---------- rule resolution ----------
+// ---------- rule resolution ----------
 
 fn can_make(st: Sim, name: String, depth: Int) Bool:
     if (
@@ -1179,7 +1179,7 @@ fn pats_ok(st: Sim, k: Int, stem: String, depth: Int) Bool:
             return false
     return true
 
-# Index of the first pattern rule with recipe lines that can build `name`, or -1.
+// Index of the first pattern rule with recipe lines that can build `name`, or -1.
 fn find_pat(st: Sim, name: String, depth: Int) Int:
     var k = 0
 
@@ -1242,7 +1242,7 @@ fn default_goal(st: Sim) Optional[String]:
             return some(t.name.clone())
     return none
 
-# ---------- building ----------
+// ---------- building ----------
 
 fn cycle_error(var st: Sim, name: String) Unit:
     let pos = index_in(st.stk, name)
@@ -1252,7 +1252,7 @@ fn cycle_error(var st: Sim, name: String) Unit:
     let path = parts.join(" -> ")
     halt(var st, "make: *** Circular dependency detected: {path}.  Stop.")
 
-# Removes the quote characters from a word.
+// Removes the quote characters from a word.
 fn strip_quotes(w: String) String:
     var out = ""
     for c in w.chars():
@@ -1260,7 +1260,7 @@ fn strip_quotes(w: String) String:
             out = out + c
     return out
 
-# Simulates one recipe command and returns its exit status.
+// Simulates one recipe command and returns its exit status.
 fn simulate(var st: Sim, command: String) Int:
     let ws = split_ws(command)
     if ws.length() == 0:
@@ -1313,7 +1313,7 @@ fn simulate(var st: Sim, command: String) Int:
 
     return 0
 
-# Runs (or, in a dry run, prints) the recipe of `name`.
+// Runs (or, in a dry run, prints) the recipe of `name`.
 fn run_recipe(var st: Sim, name: String, r: Res, existed: Bool, old: Int) Unit:
     st.ran += 1
 
@@ -1400,7 +1400,7 @@ fn run_recipe(var st: Sim, name: String, r: Res, existed: Bool, old: Int) Unit:
         st.clock += 1
         st.files[name.clone()] = st.clock
 
-# Brings `name` up to date and returns whether it changed.
+// Brings `name` up to date and returns whether it changed.
 fn update(var st: Sim, name: String, needed_by: String) Bool:
     if st.stop:
         return false
@@ -1473,7 +1473,7 @@ fn update(var st: Sim, name: String, needed_by: String) Bool:
     st.memo[name.clone()] = need
     return need
 
-# Prints the transitive prerequisites of `name` into st.dout, depth first.
+// Prints the transitive prerequisites of `name` into st.dout, depth first.
 fn dfs(var st: Sim, name: String) Unit:
     let r = resolve(st, name.clone())
     var kids = dedupe(r.pre)
@@ -1501,9 +1501,9 @@ fn dfs(var st: Sim, name: String) Unit:
         st.dseen[c.clone()] = true
         st.dout.append(c)
 
-# ---------- requests ----------
+// ---------- requests ----------
 
-# Splits the words after the request name into command-line variables and goals.
+// Splits the words after the request name into command-line variables and goals.
 fn parse_args(ws: List[String]) Args:
     var cmd = Map[String, String]()
     var goals = List[String]()
@@ -1578,7 +1578,7 @@ fn do_deps(var st: Sim, ws: List[String]) Unit:
     for line in st.dout.clone():
         say(var st, line)
 
-# NAME: PREREQS | ORDER-ONLY, with the parts omitted when empty.
+// NAME: PREREQS | ORDER-ONLY, with the parts omitted when empty.
 fn fmt_rule(name: String, pre: List[String], oo: List[String]) String:
     var s = name + ":"
     if pre.length() > 0:

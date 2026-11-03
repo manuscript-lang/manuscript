@@ -1,7 +1,7 @@
 import stdout from "@std/io/io.ms"
 import monotonic from "@std/os/time.ms"
 
-# Shared helpers for the standard-library micro-benchmarks.
+// Shared helpers for the standard-library micro-benchmarks.
 export type Point:
     x: Int
     y: Int
@@ -9,7 +9,7 @@ export type Point:
 export fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
-# Runs `body` once and prints `name<TAB>ops<TAB>ns_per_op`; `body` returns a checksum that keeps its work observable.
+// Runs `body` once and prints `name<TAB>ops<TAB>ns_per_op`; `body` returns a checksum that keeps its work observable.
 export fn bench(name: String, ops: Int, body: fn() Int) Unit:
     let started = monotonic()
     let checksum = body()

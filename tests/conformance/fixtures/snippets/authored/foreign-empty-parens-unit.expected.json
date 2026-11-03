@@ -12,13 +12,13 @@
           "file": "foreign-empty-parens-unit.ms",
           "line": 5,
           "column": 12,
-          "offset": 137
+          "offset": 140
         },
         "end": {
           "file": "foreign-empty-parens-unit.ms",
           "line": 5,
           "column": 13,
-          "offset": 138
+          "offset": 141
         }
       }
     ],

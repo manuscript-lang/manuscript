@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,match,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/format/format_paragraphs_test.go:128 TestFormatParagraphs
+// conform: tags=diagnostics,match,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/format/format_paragraphs_test.go:128 TestFormatParagraphs
 fn choose(value: Choice) Int:
     match value:
         first: return 1

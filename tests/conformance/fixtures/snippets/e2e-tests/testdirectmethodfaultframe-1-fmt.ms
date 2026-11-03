@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,records,testing,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/direct_methods_test.go:13 TestDirectMethodFaultFrame
+// conform: tags=control-flow,formatter,interfaces,parser,records,testing,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/direct_methods_test.go:13 TestDirectMethodFaultFrame
 interface Shape:
     fn area() Int
 

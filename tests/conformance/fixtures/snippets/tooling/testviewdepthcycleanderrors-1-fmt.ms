@@ -1,6 +1,6 @@
-# conform: tags=formatter,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/views_test.go:43 TestViewDepthCycleAndErrors
+// conform: tags=formatter,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/views_test.go:43 TestViewDepthCycleAndErrors
 fn a(n: Int) Int:
     return b(n)
 

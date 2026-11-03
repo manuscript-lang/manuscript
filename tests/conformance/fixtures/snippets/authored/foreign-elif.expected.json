@@ -12,13 +12,13 @@
           "file": "foreign-elif.ms",
           "line": 7,
           "column": 5,
-          "offset": 166
+          "offset": 169
         },
         "end": {
           "file": "foreign-elif.ms",
           "line": 7,
           "column": 9,
-          "offset": 170
+          "offset": 173
         }
       }
     ],

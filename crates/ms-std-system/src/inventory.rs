@@ -6,8 +6,6 @@
 #![allow(unsafe_code)] // libc `getifaddrs` and friends
 
 use alloc::vec::Vec;
-use core::cell::RefCell;
-use ms_rt::ffi::Global;
 use ms_rt_abi::STATUS_UNSUPPORTED;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use ms_rt_abi::{STATUS_NOT_FOUND, STATUS_PERMISSION_DENIED};
@@ -46,21 +44,24 @@ pub struct Metrics {
     pub parallelism: i64,
 }
 
-/// Process-wide holder of the last snapshot; the runtime calls natives from one thread at a time.
-pub struct Slot<T>(Global<RefCell<Option<T>>>);
+/// Holder of the last snapshot taken on the calling thread. Each scheduler thread has its own, so a
+/// snapshot and the reads that follow it never see another thread's.
+pub struct Slot<T>(fn() -> *mut Option<T>);
 
 impl<T> Slot<T> {
-    pub const fn new() -> Self {
-        Self(Global::new(RefCell::new(None)))
+    pub const fn new(cell: fn() -> *mut Option<T>) -> Self {
+        Self(cell)
     }
 
     pub fn set(&self, value: T) {
-        *self.0.get().borrow_mut() = Some(value);
+        // SAFETY: the cell belongs to this thread, and no reference to it outlives a call.
+        unsafe { *(self.0)() = Some(value) };
     }
 
     /// Reads the snapshot (`None` before the first one).
     pub fn with<R>(&self, read: impl FnOnce(Option<&T>) -> R) -> R {
-        read(self.0.get().borrow().as_ref())
+        // SAFETY: as in `set`.
+        read(unsafe { (*(self.0)()).as_ref() })
     }
 }
 

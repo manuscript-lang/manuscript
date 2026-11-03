@@ -1,5 +1,5 @@
-# conform: tags=generics,records,tier-stdlib
-# conform: phase=run
+// conform: tags=generics,records,tier-stdlib
+// conform: phase=run
 import stdout from "@std/io/io.ms"
 
 type Point:

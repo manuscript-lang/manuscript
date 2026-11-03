@@ -22,4 +22,4 @@ fn feed(s: Sink) Int:
     return s.put(Door(1))
 
 fn f() Int:
-    return feed(Bin(0))  # error: whose `put` keeps its `d`
+    return feed(Bin(0))  // error: whose `put` keeps its `d`

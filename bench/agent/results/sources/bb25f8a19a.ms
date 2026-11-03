@@ -2,15 +2,15 @@ import stdin, stdout from "@std/io.ms"
 import floor, pow, sqrt from "@std/math.ms"
 import read_lines from "@std/streams.ms"
 
-# A cell value. kind is "empty", "num", "text", "bool" or "err"; text holds
-# the text itself or the error code.
+// A cell value. kind is "empty", "num", "text", "bool" or "err"; text holds
+// the text itself or the error code.
 type Val:
     kind: String = "empty"
     num: Float = 0.0
     text: String = ""
     flag: Bool = false
 
-# A formula syntax node. kind selects which other fields are meaningful.
+// A formula syntax node. kind selects which other fields are meaningful.
 type Node:
     kind: String
     name: String = ""
@@ -37,8 +37,8 @@ type Parser:
     pos: Int = 0
     bad: Bool = false
 
-# A reference spelled as in the source: `valid` is the grid rule, `whole`
-# says the whole text was consumed.
+// A reference spelled as in the source: `valid` is the grid rule, `whole`
+// says the whole text was consumed.
 type CellRef:
     valid: Bool
     whole: Bool
@@ -47,7 +47,7 @@ type CellRef:
     col_abs: Bool
     row_abs: Bool
 
-# A rectangle of cells, normalized so that c1 <= c2 and r1 <= r2.
+// A rectangle of cells, normalized so that c1 <= c2 and r1 <= r2.
 type Rect:
     ok: Bool
     c1: Int
@@ -55,7 +55,7 @@ type Rect:
     c2: Int
     r2: Int
 
-# One argument item of an aggregate function; ranged marks range members.
+// One argument item of an aggregate function; ranged marks range members.
 type Item:
     v: Val
     ranged: Bool
@@ -64,7 +64,7 @@ type Split:
     word: String
     rest: String
 
-# The whole sheet. Cell key = row * 26 + col (col 0 is A, row 1..999).
+// The whole sheet. Cell key = row * 26 + col (col 0 is A, row 1..999).
 type Sheet:
     raws: Map[Int, String]
     vals: Map[Int, Val]
@@ -136,7 +136,7 @@ fn imax(a: Int, b: Int) Int:
 
     return b
 
-# Converts a float to an Int, clamping huge magnitudes (callers check ranges).
+// Converts a float to an Int, clamping huge magnitudes (callers check ranges).
 fn to_int(x: Float) Int:
     if x > 1000000000.0:
         return 1000000000
@@ -199,10 +199,10 @@ fn words(s: String) List[String]:
 
     return out
 
-# ---------------------------------------------------------------- numbers
+// ---------------------------------------------------------------- numbers
 
-# Parses the number grammar [+-]?(digits[.digits]|.digits)([eE][+-]?digits)?
-# (digits. is allowed); overflow to infinity is not a number.
+// Parses the number grammar [+-]?(digits[.digits]|.digits)([eE][+-]?digits)?
+// (digits. is allowed); overflow to infinity is not a number.
 fn num_from_text(s: String) Val:
     let cs = s.chars()
     let n = cs.length()
@@ -265,7 +265,7 @@ fn num_from_text(s: String) Val:
 
     return num_val(parsed.get(0.0))
 
-# Exact decimal digits of a large whole number: m * 2^e, by repeated doubling.
+// Exact decimal digits of a large whole number: m * 2^e, by repeated doubling.
 fn big_text(x: Float) String:
     var m = x.abs()
     var e = 0
@@ -330,7 +330,7 @@ fn display(v: Val) String:
 
     return ""
 
-# Number coercion: numbers, booleans, empties and number text.
+// Number coercion: numbers, booleans, empties and number text.
 fn to_num(v: Val) Val:
     if v.kind == "num":
         return v
@@ -380,8 +380,8 @@ fn rank_of(v: Val) Int:
 
     return 2
 
-# Comparison rules: empties take the zero value of the other side; numbers
-# sort before text, text before booleans.
+// Comparison rules: empties take the zero value of the other side; numbers
+// sort before text, text before booleans.
 fn compare_vals(a0: Val, b0: Val) Int:
     if a0.kind == "empty" and b0.kind == "empty":
         return 0
@@ -522,7 +522,7 @@ fn collapse_spaces(s: String) String:
 
     return out
 
-# ---------------------------------------------------------------- references
+// ---------------------------------------------------------------- references
 
 fn parse_ref(text: String) CellRef:
     let cs = text.chars()
@@ -564,7 +564,7 @@ fn parse_ref(text: String) CellRef:
         row_abs: row_abs
     )
 
-# A cell argument of a command: letter plus row, no $ markers.
+// A cell argument of a command: letter plus row, no $ markers.
 fn parse_cell(text: String) Rect:
     let r = parse_ref(text)
     if r.valid and r.whole and not r.col_abs and not r.row_abs:
@@ -591,7 +591,7 @@ fn parse_range(text: String) Rect:
         r2: imax(a.r1, b.r1)
     )
 
-# Canonical text of a moved reference, or #REF! when it leaves the grid.
+// Canonical text of a moved reference, or #REF! when it leaves the grid.
 fn moved_ref(r: CellRef, dc: Int, dr: Int) String:
     let col = if r.col_abs: r.col else: r.col + dc
     let row = if r.row_abs: r.row else: r.row + dr
@@ -623,8 +623,8 @@ fn shift_token(text: String, dc: Int, dr: Int) String:
 
     return x + ":" + y
 
-# Shifts every reference token of a formula source by (dc, dr); text that
-# cannot be tokenized is returned unchanged.
+// Shifts every reference token of a formula source by (dc, dr); text that
+// cannot be tokenized is returned unchanged.
 fn shift_formula(src: String, dc: Int, dr: Int) String:
     let lx = lex(src)
     if not lx.ok:
@@ -643,9 +643,9 @@ fn shift_formula(src: String, dc: Int, dr: Int) String:
     out += span(cs, pos, cs.length())
     return out
 
-# ---------------------------------------------------------------- lexer
+// ---------------------------------------------------------------- lexer
 
-# Length of a reference lexeme starting at start, or -1 if none does.
+// Length of a reference lexeme starting at start, or -1 if none does.
 fn ref_end(cs: List[String], start: Int) Int:
     let n = cs.length()
     var i = start
@@ -761,7 +761,7 @@ fn lex(src: String) Lexed:
 
     return Lexed(ok: true, toks: toks)
 
-# ---------------------------------------------------------------- parser
+// ---------------------------------------------------------------- parser
 
 impl Parser:
     fn peek_op() String:
@@ -919,7 +919,7 @@ fn parse_formula(src: String) Node:
 
     return e
 
-# Precedent keys of a formula; ROW and COLUMN arguments create no dependency.
+// Precedent keys of a formula; ROW and COLUMN arguments create no dependency.
 fn refs_of(n: Node) List[Int]:
     var out = List[Int]()
     if n.kind == "call" and (n.name == "ROW" or n.name == "COLUMN"):
@@ -947,7 +947,7 @@ fn unique_keys(keys: List[Int]) List[Int]:
 
     return out
 
-# Classifies the trimmed VALUE of a non-formula cell.
+// Classifies the trimmed VALUE of a non-formula cell.
 fn classify(raw: String) Val:
     if raw.starts_with("'"):
         return text_val(raw.slice(1, raw.length()).get())
@@ -964,10 +964,10 @@ fn classify(raw: String) Val:
 
     return text_val(raw)
 
-# ---------------------------------------------------------------- CSV
+// ---------------------------------------------------------------- CSV
 
-# Splits CSV text into non-blank records of fields, interpreting the rules
-# of the import command.
+// Splits CSV text into non-blank records of fields, interpreting the rules
+// of the import command.
 fn csv_records(text: String) List[List[String]]:
     let cs = text.chars()
     let n = cs.length()
@@ -1031,7 +1031,7 @@ fn csv_field(s: String) String:
 
     return s
 
-# ---------------------------------------------------------------- functions
+// ---------------------------------------------------------------- functions
 
 fn arity(n: Node, lo: Int, hi: Int) Bool:
     return n.args.length() >= lo and n.args.length() <= hi
@@ -1043,7 +1043,7 @@ impl Sheet:
 
         return self.eval(n)
 
-    # Scalar argument as text: an error stays an error.
+    // Scalar argument as text: an error stays an error.
     fn text_arg(n: Node, i: Int) Val:
         let v = self.scalar(n.args[i])
         if v.kind == "err":
@@ -1603,7 +1603,7 @@ impl Sheet:
 
         return v
 
-    # ------------------------------------------------------ dependencies
+    // ------------------------------------------------------ dependencies
 
     var fn drop(k: Int) Unit:
         if self.precs.contains(k):
@@ -1616,7 +1616,7 @@ impl Sheet:
         self.raws.remove(k)
         self.vals.remove(k)
 
-    # Stores the trimmed VALUE raw in cell k (an empty raw clears it).
+    // Stores the trimmed VALUE raw in cell k (an empty raw clears it).
     var fn put(k: Int, raw: String) Unit:
         self.drop(k)
         if raw == "":
@@ -1639,7 +1639,7 @@ impl Sheet:
         else:
             self.vals.add(k, classify(raw))
 
-    # Recomputes the affected formulas after the cells in changed were assigned.
+    // Recomputes the affected formulas after the cells in changed were assigned.
     var fn recalc(changed: List[Int]) Int:
         var seen = Set[Int]()
         var queue = List[Int]()
@@ -1678,8 +1678,8 @@ impl Sheet:
         self.evals += n
         return n
 
-    # Tarjan's strongly connected components over affected formulas; each
-    # component is finished once all of its precedents are.
+    // Tarjan's strongly connected components over affected formulas; each
+    // component is finished once all of its precedents are.
     var fn visit(v: Int) Unit:
         self.index.add(v, self.counter)
         self.low.add(v, self.counter)
@@ -1721,7 +1721,7 @@ impl Sheet:
         else:
             self.vals.add(v, self.eval_formula(v))
 
-    # Keys of every formula that transitively depends on k.
+    // Keys of every formula that transitively depends on k.
     fn closure(k: Int) List[Int]:
         var seen = Set[Int]()
         var queue = List[Int]()
@@ -1753,7 +1753,7 @@ impl Sheet:
 
         return Rect(ok: true, c1: 0, r1: 1, c2: maxc, r2: maxr)
 
-    # ------------------------------------------------------ commands
+    // ------------------------------------------------------ commands
 
     var fn cmd_set(rest: String) Unit:
         let c = cut(rest)

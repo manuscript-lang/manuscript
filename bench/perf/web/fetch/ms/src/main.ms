@@ -20,8 +20,8 @@ fn worker(url: String, nanos: Int) Int:
     f.close().get(none)
     return n
 
-# One thread of a multi-threaded run: it receives "url connections seconds", runs that many fetching
-# tasks, and sends back its request count.
+// One thread of a multi-threaded run: it receives "url connections seconds", runs that many fetching
+// tasks, and sends back its request count.
 fn fetch_thread() Unit:
     var ch = worker_channel[Int, String]()
 
@@ -42,7 +42,7 @@ fn fetch_thread() Unit:
 
         let _ = ch.send(total)
 
-# Spreads `conns` connections over `threads` worker threads and sums their requests.
+// Spreads `conns` connections over `threads` worker threads and sums their requests.
 fn run_threads(url: String, conns: Int, secs: Int, threads: Int) Int:
     var total = 0
     var group = WorkerGroup[String, Int]()

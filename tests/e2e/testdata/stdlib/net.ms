@@ -172,7 +172,7 @@ test "two tasks read one connection":
     try client.close()
     try shared.get().close()
 
-# Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
+// Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
 fn answer_mx(socket: Shared[DatagramSocket]) Int!:
     let query = try socket.get().receive(512, 2.seconds)
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))

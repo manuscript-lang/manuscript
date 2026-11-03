@@ -14,7 +14,7 @@
           "file": "testnativedefaultsarecheckedinparameterscope-4.ms",
           "line": 4,
           "column": 19,
-          "offset": 181
+          "offset": 184
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testnativedefaultsarecheckedinparameterscope-4.ms",
           "line": 4,
           "column": 1,
-          "offset": 163
+          "offset": 166
         }
       }
     ],

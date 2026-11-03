@@ -1,6 +1,6 @@
-# conform: tags=mutation,maps,tier-io
-# conform: phase=run
-# conform: origin=bug bash: `if var n = m.get(k): n += 1` dropped the write for scalar values
+// conform: tags=mutation,maps,tier-io
+// conform: phase=run
+// conform: origin=bug bash: `if var n = m.get(k): n += 1` dropped the write for scalar values
 import stdout from "@std/io/io.ms"
 
 fn bump(var counts: Map[String, Int], key: String) Unit:

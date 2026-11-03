@@ -1,6 +1,6 @@
 //! The ownership corpus. Every file under `tests/ownership/accept` must pass
 //! with no diagnostics; every file under `tests/ownership/reject` marks the
-//! offending line with a trailing `# error: <text>` comment, and the checker
+//! offending line with a trailing `// error: <text>` comment, and the checker
 //! must report exactly those diagnostics, one per marker, on those lines.
 
 use ms_check::{CheckOptions, ImportMap};
@@ -30,7 +30,7 @@ fn markers(source: &str) -> Vec<(u32, String)> {
         .lines()
         .enumerate()
         .filter_map(|(i, line)| {
-            let (_, text) = line.split_once("# error: ")?;
+            let (_, text) = line.split_once("// error: ")?;
             Some((i as u32 + 1, text.trim().to_string()))
         })
         .collect()
@@ -88,7 +88,7 @@ fn rejected_programs_report_exactly_the_marked_lines() {
         let mut failures = Vec::new();
         for (name, source) in sources("reject") {
             let expected = markers(&source);
-            assert!(!expected.is_empty(), "{name} has no `# error:` marker");
+            assert!(!expected.is_empty(), "{name} has no `// error:` marker");
             let mut got = diagnostics(&source);
             let mut missing = Vec::new();
             for (line, text) in &expected {

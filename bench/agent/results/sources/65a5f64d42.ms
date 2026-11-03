@@ -9,7 +9,7 @@ export fn main() Int:
     let lines = read_lines(stdin()).get()
     var rows = lines.length()
 
-    # Trailing empty lines are not part of the grid.
+    // Trailing empty lines are not part of the grid.
     while rows > 0 and lines[rows - 1] == "":
         rows -= 1
     if rows == 0:
@@ -19,7 +19,7 @@ export fn main() Int:
     for r in 0..rows:
         grid.append(lines[r].chars())
 
-    # Bad characters are reported first, in reading order, before any shape checks.
+    // Bad characters are reported first, in reading order, before any shape checks.
     for r in 0..rows:
         for c in 0..grid[r].length():
             let ch = grid[r][c]
@@ -54,7 +54,7 @@ export fn main() Int:
     if ends > 1:
         return emit("error: multiple ends")
 
-    # Breadth-first search over the grid; `dist` is -1 for unvisited cells.
+    // Breadth-first search over the grid; `dist` is -1 for unvisited cells.
     let total = rows * width
     var dist = List[Int]()
     for i in 0..total:

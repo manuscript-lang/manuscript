@@ -1,6 +1,6 @@
-# conform: tags=stdlib-random,testing,tier-core
-# conform: phase=test
-# conform: origin=issue 2166
+// conform: tags=stdlib-random,testing,tier-core
+// conform: phase=test
+// conform: origin=issue 2166
 import expect_equal, expect_fault from "@std/test/test.ms"
 import seeded from "@std/os/random.ms"
 

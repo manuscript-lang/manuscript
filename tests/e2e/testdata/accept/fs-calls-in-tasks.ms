@@ -13,8 +13,8 @@ import (
 import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_ok from "@std/test/test.ms"
 
-# With several tasks alive, file-system calls run on the blocking pool; the results must match
-# the single-task behaviour.
+// With several tasks alive, file-system calls run on the blocking pool; the results must match
+// the single-task behaviour.
 fn churn(root: String, name: String) Int:
     let dir = "{root}/{name}"
     let _made = create_directory(dir)

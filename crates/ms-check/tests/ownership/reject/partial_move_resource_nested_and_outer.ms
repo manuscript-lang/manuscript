@@ -28,4 +28,4 @@ fn both(w: Wrap, flag: Bool) Int:
     if flag:
         return rooms(w.room).length()
 
-    return keep(w.room.door).length()  # error: are both moved out
+    return keep(w.room.door).length()  // error: are both moved out

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,formatter,generics,interfaces,modules,parser,records,stdlib-testing,testing,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/e2e_test.go:381 TestNominalIdentityEscapesPathDelimiters
+// conform: tags=control-flow,faults,formatter,generics,interfaces,modules,parser,records,stdlib-testing,testing,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/e2e_test.go:381 TestNominalIdentityEscapesPathDelimiters
 import expect_true, fail from "@std/test/test.ms"
 
 interface Read:

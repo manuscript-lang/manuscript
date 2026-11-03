@@ -16,7 +16,7 @@
 
 use crate::ir::*;
 use crate::types::TyKind;
-use std::collections::HashSet;
+use crate::vmap::ValueSet;
 
 /// Most instructions hoisted from one arm.
 const MAX_ARM: usize = 4;
@@ -26,7 +26,7 @@ pub fn run(m: &mut Module) -> bool {
     let mut changed = false;
     for i in 0..m.funcs.len() {
         let mut f = m.funcs[i].clone();
-        let positive: HashSet<Value> = f
+        let positive: ValueSet = f
             .blocks
             .iter()
             .flat_map(|b| &b.insts)
@@ -53,7 +53,7 @@ pub fn run(m: &mut Module) -> bool {
 /// Early returns of scalars (`if a < b { return -1 } if a > b { return 1 } return 0`) become one
 /// join with a block parameter so the diamonds above can turn into selects. Kept only when
 /// every return is absorbed: a partly converted function would just gain a jump.
-fn merge_returns(m: &Module, f: &Func, positive: &HashSet<Value>) -> Option<Func> {
+fn merge_returns(m: &Module, f: &Func, positive: &ValueSet) -> Option<Func> {
     let rets: Vec<usize> = f
         .blocks
         .iter()
@@ -114,7 +114,7 @@ fn arm(
     head: usize,
     t: &Target,
     join: Option<usize>,
-    positive: &HashSet<Value>,
+    positive: &ValueSet,
 ) -> Option<(Arm, usize)> {
     let b = t.block.index();
     if Some(b) == join {
@@ -146,7 +146,7 @@ fn arm(
 }
 
 /// Total scalar operations, plus the two checks expanded to predicated guards.
-fn speculatable(m: &Module, f: &Func, i: &Inst, positive: &HashSet<Value>) -> bool {
+fn speculatable(m: &Module, f: &Func, i: &Inst, positive: &ValueSet) -> bool {
     if !i.res.is_some_and(|v| scalar(m, f, v)) {
         return false;
     }
@@ -211,7 +211,7 @@ fn scalar(m: &Module, f: &Func, v: Value) -> bool {
     matches!(m.types.kind(t), TyKind::Bool) || m.types.is_scalar(t)
 }
 
-fn convert_all(m: &Module, f: &mut Func, positive: &HashSet<Value>) -> bool {
+fn convert_all(m: &Module, f: &mut Func, positive: &ValueSet) -> bool {
     let mut edges = vec![0usize; f.blocks.len()];
     for b in &f.blocks {
         b.term.for_each_target(|t| edges[t.block.index()] += 1);

@@ -1,6 +1,6 @@
-# conform: tags=formatter,generics,lists,parser,records,sets,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/prelude_test.go:37 TestCollectionPreludeAndShadowing
+// conform: tags=formatter,generics,lists,parser,records,sets,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/prelude_test.go:37 TestCollectionPreludeAndShadowing
 type Selection:
     values: Set[Int]
 

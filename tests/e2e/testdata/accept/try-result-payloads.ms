@@ -44,7 +44,7 @@ fn tail[T, E](result: T!E, var visits: List[Int]) T!E:
 type TailCleanup:
     marker: String
 
-# Cleanup runs on a moved copy, so the marker file is the only way to observe it.
+// Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for TailCleanup:
     var fn close() Unit!:
         let _written = write_file(self.marker, "closed", true)

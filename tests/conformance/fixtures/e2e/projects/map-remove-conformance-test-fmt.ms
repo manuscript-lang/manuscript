@@ -1,6 +1,6 @@
-# conform: tags=formatter,modules,parser,stdlib-testing,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/map_remove/conformance_test.ms
+// conform: tags=formatter,modules,parser,stdlib-testing,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/map_remove/conformance_test.ms
 import expect_false, expect_true from "@std/test/test.ms"
 import Key from "./key.ms"
 import id_map, id_direct, id_bound, id_generic from "./by_id.ms"

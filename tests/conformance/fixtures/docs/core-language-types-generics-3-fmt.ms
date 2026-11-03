@@ -1,6 +1,6 @@
-# conform: tags=formatter,generics,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=documentation/core-language/types/generics.md:49
+// conform: tags=formatter,generics,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=documentation/core-language/types/generics.md:49
 type Box[T]:
     value: T
 

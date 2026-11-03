@@ -14,7 +14,7 @@
           "file": "testexpectedresultgenericinference-1.ms",
           "line": 5,
           "column": 29,
-          "offset": 214
+          "offset": 217
         },
         "fix": {
           "position": {
