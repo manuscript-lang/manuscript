@@ -3,8 +3,7 @@ import wrap_error, join_errors from "@std/core.ms"
 import share from "@std/concurrency/shared.ms"
 import once, lock from "@std/concurrency/sync.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
-import sleep, deadline_after, monotonic from "@std/os/time.ms"
-import ticker from "@std/os/ticker.ms"
+import sleep, deadline_after, ticker, monotonic from "@std/os/time.ms"
 
 test "once runs the action a single time across tasks":
     let gate = once()
