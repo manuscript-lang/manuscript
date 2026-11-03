@@ -109,7 +109,10 @@ fn same_names_from_different_modules_keep_resource_cleanup() {
         .filter_map(|i| i.binding.as_ref())
         .find(|b| b.name == n("held"))
         .unwrap();
-    assert!(p.implicit_closes.contains(&held.uid));
+    assert!(
+        p.binding_facts
+            .has(held.uid, ms_check::ownership::BindingFact::ImplicitClose)
+    );
 }
 #[test]
 fn recursive_and_mutually_recursive_alternatives_stay_move() {

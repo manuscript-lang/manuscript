@@ -838,7 +838,11 @@ impl<'a> FnLower<'a> {
     /// value, so the scope end drops it only on the paths that kept it.
     pub fn own_local(&mut self, uid: usize, var: ms_mir::builder::Var, ty: MTy) {
         let moved = self.needs_drop(ty) && self.cx.moves.contains_key(&uid);
-        let conditional = moved && self.cx.conditional_moves.contains(&uid);
+        let conditional = moved
+            && self
+                .cx
+                .binding_facts
+                .has(uid, ms_check::ownership::BindingFact::ConditionalMove);
         if moved && !conditional {
             // Every path moves it: the move consumes the local, and the scope drops nothing.
             self.must_move.insert(uid);
@@ -1249,7 +1253,11 @@ impl<'a> FnLower<'a> {
             }
             if owned_mask.as_ref().is_some_and(|mask| mask[i]) && self.needs_drop(self.ty_of(v)) {
                 // The caller handed the value over: the callee owns it and drops it at scope end.
-                if self.cx.implicit_closes.contains(&b.uid) {
+                if self
+                    .cx
+                    .binding_facts
+                    .has(b.uid, ms_check::ownership::BindingFact::ImplicitClose)
+                {
                     // A resource the callee keeps on some path closes on the others.
                     let cleanup = self.hir.binding_cleanup(b.uid);
                     if let Some(kind) = self.closer_opt(cleanup.as_ref(), &b.ty)? {
