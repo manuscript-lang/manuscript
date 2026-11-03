@@ -1556,7 +1556,10 @@ impl<'a> FnLower<'a> {
         recv_expr: Option<&Expr>,
         recv: Val,
     ) -> Result<(ms_mir::builder::Var, bool), Error> {
-        if let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r))
+        // A local the expression moved out of (`recv.own`) is the caller's to drop: it is held
+        // as a hidden copy below, not read in place.
+        if !recv.own
+            && let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r))
             && !self.aliases.contains_key(&b.uid)
             && self.local(&b)?.slot.is_none()
             && !self.local(&b)?.opt
