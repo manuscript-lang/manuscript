@@ -50,13 +50,17 @@ impl Classifier {
         let closeable = p
             .methods
             .iter()
-            .filter(|m| m.contract.as_ref().is_some_and(|c| c.is_std("Closeable")))
+            .filter(|m| {
+                m.contract
+                    .as_ref()
+                    .is_some_and(|c| c.is(Builtin::Closeable))
+            })
             .map(|m| m.receiver.id)
             .collect();
         let copyable = p
             .methods
             .iter()
-            .filter(|m| m.contract.as_ref().is_some_and(|c| c.is_std("Copy")))
+            .filter(|m| m.contract.as_ref().is_some_and(|c| c.is(Builtin::Copy)))
             .map(|m| m.receiver.id)
             .collect();
         Classifier {
@@ -80,7 +84,7 @@ impl Classifier {
             Kind::Primitive if t.id.as_str() == "String" => Class::Move,
             Kind::Primitive | Kind::Invalid | Kind::Inferred => Class::Copy,
             Kind::Variable => {
-                if t.bounds().iter().any(|b| b.is_std("Closeable")) {
+                if t.bounds().iter().any(|b| b.is(Builtin::Closeable)) {
                     Class::Resource
                 } else {
                     Class::Move
@@ -88,7 +92,7 @@ impl Classifier {
             }
             // A `Closeable` value owns what it was made from and closes it. Other interfaces
             // with a `close` (a channel's transport) are handles their holders close explicitly.
-            Kind::Contract if t.is_std("Closeable") => Class::Resource,
+            Kind::Contract if t.is(Builtin::Closeable) => Class::Resource,
             Kind::Function | Kind::Contract => Class::Move,
             Kind::Native => self.native(t, visiting),
             Kind::Record | Kind::Alternative => self.nominal(t, visiting),
@@ -98,14 +102,14 @@ impl Classifier {
     fn native(&self, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
         if self.closeable.contains(&t.id) {
             Class::Resource
-        } else if t.is_std("Shared") || self.copyable.contains(&t.id) {
+        } else if t.is(Builtin::Shared) || self.copyable.contains(&t.id) {
             // A declared `Copy` native is plain words. Copying `Shared` shares the box; the payload is closed once the last holder releases it.
             Class::Copy
-        } else if t.is_std("List") {
+        } else if t.is(Builtin::List) {
             // An owning collection of resources is itself a resource, closed with its elements.
             // A `Set` stays `Move`: a resource is not `Hashable`, so it is never an element.
             self.holds(t.args.first(), visiting)
-        } else if t.is_std("Map") {
+        } else if t.is(Builtin::Map) {
             self.holds(t.args.get(1), visiting)
         } else {
             // A native owns its storage; `.clone()` is its explicit duplicate.

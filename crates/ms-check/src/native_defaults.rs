@@ -107,7 +107,9 @@ impl Checker {
                 nm == "none"
                     && self.info_of(e).is_some_and(|i| {
                         i.binding.is_none()
-                            && i.constructor.as_ref().is_some_and(|c| c.is_std("Optional"))
+                            && i.constructor
+                                .as_ref()
+                                .is_some_and(|c| c.is(Builtin::Optional))
                             && i.case.is_some_and(|c| c == "none")
                     })
             }

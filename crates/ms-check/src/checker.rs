@@ -1432,7 +1432,7 @@ impl Checker {
         if result.is_invalid() {
             return;
         }
-        if result.is_std("Result") && result.args.len() == 2 {
+        if result.is(Builtin::Result) && result.args.len() == 2 {
             let (ok, error) = (&result.args[0], &result.args[1]);
             let cases = cases(error);
             let reported = |c: &Case| {
@@ -1782,7 +1782,7 @@ mod operation_bounds_tests;
 /// Whether a value of `t` crosses to a user `extern fn` shim (`ms_abi.h`): sized numbers,
 /// `Bool`, `String`, `Bytes`, an `extern type` the program declares, or a `List` of those.
 pub(crate) fn crosses_native(t: &Ty) -> bool {
-    if t.is_std("List") && t.args.len() == 1 {
+    if t.is(Builtin::List) && t.args.len() == 1 {
         return crosses_element(&t.args[0]);
     }
     crosses_element(t)
@@ -1793,7 +1793,7 @@ fn crosses_element(t: &Ty) -> bool {
         "Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "Float",
         "Float32", "Bool", "String",
     ];
-    SCALARS.contains(&t.id.as_str()) || t.is_std("Bytes") || is_user_extern_type(t)
+    SCALARS.contains(&t.id.as_str()) || t.is(Builtin::Bytes) || is_user_extern_type(t)
 }
 
 /// The most parameters a function passed to a user extern may take (`ms_call` packs the
