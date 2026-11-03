@@ -215,7 +215,8 @@ impl<'a> FnLower<'a> {
                     call_line,
                 });
                 self.source_scope = scopes.len() as u32;
-                let result = self.default_argument(callee, i, subst, &mut slots, recv);
+                let result =
+                    self.default_argument(callee, i, subst, &mut slots, recv, Some(call_pos));
                 self.source_scope = parent;
                 let d = result?;
                 slots[i] = Some(d);
@@ -276,6 +277,7 @@ impl<'a> FnLower<'a> {
         subst: &Subst,
         earlier: &mut [Option<Val>],
         recv: Option<Val>,
+        call_pos: Option<ms_syntax::Pos>,
     ) -> Result<Val, Error> {
         let params = callee
             .func
@@ -296,6 +298,24 @@ impl<'a> FnLower<'a> {
             }
             return Err(Error::new(format!("missing argument {}", binding.name)));
         };
+        if is_caller_site(d) {
+            // The position of the call that omitted the argument, not of the default.
+            let pos = call_pos
+                .ok_or_else(|| Error::new("a function with a caller_site() default can only be called directly, not used as a function value"))?;
+            let file = self
+                .b
+                .m
+                .files
+                .get(self.file as usize)
+                .cloned()
+                .unwrap_or_default();
+            // As for any instruction, the enclosing statement names the site.
+            let pos = self.stmt_pos.unwrap_or(pos);
+            let v = self
+                .b
+                .str_lit(&format!("{file}:{}:{}", pos.line, pos.column));
+            return Ok(Val { v, own: false });
+        }
         // `none` in a bundled declaration carries no checked expression.
         if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") && ty.is(Builtin::Optional)
         {
@@ -1267,4 +1287,12 @@ impl<'a> FnLower<'a> {
             }
         }
     }
+}
+
+/// Whether a default is the call `caller_site()` of `@std/test/test.ms`.
+fn is_caller_site(d: &Expr) -> bool {
+    let ExprKind::Call { callee, args } = &d.kind else {
+        return false;
+    };
+    args.is_empty() && matches!(&callee.kind, ExprKind::Name(n) if n.as_str() == "caller_site")
 }

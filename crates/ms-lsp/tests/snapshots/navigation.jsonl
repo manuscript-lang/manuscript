@@ -120,14 +120,14 @@
 {"id":119,"jsonrpc":"2.0","result":[]}
 {"id":120,"jsonrpc":"2.0","result":null}
 {"id":121,"jsonrpc":"2.0","result":[]}
-{"id":122,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(T, T) Result[Unit, Error]\n```\n\nCompares using ordinary Equal semantics; reports expected and actual values on failure."},"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}}}
+{"id":122,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(T, T, String) Result[Unit, Error]\n```\n\nCompares using ordinary Equal semantics; reports expected and actual values on failure."},"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}}}
 {"id":123,"jsonrpc":"2.0","result":[{"range":"expect_equal","uri":"manuscript-stdlib:///test/test.ms"}]}
-{"id":124,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
+{"id":124,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":"expect_equal","uri":"manuscript-stdlib:///test/test.ms"}]}
 {"id":125,"jsonrpc":"2.0","result":null}
 {"id":126,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}},{"kind":2,"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}]}
-{"id":127,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(T, T) Result[Unit, Error]\n```\n\nCompares using ordinary Equal semantics; reports expected and actual values on failure."},"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}}}
+{"id":127,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(T, T, String) Result[Unit, Error]\n```\n\nCompares using ordinary Equal semantics; reports expected and actual values on failure."},"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}}}
 {"id":128,"jsonrpc":"2.0","result":[{"range":"expect_equal","uri":"manuscript-stdlib:///test/test.ms"}]}
-{"id":129,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
+{"id":129,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":"expect_equal","uri":"manuscript-stdlib:///test/test.ms"}]}
 {"id":130,"jsonrpc":"2.0","result":null}
 {"id":131,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}},{"kind":2,"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}]}
 {"id":132,"jsonrpc":"2.0","result":null}
@@ -1655,14 +1655,14 @@
 {"id":1654,"jsonrpc":"2.0","result":[]}
 {"id":1655,"jsonrpc":"2.0","result":null}
 {"id":1656,"jsonrpc":"2.0","result":[]}
-{"id":1657,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(Int, Int) Result[Unit, Error]\n```\n\nCompares using ordinary Equal semantics; reports expected and actual values on failure."},"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}}
+{"id":1657,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(Int, Int, String) Result[Unit, Error]\n```\n\nCompares using ordinary Equal semantics; reports expected and actual values on failure."},"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}}
 {"id":1658,"jsonrpc":"2.0","result":[{"range":"expect_equal","uri":"manuscript-stdlib:///test/test.ms"}]}
-{"id":1659,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
+{"id":1659,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":"expect_equal","uri":"manuscript-stdlib:///test/test.ms"}]}
 {"id":1660,"jsonrpc":"2.0","result":null}
 {"id":1661,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}},{"kind":2,"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}]}
-{"id":1662,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(Int, Int) Result[Unit, Error]\n```\n\nCompares using ordinary Equal semantics; reports expected and actual values on failure."},"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}}
+{"id":1662,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(Int, Int, String) Result[Unit, Error]\n```\n\nCompares using ordinary Equal semantics; reports expected and actual values on failure."},"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}}
 {"id":1663,"jsonrpc":"2.0","result":[{"range":"expect_equal","uri":"manuscript-stdlib:///test/test.ms"}]}
-{"id":1664,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
+{"id":1664,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":"expect_equal","uri":"manuscript-stdlib:///test/test.ms"}]}
 {"id":1665,"jsonrpc":"2.0","result":null}
 {"id":1666,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}},{"kind":2,"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}]}
 {"id":1667,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nadd: fn(Int, Int) Int\n```"},"range":{"end":{"character":24,"line":68},"start":{"character":21,"line":68}}}}

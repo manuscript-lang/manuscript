@@ -1217,7 +1217,7 @@ fn lower_default_thunk(
             let earlier = slots.clone();
             fl.unlift_param(v, &mut |s| {
                 let mut earlier = earlier.clone();
-                s.default_argument(&callee, i, &job.subst, &mut earlier, recv)
+                s.default_argument(&callee, i, &job.subst, &mut earlier, recv, None)
             })?
         });
     }
