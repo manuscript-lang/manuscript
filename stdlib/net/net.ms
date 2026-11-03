@@ -10,7 +10,6 @@ import HttpMethod from "@std/net/http.ms"
 import HttpServer from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
 import Timestamp from "@std/os/time.ms"
-import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 import (
     msstd_url_encode_component,
     msstd_net_ip_address_text,
@@ -46,8 +45,6 @@ import (
     msstd_net_listener_accept_raw,
     msstd_net_listener_address,
     msstd_net_listener_close,
-    msstd_net_listener_raw_owner,
-    msstd_net_release_unadopted,
     msstd_websocket_close,
     msstd_websocket_ping,
     msstd_websocket_ping_bytes,
@@ -554,70 +551,6 @@ export type WebSocketOptions:
     tls: TlsOptions
     # When True, offers per-message compression during the handshake; it applies only if the peer agrees.
     compression: Bool
-
-# Serves on `cores` threads: this thread accepts from `listener` and deals each connection, round robin, to one of `cores` workers that run `entry`, a named top-level fn that ends in `serve_core(handler, options)`. A connection, and every request on it, stays on its worker, and each worker builds its own handler, so no closure or other memory crosses threads.
-# Runs until accepting fails, returning that error (`Closed` after the listener was closed), or a worker's channel closes (returns `Failed`). Workers still running afterwards are cancelled.
-# Returns InvalidInput when `cores` is below 1, and `Failed` when a worker cannot start.
-export fn serve_cores(listener: Listener, entry: fn() Unit, cores: Int) Unit!:
-    if cores < 1:
-        return error(Error("network: invalid input", kind: InvalidInput))
-
-    var serving = Serving(
-        group: WorkerGroup[Int, Int](),
-        owner: msstd_net_listener_raw_owner(listener.native)
-    )
-    let started = serving.group.spawn_many(entry, cores)
-    if started.is_error():
-        return error(Error("network: could not start a serving worker", kind: Failed))
-
-    return deal(listener, started.get())
-
-# The workers of `serve_cores` and the owner key of the listener whose unadopted handles go with them.
-# Its close runs on every exit, a cancellation included.
-type Serving:
-    group: WorkerGroup[Int, Int]
-    owner: Int
-
-impl Closeable for Serving:
-    # Ends the workers first, so no adopter can still claim a handle that stays unadopted, then closes those handles.
-    var fn close() Unit!:
-        self.group.close().get(none)
-        msstd_net_release_unadopted(self.owner)
-        return ok(unit)
-
-# Deals accepted connections round robin to `workers` until accepting or a send fails.
-fn deal(listener: Listener, workers: List[Worker[Int, Int]]) Unit!:
-    var next = 0
-
-    while true:
-        let accepted = listener.accept_raw(none)
-        if accepted.is_error():
-            return error(accepted.err().clone())
-        if workers[next % workers.length()].channel.send(accepted.get()).is_error():
-            return error(Error("network: a serving worker ended", kind: Failed))
-
-        next += 1
-
-    return ok(unit)
-
-# Worker side of `serve_cores`: serves the connections dealt to this worker with
-# `handler` and `options`, until the acceptor ends. Returns InvalidInput for invalid options.
-export fn serve_core(
-    handler: fn(HttpExchange) Unit!,
-    options: HttpServerOptions = HttpServerOptions()
-) Unit!:
-    var ch = worker_channel[Int, Int]()
-    var server = try serve_connections(handler: handler, options: options)
-
-    while true:
-        if let connection = ch.receive().get(none):
-            server.adopt(connection)
-            continue
-
-        break
-
-    server.close().get(none)
-    return ok(unit)
 
 # Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
 # A restricted network without listening permission, or an address outside its CIDRs, returns PermissionDenied.

@@ -14,8 +14,57 @@ import WebSocket from "@std/net/net.ms"
 import Logger from "@std/log.ms"
 import uuid_v4 from "@std/os/random.ms"
 import monotonic from "@std/os/time.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import Closeable from "@std/core.ms"
+import (
+    msrt_promise_drop,
+    msrt_promise_take,
+    msrt_promise_wait,
+    msrt_pipes_close_reader,
+    msrt_pipes_close_writer,
+    msrt_pipes_new,
+    msrt_pipes_read,
+    msrt_pipes_write
+) from "@std/internal/promises.ms"
+
+# A value with one holder at a time, kept in a one-message in-memory pipe whose id is the slot: `take_slot` moves it out
+# (waiting while another holder has it) and `put_slot` moves it back. This is a
+# stopgap for the exchange state below, which `HttpExchange` methods update through `fn`; it goes when those methods
+# become `var fn` and the state is a plain field.
+fn new_slot[T](value: T) Int:
+    let pipe = msrt_pipes_new(1)
+    let _first = msrt_pipes_write(pipe, value)
+    return pipe
+
+fn take_slot[T](slot: Int) T:
+    let read = msrt_pipes_read(slot)
+    let _code = msrt_promise_wait(read, -1)
+    let value = msrt_promise_take[T](read)
+    msrt_promise_drop(read)
+    return value.get()
+
+fn put_slot[T](slot: Int, value: T) Unit:
+    let _written = msrt_pipes_write(slot, value)
+
+# Ends the pipe of `slot`; call it once, when the last holder is done.
+fn release_slot(slot: Int) Unit:
+    msrt_pipes_close_writer(slot)
+    msrt_pipes_close_reader(slot)
+
+# The value of a slot while one holder works on it; it returns to the slot when the scope ends, however it ends.
+type Held[T]:
+    slot: Int
+    value: T
+    held: Bool
+
+fn hold[T](slot: Int) Held[T]:
+    return Held[T](slot: slot, value: take_slot[T](slot), held: true)
+
+impl Closeable for Held[T]:
+    var fn close() Unit!:
+        if self.held:
+            self.held = false
+            put_slot(self.slot, self.value)
+        return ok(unit)
 
 # The values a matched pattern captured, by name.
 export type RouteParams:
@@ -151,7 +200,7 @@ impl Router:
     # `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *` answers 204 with
     # the `Allow` of every registered method.
     fn handler() fn(HttpExchange) Unit!:
-        let routes = share(self.routes.clone())
+        let routes = self.routes.clone()
         let middleware = self.middleware.clone()
         return fn exchange: dispatch(routes, middleware.clone(), exchange)
 
@@ -325,14 +374,32 @@ fn accepts(segment: Segment, part: String, var values: List[String]) Bool:
             return true
         Rest(_): return true
 
+# What `finish` needs from the routes: the matched route and, for `OPTIONS *`, every registered method. Copies of
+# the little the request uses, so the continuation handed to middleware owns it.
+type Target:
+    method: String
+    found: Lookup
+    # The matched route, or empty.
+    matched: List[Route]
+    every: List[String]
+
 fn dispatch(
-    routes: Shared[List[Route]],
+    routes: List[Route],
     middleware: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!],
     exchange: HttpExchange
 ) Unit!:
     let method = exchange.method().text()
-    let found = lookup(routes.get(), method, split_path(exchange.path()))
-    return chain(middleware, 0, exchange, final_step(routes, method, found))
+    let found = lookup(routes, method, split_path(exchange.path()))
+    var matched: List[Route] = []
+    if let index = found.found:
+        matched.append(routes[index].clone())
+
+    var every: List[String] = []
+    if method == "OPTIONS" and exchange.path() == "*":
+        every = routes.map(fn route: route.method.clone())
+
+    let target = Target(method: method, found: found, matched: matched, every: every)
+    return chain(middleware, 0, exchange, fn last: finish(target.clone(), last))
 
 fn chain(
     middleware: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!],
@@ -344,14 +411,6 @@ fn chain(
 
     return middleware[at](exchange, next_step(middleware, at + 1, last))
 
-# The end of the chain: the matched route, or the 404, 405 or OPTIONS answer.
-fn final_step(
-    routes: Shared[List[Route]],
-    method: String,
-    found: Lookup
-) fn(HttpExchange) Unit!:
-    return fn exchange: finish(routes, method.clone(), found.clone(), exchange)
-
 # The continuation handed to the middleware at `at - 1`.
 fn next_step(
     middleware: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!],
@@ -361,31 +420,21 @@ fn next_step(
     let rest = Tail(last: last)
     return fn exchange: chain(middleware.clone(), at, exchange, rest.last)
 
-# The end of a route's own middleware: its handler.
-fn route_step(
-    routes: Shared[List[Route]],
-    index: Int,
-    params: RouteParams
-) fn(HttpExchange) Unit!:
-    return fn exchange: routes.get()[index].handler(exchange, params)
-
 # Runs the matched route, or answers 404, 405 or the OPTIONS listing.
-fn finish(
-    routes: Shared[List[Route]],
-    method: String,
-    found: Lookup,
-    exchange: HttpExchange
-) Unit!:
-    if let index = found.found:
-        let around = routes.get()[index].around.clone()
+fn finish(target: Target, exchange: HttpExchange) Unit!:
+    let method = target.method.clone()
+    let found = target.found.clone()
+    if not target.matched.is_empty():
+        let route = target.matched[0].clone()
+        let params = found.params.clone()
         return chain(
-            around, 0, exchange, route_step(routes, index, found.params.clone())
+            route.around.clone(), 0, exchange,
+            fn last: route.handler(last, params.clone())
         )
 
     if method == "OPTIONS" and exchange.path() == "*":
         var server_wide = text(204, "")
-        let all = routes.get().map(fn route: route.method.clone())
-        try server_wide.headers.append("Allow", allow_text(all))
+        try server_wide.headers.append("Allow", allow_text(target.every))
         return reply(exchange, server_wide)
 
     if found.allow.is_empty(): return reply(exchange, text(404, "not found\n"))
@@ -406,15 +455,19 @@ impl Router:
     # A handler error is returned as is; the server would answer it with a 500. A handler that
     # sends nothing answers 204.
     fn call(request: HttpRequest) HttpResponse!:
-        let state = share(
+        let state = new_slot(
             TestState(
                 status: 0, sent: false, complete: false, closed: false, head: headers(),
                 body: BytesBuilder(), unread: request.body.clone()
             )
         )
         let exchange = TestExchange(request: request.clone(), state: state)
-        try self.handler()(exchange)
-        return finished(state)
+        let ran = self.handler()(exchange)
+        let outcome = finished(state)
+        release_slot(state)
+        if ran.is_error(): return error(ran.err().clone())
+
+        return outcome
 
 # What an in-process handler has sent so far.
 type TestState:
@@ -428,10 +481,10 @@ type TestState:
 
 type TestExchange:
     request: HttpRequest
-    state: Shared[TestState]
+    state: Int
 
-fn finished(state: Shared[TestState]) HttpResponse!:
-    var guard = lock(state)
+fn finished(state: Int) HttpResponse!:
+    var guard = hold[TestState](state)
     if not guard.value.sent:
         return ok(HttpResponse(status: 204, headers: headers(), body: "".to_bytes()))
 
@@ -444,7 +497,7 @@ fn finished(state: Shared[TestState]) HttpResponse!:
 
 impl HttpExchange for TestExchange:
     fn close() Unit:
-        var guard = lock(self.state)
+        var guard = hold[TestState](self.state)
         guard.value.closed = true
 
     fn headers() HttpHeaders:
@@ -467,7 +520,7 @@ impl HttpExchange for TestExchange:
         if requested <= 0: return error(Error("I/O: invalid input", kind: InvalidInput))
 
         let max = if requested > 65536: 65536 else: requested
-        var guard = lock(self.state)
+        var guard = hold[TestState](self.state)
         if guard.value.closed: return error(
             Error("I/O: resource is closed", kind: Closed)
         )
@@ -499,7 +552,7 @@ impl HttpExchange for TestExchange:
             Error("HTTP: invalid input", kind: InvalidInput)
         )
 
-        var guard = lock(self.state)
+        var guard = hold[TestState](self.state)
         if guard.value.closed: return error(
             Error("HTTP: resource is closed", kind: Closed)
         )
@@ -515,7 +568,7 @@ impl HttpExchange for TestExchange:
     fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
         try self.send_headers(status, headers)
 
-        var guard = lock(self.state)
+        var guard = hold[TestState](self.state)
         guard.value.complete = true
         if self.request.method.text() == "HEAD" or not has_body(status): return ok(unit)
 
@@ -537,7 +590,7 @@ impl HttpExchange for TestExchange:
         return self.write_bytes(data.to_bytes())
 
     fn write_bytes(data: Bytes) Unit!:
-        var guard = lock(self.state)
+        var guard = hold[TestState](self.state)
         if guard.value.closed: return error(
             Error("I/O: resource is closed", kind: Closed)
         )
@@ -566,12 +619,18 @@ type Tap:
     inner: HttpExchange
     extra: HttpHeaders
     request: HttpHeaders
-    state: Shared[TapState]
+    state: Int?
 
-fn new_tap(inner: HttpExchange, extra: HttpHeaders, request: HttpHeaders) Tap:
+# `counting` keeps a slot that counts what is sent; the caller reads it and releases it with `release_slot`.
+fn new_tap(
+    inner: HttpExchange,
+    extra: HttpHeaders,
+    request: HttpHeaders,
+    counting: Bool = false
+) Tap:
     return Tap(
         inner: inner, extra: extra, request: request,
-        state: share(TapState(status: 0, bytes: 0))
+        state: if counting: new_slot(TapState(status: 0, bytes: 0)) else: none
     )
 
 # Wraps `exchange` so that `headers()` reports `request` and everything else passes through.
@@ -582,13 +641,14 @@ export fn with_request_headers(
 ) HttpExchange:
     return new_tap(exchange, headers(), request)
 
-fn counted(state: Shared[TapState], status: Int, bytes: Int) Unit:
-    var guard = lock(state)
-    if status != 0: guard.value.status = status
-    guard.value.bytes += bytes
+fn counted(slot: Int?, status: Int, bytes: Int) Unit:
+    if let state = slot:
+        var guard = hold[TapState](state)
+        if status != 0: guard.value.status = status
+        guard.value.bytes += bytes
 
-fn snapshot(state: Shared[TapState]) TapState:
-    var guard = lock(state)
+fn snapshot(state: Int) TapState:
+    var guard = hold[TapState](state)
     return TapState(status: guard.value.status, bytes: guard.value.bytes)
 
 # `sent` plus the `extra` headers it does not already have.
@@ -707,10 +767,11 @@ fn with_access_log(
     let path = exchange.path()
     let protocol = exchange.protocol()
     let request = exchange.headers()
-    let tap = new_tap(exchange, headers(), request)
-    let state = tap.state
+    let tap = new_tap(exchange, headers(), request, true)
+    let state = tap.state.get()
     let result = next(tap)
     let sent = snapshot(state)
+    release_slot(state)
     let status = answered(sent.status, result.is_ok())
     let entry = AccessEntry(
         method: method, path: path, protocol: protocol, status: status,
