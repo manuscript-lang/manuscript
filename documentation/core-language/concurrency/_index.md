@@ -26,6 +26,7 @@ test "run work at once and collect it":
 - `wait(timeout: ...)` stops waiting and cancels the promise when the limit passes. Dropping an unfinished promise cancels it and waits for it to end, so work never outlives the values it uses.
 - A fault inside a promise ends only that promise; `wait` reports it as a failure.
 - `wait_all` returns results in order and cancels the rest on the first error; `wait_first` returns the first result.
+- The terminal (raw mode, key events in `@std/io/io.ms`) belongs to the main thread. A promise that runs on another thread faults with "only available on the main thread" if it uses it; do terminal work in the main task and send it values.
 - Cancellation is delivered at the next wait, and a loop that never waits is not stopped. Lint rule **MSL111** flags a `while true` loop that neither waits nor exits.
 
 The API reference is generated from `stdlib/concurrency/promise.ms`.
