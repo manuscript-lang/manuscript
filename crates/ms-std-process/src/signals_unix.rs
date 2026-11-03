@@ -2,8 +2,8 @@
 //!
 //! Each observer owns a non-blocking pipe. A process-wide handler (installed on a signal's first
 //! observer and removed with its last) writes the signal number to the pipe of every observer of
-//! that signal, then calls the handler that was installed before, so the runtime's SIGINT and
-//! SIGTERM cancellation still runs. `next` waits for pipe data in short slices and polls for
+//! that signal, after calling the handler that was installed before: the runtime's SIGINT and
+//! SIGTERM handler records the stop request before any observer can see the signal. `next` waits for pipe data in short slices and polls for
 //! cancellation between them.
 use alloc::collections::VecDeque;
 use core::sync::atomic::{AtomicI32, AtomicU64, AtomicUsize, Ordering};
@@ -25,6 +25,16 @@ static OBSERVERS: [AtomicUsize; 65] = [const { AtomicUsize::new(0) }; 65];
 
 extern "C" fn on_signal(sig: i32) {
     let saved = sys::errno();
+    // The previous handler goes first: for SIGINT and SIGTERM it records the stop request. An
+    // observer woken by the byte below could otherwise return from `main` before the request
+    // was recorded, and the program would exit 0 instead of 128 + the signal.
+    let prev = PREVIOUS[sig as usize].load(Ordering::Acquire);
+    if prev > 1 {
+        // SAFETY: the previous handler was a plain `fn(int)` registered with `sigaction`.
+        let f: extern "C" fn(i32) =
+            unsafe { core::mem::transmute::<usize, extern "C" fn(i32)>(prev) };
+        f(sig);
+    }
     let byte = sig as u8;
     let bit = 1u64 << (sig - 1);
     for i in 0..SLOTS {
@@ -33,13 +43,6 @@ extern "C" fn on_signal(sig: i32) {
             // SAFETY: `write` is async-signal-safe; a full pipe drops the signal.
             unsafe { libc::write(fd, (&raw const byte).cast(), 1) };
         }
-    }
-    let prev = PREVIOUS[sig as usize].load(Ordering::Acquire);
-    if prev > 1 {
-        // SAFETY: the previous handler was a plain `fn(int)` registered with `sigaction`.
-        let f: extern "C" fn(i32) =
-            unsafe { core::mem::transmute::<usize, extern "C" fn(i32)>(prev) };
-        f(sig);
     }
     sys::set_errno(saved);
 }
