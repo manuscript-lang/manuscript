@@ -22,7 +22,6 @@ pub mod native_defaults;
 pub mod ownership;
 pub mod passes;
 pub mod prelude_imports;
-pub mod receivers;
 pub mod recursion;
 pub mod stdlib;
 pub mod stmts;

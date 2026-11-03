@@ -628,10 +628,12 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
+        let str_recv = matches!(self.b.m.types.kind(self.ty_of(recv.v)), TyKind::Str);
         let trim_view = match native {
-            "string/trim" => Some("msrt_string_trim_view"),
-            "string/trim_start" => Some("msrt_string_trim_start_view"),
-            "string/trim_end" => Some("msrt_string_trim_end_view"),
+            _ if !str_recv => None,
+            "trim" => Some("msrt_string_trim_view"),
+            "trim_start" => Some("msrt_string_trim_start_view"),
+            "trim_end" => Some("msrt_string_trim_end_view"),
             _ => None,
         };
         if let Some(sym) = trim_view

@@ -278,7 +278,7 @@ pub(crate) fn build_format(
             let text = b.call(f, &[x]);
             b.ret(Some(text));
         }
-        TyKind::Rec(_) | TyKind::Alt(_) if cx.opaque_tys.contains(&t) => {
+        TyKind::Rec(_) | TyKind::Alt(_) if cx.opaque_tys.contains(t.0 as usize) => {
             // An opaque value shows its type name only, never its hidden fields.
             let name = match b.m.types.kind(t).clone() {
                 TyKind::Rec(r) => b.m.records[r.index()].name.clone(),

@@ -53,7 +53,7 @@ impl Scan<'_> {
         self.module.facts().info(e.id).cloned()
     }
 
-    fn scan_call(&mut self, e: &Expr, callee: &Expr) {
+    fn scan_call(&mut self, e: &Expr) {
         let Some(info) = self.info(e) else {
             self.effects.insert("unknown");
             return;
@@ -84,7 +84,7 @@ impl Scan<'_> {
             return;
         }
         if let Some(m) = &info.method {
-            self.scan_method_call(callee, m);
+            self.scan_method_call(m);
             return;
         }
         self.effects.insert("unknown");
@@ -92,7 +92,7 @@ impl Scan<'_> {
 
     /// Adds the effects of a method call: an edge for source methods, or the
     /// known effects of the native receiver.
-    fn scan_method_call(&mut self, callee: &Expr, method: &Method) {
+    fn scan_method_call(&mut self, method: &Method) {
         if !method.id.as_str().is_empty() {
             self.edges.insert(method.id);
             return;
@@ -103,40 +103,20 @@ impl Scan<'_> {
         {
             receiver = c.clone();
         }
-        let name = match &callee.kind {
-            ExprKind::Member { name, .. } => name.as_str(),
-            ExprKind::Name(nm) => nm.as_str(),
-            _ => "",
-        };
         let add =
             |s: &mut BTreeSet<&'static str>, list: &[&'static str]| s.extend(list.iter().copied());
-        match receiver.id.as_str() {
-            "@std/Files" | "@std/File" | "@std/ReadStream" => {
-                add(&mut self.effects, &["external-call", "read"]);
-                if name == "close" {
-                    add(&mut self.effects, &["write"]);
-                }
+        if receiver.is(Builtin::List) || receiver.is(Builtin::Map) || receiver.is(Builtin::Set) {
+            add(&mut self.effects, &["read"]);
+            if collection_mutation(method) {
+                add(&mut self.effects, &["write"]);
             }
-            "@std/WriteStream" => add(&mut self.effects, &["external-call", "write"]),
-            "@std/Network" | "@std/HttpServer" | "@std/Commands" | "@std/Subprocess" => {
-                add(&mut self.effects, &["external-call", "read", "write"]);
+            if method.ty.params.iter().any(|p| p.ty.kind == Kind::Function) {
+                add(&mut self.effects, &["unknown"]);
             }
-            "@std/List" | "@std/Map" | "@std/Set" => {
-                add(&mut self.effects, &["read"]);
-                if collection_mutation(method) {
-                    add(&mut self.effects, &["write"]);
-                }
-                if method.ty.params.iter().any(|p| p.ty.kind == Kind::Function) {
-                    add(&mut self.effects, &["unknown"]);
-                }
-            }
-            _ => {
-                if receiver.name.as_str().ends_with("Builder") {
-                    add(&mut self.effects, &["write"]);
-                } else if matches!(receiver.kind, Kind::Contract | Kind::Variable) {
-                    add(&mut self.effects, &["unknown"]);
-                }
-            }
+        } else if is_text_builder(&receiver) {
+            add(&mut self.effects, &["write"]);
+        } else if matches!(receiver.kind, Kind::Contract | Kind::Variable) {
+            add(&mut self.effects, &["unknown"]);
         }
     }
 }
@@ -158,7 +138,7 @@ impl Visitor for Scan<'_> {
         }
         // A constant is a nullary function here: each use is a call to it.
         if self.module.facts().const_use.contains(&e.id) {
-            self.scan_call(e, e);
+            self.scan_call(e);
             return;
         }
         match &e.kind {
@@ -174,7 +154,7 @@ impl Visitor for Scan<'_> {
                 // Duplicate-key insertion may dispatch user-defined equality.
                 self.effects.insert("unknown");
             }
-            ExprKind::Call { callee, .. } => self.scan_call(e, callee),
+            ExprKind::Call { .. } => self.scan_call(e),
             _ => {}
         }
     }

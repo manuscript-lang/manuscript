@@ -8,7 +8,6 @@
 pub use crate::bundled::EXTENSION_MODULES;
 use crate::bundled::{decl_has_body, is_mixed, is_pure_source};
 use crate::checker::{CheckOptions, Checker, Names};
-use crate::receivers::RECEIVER_BINDINGS;
 use crate::syntax::*;
 use crate::types::Case;
 use crate::types::*;
@@ -73,7 +72,7 @@ struct World {
     intrinsic: HashMap<Name, Ty>,
     implementations: Vec<MethodRef>,
     operation_variables: HashMap<String, Vec<Ty>>,
-    receiver_bindings: HashMap<String, Name>,
+    receiver_natives: HashSet<String>,
     done: HashMap<Name, Rc<StdResult>>,
     checking: HashSet<Name>,
 }
@@ -86,42 +85,33 @@ fn world<R>(f: impl FnOnce(&mut World) -> R) -> R {
     WORLD.with(|w| f(&mut w.borrow_mut()))
 }
 
-/// The primitive types whose operations the `<Type>Operations` interfaces of `intrinsics.ms` declare.
-const INTRINSIC_RECEIVERS: &[&str] = &[
-    "Float", "Float32", "Int", "Int16", "Int32", "Int8", "String", "UInt16", "UInt32", "UInt64",
-    "UInt8",
-];
+/// The generated runtime signature table; its `@keeps` and `@owns` flags come from the `// ms:` comments
+/// in the runtime source.
+const RUNTIME_SYMBOLS: &str = include_str!("../../ms-lower/rt_symbols.txt");
 
-/// Externs that store their function arguments instead of running them before they return. A parameter-level
-/// marker would replace this list.
-const KEPT_CALLBACKS: &[&str] = &[
-    "extern:msrt_promise_start",
-    "extern:msrt_promise_start_here",
-    "extern:msrt_promise_defer",
-    "extern:msstd_http_serving_new",
-    "extern:msrt_fn_new",
-];
+/// Whether the runtime function behind the native `extern:name` declares `@flag`.
+fn runtime_flag(native: &str, flag: &str) -> bool {
+    let Some(name) = native.strip_prefix("extern:") else {
+        return false;
+    };
+    RUNTIME_SYMBOLS
+        .lines()
+        .find(|l| l.split('(').next() == Some(name))
+        .is_some_and(|l| l.split(" @").skip(1).any(|f| f == flag))
+}
 
-/// Externs that take ownership of the generic value argument (it moves into the runtime). Like
-/// `KEPT_CALLBACKS`, a parameter-level marker would replace this list.
-const OWNING_VALUES: &[&str] = &[
-    "extern:msrt_cells_new",
-    "extern:msrt_cells_put",
-    "extern:msrt_pipe_write",
-    "extern:msrt_promise_put",
-];
-
-/// Whether a native function (`extern:name`) moves its `value` argument into the runtime.
+/// Whether a native function (`extern:name`) moves its `value` argument into the runtime (`@owns`).
 pub fn owns_value(native: &str) -> bool {
-    OWNING_VALUES.contains(&native)
+    runtime_flag(native, "owns")
 }
 
-/// Whether a native function (`module/name`, or `extern:name`) keeps the function values it is given.
+/// Whether a native function (`extern:name`) keeps the function values it is given (`@keeps`).
 pub fn keeps_callbacks(native: &str) -> bool {
-    KEPT_CALLBACKS.contains(&native)
+    runtime_flag(native, "keeps")
 }
 
-/// Native types that declare fields, so they cannot be written `extern type`.
+/// Native types that declare fields, so they cannot be written `extern type`. A record in a native
+/// module is otherwise an ordinary record (`Error`), so the runtime's own `List` is named here.
 const NATIVE_WITH_FIELDS: &[&str] = &["List"];
 
 // -------------------------------------------------------------------- queries
@@ -208,9 +198,11 @@ pub fn intrinsic_operations(id: Name) -> Option<Ty> {
     world(|w| w.intrinsic.get(&id).cloned())
 }
 
-/// The native identity of a receiver operation (`Receiver id/name`).
-pub fn receiver_binding(key: &str) -> Option<Name> {
-    world(|w| w.receiver_bindings.get(key).copied())
+/// Whether `Receiver id/name` is a native operation of a standard receiver: an inherent method the
+/// standard source declares without a body. Its native identity is the method's name; lowering tells
+/// receivers apart by type.
+pub fn is_receiver_native(key: &str) -> bool {
+    world(|w| w.receiver_natives.contains(key))
 }
 
 /// Records the type variables an operation declares for itself (`Receiver id/name`).
@@ -1418,19 +1410,18 @@ impl Loader<'_> {
                 text.join("; ")
             ));
         }
-        for receiver in INTRINSIC_RECEIVERS {
+        // A primitive type's operations are the `<Type>Operations` interface `intrinsics.ms` declares.
+        for receiver in PRIMITIVE_NAMES {
             let name = format!("{receiver}Operations");
-            let Some(typ) = world(|w| w.symbols.get(&n(&name)).cloned()) else {
-                return Err(format!("missing intrinsic receiver declaration {name}"));
-            };
-            world(|w| w.intrinsic.insert(n(receiver), typ.ty()));
+            if let Some(typ) = world(|w| w.symbols.get(&n(&name)).cloned()) {
+                world(|w| w.intrinsic.insert(n(receiver), typ.ty()));
+            }
         }
         Ok(())
     }
 
-    /// Attaches native receiver bindings and their requirements.
+    /// Records the native operations of standard receivers: every bodiless inherent method.
     fn bind_receivers(&mut self) -> Result<(), String> {
-        let mut bound: HashSet<String> = HashSet::new();
         for module in self.native_sources() {
             self.scope_module(&module);
             for declaration in &module.decls {
@@ -1438,32 +1429,14 @@ impl Loader<'_> {
                     continue;
                 }
                 let symbol = self.module_symbol(&module, declaration);
-                let mut receiver = declaration.name().to_string();
-                if let Some(primitive) = receiver
-                    .strip_suffix("Operations")
-                    .filter(|p| INTRINSIC_RECEIVERS.contains(p))
-                {
-                    receiver = primitive.to_string();
+                if symbol.kind != SymKind::Type || symbol.ty().kind == Kind::Contract {
+                    continue;
                 }
                 for method in declaration.methods() {
-                    let mname = method.func.name;
-                    let sym_key = format!("{}/{}", symbol.id, mname);
-                    let native = RECEIVER_BINDINGS
-                        .iter()
-                        .find(|(r, _)| *r == receiver)
-                        .and_then(|(_, ops)| ops.iter().find(|(o, _)| *o == mname.as_str()))
-                        .map(|(_, id)| *id);
-                    if let Some(native) = native {
-                        world(|w| w.receiver_bindings.insert(sym_key.clone(), n(native)));
-                        bound.insert(format!("{receiver}.{mname}"));
+                    if method.func.body.is_empty() {
+                        let key = format!("{}/{}", symbol.id, method.func.name);
+                        world(|w| w.receiver_natives.insert(key));
                     }
-                }
-            }
-        }
-        for (receiver, ops) in RECEIVER_BINDINGS {
-            for (name, _) in ops.iter() {
-                if !bound.contains(&format!("{receiver}.{name}")) {
-                    return Err(format!("unused native receiver binding: {receiver}.{name}"));
                 }
             }
         }
@@ -1602,5 +1575,22 @@ mod tests {
     fn a_file_without_bodies_is_not_split() {
         let text = "export type Box: ...\n\nimpl Box:\n    fn native() Int: ...\n";
         assert!(halves(text).unwrap().is_none());
+    }
+}
+
+#[cfg(test)]
+mod runtime_flag_tests {
+    use super::*;
+
+    #[test]
+    fn runtime_flags_come_from_the_symbol_table() {
+        assert!(keeps_callbacks("extern:msrt_promise_start"));
+        assert!(keeps_callbacks("extern:msstd_http_serving_new"));
+        assert!(owns_value("extern:msrt_cells_put"));
+        assert!(owns_value("extern:msrt_pipe_write"));
+        assert!(!owns_value("extern:msrt_promise_start"));
+        assert!(!keeps_callbacks("extern:msrt_cells_put"));
+        assert!(!keeps_callbacks("extern:msrt_alloc"));
+        assert!(!keeps_callbacks("collections/map"));
     }
 }

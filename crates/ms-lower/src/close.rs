@@ -4,11 +4,12 @@
 use crate::Error;
 use crate::cx::HelperKey;
 use crate::func::FnLower;
+use crate::text::runtime_fn;
 use ms_check::types as ct;
 use ms_check::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Op, Param, Value};
-use ms_mir::types::{AltId, IfaceId, RecId, Ty as MTy, TyKind};
+use ms_mir::types::{AltId, IfaceId, Native, RecId, Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
 /// How a binding is closed.
@@ -46,6 +47,9 @@ enum Shape {
     Opt(MTy, CloseKind),
     /// The elements of a list, last first.
     List(MTy, CloseKind),
+    /// The values of a map, newest entry first: map, key and value types, the key and value
+    /// glue scopes, and the value's close.
+    Map(MTy, MTy, MTy, u32, u32, CloseKind),
 }
 
 /// Closes the parts `shape` names in the value stored at `ptr`, each in place.
@@ -142,6 +146,57 @@ fn emit_parts(b: &mut FuncBuilder<'_>, ptr: Value, shape: Shape) {
                 .emit(Op::ListAddrU, &[l, j], Imm::None, Some(MTy::PTR))
                 .expect("element address");
             close_at(b, &k, ep, elem);
+            b.br(header, &[]);
+            b.seal_block(header);
+            b.seal_block(exit);
+            b.switch_to(exit);
+        }
+        Shape::Map(mt, kt, vt, ks, vs, k) => {
+            let m = b
+                .emit(Op::Load, &[ptr], Imm::Ty(mt), Some(mt))
+                .expect("load");
+            let count_fn = runtime_fn(b.m, "msrt_map_slot_count", &[mt], MTy::INT);
+            let n = b.call_rt(count_fn, &[m]);
+            let desc = |b: &mut FuncBuilder<'_>, t: MTy, scope: u32| {
+                b.emit(Op::TypeDesc, &[], Imm::Ty(t.scoped(scope)), Some(MTy::PTR))
+                    .expect("typedesc")
+            };
+            let (kd, vd) = (desc(b, kt, ks), desc(b, vt, vs));
+            let slot = |b: &mut FuncBuilder<'_>| {
+                b.emit(Op::Slot, &[], Imm::Ty(MTy::PTR), Some(MTy::PTR))
+                    .expect("slot")
+            };
+            let (kp, vp) = (slot(b), slot(b));
+            let idx = b.declare_var(MTy::INT, Mode::Borrow);
+            b.def_var(idx, n);
+            let (header, probe, body, exit) =
+                (b.new_block(), b.new_block(), b.new_block(), b.new_block());
+            b.br(header, &[]);
+            b.switch_to(header);
+            let i = b.use_var(idx);
+            let zero = b.iconst(0);
+            let more = b.icmp(Cc::Gt, i, zero);
+            b.br_if(more, probe, &[], exit, &[]);
+            b.seal_block(probe);
+            b.switch_to(probe);
+            let i = b.use_var(idx);
+            let one = b.iconst(1);
+            let j = b.binop(Op::ISub, i, one);
+            b.def_var(idx, j);
+            let entry_fn = runtime_fn(
+                b.m,
+                "msrt_map_entry_ptrs",
+                &[mt, MTy::PTR, MTy::PTR, MTy::INT, MTy::PTR, MTy::PTR],
+                MTy::BOOL,
+            );
+            let live = b.call_rt(entry_fn, &[m, kd, vd, j, kp, vp]);
+            b.br_if(live, body, &[], header, &[]);
+            b.seal_block(body);
+            b.switch_to(body);
+            let vaddr = b
+                .emit(Op::Load, &[vp], Imm::Ty(MTy::PTR), Some(MTy::PTR))
+                .expect("load");
+            close_at(b, &k, vaddr, vt);
             b.br(header, &[]);
             b.seal_block(header);
             b.seal_block(exit);
@@ -311,7 +366,7 @@ impl FnLower<'_> {
     /// Closes an owned temporary that is a resource; the value after the close.
     fn close_temp(&mut self, v: Value) -> Value {
         let mt = self.b.ty(v);
-        let Some(ty) = self.cx.source_tys.get(&mt).cloned() else {
+        let Some(ty) = self.cx.source_tys.get(mt.0 as usize).cloned() else {
             return v;
         };
         // A resource, or a record or list holding one (only read in place: the checker rejects
@@ -331,7 +386,7 @@ impl FnLower<'_> {
 
     /// The close operation of a value of the MIR type `ty` holding a resource, if it is one.
     pub(crate) fn part_closer_mir(&mut self, ty: MTy) -> Result<Option<CloseKind>, Error> {
-        let Some(ct) = self.cx.source_tys.get(&ty).cloned() else {
+        let Some(ct) = self.cx.source_tys.get(ty.0 as usize).cloned() else {
             return Ok(None);
         };
         self.part_closer(&ct)
@@ -402,7 +457,7 @@ impl FnLower<'_> {
         let kind = self
             .cx
             .source_tys
-            .get(&mt)
+            .get(mt.0 as usize)
             .cloned()
             .and_then(|ty| self.part_closer(&ty).ok().flatten());
         let v = match kind {
@@ -850,27 +905,6 @@ impl FnLower<'_> {
         Ok(CloseKind::Func { fid, writes_back })
     }
 
-    /// The method `name` the standard library implements for the collection `ty`.
-    fn collection_method(&mut self, name: &str, ty: &ct::Ty) -> Result<CloseKind, Error> {
-        let found = self
-            .cx
-            .methods
-            .iter()
-            .find(|m| {
-                m.name().is_some_and(|n| n.as_str() == name)
-                    && m.decl.is_some()
-                    && ct::unify(
-                        &m.receiver,
-                        ty,
-                        &ct::variable_set(&m.variables),
-                        &mut ct::Subst::new(),
-                    )
-            })
-            .cloned()
-            .ok_or_else(|| Error::new(format!("{ty} has no {name}")))?;
-        self.own_closer(&found, ty)
-    }
-
     /// The `Closeable` implementation of a concrete type, if it has one.
     fn closeable_impl(&self, ty: &ct::Ty) -> Option<ct::MethodRef> {
         self.cx
@@ -961,10 +995,17 @@ impl FnLower<'_> {
                 Some(arg) => self.part_closer(arg)?.map(|k| Shape::List(elem, k)),
                 None => None,
             },
-            _ if ty.is(Builtin::Map) => {
+            TyKind::Obj(Native::Map, a) => {
                 let holds = ty.args.get(1).map(|v| self.part_closer(v)).transpose()?;
                 match holds.flatten() {
-                    Some(_) => return Ok(Some(self.collection_method("close_values", ty)?)),
+                    Some(k) => {
+                        let (kt, vt) = (a[0], a[1]);
+                        let ks = self.glue_scope(kt);
+                        self.cx.ensure_glue(self.b.m, kt, ks);
+                        let vs = self.glue_scope(vt);
+                        self.cx.ensure_glue(self.b.m, vt, vs);
+                        Some(Shape::Map(mt, kt, vt, ks, vs, k))
+                    }
                     None => None,
                 }
             }

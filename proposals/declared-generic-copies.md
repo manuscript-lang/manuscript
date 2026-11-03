@@ -64,7 +64,7 @@ fn first_two[T](xs: List[T]) List[T]:
 - Experiment 1: part 1 alone (in `contracts.rs::clonable`). `make conform` passed 2401/2401 and `cargo test -p ms-check` passed. A generic `dup[T: Clonable]` over a closure, an interface value and `share(5)` ran correctly.
 - Experiment 2: every `note_copied` of a type parameter without `Clonable` was logged by `ms check` over all 5037 accepted `.ms` files.
   - Exactly 24 distinct generic functions copy a type parameter.
-  - In stdlib: `ListOrder.sorted`, `MapUpdate.update`, `MapCloseValues.close_values` (copies keys), `Deque.push_front`/`push_back`, `tasks.group_end`, `process.spawn`, `net`/`processes` `serve`, `toml.locate`, `test/property.pairs`.
+  - In stdlib: `ListOrder.sorted`, `MapUpdate.update`, `Deque.push_front`/`push_back`, `tasks.group_end`, `process.spawn`, `net`/`processes` `serve`, `toml.locate`, `test/property.pairs`.
   - The rest are tests and bench sources.
 
 ## Components touched

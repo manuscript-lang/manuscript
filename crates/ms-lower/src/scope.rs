@@ -119,7 +119,7 @@ impl Cx {
         seen.push(t);
         if self
             .source_tys
-            .get(&t)
+            .get(t.0 as usize)
             .is_some_and(|c| self.mentions_extension(c))
         {
             return true;

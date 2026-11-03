@@ -21,6 +21,36 @@ pub struct Variant {
     pub evidence: Option<ms_check::types::Name>,
 }
 
+/// A dense side column indexed by a MIR type or declaration number: a vector of slots, no hashing.
+#[derive(Clone, Debug)]
+pub struct Column<T>(Vec<Option<T>>);
+
+impl<T> Default for Column<T> {
+    fn default() -> Self {
+        Column(Vec::new())
+    }
+}
+
+impl<T> Column<T> {
+    /// The value at `at`, if set.
+    pub fn get(&self, at: usize) -> Option<&T> {
+        self.0.get(at)?.as_ref()
+    }
+
+    /// Whether `at` is set.
+    pub fn contains(&self, at: usize) -> bool {
+        self.get(at).is_some()
+    }
+
+    /// Sets `at` unless it already holds a value.
+    pub fn set_if_absent(&mut self, at: usize, value: T) {
+        if self.0.len() <= at {
+            self.0.resize_with(at + 1, || None);
+        }
+        self.0[at].get_or_insert(value);
+    }
+}
+
 /// What a bound-method thunk reaches the method through.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum BoundTarget {
@@ -321,9 +351,7 @@ pub struct Cx {
     /// Bodies waiting to be lowered.
     pub queue: Vec<Job>,
     /// Records and alternatives declared `opaque type`; their text form is the type name.
-    pub opaque_tys: std::collections::HashSet<MTy>,
-    /// Alternatives declared by the standard library.
-    pub std_alts: std::collections::HashSet<usize>,
+    pub opaque_tys: Column<()>,
     /// Helper functions (formatting, equality, ...) by key.
     pub helpers: HashMap<HelperKey, FuncId>,
     /// Interface implementation tables built by lowering.
@@ -333,7 +361,7 @@ pub struct Cx {
     /// Every implementation method of the program.
     pub methods: Vec<ct::MethodRef>,
     /// The checker type behind each lowered record or alternative.
-    pub source_tys: HashMap<MTy, ct::Ty>,
+    pub source_tys: Column<ct::Ty>,
     /// The `.ms` methods of the native records, built once from the program's methods.
     pub native_ops: crate::nativerec::NativeOps,
     /// Types whose descriptor glue is registered, per implementation scope.
@@ -424,7 +452,7 @@ impl Cx {
             mods,
             callables,
             mutated,
-            source_tys: HashMap::new(),
+            source_tys: Default::default(),
             native_ops,
             glue_seen: Default::default(),
             tycache: Vec::new(),
@@ -433,7 +461,6 @@ impl Cx {
             insts: HashMap::new(),
             queue: Vec::new(),
             opaque_tys: Default::default(),
-            std_alts: Default::default(),
             helpers: HashMap::new(),
             vtables: HashMap::new(),
             contracts: HashMap::new(),
@@ -507,7 +534,7 @@ impl Cx {
         ) {
             // The checker type behind a MIR type, so cleanup can ask for its class: an
             // `Optional`, `List` or `Map` of a resource is one too.
-            self.source_tys.entry(out).or_insert_with(|| t.clone());
+            self.source_tys.set_if_absent(out.0 as usize, t.clone());
         }
         self.set_lowered(key, out);
         Ok(out)
@@ -567,7 +594,7 @@ impl Cx {
                 };
                 self.set_lowered(key, ty);
                 if t.opaque_module().is_some() {
-                    self.opaque_tys.insert(ty);
+                    self.opaque_tys.set_if_absent(ty.0 as usize, ());
                 }
                 let mut fields = Vec::new();
                 for f in ct::fields(t) {
@@ -581,12 +608,7 @@ impl Cx {
                 let (id, ty) = m.add_alt(&t.to_string(), Vec::new());
                 self.set_lowered(key, ty);
                 if t.opaque_module().is_some() {
-                    self.opaque_tys.insert(ty);
-                }
-                if t.symbol()
-                    .is_some_and(|s| s.module.as_str().starts_with("@std/"))
-                {
-                    self.std_alts.insert(id.index());
+                    self.opaque_tys.set_if_absent(ty.0 as usize, ());
                 }
                 let mut cases = Vec::new();
                 for c in ct::cases(t) {

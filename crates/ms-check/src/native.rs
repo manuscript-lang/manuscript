@@ -62,7 +62,7 @@ impl Checker {
         let m = methods[0].clone();
         let mut signature = m.ty.clone();
         if rt.is(Builtin::Optional)
-            && m.native == "core/ok_or"
+            && m.native == "ok_or"
             && let Some(defaults) = &signature.defaults
             && let Some(cause) = signature.params.first()
         {
