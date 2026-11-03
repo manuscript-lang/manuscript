@@ -4,6 +4,7 @@ use crate::Error;
 use crate::cx::{
     BoundNativeJob, Cx, Held, IfaceNativeJob, Job, JobKind, LambdaJob, NativeThunkJob,
 };
+use crate::cx::{BoundTarget, HelperKey};
 use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
@@ -233,7 +234,7 @@ impl FnLower<'_> {
                 .expect("closure");
             return Ok(Val { v, own: true });
         }
-        let key = format!("thunk:{}", fid.index());
+        let key = HelperKey::Thunk(fid);
         let thunk = match self.cx.helpers.get(&key) {
             Some(t) => *t,
             None => {
@@ -289,12 +290,11 @@ impl FnLower<'_> {
         if own.len() != ptys.len() || own == ptys {
             return Ok(None);
         }
-        let key = format!(
-            "default-thunk:{}:{}:{}",
-            fid.index(),
-            fty.0,
-            shared.is_some()
-        );
+        let key = HelperKey::DefaultThunk {
+            fid,
+            fty,
+            shared: shared.is_some(),
+        };
         Ok(Some(self.queue_default_thunk(
             key, fid, &ptys, ret, callee, subst, recv, shared,
         )))
@@ -305,7 +305,7 @@ impl FnLower<'_> {
     #[allow(clippy::too_many_arguments)]
     fn queue_default_thunk(
         &mut self,
-        key: String,
+        key: HelperKey,
         fid: FuncId,
         ptys: &[MTy],
         ret: MTy,
@@ -382,7 +382,7 @@ impl FnLower<'_> {
                 t
             });
         }
-        let key = format!("direct-default:{}", fid.index());
+        let key = HelperKey::DirectDefault(fid);
         let thunk = self.queue_default_thunk(key, fid, &ptys, ret, c, subst, None, None);
         let fty = self.b.m.types.func(ptys.clone(), ret);
         let mut slots: Vec<Option<Value>> = vec![None; ptys.len()];
@@ -439,7 +439,11 @@ impl FnLower<'_> {
     /// itself. A borrowed receiver that is not a variable in memory is stored in a frame slot the
     /// closure points to; the checker keeps the place unchanged while the value lives.
     fn method_receiver(&mut self, e: &Expr, left: &Expr, changes: bool) -> Result<Receiver, Error> {
-        let borrowed = self.cx.bound_borrows.contains(&(self.hir.data.file, e.id));
+        let borrowed = self.cx.fact(
+            self.hir.data.file,
+            e.id,
+            ms_check::ownership::Fact::BoundBorrow,
+        );
         // A variable converted to an interface on the way is read as a view of it below.
         let want = self.emty(left)?;
         if (changes || borrowed)
@@ -477,7 +481,7 @@ impl FnLower<'_> {
     /// the closure holds as the address of the variable.
     fn shared_method_thunk(
         &mut self,
-        key: String,
+        key: HelperKey,
         name: &str,
         fid: FuncId,
         params: &[MTy],
@@ -545,7 +549,12 @@ impl FnLower<'_> {
                 let held_ty = if addr { MTy::PTR } else { recv_mty };
                 // A function type that takes optionals the interface method takes plainly.
                 if self.b.m.ifaces[iface.index()].methods[k].params != params {
-                    let key = format!("iface-thunk:{}:{k}:{}:{addr}", iface.0, fty.0);
+                    let key = HelperKey::IfaceThunk {
+                        iface: iface.0,
+                        k,
+                        fty,
+                        addr,
+                    };
                     let thunk = match self.cx.helpers.get(&key) {
                         Some(t) => *t,
                         None => {
@@ -585,7 +594,11 @@ impl FnLower<'_> {
                     return Ok(Val { v, own: true });
                 }
                 if let Receiver::Addr(slot, _) = recv {
-                    let key = format!("bound-shared:iface{}:{k}:{}", iface.0, fty.0);
+                    let key = HelperKey::BoundSharedIface {
+                        iface: iface.0,
+                        k,
+                        fty,
+                    };
                     let thunk = match self.cx.helpers.get(&key) {
                         Some(t) => *t,
                         None => {
@@ -622,11 +635,7 @@ impl FnLower<'_> {
                         .expect("closure");
                     return Ok(Val { v, own: true });
                 }
-                (
-                    format!("bound:iface{}:{k}", iface.0),
-                    Err((iface, k as u32)),
-                    recv,
-                )
+                (BoundTarget::Iface(iface.0, k), Err((iface, k as u32)), recv)
             } else {
                 let im = if m.native.as_str() == "contract" {
                     self.contract_impl(m, &recv_ty)
@@ -692,7 +701,7 @@ impl FnLower<'_> {
                     let thunk = match (thunk, changes) {
                         (Some(t), _) => Some(t),
                         (None, true) => {
-                            let key = format!("bound-shared:{}:{}", fid.index(), fty.0);
+                            let key = HelperKey::BoundSharedFunc { fid, fty };
                             Some(self.shared_method_thunk(key, &name, fid, &params, ret))
                         }
                         (None, false) => None,
@@ -714,11 +723,15 @@ impl FnLower<'_> {
                         .expect("closure");
                     return Ok(Val { v, own: true });
                 }
-                (format!("bound:{}", fid.index()), Ok((fid, changes)), recv)
+                (BoundTarget::Func(fid), Ok((fid, changes)), recv)
             };
         let addr = matches!(recv, Receiver::Addr(..));
         let held = self.captured(recv);
-        let key = format!("{key}:{}:{addr}", fty.0);
+        let key = HelperKey::Bound {
+            target: key,
+            fty,
+            addr,
+        };
         let thunk = match self.cx.helpers.get(&key) {
             Some(t) => *t,
             None => {
@@ -784,7 +797,10 @@ impl FnLower<'_> {
         let TyKind::Fn(ptys, ret) = self.b.m.types.kind(fty).clone() else {
             return Err(Error::new("native function value without function type"));
         };
-        let key = format!("native-thunk:{}:{}", sym.native, fty.0);
+        let key = HelperKey::NativeThunk {
+            native: sym.native,
+            fty,
+        };
         let thunk = match self.cx.helpers.get(&key) {
             Some(f) => *f,
             None => {
@@ -807,6 +823,7 @@ impl FnLower<'_> {
                     .map(|p| ct::Param {
                         name: p.name,
                         ty: ct::sub(&p.ty, &subst),
+                        mutable: p.mutable,
                     })
                     .collect();
                 self.cx.queue.push(Job {
@@ -859,18 +876,15 @@ impl FnLower<'_> {
         let scope = self
             .evidence_of(&[self.hir.ty(left)])
             .unwrap_or(self.hir.data.file);
-        let key = format!(
-            "bound-native:{}:{}:{}:{:?}{}",
-            m.native,
-            rty.0,
-            fty.0,
+        let key = HelperKey::BoundNative {
+            native: m.native,
+            rty,
+            fty,
             held,
-            if self.cx.holds_extension(self.b.m, rty) || self.cx.holds_extension(self.b.m, fty) {
-                format!("@{scope}")
-            } else {
-                String::new()
-            }
-        );
+            scope: (self.cx.holds_extension(self.b.m, rty)
+                || self.cx.holds_extension(self.b.m, fty))
+            .then_some(scope),
+        };
         let thunk = match self.cx.helpers.get(&key) {
             Some(f) => *f,
             None => {
@@ -935,7 +949,7 @@ impl FnLower<'_> {
             Receiver::Value(v) => (self.ty_of(v.v), false),
         };
         let held_ty = if addr { MTy::PTR } else { t };
-        let key = format!("tostring-thunk:{}:{addr}", t.0);
+        let key = HelperKey::TostringThunk(t, addr);
         let thunk = match self.cx.helpers.get(&key) {
             Some(f) => *f,
             None => {
@@ -1022,6 +1036,41 @@ impl FnLower<'_> {
         )
     }
 
+    /// `unlift_param` for a value passed on to a borrowing callee: the supplied value is read
+    /// in place and only an omitted parameter's default is built, held in the returned
+    /// optional, which the caller drops once the callee has returned.
+    pub(crate) fn unlift_param_borrowed(
+        &mut self,
+        opt: Value,
+        default: &mut dyn FnMut(&mut Self) -> Result<Val, Error>,
+    ) -> Result<(Val, Value), Error> {
+        let optty = self.ty_of(opt);
+        let TyKind::Opt(inner) = self.b.m.types.kind(optty).clone() else {
+            return Err(Error::new("parameter is not optional"));
+        };
+        let has = self.b.opt_is_some(opt);
+        let holder = self.b.declare_var(optty, Mode::Own);
+        let out = self.two_ways_mode(
+            has,
+            inner,
+            Mode::Borrow,
+            &mut |s| {
+                let none = s.none_owned(optty);
+                s.b.def_var(holder, none);
+                Ok(Some(s.b.opt_get(opt)))
+            },
+            &mut |s| {
+                let d = default(s)?;
+                let d = s.owned(d);
+                let some = s.b.opt_some(d);
+                s.b.def_var(holder, some);
+                Ok(Some(s.b.opt_get(some)))
+            },
+        )?;
+        let held = self.b.use_var(holder);
+        Ok((out, held))
+    }
+
     /// A call whose callee is a function value.
     pub fn call_value(&mut self, e: &Expr, view: &CallView<'_>) -> Result<Val, Error> {
         let ExprKind::Call { callee, .. } = &e.kind else {
@@ -1041,10 +1090,23 @@ impl FnLower<'_> {
             return Err(Error::new("call of a non-function value"));
         };
         let mut slots: Vec<Option<Value>> = vec![None; ptys.len()];
+        // A `var` position gets the address of a slot holding the argument; the final value
+        // moves back after the call.
+        let mut slots_out: Vec<crate::call::VarArgument> = Vec::new();
+        let mut places: Vec<Option<Expr>> = vec![None; ptys.len()];
         for (i, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
+            }
+            let at = declared
+                .iter()
+                .position(|p| p.name == a.slot.name)
+                .unwrap_or(i);
+            if declared.get(at).is_some_and(|p| p.mutable) {
+                places[at] = Some(a.expr.clone());
+                slots[at] = Some(self.var_argument(e, at, x, Some(a.expr), &mut slots_out));
+                continue;
             }
             let x = match &a.wrap_optional {
                 Some(_) => {
@@ -1054,10 +1116,6 @@ impl FnLower<'_> {
                 }
                 None => x,
             };
-            let at = declared
-                .iter()
-                .position(|p| p.name == a.slot.name)
-                .unwrap_or(i);
             let x = self.lift_argument(x, ptys[at]);
             slots[at] = Some(self.borrow(x));
         }
@@ -1096,6 +1154,7 @@ impl FnLower<'_> {
         }
         self.at(e.pos);
         let v = self.b.call_ind(fv, &args);
+        self.restore_var_arguments(slots_out, |p| places.get(p).cloned().flatten())?;
         Ok(self.val(v, true))
     }
 }
@@ -1183,7 +1242,10 @@ fn lower_default_thunk(
             "a function value with defaults cannot change its parameters",
         ));
     }
+    // The callee borrows its arguments: a supplied value is passed as it is, and an omitted
+    // one's default lives in a holder until the callee returns.
     let mut slots: Vec<Option<Val>> = vec![None; callee.parameters.len()];
+    let mut holders: Vec<Value> = Vec::new();
     for i in 0..slots.len() {
         let v = params[i + 1];
         let declared = fl.mty(&callee.parameters[i].ty)?;
@@ -1191,10 +1253,12 @@ fn lower_default_thunk(
             Val { v, own: false }
         } else {
             let earlier = slots.clone();
-            fl.unlift_param(v, &mut |s| {
+            let (val, held) = fl.unlift_param_borrowed(v, &mut |s| {
                 let mut earlier = earlier.clone();
-                s.default_argument(&callee, i, &job.subst, &mut earlier, recv)
-            })?
+                s.default_argument(&callee, i, &job.subst, &mut earlier, recv, None)
+            })?;
+            holders.push(held);
+            val
         });
     }
     let fid = fl.instance(&callee, &job.subst)?;
@@ -1218,6 +1282,9 @@ fn lower_default_thunk(
             fl.b.call(fid, &all)
         }
     };
+    for held in holders {
+        fl.drop_value(held);
+    }
     let out = fl.val(r, true);
     fl.emit_return(Some(out));
     Ok(())
@@ -1633,6 +1700,12 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
     }
     let bindings = fl.hir.lambda_parameters(&job.expr);
     for (i, (b, v)) in bindings.iter().zip(params.iter().skip(1)).enumerate() {
+        if lam.params.get(i).is_some_and(|p| p.mutable) {
+            // A `var` parameter: the lambda owns the value it takes from the slot and puts back
+            // on return, as a named function does.
+            fl.bind_var_parameter(b, *v)?;
+            continue;
+        }
         let default = lam.params.get(i).and_then(|p| p.default.as_ref());
         // Only an extra ABI wrapper denotes omission; T itself may instantiate as Optional.
         let lifted = default.is_some()

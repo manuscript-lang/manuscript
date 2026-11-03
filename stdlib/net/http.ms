@@ -246,7 +246,7 @@ export type HttpClientOptions:
 export interface HttpExchange:
     // Ends the exchange, interrupting reads or writes in progress.
     // Later operations return Closed.
-    fn close() Unit
+    var fn close() Unit
     // Returns an owned copy of the request headers with every repeated value retained.
     fn headers() HttpHeaders
     // Returns the request method, using the Custom case for extension tokens.
@@ -260,25 +260,25 @@ export interface HttpExchange:
     fn query() String
     // Returns the next chunk of the request body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     // Reading past `max_body_bytes` returns an `Error` of kind `Failed`, and a non-positive `max_bytes` returns InvalidInput.
-    fn read(max_bytes: Int?) Bytes?!
+    var fn read(max_bytes: Int?) Bytes?!
     // Sends a whole response: the status line, `headers`, and `body` with its length known, so the response carries `Content-Length` rather than chunked framing. Requests with HEAD and statuses without a body get the head alone.
     // The rules of `send_headers` apply, `body` is bounded by `max_response_bytes`, and nothing else may be sent afterwards.
-    fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!
+    var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!
     // Sends the status line and headers once, before any body is written.
     // The status must be 200 through 599, header names cannot be `Content-Length`, `Transfer-Encoding`, or `Connection`, and header bytes are bounded by `max_header_bytes`. A second call returns InvalidInput and a closed exchange returns Closed.
-    fn send_headers(status: Int, headers: HttpHeaders) Unit!
+    var fn send_headers(status: Int, headers: HttpHeaders) Unit!
     // Switches the connection to a WebSocket after checking the `Origin` header. Requests without an Origin are accepted; otherwise it must exactly match an entry of `allowed_origins`, or, when that list is empty, match the request's own scheme and host.
     // `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be positive when given. An exchange that already sent headers or upgraded returns InvalidInput, and a request that is not a valid WebSocket upgrade returns Failed.
-    fn upgrade(
+    var fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
     ) RawWebSocket!
     // Writes one chunk of the response body and flushes it.
     // `send_headers` must come first, and writing beyond `max_response_bytes` returns an `Error` of kind `Failed`. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return InvalidInput.
-    fn write(data: String) Unit!
+    var fn write(data: String) Unit!
     // Writes one chunk of raw bytes with the same rules as write.
-    fn write_bytes(data: Bytes) Unit!
+    var fn write_bytes(data: Bytes) Unit!
 
 // Buffered request accepted by the simple HTTP server handler.
 export type HttpRequest:
@@ -324,7 +324,7 @@ impl Closeable for HttpServer:
     var fn close() Unit!:
         self.stopped = true
 
-        let _ = self.accepting.wait(timeout: 0.seconds)
+        let _ = self.accepting.wait(timeout: 0.seconds())
         return ok(unit)
 
 impl HttpServer:
@@ -414,57 +414,17 @@ fn response(raw: RawResponse) StreamingResponse:
         metadata: metadata, body: stream[Bytes](ResponseSource(raw))
     )
 
-type ExchangeBody:
-    exchange: HttpExchange
-
-impl Source[Bytes] for ExchangeBody:
-    var fn next() Bytes?!:
-        return self.exchange.read(none)
-
-    var fn close() Unit!:
-        return ok(unit)
-
-// The request body as a stream of chunks of at most 64 KiB. Reading past `max_body_bytes` is an `Error` of kind `Failed`.
-export fn body(exchange: HttpExchange) ReadStream[Bytes]:
-    return stream[Bytes](ExchangeBody(exchange))
-
-type ExchangeSink:
-    exchange: HttpExchange
-
-impl Sink[Bytes] for ExchangeSink:
-    var fn put(value: Bytes) Unit!:
-        return self.exchange.write_bytes(value)
-
-    var fn drain() Promise[Unit]:
-        return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
-
-    fn buffered() Int:
-        return 0
-
-    var fn close() Unit!:
-        return ok(unit)
-
-// Sends the status line and headers, then returns the stream the response body is written to.
-// The rules of `send_headers` apply; writing beyond `max_response_bytes` is an `Error` of kind `Failed`.
-export fn respond(
-    exchange: HttpExchange,
-    status: Int,
-    headers: HttpHeaders
-) WriteStream[Bytes]!:
-    try exchange.send_headers(status, headers)
-    return ok(writer[Bytes](ExchangeSink(exchange)))
-
 // Reads the rest of the request body into one value.
 // A body over `max_body_bytes` of the server's options returns LimitExceeded; `limit` also bounds it when given.
-export fn read_body(exchange: HttpExchange, limit: Int?) Bytes!:
+export fn read_body(var exchange: HttpExchange, limit: Int?) Bytes!:
     let first = try exchange.read()
     if let head = first:
-        return read_rest(exchange, head, limit)
+        return read_rest(var exchange, head, limit)
 
     return ok("".to_bytes())
 
 // Joins `head` with the chunks after it. A body that fits one chunk is returned without copying.
-fn read_rest(exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
+fn read_rest(var exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
     var total = head.length()
     if over_limit(total, limit): return error(
         Error("HTTP: limit exceeded", kind: LimitExceeded)
@@ -478,16 +438,11 @@ fn read_rest(exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
             Error("HTTP: limit exceeded", kind: LimitExceeded)
         )
 
-        return read_more(exchange, [head, next], total, limit)
+        return read_more(var exchange, [head, next], total, limit)
 
     return ok(head)
 
-fn read_more(
-    exchange: HttpExchange,
-    chunks: List[Bytes],
-    total: Int,
-    limit: Int?
-) Bytes!:
+fn read_more(var exchange: HttpExchange, chunks: List[Bytes], total: Int, limit: Int?) Bytes!:
     var parts = chunks
     var size = total
 
@@ -511,7 +466,7 @@ fn over_limit(total: Int, limit: Int?) Bool:
     return false
 
 // Sends `response` whole: its status and headers, then its body.
-export fn reply(exchange: HttpExchange, response: HttpResponse) Unit!:
+export fn reply(var exchange: HttpExchange, response: HttpResponse) Unit!:
     return exchange.send(response.status, response.headers, response.body)
 
 // Builds a response with a UTF-8 text body and no headers.
@@ -537,23 +492,24 @@ export fn redirect(location: String, status: Int = 303) HttpResponse!:
 
 // Adapts a handler that maps a whole request to a whole response into an exchange handler for `serve`.
 // The request body is read in full first.
-export fn buffered(handler: fn(HttpRequest) HttpResponse) fn(HttpExchange) Unit!:
-    return fn exchange: serve_buffered(handler, exchange)
+export fn buffered(handler: fn(HttpRequest) HttpResponse) fn(var HttpExchange) Unit!:
+    return fn(var exchange: HttpExchange): serve_buffered(handler, var exchange)
 
-fn serve_buffered(handler: fn(HttpRequest) HttpResponse, exchange: HttpExchange) Unit!:
-    let body = try read_body(exchange)
+fn serve_buffered(
+    handler: fn(HttpRequest) HttpResponse,
+    var exchange: HttpExchange
+) Unit!:
+    let body = try read_body(var exchange)
     let request = HttpRequest(
         method: exchange.method(), path: exchange.path(), query: exchange.query(),
         headers: exchange.headers(), body: body, protocol: exchange.protocol()
     )
-    return reply(exchange, handler(request))
+    return reply(var exchange, handler(request))
 
 // Switches the exchange's connection to a WebSocket; the rules of `HttpExchange.upgrade` apply.
 export fn upgrade(
-    exchange: HttpExchange,
-    allowed_origins: List[String],
-    subprotocols: List[String],
-    max_message_bytes: Int?
+    var exchange: HttpExchange, allowed_origins: List[String],
+    subprotocols: List[String], max_message_bytes: Int?
 ) WebSocket!:
     let raw = try exchange.upgrade(allowed_origins, subprotocols, max_message_bytes)
     return ok(web_socket_from(raw))

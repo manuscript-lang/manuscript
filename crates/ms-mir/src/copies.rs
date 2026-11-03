@@ -1,10 +1,11 @@
-//! Copies of object values. A value whose type holds a closure, interface or runtime object
-//! leaf has one owner, so lowering duplicates it only through an explicit `.clone()`; a `copy`
-//! of such a value would need a reference count. This pass lists every such `copy` so the build
-//! can report them (`MS_COPY_PROBE`) or fail on them (`MS_STRICT_COPIES`, see `make copy-check`).
-//! A copy of a `none` is exempt: it touches no object.
+//! Implicit copies of object values. A value whose type holds a closure, interface or runtime
+//! object leaf has one owner, so a program duplicates it only through a written `.clone()`
+//! (`copy 1`); any other `copy` of such a value is lowering duplicating what it should have
+//! moved or lent. This pass lists every such `copy` so the build can report them
+//! (`MS_COPY_PROBE`) or fail on them (`MS_STRICT_COPIES`, see `make copy-check`). A copy of a
+//! `none` is exempt: it touches no object.
 
-use crate::ir::{Func, Module, Op, Value};
+use crate::ir::{Func, Imm, Module, Op, Value};
 use crate::print::ty_str;
 use crate::types::{Native, Ty, TyKind};
 use std::collections::HashSet;
@@ -59,14 +60,14 @@ fn holds_object_in(m: &Module, t: Ty, seen: &mut Vec<Ty>) -> bool {
     held
 }
 
-/// Every `copy` of an object value in `m`, in function and instruction order.
+/// Every implicit `copy` of an object value in `m`, in function and instruction order.
 pub fn object_copies(m: &Module) -> Vec<CopySite> {
     let mut sites = Vec::new();
     for f in &m.funcs {
         let nones = none_values(f);
         for b in &f.blocks {
             for inst in &b.insts {
-                if inst.op != Op::Copy || nones.contains(&inst.args[0]) {
+                if inst.op != Op::Copy || inst.imm == Imm::Int(1) || nones.contains(&inst.args[0]) {
                     continue;
                 }
                 let t = f.ty(inst.args[0]);

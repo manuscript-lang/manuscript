@@ -16,6 +16,10 @@ pub(crate) struct Args {
     pub places: Vec<Option<Expr>>,
 }
 
+/// A changed argument moved into a slot for a call: its position, the slot, the value's type and
+/// the variable it was taken from (refilled after the call), if any.
+pub(crate) type VarArgument = (usize, Value, MTy, Option<usize>);
+
 impl<'a> FnLower<'a> {
     pub fn call_expr(&mut self, e: &Expr) -> Result<Val, Error> {
         let saved = self.scope_override;
@@ -211,7 +215,8 @@ impl<'a> FnLower<'a> {
                     call_line,
                 });
                 self.source_scope = scopes.len() as u32;
-                let result = self.default_argument(callee, i, subst, &mut slots, recv);
+                let result =
+                    self.default_argument(callee, i, subst, &mut slots, recv, Some(call_pos));
                 self.source_scope = parent;
                 let d = result?;
                 slots[i] = Some(d);
@@ -272,6 +277,7 @@ impl<'a> FnLower<'a> {
         subst: &Subst,
         earlier: &mut [Option<Val>],
         recv: Option<Val>,
+        call_pos: Option<ms_syntax::Pos>,
     ) -> Result<Val, Error> {
         let params = callee
             .func
@@ -292,6 +298,24 @@ impl<'a> FnLower<'a> {
             }
             return Err(Error::new(format!("missing argument {}", binding.name)));
         };
+        if is_caller_site(d) {
+            // The position of the call that omitted the argument, not of the default.
+            let pos = call_pos
+                .ok_or_else(|| Error::new("a function with a caller_site() default can only be called directly, not used as a function value"))?;
+            let file = self
+                .b
+                .m
+                .files
+                .get(self.file as usize)
+                .cloned()
+                .unwrap_or_default();
+            // As for any instruction, the enclosing statement names the site.
+            let pos = self.stmt_pos.unwrap_or(pos);
+            let v = self
+                .b
+                .str_lit(&format!("{file}:{}:{}", pos.line, pos.column));
+            return Ok(Val { v, own: false });
+        }
         // `none` in a bundled declaration carries no checked expression.
         if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") && ty.is(Builtin::Optional)
         {
@@ -373,7 +397,7 @@ impl<'a> FnLower<'a> {
         };
         let vars = self.cx.var_positions(c);
         // A changed parameter is moved into a slot the callee takes from and puts back into.
-        let mut slots_out: Vec<(usize, Value, MTy, Option<usize>)> = Vec::new();
+        let mut slots_out: Vec<VarArgument> = Vec::new();
         let mut vals: Vec<Value> = Vec::new();
         // Which borrowed arguments were owned temporaries, for a lender that hands one back whole.
         let mut owned_args: Vec<bool> = Vec::new();
@@ -424,42 +448,8 @@ impl<'a> FnLower<'a> {
                 in_place = Some((i, place, ty));
                 continue;
             }
-            // The variable's own value moves into the slot and the callee's result moves back.
-            // A variable in memory (a closure shares it) has no value to move.
-            let moved =
-                args.places
-                    .get(i)
-                    .cloned()
-                    .flatten()
-                    .and_then(|p| match self.hir.resolution(&p) {
-                        ms_check::hir::Resolution::Local(b)
-                            if !a.own && matches!(p.kind, ExprKind::Name(_)) =>
-                        {
-                            Some(b.uid)
-                        }
-                        _ => None,
-                    })
-                    .filter(|uid| {
-                        let owned = self.locals.get(uid).is_some_and(|l| {
-                            l.slot.is_none() && self.b.var_mode(l.var) == Mode::Own
-                        });
-                        owned && crate::mutation::uses_of(&self.hir, e, *uid) == 1
-                    });
-            let x = match moved {
-                Some(uid) => {
-                    // The result refills the variable right after the call, so no path reads
-                    // it empty in between.
-                    let l = self.locals[&uid];
-                    self.local_take(&l)
-                }
-                None => self.owned(a),
-            };
-            let slot = self
-                .b
-                .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(ty), Some(MTy::PTR))
-                .expect("slot");
-            self.move_into(slot, x);
-            slots_out.push((i, slot, ty, moved));
+            let place = args.places.get(i).cloned().flatten();
+            let slot = self.var_argument(e, i, a, place.as_ref(), &mut slots_out);
             vals.push(slot);
         }
         self.at(e.pos);
@@ -478,26 +468,7 @@ impl<'a> FnLower<'a> {
         } else {
             self.b.call(fid, &vals)
         };
-        for (p, slot, ty, moved) in slots_out {
-            let new = self.move_out(slot, ty);
-            if let Some(uid) = moved {
-                // The value left the variable before the call; the result refills it.
-                let l = self.locals[&uid];
-                self.local_put(&l, new);
-                continue;
-            }
-            let target = args.places.get(p).cloned().flatten();
-            match target {
-                Some(place) if self.is_place(&place) && self.place_is_owned(&place) => {
-                    let mut new = Some(new);
-                    self.place_update(&place, &mut |s, old| {
-                        s.drop_value(old);
-                        Ok(new.take().expect("single use"))
-                    })?;
-                }
-                _ => self.drop_value(new),
-            }
-        }
+        self.restore_var_arguments(slots_out, |p| args.places.get(p).cloned().flatten())?;
         if self.b.m.funcs[fid.index()].ret_borrowed {
             // A lending callee: the result points into the arguments. When one of them is a
             // temporary, the caller owns the result: the temporary itself when the callee hands
@@ -530,6 +501,96 @@ impl<'a> FnLower<'a> {
             return Ok(self.val(copy, true));
         }
         Ok(self.val(v, true))
+    }
+
+    /// Moves a changed argument into a slot the callee takes from and puts back into, and
+    /// returns the slot's address: the value a `var` position is passed. A variable that already
+    /// lives in memory (a closure shares it) is passed by its own slot and changed in place.
+    /// Every slot made here goes on `slots_out` for `restore_var_arguments` after the call.
+    pub(crate) fn var_argument(
+        &mut self,
+        e: &Expr,
+        i: usize,
+        a: Val,
+        place: Option<&Expr>,
+        slots_out: &mut Vec<VarArgument>,
+    ) -> Value {
+        let ty = self.ty_of(a.v);
+        if !a.own
+            && let Some(slot) = place
+                .filter(|p| matches!(p.kind, ExprKind::Name(_)))
+                .and_then(|p| match self.hir.resolution(p) {
+                    ms_check::hir::Resolution::Local(b) if !self.aliases.contains_key(&b.uid) => {
+                        self.locals.get(&b.uid).and_then(|l| l.slot)
+                    }
+                    _ => None,
+                })
+        {
+            return slot;
+        }
+        // The variable's own value moves into the slot and the callee's result moves back.
+        // A variable in memory (a closure shares it) has no value to move.
+        let moved = place
+            .and_then(|p| match self.hir.resolution(p) {
+                ms_check::hir::Resolution::Local(b)
+                    if !a.own && matches!(p.kind, ExprKind::Name(_)) =>
+                {
+                    Some(b.uid)
+                }
+                _ => None,
+            })
+            .filter(|uid| {
+                let owned = self
+                    .locals
+                    .get(uid)
+                    .is_some_and(|l| l.slot.is_none() && self.b.var_mode(l.var) == Mode::Own);
+                owned && crate::mutation::uses_of(&self.hir, e, *uid) == 1
+            });
+        let x = match moved {
+            Some(uid) => {
+                // The result refills the variable right after the call, so no path reads
+                // it empty in between.
+                let l = self.locals[&uid];
+                self.local_take(&l)
+            }
+            None => self.owned(a),
+        };
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(ty), Some(MTy::PTR))
+            .expect("slot");
+        self.move_into(slot, x);
+        slots_out.push((i, slot, ty, moved));
+        slot
+    }
+
+    /// After the call: the final values move out of the slots `var_argument` made, back into the
+    /// variables they came from, or into the places `place_of` names.
+    pub(crate) fn restore_var_arguments(
+        &mut self,
+        slots_out: Vec<VarArgument>,
+        place_of: impl Fn(usize) -> Option<Expr>,
+    ) -> Result<(), Error> {
+        for (p, slot, ty, moved) in slots_out {
+            let new = self.move_out(slot, ty);
+            if let Some(uid) = moved {
+                // The value left the variable before the call; the result refills it.
+                let l = self.locals[&uid];
+                self.local_put(&l, new);
+                continue;
+            }
+            match place_of(p) {
+                Some(place) if self.is_place(&place) && self.place_is_owned(&place) => {
+                    let mut new = Some(new);
+                    self.place_update(&place, &mut |s, old| {
+                        s.drop_value(old);
+                        Ok(new.take().expect("single use"))
+                    })?;
+                }
+                _ => self.drop_value(new),
+            }
+        }
+        Ok(())
     }
 
     /// Whether `e` names an exclusive borrow of another place (`if var x = ...`, `c?.f()`).
@@ -587,10 +648,12 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
+        let str_recv = matches!(self.b.m.types.kind(self.ty_of(recv.v)), TyKind::Str);
         let trim_view = match native {
-            "string/trim" => Some("msrt_string_trim_view"),
-            "string/trim_start" => Some("msrt_string_trim_start_view"),
-            "string/trim_end" => Some("msrt_string_trim_end_view"),
+            _ if !str_recv => None,
+            "trim" => Some("msrt_string_trim_view"),
+            "trim_start" => Some("msrt_string_trim_start_view"),
+            "trim_end" => Some("msrt_string_trim_end_view"),
             _ => None,
         };
         if let Some(sym) = trim_view
@@ -787,7 +850,7 @@ impl<'a> FnLower<'a> {
                     }
                     self.close_receiver(&kind, recv_expr, recv)?;
                     // The call is checked as `Unit!`: it succeeds, since a part that fails faults.
-                    let result = self.mty(&ms_check::types::test_outcome())?;
+                    let result = self.mty(&self.cx.session.test_outcome())?;
                     let TyKind::Alt(alt) = self.b.m.types.kind(result).clone() else {
                         return Err(Error::new("a close returns a Result"));
                     };
@@ -951,8 +1014,11 @@ impl<'a> FnLower<'a> {
             self.b.m.types.kind(mt).clone(),
             case,
             view.arguments.as_slice(),
-        ) && self.cx.view_wraps.contains(&(self.hir.data.file, e.id))
-        {
+        ) && self.cx.fact(
+            self.hir.data.file,
+            e.id,
+            ms_check::ownership::Fact::ViewWrap,
+        ) {
             let x = self.expr(arg.expr)?;
             if self.dead {
                 return Ok(x);
@@ -1221,4 +1287,12 @@ impl<'a> FnLower<'a> {
             }
         }
     }
+}
+
+/// Whether a default is the call `caller_site()` of `@std/test/test.ms`.
+fn is_caller_site(d: &Expr) -> bool {
+    let ExprKind::Call { callee, args } = &d.kind else {
+        return false;
+    };
+    args.is_empty() && matches!(&callee.kind, ExprKind::Name(n) if n.as_str() == "caller_site")
 }

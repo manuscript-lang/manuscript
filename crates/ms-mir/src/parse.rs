@@ -308,8 +308,6 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 m.records.push(RecordDef {
                     name,
                     fields: Vec::new(),
-                    shared_box: false,
-                    shared_guard: false,
                     native: None,
                 });
             }
@@ -998,6 +996,14 @@ fn parse_line(
         });
     }
     let imm = match info.imm {
+        // `copy 1` marks the copy a written `.clone()` lowers to.
+        ImmKind::None if op == Op::Copy && matches!(c.peek(), Some(Tok::Num(_))) => {
+            let s = c.num()?;
+            Imm::Int(s.parse().map_err(|_| ParseError {
+                line: c.line,
+                message: format!("bad integer {s}"),
+            })?)
+        }
         ImmKind::None => Imm::None,
         ImmKind::Cc => match cc {
             Some(cc) => Imm::Cc(cc),

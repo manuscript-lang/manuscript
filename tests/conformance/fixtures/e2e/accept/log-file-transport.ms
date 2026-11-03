@@ -74,9 +74,8 @@ test "a missing directory is a filesystem error":
     let missing = try expect_error(
         file_transport("{directory.path()}/missing/events.ndjson")
     )
+    try expect_equal(missing.kind, ErrorCategory.NotFound)
     try expect_equal(
-        missing,
-        Error(
-            "filesystem: file or directory not found", kind: ErrorCategory.NotFound
-        )
+        missing.message,
+        "filesystem: file or directory not found: {directory.path()}/missing/events.ndjson"
     )

@@ -46,12 +46,20 @@ fn main() {
     });
     let options = ms_clif::Options {
         llvm: Some("3"),
+        build: ms_clif::BuildOptions {
+            llvm_units: Some(1),
+            ..Default::default()
+        },
         ..Default::default()
     };
     let parts = stage("codegen", || {
         ms_clif::compile_parts(&module, &options).unwrap()
     });
-    let llvm = parts.llvm.expect("LLVM must actually emit an object");
+    let llvm = parts
+        .llvm
+        .into_iter()
+        .next()
+        .expect("LLVM must actually emit an object");
     let output = Path::new(&args[2]);
     let object = output.with_extension("clif.o");
     let llvm_object = output.with_extension("llvm.o");

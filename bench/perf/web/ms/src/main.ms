@@ -92,7 +92,7 @@ fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
     return ok(try read_file(path).wait())
 
 // The benchmark endpoints.
-fn make_handler(dir: String) fn(HttpExchange) Result[Unit, Error]:
+fn make_handler(dir: String) fn(var HttpExchange) Result[Unit, Error]:
     var text = "0123456789abcdef"
     var i = 0
 

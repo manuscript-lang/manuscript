@@ -608,6 +608,7 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
         found: Option<(Expr, Ty)>,
         scope: &'a ScopeState,
         hidden: std::collections::HashMap<NodeId, bool>,
+        session: &'a std::rc::Rc<ms_check::Session>,
     }
     impl Visitor for Calls<'_> {
         fn expr(&mut self, e: &Expr) {
@@ -664,7 +665,7 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
                 {
                     return;
                 }
-                let sig = ms_check::types::constructor_signature(&ty);
+                let sig = ms_check::types::constructor_signature(self.session, &ty);
                 self.found = Some((e.clone(), sig));
             }
         }
@@ -675,6 +676,7 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
         found: None,
         scope: &a.scope,
         hidden: std::collections::HashMap::new(),
+        session: &a.result.session,
     };
     for d in &module.decls {
         visit::walk_decl(&mut calls, d.decl());

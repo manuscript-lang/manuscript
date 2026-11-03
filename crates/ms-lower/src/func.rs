@@ -97,6 +97,10 @@ pub(crate) struct FnLower<'a> {
     /// The current position is unreachable.
     pub dead: bool,
     pub ret_ty: MTy,
+    /// In a JSON decoder: the document, the node and the type name a failure reports.
+    pub jnode: Option<(Value, Value, String)>,
+    /// Why the next JSON decoder failure happens, as `(code, text)` (see `Doc::mismatch_text`).
+    pub jwhy: Option<(i64, String)>,
     /// The body is bracketed by `depth.enter` / `depth.leave` (the optimizer removes it for non-recursive functions).
     pub counts_depth: bool,
     /// The value `return` is carrying while the scopes unwind, which a close error replaces.
@@ -168,11 +172,17 @@ impl Cx {
     }
 }
 
-/// The instance key of a callable under a substitution and variant.
-fn instance_key(c: &Callable, subst: &Subst, variant: Variant) -> InstKey {
-    let mut vars: Vec<(ct::Name, String)> =
-        subst.iter().map(|(k, v)| (*k, ct::type_key(v))).collect();
-    vars.sort_by(|a, b| a.0.as_str().cmp(b.0.as_str()).then_with(|| a.1.cmp(&b.1)));
+/// The instance key of a callable under a substitution and variant. Entries are ordered by
+/// variable name, which is unique within a substitution, so the key does not depend on the order
+/// types were first interned.
+fn instance_key(
+    tys: &mut ms_check::tytable::TyTable,
+    c: &Callable,
+    subst: &Subst,
+    variant: Variant,
+) -> InstKey {
+    let mut vars: Vec<(ct::Name, _)> = subst.iter().map(|(k, v)| (*k, tys.intern(v))).collect();
+    vars.sort_by(|a, b| a.0.as_str().cmp(b.0.as_str()));
     InstKey {
         file: c.module.file,
         node: c.id(),
@@ -223,7 +233,7 @@ impl Cx {
                 let d = c.func.decl.constant().expect("constant");
                 Ok(hir.ty(&d.value))
             }
-            CallableKind::Test => Ok(ct::test_outcome()),
+            CallableKind::Test => Ok(self.session.test_outcome()),
             _ => Err(Error::new("callable without result")),
         }
     }
@@ -246,7 +256,7 @@ impl Cx {
         subst: &Subst,
         variant: Variant,
     ) -> Result<FuncId, Error> {
-        let key = instance_key(c, subst, variant);
+        let key = instance_key(&mut self.tys, c, subst, variant);
         if let Some(id) = self.insts.get(&key) {
             return Ok(*id);
         }
@@ -283,10 +293,10 @@ impl Cx {
         // The checker keeps a `var` argument from overlapping any other argument.
         f.noalias = vars.iter().map(|&i| i as u32).collect();
         // The checker found every result a reference into the arguments.
-        f.ret_borrowed = self.lenders.contains(&(c.module.file, c.id()));
+        f.ret_borrowed = self.fact(c.module.file, c.id(), ms_check::ownership::Fact::Lender);
         // The checker found the result an interface view of the arguments: owned, dropped by
         // the caller, held as a borrow of the arguments while it lives.
-        f.ret_view = self.view_lenders.contains(&(c.module.file, c.id()));
+        f.ret_view = self.fact(c.module.file, c.id(), ms_check::ownership::Fact::ViewLender);
         // A function that returns a promise from a closure it is given keeps that closure alive.
         f.keeps_scoped =
             result.is_source_type("@std/concurrency/promise.ms", "Promise") && takes_function;
@@ -321,6 +331,7 @@ pub(crate) fn lower_program(program: &Program, options: &Options) -> Result<Modu
         .ok_or_else(|| Error::new("no main function"))?;
     let main_id = cx.function_for(&mut m, &main, &Subst::new())?;
     drain(&mut cx, &mut m)?;
+    cx.check_strict_copies()?;
     let f = &mut m.funcs[main_id.index()];
     f.linkage = Linkage::Export;
     m.entry = Some(main_id);
@@ -378,6 +389,7 @@ pub(crate) fn lower_tests(
         ids = crate::runner::bench_entries(&mut m, &ids, &per, driver);
     }
     drain(&mut cx, &mut m)?;
+    cx.check_strict_copies()?;
     m.entry = Some(crate::runner::build_runner(&mut m, &ids)?);
     Ok((m, names))
 }
@@ -451,6 +463,30 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
 }
 
 impl<'a> FnLower<'a> {
+    /// Binds a `var` parameter: `v` is the address of a slot the caller filled; the callee owns
+    /// the value it takes out and puts the final value back on return (`var_slots`).
+    pub(crate) fn bind_var_parameter(&mut self, b: &BindingRef, v: Value) -> Result<(), Error> {
+        let ty = self.mty(&b.ty)?;
+        let owned = self.needs_drop(ty);
+        let var = self
+            .b
+            .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
+        let x = self.move_out(v, ty);
+        self.b.def_var(var, x);
+        self.locals.insert(
+            b.uid,
+            Local {
+                var,
+                ty,
+                slot: None,
+                opt: false,
+            },
+        );
+        self.slotify(b.uid);
+        self.var_slots.push(VarSlot { uid: b.uid, ptr: v });
+        Ok(())
+    }
+
     pub(crate) fn new(
         cx: &'a mut Cx,
         b: FuncBuilder<'a>,
@@ -478,6 +514,8 @@ impl<'a> FnLower<'a> {
             loops: Vec::new(),
             dead: false,
             ret_ty,
+            jnode: None,
+            jwhy: None,
             counts_depth: false,
             pending_return: None,
             prologue_done: false,
@@ -541,7 +579,7 @@ impl<'a> FnLower<'a> {
     pub fn is_resource(&self, t: MTy) -> bool {
         self.cx
             .source_tys
-            .get(&t)
+            .get(t.0 as usize)
             .is_some_and(|ty| self.cx.classes.class(ty) == ms_check::ownership::Class::Resource)
     }
 
@@ -568,13 +606,57 @@ impl<'a> FnLower<'a> {
     // ----------------------------------------------------------- ownership
 
     /// An owned reference to the operand: the temporary itself, or a copy of a borrow.
+    #[track_caller]
     pub fn owned(&mut self, x: Val) -> Value {
         if x.own || !self.needs_drop(self.ty_of(x.v)) {
             return x.v;
         }
-        let t = self.ty_of(x.v);
+        if self.cx.strict_copies
+            && !matches!(self.b.defining_op(x.v), Some(Op::StrLit | Op::OptNone))
+        {
+            let at = std::panic::Location::caller();
+            let site = format!(
+                "{}:{} ({:?})",
+                at.file().rsplit('/').next().unwrap_or("?"),
+                at.line(),
+                self.b.defining_op(x.v)
+            );
+            self.cx.copy_gaps.push(site);
+        }
+        self.clone_value(x.v)
+    }
+
+    /// The payload `field` of the active `case` of the alternative `obj`, owned by the caller,
+    /// which consumes `obj`: an owned temporary hands the payload over and releases the rest; a
+    /// borrowed one is a gap in the checker's facts (`owned` records it in strict mode).
+    pub fn take_alt_field(
+        &mut self,
+        alt: ms_mir::types::AltId,
+        case: u32,
+        field: u32,
+        obj: Val,
+    ) -> Value {
+        let ty = self.b.m.alts[alt.index()].cases[case as usize].fields[field as usize].1;
+        if obj.own && self.needs_drop(ty) {
+            let p = self.b.alt_take(alt, case, field, obj.v);
+            self.b.alt_release(alt, case, 1 << field, obj.v);
+            return p;
+        }
+        let p = self.b.alt_get(alt, case, field, obj.v);
+        let o = self.owned(Val { v: p, own: false });
+        self.finish(obj);
+        o
+    }
+
+    /// The copy a written `.clone()` makes of the borrowed `v` (`copy 1`): the one copy of an
+    /// object value a program may write, which the copy sweep leaves out.
+    pub fn clone_value(&mut self, v: Value) -> Value {
+        let t = self.ty_of(v);
+        if !self.needs_drop(t) {
+            return v;
+        }
         self.b
-            .emit(Op::Copy, &[x.v], ms_mir::ir::Imm::None, Some(t))
+            .emit(Op::Copy, &[v], ms_mir::ir::Imm::Int(1), Some(t))
             .expect("copy result")
     }
 
@@ -766,7 +848,11 @@ impl<'a> FnLower<'a> {
     /// value, so the scope end drops it only on the paths that kept it.
     pub fn own_local(&mut self, uid: usize, var: ms_mir::builder::Var, ty: MTy) {
         let moved = self.needs_drop(ty) && self.cx.moves.contains_key(&uid);
-        let conditional = moved && self.cx.conditional_moves.contains(&uid);
+        let conditional = moved
+            && self
+                .cx
+                .binding_facts
+                .has(uid, ms_check::ownership::BindingFact::ConditionalMove);
         if moved && !conditional {
             // Every path moves it: the move consumes the local, and the scope drops nothing.
             self.must_move.insert(uid);
@@ -1172,30 +1258,16 @@ impl<'a> FnLower<'a> {
         };
         for (i, (b, v)) in bindings.iter().zip(params).enumerate() {
             if vars.contains(&i) {
-                // The callee owns the value it takes from the slot and puts back on return.
-                let ty = self.mty(&b.ty)?;
-                let owned = self.needs_drop(ty);
-                let var = self
-                    .b
-                    .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
-                let x = self.move_out(v, ty);
-                self.b.def_var(var, x);
-                self.locals.insert(
-                    b.uid,
-                    Local {
-                        var,
-                        ty,
-                        slot: None,
-                        opt: false,
-                    },
-                );
-                self.slotify(b.uid);
-                self.var_slots.push(VarSlot { uid: b.uid, ptr: v });
+                self.bind_var_parameter(b, v)?;
                 continue;
             }
             if owned_mask.as_ref().is_some_and(|mask| mask[i]) && self.needs_drop(self.ty_of(v)) {
                 // The caller handed the value over: the callee owns it and drops it at scope end.
-                if self.cx.implicit_closes.contains(&b.uid) {
+                if self
+                    .cx
+                    .binding_facts
+                    .has(b.uid, ms_check::ownership::BindingFact::ImplicitClose)
+                {
                     // A resource the callee keeps on some path closes on the others.
                     let cleanup = self.hir.binding_cleanup(b.uid);
                     if let Some(kind) = self.closer_opt(cleanup.as_ref(), &b.ty)? {

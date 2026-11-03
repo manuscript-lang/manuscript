@@ -6,6 +6,7 @@
 //! values. `HttpMethod` crosses as its token text.
 
 use crate::Error;
+use crate::cx::HelperKey;
 use crate::func::{FnLower, Val};
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncKind, Imm, Mode, Op, Param};
@@ -102,16 +103,20 @@ impl FnLower<'_> {
     /// The handler closure the server calls, wrapping the user's `handler`, which the checker
     /// hands over owned (`msstd_http_serving_new` keeps its callback); the serving owns the
     /// closure from here and drops it when it ends.
-    pub(crate) fn handler_env(&mut self, handler: Val) -> Result<ms_mir::ir::Value, Error> {
+    pub(crate) fn handler_env(
+        &mut self,
+        handler: Val,
+        exchange: MTy,
+    ) -> Result<ms_mir::ir::Value, Error> {
         let user_ty = self.ty_of(handler.v);
-        let TyKind::Fn(params, result) = self.b.m.types.kind(user_ty).clone() else {
+        let TyKind::Fn(_, result) = self.b.m.types.kind(user_ty).clone() else {
             return Err(Error::new("a server handler is not a function"));
         };
-        let key = format!("serve-thunk:{}", user_ty.0);
+        let key = HelperKey::ServeThunk(user_ty);
         let thunk = match self.cx.helpers.get(&key) {
             Some(t) => *t,
             None => {
-                let f = self.stream_thunk(user_ty, params[0], result)?;
+                let f = self.stream_thunk(user_ty, exchange, result)?;
                 let id = self.b.m.add_func(f);
                 self.cx.helpers.insert(key, id);
                 id
@@ -128,7 +133,8 @@ impl FnLower<'_> {
     }
 
     /// `code(closure, exchange, err) -> status`: wraps the exchange handle in its
-    /// interface, calls the handler and reports its `Error` as a status.
+    /// interface, calls the handler with the address of a slot holding that view (its
+    /// `var HttpExchange` parameter) and reports its `Error` as a status.
     fn stream_thunk(
         &mut self,
         user_ty: MTy,
@@ -169,11 +175,17 @@ impl FnLower<'_> {
         let handler =
             fl.b.emit(Op::ClosureCap, &[p[0]], Imm::Idx(0), Some(user_ty))
                 .expect("capture");
-        // The server keeps the exchange alive for the call: the handler sees a view of it (a
-        // function value borrows its arguments, so the handler cannot keep it).
+        // The server keeps the exchange alive for the call: the handler sees a view of it in a
+        // slot it may replace (middleware wraps the exchange in place); whatever the slot holds
+        // afterwards is dropped here, and a view frees nothing.
         let ex = fl.b.iface_lend(vt, p[1], exchange);
-        let r = fl.b.call_ind(handler, &[ex]);
-        fl.drop_value(ex);
+        let slot =
+            fl.b.emit(Op::Slot, &[], Imm::Ty(exchange), Some(MTy::PTR))
+                .expect("slot");
+        fl.move_into(slot, ex);
+        let r = fl.b.call_ind(handler, &[slot]);
+        let back = fl.move_out(slot, exchange);
+        fl.drop_value(back);
         let tag = fl.b.alt_tag(r);
         let ok_tag = fl.b.iconst(ok as i64);
         let is_ok = fl.b.icmp(Cc::Eq, tag, ok_tag);

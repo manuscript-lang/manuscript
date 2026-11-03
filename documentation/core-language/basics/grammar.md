@@ -48,7 +48,7 @@ DecimalLiteral = Whole, [ Fraction ], [ Exponent ], "d" ;
 
 `HexDigit` is `0`-`9`, `a`-`f` or `A`-`F`. `_` sits between two digits of an integer or of a fraction, never leading, trailing, doubled or beside the prefix, `.`, `e` or `d`; the exponent takes none.
 
-No identifier character may follow a numeric token except the `d` suffix. Leading zeros, octal (`0o`), uppercase prefixes (`0X`, `0B`), `.5`, and `1.` are rejected. `1e3` is a Float. A sign is an operator, not part of the token ([range checking](numbers-and-booleans.md)). A dot starts a fraction only before a digit, so `2.seconds` is an Int, a dot, and a member.
+No identifier character may follow a numeric token except the `d` suffix. Leading zeros, octal (`0o`), uppercase prefixes (`0X`, `0B`), `.5`, and `1.` are rejected. `1e3` is a Float. A sign is an operator, not part of the token ([range checking](numbers-and-booleans.md)). A dot starts a fraction only before a digit, so `2.seconds()` is an Int, a dot, and a method name.
 
 ## Layout tokens
 
@@ -159,14 +159,14 @@ Type          = ( NamedType | FunctionType | "(", Type, ")" ), { "?" | "!", [ Na
 NamedType     = TypePath, [ TypeArguments ] ;
 TypePath      = Name, { ".", Name } ;
 TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
-FunctionType  = "fn", "(", [ Type, { ",", Type } ], ")", Type ;
+FunctionType  = "fn", "(", [ [ "var" ], Type, { ",", [ "var" ], Type } ], ")", Type ;
 ```
 
 - A type suffix `?` is `Optional[T]`; `!` is `Result[T, Error]`, and `!E` with `E` directly after the bang is `Result[T, E]`. Suffixes apply left to right.
 - A `type` declares record fields or alternative cases, never both; its methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A nullary case is `case Ready`, without `()`. Names are unique per scope.
 - A result type follows the parameter list with no arrow (`fn double(value: Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value: Int) Int: value * 2`).
 - Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
-- Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and alternative payloads have none. Parameter names in a `Callable` type do not exist: two function types are the same when their parameter types and result type match, and calls through function values are positional. No variadics or parameter patterns.
+- Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and alternative payloads have none. Parameter names in a `Callable` type do not exist: two function types are the same when their parameter types, `var` markers and result type match, and calls through function values are positional. No variadics or parameter patterns.
 - A named function or method body may be `...` (`fn read_bytes(count: Int) Bytes: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. Interface, implementation, test, bench, and control-flow suites are nonempty.
 - Imports and declarations may interleave; order does not affect resolution. Import paths, test names, and bench names are plain literals (escapes allowed, no interpolation).
 - `export` applies to types, interfaces, and named functions, not tests, benches, or `impl` blocks.

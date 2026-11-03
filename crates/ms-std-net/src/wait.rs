@@ -185,7 +185,7 @@ pub fn blocking<I: Send + Sync + 'static, O: Send + 'static>(
     let timeout = deadline
         .remaining()
         .map_or(-1, |left| left.as_nanos().min(i64::MAX as u128) as i64);
-    ms_rt::glue::pool::run(lane, input, f, timeout)
+    ms_rt::glue::pool::run(lane, input, f, rt::within_waiter(timeout))
 }
 
 #[cfg(test)]

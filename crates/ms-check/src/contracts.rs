@@ -6,6 +6,7 @@ use crate::stdlib;
 use crate::syntax::*;
 use crate::types::Method;
 use crate::types::*;
+use crate::tytable::TyId;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use std::collections::{HashMap, HashSet};
@@ -36,15 +37,23 @@ pub(crate) enum Property {
 impl Property {
     /// The property a standard contract names, if it is one.
     pub(crate) fn of(contract: &Ty) -> Option<Property> {
-        [
-            ("Equal", Property::Equal),
-            ("Hashable", Property::Hashable),
-            ("Clonable", Property::Clonable),
-            ("Data", Property::Data),
-        ]
-        .into_iter()
-        .find(|(name, _)| contract.is_std(name))
-        .map(|(_, p)| p)
+        match contract.builtin? {
+            Builtin::Equal => Some(Property::Equal),
+            Builtin::Hashable => Some(Property::Hashable),
+            Builtin::Clonable => Some(Property::Clonable),
+            Builtin::Data => Some(Property::Data),
+            _ => None,
+        }
+    }
+
+    /// The standard contract this property is.
+    pub(crate) fn builtin(self) -> Builtin {
+        match self {
+            Property::Equal => Builtin::Equal,
+            Property::Hashable => Builtin::Hashable,
+            Property::Clonable => Builtin::Clonable,
+            Property::Data => Builtin::Data,
+        }
     }
 
     /// The standard contract's name.
@@ -61,8 +70,8 @@ impl Property {
 /// Visit state of a structural property query.
 #[derive(Default)]
 pub(crate) struct PropertyState {
-    active: HashSet<(String, Property)>,
-    completed: HashMap<(String, Property), bool>,
+    active: HashSet<(TyId, Property)>,
+    completed: HashMap<(TyId, Property), bool>,
 }
 
 /// Whether two implementations could apply to one receiver and contract.
@@ -176,7 +185,12 @@ fn instantiate_operation_variables(variables: &[Ty], bindings: &Subst) -> Vec<Ty
 }
 
 /// The operation `name` of `contract` as called on a value of type `implementor`.
-fn contract_operation(contract: &Ty, name: Name, implementor: &Ty) -> Option<MethodRef> {
+fn contract_operation(
+    session: &Rc<crate::stdlib::Session>,
+    contract: &Ty,
+    name: Name,
+    implementor: &Ty,
+) -> Option<MethodRef> {
     let def = contract.def.as_ref()?;
     let op = def
         .operations
@@ -194,7 +208,7 @@ fn contract_operation(contract: &Ty, name: Name, implementor: &Ty) -> Option<Met
         contract: Some(contract.clone()),
         ty: sub(&op.ty, &s),
         variables: instantiate_operation_variables(
-            &stdlib::operation_variables(&format!("{}/{}", contract.id, name)),
+            &session.operation_variables(&format!("{}/{}", contract.id, name)),
             &s,
         ),
         decl: op.decl.clone(),
@@ -537,7 +551,9 @@ impl Checker {
                     }
                     t.defaults = Some(Rc::new(ParameterDefaults::new(merged)));
                 }
-                let declared = stdlib::operation_variables(&format!("{}/{}", contract.id, op.name));
+                let declared = self
+                    .session
+                    .operation_variables(&format!("{}/{}", contract.id, op.name));
                 let renamed: Subst = declared
                     .iter()
                     .zip(&own)
@@ -683,7 +699,7 @@ impl Checker {
             if seen.contains(&op.name) {
                 continue;
             }
-            if contract.is(Builtin::TestHooks) {
+            if contract.is_test_hooks() {
                 // This standard lifecycle contract has no-op defaults; retain ordinary
                 // checked methods so interface calls and generic bounds use normal dispatch.
                 let decl_id = self.m().facts_mut().fresh_id();
@@ -770,6 +786,11 @@ impl Checker {
         own
     }
 
+    /// The structural identity of `t`.
+    pub(crate) fn shape(&self, t: &Ty) -> TyId {
+        self.tys.borrow_mut().shape(t)
+    }
+
     /// Whether `receiver` implements `contract`.
     pub(crate) fn implements(&self, receiver: &Ty, contract: &Ty) -> bool {
         if receiver.id == contract.id {
@@ -845,17 +866,28 @@ impl Checker {
     /// Whether the native `t` declares an infallible `clone` of its own, as an operation of its
     /// definition or as an implemented method.
     fn declares_clone(&self, t: &Ty) -> bool {
-        native_declares_clone(t)
-            || self
-                .implemented_methods(t, n("clone"))
-                .iter()
-                .any(|m| m.ty.result_ty().id == t.id)
+        if native_declares_clone(t) {
+            return true;
+        }
+        // The bounds of a generic `clone` ask again whether `t`'s element is clonable; a cycle
+        // through a recursive type is assumed clonable, as `property_in` does for `active`.
+        let key = self.shape(t);
+        if self.clone_probes.borrow().contains(&key) {
+            return true;
+        }
+        self.clone_probes.borrow_mut().push(key);
+        let found = self
+            .implemented_methods(t, n("clone"))
+            .iter()
+            .any(|m| m.ty.result_ty().id == t.id);
+        self.clone_probes.borrow_mut().pop();
+        found
     }
 
     /// Whether `t` is, or holds, a `Closeable` value. Such a value is an identity to close once,
     /// not a key to file by hash, and a set or map would drop a duplicate without closing it.
-    fn holds_resource(&self, t: &Ty, seen: &mut Vec<String>) -> bool {
-        let key = type_key(t);
+    fn holds_resource(&self, t: &Ty, seen: &mut Vec<TyId>) -> bool {
+        let key = self.shape(t);
         if seen.contains(&key) {
             return false;
         }
@@ -912,7 +944,7 @@ impl Checker {
     pub(crate) fn data_blocker(
         &self,
         t: &Ty,
-        visiting: &mut Vec<String>,
+        visiting: &mut Vec<TyId>,
         path: &mut Vec<String>,
     ) -> Option<DataBlocker> {
         let blocked = |reason: DataReason, path: &[String]| {
@@ -976,7 +1008,7 @@ impl Checker {
             // The type's own `JsonEncode` decides its JSON form, whatever its fields hold.
             return None;
         }
-        let key = type_key(t);
+        let key = self.shape(t);
         if visiting.contains(&key) {
             return None;
         }
@@ -1058,7 +1090,7 @@ impl Checker {
         {
             return false;
         }
-        let key = (type_key(t), property);
+        let key = (self.shape(t), property);
         if let Some(&r) = state.completed.get(&key) {
             return r;
         }
@@ -1069,7 +1101,7 @@ impl Checker {
         if state.active.len() > 200 {
             return false;
         }
-        state.active.insert(key.clone());
+        state.active.insert(key);
         let result = self.property_compute(t, property, state);
         state.active.remove(&key);
         state.completed.insert(key, result);
@@ -1082,8 +1114,7 @@ impl Checker {
         }
         if t.kind == Kind::Variable {
             return t.bounds().iter().any(|b| {
-                b.is_std(property.name())
-                    || (b.is(Builtin::Hashable) && property == Property::Equal)
+                b.is(property.builtin()) || (b.is(Builtin::Hashable) && property == Property::Equal)
             });
         }
         // Explicit implementations take precedence over structural data semantics.
@@ -1092,7 +1123,7 @@ impl Checker {
                 || !m
                     .contract
                     .as_ref()
-                    .is_some_and(|c| c.is_std(property.name()))
+                    .is_some_and(|c| c.is(property.builtin()))
             {
                 continue;
             }
@@ -1201,11 +1232,11 @@ impl Checker {
                 return own;
             }
         }
-        if let Some(m) = native_method(receiver, name) {
+        if let Some(m) = native_method(&self.session, receiver, name) {
             return vec![Rc::new(m)];
         }
         if receiver.kind == Kind::Contract
-            && let Some(method) = contract_operation(receiver, name, receiver)
+            && let Some(method) = contract_operation(&self.session, receiver, name, receiver)
         {
             return vec![method];
         }
@@ -1220,7 +1251,7 @@ impl Checker {
                 }
                 seen_bounds.push(b.clone());
                 // `Self` in a bound's operation is the bounded variable itself.
-                match contract_operation(&b, name, receiver) {
+                match contract_operation(&self.session, &b, name, receiver) {
                     Some(method) => result.push(method),
                     None => result.extend(self.methods(&b, name)),
                 }
@@ -1235,7 +1266,7 @@ impl Checker {
                 Property::Equal
             };
             if self.property(receiver, property, None) {
-                let contract = standard(property.name(), vec![]);
+                let contract = self.session.standard(property.name(), vec![]);
                 let mut operation = contract
                     .def
                     .as_ref()
@@ -1271,7 +1302,7 @@ impl Checker {
                 .iter()
                 .any(|m| m.ty.params.is_empty() && is_close_result(&m.ty.result_ty()));
         }
-        self.implements(t, &standard("Closeable", vec![]))
+        self.implements(t, &self.session.standard("Closeable", vec![]))
     }
 
     /// Checks every bound reachable from `t`. `seen` is keyed by pointer: a
@@ -1354,7 +1385,10 @@ impl Checker {
                 }
                 for op in def.operations.borrow().clone() {
                     self.check_declared(&op.ty, d.pos(), s.export);
-                    for v in stdlib::operation_variables(&format!("{}/{}", t.id, op.name)) {
+                    for v in self
+                        .session
+                        .operation_variables(&format!("{}/{}", t.id, op.name))
+                    {
                         for b in v.bounds() {
                             self.check_declared(&b, d.pos(), s.export);
                         }
@@ -1377,8 +1411,8 @@ impl Checker {
         }
     }
 
-    fn public(&mut self, t: &Ty, pos: Pos, seen: &mut HashSet<String>) {
-        if !seen.insert(type_key(t)) {
+    fn public(&mut self, t: &Ty, pos: Pos, seen: &mut HashSet<TyId>) {
+        if !seen.insert(self.shape(t)) {
             return;
         }
         if let Some(symbol) = t.symbol()
@@ -1460,7 +1494,11 @@ impl Checker {
 }
 
 /// A standard method that exists without an impl.
-pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
+pub(crate) fn native_method(
+    session: &Rc<crate::stdlib::Session>,
+    t: &Ty,
+    name: Name,
+) -> Option<Method> {
     let native_of =
         |native: Name, receiver: &Ty, ty: Ty, variables: Vec<Ty>, decl: Option<FuncRef>| Method {
             id: n(""),
@@ -1487,7 +1525,7 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
             t.kind,
             Kind::Record | Kind::Alternative | Kind::Primitive | Kind::Variable
         ) {
-            owner = stdlib::standard_symbol("CloneOperations")?.ty();
+            owner = session.standard_symbol("CloneOperations")?.ty();
         }
         let decl = stdlib::standard_method_declaration(&owner, name);
         return Some(native_of(
@@ -1499,37 +1537,33 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
         ));
     }
     if name == "to_string" {
-        let owner = stdlib::standard_symbol("ValueOperations")?.ty();
+        let owner = session.standard_symbol("ValueOperations")?.ty();
         let ty = owner.def.as_ref()?.operations.borrow()[0].ty.clone();
         let decl = stdlib::standard_method_declaration(&owner, name);
         return Some(native_of(name, t, ty, Vec::new(), decl));
     }
     let mut receiver = t.clone();
-    if let Some(intrinsic) = stdlib::intrinsic_operations(t.id) {
+    if let Some(intrinsic) = session.intrinsic_operations(t.id) {
         receiver = intrinsic;
     }
     let key = format!("{}/{}", receiver.id, name);
-    let binding = stdlib::receiver_binding(&key);
+    let binding = session.is_receiver_native(&key);
     let opaque_alternative = receiver.kind == Kind::Alternative
         && receiver
             .symbol()
             .is_some_and(|s| !s.native.as_str().is_empty());
-    if receiver.kind == Kind::Native
-        || !Rc::ptr_eq(&receiver, t)
-        || binding.is_some()
-        || opaque_alternative
-    {
+    if receiver.kind == Kind::Native || !Rc::ptr_eq(&receiver, t) || binding || opaque_alternative {
         let def = receiver.def.as_ref()?;
         let operations = def.operations.borrow();
         for operation in operations.iter() {
             if operation.name == name {
-                let native = binding.unwrap_or(name);
+                let native = name;
                 return Some(native_of(
                     native,
                     t,
                     sub(&operation.ty, &substitution(t)),
                     instantiate_operation_variables(
-                        &stdlib::operation_variables(&key),
+                        &session.operation_variables(&key),
                         &substitution(t),
                     ),
                     operation.decl.clone(),

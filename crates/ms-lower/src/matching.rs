@@ -120,7 +120,11 @@ impl FnLower<'_> {
         };
         let rty = self.emty(e)?;
         // A reference on every arm is joined as one: the checker holds its origins.
-        let lent = self.cx.lent_matches.contains(&(self.hir.data.file, e.id));
+        let lent = self.cx.fact(
+            self.hir.data.file,
+            e.id,
+            ms_check::ownership::Fact::LentMatch,
+        );
         let owned = self.needs_drop(rty) && !lent;
         let res = self
             .b
@@ -386,7 +390,11 @@ impl FnLower<'_> {
             }
             return Ok(());
         };
-        if self.cx.implicit_closes.contains(&b.uid) {
+        if self
+            .cx
+            .binding_facts
+            .has(b.uid, ms_check::ownership::BindingFact::ImplicitClose)
+        {
             let cty = ms_check::types::sub(&b.ty, &self.subst);
             if let Some(kind) = self.part_closer(&cty)? {
                 return self.bind_closing_kind(b, x, kind);
@@ -485,7 +493,11 @@ impl FnLower<'_> {
         if !hidden
             && !x.own
             && self.b.func_mut().ret_borrowed
-            && self.cx.view_wraps.contains(&(self.hir.data.file, e.id))
+            && self.cx.fact(
+                self.hir.data.file,
+                e.id,
+                ms_check::ownership::Fact::ViewWrap,
+            )
         {
             // The operand lends its error from this function's arguments: hand the reference on.
             let out = self.b.alt_view(ra, ret_err as u32, &[x.v]);

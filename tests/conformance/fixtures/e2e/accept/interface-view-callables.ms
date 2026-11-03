@@ -57,12 +57,13 @@ test "nested view receiver prepares once and calls later":
 test "constructor arguments retain written order and capture snapshots":
     var log = Log("")
     var value = 4
+    let snapshot = value
 
     let view: Read[Int] = OrderedReader(
         last: mark(var log, "last;", 3),
         operation: (
             fn() Int:
-                let nested = fn() Int: value
+                let nested = fn() Int: snapshot
                 return nested()
         ),
         match present(2):
@@ -78,10 +79,11 @@ test "constructor arguments retain written order and capture snapshots":
 
 test "explicit nested views and bound methods retain generic dispatch":
     var value = 5
+    let snapshot = value
 
     let view = wrap(
         fn() Int:
-            let nested = fn() Int: value
+            let nested = fn() Int: snapshot
             return nested()
     )
 

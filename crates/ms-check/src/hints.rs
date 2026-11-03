@@ -8,6 +8,7 @@ use crate::stdlib;
 use crate::types::*;
 use ms_syntax::ast::Import;
 use std::collections::HashSet;
+use std::rc::Rc;
 
 /// Returns the candidate most similar to `name`, or "" when none is near
 /// enough to be a plausible misspelling.
@@ -140,19 +141,19 @@ pub fn type_sketch(name: &str, arity: usize) -> String {
 }
 
 /// Names the standard module that exports `name`, if any.
-pub fn import_hint(name: &str) -> String {
-    if let Some(symbol) = stdlib::standard_symbol(name)
-        && stdlib::is_prelude_symbol(&symbol)
+pub fn import_hint(session: &Rc<crate::stdlib::Session>, name: &str) -> String {
+    if let Some(symbol) = session.standard_symbol(name)
+        && session.is_prelude_symbol(&symbol)
     {
         return format!(
             "; use the prelude {name} declaration directly; rename any shadowing binding or declaration"
         );
     }
-    if stdlib::checking_sources() {
+    if session.checking_sources() {
         return String::new();
     }
-    for module in stdlib::standard_module_names() {
-        if stdlib::standard_exports(module).contains_key(&n(name)) {
+    for module in session.standard_module_names() {
+        if session.standard_exports(module).contains_key(&n(name)) {
             return format!("; add: import {name} from \"{module}\"");
         }
     }
@@ -421,9 +422,9 @@ impl Checker {
     /// Explains an arity error caused by a declaration that replaced the
     /// prelude type of the same name.
     pub(crate) fn prelude_shadow_hint(&self, name: Name) -> String {
-        let prelude = stdlib::standard_symbol(name.as_str());
+        let prelude = self.session.standard_symbol(name.as_str());
         if let (Some(prelude), Some(declared)) = (prelude, self.sym(name))
-            && stdlib::is_prelude_symbol(&prelude)
+            && self.session.is_prelude_symbol(&prelude)
             && !std::rc::Rc::ptr_eq(&declared, &prelude)
         {
             return format!(
@@ -531,7 +532,7 @@ impl Checker {
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }
-        let hint = import_hint(name.as_str());
+        let hint = import_hint(&self.session, name.as_str());
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }
@@ -559,7 +560,7 @@ impl Checker {
         if let Some(def) = &receiver.def {
             names.extend(def.operations.borrow().iter().map(|o| o.name.to_string()));
         }
-        if let Some(intrinsic) = stdlib::intrinsic_operations(receiver.id)
+        if let Some(intrinsic) = self.session.intrinsic_operations(receiver.id)
             && let Some(def) = &intrinsic.def
         {
             names.extend(def.operations.borrow().iter().map(|o| o.name.to_string()));
@@ -743,7 +744,7 @@ impl Checker {
     /// Explains an unknown type.
     pub(crate) fn unknown_type_message(&self, name: Name) -> String {
         let message = format!("unknown type {name}");
-        let hint = import_hint(name.as_str());
+        let hint = import_hint(&self.session, name.as_str());
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }
@@ -772,9 +773,11 @@ impl Checker {
         let path = item.path.as_ref();
         if path.starts_with("@std/") {
             let pn = n(path);
-            if !stdlib::is_native_module(pn) && stdlib::standard_source_module(pn).is_none() {
+            if !self.session.is_native_module(pn)
+                && self.session.standard_source_module(pn).is_none()
+            {
                 let stem = |p: &str| stdlib::module_stem(p).to_string();
-                let names = stdlib::standard_module_names();
+                let names = self.session.standard_module_names();
                 let stems: Vec<String> = names.iter().map(|s| stem(s)).collect();
                 let mut hint = did_you_mean(&stem(path), &stems);
                 // The right module under another folder (`@std/json/json.ms` for `@std/data/json.ms`)
@@ -794,7 +797,8 @@ impl Checker {
                 return format!("unknown standard module {path}{hint}");
             }
             exports.extend(
-                stdlib::standard_exports(pn.as_str())
+                self.session
+                    .standard_exports(pn.as_str())
                     .keys()
                     .map(|k| k.to_string()),
             );

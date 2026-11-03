@@ -21,7 +21,7 @@ fn check(expression: &str, expected_name: &str, expected: usize, valid: bool) {
         let source = source.replace('\n', newline);
         let d = Document::new(ws.uri("signature.ms"), source.clone());
         if valid {
-            let checked = analyze(&d, &Documents::new());
+            let checked = analyze(&ms_check::Session::new(), &d, &Documents::new());
             assert!(
                 checked.diagnostics.is_empty(),
                 "{expression}: {:?}",

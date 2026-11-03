@@ -18,11 +18,11 @@ let decrement = fn(value: Int) Int:
 let result = apply(value: 3, transform: decrement)
 ```
 
-Function types name no parameters. Calls through function values are positional (a label on such a call is an error) and share the suspension and evaluation of declared functions. A named or anonymous `fn` inside a function is a local binding of a function value. Inferred immutable copies keep [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
+Function types name no parameters; `fn(var List[Int]) Unit` marks one the function changes in place ([changing parameters](#changing-parameters)). Calls through function values are positional (a label on such a call is an error) and share the suspension and evaluation of declared functions. A named or anonymous `fn` inside a function is a local binding of a function value. Inferred immutable copies keep [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
 
 ## Function type compatibility
 
-Parameter types in order and the result type are function-type identity, and compatibility is invariant. Parameter names are not part of it: `fn f(amount: Int) Int` and `fn g(value: Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
+Parameter types in order, their `var` markers, and the result type are function-type identity, and compatibility is invariant. Parameter names are not part of it: `fn f(amount: Int) Int` and `fn g(value: Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
 
 ```manuscript
 fn subtract_one(amount: Int) Int:
@@ -42,6 +42,28 @@ An anonymous function may omit parameter types when context supplies them (argum
 - A generic function must be instantiated to be a value: `identity[Int]`, not bare `identity`.
 - A bound method value has the operation's function type with the receiver bound. It borrows the receiver while it stays local, as a closure capturing it would, and takes the receiver when it is stored, returned or passed to a consuming parameter: `let find = re.find_all` keeps `re` readable, `holders.append(re.find_all)` moves `re` at its last use.
 - An anonymous function is its own boundary for `return`, `try`, `break`, and `continue`.
+
+## Changing parameters
+
+A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Unit` has type `fn(var List[Int]) Unit`. A call through the value marks the argument `var`, exactly as a direct call does, and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way. `fn(List[Int]) Unit` and `fn(var List[Int]) Unit` are different types.
+
+```manuscript
+fn push_one(var values: List[Int]) Unit:
+    values.append(1)
+
+fn apply(change: fn(var List[Int]) Unit, var values: List[Int]) Unit:
+    change(var values)
+
+fn changed() List[Int]:
+    var values: List[Int] = []
+    apply(push_one, var values)
+    apply(fn(var xs: List[Int]): xs.append(2), var values)
+    return values
+```
+
+The value travels by address, so a value with one owner (a list, a record holding one) is changed where it lives and never copied. A function with both a `var` parameter and a parameter default cannot be a function value; call it from a closure that supplies the default.
+
+A `var` parameter is the caller's value, so the function cannot move it out (`let old = values` is an error). The one exception is the right side of an assignment to the parameter itself, which refills it before the caller sees it: `values = rebuilt(values)`, or `exchange = Tap(inner: exchange, ...)` to replace an interface value with a wrapper that owns it. A [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) recovers the wrapper afterwards.
 
 <a id="snapshot-captures"></a>
 
@@ -73,7 +95,20 @@ fn total(values: List[Int]) Int:
     return sum
 ```
 
-A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. It moves a captured variable in when the closure is its last use; when the variable is used again, or is only borrowed (a parameter, a loop variable), bind a `.clone()` before the closure and capture that. A returned or stored closure cannot capture a `var` that is used again after the closure is made, because it would keep a stale copy; bind a `let` copy first (`let base = offset`) and capture that. A bound method keeps its receiver by the same rules: a method that changes its receiver (`let add = xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it or write a closure.
+A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. It moves a captured variable in when the closure is its last use; when the variable is used again, or is only borrowed (a loop variable, a `let` that borrows another value), bind a `.clone()` before the closure and capture that. A parameter the closure takes is consumed by the function, so the caller gives the value up; pass `.clone()` to keep it. A returned or stored closure cannot capture a `var` that is used again after the closure is made, because it would keep a stale copy; bind a `let` copy first (`let base = offset`) and capture that. A bound method keeps its receiver by the same rules: a method that changes its receiver (`let add = xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it or write a closure. The parameter case, with the caller keeping its list:
+
+```manuscript
+type Counter:
+    read: fn() Int
+
+fn counter(values: List[Int]) Counter:
+    return Counter(read: fn: values.length())
+
+fn total() Int:
+    let values = [1, 2]
+    let c = counter(values.clone())
+    return c.read() + values.length()
+```
 
 ## Resource captures
 

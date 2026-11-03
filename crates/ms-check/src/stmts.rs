@@ -6,6 +6,7 @@ use crate::suggestions;
 use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
+use crate::tytable::TyId;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use std::collections::HashSet;
@@ -463,7 +464,7 @@ impl Checker {
             }
         } else if t.is(Builtin::Map) {
             if t.args.len() == 2 {
-                element = standard("MapEntry", t.args.clone());
+                element = self.session.standard("MapEntry", t.args.clone());
             }
         } else if self.iterator_item(&t).is_some() {
             return self.check_iterator_for(s, name, iter, body, Vec::new());
@@ -1087,7 +1088,7 @@ impl Checker {
         body: &mut dyn FnMut(&mut Checker, &'a Arm) -> (bool, bool),
     ) -> (bool, bool) {
         let contract = info.t();
-        let mut seen: HashSet<String> = HashSet::new();
+        let mut seen: HashSet<TyId> = HashSet::new();
         let (mut wildcard, mut fall, mut breaks) = (false, false, false);
         for (index, arm) in arms.iter().enumerate() {
             self.set_arm_bindings(arm, Vec::new());
@@ -1116,7 +1117,7 @@ impl Checker {
                         if !self.implements(&t, &contract) {
                             self.type_error(arm.pos, format!("{t} does not implement {contract}"));
                         }
-                        let key = type_key(&t);
+                        let key = self.shape(&t);
                         if seen.contains(&key) || wildcard {
                             self.type_error(
                                 arm.pos,
@@ -1158,10 +1159,7 @@ impl Checker {
                     );
                 }
             }
-            let placeholder = Param {
-                name: n(""),
-                ty: target.clone().unwrap_or_else(invalid),
-            };
+            let placeholder = Param::new(n(""), target.clone().unwrap_or_else(invalid));
             self.match_binding_names(arm, &[placeholder]);
             let old = self.scope.clone();
             self.scope = Scope::new(Some(old.clone()));
@@ -1516,7 +1514,7 @@ impl Checker {
             (r.is(Builtin::List) && r.args.len() == 1) || (r.is(Builtin::Map) && r.args.len() == 2)
         });
         info.ty = match info.ty {
-            Some(t) if entries => Some(standard("Optional", vec![t])),
+            Some(t) if entries => Some(self.session.standard("Optional", vec![t])),
             Some(t) if t.is_invalid() => Some(t),
             _ => {
                 self.type_error(
@@ -1604,7 +1602,7 @@ impl Checker {
                         {
                             let t = required_type(&t);
                             result = Some(if arm.chain && !t.is(Builtin::Optional) {
-                                crate::types::standard("Optional", vec![t])
+                                self.session.standard("Optional", vec![t])
                             } else {
                                 t
                             });

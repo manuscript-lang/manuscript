@@ -4,11 +4,13 @@ use crate::{CheckOptions, checker::Checker};
 use std::sync::Arc;
 
 fn check_defaults_source(source: &str) -> (crate::syntax::ModRef, crate::checker::Program) {
-    crate::stdlib::ensure_standard();
+    let session = crate::Session::new();
+    session.ensure_standard();
     let file: Arc<str> = Arc::from("invocation_defaults.ms");
     let parsed = ms_syntax::parser::parse(&file, source).expect("valid fixture");
     let module = crate::load_module(&parsed);
-    let program = Checker::new(&CheckOptions::default()).check_modules(vec![module.clone()], None);
+    let program =
+        Checker::new(&session, &CheckOptions::default()).check_modules(vec![module.clone()], None);
     (module, program)
 }
 
@@ -121,6 +123,7 @@ fn invocation_default_metadata_survives_substitution_and_erases_recursively() {
     let params = vec![Param {
         name: cause,
         ty: primitive("Int"),
+        mutable: false,
     }];
     let plain = function_with(
         params.clone(),
@@ -155,6 +158,7 @@ fn invocation_default_metadata_survives_substitution_and_erases_recursively() {
         vec![Param {
             name: n("callback"),
             ty: marked.clone(),
+            mutable: false,
         }],
         std::rc::Rc::new(wrapper),
     );
@@ -198,12 +202,14 @@ fn sample(flag: Bool) Unit:
 
 #[test]
 fn method_defaults_fill_only_missing_type_arguments() {
-    crate::stdlib::ensure_standard();
+    let session = crate::Session::new();
+    session.ensure_standard();
     let file: Arc<str> = Arc::from("method_type_defaults.ms");
     let source = include_str!("../tests/method_type_defaults/accepted.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
     let module = crate::load_module(&module);
-    let program = Checker::new(&CheckOptions::default()).check_modules(vec![module.clone()], None);
+    let program =
+        Checker::new(&session, &CheckOptions::default()).check_modules(vec![module.clone()], None);
     assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
     let facts = module.facts();
     let mut calls = Vec::new();
@@ -245,12 +251,14 @@ fn method_defaults_fill_only_missing_type_arguments() {
 
 #[test]
 fn bound_method_partial_specialization_records_completed_arguments() {
-    crate::stdlib::ensure_standard();
+    let session = crate::Session::new();
+    session.ensure_standard();
     let file: Arc<str> = Arc::from("bound_method_defaults.ms");
     let source = include_str!("../tests/method_type_defaults/bound.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
     let module = crate::load_module(&module);
-    let program = Checker::new(&CheckOptions::default()).check_modules(vec![module.clone()], None);
+    let program =
+        Checker::new(&session, &CheckOptions::default()).check_modules(vec![module.clone()], None);
     assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
     let facts = module.facts();
     let applications: Vec<_> = facts
@@ -285,10 +293,11 @@ fn method_type_defaults_reject_unsatisfied_bounds_and_forward_references() {
             "unknown type U",
         ),
     ] {
-        crate::stdlib::ensure_standard();
+        let session = crate::Session::new();
+        session.ensure_standard();
         let file: Arc<str> = Arc::from("bad_method_defaults.ms");
         let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
-        let program = Checker::new(&CheckOptions::default())
+        let program = Checker::new(&session, &CheckOptions::default())
             .check_modules(vec![crate::load_module(&module)], None);
         assert!(
             program

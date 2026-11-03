@@ -69,6 +69,21 @@ pub struct Param {
     pub name: Name,
     /// Type.
     pub ty: Ty,
+    /// A `var` parameter: the callee changes the caller's variable in place, so a call marks the
+    /// argument `var`. Part of a function type's identity (`fn(var List[Int]) Unit`); never set
+    /// on a field.
+    pub mutable: bool,
+}
+
+impl Param {
+    /// A parameter or field passed by value.
+    pub fn new(name: Name, ty: Ty) -> Param {
+        Param {
+            name,
+            ty,
+            mutable: false,
+        }
+    }
 }
 
 /// Omission permissions and the native default that needs an invocation position.
@@ -140,8 +155,6 @@ pub enum Builtin {
     Set,
     /// `Bytes`.
     Bytes,
-    /// `Shared`.
-    Shared,
     /// `BigInt`.
     BigInt,
     /// `Decimal`.
@@ -170,8 +183,6 @@ pub enum Builtin {
     BytesBuilder,
     /// `Regex`.
     Regex,
-    /// `TestHooks`.
-    TestHooks,
 }
 
 impl Builtin {
@@ -184,7 +195,6 @@ impl Builtin {
             "Map" => Some(Builtin::Map),
             "Set" => Some(Builtin::Set),
             "Bytes" => Some(Builtin::Bytes),
-            "Shared" => Some(Builtin::Shared),
             "BigInt" => Some(Builtin::BigInt),
             "Decimal" => Some(Builtin::Decimal),
             "Error" => Some(Builtin::Error),
@@ -199,7 +209,6 @@ impl Builtin {
             "Iterable" => Some(Builtin::Iterable),
             "BytesBuilder" => Some(Builtin::BytesBuilder),
             "Regex" => Some(Builtin::Regex),
-            "TestHooks" => Some(Builtin::TestHooks),
             _ => None,
         }
     }
@@ -262,6 +271,9 @@ impl fmt::Display for Type {
             for (i, a) in self.params.iter().enumerate() {
                 if i > 0 {
                     f.write_str(", ")?;
+                }
+                if a.mutable {
+                    f.write_str("var ")?;
                 }
                 write!(f, "{}", a.ty)?;
             }
@@ -374,6 +386,11 @@ impl Type {
     /// Whether this is the built-in standard type `b`.
     pub fn is(&self, b: Builtin) -> bool {
         self.builtin == Some(b)
+    }
+
+    /// Whether this is `TestHooks` of `@std/test/test.ms`.
+    pub fn is_test_hooks(&self) -> bool {
+        self.is_source_type("@std/test/test.ms", "TestHooks")
     }
 
     /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/os/time.ms`.
@@ -831,27 +848,6 @@ pub fn with_args(t: &Ty, args: Vec<Ty>) -> Ty {
     Rc::new(r)
 }
 
-/// Standard declaration lookup is provided by the loaded standard world.
-pub fn standard(name: &str, args: Vec<Ty>) -> Ty {
-    let sym =
-        crate::stdlib::standard_symbol(name).unwrap_or_else(|| panic!("standard type {name}"));
-    with_args(&sym.ty(), args)
-}
-
-/// `Duration`, `Instant` or `Timestamp`, the records of `@std/os/time.ms`.
-pub fn time_type(name: &str) -> Ty {
-    // The module is checked on first use; its records have no fields before that.
-    crate::stdlib::standard_exports("@std/os/time.ms");
-    let sym = crate::stdlib::source_type(n("@std/os/time.ms"), n(name))
-        .unwrap_or_else(|| panic!("standard time type {name}"));
-    sym.ty()
-}
-
-/// `TestOutcome`: the implicit `Result[Unit, Error]` of a test block.
-pub fn test_outcome() -> Ty {
-    standard("Result", vec![unit(), standard("Error", vec![])])
-}
-
 /// Whether `t` is `Result[Unit, Error]`, the result of every `close`.
 pub fn is_close_result(t: &Ty) -> bool {
     t.is(Builtin::Result)
@@ -907,7 +903,7 @@ pub fn same(a: &Ty, b: &Ty) -> bool {
         }
         if a.kind == Kind::Function {
             for (p, q) in a.params.iter().zip(&b.params) {
-                if !compare(&p.ty, &q.ty, context) {
+                if p.mutable != q.mutable || !compare(&p.ty, &q.ty, context) {
                     return false;
                 }
             }
@@ -993,10 +989,12 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
         values.push(Param {
             name: p.name,
             ty: r,
+            mutable: p.mutable,
         });
         values.extend(t.params[i + 1..].iter().map(|p| Param {
             name: p.name,
             ty: sub_walk(&p.ty, bindings),
+            mutable: p.mutable,
         }));
         params = Some(values);
         break;
@@ -1113,10 +1111,7 @@ pub fn fields(t: &Ty) -> Vec<Param> {
     }
     let s = substitution(t);
     fs.iter()
-        .map(|p| Param {
-            name: p.name,
-            ty: sub(&p.ty, &s),
-        })
+        .map(|p| Param::new(p.name, sub(&p.ty, &s)))
         .collect()
 }
 
@@ -1144,10 +1139,7 @@ pub fn field_of(t: &Ty, name: Name) -> Option<Param> {
     let index = *def.field_indices.get(&name)?;
     let fs = def.fields.borrow();
     let field = fs.get(index)?;
-    Some(Param {
-        name: field.name,
-        ty: sub(&field.ty, &substitution(t)),
-    })
+    Some(Param::new(field.name, sub(&field.ty, &substitution(t))))
 }
 
 /// Alternative cases with the type arguments substituted.
@@ -1178,10 +1170,7 @@ pub fn cases(t: &Ty) -> Vec<Case> {
                 fields: c
                     .fields
                     .iter()
-                    .map(|p| Param {
-                        name: p.name,
-                        ty: sub(&p.ty, &s),
-                    })
+                    .map(|p| Param::new(p.name, sub(&p.ty, &s)))
                     .collect(),
             }
         })
@@ -1205,28 +1194,25 @@ pub fn case_of(t: &Ty, name: Name) -> Option<Case> {
         fields: c
             .fields
             .iter()
-            .map(|p| Param {
-                name: p.name,
-                ty: sub(&p.ty, &s),
-            })
+            .map(|p| Param::new(p.name, sub(&p.ty, &s)))
             .collect(),
     })
 }
 
 /// Constructor inputs and omission permissions.
-pub fn constructor_signature(t: &Ty) -> Ty {
+pub fn constructor_signature(session: &Rc<crate::stdlib::Session>, t: &Ty) -> Ty {
     let mut params = fields(t);
     if t.is(Builtin::Bytes) {
-        params = vec![Param {
-            name: n("values"),
-            ty: standard("List", vec![primitive("UInt8")]),
-        }];
+        params = vec![Param::new(
+            n("values"),
+            session.standard("List", vec![primitive("UInt8")]),
+        )];
     }
     if t.is(Builtin::Set) && t.args.len() == 1 {
-        params = vec![Param {
-            name: n("values"),
-            ty: standard("List", vec![t.args[0].clone()]),
-        }];
+        params = vec![Param::new(
+            n("values"),
+            session.standard("List", vec![t.args[0].clone()]),
+        )];
     }
     let mut defaults: HashSet<Name> = HashSet::new();
     if let Some(sym) = t.symbol()
@@ -1265,6 +1251,9 @@ fn write_type_key(key: &mut String, t: &Ty, lifted: bool) {
     if t.kind == Kind::Function {
         for p in &t.params {
             key.push('[');
+            if p.mutable {
+                key.push_str("var ");
+            }
             write_type_key(key, &p.ty, lifted);
             if lifted && t.is_lifted(p.name) {
                 key.push('=');
@@ -1314,7 +1303,7 @@ pub fn unify(pattern: &Ty, actual: &Ty, vars: &VarSet, bindings: &mut Subst) -> 
     }
     if pattern.kind == Kind::Function {
         for (p, q) in pattern.params.iter().zip(&actual.params) {
-            if !unify(&p.ty, &q.ty, vars, bindings) {
+            if p.mutable != q.mutable || !unify(&p.ty, &q.ty, vars, bindings) {
                 return false;
             }
         }

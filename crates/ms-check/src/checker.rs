@@ -1,19 +1,15 @@
 //! The checker state and the module-level passes.
 
-use crate::stdlib::{self, StdResult};
+use crate::stdlib::{Session, StdResult};
 use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
+use crate::tytable::{TyId, TyTable};
 use ms_syntax::ast::*;
 use ms_syntax::{Diagnostic, Phase, Pos};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-/// Source of `Binding::uid`. Process-wide, because the standard library is checked by its own
-/// checker and its bindings share the lowering's tables with the program's.
-static BINDING_SERIAL: AtomicUsize = AtomicUsize::new(0);
 
 /// Lexical scope of local bindings and type variables.
 pub struct Scope {
@@ -98,6 +94,8 @@ pub struct TestFixture {
 /// The result of checking: modules with facts, symbols, methods, diagnostics.
 #[derive(Default)]
 pub struct Program {
+    /// The session whose standard library the program was checked against.
+    pub session: Rc<Session>,
     /// Fixtures per module file.
     pub test_fixtures: HashMap<Name, TestFixture>,
     /// Conservative potential effects by callable id.
@@ -112,46 +110,27 @@ pub struct Program {
     pub diagnostics: Vec<Diagnostic>,
     /// Identities handed out while checking.
     pub serial: usize,
-    /// Bindings that borrow a place another binding owns, and how, for lowering. Filled when
-    /// the ownership pass ran (every program that type checks).
-    pub borrows: Rc<HashMap<usize, crate::ownership::BorrowKind>>,
-    /// Resource bindings closed implicitly when their scope ends. Filled together with `borrows`.
-    pub implicit_closes: Rc<HashSet<usize>>,
-    /// Closed resource bindings that also have an explicit `.close()` call.
-    pub explicit_closes: Rc<HashSet<usize>>,
     /// The name expressions that move a closed resource binding, by binding.
     pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
-    /// Payload bindings of a consumed match scrutinee that some path moves out.
-    pub moved_payloads: Rc<HashSet<usize>>,
     /// Every move of a whole binding, by binding: the nodes that take its value.
     pub moves: Rc<HashMap<usize, HashSet<NodeId>>>,
-    /// The moved bindings some path keeps to the end of their scope.
-    pub conditional_moves: Rc<HashSet<usize>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves: Rc<HashMap<usize, HashMap<NodeId, Vec<Name>>>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
-    /// Callables whose result is a reference into their arguments (`ownership::Ownership`).
-    pub lenders: Rc<HashSet<(Name, NodeId)>>,
-    /// Callables whose result is an owned interface view of their arguments.
-    pub view_lenders: Rc<HashSet<(Name, NodeId)>>,
-    /// Wrappers (`x?`, `ok(x)`, `error(x)`) of lent values that stay references.
-    pub view_wraps: Rc<HashSet<(Name, NodeId)>>,
-    /// Method values that stay local and borrow their receiver's place, by module file and node.
-    pub bound_borrows: Rc<HashSet<(Name, NodeId)>>,
-    /// Name expressions moving an interface view out of the local holding it.
-    pub view_moves: Rc<HashSet<(Name, NodeId)>>,
     /// Lending calls whose result the caller owns, by module file and call node.
     pub owned_lends: Rc<HashMap<(Name, NodeId), crate::ownership::OwnedLend>>,
-    /// Conditional and match expressions whose value is a reference, by module file and node.
-    pub lent_matches: Rc<HashSet<(Name, NodeId)>>,
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
     /// identity. Filled together with `borrows`.
     pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
     /// Parameters each callable consumes (moves, stores or returns), by module file and node, for
     /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
     pub consumes: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
+    /// Boolean per-node ownership facts in a dense table (`ownership::NodeFacts`).
+    pub node_facts: Rc<crate::ownership::NodeFacts>,
+    /// Boolean per-binding ownership facts in a dense table (`ownership::BindingFlags`).
+    pub binding_facts: Rc<crate::ownership::BindingFlags>,
 }
 
 /// A body-check result retained from an inference probe.
@@ -206,6 +185,8 @@ impl ImportMap {
 
 /// The checker.
 pub struct Checker {
+    /// The session this checker reads the standard library from.
+    pub(crate) session: Rc<Session>,
     /// Where the next checked expression is used, e.g. "argument 'a' of f".
     pub(crate) mismatch_context: Option<String>,
     pub(crate) scope_marker: Option<String>,
@@ -221,6 +202,11 @@ pub struct Checker {
     pub(crate) methods_by_contract: HashMap<Name, Vec<usize>>,
     pub(crate) generic_contract_methods: Vec<usize>,
     pub(crate) methods_by_name: HashMap<(Name, Name), Vec<usize>>,
+    /// Types whose own `clone` is being looked up; a recursive type meets itself through its
+    /// `List[Self]` field, whose `clone` bounds ask whether the element is clonable.
+    pub(crate) clone_probes: RefCell<Vec<TyId>>,
+    /// Type identities for the visited sets and property queries of the checks below.
+    pub(crate) tys: RefCell<TyTable>,
     pub(crate) module: Option<ModRef>,
     pub(crate) names: Names,
     pub(crate) scope: Rc<Scope>,
@@ -260,19 +246,25 @@ use crate::stdlib::PRIMITIVE_NAMES;
 
 impl Checker {
     /// A fresh checker.
-    pub fn new(options: &CheckOptions) -> Checker {
+    pub fn new(session: &Rc<Session>, options: &CheckOptions) -> Checker {
         Checker {
+            session: session.clone(),
             mismatch_context: None,
             scope_marker: options.scope_marker.clone(),
             standard_declarations: false,
             deferred_type_defaults: Vec::new(),
             id_scope: String::new(),
             group: Vec::new(),
-            p: Program::default(),
+            p: Program {
+                session: session.clone(),
+                ..Program::default()
+            },
             methods_by_receiver: HashMap::new(),
             methods_by_contract: HashMap::new(),
             generic_contract_methods: Vec::new(),
             methods_by_name: HashMap::new(),
+            clone_probes: RefCell::new(Vec::new()),
+            tys: RefCell::new(TyTable::new()),
             module: None,
             names: Rc::new(RefCell::new(HashMap::new())),
             scope: Scope::new(None),
@@ -427,8 +419,8 @@ impl Checker {
     pub(crate) fn add_symbol(&mut self, name: Name, s: SymRef, pos: Pos) {
         let existing = self.sym(name);
         if let Some(e) = &existing
-            && stdlib::is_prelude_symbol(e)
-            && !stdlib::is_prelude_symbol(&s)
+            && self.session.is_prelude_symbol(e)
+            && !self.session.is_prelude_symbol(&s)
             && e.module != self.current_file()
         {
             self.res_error(
@@ -445,7 +437,7 @@ impl Checker {
             let imported = s.module != current
                 && existing
                     .as_ref()
-                    .is_some_and(|e| !stdlib::is_prelude_symbol(e));
+                    .is_some_and(|e| !self.session.is_prelude_symbol(e));
             let message = if imported {
                 format!(
                     "import {name} collides with another {name} in this module; an import cannot be renamed, so import only one {name} here and wrap the other in a small module that exports it under a new name"
@@ -530,7 +522,8 @@ impl Checker {
         }
         self.resolve_type_bounds(&method.func.type_params, &variables);
         self.type_defaults(&method.func.type_params, &variables);
-        stdlib::set_operation_variables(format!("{owner}/{}", method.func.name), variables);
+        self.session
+            .set_operation_variables(format!("{owner}/{}", method.func.name), variables);
     }
 
     pub(crate) fn variable_scope(&self, vars: &[Ty]) -> Rc<Scope> {
@@ -546,7 +539,7 @@ impl Checker {
     /// Runs the full check over modules in dependency order. Bundled source
     /// modules the input reaches are added first.
     pub(crate) fn check_modules(mut self, modules: Vec<ModRef>, bundled: Option<Name>) -> Program {
-        let (modules, dependency_diagnostics) = stdlib::source_standard_dependencies(modules);
+        let (modules, dependency_diagnostics) = self.session.source_standard_dependencies(modules);
         self.p.diagnostics = dependency_diagnostics;
         for module in &modules {
             for d in &module.inherent {
@@ -557,7 +550,7 @@ impl Checker {
             self.p.modules = modules;
             return self.p;
         }
-        for method in stdlib::standard_implementations() {
+        for method in self.session.standard_implementations() {
             self.add_method(method);
         }
         let mut checked: Vec<ModRef> = Vec::new();
@@ -565,7 +558,7 @@ impl Checker {
             if !self.group.is_empty() && self.group.iter().any(|g| g.file == module.file) {
                 continue;
             }
-            if stdlib::is_source_module(module) && Some(module.file) != bundled {
+            if self.session.is_source_module(module) && Some(module.file) != bundled {
                 self.adopt_checked(module, bundled.is_some());
                 continue;
             }
@@ -591,9 +584,9 @@ impl Checker {
 
     fn adopt_checked(&mut self, module: &ModRef, held: bool) {
         let r: Rc<StdResult> = if held {
-            stdlib::done(module.file).expect("dependency checked")
+            self.session.done(module.file).expect("dependency checked")
         } else {
-            stdlib::ensure_source(module)
+            self.session.ensure_source(module)
         };
         self.p.symbols.insert(module.file, r.symbols.clone());
         for method in &r.methods {
@@ -711,7 +704,7 @@ impl Checker {
             let path = item.path.as_ref();
             let found: Option<SymRef> = if path.starts_with("@std/") {
                 let pn = n(path);
-                if stdlib::standard_source_module(pn).is_some() {
+                if self.session.standard_source_module(pn).is_some() {
                     let f = self
                         .p
                         .symbols
@@ -720,24 +713,27 @@ impl Checker {
                     f.filter(|f| f.module == pn)
                 } else {
                     // A file that mixes native declarations and bodies exports both halves under its own name.
-                    stdlib::standard_module_symbol(pn, item.name).or_else(|| {
-                        let twin = stdlib::import_source(item)?;
-                        if self.group.iter().any(|g| g.file == twin.file) {
-                            // The twin is checked together with this module: its symbols
-                            // are declared in this program, not yet in the shared world.
-                            return self
-                                .p
-                                .symbols
-                                .get(&twin.file)
-                                .and_then(|names| names.borrow().get(&item.name).cloned())
-                                .filter(|s| s.module == twin.file);
-                        }
-                        stdlib::ensure_source(&twin)
-                            .exports
-                            .get(&item.name)
-                            .filter(|s| s.module == twin.file)
-                            .cloned()
-                    })
+                    self.session
+                        .standard_module_symbol(pn, item.name)
+                        .or_else(|| {
+                            let twin = self.session.import_source(item)?;
+                            if self.group.iter().any(|g| g.file == twin.file) {
+                                // The twin is checked together with this module: its symbols
+                                // are declared in this program, not yet in the shared world.
+                                return self
+                                    .p
+                                    .symbols
+                                    .get(&twin.file)
+                                    .and_then(|names| names.borrow().get(&item.name).cloned())
+                                    .filter(|s| s.module == twin.file);
+                            }
+                            self.session
+                                .ensure_source(&twin)
+                                .exports
+                                .get(&item.name)
+                                .filter(|s| s.module == twin.file)
+                                .cloned()
+                        })
                 }
             } else {
                 self.imports.get(module.file, item.id).and_then(|target| {
@@ -750,9 +746,9 @@ impl Checker {
                     })
                 })
             };
-            let hidden = stdlib::is_internal(path) && !module.file.starts_with("@std/");
+            let hidden = crate::stdlib::is_internal(path) && !module.file.starts_with("@std/");
             // An internal module declares the natives of its host and names the host's private types.
-            let host = stdlib::is_internal(module.file.as_str());
+            let host = crate::stdlib::is_internal(module.file.as_str());
             let usable = found
                 .as_ref()
                 .filter(|f| (f.export || host) && !hidden)
@@ -775,7 +771,7 @@ impl Checker {
                 });
                 continue;
             };
-            if stdlib::is_prelude_symbol(&found) {
+            if self.session.is_prelude_symbol(&found) {
                 self.redundant_prelude_import(module, item);
             }
             self.add_symbol(item.name, found, item.name_pos);
@@ -818,8 +814,10 @@ impl Checker {
             let name = d.name();
             if matches!(&d.decl().kind, DeclKind::Record(r) if r.external) {
                 // An opaque runtime type: the loader registered its canonical symbol.
-                let canonical = stdlib::is_source_module(module)
-                    .then(|| stdlib::standard_symbol(name.as_str()))
+                let canonical = self
+                    .session
+                    .is_source_module(module)
+                    .then(|| self.session.standard_symbol(name.as_str()))
                     .flatten()
                     .filter(|s| s.decl.as_ref().is_some_and(|sd| sd.same(d)));
                 match canonical {
@@ -833,8 +831,10 @@ impl Checker {
                 DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
             ) {
                 // A bundled module's exported types were declared when it was registered.
-                let predeclared = stdlib::is_source_module(module)
-                    .then(|| stdlib::source_type(module.file, name))
+                let predeclared = self
+                    .session
+                    .is_source_module(module)
+                    .then(|| self.session.source_type(module.file, name))
                     .flatten()
                     .filter(|s| s.decl.as_ref().is_some_and(|sd| sd.same(d)));
                 if let Some(s) = predeclared {
@@ -1084,7 +1084,7 @@ impl Checker {
                 self.check_field_defaults(d, &s);
             }
             if let DeclKind::Interface(i) = &d.decl().kind {
-                if i.methods.is_empty() && !stdlib::is_source_module(module) {
+                if i.methods.is_empty() && !self.session.is_source_module(module) {
                     self.type_error(
                         d.pos(),
                         "an interface declares at least one operation; only the standard library declares a property without operations, like `Data`",
@@ -1104,7 +1104,7 @@ impl Checker {
                         let old = self.scope.clone();
                         let mut vars = self.sym(i.name).map(|s| s.variables()).unwrap_or_default();
                         if let Some(symbol) = self.sym(i.name) {
-                            vars.extend(stdlib::operation_variables(&format!(
+                            vars.extend(self.session.operation_variables(&format!(
                                 "{}/{}",
                                 symbol.ty().id,
                                 method.func.name
@@ -1116,7 +1116,7 @@ impl Checker {
                         let is_none =
                             matches!(&default.kind, ExprKind::Name(nm) if nm.as_str() == "none");
                         // Bundled interfaces are implemented by the runtime, which fills any default.
-                        let bundled = stdlib::is_source_module(module);
+                        let bundled = self.session.is_source_module(module);
                         if !bundled && (typ.id != "@std/Optional" || !is_none) {
                             self.type_error(
                                 param.pos,
@@ -1150,7 +1150,7 @@ impl Checker {
                 DeclKind::Test(_) => {
                     self.check_function(
                         &FuncRef::of_decl(d.clone()),
-                        &function(Vec::new(), test_outcome()),
+                        &function(Vec::new(), self.session.test_outcome()),
                         &[],
                         None,
                     );
@@ -1218,7 +1218,7 @@ impl Checker {
         let b = Rc::new(Binding {
             name,
             id: n(&format!("{id}_{name}")),
-            uid: BINDING_SERIAL.fetch_add(1, Ordering::Relaxed) + 1,
+            uid: self.session.next_binding(),
             ty: t,
             mutable,
             decl: pos,
@@ -1387,7 +1387,11 @@ impl Checker {
     /// accepts, `Unit` results, and `Result`s whose error cases carry a code and a message.
     fn check_extern_signature(&mut self, name: &str, f: &ms_syntax::ast::Func, t: &Ty, pos: Pos) {
         // Bundled modules cross any type the runtime defines a convention for; lowering rejects the rest.
-        if self.module.as_ref().is_some_and(stdlib::is_source_module) {
+        if self
+            .module
+            .as_ref()
+            .is_some_and(|m| self.session.is_source_module(m))
+        {
             return;
         }
         if name.starts_with("msrt_") || name.starts_with("msstd_") {
@@ -1477,7 +1481,11 @@ impl Checker {
                 );
             }
             let ty = self.resolve(p.ty.as_ref());
-            result.push(Param { name: p.name, ty });
+            result.push(Param {
+                name: p.name,
+                ty,
+                mutable: p.mutable,
+            });
         }
         result
     }
@@ -1680,7 +1688,7 @@ impl Checker {
             return;
         }
         let result = t.result_ty();
-        let hooks = standard("TestHooks", vec![]);
+        let hooks = self.session.test_hooks();
         if !matches!(result.kind, Kind::Record | Kind::Alternative)
             || !self.implements(&result, &hooks)
         {
@@ -1721,12 +1729,13 @@ impl Checker {
             }
         }
         // `a..b` is parsed as a call of `..`, which is always the standard `range`.
-        if let Some(range) =
-            stdlib::standard_module_symbol(n("@std/collections/collections.ms"), n("range"))
+        if let Some(range) = self
+            .session
+            .standard_module_symbol(n("@std/collections/collections.ms"), n("range"))
         {
             self.names.borrow_mut().insert(n(".."), range);
         }
-        for (path, name) in stdlib::STANDARD_PRELUDE_FUNCTIONS {
+        for (path, name) in crate::stdlib::STANDARD_PRELUDE_FUNCTIONS {
             let nm = n(name);
             let pn = n(path);
             let explicit = m
@@ -1738,10 +1747,11 @@ impl Checker {
                 continue;
             }
             // The function has a body, so it lives in the module's source twin.
-            let import = stdlib::prelude_function_import(path, name);
-            let found = stdlib::standard_module_symbol(pn, nm).or_else(|| {
-                let twin = stdlib::import_source(&import)?;
-                stdlib::ensure_source(&twin)
+            let import = crate::stdlib::prelude_function_import(path, name);
+            let found = self.session.standard_module_symbol(pn, nm).or_else(|| {
+                let twin = self.session.import_source(&import)?;
+                self.session
+                    .ensure_source(&twin)
                     .exports
                     .get(&nm)
                     .filter(|s| s.module == twin.file)
@@ -1751,9 +1761,9 @@ impl Checker {
                 self.names.borrow_mut().insert(nm, symbol);
             }
         }
-        for name in stdlib::STANDARD_PRELUDE_NAMES {
+        for name in crate::stdlib::STANDARD_PRELUDE_NAMES {
             let nm = n(name);
-            let Some(symbol) = stdlib::standard_symbol(name) else {
+            let Some(symbol) = self.session.standard_symbol(name) else {
                 continue;
             };
             if symbol.module == m.file {

@@ -6,6 +6,7 @@
 //! and a value and returns the node id, or -1 for a value without a JSON form.
 
 use crate::Error;
+use crate::cx::HelperKey;
 use crate::cx::{Cx, Job, JobKind};
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
@@ -72,11 +73,10 @@ impl Cx {
         t: &ct::Ty,
         encode: bool,
     ) -> Result<FuncId, Error> {
-        let key = format!(
-            "json-{}:{}",
-            if encode { "enc" } else { "dec" },
-            ct::type_key(t)
-        );
+        let key = HelperKey::Json {
+            encode,
+            ty: self.tys.shape(t),
+        };
         if let Some(f) = self.helpers.get(&key) {
             return Ok(*f);
         }
@@ -184,6 +184,19 @@ impl FnLower<'_> {
 
     /// Ends the function with `none` (the document does not fit the type).
     fn jfail(&mut self) {
+        let why = self.jwhy.take();
+        // A child decoder already recorded the reason (`code` -1): the parent adds nothing.
+        if let Some((doc, id, ty)) = self.jnode.clone()
+            && why.as_ref().is_none_or(|w| w.0 >= 0)
+        {
+            let (code, text) = why.unwrap_or((0, ty));
+            let c = self.b.iconst(code);
+            let t = self.b.str_lit(&text);
+            let args = [doc, id, c, t];
+            // Cold path: the error message reads it back (`msstd_json_mismatch_text`).
+            self.call_runtime("msstd_json_mismatch", &args, MTy::UNIT)
+                .expect("mismatch call");
+        }
         let n = self.none_owned(self.ret_ty);
         self.b.ret(Some(n));
     }
@@ -210,7 +223,9 @@ impl FnLower<'_> {
         let k = self.jkind(doc, id)?;
         let want = self.b.iconst(kind);
         let ok = self.b.icmp(Cc::Eq, k, want);
+        self.jwhy = Some((1, kind_name(kind).to_string()));
         self.jrequire(ok, &[], &[]);
+        self.jwhy = None;
         Ok(())
     }
 
@@ -225,11 +240,9 @@ impl FnLower<'_> {
         let ok = self.b.opt_is_some(r);
         let mut all = drops.to_vec();
         all.push(r);
+        self.jwhy = Some((-1, String::new()));
         self.jrequire(ok, &all, vars);
-        let x = self.b.opt_get(r);
-        let owned = self.owned(Val { v: x, own: false });
-        self.drop_value(r);
-        owned
+        self.b.opt_unbox(r)
     }
 
     fn jdecode_call(
@@ -297,6 +310,7 @@ impl FnLower<'_> {
     pub(crate) fn lower_decoder(&mut self, t: &ct::Ty) -> Result<(), Error> {
         let p = self.b.params();
         let (doc, id, strict) = (p[0], p[1], p[2]);
+        self.jnode = Some((doc, id, t.to_string()));
         let mt = self.jmty(t)?;
         if t.is_source_type("@std/data/json.ms", "JsonValue") {
             return self.jdecode_tree(t, mt, doc, id, strict);
@@ -401,6 +415,7 @@ impl FnLower<'_> {
             self.b.switch_to(no);
             let r = self.jdecode_call(&t.args[0], doc, id, strict)?;
             let ok = self.b.opt_is_some(r);
+            self.jwhy = Some((-1, String::new()));
             self.jrequire(ok, &[r], &[]);
             // The inner decoder's `some(x)` is already the `Optional` value.
             self.jfinish(r);
@@ -461,9 +476,10 @@ impl FnLower<'_> {
         }
         if t.is(Builtin::Set) {
             self.jexpect_kind(doc, id, KIND_ARRAY)?;
-            let lt = self
-                .cx
-                .lower_ty(self.b.m, &ct::standard("List", vec![t.args[0].clone()]))?;
+            let lt = self.cx.lower_ty(
+                self.b.m,
+                &self.cx.session.standard("List", vec![t.args[0].clone()]),
+            )?;
             let l = self.jdecode_items(&t.args[0], lt, doc, id, strict)?;
             let mark = self.temps.len();
             let set = self.set_from_list(Val { v: l, own: true }, mt)?;
@@ -705,7 +721,9 @@ impl FnLower<'_> {
         self.drop_value(list);
         let zero = self.b.iconst(0);
         let none_unknown = self.b.icmp(Cc::Eq, unknown, zero);
+        self.jwhy = Some((3, String::new()));
         self.jrequire(none_unknown, &[], &[]);
+        self.jwhy = None;
         self.b.br(cont, &[]);
         self.b.seal_block(cont);
         self.b.switch_to(cont);
@@ -746,6 +764,7 @@ impl FnLower<'_> {
                         let x = self.b.use_var(*v);
                         self.drop_value(x);
                     }
+                    self.jwhy = Some((2, f.name.clone()));
                     self.jfail();
                 }
             }
@@ -812,7 +831,9 @@ impl FnLower<'_> {
         let payload = self.take_slot(slot, MTy::INT);
         let zero = self.b.iconst(0);
         let known = self.b.icmp(Cc::Ge, idx, zero);
+        self.jwhy = Some((4, String::new()));
         self.jrequire(known, &[], &[]);
+        self.jwhy = None;
         let blocks: Vec<_> = cases.iter().map(|_| self.b.new_block()).collect();
         let other = self.b.new_block();
         let arms: Vec<(i64, _)> = blocks
@@ -1161,13 +1182,14 @@ impl FnLower<'_> {
     }
 
     /// The `to_json` of the type's `JsonEncode` implementation, when it has one.
-    fn json_encode_impl(&self, t: &ct::Ty) -> Option<Rc<ms_check::hir::Callable>> {
-        let key = ct::type_key(t);
+    fn json_encode_impl(&mut self, t: &ct::Ty) -> Option<Rc<ms_check::hir::Callable>> {
+        let key = self.cx.tys.shape(t);
+        let tys = &mut self.cx.tys;
         let m = self.cx.methods.iter().find(|m| {
             m.contract
                 .as_ref()
                 .is_some_and(|c| c.is_source_type("@std/data/json.ms", "JsonEncode"))
-                && ct::type_key(&m.receiver) == key
+                && tys.shape(&m.receiver) == key
         })?;
         let decl = m.decl.as_ref()?;
         self.callable_of_decl(m.module, Some(decl.id())).ok()
@@ -1463,21 +1485,22 @@ impl FnLower<'_> {
                 let m = s.b.iconst(0xffff_ffff);
                 let root = s.b.binop(Op::And, raw, m);
                 let r = s.jdecode_call(t, doc, root, strict)?;
-                s.drop_value(doc);
                 let good = s.b.opt_is_some(r);
                 let v = s.two_ways(
                     good,
                     rty,
                     &mut |s| {
-                        // Dropping `r` beside the copy lets the optimizer move the payload out.
-                        let x = s.b.opt_get(r);
-                        let x = s.owned(Val { v: x, own: false });
-                        s.drop_value(r);
+                        // The decoded value moves out of the optional.
+                        let x = s.b.opt_unbox(r);
+                        s.drop_value(doc);
                         Ok(Some(s.b.alt_new(ra, ok as u32, &[x])))
                     },
                     &mut |s| {
                         s.drop_value(r);
-                        let e = s.json_error(ra, err, "InvalidData")?;
+                        let why =
+                            s.call_runtime("msstd_json_mismatch_text", &[doc, root], MTy::STR)?;
+                        s.drop_value(doc);
+                        let e = s.json_error(ra, err, "InvalidData", Some(why))?;
                         Ok(Some(e))
                     },
                 )?;
@@ -1494,7 +1517,7 @@ impl FnLower<'_> {
     /// `ctor(kind, payload, out)` moves the payload (`Bool` byte, `String`, list or map) into a
     /// new value of the case of that node kind written at `out`.
     fn json_tree_ctor(&mut self, t: &ct::Ty, mt: MTy) -> Result<FuncId, Error> {
-        let key = format!("json-tree:{}", ct::type_key(t));
+        let key = HelperKey::JsonTree(self.cx.tys.shape(t));
         if let Some(f) = self.cx.helpers.get(&key) {
             return Ok(*f);
         }
@@ -1576,7 +1599,7 @@ impl FnLower<'_> {
     /// (a list or a map, whose members the runtime visits next). The one dispatch on the case
     /// is the thunk's; the runtime loop has none.
     fn json_tree_view(&mut self, t: &ct::Ty, mt: MTy) -> Result<FuncId, Error> {
-        let key = format!("json-tree-view:{}", ct::type_key(t));
+        let key = HelperKey::JsonTreeView(self.cx.tys.shape(t));
         if let Some(f) = self.cx.helpers.get(&key) {
             return Ok(*f);
         }
@@ -1669,6 +1692,7 @@ impl FnLower<'_> {
         ra: ms_mir::types::AltId,
         err: usize,
         case: &str,
+        detail: Option<Value>,
     ) -> Result<Value, Error> {
         let et = self.b.m.alts[ra.index()].cases[err].fields[0].1;
         let TyKind::Rec(er) = self.b.m.types.kind(et).clone() else {
@@ -1679,11 +1703,16 @@ impl FnLower<'_> {
         } else {
             "invalid input"
         };
-        let text = self.lit(&format!("JSON: {words}")).v;
-        let text = self.owned(Val {
-            v: text,
-            own: false,
-        });
+        let text = match detail {
+            Some(text) => text,
+            None => {
+                let text = self.lit(&format!("JSON: {words}")).v;
+                self.owned(Val {
+                    v: text,
+                    own: false,
+                })
+            }
+        };
         let e = self.error_record(er, case, text, None)?;
         Ok(self.b.alt_new(ra, err as u32, &[e]))
     }
@@ -1806,11 +1835,23 @@ impl FnLower<'_> {
                     .v,
                 ))
             },
-            &mut |s| Ok(Some(s.json_error(ra, err, "InvalidData")?)),
+            &mut |s| Ok(Some(s.json_error(ra, err, "InvalidData", None)?)),
         )?;
         let writer = self.b.use_var(wvar);
         self.drop_value(writer);
         Ok(out)
+    }
+}
+
+/// The JSON name of a node kind.
+fn kind_name(kind: i64) -> &'static str {
+    match kind {
+        KIND_NULL => "null",
+        KIND_BOOL => "boolean",
+        KIND_NUMBER => "number",
+        KIND_STRING => "string",
+        KIND_ARRAY => "array",
+        _ => "object",
     }
 }
 

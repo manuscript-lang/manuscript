@@ -16,7 +16,7 @@ fn labels(source: &str, line: usize, character: usize) -> Vec<String> {
     let ws = Workspace::new("editing-completion");
     let d = Document::new(ws.uri("case.ms"), source);
     let at = Position { line, character };
-    completion_at(&d, &Documents::new(), at, false)
+    completion_at(&ms_check::Session::new(), &d, &Documents::new(), at, false)
         .expect("completion")
         .into_iter()
         .filter_map(|item| {
@@ -120,7 +120,7 @@ fn apply(source: &str, action: &Json) -> String {
 fn actions(source: &str, only: &str) -> (Document, Vec<Json>) {
     let ws = Workspace::new("editing-actions");
     let d = Document::new(ws.uri("main.ms"), source);
-    let checked = analyze(&d, &Documents::new());
+    let checked = analyze(&ms_check::Session::new(), &d, &Documents::new());
     let whole = Range {
         start: Position::default(),
         end: text::position(source, source.len()),
@@ -194,7 +194,7 @@ fn rename_edit(uri: &str) -> Json {
     };
     let mut docs = Documents::new();
     docs.insert(d.uri.clone(), d.clone());
-    let checked = analyze(&d, &docs);
+    let checked = analyze(&ms_check::Session::new(), &d, &docs);
     let at = Position {
         line: 0,
         character: 15,
@@ -236,7 +236,7 @@ fn rename_preserves_unicode_and_original_ranges_when_name_length_changes() {
         for name in ["x", "renamed_value"] {
             let d = Document::new(ws.uri("repeat.ms"), &source);
             let docs = Documents::from([(d.uri.clone(), d.clone())]);
-            let checked = analyze(&d, &docs);
+            let checked = analyze(&ms_check::Session::new(), &d, &docs);
             assert!(checked.success(), "{:?}", checked.diagnostics);
             // Select the final use after a supplementary Unicode character.
             let offset = source.rfind("value").unwrap();
@@ -262,7 +262,7 @@ fn rename_ignores_an_unrelated_unread_binding() {
     let source = "fn identity(value: Int) Int:\n    let spare = 1\n    return value\n";
     let d = Document::new(ws.uri("unread.ms"), source);
     let docs = Documents::from([(d.uri.clone(), d.clone())]);
-    let checked = analyze(&d, &docs);
+    let checked = analyze(&ms_check::Session::new(), &d, &docs);
     assert!(
         !checked.success() && checked.resolves(),
         "{:?}",
@@ -300,7 +300,7 @@ fn prepare_rename_uses_the_checked_declaration_without_scanning_workspace() {
     let source = include_str!("editing_regressions/prepare-local.ms");
     let d = Document::new(ws.uri("project/main.ms"), source);
     let docs = Documents::from([(d.uri.clone(), d.clone())]);
-    let checked = analyze(&d, &docs);
+    let checked = analyze(&ms_check::Session::new(), &d, &docs);
     assert!(checked.success(), "{:?}", checked.diagnostics);
     let polls = std::cell::Cell::new(0);
     let cancel = || {
@@ -375,7 +375,7 @@ fn prepare_rename_accepts_imported_declarations_and_bindings_but_not_stdlib() {
     ] {
         let d = Document::new(ws.uri(relative), ws.read(relative));
         let docs = Documents::from([(d.uri.clone(), d.clone())]);
-        let checked = analyze(&d, &docs);
+        let checked = analyze(&ms_check::Session::new(), &d, &docs);
         assert!(checked.success(), "{:?}", checked.diagnostics);
         let file = checked.module_file(&d);
         let entry = checked
@@ -435,7 +435,7 @@ fn project_exports_are_offered_before_standard_ones() {
     .unwrap();
     let source = "fn size(b: Bytes) Int:\n    return 0\n";
     let d = Document::new(ws.uri("main.ms"), source);
-    let checked = analyze(&d, &Documents::new());
+    let checked = analyze(&ms_check::Session::new(), &d, &Documents::new());
     let whole = Range {
         start: Position::default(),
         end: text::position(source, source.len()),

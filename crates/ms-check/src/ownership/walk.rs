@@ -153,6 +153,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         meta: HashMap::new(),
         active: Vec::new(),
         pending: Vec::new(),
+        carried: Vec::new(),
         declared: Vec::new(),
         consumed: HashSet::new(),
         callees: HashSet::new(),
@@ -180,6 +181,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         view_locals: HashSet::new(),
         view_calls: HashSet::new(),
         view_move: None,
+        self_assign: None,
         entry_lambda: None,
     };
     w.run();
@@ -242,6 +244,9 @@ struct Walker<'a> {
     active: Vec<Borrow>,
     /// Holders whose last use ran in this statement: released at its end.
     pending: Vec<usize>,
+    /// Promise borrows of a promise just moved on: its new holder (a binding, a local container)
+    /// takes them over, so the borrow outlives the name that started the promise.
+    carried: Vec<Borrow>,
     /// Bindings in scope, innermost last.
     declared: Vec<usize>,
     /// Parameters and the receiver that were moved from.
@@ -296,6 +301,9 @@ struct Walker<'a> {
     /// The name of a view local being returned: moving it out of the function is allowed even
     /// though it borrows, because the result holds the same origins.
     view_move: Option<NodeId>,
+    /// The `var` parameter being reassigned (`exchange = wrap(exchange)`): moving it out on the
+    /// right side is allowed, because the assignment refills it before the caller sees it.
+    self_assign: Option<usize>,
     /// The lambda argument of a promise-starting call being walked: concurrent code.
     entry_lambda: Option<NodeId>,
 }
@@ -533,7 +541,9 @@ impl Walker<'_> {
                 if wrapped {
                     self.facts.view_wraps.insert(e.id);
                     self.wrap_returns.push(e.id);
-                } else {
+                } else if !self.list_get(e) {
+                    // `xs.get(i)` beside a new value is withdrawn like a wrapper, and the
+                    // element is copied out; any other reference has no owned form.
                     self.plain_lent = true;
                 }
                 self.lend_receiver |= src.receiver;
@@ -550,7 +560,10 @@ impl Walker<'_> {
                 self.expr(e, Demand::Read);
                 return;
             }
-            self.owned_return.get_or_insert(e.pos);
+            // A bare `none` owns nothing, so a lender can hand it back beside its references.
+            if !matches!(&e.kind, ExprKind::Name(n) if n.as_str() == "none") {
+                self.owned_return.get_or_insert(e.pos);
+            }
         }
         // A reference converted on the way out (a lending call widened to another error type or
         // an interface) is read: the conversion builds the new value from it.
@@ -715,10 +728,9 @@ impl Walker<'_> {
         let DeclKind::Impl(i) = &c.func.decl.0.decl.kind else {
             return false;
         };
-        // A type's own methods are checked as an implementation of a synthesized interface.
-        i.contract
-            .as_ref()
-            .is_some_and(|t| !t.name().ends_with(crate::passes::INHERENT_SUFFIX))
+        // A type's own methods are checked as an implementation of a synthesized interface;
+        // the desugaring marks that impl synthetic.
+        i.contract.is_some() && !c.func.decl.0.decl.synthetic
     }
 
     /// Whether the declared result type is an interface.
@@ -1035,6 +1047,19 @@ impl Walker<'_> {
                 _ => None,
             };
         }
+        // `xs.get(i)` is the element itself, a part of the receiver's sources whose field
+        // chain ends there. The other native lends (`m.get(k)`, `xs.first()`) wrap the element
+        // in an `Optional` the caller owns, so a function returning one owns its result.
+        if let Some(recv) = self.native_lend_receiver(e)
+            && self.list_get(e)
+        {
+            let mut src = self.lend_source(recv)?;
+            if src.view {
+                return None;
+            }
+            src.path = None;
+            return Some(src);
+        }
         if let ExprKind::Call { .. } = &e.kind {
             let lend = call_lend(self.cx.m, e, self.cx.summaries);
             if !lend.lends {
@@ -1161,11 +1186,22 @@ impl Walker<'_> {
         }
         let recv = self.cx.m.ty(left);
         let lends = match (name.as_str(), args.len()) {
-            ("get", 1) => recv.is(Builtin::Map),
+            ("get", 1) => recv.is(Builtin::Map) || recv.is(Builtin::List),
             ("first" | "last", 0) => recv.is(Builtin::List),
             _ => false,
         };
         lends.then_some(&**left)
+    }
+
+    /// Whether `e` is `xs.get(i)` on a `List`, without a default: the element read in place.
+    fn list_get(&self, e: &Expr) -> bool {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return false;
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return false;
+        };
+        name.as_str() == "get" && args.len() == 1 && self.cx.m.ty(left).is(Builtin::List)
     }
 
     /// Whether `e` is `map.get(key)` on a `Map`: an entry read in place.
@@ -1387,9 +1423,13 @@ impl Walker<'_> {
             self.pending.push(b.uid);
         }
         if last && access == Access::Move {
-            // A promise handed on (`wait_all([p, q])`) ends where its new owner does.
-            self.active
-                .retain(|a| !(a.holder == b.uid && a.why == PROMISE_WHY));
+            // A promise handed on (`wait_all([p, q])`) ends where its new owner does: a binding or
+            // local container that receives it takes the borrow over (`take_carried`).
+            let (moved, kept): (Vec<_>, Vec<_>) = std::mem::take(&mut self.active)
+                .into_iter()
+                .partition(|a| a.holder == b.uid && a.why == PROMISE_WHY);
+            self.active = kept;
+            self.carried.extend(moved);
         }
     }
 
@@ -1627,7 +1667,22 @@ impl Walker<'_> {
         }
     }
 
+    /// Hands the borrows of promises moved since the statement began to `holder`, keeping the
+    /// places that are still in scope.
+    fn take_carried(&mut self, holder: usize, holder_name: Name) {
+        for mut a in std::mem::take(&mut self.carried) {
+            a.origins.retain(|(p, _)| self.declared.contains(&p.root));
+            if a.origins.is_empty() || a.holder == holder {
+                continue;
+            }
+            a.holder = holder;
+            a.holder_name = holder_name;
+            self.active.push(a);
+        }
+    }
+
     fn stmt(&mut self, s: &Stmt) {
+        self.carried.clear();
         match &s.kind {
             StmtKind::Bind {
                 mutable,
@@ -1996,7 +2051,10 @@ impl Walker<'_> {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, pattern.pos, closable));
         }
-        if self.entry_call(value) {
+        if ty_holds_promise(&b.ty) {
+            self.take_carried(b.uid, b.name);
+        }
+        if self.entry_call(value) || self.holds_lambda_promises(value) {
             // The promise reads what its entry captures until it is dropped with its scope.
             let origins = self.entry_places(value);
             if !origins.is_empty() {
@@ -2252,7 +2310,18 @@ impl Walker<'_> {
     }
 
     fn assign(&mut self, s: &Stmt, target: &AssignTarget, value: &Expr) {
+        let refilled = match target {
+            AssignTarget::Name(_) => self.cx.m.assigned(value).filter(|b| {
+                self.meta
+                    .get(&b.uid)
+                    .is_some_and(|m| m.parameter.is_some() && m.perm == Perm::Mutable)
+            }),
+            AssignTarget::Member(_) => None,
+        };
+        let saved = self.self_assign;
+        self.self_assign = refilled.map(|b| b.uid);
         self.expr(value, Demand::Consume);
+        self.self_assign = saved;
         match target {
             AssignTarget::Name(name) => {
                 let Some(b) = self.cx.m.assigned(value) else {
@@ -2747,11 +2816,50 @@ impl Walker<'_> {
         }
     }
 
-    /// The captured bindings of the lambda arguments of promise-starting call `e`.
+    /// The promise-starting calls a lambda argument of `e` returns, when `e` itself yields promises
+    /// (`xs.map(fn x: promise(fn: f(x)))`): the result holds them, so it keeps their borrows.
+    fn lambda_promises<'e>(&self, e: &'e Expr) -> Vec<&'e Expr> {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return Vec::new();
+        };
+        if !ty_holds_promise(&self.cx.m.ty(e)) {
+            return Vec::new();
+        }
+        args.iter()
+            .filter_map(|a| match &a.value.kind {
+                ExprKind::Lambda(l) => Some(l),
+                _ => None,
+            })
+            .flat_map(|l| l.body.iter())
+            .filter_map(|s| match &s.kind {
+                StmtKind::Return(Some(r)) if self.entry_call(r) => Some(r),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn holds_lambda_promises(&self, e: &Expr) -> bool {
+        !self.lambda_promises(e).is_empty()
+    }
+
+    /// The captured bindings of the lambda arguments of promise-starting call `e`, or of the
+    /// promises its lambda arguments start.
     fn entry_captures(&self, e: &Expr) -> Vec<BindingRef> {
         let ExprKind::Call { args, .. } = &e.kind else {
             return Vec::new();
         };
+        if !self.entry_call(e) {
+            // Bindings made inside the outer lambda (its parameters) are not the caller's to hold.
+            return self
+                .lambda_promises(e)
+                .into_iter()
+                .flat_map(|p| self.entry_captures(p))
+                .filter(|b| {
+                    args.iter()
+                        .any(|a| self.cx.m.captures(&a.value).iter().any(|o| o.uid == b.uid))
+                })
+                .collect();
+        }
         args.iter()
             .filter(|a| matches!(a.value.kind, ExprKind::Lambda(_)))
             .flat_map(|a| self.cx.m.captures(&a.value))
@@ -3020,7 +3128,10 @@ impl Walker<'_> {
             (m.perm, m.role, m.parameter, m.lambda, m.is_receiver)
         };
         let name = b.name;
-        let var_param = parameter.is_some() && perm == Perm::Mutable;
+        // A `var` parameter is the caller's value; it may move only into the right side of an
+        // assignment to itself, which refills it (`exchange = wrap(exchange)`).
+        let var_param =
+            parameter.is_some() && perm == Perm::Mutable && self.self_assign != Some(b.uid);
         if role == Role::LambdaParameter && self.cx.classes.class(&b.ty) == Class::Resource {
             // A function value is called with its arguments lent, so taking one would copy it,
             // and the caller still closes the original.
@@ -3473,11 +3584,35 @@ impl Walker<'_> {
         for (i, a) in args.iter().enumerate() {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             let param = param_names.get(i).copied().unwrap_or_else(|| n("?"));
+            // A function type names its parameters by position (`_0`): say which argument.
+            let positional = param
+                .as_str()
+                .strip_prefix('_')
+                .is_some_and(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()));
+            let which = if positional {
+                format!("argument {} of `{name}`", i + 1)
+            } else {
+                format!("parameter `{param}` of `{name}`")
+            };
             match (mode, a.mutable) {
+                (ParamMode::Mutate, false) if positional => self.error_fix(
+                    a.value.pos,
+                    format!("{which} is var in its type `{}`, so the call must say so; write `var {}`", self.cx.m.ty(callee), self.expr_text(&a.value)),
+                    insert_at(a.value.pos, "var "),
+                ),
                 (ParamMode::Mutate, false) => self.error_fix(
                     a.value.pos,
-                    format!("parameter `{param}` of `{name}` is declared var, so the call must say so; write `var {}`", self.expr_text(&a.value)),
+                    format!("{which} is declared var, so the call must say so; write `var {}`", self.expr_text(&a.value)),
                     insert_at(a.value.pos, "var "),
+                ),
+                (ParamMode::Borrow | ParamMode::Consume, true) if positional => self.error_fix(
+                    a.value.pos,
+                    format!("`{name}` does not change {}: its type is `{}`; remove `var` from the argument", which.trim_end_matches(&format!(" of `{name}`")), self.cx.m.ty(callee)),
+                    DiagnosticFix {
+                        pos: back(a.value.pos, 4),
+                        end: a.value.pos,
+                        replacement: String::new(),
+                    },
                 ),
                 (ParamMode::Borrow | ParamMode::Consume, true) => self.error_fix(
                     a.value.pos,
@@ -3550,6 +3685,7 @@ impl Walker<'_> {
             && let ExprKind::Name(_) = &r.kind
             && let Resolution::Local(holder) = self.cx.m.resolution(r)
         {
+            self.take_carried(holder.uid, holder.name);
             for a in args {
                 if !self.entry_call(&a.value) {
                     continue;
@@ -4145,16 +4281,26 @@ impl Walker<'_> {
             .filter_map(|b| self.meta.get(&b.uid).map(|m| (b.uid, m.perm)))
             .collect();
         // The entry of a promise takes over the resources it captures: they are the promise's own,
-        // closed when it ends, and read-only inside like an escaping closure's captures.
-        let owned_by_entry = |w: &Self, uid: usize| {
-            concurrent && w.meta.get(&uid).is_some_and(|m| m.class == Class::Resource)
-        };
-        if escaping || concurrent {
+        // closed when it ends. It runs once, so inside it they behave like locals it owns: it may
+        // move one on (`produce(w)` for a writer `w`) and change one declared `var`.
+        if escaping && !concurrent {
             for (uid, _) in &saved_meta {
-                if (escaping || owned_by_entry(self, *uid))
-                    && let Some(m) = self.meta.get_mut(uid)
-                {
+                if let Some(m) = self.meta.get_mut(uid) {
                     m.perm = Perm::Captured;
+                }
+            }
+        } else if concurrent {
+            for (uid, _) in &saved_meta {
+                if let Some(m) = self.meta.get_mut(uid) {
+                    if m.class == Class::Resource {
+                        m.perm = if m.perm == Perm::Mutable {
+                            Perm::Mutable
+                        } else {
+                            Perm::Immutable
+                        };
+                    } else if escaping {
+                        m.perm = Perm::Captured;
+                    }
                 }
             }
         }
@@ -4210,12 +4356,14 @@ impl Walker<'_> {
                 if class == Class::Copy {
                     // A `var` used again would diverge from the closure's copy: the closure
                     // cannot borrow it (it outlives the statement), so refuse the silent snapshot.
+                    let stored = self.cx.live.assigned_after.get(&(e.id, b.uid)).copied();
                     if saved_perm(&saved_meta, b.uid) == Some(Perm::Mutable)
-                        && !self.is_last(e.id, b)
+                        && (!self.is_last(e.id, b) || stored.is_some())
                     {
                         let name = b.name;
                         let later = self
                             .next_use(e.id, b)
+                            .or(stored)
                             .map(|n| format!(" at {}", self.at(n)))
                             .unwrap_or_default();
                         self.error(
@@ -4231,15 +4379,6 @@ impl Walker<'_> {
                     facts.push((b.uid, CaptureMode::Move));
                 }
             } else if concurrent && class == Class::Resource {
-                if changed {
-                    self.error(
-                        e.pos,
-                        format!(
-                            "this promise owns `{0}` and cannot change it; build a new value inside the promise instead",
-                            b.name
-                        ),
-                    );
-                }
                 let resolved = self.resolve(&Place::local(b.uid));
                 self.capture_move(e, b, &resolved);
                 facts.push((b.uid, CaptureMode::Move));
@@ -4390,6 +4529,11 @@ fn role_text(role: Role, perm: Perm) -> &'static str {
         Role::Pattern => "a pattern variable",
         _ => "a borrow",
     }
+}
+
+/// Whether `t` is, or holds as a type argument, a `Promise`.
+fn ty_holds_promise(t: &Ty) -> bool {
+    t.is_source_type(PROMISE_MODULE, "Promise") || t.args.iter().any(ty_holds_promise)
 }
 
 /// Whether `part` is exactly one of the type arguments of `src`, at any depth.

@@ -13,7 +13,7 @@ import sse_events from "@std/net/sse.ms"
 import http_client, serve from "@std/net/net.ms"
 
 // Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
-fn stream_events(exchange: HttpExchange) Unit!:
+fn stream_events(var exchange: HttpExchange) Unit!:
     var sent = headers()
     try sent.append("Content-Type", "text/event-stream")
     try exchange.send_headers(200, sent)

@@ -6,10 +6,12 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 fn check(source: &str) -> Program {
-    crate::stdlib::ensure_standard();
+    let session = crate::Session::new();
+    session.ensure_standard();
     let file: Arc<str> = Arc::from("record_fields.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
-    Checker::new(&CheckOptions::default()).check_modules(vec![crate::load_module(&module)], None)
+    Checker::new(&session, &CheckOptions::default())
+        .check_modules(vec![crate::load_module(&module)], None)
 }
 
 fn access() -> Program {
@@ -102,10 +104,13 @@ fn record_fields_duplicate_names_keep_the_first_declared_field() {
 fn record_fields_bundled_and_source_standard_records_have_indices() {
     let p = check(include_str!("../tests/record_fields/standard.ms"));
     assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
-    let pair = standard("Pair", vec![int(), string()]);
+    let pair = p.session.standard("Pair", vec![int(), string()]);
     assert_eq!(field_of(&pair, n("first")).unwrap().ty.id, "Int");
     assert_eq!(field_of(&pair, n("second")).unwrap().ty.id, "String");
-    let deque = crate::stdlib::source_type(n("@std/collections/deque.ms"), n("Deque")).unwrap();
+    let deque = p
+        .session
+        .source_type(n("@std/collections/deque.ms"), n("Deque"))
+        .unwrap();
     let deque = with_args(&deque.ty(), vec![int()]);
     assert_eq!(field_of(&deque, n("size")).unwrap().ty.id, "Int");
     assert_eq!(
@@ -116,14 +121,15 @@ fn record_fields_bundled_and_source_standard_records_have_indices() {
 
 #[test]
 fn record_fields_recovered_declarations_keep_source_positions() {
-    crate::stdlib::ensure_standard();
+    let session = crate::Session::new();
+    session.ensure_standard();
     let file = Arc::from("record_fields.ms");
     let (module, errors) = ms_syntax::partial::parse_partial(
         &file,
         include_str!("../tests/record_fields/recovery.ms"),
     );
     assert!(!errors.is_empty());
-    let p = Checker::new(&CheckOptions::default())
+    let p = Checker::new(&session, &CheckOptions::default())
         .check_modules(vec![crate::load_module(&module)], None);
     assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
     assert_eq!(

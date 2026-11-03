@@ -16,6 +16,7 @@ fn signature(children: &[Ty], result: Ty) -> Ty {
         .map(|(i, ty)| Param {
             name: n(&format!("p{i}")),
             ty: ty.clone(),
+            mutable: false,
         })
         .collect();
     ty.result = Some(result);

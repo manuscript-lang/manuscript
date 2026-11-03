@@ -1,5 +1,5 @@
 import open, temporary, write_file from "@std/os/fs.ms"
-import lines, collect from "@std/io/streams.ms"
+import lines, collect, from_list, from_bytes from "@std/io/streams.ms"
 import expect_equal from "@std/test/test.ms"
 import memory from "./support/streams.ms"
 
@@ -26,3 +26,19 @@ test "file and memory line readers agree on endings and byte limits":
             let file = try open(path, "r", 384)
             let actual = collect(lines(try file.reader(), limit), none)
             try expect_equal(actual, collect(lines(memory(text), limit), none))
+
+test "a carriage return split from its newline does not count toward the limit":
+    let chunks = ["abc\r".to_bytes(), "\n".to_bytes()]
+    let found = try collect(lines(from_list(chunks), 3), none)
+    try expect_equal(found, ["abc"])
+
+test "an unterminated carriage return counts toward the limit at the end":
+    let found = collect(lines(from_list(["abc\r".to_bytes()]), 3), none)
+    try expect_equal(found.is_error(), true)
+
+test "a line that is not valid UTF-8 is an error, not an empty line":
+    let bad = "ok\n".to_bytes().concat("\u{ff}".to_bytes().slice(0, 1).get()).concat(
+        "\nnext\n".to_bytes()
+    )
+    let found = collect(lines(from_bytes(bad)), none)
+    try expect_equal(found.err().kind, ErrorCategory.InvalidData)

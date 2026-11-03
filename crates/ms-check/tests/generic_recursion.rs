@@ -129,3 +129,12 @@ fn pruning_acyclic_types_keeps_the_changing_cycle_diagnostic() {
         got[0].3
     );
 }
+
+/// A record holding `List[Self]` looked up the list's generic `clone`, whose bounds asked again
+/// whether the record is clonable, without end (overflowed the stack in `Map.get_or`).
+#[test]
+fn recursive_record_with_list_of_itself_checks() {
+    let source = include_str!("generic_recursion/record_holds_list_of_itself.ms");
+    let found = diagnostics(&[("main.ms", source)]);
+    assert!(found.is_empty(), "{found:?}");
+}

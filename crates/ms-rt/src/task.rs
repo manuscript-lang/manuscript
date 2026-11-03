@@ -71,7 +71,7 @@ const GUARD: usize = 64 << 10;
 const HDR_SIZE: usize = 16;
 #[cfg(unix)]
 const _: () = assert!(size_of::<fault::Hdr>() == HDR_SIZE);
-const STACK_POOL: usize = 1024;
+const STACK_POOL: usize = 1 << 16;
 /// Most slots one address-space reservation holds (stack creation reserves in batches).
 #[cfg(unix)]
 const CARVE_MAX: usize = 16;
@@ -167,6 +167,8 @@ struct Sched {
     epfd: i32,
     /// Idle stacks (base, length) kept for reuse; a stack is reused only for the same length, whose guard it has.
     pool: Vec<(usize, usize)>,
+    /// `pool[..pool_clean]` have given their pages back (see `trim_idle_stacks`).
+    pool_clean: usize,
     /// Unused aligned stack slots of the last reservation: next slot address and the end.
     #[cfg(unix)]
     carve: (usize, usize),
@@ -221,6 +223,7 @@ crate::isolate_static! {
     fd_waiting: 0,
     epfd: -1,
     pool: Vec::new(),
+    pool_clean: 0,
     #[cfg(unix)]
     carve: (0, 0),
     #[cfg(unix)]
@@ -386,7 +389,12 @@ mod stack {
         // SAFETY: guards the gap below the stack inside the slot.
         unsafe {
             let len = len.min(DEFAULT_STACK);
-            sys::guard(base, STACK_SLOT - len + GUARD);
+            if !sys::guard(base, STACK_SLOT - len + GUARD) {
+                // No mapping left for the guard: running unguarded would let an overflow corrupt
+                // the neighboring stack, so give the slot back and report failure.
+                sys::unmap(base, STACK_SLOT);
+                return core::ptr::null_mut();
+            }
         }
         base
     }
@@ -606,13 +614,17 @@ unsafe fn ensure_init() -> *mut Task {
 unsafe fn alloc_stack(len: usize) -> *mut u8 {
     let mut s = sched();
     if let Some(at) = s.pool.iter().rposition(|&(_, pooled)| pooled == len) {
+        // The entry that moves into `at` may still hold pages.
+        s.pool_clean = s.pool_clean.min(at);
         return s.pool.swap_remove(at).0 as *mut u8;
     }
     // SAFETY: the lowest pages of the fresh mapping become the guard.
     unsafe {
         let p = stack::create(len);
         if p.is_null() {
-            fault::fault(b"cannot allocate a task stack");
+            fault::fault(
+                b"cannot allocate a task stack: too many tasks at once (the process is out of memory mappings; see vm.max_map_count)",
+            );
         }
         p
     }
@@ -627,6 +639,27 @@ unsafe fn release_stack(base: usize, len: usize) {
     // SAFETY: the stack came from `alloc_stack` and no task runs on it.
     unsafe { stack::destroy(base as *mut u8, len) };
 }
+
+/// Stacks the pool keeps with their pages when the scheduler idles; the rest give the pages back.
+const STACK_POOL_WARM: usize = 256;
+
+/// Called before the scheduler blocks: after a burst of tasks the pool holds many stacks, and
+/// each keeps the pages its task touched. The oldest give them back (one call per stack, once),
+/// so a quiet server returns to its working set; the newest stay warm for the next request.
+#[cfg(unix)]
+unsafe fn trim_idle_stacks() {
+    let mut s = sched();
+    let end = s.pool.len().saturating_sub(STACK_POOL_WARM);
+    for at in s.pool_clean..end {
+        let (base, _) = s.pool[at];
+        // SAFETY: a pooled slot is unused; its guard stays protected and the stack reads as zero.
+        unsafe { sys::release(base as *mut u8, STACK_SLOT) };
+    }
+    s.pool_clean = s.pool_clean.max(end);
+}
+
+#[cfg(not(unix))]
+unsafe fn trim_idle_stacks() {}
 
 /// Frees what finished tasks left behind; runs on the stack of a task that is still alive.
 unsafe fn reap() {
@@ -934,6 +967,7 @@ unsafe fn reactor_wait() {
                 crate::sched::set_idle(false);
                 continue;
             }
+            trim_idle_stacks();
             poll_ready(timeout_ns);
             crate::sched::set_idle(false);
             if parked && crate::isolate::leave_idle() {
@@ -1515,7 +1549,7 @@ pub(crate) unsafe fn spawn_promise_task(closure: *mut ms_rt_abi::Closure, promis
 }
 
 /// The deadline of the deferred promise the running task is executing (`i64::MAX`: none).
-pub(crate) fn defer_deadline() -> i64 {
+pub fn defer_deadline() -> i64 {
     // SAFETY: single threaded scheduler; the running task's record is live.
     unsafe { (*ensure_init()).defer_deadline }
 }
@@ -1954,6 +1988,36 @@ mod tests {
             assert_eq!(status, 1);
             assert_eq!(joiner, 0, "a faulted join must stop claiming its target");
             assert!(running, "fault cleanup must run as a running task");
+        }
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn idle_trim_keeps_the_newest_pooled_stacks_warm() {
+        let _g = lock();
+        teardown();
+        // SAFETY: a fabricated pool entry is a mapped slot that no task uses.
+        unsafe {
+            let n = STACK_POOL_WARM + 3;
+            let slots: Vec<usize> = (0..n)
+                .map(|_| stack::create(DEFAULT_STACK) as usize)
+                .collect();
+            for &base in &slots {
+                assert!(base != 0);
+                // Touch the page below the header, where a stack's first frames live.
+                *((base + STACK_SLOT - 4096) as *mut u8) = 1;
+                release_stack(base, DEFAULT_STACK);
+            }
+            trim_idle_stacks();
+            assert_eq!(sched().pool_clean, 3);
+            for (at, &base) in slots.iter().enumerate() {
+                let byte = *((base + STACK_SLOT - 4096) as *const u8);
+                assert_eq!(byte, u8::from(at >= 3), "stack {at}");
+            }
+            // Taking a stack back lowers the clean mark only when an older entry moves.
+            let _ = alloc_stack(DEFAULT_STACK);
+            assert_eq!(sched().pool_clean, 3);
+            teardown();
         }
     }
 

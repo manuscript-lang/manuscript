@@ -1,6 +1,7 @@
 //! Structural equality helpers for aggregate types.
 
 use crate::Error;
+use crate::cx::HelperKey;
 use crate::cx::{Cx, Job, JobKind};
 use crate::text::{runtime_fn, ty_name};
 use ms_check::types as ct;
@@ -13,7 +14,7 @@ impl Cx {
     /// The function comparing two values of `t` (reserved on first use). `scope` is the
     /// number of the module whose local implementations it calls, `0` for none.
     pub(crate) fn eq_fn(&mut self, m: &mut Module, t: MTy, scope: u32) -> FuncId {
-        let key = format!("eq:{}:{scope}", t.0);
+        let key = HelperKey::Eq(t, scope);
         if let Some(f) = self.helpers.get(&key) {
             return *f;
         }
@@ -116,7 +117,7 @@ pub(crate) fn build_eq(
         ty: t,
         mode: Mode::Borrow,
     };
-    if let Some(concrete) = cx.source_tys.get(&t).cloned()
+    if let Some(concrete) = cx.source_tys.get(t.0 as usize).cloned()
         && let Some(callee) = cx.user_equals(m, &concrete, module)?
     {
         let other_mode = m.funcs[callee.index()].params[1].mode;
@@ -281,7 +282,7 @@ impl Cx {
             return;
         }
         let eq = self.eq_fn(m, t, scope);
-        let user_hash = match self.source_tys.get(&t).cloned() {
+        let user_hash = match self.source_tys.get(t.0 as usize).cloned() {
             Some(concrete) => self.user_hash(m, &concrete, module).ok().flatten(),
             None => None,
         };
@@ -326,7 +327,7 @@ impl Cx {
             TyKind::Int8 | TyKind::UInt8 | TyKind::Bool => 1,
             TyKind::Rec(r) => {
                 let fields: Vec<MTy> = m.records[r.index()].fields.iter().map(|f| f.1).collect();
-                let Some(concrete) = self.source_tys.get(&t).cloned() else {
+                let Some(concrete) = self.source_tys.get(t.0 as usize).cloned() else {
                     return false;
                 };
                 let custom = self

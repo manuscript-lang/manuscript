@@ -15,6 +15,8 @@ How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and
 | [`json/`](json) | `@std/json` parse and stringify against Node (V8) on twitter, canada and citm_catalog | `ms run bench/tools/json_bench.ms` | [`json/results.md`](json/results.md) |
 | [`web/`](web) | the same HTTP server on Manuscript's standard library and Go's `net/http`: throughput, latency, memory, system calls, idle connections, file and DNS handlers | `sh bench/perf/web/run.sh 5` | [`web/results.md`](web/results.md) |
 
+Latest perf bash: [`perf-bash-2026-11-03.md`](perf-bash-2026-11-03.md).
+
 Latest Manuscript-only baseline for every suite: [`baseline-2026-10-28.md`](baseline-2026-10-28.md) (previous: [`baseline-2026-10-27.md`](baseline-2026-10-27.md)). Latest same-machine before/after: [`refcount-removal-2026-11-03.md`](refcount-removal-2026-11-03.md) (the refcount removal, three binaries, every suite).
 
 Compare numbers only from the same machine; treat them as a profiling guide, not a pass/fail gate.

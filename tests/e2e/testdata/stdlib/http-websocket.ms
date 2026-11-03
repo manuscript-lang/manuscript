@@ -15,12 +15,12 @@ fn tls_options() TlsOptions:
         alpn: [], require_client_certificate: false
     )
 
-fn echo(exchange: HttpExchange) Unit!:
+fn echo(var exchange: HttpExchange) Unit!:
     if exchange.path() == "/ws":
         var socket = (
             try http_result(
                 upgrade(
-                    exchange, allowed_origins: [], subprotocols: ["echo"],
+                    var exchange, allowed_origins: [], subprotocols: ["echo"],
                     max_message_bytes: 1024
                 )
             )
@@ -48,13 +48,14 @@ fn echo(exchange: HttpExchange) Unit!:
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
     let options = HttpServerOptions(
-        max_requests: 4, timeout: 3.seconds, grace: 0.seconds, tls: none
+        max_requests: 4, timeout: 3.seconds(), grace: 0.seconds(), tls: none
     )
     let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
     let url = "http://{server.address()}/"
     let response = request(
         method: HttpMethod.Get, url: url,
-        headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
+        headers: (try text_headers(Map[String, String]())), body: "",
+        timeout: 2.seconds()
     ) | try expect_ok
     try expect_false(
         (
@@ -71,7 +72,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     var body = client.request(
         method: HttpMethod.Get, url: url,
         headers: (try text_headers(Map[String, String]())), body: "",
-        max_response_bytes: 5, timeout: 2.seconds
+        max_response_bytes: 5, timeout: 2.seconds()
     ) | try expect_ok
     body.metadata.status | try expect_equal(201)
     (body.body.read().wait() | try expect_ok).get() | try expect_equal(
@@ -87,7 +88,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     match request(
         method: HttpMethod.Get, url: url,
         headers: (try text_headers(Map[String, String]())), body: "",
-        max_response_bytes: 4, timeout: 2.seconds
+        max_response_bytes: 4, timeout: 2.seconds()
     ):
         ok(_): return fail("HTTP output budget ignored")
         error(cause):
@@ -99,10 +100,10 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             )
 
 test "WebSocket negotiates a protocol and echoes a text frame":
-    let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
+    let options = HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
     let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
     let client_options = WebSocketOptions(
-        max_message_bytes: 1024, timeout: 2.seconds, tls: tls_options(),
+        max_message_bytes: 1024, timeout: 2.seconds(), tls: tls_options(),
         compression: false
     )
     var socket = web_socket(
@@ -119,7 +120,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     (message.kind != WebSocketKind.Text or message.data != "é🙂".to_bytes()) | try expect_false
 
 fn upgrade_status(address: String, version: String, extra: String) String!:
-    var client = try connect(address, 2.seconds).wait()
+    var client = try connect(address, 2.seconds()).wait()
     let key = "dGhlIHNhbXBsZSBub25jZQ=="
     let request = (
         "GET /ws {version}\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
@@ -127,11 +128,11 @@ fn upgrade_status(address: String, version: String, extra: String) String!:
     )
     try send(var client, request)
 
-    let reply = (try recv(var client, 2.seconds)).get(Bytes([]))
+    let reply = (try recv(var client, 2.seconds())).get(Bytes([]))
     return ok(reply.decode_utf8().get("").split("\r\n").first().get(""))
 
 test "WebSocket upgrades need HTTP/1.1 and one key":
-    let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
+    let options = HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
     let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
     let address = server.address()
     try expect_equal(
@@ -147,7 +148,7 @@ test "WebSocket upgrades need HTTP/1.1 and one key":
         "HTTP/1.1 400 Bad Request"
     )
 
-fn report_host(exchange: HttpExchange) Unit!:
+fn report_host(var exchange: HttpExchange) Unit!:
     let hosts = exchange.headers().values("Host")
     let _started = try exchange.send_headers(status: 200, headers: headers())
     let _written = (try http_result(exchange.write(hosts.join(","))))
@@ -155,19 +156,21 @@ fn report_host(exchange: HttpExchange) Unit!:
 
 test "HTTP streaming handlers see the Host request header":
     let options = HttpServerOptions(
-        max_requests: 2, timeout: 3.seconds, grace: 0.seconds, tls: none
+        max_requests: 2, timeout: 3.seconds(), grace: 0.seconds(), tls: none
     )
     let server = serve(address: "127.0.0.1:0", handler: report_host, options: options) | try expect_ok
     let response = request(
         method: HttpMethod.Get, url: "http://{server.address()}/",
-        headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
+        headers: (try text_headers(Map[String, String]())), body: "",
+        timeout: 2.seconds()
     ) | try expect_ok
     response.body | try expect_equal(server.address().to_bytes())
 
 test "HTTP requests reject an empty method":
     match request(
         method: HttpMethod.Custom(value: ""), url: "http://127.0.0.1:1/",
-        headers: (try text_headers(Map[String, String]())), body: "", timeout: 1.seconds
+        headers: (try text_headers(Map[String, String]())), body: "",
+        timeout: 1.seconds()
     ):
         ok(_): return fail("empty method accepted")
         error(cause):

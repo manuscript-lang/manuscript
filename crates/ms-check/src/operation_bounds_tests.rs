@@ -4,10 +4,12 @@ use crate::{CheckOptions, Program, checker::Checker, types::n};
 use std::sync::Arc;
 
 fn check(source: &str) -> Program {
-    crate::stdlib::ensure_standard();
+    let session = crate::Session::new();
+    session.ensure_standard();
     let file: Arc<str> = Arc::from("operation_bounds.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
-    Checker::new(&CheckOptions::default()).check_modules(vec![crate::load_module(&module)], None)
+    Checker::new(&session, &CheckOptions::default())
+        .check_modules(vec![crate::load_module(&module)], None)
 }
 
 fn diagnostics(source: &str) -> Vec<String> {
@@ -45,7 +47,9 @@ fn operations_reject_type_variable_bounds_without_recording_them() {
             .contains("resolves to a type parameter")
     );
     let reader = program.symbols[&n("operation_bounds.ms")].borrow()[&n("Reader")].ty();
-    let variables = crate::stdlib::operation_variables(&format!("{}/read", reader.id));
+    let variables = program
+        .session
+        .operation_variables(&format!("{}/read", reader.id));
     assert_eq!(variables.len(), 1);
     assert!(variables[0].bounds().is_empty());
 }

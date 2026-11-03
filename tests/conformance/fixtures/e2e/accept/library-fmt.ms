@@ -180,10 +180,12 @@ test "malformed and bounded inputs return errors":
     hex_decode(text: "abcd", max_bytes: 1) | try expect_equal(failure2)
 
     let limits = JsonLimits(max_bytes: 100, max_depth: 2, max_values: 10)
-    let failure3: JsonValue! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
+    let failure3 = parse(text: "\{\"a\":1,\"a\":2\}", limits: limits)
+    (
+        failure3.err().message | try expect_equal(
+            "JSON: invalid data: line 1, column 14: duplicate object key"
+        )
     )
-    parse(text: "\{\"a\":1,\"a\":2\}", limits: limits) | try expect_equal(failure3)
 
     let failure4: JsonValue! = error(
         Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded)

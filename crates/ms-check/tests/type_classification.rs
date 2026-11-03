@@ -33,6 +33,7 @@ fn nominal(
         .map(|(i, ty)| Param {
             name: n(&format!("f{i}")),
             ty,
+            mutable: false,
         })
         .collect();
     if kind == Kind::Alternative {
@@ -108,7 +109,10 @@ fn same_names_from_different_modules_keep_resource_cleanup() {
         .filter_map(|i| i.binding.as_ref())
         .find(|b| b.name == n("held"))
         .unwrap();
-    assert!(p.implicit_closes.contains(&held.uid));
+    assert!(
+        p.binding_facts
+            .has(held.uid, ms_check::ownership::BindingFact::ImplicitClose)
+    );
 }
 #[test]
 fn recursive_and_mutually_recursive_alternatives_stay_move() {
@@ -136,6 +140,7 @@ fn recursive_and_mutually_recursive_alternatives_stay_move() {
         fields: vec![Param {
             name: n("next"),
             ty: a.clone(),
+            mutable: false,
         }],
     });
     assert_eq!(classifier().class(&a), Class::Move);
@@ -145,6 +150,7 @@ fn recursive_and_mutually_recursive_alternatives_stay_move() {
         fields: vec![Param {
             name: n("next"),
             ty: b.clone(),
+            mutable: false,
         }],
     });
     assert_eq!(classifier().class(&a), Class::Move);
@@ -204,6 +210,7 @@ fn incomplete_definitions_and_function_arguments_remain_bounded() {
     function.params.push(Param {
         name: n("value"),
         ty: int(),
+        mutable: false,
     });
     let a = nominal(
         &mut kept,
@@ -220,6 +227,7 @@ fn incomplete_definitions_and_function_arguments_remain_bounded() {
         fields: vec![Param {
             name: n("next"),
             ty: a.clone(),
+            mutable: false,
         }],
     });
     assert_eq!(classifier().class(&a), Class::Move);

@@ -49,3 +49,25 @@ Workload `gen.py 40 25 10` (122k lines; `@std/io/io.ms` import path), `ms check`
 | `methods_by_contract` index | 8.65G (-40%) | 2.4 s (noisy VM) |
 
 `Checker::implements` was 40% inclusive (32.2M calls, linear scan of all methods). Proposal: `proposals/checker-type-interning.md`.
+
+## Parallel LLVM units (2026-11-03)
+
+Base `a460b7ef`, 4-core Linux VM, `ms build --build-type Release`, cold `.ms-cache`, one run each (noisy VM). Workload `bench/tools/compile_time.ms` with `40 25 10` (122k lines) and `6 25 10` (18.6k lines).
+
+| Workload | before | after | 
+| --- | --- | --- |
+| 122k lines | 350 s | 60 s (user 157 s) |
+| 18.6k lines | 16.9 s | 6.4 s |
+
+Same program output. `opt -time-trace` on the 122k-line IR (142 s of `opt`) showed `ms_entry`, a 33k-line generated `main`, taking 60 s alone, so the serial part now bounds the large case. Programs under 2 MiB of function text per unit are unchanged. See `wiki/benchmarks-and-performance/release-llvm-builds-split-into-parallel-units.md`.
+
+## Pipelined Cranelift codegen (2026-11-03)
+
+Base `1ef45ec5`, 4-core Linux VM, `ms build --build-type Debug`, cold cache, workload `40 25 10` (122k lines), `MS_TIMINGS` "codegen done" (includes 0.25 s of MIR optimize), four alternating runs each.
+
+| Build | codegen done |
+| --- | --- |
+| before (256-function batches) | 3.52, 2.99, 3.12, 3.17 s (median 3.15) |
+| after (pipeline) | 3.04, 3.19, 2.88, 2.66 s (median 2.96) |
+
+Before the change the loop (2.36 s) was lower 0.49 s, Cranelift compile 1.41 s wall in batches (5.6 CPU-s), define 0.44 s; lowering and defining left the cores idle each batch. Now they overlap; the object is byte-identical to the batched build's. The loop is CPU-bound on 4 cores, so the gain is small here (about 6%) and grows with cores. Forcing the single-pass register allocator for all Debug builds would save another 0.57 s but grows the binary 40% (14.8 to 20.6 MB) and slows code, so it is not done.

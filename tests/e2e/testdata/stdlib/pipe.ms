@@ -1,5 +1,5 @@
 import expect_equal, expect_false, expect_true, expect_error from "@std/test/test.ms"
-import Pipe, pipe, ReadStream from "@std/io/io.ms"
+import Pipe, pipe, ReadStream, WriteStream from "@std/io/io.ms"
 import promise from "@std/concurrency/promise.ms"
 
 fn drain(var input: ReadStream[Int]) List[Int]!:
@@ -91,3 +91,26 @@ fn produce(p: Pipe[Int], count: Int) Unit!:
     for i in 0..count:
         try out.write(i)
     return out.close()
+
+fn send_range(var out: WriteStream[Int], base: Int) Unit!:
+    for i in 0..5:
+        try out.write(base + i)
+    return out.close()
+
+test "several promises each move a writer of their own into a fan-in":
+    var p = pipe[Int](2)
+    var first = p.writer()
+    var second = p.writer()
+    var third = p.writer()
+    var input = p.reader()
+    let a = promise(fn: ok(try send_range(var first, 0)))
+    let b = promise(fn: ok(try send_range(var second, 100)))
+    let c = promise(fn: ok(try send_range(var third, 200)))
+    var seen = try drain(var input)
+    seen.sort()
+    try a.wait()
+    try b.wait()
+    try c.wait()
+    try expect_equal(seen.length(), 15)
+    try expect_equal(seen[0], 0)
+    try expect_equal(seen[14], 204)

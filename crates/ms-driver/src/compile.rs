@@ -40,6 +40,16 @@ pub fn check_graph(graph: Graph, request: CheckRequest) -> Checked {
 /// [`check_graph`] that also captures the lexical scope at every name
 /// expression spelled `scope_marker` (editor completion queries).
 pub fn check_graph_at(graph: Graph, request: CheckRequest, scope_marker: Option<&str>) -> Checked {
+    check_graph_in(&ms_check::Session::new(), graph, request, scope_marker)
+}
+
+/// [`check_graph_at`] against a session the caller keeps, so the standard library loads once.
+pub fn check_graph_in(
+    session: &std::rc::Rc<ms_check::Session>,
+    graph: Graph,
+    request: CheckRequest,
+    scope_marker: Option<&str>,
+) -> Checked {
     let mut checked = Checked {
         source_root: graph.source_root.clone(),
         project_root: graph.project_root.clone(),
@@ -51,7 +61,8 @@ pub fn check_graph_at(graph: Graph, request: CheckRequest, scope_marker: Option<
     if graph.modules.is_empty() && (!graph.library || !graph.diagnostics.is_empty()) {
         return checked;
     }
-    let program = ms_check::check(
+    let program = ms_check::check_in(
+        session,
         graph.modules,
         graph.imports,
         CheckOptions {
