@@ -4,41 +4,71 @@
 //! capture the stream (an escaping closure owns its captures), so the stream keeps its source in a
 //! cell and the work takes the source out, runs it and puts it back. `take` of an empty cell
 //! (a read already running) answers no value.
+//!
+//! Cells live in a table of fixed pages that never move, so `take` and `put` read a cell with no
+//! lock: one atomic word per cell packs its generation and state, and a transition is one
+//! compare-and-swap. Only `new` and `drop` take the mutex that guards the free list of dead slots.
 use crate::alloc;
 use crate::desc::slot_drop;
 use ms_rt_abi::TypeDesc;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicPtr, AtomicU32, AtomicUsize, Ordering};
+
+/// The state in the low three bits of a cell's word; the rest is the generation.
+const DEAD: u32 = 0;
+/// The block holds the value.
+const FULL: u32 = 1;
+/// A read has the value out; the block is empty.
+const OUT: u32 = 2;
+/// A `put` is copying its value into the block.
+const PUTTING: u32 = 3;
+const STATE_BITS: u32 = 3;
+const STATE_MASK: u32 = (1 << STATE_BITS) - 1;
+const GENERATION_LIMIT: u32 = 1 << (32 - STATE_BITS);
+
+const PAGE_SHIFT: usize = 10;
+const PAGE_CELLS: usize = 1 << PAGE_SHIFT;
+const MAX_PAGES: usize = 4096;
 
 /// A cell owns one block, sized for its value, from `new` until `drop`: `take` and `put` copy the
 /// value out of and back into it, so a stream read allocates nothing.
 struct Cell {
-    generation: u32,
-    live: bool,
-    /// Whether the block holds the value now (false while a read has it out).
-    full: bool,
-    ptr: usize,
-    desc: usize,
+    word: AtomicU32,
+    ptr: AtomicUsize,
+    desc: AtomicUsize,
 }
 
-struct Table {
-    cells: Vec<Cell>,
-    /// Indices of dead cells whose generation can still grow.
-    free: Vec<u32>,
+static PAGES: [AtomicPtr<[Cell; PAGE_CELLS]>; MAX_PAGES] =
+    [const { AtomicPtr::new(core::ptr::null_mut()) }; MAX_PAGES];
+
+struct Slots {
+    /// Slots handed out so far.
+    len: usize,
+    /// The first dead slot whose generation can still grow, plus one; each dead slot's `ptr`
+    /// holds the next one, so the list takes no memory of its own.
+    head: usize,
 }
 
-static CELLS: Mutex<Table> = Mutex::new(Table {
-    cells: Vec::new(),
-    free: Vec::new(),
-});
+static SLOTS: Mutex<Slots> = Mutex::new(Slots { len: 0, head: 0 });
 
-fn cells() -> std::sync::MutexGuard<'static, Table> {
-    CELLS.lock().unwrap_or_else(|e| e.into_inner())
+fn slots() -> std::sync::MutexGuard<'static, Slots> {
+    SLOTS.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-fn slot(table: &mut Table, id: i64) -> Option<&mut Cell> {
-    let i = usize::try_from((id & 0xffff_ffff) - 1).ok()?;
-    let c = table.cells.get_mut(i)?;
-    (c.live && i64::from(c.generation) == id >> 32).then_some(c)
+fn cell_at(index: usize) -> Option<&'static Cell> {
+    let page = PAGES.get(index >> PAGE_SHIFT)?.load(Ordering::Acquire);
+    if page.is_null() {
+        return None;
+    }
+    // SAFETY: pages are leaked, so they live for the process and never move.
+    Some(unsafe { &(*page)[index & (PAGE_CELLS - 1)] })
+}
+
+/// The cell `id` names and the word it must hold for the state `state`.
+fn lookup(id: i64, state: u32) -> Option<(&'static Cell, u32)> {
+    let index = usize::try_from((id & 0xffff_ffff) - 1).ok()?;
+    let generation = u32::try_from(id >> 32).ok()?;
+    Some((cell_at(index)?, generation << STATE_BITS | state))
 }
 
 /// Drops the value in a block that holds one, and frees the block.
@@ -51,6 +81,17 @@ fn free_block(ptr: usize, desc: usize, full: bool) {
             }
             alloc::free(ptr as *mut u8);
         }
+    }
+}
+
+/// Puts the dead slot `index` on the list of reusable ones, unless its generation is spent.
+fn retire(index: usize, generation: u32) {
+    if generation + 1 < GENERATION_LIMIT
+        && let Some(c) = cell_at(index)
+    {
+        let mut table = slots();
+        c.ptr.store(table.head, Ordering::Relaxed);
+        table.head = index + 1;
     }
 }
 
@@ -67,27 +108,43 @@ pub unsafe extern "C-unwind" fn msrt_cells_new(value: *mut u8, d: ms_rt_abi::Val
         core::ptr::copy_nonoverlapping(value, block, size);
         block as usize
     };
-    let mut table = cells();
-    let i = match table.free.pop() {
-        Some(i) => i as usize,
-        None => {
-            table.cells.push(Cell {
-                generation: 0,
-                live: false,
-                full: false,
-                ptr: 0,
-                desc: 0,
-            });
-            table.cells.len() - 1
+    let index = {
+        let mut table = slots();
+        if table.head != 0 {
+            let i = table.head - 1;
+            table.head = cell_at(i).map_or(0, |c| c.ptr.load(Ordering::Relaxed));
+            i
+        } else {
+            let i = table.len;
+            if i >> PAGE_SHIFT >= MAX_PAGES {
+                crate::fault::fatal(b"too many open streams");
+            }
+            if i & (PAGE_CELLS - 1) == 0 {
+                // Zeroed cells are dead. The page comes straight from the system so that the
+                // runtime's live-block count, which only sees program values, ignores it.
+                // SAFETY: a plain allocation, zeroed before use and never freed.
+                let page = unsafe {
+                    let size = core::mem::size_of::<[Cell; PAGE_CELLS]>();
+                    let p = crate::sys::malloc(size).cast::<u8>();
+                    if p.is_null() {
+                        crate::fault::fatal(b"out of memory");
+                    }
+                    core::ptr::write_bytes(p, 0, size);
+                    p.cast::<[Cell; PAGE_CELLS]>()
+                };
+                PAGES[i >> PAGE_SHIFT].store(page, Ordering::Release);
+            }
+            table.len += 1;
+            i
         }
     };
-    let c = &mut table.cells[i];
-    c.generation += 1;
-    c.live = true;
-    c.full = true;
-    c.ptr = ptr;
-    c.desc = d as usize;
-    (i64::from(c.generation) << 32) | (i as i64 + 1)
+    let c = cell_at(index).expect("a handed-out slot has a page");
+    let generation = (c.word.load(Ordering::Relaxed) >> STATE_BITS) + 1;
+    c.ptr.store(ptr, Ordering::Relaxed);
+    c.desc.store(d as usize, Ordering::Relaxed);
+    c.word
+        .store(generation << STATE_BITS | FULL, Ordering::Release);
+    (i64::from(generation) << 32) | (index as i64 + 1)
 }
 
 /// Moves the value out into `out` and answers 1; 0 when the cell is empty or gone.
@@ -100,16 +157,24 @@ pub unsafe extern "C-unwind" fn msrt_cells_take(
     d: ms_rt_abi::ValueDesc,
     out: *mut u8,
 ) -> u8 {
-    let mut table = cells();
-    let Some(c) = slot(&mut table, id) else {
+    let Some((c, full)) = lookup(id, FULL) else {
         return 0;
     };
-    if !c.full {
+    let taken = full & !STATE_MASK | OUT;
+    if c.word
+        .compare_exchange(full, taken, Ordering::Acquire, Ordering::Relaxed)
+        .is_err()
+    {
         return 0;
     }
-    c.full = false;
     // SAFETY: the block holds an owned value of `d`; it moves out and the block stays for `put`.
-    unsafe { core::ptr::copy_nonoverlapping(c.ptr as *const u8, out, (*d).size as usize) };
+    unsafe {
+        core::ptr::copy_nonoverlapping(
+            c.ptr.load(Ordering::Relaxed) as *const u8,
+            out,
+            (*d).size as usize,
+        )
+    };
     1
 }
 
@@ -119,46 +184,69 @@ pub unsafe extern "C-unwind" fn msrt_cells_take(
 /// `value` holds an owned value of `d`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_cells_put(id: i64, value: *mut u8, d: ms_rt_abi::ValueDesc) {
-    let mut table = cells();
-    match slot(&mut table, id) {
-        Some(c) if !c.full => {
-            c.full = true;
-            // SAFETY: the block was sized for a value of `d` by `new`; `value` moves in.
-            unsafe { core::ptr::copy_nonoverlapping(value, c.ptr as *mut u8, (*d).size as usize) };
-        }
-        _ => {
-            drop(table);
-            // SAFETY: `value` is an owned value of `d` that nothing keeps.
-            unsafe { slot_drop(&*d, value) };
+    if let Some((c, out)) = lookup(id, OUT) {
+        let putting = out & !STATE_MASK | PUTTING;
+        if c.word
+            .compare_exchange(out, putting, Ordering::Acquire, Ordering::Relaxed)
+            .is_ok()
+        {
+            let ptr = c.ptr.load(Ordering::Relaxed);
+            // SAFETY: the cell was out and is now ours alone; the block is empty and `new` sized
+            // it for `d`.
+            unsafe { core::ptr::copy_nonoverlapping(value, ptr as *mut u8, (*d).size as usize) };
+            c.word.store(out & !STATE_MASK | FULL, Ordering::Release);
+            return;
         }
     }
+    // SAFETY: `value` is an owned value of `d` that nothing keeps.
+    unsafe { slot_drop(&*d, value) };
 }
 
 /// Drops the cell and the value in it.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_cells_drop(id: i64) {
-    let mut table = cells();
-    let Some(c) = slot(&mut table, id) else {
+    let Some((c, full)) = lookup(id, FULL) else {
         return;
     };
-    c.live = false;
-    let (ptr, desc, full) = (core::mem::take(&mut c.ptr), c.desc, c.full);
-    c.full = false;
-    let (index, retired) = {
-        let index = (id & 0xffff_ffff) as u32 - 1;
-        (index, c.generation >= 0x7fff_ffff)
-    };
-    if !retired {
-        table.free.push(index);
+    let generation = full >> STATE_BITS;
+    let index = ((id & 0xffff_ffff) - 1) as usize;
+    let dead = generation << STATE_BITS | DEAD;
+    loop {
+        let word = c.word.load(Ordering::Acquire);
+        if word >> STATE_BITS != generation {
+            return;
+        }
+        let state = word & STATE_MASK;
+        // A `put` is mid-copy: it ends in a few instructions with the cell full.
+        if state == PUTTING {
+            core::hint::spin_loop();
+            continue;
+        }
+        if state == DEAD
+            || c.word
+                .compare_exchange(word, dead, Ordering::Acquire, Ordering::Relaxed)
+                .is_err()
+        {
+            if state == DEAD {
+                return;
+            }
+            continue;
+        }
+        // A cell whose read has the value out has an empty block; a late `put` finds it dead.
+        free_block(
+            c.ptr.load(Ordering::Relaxed),
+            c.desc.load(Ordering::Relaxed),
+            state == FULL,
+        );
+        retire(index, generation);
+        return;
     }
-    drop(table);
-    free_block(ptr, desc, full);
 }
 
 /// Whether the cell holds a value now (a read that is not running).
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_cells_full(id: i64) -> u8 {
-    slot(&mut cells(), id).is_some_and(|c| c.full) as u8
+    lookup(id, FULL).is_some_and(|(c, full)| c.word.load(Ordering::Acquire) == full) as u8
 }
 
 /// `take` for a caller that binds the value with `try`: moves the value into `out` and answers
@@ -177,5 +265,52 @@ pub unsafe extern "C-unwind" fn msrt_cells_take_result(
         ms_rt_abi::STATUS_OK
     } else {
         ms_rt_abi::STATUS_CLOSED
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::desc::msrt_desc_bool;
+
+    fn desc() -> ms_rt_abi::ValueDesc {
+        core::ptr::addr_of!(msrt_desc_bool).cast()
+    }
+
+    #[test]
+    fn a_cell_gives_its_value_once_and_takes_it_back() {
+        let mut v = 1u8;
+        let id = unsafe { msrt_cells_new(&mut v, desc()) };
+        assert_eq!(msrt_cells_full(id), 1);
+        let mut out = 0u8;
+        assert_eq!(unsafe { msrt_cells_take(id, desc(), &mut out) }, 1);
+        assert_eq!(out, 1);
+        assert_eq!(msrt_cells_full(id), 0);
+        assert_eq!(unsafe { msrt_cells_take(id, desc(), &mut out) }, 0);
+        let mut back = 1u8;
+        unsafe { msrt_cells_put(id, &mut back, desc()) };
+        assert_eq!(msrt_cells_full(id), 1);
+        msrt_cells_drop(id);
+        assert_eq!(msrt_cells_full(id), 0);
+        assert_eq!(unsafe { msrt_cells_take(id, desc(), &mut out) }, 0);
+    }
+
+    #[test]
+    fn a_cell_dropped_during_a_read_frees_its_block_and_ignores_the_late_put() {
+        let mut v = 1u8;
+        let id = unsafe { msrt_cells_new(&mut v, desc()) };
+        let mut out = 0u8;
+        assert_eq!(unsafe { msrt_cells_take(id, desc(), &mut out) }, 1);
+        msrt_cells_drop(id);
+        assert_eq!(msrt_cells_full(id), 0);
+        unsafe { msrt_cells_put(id, &mut out, desc()) };
+        assert_eq!(msrt_cells_full(id), 0);
+        // The slot is reusable, and the old id stays dead.
+        let mut again = 1u8;
+        let next = unsafe { msrt_cells_new(&mut again, desc()) };
+        assert_ne!(next, id);
+        assert_eq!(msrt_cells_full(id), 0);
+        assert_eq!(msrt_cells_full(next), 1);
+        msrt_cells_drop(next);
     }
 }
