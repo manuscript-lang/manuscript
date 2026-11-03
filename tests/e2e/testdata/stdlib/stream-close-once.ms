@@ -49,3 +49,19 @@ test "a write stream closes its sink once":
     var out = writer[Int](Counted(log.clone()))
     try out.close()
     try expect_equal(closes(log), "w")
+
+type Failing:
+    unused: Int
+
+impl Source[Int] for Failing:
+    var fn next() Int?!:
+        return ok(none)
+
+    var fn close() Unit!:
+        return error(Error("close failed", kind: ErrorCategory.Failed))
+
+test "an explicit close returns the source's close error":
+    var input = stream[Int](Failing(0))
+    let result = input.close()
+    try expect_equal(result.is_error(), true)
+    try expect_equal(result.err().message, "close failed")

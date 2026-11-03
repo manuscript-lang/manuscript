@@ -121,11 +121,19 @@ impl Iterator[T!] for Waiting[T]:
 impl Closeable for ReadStream[T]:
     // Drops the source and everything it owns. A read in flight ends with an error.
     var fn close() Unit!:
-        // The source closes once, when `closing` goes out of scope: an explicit close here would run twice.
+        // Close the source by hand so its error is returned, then park it back in the cell: moved
+        // out, it is not closed again at scope end, and dropping the cell only frees it.
+        var failure: Error? = none
         if let source = msrt_cells_take[Source[T]](self.cell):
-            let _closing = source
+            var closing = source
+            let result = closing.close()
+            if result.is_error():
+                failure = result.err()
+            msrt_cells_put[Source[T]](self.cell, closing)
 
         msrt_cells_drop(self.cell)
+        if let cause = failure:
+            return error(cause)
         return ok(unit)
 
 // Wraps `source` as a ReadStream that owns it.
