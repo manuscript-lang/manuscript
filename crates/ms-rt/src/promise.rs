@@ -513,7 +513,12 @@ pub fn io_done_unit(id: i64) {
     let ptr = alloc::alloc(8);
     // SAFETY: `ptr` is a fresh 8-byte block.
     unsafe { ptr.cast::<i64>().write(0) };
-    io_done_block(id, ptr as usize, &crate::desc::msrt_desc_int as *const _ as usize, 0);
+    io_done_block(
+        id,
+        ptr as usize,
+        &crate::desc::msrt_desc_int as *const _ as usize,
+        0,
+    );
 }
 
 /// A promise that is already finished with no value: the answer of a flush with nothing to drain.

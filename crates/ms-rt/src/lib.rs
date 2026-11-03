@@ -28,8 +28,8 @@ macro_rules! sym_prefix {
 
 pub mod alloc;
 pub mod bits;
-pub mod cells;
 pub mod cabi;
+pub mod cells;
 pub mod desc;
 pub mod fault;
 pub mod ffi;

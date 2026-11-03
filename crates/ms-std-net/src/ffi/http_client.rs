@@ -11,8 +11,8 @@ use crate::http::headers::Headers;
 use crate::http::url;
 use crate::wait::Deadline;
 use ms_rt::ffi::{
-    Bytes, BytesList, ErrOut, ObjRef, ObjSlot, Object, OptInt, Out, StatusCode, Str,
-    abi_record, native,
+    Bytes, BytesList, ErrOut, ObjRef, ObjSlot, Object, OptInt, Out, StatusCode, Str, abi_record,
+    native,
 };
 use ms_rt_abi::STATUS_NONE;
 use std::cell::RefCell;

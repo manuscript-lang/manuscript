@@ -168,7 +168,8 @@ mod tests {
         let f = new_string("gzip");
         let mut enc = MaybeUninit::<*mut ObjCell<EncoderObj>>::uninit();
         let mut dec = MaybeUninit::<*mut ObjCell<DecoderObj>>::uninit();
-        let (data, mut head, mut tail, mut plain) = (bytes(b"hello hello hello"), blank(), blank(), blank());
+        let (data, mut head, mut tail, mut plain) =
+            (bytes(b"hello hello hello"), blank(), blank(), blank());
         // SAFETY: all pointers are live; handles are released at the end.
         unsafe {
             assert_eq!(
@@ -183,7 +184,10 @@ mod tests {
             assert_eq!(msstd_compress_decoder_new(&f, 0, 0, dec.as_mut_ptr()), 0);
             let dec = dec.assume_init();
             let chunk = bytes(&packed);
-            assert_eq!(msstd_compress_decoder_push(dec, &chunk, plain.as_mut_ptr()), 0);
+            assert_eq!(
+                msstd_compress_decoder_push(dec, &chunk, plain.as_mut_ptr()),
+                0
+            );
             assert_eq!(bytes_ref(plain.as_ptr()), b"hello hello hello");
             assert_eq!(msstd_compress_decoder_end(dec, plain.as_mut_ptr()), 0);
             ms_rt::obj::msrt_release(enc.cast());
