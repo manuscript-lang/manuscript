@@ -5,7 +5,7 @@ weight = 8
 
 # Concurrent tasks
 
-A call that can wait starts its work at once and returns a `Promise[T]`. `wait()` gives the result, so there is no `async` or `await`: any function can wait, and callers do not change. `promise(fn: ...)` runs your own function the same way, on a thread the runtime picks.
+A call that can wait starts its work at once and returns a `Promise[T]`. `wait()` gives the result, so there is no `async` or `await`: any function can wait, and callers do not change. `promise(fn: ...)` runs your own function the same way, on a thread the runtime picks. Values that arrive over time travel on [streams](streams.md), and an in-memory `pipe` connects promises.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -22,10 +22,21 @@ test "run work at once and collect it":
     try expect_equal(results, [9, 16])
 ```
 
-- A promise only reads what it captures. Concurrent code never changes a shared value; give state one owner and send it values over a `pipe`.
-- `wait(timeout: ...)` stops waiting and cancels the promise when the limit passes. Dropping an unfinished promise cancels it and waits for it to end, so work never outlives the values it uses.
-- A fault inside a promise ends only that promise; `wait` reports it as a failure.
-- `wait_all` returns results in order and cancels the rest on the first error; `wait_first` returns the first result.
-- Cancellation is delivered at the next wait, and a loop that never waits is not stopped. Lint rule **MSL111** flags a `while true` loop that neither waits nor exits.
+## The rules
 
-The API reference is generated from `stdlib/concurrency/promise.ms`.
+1. A call that can wait returns a `Promise[T]` that is already running. `wait()` gives `T!` and takes the result once.
+2. A task pauses only where `wait` appears. Code between two waits runs without interleaving.
+3. `promise(fn: ...)` runs on a thread the runtime picks and stays there. A CPU-heavy promise delays the promises sharing its thread until it waits. A promise may borrow what it captures, so the values it reads must outlive it (rule 4).
+4. Work you start ends before the values it uses. Dropping a promise cancels it and waits for it to end.
+5. Concurrent code can read shared values but never change them. To change shared state, give it one owner and send it values over a `pipe`.
+6. Errors and faults inside a promise come back from `wait` as errors. A fault outside any promise ends the program.
+
+All threads share one heap and values move between them by pointer, so nothing is copied or encoded when a value crosses a thread. There are no channels, task groups, locks or shared cells.
+
+| Page | What you will learn |
+| --- | --- |
+| [Promises](promises.md) | Start work, wait with a timeout, cancel, and collect many results. |
+| [Streams and pipes](streams.md) | Read and write values over time, build pipelines, and pass values between promises. |
+| [HTTP server](http-server.md) | Serve on every core with one `serve` call. |
+
+The API reference is generated from `stdlib/concurrency/promise.ms`, `stdlib/io/io.ms` and `stdlib/net/net.ms`.
