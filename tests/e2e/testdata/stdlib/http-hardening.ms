@@ -1,3 +1,4 @@
+import send, recv, send_bytes, read_to_end from "./support/conn.ms"
 import expect_ok, expect_equal from "@std/test/test.ms"
 import (
     headers,
@@ -26,8 +27,8 @@ test "serve ends a connection that trickles its request head":
         address: "127.0.0.1:0", handler: buffered(ok_route),
         options: HttpServerOptions(timeout: 400.milliseconds)
     ) | try expect_ok
-    let client = connect(server.address(), 2.seconds) | try expect_ok
-    client.write("GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ", 2.seconds) | try expect_ok
+    var client = connect(server.address(), 2.seconds) | try expect_ok
+    send(var client, "GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ") | try expect_ok
 
     // One byte every 100 ms never completes the head; the budget still runs out.
     var sent = 0
@@ -35,7 +36,7 @@ test "serve ends a connection that trickles its request head":
     while sent < 30:
         sleep(100.milliseconds)
 
-        let written = client.write("a", 1.seconds)
+        let written = send(var client, "a")
         if written.is_error(): break
 
         sent += 1
@@ -44,7 +45,7 @@ test "serve ends a connection that trickles its request head":
     // read may then see an error (a reset on macOS) instead of an end of stream.
     if sent == 30: return error(Error("trickled request head was never cut off"))
 
-    if let reply = client.read(timeout: 3.seconds):
+    if let reply = recv(var client, 3.seconds):
         let text = reply.get(Bytes([])).decode_utf8().get("")
         if text.starts_with("HTTP/1.1 200"): return error(
             Error("incomplete request was served: {text}")
@@ -55,20 +56,20 @@ test "close cancels a handler that outlives the grace period":
         address: "127.0.0.1:0", handler: buffered(slow_route),
         options: HttpServerOptions(grace: 200.milliseconds)
     ) | try expect_ok
-    let client = connect(server.address(), 2.seconds) | try expect_ok
-    client.write("GET / HTTP/1.1\r\nHost: t\r\n\r\n", 2.seconds) | try expect_ok
+    var client = connect(server.address(), 2.seconds) | try expect_ok
+    send(var client, "GET / HTTP/1.1\r\nHost: t\r\n\r\n") | try expect_ok
     sleep(100.milliseconds)
     try server.close()
 
     // An error here is the connection ending (a reset on macOS); only a served reply fails.
-    if let reply = client.read(timeout: 5.seconds):
+    if let reply = recv(var client, 5.seconds):
         let text = reply.get(Bytes([])).decode_utf8().get("")
         if text.starts_with("HTTP/1.1 200"): return error(
             Error("handler finished instead of being cancelled")
         )
 
-fn expect_file_reply(conn: Connection) Unit!:
-    let reply = conn.read(timeout: 10.seconds) | try expect_ok
+fn expect_file_reply(var conn: Connection) Unit!:
+    let reply = recv(var conn, 10.seconds) | try expect_ok
     let text = reply.get(Bytes([])).decode_utf8().get("")
     if not text.starts_with("HTTP/1.1 200"): return error(
         Error("file handler failed: {text}")
@@ -94,16 +95,12 @@ test "serve answers requests while handlers read and write files":
         return HttpResponse(200, headers(), "{read.get().length()}".to_bytes())
 
     var server = serve(address: "127.0.0.1:0", handler: buffered(io_route)) | try expect_ok
-    let a = connect(server.address(), 2.seconds) | try expect_ok
-    let b = connect(server.address(), 2.seconds) | try expect_ok
-    a.write(
-        "GET /io?1 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n", 2.seconds
-    ) | try expect_ok
-    b.write(
-        "GET /io?2 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n", 2.seconds
-    ) | try expect_ok
-    try expect_file_reply(a)
-    try expect_file_reply(b)
+    var a = connect(server.address(), 2.seconds) | try expect_ok
+    var b = connect(server.address(), 2.seconds) | try expect_ok
+    send(var a, "GET /io?1 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n") | try expect_ok
+    send(var b, "GET /io?2 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n") | try expect_ok
+    try expect_file_reply(var a)
+    try expect_file_reply(var b)
     try server.close()
     try dir.close()
 
@@ -115,22 +112,20 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
         address: "127.0.0.1:0", handler: oversized,
         options: HttpServerOptions(max_response_bytes: 100)
     ) | try expect_ok
-    let client = connect(server.address(), 2.seconds) | try expect_ok
-    client.write(
-        "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n", 2.seconds
-    ) | try expect_ok
+    var client = connect(server.address(), 2.seconds) | try expect_ok
+    send(var client, "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n") | try expect_ok
 
-    let reply_bytes = client.read(timeout: 3.seconds) | try expect_ok
+    let reply_bytes = recv(var client, 3.seconds) | try expect_ok
     let head = reply_bytes.get(Bytes([])).decode_utf8().get("")
     if not head.starts_with("HTTP/1.1 500"): return error(
         Error("expected a 500 reply, got: {head}")
     )
 
 fn raw_status(address: String, request: String) String!:
-    let client = connect(address, 2.seconds) | try expect_ok
-    client.write(request, 2.seconds) | try expect_ok
+    var client = connect(address, 2.seconds) | try expect_ok
+    send(var client, request) | try expect_ok
 
-    let reply = client.read(timeout: 2.seconds) | try expect_ok
+    let reply = recv(var client, 2.seconds) | try expect_ok
     let text = reply.get(Bytes([])).decode_utf8().get("")
     return ok(text.split("\r\n")[0].clone())
 

@@ -1,3 +1,4 @@
+import send, recv, send_bytes from "./support/conn.ms"
 import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 import http_result from "./support/http.ms"
@@ -111,15 +112,15 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
 
 fn upgrade_status(address: String, version: String, extra: String) String!:
-    let client = try connect(address, 2.seconds)
+    var client = try connect(address, 2.seconds)
     let key = "dGhlIHNhbXBsZSBub25jZQ=="
     let request = (
         "GET /ws {version}\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
         + "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: {key}\r\n{extra}\r\n"
     )
-    try client.write(request, 2.seconds)
+    try send(var client, request)
 
-    let reply = (try client.read(timeout: 2.seconds)).get(Bytes([]))
+    let reply = (try recv(var client, 2.seconds)).get(Bytes([]))
     return ok(reply.decode_utf8().get("").split("\r\n").first().get(""))
 
 test "WebSocket upgrades need HTTP/1.1 and one key":

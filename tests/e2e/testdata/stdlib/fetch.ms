@@ -1,3 +1,4 @@
+import send, recv, send_bytes, read_to_end from "./support/conn.ms"
 import expect_equal from "@std/test/test.ms"
 import (
     FetchBody,
@@ -136,20 +137,10 @@ test "Fetcher.stream returns the body incrementally and reuses the client":
     let server = try serve("127.0.0.1:0", buffered(route))
     let client = try fetcher()
     let url = "http://{server.address()}/big"
-    var body = try client.stream(url)
-    var out = BytesBuilder()
-
-    while true:
-        let chunk = try body.read()
-
-        if let bytes = chunk:
-            out.append_bytes(bytes)
-        else:
-            break
-
-    try expect_equal(out.build(), "0123456789".to_bytes())
-    try expect_equal(body.metadata().status, 200)
-    try body.close()
+    var response = try client.stream(url)
+    try expect_equal(try read_to_end(var response.body), "0123456789".to_bytes())
+    try expect_equal(response.metadata.status, 200)
+    try response.body.close()
 
     let again = try client.fetch(url)
     try expect_equal(again.body.length(), 10)

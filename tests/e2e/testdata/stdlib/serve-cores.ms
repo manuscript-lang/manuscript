@@ -1,3 +1,4 @@
+import send, recv, send_bytes, read_to_end from "./support/conn.ms"
 import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
 import (
     HttpClientOptions,
@@ -21,11 +22,11 @@ fn plain_handler() fn(HttpExchange) Unit!:
 
 fn get(address: String) String:
     var client = connect(address, 2.seconds).get()
-    let _ = client.write("GET /x HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
+    let _ = send(var client, "GET /x HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
     var text = ""
 
     while true:
-        let chunk = client.read(none, 2.seconds)
+        let chunk = recv(var client, 2.seconds)
         if chunk.is_error():
             break
 
@@ -91,4 +92,4 @@ test "TLS connections are served on several cores":
             headers: (try text_headers(Map[String, String]())), body: "",
             timeout: 2.seconds
         ) | try expect_ok
-        try expect_equal(response.metadata().status, 200)
+        try expect_equal(response.metadata.status, 200)
