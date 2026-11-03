@@ -805,6 +805,8 @@ impl Checker {
     fn clonable(&self, t: &Ty, state: &mut PropertyState) -> bool {
         match t.kind {
             Kind::Variable => return t.bounds().iter().any(implies_clonable),
+            // The payload of an interface value has a type the interface does not name; one over
+            // a native without a `clone` faults when copied (`ownership::Classifier::clonable`).
             Kind::Contract => return !t.is_std("Closeable"),
             Kind::Function | Kind::Primitive => return true,
             _ => {}

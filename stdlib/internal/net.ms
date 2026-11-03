@@ -121,6 +121,9 @@ export extern fn msstd_net_listener_accept_raw(
     timeout: Duration?
 ) Int!
 
+// Another handle on the same listener, for a promise that accepts on it; dropping it leaves the listener open.
+export extern fn msstd_net_listener_share(handle: NativeListener) NativeListener
+
 export extern fn msstd_net_listener_raw_owner(handle: NativeListener) Int
 
 export extern fn msstd_net_release_unadopted(owner: Int) Unit

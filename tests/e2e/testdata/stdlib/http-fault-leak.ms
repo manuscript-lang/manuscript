@@ -1,4 +1,4 @@
-import send, recv, send_bytes from "./support/conn.ms"
+import send, recv from "./support/conn.ms"
 import expect_ok from "@std/test/test.ms"
 import HttpExchange from "@std/net/http.ms"
 import connect, serve from "@std/net/net.ms"
@@ -18,7 +18,7 @@ test "a faulting handler releases the values its frames own":
     let before = (memory_usage() | try expect_ok).resident
 
     for i in 0..60:
-        var client = connect(server.address(), 2.seconds) | try expect_ok
+        var client = connect(server.address(), 2.seconds).wait() | try expect_ok
         try send(var client, "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
 
         let reply_bytes = try recv(var client, 3.seconds)

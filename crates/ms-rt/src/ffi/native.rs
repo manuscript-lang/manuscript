@@ -12,7 +12,7 @@ use super::{
 };
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
-use ms_rt_abi::{Closure, MapVal, OptStr};
+use ms_rt_abi::{Closure, ErrSlot, HasRaw, MapVal, OptStr};
 use std::boxed::Box;
 use std::string::String;
 use std::vec::Vec;
@@ -90,6 +90,26 @@ impl IntoAbi for bool {
     type Raw = u8;
     fn into_raw(self) -> u8 {
         u8::from(self)
+    }
+}
+
+/// Whether an optional argument is present, for the `has_x` half of a flattened optional.
+#[derive(Clone, Copy)]
+pub struct Has(pub bool);
+
+impl std::ops::Deref for Has {
+    type Target = bool;
+    fn deref(&self) -> &bool {
+        &self.0
+    }
+}
+impl AbiType for Has {
+    type Raw = HasRaw;
+}
+// SAFETY: a presence flag is a byte, 0 or 1.
+unsafe impl FromAbi<'_> for Has {
+    unsafe fn from_raw(raw: HasRaw) -> Has {
+        Has(raw.0 != 0)
     }
 }
 
@@ -851,7 +871,38 @@ impl IntoAbi for Vec<String> {
 /// The nullable `err: *mut StrVal` slot where a fallible native stores a `Failed` message.
 pub struct ErrOut(*mut StrVal);
 
+/// A failed native: the status byte and, for `STATUS_FAILED`, its fixed diagnostic text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Failure {
+    pub status: u8,
+    pub text: &'static str,
+}
+
+impl Failure {
+    /// `STATUS_FAILED` with the diagnostic `text`.
+    pub const fn failed(text: &'static str) -> Failure {
+        Failure {
+            status: ms_rt_abi::STATUS_FAILED,
+            text,
+        }
+    }
+}
+
+impl From<u8> for Failure {
+    fn from(status: u8) -> Failure {
+        Failure { status, text: "" }
+    }
+}
+
 impl ErrOut {
+    /// The status of `failure`, storing its text in the slot for `STATUS_FAILED`.
+    pub fn fail(&self, failure: Failure) -> StatusCode {
+        if failure.status == ms_rt_abi::STATUS_FAILED {
+            self.set(failure.text);
+        }
+        StatusCode(failure.status)
+    }
+
     /// Stores `msg` as a fresh string, unless the caller passed no slot.
     pub fn set(&self, msg: &str) {
         if !self.0.is_null() {
@@ -869,11 +920,12 @@ impl ErrOut {
     }
 }
 impl AbiType for ErrOut {
-    type Raw = *mut StrVal;
+    type Raw = ErrSlot;
 }
 // SAFETY: the caller passes null or writable memory for one string.
 unsafe impl FromAbi<'_> for ErrOut {
-    unsafe fn from_raw(raw: *mut StrVal) -> ErrOut {
+    unsafe fn from_raw(raw: ErrSlot) -> ErrOut {
+        let raw = raw.0;
         if !raw.is_null() {
             // The slot may be read for any failure status: start it as the empty string, which
             // owns no allocation, so a status that sets no text leaves it valid.
@@ -948,58 +1000,6 @@ impl<T: AbiHandle> AbiSlot for ObjSlot<T> {
     unsafe fn duplicate(&self) -> ObjSlot<T> {
         // SAFETY: caller contract; the object's clone entry makes an independent copy.
         ObjSlot(unsafe { msrt_obj_clone(self.0.cast()) }.cast())
-    }
-}
-
-type ReadCode =
-    unsafe extern "C-unwind" fn(*mut Closure, u8, i64, *mut VecVal, *mut u8, *mut StrVal) -> u8;
-
-/// A compiled `ReadStream` closure, read with the `Connection.read` convention of `ABI.md`. It
-/// borrows the closure for the duration of the native call that received it.
-pub struct ReadSource(*mut Closure, ReadCode);
-
-impl AbiType for ReadSource {
-    type Raw = *mut Closure;
-}
-// SAFETY: a closure argument is a live closure whose code has the `ReadStream` signature.
-unsafe impl FromAbi<'_> for ReadSource {
-    unsafe fn from_raw(raw: *mut Closure) -> ReadSource {
-        // SAFETY: the code word follows the 16-byte header (`Closure`).
-        ReadSource(raw, unsafe { core::mem::transmute_copy(&(*raw).code) })
-    }
-}
-
-impl ReadSource {
-    /// Reads up to `max` bytes: `Ok(None)` at the end, `Err` with the stream's status byte.
-    pub fn read(&self, max: usize) -> Result<Option<Vec<u8>>, u8> {
-        let mut out = core::mem::MaybeUninit::<VecVal>::uninit();
-        let mut present = 0u8;
-        let mut message = StrVal::owned(core::ptr::null_mut(), 0);
-        // SAFETY: the code follows the `Connection.read` convention, filling `out` with an owned
-        // `Bytes` when it reports a chunk; the closure is borrowed for the call.
-        unsafe {
-            let status = (self.1)(
-                self.0,
-                1,
-                max as i64,
-                out.as_mut_ptr(),
-                &mut present,
-                &mut message,
-            );
-            if message.owns() && !message.ptr_word.is_null() {
-                crate::ffi::str_release(&message);
-            }
-            if status != 0 {
-                return Err(status);
-            }
-            if present == 0 {
-                return Ok(None);
-            }
-            let mut v = out.assume_init();
-            let data = bytes_ref(&raw const v).to_vec();
-            msrt_bytes_drop(&raw mut v);
-            Ok(Some(data))
-        }
     }
 }
 

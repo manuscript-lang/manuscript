@@ -55,6 +55,12 @@ fn the_fix_waits_for_a_dropped_call() {
     let findings = lint_program(&program);
     let fix = findings[0].fix.as_ref().expect("a fix");
     let mut fixed = source.clone();
-    fixed.insert_str(fix.pos.offset as usize, &fix.replacement);
-    assert!(fixed.contains("promise(fn: work()).wait()\n"), "{fixed}");
+    fixed.replace_range(
+        fix.pos.offset as usize..fix.end.offset as usize,
+        &fix.replacement,
+    );
+    assert!(
+        fixed.contains("let _ = promise(fn: work()).wait()\n"),
+        "{fixed}"
+    );
 }

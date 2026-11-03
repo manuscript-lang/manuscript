@@ -46,7 +46,7 @@ export fn main() Int:
 
     for f in files:
         let absolute = "{root}/{f}"
-        let source = read_file(absolute.clone()).get().decode_utf8().get("")
+        let source = read_file(absolute.clone()).wait().get().decode_utf8().get("")
         var command = List[String]()
 
         if source.contains("export fn main"):
@@ -56,7 +56,7 @@ export fn main() Int:
         else:
             continue
 
-        if let out = run(ms.clone(), command, timeout: seconds(120), env: env):
+        if let out = run(ms.clone(), command, timeout: seconds(120), env: env).wait():
             swept += 1
 
             let sites = copies(out.stderr.decode_utf8().get(""))

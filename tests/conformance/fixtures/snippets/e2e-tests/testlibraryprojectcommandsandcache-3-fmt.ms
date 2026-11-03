@@ -8,5 +8,5 @@ import fail from "@std/test/test.ms"
 test "root":
     if value() != 3: return fail("bad value")
 
-    let data = try read_file(path: "golden/input.txt", max_bytes: 1024)
+    let data = try read_file(path: "golden/input.txt", max_bytes: 1024).wait()
     if data.length() != 7: return fail("wrong fixture size")

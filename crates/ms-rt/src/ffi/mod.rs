@@ -12,10 +12,11 @@
 
 mod native;
 pub use crate::{abi_handle, abi_record, native};
+pub use ms_rt_abi::{ErrSlot, HasRaw};
 pub use native::{
     AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, BytesList, BytesVec, EntryFilter, ErrOut,
-    FromAbi, Global, Handler, IdArray, IntList, IntMap, IntoAbi, Mut, ObjBox, ObjCell, ObjMut,
-    ObjRef, ObjSlot, Object, OptInt, Out, Own, PairFilter, ReadSource, RecList, Ref, Status,
+    Failure, FromAbi, Global, Handler, Has, IdArray, IntList, IntMap, IntoAbi, Mut, ObjBox,
+    ObjCell, ObjMut, ObjRef, ObjSlot, Object, OptInt, Out, Own, PairFilter, RecList, Ref, Status,
     StatusCode, Str, StrArray, StrMap, StringList, StringTable, Text, TextList, argv,
     monotonic_nanos, start_nanos,
 };

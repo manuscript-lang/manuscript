@@ -13,6 +13,14 @@ import (
     msrt_streams_write,
     msrt_streams_flush,
     msrt_streams_buffered,
+    msrt_pipe_new,
+    msrt_pipe_add_writer,
+    msrt_pipe_write,
+    msrt_pipe_read,
+    msrt_pipe_flush,
+    msrt_pipe_buffered,
+    msrt_pipe_close_writer,
+    msrt_pipe_close_reader,
     msrt_cells_new,
     msrt_cells_take,
     msrt_cells_put,
@@ -121,11 +129,21 @@ impl Iterator[T!] for Waiting[T]:
 impl Closeable for ReadStream[T]:
     // Drops the source and everything it owns. A read in flight ends with an error.
     var fn close() Unit!:
+        // Close the source by hand so its error is returned, then park it back in the cell: moved
+        // out, it is not closed again at scope end, and dropping the cell only frees it.
+        var failure: Error? = none
+
         if let source = msrt_cells_take[Source[T]](self.cell):
             var closing = source
-            try closing.close()
+            let result = closing.close()
+            if result.is_error():
+                failure = result.err()
+            msrt_cells_put[Source[T]](self.cell, closing)
 
         msrt_cells_drop(self.cell)
+        if let cause = failure:
+            return error(cause)
+
         return ok(unit)
 
 // Wraps `source` as a ReadStream that owns it.
@@ -231,6 +249,89 @@ impl Closeable for WriteStream[T]:
 // Wraps `sink` as a WriteStream that owns it.
 export fn writer[T](sink: Sink[T]) WriteStream[T]:
     return WriteStream[T](sink: sink)
+
+// The reading end of a pipe: the one reader, ended by the last writer closing.
+type PipeSource[T]:
+    id: Int
+
+impl Source[T] for PipeSource[T]:
+    var fn next() T?!:
+        let p = msrt_pipe_read(self.id)
+        let code = msrt_promise_wait(p, -1)
+
+        if code != 0:
+            msrt_promise_drop(p)
+            return error(Error("pipe: read cancelled", kind: ErrorCategory.Other))
+
+        let value = msrt_promise_take[T](p)
+        msrt_promise_drop(p)
+        return ok(value)
+
+    var fn close() Unit!:
+        msrt_pipe_close_reader(self.id)
+        return ok(unit)
+
+// One writing end of a pipe; closing it releases that writer.
+type PipeSink[T: Clonable]:
+    id: Int
+
+impl Sink[T] for PipeSink[T]:
+    var fn put(value: T) Unit!:
+        if msrt_pipe_write[T](self.id, value) != 0:
+            return error(Error("pipe: the reader is gone", kind: ErrorCategory.Closed))
+
+        return ok(unit)
+
+    var fn drain() Promise[Unit]:
+        return adopt[Unit](msrt_pipe_flush(self.id))
+
+    fn buffered() Int:
+        return msrt_pipe_buffered(self.id)
+
+    var fn close() Unit!:
+        msrt_pipe_close_writer(self.id)
+        return ok(unit)
+
+// An in-memory stream of whole values, in order: any number of writers and one reader. A write hands the pipe a copy
+// (the stream interface only lends the argument), so `T` must be `Clonable`; the copy then moves through by pointer.
+// `capacity` is the number of queued values above which a writer's `flush` waits. The pipe itself is not a writer: the
+// reader ends once every writer from `writer()` has closed, so make the writers before reading. Closing the reader
+// makes later writes fail with `Closed`.
+export opaque type Pipe[T: Clonable]:
+    // The runtime pipe's id.
+    id: Int
+    // Whether `reader` has handed out the reading end.
+    taken: Bool
+
+impl Pipe[T]:
+    // A new writing end, like dup on a descriptor. Close it when done: the reader ends when every writer has closed. Safe
+    // to call from a promise that owns the pipe: each call makes a writer of its own.
+    fn writer() WriteStream[T]:
+        msrt_pipe_add_writer(self.id)
+        return writer[T](PipeSink[T](self.id))
+
+    // The reading end. A pipe has one: later calls return a stream that is already at its end.
+    var fn reader() ReadStream[T]:
+        if self.taken:
+            return stream[T](PipeSource[T](0))
+
+        self.taken = true
+        return stream[T](PipeSource[T](self.id))
+
+impl Closeable for Pipe[T]:
+    // Releases the reading end if no one took it.
+    var fn close() Unit!:
+        if not self.taken:
+            msrt_pipe_close_reader(self.id)
+        return ok(unit)
+
+// Makes an in-memory pipe whose writers' `flush` waits while more than `capacity` values are queued.
+export fn pipe[T: Clonable](capacity: Int) Pipe[T]:
+    let id = msrt_pipe_new(capacity)
+
+    // The runtime starts a pipe with one writer, which the Pipe value would hold; writers come from `writer()` instead.
+    msrt_pipe_close_writer(id)
+    return Pipe[T](id: id, taken: false)
 
 // Standard output and error share the runtime's process-wide buffers.
 type StdoutSink:

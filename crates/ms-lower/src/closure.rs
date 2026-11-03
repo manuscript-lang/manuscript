@@ -1329,24 +1329,8 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
             fl.emit_return(Some(out));
             return Ok(());
         }
-        "io/stdout" | "io/stderr" => {
-            let out = fl.std_stream(ret, job.native == "io/stderr")?;
-            fl.emit_return(Some(out));
-            return Ok(());
-        }
         "time/clock" | "time/wall_clock" => {
             let out = fl.time_clock(ret, job.native == "time/wall_clock")?;
-            fl.emit_return(Some(out));
-            return Ok(());
-        }
-        "io/read_all" | "io/copy" => {
-            fl.fill_native_defaults(job.sym.module, func, &job.params, &mut args)?;
-            let kind = if job.native == "io/copy" {
-                crate::streamloop::Loop::Copy
-            } else {
-                crate::streamloop::Loop::ReadAll
-            };
-            let out = fl.stream_with(kind, &args, ret)?;
             fl.emit_return(Some(out));
             return Ok(());
         }

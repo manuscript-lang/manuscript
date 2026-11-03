@@ -4,7 +4,7 @@ import stdout from "@std/io/io.ms"
 import sleep, nanoseconds from "@std/os/time.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
-    sleep(nanoseconds(600000000))
+    let _ = sleep(nanoseconds(600000000)).wait()
     return HttpResponse(200, headers(), "done".to_bytes())
 
 export fn main() Int:

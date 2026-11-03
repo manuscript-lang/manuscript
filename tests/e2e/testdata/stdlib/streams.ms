@@ -14,7 +14,9 @@ test "flows compose stream transforms":
     let copied = try copy(map(source, upper), try output.writer())
     try output.close()
     try expect_equal(copied, 3)
-    try expect_equal((read_file(path: path) | try expect_ok), "HELLO WORLD".to_bytes())
+    try expect_equal(
+        (read_file(path: path).wait() | try expect_ok), "HELLO WORLD".to_bytes()
+    )
 
 test "from_list and collect bridge lists and streams":
     let doubled = map(from_list([1, 2, 3]), fn(n: Int) Int: n * 2)

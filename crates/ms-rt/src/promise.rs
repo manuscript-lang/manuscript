@@ -448,12 +448,12 @@ pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
 /// Completes `i` with no value (a finished sleep): `wait` answers 0 and nothing is left to take.
 fn complete_unit(t: &mut Table, i: usize) {
     if t.state[i] == State::Pending {
-        t.state[i] = State::Ok;
-        wake(t, i);
+        // A unit value, so `wait` takes `Unit` (an empty result reads as closed).
+        put_int(t, i, 0);
     }
 }
 
-/// A promise that finishes after `ns` nanoseconds; it has no task and no result to take.
+/// A promise that finishes after `ns` nanoseconds; it has no task; it finishes with a unit value.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_sleep(ns: i64) -> i64 {
     let id = msrt_promise_new();
@@ -728,6 +728,18 @@ pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi
     unsafe { start_on(id, work, false) }
 }
 
+/// Starts `work` as the task of promise `id`, on the calling thread and never elsewhere. For an I/O operation run as a
+/// task (a fetch, a connect, a file read): it only waits, so it gains nothing from another thread, and its native
+/// handles stay on the thread that made them. Otherwise as `msrt_promise_start`.
+///
+/// # Safety
+/// `work` is a live closure object.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_promise_start_here(id: i64, work: *mut ms_rt_abi::Closure) {
+    // SAFETY: forwarded contract.
+    unsafe { start_on(id, work, true) }
+}
+
 /// Starts `work` as the task of promise `id`, on this thread when `here` or when a live native
 /// stream is pinned to it, else where the runtime picks.
 ///
@@ -913,6 +925,9 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
         let remaining = deadline.map_or(-1, |d| (d - crate::sys::monotonic_ns()).max(0));
         let woke = park_on(id, remaining);
         if woke == task::WAIT_CANCELLED {
+            // The promise may be a temporary that unwinding never drops (`read_file(p).wait()`):
+            // cancel its work now so it releases what it holds.
+            request_cancel(id);
             fault::msrt_cancelled();
         }
         let t = table();

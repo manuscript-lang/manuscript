@@ -12,7 +12,7 @@ impl Closeable for Door:
         return ok(unit)
 
 fn logged(path: String) String:
-    let read = read_file(path)
+    let read = read_file(path).wait()
     if let bytes = read:
         return bytes.decode_utf8().get("")
 

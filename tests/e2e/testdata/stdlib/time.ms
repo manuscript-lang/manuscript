@@ -34,7 +34,7 @@ test "time rejects invalid timestamps and out of range nanoseconds":
 
 test "host clocks are usable and zero sleep completes":
     let before = monotonic()
-    sleep(0.milliseconds)
+    let _ = sleep(0.milliseconds).wait()
     try expect_false(monotonic() < before)
 
     let current = now()
@@ -95,7 +95,7 @@ test "sub-millisecond sleeps are not rounded up to a millisecond":
     for attempt in 0..5:
         let start = monotonic()
         for round in 0..500:
-            sleep(microseconds(50))
+            let _ = sleep(microseconds(50)).wait()
 
         let elapsed = monotonic().difference(start)
         if elapsed.compare(fastest) < 0:

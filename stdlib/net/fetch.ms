@@ -4,6 +4,7 @@ import Closeable, Data from "@std/core.ms"
 import (
     HttpClient,
     HttpClientOptions,
+    NativeHttpClient,
     HttpHeaders,
     HttpMethod,
     HttpResponseMetadata,
@@ -14,6 +15,11 @@ import (
 import parse, stringify from "@std/data/json.ms"
 import Network, TlsOptions, http_client from "@std/net/net.ms"
 import Duration, Instant, seconds, monotonic from "@std/os/time.ms"
+import (
+    msstd_http_client_request_bytes,
+    msstd_http_client_share
+) from "@std/internal/http.ms"
+import Promise, owned_promise from "@std/concurrency/promise.ms"
 
 // The request body: empty, text, raw bytes, or JSON text; `fetch` derives a default `Content-Type` from the case.
 export type FetchBody:
@@ -110,14 +116,15 @@ export type Fetcher:
 impl Fetcher:
     // Sends the request and buffers the response body.
     // A `Raw` or `Text` body is resent on redirects that keep it.
-    fn fetch(url: String, options: FetchOptions = FetchOptions()) FetchResponse!:
-        let started = monotonic()
-        let sent = outgoing(options.clone())
-        let body = try self.client.request_raw(
-            options.method.clone(), url, sent.headers, sent.body,
-            options.max_response_bytes, options.timeout
+    // Returns the promise of the response; requests started together are in flight together.
+    fn fetch(url: String, options: FetchOptions = FetchOptions()) Promise[FetchResponse]:
+        return owned_promise[SendArgs, FetchResponse](
+            SendArgs(
+                native: msstd_http_client_share(self.client.native), url: url.clone(),
+                options: options.clone()
+            ),
+            fn a: sent(a.native, a.url, a.options)
         )
-        return drain(body, options, started)
 
     // Sends the request and returns the streaming body. `options.timeout` is a whole-exchange deadline, so set it to none for long streams.
     fn stream(url: String, options: FetchOptions = FetchOptions()) StreamingResponse!:
@@ -211,8 +218,36 @@ export fn fetcher(
     let client = try http_client(settings)
     return ok(Fetcher(client: client))
 
-// Performs one buffered request on a one-shot client.
+// Starts one buffered request on a one-shot client and returns its promise; requests started together are in flight together.
 // Redirects are followed up to 20 times, the body is limited to 16 MiB, and the exchange to 30 seconds; override them in `options`.
-export fn fetch(url: String, options: FetchOptions = FetchOptions()) FetchResponse!:
+export fn fetch(
+    url: String,
+    options: FetchOptions = FetchOptions()
+) Promise[FetchResponse]:
+    return owned_promise[FetchArgs, FetchResponse](
+        FetchArgs(url: url.clone(), options: options.clone()),
+        fn a: fetched(a.url, a.options)
+    )
+
+type FetchArgs:
+    url: String
+    options: FetchOptions
+
+fn fetched(url: String, options: FetchOptions) FetchResponse!:
     let client = try fetcher()
-    return client.fetch(url, options)
+    return sent(client.client.native, url, options)
+
+type SendArgs:
+    native: NativeHttpClient
+    url: String
+    options: FetchOptions
+
+// Sends the request on the pooled client behind `native` and buffers the response body.
+fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchResponse!:
+    let started = monotonic()
+    let outbound = outgoing(options.clone())
+    let body = try msstd_http_client_request_bytes(
+        native, options.method.clone(), url, outbound.headers, outbound.body,
+        options.max_response_bytes, options.timeout
+    )
+    return drain(body, options, started)

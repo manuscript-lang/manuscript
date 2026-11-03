@@ -93,6 +93,9 @@ impl Classifier {
         }
         match t.kind {
             Kind::Variable => t.bounds().iter().any(implies_clonable),
+            // An interface value's payload has a type the interface does not name; one over a
+            // native without a `clone` (an `HttpExchange`) faults when copied, a guard the
+            // runtime keeps until wrappers can borrow (middleware `Tap`s copy their exchange).
             Kind::Contract => !t.is_std("Closeable"),
             Kind::Native => {
                 (self.copyable.contains(&t.id)

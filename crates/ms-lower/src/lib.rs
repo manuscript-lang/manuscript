@@ -42,7 +42,6 @@ mod runner;
 mod scope;
 mod stdnative;
 mod stmt;
-mod streamloop;
 mod testing;
 mod text;
 mod textbuilder;

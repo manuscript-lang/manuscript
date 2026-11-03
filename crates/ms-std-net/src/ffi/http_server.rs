@@ -9,7 +9,8 @@ use crate::error::HttpErr;
 use crate::http::server::{Limits, Options, Server};
 use crate::tls;
 use ms_rt::ffi::{
-    ErrOut, Handler, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record, native,
+    ErrOut, Handler, Has, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record,
+    native,
 };
 use ms_rt_abi::Obj;
 use std::cell::RefCell;
@@ -217,12 +218,12 @@ native! {
     /// `HttpExchange.read(max)`; the end of the body is `STATUS_NONE`.
     fn msstd_http_exchange_read(
         x: ObjRef<ExchH>,
-        has_max: bool,
+        has_max: Has,
         max: i64,
         out: Out<Vec<u8>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        chunk(x.read(opt(has_max, max)), out, &err)
+        chunk(x.read(opt(*has_max, max)), out, &err)
     }
 
     /// `HttpExchange.send_headers(status, headers)`.

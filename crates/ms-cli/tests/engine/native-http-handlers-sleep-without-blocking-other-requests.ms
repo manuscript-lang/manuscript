@@ -5,7 +5,7 @@ import sleep, nanoseconds from "@std/os/time.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
-        sleep(nanoseconds(500000000))
+        let _ = sleep(nanoseconds(500000000)).wait()
     return HttpResponse(200, headers(), request.path.to_bytes())
 
 export fn main() Int:

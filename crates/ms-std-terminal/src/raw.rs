@@ -12,6 +12,7 @@ use alloc::rc::{Rc, Weak};
 use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
 use core::ops::Deref;
+use ms_rt::ffi::Failure;
 use ms_rt::ffi::Global;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_INVALID_INPUT, STATUS_NONE, STATUS_NOT_TERMINAL, STATUS_OK};
 use rustix::event::{PollFd, PollFlags, poll};
@@ -185,15 +186,15 @@ impl Raw {
         input: BorrowedFd<'static>,
         output: BorrowedFd<'static>,
         alternate: bool,
-    ) -> Result<Raw, u8> {
+    ) -> Result<Raw, Failure> {
         if !(isatty(input) && isatty(output)) {
-            return Err(STATUS_NOT_TERMINAL);
+            return Err(STATUS_NOT_TERMINAL.into());
         }
         if ACTIVE.get().borrow().upgrade().is_some() {
-            return Err(ms_rt_abi::STATUS_BUSY);
+            return Err(ms_rt_abi::STATUS_BUSY.into());
         }
         let Ok(saved) = tcgetattr(input) else {
-            return Err(ms_rt::glue::failed(b"cannot read terminal settings"));
+            return Err(Failure::failed("cannot read terminal settings"));
         };
         let mut raw = saved.clone();
         raw.input_modes.remove(
@@ -219,7 +220,7 @@ impl Raw {
         raw.special_codes[SpecialCodeIndex::VMIN] = 1;
         raw.special_codes[SpecialCodeIndex::VTIME] = 0;
         if tcsetattr(input, OptionalActions::Now, &raw).is_err() {
-            return Err(ms_rt::glue::failed(b"cannot enter raw mode"));
+            return Err(Failure::failed("cannot enter raw mode"));
         }
         let terminal = State {
             input,
@@ -270,7 +271,7 @@ impl State {
         }
     }
 
-    fn write(&self, bytes: &[u8]) -> Result<(), u8> {
+    fn write(&self, bytes: &[u8]) -> Result<(), Failure> {
         // Text the program printed earlier must reach the terminal before the control sequence.
         msrt_io_flush();
         let mut rest = bytes;
@@ -279,18 +280,18 @@ impl State {
                 Ok(n) => rest = &rest[n..],
                 Err(Errno::INTR) => {}
                 Err(Errno::AGAIN) => pause(NS_PER_MS),
-                Err(_) => return Err(ms_rt::glue::failed(b"cannot write to the terminal")),
+                Err(_) => return Err(Failure::failed("cannot write to the terminal")),
             }
         }
         Ok(())
     }
 
     /// Writes a control sequence for an operation that fails on a closed terminal.
-    fn command(&self, bytes: &[u8]) -> u8 {
+    fn command(&self, bytes: &[u8]) -> Result<(), Failure> {
         if self.closed.get() {
-            return STATUS_CLOSED;
+            return Err(STATUS_CLOSED.into());
         }
-        self.write(bytes).err().unwrap_or(STATUS_OK)
+        self.write(bytes)
     }
 
     pub fn size(&self) -> Result<(i64, i64), u8> {
@@ -302,12 +303,12 @@ impl State {
             .ok_or(STATUS_NOT_TERMINAL)
     }
 
-    pub fn move_cursor(&self, row: i64, column: i64) -> u8 {
+    pub fn move_cursor(&self, row: i64, column: i64) -> Result<(), Failure> {
         if self.closed.get() {
-            return STATUS_CLOSED;
+            return Err(STATUS_CLOSED.into());
         }
         if !(0..=MAX_POSITION).contains(&row) || !(0..=MAX_POSITION).contains(&column) {
-            return STATUS_INVALID_INPUT;
+            return Err(STATUS_INVALID_INPUT.into());
         }
         let mut seq = b"\x1b[".to_vec();
         number(&mut seq, row + 1);
@@ -317,16 +318,16 @@ impl State {
         self.command(&seq)
     }
 
-    pub fn show_cursor(&self, visible: bool) -> u8 {
+    pub fn show_cursor(&self, visible: bool) -> Result<(), Failure> {
         if self.closed.get() {
-            return STATUS_CLOSED;
+            return Err(STATUS_CLOSED.into());
         }
         self.hidden.set(!visible);
         self.command(if visible { b"\x1b[?25h" } else { b"\x1b[?25l" })
     }
 
     /// `region` is the `EraseRegion` case index: screen, line, line end, line start.
-    pub fn erase(&self, region: i64) -> u8 {
+    pub fn erase(&self, region: i64) -> Result<(), Failure> {
         self.command(match region {
             0 => b"\x1b[2J",
             1 => b"\x1b[2K",

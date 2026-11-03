@@ -6,7 +6,7 @@ name: CI/CD
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
 #                 every outside merge.
 #   merge queue   the same as a pull request, in case a queue is configured again.
-#   main          every 30 minutes (cron), when main has a commit that no earlier scheduled or manual run
+#   main          every 30 minutes (cron at :07 and :37), when main has a commit that no earlier scheduled or manual run
 #                 checked: all six platforms, each split into `tests` and `conformance` (twelve jobs, see
 #                 .github/actions/rust-checks); linux-arm64 also builds the book for Pages and the tests
 #                 jobs save the sccache caches. A failure is fixed or reverted.
@@ -16,8 +16,9 @@ name: CI/CD
 on:
   pull_request:
   schedule:
-    # Pushes to main no longer start a run: twelve runners per push took too many slots.
-    - cron: '*/30 * * * *'
+    # Pushes to main no longer start a run: twelve runners per push took too many slots. Minutes 7 and 37,
+    # not 0 and 30: GitHub delays and drops scheduled runs at the start of the hour and half hour.
+    - cron: '7,37 * * * *'
   merge_group:
     types: [checks_requested]
   workflow_dispatch:

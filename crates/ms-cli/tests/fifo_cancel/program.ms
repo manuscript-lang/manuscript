@@ -5,7 +5,7 @@ import promise from "@std/concurrency/promise.ms"
 import milliseconds from "@std/os/time.ms"
 
 fn read_whole(path: String) Int:
-    let read = read_file(path)
+    let read = read_file(path).wait()
     if let bytes = read:
         return bytes.length()
 

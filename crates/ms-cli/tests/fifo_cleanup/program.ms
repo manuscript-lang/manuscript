@@ -5,7 +5,7 @@ import milliseconds from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"
 
 fn read_pipe(path: String) Int:
-    let _data = read_file(path)
+    let _data = read_file(path).wait()
     return 1
 
 fn cancel_read(path: String) Int:

@@ -7,7 +7,7 @@
 use crate::{Doc, Limits, Node, Writer};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use ms_rt::ffi::{Fail, ObjMut, ObjRef, Object, Out, Status, abi_handle, native};
+use ms_rt::ffi::{Fail, Has, ObjMut, ObjRef, Object, Out, Status, abi_handle, native};
 use ms_rt::tree::{
     ListRef, MapRef, SinkObj, TreeBuilder, TreeCtor, TreeSink, TreeView, ValueDesc, ValueOut,
     ValueRef, WalkRef,
@@ -37,11 +37,11 @@ native! {
     // ms: leaf
     fn msstd_json_parse(
         text: &str,
-        has_max_bytes: bool,
+        has_max_bytes: Has,
         max_bytes: i64,
-        has_max_depth: bool,
+        has_max_depth: Has,
         max_depth: i64,
-        has_max_values: bool,
+        has_max_values: Has,
         max_values: i64,
         out: Out<Object<Doc>>,
         root: Out<u32>,
@@ -62,11 +62,11 @@ native! {
     // ms: leaf
     fn msstd_json_parse_tree(
         text: &str,
-        has_max_bytes: bool,
+        has_max_bytes: Has,
         max_bytes: i64,
-        has_max_depth: bool,
+        has_max_depth: Has,
         max_depth: i64,
-        has_max_values: bool,
+        has_max_values: Has,
         max_values: i64,
         desc: ValueDesc,
         ctor: TreeCtor,
@@ -166,9 +166,9 @@ native! {
 
     // ms: leaf
     fn msstd_json_writer_new(
-        has_max_bytes: bool,
+        has_max_bytes: Has,
         max_bytes: i64,
-        has_indent: bool,
+        has_indent: Has,
         indent: i64,
     ) -> Object<Writer> {
         Object(Writer::new(
@@ -373,7 +373,17 @@ mod tests {
         // SAFETY: all pointers are live; results are released below.
         unsafe {
             assert_eq!(
-                msstd_json_parse(&text, 0, 0, 0, 0, 0, 0, d.as_mut_ptr(), &mut root),
+                msstd_json_parse(
+                    &text,
+                    ms_rt_abi::HasRaw(0),
+                    0,
+                    ms_rt_abi::HasRaw(0),
+                    0,
+                    ms_rt_abi::HasRaw(0),
+                    0,
+                    d.as_mut_ptr(),
+                    &mut root
+                ),
                 STATUS_OK
             );
             let d = d.assume_init();

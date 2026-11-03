@@ -39,13 +39,13 @@ export fn main() Int:
     var checked = 0
 
     for f in files:
-        let source = read_file("{root}/{f}").get().decode_utf8().get("")
+        let source = read_file("{root}/{f}").wait().get().decode_utf8().get("")
         let expected_out = after(source, "// expect-stdout: ")
 
         for build in ["debug", "release"]:
             let ran = run(
                 ms.clone(), ["run", "{root}/{f}", "--build-type", build.clone()]
-            )
+            ).wait()
             checked += 1
 
             if ran.is_error():

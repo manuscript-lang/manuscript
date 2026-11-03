@@ -30,15 +30,6 @@ pub(crate) const HTTP_KINDS: [&str; 6] = [
     "Timeout",
 ];
 
-/// The kinds a stream failure keeps; any other kind is `Failed`, which carries its text.
-pub(crate) const IO_KINDS: [&str; 5] = [
-    "Closed",
-    "InvalidInput",
-    "Unavailable",
-    "InvalidData",
-    "LimitExceeded",
-];
-
 impl FnLower<'_> {
     /// The token text of an `HttpMethod` value.
     pub(crate) fn method_text(&mut self, method: Val) -> Result<Val, Error> {

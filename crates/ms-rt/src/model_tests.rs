@@ -518,11 +518,11 @@ fn string_ops_match_char_model(seed: u64) {
             for _ in 0..n.min(6) {
                 let i = r.below(n);
                 let mut got = NO_STR;
-                string::msrt_string_get(s, i as i64, 0, s, &mut got);
+                string::msrt_string_get(s, i as i64, HasRaw(0), s, &mut got);
                 assert_eq!(text(&got), chars[i].to_string());
                 string::release(&got);
                 assert_eq!(
-                    string::msrt_string_scalar_at(s, i as i64 - n as i64, 0, 0),
+                    string::msrt_string_scalar_at(s, i as i64 - n as i64, HasRaw(0), 0),
                     chars[i] as i64
                 );
             }
@@ -552,7 +552,7 @@ fn string_ops_match_char_model(seed: u64) {
                     len: 0,
                     cap: 0,
                 };
-                string::msrt_string_split(s, ns, 0, 0, &mut parts);
+                string::msrt_string_split(s, ns, HasRaw(0), 0, &mut parts);
                 let want: std::vec::Vec<_> = model
                     .split(&needle)
                     .map(std::string::String::from)

@@ -3327,6 +3327,16 @@ impl Walker<'_> {
                 e.pos,
                 format!("{what} copies values of `{v}`, which may be a resource; declare `{v}: Clonable`"),
             );
+            return;
+        }
+        if !self.cx.classes.clonable(t) {
+            // A concrete type with one owner: an interface value, or a native without a `clone`.
+            self.error(
+                e.pos,
+                format!(
+                    "{what} copies `{t}`, which has one owner and cannot be copied; use it in place"
+                ),
+            );
         }
     }
 

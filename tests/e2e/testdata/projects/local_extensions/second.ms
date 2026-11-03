@@ -68,7 +68,7 @@ test "second local cleanup":
     let dir = temporary("ms-ext-") | try expect_ok
     let events = "{dir.path()}/events"
     leave(Resource(events.clone()))
-    (try expect_ok(read_file(events))).decode_utf8() | try expect_equal("20,")
+    (try expect_ok(read_file(events).wait())).decode_utf8() | try expect_equal("20,")
 
 import mixed from "./first.ms"
 

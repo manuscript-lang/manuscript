@@ -26,8 +26,8 @@ pub mod watch;
 use alloc::vec::Vec;
 use err::{Fail, Res};
 use ms_rt::ffi::{
-    BytesList, EntryFilter, ErrOut, ObjMut, ObjRef, Object, PairFilter, RecList, StatusCode, Str,
-    Text, TextList, abi_record, native,
+    BytesList, EntryFilter, ErrOut, Has, ObjMut, ObjRef, Object, PairFilter, RecList, StatusCode,
+    Str, Text, TextList, abi_record, native,
 };
 use ms_rt_abi::{STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE};
 use stream::Stream;
@@ -166,8 +166,8 @@ abi_record! {
 
 native! {
     /// Reads a whole file as bytes.
-    fn msstd_fs_read_file(path: &str, has_max: bool, max: i64; err: ErrOut) -> Result<Vec<u8>, StatusCode> {
-        fs_status(lim(has_max, max).and_then(|m| ops::read_file(path.as_bytes(), m)), &err)
+    fn msstd_fs_read_file(path: &str, has_max: Has, max: i64; err: ErrOut) -> Result<Vec<u8>, StatusCode> {
+        fs_status(lim(*has_max, max).and_then(|m| ops::read_file(path.as_bytes(), m)), &err)
     }
 
     /// Writes bytes to a file (`replace` truncates, otherwise the file must not exist).
@@ -187,9 +187,9 @@ native! {
     /// Lists a directory sorted by name into a `List[DirectoryEntry]`.
     fn msstd_fs_list(
         path: &str,
-        has_limit: bool,
+        has_limit: Has,
         limit: i64; err: ErrOut) -> Result<RecList<EntryOut>, StatusCode> {
-        let entries = fs_status(lim(has_limit, limit).and_then(|m| ops::list(path.as_bytes(), m)), &err)?;
+        let entries = fs_status(lim(*has_limit, limit).and_then(|m| ops::list(path.as_bytes(), m)), &err)?;
         Ok(RecList::new(entries.iter().map(|e| entry_out(&e.name, e.directory, e.symlink))))
     }
 
@@ -290,7 +290,7 @@ native! {
     fn msstd_fs_file_read_at(
         h: ObjMut<Stream>,
         offset: i64,
-        has_max: bool,
+        has_max: Has,
         max: i64; err: ErrOut) -> Result<Vec<u8>, StatusCode> {
         let mut h = h;
         fs_status(h.read_at(offset, has_max.then_some(max)), &err)
@@ -298,10 +298,10 @@ native! {
 
     fn msstd_fs_file_read_file(
         h: ObjMut<Stream>,
-        has_max: bool,
+        has_max: Has,
         max: i64; err: ErrOut) -> Result<Vec<u8>, StatusCode> {
         let mut h = h;
-        fs_status(lim(has_max, max).and_then(|m| h.read_file(m)), &err)
+        fs_status(lim(*has_max, max).and_then(|m| h.read_file(m)), &err)
     }
 
     fn msstd_fs_file_write_at(
@@ -445,15 +445,15 @@ native! {
         destination: &str,
         flags: i64,
         clone: &str,
-        has_entries: bool,
+        has_entries: Has,
         entries: i64,
-        has_bytes: bool,
+        has_bytes: Has,
         bytes: i64,
         filter: Option<PairFilter>; err: ErrOut) -> Result<(), StatusCode> {
         let Some(clone) = walk::Clone::parse(clone.as_bytes()) else {
             return Err(StatusCode(STATUS_INVALID_INPUT));
         };
-        let (entries, bytes) = fs_status(lim(has_entries, entries).and_then(|e| Ok((e, lim(has_bytes, bytes)?))), &err)?;
+        let (entries, bytes) = fs_status(lim(*has_entries, entries).and_then(|e| Ok((e, lim(*has_bytes, bytes)?))), &err)?;
         let options = walk::CopyOptions {
             recursive: flags & 1 != 0,
             replace: flags & 2 != 0,
@@ -478,13 +478,13 @@ native! {
         patterns: Vec<&str>,
         exclude: Vec<&str>,
         follow_links: bool,
-        has_max_entries: bool,
+        has_max_entries: Has,
         max_entries: i64,
-        has_max_results: bool,
+        has_max_results: Has,
         max_results: i64,
         filter: Option<EntryFilter>; err: ErrOut) -> Result<RecList<PathEntryOut>, StatusCode> {
-        let (max_entries, max_results) = fs_status(lim(has_max_entries, max_entries)
-            .and_then(|e| Ok((e, lim(has_max_results, max_results)?))), &err)?;
+        let (max_entries, max_results) = fs_status(lim(*has_max_entries, max_entries)
+            .and_then(|e| Ok((e, lim(*has_max_results, max_results)?))), &err)?;
         let patterns: Vec<&[u8]> = patterns.iter().map(|p| p.as_bytes()).collect();
         let exclude: Vec<&[u8]> = exclude.iter().map(|p| p.as_bytes()).collect();
         let options = walk::GlobOptions {
@@ -515,9 +515,9 @@ native! {
         path: &str,
         recursive: bool,
         interval_ns: i64,
-        has_max: bool,
+        has_max: Has,
         max: i64; err: ErrOut) -> Result<Object<watch::Watcher>, StatusCode> {
-        let poll = lim(has_max, max)
+        let poll = lim(*has_max, max)
             .and_then(|m| watch::Poll::new(path.as_bytes(), recursive, interval_ns, m));
         fs_status(poll, &err).map(|p| Object(watch::Watcher::poll(p)))
     }
@@ -526,17 +526,17 @@ native! {
     fn msstd_fs_watch_native(
         path: &str,
         recursive: bool,
-        has_max: bool,
+        has_max: Has,
         max: i64,
-        has_events: bool,
+        has_events: Has,
         events: i64,
         overflow: &str; err: ErrOut) -> Result<Object<watch::Watcher>, StatusCode> {
-        let native = lim(has_max, max).and_then(|m| {
-            let e = if has_events { events } else { 128 };
+        let native = lim(*has_max, max).and_then(|m| {
+            let e = if *has_events { events } else { 128 };
             watch::Native::new(
                 path.as_bytes(),
                 recursive,
-                if has_max { m } else { i64::MAX },
+                if *has_max { m } else { i64::MAX },
                 e,
                 overflow.as_bytes(),
             )

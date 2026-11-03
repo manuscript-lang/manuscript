@@ -6,7 +6,7 @@
 
 use crate::{Entry, Limits};
 use alloc::vec::Vec;
-use ms_rt::ffi::{Bytes, Fail, RecList, Str, abi_record, native};
+use ms_rt::ffi::{Bytes, Fail, Has, RecList, Str, abi_record, native};
 
 abi_record! {
     /// `ArchiveEntry` record: `path, data, directory`.
@@ -21,7 +21,7 @@ native! {
     fn msstd_archive_pack(
         entries: &RecList<EntryRec>,
         format: &str,
-        has_max: bool,
+        has_max: Has,
         max: i64,
     ) -> Result<Vec<u8>, Fail> {
         let entries: Vec<Entry> = entries
@@ -39,12 +39,12 @@ native! {
     fn msstd_archive_unpack(
         data: &[u8],
         format: &str,
-        has_limits: bool,
-        has_entries: bool,
+        has_limits: Has,
+        has_entries: Has,
         max_entries: i64,
-        has_entry_bytes: bool,
+        has_entry_bytes: Has,
         max_entry_bytes: i64,
-        has_total: bool,
+        has_total: Has,
         max_total_bytes: i64,
     ) -> Result<RecList<EntryRec>, Fail> {
         let limits = has_limits.then_some(Limits {

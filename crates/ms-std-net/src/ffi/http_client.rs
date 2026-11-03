@@ -11,8 +11,8 @@ use crate::http::headers::Headers;
 use crate::http::url;
 use crate::wait::Deadline;
 use ms_rt::ffi::{
-    Bytes, BytesList, ErrOut, ObjRef, ObjSlot, Object, OptInt, Out, StatusCode, Str, abi_record,
-    native,
+    Bytes, BytesList, ErrOut, Has, ObjRef, ObjSlot, Object, OptInt, Out, StatusCode, Str,
+    abi_record, native,
 };
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
@@ -245,8 +245,8 @@ native! {
     // -------------------------------------------------------------------- errors
 
     /// The error message for a status and the `Failed` text (nullable).
-    fn msstd_http_error_message(status: u8, has_failed: bool, failed: &str) -> String {
-        http_from_code(status, (if has_failed { failed } else { "" }).to_string()).message()
+    fn msstd_http_error_message(status: u8, has_failed: Has, failed: &str) -> String {
+        http_from_code(status, (if *has_failed { failed } else { "" }).to_string()).message()
     }
 
     // ------------------------------------------------------------------- headers
@@ -300,6 +300,12 @@ native! {
         Ok(())
     }
 
+    /// Another handle on the same client, for a promise that sends a request on it. Dropping the
+    /// handle leaves the client open; `HttpClient.close()` closes it.
+    fn msstd_http_client_share(c: ObjRef<ClientH>) -> Object<ClientH> {
+        Object(ClientH(c.0.0.clone()))
+    }
+
     /// `HttpClient.close()`.
     fn msstd_http_client_close(c: ObjRef<ClientH>) -> () {
         c.close();
@@ -312,9 +318,9 @@ native! {
         address: &str,
         headers: ObjRef<HeadersH>,
         body: &str,
-        has_max: bool,
+        has_max: Has,
         max: i64,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<Object<BodyH>>,
         err: ErrOut,
@@ -323,8 +329,8 @@ native! {
             method,
             address,
             headers: &headers,
-            max: opt(has_max, max),
-            timeout: opt(has_timeout, timeout),
+            max: opt(*has_max, max),
+            timeout: opt(*has_timeout, timeout),
         };
         let body = Body::Bytes(Rc::new(body.as_bytes().to_vec()));
         client_send(&c, &args, body, out, &err)
@@ -337,9 +343,9 @@ native! {
         address: &str,
         headers: ObjRef<HeadersH>,
         body: &[u8],
-        has_max: bool,
+        has_max: Has,
         max: i64,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<Object<BodyH>>,
         err: ErrOut,
@@ -348,8 +354,8 @@ native! {
             method,
             address,
             headers: &headers,
-            max: opt(has_max, max),
-            timeout: opt(has_timeout, timeout),
+            max: opt(*has_max, max),
+            timeout: opt(*has_timeout, timeout),
         };
         let body = Body::Bytes(Rc::new(body.to_vec()));
         client_send(&c, &args, body, out, &err)
@@ -374,12 +380,12 @@ native! {
     /// `HttpResponseBody.read(max)`; the end of the body is `STATUS_NONE`.
     fn msstd_http_body_read(
         b: ObjRef<BodyH>,
-        has_max: bool,
+        has_max: Has,
         max: i64,
         out: Out<Vec<u8>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        let max = match opt(has_max, max) {
+        let max = match opt(*has_max, max) {
             None => 65536,
             Some(n) if n <= 0 => return Err(code(IoErr::InvalidInput)),
             Some(n) => n.min(65536) as usize,
@@ -407,9 +413,9 @@ native! {
         address: &str,
         headers: ObjRef<HeadersH>,
         body: &str,
-        has_max: bool,
+        has_max: Has,
         max: i64,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<ClientResponseWire>,
         err: ErrOut,
@@ -418,8 +424,8 @@ native! {
             method,
             address,
             headers: &headers,
-            max: opt(has_max, max),
-            timeout: opt(has_timeout, timeout),
+            max: opt(*has_max, max),
+            timeout: opt(*has_timeout, timeout),
         };
         one_shot(&net, &args, body.as_bytes().to_vec(), out, &err)
     }
@@ -431,9 +437,9 @@ native! {
         address: &str,
         headers: ObjRef<HeadersH>,
         body: &[u8],
-        has_max: bool,
+        has_max: Has,
         max: i64,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout: i64,
         out: Out<ClientResponseWire>,
         err: ErrOut,
@@ -442,8 +448,8 @@ native! {
             method,
             address,
             headers: &headers,
-            max: opt(has_max, max),
-            timeout: opt(has_timeout, timeout),
+            max: opt(*has_max, max),
+            timeout: opt(*has_timeout, timeout),
         };
         one_shot(&net, &args, body.to_vec(), out, &err)
     }

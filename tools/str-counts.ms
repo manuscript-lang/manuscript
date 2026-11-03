@@ -36,7 +36,12 @@ export fn main() Int:
             return 1
 
         var text = ""
-        if let out = run(binary.clone(), []): text = out.stderr.decode_utf8().get("")
+        if let out = run(binary.clone(), []).wait(): text = (
+            out
+            .stderr
+            .decode_utf8()
+            .get("")
+        )
 
         var found = false
 

@@ -10,7 +10,7 @@ fn block() Bytes:
 fn populate(root: String) Unit:
     let data = block()
     for i in 0..200:
-        let _written = write_file_bytes("{root}/f{i}.bin", data, replace: true)
+        let _written = write_file_bytes("{root}/f{i}.bin", data, replace: true).wait()
 
 bench "fs.write_file_64k":
     let data = block()
@@ -21,7 +21,7 @@ bench "fs.write_file_64k":
         fn work() Result[Unit, Error]:
             var n = 0
             for i in 0..200:
-                if write_file_bytes("{root}/f{i}.bin", data, replace: true).is_ok():
+                if write_file_bytes("{root}/f{i}.bin", data, replace: true).wait().is_ok():
                     n += 1
             return keep(n)
 
@@ -36,7 +36,7 @@ bench "fs.read_file_64k":
         fn work() Result[Unit, Error]:
             var n = 0
             for i in 0..200:
-                if let b = read_file("{root}/f{i}.bin"):
+                if let b = read_file("{root}/f{i}.bin").wait():
                     n += b.length()
             return keep(n)
 

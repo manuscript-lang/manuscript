@@ -6,5 +6,5 @@ import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let _ = stdout().write("ready\n")
-    sleep(nanoseconds(60000000000))
+    let _ = sleep(nanoseconds(60000000000)).wait()
     return 0

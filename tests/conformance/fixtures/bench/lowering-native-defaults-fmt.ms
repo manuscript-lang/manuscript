@@ -27,19 +27,19 @@ fn csv_explicit() CsvOptions: CsvOptions(",", "\n")
 fn csv_omitted() CsvOptions: CsvOptions()
 
 fn command_explicit() CommandOutput!:
-    return run(program: "", arguments: [], input: "".to_bytes())
+    return run(program: "", arguments: [], input: "".to_bytes()).wait()
 
 fn command_omitted() CommandOutput!:
-    return run(program: "", arguments: [])
+    return run(program: "", arguments: []).wait()
 
 fn command_bind() fn(String, List[String], Bytes, Int?, Duration?) CommandOutput!:
     return run
 
 fn filesystem_explicit(data: Bytes) Unit!:
-    return write_file_bytes("", data, false)
+    return write_file_bytes("", data, false).wait()
 
 fn filesystem_omitted(data: Bytes) Unit!:
-    return write_file_bytes("", data)
+    return write_file_bytes("", data).wait()
 
 fn filesystem_bind() fn(String, Bytes, Bool) Unit!:
     return fs.write_file

@@ -202,7 +202,8 @@ test "a handler that sends nothing answers 204":
 
 fn whole_response(exchange: HttpExchange, params: RouteParams) Unit!:
     let body = if exchange.path() == "/empty": "" else: "done"
-    try reply(exchange, text(200, body))
+    let whole = text(200, body)
+    try exchange.send(whole.status, whole.headers, whole.body)
 
     for extra in ["extra", ""]:
         let written = exchange.write(extra)
@@ -411,7 +412,7 @@ impl Transport for Sink:
         return unit
 
 fn logged(path: String) String:
-    let read = read_file(path)
+    let read = read_file(path).wait()
     if let bytes = read:
         return bytes.decode_utf8().get("")
 

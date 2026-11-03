@@ -25,7 +25,14 @@ export fn main() Int:
     for command in ["git", "tar"]:
         if not say(works(command, ["--version"]), command, command): failed += 1
 
-    let expected_node = read_file(".node-version").get().decode_utf8().get("").trim()
+    let expected_node = (
+        read_file(".node-version")
+        .wait()
+        .get()
+        .decode_utf8()
+        .get("")
+        .trim()
+    )
     let node = capture("node", ["--version"]).trim()
     if not say(
         node == "v{expected_node}", "Node {expected_node}",

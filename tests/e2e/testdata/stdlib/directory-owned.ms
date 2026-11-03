@@ -5,7 +5,7 @@ import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.m
 fn leaves_a_temporary() String!:
     let temporary = try temporary("manuscript-owned-")
     let path = temporary.path()
-    try write_file("{path}/a.txt", "x", true)
+    try write_file("{path}/a.txt", "x", true).wait()
     return ok(path)
 
 test "a temporary directory binding is removed when its scope ends":
@@ -28,6 +28,6 @@ fn counts_entries(path: String) Int!:
 test "a directory cursor reads its children and closes at scope end":
     let temporary = temporary("manuscript-owned-") | try expect_ok
     let path = temporary.path()
-    try expect_true(write_file("{path}/a.txt", "x", true).is_ok())
-    try expect_true(write_file("{path}/b.txt", "y", true).is_ok())
+    try expect_true(write_file("{path}/a.txt", "x", true).wait().is_ok())
+    try expect_true(write_file("{path}/b.txt", "y", true).wait().is_ok())
     counts_entries(path) | try expect_ok | try expect_equal(2)

@@ -12,7 +12,7 @@ use ms_rt as _;
 extern crate alloc;
 
 use alloc::string::String;
-use ms_rt::ffi::{ObjRef, Object, Out, Status, abi_handle, native};
+use ms_rt::ffi::{Has, ObjRef, Object, Out, Status, abi_handle, native};
 use ms_rt::glue::{FaultKind, fault_fmt, fault_fmt_kind, poll_cancel};
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 use num_bigint::{BigInt, Sign};
@@ -138,7 +138,7 @@ native! {
     fn msstd_bigint_parse(
         text: &str,
         radix: i64,
-        has_max: bool,
+        has_max: Has,
         max: i64,
     ) -> Result<Object<Big>, Code> {
         parse(text.as_bytes(), radix, has_max.then_some(max))

@@ -6,7 +6,7 @@ import monotonic from "@std/os/time.ms"
 
 export fn main() Int:
     let args = arguments()
-    let text = read_file(args.get(0)).get().decode_utf8().get()
+    let text = read_file(args.get(0)).wait().get().decode_utf8().get()
     let count = args.get(1).parse_int().get()
     let expected = stringify(parse(text).get()).get()
 

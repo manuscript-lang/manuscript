@@ -320,19 +320,12 @@ impl<'a> FnLower<'a> {
                 self.at(e.pos);
                 self.native_call(native, params, &args, result)
             }
-            "io/stdout" | "io/stderr" => {
-                let it = self.emty(e)?;
-                self.std_stream(it, native == "io/stderr")
-            }
             "time/clock" | "time/wall_clock" => {
                 let it = self.emty(e)?;
                 self.time_clock(it, native == "time/wall_clock")
             }
-            "io/read_line" => self.read_line_native(e, view, params),
             "math/min" => self.math_extreme(view, false),
             "math/max" => self.math_extreme(view, true),
-            "io/read_all" => self.stream_native(e, view, crate::streamloop::Loop::ReadAll),
-            "io/copy" => self.stream_native(e, view, crate::streamloop::Loop::Copy),
             other if crate::stdnative::handle_of(other).is_some() => {
                 let handle = crate::stdnative::handle_of(other).expect("checked");
                 let (ity, want) = (self.ety(e), self.emty(e)?);
@@ -584,14 +577,6 @@ impl<'a> FnLower<'a> {
             }
         };
         Ok(Val { v, own: false })
-    }
-
-    /// `stdout()` / `stderr()`: an interface value over a MIR-built vtable.
-    pub(crate) fn std_stream(&mut self, it: MTy, stderr: bool) -> Result<Val, Error> {
-        let name = if stderr { "stderr" } else { "stdout" };
-        self.native_iface(it, name, &mut |m, method, params, ret| {
-            build_stream_method(m, method, params, ret, stderr)
-        })
     }
 
     /// `clock()` / `wall_clock()`: an interface whose `now` reads the runtime clock.
@@ -3521,71 +3506,6 @@ impl<'a> FnLower<'a> {
         let r = self.b.use_var(acc);
         Ok(Val { v: r, own: true })
     }
-}
-
-/// One method of the stdout/stderr stream vtable.
-fn build_stream_method(
-    m: &mut ms_mir::ir::Module,
-    name: &str,
-    params: &[MTy],
-    ret: MTy,
-    stderr: bool,
-) -> FuncId {
-    let mut ps = vec![Param {
-        ty: MTy::PTR,
-        mode: Mode::Borrow,
-    }];
-    ps.extend(params.iter().map(|t| Param {
-        ty: *t,
-        mode: Mode::Borrow,
-    }));
-    let mut b = FuncBuilder::new(m, &format!("stream.{name}"), ps, ret);
-    b.func_mut().kind = FuncKind::Method;
-    b.func_mut().linkage = Linkage::Internal;
-    let args = b.params();
-    let which = b.iconst(i64::from(stderr));
-    if name == "close" {
-        let ext = runtime_fn(b.m, "msrt_io_close", &[MTy::INT], MTy::UNIT);
-        b.call_rt(ext, &[which]);
-    }
-    let alt = match b.m.types.kind(ret).clone() {
-        TyKind::Alt(a) => Some(a),
-        _ => None,
-    };
-    let case = |m: &ms_mir::ir::Module, a: ms_mir::types::AltId, n: &str| {
-        m.alts[a.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == n)
-            .map(|i| i as u32)
-    };
-    if name == "write" || name == "write_bytes" {
-        let (sym, arg) = match (name == "write", stderr) {
-            (true, true) => ("msrt_io_write_stderr", MTy::STR),
-            (true, false) => ("msrt_io_write_stdout", MTy::STR),
-            (false, true) => ("msrt_io_write_bytes_stderr", MTy::BYTES),
-            (false, false) => ("msrt_io_write_bytes_stdout", MTy::BYTES),
-        };
-        let ext = runtime_fn(b.m, sym, &[arg], MTy::UNIT);
-        b.call_rt(ext, &[args[1]]);
-    } else if name == "flush" {
-        let ext = runtime_fn(b.m, "msrt_io_flush", &[], MTy::UNIT);
-        b.call_rt(ext, &[]);
-    }
-    match alt {
-        Some(a) => {
-            let ok = case(b.m, a, "ok").unwrap_or(0);
-            let u = b.unit();
-            let r = b.alt_new(a, ok, &[u]);
-            b.ret(Some(r));
-        }
-        None => {
-            let u = b.unit();
-            b.ret(Some(u));
-        }
-    }
-    let f = b.into_func();
-    m.add_func(f)
 }
 
 /// A method of the clock vtable: `now` writes the reading through the runtime's out pointer.

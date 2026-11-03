@@ -14,6 +14,9 @@ export extern fn msrt_promise_done(id: Int) Bool
 
 export extern fn msrt_promise_start(id: Int, work: fn() Unit) Unit
 
+// As `msrt_promise_start`, but always on the calling thread.
+export extern fn msrt_promise_start_here(id: Int, work: fn() Unit) Unit
+
 export extern fn msrt_promise_wait(id: Int, timeout_ns: Int) Int
 
 // The index of the first of `ids` to finish, waiting up to `timeout_ns` (negative: no limit); -1 on timeout.

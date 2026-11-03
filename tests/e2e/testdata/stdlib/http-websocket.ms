@@ -1,8 +1,8 @@
-import send, recv, send_bytes from "./support/conn.ms"
+import send, recv from "./support/conn.ms"
 import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 import http_result from "./support/http.ms"
-import headers, HttpMethod, buffered, upgrade from "@std/net/http.ms"
+import headers, HttpMethod, upgrade from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import connect, http_client, request, serve, web_socket from "@std/net/net.ms"
 import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
@@ -119,7 +119,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     (message.kind != WebSocketKind.Text or message.data != "é🙂".to_bytes()) | try expect_false
 
 fn upgrade_status(address: String, version: String, extra: String) String!:
-    var client = try connect(address, 2.seconds)
+    var client = try connect(address, 2.seconds).wait()
     let key = "dGhlIHNhbXBsZSBub25jZQ=="
     let request = (
         "GET /ws {version}\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
