@@ -50,6 +50,7 @@ msrt_cancelled() -> !
 msrt_cells_drop(id: i64)
 msrt_cells_full(id: i64) -> u8
 msrt_cells_new(value: *mut u8, d: ValueDesc) -> i64
+msrt_cells_out(id: i64) -> u8
 msrt_cells_put(id: i64, value: *mut u8, d: ValueDesc)
 msrt_cells_take(id: i64, d: ValueDesc, out: *mut u8) -> u8
 msrt_cells_take_result(id: i64, d: ValueDesc, out: *mut u8) -> u8
