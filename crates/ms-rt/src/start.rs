@@ -171,7 +171,7 @@ unsafe extern "C-unwind" fn main_task(done: *mut u8) {
 /// # Safety
 /// See [`main_task`].
 unsafe fn run_main() {
-    crate::alloc::claim_arena(true);
+    crate::alloc::claim_heap();
     crate::isolate::set_main();
     fault::set_main_hdr();
     // SAFETY: this thread is the runtime thread; the root flow waits shielded so a stop request

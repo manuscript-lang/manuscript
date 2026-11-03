@@ -1,30 +1,38 @@
-//! Size-class allocator.
+//! Size-class allocator: one heap for the whole process.
 //!
-//! Small blocks (up to [`MAX_SMALL`] bytes) come from 64 KiB pages carved out of
-//! one large lazily-committed reservation; each page serves a single size class
-//! and the page's class is recorded in a side table, so `free` needs no size.
+//! Small blocks (up to [`MAX_SMALL`] bytes) come from 64 KiB pages carved out of one large
+//! lazily-committed reservation shared by every thread. Each page serves a single size class and
+//! belongs to one heap; a side table with one word per page records the class and the owner, so
+//! `free` needs no size and treats every block alike, whichever thread allocated it.
+//!
+//! A thread that claims a heap ([`claim_heap`]) allocates from its own pages without locks. A block
+//! freed by another thread is pushed onto its owner's lock-free remote-free stack, found by the
+//! owner index in the page table, and the owner drains it on its next slow-path allocation. When a
+//! thread releases its heap ([`release_heap`]) the heap keeps its pages and free lists and the
+//! next thread to claim one adopts it, so nothing is unmapped and a block outlives its thread.
+//! Threads that never claimed a heap (pool and helper threads) allocate from the system allocator.
+//!
 //! Large blocks go to the system allocator, with freed blocks up to [`LARGE_MAX`] kept in
 //! per-size free lists so growing and rebuilding big lists does not map and unmap memory
 //! (musl's malloc does a `mmap`/`munmap` pair for every block above a few KiB).
-//!
-//! Each isolate thread owns one arena and allocates from it without locks. A thread that never
-//! claimed an arena (pool and helper threads) allocates from the system allocator. A block
-//! freed on a thread other than its owner is pushed onto the owner's lock-free remote-free
-//! stack, found by address in a small registry, and the owner drains it on its next slow-path
-//! allocation (see `proposals/worker-threads.md`).
 use crate::sys;
 use core::ptr::null_mut;
 use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
+use std::sync::{Mutex, Once};
 
 pub const MAX_SMALL: usize = 2048;
 const PAGE_SHIFT: usize = 16;
 const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
-/// Address space reserved for the main isolate's arena.
-const MAIN_ARENA_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 16 << 30 };
-/// Address space reserved for a worker isolate's arena (committed on demand).
-const WORKER_ARENA_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 2 << 30 };
-/// Most arenas the registry can hold; further claims fall back to the system allocator.
-const MAX_ARENAS: usize = 256;
+/// Address space reserved for the small-block pages of the whole process.
+const PAGES_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 256 << 30 };
+const NUM_PAGES: usize = PAGES_SIZE >> PAGE_SHIFT;
+/// Heaps that can exist at once (the owner field of the page table is 16 bits); a thread that
+/// finds none left uses the system allocator.
+const MAX_HEAPS: usize = 1 << 16;
+/// Page-table word: owner heap in the upper bits, size class in the low byte.
+const OWNER_SHIFT: u32 = 8;
+/// Owner of no heap: the state of a thread that has not claimed one.
+const NO_HEAP: u32 = u32::MAX;
 /// Arena growth step where memory is committed explicitly.
 const COMMIT_STEP: usize = 4 << 20;
 const NUM_CLASSES: usize = 24;
@@ -35,9 +43,11 @@ const LARGE_MIN_SHIFT: usize = 12;
 const LARGE_MAX: usize = 16 << 20;
 /// Smallest system block that grows by remapping rather than by copying.
 const REMAP_MIN: usize = 128 << 10;
-/// Address space reserved for one growing buffer per isolate (main, worker).
+/// Address space of one growing buffer; a heap takes one on first use. Chunks come from one
+/// reservation next to the pages, so a block is recognised by address. A heap that finds none
+/// left grows its big buffers through the system allocator.
 const GROW_SIZE: usize = if cfg!(miri) { 16 << 20 } else { 1 << 30 };
-const WORKER_GROW_SIZE: usize = if cfg!(miri) { 16 << 20 } else { 256 << 20 };
+const GROW_CHUNKS: usize = if cfg!(miri) { 4 } else { 1024 };
 /// A block grows in the growth region once it reaches this size.
 const GROW_MIN: usize = 32 << 10;
 /// Resident bytes the growth region keeps after its block is freed; the rest goes back.
@@ -45,7 +55,7 @@ const GROW_KEEP: usize = 64 << 20;
 /// Bytes the large free lists may hold before further frees go back to the system.
 const LARGE_CACHE_LIMIT: usize = 64 << 20;
 /// Most blocks of one large class a thread keeps for itself; further frees go to the shared
-/// lists, where threads without an arena (blocking-pool jobs, workers) find them.
+/// lists, where threads without a heap (blocking-pool jobs) find them.
 const LOCAL_PER_CLASS: u8 = 4;
 
 /// Freed large blocks for threads that have no arena of their own: a pool job reads a file into
@@ -158,13 +168,8 @@ const fn build_lookup() -> [u8; 129] {
 static LOOKUP: [u8; 129] = build_lookup();
 
 struct State {
-    base: usize,
-    end: usize,
-    next_page: usize,
-    /// Bytes of the arena made usable so far (everything on Unix, grown in steps on Windows).
-    committed: usize,
-    /// One byte per page: class index.
-    page_class: *mut u8,
+    /// Index of this thread's heap, or [`NO_HEAP`].
+    heap: u32,
     free: [*mut u8; NUM_CLASSES],
     bump: [*mut u8; NUM_CLASSES],
     bump_end: [*mut u8; NUM_CLASSES],
@@ -173,23 +178,12 @@ struct State {
     large_count: [u8; NUM_LARGE],
     /// Usable bytes held in `large_free`.
     large_cached: usize,
-    /// The growth region: address space for the one buffer that is growing, so that it extends in
-    /// place instead of being copied at every doubling. Mapped on first use; `grow_len` is the
-    /// size of the block living in it, 0 when it is free.
-    grow_base: usize,
-    grow_size: usize,
+    /// This heap's growth chunk (index into the growth reservation), or `usize::MAX`: address
+    /// space for the one buffer that is growing, so that it extends in place instead of being
+    /// copied at every doubling. Its live length is in [`GROW_LEN`].
+    grow_chunk: usize,
+    /// Bytes of the chunk made usable so far.
     grow_committed: usize,
-    grow_len: usize,
-    /// The arena is mapped (or mapping failed and the system allocator serves everything).
-    initialized: bool,
-    /// This thread asked for an arena; set by [`claim_arena`].
-    claimed: bool,
-    /// [`release_arena`] ran: any later release of a runtime object on this thread is a bug.
-    released: bool,
-    /// Whether the claim is the main isolate's (a larger arena).
-    main: bool,
-    /// Registry slot of this thread's arena (valid once `initialized` and `base != 0`).
-    slot: usize,
     #[cfg(any(test, feature = "stats"))]
     live: isize,
     /// Allocations requested and bytes asked for since start (`stats` builds).
@@ -197,136 +191,107 @@ struct State {
     requested: [u64; 2],
 }
 
-/// One registered arena: what another thread needs to free a block into it.
-struct Arena {
-    base: AtomicUsize,
-    end: AtomicUsize,
-    page_class: AtomicPtr<u8>,
-    /// The growth region (see `State::grow_base`), so that a block freed by another thread is
-    /// recognised and not handed to the system allocator.
-    grow_base: AtomicUsize,
-    grow_end: AtomicUsize,
-    /// Head of the blocks other threads freed into this arena.
-    remote: AtomicPtr<u8>,
-}
-
-impl Arena {
-    const fn new() -> Self {
-        Arena {
-            base: AtomicUsize::new(0),
-            end: AtomicUsize::new(0),
-            page_class: AtomicPtr::new(null_mut()),
-            grow_base: AtomicUsize::new(0),
-            grow_end: AtomicUsize::new(0),
-            remote: AtomicPtr::new(null_mut()),
+impl State {
+    const fn new() -> State {
+        State {
+            heap: NO_HEAP,
+            free: [null_mut(); NUM_CLASSES],
+            bump: [null_mut(); NUM_CLASSES],
+            bump_end: [null_mut(); NUM_CLASSES],
+            large_free: [null_mut(); NUM_LARGE],
+            large_count: [0; NUM_LARGE],
+            large_cached: 0,
+            grow_chunk: usize::MAX,
+            grow_committed: 0,
+            #[cfg(any(test, feature = "stats"))]
+            live: 0,
+            #[cfg(feature = "stats")]
+            requested: [0; 2],
         }
     }
 }
 
-static ARENAS: [Arena; MAX_ARENAS] = [const { Arena::new() }; MAX_ARENAS];
-/// Slots handed out so far (never reused: a retired arena stays registered, see the proposal).
-static ARENA_COUNT: AtomicUsize = AtomicUsize::new(0);
+// SAFETY: a saved state holds block pointers that no thread uses until it is adopted.
+unsafe impl Send for State {}
 
 crate::isolate_static! {
-static STATE: State = State {
-    base: 0,
-    end: 0,
-    next_page: 0,
-    committed: 0,
-    page_class: null_mut(),
-    free: [null_mut(); NUM_CLASSES],
-    bump: [null_mut(); NUM_CLASSES],
-    bump_end: [null_mut(); NUM_CLASSES],
-    large_free: [null_mut(); NUM_LARGE],
-    large_count: [0; NUM_LARGE],
-    large_cached: 0,
-    grow_base: 0,
-    grow_size: 0,
-    grow_committed: 0,
-    grow_len: 0,
-    initialized: false,
-    claimed: false,
-    released: false,
-    main: false,
-    slot: 0,
-    #[cfg(any(test, feature = "stats"))]
-    live: 0,
-    #[cfg(feature = "stats")]
-    requested: [0; 2],
-};
+static STATE: State = State::new();
 }
 
+/// The process's reservation: small-block pages, their table, and the growth chunks.
+/// Until it is mapped they sit at an address no pointer reaches, so no block is ever inside them.
+const UNMAPPED: usize = 1 << (usize::BITS - 1);
+static BASE: AtomicUsize = AtomicUsize::new(UNMAPPED);
+/// One `u32` per page: owner heap and class.
+static TABLE: AtomicPtr<u32> = AtomicPtr::new(null_mut());
+static GROW_BASE: AtomicUsize = AtomicUsize::new(UNMAPPED);
+static REGION: Once = Once::new();
+/// Next page not handed to any heap.
+static NEXT_PAGE: AtomicUsize = AtomicUsize::new(0);
+/// Bytes of the page reservation made usable (everything on Unix, grown in steps on Windows).
+static COMMITTED: AtomicUsize = AtomicUsize::new(0);
+static COMMIT_LOCK: Mutex<()> = Mutex::new(());
+/// Next growth chunk not taken.
+static NEXT_CHUNK: AtomicUsize = AtomicUsize::new(0);
+/// Length of the block living in each growth chunk, 0 when the chunk is free. Any thread frees a
+/// block by clearing its length; the heap owning the chunk takes it again.
+static GROW_LEN: [AtomicUsize; GROW_CHUNKS] = [const { AtomicUsize::new(0) }; GROW_CHUNKS];
+/// Head of the blocks other threads freed into each heap.
+static REMOTE: [AtomicPtr<u8>; MAX_HEAPS] = [const { AtomicPtr::new(null_mut()) }; MAX_HEAPS];
+/// Heaps handed out so far.
+static HEAP_COUNT: AtomicUsize = AtomicUsize::new(0);
+/// Heaps whose thread ended, with their free lists and partly used pages.
+static IDLE: Mutex<Vec<State>> = Mutex::new(Vec::new());
+
+/// Maps the reservation once; false when the system refuses (everything then uses it directly).
 #[cold]
-fn init(s: &mut State) {
-    s.initialized = true;
-    let size = if s.main {
-        MAIN_ARENA_SIZE
-    } else {
-        WORKER_ARENA_SIZE
-    };
-    let slot = ARENA_COUNT.fetch_add(1, Ordering::Relaxed);
-    if slot >= MAX_ARENAS {
-        ARENA_COUNT.store(MAX_ARENAS, Ordering::Relaxed);
-        // Everything falls back to the system allocator.
-        return;
-    }
-    let arena = sys::map_anon(size);
-    let table = sys::map_anon(size >> PAGE_SHIFT);
-    if arena.is_null() || table.is_null() || !sys::commit(table, size >> PAGE_SHIFT) {
-        // Everything falls back to the system allocator.
-        return;
-    }
-    s.base = arena as usize;
-    s.end = s.base + size;
-    s.committed = 0;
-    s.page_class = table;
-    s.slot = slot;
-    let a = &ARENAS[slot];
-    a.page_class.store(table, Ordering::Relaxed);
-    a.end.store(s.end, Ordering::Relaxed);
-    // Published last: a reader that sees `base` sees the rest.
-    a.base.store(s.base, Ordering::Release);
-}
-
-/// Gives the calling thread an arena; the first allocation maps it. `main` selects the
-/// main isolate's larger reservation. Threads that never call this use the system allocator.
-pub fn claim_arena(main: bool) {
-    // SAFETY: this isolate's allocator state.
-    let s = unsafe { &mut *STATE.ptr() };
-    s.claimed = true;
-    s.main = main;
-}
-
-/// Returns the calling thread's arena to the system as its isolate ends. Blocks still live in
-/// it are gone; the owner registry forgets the arena first, so a late free of one of its blocks
-/// falls through to the system allocator's path and must not happen (isolates copy what they
-/// hand out).
-pub fn release_arena() {
-    #[cfg(target_os = "linux")]
-    if crate::isolate::is_worker() {
-        worker_heap::retire();
-    }
-    // SAFETY: this isolate's allocator state; nothing allocates from it afterwards.
-    let s = unsafe { &mut *STATE.ptr() };
-    if s.base != 0 {
-        let a = &ARENAS[s.slot];
-        a.base.store(0, Ordering::Release);
-        a.remote.store(null_mut(), Ordering::Relaxed);
-        let size = s.end - s.base;
-        // SAFETY: the mappings were made by `init` and are no longer reachable.
-        unsafe {
-            sys::unmap(s.base as *mut u8, size);
-            sys::unmap(s.page_class, size >> PAGE_SHIFT);
+fn ensure_region() -> bool {
+    REGION.call_once(|| {
+        let pages = sys::map_anon(PAGES_SIZE);
+        let table = sys::map_anon(NUM_PAGES * 4);
+        let grow = sys::map_anon(GROW_SIZE * GROW_CHUNKS);
+        if pages.is_null() || table.is_null() || grow.is_null() {
+            return;
         }
+        if !sys::commit(table, NUM_PAGES * 4) {
+            return;
+        }
+        TABLE.store(table.cast(), Ordering::Relaxed);
+        GROW_BASE.store(grow as usize, Ordering::Relaxed);
+        // Published last: a reader that sees `BASE` sees the rest.
+        BASE.store(pages as usize, Ordering::Release);
+    });
+    BASE.load(Ordering::Acquire) != UNMAPPED
+}
+
+/// Gives the calling thread a heap: an idle one when there is one, else a new one. Threads that
+/// never call this use the system allocator.
+pub fn claim_heap() {
+    // SAFETY: this thread's allocator state.
+    let s = unsafe { &mut *STATE.ptr() };
+    if s.heap != NO_HEAP || !ensure_region() {
+        return;
     }
-    if s.grow_base != 0 {
-        let a = &ARENAS[s.slot];
-        a.grow_base.store(0, Ordering::Release);
-        // SAFETY: the region was mapped by `grow_map` and is no longer reachable.
-        unsafe { sys::unmap(s.grow_base as *mut u8, s.grow_size) };
-        s.grow_base = 0;
-        s.grow_len = 0;
-        s.grow_committed = 0;
+    let idle = IDLE.lock().unwrap_or_else(|e| e.into_inner()).pop();
+    if let Some(adopted) = idle {
+        *s = adopted;
+        return;
+    }
+    let heap = HEAP_COUNT.fetch_add(1, Ordering::Relaxed);
+    if heap >= MAX_HEAPS {
+        HEAP_COUNT.store(MAX_HEAPS, Ordering::Relaxed);
+        return;
+    }
+    s.heap = heap as u32;
+}
+
+/// Hands the calling thread's heap to the next thread that claims one as its thread ends. Blocks
+/// allocated from it stay valid and may be freed from any thread.
+pub fn release_heap() {
+    // SAFETY: this thread's allocator state.
+    let s = unsafe { &mut *STATE.ptr() };
+    if s.heap == NO_HEAP {
+        return;
     }
     for class in 0..NUM_LARGE {
         let mut p = s.large_free[class];
@@ -342,73 +307,77 @@ pub fn release_arena() {
     }
     s.large_count = [0; NUM_LARGE];
     s.large_cached = 0;
-    s.free = [null_mut(); NUM_CLASSES];
-    s.bump = [null_mut(); NUM_CLASSES];
-    s.bump_end = [null_mut(); NUM_CLASSES];
-    s.base = 0;
-    s.end = 0;
-    s.initialized = true;
-    s.claimed = false;
-    s.released = true;
+    #[cfg(any(test, feature = "stats"))]
+    {
+        s.live = 0;
+    }
+    // This thread has no heap from here on, so growing the list below allocates from the system.
+    let saved = core::mem::replace(s, State::new());
+    IDLE.lock().unwrap_or_else(|e| e.into_inner()).push(saved);
 }
 
-/// Whether the calling thread's arena was already returned to the system (its isolate ended).
+/// Whether the calling thread has a heap.
 #[inline(always)]
-pub fn arena_released() -> bool {
-    // SAFETY: this isolate's allocator state.
-    unsafe { (*STATE.ptr()).released }
+pub fn has_heap() -> bool {
+    // SAFETY: this thread's allocator state.
+    unsafe { (*STATE.ptr()).heap != NO_HEAP }
 }
 
-/// Whether the calling thread has an arena (or will map one on its first small allocation).
+/// Page-table word of the small-block page holding `p`, or `None` when `p` is not in the pages.
 #[inline(always)]
-pub fn has_arena() -> bool {
-    // SAFETY: this isolate's allocator state.
-    unsafe { (*STATE.ptr()).claimed }
-}
-
-/// The registered arena holding `p`, if any thread's. `own` is the caller's state: its own
-/// arena was already checked, and when it is the only arena nothing else can hold `p`.
-#[inline(never)]
-fn arena_of(own: &State, p: *mut u8) -> Option<&'static Arena> {
-    let n = ARENA_COUNT.load(Ordering::Relaxed).min(MAX_ARENAS);
-    if n == 0 || (n == 1 && own.base != 0) {
+fn page_word(p: *mut u8) -> Option<u32> {
+    let off = (p as usize).wrapping_sub(BASE.load(Ordering::Relaxed));
+    if off >= PAGES_SIZE {
         return None;
     }
-    let addr = p as usize;
-    ARENAS[..n].iter().find(|a| {
-        let base = a.base.load(Ordering::Acquire);
-        base != 0 && addr.wrapping_sub(base) < a.end.load(Ordering::Relaxed) - base
-    })
+    // SAFETY: the table has one word per page of the reservation, and a block of the pages implies
+    // the table was published.
+    Some(unsafe { *TABLE.load(Ordering::Relaxed).add(off >> PAGE_SHIFT) })
 }
 
-/// Pushes a block onto its owning arena's remote-free stack.
+/// The growth chunk holding `p`, if any.
+#[inline(always)]
+fn grow_chunk_of(p: *mut u8) -> Option<usize> {
+    let off = (p as usize).wrapping_sub(GROW_BASE.load(Ordering::Relaxed));
+    (off < GROW_SIZE * GROW_CHUNKS).then_some(off / GROW_SIZE)
+}
+
+fn grow_base(chunk: usize) -> usize {
+    GROW_BASE.load(Ordering::Relaxed) + chunk * GROW_SIZE
+}
+
+/// Whether `p` lies in this heap's reservation (small pages or a growth chunk).
+#[inline(always)]
+fn owns(p: *mut u8) -> bool {
+    page_word(p).is_some() || grow_chunk_of(p).is_some()
+}
+
+/// Pushes a block onto its owning heap's remote-free stack.
 ///
 /// # Safety
-/// `p` is a live small block inside `arena`, owned by the caller.
-unsafe fn remote_free(arena: &Arena, p: *mut u8) {
-    let mut head = arena.remote.load(Ordering::Relaxed);
+/// `p` is a live small block owned by the caller, in a page of heap `heap`.
+unsafe fn remote_free(heap: usize, p: *mut u8) {
+    let stack = &REMOTE[heap];
+    let mut head = stack.load(Ordering::Relaxed);
     loop {
         // SAFETY: a freed block is at least 16 bytes and holds the link in its first word.
         unsafe { *(p as *mut *mut u8) = head };
-        match arena
-            .remote
-            .compare_exchange_weak(head, p, Ordering::Release, Ordering::Relaxed)
-        {
+        match stack.compare_exchange_weak(head, p, Ordering::Release, Ordering::Relaxed) {
             Ok(_) => return,
             Err(h) => head = h,
         }
     }
 }
 
-/// Moves the blocks other threads freed into this arena onto its free lists.
+/// Moves the blocks other threads freed into this heap onto its free lists.
 #[cold]
 fn drain_remote(s: &mut State) {
-    let mut p = ARENAS[s.slot].remote.swap(null_mut(), Ordering::Acquire);
+    let mut p = REMOTE[s.heap as usize].swap(null_mut(), Ordering::Acquire);
     while !p.is_null() {
-        // SAFETY: remote blocks are small arena blocks of this arena with the link in word 0.
+        // SAFETY: remote blocks are small blocks of this heap with the link in word 0.
         unsafe {
             let next = *(p as *mut *mut u8);
-            let class = *s.page_class.add((p as usize - s.base) >> PAGE_SHIFT) as usize;
+            let class = page_word(p).unwrap_unchecked() as u8 as usize;
             *(p as *mut *mut u8) = s.free[class];
             s.free[class] = p;
             p = next;
@@ -418,26 +387,33 @@ fn drain_remote(s: &mut State) {
 
 #[cold]
 fn refill(s: &mut State, class: usize) -> *mut u8 {
-    let page = s.next_page;
-    if s.base == 0 || s.base + (page + 1) * PAGE_SIZE > s.end {
+    let page = NEXT_PAGE.fetch_add(1, Ordering::Relaxed);
+    if page >= NUM_PAGES {
+        NEXT_PAGE.store(NUM_PAGES, Ordering::Relaxed);
         return null_mut();
     }
+    let base = BASE.load(Ordering::Relaxed);
     let used = (page + 1) * PAGE_SIZE;
-    if used > s.committed {
-        let chunk = COMMIT_STEP
-            .max(used - s.committed)
-            .min(s.end - s.base - s.committed);
-        if !sys::commit((s.base + s.committed) as *mut u8, chunk) {
-            return null_mut();
+    if used > COMMITTED.load(Ordering::Acquire) {
+        let _g = COMMIT_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let committed = COMMITTED.load(Ordering::Relaxed);
+        if used > committed {
+            let chunk = COMMIT_STEP
+                .max(used - committed)
+                .min(PAGES_SIZE - committed);
+            if !sys::commit((base + committed) as *mut u8, chunk) {
+                return null_mut();
+            }
+            COMMITTED.store(committed + chunk, Ordering::Release);
         }
-        s.committed += chunk;
     }
-    s.next_page += 1;
-    // SAFETY: `page` indexes the side table, which has one entry per arena page.
-    unsafe { *s.page_class.add(page) = class as u8 };
-    let start = (s.base + page * PAGE_SIZE) as *mut u8;
+    // SAFETY: `page` indexes the table, which has one word per page.
+    unsafe {
+        *TABLE.load(Ordering::Relaxed).add(page) = (s.heap << OWNER_SHIFT) | class as u32;
+    }
+    let start = (base + page * PAGE_SIZE) as *mut u8;
     let size = CLASS_SIZES[class] as usize;
-    // SAFETY: the page lies inside the reserved arena.
+    // SAFETY: the page lies inside the reserved pages.
     s.bump_end[class] = unsafe { start.add(PAGE_SIZE / size * size) };
     s.bump[class] = start;
     start
@@ -454,14 +430,14 @@ fn class_of(size: usize) -> usize {
 /// compiled function needs no frame; everything else is in [`alloc_slow`].
 #[inline]
 pub fn alloc(size: usize) -> *mut u8 {
-    // SAFETY: single threaded access to the allocator state.
+    // SAFETY: this thread's allocator state.
     let s = unsafe { &mut *STATE.ptr() };
     #[cfg(feature = "stats")]
     {
         s.requested[0] += 1;
         s.requested[1] += size as u64;
     }
-    if size <= MAX_SMALL && s.initialized {
+    if size <= MAX_SMALL {
         let class = class_of(size.max(1));
         let head = s.free[class];
         if !head.is_null() {
@@ -479,14 +455,13 @@ pub fn alloc(size: usize) -> *mut u8 {
 
 #[inline(never)]
 fn alloc_slow(size: usize) -> *mut u8 {
-    // SAFETY: single threaded access to the allocator state.
+    // SAFETY: this thread's allocator state.
     let s = unsafe { &mut *STATE.ptr() };
-    if size <= MAX_SMALL && (s.initialized || s.claimed || cfg!(test)) {
-        if !s.initialized {
-            s.claimed = true;
-            init(s);
-        }
-        if s.base != 0 && !ARENAS[s.slot].remote.load(Ordering::Relaxed).is_null() {
+    if cfg!(test) && s.heap == NO_HEAP {
+        claim_heap();
+    }
+    if size <= MAX_SMALL && s.heap != NO_HEAP {
+        if !REMOTE[s.heap as usize].load(Ordering::Relaxed).is_null() {
             drain_remote(s);
         }
         let class = class_of(size.max(1));
@@ -611,12 +586,7 @@ pub fn alloc_zeroed(size: usize) -> *mut u8 {
     p
 }
 
-#[inline(always)]
-fn in_arena(s: &State, p: *mut u8) -> bool {
-    (p as usize).wrapping_sub(s.base) < s.end.wrapping_sub(s.base)
-}
-
-/// Frees a block returned by [`alloc`] or [`realloc`]. Null is ignored.
+/// Frees a block returned by [`alloc`] or [`realloc`] on any thread. Null is ignored.
 ///
 /// # Safety
 /// `p` must be null or a live block from this allocator.
@@ -625,33 +595,33 @@ pub unsafe fn free(p: *mut u8) {
     if p.is_null() {
         return;
     }
-    // SAFETY: single threaded access to the allocator state.
+    // SAFETY: this thread's allocator state.
     let s = unsafe { &mut *STATE.ptr() };
     #[cfg(any(test, feature = "stats"))]
     {
         s.live -= 1;
     }
-    if in_arena(s, p) {
-        let page = (p as usize - s.base) >> PAGE_SHIFT;
-        // SAFETY: arena pointers have a recorded class; a freed block is at
-        // least 16 bytes, so it can hold the free-list link in its first word.
-        unsafe {
-            let class = *s.page_class.add(page) as usize;
-            // The counting runtime scribbles over freed blocks so a use after free shows up.
-            #[cfg(any(test, feature = "stats"))]
-            core::ptr::write_bytes(p, 0xDD, CLASS_SIZES[class] as usize);
-            *(p as *mut *mut u8) = s.free[class];
+    if let Some(word) = page_word(p) {
+        let class = word as u8 as usize;
+        let owner = word >> OWNER_SHIFT;
+        if owner == s.heap {
+            // SAFETY: a freed block is at least 16 bytes, so it can hold the free-list link in its
+            // first word.
+            unsafe {
+                // The counting runtime scribbles over freed blocks so a use after free shows up.
+                #[cfg(any(test, feature = "stats"))]
+                core::ptr::write_bytes(p, 0xDD, CLASS_SIZES[class] as usize);
+                *(p as *mut *mut u8) = s.free[class];
+            }
             s.free[class] = p;
+        } else {
+            // SAFETY: a live small block of another heap's page, owned by the caller.
+            unsafe { remote_free(owner as usize, p) };
         }
-    } else if let Some(a) = arena_of(s, p) {
-        // SAFETY: a live small block of another isolate's arena, owned by the caller.
-        unsafe { remote_free(a, p) };
-    } else if in_grow(s, p) {
-        grow_release(s);
-    } else if grow_of_other(p) {
-        // Another isolate's growing buffer: it stays with its region until that isolate ends.
+    } else if let Some(chunk) = grow_chunk_of(p) {
+        grow_release(s, chunk);
     } else {
-        // SAFETY: not an arena block, so it came from malloc/realloc.
+        // SAFETY: not a block of the reservation, so it came from malloc/realloc.
         unsafe { free_large(s, p) };
     }
 }
@@ -664,7 +634,8 @@ unsafe fn free_large(s: &mut State, p: *mut u8) {
     // SAFETY: `p` is a live system block.
     let usable = unsafe { sys::malloc_usable_size(p.cast()) };
     let class = large_class_down(usable.max(1 << LARGE_MIN_SHIFT));
-    if (1 << LARGE_MIN_SHIFT..=LARGE_MAX).contains(&usable)
+    if s.heap != NO_HEAP
+        && (1 << LARGE_MIN_SHIFT..=LARGE_MAX).contains(&usable)
         && s.large_cached + usable <= LARGE_CACHE_LIMIT
         && s.large_count[class] < LOCAL_PER_CLASS
     {
@@ -688,31 +659,19 @@ unsafe fn free_large(s: &mut State, p: *mut u8) {
 /// # Safety
 /// `p` must be a live block from this allocator.
 pub unsafe fn usable_size(p: *mut u8) -> usize {
-    // SAFETY: single threaded access to the allocator state.
-    let s = unsafe { &*STATE.ptr() };
-    if in_grow(s, p) {
-        return s.grow_len;
+    if let Some(chunk) = grow_chunk_of(p) {
+        return GROW_LEN[chunk].load(Ordering::Acquire);
     }
-    match small_size(s, p) {
+    match small_size(p) {
         Some(n) => n,
-        // SAFETY: not an arena block, so it came from malloc/realloc.
+        // SAFETY: not a block of the pages, so it came from malloc/realloc.
         None => unsafe { sys::malloc_usable_size(p.cast()) },
     }
 }
 
-/// Block size when `p` is a small block of any isolate's arena.
-fn small_size(s: &State, p: *mut u8) -> Option<usize> {
-    let (base, table) = if in_arena(s, p) {
-        (s.base, s.page_class)
-    } else {
-        let a = arena_of(s, p)?;
-        (
-            a.base.load(Ordering::Relaxed),
-            a.page_class.load(Ordering::Relaxed),
-        )
-    };
-    // SAFETY: arena pointers have a recorded class.
-    Some(unsafe { CLASS_SIZES[*table.add((p as usize - base) >> PAGE_SHIFT) as usize] as usize })
+/// Block size when `p` is a small block of any heap.
+fn small_size(p: *mut u8) -> Option<usize> {
+    page_word(p).map(|word| CLASS_SIZES[word as u8 as usize] as usize)
 }
 
 /// Resizes a block, preserving the common prefix.
@@ -723,12 +682,23 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
     if p.is_null() {
         return alloc(new_size);
     }
-    // SAFETY: single threaded access to the allocator state.
+    // SAFETY: this thread's allocator state.
     let s = unsafe { &mut *STATE.ptr() };
-    if in_grow(s, p) {
-        return grow_resize(s, p, new_size);
+    if let Some(chunk) = grow_chunk_of(p) {
+        if chunk == s.grow_chunk {
+            return grow_resize(s, p, new_size);
+        }
+        // Another heap's growing buffer: the bytes move out and its chunk is freed.
+        let old = GROW_LEN[chunk].load(Ordering::Acquire);
+        let q = alloc(new_size);
+        // SAFETY: `q` holds `new_size` bytes and `p` holds `old`; the blocks are disjoint.
+        unsafe {
+            core::ptr::copy_nonoverlapping(p, q, old.min(new_size));
+            free(p);
+        }
+        return q;
     }
-    if let Some(old) = small_size(s, p) {
+    if let Some(old) = small_size(p) {
         if new_size <= old && new_size > old / 2 {
             return p;
         }
@@ -791,48 +761,28 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
     }
 }
 
-#[inline(always)]
-fn in_grow(s: &State, p: *mut u8) -> bool {
-    s.grow_len != 0 && (p as usize).wrapping_sub(s.grow_base) < s.grow_size
-}
-
-/// Whether `p` is the growing buffer of another isolate.
-#[cold]
-fn grow_of_other(p: *mut u8) -> bool {
-    let n = ARENA_COUNT.load(Ordering::Relaxed).min(MAX_ARENAS);
-    let addr = p as usize;
-    ARENAS[..n].iter().any(|a| {
-        let base = a.grow_base.load(Ordering::Acquire);
-        base != 0 && addr.wrapping_sub(base) < a.grow_end.load(Ordering::Relaxed) - base
-    })
-}
-
-/// Reserves the growth region of this isolate; false when it cannot (no arena, no address space).
+/// Takes a growth chunk for this heap; false when none is left.
 #[cold]
 fn grow_map(s: &mut State) -> bool {
-    if s.base == 0 {
+    if s.heap == NO_HEAP {
         return false;
     }
-    let size = if s.main { GROW_SIZE } else { WORKER_GROW_SIZE };
-    let region = sys::map_anon(size);
-    if region.is_null() {
+    let chunk = NEXT_CHUNK.fetch_add(1, Ordering::Relaxed);
+    if chunk >= GROW_CHUNKS {
+        NEXT_CHUNK.store(GROW_CHUNKS, Ordering::Relaxed);
         return false;
     }
-    s.grow_base = region as usize;
-    s.grow_size = size;
+    s.grow_chunk = chunk;
     s.grow_committed = 0;
-    let a = &ARENAS[s.slot];
-    a.grow_end.store(s.grow_base + size, Ordering::Relaxed);
-    a.grow_base.store(s.grow_base, Ordering::Release);
     true
 }
 
-/// Makes the first `len` bytes of the growth region usable; false when the system refuses.
+/// Makes the first `len` bytes of the growth chunk usable; false when the system refuses.
 fn grow_commit(s: &mut State, len: usize) -> bool {
     if len > s.grow_committed {
-        let to = len.next_multiple_of(COMMIT_STEP).min(s.grow_size);
+        let to = len.next_multiple_of(COMMIT_STEP).min(GROW_SIZE);
         if !sys::commit(
-            (s.grow_base + s.grow_committed) as *mut u8,
+            (grow_base(s.grow_chunk) + s.grow_committed) as *mut u8,
             to - s.grow_committed,
         ) {
             return false;
@@ -842,44 +792,45 @@ fn grow_commit(s: &mut State, len: usize) -> bool {
     true
 }
 
-/// A block of `size` bytes at the start of the growth region, or null when it is taken or too small.
+/// A block of `size` bytes at the start of this heap's growth chunk, or none when it is taken or
+/// too small.
 fn grow_take(s: &mut State, size: usize) -> Option<*mut u8> {
-    if s.grow_len != 0 || (s.grow_base == 0 && !grow_map(s)) || size > s.grow_size {
+    if (s.grow_chunk == usize::MAX && !grow_map(s)) || size > GROW_SIZE {
         return None;
     }
-    if !grow_commit(s, size) {
+    if GROW_LEN[s.grow_chunk].load(Ordering::Acquire) != 0 || !grow_commit(s, size) {
         return None;
     }
-    s.grow_len = size;
+    GROW_LEN[s.grow_chunk].store(size, Ordering::Release);
     #[cfg(any(test, feature = "stats"))]
     {
         s.live += 1;
     }
-    Some(s.grow_base as *mut u8)
+    Some(grow_base(s.grow_chunk) as *mut u8)
 }
 
-/// Frees the block in the growth region. Its pages stay resident for the next buffer unless
-/// there are many.
-fn grow_release(s: &mut State) {
-    s.grow_len = 0;
-    if s.grow_committed > GROW_KEEP {
-        // SAFETY: nothing lives in the region now.
-        unsafe { sys::release(s.grow_base as *mut u8, s.grow_committed) };
+/// Frees the block in growth chunk `chunk`, from any thread. Its pages stay resident for the next
+/// buffer unless there are many and the chunk is this heap's.
+fn grow_release(s: &mut State, chunk: usize) {
+    if chunk == s.grow_chunk && s.grow_committed > GROW_KEEP {
+        // SAFETY: the owner trims, and nothing lives in the chunk once its length is cleared.
+        unsafe { sys::release(grow_base(chunk) as *mut u8, s.grow_committed) };
         s.grow_committed = 0;
     }
+    GROW_LEN[chunk].store(0, Ordering::Release);
 }
 
-/// Resizes the block in the growth region: in place while it stays big, otherwise out of it.
+/// Resizes the block in this heap's growth chunk: in place while it stays big, otherwise out of it.
 fn grow_resize(s: &mut State, p: *mut u8, new_size: usize) -> *mut u8 {
-    if new_size >= GROW_MIN && new_size <= s.grow_size && grow_commit(s, new_size) {
-        s.grow_len = new_size;
+    if (GROW_MIN..=GROW_SIZE).contains(&new_size) && grow_commit(s, new_size) {
+        GROW_LEN[s.grow_chunk].store(new_size, Ordering::Release);
         return p;
     }
-    let old = s.grow_len;
+    let old = GROW_LEN[s.grow_chunk].load(Ordering::Acquire);
     let q = alloc(new_size);
     // SAFETY: `q` holds `new_size` bytes and `p` holds `old`; the blocks are disjoint.
     unsafe { core::ptr::copy_nonoverlapping(p, q, old.min(new_size)) };
-    grow_release(s);
+    grow_release(s, s.grow_chunk);
     #[cfg(any(test, feature = "stats"))]
     {
         s.live -= 1;
@@ -887,20 +838,27 @@ fn grow_resize(s: &mut State, p: *mut u8, new_size: usize) -> *mut u8 {
     q
 }
 
-/// Small-block heap figures in bytes: `[used, in_use_pages]`. `used` counts
-/// blocks handed out and not on a free list; large blocks belong to the system allocator and are
-/// not included. Walks the free lists, so it is meant for occasional diagnostics.
+/// Small-block heap figures in bytes for the calling thread's heap: `[used, in_use_pages]`. `used`
+/// counts blocks handed out and not on a free list; large blocks belong to the system allocator and
+/// are not included. Walks the page table and the free lists, so it is meant for occasional
+/// diagnostics.
 pub fn heap_stats() -> [i64; 2] {
-    // SAFETY: single threaded access to the allocator state.
+    // SAFETY: this thread's allocator state.
     let s = unsafe { &*STATE.ptr() };
-    if !s.initialized || s.page_class.is_null() {
+    if s.heap == NO_HEAP {
         return [0; 2];
     }
+    let table = TABLE.load(Ordering::Relaxed);
     let mut carved = 0usize;
-    for page in 0..s.next_page {
-        // SAFETY: `page < next_page`, which the side table covers.
-        let class = unsafe { *s.page_class.add(page) } as usize;
-        carved += PAGE_SIZE / CLASS_SIZES[class] as usize * CLASS_SIZES[class] as usize;
+    let mut pages = 0usize;
+    for page in 0..NEXT_PAGE.load(Ordering::Relaxed).min(NUM_PAGES) {
+        // SAFETY: `page` is below the pages handed out, which the table covers.
+        let word = unsafe { *table.add(page) };
+        if word >> OWNER_SHIFT == s.heap {
+            let size = CLASS_SIZES[word as u8 as usize] as usize;
+            carved += PAGE_SIZE / size * size;
+            pages += 1;
+        }
     }
     let mut spare = 0usize;
     for (class, &size) in CLASS_SIZES.iter().enumerate() {
@@ -915,21 +873,21 @@ pub fn heap_stats() -> [i64; 2] {
     }
     [
         carved.saturating_sub(spare) as i64,
-        (s.next_page * PAGE_SIZE) as i64,
+        (pages * PAGE_SIZE) as i64,
     ]
 }
 
 /// `[allocations, bytes]` requested since start (the `stats` feature).
 #[cfg(feature = "stats")]
 pub fn requested() -> [u64; 2] {
-    // SAFETY: single threaded access to the allocator state.
+    // SAFETY: this thread's allocator state.
     unsafe { (*STATE.ptr()).requested }
 }
 
 /// Live allocation count (tests and the `stats` feature).
 #[cfg(any(test, feature = "stats"))]
 pub fn live_blocks() -> isize {
-    // SAFETY: single threaded access to the allocator state.
+    // SAFETY: this thread's allocator state.
     unsafe { (*STATE.ptr()).live }
 }
 
@@ -1112,26 +1070,102 @@ mod tests {
         assert_eq!(live_blocks(), before);
     }
 
-    #[cfg(target_os = "linux")]
     #[test]
-    fn worker_heap_blocks_cross_threads_and_are_reused() {
-        use super::worker_heap;
-        let p = worker_heap::alloc(100);
-        assert!(!p.is_null() && worker_heap::owns(p));
-        // SAFETY: a live block of at least 100 bytes.
-        unsafe { core::ptr::write_bytes(p, 0xAB, 100) };
-        let addr = p as usize;
-        // A thread that is not a worker hands the block to the shared list; the next
-        // allocation of its class on this thread takes it back.
-        std::thread::spawn(move || worker_heap::free(addr as *mut u8, 100))
-            .join()
-            .unwrap();
-        let mut got = false;
-        for _ in 0..4 {
-            got |= worker_heap::alloc(100) as usize == addr;
+    fn a_released_heap_is_adopted_with_its_blocks() {
+        let _g = lock();
+        // A thread's blocks stay valid after it ends, any thread frees them, and the next thread
+        // to claim a heap takes over its free blocks.
+        let (heap, block) = std::thread::spawn(|| {
+            claim_heap();
+            let p = alloc(64) as usize;
+            // SAFETY: a live block of 64 bytes.
+            unsafe { core::ptr::write_bytes(p as *mut u8, 0xAB, 64) };
+            let keep = alloc(64);
+            // SAFETY: `keep` is live and freed once.
+            unsafe { free(keep) };
+            let heap = unsafe { (*STATE.ptr()).heap };
+            release_heap();
+            (heap, (p, keep as usize))
+        })
+        .join()
+        .unwrap();
+        let (p, keep) = block;
+        // SAFETY: the block outlived its thread; this is the only free.
+        unsafe {
+            assert_eq!(*(p as *const u8), 0xAB);
+            assert_eq!(small_size(p as *mut u8), Some(64));
+            free(p as *mut u8);
         }
-        assert!(got);
-        assert!(!worker_heap::owns(alloc(100)));
+        std::thread::spawn(move || {
+            claim_heap();
+            // SAFETY: this thread's state.
+            assert_eq!(unsafe { (*STATE.ptr()).heap }, heap);
+            // The adopted free list hands back the block freed before the thread ended.
+            assert_eq!(alloc(64) as usize, keep);
+        })
+        .join()
+        .unwrap();
+    }
+
+    #[test]
+    fn more_than_256_heaps_exist_at_once() {
+        let _g = lock();
+        let gate = std::sync::Arc::new(std::sync::Barrier::new(300));
+        let handles: Vec<_> = (0..300)
+            .map(|_| {
+                let gate = gate.clone();
+                std::thread::spawn(move || {
+                    claim_heap();
+                    let p = alloc(100);
+                    assert!(has_heap());
+                    gate.wait();
+                    // SAFETY: allocated above, freed once.
+                    unsafe { free(p) };
+                    gate.wait();
+                    release_heap();
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn every_kind_of_block_frees_and_resizes_on_any_thread() {
+        let _g = lock();
+        let small = alloc(48) as usize;
+        let large = alloc(100_000) as usize;
+        let mut grown = alloc(GROW_MIN / 2);
+        // SAFETY: live blocks; each resized and freed once.
+        unsafe {
+            grown = realloc(grown, GROW_MIN * 2);
+            assert!(grow_chunk_of(grown).is_some());
+            core::ptr::write_bytes(grown, 0x5A, GROW_MIN * 2);
+        }
+        let grown = grown as usize;
+        std::thread::spawn(move || {
+            claim_heap();
+            // SAFETY: blocks of another heap, each resized or freed once.
+            unsafe {
+                let small = realloc(small as *mut u8, 3000);
+                free(small);
+                free(large as *mut u8);
+                let g = realloc(grown as *mut u8, GROW_MIN * 3);
+                assert_eq!(*g.add(GROW_MIN * 2 - 1), 0x5A);
+                free(g);
+            }
+            release_heap();
+        })
+        .join()
+        .unwrap();
+        // The foreign free cleared the growth chunk, so its owner can grow a buffer again.
+        // SAFETY: live and freed once.
+        unsafe {
+            let again = realloc(alloc(GROW_MIN / 2), GROW_MIN);
+            assert!(grow_chunk_of(again).is_some());
+            free(again);
+        }
     }
 
     #[test]
@@ -1164,223 +1198,38 @@ mod tests {
 ///
 /// The standard-library natives (`Vec`, `String`, `HashMap` inside `ms-std-*`) then share the
 /// runtime's size-class allocator instead of libc's, which is several times slower per call. Only
-/// threads that claimed an arena (isolates) use it; every other thread uses the system allocator.
-/// A block that another thread frees is routed to its owner's remote-free stack.
+/// threads that claimed a heap (isolates) allocate from it; every other thread uses the system
+/// allocator. A block any thread frees is routed to its page's owner.
 #[cfg(target_os = "linux")]
 pub struct StdHeap;
 
-/// The small-block heap for Rust code on worker threads (Linux).
-///
-/// The system allocator (musl) serves every thread through one lock, so workers that allocate in
-/// Rust natives (connection buffers, headers) slowed each other down. A worker cannot use its own
-/// arena for that: Rust code keeps blocks in process-wide state that outlives the isolate and its
-/// arena. This heap lives in one reservation shared by the process and is never unmapped: blocks
-/// are carved in per-thread slabs, freed to the freeing worker's lists (any thread may free any
-/// block), and a worker that ends hands its lists to the next one.
-#[cfg(target_os = "linux")]
-mod worker_heap {
-    use super::{CLASS_SIZES, NUM_CLASSES, class_of, sys};
-    use core::ptr::null_mut;
-    use core::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::Mutex;
-
-    /// Address space reserved for the heap; pages commit on first touch.
-    const REGION: usize = 16 << 30;
-    /// Bytes a thread takes from the region at a time for one class.
-    const SLAB: usize = 64 << 10;
-
-    static BASE: AtomicUsize = AtomicUsize::new(0);
-    static NEXT: AtomicUsize = AtomicUsize::new(0);
-
-    /// Free blocks handed over by ended workers and by threads that are not workers.
-    struct Shared([*mut u8; NUM_CLASSES]);
-    // SAFETY: the lists link blocks of the immortal region and are only touched under the lock.
-    unsafe impl Send for Shared {}
-    static SHARED: Mutex<Shared> = Mutex::new(Shared([null_mut(); NUM_CLASSES]));
-
-    struct Local {
-        free: [*mut u8; NUM_CLASSES],
-        bump: [*mut u8; NUM_CLASSES],
-        bump_end: [*mut u8; NUM_CLASSES],
-    }
-
-    crate::isolate_static! {
-    static LOCAL: Local = Local {
-        free: [null_mut(); NUM_CLASSES],
-        bump: [null_mut(); NUM_CLASSES],
-        bump_end: [null_mut(); NUM_CLASSES],
-    };
-    }
-
-    /// Whether `p` is a block of this heap.
-    #[inline(always)]
-    pub fn owns(p: *mut u8) -> bool {
-        let base = BASE.load(Ordering::Relaxed);
-        base != 0 && (p as usize).wrapping_sub(base) < REGION
-    }
-
-    fn reserve() -> usize {
-        let base = BASE.load(Ordering::Acquire);
-        if base != 0 {
-            return base;
-        }
-        let p = sys::map_anon(REGION) as usize;
-        if p == 0 {
-            return 0;
-        }
-        match BASE.compare_exchange(0, p, Ordering::AcqRel, Ordering::Acquire) {
-            Ok(_) => p,
-            Err(won) => {
-                // SAFETY: the mapping was made here and nothing used it.
-                unsafe { sys::unmap(p as *mut u8, REGION) };
-                won
-            }
-        }
-    }
-
-    /// A block for `size` bytes (at most `MAX_SMALL`), or null when the region is full.
-    pub fn alloc(size: usize) -> *mut u8 {
-        // SAFETY: this thread's lists.
-        let l = unsafe { &mut *LOCAL.ptr() };
-        let class = class_of(size.max(1));
-        let head = l.free[class];
-        if !head.is_null() {
-            // SAFETY: free blocks hold the next link in word 0.
-            l.free[class] = unsafe { *(head as *mut *mut u8) };
-            return head;
-        }
-        refill(l, class)
-    }
-
-    #[cold]
-    fn refill(l: &mut Local, class: usize) -> *mut u8 {
-        {
-            let mut shared = SHARED.lock().unwrap_or_else(|e| e.into_inner());
-            l.free[class] = core::mem::replace(&mut shared.0[class], null_mut());
-        }
-        let head = l.free[class];
-        if !head.is_null() {
-            // SAFETY: as above.
-            l.free[class] = unsafe { *(head as *mut *mut u8) };
-            return head;
-        }
-        let size = CLASS_SIZES[class] as usize;
-        if l.bump[class].is_null() || l.bump[class] >= l.bump_end[class] {
-            let base = reserve();
-            if base == 0 {
-                return null_mut();
-            }
-            let at = NEXT.fetch_add(SLAB, Ordering::Relaxed);
-            if at + SLAB > REGION {
-                return null_mut();
-            }
-            let start = (base + at) as *mut u8;
-            // SAFETY: the slab lies inside the region.
-            l.bump_end[class] = unsafe { start.add(SLAB / size * size) };
-            l.bump[class] = start;
-        }
-        let p = l.bump[class];
-        // SAFETY: `p` is below `bump_end`, so the block stays inside the slab.
-        l.bump[class] = unsafe { p.add(size) };
-        p
-    }
-
-    /// Frees a block of `size` bytes (the size it was requested with).
-    pub fn free(p: *mut u8, size: usize) {
-        let class = class_of(size.max(1));
-        if crate::isolate::is_worker() {
-            // SAFETY: this thread's lists; a freed block is at least 16 bytes.
-            unsafe {
-                let l = &mut *LOCAL.ptr();
-                *(p as *mut *mut u8) = l.free[class];
-                l.free[class] = p;
-            }
-        } else {
-            // A thread that never allocates here must not hoard blocks.
-            let mut shared = SHARED.lock().unwrap_or_else(|e| e.into_inner());
-            // SAFETY: as above.
-            unsafe { *(p as *mut *mut u8) = shared.0[class] };
-            shared.0[class] = p;
-        }
-    }
-
-    /// Hands the calling worker's free blocks to the next worker as its isolate ends.
-    pub fn retire() {
-        // SAFETY: this thread's lists.
-        let l = unsafe { &mut *LOCAL.ptr() };
-        let mut shared = SHARED.lock().unwrap_or_else(|e| e.into_inner());
-        for class in 0..NUM_CLASSES {
-            let mut p = core::mem::replace(&mut l.free[class], null_mut());
-            while !p.is_null() {
-                // SAFETY: free blocks hold the next link in word 0.
-                unsafe {
-                    let next = *(p as *mut *mut u8);
-                    *(p as *mut *mut u8) = shared.0[class];
-                    shared.0[class] = p;
-                    p = next;
-                }
-            }
-        }
-    }
-}
-
 #[cfg(target_os = "linux")]
 mod std_heap {
-    use super::{LARGE_MAX, MAX_SMALL, STATE, StdHeap, arena_of, has_arena, in_arena, worker_heap};
+    use super::{LARGE_MAX, MAX_SMALL, StdHeap, has_heap, owns};
     use core::alloc::{GlobalAlloc, Layout};
     use std::alloc::System;
 
-    /// Whether the arena may serve `layout` on this thread. Counting builds keep the standard
-    /// library out of the arena so leak checks see only program allocations. A worker's arena
-    /// ends with the worker, and Rust code can keep what it allocates in process-wide state
-    /// (a cache, a buffer another isolate reads), so Rust code in a worker uses the system allocator
-    /// for small blocks. Large blocks are system blocks in any case, and the worker keeps freed ones
-    /// for reuse (as the main isolate does), so an 8 MiB body buffer is not mapped and faulted in
-    /// again by every request.
+    /// Whether the heap may serve `layout` on this thread. Counting builds keep the standard
+    /// library out of the heap so leak checks see only program allocations. Blocks outlive the
+    /// thread that allocated them, so Rust code may keep them in process-wide state.
     #[inline(always)]
-    fn arena_ok(layout: Layout) -> bool {
-        !cfg!(feature = "stats")
-            && layout.align() <= 16
-            && has_arena()
-            && (!crate::isolate::is_worker() || layout.size() > MAX_SMALL)
+    fn heap_ok(layout: Layout) -> bool {
+        !cfg!(feature = "stats") && layout.align() <= 16 && has_heap()
     }
 
-    /// Whether the worker heap serves `layout` on this thread: Rust code in a worker, small blocks.
-    #[inline(always)]
-    fn worker_ok(layout: Layout) -> bool {
-        !cfg!(feature = "stats")
-            && layout.align() <= 16
-            && layout.size() <= MAX_SMALL
-            && crate::isolate::is_worker()
-    }
-
-    /// The size of a large request from a thread without an arena that the shared lists serve.
+    /// The size of a large request from a thread without a heap that the shared lists serve.
     #[inline(always)]
     fn shared_size(layout: Layout) -> Option<usize> {
         (layout.align() <= 16 && layout.size() > MAX_SMALL && layout.size() <= LARGE_MAX)
             .then_some(layout.size())
     }
 
-    /// Whether `p` is a small block of any isolate's arena.
-    #[inline(always)]
-    fn owns(p: *mut u8) -> bool {
-        // SAFETY: single field reads of this isolate's allocator state.
-        let s = unsafe { &*STATE.ptr() };
-        in_arena(s, p) || arena_of(s, p).is_some()
-    }
-
-    // SAFETY: blocks come from an arena or the system allocator, and `dealloc` and `realloc`
+    // SAFETY: blocks come from the heap or the system allocator, and `dealloc` and `realloc`
     // tell them apart by address, so each is released by the allocator that produced it.
     unsafe impl GlobalAlloc for StdHeap {
         #[inline]
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-            if worker_ok(layout) {
-                let p = worker_heap::alloc(layout.size());
-                if !p.is_null() {
-                    return p;
-                }
-            }
-            if arena_ok(layout) {
+            if heap_ok(layout) {
                 super::alloc(layout.size())
             } else if let Some(size) = shared_size(layout) {
                 let cached = super::shared_take(size);
@@ -1403,15 +1252,7 @@ mod std_heap {
 
         #[inline]
         unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-            if worker_ok(layout) {
-                let p = worker_heap::alloc(layout.size());
-                if !p.is_null() {
-                    // SAFETY: a block of at least `layout.size()` bytes.
-                    unsafe { core::ptr::write_bytes(p, 0, layout.size()) };
-                    return p;
-                }
-            }
-            if arena_ok(layout) {
+            if heap_ok(layout) {
                 if layout.size() <= MAX_SMALL {
                     return super::alloc_zeroed(layout.size());
                 }
@@ -1432,7 +1273,7 @@ mod std_heap {
             // A request rounded to its class lands in the free list that the next request reads.
             unsafe {
                 match Layout::from_size_align(super::large_request(layout.size()), layout.align()) {
-                    Ok(rounded) if arena_ok(layout) || shared_size(layout).is_some() => {
+                    Ok(rounded) if heap_ok(layout) || shared_size(layout).is_some() => {
                         System.alloc_zeroed(rounded)
                     }
                     _ => System.alloc_zeroed(layout),
@@ -1442,19 +1283,17 @@ mod std_heap {
 
         #[inline]
         unsafe fn dealloc(&self, p: *mut u8, layout: Layout) {
-            if worker_heap::owns(p) {
-                worker_heap::free(p, layout.size());
-            } else if owns(p) {
-                // SAFETY: an arena block; `free` routes it to its owner.
+            if owns(p) {
+                // SAFETY: a heap block; `free` routes it to its owner.
                 unsafe { super::free(p) };
-            } else if layout.size() > MAX_SMALL && arena_ok(layout) {
+            } else if layout.size() > MAX_SMALL && heap_ok(layout) {
                 // SAFETY: a large block is a system block either way; the runtime keeps
                 // freed ones for reuse, where the system allocator would unmap them and
                 // fault the next block in again.
                 unsafe { super::free(p) };
             } else {
-                // SAFETY: not an arena block, so the system allocator produced it; a large one
-                // is kept for the next thread without an arena to reuse.
+                // SAFETY: not a heap block, so the system allocator produced it; a large one
+                // is kept for the next thread without a heap to reuse.
                 unsafe {
                     if shared_size(layout).is_none() || !super::shared_put(p) {
                         System.dealloc(p, layout);
@@ -1468,28 +1307,12 @@ mod std_heap {
             let Ok(target) = target else {
                 return core::ptr::null_mut();
             };
-            if worker_heap::owns(p) && new_size <= layout.size() && new_size > layout.size() / 2 {
-                // Shrinking a little keeps the block (its class is the same or the next one down).
-                if super::class_of(new_size.max(1)) == super::class_of(layout.size().max(1)) {
-                    return p;
-                }
-            }
-            if worker_heap::owns(p) {
-                // SAFETY: moves between blocks by copy; the old block is released by `dealloc`.
-                unsafe {
-                    let q = self.alloc(target);
-                    if !q.is_null() {
-                        core::ptr::copy_nonoverlapping(p, q, layout.size().min(new_size));
-                        self.dealloc(p, layout);
-                    }
-                    return q;
-                }
-            }
-            if arena_ok(layout) && (owns(p) || new_size > MAX_SMALL) {
-                // SAFETY: `p` is a live block of this heap (arena, or a large system block).
+            if layout.align() <= 16 && (owns(p) || (heap_ok(layout) && new_size > MAX_SMALL)) {
+                // SAFETY: `p` is a live block of this heap (small, growing, or a large system
+                // block); `realloc` treats every block alike.
                 return unsafe { super::realloc(p, new_size) };
             }
-            if !owns(p) && layout.align() <= 16 {
+            if layout.align() <= 16 {
                 // SAFETY: a system block stays with the system allocator.
                 return unsafe { System.realloc(p, layout, new_size) };
             }

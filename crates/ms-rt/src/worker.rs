@@ -172,7 +172,7 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
 /// See [`msrt_worker_spawn`].
 unsafe fn run(w: &Worker, entry: Entry, arg: *mut u8, done: u64) {
     isolate::mark_worker();
-    crate::alloc::claim_arena(false);
+    crate::alloc::claim_heap();
     crate::start::install_thread_fault_handler();
     {
         let mut cancellation = w.cancellation.lock().unwrap_or_else(|e| e.into_inner());
@@ -205,7 +205,7 @@ unsafe fn run(w: &Worker, entry: Entry, arg: *mut u8, done: u64) {
         crate::task::teardown();
         isolate::unregister();
     }
-    crate::alloc::release_arena();
+    crate::alloc::release_heap();
     let end = msrt_worker_end();
     if end != 0 {
         crate::pipe::msrt_pipe_close(end);
