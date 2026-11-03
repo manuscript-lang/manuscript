@@ -1281,7 +1281,7 @@ fn is_list(ty: &ct::Ty) -> bool {
 /// Whether the runtime function `sym` takes the receiver's handle first.
 fn takes_handle(sym: &str) -> bool {
     crate::rtcall::rt_sig(sym)
-        .and_then(|s| s.params.first().map(|p| p.ty.contains("ObjCell<")))
+        .and_then(|s| s.params.first().map(crate::rtcall::RtParam::is_handle))
         .unwrap_or(false)
 }
 
