@@ -409,6 +409,12 @@ impl Cx {
             Kind::Function => {
                 let mut params = Vec::new();
                 for p in &t.params {
+                    if p.mutable {
+                        // A changed parameter travels as the address of a slot the callee takes
+                        // the value from and puts the final value back into, as in a direct call.
+                        params.push(MTy::PTR);
+                        continue;
+                    }
                     let pt = self.lower_ty(m, &p.ty)?;
                     // A parameter that may be omitted crosses a function value as an optional.
                     let lifted = t.is_lifted(p.name);

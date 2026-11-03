@@ -725,10 +725,7 @@ impl Checker {
         }
         let inferred_fields: Vec<Param> = fields
             .iter()
-            .map(|f| Param {
-                name: f.name,
-                ty: sub(&f.ty, &subst),
-            })
+            .map(|f| Param::new(f.name, sub(&f.ty, &subst)))
             .collect();
         self.infer_arguments(args, &inferred_fields, &vars, &mut subst, None);
         let mut actual: Vec<Ty> = Vec::new();
@@ -871,10 +868,7 @@ mod argument_tests {
         for names in [vec![], vec!["a", "b", "c"], vec!["a", "a", "b"]] {
             let params: Vec<_> = names
                 .iter()
-                .map(|name| Param {
-                    name: n(name),
-                    ty: invalid(),
-                })
+                .map(|name| Param::new(n(name), invalid()))
                 .collect();
             for positional in [false, true] {
                 for mut code in 0..5usize.pow(5) {

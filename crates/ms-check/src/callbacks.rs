@@ -25,12 +25,24 @@ impl Checker {
         let mut params: Vec<Param> = Vec::with_capacity(l.params.len());
         let mut seen: HashSet<Name> = HashSet::new();
         let mut defaults: HashSet<Name> = HashSet::new();
+        let has_var = l.params.iter().any(|p| p.mutable);
         for (index, param) in l.params.iter().enumerate() {
             if !seen.insert(param.name) {
                 self.type_error(
                     param.pos,
                     format!(
                         "duplicate parameter or field {}; each name may appear once, so rename one",
+                        param.name
+                    ),
+                );
+            }
+            if has_var && param.default.is_some() {
+                // A function value fills omitted parameters in a thunk that cannot also pass a
+                // changed one by address.
+                self.type_error(
+                    param.pos,
+                    format!(
+                        "parameter {} has a default, but a function with a var parameter cannot also have defaults; pass the value at every call",
                         param.name
                     ),
                 );
@@ -55,6 +67,7 @@ impl Checker {
             params.push(Param {
                 name: param.name,
                 ty: typ,
+                mutable: param.mutable,
             });
             if param.default.is_some() {
                 defaults.insert(param.name);

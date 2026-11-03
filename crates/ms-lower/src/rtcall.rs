@@ -448,7 +448,14 @@ impl FnLower<'_> {
                     let handler = input
                         .val
                         .ok_or_else(|| Error::new(format!("{sym}: missing handler")))?;
-                    let env = self.handler_env(handler)?;
+                    // The handler's type names the exchange interface: `fn(var HttpExchange) Unit!`.
+                    let exchange = decl
+                        .iter()
+                        .find(|d| d.ty.kind == ms_check::types::Kind::Function)
+                        .and_then(|d| d.ty.params.first().map(|q| q.ty.clone()))
+                        .ok_or_else(|| Error::new(format!("{sym}: handler without an exchange")))?;
+                    let exchange = self.mty(&exchange)?;
+                    let env = self.handler_env(handler, exchange)?;
                     vals.push(env);
                 }
                 _ => {

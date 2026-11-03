@@ -486,15 +486,16 @@ impl Checker {
                         ),
                     );
                     i.ty = Some(invalid());
-                } else if s
-                    .decl
-                    .as_ref()
-                    .is_some_and(|d| d.fn_params().iter().any(|p| p.mutable))
-                {
+                } else if s.decl.as_ref().is_some_and(|d| {
+                    let ps = d.fn_params();
+                    ps.iter().any(|p| p.mutable) && ps.iter().any(|p| p.default.is_some())
+                }) {
+                    // A function value fills omitted parameters in a thunk that cannot also
+                    // pass a changed one by address.
                     self.type_error(
                         e.pos,
                         format!(
-                            "{name} has a var parameter, so it cannot be a function value: calls through a function value cannot mark an argument var; take the parameter by value (var copy = param inside the body) or call {name} from a closure"
+                            "{name} has both a var parameter and a parameter default, so it cannot be a function value; call {name} from a closure that supplies the default"
                         ),
                     );
                     i.ty = Some(invalid());

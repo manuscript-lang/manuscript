@@ -33,6 +33,7 @@ fn nominal(
         .map(|(i, ty)| Param {
             name: n(&format!("f{i}")),
             ty,
+            mutable: false,
         })
         .collect();
     if kind == Kind::Alternative {
@@ -136,6 +137,7 @@ fn recursive_and_mutually_recursive_alternatives_stay_move() {
         fields: vec![Param {
             name: n("next"),
             ty: a.clone(),
+            mutable: false,
         }],
     });
     assert_eq!(classifier().class(&a), Class::Move);
@@ -145,6 +147,7 @@ fn recursive_and_mutually_recursive_alternatives_stay_move() {
         fields: vec![Param {
             name: n("next"),
             ty: b.clone(),
+            mutable: false,
         }],
     });
     assert_eq!(classifier().class(&a), Class::Move);
@@ -204,6 +207,7 @@ fn incomplete_definitions_and_function_arguments_remain_bounded() {
     function.params.push(Param {
         name: n("value"),
         ty: int(),
+        mutable: false,
     });
     let a = nominal(
         &mut kept,
@@ -220,6 +224,7 @@ fn incomplete_definitions_and_function_arguments_remain_bounded() {
         fields: vec![Param {
             name: n("next"),
             ty: a.clone(),
+            mutable: false,
         }],
     });
     assert_eq!(classifier().class(&a), Class::Move);

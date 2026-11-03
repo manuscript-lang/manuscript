@@ -539,7 +539,7 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         };
         // The rules flag leads a path entry point's arguments.
         let lead = job.shape == Shape::Rules;
-        decl.insert(if lead { 0 } else { decl.len() }, ct::Param { name, ty });
+        decl.insert(if lead { 0 } else { decl.len() }, ct::Param::new(name, ty));
         nargs.insert(
             if lead { 0 } else { nargs.len() },
             NArg {
@@ -671,10 +671,9 @@ impl FnLower<'_> {
         }
         decl.splice(
             at..=at,
-            split.iter().map(|(name, _)| ct::Param {
-                name: *name,
-                ty: list_decl.clone(),
-            }),
+            split
+                .iter()
+                .map(|(name, _)| ct::Param::new(*name, list_decl.clone())),
         );
         nargs.splice(
             at..=at,

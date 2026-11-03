@@ -152,11 +152,17 @@ pub fn call_modes(
         callbacks_borrowed: true,
         retained: Vec::new(),
     };
+    // `x.get()(7)`: the callee is itself a call, so this one calls its function value.
+    let value_call = match &call.kind {
+        ExprKind::Call { callee, .. } => !matches!(callee.kind, ExprKind::Member { .. }),
+        _ => false,
+    };
     match m.resolution(call) {
         Resolution::Constructor { .. } => CallModes {
             arguments: vec![ParamMode::Consume; args.len()],
             ..borrow_all(None)
         },
+        Resolution::Method(_) if value_call => function_value_modes(m, call, args.len(), label),
         Resolution::Function(s) | Resolution::Constant(s) => {
             let source = s
                 .native
@@ -204,9 +210,48 @@ pub fn call_modes(
             }
         }
         Resolution::Method(method) => method_modes(summaries, &method, args.len(), label),
-        Resolution::Native(_) | Resolution::Local(_) | Resolution::Type(_) | Resolution::Value => {
-            borrow_all(None)
+        Resolution::Local(_) | Resolution::Value => {
+            function_value_modes(m, call, args.len(), label)
         }
+        Resolution::Native(_) | Resolution::Type(_) => borrow_all(None),
+    }
+}
+
+/// The modes of a call through a function value: its type says which parameters it changes
+/// (`fn(var List[Int]) Unit`); the rest it lends.
+fn function_value_modes(
+    m: &ModuleHir,
+    call: &Expr,
+    count: usize,
+    label: impl Fn(usize) -> Option<Name>,
+) -> CallModes {
+    let borrow_all = CallModes {
+        receiver: None,
+        arguments: vec![ParamMode::Borrow; count],
+        returns_receiver: false,
+        callbacks_borrowed: true,
+        retained: Vec::new(),
+    };
+    let ExprKind::Call { callee, .. } = &call.kind else {
+        return borrow_all;
+    };
+    let fty = m.ty(callee);
+    if fty.kind != Kind::Function {
+        return borrow_all;
+    }
+    CallModes {
+        arguments: (0..count)
+            .map(|i| {
+                let p = label(i)
+                    .and_then(|l| fty.params.iter().find(|p| p.name == l))
+                    .or_else(|| fty.params.get(i));
+                match p {
+                    Some(p) if p.mutable => ParamMode::Mutate,
+                    _ => ParamMode::Borrow,
+                }
+            })
+            .collect(),
+        ..borrow_all
     }
 }
 
