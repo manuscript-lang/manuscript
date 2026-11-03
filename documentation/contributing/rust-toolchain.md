@@ -41,7 +41,7 @@ rustup toolchain install nightly --profile minimal -c miri
 MIRIFLAGS=-Zmiri-ignore-leaks cargo +nightly miri test -p ms-rt --lib
 ```
 
-Under Miri the allocator takes its arena from the heap in place of `mmap` (and is 64 MiB, not 16 GiB), `ms-rt` skips tests that need files, processes, signals or context-switching assembly, and `-Zmiri-ignore-leaks` forgives that arena. `crates/ms-rt/src/model_tests.rs` runs the collections and strings against `Vec` and `String` models with a fixed seed, so a failure repeats.
+Under Miri the allocator takes its reservation from the heap in place of `mmap` (and is 64 MiB, not 256 GiB), `ms-rt` skips tests that need files, processes, signals or context-switching assembly, and `-Zmiri-ignore-leaks` forgives that reservation. `crates/ms-rt/src/model_tests.rs` runs the collections and strings against `Vec` and `String` models with a fixed seed, so a failure repeats.
 
 ## Crates
 
