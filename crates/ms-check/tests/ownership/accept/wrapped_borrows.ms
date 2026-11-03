@@ -18,7 +18,7 @@ fn named(r: Row) String!Bad:
 fn relay(result: Row!Bad) Row!Bad:
     return result
 
-// `try` of a lending call hands a lent error on; its payload is a reference too.
+// `try` of a borrow-returning call hands a borrowed error on; its payload is a reference too.
 fn tail(result: Row!Bad) String!Bad:
     let row = try relay(result)
     return ok(row.name)

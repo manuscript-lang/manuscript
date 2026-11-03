@@ -7,14 +7,14 @@ b0:
   %one: int = iconst 1
   %outer0: list<list<float>> = list.new %n
   br rows(%zero, %outer0)
-rows(%i: int, %rows: own list<list<float>>):
+rows(%i: int, %rows: move list<list<float>>):
   %c: bool = icmp.lt %i, %n
   br_if %c, rb(), rd()
 rb:
   poll
   %row0: list<float> = list.new %n
   br cols(%zero, %row0)
-cols(%j: int, %row: own list<float>):
+cols(%j: int, %row: move list<float>):
   %cj: bool = icmp.lt %j, %n
   br_if %cj, cb(), cd()
 cb:

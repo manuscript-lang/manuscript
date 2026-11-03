@@ -11,7 +11,7 @@ b0:
   %item: Item = rec.new Item %values
   %parent: Parent = rec.new Parent %item
   %borrowed: Item = rec.get Parent.child %parent
-  %copy: Item = copy %borrowed
+  %copy: Item = clone %borrowed
   %newvalues: list<int> = list.lit %twenty
   %newitem: Item = rec.new Item %newvalues
   %updated: Parent = rec.set Parent.child %parent, %newitem

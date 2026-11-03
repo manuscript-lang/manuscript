@@ -19,7 +19,7 @@
 //! moves are expressed with `drop.if` flags the way drop elaboration emits them.
 //!
 //! Mutation is threaded through SSA: an operation that changes an owned value
-//! consumes it and returns the updated value (`list.push`, `list.set`,
+//! moving_params it and returns the updated value (`list.push`, `list.set`,
 //! `rec.set`), and a `var` parameter is copy-in/copy-out: the callee returns
 //! its final value after its result.
 
@@ -114,12 +114,12 @@ impl Loc {
 /// How a parameter or block parameter holds its value.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Mode {
-    /// A read-only view; the caller keeps ownership.
+    /// A borrow; the caller keeps ownership.
     Borrow,
-    /// Ownership moves in; the callee must consume the value.
-    Own,
+    /// Ownership moves in; the callee must move the value on or drop it.
+    Move,
     /// A `var` parameter: ownership moves in and the final value is returned
-    /// after the function's result (copy-in/copy-out). Only on function parameters.
+    /// after the function's result (move-in/move-out). Only on function parameters.
     Var,
 }
 
@@ -288,9 +288,9 @@ pub enum Op {
     // Strings.
     StrLen, StrByte, StrAscii,
     // Closures and interface views.
-    ClosureNew, ClosureCap, IfaceNew, IfaceLend, IfaceView, IfaceData, IfaceIs,
+    ClosureNew, ClosureCap, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs,
     // Ownership.
-    Copy, Drop, DropIf, MoveOut,
+    Clone, Drop, DropIf, MoveOut,
     // Raw memory: stack slots, interior pointers into lists and records.
     Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull,
     // Calls.
@@ -308,8 +308,8 @@ pub struct Effects {
     pub writes: bool,
     /// May fault.
     pub faults: bool,
-    /// Drops or deep-copies a value (runs destructors, adjusts counts).
-    pub rc: bool,
+    /// Drops or clones an owned value (runs destructors, allocates).
+    pub ownership: bool,
     /// Allocates.
     pub alloc: bool,
     /// Has an unknown or externally visible effect (calls, cleanup stack, globals, polls).
@@ -324,12 +324,12 @@ impl Effects {
 
     /// May the instruction be deleted when its result is unused?
     pub fn removable(&self) -> bool {
-        !self.writes && !self.faults && !self.io && !self.rc
+        !self.writes && !self.faults && !self.io && !self.ownership
     }
 }
 
 macro_rules! effects {
-    () => { Effects { reads: false, writes: false, faults: false, rc: false, alloc: false, io: false } };
+    () => { Effects { reads: false, writes: false, faults: false, ownership: false, alloc: false, io: false } };
     ($($f:ident),+) => { Effects { $($f: true,)+ ..effects!() } };
 }
 
@@ -405,8 +405,8 @@ impl Op {
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast, Op::ListRelease,
         Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
         Op::StrLen, Op::StrByte, Op::StrAscii,
-        Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceLend, Op::IfaceView, Op::IfaceData, Op::IfaceIs,
-        Op::Copy, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
+        Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceBorrow, Op::IfaceView, Op::IfaceData, Op::IfaceIs,
+        Op::Clone, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
         Op::TypeDesc, Op::FuncAddr, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
         Op::GlobalGet, Op::GlobalSet,
@@ -476,16 +476,16 @@ impl Op {
             Op::Select => ("select", K::None, true, effects!()),
             Op::RecNew => ("rec.new", K::Rec, true, effects!()),
             Op::RecGet => ("rec.get", K::Field, true, effects!()),
-            Op::RecSet => ("rec.set", K::Field, true, effects!(rc)),
+            Op::RecSet => ("rec.set", K::Field, true, effects!(ownership)),
             Op::RecFill => ("rec.fill", K::Field, true, effects!()),
             Op::AltNew => ("alt.new", K::Case, true, effects!(alloc)),
             Op::AltView => ("alt.view", K::Case, true, effects!()),
             Op::AltTag => ("alt.tag", K::None, true, effects!(reads)),
             Op::AltGet => ("alt.get", K::AltField, true, effects!(reads)),
-            Op::AltUnbox => ("alt.unbox", K::AltField, true, effects!(writes, rc)),
-            Op::AltTake => ("alt.take", K::AltField, true, effects!(writes, rc)),
-            Op::AltRelease => ("alt.release", K::AltMask, false, effects!(writes, rc)),
-            Op::RecRelease => ("rec.release", K::RecMask, false, effects!(writes, rc)),
+            Op::AltUnbox => ("alt.unbox", K::AltField, true, effects!(writes, ownership)),
+            Op::AltTake => ("alt.take", K::AltField, true, effects!(writes, ownership)),
+            Op::AltRelease => ("alt.release", K::AltMask, false, effects!(writes, ownership)),
+            Op::RecRelease => ("rec.release", K::RecMask, false, effects!(writes, ownership)),
             Op::ListNew => ("list.new", K::None, true, effects!(alloc)),
             Op::ListLit => ("list.lit", K::None, true, effects!(alloc)),
             Op::ListConst => ("list.const", K::Int, true, effects!(alloc)),
@@ -494,35 +494,35 @@ impl Op {
             Op::ListGetNn => ("list.get.nn", K::None, true, effects!(reads, faults)),
             Op::ListGetU => ("list.get.u", K::None, true, effects!(reads)),
             Op::ListTake => ("list.take", K::None, true, effects!(reads)),
-            Op::ListSet => ("list.set", K::None, true, effects!(reads, writes, faults, rc)),
-            Op::ListSetNn => ("list.set.nn", K::None, true, effects!(reads, writes, faults, rc)),
-            Op::ListSetU => ("list.set.u", K::None, true, effects!(reads, writes, rc)),
+            Op::ListSet => ("list.set", K::None, true, effects!(reads, writes, faults, ownership)),
+            Op::ListSetNn => ("list.set.nn", K::None, true, effects!(reads, writes, faults, ownership)),
+            Op::ListSetU => ("list.set.u", K::None, true, effects!(reads, writes, ownership)),
             Op::ListFill => ("list.fill", K::None, true, effects!(reads, writes, faults)),
             Op::ListPush => ("list.push", K::None, true, effects!(reads, writes, alloc, faults)),
-            Op::ListDropLast => ("list.droplast", K::Int, true, effects!(reads, writes, rc)),
-            Op::ListRelease => ("list.release", K::None, false, effects!(reads, writes, rc)),
+            Op::ListDropLast => ("list.droplast", K::Int, true, effects!(reads, writes, ownership)),
+            Op::ListRelease => ("list.release", K::None, false, effects!(reads, writes, ownership)),
             Op::OptSome => ("opt.some", K::None, true, effects!()),
             Op::OptView => ("opt.view", K::None, true, effects!()),
             Op::OptNone => ("opt.none", K::None, true, effects!()),
             Op::OptIsSome => ("opt.is_some", K::None, true, effects!()),
             Op::OptGet => ("opt.get", K::None, true, effects!()),
             Op::OptUnwrap => ("opt.unwrap", K::None, true, effects!(faults)),
-            Op::OptUnbox => ("opt.unbox", K::None, true, effects!(writes, rc)),
+            Op::OptUnbox => ("opt.unbox", K::None, true, effects!(writes, ownership)),
             Op::StrLen => ("str.len", K::None, true, effects!(reads, writes)),
             Op::StrByte => ("str.byte", K::None, true, effects!(reads)),
             Op::StrAscii => ("str.ascii", K::None, true, effects!()),
             Op::ClosureNew => ("closure.new", K::Func, true, effects!(alloc)),
             Op::ClosureCap => ("closure.cap", K::Idx, true, effects!(reads)),
             Op::IfaceNew => ("iface.new", K::Vtable, true, effects!()),
-            Op::IfaceLend => ("iface.lend", K::Vtable, true, effects!(alloc)),
+            Op::IfaceBorrow => ("iface.borrow", K::Vtable, true, effects!(alloc)),
             Op::IfaceView => ("iface.view", K::None, true, effects!()),
             Op::IfaceData => ("iface.data", K::None, true, effects!()),
             Op::IfaceIs => ("iface.is", K::Vtable, true, effects!()),
-            // `copy 1` is the copy a written `.clone()` lowers to; a bare `copy` is implicit.
-            Op::Copy => ("copy", K::None, true, effects!(reads, alloc, rc)),
-            Op::Drop => ("drop", K::None, false, effects!(writes, rc)),
+            // `clone 1` is the copy a written `.clone()` lowers to; a bare `clone` is implicit.
+            Op::Clone => ("clone", K::None, true, effects!(reads, alloc, ownership)),
+            Op::Drop => ("drop", K::None, false, effects!(writes, ownership)),
             Op::MoveOut => ("move.out", K::None, true, effects!(writes)),
-            Op::DropIf => ("drop.if", K::None, false, effects!(writes, rc)),
+            Op::DropIf => ("drop.if", K::None, false, effects!(writes, ownership)),
             Op::Slot => ("slot", K::Ty, true, effects!()),
             Op::Load => ("load", K::Ty, true, effects!(reads)),
             Op::Take => ("take", K::Ty, true, effects!(reads, writes)),
@@ -532,10 +532,10 @@ impl Op {
             Op::ListAddrU => ("list.addr.u", K::None, true, effects!()),
             Op::PtrField => ("ptr.field", K::Field, true, effects!()),
             Op::PtrIsNull => ("ptr.is_null", K::None, true, effects!()),
-            Op::Call => ("call", K::Func, true, effects!(reads, writes, faults, rc, alloc, io)),
-            Op::CallInd => ("call.ind", K::None, true, effects!(reads, writes, faults, rc, alloc, io)),
-            Op::CallRt => ("call.rt", K::Ext, true, effects!(reads, writes, faults, rc, alloc, io)),
-            Op::CallMethod => ("call.method", K::Method, true, effects!(reads, writes, faults, rc, alloc, io)),
+            Op::Call => ("call", K::Func, true, effects!(reads, writes, faults, ownership, alloc, io)),
+            Op::CallInd => ("call.ind", K::None, true, effects!(reads, writes, faults, ownership, alloc, io)),
+            Op::CallRt => ("call.rt", K::Ext, true, effects!(reads, writes, faults, ownership, alloc, io)),
+            Op::CallMethod => ("call.method", K::Method, true, effects!(reads, writes, faults, ownership, alloc, io)),
             Op::TypeDesc => ("typedesc", K::Ty, true, effects!()),
             Op::FuncAddr => ("func.addr", K::Func, true, effects!()),
             Op::Poll => ("poll", K::None, false, effects!(faults, io)),
@@ -544,7 +544,7 @@ impl Op {
             Op::CleanupPush => ("cleanup.push", K::Func, true, effects!(io)),
             Op::CleanupRun => ("cleanup.run", K::None, false, effects!(io)),
             Op::GlobalGet => ("global.get", K::Global, true, effects!(reads)),
-            Op::GlobalSet => ("global.set", K::Global, false, effects!(writes, rc)),
+            Op::GlobalSet => ("global.set", K::Global, false, effects!(writes, ownership)),
         };
         OpInfo { name, imm, has_result, effects }
     }
@@ -563,7 +563,7 @@ impl Op {
     /// produce equal results and can be merged (value numbering).
     pub fn is_numberable(self) -> bool {
         let e = self.info().effects;
-        e.is_pure() && self.info().has_result && !matches!(self, Op::Slot | Op::Copy)
+        e.is_pure() && self.info().has_result && !matches!(self, Op::Slot | Op::Clone)
     }
 
     /// Whether the instruction is a call of any kind.
@@ -844,12 +844,12 @@ pub struct Func {
     pub params: Vec<Param>,
     /// Result type. Results are owned unless `ret_borrowed`.
     pub ret: Ty,
-    /// The result is a reference into one or more parameters (a lending function): the caller
+    /// The result is a reference into one or more parameters (a borrow-returning function): the caller
     /// holds it as a borrow for as long as those arguments live and never releases it. The
     /// verifier rejects an owned value returned from such a function.
     pub ret_borrowed: bool,
     /// The result is an owned interface value (or holds one) whose payload is borrowed from the
-    /// arguments (a view lender, `iface.lend`): the caller drops it, which frees only the box,
+    /// arguments (a view returner, `iface.borrow`): the caller drops it, which frees only the box,
     /// and holds the arguments for as long as it lives.
     pub ret_view: bool,
     /// Visibility.
@@ -1467,20 +1467,20 @@ impl Module {
             | Op::OptView
             | Op::AltView
             | Op::OptNone => Mode::Borrow,
-            // A lending function hands back a reference into its arguments.
+            // A borrow-returning function hands back a reference into its arguments.
             Op::Call if matches!(inst.imm, Imm::Func(g) if self.funcs[g.index()].ret_borrowed) => {
                 Mode::Borrow
             }
-            _ => Mode::Own,
+            _ => Mode::Move,
         })
     }
 
-    /// Whether `inst`'s owned result points into its operands: an interface view (`iface.lend`,
-    /// `iface.view`) or a call to a view lender. Passes that move drops or elide copies treat
+    /// Whether `inst`'s owned result points into its operands: an interface view (`iface.borrow`,
+    /// `iface.view`) or a call to a view returner. Passes that move drops or elide copies treat
     /// the result as a borrow of the operands and never move it into an owning position.
     pub fn result_views(&self, inst: &Inst) -> bool {
         match inst.op {
-            Op::IfaceLend | Op::IfaceView => true,
+            Op::IfaceBorrow | Op::IfaceView => true,
             Op::Call => matches!(inst.imm, Imm::Func(g) if self.funcs[g.index()].ret_view),
             _ => false,
         }

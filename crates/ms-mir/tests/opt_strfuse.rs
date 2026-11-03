@@ -68,7 +68,7 @@ b0:
   %e: str = call.rt @msrt_string_empty ()
   %z: int = iconst 0
   br b1(%e, %z)
-b1(%s: own str, %i: int):
+b1(%s: move str, %i: int):
   %lt: bool = icmp.lt %i, %1
   br_if %lt, b2(), b3()
 b2():
@@ -93,7 +93,7 @@ b0:
 }
 "#;
 
-/// `s = s.concat(piece)` consumes the old `s` instead of copying it.
+/// `s = s.concat(piece)` moving_params the old `s` instead of copying it.
 #[test]
 fn concat_onto_a_dying_string_appends_in_place() {
     let mut m = parse_module(GROW).expect("parse");

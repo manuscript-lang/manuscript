@@ -16,7 +16,7 @@ b0:
   %b0: Map<int, int> = call.rt @msrt_map_new ()
   %kd: ptr = typedesc int
   br loop(%zero, %a0, %b0)
-loop(%i: int, %a: own Map<int, int>, %b: own Map<int, int>):
+loop(%i: int, %a: move Map<int, int>, %b: move Map<int, int>):
   %c: bool = icmp.lt %i, %n
   br_if %c, body(), done()
 body:
@@ -33,7 +33,7 @@ body:
   %r: int = srem %i, %two
   %even: bool = icmp.eq %r, %zero
   br_if %even, loop(%j, %b, %a2), swap(%j, %a2, %b)
-swap(%j2: int, %x: own Map<int, int>, %y: own Map<int, int>):
+swap(%j2: int, %x: move Map<int, int>, %y: move Map<int, int>):
   %kk: int = iadd %j2, %hundred
   %k2: ptr = slot int
   store %k2, %kk

@@ -233,7 +233,7 @@ impl<'a> FnLower<'a> {
         };
         let uid = self.aliases.get(&uid).map_or(uid, |a| a.root.uid);
         self.locals.get(&uid).is_some_and(|l| {
-            l.slot.is_some() || !self.needs_drop(l.ty) || self.b.var_mode(l.var) == Mode::Own
+            l.slot.is_some() || !self.needs_drop(l.ty) || self.b.var_mode(l.var) == Mode::Move
         })
     }
 
@@ -344,7 +344,7 @@ impl<'a> FnLower<'a> {
             if vars.contains(&(j + offset)) {
                 let ty = self.ty_of(v.v);
                 let o = self.owned(v);
-                let var = self.b.declare_var(ty, Mode::Own);
+                let var = self.b.declare_var(ty, Mode::Move);
                 self.b.def_var(var, o);
                 self.locals.insert(
                     binding.uid,
@@ -399,7 +399,7 @@ impl<'a> FnLower<'a> {
         // A changed parameter is moved into a slot the callee takes from and puts back into.
         let mut slots_out: Vec<VarArgument> = Vec::new();
         let mut vals: Vec<Value> = Vec::new();
-        // Which borrowed arguments were owned temporaries, for a lender that hands one back whole.
+        // Which borrowed arguments were owned temporaries, for a returner that hands one back whole.
         let mut owned_args: Vec<bool> = Vec::new();
         // The only changed parameter is a field or list element of an owned variable: the callee
         // takes it out of its place and puts it back, instead of working on a copy.
@@ -470,13 +470,13 @@ impl<'a> FnLower<'a> {
         };
         self.restore_var_arguments(slots_out, |p| args.places.get(p).cloned().flatten())?;
         if self.b.m.funcs[fid.index()].ret_borrowed {
-            // A lending callee: the result points into the arguments. When one of them is a
+            // A borrow-returning callee: the result points into the arguments. When one of them is a
             // temporary, the caller owns the result: the temporary itself when the callee hands
             // it back whole, otherwise a copy taken before the temporary is dropped.
-            let Some(how) = self.cx.owned_lends.get(&(self.hir.data.file, e.id)) else {
+            let Some(how) = self.cx.owned_borrows.get(&(self.hir.data.file, e.id)) else {
                 return Ok(Val { v, own: false });
             };
-            if let ms_check::ownership::OwnedLend::Whole(source) = how {
+            if let ms_check::ownership::OwnedBorrow::Whole(source) = how {
                 let offset = usize::from(c.self_binding.is_some());
                 let slot = match source {
                     None => Some(0),
@@ -543,7 +543,7 @@ impl<'a> FnLower<'a> {
                 let owned = self
                     .locals
                     .get(uid)
-                    .is_some_and(|l| l.slot.is_none() && self.b.var_mode(l.var) == Mode::Own);
+                    .is_some_and(|l| l.slot.is_none() && self.b.var_mode(l.var) == Mode::Move);
                 owned && crate::mutation::uses_of(&self.hir, e, *uid) == 1
             });
         let x = match moved {

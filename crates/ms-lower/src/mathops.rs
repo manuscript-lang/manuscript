@@ -66,7 +66,7 @@ impl FnLower<'_> {
         let fid = self.cx.function_for(self.b.m, &c, &ct::Subst::new())?;
         let other = b;
         let recv = if self.cx.var_positions(&c).contains(&0) {
-            // A changing receiver is lent as a slot holding a copy that is dropped afterwards.
+            // A changing receiver is borrowed as a slot holding a copy that is dropped afterwards.
             let t = self.ty_of(a);
             let copy = self.owned(Val { v: a, own: false });
             let slot = self

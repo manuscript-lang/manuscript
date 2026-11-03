@@ -17,7 +17,7 @@ b0:
   %n: int = iconst 1000
   %one: int = iconst 1
   br b1(%z, %b)
-b1(%i: int, %buf: own bytes):
+b1(%i: int, %buf: move bytes):
   %lt: bool = icmp.lt %i, %n
   br_if %lt, b2(), b3()
 b2():

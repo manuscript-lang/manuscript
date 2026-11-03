@@ -128,7 +128,7 @@
         {
           "code": "MS3030",
           "phase": "type",
-          "message": "this closure changes captured `calls`, so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing `calls`",
+          "message": "this closure changes captured `calls`, so it cannot be returned, stored or passed to a moving parameter; keep the closure local, or have it return a new value instead of changing `calls`",
           "position": {
             "file": "list-equality-mutation.ms",
             "line": 26,
@@ -165,7 +165,7 @@
         {
           "code": "MS3030",
           "phase": "type",
-          "message": "cannot move `left` out: it only borrows its value (a variable captured by the closure); use `left.clone()` to get an owned copy",
+          "message": "cannot move `left` out: it is borrowed, not owned (a variable captured by the closure); use `left.clone()` to get a clone",
           "position": {
             "file": "list-equality-mutation.ms",
             "line": 31,
@@ -191,7 +191,7 @@
         {
           "code": "MS3030",
           "phase": "type",
-          "message": "cannot move `right` out: it only borrows its value (a variable captured by the closure); use `right.clone()` to get an owned copy",
+          "message": "cannot move `right` out: it is borrowed, not owned (a variable captured by the closure); use `right.clone()` to get a clone",
           "position": {
             "file": "list-equality-mutation.ms",
             "line": 33,

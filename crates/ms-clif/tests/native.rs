@@ -286,7 +286,7 @@ fn real_runtime() -> RuntimeArchive {
     // Parallel test processes share the build directory and each cargo run briefly
     // replaces the archive, so link a private copy. Tests in one process share a
     // read-only copy; the last guard to drop removes it.
-    let mut copy = COPY.lock().unwrap();
+    let mut copy = CLONE.lock().unwrap();
     if copy.0 == 0 {
         let path =
             std::env::temp_dir().join(format!("ms-native-{}-libms_native.a", std::process::id()));
@@ -308,7 +308,7 @@ fn real_runtime() -> RuntimeArchive {
 }
 
 /// Live guards on the private archive copy in this process.
-static COPY: std::sync::Mutex<(usize,)> = std::sync::Mutex::new((0,));
+static CLONE: std::sync::Mutex<(usize,)> = std::sync::Mutex::new((0,));
 
 /// A runtime archive path; a private copy is deleted when its last guard drops.
 struct RuntimeArchive(PathBuf, bool);
@@ -324,7 +324,7 @@ impl Drop for RuntimeArchive {
         if !self.1 {
             return;
         }
-        let mut copy = COPY.lock().unwrap();
+        let mut copy = CLONE.lock().unwrap();
         copy.0 -= 1;
         if copy.0 == 0 {
             let _ = std::fs::remove_file(&self.0);

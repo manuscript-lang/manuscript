@@ -222,7 +222,7 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
             } else if found_text == "_" {
                 "; '_' is a reserved word and cannot be used as a name: loops, parameters and bindings need a real name such as item, unused or ignored".into()
             } else if found == Tok::Ref {
-                "; 'ref' was removed: a function that returns part of a parameter lends it without a marker".into()
+                "; 'ref' was removed: a function that returns part of a parameter returns a borrow of it, with no marker".into()
             } else if found.as_str() == found_text && found_text.starts_with(|c: char| c.is_ascii_alphabetic()) {
                 format!("; '{}' is a reserved word and cannot be used as a name", found_text)
             } else {
@@ -1585,13 +1585,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Rejects `ref`, which the language no longer has: a function that returns part of a
-    /// parameter lends it, a field owns its value, and a binding of a place already borrows it.
+    /// parameter returns a borrow of it, a field owns its value, and a binding of a place already borrows it.
     fn no_ref(&mut self) -> PResult<()> {
         if self.kind() == Tok::Ref {
             let at = self.peek();
             return self.fail_fix(
                 at,
-                "`ref` was removed: drop it; a function that returns part of a parameter lends it without a marker, and a field owns its value",
+                "`ref` was removed: drop it; a function that returns part of a parameter returns a borrow of it, with no marker, and a field owns its value",
                 "",
             );
         }

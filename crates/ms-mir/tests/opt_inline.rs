@@ -539,7 +539,7 @@ b1(%i: int, %acc: int, %g: fn(int) -> int):
   %c: bool = icmp.lt %i, %n
   br_if %c, b2(), b3()
 b2():
-  %h: fn(int) -> int = copy %g
+  %h: fn(int) -> int = clone %g
   %v: int = call.ind (%h, %i)
   drop %h
   %acc2: int = iadd %acc, %v
@@ -580,7 +580,7 @@ fn a_known_closure_argument_specializes_the_callee() {
     for name in ["total.add", "total.mul"] {
         assert_eq!(count_op(&m, name, Op::CallInd), 0, "{text}");
         assert_eq!(count_op(&m, name, Op::ClosureNew), 0, "{text}");
-        assert_eq!(count_op(&m, name, Op::Copy), 0, "{text}");
+        assert_eq!(count_op(&m, name, Op::Clone), 0, "{text}");
         assert_eq!(count_op(&m, name, Op::Drop), 0, "{text}");
     }
     assert_eq!(count_op(&m, "main", Op::ClosureNew), 0, "{text}");

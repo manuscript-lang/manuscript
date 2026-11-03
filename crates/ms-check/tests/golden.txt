@@ -397,7 +397,7 @@ impl Read[T] for Box[T]:
         return self.value
 fn read[T](value: Box[T]) T:
     return value.get()
-type	12	21	262	cannot move `self.value` out of `self`: only a whole variable can move; take an owned copy with `self.value.clone()`interface Read[V]:
+type	12	21	262	cannot move `self.value` out of `self`: only a whole variable can move; take a clone with `self.value.clone()`interface Read[V]:
     fn get() V
 type Box[T]:
     value: T
@@ -412,7 +412,7 @@ type Pair[A, B]:
 impl Read[B] for Pair[Int, B]:
     fn get() B:
         return self.right
-type	8	21	143	cannot move `self.right` out of `self`: only a whole variable can move; take an owned copy with `self.right.clone()`interface Read[V]:
+type	8	21	143	cannot move `self.right` out of `self`: only a whole variable can move; take a clone with `self.right.clone()`interface Read[V]:
     fn get() V
 type Box[T]:
     value: T
@@ -624,7 +624,7 @@ impl Diagnostic for LocalError:
         return self.detail
 fn wrong(value: LocalError) Diagnostic:
     return value
-type	7	21	159	cannot move `self.detail` out of `self`: only a whole variable can move; take an owned copy with `self.detail.clone()`type Impostor:
+type	7	21	159	cannot move `self.detail` out of `self`: only a whole variable can move; take a clone with `self.detail.clone()`type Impostor:
     detail: String
 fn wrong(value: Impostor) Error:
     return Error(value: value)
@@ -1512,7 +1512,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T: self.item
 fn read() Read[Int]: Box(1)
-type	6	22	105	cannot move `self.item` out of `self`: only a whole variable can move; take an owned copy with `self.item.clone()`type E:
+type	6	22	105	cannot move `self.item` out of `self`: only a whole variable can move; take a clone with `self.item.clone()`type E:
     text: String
 impl Error for E:
     fn message() String: this.text
@@ -3555,7 +3555,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T:
         return self.value
-type	7	21	135	cannot move `self.value` out of `self`: only a whole variable can move; take an owned copy with `self.value.clone()`type Read:
+type	7	21	135	cannot move `self.value` out of `self`: only a whole variable can move; take a clone with `self.value.clone()`type Read:
     fn get() Int
 parse	2	5	15	a type declares only fields or cases; write its methods in an 'impl Read:' block, or implement an interface with 'impl <Interface> for Read:'interface Read:
     value: Int
@@ -5035,7 +5035,7 @@ fn message(value: Reader) String:
     return value.read()
 fn make() Box:
     return Box(label: "value")
-type	7	21	130	cannot move `self.label` out of `self`: only a whole variable can move; take an owned copy with `self.label.clone()`fn answer() Int:
+type	7	21	130	cannot move `self.label` out of `self`: only a whole variable can move; take a clone with `self.label.clone()`fn answer() Int:
     let number = 42
     return number
 fn later() Int:

@@ -5,7 +5,7 @@ weight = 3
 
 # Collections
 
-Collections have one owner. Bindings, arguments and lending accessors (`first`, `last`, `Map.get`) borrow them; storing one moves it at its last use; `.clone()` makes an explicit deep copy. Mutation requires `var`; see [mutation and references](references.md).
+Collections have one owner. Bindings, arguments and borrow-returning accessor (`first`, `last`, `Map.get`) borrow them; storing one moves it at its last use; `.clone()` makes an explicit deep copy. Mutation requires `var`; see [mutation and references](references.md).
 
 `List`, `Map`, `Set`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]` are prelude names (with `Optional`, `Result`, `Error`, `ErrorCategory`, `Equal`, `Hashable`); importing them is rejected. Builders and factories need imports. See [names and declaration order](../modules/declarations.md#names-and-declaration-order).
 
@@ -132,7 +132,7 @@ These removed spellings looked like copies but mutated. Labels and return types 
 
 Map `add_default` evaluates its argument and inserts only when absent; `add_default_from` calls `create(key:)` once, only when absent. Neither replaces an existing value or position. Copy first with `map.clone().add_default(...)`.
 
-Builder mutations return Unit; `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var`, pass them with `var`, and `build` consumes them, so using one after `build` is a move error. `drain` returns the content so far and leaves the builder empty, for a builder held in a record field, where `build` cannot move it out.
+Builder mutations return Unit; `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var`, pass them with `var`, and `build` moving_params them, so using one after `build` is a move error. `drain` returns the content so far and leaves the builder empty, for a builder held in a record field, where `build` cannot move it out.
 
 ## Other collections
 

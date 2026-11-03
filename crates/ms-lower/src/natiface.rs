@@ -553,7 +553,7 @@ impl FnLower<'_> {
             &mut |s| {
                 let n = s.call_runtime(&format!("{base}_count"), &[], MTy::INT)?;
                 let empty = s.b.list_new(rec_ty, n);
-                let acc = s.b.declare_var(list_ty, Mode::Own);
+                let acc = s.b.declare_var(list_ty, Mode::Move);
                 s.b.def_var(acc, empty);
                 let idx = s.b.declare_var(MTy::INT, Mode::Borrow);
                 let start = s.b.iconst(0);

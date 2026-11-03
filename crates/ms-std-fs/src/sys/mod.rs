@@ -438,7 +438,7 @@ pub fn close(fd: Fd) -> Result<(), Errno> {
     // File's destructor cannot report close failures. Use the existing host bindings
     // directly, and never retry: even an interrupted close can have retired the descriptor.
     #[cfg(unix)]
-    // SAFETY: the caller hands over the descriptor; close validates it and consumes it once.
+    // SAFETY: the caller hands over the descriptor; close validates it and moving_params it once.
     let failed = unsafe { libc::close(fd) } != 0;
     #[cfg(windows)]
     // SAFETY: the caller hands over the handle; CloseHandle validates and releases it once.

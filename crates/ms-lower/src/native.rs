@@ -1509,7 +1509,7 @@ impl<'a> FnLower<'a> {
         let hidden = f.own && self.needs_drop(ft);
         let var = self
             .b
-            .declare_var(ft, if hidden { Mode::Own } else { Mode::Borrow });
+            .declare_var(ft, if hidden { Mode::Move } else { Mode::Borrow });
         self.b.def_var(var, f.v);
         (var, hidden)
     }
@@ -1677,7 +1677,7 @@ impl<'a> FnLower<'a> {
             {
                 return Ok(done);
             }
-            if let Some(done) = self.lent_key_add(e, view, m, recv_expr, name)? {
+            if let Some(done) = self.borrowed_key_add(e, view, m, recv_expr, name)? {
                 return Ok(done);
             }
         }
@@ -1799,7 +1799,7 @@ impl<'a> FnLower<'a> {
         let value_ty = self.map_value_type(mv)?;
         let (kd, vd) = self.map_descs(mt)?;
         let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
-        let ks = self.lend_slot(kv);
+        let ks = self.borrow_slot(kv);
         let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
         let missing = self
             .b
@@ -1990,7 +1990,7 @@ impl<'a> FnLower<'a> {
         no: &mut BranchBody<'_, Self>,
     ) -> Result<Val, Error> {
         let mode = if self.needs_drop(ty) {
-            Mode::Own
+            Mode::Move
         } else {
             Mode::Borrow
         };
@@ -2007,7 +2007,7 @@ impl<'a> FnLower<'a> {
         yes: &mut BranchBody<'_, Self>,
         no: &mut BranchBody<'_, Self>,
     ) -> Result<Val, Error> {
-        let owned = mode == Mode::Own;
+        let owned = mode == Mode::Move;
         let out = self.b.declare_var(ty, mode);
         let (a, b, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         self.b.br_if(cond, a, &[], b, &[]);
@@ -2802,7 +2802,7 @@ impl<'a> FnLower<'a> {
     pub(crate) fn fresh_var(&mut self, t: MTy) -> ms_mir::builder::Var {
         let owned = self.needs_drop(t);
         self.b
-            .declare_var(t, if owned { Mode::Own } else { Mode::Borrow })
+            .declare_var(t, if owned { Mode::Move } else { Mode::Borrow })
     }
 
     /// Runs `body(i)` for `i` in `from..n`; `from` and `n` are `Int` values.
@@ -3007,8 +3007,8 @@ impl<'a> FnLower<'a> {
                     };
                     let (kd, vd) = s.map_descs(out)?;
                     let vd = vd.ok_or_else(|| Error::new("group_by without a value type"))?;
-                    // The lookup only reads the key, so it lends the key itself.
-                    let kslot = s.lend_slot(k);
+                    // The lookup only reads the key, so it borrows the key itself.
+                    let kslot = s.borrow_slot(k);
                     let m = s.b.use_var(acc);
                     let sym = s
                         .word_map_symbol("msrt_map_get_ptr", out)
@@ -3357,7 +3357,7 @@ impl<'a> FnLower<'a> {
         let owned = self.needs_drop(elem);
         let out = self
             .b
-            .declare_var(elem, if owned { Mode::Own } else { Mode::Borrow });
+            .declare_var(elem, if owned { Mode::Move } else { Mode::Borrow });
         let (hit, miss, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         self.b.br_if(ok, hit, &[], miss, &[]);
         self.b.seal_block(hit);
@@ -3408,7 +3408,7 @@ impl<'a> FnLower<'a> {
         let l = self.b.use_var(lv);
         let n = self.b.list_len(l);
         let out = self.b.list_new(elem, n);
-        let acc = self.b.declare_var(self.ty_of(out), Mode::Own);
+        let acc = self.b.declare_var(self.ty_of(out), Mode::Move);
         self.b.def_var(acc, out);
         let idx = self.b.declare_var(MTy::INT, Mode::Borrow);
         self.b.def_var(idx, n);

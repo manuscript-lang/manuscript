@@ -1,18 +1,18 @@
 module "list_saved_length"
 entry @main
-fn @walk(%start: own list<int>) -> int {
+fn @walk(%start: move list<int>) -> int {
 b0:
   %n: int = list.len %start
   %zero: int = iconst 0
   %one: int = iconst 1
   %two: int = iconst 2
   br outer(%zero, %start)
-outer(%pass: int, %list: own list<int>):
+outer(%pass: int, %list: move list<int>):
   %more: bool = icmp.lt %pass, %two
   br_if %more, begin(), done()
 begin:
   br inner(%zero, %list)
-inner(%i: int, %current: own list<int>):
+inner(%i: int, %current: move list<int>):
   %inside: bool = icmp.lt %i, %n
   br_if %inside, body(), next()
 body:

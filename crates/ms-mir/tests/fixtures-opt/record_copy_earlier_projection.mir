@@ -8,7 +8,7 @@ b0:
   %values: list<int> = list.lit %ten
   %item: Item = rec.new Item %values
   %field: list<int> = rec.get Item.values %item
-  %copy: Item = copy %item
+  %copy: Item = clone %item
   %slot: ptr = slot Item
   put %slot, %copy
   %back: Item = take Item %slot

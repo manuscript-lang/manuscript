@@ -253,14 +253,14 @@ fn function(m: &Module, f: &mut Func) -> bool {
     }
     for (bi, b) in f.blocks.iter().enumerate() {
         for p in &b.params {
-            if p.mode == Mode::Own && dropped.contains(&p.value) {
+            if p.mode == Mode::Move && dropped.contains(&p.value) {
                 cands.push((p.value, bi, None));
             }
         }
         for (ii, i) in b.insts.iter().enumerate() {
             if let Some(r) = i.res
                 && dropped.contains(&r)
-                && m.result_mode(f, i) == Some(Mode::Own)
+                && m.result_mode(f, i) == Some(Mode::Move)
             {
                 cands.push((r, bi, Some(ii)));
             }
@@ -302,7 +302,7 @@ fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> ValueSet {
                 }
             };
             match i.op {
-                Op::Drop | Op::Copy => {}
+                Op::Drop | Op::Clone => {}
                 Op::Call | Op::CallInd | Op::CallRt | Op::CallMethod => {
                     // Out-pointers may receive views.
                     for a in &i.args {
@@ -314,11 +314,11 @@ fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> ValueSet {
                     // extend the family (a concat chain would otherwise keep every
                     // intermediate alive until the end of the scope).
                     let fresh = matches!(i.imm, Imm::Ext(e) if m.externs[e.index()].fresh);
-                    // A lending function's result is a borrow of its arguments.
-                    let lent = (m.result_mode(f, i) == Some(Mode::Borrow)
+                    // A borrow-returning function's result is a borrow of its arguments.
+                    let borrowed = (m.result_mode(f, i) == Some(Mode::Borrow)
                         && matches!(i.op, Op::Call | Op::CallMethod))
                         || m.result_views(i);
-                    if (i.op == Op::CallRt && !fresh || lent)
+                    if (i.op == Op::CallRt && !fresh || borrowed)
                         && let Some(r) = i.res
                         && !is_scalar(m, f.ty(r))
                     {
@@ -400,7 +400,7 @@ fn candidate(
         if i.args
             .iter()
             .zip(modes)
-            .any(|(a, md)| *a == v && md == Mode::Own)
+            .any(|(a, md)| *a == v && md == Mode::Move)
         {
             let e = consume_at.entry(bi).or_insert(ii);
             *e = (*e).min(ii);
@@ -502,7 +502,7 @@ fn candidate(
         f.blocks[bi].term.for_each_target(|tg| {
             if n == slot {
                 for (k, a) in tg.args.iter().enumerate() {
-                    if *a == v && f.blocks[tg.block.index()].params[k].mode == Mode::Own {
+                    if *a == v && f.blocks[tg.block.index()].params[k].mode == Mode::Move {
                         hit = true;
                     }
                 }

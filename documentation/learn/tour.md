@@ -233,7 +233,7 @@ test "a callback borrows a prepared value":
     try expect_equal(apply(10, adjust), 12)
 ```
 
-Prepare a value before a borrowing closure uses it. Non-escaping closures borrow their captures; escaping closures own them. Borrowed captures cannot be changed elsewhere while the closure still uses them. See [closure captures](../core-language/functions/function-values-and-closures.md#snapshot-captures).
+Prepare a value before a borrowing closure uses it. Non-escaping closures borrow their captures; escaping closures own them. Borrowed captures cannot be changed elsewhere while the closure still uses them. See [closure captures](../core-language/functions/function-values-and-closures.md#closure-captures).
 
 ## Pipe flows
 

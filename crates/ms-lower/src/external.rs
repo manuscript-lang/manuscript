@@ -4,7 +4,7 @@
 //!
 //! - sized numbers and `Bool` cross directly as their C types (the code generator narrows and
 //!   extends them, see `ms_mir::ir::Module::c_externs`);
-//! - `String` and `Bytes` are lent by pointer, a `List[T]` as an `ms_list` naming its element
+//! - `String` and `Bytes` are borrowed by pointer, a `List[T]` as an `ms_list` naming its element
 //!   type, an `extern type` as its object, a function as an `ms_fn` (see `function_argument`);
 //! - a result that is not a number comes back through a trailing `out`, followed by `code_out`
 //!   and `message_out` when the error type has those fields. Every output is filled with an
@@ -195,7 +195,7 @@ impl FnLower<'_> {
             vals.push(v);
             return Ok(());
         }
-        // Bytes and lists are lent by pointer to the value.
+        // Bytes and lists are borrowed by pointer to the value.
         let slot = self
             .b
             .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
@@ -459,7 +459,7 @@ impl FnLower<'_> {
             return *t;
         }
         // The runtime fills the cells with string and bytes copies the thunk owns, and with
-        // objects the shim keeps: a lent object is loaded and never dropped.
+        // objects the shim keeps: a borrowed object is loaded and never dropped.
         let drops: Vec<bool> = ps
             .iter()
             .map(|p| self.needs_drop(*p) && !matches!(self.b.m.types.kind(*p), TyKind::Obj(..)))

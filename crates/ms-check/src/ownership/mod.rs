@@ -1,7 +1,7 @@
 //! Ownership and exclusivity for value semantics. See `OWNERSHIP.md`.
 //!
 //! Every value has one owner. Plain values copy implicitly; the rest move at
-//! their last use into a consuming position, and `.clone()` (later `.copy()`)
+//! their last use into a moving position, and `.clone()`
 //! duplicates explicitly. Mutation needs `var`, marked at the declaration and
 //! at every call. Borrows are lexical: while a binding borrows from a place,
 //! that place may not change. The pass rejects programs that break these
@@ -20,13 +20,13 @@ pub use classify::{Class, Classifier};
 pub use modes::{CallModes, ParamMode};
 pub use places::{Place, Step};
 
-/// How the caller comes to own the result of a lending call over a temporary.
+/// How the caller comes to own the result of a borrow-returning call over a temporary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OwnedLend {
-    /// The result is a part of the temporary: copied out before the temporary is dropped.
-    Copy,
+pub enum OwnedBorrow {
+    /// The result is a part of the temporary: cloned out before the temporary is dropped.
+    Clone,
     /// The result is the whole temporary passed as the receiver (`None`) or as the parameter
-    /// with this label: the caller keeps the temporary instead of dropping it, no copy.
+    /// with this label: the caller keeps the temporary instead of dropping it, no clone.
     Whole(Option<Name>),
 }
 
@@ -98,7 +98,7 @@ pub struct BindingFacts {
     /// How its values move.
     pub class: Class,
     /// It holds its own value and drops it at scope end unless moved. A
-    /// parameter is owned only when its callable consumes it.
+    /// parameter is owned only when its callable moving_params it.
     pub owned: bool,
     /// Where a non-owning binding borrows from (empty for owned bindings).
     pub borrows: Vec<Place>,
@@ -132,7 +132,7 @@ pub enum CaptureMode {
 #[derive(Clone, Debug)]
 pub struct LambdaFacts {
     /// The closure outlives the statement that made it: it is returned,
-    /// stored, or passed to a consuming parameter.
+    /// stored, or passed to a moving parameter.
     pub escaping: bool,
     /// Captured bindings and how each is held.
     pub captures: Vec<(usize, CaptureMode)>,
@@ -178,11 +178,11 @@ pub struct CallableOwnership {
     pub receiver: Option<ParamMode>,
     /// The result is a reference into the receiver or a parameter on every path: lowering
     /// returns it without copying, and the caller holds it without dropping.
-    pub lends: bool,
-    /// With `lends`: the result is an owned interface view of the arguments (a converted lent
-    /// value, `iface.lend`): the caller drops it and holds the arguments while it lives.
+    pub returns_borrow: bool,
+    /// With `returns_borrow`: the result is an owned interface view of the arguments (a converted borrowed
+    /// value, `iface.borrow`): the caller drops it and holds the arguments while it lives.
     pub view: bool,
-    /// Wrappers of a lent value (`x` as `x?`, `ok(x)`, `error(x)`) that stay references:
+    /// Wrappers of a borrowed value (`x` as `x?`, `ok(x)`, `error(x)`) that stay references:
     /// lowering builds them with `opt.view` / `alt.view` instead of copying the payload.
     pub view_wraps: HashSet<NodeId>,
     /// Method values (`re.find`) that stay local and borrow their receiver's place while they
@@ -191,15 +191,15 @@ pub struct CallableOwnership {
     /// Name expressions that move an interface view out of the local holding it, into a result
     /// that holds the same origins: lowering takes the value and leaves a view that owns nothing.
     pub view_moves: HashSet<NodeId>,
-    /// Calls of lending callables whose sources are temporaries: the caller owns the result,
+    /// Calls of borrow-returning callables whose sources are temporaries: the caller owns the result,
     /// by taking the temporary over or by a copy made before it is dropped.
-    pub owned_lends: HashMap<NodeId, OwnedLend>,
+    pub owned_borrows: HashMap<NodeId, OwnedBorrow>,
     /// Calls bound with `var` as an exclusive borrow of the field chain the callee returns, by
     /// call node: lowering names that place instead of calling.
     pub getter_borrows: HashMap<NodeId, Vec<Name>>,
     /// Conditional and match expressions whose value is a reference on every arm: lowering
     /// joins the arms without copying.
-    pub lent_matches: HashSet<NodeId>,
+    pub borrowed_matches: HashSet<NodeId>,
 }
 
 impl CallableOwnership {
@@ -227,15 +227,15 @@ pub struct Ownership {
     pub borrowed_captures: HashSet<(Name, NodeId, usize)>,
     /// For each callable with a `Consume` parameter or receiver, which parameters (declaration
     /// order, the receiver first for a method) the body moves, stores or returns.
-    pub consumes: HashMap<Key, Vec<bool>>,
-    /// Boolean per-node facts (lenders, view wraps, bound borrows, view moves, lent matches).
+    pub moving_params: HashMap<Key, Vec<bool>>,
+    /// Boolean per-node facts (returners, view wraps, bound borrows, view moves, borrowed matches).
     pub node_facts: NodeFacts,
     /// Boolean per-binding facts (borrows, closes, moved payloads, conditional moves).
     pub binding_facts: BindingFlags,
-    /// Lending calls whose result the caller owns (a source was a temporary), by module file and
+    /// Borrow-returning calls whose result the caller owns (a source was a temporary), by module file and
     /// call node.
-    pub owned_lends: HashMap<(Name, NodeId), OwnedLend>,
-    /// `var` bindings of a lending call, by module file and call node: the field chain of the
+    pub owned_borrows: HashMap<(Name, NodeId), OwnedBorrow>,
+    /// `var` bindings of a borrow-returning call, by module file and call node: the field chain of the
     /// argument the binding borrows exclusively.
     pub getter_borrows: HashMap<(Name, NodeId), Vec<Name>>,
 }
@@ -319,19 +319,19 @@ impl Hir<'_> {
         let mut moves: HashMap<usize, HashSet<NodeId>> = HashMap::new();
         let mut resource_moves = HashMap::new();
         let mut borrowed_captures = HashSet::new();
-        let mut consumes = HashMap::new();
-        let mut owned_lends = HashMap::new();
+        let mut moving_params = HashMap::new();
+        let mut owned_borrows = HashMap::new();
         let mut getter_borrows = HashMap::new();
         let mut node_facts = NodeFacts::default();
         for (c, out) in callables.iter().zip(outcomes) {
             let file = c.module.file;
-            for n in &out.facts.lent_matches {
-                node_facts.set(file, *n, Fact::LentMatch);
+            for n in &out.facts.borrowed_matches {
+                node_facts.set(file, *n, Fact::BorrowedMatch);
             }
-            if out.facts.lends && out.facts.view {
-                node_facts.set(c.module.file, c.id(), Fact::ViewLender);
-            } else if out.facts.lends {
-                node_facts.set(c.module.file, c.id(), Fact::Lender);
+            if out.facts.returns_borrow && out.facts.view {
+                node_facts.set(c.module.file, c.id(), Fact::ReturnsView);
+            } else if out.facts.returns_borrow {
+                node_facts.set(c.module.file, c.id(), Fact::ReturnsBorrow);
             }
             for n in &out.facts.view_wraps {
                 node_facts.set(file, *n, Fact::ViewWrap);
@@ -342,9 +342,9 @@ impl Hir<'_> {
             for n in &out.facts.view_moves {
                 node_facts.set(file, *n, Fact::ViewMove);
             }
-            owned_lends.extend(
+            owned_borrows.extend(
                 out.facts
-                    .owned_lends
+                    .owned_borrows
                     .iter()
                     .map(|(n, how)| ((c.module.file, *n), *how)),
             );
@@ -404,10 +404,10 @@ impl Hir<'_> {
                 .receiver
                 .iter()
                 .chain(&out.facts.parameters)
-                .map(|m| *m == ParamMode::Consume)
+                .map(|m| *m == ParamMode::Move)
                 .collect();
             if modes.contains(&true) {
-                consumes.insert((c.module.file, c.id()), modes);
+                moving_params.insert((c.module.file, c.id()), modes);
             }
             diagnostics.extend(out.diagnostics);
             facts.insert((c.module.file, c.id()), out.facts);
@@ -419,8 +419,8 @@ impl Hir<'_> {
             resource_moves,
             moves,
             borrowed_captures,
-            consumes,
-            owned_lends,
+            moving_params,
+            owned_borrows,
             getter_borrows,
             node_facts,
             binding_facts,

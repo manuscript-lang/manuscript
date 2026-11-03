@@ -98,10 +98,10 @@ pub fn check_in(
         program.resource_moves = Rc::new(own.resource_moves);
         program.moves = Rc::new(own.moves);
         program.borrowed_captures = Rc::new(own.borrowed_captures);
-        program.consumes = Rc::new(own.consumes);
+        program.moving_params = Rc::new(own.moving_params);
         program.node_facts = Rc::new(own.node_facts);
         program.binding_facts = Rc::new(own.binding_facts);
-        program.owned_lends = Rc::new(own.owned_lends);
+        program.owned_borrows = Rc::new(own.owned_borrows);
         program.getter_borrows = Rc::new(own.getter_borrows);
         program.diagnostics.extend(own.diagnostics);
     }
