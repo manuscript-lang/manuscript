@@ -26,7 +26,7 @@ pub use unix::wait_ready;
 #[cfg(unix)]
 pub use unix::{access, chmod_link, clone_file, pipe_cloexec, set_errno, statfs};
 #[cfg(windows)]
-pub use windows::{is_output, standard, statfs, wait_ready};
+pub use windows::{is_output, statfs, wait_ready};
 
 pub type Errno = i32;
 

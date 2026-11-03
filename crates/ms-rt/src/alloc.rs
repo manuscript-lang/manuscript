@@ -347,6 +347,7 @@ fn grow_base(chunk: usize) -> usize {
 }
 
 /// Whether `p` lies in this heap's reservation (small pages or a growth chunk).
+#[cfg(target_os = "linux")]
 #[inline(always)]
 fn owns(p: *mut u8) -> bool {
     page_word(p).is_some() || grow_chunk_of(p).is_some()

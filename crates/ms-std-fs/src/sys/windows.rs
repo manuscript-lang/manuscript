@@ -213,6 +213,16 @@ pub fn redirect_standard_to_null(which: i64) -> io::Result<()> {
     Ok(())
 }
 
+/// The handle of standard stream `which` (0 input, 1 output, 2 error).
+fn standard(which: i64) -> Fd {
+    let handle: RawHandle = match which {
+        0 => io::stdin().as_raw_handle(),
+        1 => io::stdout().as_raw_handle(),
+        _ => io::stderr().as_raw_handle(),
+    };
+    handle as Fd
+}
+
 fn is_standard(fd: Fd, which: i64) -> bool {
     fd != 0 && fd != INVALID_FD && fd == standard(which)
 }
