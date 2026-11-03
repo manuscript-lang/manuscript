@@ -40,7 +40,7 @@ impl Challenge:
     // `which` is `examples` (visible to the agent) or `hidden`.
     fn cases(which: String) List[Case]:
         let text = (
-            read_file("{self.dir}/{which}/cases.json")
+            read_file("{self.dir}/{which}/cases.json").wait()
             .wait()
             .get()
             .decode_utf8()

@@ -122,7 +122,10 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_string_eq" => R::StringEq,
         "msrt_cleanup_discard" => R::CleanupDiscard,
         "msrt_bytes_append" => R::BytesAppend,
-        "msrt_scope_spawn" | "msrt_worker_start" | "msrt_promise_start" => R::SpawnsTask,
+        "msrt_scope_spawn"
+        | "msrt_worker_start"
+        | "msrt_promise_start"
+        | "msrt_promise_start_here" => R::SpawnsTask,
         s if s.contains("_serve") => R::SpawnsTask,
         _ => R::None,
     }

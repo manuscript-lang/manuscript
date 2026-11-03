@@ -96,6 +96,7 @@ const INTRINSIC_RECEIVERS: &[&str] = &[
 /// marker would replace this list.
 const KEPT_CALLBACKS: &[&str] = &[
     "extern:msrt_promise_start",
+    "extern:msrt_promise_start_here",
     "extern:msrt_promise_defer",
     "extern:msstd_http_serving_new",
 ];

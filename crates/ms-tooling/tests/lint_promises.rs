@@ -59,5 +59,8 @@ fn the_fix_waits_for_a_dropped_call() {
         fix.pos.offset as usize..fix.end.offset as usize,
         &fix.replacement,
     );
-    assert!(fixed.contains("let _ = promise(fn: work()).wait()\n"), "{fixed}");
+    assert!(
+        fixed.contains("let _ = promise(fn: work()).wait()\n"),
+        "{fixed}"
+    );
 }
