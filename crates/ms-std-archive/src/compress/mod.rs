@@ -1,12 +1,18 @@
 //! gzip, zlib and raw deflate with the framing, checks and error
 //! mapping. The compressed bytes are produced by miniz_oxide.
 pub mod ffi;
-pub mod stream;
 
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use miniz_oxide::deflate::compress_to_vec;
+use miniz_oxide::deflate::core::{
+    CompressorOxide, TDEFLFlush, TDEFLStatus, compress as deflate_step,
+    create_comp_flags_from_zip_params,
+};
 use miniz_oxide::inflate::TINFLStatus;
-use miniz_oxide::inflate::core::{DecompressorOxide, decompress, inflate_flags};
+use miniz_oxide::inflate::core::{
+    DecompressorOxide, TINFL_LZ_DICT_SIZE, decompress, inflate_flags,
+};
 use ms_rt::ffi::Fail;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -131,45 +137,10 @@ pub fn inflate(input: &[u8], room: usize) -> Result<(Vec<u8>, usize), Fail> {
 }
 
 fn gzip_header_len(data: &[u8]) -> Result<usize, Fail> {
-    if data.len() < 10 || data[0] != 0x1f || data[1] != 0x8b || data[2] != 8 {
-        return Err(Fail::InvalidData);
+    match gzip_header(data) {
+        Header::Len(n) => Ok(n),
+        Header::Need | Header::Bad => Err(Fail::InvalidData),
     }
-    let flg = data[3];
-    let mut pos = 10;
-    let take = |pos: &mut usize, n: usize| -> Result<(), Fail> {
-        if data.len() < *pos + n {
-            return Err(Fail::InvalidData);
-        }
-        *pos += n;
-        Ok(())
-    };
-    if flg & 4 != 0 {
-        if data.len() < pos + 2 {
-            return Err(Fail::InvalidData);
-        }
-        let n = usize::from(u16::from_le_bytes([data[pos], data[pos + 1]]));
-        take(&mut pos, 2 + n)?;
-    }
-    for bit in [8u8, 16] {
-        if flg & bit != 0 {
-            // A zero-terminated string of at most 512 bytes including the terminator.
-            let rest = &data[pos..];
-            match rest.iter().take(512).position(|&b| b == 0) {
-                Some(i) => pos += i + 1,
-                None => return Err(Fail::InvalidData),
-            }
-        }
-    }
-    if flg & 2 != 0 {
-        if data.len() < pos + 2 {
-            return Err(Fail::InvalidData);
-        }
-        if u16::from_le_bytes([data[pos], data[pos + 1]]) != crc32(0, &data[..pos]) as u16 {
-            return Err(Fail::InvalidData);
-        }
-        pos += 2;
-    }
-    Ok(pos)
 }
 
 /// Decompresses exactly one gzip/zlib/deflate payload (gzip members may be concatenated); trailing
@@ -233,6 +204,369 @@ pub fn decompress_bytes(
                 }
             }
         }
+    }
+}
+
+// ---- incremental coding ----
+//
+// Push codecs behind the `compressed` and `decompressed` stream steps: the caller feeds chunks and receives the
+// output each one completes. Malformed data is `InvalidData`, exceeding `max_bytes` is `LimitExceeded`, and an
+// out-of-range level is `InvalidInput`.
+
+const _: () = assert!(TINFL_LZ_DICT_SIZE.is_power_of_two());
+
+enum Header {
+    Need,
+    Bad,
+    Len(usize),
+}
+
+/// Reads a gzip member header from the start of `d`.
+fn gzip_header(d: &[u8]) -> Header {
+    if d.len() < 10 {
+        return Header::Need;
+    }
+    if d[0] != 0x1f || d[1] != 0x8b || d[2] != 8 {
+        return Header::Bad;
+    }
+    let flg = d[3];
+    let mut pos = 10;
+    if flg & 4 != 0 {
+        let Some(len) = d.get(pos..pos + 2) else {
+            return Header::Need;
+        };
+        pos += 2 + usize::from(u16::from_le_bytes([len[0], len[1]]));
+        if d.len() < pos {
+            return Header::Need;
+        }
+    }
+    for bit in [8u8, 16] {
+        if flg & bit != 0 {
+            // A zero-terminated string of at most 512 bytes including the terminator.
+            let rest = &d[pos..];
+            match rest.iter().take(512).position(|&b| b == 0) {
+                Some(i) => pos += i + 1,
+                None if rest.len() < 512 => return Header::Need,
+                None => return Header::Bad,
+            }
+        }
+    }
+    if flg & 2 != 0 {
+        let Some(sum) = d.get(pos..pos + 2) else {
+            return Header::Need;
+        };
+        if u16::from_le_bytes([sum[0], sum[1]]) != crc32(0, &d[..pos]) as u16 {
+            return Header::Bad;
+        }
+        pos += 2;
+    }
+    Header::Len(pos)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Phase {
+    Header,
+    Body,
+    Trailer,
+    Done,
+}
+
+pub struct Decoder {
+    format: Format,
+    max: i64,
+    total: i64,
+    input: Vec<u8>,
+    eof: bool,
+    phase: Phase,
+    /// Gzip members completed so far.
+    members: usize,
+    inflate: Box<DecompressorOxide>,
+    dict: Box<[u8; TINFL_LZ_DICT_SIZE]>,
+    dict_pos: usize,
+    /// Running check of the current payload: CRC-32 (gzip) or Adler-32 (zlib).
+    check: u32,
+    size: u32,
+    failed: Option<Fail>,
+}
+
+impl Decoder {
+    /// `max_bytes` bounds the total output; a negative bound fails on the first output byte.
+    pub fn new(format: Format, max_bytes: Option<i64>) -> Decoder {
+        Decoder {
+            format,
+            max: max_bytes.unwrap_or(i64::MAX),
+            total: 0,
+            input: Vec::new(),
+            eof: false,
+            phase: if format == Format::Deflate {
+                Phase::Body
+            } else {
+                Phase::Header
+            },
+            members: 0,
+            inflate: Box::new(DecompressorOxide::new()),
+            dict: Box::new([0; TINFL_LZ_DICT_SIZE]),
+            dict_pos: 0,
+            check: 0,
+            size: 0,
+            failed: None,
+        }
+    }
+
+    /// Feeds a chunk and returns the output it completes, empty while more input is needed.
+    pub fn push(&mut self, data: &[u8]) -> Result<Vec<u8>, Fail> {
+        self.input.extend_from_slice(data);
+        self.run()
+    }
+
+    /// Ends the input and returns the rest of the output; input that ends inside the format is `InvalidData`.
+    pub fn end(&mut self) -> Result<Vec<u8>, Fail> {
+        self.eof = true;
+        self.run()
+    }
+
+    /// Decodes as far as the buffered input allows. After an error every later call repeats it.
+    fn run(&mut self) -> Result<Vec<u8>, Fail> {
+        if let Some(e) = self.failed {
+            return Err(e);
+        }
+        let mut out = Vec::new();
+        let r = self.step(&mut out);
+        if let Err(e) = r {
+            self.failed = Some(e);
+            return Err(e);
+        }
+        Ok(out)
+    }
+
+    /// Stops when the decoder needs input the caller has not given (an error once the input ended) or is done.
+    fn step(&mut self, out: &mut Vec<u8>) -> Result<(), Fail> {
+        loop {
+            match self.phase {
+                Phase::Done => return Ok(()),
+                Phase::Header => {
+                    if self.format == Format::Zlib {
+                        if self.input.len() < 2 {
+                            return self.need_input();
+                        }
+                        let (b0, b1) = (self.input[0], self.input[1]);
+                        let h = u16::from_be_bytes([b0, b1]);
+                        if b0 & 0x0f != 8 || b0 >> 4 > 7 || !h.is_multiple_of(31) || b1 & 0x20 != 0
+                        {
+                            return Err(Fail::InvalidData);
+                        }
+                        self.input.drain(..2);
+                        self.check = 1;
+                    } else {
+                        // A clean end of input between members finishes a gzip stream.
+                        if self.members > 0 && self.input.is_empty() && self.eof {
+                            self.phase = Phase::Done;
+                            continue;
+                        }
+                        match gzip_header(&self.input) {
+                            Header::Need => return self.need_input(),
+                            Header::Bad => return Err(Fail::InvalidData),
+                            Header::Len(n) => {
+                                self.input.drain(..n);
+                                self.check = 0;
+                            }
+                        }
+                    }
+                    self.size = 0;
+                    *self.inflate = DecompressorOxide::new();
+                    self.dict_pos = 0;
+                    self.phase = Phase::Body;
+                }
+                Phase::Body => {
+                    let mut flags = 0;
+                    if !self.eof {
+                        flags |= inflate_flags::TINFL_FLAG_HAS_MORE_INPUT;
+                    }
+                    let (status, used, made) = decompress(
+                        &mut self.inflate,
+                        &self.input,
+                        &mut self.dict[..],
+                        self.dict_pos,
+                        flags,
+                    );
+                    self.input.drain(..used);
+                    let produced = &self.dict[self.dict_pos..self.dict_pos + made];
+                    match self.format {
+                        Format::Gzip => self.check = crc32(self.check, produced),
+                        Format::Zlib => self.check = adler32_update(self.check, produced),
+                        Format::Deflate => {}
+                    }
+                    self.size = self.size.wrapping_add(made as u32);
+                    self.total = self.total.saturating_add(made as i64);
+                    if made > 0 && self.total > self.max {
+                        return Err(Fail::LimitExceeded);
+                    }
+                    out.extend_from_slice(produced);
+                    self.dict_pos = (self.dict_pos + made) & (TINFL_LZ_DICT_SIZE - 1);
+                    match status {
+                        TINFLStatus::Done => {
+                            self.phase = if self.format == Format::Deflate {
+                                Phase::Done
+                            } else {
+                                Phase::Trailer
+                            };
+                        }
+                        TINFLStatus::NeedsMoreInput if made == 0 => return self.need_input(),
+                        TINFLStatus::NeedsMoreInput | TINFLStatus::HasMoreOutput => {}
+                        _ => return Err(Fail::InvalidData),
+                    }
+                }
+                Phase::Trailer => {
+                    let n = if self.format == Format::Gzip { 8 } else { 4 };
+                    if self.input.len() < n {
+                        return self.need_input();
+                    }
+                    let t = &self.input[..n];
+                    let ok = if self.format == Format::Gzip {
+                        u32::from_le_bytes([t[0], t[1], t[2], t[3]]) == self.check
+                            && u32::from_le_bytes([t[4], t[5], t[6], t[7]]) == self.size
+                    } else {
+                        u32::from_be_bytes([t[0], t[1], t[2], t[3]]) == self.check
+                    };
+                    if !ok {
+                        return Err(Fail::InvalidData);
+                    }
+                    self.input.drain(..n);
+                    if self.format == Format::Gzip {
+                        self.members += 1;
+                        self.phase = Phase::Header;
+                    } else {
+                        self.phase = Phase::Done;
+                    }
+                }
+            }
+        }
+    }
+
+    /// The decoder cannot go on without input: wait for the next chunk, or fail when none can come.
+    fn need_input(&self) -> Result<(), Fail> {
+        if self.eof {
+            Err(Fail::InvalidData)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+pub struct Encoder {
+    format: Format,
+    comp: Box<CompressorOxide>,
+    out: Vec<u8>,
+    check: u32,
+    size: u32,
+    started: bool,
+    finished: bool,
+    level: u8,
+}
+
+impl Encoder {
+    /// `level` is 0 through 9, otherwise `InvalidInput`.
+    pub fn new(format: Format, level: i64) -> Result<Encoder, Fail> {
+        if !(0..=9).contains(&level) {
+            return Err(Fail::InvalidInput);
+        }
+        let flags = create_comp_flags_from_zip_params(level as i32, -15, 0);
+        Ok(Encoder {
+            format,
+            comp: Box::new(CompressorOxide::new(flags)),
+            out: Vec::new(),
+            check: if format == Format::Zlib { 1 } else { 0 },
+            size: 0,
+            started: false,
+            finished: false,
+            level: level as u8,
+        })
+    }
+
+    fn header(&mut self) {
+        if self.started {
+            return;
+        }
+        self.started = true;
+        match self.format {
+            Format::Deflate => {}
+            Format::Zlib => {
+                let flevel: u16 = match self.level {
+                    0 | 1 => 0,
+                    2..=5 => 1,
+                    6 => 2,
+                    _ => 3,
+                };
+                let mut h: u16 = 0x7800 | flevel << 6;
+                h += 31 - h % 31;
+                self.out.extend_from_slice(&h.to_be_bytes());
+            }
+            Format::Gzip => {
+                let xfl = match self.level {
+                    9 => 2,
+                    1 => 4,
+                    _ => 0,
+                };
+                self.out
+                    .extend_from_slice(&[0x1f, 0x8b, 8, 0, 0, 0, 0, 0, xfl, 255]);
+            }
+        }
+    }
+
+    fn run(&mut self, mut data: &[u8], flush: TDEFLFlush) {
+        let mut buf = [0u8; 16 * 1024];
+        loop {
+            let (status, used, made) = deflate_step(&mut self.comp, data, &mut buf, flush);
+            data = &data[used..];
+            self.out.extend_from_slice(&buf[..made]);
+            let more =
+                matches!(status, TDEFLStatus::Okay) && (!data.is_empty() || made == buf.len());
+            if !more {
+                return;
+            }
+        }
+    }
+
+    /// Compresses a chunk and returns the bytes it completes, possibly none.
+    pub fn push(&mut self, data: &[u8]) -> Vec<u8> {
+        if self.finished {
+            return Vec::new();
+        }
+        self.header();
+        match self.format {
+            Format::Gzip => self.check = crc32(self.check, data),
+            Format::Zlib => self.check = adler32_update(self.check, data),
+            Format::Deflate => {}
+        }
+        self.size = self.size.wrapping_add(data.len() as u32);
+        self.run(data, TDEFLFlush::None);
+        core::mem::take(&mut self.out)
+    }
+
+    /// The input ended: flushes the compressor, writes the trailer and returns the remaining bytes.
+    pub fn end(&mut self) -> Vec<u8> {
+        if self.finished {
+            return Vec::new();
+        }
+        self.header();
+        self.finished = true;
+        let mut buf = [0u8; 16 * 1024];
+        loop {
+            let (status, _, made) = deflate_step(&mut self.comp, &[], &mut buf, TDEFLFlush::Finish);
+            self.out.extend_from_slice(&buf[..made]);
+            if status != TDEFLStatus::Okay {
+                break;
+            }
+        }
+        match self.format {
+            Format::Deflate => {}
+            Format::Zlib => self.out.extend_from_slice(&self.check.to_be_bytes()),
+            Format::Gzip => {
+                self.out.extend_from_slice(&self.check.to_le_bytes());
+                self.out.extend_from_slice(&self.size.to_le_bytes());
+            }
+        }
+        core::mem::take(&mut self.out)
     }
 }
 

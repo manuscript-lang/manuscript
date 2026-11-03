@@ -4,7 +4,7 @@
 //! `STATUS_UNSUPPORTED` (9); `Failed(message)` is never produced.
 
 use super::Format;
-use super::stream::{Decoder, Encoder, Poll};
+use super::{Decoder, Encoder};
 use alloc::vec::Vec;
 use core::cell::RefCell;
 use ms_rt::ffi::{Fail, ObjRef, Object, Out, abi_handle, native};
@@ -60,16 +60,12 @@ native! {
 
     // Feeds a chunk and returns the output it completes; empty while the codec needs more input.
     fn msstd_compress_decoder_push(decoder: ObjRef<DecoderObj>, data: &[u8]) -> Result<Vec<u8>, Fail> {
-        let mut codec = decoder.codec.borrow_mut();
-        codec.feed(data);
-        drain(&mut codec, false)
+        decoder.codec.borrow_mut().push(data)
     }
 
     // Ends the input and returns the rest of the output; input that ends inside the format is `InvalidData`.
     fn msstd_compress_decoder_end(decoder: ObjRef<DecoderObj>) -> Result<Vec<u8>, Fail> {
-        let mut codec = decoder.codec.borrow_mut();
-        codec.finish_input();
-        drain(&mut codec, true)
+        decoder.codec.borrow_mut().end()
     }
 
     fn msstd_compress_encoder_new(
@@ -86,29 +82,12 @@ native! {
 
     // Feeds a chunk and returns the compressed bytes it completes, possibly none.
     fn msstd_compress_encoder_push(e: ObjRef<EncoderObj>, data: &[u8]) -> out Vec<u8> {
-        let mut codec = e.codec.borrow_mut();
-        codec.feed(data);
-        codec.take(usize::MAX)
+        e.codec.borrow_mut().push(data)
     }
 
     // Finishes the stream and returns the remaining compressed bytes.
     fn msstd_compress_encoder_end(e: ObjRef<EncoderObj>) -> out Vec<u8> {
-        let mut codec = e.codec.borrow_mut();
-        codec.finish();
-        codec.take(usize::MAX)
-    }
-}
-
-/// Polls the decoder until it needs input (or, after the input ended, until it is done), joining the output.
-fn drain(codec: &mut Decoder, ended: bool) -> Result<Vec<u8>, Fail> {
-    let mut out = Vec::new();
-    loop {
-        match codec.poll(1 << 16)? {
-            Poll::Output(b) => out.extend_from_slice(&b),
-            Poll::Done => return Ok(out),
-            Poll::NeedInput if !ended => return Ok(out),
-            Poll::NeedInput => return Err(Fail::InvalidData),
-        }
+        e.codec.borrow_mut().end()
     }
 }
 
