@@ -237,12 +237,16 @@ impl Checker {
                     if let Some(context) = context {
                         msg = with_mismatch_context(msg, &context);
                     }
-                    let fix = suggestions::conversion_fix(
-                        &self.m().source,
-                        e,
-                        actual.id.as_str(),
-                        exp.id.as_str(),
-                    );
+                    let fix = if suggestions::promise_wait_fits(&actual, exp) {
+                        suggestions::append_call(&self.m().source, e, "wait()")
+                    } else {
+                        suggestions::conversion_fix(
+                            &self.m().source,
+                            e,
+                            actual.id.as_str(),
+                            exp.id.as_str(),
+                        )
+                    };
                     self.type_error_with_fix(e.pos, msg, fix);
                 }
             }
@@ -692,8 +696,15 @@ impl Checker {
             return i;
         }
         if methods.len() != 1 {
-            let msg = self.unknown_member(&rt, name);
-            self.res_error_name(e.pos, name.as_str().len(), msg);
+            let mut msg = self.unknown_member(&rt, name);
+            if rt.is_source_type(suggestions::PROMISE_MODULE, "Promise") {
+                // A call that used to wait now returns a promise: `read(p).length()` is `read(p).wait().length()`.
+                msg.push_str("; a Promise has `wait()` and `done()`: call `wait()` first");
+                let fix = suggestions::append_call(&self.m().source, left, "wait()");
+                self.res_error_with_fix(e.pos, msg, fix);
+            } else {
+                self.res_error_name(e.pos, name.as_str().len(), msg);
+            }
             // Later diagnostics that only restate the missing member are noise.
             i.ty = Some(invalid());
             return i;
@@ -1010,6 +1021,18 @@ impl Checker {
     fn check_try(&mut self, e: &Expr, operand: &Info, i: &mut Info) {
         let result = operand.t();
         if !result.is_std("Result") || result.args.len() != 2 {
+            if result.is_source_type(suggestions::PROMISE_MODULE, "Promise")
+                && let ExprKind::Unary { operand: inner, .. } = &e.kind
+            {
+                // A call that used to wait now returns a promise: `try read(p)` is `try read(p).wait()`.
+                let fix = suggestions::append_call(&self.m().source, inner, "wait()");
+                self.type_error_with_fix(
+                    e.pos,
+                    format!("try requires Result, found {result}; a promise gives its result from wait(), so write `try ...wait()`"),
+                    fix,
+                );
+                return;
+            }
             self.type_error(
                 e.pos,
                 format!("try requires Result, found {result}; apply try only to a call returning Result[T, E]"),
