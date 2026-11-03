@@ -9,11 +9,11 @@ type Resource:
 // Close records itself by writing a marker file named after the resource.
 impl Closeable for Resource:
     var fn close() Unit!:
-        let _ = write_file("{self.dir}/{self.id}", "closed", true)
+        let _ = write_file("{self.dir}/{self.id}", "closed", true).wait()
         return ok(unit)
 
 fn closed(dir: String, id: Int) Bool:
-    return read_file("{dir}/{id}").is_ok()
+    return read_file("{dir}/{id}").wait().is_ok()
 
 fn falls_off_the_end(dir: String) Int:
     let r = Resource(dir, 1)

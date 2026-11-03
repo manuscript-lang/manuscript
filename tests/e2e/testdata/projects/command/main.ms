@@ -1,19 +1,19 @@
 import expect_equal from "@std/test/test.ms"
 import stderr from "@std/io/io.ms"
 import run from "@std/os/process.ms"
-import stdout from "@std/io/io.ms"
+import stdout_bytes from "@std/io/io.ms"
 
 fn exercise() Int!:
     match run(
         program: "/bin/printf", arguments: ["hello"], input: "".to_bytes(),
         max_output_bytes: 64, timeout: 1.seconds
-    ):
+    ).wait():
         error(_):
             return ok(1)
         ok(output):
             output.exit_code | try expect_equal(0)
 
-            let _ = stdout().write_bytes(data: output.stdout)
+            let _ = stdout_bytes().write(value: output.stdout)
             return ok(0)
 
 export fn main() Int:

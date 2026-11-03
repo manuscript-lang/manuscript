@@ -157,7 +157,7 @@ impl<'a> FnLower<'a> {
     /// A method used as a value (`value.name`).
     fn method_value(&mut self, e: &Expr, left: &Expr, m: &ct::MethodRef) -> Result<Val, Error> {
         if m.native.as_str() == "to_string" && m.ty.params.is_empty() {
-            return self.bound_to_string(left);
+            return self.bound_to_string(e, left);
         }
         if !m.native.as_str().is_empty() && m.native.as_str() != "contract" {
             return self.bound_native_method(e, left, m);
@@ -397,6 +397,14 @@ impl<'a> FnLower<'a> {
                     self.closed_on_path.insert(b.uid);
                     return Ok(Val { v, own: true });
                 }
+                if self.moves_at(b.uid, e.id) && !self.dead {
+                    // The value leaves the binding here: the local is empty until it is stored
+                    // to again, and the scope end drops nothing for it on this path.
+                    let l = self.local(&b)?;
+                    let v = self.take_local(b.uid, &l);
+                    self.moved_closer(b.uid, e);
+                    return self.fit_function_value(e, Val { v, own: true });
+                }
                 let x = self.read_local(&b)?;
                 self.moved_closer(b.uid, e);
                 self.fit_function_value(e, x)
@@ -505,8 +513,7 @@ impl<'a> FnLower<'a> {
         if obj.own {
             // Take a copy out of the temporary, then release the temporary.
             let o = self.owned(Val { v: f, own: false });
-            self.close_temp(obj.v);
-            self.drop_value(obj.v);
+            self.drop_temp(obj.v);
             return Ok(Val {
                 v: o,
                 own: self.holds(self.ty_of(o)),
@@ -878,14 +885,19 @@ impl<'a> FnLower<'a> {
         Ok(Val { v: jp, own: false })
     }
 
-    /// Calls a runtime function by symbol, declaring it from the operand types
-    /// (all operands borrowed, result owned).
+    /// Calls a runtime function by symbol, declaring it from the operand types: operands are
+    /// borrowed, except the function values an extern keeps, which it is handed; the result is owned.
     pub fn call_runtime(&mut self, sym: &str, args: &[Value], ret: MTy) -> Result<Value, Error> {
         let params = args
             .iter()
-            .map(|a| ms_mir::ir::Param {
+            .enumerate()
+            .map(|(i, a)| ms_mir::ir::Param {
                 ty: self.ty_of(*a),
-                mode: ms_mir::ir::Mode::Borrow,
+                mode: if crate::rtcall::hands_over(sym, i) {
+                    ms_mir::ir::Mode::Own
+                } else {
+                    ms_mir::ir::Mode::Borrow
+                },
             })
             .collect();
         let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {

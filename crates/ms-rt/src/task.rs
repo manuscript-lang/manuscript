@@ -45,7 +45,8 @@ pub const TOKEN_REMOTE: u32 = 1;
 pub const TOKEN_PEER: u32 = 2;
 
 /// Unix task stacks are slots of this size, aligned to it: the stack pointer's high bits name
-/// the slot, whose first page holds the task's `fault::Hdr` (see `stack::create`).
+/// the slot, whose last 16 bytes hold the task's `fault::Hdr`, in the stack's first page so a task
+/// that never grows costs one resident page (see `stack::create`).
 #[cfg(unix)]
 pub const STACK_SLOT: usize = ms_rt_abi::symbols::STACK_SLOT as usize;
 #[cfg(unix)]
@@ -67,7 +68,9 @@ const MIN_STACK: usize = 128 << 10;
 #[cfg(unix)]
 const GUARD: usize = 64 << 10;
 #[cfg(unix)]
-const HDR_PAGE: usize = 4096;
+const HDR_SIZE: usize = 16;
+#[cfg(unix)]
+const _: () = assert!(size_of::<fault::Hdr>() == HDR_SIZE);
 const STACK_POOL: usize = 1024;
 /// Most slots one address-space reservation holds (stack creation reserves in batches).
 #[cfg(unix)]
@@ -118,8 +121,11 @@ struct Task {
     started_by: Vec<usize>,
     /// Set when the task was cancelled because `kill_at` passed.
     timed_out: bool,
-    /// The scope that frees the task's record when it ends (`spawn_native`), or 0.
-    scope: i64,
+    /// The monotonic time by which the deferred promise this task is running must finish
+    /// (`msrt_promise_wait` with a timeout), or `i64::MAX`; waits inside it stop there.
+    defer_deadline: i64,
+    /// The promise this task runs (`promise::msrt_promise_start`), or 0; told when the task ends.
+    promise: i64,
 }
 
 #[derive(Clone, Copy)]
@@ -178,6 +184,23 @@ struct Sched {
     remote_tokens: usize,
     /// Those of `remote_tokens` that another isolate will post.
     peer_tokens: usize,
+}
+
+/// Set in an `fd_waiters` entry that names a promise, not a task (`promise::msrt_promise_ready`).
+pub(crate) const PROMISE_TAG: u64 = 1 << 63;
+
+/// What the waiter `h` of a descriptor asks for: a task's park, or a promise's readiness wait.
+unsafe fn waiter_events(h: u64) -> u32 {
+    if h & PROMISE_TAG != 0 {
+        return crate::promise::fd_events((h & !PROMISE_TAG) as i64);
+    }
+    let t = lookup(h);
+    if t.is_null() {
+        0
+    } else {
+        // SAFETY: `t` is a live record.
+        unsafe { (*t).wait_events }
+    }
 }
 
 /// Token generations are 20 bits: the id's high 12 bits name the owning isolate (see `isolate`).
@@ -352,18 +375,18 @@ mod stack {
     }
 
     /// Reserves one `STACK_SLOT`-aligned slot whose top `len` bytes are the stack, with a guard
-    /// below them and the header page at the slot's base; null on failure. Address space only:
-    /// pages are committed as the stack grows.
+    /// below them and the header in the slot's last 16 bytes; null on failure. Address space
+    /// only: pages are committed as the stack grows.
     pub unsafe fn create(len: usize) -> *mut u8 {
         // SAFETY: single threaded scheduler; the slot is unused.
         let base = unsafe { take_slot() };
         if base.is_null() {
             return base;
         }
-        // SAFETY: guards the gap between the header page and the stack inside the slot.
+        // SAFETY: guards the gap below the stack inside the slot.
         unsafe {
             let len = len.min(DEFAULT_STACK);
-            sys::guard(base.add(HDR_PAGE), STACK_SLOT - len + GUARD - HDR_PAGE);
+            sys::guard(base, STACK_SLOT - len + GUARD);
         }
         base
     }
@@ -412,13 +435,14 @@ mod stack {
 
     /// Stack bounds, initial context and header of a stack from [`create`].
     pub unsafe fn prepare(base: *mut u8, len: usize) -> (usize, usize, usize, *mut fault::Hdr) {
-        let top = (base as usize + STACK_SLOT) & !15;
+        let end = base as usize + STACK_SLOT;
+        let top = end - HDR_SIZE;
         let len = len.min(DEFAULT_STACK);
-        let hdr = base.cast::<fault::Hdr>();
-        // SAFETY: the header page is writable; `top` ends a writable stack.
+        let hdr = top as *mut fault::Hdr;
+        // SAFETY: the last 16 bytes of the slot are writable; the stack ends just below them.
         unsafe {
             hdr.write(fault::Hdr::new(0));
-            (top - len + GUARD, top, initial_sp(top), hdr)
+            (end - len + GUARD, top, initial_sp(top), hdr)
         }
     }
 
@@ -499,7 +523,7 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
     let (idx, gen_) = match s.free_slots.pop() {
         Some(i) => {
             let slot = &mut s.slots[i];
-            slot.gen_ = slot.gen_.wrapping_add(1).max(1);
+            slot.gen_ = (slot.gen_.wrapping_add(1) & 0x7fff_ffff).max(1);
             slot.task = t;
             (i, slot.gen_)
         }
@@ -533,7 +557,8 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             kill_at: NO_DEADLINE,
             started_by: Vec::new(),
             timed_out: false,
-            scope: 0,
+            defer_deadline: i64::MAX,
+            promise: 0,
         });
     }
     s.live += 1;
@@ -698,6 +723,7 @@ unsafe fn expire_kills(now: i64) {
 unsafe fn expire_timers(now: i64) {
     // SAFETY: forwarded contract.
     unsafe { expire_kills(now) };
+    crate::promise::expire(now);
     let mut s = sched();
     while let Some(&Reverse((deadline, h))) = s.timers.peek()
         && deadline <= now
@@ -766,7 +792,7 @@ unsafe fn cancel_all_waiters() -> bool {
 /// Delivers descriptor readiness, waiting at most `timeout_ns` nanoseconds (0 never blocks, -1
 /// waits for an event).
 unsafe fn poll_ready(timeout_ns: i64) {
-    let s = sched();
+    let mut s = sched();
     let mut ready = [crate::poller::Ready { fd: 0, bits: 0 }; 64];
     // SAFETY: the poller owns its registrations; handles are checked before waking tasks.
     unsafe {
@@ -781,6 +807,18 @@ unsafe fn poll_ready(timeout_ns: i64) {
             // and the others wait again. `wake` re-arms for those that stay.
             let queue = s.fd_waiters[ev.fd].clone();
             for h in queue {
+                if h & PROMISE_TAG != 0 {
+                    let id = (h & !PROMISE_TAG) as i64;
+                    if crate::promise::fd_ready(id, ev.bits) {
+                        let q = &mut s.fd_waiters[ev.fd];
+                        q.retain(|&w| w != h);
+                        s.fd_waiting -= 1;
+                        if s.fd_waiters[ev.fd].is_empty() {
+                            crate::poller::unwatch(ev.fd as i32);
+                        }
+                    }
+                    continue;
+                }
                 let t = lookup(h);
                 if t.is_null() {
                     continue;
@@ -842,7 +880,7 @@ unsafe fn reactor_wait() {
             deliver_remote_posts();
             let now = clock_ns();
             expire_timers(now);
-            if !s.ready.is_empty() {
+            if !s.ready.is_empty() || crate::sched::work_available() {
                 return;
             }
             let mut timeout_ns = -1;
@@ -869,6 +907,14 @@ unsafe fn reactor_wait() {
                 };
                 break;
             }
+            if let Some(deadline) = crate::promise::next_deadline() {
+                let ns = (deadline - now).max(0);
+                timeout_ns = if timeout_ns < 0 {
+                    ns
+                } else {
+                    timeout_ns.min(ns)
+                };
+            }
             let mut parked = false;
             if timeout_ns < 0 && s.fd_waiting == 0 {
                 if s.remote_tokens == 0 {
@@ -882,7 +928,14 @@ unsafe fn reactor_wait() {
                 abandon_wait();
                 fault::fault_kind(FaultKind::Deadlock, CROSS_ISOLATE_DEADLOCK);
             }
+            crate::sched::set_idle(true);
+            // Work may have arrived between the last look and now.
+            if crate::sched::work_available() || crate::sched::signalled() {
+                crate::sched::set_idle(false);
+                continue;
+            }
             poll_ready(timeout_ns);
+            crate::sched::set_idle(false);
             if parked && crate::isolate::leave_idle() {
                 abandon_wait();
                 fault::fault_kind(FaultKind::Deadlock, CROSS_ISOLATE_DEADLOCK);
@@ -910,10 +963,10 @@ unsafe fn switch_away() {
         if crate::isolate::pending_cancel() != 0 {
             cancel_all_waiters();
         }
-        if !s.tokens.is_empty() {
+        if !s.tokens.is_empty() || crate::sched::signalled() {
             deliver_remote_posts();
         }
-        if !s.kills.is_empty() || !s.timers.is_empty() {
+        if !s.kills.is_empty() || !s.timers.is_empty() || crate::promise::has_timers() {
             expire_timers(clock_ns());
         }
         if s.fd_waiting != 0 {
@@ -930,6 +983,7 @@ unsafe fn switch_away() {
                     return;
                 }
                 (*next).state = State::Running;
+                crate::sched::publish_busy(s.ready.len() + 1);
                 fault::swap_ctx(&mut (*cur).ctx);
                 fault::swap_ctx(&mut (*next).ctx);
                 fault::publish_current_hdr();
@@ -938,6 +992,12 @@ unsafe fn switch_away() {
                 after_switch();
                 return;
             }
+            // Nothing is ready: start a promise, this thread's own or one taken from a busy thread.
+            if let Some(start) = crate::sched::next_pending() {
+                crate::promise::execute(start);
+                continue;
+            }
+            crate::sched::publish_busy(0);
             reactor_wait();
         }
     }
@@ -978,28 +1038,20 @@ extern "C" fn task_main() -> ! {
                 }
             }
             (*t).msg = msg;
+            if (*t).promise != 0 {
+                crate::promise::task_ended((*t).promise, (*t).status, &(*t).msg, &(*t).started_by);
+            }
         }
         if !(*t).owned.is_null() {
-            crate::obj::msrt_release(core::mem::replace(&mut (*t).owned, null_mut()));
+            crate::obj::drop_obj(core::mem::replace(&mut (*t).owned, null_mut()));
         }
         (*t).state = State::Done;
         s.zombie_stack = ((*t).stack as usize, (*t).stack_len);
         (*t).stack = null_mut();
-        if (*t).scope != 0 {
-            // A scope task nobody joins frees itself; one being joined is freed by its joiner.
-            crate::scope::task_ended((*t).scope, (*t).handle);
-            if (*t).joiner != 0 {
-                let j = lookup((*t).joiner);
-                if !j.is_null() {
-                    wake(j, 0);
-                }
-            } else {
-                crate::string::release_opt(&core::mem::replace(
-                    &mut (*t).msg,
-                    crate::string::NO_STR,
-                ));
-                s.zombie_task = t;
-            }
+        if (*t).promise != 0 {
+            // A promise's task is never joined: the promise learns of its end by event.
+            crate::string::release_opt(&core::mem::replace(&mut (*t).msg, crate::string::NO_STR));
+            s.zombie_task = t;
         } else if (*t).detached {
             s.zombie_task = t;
         } else if (*t).joiner != 0 {
@@ -1147,8 +1199,7 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
             // Tasks already waiting keep their place; the poller watches what all of them ask.
             let mut asked = events;
             for &h in &s.fd_waiters[fd_idx] {
-                let t = lookup(h);
-                let other = if t.is_null() { 0 } else { (*t).wait_events };
+                let other = waiter_events(h);
                 asked = ((asked | other) & !WAIT_KEEP) | (asked & other & WAIT_KEEP);
             }
             match crate::poller::watch(poller_fd(), fd, asked) {
@@ -1171,6 +1222,55 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
     }
 }
 
+/// Registers promise `id` as a waiter of `fd` for `events`. Returns whether `fd` is ready at once
+/// (it cannot be polled, like a regular file), or `None` when it cannot be waited on.
+pub(crate) unsafe fn watch_fd_for_promise(fd: i32, events: u32, id: i64) -> Option<bool> {
+    let mut s = sched();
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        let fd_idx = fd as usize;
+        while s.fd_waiters.len() <= fd_idx {
+            s.fd_waiters.push(Vec::new());
+        }
+        let mut asked = events;
+        for &h in &s.fd_waiters[fd_idx] {
+            let other = waiter_events(h);
+            asked = ((asked | other) & !WAIT_KEEP) | (asked & other & WAIT_KEEP);
+        }
+        match crate::poller::watch(poller_fd(), fd, asked) {
+            crate::poller::Watch::Armed => {}
+            crate::poller::Watch::Always => return Some(true),
+            crate::poller::Watch::Failed => return None,
+        }
+        s.fd_waiters[fd_idx].push(id as u64 | PROMISE_TAG);
+        s.fd_waiting += 1;
+        Some(false)
+    }
+}
+
+/// Removes promise `id` from the waiters of `fd`, if it is still one.
+pub(crate) unsafe fn unwatch_fd_for_promise(fd: i32, id: i64) {
+    let mut s = sched();
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        let Some(queue) = s.fd_waiters.get_mut(fd as usize) else {
+            return;
+        };
+        let before = queue.len();
+        queue.retain(|&h| h != id as u64 | PROMISE_TAG);
+        if queue.len() == before {
+            return;
+        }
+        let empty = queue.is_empty();
+        s.fd_waiting -= 1;
+        if empty {
+            crate::poller::unwatch(fd);
+        } else {
+            rearm(fd);
+        }
+    }
+}
+
 /// Registers `fd` with the poller for what its waiters ask, or for nothing when none remain.
 unsafe fn rearm(fd: i32) {
     let s = sched();
@@ -1179,10 +1279,10 @@ unsafe fn rearm(fd: i32) {
         let mut asked = 0;
         let mut keep = WAIT_KEEP;
         for &h in &s.fd_waiters[fd as usize] {
-            let t = lookup(h);
-            if !t.is_null() {
-                asked |= (*t).wait_events & (WAIT_READ | WAIT_WRITE);
-                keep &= (*t).wait_events;
+            let events = waiter_events(h);
+            if events != 0 {
+                asked |= events & (WAIT_READ | WAIT_WRITE);
+                keep &= events;
             }
         }
         if asked == 0 {
@@ -1344,13 +1444,13 @@ crate::isolate_static! {
     static TIMED_OUT: bool = false;
 }
 
-// ---- closure tasks (`@std/concurrency/tasks.ms`) ----
+// ---- closure tasks (`@std/concurrency/promise.ms`) ----
 
 /// Entry of a task that runs a `fn() Unit`: calls the closure with itself as its
 /// environment, as every closure call does.
 unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
     let closure = arg as *mut ms_rt_abi::Closure;
-    // SAFETY: `arg` is the retained closure object `spawn_closure` stored.
+    // SAFETY: `arg` is the retained closure object `spawn_promise_task` stored.
     unsafe {
         // The closure itself checks for a cancellation that came before it first ran
         // (`msrt_scope_started`), once it has registered the cleanup that closes its channel end.
@@ -1360,28 +1460,15 @@ unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
     }
 }
 
-/// Unwinds the current task if it was cancelled before it got here.
-pub(crate) unsafe fn unwind_if_cancelled() {
-    if cancel_flag().load(Ordering::Relaxed) != 0 {
-        fault::msrt_cancelled();
-    }
-}
-
 /// Changes when the running task is cancelled for running too long: `limit_ns` from now, or
 /// never when negative. Replaces any earlier limit.
-pub(crate) fn limit_current(limit_ns: i64) {
+pub fn limit_current(limit_ns: i64) {
     // SAFETY: single threaded scheduler; the running task's record is live.
     unsafe {
         let t = ensure_init();
         (*t).kill_at = NO_DEADLINE;
         arm_kill((*t).handle, limit_ns);
     }
-}
-
-/// The scope the running task was started in by `spawn_scoped`, or 0.
-pub(crate) fn current_scope() -> i64 {
-    // SAFETY: single threaded scheduler; the running task's record is live.
-    unsafe { (*ensure_init()).scope }
 }
 
 /// Cancels task `h` once it has run `limit_ns` nanoseconds; a negative limit means never.
@@ -1410,101 +1497,59 @@ unsafe fn arm_kill(h: u64, limit_ns: i64) {
     }
 }
 
-/// Starts `entry(arg)` as a task of `scope` on a default (pooled) stack. A fault in it is the
-/// entry's to contain. It leaves the scope and frees its own record when it ends unless
-/// something is joining it, so a server can start one per request. With a non-negative
-/// `limit_ns` it is cancelled once it has run that long. Returns the handle.
+/// Starts `closure` as the task of promise `promise`, which frees itself when it ends. A fault in
+/// it ends only the promise. The closure stays owned by whoever created the promise, who releases
+/// it when told the task is over. Returns the task handle.
 ///
 /// # Safety
-/// `arg` must be valid for `entry`, which owns it.
-pub(crate) unsafe fn spawn_scoped(entry: Entry, arg: *mut u8, limit_ns: i64, scope: i64) -> u64 {
-    // SAFETY: single threaded scheduler.
+/// `closure` must be a live closure object that outlives the task.
+pub(crate) unsafe fn spawn_promise_task(closure: *mut ms_rt_abi::Closure, promise: i64) -> u64 {
+    // SAFETY: single threaded scheduler; forwarded contract.
     unsafe {
-        let h = msrt_task_spawn(entry, arg, 0, 0);
-        (*lookup(h)).scope = scope;
-        arm_kill(h, limit_ns);
-        h
-    }
-}
-
-/// Starts a task that runs `closure`, which the caller lends: the task retains it and releases it
-/// when it ends, by return, cancellation, or fault. A fault in the task ends the process. With a
-/// non-negative `limit_ns` the task is cancelled once it has run that long. Returns the handle.
-pub(crate) unsafe fn spawn_closure(
-    closure: *mut ms_rt_abi::Closure,
-    limit_ns: i64,
-    fatal: bool,
-) -> u64 {
-    // SAFETY: single threaded scheduler; `closure` is a live closure object.
-    unsafe {
-        crate::obj::msrt_retain(closure.cast());
-        let flags = if fatal { SPAWN_FATAL } else { 0 };
-        let h = msrt_task_spawn(closure_entry, closure.cast(), flags, TASK_GROUP_STACK);
+        let h = msrt_task_spawn(closure_entry, closure.cast(), 0, TASK_GROUP_STACK);
         let t = lookup(h);
-        (*t).owned = closure.cast();
+        (*t).promise = promise;
         (*t).started_by = fault::capture_frames();
-        arm_kill(h, limit_ns);
         h
     }
 }
 
-/// Waits for a task started by `spawn_closure` and returns how it ended: 0 returned, 1 timed out,
-/// 2 cancelled, 3 no such task (collected or closed). With `keep` the task stays
-/// joinable. If the caller is cancelled while waiting, the cancellation unwinds the caller.
-pub(crate) unsafe fn join_closure(handle: u64, keep: bool) -> u8 {
-    // SAFETY: single threaded scheduler.
+/// The deadline of the deferred promise the running task is executing (`i64::MAX`: none).
+pub(crate) fn defer_deadline() -> i64 {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe { (*ensure_init()).defer_deadline }
+}
+
+/// Sets that deadline and returns the one it replaces.
+pub(crate) fn set_defer_deadline(at: i64) -> i64 {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe { core::mem::replace(&mut (*ensure_init()).defer_deadline, at) }
+}
+
+/// Lets a promise that has not started begin, then lets the ready tasks run: polling `done`
+/// makes progress even when the polling task never waits.
+pub(crate) unsafe fn pump() {
+    if let Some(start) = crate::sched::next_pending() {
+        crate::promise::execute(start);
+    }
+    // SAFETY: forwards to the yield path.
+    unsafe { msrt_task_yield() };
+}
+
+/// Cancels the task of promise `promise`, if it runs on this thread; answers whether it does.
+pub(crate) fn cancel_promise_task(promise: i64) -> bool {
+    let s = sched();
+    // SAFETY: slots hold live records or null.
     unsafe {
-        ensure_init();
-        if lookup(handle).is_null() {
-            return 3;
-        }
-        let started = (*lookup(handle)).started_by.clone();
-        let mut msg = crate::string::NO_STR;
-        let status = join(handle, &mut msg, keep);
-        if status == 2 && cancel_flag().load(Ordering::Relaxed) != 0 {
-            fault::msrt_cancelled();
-        }
-        match status {
-            0 => 0,
-            1 => {
-                // A contained fault. Collecting takes the report; a kept task still owns it.
-                let report = if keep {
-                    let t = lookup(handle);
-                    fault::fault_report(&(*t).msg, &(*t).started_by)
-                } else {
-                    let report = fault::fault_report(&msg, &started);
-                    crate::string::release_opt(&msg);
-                    report
-                };
-                set_fault_report(report);
-                4
+        for slot in &s.slots {
+            let t = slot.task;
+            if !t.is_null() && (*t).promise == promise && (*t).state != State::Done {
+                msrt_task_cancel((*t).handle);
+                return true;
             }
-            _ if *TIMED_OUT.ptr() => 1,
-            _ => 2,
         }
     }
-}
-
-/// The report of the contained fault the last join or wait saw, taken once.
-pub(crate) fn take_fault_report() -> Vec<u8> {
-    // SAFETY: single threaded scheduler.
-    unsafe { core::mem::take(&mut *LAST_FAULT.ptr()) }
-}
-
-/// Publishes the report of a completed join or wait, after any scheduler switches it made.
-pub(crate) fn set_fault_report(report: Vec<u8>) {
-    // SAFETY: single threaded scheduler.
-    unsafe { *LAST_FAULT.ptr() = report };
-}
-
-crate::isolate_static! {
-    static LAST_FAULT: Vec<u8> = Vec::new();
-}
-
-/// Requests cancellation of a task started by `spawn_closure`.
-pub(crate) unsafe fn cancel_closure(handle: u64) {
-    // SAFETY: single threaded scheduler.
-    unsafe { msrt_task_cancel(handle) }
+    false
 }
 
 // ---- tokens ----
@@ -1553,6 +1598,9 @@ unsafe fn deliver_remote_posts() {
     for (id, value) in isolate::take_posts() {
         // SAFETY: runs on the runtime thread.
         unsafe { post(id, value, true) };
+    }
+    if crate::sched::signalled() {
+        crate::promise::apply_events();
     }
 }
 
@@ -1686,6 +1734,8 @@ pub unsafe extern "C-unwind" fn msrt_token_post(id: u64, value: u64) {
 
 /// Posts `value` to `id` from any thread. It takes effect when the scheduler next looks, and
 /// interrupts a scheduler that is blocked. Touches no runtime state but a locked queue.
+/// A post to a token that already holds an untaken post is coalesced into it: a token carries a wake, not a
+/// count, so a waiter re-checks its own state after waking (promise waits and pipes do; they never lose work).
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_token_post_remote(id: u64, value: u64) {
     isolate::post_remote(id, value);
@@ -1726,7 +1776,6 @@ pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
 /// live-block count.
 pub fn teardown() {
     fault::retire_hdr();
-    crate::channel::reset_wait_queues();
     // SAFETY: callers hold the global lock or run after main returned; no task is mid-switch.
     unsafe {
         let mut s = sched();
@@ -1782,7 +1831,6 @@ pub fn teardown() {
         s.remote_tokens = 0;
         s.peer_tokens = 0;
         isolate::clear_posts();
-        crate::scope::teardown();
     }
 }
 
@@ -1871,26 +1919,6 @@ mod tests {
         unsafe { msrt_task_join(arg as u64, null_mut()) };
     }
 
-    unsafe extern "C-unwind" fn deadlocked_channel(arg: *mut u8) {
-        crate::channel::msrt_channel_park(arg as i64);
-    }
-
-    #[test]
-    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
-    fn a_deadlocked_channel_wait_frees_its_token() {
-        let _g = lock();
-        teardown();
-        // SAFETY: the guard contains the deliberate deadlock and the token belongs to it.
-        unsafe {
-            let token = crate::channel::msrt_channel_token() as u64;
-            let status = fault::msrt_guard_call(deadlocked_channel, token as *mut u8, null_mut());
-            let retained = token_mut(&mut sched(), token).is_some();
-            teardown();
-            assert_eq!(status, 1);
-            assert!(!retained, "a channel token lasts for only one wait");
-        }
-    }
-
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn a_deadlocked_token_wait_releases_its_registration() {
@@ -1928,8 +1956,6 @@ mod tests {
             assert!(running, "fault cleanup must run as a running task");
         }
     }
-
-    unsafe extern "C-unwind" fn returns(_: *mut ms_rt_abi::Closure) {}
 
     #[test]
     #[cfg(unix)]
@@ -1986,48 +2012,6 @@ mod tests {
     unsafe extern "C-unwind" fn long_wait(_: *mut u8) {
         // SAFETY: called on a live task; the test cancels it after checking the heap.
         unsafe { msrt_task_sleep(3_600_000_000_000) };
-    }
-
-    unsafe extern "C" fn drop_closure(obj: *mut ms_rt_abi::Obj) {
-        // SAFETY: the test closure has no captures and owns this allocation.
-        unsafe { alloc::free(obj.cast()) };
-    }
-
-    #[test]
-    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
-    fn completed_task_deadlines_do_not_accumulate() {
-        let _g = lock();
-        teardown();
-        // SAFETY: the closure stays live until every spawned task has been joined.
-        unsafe {
-            let closure =
-                crate::obj::new_obj(core::mem::size_of::<ms_rt_abi::Closure>(), drop_closure)
-                    .cast::<ms_rt_abi::Closure>();
-            (*closure).code = returns as *const u8;
-            let active = msrt_task_spawn(long_wait, null_mut(), 0, 0);
-            let deadline = clock_ns() + 3_600_000_000_000;
-            (*lookup(active)).kill_at = deadline;
-            sched().kills.push(Reverse((deadline, active)));
-            for _ in 0..4 * MIN_TIMER_LIMIT {
-                let task = spawn_closure(closure, 3_600_000_000_000, true);
-                assert_eq!(join_closure(task, false), 0);
-            }
-            crate::obj::release(closure.cast());
-            let retained = sched().kills.len();
-            let kept_active = sched().kills.iter().any(|&Reverse((_, h))| h == active);
-            msrt_task_cancel(active);
-            assert_eq!(msrt_task_join(active, null_mut()), 0);
-            teardown();
-            assert!(kept_active, "compaction must retain a live task's limit");
-            assert!(
-                retained <= MIN_TIMER_LIMIT,
-                "retained {retained} completed deadlines"
-            );
-            assert!(
-                sched().kills.is_empty(),
-                "teardown must release the deadline heap"
-            );
-        }
     }
 
     unsafe extern "C-unwind" fn short_sleeps(_: *mut u8) {

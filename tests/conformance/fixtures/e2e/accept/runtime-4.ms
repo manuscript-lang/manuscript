@@ -3,7 +3,10 @@
 // conform: origin=tests/e2e/testdata/accept/runtime-4.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
-import File from "@std/io/io.ms"
+
+interface File:
+    fn read(max_bytes: Int?) Bytes?!
+    fn close() Unit
 
 type ClosedFile:
     marker: Unit

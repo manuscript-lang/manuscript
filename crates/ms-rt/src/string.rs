@@ -4,8 +4,7 @@
 //! which are followed by one NUL. An owned string (`cap >= 1`) is a single allocation that
 //! copying duplicates and dropping frees; a static one (`cap == 0`) is never freed. Language level
 //! indices and lengths count Unicode scalars; a string whose scalar count equals its byte length
-//! is ASCII, which every indexing operation exploits (the count of a long string is cached for
-//! the string last measured, see [`Hint`]).
+//! is ASCII, which every indexing operation exploits.
 use crate::alloc;
 use crate::fault;
 use crate::obj;
@@ -84,7 +83,20 @@ fn heap_copy(data: &[u8]) -> StrVal {
     let s = alloc_str(data.len());
     // SAFETY: `s` has room for `len` bytes.
     unsafe { core::ptr::copy_nonoverlapping(data.as_ptr(), s.ptr_word, data.len()) };
-    s
+    if data.is_ascii() { s.with_ascii() } else { s }
+}
+
+/// Whether every byte of `s` is ASCII, from its flag when it has one.
+///
+/// # Safety
+/// `s` is live.
+#[inline(always)]
+unsafe fn is_ascii(s: &StrVal) -> bool {
+    if s.is_inline() {
+        return s.inline_bits() & 0x8080_8080_8080_8080_8080_8080_8080_8080 == 0;
+    }
+    // SAFETY: caller contract.
+    s.flagged_ascii() || unsafe { bytes(s) }.is_ascii()
 }
 
 /// Frees the bytes of `s` when it is owned.
@@ -101,11 +113,8 @@ pub unsafe fn release(s: &StrVal) {
 
 #[inline(never)]
 unsafe fn free_owned(ptr: *mut u8) {
-    // SAFETY: `ptr` came from `alloc_str`; the hint may name its bytes.
-    unsafe {
-        forget_hint(ptr);
-        alloc::free(ptr);
-    }
+    // SAFETY: `ptr` came from `alloc_str`.
+    unsafe { alloc::free(ptr) }
 }
 
 /// Allocates an uninitialised string of `len` bytes (NUL terminated).
@@ -231,145 +240,26 @@ pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
 // Scalar shape and indexing
 // ---------------------------------------------------------------------------
 
-/// Scalar count. A string of `HINT_MIN` bytes or more remembers its count in [`HINT`] while it is
-/// the one last measured, so loops over one long string do not rescan it.
+/// Scalar count: the byte length for a string flagged ASCII (or inline ASCII), else counted on
+/// each call. Strings built by copy, concatenation and append carry the flag.
 ///
 /// # Safety
 /// `s` must be live.
 #[inline]
 pub unsafe fn scalar_count(s: *const StrVal) -> usize {
-    // SAFETY: the hint is cleared when its string is freed.
+    // SAFETY: `s` live.
     unsafe {
-        if (*s).is_inline() {
-            // ASCII when no byte has its top bit (the bytes past the length are zero).
-            if (*s).inline_bits() & 0x8080_8080_8080_8080_8080_8080_8080_8080 == 0 {
-                return (*s).len();
-            }
-            return utf8::count(bytes(s));
+        if (*s).flagged_ascii() || ((*s).is_inline() && is_ascii(&*s)) {
+            return (*s).len();
         }
-        let b = bytes(s);
-        if b.len() < HINT_MIN || !(*s).owns() {
-            return utf8::count(b);
-        }
-        let h = hint_for((*s).ptr_word);
-        if core::ptr::eq((*h).s, (*s).ptr_word) && (*h).len == b.len() && (*h).count != usize::MAX {
-            return (*h).count;
-        }
-        let n = utf8::count(b);
-        *h = Hint {
-            s: (*s).ptr_word,
-            len: b.len(),
-            count: n,
-            scalar: 0,
-            offset: 0,
-        };
-        n
+        utf8::count(bytes(s))
     }
 }
 
-#[derive(Clone, Copy)]
-struct Hint {
-    /// Bytes of the string the figures belong to.
-    s: *const u8,
-    len: usize,
-    /// Scalar count of the string, or `usize::MAX` when not counted.
-    count: usize,
-    /// A remembered position: scalar index and its byte offset.
-    scalar: usize,
-    offset: usize,
-}
-crate::isolate_static! {
-    static HINT: Hint = Hint {
-    s: core::ptr::null(),
-    len: 0,
-    count: usize::MAX,
-    scalar: 0,
-    offset: 0,
-};
-}
-// The figures of the string measured before `HINT`'s, so two strings read in turn each keep
-// their remembered position instead of evicting the other's.
-crate::isolate_static! {
-    static HINT_PREV: Hint = Hint {
-    s: core::ptr::null(),
-    len: 0,
-    count: usize::MAX,
-    scalar: 0,
-    offset: 0,
-};
-}
-const HINT_MIN: usize = 24;
-
-/// The hint to use for the string at `ptr`: [`HINT`] itself when it names the string; otherwise the
-/// two entries swap, or the current one moves aside, so [`HINT`] is free to describe `ptr`.
-///
-/// # Safety
-/// Hints are only touched through these functions, on the isolate's thread.
-#[inline]
-unsafe fn hint_for(ptr: *const u8) -> *mut Hint {
-    // SAFETY: per the contract.
-    unsafe {
-        let h = HINT.ptr();
-        if core::ptr::eq((*h).s, ptr) {
-            return h;
-        }
-        let prev = HINT_PREV.ptr();
-        if core::ptr::eq((*prev).s, ptr) {
-            core::ptr::swap(h, prev);
-        } else {
-            *prev = *h;
-        }
-        h
-    }
-}
-
-/// Forgets the figures of the string at `ptr`, whose bytes are about to change or be freed.
-///
-/// # Safety
-/// As [`hint_for`].
-#[inline]
-unsafe fn forget_hint(ptr: *const u8) {
-    // SAFETY: per the contract.
-    unsafe {
-        for h in [HINT.ptr(), HINT_PREV.ptr()] {
-            if core::ptr::eq((*h).s, ptr) {
-                (*h).s = core::ptr::null();
-            }
-        }
-    }
-}
-
-/// Byte offset of scalar `n` (0..=count) with a remembered position for sequential access.
+/// Byte offset of scalar `n` (0..=count).
 unsafe fn scalar_offset(s: *const StrVal, n: usize) -> usize {
-    // SAFETY: `s` live; the hint is cleared when its string dies.
-    unsafe {
-        let b = bytes(s);
-        if b.len() < HINT_MIN || !(*s).owns() {
-            return utf8::offset_of(b, n);
-        }
-        let h = hint_for((*s).ptr_word);
-        let (mut sc, mut off) = (0usize, 0usize);
-        if std::ptr::eq((*h).s, (*s).ptr_word) && (*h).scalar.abs_diff(n) < n {
-            sc = (*h).scalar;
-            off = (*h).offset;
-        }
-        while sc < n && off < b.len() {
-            off += utf8::decode(&b[off..]).1;
-            sc += 1;
-        }
-        while sc > n {
-            off -= utf8::decode_last(&b[..off]).1;
-            sc -= 1;
-        }
-        if !core::ptr::eq((*h).s, (*s).ptr_word) || (*h).len != b.len() {
-            (*h).count = usize::MAX;
-        }
-        (*h).s = (*s).ptr_word;
-        (*h).len = b.len();
-        (*h).scalar = sc;
-        (*h).offset = off;
-        off
-    }
+    // SAFETY: `s` live.
+    unsafe { utf8::offset_of(bytes(s), n) }
 }
 
 /// Substring by scalar range (callers validated `0 <= a <= b <= count`).
@@ -724,7 +614,8 @@ pub unsafe extern "C-unwind" fn msrt_string_append(
         if la + lb > MAX_BYTES {
             fault::fault(b"string: limit exceeded");
         }
-        forget_hint(sa.ptr_word);
+        // Only a flagged `a` stays flagged: scanning an unflagged one on every append is quadratic.
+        let ascii = sa.flagged_ascii() && is_ascii(&*b);
         // Room left in the block is used as is; otherwise the string moves to a block with
         // slack, so a run of appends reallocates a logarithmic number of times.
         let need = la + lb + 1;
@@ -735,7 +626,8 @@ pub unsafe extern "C-unwind" fn msrt_string_append(
         };
         core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), p.add(la), lb);
         *p.add(la + lb) = 0;
-        StrVal::owned(p, la + lb).write_to(out)
+        let r = StrVal::owned(p, la + lb);
+        (if ascii { r.with_ascii() } else { r }).write_to(out)
     }
 }
 
@@ -756,7 +648,11 @@ unsafe fn msrt_string_concat_val(a: *const StrVal, b: *const StrVal) -> StrVal {
         let s = alloc_str(la + lb);
         core::ptr::copy_nonoverlapping(bytes(a).as_ptr(), s.ptr_word, la);
         core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), s.ptr_word.add(la), lb);
-        s
+        if is_ascii(&*a) && is_ascii(&*b) {
+            s.with_ascii()
+        } else {
+            s
+        }
     }
 }
 
@@ -1971,7 +1867,8 @@ pub unsafe extern "C-unwind" fn msrt_string_split_iter(
             }
             left = max as usize;
         }
-        let it = obj::new_obj(core::mem::size_of::<SplitIter>(), split_iter_drop) as *mut SplitIter;
+        let it = obj::new_obj(core::mem::size_of::<SplitIter>(), None, split_iter_drop)
+            as *mut SplitIter;
         // The loop keeps both strings alive until it ends, so the iterator only borrows them.
         (*it).src = (*s).alias();
         (*it).sep = (*sep).alias();
@@ -2084,7 +1981,6 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
         }
         if st.cap >= piece.len() && !st.cur.ptr_word.is_null() && st.cur.owns() {
             // The loop only borrows the piece: rewrite it in place.
-            forget_hint(st.cur.ptr_word);
             st.cur.tagged = piece.len();
             copy_short(piece.as_ptr(), st.cur.ptr_word, piece.len());
             *st.cur.ptr_word.add(piece.len()) = 0;
@@ -2647,6 +2543,27 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn ascii_flag_follows_construction() {
+        let _g = crate::testutil::lock();
+        unsafe {
+            let long = "abcdefghijklmnopqrstuvwxyz";
+            let a = from_bytes(long.as_bytes());
+            assert!(a.flagged_ascii());
+            let u = from_bytes("abcdefghijklmnopqrstuvwxyé".as_bytes());
+            assert!(!u.flagged_ascii());
+            assert_eq!(scalar_count(&u), 26);
+            // concatenation keeps the flag only when both sides are ASCII
+            let c = msrt_string_concat_val(&a, &a);
+            assert!(c.flagged_ascii() && scalar_count(&c) == 52);
+            let d = msrt_string_concat_val(&a, &u);
+            assert!(!d.flagged_ascii() && scalar_count(&d) == 52);
+            // equal strings may differ in the flag
+            let lit = StrVal::literal(long.as_ptr().cast_mut(), long.len());
+            assert!(equal(&a, &lit));
         }
     }
 

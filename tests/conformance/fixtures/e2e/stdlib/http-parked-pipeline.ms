@@ -5,29 +5,33 @@
 // the handler's response is sent, not after a timeout.
 import headers, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
 import stdout from "@std/io/io.ms"
-import connect, serve from "@std/net/net.ms"
+import Connection, connect, serve from "@std/net/net.ms"
 import monotonic_time from "@std/os/process.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
+fn send(var conn: Connection, text: String) Unit!:
+    try conn.output.write(text.to_bytes())
+    return conn.output.flush().wait()
+
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
-        sleep(nanoseconds(200000000))
+        let _ = sleep(nanoseconds(200000000)).wait()
     return HttpResponse(200, headers(), "ok {request.path}\n".to_bytes())
 
 fn exchange(address: String) String:
-    if var conn = connect(address):
-        let _first = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
+    if var conn = connect(address).wait():
+        let _first = send(var conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
         // The slow handler is parked by now; the second request arrives while it waits.
-        sleep(nanoseconds(50000000))
+        let _ = sleep(nanoseconds(50000000)).wait()
 
-        let _second = conn.write(
-            "GET /fast HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
+        let _second = send(
+            var conn, "GET /fast HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
         )
         var text = ""
 
         while true:
-            if let chunk = conn.read(timeout: nanoseconds(5000000000)):
+            if let chunk = conn.input.read().wait(timeout: nanoseconds(5000000000)):
                 if let data = chunk:
                     text = "{text}{data.decode_utf8().get("?")}"
                     continue

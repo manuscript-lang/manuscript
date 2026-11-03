@@ -1,6 +1,6 @@
 //! Lowering of one MIR function (or glue function) to Cranelift IR.
 
-use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, SHARED_VALUE, leaf_type, mem_type};
+use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, leaf_type, mem_type};
 use crate::layout::{AltRepr, Leaf, mem_layout};
 use cranelift_codegen::ir::condcodes::{CondCode, FloatCC, IntCC};
 use cranelift_codegen::ir::{
@@ -13,7 +13,7 @@ use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_SLOT};
 use ms_rt_abi::{
-    ASCII_CHAR_STRIDE, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
+    ASCII_CHAR_STRIDE, STR_ASCII, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
 };
 use std::collections::HashMap;
@@ -308,8 +308,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         if os == target_lexicon::OperatingSystem::Windows {
             return self.rt_call("msrt_isolate_hdr", &[])[0];
         }
+        // The block is the last 16 bytes of the stack's slot.
         let sp = self.b.ins().get_stack_pointer(types::I64);
-        self.b.ins().band_imm_s(sp, !(STACK_SLOT - 1))
+        let base = self.b.ins().band_imm_s(sp, !(STACK_SLOT - 1));
+        self.b.ins().iadd_imm_s(base, STACK_SLOT - 16)
     }
 
     fn add_imm(&mut self, p: Value, off: i64) -> Value {
@@ -395,15 +397,9 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     // ---- ownership -------------------------------------------------------
 
-    /// `rc -= 1; if rc == 0 { drop_slow }` on a non-null object pointer.
-    fn release(&mut self, p: Value) {
-        let rc = self.b.ins().load(types::I64, flags(), p, 0);
-        let n = self.b.ins().iadd_imm_s(rc, -1);
-        self.b.ins().store(flags(), n, p, 0);
-        let zero = self.b.ins().icmp_imm_s(IntCC::Equal, n, 0);
-        self.if_then(zero, |s| {
-            s.rt_call("msrt_drop_slow", &[p]);
-        });
+    /// Drops the object `p` through its header's drop entry (the runtime ignores null).
+    fn drop_obj(&mut self, p: Value) {
+        self.rt_call("msrt_obj_drop", &[p]);
     }
 
     /// With `MS_COUNT_STR` set at compile time, reports each executed string drop (`kind` 0) or copy
@@ -417,10 +413,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.rt_call("msrt_str_count", &[kind, cap]);
     }
 
-    fn retain(&mut self, p: Value) {
-        let rc = self.b.ins().load(types::I64, flags(), p, 0);
-        let n = self.b.ins().iadd_imm_s(rc, 1);
-        self.b.ins().store(flags(), n, p, 0);
+    /// An independent copy of the object `p` through its header's clone entry (null stays null;
+    /// a value with one owner faults).
+    fn clone_obj(&mut self, p: Value) -> Value {
+        self.rt_call("msrt_obj_clone", &[p])[0]
     }
 
     /// Whether dropping a value of `ty` is a call to glue (rather than inline or nothing).
@@ -441,14 +437,12 @@ impl<'a, 'm> Lower<'a, 'm> {
                     s.rt_call("msrt_str_free", &[vs[0]]);
                 });
             }
-            TyKind::Fn(..) => self.release(vs[0]),
-            TyKind::Obj(n, _) if !n.is_map_or_set() => self.release(vs[0]),
+            TyKind::Fn(..) => self.drop_obj(vs[0]),
+            TyKind::Obj(n, _) if !n.is_map_or_set() => self.drop_obj(vs[0]),
             TyKind::Opt(inner)
                 if self.g.lay.opt_is_nullable(*inner) && !self.g.lay.opt_is_boxed(*inner) =>
             {
-                let p = vs[0];
-                let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, p, 0);
-                self.if_then(nn, |s| s.release(p));
+                self.drop_obj(vs[0]);
             }
             _ => {
                 let id = self.g.glue(Glue::Drop, ty);
@@ -489,14 +483,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.switch_to_block(join);
                 self.b.block_params(join).to_vec()
             }
-            TyKind::Fn(..) => {
-                self.retain(vs[0]);
-                vs.to_vec()
-            }
-            TyKind::Obj(n, _) if !n.is_map_or_set() => {
-                self.retain(vs[0]);
-                vs.to_vec()
-            }
+            TyKind::Fn(..) => vec![self.clone_obj(vs[0])],
+            TyKind::Obj(n, _) if !n.is_map_or_set() => vec![self.clone_obj(vs[0])],
             _ => {
                 let id = self.g.glue(Glue::Copy, ty);
                 self.call_id(id, vs)
@@ -534,10 +522,11 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let lay = mem_layout(&leaves);
                     off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
                     if let Some((_, close)) = closers.iter().find(|(i, _)| *i as usize == k) {
-                        // A resource the environment owns is closed before it is released.
-                        let vs = self.load_leaves(obj, off, &leaves);
+                        // A resource the environment owns is closed in place before it is
+                        // released: the closer takes the capture's address.
+                        let at = self.b.ins().iadd_imm_s(obj, off);
                         let fid = self.g.funcs[close.index()];
-                        self.call_id(fid, &vs);
+                        self.call_id(fid, &[at]);
                     }
                     if self.g.m.needs_drop(c) {
                         let vs = self.load_leaves(obj, off, &leaves);
@@ -547,6 +536,38 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
                 self.free(obj);
                 self.b.ins().return_(&[]);
+            }
+            Glue::ClosureClone(f) => {
+                // A new closure object with the same header and code over copies of the captures.
+                let src = params[0];
+                let caps = match &self.g.m.funcs[f as usize].kind {
+                    ms_mir::ir::FuncKind::Closure { captures } => captures.clone(),
+                    _ => Vec::new(),
+                };
+                let mut layouts = Vec::new();
+                let mut off = CLOSURE_CAPTURES as i64;
+                for cty in &caps {
+                    let leaves = self.g.lay.leaves(*cty);
+                    let lay = mem_layout(&leaves);
+                    off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
+                    layouts.push((off, leaves));
+                    off += lay.size as i64;
+                }
+                let total = (off + 7) / 8 * 8;
+                let mut copies = Vec::new();
+                for (cty, (off, leaves)) in caps.iter().zip(&layouts) {
+                    let vs = self.load_leaves(src, *off, leaves);
+                    copies.push(self.copy_value(*cty, &vs));
+                }
+                let obj = self.alloc(total);
+                for at in [0, 8, CLOSURE_CODE] {
+                    let word = self.b.ins().load(types::I64, flags(), src, at);
+                    self.b.ins().store(flags(), word, obj, at);
+                }
+                for ((off, leaves), vs) in layouts.iter().zip(&copies) {
+                    self.store_leaves(obj, *off, leaves, vs);
+                }
+                self.b.ins().return_(&[obj]);
             }
             Glue::BlockDrop => {
                 // Interface payload block holding a `ty` value.
@@ -567,37 +588,6 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let blk = self.alloc(mem_layout(&leaves).size as i64);
                 self.store_leaves(blk, 0, &leaves, &copied);
                 self.b.ins().return_(&[blk]);
-            }
-            Glue::SharedDrop => {
-                let obj = params[0];
-                if let Some(&(_, close)) = self.g.m.shared_close.iter().find(|(t, _)| *t == ty) {
-                    // The last holder is gone: close the payload before it is dropped.
-                    let at = self.add_imm(obj, SHARED_VALUE);
-                    let id = self.g.funcs[close.index()];
-                    self.call_id(id, &[at]);
-                }
-                if self.g.m.needs_drop(ty) {
-                    let leaves = self.g.lay.leaves(ty);
-                    let vs = self.load_leaves(obj, SHARED_VALUE, &leaves);
-                    if self.is_shared_box(ty) {
-                        // `take` moved the payload out and left its bits behind; the new owner
-                        // drops it, so a box dropped while taken must not drop it again.
-                        let (_, at, _) = *self.fields_of(ty).last().expect("taken flag");
-                        let off = self.g.lay.mem(ty).offsets.get(at).copied().unwrap_or(0);
-                        let taken = self.b.ins().load(
-                            types::I8,
-                            flags(),
-                            obj,
-                            (SHARED_VALUE + off as i64) as i32,
-                        );
-                        let held = self.b.ins().icmp_imm_s(IntCC::Equal, taken, 0);
-                        self.if_then(held, |s| s.drop_value(ty, &vs));
-                    } else {
-                        self.drop_value(ty, &vs);
-                    }
-                }
-                self.free(obj);
-                self.b.ins().return_(&[]);
             }
             Glue::SlotDrop => {
                 if self.g.m.needs_drop(ty) {
@@ -680,36 +670,49 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.g.lay.alt_fields(a)
     }
 
+    /// Drops the elements of a list or byte string from index `from` (0 when `None`; the
+    /// elements before it were moved out) and frees its buffer.
+    fn drop_list_from(&mut self, ty: Ty, ptr: Value, len: Value, from: Option<Value>) {
+        let m = self.g.m;
+        let elem = m.list_elem(ty);
+        if let Some(e) = elem.filter(|e| m.needs_drop(*e)) {
+            let leaves = self.g.lay.leaves(e);
+            let size = mem_layout(&leaves).size as i64;
+            let head = self.b.create_block();
+            let body = self.b.create_block();
+            let done = self.b.create_block();
+            self.b.append_block_param(head, types::I64);
+            let start = match from {
+                Some(from) => {
+                    let zero = self.iconst(0);
+                    let neg = self.b.ins().icmp_imm_s(IntCC::SignedLessThan, from, 0);
+                    self.b.ins().select(neg, zero, from)
+                }
+                None => self.iconst(0),
+            };
+            self.b.ins().jump(head, &[BlockArg::Value(start)]);
+            self.b.switch_to_block(head);
+            let i = self.b.block_params(head)[0];
+            let more = self.b.ins().icmp(IntCC::SignedLessThan, i, len);
+            self.b.ins().brif(more, body, &[], done, &[]);
+            self.b.switch_to_block(body);
+            let off = self.b.ins().imul_imm_s(i, size);
+            let at = self.b.ins().iadd(ptr, off);
+            let ev = self.load_leaves(at, 0, &leaves);
+            self.drop_value(e, &ev);
+            let next = self.b.ins().iadd_imm_s(i, 1);
+            self.b.ins().jump(head, &[BlockArg::Value(next)]);
+            self.b.switch_to_block(done);
+        }
+        let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, ptr, 0);
+        self.if_then(nn, |s| s.free(ptr));
+    }
+
     fn glue_drop(&mut self, ty: Ty, vs: &[Value]) {
         let m = self.g.m;
         match m.types.kind(ty).clone() {
             TyKind::Bytes | TyKind::List(_) => {
-                let elem = m.list_elem(ty);
-                let (ptr, len) = (vs[0], vs[1]);
-                if let Some(e) = elem.filter(|e| m.needs_drop(*e)) {
-                    let leaves = self.g.lay.leaves(e);
-                    let size = mem_layout(&leaves).size as i64;
-                    let head = self.b.create_block();
-                    let body = self.b.create_block();
-                    let done = self.b.create_block();
-                    self.b.append_block_param(head, types::I64);
-                    let zero = self.iconst(0);
-                    self.b.ins().jump(head, &[BlockArg::Value(zero)]);
-                    self.b.switch_to_block(head);
-                    let i = self.b.block_params(head)[0];
-                    let more = self.b.ins().icmp(IntCC::SignedLessThan, i, len);
-                    self.b.ins().brif(more, body, &[], done, &[]);
-                    self.b.switch_to_block(body);
-                    let off = self.b.ins().imul_imm_s(i, size);
-                    let at = self.b.ins().iadd(ptr, off);
-                    let ev = self.load_leaves(at, 0, &leaves);
-                    self.drop_value(e, &ev);
-                    let next = self.b.ins().iadd_imm_s(i, 1);
-                    self.b.ins().jump(head, &[BlockArg::Value(next)]);
-                    self.b.switch_to_block(done);
-                }
-                let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, ptr, 0);
-                self.if_then(nn, |s| s.free(ptr));
+                self.drop_list_from(ty, vs[0], vs[1], None);
             }
             TyKind::Obj(..) => {
                 // Map and Set are owned `MapVal`s the runtime knows how to drop.
@@ -1119,11 +1122,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Opt(_) if self.g.lay.is_str_like(ty) => self.copy_value(ty, vs),
             TyKind::Opt(inner) => {
                 if self.g.lay.opt_is_nullable(inner) {
-                    // Retain through copy_value on a non-null pointer.
-                    let p = vs[0];
-                    let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, p, 0);
-                    self.if_then(nn, |s| s.retain(p));
-                    vs.to_vec()
+                    // A `none` is null, which the clone entry call passes through.
+                    vec![self.clone_obj(vs[0])]
                 } else {
                     // Copy the payload only when present; otherwise the zero payload is returned.
                     let present = vs[0];
@@ -1324,13 +1324,6 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.vals[v.index()] = self.load_leaves(h.addr, 0, &leaves);
             }
         }
-    }
-
-    /// Whether `ty` is the `{value, taken}` record of a user-facing `Shared[T]` (a builder's
-    /// `{items, sealed}` keeps owning its items once sealed).
-    fn is_shared_box(&self, ty: Ty) -> bool {
-        let m = self.g.m;
-        matches!(m.types.kind(ty), TyKind::Rec(r) if m.records[r.index()].shared_box)
     }
 
     fn is_wide(&self, ty: Ty) -> bool {
@@ -2206,6 +2199,21 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::ListFill
             | Op::ListPush
             | Op::ListDropLast => self.lower_list(f, inst),
+            Op::ListTake => {
+                let lt = f.ty(inst.args[0]);
+                let (_, leaves, size) = self.elem_info(lt);
+                let l = self.a(inst, 0);
+                let i = self.a(inst, 1)[0];
+                let at = self.elem_addr(l[0], l[1], i, size, Op::ListGetU);
+                self.load_leaves(at, 0, &leaves)
+            }
+            Op::ListRelease => {
+                let lt = f.ty(inst.args[0]);
+                let l = self.a(inst, 0);
+                let from = self.a(inst, 1)[0];
+                self.drop_list_from(lt, l[0], l[1], Some(from));
+                vec![]
+            }
             Op::OptSome | Op::OptView => {
                 let ty = res_ty.expect("opt.some result");
                 let v = self.a(inst, 0);
@@ -2341,33 +2349,6 @@ impl<'a, 'm> Lower<'a, 'm> {
                     None => self.spill(&s, &[Leaf::I64; 2]),
                 };
                 vec![self.rt_call("msrt_string_length", &[at])[0]]
-            }
-            Op::SharedNew => {
-                let t = self.g.m.types.kind(res_ty.expect("result")).clone();
-                let TyKind::Obj(_, args) = t else {
-                    unreachable!()
-                };
-                let leaves = self.g.lay.leaves(args[0]);
-                let size = SHARED_VALUE + mem_layout(&leaves).size as i64;
-                let obj = self.alloc(size);
-                let one = self.iconst(1);
-                self.b.ins().store(flags(), one, obj, 0);
-                let drop = self.g.glue(Glue::SharedDrop, args[0]);
-                let dr = self.fref(drop);
-                let da = self.b.ins().func_addr(types::I64, dr);
-                self.b.ins().store(flags(), da, obj, 8);
-                let v = self.a(inst, 0);
-                self.store_leaves(obj, SHARED_VALUE, &leaves, &v);
-                vec![obj]
-            }
-            Op::SharedGet => {
-                let obj = self.a(inst, 0)[0];
-                let leaves = self.g.lay.leaves(res_ty.expect("result"));
-                self.load_leaves(obj, SHARED_VALUE, &leaves)
-            }
-            Op::SharedAddr => {
-                let obj = self.a(inst, 0)[0];
-                vec![self.add_imm(obj, SHARED_VALUE)]
             }
             Op::ClosureNew => self.closure_new(inst),
             Op::ClosureCap => {
@@ -2945,8 +2926,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         let total = (off + 7) / 8 * 8;
         let obj = self.alloc(total);
-        let one = self.iconst(1);
-        self.b.ins().store(flags(), one, obj, 0);
+        let clone = self.g.glue(Glue::ClosureClone(c.0), Ty::UNIT);
+        let cr = self.fref(clone);
+        let ca = self.b.ins().func_addr(types::I64, cr);
+        self.b.ins().store(flags(), ca, obj, 0);
         let drop = self.g.glue(Glue::ClosureDrop(c.0), Ty::UNIT);
         let dr = self.fref(drop);
         let da = self.b.ins().func_addr(types::I64, dr);
@@ -3099,7 +3082,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         );
         // `x = a.tagged ^ b.tagged`. With `0 < x < 1 << 62` both have one kind and the low bits
         // differ: different lengths, or for inline strings different bytes. Either way unequal.
+        // The ASCII flag may differ between equal strings, so it is masked out.
         let x = self.b.ins().bxor(a[1], b[1]);
+        let x = self.b.ins().band_imm_s(x, !(STR_ASCII as i64));
         let below = self.b.ins().iadd_imm_s(x, -1);
         let differ =
             self.b

@@ -17,7 +17,7 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
     try stdout().write("Hello, Manuscript!\n")
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     if run().is_error():
@@ -43,7 +43,7 @@ import stdout from "@std/io/io.ms"
 fn run() Result[Unit, Error]:
     for name in arguments():
         try stdout().write("Hello, {name}!\n")
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     if run().is_error():
@@ -72,7 +72,7 @@ type Greeting:
 fn greet(options: Greeting) Result[Int, Error]:
     for round in 0..options.times:
         try stdout().write("Hello, {options.name}!\n")
-    try stdout().flush()
+    try stdout().flush().wait()
     return ok(0)
 
 export fn main() Int:
@@ -103,11 +103,11 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(Error("missing path", kind: ErrorCategory.InvalidInput))
-    let text = try read_file(path, max_bytes: 1048576)
+    let text = try read_file(path, max_bytes: 1048576).wait()
         | .decode_utf8().ok_or(Error("not UTF-8", kind: ErrorCategory.InvalidData))
         | try
     try stdout().write(text)
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     if run().is_error():
@@ -133,7 +133,7 @@ import read_file, write_file from "@std/os/fs.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(Error("missing path", kind: ErrorCategory.InvalidInput))
-    return write_file(path, "saved notes\n", replace: false)
+    return write_file(path, "saved notes\n", replace: false).wait()
 
 export fn main() Int:
     if run().is_error():
@@ -150,19 +150,22 @@ Use `replace: true` to overwrite. Relative paths use the working directory.
 
 ## Read standard input line by line
 
-Save as `lines.ms`. `lines` returns an iterator over the lines; declare it `var` to read `error()` after the loop.
+Save as `lines.ms`. `lines` wraps a byte stream as a stream of lines; `read().wait()` returns the next line, or `none` at end of input.
 
 <!-- manuscript-example: {"mode":"run","stdin":"line one\n\nlast line","stdout":"line one\n\nlast line\n","cases":[{"stdout":""}]} -->
 ```manuscript
-import stdin, stdout, lines from "@std/io/io.ms"
+import stdin, stdout from "@std/io/io.ms"
+import lines from "@std/io/streams.ms"
 
 fn run() Result[Unit, Error]:
-    var reader = lines(stdin(), max_bytes: 4096)
-    for line in reader:
-        try stdout().write("{line}\n")
-    if let failure = reader.error():
-        return error(failure)
-    return stdout().flush()
+    var input = lines(stdin())
+    while true:
+        let line = try input.read().wait()
+        if let text = line:
+            try stdout().write("{text}\n")
+        else:
+            break
+    return stdout().flush().wait()
 
 export fn main() Int:
     if run().is_error():
@@ -174,7 +177,7 @@ export fn main() Int:
 printf 'line one\n\nlast line' | ms run lines.ms
 ```
 
-An empty line is `""`, and the loop ends at end of input. Line endings are stripped, and the limit applies per line. A read failure or a line over the limit also ends the loop; `error()` is `none` after a clean end. For one line at a time on demand, `read_line` returns `Result[String?, Error]`.
+An empty line is `""`, and the loop ends at end of input. Line endings (`\n` or `\r\n`) are stripped, and a read failure is returned by `wait()`.
 
 ## Parse an integer
 
@@ -187,7 +190,7 @@ import stdout from "@std/io/io.ms"
 
 fn show(number: Int) Result[Unit, Error]:
     try stdout().write("{number}\n")
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     let number = arguments().get(0, default: "42").parse_int()
@@ -216,7 +219,7 @@ import stdout from "@std/io/io.ms"
 fn run() Result[Unit, Error]:
     let text = try parse[String](arguments().get(0, default: "\"hello\""))
     try stdout().write("{text}\n")
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     if run().is_error():
@@ -249,7 +252,7 @@ fn run() Result[Unit, Error]:
     let config = try parse[Config](text)
     let encoded = try stringify(config, strict: true)
     try stdout().write("{encoded}\n")
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     if run().is_error():
@@ -278,11 +281,11 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
     let url = try arguments().first().ok_or(Error("missing URL", kind: ErrorCategory.InvalidInput))
-    let response = try fetch(url, FetchOptions(max_response_bytes: 1048576))
+    let response = try fetch(url, FetchOptions(max_response_bytes: 1048576)).wait()
     try response.check_status()
     let text = try response.text()
     try stdout().write(text)
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     if run().is_error():

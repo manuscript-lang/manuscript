@@ -89,7 +89,7 @@ impl FileTree for HostTree:
     // Reads a file below the root from the host disk; failures are the host's `Error`.
     fn read(path: String, max_bytes: Int?) Bytes!:
         let inside = try clean(path)
-        return read_file(child_path(self.root, inside), max_bytes)
+        return read_file(child_path(self.root, inside), max_bytes).wait()
 
     // Lists a directory below the root from the host disk, sorted by name.
     fn children(path: String, max_entries: Int?) List[DirectoryEntry]!:

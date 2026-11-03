@@ -6,6 +6,7 @@ mod faults;
 mod flush;
 mod matches;
 mod patterns;
+mod promises;
 mod recursion;
 mod tasks;
 
@@ -33,7 +34,7 @@ impl Severity {
 /// One advisory finding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Finding {
-    /// Stable rule code, `MSL001`..`MSL114`.
+    /// Stable rule code, `MSL001`..`MSL115`.
     pub code: &'static str,
     /// The rule's severity.
     pub severity: Severity,
@@ -126,7 +127,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL111",
         family: "Loop that never waits or exits",
         severity: Severity::Error,
-        repair: "wait inside the loop (sleep or a channel call), or return once `cancelled()` is true",
+        repair: "wait inside the loop (sleep, or wait on a promise or a pipe), or return",
     },
     Rule {
         code: "MSL112",
@@ -139,6 +140,12 @@ pub const RULES: &[Rule] = &[
         family: "Resource closed at scope end with an uncalled flush",
         severity: Severity::Error,
         repair: "call `try name.flush()` (or `sync`, `commit`) before the scope ends, or close the resource explicitly",
+    },
+    Rule {
+        code: "MSL115",
+        family: "Promise dropped as soon as it is made",
+        severity: Severity::Warning,
+        repair: "bind the promise and call `wait()` on it, or pass it to `wait_all`; dropping a promise cancels it",
     },
 ];
 
@@ -201,6 +208,7 @@ pub fn lint_program(program: &Program) -> Vec<Finding> {
         patterns::lint(module, &mut findings);
         matches::lint(module, &mut findings);
         tasks::lint(module, &mut findings);
+        promises::lint(module, &mut findings);
     }
     findings.sort_by(|a, b| {
         (a.file.as_ref(), a.pos.offset, a.code).cmp(&(b.file.as_ref(), b.pos.offset, b.code))

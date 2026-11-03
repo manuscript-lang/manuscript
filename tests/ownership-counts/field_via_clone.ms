@@ -1,5 +1,5 @@
-// expect-debug: allocs=42 alloc_bytes=2604
-// expect-release: allocs=22 alloc_bytes=1614
+// expect-debug: allocs=42 alloc_bytes=2620
+// expect-release: allocs=22 alloc_bytes=1630
 // Reading a field through a function that returns an owned clone; field_via_ref.ms lends it. The floor for elision.
 type Box:
     name: String

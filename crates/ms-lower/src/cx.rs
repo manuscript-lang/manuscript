@@ -65,8 +65,6 @@ pub enum JobKind {
     Json(Rc<crate::json::JsonJob>),
     /// A forwarder of an interface operation to a runtime handle function.
     HandleMethod(Rc<crate::natiface::MethodJob>),
-    /// An operation of a compression stream.
-    Codec(Rc<crate::codecstream::CodecJob>),
 }
 
 /// An interface method value waiting to be lowered; the closure holds the interface value.
@@ -78,8 +76,33 @@ pub struct IfaceThunkJob {
     pub method: ct::MethodRef,
     /// Module the use is written in.
     pub hir: Rc<ModuleHir>,
-    /// The closure holds the address of the variable it changes.
+    /// The interface type of the receiver.
+    pub recv: MTy,
+    /// The closure holds the address of the receiver (a variable the method changes, or one a
+    /// value that stays local only reads) instead of the receiver.
     pub shared: bool,
+}
+
+/// How a method value's closure holds its receiver.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Held {
+    /// The receiver itself, owned by the closure.
+    Value,
+    /// The address of the variable the method changes, and the receiver's type.
+    Shared(MTy),
+    /// The address of the receiver a value that stays local only reads (`bound_borrows`), and
+    /// the receiver's type.
+    Borrowed(MTy),
+}
+
+impl Held {
+    /// The type of the closure's capture.
+    pub fn capture(self, recv: MTy) -> MTy {
+        match self {
+            Held::Value => recv,
+            Held::Shared(_) | Held::Borrowed(_) => MTy::PTR,
+        }
+    }
 }
 
 /// A function value whose omittable parameters are optionals, passed where plain ones are taken.
@@ -99,8 +122,8 @@ pub struct BoundNativeJob {
     pub method: ct::MethodRef,
     /// Module the use is written in.
     pub hir: Rc<ModuleHir>,
-    /// The receiver's type when the closure holds the address of the variable it changes.
-    pub shared: Option<MTy>,
+    /// How the closure holds the receiver.
+    pub held: Held,
     /// The module whose local implementations the method's key and element types use.
     pub scope: Name,
 }
@@ -213,7 +236,11 @@ pub struct Cx {
     /// The name expressions that move a closed resource binding, by binding: the scope-end close
     /// runs only on the paths that never reach one.
     pub close_moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
-    pub moved_payloads: Rc<std::collections::HashSet<usize>>,
+    /// Every move of a whole binding, by binding: the name expressions (or lambdas) that take
+    /// its value out of the local.
+    pub moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
+    /// The moved bindings some path keeps to the end of their scope: their local can be empty.
+    pub conditional_moves: Rc<std::collections::HashSet<usize>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves:
         Rc<HashMap<usize, HashMap<ms_syntax::ast::NodeId, Vec<ms_check::types::Name>>>>,
@@ -229,6 +256,9 @@ pub struct Cx {
     pub view_lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Wrappers of lent values built as `opt.view` / `alt.view`, by module file and node.
     pub view_wraps: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Method values that stay local and borrow their receiver's place: the closure holds the
+    /// receiver's address instead of a copy.
+    pub bound_borrows: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Name expressions moving an interface view out of the local holding it.
     pub view_moves: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Lending calls whose result the caller owns because an argument is a temporary: the
@@ -294,7 +324,8 @@ impl Cx {
             implicit_closes: program.implicit_closes.clone(),
             explicit_closes: program.explicit_closes.clone(),
             close_moves: program.close_moves.clone(),
-            moved_payloads: program.moved_payloads.clone(),
+            moves: program.moves.clone(),
+            conditional_moves: program.conditional_moves.clone(),
             resource_moves: program.resource_moves.clone(),
             borrowed_captures: program.borrowed_captures.clone(),
             consumes: program.consumes.clone(),
@@ -302,6 +333,7 @@ impl Cx {
             lenders: program.lenders.clone(),
             view_lenders: program.view_lenders.clone(),
             view_wraps: program.view_wraps.clone(),
+            bound_borrows: program.bound_borrows.clone(),
             view_moves: program.view_moves.clone(),
             owned_lends: program.owned_lends.clone(),
             lent_matches: program.lent_matches.clone(),
@@ -506,10 +538,6 @@ impl Cx {
         if t.is(Builtin::List) {
             let e = self.lower_ty(m, &t.args[0])?;
             return Ok(m.types.list(e));
-        }
-        if t.is(Builtin::Shared) {
-            let payload = self.lower_ty(m, &t.args[0])?;
-            return Ok(m.shared_handle(payload));
         }
         let native = match t.builtin {
             Some(Builtin::Map) => Some(Native::Map),

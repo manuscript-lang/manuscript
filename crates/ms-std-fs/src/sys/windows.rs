@@ -196,16 +196,6 @@ pub fn statfs(path: &CPath) -> Result<FsStat, Errno> {
     })
 }
 
-/// The handle of standard stream `which` (0 input, 1 output, 2 error).
-pub fn standard(which: i64) -> Fd {
-    let handle: RawHandle = match which {
-        0 => io::stdin().as_raw_handle(),
-        1 => io::stdout().as_raw_handle(),
-        _ => io::stderr().as_raw_handle(),
-    };
-    handle as Fd
-}
-
 /// Points standard stream `which` (0 input, 1 output, 2 error) at `NUL`; the handle stays open
 /// for the life of the process, as the standard handle it now is.
 pub fn redirect_standard_to_null(which: i64) -> io::Result<()> {
@@ -221,6 +211,16 @@ pub fn redirect_standard_to_null(which: i64) -> io::Result<()> {
         return Err(io::Error::last_os_error());
     }
     Ok(())
+}
+
+/// The handle of standard stream `which` (0 input, 1 output, 2 error).
+fn standard(which: i64) -> Fd {
+    let handle: RawHandle = match which {
+        0 => io::stdin().as_raw_handle(),
+        1 => io::stdout().as_raw_handle(),
+        _ => io::stderr().as_raw_handle(),
+    };
+    handle as Fd
 }
 
 fn is_standard(fd: Fd, which: i64) -> bool {

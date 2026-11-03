@@ -4,15 +4,9 @@ import (
     rate_limiter,
     CircuitBreaker,
     CircuitError,
-    Cache,
     map_concurrent,
-    Throttle,
-    Debounce,
-    SingleFlight
+    Throttle
 ) from "@std/concurrency/flow.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
-import TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_true, expect_error, expect_ok from "@std/test/test.ms"
 import milliseconds, sleep, monotonic from "@std/os/time.ms"
 
@@ -70,8 +64,8 @@ test "circuit opens after threshold and recovers after cooldown":
     let _second = try expect_error(breaker.call(boom))
     let third = try expect_error(breaker.call(fine))
     try expect_equal(third, CircuitError[String].Open)
-    sleep(milliseconds(30))
 
+    let _ = sleep(milliseconds(30)).wait()
     let value = try expect_ok(breaker.call(fine))
     try expect_equal(value, 1)
 
@@ -82,91 +76,14 @@ test "map_concurrent keeps order and respects the limit":
     let none_left = try expect_ok(map_concurrent(List[Int](), 3, fn n: n))
     try expect_equal(none_left.length(), 0)
 
-test "cache evicts the least recently used":
-    var cache = Cache[String, Int](capacity: 2)
-    cache.set("a", 1)
-    cache.set("b", 2)
-
-    let _touched = cache.get("a")
-    cache.set("c", 3)
-    try expect_equal(cache.get("a").get(0), 1)
-    try expect_equal(cache.get("b"), none)
-    try expect_equal(cache.get("c").get(0), 3)
-    try expect_equal(cache.length(), 2)
-
-test "cache drops expired entries":
-    var cache = Cache[String, Int](capacity: 4, ttl: milliseconds(10))
-    cache.set("a", 1)
-    try expect_equal(cache.get("a").get(0), 1)
-    sleep(milliseconds(20))
-    try expect_equal(cache.get("a"), none)
-
-test "cache get_or_set computes once":
-    var cache = Cache[String, Int](capacity: 4)
-    let one = cache.get_or_set("k", fn: 7)
-    let two = cache.get_or_set("k", fn: 8)
-    try expect_equal(one, 7)
-    try expect_equal(two, 7)
-
 test "throttle allows one action per interval":
     var spacing = Throttle(interval: milliseconds(20))
     try expect_true(spacing.allow())
     try expect_true(not spacing.allow())
-    sleep(milliseconds(30))
+
+    let _ = sleep(milliseconds(30)).wait()
     try expect_true(spacing.allow())
 
     let start = monotonic()
     spacing.wait()
     try expect_true(monotonic().difference(start).nanos >= milliseconds(10).nanos)
-
-test "debounce fires after the quiet time":
-    var search = Debounce(quiet: milliseconds(20))
-    try expect_true(not search.is_due())
-    search.trigger()
-    try expect_true(not search.is_due())
-
-    let start = monotonic()
-    search.wait_due()
-    try expect_true(monotonic().difference(start).nanos >= milliseconds(15).nanos)
-    try expect_true(not search.is_due())
-
-fn slow_square(
-    counter: Shared[Int],
-    flights: Shared[SingleFlight[Int, Int]],
-    n: Int
-) Int:
-    let value = flights.get().run(n, fn: compute(counter, n))
-    return value
-
-fn compute(counter: Shared[Int], n: Int) Int:
-    var count = lock(counter)
-    count.value += 1
-    count.close().get(none)
-    sleep(milliseconds(10))
-    return n * n
-
-fn caller(
-    counter: Shared[Int],
-    flights: Shared[SingleFlight[Int, Int]],
-    n: Int,
-    channel: TaskChannel[Unit, Unit]
-) Int:
-    return slow_square(counter, flights, n)
-
-test "single flight shares one computation among waiting calls":
-    let counter = share(0)
-    let flights = share(SingleFlight[Int, Int]())
-    var group = TaskGroup[Int]()
-
-    for index in 0..4:
-        let c = counter
-        let f = flights
-        group.spawn(fn ch: caller(c, f, 7, ch), none)
-
-    let results = try expect_ok(group.results())
-    try expect_equal(results, [49, 49, 49, 49])
-    try expect_equal(counter.get(), 1)
-
-    let other = flights.get().run(3, fn: compute(counter, 3))
-    try expect_equal(other, 9)
-    try expect_equal(counter.get(), 2)

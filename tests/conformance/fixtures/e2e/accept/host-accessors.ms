@@ -32,9 +32,9 @@ test "host accessors work in callbacks":
     try check()
 
 test "closing a standard stream leaves the process stream open":
-    stdin().close()
-    stdout().close()
-    stderr().close()
+    try stdin().close()
+    try stdout().close()
+    try stderr().close()
 
     match stdout().write(""):
         ok(_):

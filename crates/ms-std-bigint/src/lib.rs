@@ -1,6 +1,6 @@
 //! `@std/math/math.ms` natives. Symbols are `msstd_bigint_<name>`.
 //!
-//! A `BigInt` is an immutable refcounted [`Big`] handle; operations return fresh handles.
+//! A `BigInt` is an immutable [`Big`] handle with one owner; operations return fresh handles.
 //! Fallible calls return a `STATUS_*` code and write `out` only on success; `to_int` returns
 //! a presence flag (0 where the value does not fit an `Int`).
 #![no_std]
@@ -19,8 +19,9 @@ use num_bigint::{BigInt, Sign};
 use num_traits::{One, Signed, ToPrimitive, Zero};
 
 /// The value behind a `BigInt` runtime object.
+#[derive(Clone)]
 pub struct Big(BigInt);
-abi_handle!(Big);
+abi_handle!(Big, clone);
 
 /// A bare `STATUS_*` byte as an error.
 pub struct Code(u8);

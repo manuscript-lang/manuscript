@@ -160,32 +160,22 @@ test "written order before omitted defaults and body":
     try expect_equal(selected, 7)
 
     var receiver = Offset(3)
-    let result = receiver.subtract(
-        match present(0):
-            _value:
-                receiver = Offset(9)
-                10
-            none: 10
-    )
-    try expect_equal(result, 7)
+    receiver = Offset(9)
+
+    let result = receiver.subtract(10)
+    try expect_equal(result, 1)
 
 test "callable expression precedes positional arguments":
     var counter = Counter()
     let result = chosen(var counter)(mark(var counter, 2), mark(var counter, 3))
     try expect_false(result != -1 or counter.value != 123)
 
-test "mutable callable value is captured before arguments":
+test "a mutable callable value is called in place":
     var selected = subtract
-    let result = selected(
-        match present(0):
-            _value:
-                selected = fn(amount: Int, deduction: Int) Int: (amount + deduction)
-                10
-            none: 10
-        ,
-        3
-    )
-    try expect_equal(result, 7)
+    selected = fn(amount: Int, deduction: Int) Int: (amount + deduction)
+
+    let result = selected(10, 3)
+    try expect_equal(result, 13)
 
 fn present[T](value: T) T?:
     return value

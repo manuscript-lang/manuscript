@@ -1,0 +1,6 @@
+// Methods that predate the stream-shape rule, as `path Type.method`. Each is removed with the change that
+// moves its type onto a ReadStream or WriteStream; the list only shrinks.
+stdlib/collections/bitset.ms BitSet.next
+stdlib/log.ms Transport.write_bytes
+stdlib/net/http.ms HttpExchange.write_bytes
+stdlib/os/fs.ms FileHandle.write_bytes

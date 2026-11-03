@@ -196,3 +196,37 @@ The CPU-bound handler scales 2.3x on two cores (the shared-listener workers reac
 | Go (2 CPUs) | 99k-104k | not run | 42k-44k | 3.2-4.1 ms | 92k-97k |
 
 Two workers scale the CPU-bound `/top` row 2.3x and tiny requests 1.4x to 1.6x, and pass Go on every row on the same two CPUs, with a lower p99. Resident memory is 56 MB with one worker and 58 MB with two (this includes the `/io` payloads). Not measured: skewed load (a few long-lived connections) and more than two server CPUs, which need a larger machine than this VM.
+
+## 2026-11-03, `serve` on promises
+
+`serve(address, handler, HttpServerOptions(cores: n))`: the accept loop is a promise and each connection is a promise the runtime places on a scheduler thread (`main.ms` takes `[threads]` as `cores`). Compared on the same machine, back to back, with the code before this change (`04b3acec`, `serve_cores` with `n` workers). Shared 4-CPU Linux VM (+/-10% between runs), `MS_THREADS=n`, server on CPUs 0-1 and load on 2-3 (n = 1, 2) or both sharing all four (n = 4), 64 keep-alive connections, 4 s per row, two rounds (`/user/42` only for n = 1, 2). Commands: `taskset` as in `run.sh`, load generator `bench/perf/web/load`.
+
+| Threads | Row | Before | After |
+| ---: | --- | ---: | ---: |
+| 1 | `/health` req/s | 139k, 145k | 123k, 127k |
+| 1 | `/user/42` req/s | 124k, 131k | 122k, 123k |
+| 1 | `/top?n=10` req/s | 25.9k, 25.6k | 24.5k, 26.3k |
+| 2 | `/health` req/s | 217k, 213k | 210k, 226k |
+| 2 | `/user/42` req/s | 227k, 232k | 230k, 231k |
+| 2 | `/top?n=10` req/s | 58.6k, 56.9k | 57.7k, 58.4k |
+| 4 | `/health` req/s | 213k, 206k | 196k, 220k |
+| 4 | `/top?n=10` req/s | 92k, 93k | 89k, 89k |
+
+Two and four threads are at parity. One thread is about 10% slower on `/health` (the tiny-request row); CPU-bound rows are unchanged. Not yet explained: the keep-alive path is the same Rust code, and the extra costs per connection (a server object, a promise) do not repeat per request. The 2026-10-31 table above ran on another day and is not comparable row for row.
+
+## 2026-11-03, refcount removal
+
+Same server source on the pre-change integration head `d34af765` and the no-refcount head `d6052382`, 5 s rounds: `/health` 157.6k/155.3k against 168.0k/174.2k req/s, `/io` 1,577/1,455 against 1,570/1,504, resident memory after load 93.5 MB against 89.4 MB, 2.54 system calls per request on both. No change beyond noise; the full tables, including the older `632c42ba` run, are in [refcount-removal-2026-11-03.md](../refcount-removal-2026-11-03.md).
+
+## 2026-11-03, memory on the integration branch
+
+`MS_THREADS=2`, 64 keep-alive connections, 4 s rounds, servers on CPUs 0-1 and load on 2-3, compared against the code before the stream, promise and file changes (`e8caa9612`, `serve_cores`).
+
+| Row | Before (`e8caa9612`) | After (integration head) |
+| --- | ---: | ---: |
+| Resident memory after `/health`, `/user/42` and `/top` | 12 MB | 10 MB |
+| Resident memory after `/io` | 54 MB | 86 MB |
+| Resident memory, 10,000 idle connections | 59 MB | 205-284 MB |
+
+- `/io`: `write_file_bytes` and `read_file` return promises, so each of the 64 in-flight requests owns its own 1 MiB copy of the payload (and the 1 MiB read result) while it waits for a pool thread. The old blocking natives borrowed the payload and ran one job at a time. Moving the payload instead of cloning it only moves the copy to the caller (measured 111 to 129 MB), so the library keeps the clone. Capping queued file jobs would cut it; that belongs to the promise runtime.
+- Idle connections: each connection is a promise with its own task stack (two mappings, about 20 KB resident), where the old server kept connections in the reactor. A minimal `/health` server shows the same 205 MB at integration commit `a8ed3a5c0` and at the head, so the stream merges did not add it.

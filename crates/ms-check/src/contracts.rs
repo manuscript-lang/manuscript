@@ -808,6 +808,8 @@ impl Checker {
     fn clonable(&self, t: &Ty, state: &mut PropertyState) -> bool {
         match t.kind {
             Kind::Variable => return t.bounds().iter().any(implies_clonable),
+            // The payload of an interface value has a type the interface does not name; one over
+            // a native without a `clone` faults when copied (`ownership::Classifier::clonable`).
             Kind::Contract => return !t.is(Builtin::Closeable),
             Kind::Function | Kind::Primitive => return true,
             _ => {}
@@ -816,10 +818,13 @@ impl Checker {
             return false;
         }
         if t.kind == Kind::Native {
-            return t
-                .args
-                .iter()
-                .all(|a| self.property_in(a, Property::Clonable, state));
+            // A native owns storage the runtime cannot duplicate blindly: it is cloned only
+            // through the `clone` it declares (`List`, `Bytes`, `BigInt`), unless it is plain
+            // words (`impl Copy`). `ownership::Classifier::clonable` applies the same rule.
+            return (self.copy_native(t) || self.declares_clone(t))
+                && t.args
+                    .iter()
+                    .all(|a| self.property_in(a, Property::Clonable, state));
         }
         if t.def.is_some() {
             return fields(t)
@@ -829,26 +834,22 @@ impl Checker {
         true
     }
 
-    /// Whether `t` holds a `Shared` handle anywhere in its data. Copies of such a
-    /// value alias one payload, so a key stored in a Map or Set could change its
-    /// hash through another handle.
-    fn shares_state(&self, t: &Ty, seen: &mut Vec<String>) -> bool {
-        if t.is(Builtin::Shared) {
-            return true;
-        }
-        let key = type_key(t);
-        if seen.contains(&key) {
-            return false;
-        }
-        seen.push(key);
-        if t.args.iter().any(|a| self.shares_state(a, seen)) {
-            return true;
-        }
-        t.def.is_some()
-            && (fields(t).iter().any(|f| self.shares_state(&f.ty, seen))
-                || cases(t)
-                    .iter()
-                    .any(|c| c.fields.iter().any(|f| self.shares_state(&f.ty, seen))))
+    /// Whether the native `t` declares `impl Copy`: its values are plain words.
+    fn copy_native(&self, t: &Ty) -> bool {
+        self.p
+            .methods
+            .iter()
+            .any(|m| m.receiver.id == t.id && m.contract.as_ref().is_some_and(|c| c.is_std("Copy")))
+    }
+
+    /// Whether the native `t` declares an infallible `clone` of its own, as an operation of its
+    /// definition or as an implemented method.
+    fn declares_clone(&self, t: &Ty) -> bool {
+        native_declares_clone(t)
+            || self
+                .implemented_methods(t, n("clone"))
+                .iter()
+                .any(|m| m.ty.result_ty().id == t.id)
     }
 
     /// Whether `t` is, or holds, a `Closeable` value. Such a value is an identity to close once,
@@ -1099,10 +1100,7 @@ impl Checker {
             if unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
                 && self.bounds_satisfied(&m.variables, &s)
             {
-                if property == Property::Hashable
-                    && (self.shares_state(t, &mut Vec::new())
-                        || self.holds_resource(t, &mut Vec::new()))
-                {
+                if property == Property::Hashable && self.holds_resource(t, &mut Vec::new()) {
                     return false;
                 }
                 return property != Property::Hashable || self.property(t, Property::Equal, None);
@@ -1428,19 +1426,19 @@ impl Checker {
                 "{prefix}collections have no Hashable implementation, so use a record key or join the elements into a String"
             );
         }
-        if bound.is(Builtin::Hashable) && self.shares_state(t, &mut Vec::new()) {
-            return format!(
-                "{prefix}it holds a Shared handle, and a key changed through another handle stays filed under its old hash; key on a plain value such as an Int id instead"
-            );
-        }
         if bound.is(Builtin::Hashable) && self.holds_resource(t, &mut Vec::new()) {
             return format!(
                 "{prefix}it is or holds a Closeable resource, which is closed once by its owner and cannot be a set element or map key; key on a plain value such as an Int id instead"
             );
         }
         if bound.is(Builtin::Clonable) && t.kind != Kind::Variable {
+            let what = if self.holds_resource(t, &mut Vec::new()) {
+                "a Closeable resource, which has one owner and closes once"
+            } else {
+                "a native value without a `clone` of its own, which has one owner"
+            };
             return format!(
-                "{prefix}it is or holds a Closeable resource, which has one owner and closes once, so it cannot be copied; move it, or use it in place"
+                "{prefix}it is or holds {what}, so it cannot be copied; move it, or use it in place"
             );
         }
         if matches!(t.kind, Kind::Record | Kind::Alternative)

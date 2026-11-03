@@ -58,7 +58,7 @@ recorded here before it is committed.)_
   maps `InvalidInput`/`OutOfRange`/`InvalidData` to the numbers codes; `Closed` is never produced natively). Zones come from the bundled
   IANA data (`jiff-tzdb`), `Local` follows `TZ` then `/etc/localtime`. `ms_rt::glue` is the shared glue (read/build strings, faults, cancellation).
 - **v2 (value semantics).** The owner adopted value semantics (DESIGN.md decisions 1-2).
-  Only `Shared` boxes (internal today, used for builder handles; the source type `Shared[T]` is planned) and closures keep an `Obj` header and a count.
+  Only closures keep an `Obj` header and a count.
   `String` is a two-word owned `StrVal` (`{ptr, tagged}`) over immutable bytes (section 3).
   `List`, `Bytes`, `Map`, `Set`, `StringBuilder` are **owned header-less values**
   (`VecVal` = `{ptr, len, cap}`, `MapVal` = six words at v2, seven since v3) living in the owner's slot;

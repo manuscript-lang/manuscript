@@ -1,7 +1,7 @@
 // conform: tags=closures,control-flow,interfaces,match,modules,records,stdlib-cleanup,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 // conform: phase=test
 // conform: origin=tests/e2e/testdata/accept/standalone-try.ms
-import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
 import read_file, temporary, write_file from "@std/os/fs.ms"
 
@@ -15,7 +15,7 @@ type Failure:
 // Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for State:
     var fn close() Unit!:
-        let _written = write_file(self.marker, "closed", true)
+        let _written = write_file(self.marker, "closed", true).wait()
         return ok(unit)
 
 fn operation(var state: State, fail: Bool) Unit!Failure:
@@ -38,7 +38,7 @@ fn widened(var state: State) Int!:
     return ok(0)
 
 fn closed(marker: String) Bool:
-    return read_file(marker).is_ok()
+    return read_file(marker).wait().is_ok()
 
 test "standalone try evaluates once and continues on Unit success":
     let temporary = temporary("manuscript-try-") | try expect_ok

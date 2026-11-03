@@ -42,10 +42,10 @@ fn first_difference(expected: String, actual: String) String:
 export fn expect_golden(path: String, actual: String) Unit!:
     if updating():
         try create_directory(dirname(path), true)
-        try write_file(path, actual, true)
+        try write_file(path, actual, true).wait()
         return ok(unit)
 
-    let stored = read_file(path, none)
+    let stored = read_file(path, none).wait()
     if stored.is_error():
         return fail(
             "golden file {path} is missing or unreadable; run with MS_UPDATE_GOLDEN=1 to create it"
@@ -65,10 +65,10 @@ export fn expect_golden(path: String, actual: String) Unit!:
 export fn expect_golden_bytes(path: String, actual: Bytes) Unit!:
     if updating():
         try create_directory(dirname(path), true)
-        try write_file_bytes(path, actual, true)
+        try write_file_bytes(path, actual, true).wait()
         return ok(unit)
 
-    let stored = read_file(path, none)
+    let stored = read_file(path, none).wait()
     if stored.is_error():
         return fail(
             "golden file {path} is missing or unreadable; run with MS_UPDATE_GOLDEN=1 to create it"

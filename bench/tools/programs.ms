@@ -34,7 +34,7 @@ fn run(work: String, n: Int) Result[String, Error]:
         input.append("2026-03-01T00:00:00Z 10.1.2.3 GET /api/users/{i} 200\n")
 
     let lines = input.join("")
-    try write_file("{work}/lines.txt", lines, replace: true)
+    try write_file("{work}/lines.txt", lines, replace: true).wait()
     try build_go("{work}/go", "{work}/go/bench")
     try build_rust("{work}/rust/main.rs", "{work}/rust/bench", [])
     try build_rust(

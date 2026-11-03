@@ -40,7 +40,7 @@ An anonymous function may omit parameter types when context supplies them (argum
 - An omitted result type comes from context or the body: returns must share one exact type, fallthrough adds `Unit`, `Never` adds nothing.
 - Without context, callbacks need parameter annotations.
 - A generic function must be instantiated to be a value: `identity[Int]`, not bare `identity`.
-- A bound method value has the operation's function type with the receiver bound.
+- A bound method value has the operation's function type with the receiver bound. It borrows the receiver while it stays local, as a closure capturing it would, and takes the receiver when it is stored, returned or passed to a consuming parameter: `let find = re.find_all` keeps `re` readable, `holders.append(re.find_all)` moves `re` at its last use.
 - An anonymous function is its own boundary for `return`, `try`, `break`, and `continue`.
 
 <a id="snapshot-captures"></a>

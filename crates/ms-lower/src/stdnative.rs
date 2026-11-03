@@ -21,14 +21,6 @@ pub(crate) struct HandLowered {
     pub handle: Option<Handle>,
 }
 
-const fn plain(symbol: &'static str, identity: &'static str) -> HandLowered {
-    HandLowered {
-        symbol,
-        identity,
-        handle: None,
-    }
-}
-
 const fn handle(
     symbol: &'static str,
     identity: &'static str,
@@ -57,13 +49,6 @@ const HAND_LOWERED: &[HandLowered] = &[
     // The rules are the table: `path_win` forwards with the Windows flag set.
     handle("msstd_fs_posix", "fs/posix", "path", ""),
     handle("msstd_fs_win32", "fs/win32", "path_win", ""),
-    plain("msstd_io_copy", "io/copy"),
-    handle("msstd_io_files", "io/files", "io", ""),
-    plain("msstd_io_read_all", "io/read_all"),
-    plain("msstd_io_read_line", "io/read_line"),
-    plain("msstd_io_stderr", "io/stderr"),
-    handle("msstd_io_stdin", "io/stdin", "io", "msstd_io_standard"),
-    plain("msstd_io_stdout", "io/stdout"),
     handle("msstd_process_commands", "process/commands", "process", ""),
 ];
 

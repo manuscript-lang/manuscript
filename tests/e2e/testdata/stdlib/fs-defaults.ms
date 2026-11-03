@@ -1,4 +1,4 @@
-import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
+import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
 import (
     copy,
     CopyOptions,
@@ -14,7 +14,7 @@ import (
 import Bytes from "@std/bytes.ms"
 
 fn generic_write(path: String, data: String) Unit!:
-    return write_file(path, data)
+    return write_file(path, data).wait()
 
 fn generic_copy(source: String, destination: String) Unit!:
     return copy(source, destination)
@@ -36,7 +36,7 @@ fn rejected(result: Unit!) Unit!:
     return ok(unit)
 
 fn text(path: String) String!:
-    return ok((read_file(path) | try expect_ok).decode_utf8().get())
+    return ok((read_file(path).wait() | try expect_ok).decode_utf8().get())
 
 fn argument(var log: List[String], mark: String, path: String) String:
     log.append(mark)
@@ -49,28 +49,28 @@ fn data_argument(var log: List[String]) Bytes:
 test "filesystem writes default to exclusive creation through aliases and bounds":
     let temporary = temporary("manuscript-default-write-") | try expect_ok
     let path = "{temporary.path()}/file"
-    write_file(path, "first") | try expect_ok
+    write_file(path, "first").wait() | try expect_ok
 
     let write = write_file
     let alias = write_file
-    (try rejected(alias(path, "second")))
-    (try rejected(write(path, "second", replace: false)))
+    (try rejected(alias(path, "second").wait()))
+    (try rejected(write(path, "second", replace: false).wait()))
     (try rejected(generic_write(path, "second")))
     (try text(path)) | try expect_equal("first")
-    (alias(path, "second", replace: true) | try expect_ok)
+    (alias(path, "second", replace: true).wait() | try expect_ok)
     (try text(path)) | try expect_equal("second")
     (generic_write("{temporary.path()}/generic", "generic") | try expect_ok)
-    (try rejected(write_file("", "invalid")))
+    (try rejected(write_file("", "invalid").wait()))
 
 test "filesystem file copies default to no replacement and retain byte limits":
     let temporary = temporary("manuscript-default-copy-") | try expect_ok
     let source = "{temporary.path()}/source"
     let destination = "{temporary.path()}/destination"
-    write_file(source, "source") | try expect_ok
+    write_file(source, "source").wait() | try expect_ok
 
     let alias = copy
     (alias(source, destination) | try expect_ok)
-    write_file(source, "changed", true) | try expect_ok
+    write_file(source, "changed", true).wait() | try expect_ok
     (try rejected(copy(source, destination)))
     (try rejected(copy(source, destination, CopyOptions(replace: false))))
     (try rejected(generic_copy(source, destination)))
@@ -100,11 +100,11 @@ test "filesystem tree copies default to no replacement with distinct budgets":
     let destination = "{temporary.path()}/destination"
     let tree = CopyOptions(recursive: true)
     create_directory(source) | try expect_ok
-    write_file("{source}/data", "abc") | try expect_ok
+    write_file("{source}/data", "abc").wait() | try expect_ok
 
     let alias = copy
     (alias(source, destination, tree) | try expect_ok)
-    write_file("{source}/data", "xyz", true) | try expect_ok
+    write_file("{source}/data", "xyz", true).wait() | try expect_ok
     (try rejected(copy(source, destination, tree)))
     (
         try rejected(
@@ -167,7 +167,7 @@ test "filesystem removal defaults to retaining nonempty trees":
     let directory = "{temporary.path()}/nonempty"
     let path = "{directory}/keep"
     create_directory(directory) | try expect_ok
-    write_file(path, "keep") | try expect_ok
+    write_file(path, "keep").wait() | try expect_ok
 
     let eraser = remove
     let alias = remove
@@ -180,7 +180,7 @@ test "filesystem removal defaults to retaining nonempty trees":
     let empty = "{temporary.path()}/empty"
     create_directory(empty) | try expect_ok
     (alias(empty) | try expect_ok)
-    write_file("{temporary.path()}/file", "file") | try expect_ok
+    write_file("{temporary.path()}/file", "file").wait() | try expect_ok
     (generic_remove("{temporary.path()}/file") | try expect_ok)
     (try rejected(eraser("")))
 
@@ -190,7 +190,7 @@ test "filesystem default preparation retains written argument order":
     write_file_bytes(
         data: data_argument(var log),
         path: argument(var log, "path", "{temporary.path()}/ordered")
-    ) | try expect_ok
+    ).wait() | try expect_ok
     log | try expect_equal(["data", "path"])
 
     let copy = copy

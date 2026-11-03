@@ -655,8 +655,9 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
     // bundled sources shift constantly, so the pin is a count per module, not line numbers.
     let expected = std::collections::BTreeMap::from([
         ("collections/collections.ms", 7),
+        ("concurrency/promise.ms", 1),
+        ("io/io.ms", 9),
         ("internal/random.ms", 1),
-        ("io/io.ms", 6),
         ("main.ms", 1),
         ("math/decimal.ms", 1),
         ("math/math.ms", 3),

@@ -1,17 +1,21 @@
 import Bytes from "@std/bytes.ms"
-import ReadStream from "@std/io/io.ms"
 import (
     HttpHeaders,
     HttpMethod,
     HttpResponseMetadata,
     NativeHttpClient,
-    NativeHttpServer,
+    HttpExchange,
+    HttpServerOptions,
+    NativeServing,
+    NativeWorker,
     NativeResponseBody,
-    ResponseBody
+    RawResponse
 ) from "@std/net/http.ms"
 import Duration from "@std/os/time.ms"
 
 export extern fn msstd_http_client_close(handle: NativeHttpClient) Unit
+
+export extern fn msstd_http_client_share(handle: NativeHttpClient) NativeHttpClient
 
 export extern fn msstd_http_client_request(
     handle: NativeHttpClient,
@@ -21,7 +25,7 @@ export extern fn msstd_http_client_request(
     body: String,
     max_response_bytes: Int?,
     timeout: Duration?
-) ResponseBody!
+) RawResponse!
 
 export extern fn msstd_http_client_request_bytes(
     handle: NativeHttpClient,
@@ -31,25 +35,30 @@ export extern fn msstd_http_client_request_bytes(
     body: Bytes,
     max_response_bytes: Int?,
     timeout: Duration?
-) ResponseBody!
+) RawResponse!
 
-export extern fn msstd_http_client_request_stream(
-    handle: NativeHttpClient,
-    method: HttpMethod,
-    url: String,
-    headers: HttpHeaders,
-    body: ReadStream,
-    max_response_bytes: Int?,
-    timeout: Duration?
-) ResponseBody!
+export extern fn msstd_http_serving_new(
+    address: String,
+    options: HttpServerOptions,
+    handler: fn(HttpExchange) Unit!
+) NativeServing!
 
-export extern fn msstd_http_server_address(handle: NativeHttpServer) String
+// Another handle on the same serving, for a connection promise to own.
+export extern fn msstd_http_serving_share(serving: NativeServing) NativeServing
 
-export extern fn msstd_http_server_adopt(handle: NativeHttpServer, connection: Int) Unit
+export extern fn msstd_http_serving_address(serving: NativeServing) String
 
-export extern fn msstd_http_server_close(handle: NativeHttpServer) Unit
+export extern fn msstd_http_serving_accept(serving: NativeServing) Int!
 
-export extern fn msstd_http_server_wait(handle: NativeHttpServer) Unit!
+// A worker engine on the calling thread; it adopts connections and serves them from the poller.
+export extern fn msstd_http_serving_worker(serving: NativeServing) NativeWorker!
+
+export extern fn msstd_http_worker_adopt(worker: NativeWorker, connection: Int) Unit
+
+// Drains the worker's connections and ends it.
+export extern fn msstd_http_worker_close(worker: NativeWorker) Unit
+
+export extern fn msstd_http_serving_release(serving: NativeServing) Unit
 
 export extern fn msstd_http_body_close(handle: NativeResponseBody) Unit
 
@@ -82,3 +91,8 @@ export extern fn msstd_http_headers_remove(value: HttpHeaders, name: String) Boo
 export extern fn msstd_http_headers_clone(value: HttpHeaders) HttpHeaders
 
 export extern fn msstd_http_headers_new() HttpHeaders
+
+// Limits the scheduler threads the runtime starts to `n` (at least 1).
+export extern fn msrt_runtime_set_threads(n: Int) Unit
+
+export extern fn msrt_runtime_limit() Int

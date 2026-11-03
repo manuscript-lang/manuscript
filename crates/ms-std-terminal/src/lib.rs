@@ -26,7 +26,17 @@ use ms_rt::glue::poll_cancel;
 use ms_rt_abi::StrVal;
 use ms_rt_abi::{STATUS_NOT_TERMINAL, STATUS_OK, STATUS_UNSUPPORTED};
 
-abi_handle!(raw::Raw);
+/// A raw terminal handle. The event stream and the terminal's controls hold one each.
+#[repr(transparent)]
+pub struct RawH(pub alloc::rc::Rc<raw::Raw>);
+abi_handle!(RawH);
+
+impl core::ops::Deref for RawH {
+    type Target = raw::Raw;
+    fn deref(&self) -> &raw::Raw {
+        &self.0
+    }
+}
 
 #[cfg(unix)]
 mod imp {
@@ -164,47 +174,54 @@ native! {
 
     fn msstd_terminal_raw_mode(
         alternate_screen: bool,
-        out: Out<Object<raw::Raw>>;
+        out: Out<Object<RawH>>;
         err: ErrOut
     ) -> Result<(), StatusCode> {
-        out.write(Object(imp::open_raw(alternate_screen).map_err(|f| err.fail(f))?));
+        out.write(Object(RawH(alloc::rc::Rc::new(
+            imp::open_raw(alternate_screen).map_err(|f| err.fail(f))?,
+        ))));
         Ok(())
     }
 
-    fn msstd_terminal_raw_terminal_close(h: ObjRef<raw::Raw>) -> () {
+    fn msstd_terminal_raw_terminal_close(h: ObjRef<RawH>) -> () {
         h.close();
     }
 
-    fn msstd_terminal_raw_terminal_size_status(h: ObjRef<raw::Raw>) -> u8 {
+    /// Another handle on the same terminal, for the event stream.
+    fn msstd_terminal_raw_terminal_share(h: ObjRef<RawH>) -> Object<RawH> {
+        Object(RawH(h.0.0.clone()))
+    }
+
+    fn msstd_terminal_raw_terminal_size_status(h: ObjRef<RawH>) -> u8 {
         poll_cancel();
         h.size().err().unwrap_or(STATUS_OK)
     }
 
-    fn msstd_terminal_raw_terminal_size_columns(h: ObjRef<raw::Raw>) -> i64 {
+    fn msstd_terminal_raw_terminal_size_columns(h: ObjRef<RawH>) -> i64 {
         h.size().map_or(0, |s| s.0)
     }
 
-    fn msstd_terminal_raw_terminal_size_rows(h: ObjRef<raw::Raw>) -> i64 {
+    fn msstd_terminal_raw_terminal_size_rows(h: ObjRef<RawH>) -> i64 {
         h.size().map_or(0, |s| s.1)
     }
 
-    fn msstd_terminal_raw_terminal_move_cursor(h: ObjRef<raw::Raw>, row: i64, column: i64; err: ErrOut) -> Result<(), StatusCode> {
+    fn msstd_terminal_raw_terminal_move_cursor(h: ObjRef<RawH>, row: i64, column: i64; err: ErrOut) -> Result<(), StatusCode> {
         poll_cancel();
         h.move_cursor(row, column).map_err(|f| err.fail(f))
     }
 
-    fn msstd_terminal_raw_terminal_show_cursor(h: ObjRef<raw::Raw>, visible: bool; err: ErrOut) -> Result<(), StatusCode> {
+    fn msstd_terminal_raw_terminal_show_cursor(h: ObjRef<RawH>, visible: bool; err: ErrOut) -> Result<(), StatusCode> {
         poll_cancel();
         h.show_cursor(visible).map_err(|f| err.fail(f))
     }
 
-    fn msstd_terminal_raw_terminal_erase(h: ObjRef<raw::Raw>, region: i64; err: ErrOut) -> Result<(), StatusCode> {
+    fn msstd_terminal_raw_terminal_erase(h: ObjRef<RawH>, region: i64; err: ErrOut) -> Result<(), StatusCode> {
         poll_cancel();
         h.erase(region).map_err(|f| err.fail(f))
     }
 
     fn msstd_terminal_raw_terminal_next_event(
-        h: ObjRef<raw::Raw>,
+        h: ObjRef<RawH>,
         has_timeout: Has,
         timeout_ns: i64,
     ) -> u8 {

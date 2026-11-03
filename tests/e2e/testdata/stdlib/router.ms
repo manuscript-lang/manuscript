@@ -1,4 +1,4 @@
-import expect_equal, expect_true from "@std/test/test.ms"
+import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
 import (
     headers,
     json,
@@ -12,11 +12,10 @@ import (
     HttpClientOptions,
     HttpServerOptions
 ) from "@std/net/http.ms"
-import read_all from "@std/io/io.ms"
+import read_to_end from "./support/conn.ms"
 import http_client, serve from "@std/net/net.ms"
 import create, Transport from "@std/log.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import append_file, read_file, temporary from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 import (
     access_log,
@@ -25,7 +24,6 @@ import (
     Router,
     with_request_headers
 ) from "@std/net/router.ms"
-import body_stream from "@std/net/sse.ms"
 
 fn get(path: String) HttpRequest:
     return request(HttpMethod.Get, path)
@@ -115,12 +113,12 @@ test "a streaming GET route answers HEAD, dropping the body writes":
 
     let server = try serve("127.0.0.1:0", r.handler(), HttpServerOptions())
     let client = try http_client(HttpClientOptions())
-    let over_socket = try client.request(
+    var over_socket = try client.request(
         HttpMethod.Head, "http://{server.address()}/s", headers()
     )
-    try expect_equal(over_socket.metadata().status, 200)
+    try expect_equal(over_socket.metadata.status, 200)
 
-    let rest = try read_all(body_stream(over_socket))
+    let rest = try read_to_end(var over_socket.body)
     try expect_equal(rest.length(), 0)
 
 test "the first matching route wins":
@@ -204,7 +202,8 @@ test "a handler that sends nothing answers 204":
 
 fn whole_response(exchange: HttpExchange, params: RouteParams) Unit!:
     let body = if exchange.path() == "/empty": "" else: "done"
-    try reply(exchange, text(200, body))
+    let whole = text(200, body)
+    try exchange.send(whole.status, whole.headers, whole.body)
 
     for extra in ["extra", ""]:
         let written = exchange.write(extra)
@@ -302,18 +301,18 @@ test "the router serves over a socket":
     let handler = router().handler()
     let server = try serve("127.0.0.1:0", handler, HttpServerOptions())
     let client = try http_client(HttpClientOptions())
-    let response = try client.request(
+    var response = try client.request(
         HttpMethod.Get, "http://{server.address()}/users/9", headers()
     )
-    try expect_equal(response.metadata().status, 200)
+    try expect_equal(response.metadata.status, 200)
 
-    let body = try read_all(body_stream(response))
+    let body = try read_to_end(var response.body)
     try expect_equal(body.decode_utf8().get(""), "9|-")
 
     let missing = try client.request(
         HttpMethod.Delete, "http://{server.address()}/users", headers()
     )
-    try expect_equal(missing.metadata().status, 405)
+    try expect_equal(missing.metadata.status, 405)
 
 test "mount places a router under a prefix with its own middleware":
     var api = Router()
@@ -394,14 +393,11 @@ test "request_id keeps a usable id and makes one otherwise":
     try expect_equal(id_of(try r.call(get("/missing"))).length(), 36)
 
 type Sink:
-    lines: Shared[List[String]]
+    path: String
 
 impl Transport for Sink:
     fn write(data: String) Unit!:
-        var guard = lock(self.lines)
-        guard.value.append(data.clone())
-        guard.close().get(none)
-        return ok(unit)
+        return append_file(self.path, data)
 
     fn write_bytes(data: Bytes) Unit!:
         return self.write(data.decode_utf8().get(""))
@@ -409,23 +405,30 @@ impl Transport for Sink:
     fn flush() Unit!:
         return ok(unit)
 
+    fn duplicate() Transport!:
+        return ok(Sink(self.path.clone()))
+
     fn close() Unit:
         return unit
 
-fn logged(lines: Shared[List[String]]) String:
-    var guard = lock(lines)
-    return guard.value.join("")
+fn logged(path: String) String:
+    let read = read_file(path).wait()
+    if let bytes = read:
+        return bytes.decode_utf8().get("")
+
+    return ""
 
 test "access_log writes one record per request":
-    let lines = share(List[String]())
-    let logger = (create(Sink(lines: lines), timestamp: false)).get()
+    let dir = temporary("ms-router-log-") | try expect_ok
+    let lines = "{dir.path()}/lines"
+    let logger = (create(Sink(path: lines.clone()), timestamp: false)).get()
     var r = Router()
     r.use(access_log(logger))
     r.get("/a", say("hello")).get()
     try expect_equal((try r.call(get("/a"))).status, 200)
     try expect_equal((try r.call(get("/nope"))).status, 404)
 
-    let text_out = logged(lines)
+    let text_out = logged(lines.clone())
     try expect_true(text_out.contains("\"path\":\"/a\""))
     try expect_true(text_out.contains("\"status\":200"))
     try expect_true(text_out.contains("\"bytes\":5"))

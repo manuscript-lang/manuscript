@@ -1,7 +1,6 @@
-import expect_equal, expect_true from "@std/test/test.ms"
+import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
 import SearchResult from "@std/collections/collections.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import append_file, read_file, temporary, write_file from "@std/os/fs.ms"
 
 fn linear_search[T: Comparable](values: List[T], target: T) SearchResult:
     for i in 0..values.length():
@@ -29,12 +28,11 @@ impl Comparable for Key:
 
 type Counted:
     value: Int
-    comparisons: Shared[Int]
+    comparisons: String
 
 impl Comparable for Counted:
     fn compare(other: Counted) Int:
-        var guard = lock(self.comparisons)
-        guard.value += 1
+        let _ = append_file(self.comparisons, "x")
         return self.value.compare(other.value)
 
 test "binary search reports the first duplicate or insertion position":
@@ -106,10 +104,19 @@ test "binary search matches sorted Float ordering including NaN and signed zero"
     let narrow_nan: Float32 = nan.to_float32().get()
     try check_search(narrow, narrow_nan)
 
+fn count(path: String) Int:
+    let read = read_file(path).wait()
+    if let bytes = read:
+        return bytes.length()
+
+    return 0
+
 test "binary search uses logarithmically many comparisons":
+    let tmp = temporary("ms-bs-") | try expect_ok
+    let comparisons = "{tmp.path()}/count"
+
     for length in [0, 1, 2, 3, 4, 7, 8, 31, 32, 255, 1024, 65536]:
-        let comparisons = share(0)
-        let values = (0..length).map(fn i: Counted(i / 3 * 2, comparisons))
+        let values = (0..length).map(fn i: Counted(i / 3 * 2, comparisons.clone()))
         var budget = 1
         var remaining = length
 
@@ -118,13 +125,11 @@ test "binary search uses logarithmically many comparisons":
             remaining /= 2
 
         for target in [-1, 0, length / 3, length / 2, length]:
-            var before = lock(comparisons)
-            before.value = 0
-            try before.close()
+            try write_file(comparisons.clone(), "", true).wait()
 
-            let result = values.binary_search(Counted(target, comparisons))
-            var after = lock(comparisons)
-            try expect_true(after.value <= budget)
+            let result = values.binary_search(Counted(target, comparisons.clone()))
+            let used = count(comparisons.clone())
+            try expect_true(used <= budget)
             if length == 0:
-                try expect_equal(after.value, 0)
+                try expect_equal(used, 0)
             try expect_true(result.index >= 0 and result.index <= length)

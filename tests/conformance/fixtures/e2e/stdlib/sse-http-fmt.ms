@@ -9,7 +9,7 @@ import (
     HttpMethod,
     HttpServerOptions
 ) from "@std/net/http.ms"
-import body_stream, reader, next_event from "@std/net/sse.ms"
+import sse_events from "@std/net/sse.ms"
 import http_client, serve from "@std/net/net.ms"
 
 // Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
@@ -29,15 +29,16 @@ test "HTTP response bodies decode as SSE and close with the reader":
     let response = try client.request(
         HttpMethod.Get, "http://{server.address()}/", headers()
     )
-    let status = response.metadata().status
-    var events = try reader(body_stream(response))
-    let first = (try next_event(var events)).get()
-    let second = (try next_event(var events)).get()
+    let {metadata: head, body: payload} = response
+    let status = head.status
+    var events = sse_events(payload)
+    let first = (try events.read().wait()).get()
+    let second = (try events.read().wait()).get()
     if first.event != "greet" or first.data != "h\u{e9}!": return fail(
         "first event {first.data}"
     )
 
     try expect_false(second.event != "message" or second.data != "second")
-    try expect_false((try next_event(var events)).is_some())
+    try expect_false((try events.read().wait()).is_some())
     try events.close()
     try expect_equal(status, 200)

@@ -821,6 +821,7 @@ fn specialize_in(
             if ci == fi
                 || cyc.get(ci).copied().unwrap_or(false)
                 || !matches!(callee.kind, FuncKind::Normal)
+                || callee.keeps_scoped
                 || callee.inline == InlineHint::Never
                 || callee.inst_count() > SPECIALIZE_MAX_SIZE
                 || !callee
@@ -1014,7 +1015,6 @@ fn remove_dead(m: &mut Module) -> bool {
             .iter()
             .flat_map(|(_, eq, hash)| [eq.index(), hash.index()]),
     );
-    stack.extend(m.shared_close.iter().map(|(_, f)| f.index()));
     if stack.is_empty() {
         return false;
     }
@@ -1070,9 +1070,6 @@ fn remove_dead(m: &mut Module) -> bool {
     for (_, eq, hash) in &mut m.desc_glue {
         *eq = FuncId(map[eq.index()]);
         *hash = FuncId(map[hash.index()]);
-    }
-    for (_, f) in &mut m.shared_close {
-        *f = FuncId(map[f.index()]);
     }
     m.entry = m.entry.map(|e| FuncId(map[e.index()]));
     true

@@ -1,5 +1,5 @@
-// expect-debug: allocs=26 alloc_bytes=2574
-// expect-release: allocs=23 alloc_bytes=1934
+// expect-debug: allocs=26 alloc_bytes=2590
+// expect-release: allocs=23 alloc_bytes=1950
 // Reading list elements through `get` and cloning each; get_via_ref.ms lends them. The floor for elision.
 fn total(names: List[String]) Int:
     var n = 0

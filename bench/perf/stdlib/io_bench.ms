@@ -1,17 +1,18 @@
+import lines from "@std/io/streams.ms"
 import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
-import ReadStream, lines, read_line from "@std/io/io.ms"
+import Source, stream from "@std/io/io.ms"
 
-type MemoryStream:
+type MemorySource:
     data: Bytes
     offset: Int
 
-impl ReadStream for MemoryStream:
-    var fn read(max_bytes: Int?) Result[Bytes?, Error]:
+impl Source[Bytes] for MemorySource:
+    var fn next() Bytes?!:
         if self.offset == self.data.length():
             return ok(none)
 
-        var end = self.offset + max_bytes.get(65536)
+        var end = self.offset + 65536
         if end > self.data.length():
             end = self.data.length()
 
@@ -19,8 +20,9 @@ impl ReadStream for MemoryStream:
         self.offset = end
         return ok(chunk)
 
-    var fn close() Unit:
+    var fn close() Unit!:
         self.offset = self.data.length()
+        return ok(unit)
 
 fn source_text() String:
     var parts: List[String] = []
@@ -28,15 +30,15 @@ fn source_text() String:
         parts.append("line number {i} with some padding text\n")
     return parts.join("")
 
-bench "io.read_line_loop":
+bench "io.lines":
     let bytes = source_text().to_bytes()
 
     fn work() Result[Unit, Error]:
-        let input: ReadStream = MemoryStream(bytes.clone(), 0)
+        var reader = lines(stream[Bytes](MemorySource(bytes.clone(), 0)))
         var count = 0
 
         while true:
-            let next = read_line(input, none)
+            let next = reader.read().wait()
             if next.is_error():
                 return keep(-1)
             if next.get().is_none():
@@ -44,18 +46,6 @@ bench "io.read_line_loop":
 
             count += 1
 
-        return keep(count)
-
-    try measure(10, work)
-
-bench "io.lines":
-    let bytes = source_text().to_bytes()
-
-    fn work() Result[Unit, Error]:
-        var reader = lines(MemoryStream(bytes.clone(), 0))
-        var count = 0
-        for line in reader:
-            count += 1
         return keep(count)
 
     try measure(10, work)

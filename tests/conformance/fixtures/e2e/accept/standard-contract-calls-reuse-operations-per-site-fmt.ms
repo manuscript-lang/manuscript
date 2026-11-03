@@ -25,7 +25,7 @@ test "repeated calls through one site":
     var n = 0
 
     while n < 2:
-        try expect_true((out.write(data: "x").is_ok()))
+        try expect_true((out.write("x").is_ok()))
         n = n + 1
 
     try expect_true((describe(e: boom_error(Boom(code: 1))) == "boom 1"))

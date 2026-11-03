@@ -1,8 +1,6 @@
 import panic from "@std/core.ms"
 import Deque from "@std/collections/deque.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import Promise, promise, wait_all from "@std/concurrency/promise.ms"
 import Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/os/time.ms"
 import float from "@std/os/random.ms"
 
@@ -12,7 +10,7 @@ with `jitter` the wait is a random share of that, so many callers do not retry i
 
 ```manuscript
 let policy = RetryPolicy(attempts: 5, delay: milliseconds(50))
-let body = retry(policy, fn attempt: fetch(url))
+let body = retry(policy, fn attempt: fetch(url).wait())
 ```
 */
 export type RetryPolicy:
@@ -62,7 +60,7 @@ export fn retry[T, E](
             if let accepts = retryable:
                 if not accepts(result.err()):
                     return result
-            sleep(jittered(policy, attempt))
+            sleep(jittered(policy, attempt)).wait().get(unit)
             attempt += 1
         else:
             return result
@@ -82,7 +80,7 @@ A token bucket: holds up to `burst` tokens and gains one every `interval`. Each 
 var limiter = rate_limiter(10, burst: 20)
 for url in urls:
     limiter.acquire()
-    fetch(url)
+    fetch(url).wait()
 ```
 */
 export type RateLimiter:
@@ -134,7 +132,9 @@ impl RateLimiter:
     var fn acquire() Unit:
         while not self.try_acquire():
             let ready = self.stamp.shift(self.interval)
-            sleep(ready.difference(monotonic()).max(Duration(nanos: 1)))
+            sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(
+                unit
+            )
 
 // Why a circuit breaker call produced no result.
 export type CircuitError[E]:
@@ -190,178 +190,43 @@ impl CircuitBreaker:
             self.opened = monotonic()
         return error(CircuitError.Failed(result.err().clone()))
 
-/*
-Applies `work` to every item with at most `limit` running at once and returns the results in the order of `items`.
-Items start in order; a worker takes the next as soon as it finishes one. Returns the task error if a worker is cancelled or timed out.
-
-```manuscript
-let pages = map_concurrent(urls, 4, fn url: fetch(url))
-```
-*/
-export fn map_concurrent[T: Clonable, U: Clonable](
-    items: List[T],
-    limit: Int,
-    work: fn(T) U
-) List[U]!:
+// Applies `work` to every item with at most `limit` running at once and returns the results in the order of `items`.
+// The items are split into `limit` stripes, one promise each; the results are merged by index. The first error cancels the rest.
+//
+// ```manuscript
+// let pages = try map_concurrent(urls, 4, fn url: fetch(url).wait())
+// ```
+export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U]!:
     if limit < 1:
         panic("map_concurrent: limit must be at least 1, found {limit}")
 
-    let job = share(work)
-    let pending = share(items.clone())
-    let cursor = share(0)
-    let done: Shared[Map[Int, U]] = share(Map[Int, U]())
-    var group = TaskGroup[Unit]()
+    let stripes = limit.min(items.length())
+    var running: List[Promise[List[U]]] = []
+    for stripe in 0..stripes:
+        running.append(promise(fn: stripe_results(items, stripe, stripes, work)))
 
-    for round in 0..limit.min(items.length()):
-        let source = pending
-        let next = cursor
-        let out = done
-        let run = job
-        group.spawn(fn _channel: worker(source, next, out, run), none)
-
-    try group.wait()
-
+    var parts = try wait_all(running)
     var results: List[U] = []
-    let finished = done.get()
-    for index in 0..items.length():
-        if let value = finished.get(index):
-            results.append(value.clone())
+    var index = items.length()
+
+    while index > 0:
+        index -= 1
+        if let value = parts[index % stripes].pop():
+            results.append(value)
+
+    results.reverse()
     return ok(results)
 
-fn worker[T: Clonable, U: Clonable](
-    source: Shared[List[T]],
-    next: Shared[Int],
-    out: Shared[Map[Int, U]],
-    work: Shared[fn(T) U]
-) Unit:
-    while true:
-        var position = lock(next)
-        let index = position.value
-        if index >= source.get().length():
-            return unit
+// The results of `work` for the items at `first`, `first + step`, and so on.
+fn stripe_results[T, U](items: List[T], first: Int, step: Int, work: fn(T) U) List[U]!:
+    var out: List[U] = []
+    var index = first
 
-        position.value = index + 1
-        position.close().get(none)
+    while index < items.length():
+        out.append(work(items[index]))
+        index += step
 
-        let value = work.get()(source.get()[index])
-        var store = lock(out)
-        store.value[index] = value
-
-// What a `Cache` keeps for one key.
-export opaque type CacheEntry[V]:
-    // The stored value, returned to callers as a copy.
-    value: V
-    // When the value stops being served, or `none` for never.
-    expires: Instant?
-    // Internal state: the use counter that marks this entry's newest place in the recency order.
-    stamp: Int
-
-// A use of a key, as recorded in a cache's recency order.
-export opaque type Use[K]:
-    // The key that was used.
-    key: K
-    // The cache counter at that use.
-    stamp: Int
-
-/*
-A bounded key-value cache that evicts the least recently used entry when full, and drops entries older than `ttl`.
-`get` returns a copy of the value, so cached values are never shared with callers.
-
-```manuscript
-var cache = Cache[String, Int](capacity: 100, ttl: seconds(60))
-cache.set("a", 1)
-let hit = cache.get("a").get(0)
-```
-*/
-export type Cache[K: Hashable & Clonable, V: Clonable]:
-    // Most entries held; at least 1.
-    capacity: Int
-    // How long an entry is served after it was set; `none` keeps it until evicted.
-    ttl: Duration? = none
-    // Internal state: the entries by key.
-    entries: Map[K, CacheEntry[V]] = Map[K, CacheEntry[V]]()
-    // Internal state: keys in order of use, oldest first; entries made stale by a later use are skipped.
-    order: Deque[Use[K]] = Deque[Use[K]]()
-    // Internal state: the counter behind `CacheEntry.stamp`.
-    clock: Int = 0
-
-impl Cache[K, V]:
-    // The number of live entries, counting ones whose ttl passed but were not yet looked up.
-    fn length() Int:
-        return self.entries.length()
-
-    // Notes `key` as the most recently used.
-    var fn touch(key: K) Unit:
-        self.clock += 1
-        if var entry = self.entries[key]?:
-            entry.stamp = self.clock
-        self.order.push_back(Use(key: key.clone(), stamp: self.clock))
-        if self.order.length() > self.capacity * 4 + 16:
-            self.compact()
-
-    // Drops order records that a later use made stale.
-    var fn compact() Unit:
-        var fresh = Deque[Use[K]]()
-        while not self.order.is_empty():
-            if let record = self.order.pop_front():
-                if let entry = self.entries.get(record.key):
-                    if entry.stamp == record.stamp:
-                        fresh.push_back(record)
-        self.order = fresh
-
-    // Returns a copy of the value for `key` and marks it recently used; `none` when absent or older than the ttl.
-    var fn get(key: K) V?:
-        var live: V? = none
-        var stale = false
-
-        if let entry = self.entries.get(key):
-            if let limit = entry.expires:
-                stale = monotonic().compare(limit) >= 0
-            if not stale:
-                live = entry.value.clone()
-
-        if stale:
-            self.entries.remove(key)
-            return none
-
-        if live.is_some():
-            self.touch(key)
-        return live
-
-    // Stores `value` under `key`, replacing any entry, and evicts the least recently used entry if the cache is over capacity.
-    var fn set(key: K, value: V) Unit:
-        if self.capacity < 1:
-            panic("Cache: capacity must be at least 1, found {self.capacity}")
-
-        var expires: Instant? = none
-        if let life = self.ttl:
-            expires = monotonic().shift(life)
-        self.entries[key.clone()] = CacheEntry(value: value, expires: expires, stamp: 0)
-        self.touch(key)
-        while self.entries.length() > self.capacity:
-            self.evict_oldest()
-
-    // Removes the least recently used entry.
-    var fn evict_oldest() Unit:
-        while not self.order.is_empty():
-            if let record = self.order.pop_front():
-                if let entry = self.entries.get(record.key):
-                    if entry.stamp == record.stamp:
-                        self.entries.remove(record.key)
-                        return unit
-
-    // Removes `key`; nothing happens when it is absent.
-    var fn remove(key: K) Unit:
-        self.entries.remove(key)
-
-    // Returns the value for `key`, computing and storing it with `create` when missing or expired.
-    var fn get_or_set(key: K, create: fn() V) V:
-        if let hit = self.get(key.clone()):
-            return hit
-
-        let made = create()
-        self.set(key.clone(), made.clone())
-        return made
+    return ok(out)
 
 /*
 A minimum spacing between actions: at most one per `interval`, the first one at once. Use it to throttle a stream of events.
@@ -394,103 +259,6 @@ impl Throttle:
         if let previous = self.last:
             let remaining = self.interval.subtract(monotonic().difference(previous))
             if remaining.nanos > 0:
-                sleep(remaining)
+                sleep(remaining).wait().get(unit)
 
         self.last = monotonic()
-
-/*
-Collapses a burst of events into one: after the last `trigger` and a `quiet` time with no further one, the action is due.
-Share one `Debounce` between tasks with `Shared` and `lock`.
-
-```manuscript
-var search = Debounce(quiet: milliseconds(300))
-search.trigger()
-search.wait_due()
-run_search()
-```
-*/
-export type Debounce:
-    // How long without a `trigger` before the action is due.
-    quiet: Duration
-    // Internal state: when the latest trigger happened, or `none` when nothing is pending.
-    latest: Instant? = none
-
-impl Debounce:
-    // Records an event, restarting the quiet time.
-    var fn trigger() Unit:
-        self.latest = monotonic()
-
-    // Reports whether an event is pending and its quiet time has passed; if so, clears it. Never waits.
-    var fn is_due() Bool:
-        if let at = self.latest:
-            if monotonic().difference(at).compare(self.quiet) >= 0:
-                self.latest = none
-                return true
-
-        return false
-
-    // Waits until the pending event has been quiet for `quiet`, then clears it. Returns at once when nothing is pending.
-    // Triggers that arrive during the wait extend it. The wait ends when the task is cancelled.
-    var fn wait_due() Unit:
-        while self.latest.is_some():
-            if self.is_due():
-                return unit
-
-            if let at = self.latest:
-                sleep(
-                    self.quiet.subtract(
-                        monotonic().difference(at)
-                    ).max(Duration(nanos: 1))
-                )
-
-/*
-Runs one computation per key at a time: while a call for a key is in flight, other calls for it wait and share its result
-instead of repeating the work. Calls for different keys run independently. Share one value between tasks with `Shared`.
-
-```manuscript
-let flights = share(SingleFlight[String, String]())
-let page = flights.get().run("/home", fn: render("/home"))
-```
-*/
-export type SingleFlight[K: Hashable & Clonable, V: Clonable]:
-    // Internal state: the in-flight calls; a call holds the lock of its cell while it computes and the result lands in the cell.
-    flights: Shared[Map[K, Shared[V?]]] = share(Map[K, Shared[V?]]())
-
-impl SingleFlight[K, V]:
-    // Returns the result of `work` for `key`. If another task is already computing `key`, waits for it and returns a copy of its result;
-    // if that task was cancelled or faulted, this call computes it instead. The wait ends when the task is cancelled.
-    fn run(key: K, work: fn() V) V:
-        while true:
-            var table = lock(self.flights)
-
-            if let slot = table.value.get(key.clone()):
-                let cell = slot
-                table.close().get(none)
-
-                var waited = lock(cell)
-                if let result = waited.value:
-                    return result.clone()
-
-                waited.close().get(none)
-                forget(self.flights, key.clone())
-            else:
-                let cell: Shared[V?] = share(none)
-                let mine = cell
-                table.value[key.clone()] = cell
-
-                var guard = lock(mine)
-                table.close().get(none)
-
-                let result = work()
-                guard.value = result.clone()
-                forget(self.flights, key.clone())
-                return result
-
-// Drops `key` from the table of finished or abandoned calls. A newer call for the same key can only be removed here after an
-// abandoned one, which costs at most one repeated computation.
-fn forget[K: Hashable & Clonable, V: Clonable](
-    flights: Shared[Map[K, Shared[V?]]],
-    key: K
-) Unit:
-    var table = lock(flights)
-    table.value.remove(key)

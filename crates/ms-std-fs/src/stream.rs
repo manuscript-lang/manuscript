@@ -9,11 +9,9 @@ use alloc::borrow::Cow;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;
-use core::sync::atomic::{AtomicU8, Ordering};
-use ms_rt::glue::{poll_cancel, stash_stdin_pending, take_stdin_pending};
+use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{
-    STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED,
-    STATUS_NONE, STATUS_UNAVAILABLE,
+    STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE, STATUS_UNAVAILABLE,
 };
 
 /// The `Error` outcome of an operation: a status and, for `STATUS_FAILED`, its text.
@@ -72,9 +70,6 @@ pub struct Stream {
     pub(crate) file: bool,
     /// The path for error messages; standard streams borrow a constant.
     pub(crate) name: Cow<'static, [u8]>,
-    /// Read-ahead bytes, from `head` on; a line reader consumes them by advancing `head`.
-    pub(crate) pending: Vec<u8>,
-    head: usize,
 }
 
 const DEFAULT_CHUNK: i64 = 64 * 1024;
@@ -104,71 +99,7 @@ impl Stream {
             append: false,
             file: false,
             name,
-            pending: Vec::new(),
-            head: 0,
         }
-    }
-
-    /// Standard input (0), output (1) or error (2); the descriptor stays open.
-    pub fn standard(which: i64) -> Stream {
-        let name: &'static [u8] = match which {
-            0 => b"/dev/stdin",
-            1 => b"/dev/stdout",
-            _ => b"/dev/stderr",
-        };
-        // Programs call `stdin()` once per read: classify each standard descriptor once, not per handle.
-        static KIND: [AtomicU8; 3] = [const { AtomicU8::new(0) }; 3];
-        let fd = sys::standard(which);
-        let slot = &KIND[which.clamp(0, 2) as usize];
-        let pollable = match slot.load(Ordering::Relaxed) {
-            1 => false,
-            2 => true,
-            _ => {
-                let p = sys::fstat(fd)
-                    .map(|st| sys::is_pollable(&st))
-                    .unwrap_or(true);
-                slot.store(if p { 2 } else { 1 }, Ordering::Relaxed);
-                p
-            }
-        };
-        let mut stream = Stream::with_pollable(fd, false, Cow::Borrowed(name), pollable);
-        if which == 0 {
-            // A new standard-input handle picks up what the previous one read ahead.
-            (stream.pending, stream.head) = take_stdin_pending();
-        }
-        stream
-    }
-
-    /// Picks up what standard-input handles dropped since this one was made had read ahead.
-    pub fn take_stashed(&mut self) {
-        let (bytes, head) = take_stdin_pending();
-        if head >= bytes.len() {
-            return;
-        }
-        if self.available().is_empty() {
-            (self.pending, self.head) = (bytes, head);
-        } else {
-            self.pending.extend_from_slice(&bytes[head..]);
-        }
-    }
-
-    fn available(&self) -> &[u8] {
-        &self.pending[self.head..]
-    }
-
-    fn consume(&mut self, n: usize) {
-        self.head += n;
-        if self.head >= self.pending.len() {
-            self.pending.clear();
-            self.head = 0;
-        }
-    }
-
-    fn take_pending(&mut self) -> Vec<u8> {
-        let mut bytes = core::mem::take(&mut self.pending);
-        bytes.drain(..self.head);
-        self.head = 0;
-        bytes
     }
 
     /// Opens a file read-only; every failure is `Unavailable` except an embedded NUL.
@@ -210,6 +141,17 @@ impl Stream {
 
     pub fn is_closed(&self) -> bool {
         self.closed
+    }
+
+    /// Hands the descriptor of an owned stream to the caller and retires the stream without
+    /// closing it; -1 when the stream is closed or borrowed. An adopted Windows pipe moves with
+    /// its adoption, so the new owner reads and closes it through the poller.
+    pub fn take_fd(&mut self) -> i64 {
+        if self.closed || !self.owned {
+            return -1;
+        }
+        self.closed = true;
+        i64::from(self.fd as i32)
     }
 
     /// Releases the descriptor of an owned stream once; later calls do nothing.
@@ -315,12 +257,6 @@ impl Stream {
             Some(v) if v <= 0 => return Err(IoFail::status(STATUS_INVALID_INPUT)),
             Some(v) => v.min(DEFAULT_CHUNK),
         } as usize;
-        if !self.available().is_empty() {
-            let take = n.min(self.available().len());
-            let out = self.available()[..take].to_vec();
-            self.consume(take);
-            return Ok(Some(out));
-        }
         let mut data = alloc::vec![0u8; n];
         match self.read_fd(&mut data) {
             Ok(0) => Ok(None),
@@ -340,7 +276,6 @@ impl Stream {
         if self.no_write {
             return Err(IoFail::status(STATUS_INVALID_INPUT));
         }
-        self.rewind();
         if self.shares_output {
             msrt_io_flush();
         }
@@ -385,146 +320,12 @@ impl Stream {
         }
         Ok(())
     }
-
-    /// Returns read-ahead bytes to the file so position-based operations see them.
-    pub(crate) fn rewind(&mut self) {
-        if self.file && !self.available().is_empty() {
-            sys::rewind_by(self.fd, self.available().len());
-            self.pending.clear();
-            self.head = 0;
-        }
-    }
-
-    /// The buffered case of [`Stream::read_line`]: when a whole line shorter than `max` is
-    /// already read ahead, `make` builds the result straight from its bytes (no intermediate
-    /// copy). `None` means the line is not fully buffered, or the call needs `read_line`'s
-    /// error and refill paths.
-    pub fn read_buffered_line<R>(
-        &mut self,
-        max: Option<i64>,
-        make: impl FnOnce(&[u8]) -> R,
-    ) -> Option<IoRes<R>> {
-        if self.closed || self.no_read {
-            return None;
-        }
-        let max = match max {
-            None => i64::MAX,
-            Some(v) if v <= 0 => return None,
-            Some(v) => v,
-        } as u64;
-        poll_cancel();
-        let avail = self.available();
-        let i = find_newline(avail)?;
-        let mut line = &avail[..i];
-        if line_length(line) >= max {
-            return None;
-        }
-        if line.last() == Some(&b'\r') {
-            line = &line[..line.len() - 1];
-        }
-        let made = core::str::from_utf8(line).is_ok().then(|| make(line));
-        self.consume(i + 1);
-        Some(made.ok_or(IoFail::status(STATUS_INVALID_DATA)))
-    }
-
-    /// `ioReadLine`: one line without its ending, `None` at end of stream.
-    pub fn read_line(&mut self, max: Option<i64>) -> IoRes<Option<Vec<u8>>> {
-        if self.closed {
-            return Err(IoFail::status(STATUS_CLOSED));
-        }
-        poll_cancel();
-        if self.no_read {
-            return Err(IoFail::status(STATUS_INVALID_INPUT));
-        }
-        let max = match max {
-            None => i64::MAX,
-            Some(v) if v <= 0 => return Err(IoFail::status(STATUS_INVALID_INPUT)),
-            Some(v) => v,
-        } as u64;
-        if let Some(i) = find_newline(self.available())
-            && line_length(&self.available()[..i]) < max
-        {
-            let line = self.available()[..i].to_vec();
-            self.consume(i + 1);
-            return finish_line(line, true).map(Some);
-        }
-        let mut b: Vec<u8> = Vec::new();
-        let mut terminated = false;
-        loop {
-            let mut chunk = self.take_pending();
-            if chunk.is_empty() {
-                match self.read(Some(DEFAULT_CHUNK))? {
-                    None if b.is_empty() => return Ok(None),
-                    None => break,
-                    Some(c) => chunk = c,
-                }
-            }
-            if let Some(i) = find_newline(&chunk) {
-                // An over-long line is dropped; the lines after it stay readable.
-                if i + 1 < chunk.len() {
-                    self.pending = chunk[i + 1..].to_vec();
-                    self.head = 0;
-                }
-                b.extend_from_slice(&chunk[..i]);
-                if line_length(&b) >= max {
-                    return Err(IoFail::status(STATUS_LIMIT_EXCEEDED));
-                }
-                terminated = true;
-                break;
-            }
-            b.extend_from_slice(&chunk);
-            if b.len() as u64 > max {
-                return Err(IoFail::status(STATUS_LIMIT_EXCEEDED));
-            }
-        }
-        finish_line(b, terminated).map(Some)
-    }
 }
 
 impl Drop for Stream {
     fn drop(&mut self) {
-        if self.fd == sys::standard(0) && !self.owned && !self.available().is_empty() {
-            stash_stdin_pending(core::mem::take(&mut self.pending), self.head);
-            self.head = 0;
-        }
         let _ = self.close();
     }
-}
-
-/// Index of the first `\n`, scanning eight bytes per step.
-fn find_newline(buf: &[u8]) -> Option<usize> {
-    const LO: u64 = 0x0101_0101_0101_0101;
-    const HI: u64 = 0x8080_8080_8080_8080;
-    const NL: u64 = LO * b'\n' as u64;
-    let (chunks, rest) = buf.as_chunks::<8>();
-    let mut at = 0;
-    for c in chunks {
-        let x = u64::from_le_bytes(*c) ^ NL;
-        let zero = x.wrapping_sub(LO) & !x & HI;
-        if zero != 0 {
-            return Some(at + (zero.trailing_zeros() / 8) as usize);
-        }
-        at += 8;
-    }
-    rest.iter().position(|&c| c == b'\n').map(|i| at + i)
-}
-
-/// The length of `line` without a trailing carriage return, which belongs to the line ending.
-fn line_length(line: &[u8]) -> u64 {
-    match line.last() {
-        Some(b'\r') => line.len() as u64 - 1,
-        _ => line.len() as u64,
-    }
-}
-
-fn finish_line(mut line: Vec<u8>, terminated: bool) -> IoRes<Vec<u8>> {
-    if terminated && line.last() == Some(&b'\r') {
-        line.pop();
-    }
-    if core::str::from_utf8(&line).is_err() {
-        return Err(IoFail::status(STATUS_INVALID_DATA));
-    }
-    Ok(line)
 }
 
 pub const NONE: u8 = STATUS_NONE;
@@ -541,132 +342,6 @@ impl From<IoFail> for crate::err::Fail {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn pipe() -> (sys::Fd, sys::Fd) {
-        sys::pipe()
-    }
-
-    #[test]
-    fn many_lines_from_one_chunk_and_stashed_read_ahead() {
-        let (r, w) = pipe();
-        let mut input = Stream::new(r, true, b"pipe");
-        let mut output = Stream::new(w, true, b"pipe");
-        output.write(b"a\nbb\nccc\n").unwrap();
-        output.close().unwrap();
-        assert_eq!(input.read_line(None).unwrap().unwrap(), b"a");
-        assert_eq!(input.read(Some(2)).unwrap().unwrap(), b"bb");
-        stash_stdin_pending(core::mem::take(&mut input.pending), input.head);
-        let (bytes, head) = take_stdin_pending();
-        assert_eq!(&bytes[head..], b"\nccc\n");
-        assert!(take_stdin_pending().0.is_empty());
-    }
-
-    #[test]
-    fn lines_chunks_and_limits() {
-        let (r, w) = pipe();
-        let mut input = Stream::new(r, true, b"pipe");
-        let mut output = Stream::new(w, true, b"pipe");
-        output.write(b"one\r\ntwo\nlong line here\nlast").unwrap();
-        output.close().unwrap();
-        assert_eq!(input.read_line(None).unwrap().unwrap(), b"one");
-        assert_eq!(input.read_line(Some(5)).unwrap().unwrap(), b"two");
-        assert_eq!(
-            input.read_line(Some(5)).unwrap_err().status,
-            STATUS_LIMIT_EXCEEDED
-        );
-        assert_eq!(input.read_line(None).unwrap().unwrap(), b"last");
-        assert_eq!(input.read_line(None).unwrap(), None);
-        assert_eq!(
-            input.read(Some(0)).unwrap_err().status,
-            STATUS_INVALID_INPUT
-        );
-        input.close().unwrap();
-        assert_eq!(input.read(None).unwrap_err().status, STATUS_CLOSED);
-        assert_eq!(output.write(b"x").unwrap_err().status, STATUS_CLOSED);
-    }
-
-    #[test]
-    fn buffered_line_builds_in_place_and_defers_the_rest() {
-        let (r, w) = pipe();
-        let mut input = Stream::new(r, true, b"pipe");
-        let mut output = Stream::new(w, true, b"pipe");
-        output
-            .write(b"one\r\ntwo\nlong line here\n\xff\nlast")
-            .unwrap();
-        output.close().unwrap();
-        // Nothing is read ahead yet, so the buffered path declines.
-        assert!(input.read_buffered_line(None, <[u8]>::to_vec).is_none());
-        assert_eq!(input.read_line(None).unwrap().unwrap(), b"one");
-        let two = input.read_buffered_line(None, <[u8]>::to_vec);
-        assert_eq!(two.unwrap().unwrap(), b"two");
-        // A nonpositive limit and a line at or over the limit are left to read_line.
-        assert!(input.read_buffered_line(Some(0), <[u8]>::to_vec).is_none());
-        assert!(input.read_buffered_line(Some(14), <[u8]>::to_vec).is_none());
-        let long = input.read_buffered_line(Some(15), <[u8]>::to_vec);
-        assert_eq!(long.unwrap().unwrap(), b"long line here");
-        // Invalid text is an error and the line is consumed.
-        let bad = input.read_buffered_line(None, <[u8]>::to_vec);
-        assert_eq!(bad.unwrap().unwrap_err().status, STATUS_INVALID_DATA);
-        // The last line has no newline yet: not buffered.
-        assert!(input.read_buffered_line(None, <[u8]>::to_vec).is_none());
-        assert_eq!(input.read_line(None).unwrap().unwrap(), b"last");
-    }
-
-    #[test]
-    fn invalid_utf8_line_and_read_ahead() {
-        let (r, w) = pipe();
-        let mut input = Stream::new(r, true, b"pipe");
-        let mut output = Stream::new(w, true, b"pipe");
-        output.write(b"ab\n\xff\nrest").unwrap();
-        output.close().unwrap();
-        assert_eq!(input.read_line(None).unwrap().unwrap(), b"ab");
-        assert_eq!(
-            input.read_line(None).unwrap_err().status,
-            STATUS_INVALID_DATA
-        );
-        assert_eq!(input.read(Some(2)).unwrap().unwrap(), b"re");
-        assert_eq!(input.read(None).unwrap().unwrap(), b"st");
-        assert_eq!(input.read(None).unwrap(), None);
-    }
-
-    #[test]
-    fn a_closed_stream_rejects_lines_already_read_ahead() {
-        for trailing in [b"second\n".as_slice(), b"last"] {
-            let (r, w) = pipe();
-            let mut input = Stream::new(r, true, b"pipe");
-            let mut output = Stream::new(w, true, b"pipe");
-            output.write(b"first\n").unwrap();
-            output.write(trailing).unwrap();
-            output.close().unwrap();
-            assert_eq!(input.read_line(None).unwrap().unwrap(), b"first");
-            assert_eq!(input.available(), trailing);
-            input.close().unwrap();
-            assert_eq!(input.read_line(None).unwrap_err().status, STATUS_CLOSED);
-        }
-    }
-
-    #[test]
-    fn find_newline_matches_a_plain_scan() {
-        for len in 0..40usize {
-            for at in 0..=len {
-                let mut buf = vec![b'a'; len];
-                if at < len {
-                    buf[at] = b'\n';
-                    if at + 3 < len {
-                        buf[at + 3] = b'\n';
-                    }
-                    if at > 0 {
-                        buf[at - 1] = 0x0b; // one below '\n' must not match
-                    }
-                }
-                assert_eq!(
-                    find_newline(&buf),
-                    buf.iter().position(|&c| c == b'\n'),
-                    "{buf:?}"
-                );
-            }
-        }
-    }
 
     #[test]
     fn open_reports_unavailable() {
@@ -700,20 +375,5 @@ mod tests {
         assert_eq!(stream.write(b"x").unwrap_err().status, STATUS_CLOSED);
         assert_eq!(stream.flush().unwrap_err().status, STATUS_CLOSED);
         assert_eq!(stream.close(), Ok(()));
-    }
-
-    #[test]
-    fn an_unterminated_carriage_return_is_line_content() {
-        for text in [b"\r".as_slice(), b"tail\r", b"tail\r\r"] {
-            let (r, w) = pipe();
-            let mut input = Stream::new(r, true, b"pipe");
-            let mut output = Stream::new(w, true, b"pipe");
-            output.write(b"first\n").unwrap();
-            output.write(text).unwrap();
-            output.close().unwrap();
-            assert_eq!(input.read_line(None).unwrap().unwrap(), b"first");
-            assert_eq!(input.read_line(None).unwrap().unwrap(), text);
-            assert_eq!(input.read_line(None).unwrap(), None);
-        }
     }
 }

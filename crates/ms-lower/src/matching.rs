@@ -36,9 +36,27 @@ impl FnLower<'_> {
     pub fn hold(&mut self, e: &Expr) -> Result<Option<(ms_mir::builder::Var, bool)>, Error> {
         if let (ExprKind::Name(_), Resolution::Local(b)) = (&e.kind, self.hir.resolution(e))
             && !self.aliases.contains_key(&b.uid)
-            && self.locals.get(&b.uid).is_none_or(|l| l.slot.is_none())
         {
-            return Ok(Some((self.local(&b)?.var, false)));
+            if self.moves_at(b.uid, e.id) && !self.dead {
+                // The value leaves the binding here: the holder owns it.
+                let l = self.local(&b)?;
+                let v = self.take_local(b.uid, &l);
+                self.moved_closer(b.uid, e);
+                let var = self.b.declare_var(l.ty, Mode::Own);
+                self.b.def_var(var, v);
+                return Ok(Some((var, true)));
+            }
+            if let Some(l) = self.locals.get(&b.uid).copied() {
+                if l.slot.is_none() && !l.opt {
+                    return Ok(Some((l.var, false)));
+                }
+                // A binding that lives in memory, or that a move may have emptied, is read in
+                // place: the match borrows it and leaves it to its scope end.
+                let v = self.local_get(&l);
+                let var = self.b.declare_var(l.ty, Mode::Borrow);
+                self.b.def_var(var, v);
+                return Ok(Some((var, false)));
+            }
         }
         let x = self.expr(e)?;
         if self.dead {
@@ -68,24 +86,38 @@ impl FnLower<'_> {
             self.pop_scope();
             return Ok(self.dummy(MTy::UNIT));
         };
+        let sty = self.b.var_ty(sv);
+        let kind = self.b.m.types.kind(sty).clone();
+        // An owned scrutinee (`match make():`, or a local the match consumes) is the match's
+        // own: an arm that names its parts takes them out of it, and every other arm drops it
+        // (closing what it holds) when the arm ends; `return` and the like close and drop it
+        // on the way out. It lives in memory so that each path reads its own value.
+        let mut owned_uid = None;
         if hidden {
             let ty = self.b.var_ty(sv);
             let uid = self.adopt_hidden(sv, ty);
-            // An owned temporary scrutinee (`match make():`) is the match's own: its payloads
-            // are borrowed by the arms, so it closes when the match is left, `return` included.
-            let sty = ms_check::types::sub(&self.hir.ty(scrutinee), &self.subst);
-            let moved = arms.iter().any(|arm| {
-                self.hir
-                    .arm(arm)
-                    .bindings
-                    .iter()
-                    .flatten()
-                    .any(|b| self.cx.moved_payloads.contains(&b.uid))
-            });
-            if !moved && let Some(kind) = self.part_closer(&sty)? {
+            let cty = ms_check::types::sub(&self.hir.ty(scrutinee), &self.subst);
+            if let Some(kind) = self.part_closer(&cty)? {
                 self.hidden_closers.insert(uid, kind);
             }
+            let parts = matches!(kind, TyKind::Alt(_) | TyKind::Opt(_))
+                && arms
+                    .iter()
+                    .any(|arm| self.hir.arm(arm).bindings.iter().any(|b| b.is_some()));
+            if parts {
+                self.slotted.insert(uid);
+                self.slotify(uid);
+            }
+            owned_uid = Some(uid);
         }
+        // The value the arms are chosen by: a read of the scrutinee in place.
+        let s = match owned_uid {
+            Some(uid) => {
+                let l = self.locals[&uid];
+                self.local_get(&l)
+            }
+            None => self.b.use_var(sv),
+        };
         let rty = self.emty(e)?;
         // A reference on every arm is joined as one: the checker holds its origins.
         let lent = self.cx.lent_matches.contains(&(self.hir.data.file, e.id));
@@ -93,9 +125,6 @@ impl FnLower<'_> {
         let res = self
             .b
             .declare_var(rty, if owned { Mode::Own } else { Mode::Borrow });
-        let s = self.b.use_var(sv);
-        let sty = self.ty_of(s);
-        let kind = self.b.m.types.kind(sty).clone();
         let literal = self.b.m.types.is_int(sty) || sty == MTy::STR || sty == MTy::BOOL;
         let tag = match &kind {
             TyKind::Alt(_) => self.b.alt_tag(s),
@@ -191,11 +220,26 @@ impl FnLower<'_> {
             self.b.unreachable();
         }
         let mut live = false;
+        let closed_before = self.closed_on_path.clone();
         for ((arm, blk), case) in arms.iter().zip(&blocks).zip(&arm_cases) {
             self.enter(*blk);
             self.push_scope();
+            self.closed_on_path = closed_before.clone();
             let facts = self.hir.arm(arm);
+            let takes = owned_uid.is_some()
+                && !by_type
+                && case.is_some()
+                && facts.bindings.iter().any(|b| b.is_some());
+            if let (Some(uid), true, Some(k)) = (owned_uid, takes, case) {
+                let l = self.locals[&uid];
+                let cur = self.local_take(&l);
+                self.take_payloads(&kind, *k, cur, &facts.bindings)?;
+                self.closed_on_path.insert(uid);
+            }
             for (i, b) in facts.bindings.iter().enumerate() {
+                if takes {
+                    break;
+                }
                 let Some(b) = b else { continue };
                 if arm.chain && self.cx.exclusive(b.uid) {
                     // `c?.f()` changing the payload: `?N` names the payload of `c` itself.
@@ -256,21 +300,100 @@ impl FnLower<'_> {
                 }
             }
             self.flush_temps(mark);
+            if let (Some(uid), false, false) = (owned_uid, takes, self.dead) {
+                // This arm left the scrutinee whole: it goes with the arm.
+                let l = self.locals[&uid];
+                let mut v = self.local_take(&l);
+                if let Some(kind) = self.hidden_closers.get(&uid).cloned() {
+                    v = self.close_discarded_kind(&kind, v);
+                }
+                self.drop_value(v);
+                self.closed_on_path.insert(uid);
+            }
             self.pop_scope();
             if !self.dead {
                 self.b.br(join, &[]);
                 live = true;
             }
         }
+        self.closed_on_path = closed_before;
+        if let Some(uid) = owned_uid {
+            // Every path into the join consumed the scrutinee.
+            self.closed_on_path.insert(uid);
+        }
         self.b.seal_block(join);
         self.enter(join);
         self.dead = !live;
         self.pop_scope();
+        if let Some(uid) = owned_uid {
+            self.closed_on_path.remove(&uid);
+        }
         if !live {
             return Ok(self.dummy(rty));
         }
         let v = self.b.use_var(res);
         Ok(Val { v, own: owned })
+    }
+
+    /// Takes the payload fields of case `k` out of the owned scrutinee `cur` into the arm's
+    /// bindings; a field the arm does not name (`_`) closes and drops here. What is left of the
+    /// scrutinee is released.
+    fn take_payloads(
+        &mut self,
+        kind: &TyKind,
+        k: usize,
+        cur: Value,
+        bindings: &[Option<ms_check::types::BindingRef>],
+    ) -> Result<(), Error> {
+        match kind {
+            TyKind::Alt(a) => {
+                let n = self.b.m.alts[a.index()].cases[k].fields.len();
+                let mut fields = Vec::with_capacity(n);
+                for i in 0..n {
+                    fields.push(self.b.alt_take(*a, k as u32, i as u32, cur));
+                }
+                let mask = if n >= 32 { u32::MAX } else { (1u32 << n) - 1 };
+                self.b.alt_release(*a, k as u32, mask, cur);
+                for (i, v) in fields.into_iter().enumerate() {
+                    self.bind_payload(bindings.get(i).and_then(|b| b.as_ref()), v)?;
+                }
+            }
+            TyKind::Opt(_) => {
+                let v = self.b.opt_unbox(cur);
+                self.bind_payload(bindings.first().and_then(|b| b.as_ref()), v)?;
+            }
+            _ => return Err(Error::new("payloads taken from a value without cases")),
+        }
+        Ok(())
+    }
+
+    /// Binds the owned payload `v` to `b`, closing it at the end of its scope when it is a
+    /// resource nothing takes on; an unnamed payload closes and drops now.
+    pub(crate) fn bind_payload(
+        &mut self,
+        b: Option<&ms_check::types::BindingRef>,
+        v: Value,
+    ) -> Result<(), Error> {
+        let x = Val { v, own: true };
+        let Some(b) = b else {
+            let ty = self.ty_of(v);
+            if self.needs_drop(ty) {
+                let mut v = v;
+                if let Some(kind) = self.part_closer_mir(ty)? {
+                    v = self.close_discarded_kind(&kind, v);
+                }
+                self.drop_value(v);
+            }
+            return Ok(());
+        };
+        if self.cx.implicit_closes.contains(&b.uid) {
+            let cty = ms_check::types::sub(&b.ty, &self.subst);
+            if let Some(kind) = self.part_closer(&cty)? {
+                return self.bind_closing_kind(b, x, kind);
+            }
+        }
+        self.bind_local(b, x);
+        Ok(())
     }
 
     /// Branches to the first arm whose concrete type the interface value holds.
@@ -393,11 +516,9 @@ impl FnLower<'_> {
                 own: false,
             });
         }
-        let po = self.owned(Val {
-            v: payload,
-            own: false,
-        });
-        self.drop_value(cur);
+        // The result is ours: its payload moves out and the rest is released.
+        let po = self.b.alt_take(a, ok as u32, 0, cur);
+        self.b.alt_release(a, ok as u32, 1, cur);
         Ok(self.val(po, true))
     }
 }

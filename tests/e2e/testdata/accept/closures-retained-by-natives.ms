@@ -28,7 +28,11 @@ fn inc(x: Int) Int: x + 1
 
 fn build(r: fn(Int) Int) List[fn(Int) Int]:
     var out = List[fn(Int) Int]()
-    [1, 2, 3].for_each(fn i: out.append(r))
+
+    // A stored function value has one owner: each closure a callback appends is its own,
+    // and `r` moves into the list at its last use.
+    [1, 2].for_each(fn i: out.append(fn x: x + i))
+    out.append(r)
     return out
 
 test "closures kept by natives own their captures":

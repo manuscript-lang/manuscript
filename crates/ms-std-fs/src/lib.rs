@@ -26,8 +26,8 @@ pub mod watch;
 use alloc::vec::Vec;
 use err::{Fail, Res};
 use ms_rt::ffi::{
-    BytesList, EntryFilter, ErrOut, Has, ObjMut, ObjRef, ObjShare, Object, PairFilter, RecList,
-    StatusCode, Str, Text, TextList, abi_record, native,
+    BytesList, EntryFilter, ErrOut, Has, ObjMut, ObjRef, Object, PairFilter, RecList, StatusCode,
+    Str, Text, TextList, abi_record, native,
 };
 use ms_rt_abi::{STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE};
 use stream::Stream;
@@ -285,16 +285,6 @@ native! {
     /// `FileHandle.clone`: a second handle over a duplicate of the descriptor.
     fn msstd_fs_file_clone(h: ObjRef<Stream>; err: ErrOut) -> Result<Object<Stream>, StatusCode> {
         fs_status(file::duplicate(&h), &err).map(Object)
-    }
-
-    /// The stream view of a file handle: the same handle, retained for the caller.
-    fn msstd_fs_file_reader(h: ObjShare<Stream>) -> ObjShare<Stream> {
-        h
-    }
-
-    /// The write-stream view of a file handle: the same handle, retained for the caller.
-    fn msstd_fs_file_writer(h: ObjShare<Stream>) -> ObjShare<Stream> {
-        h
     }
 
     fn msstd_fs_file_read_at(

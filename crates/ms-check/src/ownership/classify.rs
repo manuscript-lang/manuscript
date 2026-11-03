@@ -26,7 +26,7 @@ fn same_instance(a: &Ty, b: &Ty) -> bool {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Class {
     /// Duplicated implicitly: scalars, records of those,
-    /// and handle types whose identity is shared (native handles and `Shared[T]`).
+    /// and handle types whose identity is shared (native handles).
     Copy,
     /// One owner. Moves at its last use into a consuming position; `.clone()`
     /// duplicates it explicitly. Strings, lists, maps, sets, bytes, records and
@@ -42,6 +42,9 @@ pub struct Classifier {
     closeable: HashSet<Name>,
     /// Natives declaring `impl Copy`: plain words, so a copy is a bit copy.
     copyable: HashSet<Name>,
+    /// Natives whose infallible `clone` is implemented in source (`List`, `BigInt`); one declared
+    /// as a native operation (`Bytes`, `Set`) is found on the type's definition.
+    clonable: HashSet<Name>,
 }
 
 impl Classifier {
@@ -63,9 +66,66 @@ impl Classifier {
             .filter(|m| m.contract.as_ref().is_some_and(|c| c.is(Builtin::Copy)))
             .map(|m| m.receiver.id)
             .collect();
+        let clonable = p
+            .methods
+            .iter()
+            .filter(|m| {
+                m.receiver.kind == Kind::Native
+                    && m.name() == Some(n("clone"))
+                    && m.ty.result_ty().id == m.receiver.id
+            })
+            .map(|m| m.receiver.id)
+            .collect();
         Classifier {
             closeable,
             copyable,
+            clonable,
+        }
+    }
+
+    /// Whether `.clone()` duplicates values of `t`: every value but a resource, a native without
+    /// a declared `clone`, or a type parameter without a bound that implies `Clonable`. The same
+    /// rule as the contract checker's `Clonable` property, for the ownership pass, which has no
+    /// contract checker.
+    pub fn clonable(&self, t: &Ty) -> bool {
+        self.clonable_in(t, &mut Vec::new())
+    }
+
+    fn clonable_in(&self, t: &Ty, seen: &mut Vec<Name>) -> bool {
+        if self.class(t) == Class::Resource {
+            return false;
+        }
+        match t.kind {
+            Kind::Variable => t.bounds().iter().any(implies_clonable),
+            // An interface value's payload has a type the interface does not name; one over a
+            // native without a `clone` (an `HttpExchange`) faults when copied, a guard the
+            // runtime keeps until wrappers can borrow (middleware `Tap`s copy their exchange).
+            Kind::Contract => !t.is_std("Closeable"),
+            Kind::Native => {
+                (self.copyable.contains(&t.id)
+                    || self.clonable.contains(&t.id)
+                    || native_declares_clone(t))
+                    && t.args.iter().all(|a| self.clonable_in(a, seen))
+            }
+            Kind::Record | Kind::Alternative => {
+                if seen.contains(&t.id) {
+                    // A recursive type repeats what is being checked.
+                    return true;
+                }
+                seen.push(t.id);
+                let s = substitution(t);
+                let fields_ok = fields(t).iter().all(|f| self.clonable_in(&f.ty, seen));
+                let cases_ok = t.def.as_ref().is_none_or(|def| {
+                    def.cases.borrow().iter().all(|c| {
+                        c.fields
+                            .iter()
+                            .all(|f| self.clonable_in(&sub(&f.ty, &s), seen))
+                    })
+                });
+                seen.pop();
+                fields_ok && cases_ok
+            }
+            _ => true,
         }
     }
 
@@ -102,8 +162,8 @@ impl Classifier {
     fn native(&self, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
         if self.closeable.contains(&t.id) {
             Class::Resource
-        } else if t.is(Builtin::Shared) || self.copyable.contains(&t.id) {
-            // A declared `Copy` native is plain words. Copying `Shared` shares the box; the payload is closed once the last holder releases it.
+        } else if self.copyable.contains(&t.id) {
+            // A declared `Copy` native is plain words.
             Class::Copy
         } else if t.is(Builtin::List) {
             // An owning collection of resources is itself a resource, closed with its elements.

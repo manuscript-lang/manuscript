@@ -10,6 +10,7 @@
 mod classify;
 mod live;
 mod modes;
+mod moved;
 pub(crate) mod places;
 mod walk;
 
@@ -149,9 +150,6 @@ pub struct CallableOwnership {
     /// Owned values created and not consumed by their expression: dropped at
     /// the end of the enclosing statement.
     pub temporaries: HashSet<NodeId>,
-    /// Matches (and `if let`, by statement) whose scrutinee is consumed:
-    /// payload bindings own their parts.
-    pub consumed_scrutinees: HashSet<NodeId>,
     /// Assignments that store over a binding: the old value is dropped unless
     /// an earlier `Access::Move` of it cleared the binding's drop flag.
     pub drops_old: HashSet<NodeId>,
@@ -185,6 +183,9 @@ pub struct CallableOwnership {
     /// Wrappers of a lent value (`x` as `x?`, `ok(x)`, `error(x)`) that stay references:
     /// lowering builds them with `opt.view` / `alt.view` instead of copying the payload.
     pub view_wraps: HashSet<NodeId>,
+    /// Method values (`re.find`) that stay local and borrow their receiver's place while they
+    /// live: lowering captures the receiver's address instead of copying the receiver.
+    pub bound_borrows: HashSet<NodeId>,
     /// Name expressions that move an interface view out of the local holding it, into a result
     /// that holds the same origins: lowering takes the value and leaves a view that owns nothing.
     pub view_moves: HashSet<NodeId>,
@@ -224,8 +225,13 @@ pub struct Ownership {
     pub resource_moves: HashMap<usize, HashMap<NodeId, Vec<Name>>>,
     /// Payload bindings of a consumed match scrutinee that some path moves out.
     pub moved_payloads: HashSet<usize>,
-    /// Calls bound with `var` as a mutable borrow, by module file and node: the fields from the
-    /// argument to the part they borrow.
+    /// Every move of a whole binding, by binding: the name expressions (or lambdas) that take
+    /// its value. Lowering moves the value out there instead of copying it, and drops the
+    /// binding at scope end only on the paths that kept it.
+    pub moves: HashMap<usize, HashSet<NodeId>>,
+    /// The moved bindings some path keeps to the end of their scope: lowering holds them so
+    /// that a move leaves them empty. The other moved bindings are consumed on every path.
+    pub conditional_moves: HashSet<usize>,
     /// Captures a non-escaping lambda only reads in place, by module file, lambda node and
     /// binding identity: the closure may point at the variable instead of copying it.
     pub borrowed_captures: HashSet<(Name, NodeId, usize)>,
@@ -239,6 +245,8 @@ pub struct Ownership {
     pub view_lenders: HashSet<Key>,
     /// Wrappers of lent values that stay references, by module file and node.
     pub view_wraps: HashSet<(Name, NodeId)>,
+    /// Method values borrowing their receiver's place, by module file and node.
+    pub bound_borrows: HashSet<(Name, NodeId)>,
     /// Name expressions moving an interface view out of its local, by module file and node.
     pub view_moves: HashSet<(Name, NodeId)>,
     /// Lending calls whose result the caller owns (a source was a temporary), by module file and
@@ -330,12 +338,15 @@ impl Hir<'_> {
         let mut explicit_closes = HashSet::new();
         let mut close_moves = HashMap::new();
         let mut moved_payloads = HashSet::new();
+        let mut moves: HashMap<usize, HashSet<NodeId>> = HashMap::new();
+        let mut conditional_moves = HashSet::new();
         let mut resource_moves = HashMap::new();
         let mut borrowed_captures = HashSet::new();
         let mut consumes = HashMap::new();
         let mut lenders = HashSet::new();
         let mut view_lenders = HashSet::new();
         let mut view_wraps = HashSet::new();
+        let mut bound_borrows = HashSet::new();
         let mut view_moves = HashSet::new();
         let mut owned_lends = HashMap::new();
         let mut getter_borrows = HashMap::new();
@@ -348,6 +359,7 @@ impl Hir<'_> {
                 lenders.insert((c.module.file, c.id()));
             }
             view_wraps.extend(out.facts.view_wraps.iter().map(|n| (c.module.file, *n)));
+            bound_borrows.extend(out.facts.bound_borrows.iter().map(|n| (c.module.file, *n)));
             view_moves.extend(out.facts.view_moves.iter().map(|n| (c.module.file, *n)));
             owned_lends.extend(
                 out.facts
@@ -382,6 +394,16 @@ impl Hir<'_> {
             explicit_closes.extend(out.facts.explicit_closes.iter().copied());
             close_moves.extend(out.facts.close_moves.iter().map(|(k, v)| (*k, v.clone())));
             moved_payloads.extend(out.facts.moved_payloads.iter().copied());
+            let mut moved: HashSet<(NodeId, usize)> = HashSet::new();
+            for u in out.facts.uses.values() {
+                if u.access == Access::Move {
+                    moves.entry(u.binding).or_default().insert(u.node);
+                    moved.insert((u.node, u.binding));
+                }
+            }
+            if !moved.is_empty() {
+                conditional_moves.extend(moved::conditional(&modules[&c.module.file], c, &moved));
+            }
             resource_moves.extend(
                 out.facts
                     .resource_moves
@@ -410,11 +432,14 @@ impl Hir<'_> {
             close_moves,
             resource_moves,
             moved_payloads,
+            moves,
+            conditional_moves,
             borrowed_captures,
             consumes,
             lenders,
             view_lenders,
             view_wraps,
+            bound_borrows,
             view_moves,
             owned_lends,
             getter_borrows,

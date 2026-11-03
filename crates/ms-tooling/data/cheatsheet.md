@@ -34,7 +34,7 @@ export fn main() Int:
 - Helpful commands: `ms search_symbol <name or words>`; `ms verify` (check, fmt, lint, test); `ms review`.
 - Be terse: infer closure types, one-line bodies (`fn f(x: Int) Int: x * 2`), `map`/`filter`/`fold`/`join`/`get(d)` over loops.
 - `main() Int` returns the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
-- Stdlib (`@std/<m>.ms`): `io` `fs` `streams` (`read_lines(stdin())`) `string` (regex `compile`) `collections` `bytes` `decimal` `json` `csv` `toml` `yaml` `time` `math` `random` `crypto` `process` `http` `net` `tasks` `channels` `workers` `sync` `shared`.
+- Stdlib (`@std/<m>.ms`): `io` `fs` `streams` (`read_lines(stdin())`) `string` (regex `compile`) `collections` `bytes` `decimal` `json` `csv` `toml` `yaml` `time` `math` `random` `crypto` `process` `http` `net` `promise`.
 - Imports: `import a, b from "@std/x.ms"`, `import a from "./local.ms"`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `else if` chains; lines starting `|` or `.` continue. Module constants: `let LIMIT = 3`.
 - Bindings: `let` once, `var` reassigns, `n += 1`; destructure `let [a, b] = xs`, `let {name} = rec`. Operators `and or not`.
@@ -56,4 +56,6 @@ export fn main() Int:
 - `var` parameter: `fn add(var xs: List[Int])`, called `add(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints: `ms lint`/`ms verify` fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail check (prefix `_`).
 - `Closeable` (files, `impl Closeable for T:` with `var fn close() Unit!`) closes at scope end unless moved; a failed close is returned or faults.
+- Waiting: calls that can wait (`read(path)`, `fetch`, `sleep`) return a running `Promise[T]`; `p.wait(timeout: d)` gives `T!` (timeout cancels). `promise(fn: f())` runs on another thread; `wait_all(ps)`, `wait_first(ps)`. Dropping a promise cancels it at its next wait. Promises only read captures; change shared state via one owner and `pipe[T](cap)` (`writer()`, `reader()`).
+- Streams: `for x in s.wait():` (`x` is `T!`; bare `for x in s` is an error); `w.write(v)` never waits, `w.flush().wait()` drains; steps `input | lines | map(f) | collect(none)`. `serve(":8080", h)` uses every core; `server.wait()`.
 - Not Python: no exceptions, classes, `async`, `null`, `pass`; `fn` not `def`/`lambda`, `true`/`false`, `else if`, `none`, no `f""`.

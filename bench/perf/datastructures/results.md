@@ -91,3 +91,7 @@ What bounds the remaining gaps (callgrind, instruction counts):
 - Bytes append: 12 instructions per byte, fully inlined; wall time here is dominated by page faults on the growing buffer.
 - String pipeline: split, join and replace are one pass each with exact-size results; the rest is the substring search itself.
 - SortedMap: random keys over a chunked array; cache misses dominate.
+
+## 2026-11-03, refcount removal
+
+`632c42ba` (refcounts) against `d6052382` (no refcounts), min of 5 rotating trials: `bytes_append` 1.6 to 1.1 ns (0.69x), `list_sort_int` 0.89x, `string_build_split_join_replace` 1.12x, the rest within 5%. Table in [refcount-removal-2026-11-03.md](../refcount-removal-2026-11-03.md).

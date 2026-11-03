@@ -1,4 +1,5 @@
-import stdin, stdout, read_line from "@std/io/io.ms"
+import stdin, stdout from "@std/io/io.ms"
+import lines from "@std/io/streams.ms"
 
 type Item:
     sku: String
@@ -251,13 +252,14 @@ fn run_command(var w: Warehouse, line: String) List[String]:
     return ["ok"]
 
 fn run() Result[Unit, Error]:
+    var input = lines(stdin(), 1048576)
     var w = Warehouse(
         stock: Map[String, Int](), price: Map[String, Int](),
         orders: Map[String, Order]()
     )
 
     while true:
-        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        let next = try input.read().wait()
         if next.is_none():
             break
 
@@ -268,7 +270,7 @@ fn run() Result[Unit, Error]:
         for out in run_command(var w, line):
             try stdout().write("{out}\n")
 
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     match run():

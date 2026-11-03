@@ -26,7 +26,7 @@ pub use unix::wait_ready;
 #[cfg(unix)]
 pub use unix::{access, chmod_link, clone_file, pipe_cloexec, set_errno, statfs};
 #[cfg(windows)]
-pub use windows::{is_output, standard, statfs, wait_ready};
+pub use windows::{is_output, statfs, wait_ready};
 
 pub type Errno = i32;
 
@@ -462,12 +462,6 @@ pub fn duplicate(fd: Fd) -> Result<Fd, Errno> {
     file.try_clone().map(into_fd).map_err(|e| code(&e))
 }
 
-/// The descriptor of standard stream `which` (0 input, 1 output, 2 error).
-#[cfg(unix)]
-pub fn standard(which: i64) -> Fd {
-    which as Fd
-}
-
 /// Points standard stream `which` (0 input, 1 output, 2 error) of this process at the null
 /// device, so children started afterwards inherit it too.
 #[cfg(unix)]
@@ -562,11 +556,6 @@ pub fn seek(fd: Fd, offset: i64, origin: i64) -> Result<i64, Errno> {
         _ => return Err(EINVAL),
     };
     with(fd, |mut f| f.seek(to)).map(|at| at as i64)
-}
-
-/// Moves the position back by `by` bytes (returning read-ahead to the file).
-pub fn rewind_by(fd: Fd, by: usize) {
-    let _ = seek(fd, -(by as i64), 1);
 }
 
 pub fn ftruncate(fd: Fd, size: i64) -> Result<(), Errno> {

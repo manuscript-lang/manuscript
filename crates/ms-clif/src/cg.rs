@@ -29,8 +29,6 @@ use std::collections::{HashMap, HashSet};
 pub(crate) const GLUE_PREFIX: &str = "ms.glue.";
 
 pub const CLOSURE_CODE: i32 = 16;
-/// Offset of the payload in a MIR `Shared` box (internal; builders use it).
-pub const SHARED_VALUE: i64 = 16;
 /// Offset of the first capture in a closure object.
 pub const CLOSURE_CAPTURES: u32 = 24;
 
@@ -43,6 +41,8 @@ pub enum Glue {
     Copy,
     /// Closure object destructor `fn(obj)`; the `Ty` is unused (`Ty::UNIT`) and the key carries the function id.
     ClosureDrop(u32),
+    /// Closure object clone entry `fn(obj) -> obj`, deep-copying the captures; keyed like `ClosureDrop`.
+    ClosureClone(u32),
     /// Heap block destructor of an interface payload `fn(block)`.
     BlockDrop,
     /// Deep copy of an interface payload block `fn(block) -> block`.
@@ -50,7 +50,6 @@ pub enum Glue {
     /// `fn(arg: *mut u8)` thunk used by cleanup.push; key carries the closer function.
     CleanupThunk(u32),
     /// Destructor of a MIR `Shared` box `fn(obj)`; the `Ty` is `T`. Drops the payload, frees the box.
-    SharedDrop,
     /// `fn(slot)` that drops the value stored in memory at `slot` (descriptor `drop`).
     SlotDrop,
     /// `fn(src, dst)` that copies the value at `src` into uninitialised `dst` (descriptor `copy`).
@@ -63,7 +62,8 @@ const RT: &[(&str, &str, &str)] = &[
     ("msrt_alloc", "i", "i"),
     ("msrt_free", "i", ""),
     ("msrt_realloc", "ii", "i"),
-    ("msrt_drop_slow", "i", ""),
+    ("msrt_obj_clone", "i", "i"),
+    ("msrt_obj_drop", "i", ""),
     ("msrt_str_count", "ii", ""),
     ("msrt_str_free", "i", ""),
     ("msrt_str_copy", "iii", ""),
@@ -385,12 +385,10 @@ impl<'m> Gen<'m> {
         let sig = match kind {
             Glue::Drop => self.sig(&leaves, &[]),
             Glue::Copy => self.sig(&leaves, &leaves),
-            Glue::BlockCopy => self.sig(&[Leaf::I64], &[Leaf::I64]),
-            Glue::ClosureDrop(_)
-            | Glue::BlockDrop
-            | Glue::CleanupThunk(_)
-            | Glue::SlotDrop
-            | Glue::SharedDrop => self.sig(&[Leaf::I64], &[]),
+            Glue::BlockCopy | Glue::ClosureClone(_) => self.sig(&[Leaf::I64], &[Leaf::I64]),
+            Glue::ClosureDrop(_) | Glue::BlockDrop | Glue::CleanupThunk(_) | Glue::SlotDrop => {
+                self.sig(&[Leaf::I64], &[])
+            }
             Glue::SlotCopy => self.sig(&[Leaf::I64, Leaf::I64], &[]),
         };
         let name = format!(
@@ -400,11 +398,11 @@ impl<'m> Gen<'m> {
                 Glue::Drop => "drop",
                 Glue::Copy => "copy",
                 Glue::ClosureDrop(_) => "closure_drop",
+                Glue::ClosureClone(_) => "closure_clone",
                 Glue::BlockDrop => "block_drop",
                 Glue::BlockCopy => "block_copy",
                 Glue::CleanupThunk(_) => "cleanup_thunk",
                 Glue::SlotDrop => "slot_drop",
-                Glue::SharedDrop => "shared_drop",
                 Glue::SlotCopy => "slot_copy",
             }
         );
@@ -818,7 +816,7 @@ fn compile_with_isa(
         ctx.func.signature = match kind {
             Glue::Drop => g.sig(&leaves, &[]),
             Glue::Copy => g.sig(&leaves, &leaves),
-            Glue::BlockCopy => g.sig(&[Leaf::I64], &[Leaf::I64]),
+            Glue::BlockCopy | Glue::ClosureClone(_) => g.sig(&[Leaf::I64], &[Leaf::I64]),
             Glue::SlotCopy => g.sig(&[Leaf::I64, Leaf::I64], &[]),
             _ => g.sig(&[Leaf::I64], &[]),
         };

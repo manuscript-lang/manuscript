@@ -1,3 +1,4 @@
+import send, recv, send_bytes, read_to_end from "./support/conn.ms"
 import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import (
     buffered,
@@ -60,13 +61,11 @@ test "one header type preserves repeated values through buffered requests":
         )
     )
 
+    // The clone is independent: appending to it leaves the response's headers as received.
     let _appended = ((metadata.headers.append("x-dup", "third")) | try expect_ok)
+    metadata.headers.values("X-Dup") | try expect_equal(["first", "second", "third"])
     try expect_false(
-        (
-            (response.metadata().headers.values("X-Dup")) != [
-                "first", "second", "third"
-            ]
-        )
+        ((response.metadata().headers.values("X-Dup")) != ["first", "second"])
     )
 
 fn echo_headers(exchange: HttpExchange) Unit!:
@@ -141,4 +140,4 @@ test "empty options and an omitted request body use checked defaults":
         method: HttpMethod.Get, url: "http://{server.address()}/",
         headers: (try repeated_headers())
     ) | try expect_ok
-    response.metadata().status | try expect_equal(200)
+    response.metadata.status | try expect_equal(200)

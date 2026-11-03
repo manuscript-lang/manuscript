@@ -148,7 +148,7 @@ fn run_file(ms: String, file: String) Result[Unit, Error]:
     let output = try run(
         ms, ["test", file, "--json", "--timeout=30s"], timeout: 3.minutes,
         max_output_bytes: 16000000
-    )
+    ).wait()
     let text = output.stdout.decode_utf8() | try expect_some
     let stderr = output.stderr.decode_utf8() | try expect_some
 

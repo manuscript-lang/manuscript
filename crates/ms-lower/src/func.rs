@@ -24,9 +24,13 @@ pub(crate) struct Val {
 #[derive(Clone, Copy)]
 pub(crate) struct Local {
     pub var: Var,
+    /// The type of the value the local holds.
     pub ty: MTy,
     /// The address of the variable's storage when a closure changes it through a reference.
     pub slot: Option<Value>,
+    /// The variable holds `ty?`: a move leaves it `none`, and the scope end drops what it still
+    /// holds. Present for an owned binding some path moves out of and another path keeps.
+    pub opt: bool,
 }
 
 /// A changed parameter: the slot address it arrives in and leaves through.
@@ -78,6 +82,15 @@ pub(crate) struct FnLower<'a> {
     >,
     /// Hidden owned scrutinees whose payload closes when the scope is left, by hidden uid.
     pub hidden_closers: HashMap<usize, crate::close::CloseKind>,
+    /// Whether an owned local some path moves out of still holds its value, by binding: the
+    /// scope end drops it only where it does.
+    pub held: HashMap<usize, ms_mir::builder::Var>,
+    /// Owned locals every path moves out of before leaving their scope: the move consumes
+    /// them, and the scope end has nothing to drop.
+    pub must_move: HashSet<usize>,
+    /// Lists a loop takes the elements out of, by the hidden local holding the list: the loop
+    /// index, so that leaving the loop releases the list from the element after it.
+    pub list_iters: HashMap<usize, ms_mir::builder::Var>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
     pub loops: Vec<LoopCtx>,
@@ -241,6 +254,7 @@ impl Cx {
         let bindings: Vec<&BindingRef> = c.self_binding.iter().chain(c.parameters.iter()).collect();
         let vars = self.var_positions(c);
         let owned_mask = variant.owned.then(|| self.owned_mask(c)).flatten();
+        let takes_function = bindings.iter().any(|b| b.ty.kind == ct::Kind::Function);
         for (i, b) in bindings.into_iter().enumerate() {
             let t = ct::sub(&b.ty, subst);
             let ty = self.lower_ty(m, &t)?;
@@ -273,6 +287,9 @@ impl Cx {
         // The checker found the result an interface view of the arguments: owned, dropped by
         // the caller, held as a borrow of the arguments while it lives.
         f.ret_view = self.view_lenders.contains(&(c.module.file, c.id()));
+        // A function that returns a promise from a closure it is given keeps that closure alive.
+        f.keeps_scoped =
+            result.is_source_type("@std/concurrency/promise.ms", "Promise") && takes_function;
         let id = m.add_func(f);
         self.insts.insert(key, id);
         self.queue.push(Job {
@@ -400,9 +417,6 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
         JobKind::HandleMethod(j) => {
             return crate::natiface::build_method(cx, m, job.func, j);
         }
-        JobKind::Codec(j) => {
-            return crate::codecstream::build_codec_method(cx, m, job.func, j);
-        }
         JobKind::Lambda(l) => return crate::closure::build_lambda(cx, m, job.func, l),
         JobKind::BoundNative(n) => return crate::closure::build_bound_native(cx, m, job.func, n),
         JobKind::IfaceNative(n) => return crate::closure::build_iface_native(cx, m, job.func, n),
@@ -422,12 +436,15 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     // A lending function returns references as they are; `emit_return` reads the flag.
     fl.b.func_mut().ret_borrowed = proto.ret_borrowed;
     fl.b.func_mut().ret_view = proto.ret_view;
+    // Closures made here inherit the flag (see `lambda`).
+    fl.b.func_mut().keeps_scoped = proto.keeps_scoped;
     let result = fl.lower_callable(&c);
     let mut func = fl.b.into_func();
     result?;
     func.noalias = proto.noalias;
     func.ret_borrowed = proto.ret_borrowed;
     func.ret_view = proto.ret_view;
+    func.keeps_scoped = proto.keeps_scoped;
     func.compact_blocks();
     m.funcs[job.func.index()] = func;
     Ok(())
@@ -454,6 +471,9 @@ impl<'a> FnLower<'a> {
             closers: HashMap::new(),
             rest_closers: HashMap::new(),
             hidden_closers: HashMap::new(),
+            held: HashMap::new(),
+            must_move: HashSet::new(),
+            list_iters: HashMap::new(),
             temps: Vec::new(),
             loops: Vec::new(),
             dead: false,
@@ -558,7 +578,8 @@ impl<'a> FnLower<'a> {
             .expect("copy result")
     }
 
-    /// An owned `none` of optional type `t` (a bare `opt.none` is a borrow).
+    /// An owned `none` of optional type `t` (a bare `opt.none` is a borrow; its copy owns
+    /// nothing, so the copy costs a null check and never touches an object).
     pub fn none_owned(&mut self, t: MTy) -> Value {
         let n = self.b.opt_none(t);
         self.owned(Val { v: n, own: false })
@@ -585,8 +606,7 @@ impl<'a> FnLower<'a> {
         while self.temps.len() > mark {
             let v = self.temps.pop().expect("temp");
             if !self.dead {
-                self.close_temp(v);
-                self.drop_value(v);
+                self.drop_temp(v);
             }
         }
     }
@@ -599,8 +619,7 @@ impl<'a> FnLower<'a> {
         }
         for i in (from..self.temps.len()).rev() {
             let v = self.temps[i];
-            self.close_temp(v);
-            self.drop_value(v);
+            self.drop_temp(v);
         }
     }
 
@@ -664,6 +683,7 @@ impl<'a> FnLower<'a> {
                 var,
                 ty,
                 slot: None,
+                opt: false,
             },
         );
     }
@@ -738,17 +758,126 @@ impl<'a> FnLower<'a> {
         };
         let v = self.owned(x);
         self.b.def_var(var, v);
+        self.own_local(binding.uid, var, ty);
+    }
+
+    /// Declares the local `uid` holding `var`, dropped at scope end when its type needs it. A
+    /// binding some path moves out of also gets a flag saying whether the local still holds its
+    /// value, so the scope end drops it only on the paths that kept it.
+    pub fn own_local(&mut self, uid: usize, var: ms_mir::builder::Var, ty: MTy) {
+        let moved = self.needs_drop(ty) && self.cx.moves.contains_key(&uid);
+        let conditional = moved && self.cx.conditional_moves.contains(&uid);
+        if moved && !conditional {
+            // Every path moves it: the move consumes the local, and the scope drops nothing.
+            self.must_move.insert(uid);
+        }
+        // A conditional move empties the local on its path only. In a variable, the local holds
+        // `ty?` and a move leaves `none`; in memory (a closure shares it, or a boxed optional
+        // would allocate), the slot keeps its stale bits and a flag says whether they are held.
+        let opt = conditional
+            && !self.slotted.contains(&uid)
+            && !ms_mir::ir::Boxing::default().opt(self.b.m, ty);
+        if conditional && !opt {
+            self.slotted.insert(uid);
+        }
+        let var = if opt {
+            let v = self.b.use_var(var);
+            let some = self.b.opt_some(v);
+            let opt_ty = self.ty_of(some);
+            let held = self.b.declare_var(opt_ty, Mode::Own);
+            self.b.def_var(held, some);
+            held
+        } else {
+            var
+        };
         self.locals.insert(
-            binding.uid,
+            uid,
             Local {
                 var,
                 ty,
                 slot: None,
+                opt,
             },
         );
-        self.slotify(binding.uid);
-        if owned {
-            self.scopes.last_mut().expect("scope").push(binding.uid);
+        self.slotify(uid);
+        if !self.needs_drop(ty) {
+            return;
+        }
+        self.scopes.last_mut().expect("scope").push(uid);
+        if conditional && !opt {
+            let flag = self.b.declare_var(MTy::BOOL, Mode::Borrow);
+            let yes = self.b.bconst(true);
+            self.b.def_var(flag, yes);
+            self.held.insert(uid, flag);
+        }
+    }
+
+    /// Whether the name expression (or lambda) `node` moves the binding `uid` out of its local,
+    /// which must own its value: a lent local (a function value's parameter, a loop variable
+    /// reading a list in place) hands out a copy instead.
+    pub fn moves_at(&self, uid: usize, node: ms_syntax::ast::NodeId) -> bool {
+        self.cx.moves.get(&uid).is_some_and(|n| n.contains(&node))
+            && !self.aliases.contains_key(&uid)
+            && self.locals.get(&uid).is_some_and(|l| self.local_owned(l))
+    }
+
+    /// Whether the local owns the value it holds (a slot always does).
+    pub fn local_owned(&self, l: &Local) -> bool {
+        l.slot.is_some() || self.b.var_mode(l.var) == Mode::Own
+    }
+
+    /// Takes the value of the local `l` of binding `uid` out: the local is empty until it is
+    /// stored to again, and the scope end drops nothing for it on this path.
+    pub fn take_local(&mut self, uid: usize, l: &Local) -> Value {
+        let v = self.local_take(l);
+        if l.opt {
+            let opt_ty = self.b.var_ty(l.var);
+            let none = self.none_owned(opt_ty);
+            self.b.def_var(l.var, none);
+        }
+        if let Some(flag) = self.held.get(&uid).copied() {
+            let no = self.b.bconst(false);
+            self.b.def_var(flag, no);
+        }
+        v
+    }
+
+    /// Stores `v` into the local `l` of binding `uid`, which holds its value again.
+    pub fn refill_local(&mut self, uid: usize, l: &Local, v: Value) {
+        self.local_put(l, v);
+        if let Some(flag) = self.held.get(&uid).copied() {
+            let yes = self.b.bconst(true);
+            self.b.def_var(flag, yes);
+        }
+    }
+
+    /// Drops what the local `l` of binding `uid` holds at scope end: nothing on a path that
+    /// moved it out.
+    pub fn drop_local(&mut self, uid: usize, l: &Local) {
+        if !self.needs_drop(l.ty) || self.must_move.contains(&uid) {
+            return;
+        }
+        if l.opt {
+            // Dropping `none` releases nothing.
+            let held = self.b.use_var(l.var);
+            self.b.emit(Op::Drop, &[held], ms_mir::ir::Imm::None, None);
+            return;
+        }
+        let v = self.local_take(l);
+        let flag = self
+            .held
+            .get(&uid)
+            .copied()
+            .or_else(|| self.closers.get(&uid).and_then(|c| c.flag));
+        match flag {
+            Some(flag) => {
+                let held = self.b.use_var(flag);
+                self.b
+                    .emit(Op::DropIf, &[held, v], ms_mir::ir::Imm::None, None);
+            }
+            None => {
+                self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
+            }
         }
     }
 
@@ -794,6 +923,10 @@ impl<'a> FnLower<'a> {
                 .b
                 .emit(Op::Load, &[p], ms_mir::ir::Imm::Ty(l.ty), Some(l.ty))
                 .expect("load"),
+            None if l.opt => {
+                let held = self.b.use_var(l.var);
+                self.b.opt_get(held)
+            }
             None => self.b.use_var(l.var),
         }
     }
@@ -802,6 +935,10 @@ impl<'a> FnLower<'a> {
     pub fn local_take(&mut self, l: &Local) -> Value {
         match l.slot {
             Some(p) => self.move_out(p, l.ty),
+            None if l.opt => {
+                let held = self.b.use_var(l.var);
+                self.b.opt_unbox(held)
+            }
             None => self.b.use_var(l.var),
         }
     }
@@ -810,6 +947,10 @@ impl<'a> FnLower<'a> {
     pub fn local_put(&mut self, l: &Local, v: Value) {
         match l.slot {
             Some(p) => self.move_into(p, v),
+            None if l.opt => {
+                let some = self.b.opt_some(v);
+                self.b.def_var(l.var, some);
+            }
             None => self.b.def_var(l.var, v),
         }
     }
@@ -836,6 +977,7 @@ impl<'a> FnLower<'a> {
                 var,
                 ty,
                 slot: None,
+                opt: false,
             },
         );
         if self.needs_drop(ty) {
@@ -855,6 +997,7 @@ impl<'a> FnLower<'a> {
                 var,
                 ty,
                 slot: None,
+                opt: false,
             },
         );
     }
@@ -899,14 +1042,23 @@ impl<'a> FnLower<'a> {
                 }
                 let l = self.locals[uid];
                 if let Some(kind) = self.hidden_closers.get(uid).cloned() {
-                    let v = self.local_get(&l);
-                    self.close_discarded_kind(&kind, v);
+                    self.close_local(&l, &kind);
                 }
                 if self.closers.get(uid).is_some_and(|c| c.split.is_some()) {
                     self.release_split(*uid);
-                } else if self.needs_drop(l.ty) {
-                    let v = self.local_take(&l);
-                    self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
+                } else if let Some(idx) = self.list_iters.get(uid).copied() {
+                    // The elements up to the loop index moved into the loop variable; the
+                    // rest go with the list.
+                    let list = self.local_take(&l);
+                    let i = self.b.use_var(idx);
+                    let one = self.b.iconst(1);
+                    let from = self
+                        .b
+                        .emit(Op::IAdd, &[i, one], ms_mir::ir::Imm::None, Some(MTy::INT))
+                        .expect("add");
+                    self.b.list_release(list, from);
+                } else {
+                    self.drop_local(*uid, &l);
                 }
                 self.scope_done.push(*uid);
             }
@@ -972,8 +1124,7 @@ impl<'a> FnLower<'a> {
             }
             // The temporaries stay registered: a conditional return leaves the others running.
             for t in self.temps.clone().into_iter().rev() {
-                self.close_temp(t);
-                self.drop_value(t);
+                self.drop_temp(t);
             }
             self.end_fixture();
         }
@@ -1035,6 +1186,7 @@ impl<'a> FnLower<'a> {
                         var,
                         ty,
                         slot: None,
+                        opt: false,
                     },
                 );
                 self.slotify(b.uid);
@@ -1054,16 +1206,7 @@ impl<'a> FnLower<'a> {
                 let ty = self.ty_of(v);
                 let var = self.b.declare_var(ty, Mode::Own);
                 self.b.def_var(var, v);
-                self.locals.insert(
-                    b.uid,
-                    Local {
-                        var,
-                        ty,
-                        slot: None,
-                    },
-                );
-                self.slotify(b.uid);
-                self.scopes.last_mut().expect("scope").push(b.uid);
+                self.own_local(b.uid, var, ty);
                 continue;
             }
             let own_copy = mutated.contains(&b.uid) && self.needs_drop(self.ty_of(v));
@@ -1073,16 +1216,7 @@ impl<'a> FnLower<'a> {
                 let var = self.b.declare_var(ty, Mode::Own);
                 let o = self.owned(Val { v, own: false });
                 self.b.def_var(var, o);
-                self.locals.insert(
-                    b.uid,
-                    Local {
-                        var,
-                        ty,
-                        slot: None,
-                    },
-                );
-                self.slotify(b.uid);
-                self.scopes.last_mut().expect("scope").push(b.uid);
+                self.own_local(b.uid, var, ty);
             } else {
                 self.bind_borrowed(b, v);
                 if !self.slotted.contains(&b.uid) {

@@ -16,9 +16,6 @@ pub mod control;
 #[allow(unsafe_code)]
 mod control_windows;
 pub mod envfile;
-pub mod fork;
-#[allow(unsafe_code)] // socketpair, named pipes and environment removal
-pub mod ipc;
 #[cfg(unix)]
 #[path = "signals_unix.rs"]
 #[allow(unsafe_code)] // libc signal handling
@@ -42,8 +39,8 @@ use alloc::vec::Vec;
 use command::Subprocess;
 use ms_rt::ffi::ErrOut;
 use ms_rt::ffi::{
-    Bytes, Has, IntList, ObjBox, ObjMut, ObjRef, ObjShare, Object, StatusCode, Str, StrMap,
-    StringList, Text, TextList, abi_handle, abi_record, argv, monotonic_nanos, native, start_nanos,
+    Bytes, Has, IntList, ObjBox, ObjMut, ObjRef, Object, StatusCode, Str, StrMap, StringList, Text,
+    TextList, abi_handle, abi_record, argv, monotonic_nanos, native, start_nanos,
 };
 use ms_rt_abi::STATUS_INVALID_INPUT;
 use ms_std_fs::err::{Fail, Res};
@@ -181,6 +178,8 @@ fn valid_command(program: &[u8], args: &[&[u8]]) -> Res<Vec<Vec<u8>>> {
 pub struct Child {
     proc: Subprocess,
     streams: [ObjBox<Stream>; 3],
+    /// The runtime stream-table id of each pipe once taken (-2 not yet, -1 no pipe).
+    ids: [i64; 3],
 }
 
 impl Drop for Child {
@@ -418,17 +417,17 @@ native! {
             ObjBox::new(parent_end(&mut p.stdout, b"|0")),
             ObjBox::new(parent_end(&mut p.stderr, b"|0")),
         ];
-        Ok(Object(Child { proc: p, streams }))
+        Ok(Object(Child { proc: p, streams, ids: [-2; 3] }))
     }
 
-    /// The child's piped standard input; closed unless spawned with `Stdio.Pipe`.
-    fn msstd_process_subprocess_stdin(h: ObjRef<Child>) -> ObjShare<Stream> {
-        h.streams[0].share()
-    }
-
-    /// `which`: 0 stdin, 1 stdout, 2 stderr. Returns a new reference to the stream.
-    fn msstd_process_subprocess_stream(h: ObjRef<Child>, which: i64) -> ObjShare<Stream> {
-        h.streams[which.clamp(0, 2) as usize].share()
+    /// The runtime stream-table id of the child's pipe `which` (0 stdin, 1 stdout, 2 stderr): the
+    /// first call moves the descriptor into the table, later calls answer the same id; -1 when
+    /// there is no pipe (or the host cannot hand the descriptor over).
+    fn msstd_process_subprocess_stream_id(h: ObjMut<Child>, which: i64) -> i64 {
+        let mut h = h;
+        let which = which.clamp(0, 2) as usize;
+        let h = &mut *h;
+        stream_id(&mut h.streams[which], &mut h.ids[which], which == 0)
     }
 
     fn msstd_process_subprocess_wait(
@@ -592,4 +591,21 @@ mod exec {
             message: Some(m),
         })
     }
+}
+
+/// Moves the descriptor of `stream` into the runtime stream table once and answers its id.
+pub(crate) fn stream_id(stream: &mut ObjBox<Stream>, id: &mut i64, writes: bool) -> i64 {
+    if *id == -2 {
+        let fd = stream.get_mut().take_fd();
+        use ms_rt::streams::{NONBLOCK, OWNS, READS, WRITES};
+        *id = if fd < 0 {
+            -1
+        } else {
+            ms_rt::streams::msrt_streams_open(
+                fd,
+                OWNS | NONBLOCK | if writes { WRITES } else { READS },
+            )
+        };
+    }
+    *id
 }

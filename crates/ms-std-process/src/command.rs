@@ -6,7 +6,6 @@
 //! on macOS). On Windows `Subprocess.wait` parks on the process handle through a thread-pool
 //! wait, while `run` still checks its pipes in short slices. Either way other tasks run and a
 //! pending cancellation kills the tree and unwinds.
-use crate::ipc::ChildEnd;
 use alloc::vec::Vec;
 use ms_rt::glue::{cancel_pending, cancelled};
 use ms_rt_abi::{STATUS_FAILED, STATUS_OUTPUT_LIMIT, STATUS_TIMEOUT};
@@ -125,7 +124,6 @@ pub fn run(
             StdStream::Pipe(out_w.0),
             StdStream::Pipe(err_w.0),
         ],
-        None,
         env,
         cwd,
     )?;
@@ -286,25 +284,13 @@ pub struct Subprocess {
     pub stderr: Fd,
 }
 
-/// Starts `program`; `modes` gives stdin, stdout and stderr each as a `STDIO_*` value.
+/// Starts `program`; `modes` gives stdin, stdout and stderr each as a `STDIO_*` value, with the extra variables `env`.
 pub fn spawn(
     program: &[u8],
     args: &[Vec<u8>],
     modes: [i64; 3],
     cwd: Option<&[u8]>,
     env: &[(&str, &[u8])],
-) -> Res<Subprocess> {
-    spawn_with(program, args, modes, None, env, cwd)
-}
-
-/// [`spawn`] with the extra variables `env` and the child's end of an IPC pipe.
-pub fn spawn_with(
-    program: &[u8],
-    args: &[Vec<u8>],
-    modes: [i64; 3],
-    ipc: Option<&ChildEnd>,
-    env: &[(&str, &[u8])],
-    cwd: Option<&[u8]>,
 ) -> Res<Subprocess> {
     let mut parent = [
         Fd(sys::INVALID_FD),
@@ -327,7 +313,7 @@ pub fn spawn_with(
             _ => StdStream::Null,
         };
     }
-    let child = start(program, args, streams, ipc, env, cwd)?;
+    let child = start(program, args, streams, env, cwd)?;
     drop(child_ends);
     let [stdin, stdout, stderr] = parent;
     Ok(Subprocess {
@@ -364,9 +350,6 @@ impl Subprocess {
             return;
         }
         self.closed = true;
-        // A child sharing our group has its own children in it that a group kill cannot tell
-        // from ours.
-        self.child.kill_tree();
         self.child.signal(true);
         self.child.wait();
         self.child.kill_group();

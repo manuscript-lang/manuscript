@@ -1,4 +1,5 @@
-import stdin, stdout, read_all from "@std/io/io.ms"
+import stdin, stdout from "@std/io/io.ms"
+import read_all from "@std/io/streams.ms"
 
 fn all_digits(s: String) Bool:
     if s.is_empty():
@@ -20,7 +21,7 @@ type Stat:
     total: Int
 
 fn run() Result[Unit, Error]:
-    let data = try read_all(input: stdin())
+    let data = try read_all(stdin(), none)
     let text = data.decode_utf8().get("")
     var valid = 0
     var malformed = 0
@@ -130,7 +131,7 @@ fn run() Result[Unit, Error]:
         shown = shown + 1
 
     try stdout().write("{out.join("\n")}\n")
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     match run():

@@ -1,53 +1,52 @@
-//! Object headers, reference counting and the allocator entry points.
+//! Object headers, their clone and drop entries, and the allocator entry points.
 use crate::alloc;
 use core::ptr::null_mut;
-use ms_rt_abi::Obj;
+use ms_rt_abi::{CloneFn, Obj};
 
-/// Allocates an object of `size` bytes with `rc = 1` and the given drop entry.
+/// Allocates an object of `size` bytes with the given clone and drop entries.
 ///
 /// # Safety
 /// `size` must be at least the header size; the caller initialises the rest.
 #[inline]
-pub unsafe fn new_obj(size: usize, drop: ms_rt_abi::DropFn) -> *mut Obj {
+pub unsafe fn new_obj(size: usize, clone: Option<CloneFn>, drop: ms_rt_abi::DropFn) -> *mut Obj {
     let o = alloc::alloc(size) as *mut Obj;
     // SAFETY: freshly allocated block of at least 16 bytes.
     unsafe {
-        (*o).rc = 1;
+        (*o).clone = clone;
         (*o).drop = Some(drop);
     }
     o
 }
 
-/// Adds a reference. Null is ignored.
+/// An independent copy of an object through its clone entry. Null stays null; a value with one
+/// owner, which has no clone entry, is a fault: the checker rejects every copy a program
+/// could write of one, so reaching it is a compiler bug.
 ///
 /// # Safety
 /// `o` must be null or a live object.
 #[inline(always)]
-pub unsafe fn retain(o: *mut Obj) {
-    if !o.is_null() {
-        // SAFETY: live object per the contract.
-        unsafe { (*o).rc += 1 };
+pub unsafe fn clone_obj(o: *mut Obj) -> *mut Obj {
+    if o.is_null() {
+        return o;
+    }
+    // SAFETY: live object per the contract.
+    unsafe {
+        match (*o).clone {
+            Some(clone) => clone(o),
+            None => crate::fault::fatal(b"copy of a value that has one owner"),
+        }
     }
 }
 
-/// Drops a reference, destroying the object at zero. Null is ignored.
+/// Drops an object its owner is done with, destroying it. Null is ignored.
 ///
 /// # Safety
-/// `o` must be null or a live object the caller owns a reference to.
+/// `o` must be null or a live object the caller owns.
 #[inline(always)]
-pub unsafe fn release(o: *mut Obj) {
+pub unsafe fn drop_obj(o: *mut Obj) {
     if !o.is_null() {
-        debug_assert!(
-            !alloc::arena_released(),
-            "runtime object released after its isolate's arena ended (a thread-local holds it?)"
-        );
         // SAFETY: live object per the contract.
-        unsafe {
-            (*o).rc -= 1;
-            if (*o).rc == 0 {
-                drop_slow(o);
-            }
-        }
+        unsafe { drop_slow(o) }
     }
 }
 
@@ -58,18 +57,31 @@ crate::isolate_static! {
 crate::isolate_static! {
     static PENDING: *mut Obj = null_mut();
 }
+
+/// The next object in the pending list, linked through the dead object's clone slot.
+unsafe fn pending_next(o: *mut Obj) -> *mut Obj {
+    // SAFETY: `o` is a dead object whose clone slot holds a pending link.
+    unsafe { (*o).clone.map_or(null_mut(), |f| f as *mut Obj) }
+}
+
 /// Runs an object's drop entry, deferring when the drop nesting is deep so long
 /// chains (linked lists, deep trees) cannot overflow the stack.
 ///
 /// # Safety
-/// `o` must be an object whose count just reached zero.
+/// `o` must be an object its owner just dropped.
 #[inline(never)]
 pub unsafe fn drop_slow(o: *mut Obj) {
     // SAFETY: single threaded access to the drop state; `o` is dead and owned by us.
     unsafe {
         let depth = DROP_DEPTH.ptr();
         if *depth >= MAX_DROP_DEPTH {
-            (*o).rc = *PENDING.ptr() as usize;
+            // The dead object's clone slot links the pending list.
+            let next = *PENDING.ptr();
+            (*o).clone = if next.is_null() {
+                None
+            } else {
+                Some(core::mem::transmute::<*mut Obj, CloneFn>(next))
+            };
             *PENDING.ptr() = o;
             return;
         }
@@ -82,7 +94,7 @@ pub unsafe fn drop_slow(o: *mut Obj) {
         if *depth == 0 {
             while !(*PENDING.ptr()).is_null() {
                 let p = *PENDING.ptr();
-                *PENDING.ptr() = (*p).rc as *mut Obj;
+                *PENDING.ptr() = pending_next(p);
                 *depth = 1;
                 let drop = (*p)
                     .drop
@@ -132,35 +144,18 @@ pub unsafe extern "C-unwind" fn msrt_free(p: *mut u8) {
     unsafe { alloc::free(p) }
 }
 
+/// An independent copy of `o` through its clone entry (null stays null).
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_retain(o: *mut Obj) {
+pub unsafe extern "C-unwind" fn msrt_obj_clone(o: *mut Obj) -> *mut Obj {
     // SAFETY: forwarded contract.
-    unsafe { retain(o) }
+    unsafe { clone_obj(o) }
 }
 
-/// Returns a second owned reference to the same object: the clone of a shared native handle.
-///
-/// # Safety
-/// `o` must be a live object.
+/// Drops the object `o` its owner is done with (null is ignored).
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_obj_share(o: *const Obj) -> *mut Obj {
-    let o = o.cast_mut();
-    // SAFETY: forwarded contract; the retain makes the returned reference an owner.
-    unsafe { retain(o) };
-    o
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_release(o: *mut Obj) {
+pub unsafe extern "C-unwind" fn msrt_obj_drop(o: *mut Obj) {
     // SAFETY: forwarded contract.
-    unsafe { release(o) }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_drop_slow(o: *mut Obj) {
-    // SAFETY: forwarded contract.
-    unsafe { drop_slow(o) }
+    unsafe { drop_obj(o) }
 }
 
 #[cfg(test)]
@@ -179,19 +174,26 @@ mod tests {
         }
     }
 
+    unsafe extern "C" fn count_clone(o: *mut Obj) -> *mut Obj {
+        // SAFETY: a fresh object of the same shape as `o`.
+        unsafe { new_obj(16, (*o).clone, count_drop) }
+    }
+
     #[test]
-    fn retain_release_drops_once() {
+    fn clone_makes_a_second_object_and_each_drops_once() {
         let _g = lock();
-        // SAFETY: objects created and released per the contract.
+        // SAFETY: objects created and dropped per the contract.
         unsafe {
             *DROPS.ptr() = 0;
-            let o = new_obj(16, count_drop);
-            retain(o);
-            release(o);
-            assert_eq!(*DROPS.ptr(), 0);
-            release(o);
+            let o = new_obj(16, Some(count_clone), count_drop);
+            let c = clone_obj(o);
+            assert_ne!(c, o);
+            drop_obj(o);
             assert_eq!(*DROPS.ptr(), 1);
-            release(null_mut());
+            drop_obj(c);
+            assert_eq!(*DROPS.ptr(), 2);
+            drop_obj(null_mut());
+            assert!(clone_obj(null_mut()).is_null());
         }
     }
 
@@ -206,7 +208,7 @@ mod tests {
         // SAFETY: test node allocated below.
         unsafe {
             let n = o as *mut Node;
-            release((*n).next);
+            drop_obj((*n).next);
             *FREED.ptr() += 1;
             alloc::free(o.cast());
         }
@@ -221,11 +223,11 @@ mod tests {
             *FREED.ptr() = 0;
             let mut head: *mut Obj = null_mut();
             for _ in 0..2_000_000 {
-                let n = new_obj(size_of::<Node>(), drop_node) as *mut Node;
+                let n = new_obj(size_of::<Node>(), None, drop_node) as *mut Node;
                 (*n).next = head;
                 head = n as *mut Obj;
             }
-            release(head);
+            drop_obj(head);
             assert_eq!(*FREED.ptr(), 2_000_000);
         }
     }

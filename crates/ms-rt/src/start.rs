@@ -21,86 +21,6 @@ static ARG_SKIP: Process<i32> = Process::new(0);
 static MAIN_FN: Process<Option<extern "C-unwind" fn() -> i64>> = Process::new(None);
 static MAIN_RESULT: Process<i64> = Process::new(0);
 
-/// The environment variable that starts a child at a process entry (`@std/os/processes.ms`)
-/// instead of `main`: see [`entry_value`].
-pub const ENTRY_ENV: &str = "MS_ENTRY";
-/// The child's entry, read from [`ENTRY_ENV`] at start: the code and drop words of the runner
-/// closure, then of the entry closure it captures, each as an offset from `msrt_start`.
-static ENTRY: Process<Option<[i64; 4]>> = Process::new(None);
-
-fn image_base() -> i64 {
-    msrt_start as *const () as usize as i64
-}
-
-/// The value of [`ENTRY_ENV`] that starts a child of the same executable at `runner`: a
-/// closure taking nothing whose one capture is a closure without captures (a named function),
-/// as `ProcessGroup.spawn` makes. Both run again in the child from their code and drop words;
-/// the parent and child are one image, so the words keep their offsets from `msrt_start`.
-///
-/// # Safety
-/// `runner` is a live closure of that shape.
-pub unsafe fn entry_value(runner: *mut ms_rt_abi::Closure) -> stdalloc::string::String {
-    // SAFETY: the caller guarantees the shape: the capture is the entry closure pointer.
-    unsafe {
-        let entry =
-            *(runner as *const *mut ms_rt_abi::Closure).byte_add(ms_rt_abi::CLOSURE_CAPTURE_OFFSET);
-        let base = image_base();
-        let words = [
-            (*runner).code as i64,
-            (*runner).hdr.drop.map_or(0, |d| d as usize as i64),
-            (*entry).code as i64,
-            (*entry).hdr.drop.map_or(0, |d| d as usize as i64),
-        ];
-        let mut out = stdalloc::string::String::new();
-        for (i, w) in words.iter().enumerate() {
-            if i > 0 {
-                out.push(':');
-            }
-            out.push_str(&stdalloc::format!("{}", w - base));
-        }
-        out
-    }
-}
-
-fn parse_entry(value: &[u8]) -> Option<[i64; 4]> {
-    let text = core::str::from_utf8(value).ok()?;
-    let mut words = [0i64; 4];
-    let mut parts = text.split(':');
-    for w in &mut words {
-        *w = parts.next()?.parse().ok()?;
-    }
-    parts.next().is_none().then_some(words)
-}
-
-/// Runs the child's entry: rebuilds the entry closure and the runner that captures it, then
-/// calls the runner, which serves the entry over the IPC pipe.
-///
-/// # Safety
-/// `words` came from [`entry_value`] in a process of this same executable.
-unsafe fn run_entry(words: [i64; 4]) {
-    use ms_rt_abi::{CLOSURE_CAPTURE_OFFSET, Closure, Obj};
-    let base = image_base();
-    let word = |w: i64| (w + base) as usize;
-    // SAFETY: as documented; the drop words are drop glue of exactly these closures.
-    unsafe {
-        let closure = |code: i64, drop: i64, size: usize| {
-            let obj = alloc::alloc(size) as *mut Closure;
-            (*obj).hdr = Obj {
-                rc: 1,
-                drop: (drop != 0)
-                    .then(|| core::mem::transmute::<usize, ms_rt_abi::DropFn>(word(drop))),
-            };
-            (*obj).code = word(code) as *const u8;
-            obj
-        };
-        let entry = closure(words[2], words[3], CLOSURE_CAPTURE_OFFSET);
-        let runner = closure(words[0], words[1], CLOSURE_CAPTURE_OFFSET + 8);
-        *(runner as *mut *mut Closure).byte_add(CLOSURE_CAPTURE_OFFSET) = entry;
-        let code: unsafe extern "C-unwind" fn(*mut Closure) = core::mem::transmute((*runner).code);
-        code(runner);
-        crate::obj::msrt_release(runner.cast());
-    }
-}
 /// `CLOCK_MONOTONIC` nanoseconds when the runtime started; 0 before `msrt_start`.
 static START_NANOS: Process<i64> = Process::new(0);
 
@@ -154,13 +74,7 @@ unsafe extern "C-unwind" fn main_task(done: *mut u8) {
     // SAFETY: as documented.
     unsafe {
         let f = (*MAIN_FN.ptr()).unwrap_or_else(|| fault::fatal(b"missing main"));
-        let value = match *ENTRY.ptr() {
-            Some(words) => {
-                run_entry(words);
-                0
-            }
-            None => f(),
-        };
+        let value = f();
         if fault::cancel_flag().load(Ordering::Relaxed) != 0 {
             fault::msrt_cancelled();
         }
@@ -178,12 +92,14 @@ unsafe extern "C-unwind" fn main_task(done: *mut u8) {
 /// # Safety
 /// See [`main_task`].
 unsafe fn run_main() {
-    crate::alloc::claim_arena(true);
+    crate::alloc::claim_heap();
     crate::isolate::set_main();
     fault::set_main_hdr();
     // SAFETY: this thread is the runtime thread; the root flow waits shielded so a stop request
     // reaches the main task, not this wait.
     unsafe { crate::task::run_main_task(main_task) };
+    // Scheduler threads end with the program; a counting build then sees their heaps released too.
+    crate::sched::shutdown();
     #[cfg(feature = "stats")]
     report_leaks();
 }
@@ -401,7 +317,6 @@ pub unsafe extern "C-unwind" fn msrt_start(
         *ARGC.ptr() = argc;
         *ARGV.ptr() = argv;
         *MAIN_FN.ptr() = Some(main_fn);
-        *ENTRY.ptr() = sys::env_var(b"MS_ENTRY\0").and_then(parse_entry);
         *START_NANOS.ptr() = sys::monotonic_ns();
         install_stop_handlers();
         crate::profile::start();

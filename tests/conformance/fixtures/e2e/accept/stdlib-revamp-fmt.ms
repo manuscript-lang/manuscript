@@ -2,7 +2,6 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/accept/stdlib-revamp.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
-import ReadStream, read_line from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import PriorityQueue from "@std/collections/queue.ms"
 
@@ -61,28 +60,3 @@ test "limits can be omitted or supplied":
     let repeated = try "ab".repeat(3)
     try expect_equal(repeated, "ababab")
     try expect_false("ab".repeat(3, 5).is_ok())
-
-type EchoReader:
-    unused: Int
-
-impl ReadStream for EchoReader:
-    var fn read(max_bytes: Int?) Bytes?!:
-        let requested = max_bytes.get(0)
-        if requested == 1: return error(
-            Error("I/O: invalid input", kind: ErrorCategory.InvalidInput)
-        )
-
-        return ok(Bytes([requested.to_uint8().get(0)]))
-
-    fn close() Unit: unit
-
-test "native compositions preserve Optional arguments for source implementations":
-    var stream: ReadStream = EchoReader(0)
-    let omitted: Bytes?! = stream.read()
-    try expect_equal(omitted, ok(Bytes([0])))
-
-    let supplied: Bytes?! = stream.read(8)
-    try expect_equal(supplied, ok(Bytes([8])))
-
-    let line = read_line(stream)
-    try expect_false(line.is_ok())

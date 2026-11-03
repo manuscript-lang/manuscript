@@ -2,12 +2,10 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use crate::text::runtime_fn;
 use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
 use ms_check::types::Builtin;
-use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{FuncId, FuncKind, Linkage, Mode, Param, Value};
+use ms_mir::ir::{Mode, Param, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
@@ -53,9 +51,6 @@ type ElementBody<'b, S> = dyn FnMut(&mut S, Value, Value) -> Result<Option<Value
 
 /// A branch body producing an owned value, or `None` when it diverges.
 type BranchBody<'b, S> = dyn FnMut(&mut S) -> Result<Option<Value>, Error> + 'b;
-
-/// Builds one method of a native interface value from its name, parameters and result.
-type MethodBuilder<'b> = dyn FnMut(&mut ms_mir::ir::Module, &str, &[MTy], MTy) -> FuncId + 'b;
 
 /// Whether `name` is an `Optional` method lowered inline.
 fn opt_method(name: &str) -> bool {
@@ -180,20 +175,6 @@ impl<'a> FnLower<'a> {
                 self.at(e.pos);
                 return self.bit_operation(name, &args);
             }
-            // Codec streams are built by the compiler: the format name, the input, and the limit.
-            if matches!(
-                symbol,
-                "msstd_archive_compress_stream" | "msstd_archive_decompress_stream"
-            ) {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let result = self.emty(e)?;
-                self.at(e.pos);
-                let decode = symbol == "msstd_archive_decompress_stream";
-                return self.codec_stream(args[0].val, &args[1..], decode, result);
-            }
             // A symbol that is lowered by hand keeps its native identity.
             if let Some(hand) = crate::stdnative::by_symbol(symbol) {
                 return self.native_function(e, view, hand.identity, params, sym);
@@ -304,20 +285,6 @@ impl<'a> FnLower<'a> {
                 let want = self.emty(e)?;
                 self.fit_ty(r, &declared, want)
             }
-            "shared/share" => {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let result = self.emty(e)?;
-                self.at(e.pos);
-                let held = self.ety(e).args.first().cloned();
-                let shared = self.native_call(native, params, &args, result)?;
-                if let Some(held) = held {
-                    self.register_shared_close(&held, result)?;
-                }
-                Ok(shared)
-            }
             "collections/map_from_entries" => {
                 let args = self.native_args(view)?;
                 if self.dead {
@@ -327,15 +294,8 @@ impl<'a> FnLower<'a> {
                 self.at(e.pos);
                 self.native_call(native, params, &args, result)
             }
-            "io/stdout" | "io/stderr" => {
-                let it = self.emty(e)?;
-                self.std_stream(it, native == "io/stderr")
-            }
-            "io/read_line" => self.read_line_native(e, view, params),
             "math/min" => self.math_extreme(view, false),
             "math/max" => self.math_extreme(view, true),
-            "io/read_all" => self.stream_native(e, view, crate::streamloop::Loop::ReadAll),
-            "io/copy" => self.stream_native(e, view, crate::streamloop::Loop::Copy),
             other if crate::stdnative::handle_of(other).is_some() => {
                 let handle = crate::stdnative::handle_of(other).expect("checked");
                 let (ity, want) = (self.ety(e), self.emty(e)?);
@@ -376,7 +336,6 @@ impl<'a> FnLower<'a> {
             native,
             "math/min"
                 | "math/max"
-                | "shared/share"
                 | "math/bit_and"
                 | "math/bit_or"
                 | "math/bit_xor"
@@ -417,12 +376,6 @@ impl<'a> FnLower<'a> {
             )
         }) {
             return self.bit_operation(name, args);
-        }
-        if native == "shared/share" {
-            // The payload moves into a refcounted box; copies of the handle retain it.
-            let payload = self.owned(args[0].val);
-            let v = self.shared_new(payload, result);
-            return Ok(Val { v, own: true });
         }
         if native == "collections/map_from_entries" {
             return self.map_from_entries(args[0].val, result);
@@ -593,50 +546,6 @@ impl<'a> FnLower<'a> {
             }
         };
         Ok(Val { v, own: false })
-    }
-
-    /// `stdout()` / `stderr()`: an interface value over a MIR-built vtable.
-    pub(crate) fn std_stream(&mut self, it: MTy, stderr: bool) -> Result<Val, Error> {
-        let name = if stderr { "stderr" } else { "stdout" };
-        self.native_iface(it, name, &mut |m, method, params, ret| {
-            build_stream_method(m, method, params, ret, stderr)
-        })
-    }
-
-    /// An interface value of the expression's type over a vtable of MIR-built methods.
-    fn native_iface(
-        &mut self,
-        it: MTy,
-        name: &str,
-        build: &mut MethodBuilder<'_>,
-    ) -> Result<Val, Error> {
-        let TyKind::Iface(iface) = self.b.m.types.kind(it).clone() else {
-            return Err(Error::new(format!("{name}() is not an interface")));
-        };
-        let key = format!("vtable:{name}:{}", iface.0);
-        let vt = match self.cx.vtables.get(&key) {
-            Some(v) => *v,
-            None => {
-                let sigs = self.b.m.ifaces[iface.index()].methods.clone();
-                let mut methods = Vec::new();
-                for s in &sigs {
-                    methods.push(build(self.b.m, &s.name, &s.params, s.ret));
-                }
-                self.cx
-                    .intern_vtable(self.b.m, key, iface, methods, MTy::UNIT)
-            }
-        };
-        let u = self.b.unit();
-        let v = self
-            .b
-            .emit(
-                ms_mir::ir::Op::IfaceNew,
-                &[u],
-                ms_mir::ir::Imm::Vtable(vt),
-                Some(it),
-            )
-            .expect("iface");
-        Ok(Val { v, own: true })
     }
 
     /// `value.hash()` of any hashable value: the runtime hashes the value in memory as map keys are.
@@ -947,15 +856,6 @@ impl<'a> FnLower<'a> {
             self.split_iter_for = None;
             let iter = self.b.m.types.obj("SplitIter", Vec::new());
             return self.rt_method("msrt_string_split_iter", recv, &m.ty.params, &args, iter);
-        }
-        if let Some(decode) = match native {
-            "archive/format_compress_stream" => Some(false),
-            "archive/format_decompress_stream" => Some(true),
-            _ => None,
-        } {
-            let result = self.emty(e)?;
-            let name = self.format_argument(m, recv, false)?;
-            return self.codec_stream(name, &args, decode, result);
         }
         if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS.iter().find(|(n, ..)| *n == native)
         {
@@ -1361,14 +1261,11 @@ impl<'a> FnLower<'a> {
             .into_iter()
             .find(|a| self.is_fn(a.val.v))
             .ok_or_else(|| Error::new("missing function argument"))?;
-        let ft = self.ty_of(f.val.v);
-        let fvar = self.fresh_var(ft);
-        let fo = self.owned(f.val);
-        self.b.def_var(fvar, fo);
+        let (fvar, fhidden) = self.callback_var(f.val);
         let (lv, hidden) = self.list_source(recv_expr, recv)?;
         let r = self.list_higher_order(name, lv, elem, fvar, out);
         self.release_source(lv, hidden);
-        self.release_source(fvar, true);
+        self.release_source(fvar, fhidden);
         r
     }
 
@@ -1389,8 +1286,7 @@ impl<'a> FnLower<'a> {
         let k = self.b.iconst(case as i64);
         let v = self.b.icmp(ms_mir::ir::Cc::Eq, tag, k);
         // Only read: an owned result holding a resource (`open().is_ok()`) closes it.
-        self.close_owned_temp(recv);
-        self.finish(recv);
+        self.close_finish(recv);
         Ok(Val { v, own: false })
     }
 
@@ -1567,9 +1463,13 @@ impl<'a> FnLower<'a> {
         recv_expr: Option<&Expr>,
         recv: Val,
     ) -> Result<(ms_mir::builder::Var, bool), Error> {
-        if let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r))
+        // A local the expression moved out of (`recv.own`) is the caller's to drop: it is held
+        // as a hidden copy below, not read in place.
+        if !recv.own
+            && let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r))
             && !self.aliases.contains_key(&b.uid)
             && self.local(&b)?.slot.is_none()
+            && !self.local(&b)?.opt
         {
             return Ok((self.local(&b)?.var, false));
         }
@@ -1578,6 +1478,19 @@ impl<'a> FnLower<'a> {
         let v = self.owned(recv);
         self.b.def_var(var, v);
         Ok((var, true))
+    }
+
+    /// A variable holding the callback `f` for the loop a higher-order method runs: an owned
+    /// callback (a lambda written in the call) is held and dropped afterwards (`true`); a
+    /// borrowed one (a function value a local holds) is read in place, never copied.
+    pub(crate) fn callback_var(&mut self, f: Val) -> (ms_mir::builder::Var, bool) {
+        let ft = self.ty_of(f.v);
+        let hidden = f.own && self.needs_drop(ft);
+        let var = self
+            .b
+            .declare_var(ft, if hidden { Mode::Own } else { Mode::Borrow });
+        self.b.def_var(var, f.v);
+        (var, hidden)
     }
 
     pub(crate) fn release_source(&mut self, var: ms_mir::builder::Var, hidden: bool) {
@@ -1604,14 +1517,11 @@ impl<'a> FnLower<'a> {
                 "sorted takes a comparator function; omit compare to sort in natural order",
             ));
         }
-        let ft = self.ty_of(f.val.v);
-        let fvar = self.fresh_var(ft);
-        let fo = self.owned(f.val);
-        self.b.def_var(fvar, fo);
+        let (fvar, fhidden) = self.callback_var(f.val);
         let (lv, hidden) = self.list_source(recv_expr, recv)?;
         let r = self.list_sorted(lv, fvar, elem);
         self.release_source(lv, hidden);
-        self.release_source(fvar, true);
+        self.release_source(fvar, fhidden);
         r
     }
 
@@ -1835,9 +1745,17 @@ impl<'a> FnLower<'a> {
             if self.dead {
                 return Ok(());
             }
-            let map = self.borrow(x);
-            self.close_discarded_ty(&ty, map)?;
-            self.finish(x);
+            if x.own {
+                let map = self.close_discarded_ty(&ty, x.v)?;
+                self.drop_value(map);
+                return Ok(());
+            }
+            let Some(kind) = self.part_closer(&ty)? else {
+                return Ok(());
+            };
+            self.place_update(recv_expr, &mut |s, old| {
+                Ok(s.close_discarded_kind(&kind, old))
+            })?;
             return Ok(());
         }
         self.close_map_entry(recv_expr, &args[0])
@@ -1870,11 +1788,8 @@ impl<'a> FnLower<'a> {
         self.b.br_if(missing, absent, &[], present, &[]);
         self.b.seal_block(present);
         self.b.switch_to(present);
-        let old = self
-            .b
-            .emit(Op::Load, &[p], Imm::Ty(value_ty), Some(value_ty))
-            .expect("load");
-        self.close_discarded_ty(&value, old)?;
+        let _ = value_ty;
+        self.close_discarded_at(&value, p)?;
         self.b.br(absent, &[]);
         self.b.seal_block(absent);
         self.b.switch_to(absent);
@@ -1928,8 +1843,16 @@ impl<'a> FnLower<'a> {
         let one = self.b.iconst(1);
         let j = self.b.binop(Op::ISub, i, one);
         self.b.def_var(idx, j);
-        let e = self.b.list_get(list, j);
-        self.close_discarded_ty(&elem, e)?;
+        let ep = self
+            .b
+            .emit(
+                Op::ListAddrU,
+                &[list, j],
+                ms_mir::ir::Imm::None,
+                Some(MTy::PTR),
+            )
+            .expect("element address");
+        self.close_discarded_at(&elem, ep)?;
         self.b.br(header, &[]);
         self.b.seal_block(header);
         self.b.seal_block(done);
@@ -1970,8 +1893,16 @@ impl<'a> FnLower<'a> {
         self.b.br_if(inside, yes, &[], exit, &[]);
         self.b.seal_block(yes);
         self.b.switch_to(yes);
-        let e = self.b.list_get(list, r);
-        self.close_discarded_ty(elem, e)?;
+        let ep = self
+            .b
+            .emit(
+                Op::ListAddrU,
+                &[list, r],
+                ms_mir::ir::Imm::None,
+                Some(MTy::PTR),
+            )
+            .expect("element address");
+        self.close_discarded_at(elem, ep)?;
         self.b.br(exit, &[]);
         self.b.seal_block(exit);
         self.b.switch_to(exit);
@@ -2008,7 +1939,12 @@ impl<'a> FnLower<'a> {
         let v = self.element_value(&args[1]);
         let at = self
             .b
-            .emit(Op::ListAddrU, &[list, r], Imm::None, Some(MTy::PTR))
+            .emit(
+                Op::ListAddrU,
+                &[list, r],
+                ms_mir::ir::Imm::None,
+                Some(MTy::PTR),
+            )
             .expect("list.addr.u");
         if self.needs_drop(elem) {
             let old = self
@@ -2204,8 +2140,7 @@ impl<'a> FnLower<'a> {
                     self.b.unop(ms_mir::ir::Op::Not, some)
                 };
                 // Only read: an owned optional of a resource (`open().is_some()`) closes it.
-                self.close_owned_temp(recv);
-                self.finish(recv);
+                self.close_finish(recv);
                 Ok(Val { v, own: false })
             }
             "get" if args.is_empty() && self.needs_drop(inner) => {
@@ -2228,15 +2163,20 @@ impl<'a> FnLower<'a> {
                     some,
                     inner,
                     &mut |s| {
-                        let p = s.b.opt_get(r);
-                        let o = s.owned(Val { v: p, own: false });
-                        s.finish(recv);
+                        // An owned optional hands its payload over; a borrowed one is copied.
+                        let o = if recv.own {
+                            s.b.opt_unbox(r)
+                        } else {
+                            let p = s.b.opt_get(r);
+                            s.owned(Val { v: p, own: false })
+                        };
                         if let Some(d) = default {
                             // The default goes unused: an owned resource there closes now.
                             if d.wrapped {
-                                s.close_owned_temp(d.val);
+                                s.close_finish(d.val);
+                            } else {
+                                s.finish(d.val);
                             }
-                            s.finish(d.val);
                         }
                         Ok(Some(o))
                     },
@@ -2304,8 +2244,7 @@ impl<'a> FnLower<'a> {
                         let y = s.b.call_ind(fv, &[p]);
                         let v = if by_map { s.b.opt_some(y) } else { y };
                         // The callback only borrowed the payload: an owned temporary closes it.
-                        s.close_owned_temp(recv);
-                        s.finish(recv);
+                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -2428,15 +2367,22 @@ impl<'a> FnLower<'a> {
                     is_ok,
                     out,
                     &mut |s| {
-                        let p = s.b.alt_get(alt, ok, 0, r);
-                        let o = s.owned(Val { v: p, own: false });
-                        s.finish(recv);
+                        // An owned result hands its payload over; a borrowed one is copied.
+                        let o = if recv.own {
+                            let p = s.b.alt_take(alt, ok, 0, r);
+                            s.b.alt_release(alt, ok, 1, r);
+                            p
+                        } else {
+                            let p = s.b.alt_get(alt, ok, 0, r);
+                            s.owned(Val { v: p, own: false })
+                        };
                         if let Some(d) = default {
                             // The default goes unused: an owned resource there closes now.
                             if d.wrapped {
-                                s.close_owned_temp(d.val);
+                                s.close_finish(d.val);
+                            } else {
+                                s.finish(d.val);
                             }
-                            s.finish(d.val);
                         }
                         Ok(Some(o))
                     },
@@ -2487,8 +2433,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let v = s.b.call_ind(f.val.v, &[p]);
-                        s.close_owned_temp(recv);
-                        s.finish(recv);
+                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -2521,8 +2466,7 @@ impl<'a> FnLower<'a> {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let y = s.b.call_ind(f.val.v, &[p]);
                         let v = s.b.alt_new(oa, out_err, &[y]);
-                        s.close_owned_temp(recv);
-                        s.finish(recv);
+                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -2543,8 +2487,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let v = s.b.call_ind(f.val.v, &[p]);
-                        s.close_owned_temp(recv);
-                        s.finish(recv);
+                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -2577,8 +2520,7 @@ impl<'a> FnLower<'a> {
                         } else {
                             y
                         };
-                        s.close_owned_temp(recv);
-                        s.finish(recv);
+                        s.close_finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -3491,71 +3433,6 @@ impl<'a> FnLower<'a> {
         let r = self.b.use_var(acc);
         Ok(Val { v: r, own: true })
     }
-}
-
-/// One method of the stdout/stderr stream vtable.
-fn build_stream_method(
-    m: &mut ms_mir::ir::Module,
-    name: &str,
-    params: &[MTy],
-    ret: MTy,
-    stderr: bool,
-) -> FuncId {
-    let mut ps = vec![Param {
-        ty: MTy::PTR,
-        mode: Mode::Borrow,
-    }];
-    ps.extend(params.iter().map(|t| Param {
-        ty: *t,
-        mode: Mode::Borrow,
-    }));
-    let mut b = FuncBuilder::new(m, &format!("stream.{name}"), ps, ret);
-    b.func_mut().kind = FuncKind::Method;
-    b.func_mut().linkage = Linkage::Internal;
-    let args = b.params();
-    let which = b.iconst(i64::from(stderr));
-    if name == "close" {
-        let ext = runtime_fn(b.m, "msrt_io_close", &[MTy::INT], MTy::UNIT);
-        b.call_rt(ext, &[which]);
-    }
-    let alt = match b.m.types.kind(ret).clone() {
-        TyKind::Alt(a) => Some(a),
-        _ => None,
-    };
-    let case = |m: &ms_mir::ir::Module, a: ms_mir::types::AltId, n: &str| {
-        m.alts[a.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == n)
-            .map(|i| i as u32)
-    };
-    if name == "write" || name == "write_bytes" {
-        let (sym, arg) = match (name == "write", stderr) {
-            (true, true) => ("msrt_io_write_stderr", MTy::STR),
-            (true, false) => ("msrt_io_write_stdout", MTy::STR),
-            (false, true) => ("msrt_io_write_bytes_stderr", MTy::BYTES),
-            (false, false) => ("msrt_io_write_bytes_stdout", MTy::BYTES),
-        };
-        let ext = runtime_fn(b.m, sym, &[arg], MTy::UNIT);
-        b.call_rt(ext, &[args[1]]);
-    } else if name == "flush" {
-        let ext = runtime_fn(b.m, "msrt_io_flush", &[], MTy::UNIT);
-        b.call_rt(ext, &[]);
-    }
-    match alt {
-        Some(a) => {
-            let ok = case(b.m, a, "ok").unwrap_or(0);
-            let u = b.unit();
-            let r = b.alt_new(a, ok, &[u]);
-            b.ret(Some(r));
-        }
-        None => {
-            let u = b.unit();
-            b.ret(Some(u));
-        }
-    }
-    let f = b.into_func();
-    m.add_func(f)
 }
 
 /// The runtime symbol of a `HashAlgorithm` operation, by native identity.

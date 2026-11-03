@@ -52,6 +52,17 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
     }
 }
 
+/// Whether the runtime function `sym` takes ownership of its parameter `i`: a function value an
+/// extern keeps after it returns (the checker consumes the argument; the runtime drops it once).
+pub(crate) fn hands_over(sym: &str, i: usize) -> bool {
+    ms_check::stdlib::keeps_callbacks(&format!("extern:{sym}"))
+        && rt_sig(sym).is_some_and(|sig| {
+            sig.params
+                .get(i)
+                .is_some_and(|p| p.ty == "*mut Closure" || p.name == "env" || p.name == "closure")
+        })
+}
+
 /// One declared runtime parameter.
 pub(crate) struct RtParam {
     pub name: String,
@@ -131,7 +142,10 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_string_eq" => R::StringEq,
         "msrt_cleanup_discard" => R::CleanupDiscard,
         "msrt_bytes_append" => R::BytesAppend,
-        "msrt_scope_spawn" | "msrt_worker_start" => R::SpawnsTask,
+        "msrt_scope_spawn"
+        | "msrt_worker_start"
+        | "msrt_promise_start"
+        | "msrt_promise_start_here" => R::SpawnsTask,
         s if s.contains("_serve") => R::SpawnsTask,
         _ => R::None,
     }
@@ -360,6 +374,21 @@ impl FnLower<'_> {
         while i < end {
             let p = &sig.params[i];
             match p.name.as_str() {
+                _ if p.ty == "ValueDesc" => {
+                    // A generic value moved in or out of the runtime: the descriptor is that of the
+                    // `value` argument, or of the result (`T?` gives that of `T`).
+                    let by_value = decl
+                        .iter()
+                        .position(|p| p.name == "value")
+                        .and_then(|k| inputs.get(k))
+                        .and_then(|input| input.val)
+                        .map(|v| self.ty_of(v.v));
+                    let t = by_value.unwrap_or_else(|| match self.b.m.types.kind(result) {
+                        TyKind::Opt(inner) => *inner,
+                        _ => result,
+                    });
+                    vals.push(self.type_desc(t));
+                }
                 _ if p.ty == "ElemDesc" => {
                     // A function has no receiver: the descriptor is that of its list result.
                     let recv_ty = recv_ty
@@ -409,18 +438,6 @@ impl FnLower<'_> {
                     vals.push(has);
                     vals.push(value);
                     i += 1;
-                }
-                "src" => {
-                    // The upload of a request: the closure the runtime reads chunks through.
-                    let input = *inputs
-                        .get(cursor)
-                        .ok_or_else(|| Error::new(format!("{sym}: missing upload")))?;
-                    cursor += 1;
-                    let stream = input
-                        .val
-                        .ok_or_else(|| Error::new(format!("{sym}: missing upload")))?;
-                    let env = self.upload_env(stream)?;
-                    vals.push(env);
                 }
                 "env" => {
                     // The handler of a server: the closure the runtime calls per request.
@@ -533,6 +550,10 @@ impl FnLower<'_> {
                             self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);
                         }
                         vals.push(slot);
+                    } else if hands_over(sym, i) {
+                        // A function value the runtime keeps: handed over, dropped by the runtime.
+                        let v = self.owned(x);
+                        vals.push(v);
                     } else {
                         let v = self.borrow(x);
                         let v = match self.b.m.types.kind(self.ty_of(v)).clone() {
@@ -981,32 +1002,26 @@ impl FnLower<'_> {
     }
 
     /// The error case of `ea` that the status `code` names; the last listed case otherwise.
-    /// `failure` is the symbol returning the text of a `Failed` status.
+    /// A `Failed` status carries the text the native stored in the `err` slot.
     pub(crate) fn status_error(
         &mut self,
         ea: ms_mir::types::AltId,
         code: Value,
         cases: &[(i64, usize)],
-        failure: Option<&str>,
     ) -> Result<Value, Error> {
         let (&(n, idx), rest) = cases
             .split_first()
             .ok_or_else(|| Error::new("no error case for a runtime status"))?;
         let build = |s: &mut Self| -> Result<Value, Error> {
             let carries_text = s.b.m.alts[ea.index()].cases[idx].fields.len() == 1;
-            match failure {
-                _ if carries_text && s.err_slot.is_some() => {
-                    let slot = s.err_slot.expect("checked");
+            match s.err_slot {
+                Some(slot) if carries_text => {
                     let text =
                         s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
                             .expect("take");
                     Ok(s.b.alt_new(ea, idx as u32, &[text]))
                 }
-                Some(sym) if n == 11 && carries_text => {
-                    let text = s.call_runtime(sym, &[], MTy::STR)?;
-                    Ok(s.b.alt_new(ea, idx as u32, &[text]))
-                }
-                // A `Failed(message)` of a module without a failure text.
+                // A `Failed(message)` of a native without an `err` slot.
                 _ if carries_text => {
                     let text = s.lit("").v;
                     let text = s.owned(Val {
@@ -1025,7 +1040,7 @@ impl FnLower<'_> {
         let hit = self.b.icmp(Cc::Eq, code, k);
         let ty = self.b.m.types.alt(ea);
         let r = self.two_ways(hit, ty, &mut |s| build(s).map(Some), &mut |s| {
-            s.status_error(ea, code, rest, failure).map(Some)
+            s.status_error(ea, code, rest).map(Some)
         })?;
         Ok(r.v)
     }
@@ -1090,8 +1105,7 @@ impl FnLower<'_> {
         let cases: Vec<(i64, usize)> = (0..self.b.m.alts[ea.index()].cases.len())
             .map(|i| (i as i64 + 1, i))
             .collect();
-        let failure = failure_symbol(sym);
-        let e = self.status_error(ea, code, &cases, failure.as_deref())?;
+        let e = self.status_error(ea, code, &cases)?;
         Ok(self.b.alt_new(a, err as u32, &[e]))
     }
 
@@ -1105,8 +1119,7 @@ impl FnLower<'_> {
     ) -> Result<Value, Error> {
         let table = status_table(sym);
         let domain = domain_of(sym);
-        let failure = failure_symbol(sym);
-        self.status_chain(er, code, &table, &domain, failure.as_deref())
+        self.status_chain(er, code, &table, &domain)
     }
 
     fn status_chain(
@@ -1115,20 +1128,18 @@ impl FnLower<'_> {
         code: Value,
         table: &[(i64, &'static str, &'static str)],
         domain: &str,
-        failure: Option<&str>,
     ) -> Result<Value, Error> {
         let (&(n, kind, words), rest) = table
             .split_first()
             .ok_or_else(|| Error::new("no error kind for a runtime status"))?;
         let build = |s: &mut Self| -> Result<Value, Error> {
             let text = if kind == "Failed" {
-                match (s.err_slot, failure) {
-                    (Some(slot), _) => {
+                match s.err_slot {
+                    Some(slot) => {
                         s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
                             .expect("take")
                     }
-                    (None, Some(sym)) => s.call_runtime(sym, &[], MTy::STR)?,
-                    (None, None) => {
+                    None => {
                         let l = s.lit(&format!("{domain}: failed")).v;
                         s.owned(Val { v: l, own: false })
                     }
@@ -1146,7 +1157,7 @@ impl FnLower<'_> {
         let hit = self.b.icmp(Cc::Eq, code, k);
         let ty = self.b.m.types.rec(er);
         let r = self.two_ways(hit, ty, &mut |s| build(s).map(Some), &mut |s| {
-            s.status_chain(er, code, rest, domain, failure).map(Some)
+            s.status_chain(er, code, rest, domain).map(Some)
         })?;
         Ok(r.v)
     }
@@ -1355,11 +1366,4 @@ fn domain_of(sym: &str) -> String {
                 .unwrap_or("error")
                 .to_string()
         })
-}
-
-/// The symbol returning the text of a `Failed` status of `sym`'s module, when it has one.
-fn failure_symbol(sym: &str) -> Option<String> {
-    let module = sym.strip_prefix("msstd_")?.split('_').next()?;
-    let failure = format!("msstd_{module}_failure_message");
-    rt_sig(&failure).map(|_| failure)
 }

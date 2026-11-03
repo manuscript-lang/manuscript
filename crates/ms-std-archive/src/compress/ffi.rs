@@ -4,34 +4,12 @@
 //! `STATUS_UNSUPPORTED` (9); `Failed(message)` is never produced.
 
 use super::Format;
-use super::stream::{Decoder, Encoder, Poll};
+use super::{Decoder, Encoder};
 use alloc::vec::Vec;
 use core::cell::RefCell;
-use ms_rt::ffi::{Fail, Has, ObjRef, Object, Out, Status, abi_handle, native};
+use ms_rt::ffi::{Fail, Has, ObjRef, Object, Out, abi_handle, native};
 
-/// `decoder_poll` status: no output yet, feed more input.
-pub const POLL_NEED_INPUT: u8 = 64;
-/// `decoder_poll` status: the stream ended cleanly.
-pub const POLL_DONE: u8 = 65;
-
-/// Why a poll produced no output.
-pub enum Stop {
-    NeedInput,
-    Done,
-    Fail(Fail),
-}
-
-impl Status for Stop {
-    fn status(self) -> u8 {
-        match self {
-            Stop::NeedInput => POLL_NEED_INPUT,
-            Stop::Done => POLL_DONE,
-            Stop::Fail(e) => e.status(),
-        }
-    }
-}
-
-// A stream codec is a refcounted handle. The generated code owns the input `ReadStream` and the
+// A stream codec is a runtime handle with one owner. The generated code owns the input `ReadStream` and the
 // pull loop: on `POLL_NEED_INPUT` it reads a chunk and calls `feed` (or `finish_input` at the end
 // of the input), then polls again. Handles are shared, so the codec sits behind a `RefCell`.
 pub struct DecoderObj {
@@ -80,21 +58,14 @@ native! {
         Ok(())
     }
 
-    fn msstd_compress_decoder_feed(d: ObjRef<DecoderObj>, data: &[u8]) -> () {
-        d.codec.borrow_mut().feed(data);
+    // Feeds a chunk and returns the output it completes; empty while the codec needs more input.
+    fn msstd_compress_decoder_push(decoder: ObjRef<DecoderObj>, data: &[u8]) -> Result<Vec<u8>, Fail> {
+        decoder.codec.borrow_mut().push(data)
     }
 
-    fn msstd_compress_decoder_finish_input(d: ObjRef<DecoderObj>) -> () {
-        d.codec.borrow_mut().finish_input();
-    }
-
-    fn msstd_compress_decoder_poll(d: ObjRef<DecoderObj>, max: i64) -> Result<Vec<u8>, Stop> {
-        match d.codec.borrow_mut().poll(usize::try_from(max).unwrap_or(1)) {
-            Ok(Poll::Output(b)) => Ok(b),
-            Ok(Poll::NeedInput) => Err(Stop::NeedInput),
-            Ok(Poll::Done) => Err(Stop::Done),
-            Err(e) => Err(Stop::Fail(e)),
-        }
+    // Ends the input and returns the rest of the output; input that ends inside the format is `InvalidData`.
+    fn msstd_compress_decoder_end(decoder: ObjRef<DecoderObj>) -> Result<Vec<u8>, Fail> {
+        decoder.codec.borrow_mut().end()
     }
 
     fn msstd_compress_encoder_new(
@@ -109,24 +80,14 @@ native! {
         Ok(())
     }
 
-    fn msstd_compress_encoder_feed(e: ObjRef<EncoderObj>, data: &[u8]) -> () {
-        e.codec.borrow_mut().feed(data);
+    // Feeds a chunk and returns the compressed bytes it completes, possibly none.
+    fn msstd_compress_encoder_push(e: ObjRef<EncoderObj>, data: &[u8]) -> out Vec<u8> {
+        e.codec.borrow_mut().push(data)
     }
 
-    fn msstd_compress_encoder_finish(e: ObjRef<EncoderObj>) -> () {
-        e.codec.borrow_mut().finish();
-    }
-
-    fn msstd_compress_encoder_has_output(e: ObjRef<EncoderObj>) -> bool {
-        e.codec.borrow().has_output()
-    }
-
-    fn msstd_compress_encoder_is_finished(e: ObjRef<EncoderObj>) -> bool {
-        e.codec.borrow().is_finished()
-    }
-
-    fn msstd_compress_encoder_take(e: ObjRef<EncoderObj>, max: i64) -> out Vec<u8> {
-        e.codec.borrow_mut().take(usize::try_from(max).unwrap_or(0))
+    // Finishes the stream and returns the remaining compressed bytes.
+    fn msstd_compress_encoder_end(e: ObjRef<EncoderObj>) -> out Vec<u8> {
+        e.codec.borrow_mut().end()
     }
 }
 
@@ -201,11 +162,12 @@ mod tests {
     }
 
     #[test]
-    fn stream_roundtrip() {
+    fn push_roundtrip() {
         let f = new_string("gzip");
         let mut enc = MaybeUninit::<*mut ObjCell<EncoderObj>>::uninit();
         let mut dec = MaybeUninit::<*mut ObjCell<DecoderObj>>::uninit();
-        let (data, mut chunk, mut plain) = (bytes(b"hello hello hello"), blank(), blank());
+        let (data, mut head, mut tail, mut plain) =
+            (bytes(b"hello hello hello"), blank(), blank(), blank());
         // SAFETY: all pointers are live; handles are released at the end.
         unsafe {
             assert_eq!(
@@ -214,33 +176,23 @@ mod tests {
             );
             assert_eq!(msstd_compress_encoder_new(&f, 6, enc.as_mut_ptr()), 0);
             let enc = enc.assume_init();
-            msstd_compress_encoder_feed(enc, &data);
-            msstd_compress_encoder_finish(enc);
-            assert_eq!(msstd_compress_encoder_is_finished(enc), 1);
-            msstd_compress_encoder_take(enc, 1 << 20, chunk.as_mut_ptr());
+            msstd_compress_encoder_push(enc, &data, head.as_mut_ptr());
+            msstd_compress_encoder_end(enc, tail.as_mut_ptr());
+            let packed = [bytes_ref(head.as_ptr()), bytes_ref(tail.as_ptr())].concat();
             assert_eq!(
                 msstd_compress_decoder_new(&f, ms_rt::ffi::HasRaw(0), 0, dec.as_mut_ptr()),
                 0
             );
             let dec = dec.assume_init();
+            let chunk = bytes(&packed);
             assert_eq!(
-                msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
-                POLL_NEED_INPUT
+                msstd_compress_decoder_push(dec, &chunk, plain.as_mut_ptr()),
+                0
             );
-            msstd_compress_decoder_feed(dec, chunk.as_ptr());
-            assert_eq!(msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()), 0);
             assert_eq!(bytes_ref(plain.as_ptr()), b"hello hello hello");
-            assert_eq!(
-                msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
-                POLL_NEED_INPUT
-            );
-            msstd_compress_decoder_finish_input(dec);
-            assert_eq!(
-                msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
-                POLL_DONE
-            );
-            ms_rt::obj::msrt_release(enc.cast());
-            ms_rt::obj::msrt_release(dec.cast());
+            assert_eq!(msstd_compress_decoder_end(dec, plain.as_mut_ptr()), 0);
+            ms_rt::obj::msrt_obj_drop(enc.cast());
+            ms_rt::obj::msrt_obj_drop(dec.cast());
         }
     }
 }

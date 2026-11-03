@@ -3,7 +3,7 @@
 //!
 //! Values are flattened into scalar leaves (see [`layout`]). Ownership follows
 //! the MIR rules: the generated code drops owned values at their `drop`
-//! instructions only; only `Shared[T]`, closures and interface
+//! instructions only; only closures and interface
 //! payload blocks carry counts. Frame pointers are always kept so the runtime can
 //! walk stacks for fault traces and sampling profiles.
 
@@ -16,7 +16,7 @@ pub mod llvm_ir;
 mod llvm_obj;
 pub use llvm_obj::available as llvm_available;
 mod options;
-pub use options::{BuildOptions, RtHot};
+pub use options::{BuildOptions, CopyProbe, RtHot};
 mod llvm_tables;
 mod lower;
 mod spill;

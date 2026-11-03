@@ -1,9 +1,8 @@
-import expect_equal, expect_false from "@std/test/test.ms"
+import expect_equal, expect_false, expect_ok from "@std/test/test.ms"
 import Item, Box, Holder, Choice from "./domain.ms"
 import Read, invoke, relay, as_view from "./contracts.ms"
 import Closeable from "@std/core.ms"
-import share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import append_file, read_file, temporary from "@std/os/fs.ms"
 
 impl Read[Int] for Item:
     fn get() Int:
@@ -55,8 +54,7 @@ import Resource from "./domain.ms"
 
 impl Closeable for Resource:
     var fn close() Unit!:
-        var guard = lock(self.events)
-        guard.value.append(value: 10)
+        let _ = append_file(self.events, "10,")
         return ok(unit)
 
 fn leave(resource: Resource) Unit:
@@ -67,9 +65,10 @@ export fn first_resource(resource: Resource) Closeable:
     return resource
 
 test "first local cleanup":
-    let events = share(List[Int]())
-    leave(Resource(events))
-    events.get().get(index: 0) | try expect_equal(10)
+    let dir = temporary("ms-ext-") | try expect_ok
+    let events = "{dir.path()}/events"
+    leave(Resource(events.clone()))
+    (try expect_ok(read_file(events).wait())).decode_utf8() | try expect_equal("10,")
 
 export fn mixed[T: Read[Int]](value: T, concrete: Item) Int:
     return value.get() + concrete.get()

@@ -13,18 +13,22 @@ export fn env(name: String, fallback: String) String:
 
 // The text of the file at `path`; empty when it cannot be read.
 export fn read_text(path: String) String:
-    if let data = read_file(path).to_optional(): return data.decode_utf8().get("")
+    if let data = read_file(path).wait().to_optional(): return (
+        data
+        .decode_utf8()
+        .get("")
+    )
 
     return ""
 
 // The text of the file at `path`; a missing file stops the program.
 export fn must_read(path: String) String:
-    return read_file(path).get().decode_utf8().get("")
+    return read_file(path).wait().get().decode_utf8().get("")
 
 // Replaces the file at `path`, creating its directory first.
 export fn write_text(path: String, text: String) Unit:
     create_directory(dirname(path), recursive: true).get()
-    write_file(path, text, replace: true).get()
+    write_file(path, text, replace: true).wait().get()
 
 // Trailing whitespace removed from every line and from the whole text, as the graders compare output.
 export fn norm(text: String) String:
@@ -60,7 +64,7 @@ export fn run_in(
     let start = monotonic_time()
     let result = run(
         program, arguments, input: input.to_bytes(), timeout: seconds(timeout_s)
-    )
+    ).wait()
     let elapsed = (monotonic_time() - start).to_float() / 1000000000.0
     if let done = result.to_optional():
         return Ran(

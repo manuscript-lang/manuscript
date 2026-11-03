@@ -40,7 +40,7 @@ export fn bench_string() Unit:
         fn() Int:
             var n = 0
             for i in 0..200:
-                n = (n + text.replace_all("word", "w").get("").length())
+                n = (n + text.replace("word", "w").get("").length())
             return n
     )
 

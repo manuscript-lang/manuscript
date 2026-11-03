@@ -1,6 +1,6 @@
 //! C ABI shims for `@std/data/html.ms` (`msstd_html_*`).
 //!
-//! `HtmlNode` is a sum type with recursive lists, so a parse returns a refcounted tree handle and
+//! `HtmlNode` is a sum type with recursive lists, so a parse returns an owned tree handle and
 //! `@std/data/html.ms` walks it with node ids: `kind`, `data`, `namespace`, child and attribute
 //! accessors. Ids are only valid for the tree that issued them; `-1` is no node.
 
@@ -146,7 +146,7 @@ mod tests {
             assert_eq!(msstd_html_attr_count(t, p), 1);
             let tx = msstd_html_first_child(t, p);
             assert_eq!(take_string(|o| msstd_html_data(t, tx, o)), "x&y");
-            ms_rt::obj::msrt_release(t.cast());
+            ms_rt::obj::msrt_obj_drop(t.cast());
             ms_rt::ffi::str_release(&text);
         }
     }

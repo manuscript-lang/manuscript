@@ -1,9 +1,10 @@
 import BigInt from "@std/math/math.ms"
 import Bytes from "@std/bytes.ms"
 import Duration, milliseconds, monotonic, now, sleep from "@std/os/time.ms"
-import ReadStream from "@std/io/io.ms"
+import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
+import Promise, adopt, owned_promise from "@std/concurrency/promise.ms"
+import msrt_promise_finished from "@std/internal/promises.ms"
 import Timestamp from "@std/os/time.ms"
-import WriteStream from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 import (
     msstd_path_basename,
@@ -49,8 +50,6 @@ import (
     msstd_path_parse,
     msstd_path_format,
     msstd_path_matches_glob,
-    msstd_fs_file_reader,
-    msstd_fs_file_writer,
     msstd_io_close,
     msstd_fs_file_clone,
     msstd_io_read,
@@ -165,7 +164,7 @@ interface FileSystem:
         max_entries: Int?,
         max_events: Int?,
         overflow: String
-    ) FileWatcher!
+    ) RawWatcher!
     // Resolves symlinks and returns the canonical absolute path.
     fn canonicalize(path: String) String!
     // Creates one directory; recursive defaults to False, requiring its parent to exist.
@@ -235,7 +234,7 @@ interface FileSystem:
         recursive: Bool,
         interval: Duration,
         max_entries: Int?
-    ) FileWatcher!
+    ) RawWatcher!
     // Creates a new temp directory whose contents are removed by scoped close.
     // Prefix has the same validation as temporary_directory; this does not query the temp root.
     fn temporary(prefix: String) TemporaryDirectory!
@@ -254,6 +253,34 @@ export type FileHandle:
     // The runtime handle for the open file; it is released by `close` and owned by this value.
     native: NativeFile
 
+// Chunks of a file from its current position, until the end.
+type FileSource:
+    file: FileHandle
+
+impl Source[Bytes] for FileSource:
+    var fn next() Bytes?!:
+        return self.file.read(none)
+
+    var fn close() Unit!:
+        return self.file.close()
+
+// Complete writes to a file; `drain` synchronizes it.
+type FileSink:
+    file: FileHandle
+
+impl Sink[Bytes] for FileSink:
+    var fn put(value: Bytes) Unit!:
+        return self.file.write_bytes(value)
+
+    var fn drain() Promise[Unit]:
+        return adopt[Unit](msrt_promise_finished())
+
+    fn buffered() Int:
+        return 0
+
+    var fn close() Unit!:
+        return self.file.close()
+
 impl Closeable for FileHandle:
     // Closes the file, interrupts calls in progress, and waits for them to stop.
     // Safe to call repeatedly; later operations return Closed.
@@ -271,12 +298,14 @@ impl FileHandle:
         return msstd_fs_file_clone(self.native)
 
     // Adapts this handle to `Error`/Optional chunk reads; closing either view closes all aliases.
-    fn reader() ReadStream:
-        return msstd_fs_file_reader(self.native)
+    fn reader() ReadStream[Bytes]!:
+        let own = try self.clone()
+        return ok(stream[Bytes](FileSource(own)))
 
     // Adapts complete writes to `Error`/Unit; flush synchronizes the file.
-    fn writer() WriteStream:
-        return msstd_fs_file_writer(self.native)
+    fn writer() WriteStream[Bytes]!:
+        let own = try self.clone()
+        return ok(writer[Bytes](FileSink(own)))
 
     // Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
     fn read(max_bytes: Int?) Bytes?!:
@@ -365,7 +394,7 @@ impl FileHandle:
 
             if let limit = timeout:
                 if monotonic().difference(started).compare(limit) >= 0: return ok(false)
-            sleep(milliseconds(5))
+            try sleep(milliseconds(5)).wait()
 
         return ok(false)
 
@@ -418,23 +447,36 @@ impl Directory:
 // The runtime handle behind a `FileWatcher`.
 export extern type NativeWatcher
 
-// A change stream returned by a filesystem watch operation.
-export type FileWatcher:
-    // The runtime handle for the watch; it is released by `close` and owned by this value.
+// The native watcher a watch operation returns; `watch` wraps it into a stream.
+export type RawWatcher:
+    // The runtime handle for the watch; the stream releases it when it closes.
     native: NativeWatcher
 
-impl Closeable for FileWatcher:
-    // Stops the watcher, wakes a pending `next` with Closed, and waits for its worker to stop.
-    // Safe to call repeatedly.
+// Events one native call returned and the reader has not taken yet, newest first so `pop` moves the next one out.
+type WatchSource:
+    watcher: RawWatcher
+    pending: List[FileEvent]
+
+impl Source[FileEvent] for WatchSource:
+    // Waits for the next change. A closed watcher is `Closed`; a native watcher that overflowed with policy `error` is `LimitExceeded`.
+    var fn next() FileEvent?!:
+        while true:
+            if let event = self.pending.pop():
+                return ok(event)
+
+            var batch = try msstd_fs_watch_next(self.watcher.native)
+            batch.reverse()
+            self.pending = batch
+
+        return ok(none)
+
+    // Stops the watcher and waits for its worker to stop.
     var fn close() Unit!:
-        msstd_fs_watch_close(self.native)
+        msstd_fs_watch_close(self.watcher.native)
         return ok(unit)
 
-impl FileWatcher:
-    // Waits for filesystem activity and returns events. A native watcher returns one event per call; a polling watcher returns every difference seen after an interval.
-    // Cancelling the waiting task unwinds it, and a closed watcher returns Closed. A native watcher that overflowed with policy `error` returns LimitExceeded.
-    fn next() List[FileEvent]!:
-        return msstd_fs_watch_next(self.native)
+fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
+    return stream[FileEvent](WatchSource(watcher, []))
 
 // The runtime handle behind a `TemporaryDirectory`.
 export extern type NativeTemporary
@@ -593,9 +635,26 @@ export fn create_link(path: String, target: String) Unit!:
 export fn list(path: String, max_entries: Int?) List[DirectoryEntry]!:
     return msstd_fs_list(path, max_entries)
 
-// Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
-export fn read_file(path: String, max_bytes: Int?) Bytes!:
-    return msstd_fs_read_file(path, max_bytes)
+type ReadArgs:
+    path: String
+    max_bytes: Int?
+
+type WriteArgs:
+    path: String
+    data: String
+    replace: Bool
+
+type WriteBytesArgs:
+    path: String
+    data: Bytes
+    replace: Bool
+
+// Starts reading a file fully into memory and returns its promise. Supply `max_bytes` for untrusted or large files.
+export fn read_file(path: String, max_bytes: Int?) Promise[Bytes]:
+    return owned_promise[ReadArgs, Bytes](
+        ReadArgs(path: path.clone(), max_bytes: max_bytes),
+        fn a: msstd_fs_read_file(a.path, a.max_bytes)
+    )
 
 // Returns the target text stored in the symbolic link at `path`, without resolving it.
 // A path that is not a link returns InvalidInput.
@@ -625,13 +684,25 @@ export fn temporary_root() String!:
 export fn temporary_directory(prefix: String) String!:
     return msstd_fs_temporary_directory(prefix)
 
-// Creates a file exclusively; replace defaults to False, retaining an existing file.
-export fn write_file(path: String, data: String, replace: Bool = false) Unit!:
-    return msstd_fs_write_file(path, data.to_bytes(), replace)
+// Starts creating a file exclusively and returns its promise; replace defaults to False, retaining an existing file.
+export fn write_file(path: String, data: String, replace: Bool = false) Promise[Unit]:
+    return owned_promise[WriteArgs, Unit](
+        WriteArgs(path: path.clone(), data: data.clone(), replace: replace),
+        fn a: msstd_fs_write_file(a.path, a.data.to_bytes(), a.replace)
+    )
 
-// Creates a file exclusively from raw bytes; replace defaults to False, retaining an existing file.
-export fn write_file_bytes(path: String, data: Bytes, replace: Bool = false) Unit!:
-    return msstd_fs_write_file(path, data, replace)
+// Starts creating a file exclusively from raw bytes and returns its promise; replace defaults to False, retaining an existing file.
+export fn write_file_bytes(
+    path: String,
+    data: Bytes,
+    replace: Bool = false
+) Promise[Unit]:
+    return owned_promise[WriteBytesArgs, Unit](
+        WriteBytesArgs(
+            path: path.clone(), data: data.clone(), replace: replace
+        ),
+        fn a: msstd_fs_write_file(a.path, a.data, a.replace)
+    )
 
 // Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined bits.
 // Native permissions and Windows access policy still apply.
@@ -757,7 +828,7 @@ fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
     return remove(source, true)
 
 /*
-Watches `path` for changes and returns a `FileWatcher`.
+Watches `path` for changes and returns the changes as a stream, one event per item. Dropping the stream stops the watcher.
 Without `options.interval` it uses native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows).
 With an interval it compares snapshots of the tree every `interval`, which must be positive, and can miss transient changes;
 `max_events` and `overflow` apply only to native events and return InvalidInput together with an interval.
@@ -772,7 +843,7 @@ export fn watch(
     path: String,
     recursive: Bool = false,
     options: WatchOptions = WatchOptions()
-) FileWatcher!:
+) ReadStream[FileEvent]!:
     if let interval = options.interval:
         if options.max_events.is_some() or options.overflow.is_some(): return error(
             Error(
@@ -780,11 +851,21 @@ export fn watch(
             )
         )
 
-        return msstd_fs_watch(path, recursive, interval, options.max_entries)
+        return ok(
+            watch_stream(
+                try msstd_fs_watch(
+                    path, recursive, interval, options.max_entries
+                )
+            )
+        )
 
-    return msstd_fs_watch_native(
-        path, recursive, options.max_entries, options.max_events,
-        options.overflow.get("error")
+    return ok(
+        watch_stream(
+            try msstd_fs_watch_native(
+                path, recursive, options.max_entries, options.max_events,
+                options.overflow.get("error")
+            )
+        )
     )
 
 // Creates a new temp directory whose contents are removed by scoped close.

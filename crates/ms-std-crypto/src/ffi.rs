@@ -281,7 +281,7 @@ mod tests {
             let mut want = core::mem::MaybeUninit::<VecVal>::uninit();
             assert_eq!(msstd_crypto_hmac(3, &key, &whole, want.as_mut_ptr()), 0);
             assert_eq!(read(&got.assume_init()), read(&want.assume_init()));
-            ms_rt::obj::msrt_release(h.cast());
+            ms_rt::obj::msrt_obj_drop(h.cast());
         }
     }
     #[test]

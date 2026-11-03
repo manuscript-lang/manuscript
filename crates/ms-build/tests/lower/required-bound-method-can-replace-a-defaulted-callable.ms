@@ -10,5 +10,7 @@ impl Offset:
 export fn main() Int:
     let offset = Offset(2)
     var callback = offset.original
-    callback = offset.replacement
+
+    // Assigning a method value takes its receiver, as assigning a closure takes its captures.
+    callback = offset.clone().replacement
     return callback(3)

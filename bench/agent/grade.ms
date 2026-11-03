@@ -69,8 +69,8 @@ export fn main() Int:
             built.err.length()
         ).get("")
 
-    write_file("{out_dir}/detail.json", stringify(detail).get(""), replace: true).get()
+    write_file("{out_dir}/detail.json", stringify(detail).get(""), replace: true).wait().get()
 
     let reward = if detail.built and detail.passed == detail.total: "1" else: "0"
-    write_file("{out_dir}/reward.txt", reward, replace: true).get()
+    write_file("{out_dir}/reward.txt", reward, replace: true).wait().get()
     return 0

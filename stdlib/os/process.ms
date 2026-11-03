@@ -1,10 +1,17 @@
 import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
+import Promise, owned_promise from "@std/concurrency/promise.ms"
 import access, join, stat from "@std/os/fs.ms"
 import IpFamily from "@std/net/net.ms"
-import ReadStream from "@std/io/io.ms"
-import WriteStream from "@std/io/io.ms"
+import (
+    ReadStream,
+    WriteStream,
+    Source,
+    stream,
+    descriptor_reader,
+    descriptor_writer
+) from "@std/io/io.ms"
 import (
     msrt_args,
     msstd_system_endianness,
@@ -13,8 +20,7 @@ import (
     msstd_system_os_type,
     msstd_system_constants,
     msstd_process_commands,
-    msstd_process_subprocess_stdin,
-    msstd_process_subprocess_stream,
+    msstd_process_subprocess_stream_id,
     msstd_process_subprocess_wait,
     msstd_process_subprocess_max_resident,
     msstd_process_subprocess_terminate,
@@ -165,16 +171,16 @@ impl Closeable for Subprocess:
 
 impl Subprocess:
     // The child's standard input as a WriteStream; writes block when the pipe is full. Closing the stream delivers end-of-input to the child.
-    fn stdin() WriteStream:
-        return msstd_process_subprocess_stdin(self.native)
+    fn stdin() WriteStream[Bytes]:
+        return descriptor_writer(msstd_process_subprocess_stream_id(self.native, 0))
 
     // The child's standard output as a ReadStream over the OS pipe; reads block until output or end-of-file, and nothing is buffered without bound.
-    fn stdout() ReadStream:
-        return msstd_process_subprocess_stream(self.native, 1)
+    fn stdout() ReadStream[Bytes]:
+        return descriptor_reader(msstd_process_subprocess_stream_id(self.native, 1))
 
     // The child's standard error as a ReadStream over the OS pipe, with the same blocking and backpressure behavior as stdout.
-    fn stderr() ReadStream:
-        return msstd_process_subprocess_stream(self.native, 2)
+    fn stderr() ReadStream[Bytes]:
+        return descriptor_reader(msstd_process_subprocess_stream_id(self.native, 2))
 
     // Waits for the child to exit and returns its exit status. Returns Timeout if `timeout` elapses first, leaving the child running.
     fn wait(timeout: Duration?) Int!:
@@ -261,30 +267,20 @@ export type ResourceUsage:
     // Context switches where the scheduler preempted the process, as a count.
     involuntary_switches: Int
 
-/*
-A cancellable observer of operating-system signals selected by `watch_signals`.
-SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
-`next()` and following code have no shutdown guarantee; use registered `Closeable` cleanup.
-*/
-export interface SignalStream:
-    // Stops observing signals, wakes a pending `next` with Closed, and waits for it.
-    // Safe to call repeatedly.
-    fn close() Unit
-    // Waits for the next observed signal and returns its number. Signals arriving while no call waits are buffered up to the stream's capacity.
-    // Returns Closed after `close`. Cancelling the waiting task unwinds it.
-    fn next() Int!
-
-// The runtime handle behind a `SignalStream`.
+// The runtime observer behind `watch_signals`; signals arriving while no read waits are buffered.
 export extern type NativeSignals
 
-impl SignalStream for NativeSignals:
-    // Stops observing signals, wakes a pending `next` with Closed, and waits for it. Safe to call repeatedly.
-    fn close() Unit:
-        msstd_process_signal_close(self)
+type SignalSource:
+    signals: NativeSignals
 
-    // Waits for the next observed signal and returns its number; Closed after `close`.
-    fn next() Int!:
-        return msstd_process_signal_next(self)
+impl Source[Int] for SignalSource:
+    var fn next() Int?!:
+        return ok(try msstd_process_signal_next(self.signals))
+
+    // Stops observing signals and wakes a pending read with Closed.
+    var fn close() Unit!:
+        msstd_process_signal_close(self.signals)
+        return ok(unit)
 
 // The child-process operations of the current host.
 fn host_commands() Commands:
@@ -389,8 +385,17 @@ export fn os_type() String:
 export fn constants() Map[String, Int]:
     return msstd_system_constants()
 
+type RunArgs:
+    program: String
+    arguments: List[String]
+    input: Bytes
+    max_output_bytes: Int?
+    timeout: Duration?
+    cwd: String?
+    env: Map[String, String]
+
 /*
-Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
+Starts `program` directly, without a shell, searching the PATH, and returns a promise that finishes when it does. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
 Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
 `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
 */
@@ -402,9 +407,16 @@ export fn run(
     timeout: Duration?,
     cwd: String?,
     env: Map[String, String] = Map[String, String]()
-) CommandOutput!:
-    return host_commands().run(
-        program, arguments, input, max_output_bytes, timeout, cwd, env
+) Promise[CommandOutput]:
+    return owned_promise[RunArgs, CommandOutput](
+        RunArgs(
+            program: program.clone(), arguments: arguments.clone(),
+            input: input.clone(), max_output_bytes: max_output_bytes, timeout: timeout,
+            cwd: cwd.clone(), env: env.clone()
+        ),
+        fn a: host_commands().run(
+            a.program, a.arguments, a.input, a.max_output_bytes, a.timeout, a.cwd, a.env
+        )
     )
 
 // Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
@@ -429,11 +441,12 @@ export fn monotonic_time() Int:
 Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
 Capacity must be 1..1048576; omission/none uses 128 buffered signals.
 Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
-Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
+Each read yields the next signal number; the stream never ends on its own. Dropping it unregisters the observer.
+Code after a read has no shutdown guarantee; use registered with/Closeable cleanup.
 */
-export fn watch_signals(signals: List[Int], capacity: Int?) SignalStream!:
+export fn watch_signals(signals: List[Int], capacity: Int?) ReadStream[Int]!:
     let native = try msstd_process_watch_signals(signals, capacity)
-    return ok(native)
+    return ok(stream[Int](SignalSource(native)))
 
 // Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0 when no limit applies or the platform has no such limit.
 export fn constrained_memory() Int!:

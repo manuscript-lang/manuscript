@@ -1126,6 +1126,18 @@ pub fn implies_clonable(b: &Ty) -> bool {
     b.is(Builtin::Clonable) || b.is(Builtin::Data) || b.is(Builtin::Hashable)
 }
 
+/// Whether the native `t` declares an infallible `clone` of its own as an operation of its
+/// definition (`fn clone() Bytes: ...` in `impl Bytes:`): the runtime can duplicate its storage.
+/// A clone implemented in source (`BigInt`, `List` through `ListCopies`) is a method instead.
+pub fn native_declares_clone(t: &Ty) -> bool {
+    t.def.as_ref().is_some_and(|d| {
+        d.operations
+            .borrow()
+            .iter()
+            .any(|o| o.name.as_str() == "clone" && o.ty.result_ty().id == t.id)
+    })
+}
+
 /// One declared record field, freshly substituted with the receiver's type arguments.
 pub fn field_of(t: &Ty, name: Name) -> Option<Param> {
     let def = t.def.as_ref()?;

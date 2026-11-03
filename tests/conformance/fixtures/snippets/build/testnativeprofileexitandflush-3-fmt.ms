@@ -5,6 +5,6 @@ import nanoseconds, sleep from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"
 
 export fn main() Int:
-    let _ = stdout().write(data: "ready\n")
-    sleep(nanoseconds(60000000000))
+    let _ = stdout().write("ready\n")
+    sleep(nanoseconds(60000000000)).wait()
     return 0

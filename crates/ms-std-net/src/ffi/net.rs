@@ -267,6 +267,18 @@ native! {
         c.close();
     }
 
+    /// Another handle on the same connection, for the other end of a `Connection` record.
+    fn msstd_net_connection_share(c: ObjRef<ConnH>) -> Object<ConnH> {
+        Object(ConnH(c.0.0.clone()))
+    }
+
+    /// Closes the connection when `c` is its last handle; an end that closes first leaves it open for the other.
+    fn msstd_net_connection_close_if_last(c: ObjRef<ConnH>) -> () {
+        if std::rc::Rc::strong_count(&c.0.0) == 1 {
+            c.close();
+        }
+    }
+
     /// `Connection.local_address()`.
     fn msstd_net_connection_local_address(c: ObjRef<ConnH>) -> String {
         c.local_address().to_string()
@@ -294,17 +306,6 @@ native! {
         Ok(())
     }
 
-    /// `Connection.write(data, timeout)`.
-    fn msstd_net_connection_write(
-        c: ObjRef<ConnH>,
-        data: &str,
-        has_timeout: Has,
-        timeout: i64,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        report(c.write(data.as_bytes(), opt(*has_timeout, timeout)), &err)
-    }
-
     /// `Connection.write(data: Bytes, timeout)`.
     fn msstd_net_connection_write_bytes(
         c: ObjRef<ConnH>,
@@ -314,17 +315,6 @@ native! {
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         report(c.write(data, opt(*has_timeout, timeout)), &err)
-    }
-
-    /// `Connection.clone()`.
-    fn msstd_net_connection_clone(
-        c: ObjRef<ConnH>,
-        out: Out<Object<ConnH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let d = report(c.duplicate(), &err)?;
-        out.write(Object(ConnH(d)));
-        Ok(())
     }
 
     /// `Connection.shutdown_write()`.
@@ -356,6 +346,12 @@ native! {
     ) -> Result<(), StatusCode> {
         out.write(report(l.accept_raw(opt(*has_timeout, timeout)), &err)?);
         Ok(())
+    }
+
+    /// Another handle on the same listener, for a promise that accepts on it. Dropping the handle
+    /// leaves the listener open; `Listener.close()` stops it.
+    fn msstd_net_listener_share(l: ObjRef<ListenerH>) -> Object<ListenerH> {
+        Object(ListenerH(l.0.0.clone()))
     }
 
     /// `Listener.raw_owner()`: the identity under which this listener's raw handles are tracked.
@@ -390,6 +386,18 @@ native! {
         sock.close();
     }
 
+    /// Another handle on the same socket, for the other end of a `DatagramSocket` record.
+    fn msstd_net_datagram_share(sock: ObjRef<DgramH>) -> Object<DgramH> {
+        Object(DgramH(sock.0.0.clone()))
+    }
+
+    /// Closes the socket when `sock` is its last handle.
+    fn msstd_net_datagram_close_if_last(sock: ObjRef<DgramH>) -> () {
+        if std::rc::Rc::strong_count(&sock.0.0) == 1 {
+            sock.close();
+        }
+    }
+
     /// `DatagramSocket.receive(max, timeout)`.
     fn msstd_net_datagram_receive(
         sock: ObjRef<DgramH>,
@@ -406,18 +414,6 @@ native! {
             sender: Str::new(&dg.sender),
         });
         Ok(())
-    }
-
-    /// `DatagramSocket.send(data, address, timeout)`.
-    fn msstd_net_datagram_send(
-        sock: ObjRef<DgramH>,
-        data: &str,
-        address: &str,
-        has_timeout: Has,
-        timeout: i64,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        report(sock.send(data.as_bytes(), address, opt(*has_timeout, timeout)), &err)
     }
 
     /// `DatagramSocket.send(data: Bytes, address, timeout)`.
@@ -553,10 +549,12 @@ mod tests {
                 ),
                 0
             );
+            let mut hello = MaybeUninit::<VecVal>::uninit();
+            ms_rt::ffi::write_bytes(hello.as_mut_ptr(), b"hello");
             assert_eq!(
-                msstd_net_connection_write(
+                msstd_net_connection_write_bytes(
                     client,
-                    s("hello"),
+                    hello.as_ptr(),
                     HasRaw(1),
                     2_000_000_000,
                     ErrSlot(&mut err)
@@ -615,7 +613,7 @@ mod tests {
             msstd_net_connection_close(server);
             msstd_net_listener_close(listener);
             for h in [client.cast(), server.cast(), listener.cast(), net.cast()] {
-                ms_rt::obj::msrt_release(h);
+                ms_rt::obj::msrt_obj_drop(h);
             }
         }
     }
@@ -681,8 +679,8 @@ mod tests {
             assert_eq!(records.len, 1);
             let record = &*(records.ptr as *const DnsRecordWire);
             assert_eq!(take(record.value.as_ptr().read()), "127.0.0.1");
-            ms_rt::obj::msrt_release(child.cast());
-            ms_rt::obj::msrt_release(net.cast());
+            ms_rt::obj::msrt_obj_drop(child.cast());
+            ms_rt::obj::msrt_obj_drop(net.cast());
         }
     }
 }

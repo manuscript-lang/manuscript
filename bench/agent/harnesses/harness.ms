@@ -57,7 +57,7 @@ export fn run_agent(
     let argv = h.command(prompt, model, workspace)
     let wrapper = ["-c", "cd \"$0\" && exec \"$@\"", workspace.clone()].concat(argv)
     let ran = run_in("bash", wrapper, timeout_s, "")
-    write_file(transcript, ran.out, replace: true).get()
+    write_file(transcript, ran.out, replace: true).wait().get()
 
     var usage = h.parse(ran.out)
 

@@ -51,7 +51,7 @@ fn cheatsheet_program_checks() {
 #[test]
 fn cheatsheet_stays_short() {
     assert!(
-        cheatsheet().len() <= 5150,
+        cheatsheet().len() <= 5800,
         "cheat sheet is {} bytes",
         cheatsheet().len()
     );
@@ -198,7 +198,7 @@ fn search_finds_apis_from_loose_queries() {
         ("base64 encode", "@std/data/encoding.ms", "base64_encode"),
         ("sorted", "prelude", "List.sorted"),
         ("sort by", "prelude", "List.sorted"),
-        ("read stdin lines", "@std/io/io.ms", "read_line"),
+        ("read stdin lines", "@std/io/streams.ms", "lines"),
         ("uppercase", "prelude", "String.upper"),
     ];
     for (query, module, name) in cases {

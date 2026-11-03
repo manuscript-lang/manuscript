@@ -28,7 +28,7 @@ fn run(fs: FileSystem, root: String) Unit:
         fn() Int:
             var n = 0
             for i in 0..200:
-                if let b = read_file("{root}/f{i}.bin"):
+                if let b = read_file("{root}/f{i}.bin").wait():
                     n += b.length()
             return n
     )

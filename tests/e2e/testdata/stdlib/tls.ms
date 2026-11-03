@@ -1,6 +1,7 @@
+import send, recv, read_to_end from "./support/conn.ms"
 import expect_equal, expect_error, expect_false, expect_ok from "@std/test/test.ms"
 import http_result from "./support/http.ms"
-import headers, HttpMethod, buffered from "@std/net/http.ms"
+import HttpMethod from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import (
     parse_certificates,
@@ -20,8 +21,7 @@ import (
     serve
 ) from "@std/net/net.ms"
 import timestamp from "@std/os/time.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import promise, wait_all from "@std/concurrency/promise.ms"
 import Listener, Connection from "@std/net/net.ms"
 import certificate, private_key from "./support/certificates.ms"
 
@@ -104,16 +104,16 @@ test "HTTPS trusts only the explicitly supplied local test root":
     let client = http_client(
         HttpClientOptions(decompress: false, cookies: false, tls: client_tls)
     ) | try expect_ok
-    let response = client.request(
+    var response = client.request(
         method: HttpMethod.Get, url: "https://{server.address()}/",
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
     ) | try expect_ok
     try expect_false(
         (
-            response.metadata().status != 200
+            response.metadata.status != 200
             or (
-                response.read() | try expect_ok
-            ).get() != "secure".to_bytes()
+                read_to_end(var response.body) | try expect_ok
+            ) != "secure".to_bytes()
         )
     )
 
@@ -144,24 +144,24 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
     let client = http_client(
         HttpClientOptions(decompress: false, cookies: false, tls: client_tls)
     ) | try expect_ok
-    let response = client.request(
+    var response = client.request(
         method: HttpMethod.Get, url: "https://{server.address()}/",
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
     ) | try expect_ok
-    try expect_equal(response.metadata().protocol, "HTTP/2.0")
-    try expect_equal((try response.read()).get(), "HTTP/2.0".to_bytes())
+    try expect_equal(response.metadata.protocol, "HTTP/2.0")
+    try expect_equal(try read_to_end(var response.body), "HTTP/2.0".to_bytes())
 
 fn answer_ping(var connection: Connection) Int:
-    let ping = connection.read(4, 3.seconds)
-    let pong = connection.write("pong", 3.seconds)
+    let ping = recv(var connection, 3.seconds)
+    let pong = send(var connection, "pong")
     connection.close().get(none)
     if ping.is_error() or pong.is_error():
         return 0
 
     return 1
 
-fn serve_one_tls(listener: Shared[Listener]) Int:
-    match listener.get().accept(3.seconds):
+fn serve_one_tls(listener: Listener) Int:
+    match listener.accept(3.seconds).wait():
         ok(accepted):
             var connection = accepted
             return answer_ping(var connection)
@@ -177,18 +177,14 @@ test "raw TLS listeners and clients handshake and report negotiated details":
         server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
         private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: false
     )
-    let listener: Shared[Listener] = share(
-        try listen_tls("127.0.0.1:0", server_tls, 3.seconds)
-    )
-    var group = TaskGroup[Int]()
-    let handle = listener
-    group.spawn(fn ch: serve_one_tls(handle))
+    let listener = try listen_tls("127.0.0.1:0", server_tls, 3.seconds)
+    let address = listener.address()
+    let served = promise(fn: ok(serve_one_tls(listener)))
+    var client = try connect_tls_config(address.clone(), client_tls, 3.seconds).wait()
+    try send(var client, "ping")
+    try expect_equal((try recv(var client, 3.seconds)).get(), "pong".to_bytes())
 
-    var client = try connect_tls_config(listener.get().address(), client_tls, 3.seconds)
-    try client.write("ping", 3.seconds)
-    try expect_equal((try client.read(4, 3.seconds)).get(), "pong".to_bytes())
-
-    let info = try client.tls_info()
+    let info = try client.info.tls_info()
     try expect_false(info.version < 771)
     try expect_equal(info.alpn, "http/1.1")
     try expect_false(not info.verified)
@@ -200,37 +196,26 @@ test "raw TLS listeners and clients handshake and report negotiated details":
     try expect_equal(more.length(), 2)
     try expect_equal(more[1].length(), more[0].length())
     try client.close()
-
-    let served = try group.results()
-    try expect_equal(served[0], 1)
-    try group.close()
-    try listener.get().close()
+    try expect_equal((try wait_all([served]))[0], 1)
 
 test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
     let server_tls = TlsOptions(
         server_name: "", roots_pem: "", certificate_pem: certificate(),
         private_key_pem: private_key(), alpn: [], require_client_certificate: false
     )
-    let listener: Shared[Listener] = share(
-        try listen_tls("127.0.0.1:0", server_tls, 3.seconds)
-    )
-    var group = TaskGroup[Int]()
-    let handle = listener
-    group.spawn(fn ch: serve_one_tls(handle))
-
+    let listener = try listen_tls("127.0.0.1:0", server_tls, 3.seconds)
+    let address = listener.address()
+    let served = promise(fn: ok(serve_one_tls(listener)))
     let _failure = try expect_error(
-        connect_tls(listener.get().address(), "stdlib.test", 3.seconds)
+        connect_tls(address.clone(), "stdlib.test", 3.seconds).wait()
     )
-    let _served = try group.results()
-    try group.close()
-    try listener.get().close()
-
+    let _served = try wait_all([served])
     let plain = try listen("127.0.0.1:0")
-    let client = try connect(plain.address(), 2.seconds)
-    try expect_false(client.tls_info().is_ok())
+    var client = try connect(plain.address(), 2.seconds).wait()
+    try expect_false(client.info.tls_info().is_ok())
 
-fn count_until_eof(listener: Shared[Listener]) Int:
-    let accepted = listener.get().accept(5.seconds)
+fn count_until_eof(listener: Listener) Int:
+    var accepted = listener.accept(5.seconds).wait()
     if accepted.is_error(): return -1
 
     var connection = accepted.get()
@@ -240,7 +225,7 @@ fn count_until_eof(listener: Shared[Listener]) Int:
     while reads < 100000:
         reads += 1
 
-        let chunk = connection.read(65536, 5.seconds)
+        let chunk = recv(var connection, 5.seconds)
         if chunk.is_error(): return -2
         if chunk.get().is_none(): break
 
@@ -258,20 +243,12 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
         server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
         private_key_pem: "", alpn: [], require_client_certificate: false
     )
-    let listener: Shared[Listener] = share(
-        try listen_tls("127.0.0.1:0", server_tls, 5.seconds)
-    )
-    var group = TaskGroup[Int]()
-    let handle = listener
-    group.spawn(fn ch: count_until_eof(handle))
-
-    var client = try connect_tls_config(listener.get().address(), client_tls, 5.seconds)
-    try client.write("y".repeat(20000000).get(), 20.seconds)
+    let listener = try listen_tls("127.0.0.1:0", server_tls, 5.seconds)
+    let address = listener.address()
+    let served = promise(fn: ok(count_until_eof(listener)))
+    var client = try connect_tls_config(address.clone(), client_tls, 5.seconds).wait()
+    try send(var client, "y".repeat(20000000).get())
 
     // No read first: the server's post-handshake bytes must not reset the connection.
     try client.close()
-
-    let counted = try group.results()
-    try expect_equal(counted[0], 20000000)
-    try group.close()
-    try listener.get().close()
+    try expect_equal((try wait_all([served]))[0], 20000000)

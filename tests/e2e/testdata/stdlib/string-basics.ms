@@ -78,12 +78,15 @@ test "lines preserve interior empties and recognize LF and CRLF only":
 
 test "String basic bound methods capture immutable receiver values":
     var text = "é\n🙂\n"
-    let chars = text.chars
-    let lines = text.lines
-    let reverse = text.reverse
-    let length = text.length
-    let empty = text.is_empty
-    let compare = text.compare
+
+    // A method value borrows its receiver, so a snapshot that outlives a change is a clone.
+    let snapshot = text.clone()
+    let chars = snapshot.chars
+    let lines = snapshot.lines
+    let reverse = snapshot.reverse
+    let length = snapshot.length
+    let empty = snapshot.is_empty
+    let compare = snapshot.compare
     text = "changed"
     try expect_false(chars() != ["é", "\n", "🙂", "\n"] or lines() != ["é", "🙂"])
     try expect_false((reverse() != "\n🙂\né" or length() != 4 or empty()))

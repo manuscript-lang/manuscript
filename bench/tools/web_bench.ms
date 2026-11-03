@@ -81,7 +81,7 @@ fn wait_started(p: Plan, port: Int) Bool:
         let ran = raised(load_cmd(p, port, ["1", "1", "/health"]))
         if ran.ok and ran.code == 0: return true
 
-        sleep(milliseconds(100))
+        let _ = sleep(milliseconds(100)).wait()
 
     return false
 
@@ -138,8 +138,7 @@ fn measure_server(
         var mixed = try background(
             load_cmd(p, port, ["32", "{seconds}", "/io?\{c\}"]), "{p.w}/mixed"
         )
-        sleep(milliseconds(200))
-
+        let _ = sleep(milliseconds(200)).wait()
         let during = if seconds > 1: seconds - 1 else: 1
         say("{name} health-during-io {load(p, port, ["32", "{during}", "/health"])}")
         mixed.wait().get(0)
@@ -158,8 +157,7 @@ fn measure_server(
             ],
             "/dev/null"
         )
-        sleep(milliseconds(500))
-
+        let _ = sleep(milliseconds(500)).wait()
         let reqs = (
             load(p, port, ["64", "2", "/health"]).split(" ")[
                 1
@@ -186,12 +184,12 @@ fn measure_server(
         ),
         "{p.w}/idle.out"
     )
-    sleep(milliseconds(200))
+    let _ = sleep(milliseconds(200)).wait()
 
     for poll in 0..120:
         if read_text("{p.w}/idle.out").contains("holding"): break
 
-        sleep(milliseconds(500))
+        let _ = sleep(milliseconds(500)).wait()
 
     say(
         "{name} idle_connections {tail(read_text("{p.w}/idle.out"))} rss_kb {rss_kb(pid.clone())}"
@@ -284,8 +282,7 @@ fn fetch_all(here: String, seconds: Int) Unit!:
         ),
         "/dev/null"
     )
-    sleep(milliseconds(1000))
-
+    let _ = sleep(milliseconds(1000)).wait()
     let fetches = [
         ["small", "1"], ["small", "8"], ["small", "64"], ["big", "1"], ["big", "8"]
     ]

@@ -20,7 +20,8 @@ import (
     remove,
     access
 ) from "@std/os/fs.ms"
-import stderr, stdin, stdout, read_all from "@std/io/io.ms"
+import stderr, stdin, stdout from "@std/io/io.ms"
+import read_all from "@std/io/streams.ms"
 import JsonValue, stringify from "@std/data/json.ms"
 import hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto.ms"
@@ -69,7 +70,7 @@ export fn capture(
     input: String = "",
     cwd: String? = none
 ) Ran:
-    if let out = run(program, arguments, input: input.to_bytes(), cwd: cwd):
+    if let out = run(program, arguments, input: input.to_bytes(), cwd: cwd).wait():
         return Ran(
             true, out.exit_code, out.stdout.decode_utf8().get(""),
             out.stderr.decode_utf8().get(""), out.max_resident_bytes
@@ -113,11 +114,11 @@ export fn rotate[T: Clonable](items: List[T], by: Int) List[T]:
 
 // The SHA-256 of the file at `path` as lowercase hex.
 export fn file_sha256(path: String) String:
-    return hex_encode(sha256(read_file(path).get()))
+    return hex_encode(sha256(read_file(path).wait().get()))
 
 // Reads a UTF-8 text file.
 export fn read_text(path: String) String:
-    return read_file(path).get().decode_utf8().get("")
+    return read_file(path).wait().get().decode_utf8().get("")
 
 // Fails with `text`.
 export fn invalid[T](text: String) T!:
@@ -271,7 +272,7 @@ export fn ensure_directory(path: String) Unit:
 
 // Writes `text` to `path`.
 export fn write_text(path: String, text: String) Unit:
-    write_file(path, text, replace: true).get()
+    write_file(path, text, replace: true).wait().get()
 
 // Whether `path` exists.
 export fn exists(path: String) Bool:

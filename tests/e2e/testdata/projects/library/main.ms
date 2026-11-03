@@ -1,4 +1,4 @@
-import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import memory_usage, process_info from "@std/os/process.ms"
 import arguments from "@std/os/process.ms"
 import random_bytes from "@std/os/random.ms"
@@ -24,12 +24,12 @@ fn common_result[T](result: T!) T!: result
 
 fn exercise(path: String) Unit!:
     let _written = try common_result(
-        result: write_file(path: path, data: "hello", replace: false)
+        result: write_file(path: path, data: "hello", replace: false).wait()
     )
     try expect_false(
         not (
             try common_result(
-                result: read_file(path: path, max_bytes: 5)
+                result: read_file(path: path, max_bytes: 5).wait()
             ) == "hello".to_bytes()
         )
     )
@@ -78,8 +78,8 @@ fn exercise(path: String) Unit!:
         )
     )
     let _appended = try common_result(result: append_file(path: path, data: "!"))
-    let events = try common_result(result: watcher.next())
-    (events.length() > 0) | try expect_true
+    let events = try watcher.read().wait()
+    events.is_some() | try expect_true
     try watcher.close()
 
     let paths = posix()

@@ -87,11 +87,14 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         program.close_moves = Rc::new(own.close_moves);
         program.resource_moves = Rc::new(own.resource_moves);
         program.moved_payloads = Rc::new(own.moved_payloads);
+        program.moves = Rc::new(own.moves);
+        program.conditional_moves = Rc::new(own.conditional_moves);
         program.borrowed_captures = Rc::new(own.borrowed_captures);
         program.consumes = Rc::new(own.consumes);
         program.lenders = Rc::new(own.lenders);
         program.view_lenders = Rc::new(own.view_lenders);
         program.view_wraps = Rc::new(own.view_wraps);
+        program.bound_borrows = Rc::new(own.bound_borrows);
         program.view_moves = Rc::new(own.view_moves);
         program.owned_lends = Rc::new(own.owned_lends);
         program.lent_matches = Rc::new(own.lent_matches);

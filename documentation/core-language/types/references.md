@@ -7,7 +7,7 @@ weight = 5
 
 ## How memory works
 
-Every value has exactly one owner: a variable, a field, or a slot in a collection. When the owner goes out of scope, the value is freed, right there and on time. There is no garbage collector and no reference counting, and the compiler never copies a value behind your back. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, alternatives without payloads, `Shared` handles) are the exception: they own nothing, so they copy freely.
+Every value has exactly one owner: a variable, a field, or a slot in a collection. When the owner goes out of scope, the value is freed, right there and on time. There is no garbage collector and no reference counting, and the compiler never copies a value behind your back. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, alternatives without payloads) are the exception: they own nothing, so they copy freely.
 
 Everything else, including strings, records, lists and maps, is handed around by reference until you put it somewhere that must own it:
 
@@ -23,9 +23,9 @@ Functions join in: when every return path hands back a part of a parameter, the 
 
 A borrow is a handle to a value another binding owns: many readers, or one writer, until the borrow's last use. Binding a place borrows it without a marker: `let x = a.b` is a shared borrow and `var x = a.b` an exclusive one. A loop variable and a match payload borrow the same way.
 
-- A function that returns a part of a parameter or the receiver on every path returns a reference to it (a lending function): `fn list() List[Int]: return self.items`. The caller holds the result as a borrow of the arguments, so `let xs = b.list()` reads `b.items` in place and `var xs = b.list()` changes it. Storing or returning the result elsewhere needs `.clone()`, and a function that returns a part on one path and a new value on another is an error until the part is cloned. Wrapping the part keeps it a reference: `fn first() String?: return self.items[0]` and `fn name() String!Missing: return ok(self.name)` lend, and `try` hands a lent error on. Converting it to an interface keeps it one too: `fn first_error(cause: Cause) Error: return cause` and `return error(cause)` as `Int!` return a view of `cause`, the caller holds `cause` while the view lives, and `let e: Error = cause` binds such a view. Storing a view needs an owned value (`cause.clone()` before the conversion). An interface with a `var fn` operation, such as `ReadStream`, is the one conversion that still copies a borrowed value, since calls through it may change the value. A lambda or an interface method always owns its result. Names bound to a lending result are borrows: `let first = xs.first()` keeps `xs` readable but not changeable until `first` is last used.
+- A function that returns a part of a parameter or the receiver on every path returns a reference to it (a lending function): `fn list() List[Int]: return self.items`. The caller holds the result as a borrow of the arguments, so `let xs = b.list()` reads `b.items` in place and `var xs = b.list()` changes it. Storing or returning the result elsewhere needs `.clone()`, and a function that returns a part on one path and a new value on another is an error until the part is cloned. Wrapping the part keeps it a reference: `fn first() String?: return self.items[0]` and `fn name() String!Missing: return ok(self.name)` lend, and `try` hands a lent error on. Converting it to an interface keeps it one too: `fn first_error(cause: Cause) Error: return cause` and `return error(cause)` as `Int!` return a view of `cause`, the caller holds `cause` while the view lives, and `let e: Error = cause` binds such a view. Storing a view needs an owned value (`cause.clone()` before the conversion). An interface with a `var fn` operation, such as `ReadStream`, is the one conversion that still copies a borrowed value, since calls through it may change the value. A lambda or an interface method always owns its result. Names bound to a lending result are borrows: `let first = xs.first()` keeps `xs` readable but not changeable until `first` is last used. A lending call over a temporary argument owns its result: the temporary itself when the function hands it back whole, otherwise a copy of the part, so the result type must be `Clonable`; for a `Regex` or another value with one owner and no `clone`, bind the argument first.
 - A record field owns its value. A record cannot view another variable.
-- A place changed in place (a `var` argument, a `var` receiver, a `var` borrow, a closure that assigns) may not overlap any other operand or live borrow of the same call or scope. Distinct fields (`var p.left`, `var p.right`) and distinct non-negative literal list indexes (`var xs[0]`, `var xs[1]`) are disjoint; every other pair of element accesses (`xs[i]`, `xs[0]` with `xs[-1]`, map entries) may be the same element and is rejected, as is any change to the list itself while an element borrow is live. A read that finishes before the change starts, such as an `Int` argument `f(var xs, xs[0])`, stays valid.
+- A place changed in place (a `var` argument, a `var` receiver, a `var` borrow, a closure that assigns) may not overlap any other operand or live borrow of the same call or scope. Distinct fields (`var p.left`, `var p.right`) and distinct non-negative literal list indexes (`var xs[0]`, `var xs[1]`) are disjoint; every other pair of element accesses (`xs[i]`, `xs[0]` with `xs[-1]`, map entries) may be the same element and is rejected, as is any change to the list itself while an element borrow is live. A read that finishes before the change starts, such as an `Int` argument `f(var xs, xs[0])`, stays valid. The receiver of a method and a function value a variable holds are read in place while the arguments run, so an argument (a `match` arm among them) may not reassign that variable: `f(match m: _: f = g; 1)` is rejected, as is `r.m(match m: _: r = other; 1)`; reassign before the call instead.
 
 ```manuscript
 type Box:
@@ -57,32 +57,7 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 ## Sharing a value
 
-`Shared[T]` from `@std/concurrency/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
-
-To change the value, lock it with `lock(box)` from `@std/concurrency/sync.ms` into a `var` binding. The guard holds the payload as `guard.value` and puts it back when the binding goes out of scope, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. `ms check` rejects the visible case, a `lock` of the same written place (`box`, `self.lines`) while the guard of an earlier `lock` of it is still open (before its scope ends or its `close()`) in the same function; a second handle to the box, or a call that locks it, is caught only by the runtime. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
-import share, Shared from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
-import expect_equal from "@std/test/test.ms"
-
-type Counter:
-    values: List[Int]
-
-impl Counter:
-    var fn bump() Unit:
-        self.values.append(1)
-
-fn bump(shared: Shared[Counter]) Unit:
-    var guard = lock(shared)
-    guard.value.bump()
-
-test "change a shared value through its guard":
-    let shared = share(Counter([]))
-    bump(shared)
-    shared.get().values.length() | try expect_equal(1)
-```
+There is no shared mutable value. A value has one owner; a promise reads what it captures, and changes travel as messages over a `pipe` to the owner. See [concurrent tasks](../concurrency/_index.md).
 
 ## References inside other values
 

@@ -7,11 +7,9 @@ pub mod pool;
 
 use core::fmt::{self, Write};
 use core::sync::atomic::Ordering;
-use ms_rt_abi::{STATUS_FAILED, StrVal};
-use std::vec::Vec;
+use ms_rt_abi::StrVal;
 
 use crate::fault::{cancel_flag, msrt_cancelled, msrt_fault};
-use crate::obj::{msrt_release, msrt_retain};
 use crate::string::msrt_string_from_bytes;
 pub use ms_rt_abi::record::FaultKind;
 
@@ -24,7 +22,7 @@ pub unsafe fn str_bytes<'a>(s: *const StrVal) -> &'a [u8] {
     unsafe { core::slice::from_raw_parts((*s).data(), (*s).len()) }
 }
 
-/// A new owned string (refcount 1) holding `bytes`.
+/// A new owned string holding `bytes`.
 pub fn new_string(bytes: &[u8]) -> StrVal {
     let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
     // SAFETY: the slice is readable; the runtime copies it and writes `out`.
@@ -360,7 +358,7 @@ pub unsafe fn write_string_map<'a>(
     }
 }
 
-/// A refcounted runtime object (`Obj` header) wrapping a Rust value; used for handles such as open files.
+/// A runtime object (`Obj` header, one owner) wrapping a Rust value; used for handles such as open files.
 #[repr(C)]
 pub struct Handle<T> {
     pub hdr: ms_rt_abi::Obj,
@@ -375,7 +373,7 @@ unsafe extern "C" fn drop_handle<T>(obj: *mut ms_rt_abi::Obj) {
     }
 }
 
-/// Allocates a handle with reference count 1; releasing the last reference drops `value`.
+/// Allocates a handle with one owner; dropping it drops `value`.
 pub fn new_handle<T>(value: T) -> *mut Handle<T> {
     // SAFETY: the block is large and aligned enough for `Handle<T>` (16-byte alignment) and fully initialised.
     unsafe {
@@ -384,7 +382,7 @@ pub fn new_handle<T>(value: T) -> *mut Handle<T> {
             ptr,
             Handle {
                 hdr: ms_rt_abi::Obj {
-                    rc: 1,
+                    clone: None,
                     drop: Some(drop_handle::<T>),
                 },
                 value,
@@ -392,72 +390,6 @@ pub fn new_handle<T>(value: T) -> *mut Handle<T> {
         );
         ptr
     }
-}
-
-crate::isolate_static! {
-    /// Diagnostic text of the most recent `STATUS_FAILED` result of this isolate.
-    static FAILURE: Vec<u8> = Vec::new();
-}
-
-/// Records the text a later `failure_message` returns.
-pub fn record_failure(message: Vec<u8>) {
-    // SAFETY: single-threaded runtime; no reference into FAILURE outlives a call.
-    unsafe { *FAILURE.ptr() = message };
-}
-
-/// Records `message` and returns `STATUS_FAILED`.
-pub fn failed(message: &[u8]) -> u8 {
-    record_failure(message.to_vec());
-    STATUS_FAILED
-}
-
-/// A fresh string holding the most recently recorded failure text.
-pub fn failure_message() -> StrVal {
-    // SAFETY: single-threaded runtime.
-    new_string(unsafe { &*FAILURE.ptr() })
-}
-
-crate::isolate_static! {
-    /// Read-ahead standard input a dropped `stdin()` handle left: the bytes, and the offset of the first unread one.
-    static STDIN_PENDING: (Vec<u8>, usize) = (Vec::new(), 0);
-}
-
-/// Keeps read-ahead standard input for the next `stdin()` handle: `bytes[head..]` is unread.
-///
-/// The buffer is handed over without copying unless an earlier stash is still unread.
-pub fn stash_stdin_pending(bytes: Vec<u8>, head: usize) {
-    // SAFETY: single-threaded runtime; no reference into STDIN_PENDING outlives a call.
-    let (held, held_head) = unsafe { &mut *STDIN_PENDING.ptr() };
-    if *held_head >= held.len() {
-        *held = bytes;
-        *held_head = head;
-    } else {
-        held.extend_from_slice(&bytes[head..]);
-    }
-}
-
-/// Takes the read-ahead standard input a previous handle left, with the offset of its first unread byte.
-pub fn take_stdin_pending() -> (Vec<u8>, usize) {
-    // SAFETY: single-threaded runtime.
-    unsafe { core::mem::take(&mut *STDIN_PENDING.ptr()) }
-}
-
-/// Adds a reference to a runtime object.
-///
-/// # Safety
-/// `o` must point to a live object.
-pub unsafe fn retain(o: *mut ms_rt_abi::Obj) {
-    // SAFETY: provided by `ms-rt`.
-    unsafe { msrt_retain(o) }
-}
-
-/// Drops a reference to a runtime object.
-///
-/// # Safety
-/// `o` must point to a live object the caller holds a reference to.
-pub unsafe fn release(o: *mut ms_rt_abi::Obj) {
-    // SAFETY: provided by `ms-rt`.
-    unsafe { msrt_release(o) }
 }
 
 /// The elements of a list of plain values (`Int`, `Float`, pointers).

@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/mutation_test.go:11 TestMutationRejections
 import stdout from "@std/io/io.ms"
-import File from "@std/io/io.ms"
+import FileHandle from "@std/os/fs.ms"
 import Queue from "@std/collections/queue.ms"
 
 interface Read:

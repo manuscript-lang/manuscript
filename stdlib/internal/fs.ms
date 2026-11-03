@@ -1,5 +1,4 @@
 import Bytes from "@std/bytes.ms"
-import ReadStream, WriteStream from "@std/io/io.ms"
 import (
     Directory,
     DirectoryEntry,
@@ -8,7 +7,7 @@ import (
     FileInfo,
     FileSystem,
     FileSystemInfo,
-    FileWatcher,
+    RawWatcher,
     NativeDirectory,
     NativeFile,
     NativeTemporary,
@@ -54,10 +53,6 @@ export extern fn msstd_path_parse(path: String) PathParts
 export extern fn msstd_path_format(parts: PathParts) String
 
 export extern fn msstd_path_matches_glob(path: String, pattern: String) Bool!
-
-export extern fn msstd_fs_file_reader(file: NativeFile) ReadStream
-
-export extern fn msstd_fs_file_writer(file: NativeFile) WriteStream
 
 export extern fn msstd_io_close(file: NativeFile) Unit
 
@@ -195,7 +190,7 @@ export extern fn msstd_fs_watch(
     recursive: Bool,
     interval: Duration,
     max_entries: Int?
-) FileWatcher!
+) RawWatcher!
 
 export extern fn msstd_fs_watch_native(
     path: String,
@@ -203,4 +198,4 @@ export extern fn msstd_fs_watch_native(
     max_entries: Int?,
     max_events: Int?,
     overflow: String
-) FileWatcher!
+) RawWatcher!

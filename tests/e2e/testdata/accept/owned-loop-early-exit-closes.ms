@@ -1,27 +1,32 @@
 import Closeable from "@std/core.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
-import expect_equal from "@std/test/test.ms"
+import append_file, read_file, temporary from "@std/os/fs.ms"
+import expect_equal, expect_ok from "@std/test/test.ms"
 
 type Door:
     id: Int
-    log: Shared[List[Int]]
+    log: String
 
 impl Closeable for Door:
     var fn close() Unit!:
-        var seen = lock(self.log)
-        seen.value.append(self.id)
+        let _ = append_file(self.log, "{self.id},")
         return ok(unit)
 
-fn first_even(log: Shared[List[Int]]) Int:
-    let doors = [Door(1, log), Door(2, log), Door(3, log)]
+fn logged(path: String) String:
+    let read = read_file(path).wait()
+    if let bytes = read:
+        return bytes.decode_utf8().get("")
+
+    return ""
+
+fn first_even(log: String) Int:
+    let doors = [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
     for d in doors:
         if d.id % 2 == 0:
             return d.id
     return -1
 
-fn until_two(log: Shared[List[Int]]) Int:
-    let doors = [Door(1, log), Door(2, log), Door(3, log)]
+fn until_two(log: String) Int:
+    let doors = [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
     var n = 0
 
     for d in doors:
@@ -32,11 +37,13 @@ fn until_two(log: Shared[List[Int]]) Int:
     return n
 
 test "return out of an owned loop closes every element once":
-    let log: Shared[List[Int]] = share([])
-    first_even(log) | try expect_equal(2)
-    log.get().clone() | try expect_equal([1, 2, 3])
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
+    first_even(log.clone()) | try expect_equal(2)
+    logged(log.clone()) | try expect_equal("1,2,3,")
 
 test "break closes the elements it never reached":
-    let log: Shared[List[Int]] = share([])
-    until_two(log) | try expect_equal(3)
-    log.get().clone() | try expect_equal([1, 2, 3])
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
+    until_two(log.clone()) | try expect_equal(3)
+    logged(log.clone()) | try expect_equal("1,2,3,")

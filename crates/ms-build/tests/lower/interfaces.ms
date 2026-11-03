@@ -29,7 +29,8 @@ fn twice(n: Int) Result[Int, Error]:
 
 fn show(n: Int) Result[Unit, Error]:
     try stdout().write("{n}\n")
-    return stdout().flush()
+    try stdout().flush().wait()
+    return ok(unit)
 
 export fn main() Int:
     show(total(Sq(s: 4))).get()

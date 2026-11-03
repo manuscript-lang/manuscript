@@ -183,8 +183,10 @@ pub fn call_modes(
                             .map(|i| {
                                 let p = label(i).and_then(|l| params.iter().find(|p| p.name == l));
                                 match p {
-                                    // `share` stores its payload.
-                                    Some(_) if s.native.as_str() == "shared/share" => {
+                                    Some(p)
+                                        if p.name.as_str() == "value"
+                                            && crate::stdlib::owns_value(s.native.as_str()) =>
+                                    {
                                         ParamMode::Consume
                                     }
                                     Some(p) if p.ty.kind == Kind::Function && !runs_now => {
@@ -348,18 +350,15 @@ fn native_method_modes(
                 || same(held, &result)
                 || receiver.args.iter().any(|a| same(a, held));
             retained[i] = (mutator && stored) || value;
-            if p.ty.kind == Kind::Function {
-                return if callbacks_borrowed {
-                    ParamMode::Borrow
-                } else {
-                    ParamMode::Consume
-                };
+            // An element the mutator stores is owned by the collection, a function value
+            // included; a callback the native runs and drops is only lent.
+            if mutator && stored {
+                return ParamMode::Consume;
             }
-            if (mutator && stored) || method.native.as_str() == "shared/put" {
-                ParamMode::Consume
-            } else {
-                ParamMode::Borrow
+            if p.ty.kind == Kind::Function && !callbacks_borrowed {
+                return ParamMode::Consume;
             }
+            ParamMode::Borrow
         })
         .collect();
     CallModes {

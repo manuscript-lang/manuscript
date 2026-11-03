@@ -1,23 +1,22 @@
 import list, read_file from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import promise from "@std/concurrency/promise.ms"
+import milliseconds from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"
 
 fn read_pipe(path: String) Int:
-    let _data = read_file(path)
+    let _data = read_file(path).wait()
     return 1
 
 fn cancel_read(path: String) Int:
-    var group = TaskGroup[Int](timeout: 10.milliseconds)
-    let task = group.spawn(fn ch: read_pipe(path.clone()))
-    if task.result().is_error():
+    let task = promise(fn: ok(read_pipe(path.clone())))
+    if task.wait(timeout: milliseconds(10)).is_error():
         return 1
 
-    group.close().get(none)
     return 0
 
 export fn main() Int:
-    let path = arguments() [0].clone()
+    let path = arguments()[0].clone()
     if cancel_read(path.clone()) != 1:
         return 1
 

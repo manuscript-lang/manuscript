@@ -48,6 +48,8 @@ pub struct Outcome {
 /// A call operand whose description is written only if a diagnostic needs it.
 enum Operand<'e> {
     Receiver(&'e Expr),
+    /// A function value a local holds, called: read in place while the arguments run.
+    Callee(&'e Expr),
     Argument(&'e Expr),
     /// An operand of an operator, index, literal or interpolation.
     Part(&'e Expr),
@@ -102,6 +104,13 @@ struct Meta {
     /// ownership of the parameter if this part is moved out.
     deferred: Option<NodeId>,
 }
+
+/// The module that declares `Promise`.
+const PROMISE_MODULE: &str = "@std/concurrency/promise.ms";
+
+/// The `why` of a borrow a promise holds on what its entry function captures. Unlike other borrows it
+/// lasts until its holder's scope ends, because dropping the promise is what ends the work.
+const PROMISE_WHY: &str = "promise capture";
 
 /// A live borrow: until `holder` is last used, its origins stay unchanged.
 #[derive(Clone)]
@@ -171,6 +180,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         view_locals: HashSet::new(),
         view_calls: HashSet::new(),
         view_move: None,
+        entry_lambda: None,
     };
     w.run();
     w.mixed_returns();
@@ -286,6 +296,8 @@ struct Walker<'a> {
     /// The name of a view local being returned: moving it out of the function is allowed even
     /// though it borrows, because the result holds the same origins.
     view_move: Option<NodeId>,
+    /// The lambda argument of a promise-starting call being walked: concurrent code.
+    entry_lambda: Option<NodeId>,
 }
 
 /// A fix that inserts `text` at `pos`.
@@ -369,43 +381,6 @@ impl Walker<'_> {
         match c.body() {
             Body::Block(body) => self.block(body),
             Body::Expr(e) => self.returned(e),
-        }
-    }
-
-    /// The value is made from another resource, which owns and closes it: `group.spawn(..)`, or a
-    /// reader that wraps a source it was given.
-    fn derived_from_resource(&self, e: &Expr) -> bool {
-        match &e.kind {
-            ExprKind::Unary { operand, .. } => self.derived_from_resource(operand),
-            ExprKind::Call { callee, args, .. } => {
-                // A constructor takes its arguments: the value it builds owns them.
-                if matches!(self.cx.m.resolution(e), Resolution::Constructor { .. }) {
-                    return false;
-                }
-                let result = self.cx.m.ty(e);
-                // A source holding the result's own type (`keep(r)`, `Optional.get(d)`) or a
-                // value of it (`result.get()`) hands the value over: the binding owns it.
-                // An owned `Optional` or `Result` of a part the source holds (`pop()`) hands the part
-                // over too.
-                let modes = call_modes(self.cx.m, e, args, self.cx.summaries);
-                let wraps = |src: &Expr| {
-                    self.class_of(src) == Class::Resource
-                        && !ty_holds(&self.cx.m.ty(src), &result)
-                        && !wraps_part(&self.cx.m.ty(src), &result)
-                };
-                let receiver = match &callee.kind {
-                    ExprKind::Member { left, .. } => wraps(left),
-                    _ => false,
-                };
-                // An argument the callee consumes belongs to the result now, not the other way.
-                let kept = |i: usize| modes.arguments.get(i) == Some(&ParamMode::Consume);
-                receiver
-                    || args
-                        .iter()
-                        .enumerate()
-                        .any(|(i, a)| !kept(i) && wraps(&a.value))
-            }
-            _ => false,
         }
     }
 
@@ -520,6 +495,17 @@ impl Walker<'_> {
             self.expr(e, Demand::Consume);
             return;
         }
+        let reads = self.returned_promise_reads(e);
+        if !reads.is_empty() {
+            let names: Vec<&str> = reads.iter().map(|n| n.as_str()).collect();
+            self.error(
+                e.pos,
+                format!(
+                    "this promise reads `{}`, which ends with this function; wait for the promise before returning, or start it from values that outlive the call",
+                    names.join("`, `")
+                ),
+            );
+        }
         // Each branch of a conditional or match expression is a returned value of its own.
         if let ExprKind::Match { scrutinee, arms } = &e.kind
             && arms.iter().all(|a| a.value.is_some())
@@ -538,6 +524,7 @@ impl Walker<'_> {
         if self.class_of(e) == Class::Move
             && (self.returns_as_declared(e) || wrapped)
             && !self.implements_contract()
+            && !self.moves_withdrawn_lend(e)
         {
             if let Some(src) = self.lend_source(e) {
                 // A part of an argument comes back as a reference into it: nothing moves. A
@@ -580,10 +567,14 @@ impl Walker<'_> {
         );
     }
 
-    /// Whether `e` is a `Copy` handle such as `Shared[T]`: it is not the storage it lends from,
-    /// and another copy of the handle can change that storage, so what it lends is a copy.
-    fn copy_handle(&self, e: &Expr) -> bool {
-        self.class_of(e) == Class::Copy && self.cx.m.ty(e).is(Builtin::Shared)
+    /// Whether a returned part is moved out instead of lent: an earlier round found this
+    /// function returning a new value on another path and withdrew the lend (`mixed_returns`), so
+    /// the part would be copied out, and a value with one owner and no `clone` cannot be. Moving
+    /// it consumes the argument it came from, which the caller then hands over.
+    fn moves_withdrawn_lend(&self, e: &Expr) -> bool {
+        let key = (self.cx.c.module.file, self.cx.c.id());
+        self.cx.summaries.get(&key).is_some_and(|s| !s.result.lends)
+            && !self.cx.classes.clonable(&self.cx.m.ty(e))
     }
 
     /// The fields from a variable to a place written as a plain chain of them.
@@ -1387,8 +1378,18 @@ impl Walker<'_> {
                 last,
             },
         );
-        if last && self.active.iter().any(|a| a.holder == b.uid) {
+        if last
+            && self
+                .active
+                .iter()
+                .any(|a| a.holder == b.uid && a.why != PROMISE_WHY)
+        {
             self.pending.push(b.uid);
+        }
+        if last && access == Access::Move {
+            // A promise handed on (`wait_all([p, q])`) ends where its new owner does.
+            self.active
+                .retain(|a| !(a.holder == b.uid && a.why == PROMISE_WHY));
         }
     }
 
@@ -1414,6 +1415,8 @@ impl Walker<'_> {
             let held_ty = self.meta.get(&a.holder).map(|m| m.binding.ty.clone());
             let remedy = if holder.as_str() == "for" {
                 format!("iterate over a copy instead: `for ... in {shown}.{COPY}()`")
+            } else if why == PROMISE_WHY {
+                String::new()
             } else if held_ty.as_ref().and_then(no_clone).is_some() {
                 format!(
                     "or give `{holder}` its own value by converting a clone of the concrete value"
@@ -1423,6 +1426,16 @@ impl Walker<'_> {
                     "or give `{holder}` its own value by ending its initializer with `.{COPY}()`"
                 )
             };
+            if why == PROMISE_WHY {
+                self.error(
+                    pos,
+                    format!(
+                        "cannot {what} `{shown}` while promise `{holder}` (started at {}:{}) reads it; a promise reads what it captures until it is dropped, so wait for it and move it into `wait_all` first, or {what} a copy",
+                        bpos.line, bpos.column
+                    ),
+                );
+                return;
+            }
             self.error(
                 pos,
                 format!(
@@ -1461,7 +1474,8 @@ impl Walker<'_> {
 
     fn release_pending(&mut self) {
         let pending = std::mem::take(&mut self.pending);
-        self.active.retain(|a| !pending.contains(&a.holder));
+        self.active
+            .retain(|a| a.why == PROMISE_WHY || !pending.contains(&a.holder));
     }
 
     fn join_active(a: Vec<Borrow>, b: Vec<Borrow>) -> Vec<Borrow> {
@@ -1582,7 +1596,35 @@ impl Walker<'_> {
             self.release_pending();
         }
         let ended: Vec<usize> = self.declared.drain(mark..).collect();
+        self.promises_outliving(&ended);
         self.active.retain(|a| !ended.contains(&a.holder));
+    }
+
+    /// A promise kept by a binding that outlives the block must not read a local that ends with it.
+    fn promises_outliving(&mut self, ended: &[usize]) {
+        let mut found: Vec<(Pos, String, String)> = Vec::new();
+        for a in &self.active {
+            if a.why != PROMISE_WHY || ended.contains(&a.holder) {
+                continue;
+            }
+            for (place, _) in &a.origins {
+                if ended.contains(&place.root) {
+                    found.push((
+                        a.pos,
+                        a.holder_name.as_str().to_string(),
+                        self.name_of(place.root).as_str().to_string(),
+                    ));
+                }
+            }
+        }
+        for (pos, holder, name) in found {
+            self.error(
+                pos,
+                format!(
+                    "this promise reads `{name}`, which ends before `{holder}` does; start the promise from a value that outlives `{holder}`, or wait for it before the block ends"
+                ),
+            );
+        }
     }
 
     fn stmt(&mut self, s: &Stmt) {
@@ -1647,13 +1689,13 @@ impl Walker<'_> {
                     }
                     _ => None,
                 };
-                let scrutinee = self.scrutinee(s.id, probed.unwrap_or(cond));
+                let scrutinee = self.scrutinee(probed.unwrap_or(cond));
                 if mutable {
                     self.mutable_payload(p, cond, &scrutinee);
-                    self.payload_resource(s, p, cond, &scrutinee);
+                    self.payload_resource(s, p, &scrutinee);
                 } else {
                     self.pattern_bindings(p, &scrutinee, Role::Pattern);
-                    self.payload_resource(s, p, cond, &scrutinee);
+                    self.payload_resource(s, p, &scrutinee);
                 }
             }
             None => self.expr(cond, Demand::Read),
@@ -1678,14 +1720,14 @@ impl Walker<'_> {
 
     /// An `if let name = value` that owns a resource payload closes it when the branch ends,
     /// unless the branch moves it on.
-    fn payload_resource(&mut self, s: &Stmt, p: &Pattern, value: &Expr, source: &Scrutinee) {
+    fn payload_resource(&mut self, s: &Stmt, p: &Pattern, source: &Scrutinee) {
         if !source.owned || !matches!(p.kind, PatternKind::Name(_)) {
             return;
         }
         let Some(b) = self.cx.m.pattern_binding(p) else {
             return;
         };
-        if self.may_close(&b.ty) && !self.derived_from_resource(value) {
+        if self.may_close(&b.ty) {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, p.pos, closable));
         }
@@ -1693,7 +1735,7 @@ impl Walker<'_> {
 
     fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) {
         let mark = self.declared.len();
-        let source = self.scrutinee(s.id, iter);
+        let source = self.scrutinee(iter);
         self.release_pending();
         // The iterable stays unchanged for the whole loop.
         let hidden = usize::MAX - self.hidden;
@@ -1745,9 +1787,14 @@ impl Walker<'_> {
 
     fn bind(&mut self, s: &Stmt, mutable: bool, pattern: &Pattern, value: &Expr) {
         let PatternKind::Name(_) = pattern.kind else {
-            let scrutinee = self.scrutinee(s.id, value);
+            let scrutinee = self.scrutinee(value);
             let role = if mutable { Role::Var } else { Role::Pattern };
             self.pattern_bindings(pattern, &scrutinee, role);
+            if scrutinee.owned {
+                // The pattern owns the parts it names: a resource among them closes at the
+                // scope end unless the scope moves it on, like any other owned binding.
+                self.pattern_resources(pattern, s);
+            }
             return;
         };
         let Some(b) = self.cx.m.pattern_binding(pattern) else {
@@ -1759,25 +1806,6 @@ impl Walker<'_> {
             self.let_pos.insert(b.uid, s.pos);
         }
         let class = self.cx.classes.class(&b.ty);
-        // `var x = handle.get()` would change a copy, not the shared value.
-        if mutable
-            && class != Class::Copy
-            && let ExprKind::Call { callee, .. } = &value.kind
-            && let ExprKind::Member { left, .. } = &callee.kind
-            && self.copy_handle(left)
-        {
-            let text = self.expr_text(value);
-            self.expr(value, Demand::Read);
-            self.error(
-                pattern.pos,
-                format!(
-                    "`var {}` cannot borrow `{text}` mutably: it is a read-only result; copy it with `{text}.{COPY}()` to own it",
-                    b.name
-                ),
-            );
-            self.declare(&b, role, Perm::Mutable, None, false);
-            return;
-        }
         // A scalar copies, `let` or `var`; any other binding of a place borrows it, shared for
         // `let` and exclusive for `var`.
         if class != Class::Copy
@@ -1882,7 +1910,11 @@ impl Walker<'_> {
             return;
         }
         if let Some(recv) = self.changing_method_value(value) {
-            self.method_value_binding(value, recv, &b, role, mutable);
+            self.method_value_binding(value, recv, &b, role, mutable, true);
+            return;
+        }
+        if let Some(recv) = self.method_value(value) {
+            self.method_value_binding(value, recv, &b, role, mutable, false);
             return;
         }
         // A name bound to another name of the same type is a reference to it: shared for `let`,
@@ -1957,9 +1989,25 @@ impl Walker<'_> {
             None,
             false,
         );
-        if self.may_close(&b.ty) && !self.derived_from_resource(value) {
+        // The binding owns the value (a call result among them: a resource a method on another
+        // resource returns, `client.request(..)`, is the caller's to close), so a resource it holds
+        // closes at the scope end unless the scope moves it on.
+        if self.may_close(&b.ty) {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, pattern.pos, closable));
+        }
+        if self.entry_call(value) {
+            // The promise reads what its entry captures until it is dropped with its scope.
+            let origins = self.entry_places(value);
+            if !origins.is_empty() {
+                self.active.push(Borrow {
+                    holder: b.uid,
+                    holder_name: b.name,
+                    origins: origins.into_iter().map(|p| (p, false)).collect(),
+                    pos: value.pos,
+                    why: PROMISE_WHY.to_string(),
+                });
+            }
         }
     }
 
@@ -2074,18 +2122,36 @@ impl Walker<'_> {
         }
     }
 
-    /// The receiver of a method value that changes it (`xs.append`).
-    fn changing_method_value<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
-        let ExprKind::Member { left, .. } = &e.kind else {
+    /// A method used as a value (`xs.append`, `re.find`, or specialized, `log.error[Unit]`):
+    /// the method and its receiver expression.
+    fn method_value_parts<'e>(&self, e: &'e Expr) -> Option<(MethodRef, &'e Expr)> {
+        let member = match &e.kind {
+            ExprKind::Apply { left, .. } if self.cx.m.info(e).native_str() != "index" => left,
+            _ => e,
+        };
+        let ExprKind::Member { left, .. } = &member.kind else {
             return None;
         };
-        if self.cx.m.ty(e).kind != Kind::Function {
+        if self.cx.m.ty(e).kind != Kind::Function
+            || self.callees.contains(&e.id)
+            || self.callees.contains(&member.id)
+        {
             return None;
         }
-        let Resolution::Method(m) = self.cx.m.resolution(e) else {
+        let resolution = match self.cx.m.resolution(member) {
+            Resolution::Value => self.cx.m.resolution(e),
+            r => r,
+        };
+        let Resolution::Method(m) = resolution else {
             return None;
         };
-        (receiver_mode(self.cx.summaries, &m) == Some(ParamMode::Mutate)).then_some(&**left)
+        Some((m, &**left))
+    }
+
+    /// The receiver of a method value that changes it (`xs.append`).
+    fn changing_method_value<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let (m, left) = self.method_value_parts(e)?;
+        (receiver_mode(self.cx.summaries, &m) == Some(ParamMode::Mutate)).then_some(left)
     }
 
     /// Takes the receiver of a method value that changes it as a mutable borrow. The value
@@ -2112,7 +2178,37 @@ impl Walker<'_> {
             return Vec::new();
         }
         self.mutate(e.pos, &info, "change");
+        self.facts.bound_borrows.insert(e.id);
         info.resolved.into_iter().map(|p| (p, true)).collect()
+    }
+
+    /// The receiver of a method value that only reads it (`re.find`).
+    fn method_value<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let (m, left) = self.method_value_parts(e)?;
+        (receiver_mode(self.cx.summaries, &m) != Some(ParamMode::Mutate)).then_some(left)
+    }
+
+    /// Walks the receiver of a method value that only reads it. The value is a closure over the
+    /// receiver, which has one owner: a value that stays local borrows the receiver's place while
+    /// it lives (`bound_borrows`), and one that escapes takes the receiver over, moving it at its
+    /// last use. A `Copy` receiver is copied, and a temporary one is owned by the value. Returns
+    /// the places a borrowing value holds.
+    fn method_value_use(&mut self, e: &Expr, recv: &Expr, escaping: bool) -> Vec<(Place, bool)> {
+        if self.class_of(recv) == Class::Copy || !self.is_place(recv) {
+            self.expr(recv, Demand::Read);
+            return Vec::new();
+        }
+        if escaping {
+            self.expr(recv, Demand::Consume);
+            return Vec::new();
+        }
+        self.expr(recv, Demand::Read);
+        self.facts.bound_borrows.insert(e.id);
+        self.pure_places(recv)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|p| (p, false))
+            .collect()
     }
 
     fn method_value_binding(
@@ -2122,9 +2218,14 @@ impl Walker<'_> {
         b: &BindingRef,
         role: Role,
         mutable: bool,
+        changing: bool,
     ) {
         let escaping = self.escaped.contains(&value.id);
-        let origins = self.changing_method_use(value, recv, escaping);
+        let origins = if changing {
+            self.changing_method_use(value, recv, escaping)
+        } else {
+            self.method_value_use(value, recv, escaping)
+        };
         self.declare(
             b,
             role,
@@ -2330,7 +2431,7 @@ impl Walker<'_> {
     // ------------------------------------------------------ patterns
 
     /// Evaluates a matched or destructured value and says how its parts are held.
-    fn scrutinee(&mut self, stmt: NodeId, e: &Expr) -> Scrutinee {
+    fn scrutinee(&mut self, e: &Expr) -> Scrutinee {
         if self.is_place(e) {
             let class = self.class_of(e);
             let whole = matches!(e.kind, ExprKind::Name(_));
@@ -2350,7 +2451,6 @@ impl Walker<'_> {
                 let param = self.is_consumable_param(&b);
                 if owned_local || param && self.escaped.contains(&e.id) {
                     self.expr(e, Demand::Consume);
-                    self.facts.consumed_scrutinees.insert(stmt);
                     return Scrutinee {
                         owned: true,
                         origins: Vec::new(),
@@ -2479,6 +2579,24 @@ impl Walker<'_> {
             .is_some_and(|m| m.perm == Perm::Immutable && m.parameter.is_some())
     }
 
+    /// Registers the resources an owning pattern binds for the scope-end close.
+    fn pattern_resources(&mut self, p: &Pattern, s: &Stmt) {
+        match &p.kind {
+            PatternKind::Name(_) => {
+                if let Some(b) = self.cx.m.pattern_binding(p)
+                    && self.may_close(&b.ty)
+                {
+                    let closable = self.closable(s, &b.ty);
+                    self.resources.push((b.uid, b.name, p.pos, closable));
+                }
+            }
+            PatternKind::List(items) => items.iter().for_each(|i| self.pattern_resources(i, s)),
+            PatternKind::Record(fields) => fields
+                .iter()
+                .for_each(|f| self.pattern_resources(&f.pattern, s)),
+        }
+    }
+
     fn pattern_bindings(&mut self, p: &Pattern, source: &Scrutinee, role: Role) {
         match &p.kind {
             PatternKind::Name(_) => {
@@ -2603,6 +2721,94 @@ impl Walker<'_> {
             }
         }
         Some(out)
+    }
+
+    /// Whether `e` starts a promise whose entry function is written here: a call of a source function
+    /// or method that returns a `Promise` and is given a lambda. The promise reads the lambda's
+    /// captures in place until it is dropped, so they must outlive it and stay unchanged (the
+    /// declaration is the result type, not the callee's name).
+    fn entry_call(&self, e: &Expr) -> bool {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return false;
+        };
+        if !args
+            .iter()
+            .any(|a| matches!(a.value.kind, ExprKind::Lambda(_)))
+        {
+            return false;
+        }
+        if !self.cx.m.ty(e).is_source_type(PROMISE_MODULE, "Promise") {
+            return false;
+        }
+        match self.cx.m.resolution(e) {
+            Resolution::Function(s) => s.native.as_str().is_empty(),
+            Resolution::Method(m) => m.native.as_str().is_empty(),
+            _ => false,
+        }
+    }
+
+    /// The captured bindings of the lambda arguments of promise-starting call `e`.
+    fn entry_captures(&self, e: &Expr) -> Vec<BindingRef> {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return Vec::new();
+        };
+        args.iter()
+            .filter(|a| matches!(a.value.kind, ExprKind::Lambda(_)))
+            .flat_map(|a| self.cx.m.captures(&a.value))
+            .collect()
+    }
+
+    /// The places a promise-starting call `e` reads through its entry function.
+    fn entry_places(&self, e: &Expr) -> Vec<Place> {
+        let mut out = Vec::new();
+        for b in self.entry_captures(e) {
+            // A resource is moved into the promise, which owns and closes it.
+            if self.cx.classes.class(&b.ty) == Class::Resource {
+                continue;
+            }
+            for p in self.with_held(self.resolve(&Place::local(b.uid))) {
+                if !out.contains(&p) {
+                    out.push(p);
+                }
+            }
+        }
+        out
+    }
+
+    /// The names a returned promise would still read after the function ends: the captures of a
+    /// promise started in the `return`, or the borrows of a local promise returned by name.
+    fn returned_promise_reads(&self, e: &Expr) -> Vec<Name> {
+        // A promise returned inside a larger value (`Server(running: p)`, `[promise(..)]`) still
+        // reads what it captured, so look at every part of the returned expression.
+        let mut parts = Vec::new();
+        collect_parts(
+            e,
+            &|c| matches!(self.cx.m.resolution(c), Resolution::Constructor { .. }),
+            &mut parts,
+        );
+        let mut out: Vec<Name> = Vec::new();
+        for part in parts {
+            if self.entry_call(part) {
+                out.extend(
+                    self.entry_captures(part)
+                        .into_iter()
+                        .filter(|b| self.cx.classes.class(&b.ty) == Class::Move)
+                        .map(|b| b.name),
+                );
+            } else if let Resolution::Local(b) = self.cx.m.resolution(part) {
+                out.extend(
+                    self.active
+                        .iter()
+                        .filter(|a| a.holder == b.uid && a.why == PROMISE_WHY)
+                        .flat_map(|a| a.origins.iter().map(|(p, _)| p.root))
+                        // A `Copy` capture is taken by value, so nothing is read after the call.
+                        .filter(|uid| self.meta.get(uid).is_none_or(|m| m.class == Class::Move))
+                        .map(|uid| self.name_of(uid)),
+                );
+            }
+        }
+        out.dedup();
+        out
     }
 
     /// The resolved places of a place chain without evaluating it.
@@ -2935,12 +3141,13 @@ impl Walker<'_> {
     }
 
     fn projection(&mut self, e: &Expr, d: Demand) {
+        let escaping = d == Demand::Consume || self.escaped.contains(&e.id);
         if let Some(recv) = self.changing_method_value(e) {
-            self.changing_method_use(
-                e,
-                recv,
-                d == Demand::Consume || self.escaped.contains(&e.id),
-            );
+            self.changing_method_use(e, recv, escaping);
+            return;
+        }
+        if let Some(recv) = self.method_value(e) {
+            self.method_value_use(e, recv, escaping);
             return;
         }
         if !self.is_place(e) {
@@ -3136,6 +3343,16 @@ impl Walker<'_> {
                 e.pos,
                 format!("{what} copies values of `{v}`, which may be a resource; declare `{v}: Clonable`"),
             );
+            return;
+        }
+        if !self.cx.classes.clonable(t) {
+            // A concrete type with one owner: an interface value, or a native without a `clone`.
+            self.error(
+                e.pos,
+                format!(
+                    "{what} copies `{t}`, which has one owner and cannot be copied; use it in place"
+                ),
+            );
         }
     }
 
@@ -3287,12 +3504,17 @@ impl Walker<'_> {
                 );
             }
             let mut mode = modes.receiver.unwrap_or(ParamMode::Borrow);
-            // An owned resource taken out of a receiver that holds it (`o.get(default)`) is the
-            // receiver's one owner handing it over, not a copy.
+            // A value with one owner taken out of a receiver that holds it (`o.get(default)` of
+            // a resource, or of a native without a `clone`) is the receiver's one owner handing
+            // it over, not a copy. A read in place (`xs.first()`) stays a borrow, and a type
+            // parameter copies as its bound allows.
+            let result_ty = self.cx.m.ty(e);
             if mode == ParamMode::Borrow
-                && self.class_of(r) == Class::Resource
-                && self.class_of(e) == Class::Resource
-                && ty_contains(&self.cx.m.ty(r), &self.cx.m.ty(e))
+                && self.class_of(e) != Class::Copy
+                && !self.cx.classes.clonable(&result_ty)
+                && unbounded_parameter(&result_ty).is_none()
+                && ty_contains(&self.cx.m.ty(r), &result_ty)
+                && self.native_lend_receiver(e).is_none()
             {
                 mode = ParamMode::Consume;
             }
@@ -3302,21 +3524,64 @@ impl Walker<'_> {
         } else {
             self.callees.insert(callee.id);
             self.expr(callee, Demand::Read);
+            if let Resolution::Local(_) = cx.m.resolution(callee) {
+                // The call reads the function value where the local holds it, so an argument
+                // that changes or moves that local would leave the call a dangling callee.
+                let held = self.held(callee, ParamMode::Borrow);
+                operands.push((Operand::Callee(callee), held, Vec::new()));
+            }
         }
+        let starts_promise = self.entry_call(e);
         for (i, a) in args.iter().enumerate() {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             let mut held = self.held(&a.value, mode);
-            held.extend(self.argument(a, mode, &modes, i));
+            if starts_promise && let ExprKind::Lambda(l) = &a.value.kind {
+                // The entry of a promise reads what it captures, in place, while the promise lives.
+                self.entry_lambda = Some(a.value.id);
+                held.extend(self.lambda(&a.value, l, false));
+            } else {
+                held.extend(self.argument(a, mode, &modes, i));
+            }
             operands.push((Operand::Argument(&a.value), held, Vec::new()));
+        }
+        // A promise handed to a local container (`tasks.append(promise(fn: ...))`) is kept by that
+        // local: it reads its captures until the container's scope ends.
+        if let Some(r) = receiver_expr
+            && let ExprKind::Name(_) = &r.kind
+            && let Resolution::Local(holder) = self.cx.m.resolution(r)
+        {
+            for a in args {
+                if !self.entry_call(&a.value) {
+                    continue;
+                }
+                let origins = self.entry_places(&a.value);
+                if !origins.is_empty() {
+                    self.active.push(Borrow {
+                        holder: holder.uid,
+                        holder_name: holder.name,
+                        origins: origins.into_iter().map(|p| (p, false)).collect(),
+                        pos: a.value.pos,
+                        why: PROMISE_WHY.to_string(),
+                    });
+                }
+            }
         }
         // An operand that already failed its own check is not reported twice. Only a held
         // place can clash, so the operands' inner changes are collected only when one is held.
         if self.diags.len() == reported && operands.iter().any(|(_, held, _)| !held.is_empty()) {
             for (operand, _, passing) in &mut operands {
                 let x = match operand {
-                    Operand::Receiver(x) | Operand::Argument(x) | Operand::Part(x) => *x,
+                    Operand::Receiver(x)
+                    | Operand::Callee(x)
+                    | Operand::Argument(x)
+                    | Operand::Part(x) => *x,
                 };
                 *passing = self.nested_writes(x);
+                for p in self.arm_writes(x) {
+                    if !passing.contains(&p) {
+                        passing.push(p);
+                    }
+                }
             }
             self.check_overlap(e.pos, &format!("`{name}`"), &operands);
         }
@@ -3358,11 +3623,13 @@ impl Walker<'_> {
                     // The callee lends from a view temporary of a held value: the caller owns
                     // the result (the view itself when it comes back whole) and holds the value.
                     let how = self.owned_lend(e, &lend, true);
+                    self.copied_lend(e, &name, how);
                     self.facts.owned_lends.insert(e.id, how);
                 }
                 Some(_) => {}
                 None => {
                     let how = self.owned_lend(e, &lend, false);
+                    self.copied_lend(e, &name, how);
                     self.facts.owned_lends.insert(e.id, how);
                 }
             }
@@ -3374,6 +3641,22 @@ impl Walker<'_> {
                 format!("`{name}` changes `{recv}` in place and its result cannot be used, because the collection has one owner; call it as a statement and keep using `{recv}`"),
             );
         }
+    }
+
+    /// A lending call over a temporary whose result is a part of it: the caller copies the part
+    /// out before the temporary is dropped, which a value with one owner and no `clone` cannot be.
+    fn copied_lend(&mut self, e: &Expr, name: &str, how: OwnedLend) {
+        if how != OwnedLend::Copy {
+            return;
+        }
+        let t = self.cx.m.ty(e);
+        if self.cx.classes.clonable(&t) {
+            return;
+        }
+        self.error(
+            e.pos,
+            format!("`{name}` returns a part of a temporary argument, which would be copied out as the argument is dropped; `{t}` has one owner and no `clone`, so bind the argument first and use the result while that binding lives"),
+        );
     }
 
     /// How the caller owns the result of a lending call over a temporary: the whole of one
@@ -3479,6 +3762,118 @@ impl Walker<'_> {
             }
         }
         self.nested_cache.insert(e.id, out.clone());
+        out
+    }
+
+    /// The places the statements of the `match` arms inside `e` assign, change or move. They run
+    /// while a call's receiver, callee and borrowed arguments are held in place, so a call
+    /// counts them with [`Self::nested_writes`]; a literal's parts are finished before the next
+    /// part runs, so a literal does not.
+    fn arm_writes(&mut self, e: &Expr) -> Vec<Place> {
+        let mut out: Vec<Place> = Vec::new();
+        let mut stack = vec![e];
+        while let Some(e) = stack.pop() {
+            match &e.kind {
+                ExprKind::Number(_)
+                | ExprKind::Bool(_)
+                | ExprKind::Unit
+                | ExprKind::Name(_)
+                | ExprKind::Lambda(_) => {}
+                ExprKind::Text(parts) => {
+                    for p in parts {
+                        if let TextPart::Interp(x) = p {
+                            stack.push(x);
+                        }
+                    }
+                }
+                ExprKind::Member { left, .. } | ExprKind::Probe(left) => stack.push(left),
+                ExprKind::Unary { operand, .. } => stack.push(operand),
+                ExprKind::Apply { left, value, .. } => {
+                    stack.push(left);
+                    stack.extend(value.as_deref());
+                }
+                ExprKind::Index { left, index }
+                | ExprKind::Binary {
+                    left, right: index, ..
+                } => stack.extend([&**left, &**index]),
+                ExprKind::List(items) => stack.extend(items.iter()),
+                ExprKind::Map(entries) => {
+                    stack.extend(entries.iter().flat_map(|en| [&en.key, &en.value]))
+                }
+                ExprKind::Call { callee, args } => {
+                    stack.push(callee);
+                    stack.extend(args.iter().map(|a| &a.value));
+                }
+                ExprKind::Match { scrutinee, arms } => {
+                    stack.push(scrutinee);
+                    for arm in arms {
+                        stack.extend(arm.value.as_ref());
+                        for p in self.block_writes(&arm.body) {
+                            if !out.contains(&p) {
+                                out.push(p);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /// The places the statements of a block assign, change or move.
+    fn block_writes(&mut self, body: &[Stmt]) -> Vec<Place> {
+        let mut out: Vec<Place> = Vec::new();
+        let add = |out: &mut Vec<Place>, places: Vec<Place>| {
+            for p in places {
+                if !out.contains(&p) {
+                    out.push(p);
+                }
+            }
+        };
+        for s in body {
+            match &s.kind {
+                StmtKind::Assign { target, value, .. } => {
+                    let written = match target {
+                        AssignTarget::Name(_) => self
+                            .cx
+                            .m
+                            .assigned(value)
+                            .map(|b| vec![Place::local(b.uid)])
+                            .unwrap_or_default(),
+                        AssignTarget::Member(t) => self.pure_places(t).unwrap_or_default(),
+                    };
+                    add(&mut out, written);
+                    add(&mut out, self.nested_writes(value));
+                }
+                StmtKind::Bind { value, .. } | StmtKind::Call(value) => {
+                    add(&mut out, self.nested_writes(value));
+                }
+                StmtKind::Return(value) => {
+                    if let Some(v) = value {
+                        add(&mut out, self.nested_writes(v));
+                    }
+                }
+                StmtKind::If {
+                    cond,
+                    body,
+                    else_body,
+                    ..
+                } => {
+                    add(&mut out, self.nested_writes(cond));
+                    add(&mut out, self.block_writes(body));
+                    add(&mut out, self.block_writes(else_body));
+                }
+                StmtKind::While { cond, body } => {
+                    add(&mut out, self.nested_writes(cond));
+                    add(&mut out, self.block_writes(body));
+                }
+                StmtKind::For { iter, body, .. } => {
+                    add(&mut out, self.nested_writes(iter));
+                    add(&mut out, self.block_writes(body));
+                }
+                StmtKind::Break | StmtKind::Continue => {}
+            }
+        }
         out
     }
 
@@ -3621,6 +4016,7 @@ impl Walker<'_> {
     fn operand_text(&self, o: &Operand) -> String {
         match o {
             Operand::Receiver(e) => format!("the receiver `{}`", self.expr_text(e)),
+            Operand::Callee(e) => format!("the called value `{}`", self.expr_text(e)),
             Operand::Argument(e) if matches!(e.kind, ExprKind::Lambda(_)) => {
                 format!("the closure at {}", self.at(e.id))
             }
@@ -3665,7 +4061,7 @@ impl Walker<'_> {
         // A `?.` chain only borrows its receiver, even at its last use: a change through the
         // chain (`c?.bump()`) lands in the receiver.
         self.keep_scrutinee = arms.first().is_some_and(|a| a.chain);
-        let source = self.scrutinee(e.id, scrutinee);
+        let source = self.scrutinee(scrutinee);
         self.keep_scrutinee = false;
         self.release_pending();
         // The value is a reference when every arm yields one and nothing consumes it: lowering
@@ -3684,6 +4080,11 @@ impl Walker<'_> {
             for b in self.cx.m.arm(arm).bindings.iter().flatten() {
                 if source.owned {
                     self.arm_payloads.push(b.uid);
+                    // The arm owns the part it names: the scope closes a resource among them
+                    // on the paths that do not move it on, like any other owned binding.
+                    if self.may_close(&b.ty) {
+                        self.resources.push((b.uid, b.name, arm.pos, true));
+                    }
                 }
                 self.payload(b, &source, Role::Arm, arm.pos);
                 if arm.chain
@@ -3728,6 +4129,7 @@ impl Walker<'_> {
     fn lambda(&mut self, e: &Expr, l: &Lambda, escaping: bool) -> Vec<(Place, bool)> {
         let m = self.cx.m;
         let captures = m.captures(e);
+        let concurrent = self.entry_lambda.take() == Some(e.id);
         if escaping {
             self.escaped.insert(e.id);
         }
@@ -3742,10 +4144,16 @@ impl Walker<'_> {
             .iter()
             .filter_map(|b| self.meta.get(&b.uid).map(|m| (b.uid, m.perm)))
             .collect();
-        if escaping {
-            // The closure holds its own snapshot: read-only inside.
+        // The entry of a promise takes over the resources it captures: they are the promise's own,
+        // closed when it ends, and read-only inside like an escaping closure's captures.
+        let owned_by_entry = |w: &Self, uid: usize| {
+            concurrent && w.meta.get(&uid).is_some_and(|m| m.class == Class::Resource)
+        };
+        if escaping || concurrent {
             for (uid, _) in &saved_meta {
-                if let Some(m) = self.meta.get_mut(uid) {
+                if (escaping || owned_by_entry(self, *uid))
+                    && let Some(m) = self.meta.get_mut(uid)
+                {
                     m.perm = Perm::Captured;
                 }
             }
@@ -3822,10 +4230,33 @@ impl Walker<'_> {
                     self.capture_move(e, b, &resolved);
                     facts.push((b.uid, CaptureMode::Move));
                 }
+            } else if concurrent && class == Class::Resource {
+                if changed {
+                    self.error(
+                        e.pos,
+                        format!(
+                            "this promise owns `{0}` and cannot change it; build a new value inside the promise instead",
+                            b.name
+                        ),
+                    );
+                }
+                let resolved = self.resolve(&Place::local(b.uid));
+                self.capture_move(e, b, &resolved);
+                facts.push((b.uid, CaptureMode::Move));
             } else {
                 let place = Place::local(b.uid);
                 let resolved = self.resolve(&place);
-                if changed {
+                if changed && concurrent {
+                    self.error(
+                        e.pos,
+                        format!(
+                            "concurrent code never changes a shared value, and this promise changes `{0}`; return a new value from the promise instead, or give `{0}` one owner and send it values over a `pipe`",
+                            b.name
+                        ),
+                    );
+                    self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
+                    facts.push((b.uid, CaptureMode::Borrow));
+                } else if changed {
                     let info = PlaceInfo {
                         root: b.clone(),
                         root_node: e.id,
@@ -3920,6 +4351,25 @@ fn saved_perm(saved: &[(usize, Perm)], uid: usize) -> Option<Perm> {
     saved.iter().find(|(u, _)| *u == uid).map(|(_, p)| *p)
 }
 
+/// The expression and the value parts it builds (constructor arguments, list and map elements),
+/// not the arguments of other calls (`wait_all([a, b])` consumes its promises), the bodies of
+/// lambdas or the arms of a match.
+fn collect_parts<'e>(e: &'e Expr, builds: &dyn Fn(&Expr) -> bool, out: &mut Vec<&'e Expr>) {
+    out.push(e);
+    match &e.kind {
+        ExprKind::Call { args, .. } if builds(e) => {
+            args.iter()
+                .for_each(|a| collect_parts(&a.value, builds, out));
+        }
+        ExprKind::List(items) => items.iter().for_each(|x| collect_parts(x, builds, out)),
+        ExprKind::Map(entries) => entries.iter().for_each(|en| {
+            collect_parts(&en.key, builds, out);
+            collect_parts(&en.value, builds, out);
+        }),
+        _ => {}
+    }
+}
+
 /// How the parts of a matched or destructured value are held.
 struct Scrutinee {
     /// The parts belong to the pattern bindings.
@@ -3947,21 +4397,6 @@ fn ty_contains(src: &Ty, part: &Ty) -> bool {
     src.args
         .iter()
         .any(|a| crate::types::same(a, part) || ty_contains(a, part))
-}
-
-/// Whether `result` is an `Optional` or `Result` around a type `src` holds (or around another
-/// such wrapper).
-fn wraps_part(src: &Ty, result: &Ty) -> bool {
-    (result.is(Builtin::Optional) || result.is(Builtin::Result))
-        && result
-            .args
-            .first()
-            .is_some_and(|a| ty_holds(src, a) || wraps_part(src, a))
-}
-
-/// Whether `src` is `part` or has it among its type arguments, at any depth.
-fn ty_holds(src: &Ty, part: &Ty) -> bool {
-    src.id == part.id || src.args.iter().any(|a| ty_holds(a, part))
 }
 
 /// Whether `t` mentions a type parameter.

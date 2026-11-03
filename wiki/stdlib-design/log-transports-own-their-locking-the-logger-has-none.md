@@ -1,11 +1,11 @@
-# Log transports own their locking; the logger has none
+[Wiki](../index.md) › [Stdlib design](index.md)
 
-Decision: `Logger` (a concrete type, not an interface, so `info[F: Data = Unit](message, fields: F? = none)`, `log` and `child` can be generic) never locks. `Transport` methods are plain `fn`; an implementation with mutable state guards it itself, as `StreamTransport` does with a `Shared[WriteStream]`. Child loggers copy a `Shared[Transport]` and read it with `get()`.
+# Each logger owns its transport; there is no lock
 
-Why: an interface with a generic operation cannot be a value type, so a generic-field `Logger` cannot stay an interface. `WriteStream.write` is `var fn` and may suspend, so copies cannot share a stream without a lock somewhere; the lock belongs in the one type that owns the stream. `lock` itself does not spin: park blocks, the scheduler is cooperative so nothing runs between the check and the enqueue, and release wakes one waiter.
+Decision: `Logger` (a concrete type, so `info[F: Data = Unit](message, fields: F? = none)`, `log` and `child` can be generic) never locks. `Transport` has `duplicate()`: `child` gives the child its own transport onto the same destination (a file transport opens its own handle), so loggers on several threads share nothing and a transport needs no locking. Records are single appends, so the OS keeps them whole.
 
-Verify: the "concurrent tasks never interleave a record" test in `tests/e2e/testdata/stdlib/log.ms` fails if `StreamTransport.write` stops locking.
+Why: promises only read their captures and there is no `Shared`, so one transport cannot be mutated from several threads. Closing a logger closes only its own transport. `Logger` is `Closeable`: `close()` returns `Unit!` and consumes it, and a scope that owns a logger closes its transport on every exit (a dropped child closes only its own duplicate).
 
-The record encoder is Manuscript too: `log.ms` builds the line from `JsonValue` and `stringify`, and a transport's shut flag lives in its locked state. There is no native logger crate; `proposals/logger-encoder-in-manuscript.md` records the equivalence evidence. `Logger` is a value, so `set_level` is `var fn` and a copy keeps its own threshold.
+Verify: "loggers on several threads never interleave a record" in `tests/e2e/testdata/stdlib/log.ms`.
 
-Record layout: call fields go under `data` and `child` fields under `context`, both as `stringify` text written as is; nothing is reparsed per record.
+The record encoder is Manuscript too: `log.ms` builds the line from `JsonValue` and `stringify`. `Logger` is a value, so `set_level` is `var fn` and a copy keeps its own threshold. Call fields go under `data` and `child` fields under `context`, both as `stringify` text written as is.

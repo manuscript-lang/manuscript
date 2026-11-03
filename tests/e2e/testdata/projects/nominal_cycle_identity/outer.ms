@@ -1,9 +1,8 @@
 import Wrapper, make_wrapper from "./bridge.ms"
-import Shared from "@std/concurrency/shared.ms"
 
 export type Node:
     wrapped: Wrapper
 
-export fn exercise(log: Shared[List[Int]]) Unit:
-    let held = Node(make_wrapper(log))
-    let _borrowed_log = held.wrapped.node.door.log
+export fn exercise(path: String) Unit:
+    let held = Node(make_wrapper(path))
+    let _borrowed_path = held.wrapped.node.door.path

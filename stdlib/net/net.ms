@@ -1,4 +1,14 @@
 import Closeable, Data from "@std/core.ms"
+import (
+    ReadStream,
+    WriteStream,
+    Source,
+    Sink,
+    stream,
+    writer,
+    pipe,
+    Pipe
+) from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import ClientResponse from "@std/net/http.ms"
 import Duration from "@std/os/time.ms"
@@ -8,9 +18,17 @@ import HttpExchange from "@std/net/http.ms"
 import HttpHeaders from "@std/net/http.ms"
 import HttpMethod from "@std/net/http.ms"
 import HttpServer from "@std/net/http.ms"
+import NativeServing, NativeWorker from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
 import Timestamp from "@std/os/time.ms"
-import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
+import (
+    Promise,
+    promise,
+    owned_promise,
+    deferred,
+    complete
+) from "@std/concurrency/promise.ms"
+import sleep from "@std/os/time.ms"
 import (
     msstd_url_encode_component,
     msstd_net_ip_address_text,
@@ -29,130 +47,212 @@ import (
     msstd_url_parse_query,
     msstd_url_resolve,
     msstd_net_connection_close,
+    msstd_net_connection_share,
+    msstd_net_connection_close_if_last,
     msstd_net_connection_local_address,
     msstd_net_connection_peer_address,
     msstd_net_connection_read,
-    msstd_net_connection_clone,
     msstd_net_connection_shutdown_write,
     msstd_net_connection_tls_info,
-    msstd_net_connection_write,
     msstd_net_connection_write_bytes,
     msstd_net_datagram_address,
     msstd_net_datagram_close,
+    msstd_net_datagram_share,
+    msstd_net_datagram_close_if_last,
     msstd_net_datagram_receive,
-    msstd_net_datagram_send,
     msstd_net_datagram_send_bytes,
     msstd_net_listener_accept,
+    msstd_net_listener_share,
     msstd_net_listener_accept_raw,
     msstd_net_listener_address,
     msstd_net_listener_close,
     msstd_net_listener_raw_owner,
     msstd_net_release_unadopted,
     msstd_websocket_close,
+    msstd_websocket_share,
+    msstd_websocket_close_if_last,
     msstd_websocket_ping,
     msstd_websocket_ping_bytes,
     msstd_websocket_receive,
-    msstd_websocket_send,
     msstd_websocket_send_bytes,
     msstd_websocket_subprotocol
 ) from "@std/internal/net.ms"
+import (
+    msstd_http_serving_new,
+    msstd_http_serving_share,
+    msstd_http_serving_address,
+    msstd_http_serving_accept,
+    msstd_http_serving_worker,
+    msstd_http_worker_adopt,
+    msstd_http_worker_close,
+    msrt_runtime_limit,
+    msstd_http_serving_release,
+    msrt_runtime_set_threads
+) from "@std/internal/http.ms"
 
-// The runtime handle behind a `Connection`.
+// The runtime handle behind a `RawConnection`.
 export extern type NativeConnection
 
-// A connected stream socket, optionally protected by TLS.
-// Several tasks may wait on one connection: each `read` parks until data arrives, and tasks are woken together, so the one that finds data proceeds and the rest wait again. Writers sharing a connection should serialize whole messages themselves.
-export type Connection:
-    // The runtime handle; it is released by `close` and owned by this value.
+// The native socket a network operation returns; `connection` wraps it into a `Connection`.
+export type RawConnection:
+    // The runtime handle; it is released when the last end closes.
     native: NativeConnection
 
-impl Closeable for Connection:
-    // Closes the socket, interrupting calls in progress, and waits for them to stop.
-    // Safe to call repeatedly; later calls wait for the first. Reads and writes afterwards return Closed.
+type ConnectionSource:
+    raw: RawConnection
+
+impl Source[Bytes] for ConnectionSource:
+    // Waits for the next chunk; none at the end of the stream.
+    var fn next() Bytes?!:
+        return msstd_net_connection_read(self.raw.native, none, none)
+
+    // Closes the socket when the output end is already closed.
     var fn close() Unit!:
-        msstd_net_connection_close(self.native)
+        msstd_net_connection_close_if_last(self.raw.native)
         return ok(unit)
 
-impl Connection:
-    // Returns this end's address as `host:port` text, with IPv6 hosts in brackets; for Unix sockets it is the socket path.
-    fn local_address() String:
-        return msstd_net_connection_local_address(self.native)
+type ConnectionSink:
+    raw: RawConnection
 
-    // Returns the remote end's address as `host:port` text, with IPv6 hosts in brackets.
-    fn peer_address() String:
-        return msstd_net_connection_peer_address(self.native)
+impl Sink[Bytes] for ConnectionSink:
+    var fn put(value: Bytes) Unit!:
+        return msstd_net_connection_write_bytes(self.raw.native, value, none)
 
-    // Returns a positive chunk or none at EOF; a local timeout has kind `Failed`, not `Timeout`.
-    fn read(max_bytes: Int?, timeout: Duration?) Bytes?!:
-        return msstd_net_connection_read(self.native, max_bytes, timeout)
+    var fn drain() Promise[Unit]:
+        return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
 
-    /*
-    Returns a second connection over a duplicate of the socket, which closes on its own, so one task
-    can read while another writes. Both share the stream: bytes read through one are not seen by the other.
-    While a clone is open, closing a copy closes only its descriptor: the peer sees no end of stream, and a call parked on the closed copy ends at its timeout or the next data.
-    Returns Unsupported for a TLS connection, whose session state cannot be shared, and Closed on a closed connection.
-    */
-    fn clone() Connection!:
-        return msstd_net_connection_clone(self.native)
+    fn buffered() Int:
+        return 0
 
-    // Half-closes the connection so the peer sees end of stream, while this side can keep reading.
-    // Returns Unsupported for stream kinds that cannot half-close, and Closed on a closed connection.
-    fn shutdown_write() Unit!:
-        return msstd_net_connection_shutdown_write(self.native)
+    // Half-closes the connection so the peer sees the end of the stream; the socket closes once the input is closed too.
+    var fn close() Unit!:
+        let _ = msstd_net_connection_shutdown_write(self.raw.native)
+        msstd_net_connection_close_if_last(self.raw.native)
+        return ok(unit)
 
+// What is known about a connection, available after its streams are moved elsewhere.
+export type ConnectionInfo:
+    // This end's address as `host:port` text, with IPv6 hosts in brackets; for Unix sockets it is the socket path.
+    local_address: String
+    // The remote end's address as `host:port` text, with IPv6 hosts in brackets.
+    peer_address: String
+    // The negotiated TLS version, cipher suite, protocol, and peer certificates; none when the connection is not TLS.
+    tls: TlsInfo?
+
+impl ConnectionInfo:
     // Returns the negotiated TLS version, cipher suite, protocol, and peer certificates.
     // A connection that is not TLS returns InvalidInput.
     fn tls_info() TlsInfo!:
-        return msstd_net_connection_tls_info(self.native)
+        if let info = self.tls:
+            return ok(info.clone())
 
-    // Writes all bytes on success; failure can leave a prefix. A local timeout has kind `Failed`.
-    fn write(data: String, timeout: Duration?) Unit!:
-        return msstd_net_connection_write(self.native, data, timeout)
+        return error(Error("network: invalid input", kind: ErrorCategory.InvalidInput))
 
-    // Writes raw bytes with the same rules as write.
-    fn write_bytes(data: Bytes, timeout: Duration?) Unit!:
-        return msstd_net_connection_write_bytes(self.native, data, timeout)
+/*
+A connected stream socket, optionally protected by TLS: `input` reads chunks until the peer's end of stream, and
+`output` writes chunks. Move the two streams to different tasks to read and write at once. Closing `output` half-closes
+the connection; the socket closes when both streams are closed, which is also what closing the `Connection` does.
+*/
+export type Connection:
+    // Bytes from the peer; a read ends with none at the peer's end of stream.
+    input: ReadStream[Bytes]
+    // Bytes to the peer. Closing it half-closes the connection.
+    output: WriteStream[Bytes]
+    // Addresses and TLS details.
+    info: ConnectionInfo
 
-// One datagram and the address from which it was received.
+impl Closeable for Connection:
+    // Closes both streams, and with them the socket.
+    var fn close() Unit!:
+        try self.input.close()
+        return self.output.close()
+
+// Wraps a native socket into a `Connection`.
+fn connection(raw: RawConnection) Connection:
+    let local = msstd_net_connection_local_address(raw.native)
+    let peer = msstd_net_connection_peer_address(raw.native)
+    var tls: TlsInfo? = none
+
+    match msstd_net_connection_tls_info(raw.native):
+        ok(found): tls = found
+        error(_): tls = none
+
+    let other = RawConnection(msstd_net_connection_share(raw.native))
+    return Connection(
+        input: stream[Bytes](ConnectionSource(raw)),
+        output: writer[Bytes](ConnectionSink(other)),
+        info: ConnectionInfo(local, peer, tls)
+    )
+
+// One datagram. Received, `address` is where it came from; written, where it goes.
 export type Datagram:
-    // The payload bytes of this datagram, never longer than the receive call's `max_bytes`.
+    // The payload bytes of this datagram, at most 65535 bytes.
     data: Bytes
     // Native host:port text, with bracketed IPv6 addresses.
-    sender: String
+    address: String
 
-// The runtime handle behind a `DatagramSocket`.
+// The runtime handle behind a `RawDatagramSocket`.
 export extern type NativeDatagramSocket
 
-// A connectionless socket for sending and receiving datagrams.
-export type DatagramSocket:
-    // The runtime handle; it is released by `close` and owned by this value.
+// The native socket `bind_datagram` returns; it is wrapped into a `DatagramSocket`.
+export type RawDatagramSocket:
+    // The runtime handle; it is released when the last end closes.
     native: NativeDatagramSocket
 
-impl Closeable for DatagramSocket:
-    // Closes the socket, interrupting calls in progress, and waits for them to stop.
-    // Safe to call repeatedly.
+type DatagramSource:
+    raw: RawDatagramSocket
+
+impl Source[Datagram] for DatagramSource:
+    // Waits for one datagram, at most 65535 bytes; a larger one is an error of kind `LimitExceeded` and is discarded.
+    var fn next() Datagram?!:
+        return ok(try msstd_net_datagram_receive(self.raw.native, none, none))
+
     var fn close() Unit!:
-        msstd_net_datagram_close(self.native)
+        msstd_net_datagram_close_if_last(self.raw.native)
         return ok(unit)
 
-impl DatagramSocket:
-    // Returns the bound local address as `host:port` text, which reveals the port chosen when binding port 0.
-    fn address() String:
-        return msstd_net_datagram_address(self.native)
+type DatagramSink:
+    raw: RawDatagramSocket
 
-    // Waits for one datagram and returns its bytes with the sender's address. `max_bytes` is 1 through 65535 and defaults to 65535.
-    // A larger datagram returns LimitExceeded and is discarded. A timeout returns Timeout and a closed socket returns Closed.
-    fn receive(max_bytes: Int?, timeout: Duration?) Datagram!:
-        return msstd_net_datagram_receive(self.native, max_bytes, timeout)
+impl Sink[Datagram] for DatagramSink:
+    // Sends `value.data` as one datagram to `value.address`, resolving a host name with the network's resolver.
+    var fn put(value: Datagram) Unit!:
+        return msstd_net_datagram_send_bytes(
+            self.raw.native, value.data, value.address, none
+        )
 
-    // Sends `data` as a single datagram to `address` (`host:port`), resolving a host name with the network's resolver.
-    // The network's restrictions apply to both the name and the resolved address. A short send returns Failed; a timeout returns Timeout.
-    fn send(data: String, address: String, timeout: Duration?) Unit!:
-        return msstd_net_datagram_send(self.native, data, address, timeout)
+    var fn drain() Promise[Unit]:
+        return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
 
-    // Sends raw bytes as a single datagram with the same rules as send.
-    fn send_bytes(data: Bytes, address: String, timeout: Duration?) Unit!:
-        return msstd_net_datagram_send_bytes(self.native, data, address, timeout)
+    fn buffered() Int:
+        return 0
+
+    var fn close() Unit!:
+        msstd_net_datagram_close_if_last(self.raw.native)
+        return ok(unit)
+
+// A connectionless socket for sending and receiving datagrams. Closing it closes both streams.
+export type DatagramSocket:
+    // Datagrams received, with the sender's address.
+    input: ReadStream[Datagram]
+    // Datagrams to send; each carries its destination.
+    output: WriteStream[Datagram]
+    // The bound local address as `host:port` text, which reveals the port chosen when binding port 0.
+    address: String
+
+impl Closeable for DatagramSocket:
+    // Closes both streams, and with them the socket.
+    var fn close() Unit!:
+        try self.input.close()
+        return self.output.close()
+
+fn datagram_socket(raw: RawDatagramSocket) DatagramSocket:
+    let address = msstd_net_datagram_address(raw.native)
+    let other = RawDatagramSocket(msstd_net_datagram_share(raw.native))
+    return DatagramSocket(
+        input: stream[Datagram](DatagramSource(raw)),
+        output: writer[Datagram](DatagramSink(other)), address: address
+    )
 
 // Supported DNS query categories; unknown spellings are rejected by checking.
 export type DnsKind:
@@ -247,19 +347,38 @@ impl Closeable for Listener:
         return ok(unit)
 
 impl Listener:
-    // Waits for the next incoming connection and returns it. A timeout returns Timeout and a closed listener returns Closed.
-    // On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and returns Failed.
-    fn accept(timeout: Duration?) Connection!:
-        return msstd_net_listener_accept(self.native, timeout)
+    // Starts waiting for the next incoming connection and returns its promise. A timeout gives Timeout and a closed listener gives Closed from `wait`.
+    // On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and gives Failed.
+    fn accept(timeout: Duration?) Promise[Connection]:
+        return owned_promise[AcceptArgs, Connection](
+            AcceptArgs(
+                native: msstd_net_listener_share(self.native), timeout: timeout.clone()
+            ),
+            fn a: accepted(a.native, a.timeout)
+        )
 
-    // Waits for the next incoming connection and returns its socket handle without wrapping it, to give to `HttpServer.adopt` (on this or another thread). The caller owns the handle until then; one that is never adopted leaks its socket.
-    // A timeout returns Timeout and a closed listener returns Closed. A TLS listener returns InvalidInput: the adopting server performs the handshake.
-    fn accept_raw(timeout: Duration?) Int!:
-        return msstd_net_listener_accept_raw(self.native, timeout)
+    // Starts waiting for the next incoming connection and returns a promise of its socket handle without wrapping it. The caller owns the handle until then; one that is never adopted leaks its socket.
+    // A timeout gives Timeout and a closed listener gives Closed from `wait`. A TLS listener gives InvalidInput: the adopting server performs the handshake.
+    fn accept_raw(timeout: Duration?) Promise[Int]:
+        return owned_promise[AcceptArgs, Int](
+            AcceptArgs(
+                native: msstd_net_listener_share(self.native), timeout: timeout.clone()
+            ),
+            fn a: msstd_net_listener_accept_raw(a.native, a.timeout)
+        )
 
     // Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
     fn address() String:
         return msstd_net_listener_address(self.native)
+
+// What an accepting promise owns: its own handle on the listener, and the time it waits.
+type AcceptArgs:
+    native: NativeListener
+    timeout: Duration?
+
+fn accepted(native: NativeListener, timeout: Duration?) Connection!:
+    let raw = try msstd_net_listener_accept(native, timeout)
+    return ok(connection(raw))
 
 // Reports whether an IP address belongs to a CIDR range.
 export fn contains_ip(cidr: Cidr, address: IpAddress) Bool!:
@@ -277,26 +396,30 @@ export fn parse_ip(text: String) IpAddress!:
 export interface Network:
     // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
     // A restricted network without listening permission, or an address outside its CIDRs, returns PermissionDenied.
-    fn bind_datagram(address: String) DatagramSocket!
+    fn bind_datagram(address: String) RawDatagramSocket!
     // Cancels in-flight calls and closes every connection, listener, socket, HTTP client, and server this network opened, including those of derived networks.
     // Safe to call repeatedly. A request handler of a server on this network cannot close it and faults.
     fn close() Unit
     // Resolves `address` (`host:port`) and opens a TCP connection to the first reachable permitted address.
     // Returns PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
-    fn connect(address: String, timeout: Duration?) Connection!
+    fn connect(address: String, timeout: Duration?) RawConnection!
     // Connects over TCP to `address` and completes a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2.
     // An empty `server_name` returns InvalidInput, and `timeout` bounds the whole attempt.
-    fn connect_tls(address: String, server_name: String, timeout: Duration?) Connection!
+    fn connect_tls(
+        address: String,
+        server_name: String,
+        timeout: Duration?
+    ) RawConnection!
     // Connects over TCP to `address` and completes a TLS handshake using `options`, with at least TLS 1.2.
     // Invalid options return InvalidInput, handshake and verification failures return Failed, and `timeout` bounds the whole attempt.
     fn connect_tls_config(
         address: String,
         options: TlsOptions,
         timeout: Duration?
-    ) Connection!
+    ) RawConnection!
     // Connects to the Unix domain socket at `path`.
     // Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path returns InvalidInput. `timeout` bounds the attempt.
-    fn connect_unix(path: String, timeout: Duration?) Connection!
+    fn connect_unix(path: String, timeout: Duration?) RawConnection!
     // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
     // Invalid or negative options return InvalidInput. Closing the network closes the client.
     fn http_client(options: HttpClientOptions) HttpClient!
@@ -348,18 +471,6 @@ export interface Network:
     // Returns a derived network limited to the given host names and CIDR ranges.
     // Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns InvalidInput.
     fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) Network!
-    /*
-    Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
-    A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
-    Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
-    A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end, `tasks.cancelled()` turns true, and its cleanups run. A client that half-closes its end after sending the request counts as disconnected.
-    A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
-    */
-    fn serve(
-        address: String,
-        handler: fn(HttpExchange) Unit!,
-        options: HttpServerOptions = HttpServerOptions()
-    ) HttpServer!
     // Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
     // Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures are `Error` values.
     fn web_socket(
@@ -367,13 +478,7 @@ export interface Network:
         headers: HttpHeaders,
         subprotocols: List[String],
         options: WebSocketOptions
-    ) WebSocket!
-    // Starts an HTTP server that has no listener: it serves the connections handed to `HttpServer.adopt`, with the handler, limits, timeouts, and TLS of `serve`. Close the server to stop it.
-    // Returns InvalidInput for invalid options.
-    fn serve_connections(
-        handler: fn(HttpExchange) Unit!,
-        options: HttpServerOptions = HttpServerOptions()
-    ) HttpServer!
+    ) RawWebSocket!
     // Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
     // The address must be allowed by this network's restrictions, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
     fn with_resolver(address: String) Network!
@@ -490,55 +595,105 @@ export fn parse_query(text: String, max_entries: Int?) List[QueryEntry]!:
 export fn resolve(base: Url, reference: String) Url!:
     return msstd_url_resolve(base, reference)
 
-// The runtime handle behind a `WebSocket`.
+// The runtime handle behind a `RawWebSocket`.
 export extern type NativeWebSocket
 
-// A WebSocket connection. Send and receive byte messages with an explicit text flag.
-export type WebSocket:
-    // The runtime handle; it is released by `close` and owned by this value.
+// The native WebSocket a handshake returns; it is wrapped into a `WebSocket`.
+export type RawWebSocket:
+    // The runtime handle; it is released when the last end closes.
     native: NativeWebSocket
 
-impl Closeable for WebSocket:
-    // Sends a normal-closure frame, waiting at most about 100 ms to write it, then closes the connection and waits for in-flight calls to stop.
-    // Safe to call repeatedly; later calls wait for the first.
+// The kind of a WebSocket message.
+export type WebSocketKind:
+    case Text  // A text frame: the payload is valid UTF-8.
+    case Binary  // A binary frame: the payload is arbitrary bytes.
+    case Ping  // A ping control frame, at most 125 bytes; written only, the peer's pongs are answered automatically.
+
+// One WebSocket message.
+export type WebSocketMessage:
+    // The payload bytes; for a text message they are the UTF-8 encoding of the text.
+    data: Bytes
+    // Whether the message is text or binary, or a ping.
+    kind: WebSocketKind
+
+// A message as the native layer reports it.
+export type RawWebSocketMessage:
+    // The payload bytes; for a text frame they are the UTF-8 encoding of the text.
+    data: Bytes
+    // True for a text frame, false for a binary frame.
+    text: Bool
+
+type WebSocketSource:
+    raw: RawWebSocket
+
+impl Source[WebSocketMessage] for WebSocketSource:
+    // Waits for the next complete message; none once the peer closes normally.
+    // A larger message is `LimitExceeded` and a malformed text message `InvalidData`; after any failure the connection is closed.
+    var fn next() WebSocketMessage?!:
+        let raw = try msstd_websocket_receive(self.raw.native)
+
+        if let message = raw:
+            var kind = WebSocketKind.Binary
+            if message.text:
+                kind = WebSocketKind.Text
+            return ok(WebSocketMessage(message.data, kind))
+
+        return ok(none)
+
     var fn close() Unit!:
-        msstd_websocket_close(self.native)
+        msstd_websocket_close_if_last(self.raw.native)
         return ok(unit)
 
-impl WebSocket:
-    // Sends a ping frame carrying `data`, which must be at most 125 bytes, with a one-second write deadline.
-    // It does not wait for the pong. Returns Closed on a closed socket.
-    fn ping(data: String) Unit!:
-        return msstd_websocket_ping(self.native, data)
+type WebSocketSink:
+    raw: RawWebSocket
 
-    // Sends a ping frame carrying raw bytes, with the same limits and deadline as ping.
-    fn ping_bytes(data: Bytes) Unit!:
-        return msstd_websocket_ping_bytes(self.native, data)
+impl Sink[WebSocketMessage] for WebSocketSink:
+    // Sends one message. Text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded.
+    var fn put(value: WebSocketMessage) Unit!:
+        match value.kind:
+            Text: return msstd_websocket_send_bytes(self.raw.native, value.data, true)
+            Binary: return msstd_websocket_send_bytes(
+                self.raw.native, value.data, false
+            )
+            Ping: return msstd_websocket_ping_bytes(self.raw.native, value.data)
 
-    // Waits for the next complete message and returns it, or none once the peer closes normally.
-    // A larger message returns LimitExceeded and a malformed text message InvalidData; after any receive failure the connection is closed. One receive runs at a time, and others wait their turn.
-    fn receive() WebSocketMessage?!:
-        return msstd_websocket_receive(self.native)
+    var fn drain() Promise[Unit]:
+        return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
 
-    // Sends `data` as one text message; a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
-    fn send(data: String) Unit!:
-        return msstd_websocket_send(self.native, data)
+    fn buffered() Int:
+        return 0
 
-    // Sends `data` as one message, a text frame when `text` is True and a binary frame (the default) otherwise.
-    // Text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
-    fn send_bytes(data: Bytes, text: Bool = false) Unit!:
-        return msstd_websocket_send_bytes(self.native, data, text)
+    var fn close() Unit!:
+        msstd_websocket_close_if_last(self.raw.native)
+        return ok(unit)
 
-    // Returns the subprotocol the server selected during the handshake, or an empty string when none was negotiated.
-    fn subprotocol() String:
-        return msstd_websocket_subprotocol(self.native)
+/*
+A WebSocket connection: `input` reads whole messages and `output` writes them. Move the streams to different tasks to
+receive and send at once. The connection closes, after a normal-closure frame, when both streams are closed, which is
+also what closing the `WebSocket` does.
+*/
+export type WebSocket:
+    // Messages from the peer; none once the peer closes normally.
+    input: ReadStream[WebSocketMessage]
+    // Messages to the peer.
+    output: WriteStream[WebSocketMessage]
+    // The subprotocol the server selected during the handshake, or an empty string when none was negotiated.
+    subprotocol: String
 
-// A received message and whether its payload is UTF-8 text.
-export type WebSocketMessage:
-    // The message payload bytes; for a text message they are the UTF-8 encoding of the text.
-    data: Bytes
-    // True when the peer sent a text frame, which guarantees `data` is valid UTF-8; False for a binary frame.
-    text: Bool
+impl Closeable for WebSocket:
+    // Closes both streams, and with them the connection.
+    var fn close() Unit!:
+        try self.input.close()
+        return self.output.close()
+
+// Wraps a native WebSocket into a `WebSocket`.
+export fn web_socket_from(raw: RawWebSocket) WebSocket:
+    let subprotocol = msstd_websocket_subprotocol(raw.native)
+    let other = RawWebSocket(msstd_websocket_share(raw.native))
+    return WebSocket(
+        input: stream[WebSocketMessage](WebSocketSource(raw)),
+        output: writer[WebSocketMessage](WebSocketSink(other)), subprotocol: subprotocol
+    )
 
 // WebSocket message, timeout, TLS, and per-message compression settings.
 export type WebSocketOptions:
@@ -551,104 +706,88 @@ export type WebSocketOptions:
     // When True, offers per-message compression during the handshake; it applies only if the peer agrees.
     compression: Bool
 
-/*
-Serves on `cores` threads: this thread accepts from `listener` and deals each connection, round robin, to one of `cores` workers that run `entry`, a named top-level fn that ends in `serve_core(handler, options)`. A connection, and every request on it, stays on its worker, and each worker builds its own handler, so no closure or other memory crosses threads.
-Runs until accepting fails, returning that error (`Closed` after the listener was closed), or a worker's channel closes (returns `Failed`). Workers still running afterwards are cancelled.
-Returns InvalidInput when `cores` is below 1, and `Failed` when a worker cannot start.
-*/
-export fn serve_cores(listener: Listener, entry: fn() Unit, cores: Int) Unit!:
-    if cores < 1:
-        return error(Error("network: invalid input", kind: InvalidInput))
-
-    var serving = Serving(
-        group: WorkerGroup[Int, Int](),
-        owner: msstd_net_listener_raw_owner(listener.native)
-    )
-    let started = serving.group.spawn_many(entry, cores)
-    if started.is_error():
-        return error(Error("network: could not start a serving worker", kind: Failed))
-
-    return deal(listener, started.get())
-
-// The workers of `serve_cores` and the owner key of the listener whose unadopted handles go with them.
-// Its close runs on every exit, a cancellation included.
-type Serving:
-    group: WorkerGroup[Int, Int]
-    owner: Int
-
-impl Closeable for Serving:
-    // Ends the workers first, so no adopter can still claim a handle that stays unadopted, then closes those handles.
-    var fn close() Unit!:
-        self.group.close().get(none)
-        msstd_net_release_unadopted(self.owner)
-        return ok(unit)
-
-// Deals accepted connections round robin to `workers` until accepting or a send fails.
-fn deal(listener: Listener, workers: List[Worker[Int, Int]]) Unit!:
-    var next = 0
-
-    while true:
-        let accepted = listener.accept_raw(none)
-        if accepted.is_error():
-            return error(accepted.err().clone())
-        if workers[next % workers.length()].channel.send(accepted.get()).is_error():
-            return error(Error("network: a serving worker ended", kind: Failed))
-
-        next += 1
-
-    return ok(unit)
-
-// Worker side of `serve_cores`: serves the connections dealt to this worker with
-// `handler` and `options`, until the acceptor ends. Returns InvalidInput for invalid options.
-export fn serve_core(
-    handler: fn(HttpExchange) Unit!,
-    options: HttpServerOptions = HttpServerOptions()
-) Unit!:
-    var ch = worker_channel[Int, Int]()
-    var server = try serve_connections(handler: handler, options: options)
-
-    while true:
-        if let connection = ch.receive().get(none):
-            server.adopt(connection)
-            continue
-
-        break
-
-    server.close().get(none)
-    return ok(unit)
-
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
 // A restricted network without listening permission, or an address outside its CIDRs, returns PermissionDenied.
 export fn bind_datagram(address: String) DatagramSocket!:
-    return host_network().bind_datagram(address)
+    return ok(datagram_socket(try host_network().bind_datagram(address)))
 
-// Resolves `address` (`host:port`) and opens a TCP connection to the first reachable permitted address.
-// Returns PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
-export fn connect(address: String, timeout: Duration?) Connection!:
-    return host_network().connect(address, timeout)
+// Starts resolving `address` (`host:port`) and opening a TCP connection to the first reachable permitted address, and returns its promise.
+// `wait` gives PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
+export fn connect(address: String, timeout: Duration?) Promise[Connection]:
+    return owned_promise[ConnectArgs, Connection](
+        ConnectArgs(address: address.clone(), timeout: timeout),
+        fn a: connected(a.address, a.timeout)
+    )
 
-// Connects over TCP to `address` and completes a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2.
-// An empty `server_name` returns InvalidInput, and `timeout` bounds the whole attempt.
+type ConnectArgs:
+    address: String
+    timeout: Duration?
+
+fn connected(address: String, timeout: Duration?) Connection!:
+    return ok(connection(try host_network().connect(address, timeout)))
+
+// Starts connecting over TCP to `address` and completing a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2, and returns its promise.
+// An empty `server_name` gives InvalidInput from `wait`, and `timeout` bounds the whole attempt.
 export fn connect_tls(
     address: String,
     server_name: String,
     timeout: Duration?
-) Connection!:
-    return host_network().connect_tls(address, server_name, timeout)
+) Promise[Connection]:
+    return owned_promise[ConnectTlsArgs, Connection](
+        ConnectTlsArgs(
+            address: address.clone(), server_name: server_name.clone(), timeout: timeout
+        ),
+        fn a: connected_tls(a.address, a.server_name, a.timeout)
+    )
 
-// Connects over TCP to `address` and completes a TLS handshake using `options`, with at least TLS 1.2.
-// Invalid options return InvalidInput, handshake and verification failures return Failed, and `timeout` bounds the whole attempt.
+type ConnectTlsArgs:
+    address: String
+    server_name: String
+    timeout: Duration?
+
+fn connected_tls(address: String, server_name: String, timeout: Duration?) Connection!:
+    return ok(connection(try host_network().connect_tls(address, server_name, timeout)))
+
+// Starts connecting over TCP to `address` and completing a TLS handshake using `options`, with at least TLS 1.2, and returns its promise.
+// Invalid options give InvalidInput from `wait`, handshake and verification failures give Failed, and `timeout` bounds the whole attempt.
 export fn connect_tls_config(
     address: String,
     options: TlsOptions,
     timeout: Duration?
-) Connection!:
-    return host_network().connect_tls_config(address, options, timeout)
+) Promise[Connection]:
+    return owned_promise[ConnectTlsConfigArgs, Connection](
+        ConnectTlsConfigArgs(
+            address: address.clone(), options: options.clone(), timeout: timeout
+        ),
+        fn a: connected_tls_config(a.address, a.options, a.timeout)
+    )
 
-// Connects to the Unix domain socket at `path`.
-// Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path returns InvalidInput. `timeout` bounds the attempt.
-export fn connect_unix(path: String, timeout: Duration?) Connection!:
-    return host_network().connect_unix(path, timeout)
+type ConnectTlsConfigArgs:
+    address: String
+    options: TlsOptions
+    timeout: Duration?
+
+fn connected_tls_config(
+    address: String,
+    options: TlsOptions,
+    timeout: Duration?
+) Connection!:
+    return ok(
+        connection(
+            try host_network().connect_tls_config(address, options, timeout)
+        )
+    )
+
+// Starts connecting to the Unix domain socket at `path` and returns its promise.
+// Any restricted network gives PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path gives InvalidInput. `timeout` bounds the attempt.
+export fn connect_unix(path: String, timeout: Duration?) Promise[Connection]:
+    return owned_promise[ConnectArgs, Connection](
+        ConnectArgs(address: path.clone(), timeout: timeout),
+        fn a: connected_unix(a.address, a.timeout)
+    )
+
+fn connected_unix(path: String, timeout: Duration?) Connection!:
+    return ok(connection(try host_network().connect_unix(path, timeout)))
 
 // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
 // Invalid or negative options return InvalidInput. Closing the network closes the client.
@@ -727,19 +866,120 @@ export fn restrict(
 ) Network!:
     return host_network().restrict(hosts, cidrs, allow_listen)
 
-/*
-Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
-A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
-Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
-A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end, `tasks.cancelled()` turns true, and its cleanups run. A client that half-closes its end after sending the request counts as disconnected.
-A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
-*/
+// Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
+// A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
+// Returns InvalidInput for invalid options (`cores` below 1 included). Close the server, or drop it, to stop it.
+// `serve` binds a plain TCP listener and runs the accept loop as a promise. Each accepted connection becomes a promise of its own, which the runtime places on the least busy thread, where it stays; HTTP/1.1, HTTP/2 and the TLS handshake of `options.tls` run there. `handler` is built once and only read by every thread. `options.cores` limits the runtime to that many threads (none: every core).
+// A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end, `tasks.cancelled()` turns true, and its cleanups run. A client that half-closes its end after sending the request counts as disconnected.
+// A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
 export fn serve(
     address: String,
     handler: fn(HttpExchange) Unit!,
     options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!:
-    return host_network().serve(address, handler, options)
+    if let cores = options.cores:
+        if cores < 1:
+            return error(Error("network: invalid input", kind: InvalidInput))
+
+    let serving = try msstd_http_serving_new(address, options, handler)
+    let bound = msstd_http_serving_address(serving)
+    let listening = ServingHandle(serving: serving, listener: true)
+    if let cores = options.cores:
+        msrt_runtime_set_threads(cores)
+
+    // The accept loop owns the listener; each worker owns a share of the serving and a pipe of accepted connections.
+    let workers = workers_for(options)
+    let accepting = promise(fn: accept_loop(listening, workers))
+    return ok(HttpServer(accepting: accepting, bound: bound, stopped: false))
+
+// The number of worker promises: `options.cores`, else one per core.
+fn workers_for(options: HttpServerOptions) Int:
+    return options.cores.get(msrt_runtime_limit())
+
+// A handle on a serving, which a promise owns and closes when it ends. The accept loop's handle also releases the listener.
+type ServingHandle:
+    serving: NativeServing
+    listener: Bool
+
+impl Closeable for ServingHandle:
+    var fn close() Unit!:
+        if self.listener:
+            msstd_http_serving_release(self.serving)
+        return ok(unit)
+
+// One worker's HTTP engine, which owns its connections as poller registrations rather than as tasks. Closing it drains them.
+type WorkerHandle:
+    worker: NativeWorker
+
+impl Closeable for WorkerHandle:
+    var fn close() Unit!:
+        msstd_http_worker_close(self.worker)
+        return ok(unit)
+
+// The accept loop's pipes and workers. Its close, which runs when the loop returns, is cancelled or faults, ends the pipes so the workers drain side by side, then joins them.
+type Accepting:
+    deals: List[WriteStream[Int]]
+    workers: List[Promise[Unit]]
+
+impl Closeable for Accepting:
+    var fn close() Unit!:
+        while self.deals.length() > 0:
+            if let deal = self.deals.pop():
+                var closing = deal
+                let _ = closing.close()
+
+        for worker in self.workers:
+            let _ = worker.wait(timeout: 0.seconds)
+        self.workers = []
+        return ok(unit)
+
+// Accepts until the listener fails, dealing each connection to the next worker. An accept that fails for lack of descriptors or memory pauses briefly instead of ending the server.
+fn accept_loop(listening: ServingHandle, count: Int) Unit!:
+    var accepting = Accepting(deals: [], workers: [])
+    var i = 0
+
+    while i < count:
+        let queue = pipe[Int](1024)
+        accepting.deals.append(queue.writer())
+
+        let mine = ServingHandle(
+            serving: msstd_http_serving_share(listening.serving), listener: false
+        )
+        accepting.workers.append(promise(fn: serve_worker(mine, queue)))
+        i += 1
+
+    var next = 0
+
+    while true:
+        let accepted = msstd_http_serving_accept(listening.serving)
+
+        if accepted.is_error():
+            if accepted.err().kind == ErrorCategory.Closed:
+                return ok(unit)
+
+            sleep(50.milliseconds).wait().get(unit)
+            continue
+
+        let _ = accepting.deals[next].write(accepted.get())
+        next = (next + 1) % count
+
+    return ok(unit)
+
+// Runs one worker on the thread the runtime placed this promise on: it adopts each connection it is dealt, and the poller drives them from there.
+fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
+    let engine = WorkerHandle(worker: try msstd_http_serving_worker(handle.serving))
+
+    while true:
+        let item = input.receive()
+        if item.is_error():
+            break
+
+        if let raw = item.get():
+            msstd_http_worker_adopt(engine.worker, raw)
+        else:
+            break
+
+    return ok(unit)
 
 // Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
 // Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures are `Error` values.
@@ -749,15 +989,13 @@ export fn web_socket(
     subprotocols: List[String],
     options: WebSocketOptions
 ) WebSocket!:
-    return host_network().web_socket(url, headers, subprotocols, options)
-
-// Starts an HTTP server that has no listener: it serves the connections handed to `HttpServer.adopt`, with the handler, limits, timeouts, and TLS of `serve`. Close the server to stop it.
-// Returns InvalidInput for invalid options.
-export fn serve_connections(
-    handler: fn(HttpExchange) Unit!,
-    options: HttpServerOptions = HttpServerOptions()
-) HttpServer!:
-    return host_network().serve_connections(handler, options)
+    return ok(
+        web_socket_from(
+            try host_network().web_socket(
+                url, headers, subprotocols, options
+            )
+        )
+    )
 
 // Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
 // The address must be allowed by this network's restrictions, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.

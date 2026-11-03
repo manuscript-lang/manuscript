@@ -1,6 +1,37 @@
 import Closeable, Iterator from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
+import Promise, deferred, complete, adopt from "@std/concurrency/promise.ms"
 import Duration from "@std/os/time.ms"
+import (
+    msrt_promise_take,
+    msrt_promise_wait,
+    msrt_promise_drop,
+    msrt_streams_open,
+    msrt_streams_read,
+    msrt_streams_error,
+    msrt_streams_close,
+    msrt_streams_write,
+    msrt_streams_flush,
+    msrt_streams_buffered,
+    msrt_pipe_new,
+    msrt_pipe_add_writer,
+    msrt_pipe_write,
+    msrt_pipe_read,
+    msrt_pipe_flush,
+    msrt_pipe_buffered,
+    msrt_pipe_close_writer,
+    msrt_pipe_close_reader,
+    msrt_cells_new,
+    msrt_cells_take,
+    msrt_cells_put,
+    msrt_cells_drop,
+    msrt_io_write_stdout,
+    msrt_io_write_stderr,
+    msrt_io_write_bytes_stdout,
+    msrt_io_write_bytes_stderr,
+    msrt_io_flush,
+    msrt_promise_finished
+) from "@std/internal/promises.ms"
 import (
     msstd_terminal_event_kind,
     msstd_terminal_event_text,
@@ -9,14 +40,7 @@ import (
     msstd_terminal_event_shift,
     msstd_terminal_event_columns,
     msstd_terminal_event_rows,
-    msstd_io_copy,
-    msstd_io_read_all,
-    msstd_io_read_line,
     msstd_io_redirect_null,
-    msstd_io_stdin,
-    msstd_io_stdout,
-    msstd_io_stderr,
-    msstd_io_files,
     msstd_terminal_raw_mode,
     msstd_terminal_capabilities_input_is_terminal,
     msstd_terminal_capabilities_output_is_terminal,
@@ -28,6 +52,7 @@ import (
     msstd_terminal_size_columns,
     msstd_terminal_size_rows,
     msstd_terminal_raw_terminal_close,
+    msstd_terminal_raw_terminal_share,
     msstd_terminal_raw_terminal_next_event,
     msstd_terminal_raw_terminal_size_status,
     msstd_terminal_raw_terminal_size_columns,
@@ -37,113 +62,422 @@ import (
     msstd_terminal_raw_terminal_erase
 ) from "@std/internal/io.ms"
 
-// A file-like byte stream that returns `none` at end of input.
-export interface File:
-    // Releases the file resource; retained aliases do not extend its open lifetime.
-    fn close() Unit
-    // Returns a byte chunk or none at EOF; max_bytes is a positive chunk size, not a total budget.
-    // Omission/none uses the native 64 KiB chunk; source implementations define their own buffering.
-    fn read(max_bytes: Int?) Bytes?!
+// A new stream: next may wait.
+export interface Source[T]:
+    // Waits for the next item; none at the end of the stream, an error when the source fails.
+    var fn next() T?!
+    // Releases what the source owns; the stream calls it once, when it closes.
+    var fn close() Unit!
 
-// Opens read-only file resources using the current host's default filesystem.
-// Native open failures (including missing paths and permission denial) become an `Error` of kind `Unavailable`.
-interface Files:
-    // Opens path for read-only access; native missing, denied, and other open failures become Unavailable.
-    fn open(path: String) File!
+// A stream of values over time. It owns its source, parked in a runtime cell so that a pending read carries only the
+// cell's id; dropping the stream drops the source and whatever it owns.
+export opaque type ReadStream[T]:
+    // The runtime cell that holds the source.
+    cell: Int
 
-// A readable byte stream. Each read returns a chunk or `none` at end of stream.
-export interface ReadStream:
-    // Releases this implementation's read resource; ownership of underlying handles is implementation-defined.
-    var fn close() Unit
-    // Returns a chunk or none at EOF; a final nonempty chunk can precede EOF.
-    // A supplied positive max_bytes requests a chunk size; native omission/none uses 64 KiB.
-    var fn read(max_bytes: Int? = none) Bytes?!
+// Runs one `next` of `source`, which the caller took out of its cell, and puts it back.
+fn run[T](id: Int, cell: Int, source: Source[T]) Unit:
+    var running = source
+    let result = running.next()
+    msrt_cells_put[Source[T]](cell, running)
+    complete[T?](id, result)
 
-/*
-A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
-Buffering/flush depends on the implementation: native stderr is unbuffered and native stdout is buffered when not a terminal (flush drains it),
-while FileHandle.writer().flush synchronizes the file. Success does not acknowledge peer processing.
-*/
-export interface WriteStream:
-    // Releases this implementation's write resource; close does not imply a successful flush.
-    var fn close() Unit
-    // Completes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.
-    // File-handle writers synchronize the file, and failures keep their `Error` kind.
-    var fn flush() Unit!
-    // Accepts the complete input on success; a source implementation may buffer until flush.
-    var fn write(data: String) Unit!
-    // Accepts the complete bytes on success, with the buffering rules of write.
-    var fn write_bytes(data: Bytes) Unit!
+// Runs the read `id` in the task that waits and completes it with the source's answer.
+fn step[T](id: Int, cell: Int) Unit:
+    match msrt_cells_take[Source[T]](cell):
+        source:
+            run[T](id, cell, source)
+        none:
+            complete[T?](
+                id,
+                error(
+                    Error(
+                        "stream: a read is already waiting", kind: ErrorCategory.Closed
+                    )
+                )
+            )
 
-// Copies bytes until end of input and returns the count. Input beyond `max_bytes` returns LimitExceeded.
-export fn copy(input: ReadStream, output: WriteStream, max_bytes: Int?) Int!:
-    return msstd_io_copy(input, output, max_bytes)
+impl ReadStream[T]:
+    // One step, started now and run where it is waited; none at the end.
+    var fn read() Promise[T?]:
+        let cell = self.cell
+        let work = fn(id: Int) Unit: step[T](id, cell)
+        return deferred[T?](work)
 
-// Reads a stream completely into memory. Supply a limit for untrusted streams.
-export fn read_all(input: ReadStream, max_bytes: Int?) Bytes!:
-    return msstd_io_read_all(input, max_bytes)
+    // The items as an iterator for `for x in s.wait()`: each is `T!`, so a failure arrives in the loop and ends it.
+    var fn wait() Waiting[T]:
+        return Waiting[T](self.cell, false)
 
-// Reads one line from a stream such as `stdin()`, omitting its line ending; returns `none` at end of stream.
-// `max_bytes` counts the terminator: a newline-ended line must be shorter than it, an unterminated last line may equal it. To read every line, iterate `lines(input)`.
-export fn read_line(input: ReadStream, max_bytes: Int?) String?!:
-    return msstd_io_read_line(input, max_bytes)
+// The items of a stream, one read at a time; `for item in stream.wait()` waits for each.
+export type Waiting[T]:
+    // The runtime cell that holds the stream's source.
+    cell: Int
+    // True after the end of the stream or a failure; later steps give none.
+    ended: Bool
 
-/*
-Lines of a stream, read on demand. `for line in reader:` walks the lines without their
-terminators (`\n` or `\r\n`) and stops at end of input, at the first I/O error, or at a line
-longer than `max_bytes`; `error()` then tells the last two apart from a clean end.
-
-Iterate a `var` reader with `for` so the loop advances it in place and `error()` can be read
-afterwards; see "Read standard input line by line" in the common tasks guide.
-*/
-export type LineReader:
-    // The stream being read.
-    input: ReadStream
-    // Per-line byte limit, or none for no limit.
-    max_bytes: Int?
-    // The error that ended iteration, if any.
-    failure: Error?
-
-impl LineReader:
-    // Returns the I/O error that ended iteration, or none after a clean end of input
-    // (and while lines remain). A line over the limit reports `LimitExceeded`.
-    fn error() Error?:
-        return self.failure.clone()
-
-impl Iterator[String] for LineReader:
-    // Returns the next line, or none at end of input or after an error (see `error()`).
-    var fn next() String?:
-        if self.failure.is_some():
+impl Iterator[T!] for Waiting[T]:
+    // Waits for the next item: `ok(item)`, an error that ends the loop, or none at the end.
+    var fn next() T!?:
+        if self.ended:
             return none
 
-        let line = read_line(self.input, self.max_bytes)
+        let cell = self.cell
+        let work = fn(id: Int) Unit: step[T](id, cell)
+        let step = deferred[T?](work).wait()
 
-        if line.is_error():
-            self.failure = line.err().clone()
-            return none
+        if step.is_error():
+            self.ended = true
+            return error(step.err())
 
-        let text = line.get()
-        if text.is_none():
-            return none
+        if let item = step.get():
+            return ok(item)
 
-        return text.get().clone()
+        self.ended = true
+        return none
 
-// Returns a reader over the lines of `input`, for `for line in reader:`. `max_bytes` bounds each
-// line, as in `read_line`.
-export fn lines(input: ReadStream, max_bytes: Int?) LineReader:
-    return LineReader(input, max_bytes, none)
+impl Closeable for ReadStream[T]:
+    // Drops the source and everything it owns. A read in flight ends with an error.
+    var fn close() Unit!:
+        // Close the source by hand so its error is returned, then park it back in the cell: moved
+        // out, it is not closed again at scope end, and dropping the cell only frees it.
+        var failure: Error? = none
+
+        if let source = msrt_cells_take[Source[T]](self.cell):
+            var closing = source
+            let result = closing.close()
+            if result.is_error():
+                failure = result.err()
+            msrt_cells_put[Source[T]](self.cell, closing)
+
+        msrt_cells_drop(self.cell)
+        if let cause = failure:
+            return error(cause)
+
+        return ok(unit)
+
+// Wraps `source` as a ReadStream that owns it.
+export fn stream[T](source: Source[T]) ReadStream[T]:
+    return ReadStream[T](cell: msrt_cells_new[Source[T]](source))
+
+type DescriptorSource:
+    id: Int
+
+impl Source[Bytes] for DescriptorSource:
+    var fn next() Bytes?!:
+        let p = msrt_streams_read(self.id)
+        let code = msrt_promise_wait(p, -1)
+
+        if code != 0:
+            msrt_promise_drop(p)
+            return error(Error("stream: read timed out", kind: ErrorCategory.Timeout))
+
+        let chunk = msrt_promise_take[Bytes](p)
+        msrt_promise_drop(p)
+        if let data = chunk:
+            return ok(data)
+
+        let message = msrt_streams_error(self.id)
+        if message.length() > 0:
+            return error(Error(message, kind: ErrorCategory.Failed))
+
+        return ok(none)
+
+    var fn close() Unit!:
+        msrt_streams_close(self.id)
+        return ok(unit)
+
+// A stream over the runtime stream-table descriptor `id` (a pipe, socket or file): chunks until the end. A negative
+// id is a stream that is already at its end.
+export fn descriptor_reader(id: Int) ReadStream[Bytes]:
+    return stream[Bytes](DescriptorSource(id))
+
+// Writes to the runtime stream-table descriptor `id`; a negative id fails every write with `Closed`.
+type DescriptorSink:
+    id: Int
+
+impl Sink[Bytes] for DescriptorSink:
+    var fn put(value: Bytes) Unit!:
+        if msrt_streams_write(self.id, value) != 0:
+            return error(Error("stream: closed", kind: ErrorCategory.Closed))
+
+        return ok(unit)
+
+    var fn drain() Promise[Unit]:
+        return adopt[Unit](msrt_streams_flush(self.id))
+
+    fn buffered() Int:
+        return msrt_streams_buffered(self.id)
+
+    var fn close() Unit!:
+        msrt_streams_close(self.id)
+        return ok(unit)
+
+// A WriteStream over the runtime stream-table descriptor `id`.
+export fn descriptor_writer(id: Int) WriteStream[Bytes]:
+    return writer[Bytes](DescriptorSink(id))
 
 // Returns the process standard-input stream.
-export fn stdin() ReadStream:
-    return msstd_io_stdin()
+export fn stdin() ReadStream[Bytes]:
+    return stream[Bytes](DescriptorSource(msrt_streams_open(0, 1)))
 
-// Returns the process standard-output stream.
-export fn stdout() WriteStream:
-    return msstd_io_stdout()
+// A place values are written to. `put` never waits.
+export interface Sink[T]:
+    // Moves `value` into the sink's buffer without waiting; an error once the sink is closed.
+    var fn put(value: T) Unit!
+    // A promise that finishes once everything put so far has drained.
+    var fn drain() Promise[Unit]
+    // Items or bytes put and not yet drained.
+    fn buffered() Int
+    // Drains what is buffered and releases what the sink owns; the stream calls it once, when it closes.
+    var fn close() Unit!
 
-// Returns the process standard-error stream.
-export fn stderr() WriteStream:
-    return msstd_io_stderr()
+// A stream that accepts values over time. `write` moves the value into a buffer and never waits; `flush` is the
+// backpressure point.
+export opaque type WriteStream[T]:
+    // The destination the stream's writes go to.
+    sink: Sink[T]
+
+impl WriteStream[T]:
+    // Moves `value` into the stream's buffer. `Closed` once the reader is gone.
+    var fn write(value: T) Unit!:
+        return self.sink.put(value)
+
+    // A promise that finishes when the buffer has drained.
+    var fn flush() Promise[Unit]:
+        return self.sink.drain()
+
+    // Items or bytes not yet drained.
+    fn buffered() Int:
+        return self.sink.buffered()
+
+impl Closeable for WriteStream[T]:
+    // Hands what is buffered to the runtime and releases the sink.
+    var fn close() Unit!:
+        return self.sink.close()
+
+// Wraps `sink` as a WriteStream that owns it.
+export fn writer[T](sink: Sink[T]) WriteStream[T]:
+    return WriteStream[T](sink: sink)
+
+// The reading end of a pipe: the one reader, ended by the last writer closing.
+type PipeSource[T]:
+    id: Int
+
+impl Source[T] for PipeSource[T]:
+    var fn next() T?!:
+        let p = msrt_pipe_read(self.id)
+        let code = msrt_promise_wait(p, -1)
+
+        if code != 0:
+            msrt_promise_drop(p)
+            return error(Error("pipe: read cancelled", kind: ErrorCategory.Other))
+
+        let value = msrt_promise_take[T](p)
+        msrt_promise_drop(p)
+        return ok(value)
+
+    var fn close() Unit!:
+        msrt_pipe_close_reader(self.id)
+        return ok(unit)
+
+// One writing end of a pipe; closing it releases that writer.
+type PipeSink[T: Clonable]:
+    id: Int
+
+impl Sink[T] for PipeSink[T]:
+    var fn put(value: T) Unit!:
+        if msrt_pipe_write[T](self.id, value) != 0:
+            return error(Error("pipe: the reader is gone", kind: ErrorCategory.Closed))
+
+        return ok(unit)
+
+    var fn drain() Promise[Unit]:
+        return adopt[Unit](msrt_pipe_flush(self.id))
+
+    fn buffered() Int:
+        return msrt_pipe_buffered(self.id)
+
+    var fn close() Unit!:
+        msrt_pipe_close_writer(self.id)
+        return ok(unit)
+
+// An in-memory stream of whole values, in order: any number of writers and one reader. A write hands the pipe a copy
+// (the stream interface only lends the argument), so `T` must be `Clonable`; the copy then moves through by pointer.
+// `capacity` is the number of queued values above which a writer's `flush` waits. The pipe itself is not a writer: the
+// reader ends once every writer from `writer()` has closed, so make the writers before reading. Closing the reader
+// makes later writes fail with `Closed`.
+export opaque type Pipe[T: Clonable]:
+    // The runtime pipe's id.
+    id: Int
+    // Whether `reader` has handed out the reading end.
+    taken: Bool
+
+impl Pipe[T]:
+    // A new writing end, like dup on a descriptor. Close it when done: the reader ends when every writer has closed. Safe
+    // to call from a promise that owns the pipe: each call makes a writer of its own.
+    fn writer() WriteStream[T]:
+        msrt_pipe_add_writer(self.id)
+        return writer[T](PipeSink[T](self.id))
+
+    // The reading end. A pipe has one: later calls return a stream that is already at its end.
+    var fn reader() ReadStream[T]:
+        if self.taken:
+            return stream[T](PipeSource[T](0))
+
+        self.taken = true
+        return stream[T](PipeSource[T](self.id))
+
+    // Waits for the next value, none once every writer has closed. It reads the pipe's one reader place without taking a stream, for a consumer that only borrows the pipe, such as a promise: use it instead of `reader()`, never beside it.
+    fn receive() T?!:
+        var source = PipeSource[T](self.id)
+        return source.next()
+
+impl Closeable for Pipe[T]:
+    // Releases the reading end if no one took it.
+    var fn close() Unit!:
+        if not self.taken:
+            msrt_pipe_close_reader(self.id)
+        return ok(unit)
+
+// Makes an in-memory pipe whose writers' `flush` waits while more than `capacity` values are queued.
+export fn pipe[T: Clonable](capacity: Int) Pipe[T]:
+    let id = msrt_pipe_new(capacity)
+
+    // The runtime starts a pipe with one writer, which the Pipe value would hold; writers come from `writer()` instead.
+    msrt_pipe_close_writer(id)
+    return Pipe[T](id: id, taken: false)
+
+// Standard output and error share the runtime's process-wide buffers.
+type StdoutSink:
+    bytes_too: Bool
+
+impl Sink[String] for StdoutSink:
+    var fn put(value: String) Unit!:
+        msrt_io_write_stdout(value)
+        return ok(unit)
+
+    var fn drain() Promise[Unit]:
+        msrt_io_flush()
+        return adopt[Unit](msrt_promise_finished())
+
+    fn buffered() Int:
+        return 0
+
+    var fn close() Unit!:
+        msrt_io_flush()
+        return ok(unit)
+
+type StderrSink:
+    bytes_too: Bool
+
+impl Sink[String] for StderrSink:
+    var fn put(value: String) Unit!:
+        msrt_io_write_stderr(value)
+        return ok(unit)
+
+    var fn drain() Promise[Unit]:
+        return adopt[Unit](msrt_promise_finished())
+
+    fn buffered() Int:
+        return 0
+
+    var fn close() Unit!:
+        return ok(unit)
+
+type StdoutBytesSink:
+    bytes_too: Bool
+
+impl Sink[Bytes] for StdoutBytesSink:
+    var fn put(value: Bytes) Unit!:
+        msrt_io_write_bytes_stdout(value)
+        return ok(unit)
+
+    var fn drain() Promise[Unit]:
+        msrt_io_flush()
+        return adopt[Unit](msrt_promise_finished())
+
+    fn buffered() Int:
+        return 0
+
+    var fn close() Unit!:
+        msrt_io_flush()
+        return ok(unit)
+
+type StderrBytesSink:
+    bytes_too: Bool
+
+impl Sink[Bytes] for StderrBytesSink:
+    var fn put(value: Bytes) Unit!:
+        msrt_io_write_bytes_stderr(value)
+        return ok(unit)
+
+    var fn drain() Promise[Unit]:
+        return adopt[Unit](msrt_promise_finished())
+
+    fn buffered() Int:
+        return 0
+
+    var fn close() Unit!:
+        return ok(unit)
+
+// Standard output as bytes; it shares its buffer with `stdout()`.
+export fn stdout_bytes() WriteStream[Bytes]:
+    return writer[Bytes](StdoutBytesSink(true))
+
+// Standard error as bytes.
+export fn stderr_bytes() WriteStream[Bytes]:
+    return writer[Bytes](StderrBytesSink(true))
+
+// Standard output as text; writes are buffered until flushed or the process exits.
+export fn stdout() WriteStream[String]:
+    return writer[String](StdoutSink(false))
+
+// Standard error as text.
+export fn stderr() WriteStream[String]:
+    return writer[String](StderrSink(false))
+
+// A changed stream: never waits; appends zero or more items per input, and what it held back at the end.
+export interface Transform[A, B]:
+    // Takes one input item and returns the output items it completes, possibly none.
+    var fn feed(value: A) List[B]!
+    // Called once at the end of the input; returns the items held back.
+    var fn finish() List[B]!
+
+// Items a transform produced and the reader has not taken yet, newest first so `pop` moves the next one out.
+type Through[A, B]:
+    input: ReadStream[A]
+    transform: Transform[A, B]
+    pending: List[B]
+    finished: Bool
+
+impl Source[B] for Through[A, B]:
+    var fn next() B?!:
+        while true:
+            if let item = self.pending.pop():
+                return ok(item)
+            if self.finished:
+                return ok(none)
+
+            let step = try self.input.read().wait()
+            var produced: List[B] = []
+
+            if let value = step:
+                produced = try self.transform.feed(value)
+            else:
+                self.finished = true
+                produced = try self.transform.finish()
+
+            produced.reverse()
+            self.pending = produced
+
+        return ok(none)
+
+    var fn close() Unit!:
+        return self.input.close()
+
+// A stream of `transform`'s output over `input`; closing it closes `input`.
+export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadStream[B]:
+    return stream[B](Through[A, B](input, transform, [], false))
 
 // One of this process's three standard streams.
 export type StdStream:
@@ -162,10 +496,6 @@ export fn redirect_to_null(stream: StdStream) Unit!:
         Error: which = 2
 
     return msstd_io_redirect_null(which)
-
-// Returns file operations for the current host.
-fn host_files() Files:
-    return msstd_io_files()
 
 // Character columns and rows of a terminal window.
 export type TerminalSize:
@@ -232,29 +562,13 @@ export type EraseRegion:
     case LineEnd  // From the cursor to the end of the line.
     case LineStart  // From the start of the line to the cursor.
 
-// The runtime handle behind a `RawTerminal`.
-export extern type NativeRawTerminal
+// Reads decoded events from a raw terminal's native handle.
+type TerminalEvents:
+    handle: RawHandle
 
-/*
-Raw terminal input and cursor control. Closing it, or leaving the
-scope that acquired it by return, error, fault, or cancellation, restores the
-original terminal settings, shows the cursor, and leaves the alternate screen.
-In raw mode, Ctrl-C arrives as a `c` key with `ctrl` set instead of cancelling.
-*/
-export type RawTerminal:
-    // The runtime handle; it is released by `close` and owned by this value.
-    native: NativeRawTerminal
-
-impl Closeable for RawTerminal:
-    // Restores the terminal; closing again does nothing.
-    var fn close() Unit!:
-        msstd_terminal_raw_terminal_close(self.native)
-        return ok(unit)
-
-impl RawTerminal:
-    // Waits for the next event; none means the timeout elapsed. Waits honor cancellation and concurrent callers are serialized.
-    fn next_event(timeout: Duration?) TerminalEvent?!:
-        let ready = try msstd_terminal_raw_terminal_next_event(self.native, timeout)
+impl Source[TerminalEvent] for TerminalEvents:
+    var fn next() TerminalEvent?!:
+        let ready = try msstd_terminal_raw_terminal_next_event(self.handle.native, none)
         if ready.is_none(): return ok(none)
 
         let kind = msstd_terminal_event_kind()
@@ -272,33 +586,76 @@ impl RawTerminal:
             )
         )
 
+    var fn close() Unit!:
+        return ok(unit)
+
+// The runtime handle behind a `RawTerminal`.
+export extern type NativeRawTerminal
+
+/*
+Raw terminal input and cursor control. Closing it, or leaving the
+scope that acquired it by return, error, fault, or cancellation, restores the
+original terminal settings, shows the cursor, and leaves the alternate screen.
+In raw mode, Ctrl-C arrives as a `c` key with `ctrl` set instead of cancelling.
+*/
+export type RawTerminal:
+    // The runtime handle; the event stream holds another on the same terminal.
+    handle: RawHandle
+
+// What the native `raw_mode` returns: the runtime handle itself.
+export type RawHandle:
+    // The runtime terminal handle.
+    native: NativeRawTerminal
+
+impl Closeable for RawTerminal:
+    // Restores the terminal; closing again does nothing.
+    var fn close() Unit!:
+        msstd_terminal_raw_terminal_close(self.handle.native)
+        return ok(unit)
+
+impl RawTerminal:
+    // Input events as a stream: keys, text and resizes, one per read. Waits honor cancellation and `wait(timeout:)`.
+    // The stream ends with an error once the terminal is closed; closing the stream leaves the terminal open.
+    fn events() ReadStream[TerminalEvent]:
+        return stream[TerminalEvent](
+            TerminalEvents(
+                RawHandle(
+                    msstd_terminal_raw_terminal_share(
+                        self.handle.native
+                    )
+                )
+            )
+        )
+
     // Returns the current terminal size, or `Closed` after close.
     fn size() TerminalSize!:
-        try msstd_terminal_raw_terminal_size_status(self.native)
+        try msstd_terminal_raw_terminal_size_status(self.handle.native)
         return ok(
             TerminalSize(
                 columns: msstd_terminal_raw_terminal_size_columns(
-                    self.native
+                    self.handle.native
                 ),
-                rows: msstd_terminal_raw_terminal_size_rows(self.native)
+                rows: msstd_terminal_raw_terminal_size_rows(
+                    self.handle.native
+                )
             )
         )
 
     // Moves the cursor to a zero-based row and column; negative or very large values return `InvalidInput`.
     fn move_cursor(row: Int, column: Int) Unit!:
-        return msstd_terminal_raw_terminal_move_cursor(self.native, row, column)
+        return msstd_terminal_raw_terminal_move_cursor(self.handle.native, row, column)
 
     // Shows or hides the cursor until the terminal is restored on close.
     fn show_cursor(visible: Bool) Unit!:
-        return msstd_terminal_raw_terminal_show_cursor(self.native, visible)
+        return msstd_terminal_raw_terminal_show_cursor(self.handle.native, visible)
 
     // Erases the selected screen region without moving the cursor.
     fn erase(region: EraseRegion) Unit!:
         match region:
-            Screen: return msstd_terminal_raw_terminal_erase(self.native, 0)
-            Line: return msstd_terminal_raw_terminal_erase(self.native, 1)
-            LineEnd: return msstd_terminal_raw_terminal_erase(self.native, 2)
-            LineStart: return msstd_terminal_raw_terminal_erase(self.native, 3)
+            Screen: return msstd_terminal_raw_terminal_erase(self.handle.native, 0)
+            Line: return msstd_terminal_raw_terminal_erase(self.handle.native, 1)
+            LineEnd: return msstd_terminal_raw_terminal_erase(self.handle.native, 2)
+            LineStart: return msstd_terminal_raw_terminal_erase(self.handle.native, 3)
 
 // Reports terminal availability and color support without changing terminal state.
 export fn terminal_capabilities() TerminalCapabilities:
@@ -323,8 +680,4 @@ export fn terminal_size() TerminalSize!:
 // Acquires raw input with an optional alternate screen; returns `Busy` while another raw terminal is open and `NotTerminal` when streams are redirected.
 export fn raw_mode(alternate_screen: Bool) RawTerminal!:
     let native = try msstd_terminal_raw_mode(alternate_screen)
-    return ok(RawTerminal(native: native))
-
-// Opens path for read-only access; native missing, denied, and other open failures become Unavailable.
-export fn open_read(path: String) File!:
-    return host_files().open(path)
+    return ok(RawTerminal(handle: RawHandle(native)))

@@ -16,6 +16,18 @@ pub enum RtHot {
     File(PathBuf),
 }
 
+/// What the build does with a `copy` of an object value, which one-owner lowering must not emit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+pub enum CopyProbe {
+    /// Nothing.
+    #[default]
+    Off,
+    /// Print each copy to standard error and build on.
+    Report,
+    /// Fail the build.
+    Strict,
+}
+
 /// Build settings shared by code generation, linking and the build cache.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct BuildOptions {
@@ -39,6 +51,8 @@ pub struct BuildOptions {
     pub static_musl: bool,
     /// Print the time at which each build phase finished.
     pub timings: bool,
+    /// Report or reject copies of object values in the lowered code.
+    pub copy_probe: CopyProbe,
 }
 
 impl Default for BuildOptions {
@@ -54,6 +68,7 @@ impl Default for BuildOptions {
             runtime: None,
             static_musl: false,
             timings: false,
+            copy_probe: CopyProbe::Off,
         }
     }
 }
