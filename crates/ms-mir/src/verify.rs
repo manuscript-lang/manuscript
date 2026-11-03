@@ -59,8 +59,9 @@ pub fn verify_module(m: &Module) -> Result<(), Vec<VerifyError>> {
 pub fn verify_module_with(m: &Module, opts: VerifyOptions) -> Result<(), Vec<VerifyError>> {
     let mut errs = Vec::new();
     verify_decls(m, &mut errs);
+    let drops = drop_table(m);
     for f in &m.funcs {
-        if let Err(e) = verify_func_with(m, f, opts) {
+        if let Err(e) = verify_func_in(m, f, opts, &drops) {
             errs.extend(e);
         }
     }
@@ -119,12 +120,28 @@ pub fn verify_func(m: &Module, f: &Func) -> Result<(), Vec<VerifyError>> {
 
 /// Verifies one function.
 pub fn verify_func_with(m: &Module, f: &Func, opts: VerifyOptions) -> Result<(), Vec<VerifyError>> {
+    verify_func_in(m, f, opts, &drop_table(m))
+}
+
+/// [`Module::needs_drop`] of every type, indexed by [`Ty`].
+fn drop_table(m: &Module) -> Vec<bool> {
+    (0..m.types.len() as u32)
+        .map(|i| m.needs_drop(Ty(i)))
+        .collect()
+}
+
+fn verify_func_in(
+    m: &Module,
+    f: &Func,
+    opts: VerifyOptions,
+    drops: &[bool],
+) -> Result<(), Vec<VerifyError>> {
     let mut v = Verifier {
         m,
         f,
         opts,
         errs: Vec::new(),
-        drops: Default::default(),
+        drops,
     };
     v.run();
     if v.errs.is_empty() {
@@ -181,33 +198,20 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
     }
 }
 
-/// [`Module::needs_drop`] per type, shared so a closure can hold it while the verifier records errors.
-#[derive(Clone, Default)]
-struct DropCache(std::rc::Rc<std::cell::RefCell<std::collections::HashMap<Ty, bool>>>);
-
-impl DropCache {
-    fn needs_drop(&self, m: &Module, ty: Ty) -> bool {
-        *self
-            .0
-            .borrow_mut()
-            .entry(ty)
-            .or_insert_with(|| m.needs_drop(ty))
-    }
-}
-
 struct Verifier<'a> {
     m: &'a Module,
     f: &'a Func,
     opts: VerifyOptions,
     errs: Vec<VerifyError>,
-    /// [`Module::needs_drop`] per type, filled on first use: it scans every case of an enum, so
-    /// asking it again for each instruction makes a function over a large enum quadratic.
-    drops: DropCache,
+    /// [`Module::needs_drop`] of every type, indexed by [`Ty`] and built once per module: it
+    /// scans every case of an enum, so asking per instruction made a function over a large enum
+    /// quadratic.
+    drops: &'a [bool],
 }
 
 impl Verifier<'_> {
     fn needs_drop(&self, ty: Ty) -> bool {
-        self.drops.needs_drop(self.m, ty)
+        self.drops[ty.index()]
     }
 
     fn err(&mut self, block: Option<usize>, msg: impl Into<String>) {
@@ -1361,8 +1365,8 @@ impl Verifier<'_> {
 
     fn check_ownership(&mut self, rpo: &[Block]) {
         let (m, f) = (self.m, self.f);
-        let drops = self.drops.clone();
-        let rc = |v: Value| drops.needs_drop(m, f.ty(v));
+        let drops = self.drops;
+        let rc = |v: Value| drops[f.ty(v).index()];
         // Ownership mode of every value from its definition.
         let mut owned_def = vec![false; f.values.len()];
         for b in &f.blocks {
