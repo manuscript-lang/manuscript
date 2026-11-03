@@ -970,7 +970,11 @@ impl FnLower<'_> {
         };
         // The helper closes the holder in place, through its address: a part whose close
         // changes it is written back where it lives, with no copy of the holder.
-        let key = format!("close_parts:{}:{}", ct::lowering_key(ty), own.is_some());
+        let key = format!(
+            "close_parts:{}:{}",
+            self.cx.tys.intern(ty).index(),
+            own.is_some()
+        );
         if let Some(f) = self.cx.helpers.get(&key) {
             return Ok(Some(CloseKind::Func {
                 fid: *f,

@@ -53,7 +53,7 @@ impl Cx {
     ) -> Result<VtableId, Error> {
         let key = format!(
             "impl:{}:{}{}",
-            ct::type_key(concrete),
+            self.tys.shape(concrete).index(),
             iface.0,
             self.scope_key(concrete, scope)
         );

@@ -168,11 +168,17 @@ impl Cx {
     }
 }
 
-/// The instance key of a callable under a substitution and variant.
-fn instance_key(c: &Callable, subst: &Subst, variant: Variant) -> InstKey {
-    let mut vars: Vec<(ct::Name, String)> =
-        subst.iter().map(|(k, v)| (*k, ct::type_key(v))).collect();
-    vars.sort_by(|a, b| a.0.as_str().cmp(b.0.as_str()).then_with(|| a.1.cmp(&b.1)));
+/// The instance key of a callable under a substitution and variant. Entries are ordered by
+/// variable name, which is unique within a substitution, so the key does not depend on the order
+/// types were first interned.
+fn instance_key(
+    tys: &mut ms_check::tytable::TyTable,
+    c: &Callable,
+    subst: &Subst,
+    variant: Variant,
+) -> InstKey {
+    let mut vars: Vec<(ct::Name, _)> = subst.iter().map(|(k, v)| (*k, tys.intern(v))).collect();
+    vars.sort_by(|a, b| a.0.as_str().cmp(b.0.as_str()));
     InstKey {
         file: c.module.file,
         node: c.id(),
@@ -246,7 +252,7 @@ impl Cx {
         subst: &Subst,
         variant: Variant,
     ) -> Result<FuncId, Error> {
-        let key = instance_key(c, subst, variant);
+        let key = instance_key(&mut self.tys, c, subst, variant);
         if let Some(id) = self.insts.get(&key) {
             return Ok(*id);
         }
