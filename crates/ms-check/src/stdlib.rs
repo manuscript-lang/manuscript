@@ -98,6 +98,7 @@ const KEPT_CALLBACKS: &[&str] = &[
     "extern:msstd_process_fork",
     "extern:msrt_channel_group_add",
     "extern:msrt_scope_spawn",
+    "extern:msrt_promise_start",
 ];
 
 /// Whether a native function (`module/name`, or `extern:name`) keeps the function values it is given.
