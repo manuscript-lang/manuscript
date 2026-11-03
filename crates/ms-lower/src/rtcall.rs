@@ -330,7 +330,7 @@ impl FnLower<'_> {
         let recv_ty = recv.map(|r| self.ty_of(r.v));
         // A trailing `err` receives the text of a `Failed` status, after any `out`.
         let body =
-            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.name == "err"));
+            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.ty == "ErrSlot"));
         let has_out = sig.params[..body].last().is_some_and(|p| p.name == "out");
         let end = body - usize::from(has_out);
         let mut vals: Vec<Value> = Vec::new();
@@ -727,7 +727,7 @@ impl FnLower<'_> {
 
     /// Passes the slot a trailing `err` parameter writes the `Failed` text to.
     pub(crate) fn push_err_slot(&mut self, sig: &RtSig, vals: &mut Vec<Value>) {
-        if sig.params.last().is_some_and(|p| p.name == "err") {
+        if sig.params.last().is_some_and(|p| p.ty == "ErrSlot") {
             let slot = self
                 .b
                 .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
@@ -754,7 +754,7 @@ impl FnLower<'_> {
         };
         // A string comes back through a trailing `out: *mut StrVal` and no status.
         let body =
-            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.name == "err"));
+            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.ty == "ErrSlot"));
         let string_ret = has_out
             && direct(&sig.ret) == Some(MTy::UNIT)
             && sig.params[..body]
@@ -852,7 +852,7 @@ impl FnLower<'_> {
         }
         // `InfoOut` is flat words that become a `FileInfo` record.
         let body =
-            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.name == "err"));
+            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.ty == "ErrSlot"));
         if sig.params[..body]
             .last()
             .is_some_and(|p| p.ty == "*mut InfoOut")

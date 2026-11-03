@@ -12,7 +12,7 @@
 
 mod native;
 pub use crate::{abi_handle, abi_record, native};
-pub use ms_rt_abi::HasRaw;
+pub use ms_rt_abi::{ErrSlot, HasRaw};
 pub use native::{
     AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, BytesList, BytesVec, EntryFilter, ErrOut,
     FromAbi, Global, Handed, Handler, Has, IdArray, IntList, IntMap, IntoAbi, Mut, ObjBox, ObjCell,
