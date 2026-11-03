@@ -2058,49 +2058,10 @@ impl<'a> FnLower<'a> {
         self.b.switch_to(good);
     }
 
-    /// `n.seconds`, `n.milliseconds`, `n.minutes`: nanoseconds, faulting beyond the range.
+    /// `n.seconds`, `n.milliseconds`, `n.minutes`: the runtime's checked nanosecond count.
     pub(crate) fn duration_unit(&mut self, unit: &str, n: Val) -> Result<Val, Error> {
-        use ms_mir::ir::{Cc, Op};
-        let scale: i64 = match unit {
-            "seconds" => 1_000_000_000,
-            "milliseconds" => 1_000_000,
-            _ => 60_000_000_000,
-        };
         let v = self.borrow(n);
-        let (lo, hi) = (i64::MIN / scale, i64::MAX / scale);
-        let (lov, hiv) = (self.b.iconst(lo), self.b.iconst(hi));
-        let ge = self.b.icmp(Cc::Ge, v, lov);
-        let le = self.b.icmp(Cc::Le, v, hiv);
-        let ok = self.b.binop(Op::And, ge, le);
-        let (good, bad) = (self.b.new_block(), self.b.new_block());
-        self.b.br_if(ok, good, &[], bad, &[]);
-        self.b.seal_block(good);
-        self.b.seal_block(bad);
-        self.b.switch_to(bad);
-        let head = self.b.str_lit(&format!(
-            "Int.{unit}: value must be between {lo} and {hi}, found "
-        ));
-        let found = self.call_runtime("msrt_int_to_string", &[v], MTy::STR)?;
-        let msg = self.call_runtime("msrt_string_concat", &[head, found], MTy::STR)?;
-        let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
-            name: "msrt_fault_string".to_string(),
-            params: vec![Param {
-                ty: MTy::STR,
-                mode: Mode::Borrow,
-            }],
-            ret: MTy::UNIT,
-            noreturn: true,
-            pure_: false,
-            fresh: false,
-            role: ms_mir::ir::ExternRole::None,
-            leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
-            reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
-        });
-        self.b.call_rt(ext, &[msg]);
-        self.b.unreachable();
-        self.b.switch_to(good);
-        let k = self.b.iconst(scale);
-        let nanos = self.b.binop(Op::IMul, v, k);
+        let nanos = self.call_runtime(&format!("msstd_time_int_{unit}"), &[v], MTy::INT)?;
         let out = self.duration_of(nanos)?;
         Ok(Val { v: out, own: false })
     }
