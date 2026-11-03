@@ -39,12 +39,6 @@ const fn handle(
 }
 
 const HAND_LOWERED: &[HandLowered] = &[
-    handle(
-        "msstd_net_network",
-        "net/network",
-        "net",
-        "msstd_net_network",
-    ),
     handle("msstd_fs_filesystem", "fs/filesystem", "fs", ""),
     // The rules are the table: `path_win` forwards with the Windows flag set.
     handle("msstd_fs_posix", "fs/posix", "path", ""),
