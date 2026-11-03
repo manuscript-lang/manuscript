@@ -47,6 +47,14 @@ struct Result {
     desc: *const TypeDesc,
 }
 
+/// A native continuation of an I/O promise. The runtime calls it with the promise, the state word
+/// given to [`io_on_ready`] and the ready bits (`WAIT_READ`, `WAIT_WRITE`, `WAIT_HUP`), or
+/// `WAIT_TIMEOUT` when the limit passed, or `WAIT_CANCELLED` when the promise was dropped. It
+/// retries its system call and answers true once it has completed the promise with [`io_put`]. On
+/// `WAIT_TIMEOUT` it must complete the promise; on `WAIT_CANCELLED` its answer is ignored and it
+/// only releases what the state word names.
+pub type Retry = fn(id: i64, state: usize, bits: u32) -> bool;
+
 const NOT_STARTED: u8 = 255;
 const WANT_CANCEL: u8 = 1;
 
@@ -76,6 +84,9 @@ struct Table {
     fd: Vec<i32>,
     /// What a readiness wait asks for.
     events: Vec<u32>,
+    /// The native continuation of an I/O promise (`io_on_ready`) and its state word.
+    retry: Vec<Option<Retry>>,
+    retry_state: Vec<usize>,
     /// (deadline, id) of the timers armed; an entry whose promise is gone or finished is stale.
     timers: BinaryHeap<Reverse<(i64, i64)>>,
     free: Vec<usize>,
@@ -94,6 +105,8 @@ crate::isolate_static! {
         deadline: Vec::new(),
         fd: Vec::new(),
         events: Vec::new(),
+        retry: Vec::new(),
+        retry_state: Vec::new(),
         timers: BinaryHeap::new(),
         free: Vec::new(),
     };
@@ -154,6 +167,8 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
             t.deadline.push(i64::MAX);
             t.fd.push(-1);
             t.events.push(0);
+            t.retry.push(None);
+            t.retry_state.push(0);
             t.state.len() - 1
         }
     };
@@ -171,6 +186,7 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
     t.deadline[i] = i64::MAX;
     t.fd[i] = -1;
     t.events[i] = 0;
+    t.retry[i] = None;
     ((sched::current() as i64) << 56) | (i64::from(t.generation[i]) << 32) | (i as i64 + 1)
 }
 
@@ -461,6 +477,67 @@ fn put_int(t: &mut Table, i: usize, value: i64) {
     wake(t, i);
 }
 
+/// A new pending promise for a native operation to complete.
+pub fn io_new() -> i64 {
+    msrt_promise_new()
+}
+
+/// Completes the promise `id` with the owned value in `value`, which the callee takes.
+///
+/// # Safety
+/// `value` holds an owned value of `d`.
+pub unsafe fn io_put(id: i64, value: *mut u8, d: &'static TypeDesc, failed: bool) {
+    // SAFETY: forwarded contract.
+    unsafe { msrt_promise_put(id, value, d, i64::from(failed)) }
+}
+
+/// Completes the promise `id` with no value (a finished write): `wait` answers 0 and there is
+/// nothing to take.
+pub fn io_done(id: i64) {
+    let t = table();
+    if let Some(i) = index(t, id) {
+        complete_unit(t, i);
+    }
+}
+
+/// Registers the continuation `retry` for the promise `id`: when `fd` is ready for `events` (or
+/// `timeout_ns` passes; negative means no limit) the poller calls it with `state`. A descriptor
+/// that cannot be polled (a regular file) calls it at once. Nothing is allocated: the
+/// continuation and its state word live in the slot table. Answers false when `fd` cannot be
+/// waited on.
+pub fn io_on_ready(
+    id: i64,
+    fd: i32,
+    events: u32,
+    timeout_ns: i64,
+    retry: Retry,
+    state: usize,
+) -> bool {
+    // SAFETY: single scheduler per isolate.
+    let ready = unsafe { task::watch_fd_for_promise(fd, events, id) };
+    let t = table();
+    let Some(i) = index(t, id) else { return false };
+    match ready {
+        None => false,
+        Some(true) => {
+            retry(id, state, events & (task::WAIT_READ | task::WAIT_WRITE));
+            true
+        }
+        Some(false) => {
+            t.fd[i] = fd;
+            t.events[i] = events;
+            t.retry[i] = Some(retry);
+            t.retry_state[i] = state;
+            if timeout_ns >= 0 {
+                let deadline = crate::sys::monotonic_ns().saturating_add(timeout_ns);
+                t.deadline[i] = deadline;
+                t.timers.push(Reverse((deadline, id)));
+            }
+            true
+        }
+    }
+}
+
 /// What readiness wait `id` asks for (0 when it is not one).
 pub(crate) fn fd_events(id: i64) -> u32 {
     let t = table();
@@ -474,6 +551,19 @@ pub(crate) fn fd_ready(id: i64, bits: u32) -> bool {
     let wanted = bits & (t.events[i] | task::WAIT_HUP);
     if wanted == 0 || t.state[i] != State::Pending {
         return t.state[i] != State::Pending;
+    }
+    if let Some(retry) = t.retry[i] {
+        // A native operation tries again; it may find the descriptor not ready after all.
+        let state = t.retry_state[i];
+        if !retry(id, state, wanted) {
+            return false;
+        }
+        let t = table();
+        if let Some(i) = index(t, id) {
+            t.fd[i] = -1;
+            t.retry[i] = None;
+        }
+        return true;
     }
     t.fd[i] = -1;
     put_int(t, i, i64::from(wanted));
@@ -499,7 +589,17 @@ pub(crate) fn expire(now: i64) {
             let fd = core::mem::replace(&mut t.fd[i], -1);
             // SAFETY: single scheduler per isolate.
             unsafe { task::unwatch_fd_for_promise(fd, id) };
-            put_int(t, i, i64::from(task::WAIT_TIMEOUT));
+            if let Some(retry) = core::mem::take(&mut t.retry[i]) {
+                retry(id, t.retry_state[i], task::WAIT_TIMEOUT);
+                let t = table();
+                if let Some(i) = index(t, id)
+                    && t.state[i] == State::Pending
+                {
+                    put_int(t, i, i64::from(task::WAIT_TIMEOUT));
+                }
+            } else {
+                put_int(t, i, i64::from(task::WAIT_TIMEOUT));
+            }
         } else {
             complete_unit(t, i);
         }
@@ -712,6 +812,9 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
         // SAFETY: single scheduler per isolate.
         unsafe { task::unwatch_fd_for_promise(t.fd[i], id) };
         t.fd[i] = -1;
+        if let Some(retry) = core::mem::take(&mut t.retry[i]) {
+            retry(id, t.retry_state[i], task::WAIT_CANCELLED);
+        }
     }
     if t.closure[i] != 0 {
         if t.state[i] == State::Pending {
@@ -1090,6 +1193,92 @@ mod tests {
             msrt_promise_drop(id);
         }
         sched::shutdown();
+        task::teardown();
+    }
+
+    static RETRIES: crate::global::Process<[usize; 3]> = crate::global::Process::new([0; 3]);
+
+    /// Reads one byte when the descriptor is ready, as a native read would.
+    fn read_one(id: i64, state: usize, bits: u32) -> bool {
+        use std::io::Read;
+        // SAFETY: the test holds the runtime lock; `state` is the address of a live stream.
+        unsafe {
+            let counts = &mut *RETRIES.ptr();
+            if bits == task::WAIT_CANCELLED {
+                counts[2] += 1;
+                return false;
+            }
+            counts[0] += 1;
+            let stream = &mut *(state as *mut std::net::TcpStream);
+            let mut byte = [0u8; 1];
+            match stream.read(&mut byte) {
+                Ok(1) => {
+                    let mut v = i64::from(byte[0]);
+                    io_put(id, (&raw mut v).cast(), &msrt_desc_int, false);
+                    true
+                }
+                _ => {
+                    // Not ready after all, or the wait timed out.
+                    if bits & task::WAIT_TIMEOUT != 0 {
+                        counts[1] += 1;
+                        let mut v = -1i64;
+                        io_put(id, (&raw mut v).cast(), &msrt_desc_int, false);
+                    }
+                    false
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_native_continuation_finishes_an_io_promise_without_a_task() {
+        use std::io::Write;
+        let _g = lock();
+        *unsafe { &mut *RETRIES.ptr() } = [0; 3];
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let mut client = std::net::TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (mut server, _) = listener.accept().unwrap();
+        server.set_nonblocking(true).unwrap();
+        let fd = raw(&server);
+        let state = (&raw mut server) as usize;
+        // SAFETY: tests hold the runtime lock.
+        let before = unsafe { task::msrt_task_count() };
+        let id = io_new();
+        assert!(io_on_ready(id, fd, task::WAIT_READ, -1, read_one, state));
+        // SAFETY: as above.
+        assert_eq!(unsafe { task::msrt_task_count() }, before);
+        client.write_all(b"z").unwrap();
+        assert_eq!(msrt_promise_wait(id, -1), OK);
+        assert_eq!(take_int(id), i64::from(b'z'));
+        msrt_promise_drop(id);
+        // A wait that nothing satisfies times out through the continuation.
+        let late = io_new();
+        assert!(io_on_ready(
+            late,
+            fd,
+            task::WAIT_READ,
+            5_000_000,
+            read_one,
+            state
+        ));
+        assert_eq!(msrt_promise_wait(late, -1), OK);
+        assert_eq!(take_int(late), -1);
+        msrt_promise_drop(late);
+        // Dropping a pending one tells the continuation to release its state.
+        let dropped = io_new();
+        assert!(io_on_ready(
+            dropped,
+            fd,
+            task::WAIT_READ,
+            -1,
+            read_one,
+            state
+        ));
+        msrt_promise_drop(dropped);
+        // SAFETY: as above.
+        let counts = unsafe { *RETRIES.ptr() };
+        assert_eq!((counts[1], counts[2]), (1, 1));
         task::teardown();
     }
 }
