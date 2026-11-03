@@ -38,6 +38,20 @@ pub const STANDARD_PRELUDE_NAMES: [&str; 13] = [
     "MapEntry",
 ];
 
+/// Source-backed prelude functions as (module path, name); every module of user code sees them without an import.
+pub const STANDARD_PRELUDE_FUNCTIONS: [(&str, &str); 1] = [("@std/core.ms", "print")];
+
+/// The implicit import that gives user code a prelude function.
+pub fn prelude_function_import(path: &str, name: &str) -> Import {
+    Import {
+        id: ms_syntax::NodeId(0),
+        pos: ms_syntax::Pos::default(),
+        name_pos: ms_syntax::Pos::default(),
+        name: n(name),
+        path: path.into(),
+    }
+}
+
 /// The built-in types every module sees without an import.
 pub const PRIMITIVE_NAMES: [&str; 16] = [
     "Bool", "Int", "Float", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32",
@@ -1110,6 +1124,12 @@ impl Session {
 
     /// Whether a symbol is a canonical source-backed prelude declaration.
     pub fn is_prelude_symbol(self: &Rc<Self>, symbol: &SymRef) -> bool {
+        if STANDARD_PRELUDE_FUNCTIONS
+            .iter()
+            .any(|(path, name)| symbol.name == n(name) && symbol.module == n(path))
+        {
+            return true;
+        }
         if !STANDARD_PRELUDE_NAMES.contains(&symbol.name.as_str()) {
             return false;
         }
@@ -1501,6 +1521,14 @@ impl Session {
         });
         if benching && let Some(driver) = self.standard_source_module(n("@std/test/bench.ms")) {
             visit(self, &driver, &mut state, &mut ordered, &mut diagnostics);
+        }
+        // Prelude functions reach user code without an import, so their modules come with any program of its own.
+        if modules.iter().any(|m| !m.is_standard()) {
+            for (path, name) in STANDARD_PRELUDE_FUNCTIONS {
+                if let Some(dep) = self.import_source(&prelude_function_import(path, name)) {
+                    visit(self, &dep, &mut state, &mut ordered, &mut diagnostics);
+                }
+            }
         }
         for m in &modules {
             visit(self, m, &mut state, &mut ordered, &mut diagnostics);

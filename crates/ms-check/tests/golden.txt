@@ -1373,7 +1373,7 @@ fn f() Int:
     return [1, 2].length
 type	2	19	30	expected Int, found fn() Int (in the return value); this is a function; call it with parentheses to get its Int resultfn f() Unit:
     println("hi")
-resolution	2	5	17	unknown binding println; there is no built-in print: import stdout from "@std/io/io.ms" and call stdout().write("text\\n")fn f() Int:
+resolution	2	5	17	unknown binding println; there is no println: use print(value), which writes any value and a newline; for write errors or bytes import stdout from "@std/io/io.ms" and call stdout().write("text\\n")fn f() Int:
     let s = null
     return 0
 resolution	2	13	24	unknown binding null; Manuscript has no null: absence is an Optional, written none, and a present value is just the value, which converts where an Optional is expectedfn f() Int:
@@ -6756,7 +6756,7 @@ type	12	9	553	this statement discards Result[Unit, Error], so a failure would be
         try expect_equal(1, 1)
 test "later":
     try fail("must not run")
-resolution	2	5	26	unknown binding println; there is no built-in print: import stdout from "@std/io/io.ms" and call stdout().write("text\\n")
+resolution	2	5	26	unknown binding println; there is no println: use print(value), which writes any value and a newline; for write errors or bytes import stdout from "@std/io/io.ms" and call stdout().write("text\\n")
 resolution	4	13	71	unknown binding expect_equal; add: import expect_equal from "@std/test/test.ms"
 resolution	6	9	112	unknown binding fail; add: import fail from "@std/test/test.ms"import TestHooks, expect_equal from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
