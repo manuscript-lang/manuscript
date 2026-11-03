@@ -612,14 +612,17 @@ impl<'a> FnLower<'a> {
             return x.v;
         }
         if self.cx.strict_copies
-            && !matches!(self.b.defining_op(x.v), Some(Op::StrLit | Op::OptNone))
+            && !matches!(
+                self.b.defining_op_anywhere(x.v),
+                Some(Op::StrLit | Op::OptNone)
+            )
         {
             let at = std::panic::Location::caller();
             let site = format!(
                 "{}:{} ({:?})",
                 at.file().rsplit('/').next().unwrap_or("?"),
                 at.line(),
-                self.b.defining_op(x.v)
+                self.b.defining_op_anywhere(x.v)
             );
             self.cx.copy_gaps.push(site);
         }

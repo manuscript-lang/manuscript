@@ -2604,7 +2604,7 @@ impl<'a> FnLower<'a> {
         }
         let (new, r) = self.mutate_list(name, old, args)?;
         if r.is_none() && copy_result {
-            let v = self.owned(Val { v: new, own: false });
+            let v = self.clone_value(new);
             return Ok((new, Some(Val { v, own: true })));
         }
         Ok((new, r))
@@ -2977,7 +2977,7 @@ impl<'a> FnLower<'a> {
                     let rv = s.fresh_var(rt);
                     s.b.def_var(rv, r);
                     s.each_element(rv, &mut |s, _, y| {
-                        let yo = s.owned(Val { v: y, own: false });
+                        let yo = s.clone_value(y);
                         let cur = s.b.use_var(acc);
                         let next = s.b.list_push(cur, yo);
                         s.b.def_var(acc, next);
@@ -3364,7 +3364,7 @@ impl<'a> FnLower<'a> {
         self.b.seal_block(miss);
         self.b.switch_to(hit);
         let x = self.b.list_get(l, i);
-        let xo = self.owned(Val { v: x, own: false });
+        let xo = self.clone_value(x);
         // The eager default is unused on this path.
         self.finish(default.val);
         self.b.def_var(out, xo);
@@ -3427,7 +3427,7 @@ impl<'a> FnLower<'a> {
         self.b.def_var(idx, j);
         let l = self.b.use_var(lv);
         let x = self.b.list_get(l, j);
-        let xo = self.owned(Val { v: x, own: false });
+        let xo = self.clone_value(x);
         let cur = self.b.use_var(acc);
         let next = self.b.list_push(cur, xo);
         self.b.def_var(acc, next);
