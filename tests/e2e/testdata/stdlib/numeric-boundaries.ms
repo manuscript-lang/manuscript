@@ -82,22 +82,26 @@ test "duration safe addition subtraction negation and unit edges":
             or nanoseconds(0).abs() != nanoseconds(0)
         )
     )
-    try expect_equal((9223372036854).milliseconds.to_nanoseconds(), 9223372036854000000)
     try expect_equal(
-        (-9223372036854).milliseconds.to_nanoseconds(), (-9223372036854000000)
+        (9223372036854).milliseconds().to_nanoseconds(), 9223372036854000000
+    )
+    try expect_equal(
+        (-9223372036854).milliseconds().to_nanoseconds(), (-9223372036854000000)
     )
     try expect_false(
         (
-            (9223372036).seconds.to_nanoseconds() != 9223372036000000000
+            (9223372036).seconds().to_nanoseconds() != 9223372036000000000
             or (
                 -9223372036
-            ).seconds.to_nanoseconds() != -9223372036000000000
+            ).seconds().to_nanoseconds() != -9223372036000000000
         )
     )
     try expect_false(
         (
-            (153722867).minutes.to_nanoseconds() != 9223372020000000000
-            or (-153722867).minutes.to_nanoseconds() != -9223372020000000000
+            (153722867).minutes().to_nanoseconds() != 9223372020000000000
+            or (
+                -153722867
+            ).minutes().to_nanoseconds() != -9223372020000000000
         )
     )
 

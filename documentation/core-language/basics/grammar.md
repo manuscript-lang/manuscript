@@ -48,7 +48,7 @@ DecimalLiteral = Whole, [ Fraction ], [ Exponent ], "d" ;
 
 `HexDigit` is `0`-`9`, `a`-`f` or `A`-`F`. `_` sits between two digits of an integer or of a fraction, never leading, trailing, doubled or beside the prefix, `.`, `e` or `d`; the exponent takes none.
 
-No identifier character may follow a numeric token except the `d` suffix. Leading zeros, octal (`0o`), uppercase prefixes (`0X`, `0B`), `.5`, and `1.` are rejected. `1e3` is a Float. A sign is an operator, not part of the token ([range checking](numbers-and-booleans.md)). A dot starts a fraction only before a digit, so `2.seconds` is an Int, a dot, and a member.
+No identifier character may follow a numeric token except the `d` suffix. Leading zeros, octal (`0o`), uppercase prefixes (`0X`, `0B`), `.5`, and `1.` are rejected. `1e3` is a Float. A sign is an operator, not part of the token ([range checking](numbers-and-booleans.md)). A dot starts a fraction only before a digit, so `2.seconds()` is an Int, a dot, and a method name.
 
 ## Layout tokens
 

@@ -1121,6 +1121,7 @@ impl<'a> FnLower<'a> {
                 };
                 Ok(Val { v, own: false })
             }
+            (TyKind::Int, "milliseconds" | "seconds" | "minutes") => self.duration_unit(name, recv),
             (TyKind::Int, "to_decimal") => {
                 let n = self.borrow(recv);
                 let v = self.call_runtime("msstd_decimal_from_int", &[n], result)?;
@@ -2063,7 +2064,7 @@ impl<'a> FnLower<'a> {
         self.b.switch_to(good);
     }
 
-    /// `n.seconds`, `n.milliseconds`, `n.minutes`: the runtime's checked nanosecond count.
+    /// `n.seconds()`, `n.milliseconds()`, `n.minutes()`: the runtime's checked nanosecond count.
     pub(crate) fn duration_unit(&mut self, unit: &str, n: Val) -> Result<Val, Error> {
         let v = self.borrow(n);
         let nanos = self.call_runtime(&format!("msstd_time_int_{unit}"), &[v], MTy::INT)?;

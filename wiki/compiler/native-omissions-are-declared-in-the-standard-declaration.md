@@ -13,3 +13,5 @@ Verify: exercise stored, bound, and generic calls that omit a defaulted argument
 Verified: a bodiless inherent method of a standard type is a native receiver operation, found by the loader (`is_receiver_native` in `ms-check/src/stdlib.rs`); there is no table of bindings. Its native identity is the method name, so lowering tells receivers apart by type: a `native == "chars"` test also needs `str_recv`, and `abs`, `sign` and `compare` check `is_int` or `is_float`. `// ms: keeps` and `// ms: owns` on a runtime function replace name lists for kept callbacks and owned values (`@keeps`, `@owns` in `rt_symbols.txt`).
 Apply when: adding a native method or a receiver-specific lowering arm; a name-only match collides with other receivers.
 Verify: `make conform`; `runtime_flags_come_from_the_symbol_table`.
+
+Decision (Chinmay, 2026-11-03): the duration units are methods, `3.seconds()`, `500.milliseconds()`, `2.minutes()`, declared on `IntOperations` in `intrinsics.ms` and lowered by receiver type to the runtime's checked `msstd_time_int_*`; the property form `3.seconds` and its checker special case are gone. `.seconds` on a `Timestamp` is a field and is unchanged.

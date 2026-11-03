@@ -996,7 +996,7 @@ impl Closeable for Accepting:
                 let _ = closing.close()
 
         for worker in self.workers:
-            let _ = worker.wait(timeout: 0.seconds)
+            let _ = worker.wait(timeout: 0.seconds())
         self.workers = []
         return ok(unit)
 
@@ -1024,7 +1024,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
             if accepted.err().kind == ErrorCategory.Closed:
                 return ok(unit)
 
-            sleep(50.milliseconds).wait().get(unit)
+            sleep(50.milliseconds()).wait().get(unit)
             continue
 
         let _ = accepting.deals[next].write(accepted.get())

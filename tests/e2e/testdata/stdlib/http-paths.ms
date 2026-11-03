@@ -44,7 +44,8 @@ fn stream_route(var exchange: HttpExchange) Unit!:
 fn check_route(url: String, expected: String) Unit!:
     let response = request(
         method: HttpMethod.Get, url: url,
-        headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
+        headers: (try text_headers(Map[String, String]())), body: "",
+        timeout: 2.seconds()
     ) | try expect_ok
     if response.metadata().status != 200 or response.body != expected.to_bytes(): return error(
         Error("path or raw query changed")
@@ -58,7 +59,8 @@ fn check_route(url: String, expected: String) Unit!:
 fn check_rejected(url: String) Unit!:
     let response = request(
         method: HttpMethod.Get, url: url,
-        headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
+        headers: (try text_headers(Map[String, String]())), body: "",
+        timeout: 2.seconds()
     ) | try expect_ok
     if response.metadata().status != 400: return error(
         Error("unsafe or invalid path was dispatched")
