@@ -15,6 +15,7 @@
 
 use crate::ir::*;
 use crate::types::TyKind;
+use crate::vmap::{ValueMap, ValueSet};
 use std::collections::{HashMap, HashSet};
 
 /// Runs the pass; returns whether any drop moved.
@@ -128,7 +129,7 @@ struct Index {
     /// Drops to insert, per block: (after instruction or block start, value), in emission order.
     pending: Vec<Vec<(Option<usize>, Value)>>,
     /// Blocks holding a pending drop of each value.
-    pending_blocks: HashMap<Value, Vec<usize>>,
+    pending_blocks: ValueMap<Vec<usize>>,
 }
 
 impl Index {
@@ -144,7 +145,7 @@ impl Index {
                 .map(|b| vec![false; b.insts.len()])
                 .collect(),
             pending: vec![Vec::new(); f.blocks.len()],
-            pending_blocks: HashMap::new(),
+            pending_blocks: ValueMap::new(),
         };
         for (bi, b) in f.blocks.iter().enumerate() {
             for (ii, i) in b.insts.iter().enumerate() {
@@ -197,7 +198,7 @@ impl Index {
             group[pos.after - 1] + 1
         };
         self.pending[bi].insert(at, (pos.idx, v));
-        let blocks = self.pending_blocks.entry(v).or_default();
+        let blocks = self.pending_blocks.get_or_default(v);
         if !blocks.contains(&bi) {
             blocks.push(bi);
         }
@@ -244,7 +245,7 @@ impl Index {
 fn function(m: &Module, f: &mut Func) -> bool {
     // Candidates: value -> defining (block, index or None for a block parameter).
     let mut cands: Vec<(Value, usize, Option<usize>)> = Vec::new();
-    let mut dropped: HashSet<Value> = HashSet::new();
+    let mut dropped: ValueSet = ValueSet::new();
     for b in &f.blocks {
         for i in &b.insts {
             if i.op == Op::Drop {
@@ -287,8 +288,8 @@ fn is_scalar(m: &Module, t: crate::types::Ty) -> bool {
 
 /// Grows the family of `v` (everything that may point into it) to a fixed point over the
 /// use index.
-fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> HashSet<Value> {
-    let mut fam: HashSet<Value> = HashSet::new();
+fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> ValueSet {
+    let mut fam: ValueSet = ValueSet::new();
     fam.insert(v);
     let mut work = vec![v];
     while let Some(w) = work.pop() {
@@ -297,7 +298,7 @@ fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> HashSet<Value> {
                 continue;
             }
             let i = &f.blocks[bi].insts[ii];
-            let mut add = |r: Value, fam: &mut HashSet<Value>| {
+            let mut add = |r: Value, fam: &mut ValueSet| {
                 if fam.insert(r) {
                     work.push(r);
                 }
@@ -362,7 +363,7 @@ fn candidate(
 ) -> bool {
     let fam = family(m, f, ix, v);
     // Leaks of the family into memory the pass cannot follow.
-    for &w in &fam {
+    for w in fam.iter() {
         for &(bi, ii) in &ix.uses[w.index()] {
             if !ix.live(bi, ii) {
                 continue;
@@ -436,7 +437,7 @@ fn candidate(
     // Uses per block: positions of family operands (other than the drops of `v`), including
     // drops of family members already placed by this pass.
     let mut uses: Vec<Vec<Pos>> = vec![Vec::new(); nb];
-    for &w in &fam {
+    for w in fam.iter() {
         for &(bi, ii) in &ix.uses[w.index()] {
             if !ix.live(bi, ii) {
                 continue;

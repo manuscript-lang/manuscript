@@ -14,7 +14,8 @@
 
 use crate::ir::{BlockParam, Func, Imm, Inst, Mode, Module, Op, Value};
 use crate::types::{Ty, TyKind};
-use std::collections::{HashMap, HashSet};
+use crate::vmap::{ValueMap, ValueSet};
+use std::collections::HashMap;
 
 /// Runs the pass; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
@@ -55,8 +56,8 @@ fn const_of(m: &Module, ty: Ty, loc: crate::ir::Loc, f: &mut Func) -> Inst {
 /// is linear in the function rather than per split.
 fn split_all(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
-    let mut defs: HashMap<Value, Op> = HashMap::new();
-    let mut other_uses: HashSet<Value> = HashSet::new();
+    let mut defs: ValueMap<Op> = ValueMap::new();
+    let mut other_uses: ValueSet = ValueSet::new();
     for b in &f.blocks {
         for i in &b.insts {
             if let Some(r) = i.res {
@@ -111,7 +112,7 @@ fn apply(m: &mut Module, fi: usize, splits: &[(usize, usize, Ty)]) {
         &mut m.funcs[fi],
         crate::ir::Func::new("", Vec::new(), Ty::UNIT),
     );
-    let mut defs: HashMap<Value, (Op, Vec<Value>)> = HashMap::new();
+    let mut defs: ValueMap<(Op, Vec<Value>)> = ValueMap::new();
     for b in &f.blocks {
         for i in &b.insts {
             if let Some(r) = i.res {
@@ -128,7 +129,7 @@ fn apply(m: &mut Module, fi: usize, splits: &[(usize, usize, Ty)]) {
         v.reverse();
     }
     // Reader substitution: `opt.is_some p` is the flag, `opt.get p` the value.
-    let mut flags: HashMap<Value, (Value, Value)> = HashMap::new();
+    let mut flags: ValueMap<(Value, Value)> = ValueMap::new();
     for (&bi, ks) in &by_block {
         for &(k, inner) in ks {
             let p = f.blocks[bi].params[k].value;
@@ -193,7 +194,7 @@ fn apply(m: &mut Module, fi: usize, splits: &[(usize, usize, Ty)]) {
         f.blocks[si].term = term;
         f.blocks[si].insts.append(&mut new_insts);
     }
-    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut subst: ValueMap<Value> = ValueMap::new();
     for b in &mut f.blocks {
         b.insts.retain(|i| {
             let Some(&(flag, val)) = i.args.first().and_then(|a| flags.get(a)) else {
