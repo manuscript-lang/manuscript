@@ -1,6 +1,6 @@
 # Concurrency: promises and pipes
 
-Status: **final proposal, approved by Chinmay; nothing built** (2026-11-02, checked against `f7c0285a`). This consolidates the design Chinmay and Claude reached in the project thread "Redesign concurrency from first principles". It supersedes `single-threaded-runtime.md` (the removal is cancelled and nothing was merged), `shared-single-thread.md`, `shared-lock.md` and `http-server-multicore.md`. Snippets are unchecked. The work ships as one implementation.
+Status: **implemented** (2026-11-03) in the single concurrency PR from `claude/project-thread-nchfqv`. Approved by Chinmay on 2026-11-02. This consolidates the design Chinmay and Claude reached in the project thread "Redesign concurrency from first principles". It supersedes `single-threaded-runtime.md` (the removal is cancelled and nothing was merged), `shared-single-thread.md`, `shared-lock.md` and `http-server-multicore.md`. Snippets are unchecked.
 
 ## In one paragraph
 
