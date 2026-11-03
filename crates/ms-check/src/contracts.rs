@@ -1062,7 +1062,7 @@ impl Checker {
         if let Some(&r) = state.completed.get(&key) {
             return r;
         }
-        if state.active.contains(&key) {
+        if state.active.contains(&key) || self.property_active.borrow().contains(&key) {
             // Equality handles cycles; structural hashing requires an acyclic shape.
             return property != Property::Hashable;
         }
@@ -1070,7 +1070,9 @@ impl Checker {
             return false;
         }
         state.active.insert(key.clone());
+        self.property_active.borrow_mut().insert(key.clone());
         let result = self.property_compute(t, property, state);
+        self.property_active.borrow_mut().remove(&key);
         state.active.remove(&key);
         state.completed.insert(key, result);
         result
