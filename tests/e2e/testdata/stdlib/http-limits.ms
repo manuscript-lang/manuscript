@@ -56,5 +56,5 @@ test "serve rejects a zero request timeout":
         )
     )
     try expect_equal(
-        failure, Error("network: invalid input", kind: ErrorCategory.InvalidInput)
+        failure, Error("HTTP: invalid input", kind: ErrorCategory.InvalidInput)
     )

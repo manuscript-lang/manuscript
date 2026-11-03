@@ -9,14 +9,17 @@ use ms_rt::ffi::{Fail, IntList, ObjRef, Object, Out, StrMap, abi_handle, native}
 abi_handle!(Regex);
 
 native! {
+    // ms: leaf
     fn msstd_regex_compile(pattern: &str) -> Result<Object<Regex>, Fail> {
         crate::compile(pattern).map(Object)
     }
 
+    // ms: leaf
     fn msstd_regex_matches(re: ObjRef<Regex>, text: &str) -> bool {
         re.is_match(text)
     }
 
+    // ms: leaf
     fn msstd_regex_find_all(
         re: ObjRef<Regex>,
         text: &str,
@@ -26,10 +29,12 @@ native! {
         re.find_all(text, has_max.then_some(max))
     }
 
+    // ms: leaf
     fn msstd_regex_captures(re: ObjRef<Regex>, text: &str) -> out Vec<String> {
         re.captures(text)
     }
 
+    // ms: leaf
     fn msstd_regex_captures_all(
         re: ObjRef<Regex>,
         text: &str,
@@ -39,10 +44,12 @@ native! {
         re.captures_all(text, has_max.then_some(max))
     }
 
+    // ms: leaf
     fn msstd_regex_named_captures(re: ObjRef<Regex>, text: &str) -> out StrMap {
         StrMap(re.named_captures(text))
     }
 
+    // ms: leaf
     fn msstd_regex_find_span(re: ObjRef<Regex>, text: &str, out: Out<IntList>) -> u8 {
         let Some(span) = re.find_span(text) else {
             return 0;
@@ -51,18 +58,21 @@ native! {
         1
     }
 
+    // ms: leaf
     fn msstd_regex_find_all_spans(
         re: ObjRef<Regex>, text: &str, has_max: bool, max: i64,
     ) -> Result<IntList, Fail> {
         re.find_all_spans(text, has_max.then_some(max)).map(IntList)
     }
 
+    // ms: leaf
     fn msstd_regex_capture_spans(
         re: ObjRef<Regex>, text: &str, has_max: bool, max: i64,
     ) -> Result<IntList, Fail> {
         re.capture_spans(text, has_max.then_some(max)).map(IntList)
     }
 
+    // ms: leaf
     fn msstd_regex_capture_all_spans(
         re: ObjRef<Regex>, text: &str,
         has_matches: bool, max_matches: i64, has_captures: bool, max_captures: i64,
@@ -72,6 +82,7 @@ native! {
         ).map(IntList)
     }
 
+    // ms: leaf
     fn msstd_regex_split(
         re: ObjRef<Regex>,
         text: &str,
@@ -81,6 +92,7 @@ native! {
         re.split(text, has_max.then_some(max))
     }
 
+    // ms: leaf
     fn msstd_regex_replace_template(
         re: ObjRef<Regex>,
         text: &str,
@@ -91,6 +103,7 @@ native! {
         re.replace_template(text, template, has_max.then_some(max))
     }
 
+    // ms: leaf
     fn msstd_regex_replace_all(
         re: ObjRef<Regex>,
         text: &str,

@@ -147,11 +147,11 @@ fn with_mismatch_context(message: String, context: &str) -> String {
 }
 
 fn unknown_expected(expected: Option<&Ty>) -> bool {
-    expected.is_some_and(|t| t.kind == Kind::Primitive && t.id == "<invalid>")
+    expected.is_some_and(|t| t.is_invalid())
 }
 
 fn finish_info(mut i: Info) -> Info {
-    if i.ty.as_ref().is_some_and(|t| t.id == "Never") {
+    if i.ty.as_ref().is_some_and(|t| t.is_never()) {
         i.no_return = true;
     }
     i
@@ -212,7 +212,7 @@ impl Checker {
             i.ty = Some(invalid());
         }
         let actual = i.t();
-        if actual.id == "Never" {
+        if actual.is_never() {
             i.no_return = true;
         }
         if let Some(exp) = expected {
@@ -224,8 +224,8 @@ impl Checker {
                     d.message.starts_with("cannot infer callback parameter")
                         && d.pos.line == e.pos.line
                 });
-            if actual.id != "<invalid>"
-                && exp.id != "<invalid>"
+            if !actual.is_invalid()
+                && !exp.is_invalid()
                 && !inference_reported
                 && !compatible(&Some(actual.clone()), exp)
             {
@@ -530,7 +530,7 @@ impl Checker {
         if let Some(callable) = self.native_callable(e) {
             let args = self.resolve_arguments(types);
             i = callable.clone();
-            if callable.t().id == "<invalid>" {
+            if callable.t().is_invalid() {
                 return i;
             }
             let variables = callable
@@ -635,7 +635,7 @@ impl Checker {
         let receiver = self.expression(left, None);
         i.no_return = receiver.no_return;
         let rt = receiver.t();
-        if rt.id == "<invalid>" {
+        if rt.is_invalid() {
             return i;
         }
         if rt.kind == Kind::Record
@@ -853,7 +853,7 @@ impl Checker {
         while at < items.len() {
             if !self.contextual(items[at]) {
                 let v = self.expression(items[at], None);
-                if typ.is_none() && v.t().id != "Never" {
+                if typ.is_none() && !v.t().is_never() {
                     let t = v.t();
                     typ = Some(if t.kind == Kind::Function {
                         required_type(&t)
@@ -1140,7 +1140,7 @@ impl Checker {
             return i;
         }
         let mut common = at.clone();
-        if common.id == "Never" {
+        if common.is_never() {
             common = bt.clone();
         }
         let comparison = matches!(op, BinaryOp::Eq | BinaryOp::Ne) || is_ordering(op);
@@ -1153,7 +1153,7 @@ impl Checker {
             && common.is_std("Optional")
             && common.args.len() == 1
             && compatible(&Some(bt.clone()), &common.args[0]);
-        if common.id == "Never"
+        if common.is_never()
             || !compatible(&Some(at.clone()), &common)
             || !(wrapped_operand || compatible(&Some(bt.clone()), &common))
         {
@@ -1194,7 +1194,7 @@ impl Checker {
         match op {
             BinaryOp::Eq | BinaryOp::Ne => {
                 i.ty = Some(bool_());
-                if !self.property(&common, "Equal", None) {
+                if !self.property(&common, crate::contracts::Property::Equal, None) {
                     self.type_error(
                         e.pos,
                         format!("equality requires Equal operands; {common} has no equality, so add 'impl Equal for {common}:' or compare fields"),
@@ -1216,7 +1216,7 @@ impl Checker {
             }
             _ => {
                 i.ty = Some(common.clone());
-                if common.id != "<invalid>"
+                if !common.is_invalid()
                     && !numeric(&common)
                     && !(common.id == "String" && op == BinaryOp::Add)
                     && !(common.is_time("Duration") && matches!(op, BinaryOp::Add | BinaryOp::Sub))

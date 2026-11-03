@@ -55,21 +55,16 @@ Send plain serializable data. Messages reconstruct values through JSON; acceptan
 
 ## Serving on several cores
 
-One thread accepts and deals each connection, round robin, to serving workers. `Listener.accept_raw` returns the accepted socket's handle (an `Int`) without wrapping it; the handle crosses a worker channel; `HttpServer.adopt` in the worker serves it. `Network.serve_connections` starts the listener-less server that takes the handles, with the options and handler of `serve`. The worker builds its own handler, so handler state is per worker. A connection stays on its worker for life.
-
-`serve_cores(listener, entry, cores)` starts `cores` workers on `entry` and deals accepted connections to them in turn. `entry` is a named top-level fn that ends in `serve_core(handler, options)`, which serves the connections dealt to that worker.
+`serve(address, handler, options)` runs on every core with no extra code. It binds a plain TCP listener and runs the accept loop as a promise; each accepted connection becomes a promise that the runtime places on the least busy thread, where it stays. HTTP/1.1, HTTP/2 and the TLS handshake of `options.tls` run on that thread, and `options.cores` limits the runtime to that many threads. The handler is built once and only read by every thread.
 
 ```manuscript
-fn serving_worker() Unit:
-    let _ = serve_core(buffered(app))
-
 fn main() Int:
-    let listener = listen("0.0.0.0:8080").get(none)
-    let _ = serve_cores(listener, serving_worker, 4)
+    let server = serve(":8080", buffered(app), HttpServerOptions(cores: 4)).get(none)
+    let _ = server.wait()
     return 0
 ```
 
-`serve_cores` returns the accept error (`Closed` after the listener was closed), or `Failed` when a worker's channel is closed, and cancels the workers on return. `WorkerGroup.spawn_many(entry, count)` starts several workers from one entry. A handle that is never adopted leaks its socket; `accept_raw` refuses a TLS listener, because the adopting server runs the handshake.
+`close` stops accepting; connections drain within `grace`, then are cancelled, and `wait` returns.
 
 ## Cost
 

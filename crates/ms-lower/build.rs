@@ -6,7 +6,7 @@ use std::fmt::Write as _;
 use std::path::PathBuf;
 
 /// A listed function: name, parameters (name and type) and return type.
-type Entry = (String, Vec<(String, String)>, String);
+type Entry = (String, Vec<(String, String)>, String, u8);
 
 /// Splits `list` at its top-level commas (a function-pointer type holds commas).
 fn split_params(list: &str) -> Vec<&str> {
@@ -39,6 +39,13 @@ fn main() {
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
+        // Declared flags trail the signature: ` @leaf @pure @fresh`.
+        let (line, flags) = match line.split_once(" @") {
+            Some((sig, flags)) => (sig, flags.split(" @").collect::<Vec<_>>()),
+            None => (line, Vec::new()),
+        };
+        let bit = |f: &str| -> u8 { u8::from(flags.contains(&f)) };
+        let flags = bit("leaf") | bit("pure") << 1 | bit("fresh") << 2;
         let Some((name, rest)) = line.split_once('(') else {
             panic!("rt_symbols.txt:{}: not a function entry: {line}", n + 1);
         };
@@ -62,17 +69,22 @@ fn main() {
             .strip_prefix("->")
             .map(|r| r.trim().to_string())
             .unwrap_or_default();
-        table.push((name.trim().to_string(), params, ret));
+        table.push((name.trim().to_string(), params, ret, flags));
     }
     table.sort_by(|a, b| a.0.cmp(&b.0));
     table.dedup_by(|later, first| later.0 == first.0);
     let mut out = String::from("&[\n");
-    for (name, params, ret) in &table {
+    for (name, params, ret, flags) in &table {
         let params: Vec<String> = params
             .iter()
             .map(|(n, t)| format!("({n:?}, {t:?})"))
             .collect();
-        writeln!(out, "    ({name:?}, &[{}], {ret:?}),", params.join(", ")).unwrap();
+        writeln!(
+            out,
+            "    ({name:?}, &[{}], {ret:?}, {flags}),",
+            params.join(", ")
+        )
+        .unwrap();
     }
     out.push_str("]\n");
     let dest = PathBuf::from(std::env::var("OUT_DIR").expect("out dir")).join("rt_symbols.rs");

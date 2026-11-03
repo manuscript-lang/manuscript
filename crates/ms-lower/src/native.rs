@@ -7,6 +7,7 @@ use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncId, FuncKind, Linkage, Mode, Param, Value};
+use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -259,6 +260,9 @@ impl<'a> FnLower<'a> {
                     noreturn: true,
                     pure_: false,
                     fresh: false,
+                    role: ms_mir::ir::ExternRole::None,
+                    leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
+                    reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
                 });
                 self.at(e.pos);
                 self.b.call_rt(ext, &[m]);
@@ -600,6 +604,9 @@ impl<'a> FnLower<'a> {
                     noreturn: true,
                     pure_: false,
                     fresh: false,
+                    role: ms_mir::ir::ExternRole::None,
+                    leaf: crate::rtcall::rt_flags(&format!("msrt_bits_{name}")).leaf,
+                    reads: crate::rtcall::rt_flags(&format!("msrt_bits_{name}")).reads,
                 });
                 self.b.call_rt(ext, &[left, count]);
                 self.b.unreachable();
@@ -1100,7 +1107,7 @@ impl<'a> FnLower<'a> {
             name
         };
         match (self.b.m.types.kind(rty).clone(), name) {
-            (TyKind::Obj(n, _), "length" | "is_empty") if n == "Map" || n == "Set" => {
+            (TyKind::Obj(n, _), "length" | "is_empty") if n == Native::Map || n == Native::Set => {
                 let r = self.borrow(recv);
                 let len = self.call_runtime("msrt_map_length", &[r], MTy::INT)?;
                 if name == "length" {
@@ -1110,12 +1117,10 @@ impl<'a> FnLower<'a> {
                 let v = self.b.icmp(ms_mir::ir::Cc::Eq, len, z);
                 Ok(Val { v, own: false })
             }
-            (TyKind::Obj(n, _), "get_or") if n == "Map" => {
+            (TyKind::Obj(Native::Map, _), "get_or") => {
                 self.map_get_or(recv, &m.ty.params, &args, result)
             }
-            (TyKind::Obj(n, _), "entries") if n == "Map" => {
-                self.map_entries(recv_expr, recv, result)
-            }
+            (TyKind::Obj(Native::Map, _), "entries") => self.map_entries(recv_expr, recv, result),
             (TyKind::List(_), "list_keys") => self.list_keys(recv_expr, recv, result),
             (TyKind::List(_), "entries") => self.list_entries(recv_expr, recv, result),
             (TyKind::List(_) | TyKind::Bytes, "length") => {
@@ -1513,7 +1518,7 @@ impl<'a> FnLower<'a> {
             return self.optional_method(result, at, &name, recv, inner, args.to_vec());
         }
         if let (TyKind::Obj(n, _), "get_or") = (self.b.m.types.kind(rty).clone(), name.as_str())
-            && n == "Map"
+            && n == Native::Map
         {
             return self.map_get_or(recv, &m.ty.params, args, result);
         }
@@ -1731,6 +1736,7 @@ impl<'a> FnLower<'a> {
             MTy::INT,
         );
         tb.func_mut().linkage = ms_mir::ir::Linkage::Internal;
+        tb.func_mut().sort = ms_mir::ir::SortThunk::Generic;
         let args = tb.params();
         let mut load = |a| {
             tb.emit(
@@ -2138,6 +2144,9 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            role: ms_mir::ir::ExternRole::None,
+            leaf: crate::rtcall::rt_flags("msrt_list_index_fault").leaf,
+            reads: crate::rtcall::rt_flags("msrt_list_index_fault").reads,
         });
         self.b.call_rt(ext, &[opv, original, len]);
         self.b.unreachable();
@@ -2178,6 +2187,9 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            role: ms_mir::ir::ExternRole::None,
+            leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
+            reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
         });
         self.b.call_rt(ext, &[msg]);
         self.b.unreachable();
@@ -2197,6 +2209,9 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            role: ms_mir::ir::ExternRole::None,
+            leaf: crate::rtcall::rt_flags(sym).leaf,
+            reads: crate::rtcall::rt_flags(sym).reads,
         });
         self.b.call_rt(ext, &[]);
         self.b.unreachable();
@@ -2416,7 +2431,7 @@ impl<'a> FnLower<'a> {
             v: text,
             own: false,
         });
-        let v = self.error_record(er, "NotFound", text)?;
+        let v = self.error_record(er, "NotFound", text, None)?;
         Ok(Val { v, own: true })
     }
 
@@ -3627,10 +3642,10 @@ impl FnLower<'_> {
         let TyKind::Obj(n, _) = self.b.m.types.kind(self.ty_of(recv)) else {
             return None;
         };
-        match (n.as_str(), m.name()?.as_str()) {
-            ("Map", "entries") => Some(Walk::Entries),
-            ("Map", "values") => Some(Walk::Values),
-            ("Map", "keys") | ("Set", "values") => Some(Walk::Keys),
+        match (n, m.name()?.as_str()) {
+            (Native::Map, "entries") => Some(Walk::Entries),
+            (Native::Map, "values") => Some(Walk::Values),
+            (Native::Map, "keys") | (Native::Set, "values") => Some(Walk::Keys),
             _ => None,
         }
     }
@@ -3646,8 +3661,10 @@ impl FnLower<'_> {
         if !self.stable_place(recv_expr) {
             return None;
         }
-        let is_map =
-            matches!(self.b.m.types.kind(self.ty_of(recv)), TyKind::Obj(n, _) if n == "Map");
+        let is_map = matches!(
+            self.b.m.types.kind(self.ty_of(recv)),
+            TyKind::Obj(Native::Map, _)
+        );
         match m.name()?.as_str() {
             "keys" if is_map => Some("msrt_map_keys_view"),
             "values" if is_map => Some("msrt_map_values_view"),

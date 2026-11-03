@@ -81,11 +81,59 @@ pub enum TyKind {
     Opt(Ty),
     /// A runtime-implemented object type such as `Map[K, V]`
     /// or `Set[T]`, named as the runtime names it.
-    Obj(String, Vec<Ty>),
+    Obj(Native, Vec<Ty>),
     /// A closure object: parameter types (all passed borrowed) and the result.
     Fn(Vec<Ty>, Ty),
     /// An interface fat pointer `{ data, vtable }`; owning it owns `data`.
     Iface(IfaceId),
+}
+
+/// Identity of a runtime-implemented object type.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Native {
+    /// `Map[K, V]`.
+    Map,
+    /// `Set[T]`.
+    Set,
+    /// A shared handle over a payload record.
+    Shared,
+    /// `BigInt`.
+    BigInt,
+    /// The string-split iterator.
+    SplitIter,
+    /// Any other opaque runtime handle, named as the runtime names it.
+    Opaque(String),
+}
+
+impl Native {
+    /// The identity for a runtime name.
+    pub fn from_name(name: &str) -> Native {
+        match name {
+            "Map" => Native::Map,
+            "Set" => Native::Set,
+            "Shared" => Native::Shared,
+            "BigInt" => Native::BigInt,
+            "SplitIter" => Native::SplitIter,
+            other => Native::Opaque(other.to_string()),
+        }
+    }
+
+    /// The runtime name.
+    pub fn name(&self) -> &str {
+        match self {
+            Native::Map => "Map",
+            Native::Set => "Set",
+            Native::Shared => "Shared",
+            Native::BigInt => "BigInt",
+            Native::SplitIter => "SplitIter",
+            Native::Opaque(n) => n,
+        }
+    }
+
+    /// Whether this is a `Map` or `Set` (inline-layout containers).
+    pub fn is_map_or_set(&self) -> bool {
+        matches!(self, Native::Map | Native::Set)
+    }
 }
 
 /// Interning table for [`TyKind`]. The first eleven entries are fixed.
@@ -245,7 +293,7 @@ impl TyTable {
 
     /// A runtime object type.
     pub fn obj(&mut self, name: &str, args: Vec<Ty>) -> Ty {
-        self.intern(TyKind::Obj(name.to_string(), args))
+        self.intern(TyKind::Obj(Native::from_name(name), args))
     }
 
     /// Whether values of `ty` own storage that must be dropped.

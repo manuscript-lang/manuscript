@@ -164,6 +164,7 @@ const MAX_EQ_DEPTH: usize = 200_000;
 /// Registers a pair of objects being compared; 0 means the pair is already in progress
 /// (the comparison assumes equal).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_eq_enter(a: *const u8, b: *const u8) -> u8 {
     // SAFETY: single threaded access.
     unsafe {
@@ -181,6 +182,7 @@ pub unsafe extern "C-unwind" fn msrt_eq_enter(a: *const u8, b: *const u8) -> u8 
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_eq_leave(_a: *const u8, _b: *const u8) {
     // SAFETY: single threaded access.
     unsafe {
@@ -315,30 +317,35 @@ pub unsafe fn slot_hash(d: &TypeDesc, slot: *const u8) -> u64 {
 // ---- exported generic helpers ----
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_slot_drop(d: *const TypeDesc, slot: *mut u8) {
     // SAFETY: caller contract.
     unsafe { slot_drop(&*d, slot) }
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_slot_copy(d: *const TypeDesc, src: *const u8, dst: *mut u8) {
     // SAFETY: caller contract.
     unsafe { slot_copy(&*d, src, dst) }
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_slot_eq(d: *const TypeDesc, a: *const u8, b: *const u8) -> u8 {
     // SAFETY: caller contract.
     unsafe { slot_eq(&*d, a, b) as u8 }
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_slot_hash(d: *const TypeDesc, slot: *const u8) -> i64 {
     // SAFETY: caller contract.
     unsafe { slot_hash(&*d, slot) as i64 }
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_hash_combine(a: i64, b: i64) -> i64 {
     string::mix((a as u64).rotate_left(5) ^ b as u64) as i64
 }

@@ -23,9 +23,10 @@ use crate::rt;
 use crate::sys::{AsSock, Borrowed, Ev, Poller};
 use crate::tls::{Handshake, TlsIo};
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 const UNLIMITED: usize = usize::MAX;
@@ -35,23 +36,6 @@ const INPUT_HOLD: usize = 256 * 1024;
 pub const DRAIN_LIMIT: usize = 256 * 1024;
 /// Time to receive the peer's FIN after half-closing an HTTP/1 rejection response.
 const REJECTION_DRAIN: Duration = Duration::from_millis(500);
-
-/// How long accepting pauses after the process runs out of descriptors or memory.
-const ACCEPT_BACKOFF: Duration = Duration::from_millis(50);
-
-/// Whether `accept` failed for lack of descriptors, buffers, or memory.
-fn is_resource_exhaustion(e: &std::io::Error) -> bool {
-    #[cfg(unix)]
-    {
-        // EMFILE, ENFILE, ENOBUFS (Linux/macOS), ENOMEM
-        matches!(e.raw_os_error(), Some(24 | 23 | 105 | 55 | 12))
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = e;
-        false
-    }
-}
 
 /// Server limits; `UNLIMITED` means none.
 #[derive(Clone, Debug)]
@@ -92,8 +76,11 @@ pub trait Dispatch {
 }
 
 /// Server construction options.
+#[derive(Clone)]
 pub struct Options {
     pub limits: Limits,
+    /// The admission count shared by every connection of one `serve` call.
+    pub admitted: Arc<AtomicUsize>,
     pub tls: Option<Arc<rustls::ServerConfig>>,
 }
 
@@ -271,21 +258,26 @@ impl Reactor {
 
     /// Whether the running task is a request task of `server`.
     pub fn in_handler_of(&self, server: &Server) -> bool {
-        server.scope.contains_current()
+        server.tasks.borrow().contains(&rt::current_task())
     }
 
     /// Whether the running task is a request task of any server.
     fn in_handler(&self) -> bool {
-        rt::in_scope_task()
+        let task = rt::current_task();
+        SERVERS.with(|s| {
+            s.borrow()
+                .values()
+                .filter_map(Weak::upgrade)
+                .any(|s| s.tasks.borrow().contains(&task))
+        })
     }
 
     /// Whether the running task is a request task of a server owned by `network`.
     pub fn in_handler_of_network(&self, network: &Network) -> bool {
         SERVERS.with(|s| {
-            s.borrow()
-                .values()
-                .filter_map(Weak::upgrade)
-                .any(|s| s.owner.is_within(network) && s.scope.contains_current())
+            s.borrow().values().filter_map(Weak::upgrade).any(|s| {
+                s.owner.is_within(network) && s.tasks.borrow().contains(&rt::current_task())
+            })
         })
     }
 
@@ -306,14 +298,12 @@ impl Reactor {
             let Some(server) = conn.server.upgrade() else {
                 continue;
             };
-            let limit = -1;
+            server.sweep_handlers();
             let job = Box::into_raw(Box::new(Job { conn }));
-            // SAFETY: `request_task` takes back the boxed job leaked here.
-            let started = unsafe { server.scope.spawn(request_task, job.cast(), limit) };
-            if started.is_none() {
-                // SAFETY: the scope is closed, so the task never runs; the job is still ours.
-                drop(unsafe { Box::from_raw(job) });
-            }
+            server.st.borrow_mut().running += 1;
+            // SAFETY: `request_task` takes back the boxed job leaked above.
+            let promise = unsafe { rt::promise_start(request_task, job.cast()) };
+            server.handlers.borrow_mut().push(promise);
         }
     }
 
@@ -337,11 +327,7 @@ impl Reactor {
             None => return,
         };
         match target {
-            Target::Listener(server) => {
-                if let Some(server) = server.upgrade() {
-                    server.accept_all(self);
-                }
-            }
+            Target::Listener(_) => {}
             Target::Conn(conn) => {
                 if let Some(conn) = conn.upgrade()
                     && let Some(server) = conn.server.upgrade()
@@ -387,10 +373,15 @@ unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
     if shield {
         rt::stop_shield();
     }
+    let task = rt::current_task();
+    server.tasks.borrow_mut().insert(task);
     server.dispatch_conn(&conn, &Reactor::get());
+    server.tasks.borrow_mut().remove(&task);
     if shield {
         rt::stop_unshield();
     }
+    server.st.borrow_mut().running -= 1;
+    server.note_drain_progress();
 }
 
 /// Body of the reactor task: serve events until the program is cancelled.
@@ -446,6 +437,9 @@ impl Drop for DrainShield {
 impl Reactor {
     /// Whether any open server or connection asked to drain in-flight requests on a stop.
     fn drains(&self) -> bool {
+        if GRACED.with(Cell::get) == 0 {
+            return false;
+        }
         // Grace belongs to a server, not a connection. In particular, a server with no
         // grace must not revisit every idle connection before each reactor park.
         SERVERS.with(|servers| {
@@ -518,11 +512,7 @@ impl Reactor {
                         }
                     }
                 }
-                Target::Listener(s) => {
-                    if let Some(s) = s.upgrade() {
-                        note(s.st.borrow().accept_paused_until);
-                    }
-                }
+                Target::Listener(_) => {}
             }
         }
         self.next_sweep.set(next);
@@ -543,18 +533,6 @@ impl Reactor {
             if let Some(server) = conn.server.upgrade() {
                 server.close_conn(&conn, self);
             }
-        }
-        let listeners: Vec<Rc<Server>> = self
-            .targets
-            .borrow()
-            .values()
-            .filter_map(|t| match t {
-                Target::Listener(s) => s.upgrade(),
-                Target::Conn(_) => None,
-            })
-            .collect();
-        for server in listeners {
-            server.resume_accept(self);
         }
         let h2_conns: Vec<Rc<Conn>> = self
             .targets
@@ -577,6 +555,17 @@ impl Reactor {
 thread_local! {
     static SERVERS: RefCell<HashMap<usize, Weak<Server>>> = RefCell::new(HashMap::new());
     static NEXT_ID: Cell<usize> = const { Cell::new(1) };
+    /// Servers of this thread that were created with a nonzero grace and are not dropped yet, so
+    /// a reactor without any skips the scan of every server before each park.
+    static GRACED: Cell<usize> = const { Cell::new(0) };
+}
+
+impl Drop for Server {
+    fn drop(&mut self) {
+        if self.limits.grace.is_some_and(|g| !g.is_zero()) {
+            GRACED.with(|g| g.set(g.get() - 1));
+        }
+    }
 }
 
 // --------------------------------------------------------------------- server
@@ -585,29 +574,30 @@ pub struct Server {
     id: usize,
     me: Weak<Server>,
     pub(super) owner: Rc<Network>,
-    /// Dropped on close: macOS keeps queueing connections on a shut-down listener until the
-    /// descriptor itself closes.
-    listener: RefCell<Option<socket2::Socket>>,
-    address: String,
     pub(super) limits: Limits,
+    /// Requests queued or running across every connection of the `serve` call.
+    admitted: Arc<AtomicUsize>,
     tls: Option<Arc<rustls::ServerConfig>>,
     pub(super) dispatch: Box<dyn Dispatch>,
     st: RefCell<ServerSt>,
     token: u64,
-    /// Owns the request tasks; closing it cancels the ones still running.
-    scope: rt::Scope,
+    /// The promises of the request tasks started and not yet collected; closing the server
+    /// cancels the ones still running.
+    handlers: RefCell<Vec<i64>>,
+    /// Tasks of the requests running now, to tell a handler's own calls from others.
+    tasks: RefCell<HashSet<u64>>,
 }
 
 struct ServerSt {
     conns: IdMap<u64, Rc<Conn>>,
     closing: bool,
     closed: bool,
-    /// Requests queued or running (the admission count).
-    admitted: usize,
-    /// Set while the listener is unwatched after accept ran out of descriptors or memory.
-    accept_paused_until: Option<Instant>,
     /// Tokens of the tasks in [`Server::wait`], posted on close.
     waiters: Vec<u64>,
+    /// Token of the task in [`Server::serve_connection`], posted when a connection ends.
+    idle_waiter: Option<u64>,
+    /// Request tasks started and not yet ended; a hijacked connection (WebSocket) outlives its entry in `conns` through one.
+    running: usize,
     /// Token of a close waiting for responses to finish, posted when a connection closes or
     /// goes idle.
     draining: Option<u64>,
@@ -627,23 +617,6 @@ pub enum CloseError {
 }
 
 impl Server {
-    /// Starts serving on `address`.
-    pub fn start(
-        owner: &Rc<Network>,
-        address: &str,
-        dispatch: Box<dyn Dispatch>,
-        options: Options,
-    ) -> Result<Rc<Server>, NetErr> {
-        if owner.is_closed() {
-            return Err(NetErr::Closed);
-        }
-        if !owner.listen_allowed(address) {
-            return Err(NetErr::PermissionDenied);
-        }
-        let listener = owner.listen_tcp(address)?;
-        Self::create(owner, Some(listener), dispatch, options)
-    }
-
     /// Starts a server without a listener: it serves the connections [`Server::adopt`] hands it,
     /// accepted elsewhere (another thread's accept loop).
     pub fn start_adopting(
@@ -654,20 +627,14 @@ impl Server {
         if owner.is_closed() {
             return Err(NetErr::Closed);
         }
-        Self::create(owner, None, dispatch, options)
+        Self::create(owner, dispatch, options)
     }
 
     fn create(
         owner: &Rc<Network>,
-        listener: Option<socket2::Socket>,
         dispatch: Box<dyn Dispatch>,
         options: Options,
     ) -> Result<Rc<Server>, NetErr> {
-        let local = listener
-            .as_ref()
-            .and_then(|l| l.local_addr().ok())
-            .map(|a| crate::conn::socket_addr_text(&a))
-            .unwrap_or_default();
         let reactor = Reactor::get();
         reactor.spawn_task();
         let id = NEXT_ID.with(|n| {
@@ -676,12 +643,14 @@ impl Server {
             id
         });
         let token = reactor.token();
+        if options.limits.grace.is_some_and(|g| !g.is_zero()) {
+            GRACED.with(|g| g.set(g.get() + 1));
+        }
         let server = Rc::new_cyclic(|me| Server {
             id,
             me: me.clone(),
             owner: owner.clone(),
-            listener: RefCell::new(listener),
-            address: local,
+            admitted: options.admitted,
             limits: options.limits,
             tls: options.tls,
             dispatch,
@@ -689,33 +658,20 @@ impl Server {
                 conns: IdMap::default(),
                 closing: false,
                 closed: false,
-                admitted: 0,
-                accept_paused_until: None,
                 waiters: Vec::new(),
+                idle_waiter: None,
+                running: 0,
                 draining: None,
             }),
             token,
-            scope: rt::Scope::new(),
+            handlers: RefCell::new(Vec::new()),
+            tasks: RefCell::new(HashSet::new()),
         });
         reactor
             .targets
             .borrow_mut()
             .insert(token, Target::Listener(Rc::downgrade(&server)));
-        let watched = server
-            .listener
-            .borrow()
-            .as_ref()
-            .is_none_or(|l| reactor.add(l.as_sock(), token, Ev::IN));
-        if !watched {
-            reactor.targets.borrow_mut().remove(&token);
-            return Err(NetErr::failed("cannot watch listener"));
-        }
         SERVERS.with(|s| s.borrow_mut().insert(id, Rc::downgrade(&server)));
-        let as_resource: Rc<dyn Resource> = server.clone();
-        if !owner.own_server(&as_resource) {
-            server.close_inner();
-            return Err(NetErr::Closed);
-        }
         Ok(server)
     }
 
@@ -731,6 +687,35 @@ impl Server {
         }
         let _ = sock.set_tcp_nodelay(true);
         self.add_conn(sock, &Reactor::get());
+    }
+
+    /// Serves the connection `raw` (from `Listener::accept_raw`) on this thread and returns once it
+    /// has ended. A cancellation of the caller closes the server first: an idle connection goes at
+    /// once, a request in flight finishes within the grace period, and then the cancellation
+    /// goes on.
+    pub fn serve_connection(&self, raw: i64) {
+        self.adopt(raw);
+        let token = rt::Token::new();
+        self.st.borrow_mut().idle_waiter = Some(token.id());
+        while self.busy() {
+            if token.park(-1) & 16 != 0 {
+                self.st.borrow_mut().idle_waiter = None;
+                rt::acknowledge_cancel();
+                // A stop request must not cut the drain short: this close is the cleanup.
+                rt::shield();
+                self.close_inner();
+                rt::unshield();
+                rt::cancelled();
+            }
+        }
+        self.st.borrow_mut().idle_waiter = None;
+        self.close_inner();
+    }
+
+    /// Whether a connection is open or a request task still runs.
+    fn busy(&self) -> bool {
+        let st = self.st.borrow();
+        !st.conns.is_empty() || st.running > 0
     }
 
     pub fn id(&self) -> usize {
@@ -749,8 +734,24 @@ impl Server {
         self.st.borrow().closing
     }
 
-    pub fn address(&self) -> &str {
-        &self.address
+    /// Admits one request unless the `serve` call already runs `limits.admission` of them.
+    pub(super) fn admit(&self) -> bool {
+        if self.limits.admission == UNLIMITED {
+            return true;
+        }
+        self.admitted
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |n| {
+                (n < self.limits.admission).then_some(n + 1)
+            })
+            .is_ok()
+    }
+
+    /// Returns `n` admissions.
+    pub(super) fn unadmit(&self, n: usize) {
+        if self.limits.admission == UNLIMITED {
+            return;
+        }
+        self.admitted.fetch_sub(n, Ordering::AcqRel);
     }
 
     pub fn is_closed(&self) -> bool {
@@ -790,10 +791,6 @@ impl Server {
                 return;
             }
             st.closing = true;
-        }
-        if let Some(listener) = self.listener.borrow_mut().take() {
-            reactor.delete(listener.as_sock());
-            let _ = listener.shutdown(std::net::Shutdown::Both);
         }
         reactor.targets.borrow_mut().remove(&self.token);
         // Idle connections close now; the others after their current response.
@@ -845,9 +842,28 @@ impl Server {
             rt::post(id);
         }
         SERVERS.with(|s| s.borrow_mut().remove(&self.id));
-        if !self.scope.contains_current() {
+        if !self.tasks.borrow().contains(&rt::current_task()) {
             // What outlived the grace period is cancelled; its connections are closed already.
-            self.scope.close();
+            let handlers = std::mem::take(&mut *self.handlers.borrow_mut());
+            for &promise in &handlers {
+                rt::promise_cancel(promise);
+            }
+            for promise in handlers {
+                rt::promise_drop(promise);
+            }
+        }
+    }
+
+    /// Collects the request promises whose tasks are over.
+    fn sweep_handlers(&self) {
+        let mut handlers = self.handlers.borrow_mut();
+        let mut at = 0;
+        while at < handlers.len() {
+            if rt::promise_over(handlers[at]) {
+                rt::promise_drop(handlers.swap_remove(at));
+            } else {
+                at += 1;
+            }
         }
     }
 
@@ -862,65 +878,15 @@ impl Server {
 
     /// Wakes a close that waits for responses to finish, after a connection closed or went idle.
     fn note_drain_progress(&self) {
-        if let Some(id) = self.st.borrow().draining {
+        let st = self.st.borrow();
+        if let Some(id) = st.draining {
             rt::post(id);
         }
-    }
-
-    // ------------------------------------------------------------- accepting
-
-    fn accept_all(&self, reactor: &Reactor) {
-        loop {
-            let accepted = match self.listener.borrow().as_ref() {
-                Some(listener) => listener.accept(),
-                None => break,
-            };
-            match accepted {
-                Ok((sock, _peer)) => {
-                    if self.st.borrow().closing {
-                        continue;
-                    }
-                    if sock.set_nonblocking(true).is_err() {
-                        continue;
-                    }
-                    let _ = sock.set_tcp_nodelay(true);
-                    self.add_conn(sock, reactor);
-                }
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
-                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
-                Err(e) => {
-                    if is_resource_exhaustion(&e) {
-                        self.pause_accept(reactor);
-                    }
-                    break;
-                }
-            }
-        }
-    }
-
-    /// Stops watching the listener for a moment: out of descriptors it stays readable, and
-    /// polling it would spin the reactor while connections it could free sit unserved.
-    fn pause_accept(&self, reactor: &Reactor) {
-        let mut st = self.st.borrow_mut();
-        if st.accept_paused_until.is_none()
-            && !st.closing
-            && let Some(listener) = self.listener.borrow().as_ref()
+        if let Some(id) = st.idle_waiter
+            && st.conns.is_empty()
+            && st.running == 0
         {
-            reactor.delete(listener.as_sock());
-            st.accept_paused_until = Some(Instant::now() + ACCEPT_BACKOFF);
-            reactor.note_deadline(st.accept_paused_until);
-        }
-    }
-
-    /// Watches the listener again once the backoff passed.
-    fn resume_accept(&self, reactor: &Reactor) {
-        let mut st = self.st.borrow_mut();
-        if st.closing || st.accept_paused_until.is_none_or(|t| t > Instant::now()) {
-            return;
-        }
-        st.accept_paused_until = None;
-        if let Some(listener) = self.listener.borrow().as_ref() {
-            reactor.add(listener.as_sock(), self.token, Ev::IN);
+            rt::post(id);
         }
     }
 
@@ -1121,8 +1087,7 @@ impl Server {
             rt::cancel_task(task);
         }
         if queued > 0 {
-            let mut s = self.st.borrow_mut();
-            s.admitted = s.admitted.saturating_sub(queued);
+            self.unadmit(queued);
         }
         reactor.targets.borrow_mut().remove(&conn.token);
         reactor.ready.borrow_mut().retain(|c| !Rc::ptr_eq(c, conn));
@@ -1470,18 +1435,14 @@ impl Server {
     /// Admits a complete request for the handler.
     fn queue(&self, conn: &Rc<Conn>, reactor: &Reactor, pending: Box<Pending>) -> bool {
         {
-            let mut s = self.st.borrow_mut();
-            if s.closing {
-                drop(s);
+            if self.st.borrow().closing {
                 self.respond_error(conn, reactor, 503, "server closed", true);
                 return false;
             }
-            if s.admitted >= self.limits.admission {
-                drop(s);
+            if !self.admit() {
                 self.respond_error(conn, reactor, 503, "server busy", !pending.keep_alive);
                 return false;
             }
-            s.admitted += 1;
         }
         {
             let mut st = conn.st.borrow_mut();
@@ -1620,10 +1581,7 @@ impl Server {
         conn.st.borrow_mut().task = rt::current_task();
         super::exchange::run(self, conn, pending);
         conn.st.borrow_mut().task = 0;
-        {
-            let mut s = self.st.borrow_mut();
-            s.admitted = s.admitted.saturating_sub(1);
-        }
+        self.unadmit(1);
     }
 }
 
@@ -1751,14 +1709,66 @@ pub(crate) mod tests {
         }
     }
 
-    pub fn start(options: Options) -> (Rc<Network>, Rc<Server>) {
+    /// A server and the address its test acceptor listens on.
+    pub struct Started {
+        server: Rc<Server>,
+        address: String,
+    }
+
+    impl std::ops::Deref for Started {
+        type Target = Server;
+        fn deref(&self) -> &Server {
+            &self.server
+        }
+    }
+
+    impl Started {
+        pub fn address(&self) -> &str {
+            &self.address
+        }
+    }
+
+    /// Accepts connections for the server until the listener fails, as `serve`'s accept loop does.
+    unsafe extern "C-unwind" fn accept_task(arg: *mut u8) {
+        // SAFETY: `arg` is the box leaked by `start`.
+        let (listener, server) =
+            *unsafe { Box::from_raw(arg.cast::<(Rc<crate::conn::Listener>, Weak<Server>)>()) };
+        while let Ok(raw) = listener.accept_raw(None) {
+            let Some(server) = server.upgrade() else {
+                break;
+            };
+            server.adopt(raw);
+        }
+    }
+
+    pub fn start(options: Options) -> (Rc<Network>, Started) {
+        start_with(Box::new(Buffered(App)), options)
+    }
+
+    /// Starts a server for `dispatch` fed by a test acceptor.
+    pub fn start_with(dispatch: Box<dyn Dispatch>, options: Options) -> (Rc<Network>, Started) {
         let net = Network::new_root();
-        let server = Server::start(&net, "127.0.0.1:0", Box::new(Buffered(App)), options).unwrap();
-        (net, server)
+        let server = Server::start_adopting(&net, dispatch, options).unwrap();
+        let listener = Rc::new(crate::conn::Listener::new(
+            net.clone(),
+            net.listen_tcp("127.0.0.1:0").unwrap(),
+            None,
+            None,
+            None,
+        ));
+        let address = listener.address().to_string();
+        let arg = Box::into_raw(Box::new((listener, Rc::downgrade(&server)))).cast::<u8>();
+        // SAFETY: `accept_task` takes back the box.
+        unsafe { rt::spawn_detached(accept_task, arg) };
+        (net, Started { server, address })
     }
 
     pub fn opts(limits: Limits) -> Options {
-        Options { limits, tls: None }
+        Options {
+            limits,
+            admitted: Default::default(),
+            tls: None,
+        }
     }
 
     fn get(path: &str) -> Vec<u8> {
@@ -1783,7 +1793,6 @@ pub(crate) mod tests {
         let net = Network::new_root();
         let server =
             Server::start_adopting(&net, Box::new(Buffered(App)), opts(Limits::default())).unwrap();
-        assert_eq!(server.address(), "");
         let listener = crate::conn::Listener::new(
             net.clone(),
             net.listen_tcp("127.0.0.1:0").unwrap(),
@@ -2013,25 +2022,6 @@ pub(crate) mod tests {
         );
     }
 
-    #[cfg(unix)]
-    #[test]
-    fn accept_pauses_only_for_resource_exhaustion() {
-        let emfile = std::io::Error::from_raw_os_error(24);
-        let reset = std::io::Error::from_raw_os_error(104);
-        assert!(is_resource_exhaustion(&emfile));
-        assert!(!is_resource_exhaustion(&reset));
-    }
-
-    #[test]
-    fn close_stops_accepting() {
-        let (net, server) = start(opts(Limits::default()));
-        let addr = server.address().to_string();
-        server.close().unwrap();
-        assert!(server.is_closed());
-        assert!(TcpStream::connect(&addr).is_err());
-        net.close();
-    }
-
     #[test]
     fn drain_policy_tracks_servers_through_connection_lifetimes() {
         // The former target traversal is an independent oracle for the shutdown policy.
@@ -2059,7 +2049,7 @@ pub(crate) mod tests {
             ..Limits::default()
         }));
         let _plain_client = TcpStream::connect(plain.address()).unwrap();
-        plain.accept_all(&reactor);
+        crate::wait::sleep(Duration::from_millis(50));
         assert_policy(&reactor, false);
 
         for hijack in [false, true] {
@@ -2069,7 +2059,7 @@ pub(crate) mod tests {
             }));
             assert_policy(&reactor, true);
             let _client = TcpStream::connect(server.address()).unwrap();
-            server.accept_all(&reactor);
+            crate::wait::sleep(Duration::from_millis(50));
             let conn = server.st.borrow().conns.values().next().unwrap().clone();
             assert_policy(&reactor, true);
 
@@ -2096,7 +2086,7 @@ pub(crate) mod tests {
             ..Limits::default()
         }));
         assert_policy(&reactor, true);
-        let weak = Rc::downgrade(&server);
+        let weak = Rc::downgrade(&server.server);
         drop(server);
         assert!(weak.upgrade().is_none());
         // Both registries can retain dead weak entries; neither should enable draining.

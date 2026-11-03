@@ -753,7 +753,7 @@ fn unix_now() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::server::tests::{exchange as raw, with_client};
-    use super::server::{Dispatch, Limits, Options, Outcome, Server};
+    use super::server::{Dispatch, Limits, Outcome};
     use super::*;
     use crate::net::Network;
 
@@ -834,11 +834,8 @@ mod tests {
         }
     }
 
-    fn start(limits: Limits) -> (Rc<Network>, Rc<Server>) {
-        let net = Network::new_root();
-        let options = Options { limits, tls: None };
-        let server = Server::start(&net, "127.0.0.1:0", Box::new(Streamer), options).unwrap();
-        (net, server)
+    fn start(limits: Limits) -> (Rc<Network>, super::server::tests::Started) {
+        super::server::tests::start_with(Box::new(Streamer), super::server::tests::opts(limits))
     }
 
     #[test]

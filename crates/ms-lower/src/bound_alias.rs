@@ -16,6 +16,7 @@ pub(crate) struct BoundAliasJob {
     expr: Expr,
     hir: Rc<ModuleHir>,
     subst: ct::Subst,
+    variant: crate::cx::Variant,
     capture: LambdaCapture,
 }
 
@@ -61,6 +62,7 @@ impl FnLower<'_> {
                 expr: e.clone(),
                 hir: self.hir.clone(),
                 subst: self.subst.clone(),
+                variant: self.variant,
                 capture,
             })),
         });
@@ -86,6 +88,7 @@ pub(crate) fn build_bound_alias(
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), job.subst.clone(), file, proto.ret);
+    fl.variant = job.variant;
     let params = fl.b.params();
     let values: Vec<_> = captures
         .iter()

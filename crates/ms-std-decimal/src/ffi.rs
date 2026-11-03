@@ -4,7 +4,7 @@
 use crate::{Dec, Mode, Overflow, RoundFail, overflow_message};
 use alloc::string::String;
 use ms_rt::ffi::{
-    Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, Status, abi_record, fault, native,
+    Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, Status, abi_record, fault, fault_kind, native,
 };
 
 abi_record! {
@@ -39,7 +39,10 @@ impl From<Dec> for DecRec {
 fn checked(r: Result<Dec, Overflow>, operation: &str, left: Dec, right: Dec) -> Dec {
     match r {
         Ok(v) => v,
-        Err(Overflow::Magnitude) => fault(&overflow_message(operation, &left, &right)),
+        Err(Overflow::Magnitude) => fault_kind(
+            ms_rt::glue::FaultKind::Overflow,
+            &overflow_message(operation, &left, &right),
+        ),
     }
 }
 
@@ -70,11 +73,15 @@ macro_rules! binary {
     };
 }
 
+// ms: leaf
 binary!(msstd_decimal_add, add, "+");
+// ms: leaf
 binary!(msstd_decimal_subtract, subtract, "-");
+// ms: leaf
 binary!(msstd_decimal_multiply, multiply, "*");
 
 native! {
+    // ms: leaf
     fn msstd_decimal_literal(text: &str) -> out DecRec {
         Dec::parse(text)
             .unwrap_or_else(|| fault("invalid or inexact Decimal literal"))
@@ -82,45 +89,57 @@ native! {
     }
 
     /// The Decimal of runtime text, or `InvalidInput` when it is malformed or not exactly representable.
+    // ms: leaf
     fn msstd_decimal_parse(text: &str) -> Result<DecRec, RoundFail> {
         Dec::parse(text)
             .map(DecRec::from)
             .ok_or(RoundFail::InvalidInput)
     }
 
+    // ms: leaf
     fn msstd_decimal_from_int(n: i64) -> out DecRec {
         Dec::from_int(n).into()
     }
 
+    // ms: leaf
     fn msstd_decimal_from_uint(n: i64) -> out DecRec {
         Dec::from_uint(n as u64).into()
     }
 
+    // ms: leaf
     fn msstd_decimal_divide(a: &DecRec, b: &DecRec) -> out DecRec {
         let (a, b) = (Dec::from(a), Dec::from(b));
         if b.is_zero() {
-            fault("Decimal./: division by zero; right must be nonzero, found 0");
+            fault_kind(
+                ms_rt::glue::FaultKind::DivisionByZero,
+                "Decimal./: division by zero; right must be nonzero, found 0",
+            );
         }
         checked(a.divide(&b), "/", a, b).into()
     }
 
+    // ms: leaf
     fn msstd_decimal_negate(a: &DecRec) -> out DecRec {
         Dec::from(a).negate().into()
     }
 
+    // ms: leaf
     fn msstd_decimal_compare(a: &DecRec, b: &DecRec) -> i64 {
         Dec::from(a).compare(&Dec::from(b))
     }
 
+    // ms: leaf
     fn msstd_decimal_to_string(a: &DecRec) -> String {
         Dec::from(a).render()
     }
 
+    // ms: leaf
     fn msstd_decimal_to_float(a: &DecRec) -> f64 {
         Dec::from(a).to_float()
     }
 
     /// `true` and `out` written when the truncated value fits an `Int`.
+    // ms: leaf
     fn msstd_decimal_truncate_to_int(a: &DecRec, out: Out<i64>) -> bool {
         match Dec::from(a).truncate_to_int() {
             Some(n) => {
@@ -131,6 +150,7 @@ native! {
         }
     }
 
+    // ms: leaf
     fn msstd_decimal_round(
         value: &DecRec,
         places: i64,
@@ -142,6 +162,7 @@ native! {
             .map(DecRec::from)
     }
 
+    // ms: leaf
     fn msstd_decimal_to_fixed(
         value: &DecRec,
         digits: i64,

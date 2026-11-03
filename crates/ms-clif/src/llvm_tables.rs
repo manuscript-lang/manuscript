@@ -466,17 +466,6 @@ pub fn read(
         d.ranges.sort_by_key(|r| r.0);
         d.ranges.dedup_by(|b, a| (a.1, a.2, a.3) == (b.1, b.2, b.3));
     }
-    if std::env::var_os("MS_DEBUG_TABLES").is_some() {
-        for (i, sc) in scopes.iter().enumerate() {
-            eprintln!("scope {} {:?}", i + 1, sc);
-        }
-        for d in &dbg {
-            eprintln!(
-                "fn {} file={} line={} size={} ranges={:?}",
-                d.name, d.file, d.line, d.size, d.ranges
-            );
-        }
-    }
     Ok(Tables { dbg, scopes })
 }
 
@@ -489,7 +478,7 @@ mod tests {
     use std::process::Command;
 
     fn lines_for(triple: &str) -> Option<(BTreeSet<u32>, usize)> {
-        let tools = llvm_tools().ok()??;
+        let tools = llvm_tools(&crate::BuildOptions::default()).ok()??;
         let dir = std::env::temp_dir().join(format!("ms-tables-{}-{triple}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let object = dir.join("m.o");

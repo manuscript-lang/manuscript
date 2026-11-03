@@ -1,7 +1,7 @@
 //! Linker driver. Every platform runs the `lld` bundled in `ms` (Linux over glibc 2.28 stubs, or musl with `--static`, macOS over generated
 //! SDK stubs, Windows over the mingw-w64 CRT), so no C toolchain or SDK is involved.
 
-use crate::Error;
+use crate::{BuildOptions, Error};
 use std::path::{Path, PathBuf};
 
 mod bundled;
@@ -9,29 +9,24 @@ mod bundled;
 mod fetch;
 mod lld;
 pub(crate) use bundled::RUNTIME_HOT_IR;
-pub use lld::{is_static, llvm_tools, set_static};
+pub use lld::{is_static, llvm_tools};
 
 /// Links `object` and the runtime inputs (objects or static libraries), in order, into the executable `out`.
 pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error> {
-    link_with(object, inputs, out, false)
+    link_with(object, inputs, out, false, &BuildOptions::default())
 }
 
 /// Like [`link_all`]; `strip` also drops the symbol table (smallest executable, no symbol names
-/// for profilers or backtraces).
-pub fn link_with(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
-    link_libc(object, inputs, out, strip, is_static())
-}
-
-/// Like [`link_with`], choosing the Linux libc: static musl when `musl`, else glibc 2.28 stubs. The
-/// runtime in `inputs` must be the build for that libc.
-pub fn link_libc(
+/// for profilers or backtraces). `build.static_musl` links static musl instead of glibc 2.28 stubs,
+/// and the runtime in `inputs` must be the build for that libc.
+pub fn link_with(
     object: &Path,
     inputs: &[&Path],
     out: &Path,
     strip: bool,
-    musl: bool,
+    build: &BuildOptions,
 ) -> Result<(), Error> {
-    lld::link(object, inputs, out, strip, musl)?;
+    lld::link(object, inputs, out, strip, build)?;
     place_executable(out)?;
     emit_debug_companion(object, inputs, out)
 }

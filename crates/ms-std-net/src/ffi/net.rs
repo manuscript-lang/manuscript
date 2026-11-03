@@ -47,12 +47,14 @@ native! {
     }
 
     /// `@std/data/json.ms` reading an `IpAddress` from its string form; the error text is dropped.
+    // ms: leaf
     fn msstd_json_dec_ip(text: &str, out: Out<Object<IpH>>) -> Result<(), StatusCode> {
         out.write(Object(IpH(crate::ip::parse_ip(text).map_err(|_| StatusCode(1))?)));
         Ok(())
     }
 
     /// `@std/data/json.ms` reading a `Cidr` from its string form; the error text is dropped.
+    // ms: leaf
     fn msstd_json_dec_cidr(text: &str, out: Out<Object<Cidr>>) -> Result<(), StatusCode> {
         out.write(Object(Cidr::parse(text).map_err(|_| StatusCode(1))?));
         Ok(())

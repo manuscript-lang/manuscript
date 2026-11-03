@@ -25,8 +25,12 @@ pub type Ty = Rc<Type>;
 /// The kind of a type .
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Kind {
-    /// `Int`, `Bool`, ... and the `<invalid>` marker.
+    /// `Int`, `Bool`, ...
     Primitive,
+    /// The `<invalid>` marker of an unresolved or erroneous type.
+    Invalid,
+    /// The `<inferred>` placeholder of a result not yet known.
+    Inferred,
     /// A type parameter.
     Variable,
     /// A record type (`type T:` with fields).
@@ -46,6 +50,8 @@ impl Kind {
     pub fn as_str(self) -> &'static str {
         match self {
             Kind::Primitive => "primitive",
+            Kind::Invalid => "invalid",
+            Kind::Inferred => "inferred",
             Kind::Variable => "variable",
             Kind::Record => "record",
             Kind::Alternative => "alternative",
@@ -257,6 +263,21 @@ impl Type {
     /// The variable's default.
     pub fn default_ty(&self) -> Option<Ty> {
         self.default.borrow().clone()
+    }
+
+    /// The `<invalid>` marker.
+    pub fn is_invalid(&self) -> bool {
+        self.kind == Kind::Invalid
+    }
+
+    /// The `<inferred>` placeholder.
+    pub fn is_inferred(&self) -> bool {
+        self.kind == Kind::Inferred
+    }
+
+    /// The `Never` primitive.
+    pub fn is_never(&self) -> bool {
+        self.kind == Kind::Primitive && self.id == "Never"
     }
 
     /// Standard type test: id is `@std/<name>`.
@@ -576,8 +597,8 @@ impl Prims {
             string: p("String"),
             unit: p("Unit"),
             never: p("Never"),
-            invalid: p("<invalid>"),
-            inferred: p("<inferred>"),
+            invalid: Rc::new(Type::new(n("<invalid>"), n("<invalid>"), Kind::Invalid)),
+            inferred: Rc::new(Type::new(n("<inferred>"), n("<inferred>"), Kind::Inferred)),
         }
     }
 }
@@ -591,8 +612,6 @@ pub fn primitive(name: &str) -> Ty {
         "String" => p.string.clone(),
         "Unit" => p.unit.clone(),
         "Never" => p.never.clone(),
-        "<invalid>" => p.invalid.clone(),
-        "<inferred>" => p.inferred.clone(),
         other => Rc::new(Type::new(n(other), n(other), Kind::Primitive)),
     })
 }
@@ -677,7 +696,11 @@ pub fn never() -> Ty {
 }
 /// The `<invalid>` marker type.
 pub fn invalid() -> Ty {
-    primitive("<invalid>")
+    PRIMS.with(|p| p.invalid.clone())
+}
+/// The `<inferred>` placeholder type.
+pub fn inferred() -> Ty {
+    PRIMS.with(|p| p.inferred.clone())
 }
 
 /// A function type.
@@ -816,7 +839,7 @@ pub fn same_opt(a: &Option<Ty>, b: &Option<Ty>) -> bool {
 /// `compatible`: the actual type is `Never` or the same as expected.
 pub fn compatible(actual: &Option<Ty>, expected: &Ty) -> bool {
     match actual {
-        Some(a) => a.id == "Never" || same(a, expected),
+        Some(a) => a.is_never() || same(a, expected),
         None => false,
     }
 }
@@ -1310,12 +1333,12 @@ pub(crate) fn type_any<const CALLABLES: bool>(t: &Ty, matches: impl Fn(&Ty) -> b
 
 /// Whether `t` mentions `<invalid>` anywhere.
 pub fn invalid_ty(t: &Ty) -> bool {
-    type_any::<true>(t, |t| t.id == "<invalid>")
+    type_any::<true>(t, |t| t.is_invalid())
 }
 
 /// Whether the top-level id is `<invalid>`.
 pub fn is_invalid_id(t: &Ty) -> bool {
-    t.id == "<invalid>"
+    t.is_invalid()
 }
 
 /// Whether `t` mentions a variable of `variables`.

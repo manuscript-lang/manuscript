@@ -459,21 +459,31 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     Ty::UNIT
                 };
                 let (mut noreturn, mut pure_, mut fresh) = (false, false, false);
+                let (mut leaf, mut reads) = (false, false);
+                let mut role = ExternRole::None;
                 while !c.done() {
                     match c.ident()?.as_str() {
                         "noreturn" => noreturn = true,
                         "pure" => pure_ = true,
                         "fresh" => fresh = true,
-                        o => return c.err(format!("unknown extern attribute {o}")),
+                        "leaf" => leaf = true,
+                        "reads" => reads = true,
+                        o => match ExternRole::from_name(o) {
+                            Some(r) => role = r,
+                            None => return c.err(format!("unknown extern attribute {o}")),
+                        },
                     }
                 }
-                m.externs.push(ExternDef {
+                m.push_extern(ExternDef {
                     name,
                     params,
                     ret,
                     noreturn,
                     pure_,
                     fresh,
+                    role,
+                    leaf,
+                    reads,
                 });
             }
             "global" => {
@@ -538,6 +548,8 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 match c.ident()?.as_str() {
                     "export" => f.linkage = Linkage::Export,
                     "method" => f.kind = FuncKind::Method,
+                    "sort_cmp" => f.sort = SortThunk::Generic,
+                    "sort_cmp_for" => f.sort = SortThunk::Specialized,
                     "inline" => {
                         c.expect_p('(')?;
                         f.inline = match c.ident()?.as_str() {
@@ -1031,15 +1043,10 @@ fn parse_line(
         }
         ImmKind::Ext => {
             let n = c.at()?;
-            Imm::Ext(ExtId(
-                m.externs
-                    .iter()
-                    .position(|e| e.name == n)
-                    .ok_or_else(|| ParseError {
-                        line: c.line,
-                        message: format!("unknown extern @{n}"),
-                    })? as u32,
-            ))
+            Imm::Ext(m.extern_by_name(&n).ok_or_else(|| ParseError {
+                line: c.line,
+                message: format!("unknown extern @{n}"),
+            })?)
         }
         ImmKind::Vtable => {
             let n = c.at()?;

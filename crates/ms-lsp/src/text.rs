@@ -266,6 +266,24 @@ impl EditorToken<'_> {
     }
 }
 
+/// Finds a checked declaration's name on the line after `offset` (skipping a
+/// newline exactly at `offset`); the position of a header's declared name,
+/// whatever precedes it.
+pub fn header(source: &str, offset: usize, name: &str) -> Option<usize> {
+    let tail = source.get(offset..)?;
+    let newline = if tail.starts_with("\r\n") {
+        2
+    } else {
+        usize::from(tail.starts_with('\n'))
+    };
+    let start = offset + newline;
+    let line = source[start..].split('\n').next()?;
+    editor_tokens(line)
+        .into_iter()
+        .find(|token| token.kind == EditorKind::Name && token.text == name)
+        .map(|token| start + token.start)
+}
+
 /// Scans tolerating unfinished strings and delimiters. It is only a cursor
 /// context scanner; semantic types and visibility always come from the checker.
 pub fn editor_tokens(source: &str) -> Vec<EditorToken<'_>> {

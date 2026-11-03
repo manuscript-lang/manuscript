@@ -1,9 +1,10 @@
 import BigInt from "@std/math/math.ms"
 import Bytes from "@std/bytes.ms"
 import Duration, milliseconds, monotonic, now, sleep from "@std/os/time.ms"
-import ReadStream from "@std/io/io.ms"
+import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
+import Promise, adopt from "@std/concurrency/promise.ms"
+import msrt_promise_finished from "@std/internal/promises.ms"
 import Timestamp from "@std/os/time.ms"
-import WriteStream from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 import (
     msstd_path_basename,
@@ -24,8 +25,6 @@ import (
     msstd_path_parse,
     msstd_path_format,
     msstd_path_matches_glob,
-    msstd_fs_file_reader,
-    msstd_fs_file_writer,
     msstd_io_close,
     msstd_fs_file_clone,
     msstd_io_read,
@@ -229,6 +228,34 @@ export type FileHandle:
     // The runtime handle for the open file; it is released by `close` and owned by this value.
     native: NativeFile
 
+// Chunks of a file from its current position, until the end.
+type FileSource:
+    file: FileHandle
+
+impl Source[Bytes] for FileSource:
+    var fn next() Bytes?!:
+        return self.file.read(none)
+
+    var fn close() Unit!:
+        return self.file.close()
+
+// Complete writes to a file; `drain` synchronizes it.
+type FileSink:
+    file: FileHandle
+
+impl Sink[Bytes] for FileSink:
+    var fn put(value: Bytes) Unit!:
+        return self.file.write_bytes(value)
+
+    var fn drain() Promise[Unit]:
+        return adopt[Unit](msrt_promise_finished())
+
+    fn buffered() Int:
+        return 0
+
+    var fn close() Unit!:
+        return self.file.close()
+
 impl Closeable for FileHandle:
     // Closes the file, interrupts calls in progress, and waits for them to stop.
     // Safe to call repeatedly; later operations return Closed.
@@ -246,12 +273,14 @@ impl FileHandle:
         return msstd_fs_file_clone(self.native)
 
     // Adapts this handle to `Error`/Optional chunk reads; closing either view closes all aliases.
-    fn reader() ReadStream:
-        return msstd_fs_file_reader(self.native)
+    fn reader() ReadStream[Bytes]!:
+        let own = try self.clone()
+        return ok(stream[Bytes](FileSource(own)))
 
     // Adapts complete writes to `Error`/Unit; flush synchronizes the file.
-    fn writer() WriteStream:
-        return msstd_fs_file_writer(self.native)
+    fn writer() WriteStream[Bytes]!:
+        let own = try self.clone()
+        return ok(writer[Bytes](FileSink(own)))
 
     // Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
     fn read(max_bytes: Int?) Bytes?!:

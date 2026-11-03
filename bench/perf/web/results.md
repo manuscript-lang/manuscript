@@ -196,3 +196,20 @@ The CPU-bound handler scales 2.3x on two cores (the shared-listener workers reac
 | Go (2 CPUs) | 99k-104k | not run | 42k-44k | 3.2-4.1 ms | 92k-97k |
 
 Two workers scale the CPU-bound `/top` row 2.3x and tiny requests 1.4x to 1.6x, and pass Go on every row on the same two CPUs, with a lower p99. Resident memory is 56 MB with one worker and 58 MB with two (this includes the `/io` payloads). Not measured: skewed load (a few long-lived connections) and more than two server CPUs, which need a larger machine than this VM.
+
+## 2026-11-03, `serve` on promises
+
+`serve(address, handler, HttpServerOptions(cores: n))`: the accept loop is a promise and each connection is a promise the runtime places on a scheduler thread (`main.ms` takes `[threads]` as `cores`). Compared on the same machine, back to back, with the code before this change (`04b3acec`, `serve_cores` with `n` workers). Shared 4-CPU Linux VM (+/-10% between runs), `MS_THREADS=n`, server on CPUs 0-1 and load on 2-3 (n = 1, 2) or both sharing all four (n = 4), 64 keep-alive connections, 4 s per row, two rounds (`/user/42` only for n = 1, 2). Commands: `taskset` as in `run.sh`, load generator `bench/perf/web/load`.
+
+| Threads | Row | Before | After |
+| ---: | --- | ---: | ---: |
+| 1 | `/health` req/s | 139k, 145k | 123k, 127k |
+| 1 | `/user/42` req/s | 124k, 131k | 122k, 123k |
+| 1 | `/top?n=10` req/s | 25.9k, 25.6k | 24.5k, 26.3k |
+| 2 | `/health` req/s | 217k, 213k | 210k, 226k |
+| 2 | `/user/42` req/s | 227k, 232k | 230k, 231k |
+| 2 | `/top?n=10` req/s | 58.6k, 56.9k | 57.7k, 58.4k |
+| 4 | `/health` req/s | 213k, 206k | 196k, 220k |
+| 4 | `/top?n=10` req/s | 92k, 93k | 89k, 89k |
+
+Two and four threads are at parity. One thread is about 10% slower on `/health` (the tiny-request row); CPU-bound rows are unchanged. Not yet explained: the keep-alive path is the same Rust code, and the extra costs per connection (a server object, a promise) do not repeat per request. The 2026-10-31 table above ran on another day and is not comparable row for row.
