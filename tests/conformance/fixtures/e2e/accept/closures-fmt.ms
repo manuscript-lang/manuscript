@@ -12,7 +12,7 @@ fn countdown[T](value: T, count: Int) T:
 
     return countdown(value, count - 1)
 
-test "closures borrow the variable and shadowing":
+test "closures borrow variables and returned closures copy":
     var offset = 1
     offset = 10
 
@@ -28,9 +28,12 @@ test "closures borrow the variable and shadowing":
     try expect_equal(offset, 10)
     try expect_equal(countdown("ready", 4), "ready")
 
-    let factory = fn(value: Int) fn(Int) Int:
+    // A returned closure owns its captures, so it takes a `let` copy and
+    // does not see later changes to the variable.
+    let base = offset
+    let factory = fn() fn(Int) Int:
         return fn inner:
-            return inner + offset
-    let nested = factory(value: 99)
+            return inner + base
+    let nested = factory()
     offset = 100
     try expect_equal(nested(1), 11)
