@@ -1101,9 +1101,6 @@ impl Checker {
             // Equality handles cycles; structural hashing requires an acyclic shape.
             return property != Property::Hashable;
         }
-        if state.active.len() > 200 {
-            return false;
-        }
         state.active.insert(key);
         let result = self.property_compute(t, property, state);
         state.active.remove(&key);
