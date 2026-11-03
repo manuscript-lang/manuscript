@@ -139,19 +139,6 @@ impl Stream {
         stream
     }
 
-    /// Picks up what standard-input handles dropped since this one was made had read ahead.
-    pub fn take_stashed(&mut self) {
-        let (bytes, head) = take_stdin_pending();
-        if head >= bytes.len() {
-            return;
-        }
-        if self.available().is_empty() {
-            (self.pending, self.head) = (bytes, head);
-        } else {
-            self.pending.extend_from_slice(&bytes[head..]);
-        }
-    }
-
     fn available(&self) -> &[u8] {
         &self.pending[self.head..]
     }

@@ -128,9 +128,14 @@ impl FnLower<'_> {
             opt_ty,
             &mut |s| {
                 let f = s.b.opt_get(user);
-                let held = s.owned(Val { v: f, own: false });
+                // The wrapper only lends the predicate for the runtime call: it captures the
+                // address of a stack copy of the borrowed value, which nothing drops.
+                let slot =
+                    s.b.emit(Op::Slot, &[], Imm::Ty(fn_ty), Some(MTy::PTR))
+                        .expect("slot");
+                s.b.emit(Op::Store, &[slot, f], Imm::None, None);
                 let c =
-                    s.b.emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(fty))
+                    s.b.emit(Op::ClosureNew, &[slot], Imm::Func(thunk), Some(fty))
                         .expect("closure");
                 Ok(Some(s.b.opt_some(c)))
             },
@@ -168,12 +173,15 @@ impl FnLower<'_> {
             .transpose()?;
         let mut b = FuncBuilder::new(self.b.m, "walk.predicate", ps, MTy::BOOL);
         b.func_mut().kind = FuncKind::Closure {
-            captures: vec![user_ty],
+            captures: vec![MTy::PTR],
         };
         let p = b.params();
-        let f = b
-            .emit(Op::ClosureCap, &[p[0]], Imm::Idx(0), Some(user_ty))
+        let at = b
+            .emit(Op::ClosureCap, &[p[0]], Imm::Idx(0), Some(MTy::PTR))
             .expect("capture");
+        let f = b
+            .emit(Op::Load, &[at], Imm::Ty(user_ty), Some(user_ty))
+            .expect("load");
         let text = |b: &mut FuncBuilder<'_>, v: Value| {
             b.emit(Op::Copy, &[v], Imm::None, Some(MTy::STR))
                 .expect("copy")
