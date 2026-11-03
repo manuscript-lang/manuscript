@@ -118,15 +118,34 @@ mod tests {
         // SAFETY: all pointers are live; results are released below.
         unsafe {
             assert_eq!(
-                msstd_compress_compress(&input, &f, 6, ms_rt::ffi::HasRaw(0), 0, packed.as_mut_ptr()),
+                msstd_compress_compress(
+                    &input,
+                    &f,
+                    6,
+                    ms_rt::ffi::HasRaw(0),
+                    0,
+                    packed.as_mut_ptr()
+                ),
                 0
             );
             assert_eq!(
-                msstd_compress_decompress(packed.as_ptr(), &f, ms_rt::ffi::HasRaw(1), 16, plain.as_mut_ptr()),
+                msstd_compress_decompress(
+                    packed.as_ptr(),
+                    &f,
+                    ms_rt::ffi::HasRaw(1),
+                    16,
+                    plain.as_mut_ptr()
+                ),
                 ms_rt::ffi::STATUS_LIMIT_EXCEEDED
             );
             assert_eq!(
-                msstd_compress_decompress(packed.as_ptr(), &f, ms_rt::ffi::HasRaw(0), 0, plain.as_mut_ptr()),
+                msstd_compress_decompress(
+                    packed.as_ptr(),
+                    &f,
+                    ms_rt::ffi::HasRaw(0),
+                    0,
+                    plain.as_mut_ptr()
+                ),
                 0
             );
             assert_eq!(bytes_ref(plain.as_ptr()), b"hello hello hello");
@@ -160,7 +179,10 @@ mod tests {
             msstd_compress_encoder_push(enc, &data, head.as_mut_ptr());
             msstd_compress_encoder_end(enc, tail.as_mut_ptr());
             let packed = [bytes_ref(head.as_ptr()), bytes_ref(tail.as_ptr())].concat();
-            assert_eq!(msstd_compress_decoder_new(&f, ms_rt::ffi::HasRaw(0), 0, dec.as_mut_ptr()), 0);
+            assert_eq!(
+                msstd_compress_decoder_new(&f, ms_rt::ffi::HasRaw(0), 0, dec.as_mut_ptr()),
+                0
+            );
             let dec = dec.assume_init();
             let chunk = bytes(&packed);
             assert_eq!(

@@ -16,9 +16,9 @@ pub use ms_rt_abi::{ErrSlot, HasRaw};
 pub use native::{
     AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, BytesList, BytesVec, EntryFilter, ErrOut,
     Failure, FromAbi, Global, Handed, Handler, Has, IdArray, IntList, IntMap, IntoAbi, Mut, ObjBox,
-    ObjCell, ObjMut, ObjRef, ObjShare, ObjSlot, Object, OptInt, Out, Own, PairFilter,
-    RecList, Ref, Status, StatusCode, Str, StrArray, StrMap, StringList, StringTable, Text,
-    TextList, argv, monotonic_nanos, start_nanos,
+    ObjCell, ObjMut, ObjRef, ObjShare, ObjSlot, Object, OptInt, Out, Own, PairFilter, RecList, Ref,
+    Status, StatusCode, Str, StrArray, StrMap, StringList, StringTable, Text, TextList, argv,
+    monotonic_nanos, start_nanos,
 };
 
 use ms_rt_abi::KIND_LIST;

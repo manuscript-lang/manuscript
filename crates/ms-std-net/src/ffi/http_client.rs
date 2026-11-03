@@ -11,8 +11,8 @@ use crate::http::headers::Headers;
 use crate::http::url;
 use crate::wait::Deadline;
 use ms_rt::ffi::{
-    Bytes, BytesList, ErrOut, Has, ObjRef, ObjSlot, Object, OptInt, Out, StatusCode, Str, abi_record,
-    native,
+    Bytes, BytesList, ErrOut, Has, ObjRef, ObjSlot, Object, OptInt, Out, StatusCode, Str,
+    abi_record, native,
 };
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
