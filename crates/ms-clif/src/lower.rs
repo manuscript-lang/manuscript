@@ -13,7 +13,7 @@ use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_SLOT};
 use ms_rt_abi::{
-    ASCII_CHAR_STRIDE, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
+    ASCII_CHAR_STRIDE, STR_ASCII, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
 };
 use std::collections::HashMap;
@@ -3099,7 +3099,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         );
         // `x = a.tagged ^ b.tagged`. With `0 < x < 1 << 62` both have one kind and the low bits
         // differ: different lengths, or for inline strings different bytes. Either way unequal.
+        // The ASCII flag may differ between equal strings, so it is masked out.
         let x = self.b.ins().bxor(a[1], b[1]);
+        let x = self.b.ins().band_imm_s(x, !(STR_ASCII as i64));
         let below = self.b.ins().iadd_imm_s(x, -1);
         let differ =
             self.b

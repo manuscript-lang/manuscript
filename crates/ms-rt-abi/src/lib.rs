@@ -86,7 +86,11 @@ pub const STR_INLINE_LEN_SHIFT: u32 = 56;
 /// Longest inline string.
 pub const STR_INLINE_MAX: usize = 15;
 /// Mask of the byte length in the second word (owned, static and view strings).
-pub const STR_LEN_MASK: usize = (1 << 62) - 1;
+pub const STR_LEN_MASK: usize = STR_ASCII - 1;
+/// Flag in the second word of an owned, static or view string: every byte is ASCII, so the scalar
+/// count is the byte length and a scalar index is a byte index. Set when the string is built;
+/// clear means unknown, never non-ASCII. Equal strings may differ in this bit.
+pub const STR_ASCII: usize = 1 << 61;
 
 impl StrVal {
     /// An owned string over the allocation at `ptr`.
@@ -164,6 +168,20 @@ impl StrVal {
         } else {
             self.ptr_word
         }
+    }
+
+    /// Whether the string is flagged as all ASCII (see [`STR_ASCII`]); inline strings are not
+    /// flagged and are checked by their bits instead.
+    #[inline(always)]
+    pub const fn flagged_ascii(&self) -> bool {
+        !self.is_inline() && self.tagged & STR_ASCII != 0
+    }
+
+    /// This string flagged as all ASCII; the caller has checked the bytes. Not for inline strings.
+    #[inline(always)]
+    pub const fn with_ascii(mut self) -> StrVal {
+        self.tagged |= STR_ASCII;
+        self
     }
 
     /// Whether the string has no bytes.
