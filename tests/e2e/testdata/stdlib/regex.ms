@@ -12,11 +12,10 @@ test "regex receivers execute matching replacement and empty results":
 test "regex rejects invalid expressions and exhausted budgets":
     let invalid = compile("[")
     try expect_false(not invalid.is_error())
+    try expect_equal(invalid.err().kind, ErrorCategory.InvalidData)
     try expect_equal(
-        invalid.err(),
-        Error(
-            "regular expression: invalid data", kind: ErrorCategory.InvalidData
-        )
+        invalid.err().message,
+        "regular expression: invalid data: unclosed character class at column 1"
     )
 
     let regex = try compile("[0-9]+")

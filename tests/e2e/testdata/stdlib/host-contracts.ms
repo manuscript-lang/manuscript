@@ -75,20 +75,12 @@ test "all ten string open modes are accepted and changed spellings are invalid":
         let handle = try open(path, mode, 384)
         let _fileinfo = try handle.stat()
 
+    let invalid = "{temporary.path()}/invalid"
+
     for mode in ["R", "rs", "w+x", " r", ""]:
-        try expect_false(
-            (
-                (
-                    try expect_error(
-                        open(
-                            "{temporary.path()}/invalid", mode, 384
-                        )
-                    )
-                ) != Error(
-                    "filesystem: invalid input", kind: ErrorCategory.InvalidInput
-                )
-            )
-        )
+        let refused = try expect_error(open(invalid, mode, 384))
+        try expect_equal(refused.kind, ErrorCategory.InvalidInput)
+        try expect_equal(refused.message, "filesystem: invalid input: {invalid}")
 
 test "full byte counts positions EOF and stream aliases retain their contracts":
     let temporary = try temporary("manuscript-write-contract-")
@@ -129,9 +121,8 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
     try reader.close()
 
     let missing = "{temporary.path()}/missing"
+    let absent = try expect_error(open(missing, "r", 384))
+    try expect_equal(absent.kind, ErrorCategory.NotFound)
     try expect_equal(
-        (try expect_error(open(missing, "r", 384))),
-        Error(
-            "filesystem: file or directory not found", kind: ErrorCategory.NotFound
-        )
+        absent.message, "filesystem: file or directory not found: {missing}"
     )

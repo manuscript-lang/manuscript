@@ -27,7 +27,10 @@ test "library errors carry a kind callers can branch on":
             return fail(message: "malformed JSON succeeded")
         error(cause):
             describe_error(cause) | try expect_equal("malformed input")
-            cause.message | try expect_equal("JSON: invalid data")
+            cause.message
+                | try expect_equal(
+                    "JSON: invalid data: line 1, column 2: unexpected end of input"
+                )
 
 test "propagation with try forwards the same Error":
     let cause = match propagate_generic():

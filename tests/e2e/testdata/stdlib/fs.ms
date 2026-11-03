@@ -19,7 +19,12 @@ fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
     match outcome:
         ok(_): return error(Error("filesystem misuse succeeded"))
         error(cause):
-            if cause != expected: return error(Error("wrong filesystem error: {cause}"))
+            // A failure names the path after the status words: "filesystem: <failure>: <path>".
+            let named = cause.message.starts_with("{expected.message}: ")
+            if (
+                cause.kind != expected.kind
+                or (cause.message != expected.message and not named)
+            ): return error(Error("wrong filesystem error: {cause}"))
 
     return ok(unit)
 
@@ -113,16 +118,12 @@ test "filesystem scoped temporary directories and bounded file reads":
     read_file(path: path, max_bytes: 5).wait() | try expect_ok | try expect_equal(
         "hello".to_bytes()
     )
-
-    let limited: Bytes! = error(
+    read_file(path: path, max_bytes: 4).wait() | try expect_fs_error(
         Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
     )
-    read_file(path: path, max_bytes: 4).wait() | try expect_equal(limited)
-
-    let exists: Unit! = error(
+    write_file(path: path, data: "changed", replace: false).wait() | try expect_fs_error(
         Error("filesystem: already exists", kind: ErrorCategory.AlreadyExists)
     )
-    ((write_file(path: path, data: "changed", replace: false).wait() != exists)) | try expect_false
     (stat(path: path, follow_links: true) | try expect_ok).size | try expect_equal(5)
     (list(path: directory) | try expect_ok).length() | try expect_equal(1)
 
@@ -130,17 +131,11 @@ test "filesystem scoped temporary directories and bounded file reads":
     var input = opened.reader() | try expect_ok
     (input.read().wait() | try expect_ok).get() | try expect_equal("hello".to_bytes())
     try temporary.close()
-
-    match stat(path: directory, follow_links: true):
-        ok(_): return fail("temporary directory not removed")
-        error(cause):
-            try expect_equal(
-                cause,
-                Error(
-                    "filesystem: file or directory not found",
-                    kind: ErrorCategory.NotFound
-                )
-            )
+    stat(path: directory, follow_links: true) | try expect_fs_error(
+        Error(
+            "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+        )
+    )
 
 test "file handles positional I/O stream adapters and closed errors":
     let temporary = temporary("manuscript-handles-") | try expect_ok
