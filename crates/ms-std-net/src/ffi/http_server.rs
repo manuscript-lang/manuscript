@@ -122,16 +122,6 @@ impl Serving {
             listener,
         }
     }
-
-    /// The serving whose identity (`msstd_http_serving_id`) is `id`. Workaround for promises that
-    /// cannot own resources yet: https://github.com/manuscript-lang/manuscript/issues/2409
-    ///
-    /// # Safety
-    /// The serving must be alive and stay so while the result is used.
-    unsafe fn get<'a>(id: i64) -> &'a Serving {
-        // SAFETY: caller contract.
-        unsafe { &*(id as *const Serving) }
-    }
 }
 
 impl Drop for Serving {
@@ -158,49 +148,40 @@ native! {
         let options = report(server_options(opts), &err)?;
         let root = crate::net::root();
         let listener = report(root.listen(address), &err)?;
-        out.write(Object(ServingH(Serving::new(options, env.as_ptr(), listener))));
+        out.write(Object(ServingH(Rc::new(Serving::new(options, env.as_ptr(), listener)))));
         Ok(())
     }
 
-    /// The identity of a serving for the promises that use it: they cannot capture the object, but
-    /// can capture this number, and the `HttpServer` keeps the object alive until they ended.
-    fn msstd_http_serving_id(s: ObjRef<ServingH>) -> i64 {
-        std::ptr::from_ref::<Serving>(&s) as i64
+    /// Another handle on the same serving, for a connection promise to own.
+    fn msstd_http_serving_share(s: ObjRef<ServingH>) -> Object<ServingH> {
+        Object(ServingH(s.0.0.clone()))
     }
 
-    /// The bound address of the listener of serving `id`.
-    fn msstd_http_serving_address(id: i64) -> String {
-        // SAFETY: `id` names a serving its owner keeps alive (see `msstd_http_serving_id`).
-        unsafe { Serving::get(id) }.listener.address().to_string()
+    /// The bound address of the serving's listener.
+    fn msstd_http_serving_address(s: ObjRef<ServingH>) -> String {
+        s.listener.address().to_string()
     }
 
-    /// Waits for the next connection of serving `id` and returns its socket handle.
-    fn msstd_http_serving_accept(id: i64, out: Out<i64>, err: ErrOut) -> Result<(), StatusCode> {
-        // SAFETY: as above.
-        let serving = unsafe { Serving::get(id) };
-        out.write(report(serving.listener.accept_raw(None), &err)?);
+    /// Waits for the next connection of the serving and returns its socket handle.
+    fn msstd_http_serving_accept(s: ObjRef<ServingH>, out: Out<i64>, err: ErrOut) -> Result<(), StatusCode> {
+        out.write(report(s.listener.accept_raw(None), &err)?);
         Ok(())
     }
 
     /// Serves the socket handle `accept` returned, on this thread, and returns when the connection
-    /// has ended. The handler is only borrowed from the serving.
-    fn msstd_http_serving_connect(id: i64, connection: i64) -> () {
-        // SAFETY: as above.
-        let serving = unsafe { Serving::get(id) };
-        // SAFETY: the serving keeps the handler alive until every connection promise ended.
-        let program = unsafe { Program::borrowed(serving.handler) };
-        if let Ok(server) = Server::start_adopting(&crate::net::root(), program, serving.options.clone())
-        {
+    /// has ended. The handler is only borrowed from the serving, which this handle keeps alive.
+    fn msstd_http_serving_connect(s: ObjRef<ServingH>, connection: i64) -> () {
+        // SAFETY: the serving keeps the handler alive while this handle exists.
+        let program = unsafe { Program::borrowed(s.handler) };
+        if let Ok(server) = Server::start_adopting(&crate::net::root(), program, s.options.clone()) {
             server.serve_connection(connection);
         }
     }
 
-    /// Closes the listener of serving `id` and the connections accepted and never served.
-    fn msstd_http_serving_release(id: i64) -> () {
-        // SAFETY: as above.
-        let serving = unsafe { Serving::get(id) };
-        serving.listener.close();
-        crate::conn::release_unadopted(serving.listener.owner_key());
+    /// Closes the listener of the serving and the connections accepted and never served.
+    fn msstd_http_serving_release(s: ObjRef<ServingH>) -> () {
+        s.listener.close();
+        crate::conn::release_unadopted(s.listener.owner_key());
     }
 
     // ------------------------------------------------------------------ exchange

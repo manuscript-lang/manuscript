@@ -51,15 +51,19 @@ export extern fn msstd_http_serving_new(
     handler: fn(HttpExchange) Unit!
 ) NativeServing!
 
-export extern fn msstd_http_serving_id(serving: NativeServing) Int
+// Another handle on the same serving, for a connection promise to own.
+export extern fn msstd_http_serving_share(serving: NativeServing) NativeServing
 
-export extern fn msstd_http_serving_address(id: Int) String
+export extern fn msstd_http_serving_address(serving: NativeServing) String
 
-export extern fn msstd_http_serving_accept(id: Int) Int!
+export extern fn msstd_http_serving_accept(serving: NativeServing) Int!
 
-export extern fn msstd_http_serving_connect(id: Int, connection: Int) Unit
+export extern fn msstd_http_serving_connect(
+    serving: NativeServing,
+    connection: Int
+) Unit
 
-export extern fn msstd_http_serving_release(id: Int) Unit
+export extern fn msstd_http_serving_release(serving: NativeServing) Unit
 
 export extern fn msstd_http_body_close(handle: NativeResponseBody) Unit
 

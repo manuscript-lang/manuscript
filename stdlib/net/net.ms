@@ -8,6 +8,7 @@ import HttpExchange from "@std/net/http.ms"
 import HttpHeaders from "@std/net/http.ms"
 import HttpMethod from "@std/net/http.ms"
 import HttpServer from "@std/net/http.ms"
+import NativeServing from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
 import Timestamp from "@std/os/time.ms"
 import Promise, promise from "@std/concurrency/promise.ms"
@@ -59,7 +60,7 @@ import (
 ) from "@std/internal/net.ms"
 import (
     msstd_http_serving_new,
-    msstd_http_serving_id,
+    msstd_http_serving_share,
     msstd_http_serving_address,
     msstd_http_serving_accept,
     msstd_http_serving_connect,
@@ -669,30 +670,35 @@ export fn serve(
             return error(Error("network: invalid input", kind: InvalidInput))
 
     let serving = try msstd_http_serving_new(address, options, handler)
-    let id = msstd_http_serving_id(serving)
-    let bound = msstd_http_serving_address(id)
+    let bound = msstd_http_serving_address(serving)
+    let listening = ServingHandle(serving: serving, listener: true)
     if let cores = options.cores:
         msrt_runtime_set_threads(cores)
 
-    // The accept loop captures only the serving's id, a number, so it owns everything it uses. Workaround until a promise can own resources: https://github.com/manuscript-lang/manuscript/issues/2409
-    let accepting = promise(fn: accept_loop(id))
-    return ok(
-        HttpServer(
-            accepting: accepting, serving: serving, bound: bound, stopped: false
-        )
-    )
+    // The accept loop owns the serving; each connection it accepts owns another handle on it.
+    let accepting = promise(fn: accept_loop(listening))
+    return ok(HttpServer(accepting: accepting, bound: bound, stopped: false))
+
+// A handle on a serving, which a promise owns and closes when it ends. The accept loop's handle also releases the listener; each connection's handle only gives its share back.
+type ServingHandle:
+    serving: NativeServing
+    listener: Bool
+
+impl Closeable for ServingHandle:
+    var fn close() Unit!:
+        if self.listener:
+            msstd_http_serving_release(self.serving)
+        return ok(unit)
 
 // The connections of `serve`'s accept loop. Its close, which runs when the loop returns, is cancelled or faults, cancels all connections first so they drain side by side, then joins them.
 type Accepting:
     connections: List[Promise[Unit]]
-    owner: Int
 
 impl Closeable for Accepting:
     var fn close() Unit!:
         for connection in self.connections:
             let _ = connection.wait(timeout: 0.seconds)
         self.connections = []
-        msstd_http_serving_release(self.owner)
         return ok(unit)
 
 impl Accepting:
@@ -709,12 +715,12 @@ impl Accepting:
             i -= 1
 
 // Accepts until the listener fails. An accept that fails for lack of descriptors or memory pauses briefly instead of ending the server.
-fn accept_loop(id: Int) Unit!:
-    var accepting = Accepting(connections: [], owner: id)
+fn accept_loop(listening: ServingHandle) Unit!:
+    var accepting = Accepting(connections: [])
     var sweep_at = 64
 
     while true:
-        let accepted = msstd_http_serving_accept(id)
+        let accepted = msstd_http_serving_accept(listening.serving)
 
         if accepted.is_error():
             if accepted.err().kind == ErrorCategory.Closed:
@@ -724,7 +730,10 @@ fn accept_loop(id: Int) Unit!:
             continue
 
         let raw = accepted.get()
-        accepting.connections.append(promise(fn: serve_connection(id, raw)))
+        let mine = ServingHandle(
+            serving: msstd_http_serving_share(listening.serving), listener: false
+        )
+        accepting.connections.append(promise(fn: serve_connection(mine, raw)))
 
         if accepting.connections.length() >= sweep_at:
             accepting.sweep()
@@ -735,8 +744,8 @@ fn accept_loop(id: Int) Unit!:
     return ok(unit)
 
 // Serves one accepted connection on the thread the runtime placed this promise on.
-fn serve_connection(id: Int, raw: Int) Unit!:
-    msstd_http_serving_connect(id, raw)
+fn serve_connection(handle: ServingHandle, raw: Int) Unit!:
+    msstd_http_serving_connect(handle.serving, raw)
     return ok(unit)
 
 // Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
