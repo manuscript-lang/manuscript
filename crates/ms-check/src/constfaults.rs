@@ -2,6 +2,7 @@
 //! zero, an index outside a list literal and locking a `Shared` twice.
 
 use crate::checker::Checker;
+use crate::ownership::places::{Place, Step};
 use crate::types::*;
 use ms_syntax::ast::*;
 
@@ -106,6 +107,20 @@ fn place_text(e: &Expr) -> Option<String> {
 }
 
 impl Checker {
+    /// The binding and field path of `a` or `a.b.c`, so two spellings of one binding compare equal.
+    fn lock_place(&self, e: &Expr) -> Option<Place> {
+        match &e.kind {
+            ExprKind::Name(_) => {
+                let binding = self.m().facts().info(e.id)?.binding.clone()?;
+                Some(Place::local(binding.uid))
+            }
+            ExprKind::Member { left, name } => {
+                Some(self.lock_place(left)?.then(Step::Field(*name)))
+            }
+            _ => None,
+        }
+    }
+
     /// Tracks `let guard = lock(box)` until its scope ends or `guard.close()` runs, and rejects
     /// locking the same written place again meanwhile, which waits on itself forever. Returns
     /// whether a lock was pushed; `block` pops it when the scope ends.
@@ -116,7 +131,13 @@ impl Checker {
         if !ty.is_source_type("@std/concurrency/sync.ms", "SharedGuard") {
             return false;
         }
-        let Some(place) = args.first().and_then(|a| place_text(&a.value)) else {
+        let Some(argument) = args.first() else {
+            return false;
+        };
+        let (Some(text), Some(place)) = (
+            place_text(&argument.value),
+            self.lock_place(&argument.value),
+        ) else {
             return false;
         };
         let function = self.function;
@@ -128,7 +149,7 @@ impl Checker {
             self.type_error(
                 s.pos,
                 format!(
-                    "{place} is already locked by an earlier guard that is still open, so locking it again waits on itself forever; use that guard's value, or call its close() first"
+                    "{text} is already locked by an earlier guard that is still open, so locking it again waits on itself forever; use that guard's value, or call its close() first"
                 ),
             );
             return false;
