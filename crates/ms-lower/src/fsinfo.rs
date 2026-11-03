@@ -82,6 +82,7 @@ impl FnLower<'_> {
     pub(crate) fn finish_stat(
         &mut self,
         sym: &str,
+        sig: &crate::rtcall::RtSig,
         mut vals: Vec<Value>,
         result: MTy,
     ) -> Result<Val, Error> {
@@ -94,6 +95,7 @@ impl FnLower<'_> {
             .emit(Op::Slot, &[], Imm::Ty(raw_ty), Some(MTy::PTR))
             .expect("slot");
         vals.push(slot);
+        self.push_err_slot(sig, &mut vals);
         let status = self.call_runtime(sym, &vals, MTy::BOOL)?;
         let code = self
             .b

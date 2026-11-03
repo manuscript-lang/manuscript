@@ -708,7 +708,7 @@ impl FnLower<'_> {
     }
 
     /// Passes the slot a trailing `err` parameter writes the `Failed` text to.
-    fn push_err_slot(&mut self, sig: &RtSig, vals: &mut Vec<Value>) {
+    pub(crate) fn push_err_slot(&mut self, sig: &RtSig, vals: &mut Vec<Value>) {
         if sig.params.last().is_some_and(|p| p.name == "err") {
             let slot = self
                 .b
@@ -833,8 +833,13 @@ impl FnLower<'_> {
             return Ok(Val { v: out, own: true });
         }
         // `InfoOut` is flat words that become a `FileInfo` record.
-        if sig.params.last().is_some_and(|p| p.ty == "*mut InfoOut") {
-            return self.finish_stat(sym, vals, result);
+        let body =
+            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.name == "err"));
+        if sig.params[..body]
+            .last()
+            .is_some_and(|p| p.ty == "*mut InfoOut")
+        {
+            return self.finish_stat(sym, sig, vals, result);
         }
         // A status (or presence flag) plus a value through `out`.
         let payload = match self.b.m.types.kind(result).clone() {
