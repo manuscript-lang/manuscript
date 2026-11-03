@@ -765,7 +765,7 @@ pub unsafe extern "C-unwind" fn msrt_promise_defer(id: i64, work: *mut ms_rt_abi
 }
 
 /// Runs the deferred work of `id` if it has not run: the caller is the waiter.
-fn run_deferred(id: i64) {
+fn run_deferred(id: i64, deadline: Option<i64>) {
     let t = table();
     let Some(i) = index(t, id) else { return };
     if t.flags[i] & DEFERRED == 0 {
@@ -773,6 +773,9 @@ fn run_deferred(id: i64) {
     }
     t.flags[i] &= !DEFERRED;
     let closure = core::mem::take(&mut t.retry_state[i]) as *mut ms_rt_abi::Closure;
+    // Waits inside the work stop at the waiter's deadline: the work runs on this stack, so only
+    // its own waits can notice the limit.
+    let earlier = task::set_defer_deadline(deadline.map_or(i64::MAX, |d| d.min(task::defer_deadline())));
     // SAFETY: the reference taken in `msrt_promise_defer` is ours; the code is the closure's entry.
     unsafe {
         let code: unsafe extern "C-unwind" fn(*mut ms_rt_abi::Closure) =
@@ -780,6 +783,7 @@ fn run_deferred(id: i64) {
         code(closure);
         crate::obj::release(closure.cast());
     }
+    task::set_defer_deadline(earlier);
 }
 
 /// A closure that calls a native entry with the argument it owns.
@@ -881,8 +885,15 @@ fn park_on(id: i64, timeout_ns: i64) -> u32 {
 /// cancelled, it unwinds; dropping the promise then cancels and joins the work.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
-    let deadline = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
-    run_deferred(id);
+    let own = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
+    // A wait inside deferred work also stops at the outer waiter's deadline.
+    let inherited = task::defer_deadline();
+    let deadline = match (own, inherited) {
+        (o, i64::MAX) => o,
+        (Some(o), i) => Some(o.min(i)),
+        (None, i) => Some(i),
+    };
+    run_deferred(id, deadline);
     loop {
         let t = table();
         let i = find(id);
@@ -930,7 +941,7 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
     };
     let deadline = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
     for &id in &list {
-        run_deferred(id);
+        run_deferred(id, deadline);
         if first_done(&list).is_some() {
             break;
         }

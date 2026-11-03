@@ -641,21 +641,21 @@ msstd_math_tanh(v: f64) -> f64 @leaf
 msstd_math_truncate(v: f64) -> f64 @leaf
 msstd_net_cidr_text(cidr: *const ObjCell<Cidr>, out: *mut StrVal)
 msstd_net_connection_close(c: *const ObjCell<ConnH>)
-msstd_net_connection_share(c: *const ObjCell<ConnH>) -> *mut ObjCell<ConnH>
 msstd_net_connection_close_if_last(c: *const ObjCell<ConnH>)
 msstd_net_connection_local_address(c: *const ObjCell<ConnH>, out: *mut StrVal)
 msstd_net_connection_peer_address(c: *const ObjCell<ConnH>, out: *mut StrVal)
 msstd_net_connection_read(c: *const ObjCell<ConnH>, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, err: *mut StrVal) -> u8
+msstd_net_connection_share(c: *const ObjCell<ConnH>) -> *mut ObjCell<ConnH>
 msstd_net_connection_shutdown_write(c: *const ObjCell<ConnH>, err: *mut StrVal) -> u8
 msstd_net_connection_tls_info(c: *const ObjCell<ConnH>, out: *mut TlsInfoWire) -> u8
 msstd_net_connection_write_bytes(c: *const ObjCell<ConnH>, data: *const VecVal, has_timeout: u8, timeout: i64, err: *mut StrVal) -> u8
 msstd_net_contains_ip(cidr: *const ObjCell<Cidr>, ip: *const ObjCell<IpH>, out: *mut u8) -> u8
 msstd_net_datagram_address(sock: *const ObjCell<DgramH>, out: *mut StrVal)
 msstd_net_datagram_close(sock: *const ObjCell<DgramH>)
-msstd_net_datagram_share(sock: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH>
 msstd_net_datagram_close_if_last(sock: *const ObjCell<DgramH>)
 msstd_net_datagram_receive(sock: *const ObjCell<DgramH>, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut DatagramWire, err: *mut StrVal) -> u8
 msstd_net_datagram_send_bytes(sock: *const ObjCell<DgramH>, data: *const VecVal, address: *const StrVal, has_timeout: u8, timeout: i64, err: *mut StrVal) -> u8
+msstd_net_datagram_share(sock: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH>
 msstd_net_dns_kind_text(kind: u8, out: *mut StrVal)
 msstd_net_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: *mut StrVal)
 msstd_net_ip_address_family(ip: *const ObjCell<IpH>) -> u8
@@ -838,10 +838,10 @@ msstd_terminal_event_text(out: *mut StrVal)
 msstd_terminal_failure_message(out: *mut StrVal)
 msstd_terminal_raw_mode(alternate_screen: u8, out: *mut *mut ObjCell<RawH>) -> u8
 msstd_terminal_raw_terminal_close(h: *const ObjCell<RawH>)
-msstd_terminal_raw_terminal_share(h: *const ObjCell<RawH>) -> *mut ObjCell<RawH>
 msstd_terminal_raw_terminal_erase(h: *const ObjCell<RawH>, region: i64) -> u8
 msstd_terminal_raw_terminal_move_cursor(h: *const ObjCell<RawH>, row: i64, column: i64) -> u8
 msstd_terminal_raw_terminal_next_event(h: *const ObjCell<RawH>, has_timeout: u8, timeout_ns: i64) -> u8
+msstd_terminal_raw_terminal_share(h: *const ObjCell<RawH>) -> *mut ObjCell<RawH>
 msstd_terminal_raw_terminal_show_cursor(h: *const ObjCell<RawH>, visible: u8) -> u8
 msstd_terminal_raw_terminal_size_columns(h: *const ObjCell<RawH>) -> i64
 msstd_terminal_raw_terminal_size_rows(h: *const ObjCell<RawH>) -> i64
@@ -906,11 +906,11 @@ msstd_url_parse_query(text: *const StrVal, has_max: u8, max: i64, out: *mut VecV
 msstd_url_resolve(base: *const UrlRec, reference: *const StrVal, out: *mut UrlRec) -> u8 @leaf
 msstd_utf8_is_valid(data: *const VecVal) -> u8
 msstd_websocket_close(s: *const ObjCell<SocketH>)
-msstd_websocket_share(s: *const ObjCell<SocketH>) -> *mut ObjCell<SocketH>
 msstd_websocket_close_if_last(s: *const ObjCell<SocketH>)
 msstd_websocket_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: *mut StrVal)
 msstd_websocket_ping(s: *const ObjCell<SocketH>, data: *const StrVal, err: *mut StrVal) -> u8
 msstd_websocket_ping_bytes(s: *const ObjCell<SocketH>, data: *const VecVal, err: *mut StrVal) -> u8
 msstd_websocket_receive(s: *const ObjCell<SocketH>, out: *mut WebSocketMessageRec, err: *mut StrVal) -> u8
 msstd_websocket_send_bytes(s: *const ObjCell<SocketH>, data: *const VecVal, text: u8, err: *mut StrVal) -> u8
+msstd_websocket_share(s: *const ObjCell<SocketH>) -> *mut ObjCell<SocketH>
 msstd_websocket_subprotocol(s: *const ObjCell<SocketH>, out: *mut StrVal)

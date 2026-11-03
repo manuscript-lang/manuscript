@@ -118,6 +118,9 @@ struct Task {
     started_by: Vec<usize>,
     /// Set when the task was cancelled because `kill_at` passed.
     timed_out: bool,
+    /// The monotonic time by which the deferred promise this task is running must finish
+    /// (`msrt_promise_wait` with a timeout), or `i64::MAX`; waits inside it stop there.
+    defer_deadline: i64,
     /// The promise this task runs (`promise::msrt_promise_start`), or 0; told when the task ends.
     promise: i64,
 }
@@ -550,6 +553,7 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             kill_at: NO_DEADLINE,
             started_by: Vec::new(),
             timed_out: false,
+            defer_deadline: i64::MAX,
             promise: 0,
         });
     }
@@ -1504,6 +1508,18 @@ pub(crate) unsafe fn spawn_promise_task(closure: *mut ms_rt_abi::Closure, promis
         (*t).started_by = fault::capture_frames();
         h
     }
+}
+
+/// The deadline of the deferred promise the running task is executing (`i64::MAX`: none).
+pub(crate) fn defer_deadline() -> i64 {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe { (*ensure_init()).defer_deadline }
+}
+
+/// Sets that deadline and returns the one it replaces.
+pub(crate) fn set_defer_deadline(at: i64) -> i64 {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe { core::mem::replace(&mut (*ensure_init()).defer_deadline, at) }
 }
 
 /// Lets a promise that has not started begin, then lets the ready tasks run: polling `done`

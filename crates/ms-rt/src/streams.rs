@@ -111,7 +111,27 @@ enum Step {
     Failed,
 }
 
+/// Whether a read of `fd` would not block. A descriptor opened without `NONBLOCK` (the inherited
+/// standard input, whose file description is shared with other processes) is polled first so a
+/// silent pipe parks the task instead of the thread.
+fn readable_now(e: &Entry) -> bool {
+    if e.flags & NONBLOCK != 0 {
+        return true;
+    }
+    let mut fd = libc::pollfd {
+        fd: e.fd,
+        events: libc::POLLIN,
+        revents: 0,
+    };
+    // SAFETY: one valid pollfd and a zero timeout.
+    let n = unsafe { libc::poll(&mut fd, 1, 0) };
+    n != 0
+}
+
 fn try_read(e: &mut Entry) -> Step {
+    if !readable_now(e) {
+        return Step::Blocked;
+    }
     let mut buf = vec![0u8; CHUNK];
     loop {
         // SAFETY: `buf` is writable for CHUNK bytes.
