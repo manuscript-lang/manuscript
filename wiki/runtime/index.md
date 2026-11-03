@@ -48,3 +48,4 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [Text helpers: String methods in `.ms`, conversions in `@std/text.ms`](text-helpers-live-in-string-ms-methods-and-a-text-module.md): no new Rust; check for parallel unicode work first; `\u\{` needs escaped braces.
 - [Concurrency is promises and pipes only](concurrency-is-promises-and-pipes-only.md): task groups, workers, channels, `Shared`, locks and caches are deleted; state has one owner and changes travel over pipes.
 - [Large write payloads take a pool permit before the copy](large-write-payloads-take-a-pool-permit-before-the-copy.md): `pool::admit` parks the caller before a payload over 64 KiB is cloned, bounding in-flight copies by the pool size.
+- [A Bytes view is a cap-zero borrow that is never freed](a-bytes-view-is-a-cap-zero-borrow-never-freed.md): `Bytes.view` lends the receiver without copying; `slice` still copies.

@@ -1198,6 +1198,7 @@ impl Walker<'_> {
         let lends = match (name.as_str(), args.len()) {
             ("get", 1) => recv.is(Builtin::Map) || recv.is(Builtin::List),
             ("first" | "last", 0) => recv.is(Builtin::List),
+            ("view", 2) => recv.is(Builtin::Bytes),
             _ => false,
         };
         lends.then_some(&**left)

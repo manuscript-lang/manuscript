@@ -35,9 +35,16 @@ impl Bytes:
     /*
     Selects [start, end) in bytes; negative bounds are relative to the end.
     Bounds outside 0 <= start <= end <= length() return an `Error` of kind `OutOfRange`.
-    The immutable result may share storage with the receiver.
+    The result is a new copy; `view` borrows instead.
     */
     fn slice(start: Int, end: Int) Bytes!: ...
+
+    /*
+    Borrows [start, end) of the receiver without copying; negative bounds are relative to the end.
+    Bounds outside 0 <= start <= end <= length() raise a fault. Like `List.get`, the result lends
+    the receiver, which cannot change while the view is used; `.clone()` keeps the bytes.
+    */
+    fn view(start: Int, end: Int) Bytes: ...
 
     // Returns an unsigned byte; negative indexes are relative to the end. An out-of-range index returns `default`, and without one raises a fault.
     fn get(index: Int, default: UInt8?) UInt8: ...
