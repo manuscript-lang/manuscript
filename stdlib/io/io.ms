@@ -103,6 +103,7 @@ impl ReadStream[T]:
     // One step, started now and run where it is waited; none at the end.
     var fn read() Promise[T?]:
         let cell = self.cell
+
         // One closure that owns the promise's id and the cell, instead of `deferred`'s wrapper around a second one.
         let id = msrt_promise_new()
         msrt_promise_defer(id, fn: step[T](id, cell))
