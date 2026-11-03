@@ -1,4 +1,4 @@
-import expect_equal, expect_error, expect_false from "@std/test/test.ms"
+import expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 import (
     bind_datagram,
@@ -12,6 +12,7 @@ import (
     parse_ip,
     parse_cidr,
     contains_ip,
+    Datagram,
     DatagramSocket,
     DnsKind,
     IpFamily,
@@ -19,6 +20,7 @@ import (
     Connection
 ) from "@std/net/net.ms"
 import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import sleep from "@std/os/time.ms"
 
@@ -43,20 +45,21 @@ test "IP parsing CIDR normalization and containment":
 
 test "TCP loopback writes reads half close and EOF":
     let listener = try listen("127.0.0.1:0")
-    let client = try connect(listener.address(), 2.seconds)
-    let server = try listener.accept(2.seconds)
-    try client.write("hello", 2.seconds)
-    try expect_equal((try server.read(5, 2.seconds)).get(), "hello".to_bytes())
-    try expect_equal(server.peer_address(), client.local_address())
-    try client.shutdown_write()
-    try expect_false(not (try server.read(5, 2.seconds)).is_none())
+    var client = try connect(listener.address(), 2.seconds)
+    var server = try listener.accept(2.seconds)
+    try client.output.write("hello".to_bytes())
+    try client.output.flush().wait()
+    try expect_equal((try server.input.read().wait(timeout: 2.seconds)).get(), "hello".to_bytes())
+    try expect_equal(server.info.peer_address(), client.info.local_address())
+    try client.output.close()
+    try expect_true((try server.input.read().wait(timeout: 2.seconds)).is_none())
 
 test "host names resolve whatever their case":
     let listener = try listen("127.0.0.1:0")
     let port = listener.address().split(":").last().get("")
     let client = try connect("LocalHost:{port}", 2.seconds)
     let server = try listener.accept(2.seconds)
-    try expect_equal(server.peer_address(), client.local_address())
+    try expect_equal(server.info.peer_address(), client.info.local_address())
 
 test "an empty Unix socket path is invalid input":
     try expect_equal(
@@ -69,15 +72,15 @@ test "an empty Unix socket path is invalid input":
     )
 
 test "UDP loopback preserves datagram data and sender":
-    let receiver = try bind_datagram("127.0.0.1:0")
-    let sender = try bind_datagram("127.0.0.1:0")
-    try sender.send("packet", receiver.address(), 2.seconds)
+    var receiver = try bind_datagram("127.0.0.1:0")
+    var sender = try bind_datagram("127.0.0.1:0")
+    try sender.output.write(Datagram("packet".to_bytes(), receiver.address.clone()))
 
-    let packet = try receiver.receive(64, 2.seconds)
+    let packet = (try receiver.input.read().wait(timeout: 2.seconds)).get()
     try expect_false(
         (
             packet.data != "packet".to_bytes()
-            or packet.sender != sender.address()
+            or packet.address != sender.address
         )
     )
 
@@ -146,35 +149,10 @@ test "two tasks accept on one listener":
     try group.close()
     try shared.get().close()
 
-fn read_some(c: Shared[Connection]) Int:
-    let r = c.get().read(1, 2.seconds)
-    if r.is_ok() and r.get().is_some():
-        return 1
-
-    return 0
-
-test "two tasks read one connection":
-    let listener = try listen("127.0.0.1:0")
-    var client = try connect(listener.address(), 2.seconds)
-    let server = try listener.accept(2.seconds)
-    let shared: Shared[Connection] = share(server)
-    var group = TaskGroup[Int]()
-    let a = shared
-    let b = shared
-    group.spawn(fn ch: read_some(a))
-    group.spawn(fn ch: read_some(b))
-    sleep(50.milliseconds)
-    try client.write("xy", 2.seconds)
-
-    let got = try group.results()
-    try expect_equal(got[0] + got[1], 2)
-    try group.close()
-    try client.close()
-    try shared.get().close()
-
 // Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
 fn answer_mx(socket: Shared[DatagramSocket]) Int!:
-    let query = try socket.get().receive(512, 2.seconds)
+    var guard = lock(socket)
+    let query = (try guard.value.input.read().wait(timeout: 2.seconds)).get()
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
     let header = Bytes(
         [query.data.get(0), query.data.get(1), 129, 128, 0, 1, 0, 1, 0, 0, 0, 0]
@@ -186,9 +164,8 @@ fn answer_mx(socket: Shared[DatagramSocket]) Int!:
             116, 0
         ]
     )
-    try socket.get().send_bytes(
-        header.concat(question).concat(record).concat(name), query.sender, 2.seconds
-    )
+    try guard.value.output.write(Datagram(header.concat(question).concat(record).concat(name), query.address))
+    try guard.value.output.flush().wait()
     return ok(1)
 
 test "resolve returns typed DNS records from the configured resolver":
@@ -197,8 +174,10 @@ test "resolve returns typed DNS records from the configured resolver":
     try expect_equal(one[0].value, "127.0.0.1")
     try expect_equal(one[0].kind.text(), "A")
 
-    let server: Shared[DatagramSocket] = share(try bind_datagram("127.0.0.1:0"))
-    let derived = try with_resolver(server.get().address())
+    let bound = try bind_datagram("127.0.0.1:0")
+    let address = bound.address.clone()
+    let server: Shared[DatagramSocket] = share(bound)
+    let derived = try with_resolver(address)
     let group = TaskGroup[Int]()
     let socket = server
     group.spawn(fn ch: answer_mx(socket).get(0))
@@ -216,11 +195,12 @@ test "an empty host listens on every interface, with or without IPv6":
     var listener = try listen(":0")
     let parts = listener.address().split(":")
     let port = parts[parts.length() - 1]
-    let client = try connect("127.0.0.1:{port}", 2.seconds)
-    let server = try listener.accept(2.seconds)
-    try client.write("hi", 2.seconds)
-    try expect_equal((try server.read(2, 2.seconds)).get(), "hi".to_bytes())
+    var client = try connect("127.0.0.1:{port}", 2.seconds)
+    var server = try listener.accept(2.seconds)
+    try client.output.write("hi".to_bytes())
+    try client.output.flush().wait()
+    try expect_equal((try server.input.read().wait(timeout: 2.seconds)).get(), "hi".to_bytes())
     try listener.close()
 
     let socket = try bind_datagram(":0")
-    try expect_false(socket.address().is_empty())
+    try expect_false(socket.address.is_empty())

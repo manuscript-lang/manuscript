@@ -10,7 +10,7 @@ import (
     reply,
     text
 ) from "@std/net/http.ms"
-import WebSocket from "@std/net/net.ms"
+import RawWebSocket from "@std/net/net.ms"
 import Logger from "@std/log.ms"
 import uuid_v4 from "@std/os/random.ms"
 import monotonic from "@std/os/time.ms"
@@ -538,7 +538,7 @@ impl HttpExchange for TestExchange:
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
-    ) WebSocket!:
+    ) RawWebSocket!:
         return error(
             Error(
                 "router: WebSocket upgrades need a server", kind: Unsupported
@@ -648,7 +648,7 @@ impl HttpExchange for Tap:
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
-    ) WebSocket!:
+    ) RawWebSocket!:
         return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
 
     fn write(data: String) Unit!:

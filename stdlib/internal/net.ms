@@ -2,8 +2,10 @@ import Bytes from "@std/bytes.ms"
 import (
     CertificateInfo,
     Cidr,
-    Connection,
     Datagram,
+    RawConnection,
+    RawDatagramSocket,
+    RawWebSocket,
     IpAddress,
     NativeConnection,
     NativeDatagramSocket,
@@ -72,7 +74,7 @@ export extern fn msstd_net_connection_read(
     timeout: Duration?
 ) Bytes?!
 
-export extern fn msstd_net_connection_clone(handle: NativeConnection) Connection!
+export extern fn msstd_net_connection_clone(handle: NativeConnection) RawConnection!
 
 export extern fn msstd_net_connection_shutdown_write(handle: NativeConnection) Unit!
 
@@ -117,7 +119,7 @@ export extern fn msstd_net_datagram_send_bytes(
 export extern fn msstd_net_listener_accept(
     handle: NativeListener,
     timeout: Duration?
-) Connection!
+) RawConnection!
 
 export extern fn msstd_net_listener_accept_raw(
     handle: NativeListener,

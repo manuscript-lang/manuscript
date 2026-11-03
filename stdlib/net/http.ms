@@ -5,7 +5,7 @@ import Promise, deferred, complete from "@std/concurrency/promise.ms"
 import stringify from "@std/data/json.ms"
 import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
 import TlsOptions from "@std/net/net.ms"
-import WebSocket from "@std/net/net.ms"
+import WebSocket, RawWebSocket, web_socket_from from "@std/net/net.ms"
 import (
     msstd_http_client_close,
     msstd_http_headers_append,
@@ -266,7 +266,7 @@ export interface HttpExchange:
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
-    ) WebSocket!
+    ) RawWebSocket!
     // Writes one chunk of the response body and flushes it.
     // `send_headers` must come first, and writing beyond `max_response_bytes` returns an `Error` of kind `Failed`. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return InvalidInput.
     fn write(data: String) Unit!
@@ -526,3 +526,13 @@ fn serve_buffered(handler: fn(HttpRequest) HttpResponse, exchange: HttpExchange)
         headers: exchange.headers(), body: body, protocol: exchange.protocol()
     )
     return reply(exchange, handler(request))
+
+// Switches the exchange's connection to a WebSocket; the rules of `HttpExchange.upgrade` apply.
+export fn upgrade(
+    exchange: HttpExchange,
+    allowed_origins: List[String],
+    subprotocols: List[String],
+    max_message_bytes: Int?
+) WebSocket!:
+    let raw = try exchange.upgrade(allowed_origins, subprotocols, max_message_bytes)
+    return ok(web_socket_from(raw))
