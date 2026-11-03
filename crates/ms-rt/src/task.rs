@@ -117,8 +117,6 @@ struct Task {
     started_by: Vec<usize>,
     /// Set when the task was cancelled because `kill_at` passed.
     timed_out: bool,
-    /// The scope that frees the task's record when it ends (`spawn_native`), or 0.
-    scope: i64,
     /// The promise this task runs (`promise::msrt_promise_start`), or 0; told when the task ends.
     promise: i64,
 }
@@ -551,7 +549,6 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             kill_at: NO_DEADLINE,
             started_by: Vec::new(),
             timed_out: false,
-            scope: 0,
             promise: 0,
         });
     }
@@ -1046,21 +1043,6 @@ extern "C" fn task_main() -> ! {
             // A promise's task is never joined: the promise learns of its end by event.
             crate::string::release_opt(&core::mem::replace(&mut (*t).msg, crate::string::NO_STR));
             s.zombie_task = t;
-        } else if (*t).scope != 0 {
-            // A scope task nobody joins frees itself; one being joined is freed by its joiner.
-            crate::scope::task_ended((*t).scope, (*t).handle);
-            if (*t).joiner != 0 {
-                let j = lookup((*t).joiner);
-                if !j.is_null() {
-                    wake(j, 0);
-                }
-            } else {
-                crate::string::release_opt(&core::mem::replace(
-                    &mut (*t).msg,
-                    crate::string::NO_STR,
-                ));
-                s.zombie_task = t;
-            }
         } else if (*t).detached {
             s.zombie_task = t;
         } else if (*t).joiner != 0 {
@@ -1478,19 +1460,13 @@ pub(crate) unsafe fn unwind_if_cancelled() {
 
 /// Changes when the running task is cancelled for running too long: `limit_ns` from now, or
 /// never when negative. Replaces any earlier limit.
-pub(crate) fn limit_current(limit_ns: i64) {
+pub fn limit_current(limit_ns: i64) {
     // SAFETY: single threaded scheduler; the running task's record is live.
     unsafe {
         let t = ensure_init();
         (*t).kill_at = NO_DEADLINE;
         arm_kill((*t).handle, limit_ns);
     }
-}
-
-/// The scope the running task was started in by `spawn_scoped`, or 0.
-pub(crate) fn current_scope() -> i64 {
-    // SAFETY: single threaded scheduler; the running task's record is live.
-    unsafe { (*ensure_init()).scope }
 }
 
 /// Cancels task `h` once it has run `limit_ns` nanoseconds; a negative limit means never.
@@ -1516,23 +1492,6 @@ unsafe fn arm_kill(h: u64, limit_ns: i64) {
             });
             s.kill_limit = (s.kills.len() * 2).max(MIN_TIMER_LIMIT);
         }
-    }
-}
-
-/// Starts `entry(arg)` as a task of `scope` on a default (pooled) stack. A fault in it is the
-/// entry's to contain. It leaves the scope and frees its own record when it ends unless
-/// something is joining it, so a server can start one per request. With a non-negative
-/// `limit_ns` it is cancelled once it has run that long. Returns the handle.
-///
-/// # Safety
-/// `arg` must be valid for `entry`, which owns it.
-pub(crate) unsafe fn spawn_scoped(entry: Entry, arg: *mut u8, limit_ns: i64, scope: i64) -> u64 {
-    // SAFETY: single threaded scheduler.
-    unsafe {
-        let h = msrt_task_spawn(entry, arg, 0, 0);
-        (*lookup(h)).scope = scope;
-        arm_kill(h, limit_ns);
-        h
     }
 }
 

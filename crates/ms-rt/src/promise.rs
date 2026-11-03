@@ -676,6 +676,16 @@ pub(crate) fn has_timers() -> bool {
 /// `work` is a live closure object.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi::Closure) {
+    // SAFETY: forwarded contract.
+    unsafe { start_on(id, work, false) }
+}
+
+/// Starts `work` as the task of promise `id`, on this thread when `here`, else where the runtime
+/// picks.
+///
+/// # Safety
+/// `work` is a live closure object.
+unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, here: bool) {
     let i = find(id);
     let t = table();
     if t.closure[i] != 0 || t.thread[i] != NOT_STARTED {
@@ -689,11 +699,64 @@ pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi
         id,
         closure: work as usize,
     };
-    if sched::current() == sched::NONE {
+    if here || sched::current() == sched::NONE {
         execute(start);
     } else {
         sched::submit(start);
     }
+}
+
+/// A closure that calls a native entry with the argument it owns.
+#[repr(C)]
+struct Native {
+    closure: ms_rt_abi::Closure,
+    entry: unsafe extern "C-unwind" fn(*mut u8),
+    arg: *mut u8,
+}
+
+unsafe extern "C-unwind" fn native_code(closure: *mut ms_rt_abi::Closure) {
+    // SAFETY: the task runs the `Native` that `start_native` built, which stays live meanwhile.
+    unsafe {
+        let n = closure.cast::<Native>();
+        ((*n).entry)((*n).arg);
+    }
+}
+
+unsafe extern "C" fn native_drop(obj: *mut ms_rt_abi::Obj) {
+    // SAFETY: the object owns its allocation; the entry took the argument.
+    unsafe { alloc::free(obj.cast()) };
+}
+
+/// Starts `entry(arg)` as a promise task on this thread (never placed elsewhere) and returns the
+/// promise. `entry` owns `arg` and completes nothing: the promise just ends when it returns. A
+/// fault or cancellation ends only this promise. Release it with `msrt_promise_drop` once done.
+///
+/// # Safety
+/// `arg` must be valid for `entry`, which owns it.
+pub unsafe fn start_native(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> i64 {
+    let id = msrt_promise_new();
+    // SAFETY: a fresh object with no captures to drop; the promise retains it for the task.
+    unsafe {
+        let n = crate::obj::new_obj(size_of::<Native>(), native_drop).cast::<Native>();
+        (*n).closure.code = native_code as *const u8;
+        (*n).entry = entry;
+        (*n).arg = arg;
+        start_on(id, n.cast(), true);
+        crate::obj::release(n.cast());
+    }
+    id
+}
+
+/// Whether the work of promise `id` is over, so [`msrt_promise_drop`] returns at once. Unlike
+/// `msrt_promise_done` it never lets other tasks run. An id that no longer exists reads as over.
+pub fn work_over(id: i64) -> bool {
+    let t = table();
+    index(t, id).is_none_or(|i| t.closure[i] == 0)
+}
+
+/// Asks the work of promise `id` to stop at its next wait. An id that no longer exists is ignored.
+pub fn cancel(id: i64) {
+    request_cancel(id)
 }
 
 fn outcome(state: State) -> Option<i64> {
@@ -970,6 +1033,33 @@ mod tests {
             crate::string::release_opt(&report);
         }
         msrt_promise_drop(id);
+        task::teardown();
+    }
+
+    unsafe extern "C-unwind" fn nap(arg: *mut u8) {
+        // SAFETY: called from a running task.
+        unsafe { task::msrt_task_sleep(arg as usize as i64 * 1_000_000) };
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn native_promises_end_alone_or_are_cancelled_and_joined() {
+        let _g = lock();
+        // SAFETY: tests hold the runtime lock; `nap` takes no ownership of its argument.
+        unsafe {
+            let before = task::msrt_task_count();
+            let short = start_native(nap, 2usize as *mut u8);
+            let long = start_native(nap, 3_600_000usize as *mut u8);
+            assert!(!work_over(long));
+            while !work_over(short) {
+                task::msrt_task_sleep(1_000_000);
+            }
+            msrt_promise_drop(short);
+            cancel(long);
+            msrt_promise_drop(long);
+            assert!(work_over(long));
+            assert_eq!(task::msrt_task_count(), before);
+        }
         task::teardown();
     }
 

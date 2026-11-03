@@ -23,7 +23,7 @@ use crate::rt;
 use crate::sys::{AsSock, Borrowed, Ev, Poller};
 use crate::tls::{Handshake, TlsIo};
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -258,21 +258,26 @@ impl Reactor {
 
     /// Whether the running task is a request task of `server`.
     pub fn in_handler_of(&self, server: &Server) -> bool {
-        server.scope.contains_current()
+        server.tasks.borrow().contains(&rt::current_task())
     }
 
     /// Whether the running task is a request task of any server.
     fn in_handler(&self) -> bool {
-        rt::in_scope_task()
+        let task = rt::current_task();
+        SERVERS.with(|s| {
+            s.borrow()
+                .values()
+                .filter_map(Weak::upgrade)
+                .any(|s| s.tasks.borrow().contains(&task))
+        })
     }
 
     /// Whether the running task is a request task of a server owned by `network`.
     pub fn in_handler_of_network(&self, network: &Network) -> bool {
         SERVERS.with(|s| {
-            s.borrow()
-                .values()
-                .filter_map(Weak::upgrade)
-                .any(|s| s.owner.is_within(network) && s.scope.contains_current())
+            s.borrow().values().filter_map(Weak::upgrade).any(|s| {
+                s.owner.is_within(network) && s.tasks.borrow().contains(&rt::current_task())
+            })
         })
     }
 
@@ -293,16 +298,12 @@ impl Reactor {
             let Some(server) = conn.server.upgrade() else {
                 continue;
             };
-            let limit = -1;
+            server.sweep_handlers();
             let job = Box::into_raw(Box::new(Job { conn }));
             server.st.borrow_mut().running += 1;
             // SAFETY: `request_task` takes back the boxed job leaked above.
-            let started = unsafe { server.scope.spawn(request_task, job.cast(), limit) };
-            if started.is_none() {
-                server.st.borrow_mut().running -= 1;
-                // SAFETY: the scope is closed, so the task never runs; the job is still ours.
-                drop(unsafe { Box::from_raw(job) });
-            }
+            let promise = unsafe { rt::promise_start(request_task, job.cast()) };
+            server.handlers.borrow_mut().push(promise);
         }
     }
 
@@ -372,7 +373,10 @@ unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
     if shield {
         rt::stop_shield();
     }
+    let task = rt::current_task();
+    server.tasks.borrow_mut().insert(task);
     server.dispatch_conn(&conn, &Reactor::get());
+    server.tasks.borrow_mut().remove(&task);
     if shield {
         rt::stop_unshield();
     }
@@ -577,8 +581,11 @@ pub struct Server {
     pub(super) dispatch: Box<dyn Dispatch>,
     st: RefCell<ServerSt>,
     token: u64,
-    /// Owns the request tasks; closing it cancels the ones still running.
-    scope: rt::Scope,
+    /// The promises of the request tasks started and not yet collected; closing the server
+    /// cancels the ones still running.
+    handlers: RefCell<Vec<i64>>,
+    /// Tasks of the requests running now, to tell a handler's own calls from others.
+    tasks: RefCell<HashSet<u64>>,
 }
 
 struct ServerSt {
@@ -657,7 +664,8 @@ impl Server {
                 draining: None,
             }),
             token,
-            scope: rt::Scope::new(),
+            handlers: RefCell::new(Vec::new()),
+            tasks: RefCell::new(HashSet::new()),
         });
         reactor
             .targets
@@ -834,9 +842,28 @@ impl Server {
             rt::post(id);
         }
         SERVERS.with(|s| s.borrow_mut().remove(&self.id));
-        if !self.scope.contains_current() {
+        if !self.tasks.borrow().contains(&rt::current_task()) {
             // What outlived the grace period is cancelled; its connections are closed already.
-            self.scope.close();
+            let handlers = std::mem::take(&mut *self.handlers.borrow_mut());
+            for &promise in &handlers {
+                rt::promise_cancel(promise);
+            }
+            for promise in handlers {
+                rt::promise_drop(promise);
+            }
+        }
+    }
+
+    /// Collects the request promises whose tasks are over.
+    fn sweep_handlers(&self) {
+        let mut handlers = self.handlers.borrow_mut();
+        let mut at = 0;
+        while at < handlers.len() {
+            if rt::promise_over(handlers[at]) {
+                rt::promise_drop(handlers.swap_remove(at));
+            } else {
+                at += 1;
+            }
         }
     }
 

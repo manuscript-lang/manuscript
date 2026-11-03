@@ -47,7 +47,7 @@ fn guarded<T>(mut call: impl FnMut()) -> Option<Outcome<T>> {
         0 => None,
         2 => {
             // The task goes on to answer the request: a cancel aimed at it ends with the handler.
-            ms_rt::scope::acknowledge_cancel();
+            ms_rt::fault::acknowledge_cancel();
             Some(Outcome::Cancelled)
         }
         _ => {
