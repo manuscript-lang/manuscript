@@ -1086,7 +1086,7 @@ impl Checker {
         if state.active.len() > 200 {
             return false;
         }
-        state.active.insert(key.clone());
+        state.active.insert(key);
         let result = self.property_compute(t, property, state);
         state.active.remove(&key);
         state.completed.insert(key, result);
