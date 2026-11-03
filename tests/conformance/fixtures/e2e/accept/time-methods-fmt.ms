@@ -16,8 +16,8 @@ test "duration arithmetic and conversion":
     try expect_false(
         (
             interval.to_seconds() != 1.5
-            or 90.seconds.to_minutes() != 1.5
-            or 90.minutes.to_hours() != 1.5
+            or 90.seconds().to_minutes() != 1.5
+            or 90.minutes().to_hours() != 1.5
         )
     )
 
@@ -30,9 +30,9 @@ test "duration arithmetic and conversion":
     )
     try expect_false(
         (
-            interval.add(1.seconds).subtract(500.milliseconds).multiply(
+            interval.add(1.seconds()).subtract(500.milliseconds()).multiply(
                 3
-            ).divide(2) != 3.seconds
+            ).divide(2) != 3.seconds()
         )
     )
     try expect_false(
@@ -43,9 +43,9 @@ test "duration arithmetic and conversion":
     )
     try expect_false(
         (
-            interval.compare(2.seconds) != -1
+            interval.compare(2.seconds()) != -1
             or interval.compare(interval) != 0
-            or interval.compare(1.seconds) != 1
+            or interval.compare(1.seconds()) != 1
         )
     )
 
@@ -54,10 +54,10 @@ test "duration arithmetic and conversion":
 
 test "monotonic instant methods":
     let start = monotonic()
-    let later = start.shift(2.seconds)
+    let later = start.shift(2.seconds())
     try expect_false(
         (
-            later.difference(start) != 2.seconds
+            later.difference(start) != 2.seconds()
             or start.difference(later) != nanoseconds((-2000000000))
         )
     )
@@ -80,7 +80,7 @@ test "timestamp methods and expected range failures":
         )
     )
 
-    let later = try value.shift(1500.milliseconds)
+    let later = try value.shift(1500.milliseconds())
     try expect_false(
         (
             later.unix_seconds() != 1
@@ -91,7 +91,7 @@ test "timestamp methods and expected range failures":
     )
 
     let delta = try later.difference(value)
-    try expect_equal(delta, 1500.milliseconds)
+    try expect_equal(delta, 1500.milliseconds())
 
     let parsed = try parse_timestamp("2026-10-12T01:00:00+01:00")
     try expect_false(

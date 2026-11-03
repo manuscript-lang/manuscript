@@ -2,6 +2,7 @@
 
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/math/decimal.ms"
+import Duration from "@std/os/time.ms"
 
 // Every value has this operation, including unconstrained type parameters.
 interface ValueOperations:
@@ -117,6 +118,12 @@ interface IntOperations:
     fn abs() Int
     // Returns -1, 0 or 1 as this value is negative, zero or positive.
     fn sign() Int
+    // A Duration of this many milliseconds, as in `500.milliseconds()`; faults when the nanosecond count overflows Int.
+    fn milliseconds() Duration
+    // A Duration of this many seconds, as in `2.seconds()`; faults when the nanosecond count overflows Int.
+    fn seconds() Duration
+    // A Duration of this many minutes, as in `2.minutes()`; faults when the nanosecond count overflows Int.
+    fn minutes() Duration
     // Returns the same value; Int64 is another name for Int while Int is 64 bits wide.
     fn to_int64() Int64
     // Converts to Int; every value fits, so no check is needed.

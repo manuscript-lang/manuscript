@@ -17,7 +17,7 @@ fn handle(request: HttpRequest) HttpResponse:
 export fn main() Int:
     let options = HttpServerOptions(
         max_requests: 2, max_body_bytes: 1024, max_response_bytes: 1024,
-        timeout: 2.seconds, grace: 0.seconds
+        timeout: 2.seconds(), grace: 0.seconds()
     )
 
     if let acquired = serve(

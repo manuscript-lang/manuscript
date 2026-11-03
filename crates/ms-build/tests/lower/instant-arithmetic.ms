@@ -7,7 +7,7 @@ import monotonic from "@std/os/time.ms"
 
 export fn main() Int:
     let a = monotonic()
-    let b = a + 5.seconds
+    let b = a + 5.seconds()
     let d = b - a
-    let c = b - 1.seconds
+    let c = b - 1.seconds()
     return d.to_nanoseconds() + c.difference(a).to_nanoseconds()

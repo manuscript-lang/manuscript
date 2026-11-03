@@ -324,7 +324,7 @@ impl Closeable for HttpServer:
     var fn close() Unit!:
         self.stopped = true
 
-        let _ = self.accepting.wait(timeout: 0.seconds)
+        let _ = self.accepting.wait(timeout: 0.seconds())
         return ok(unit)
 
 impl HttpServer:

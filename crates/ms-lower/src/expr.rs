@@ -471,27 +471,10 @@ impl<'a> FnLower<'a> {
         if let Resolution::Constructor { ty, case } = self.hir.resolution(e) {
             return self.construct_unit(e, &ty, case);
         }
-        if let Resolution::Native(unit) = self.hir.resolution(e)
-            && matches!(unit.as_str(), "seconds" | "milliseconds" | "minutes")
-        {
-            let n = self.expr(left)?;
-            if self.dead {
-                return Ok(n);
-            }
-            return self.duration_unit(unit.as_str(), n);
-        }
         if let Resolution::Method(m) = self.hir.resolution(e) {
             return self.method_value(e, left, &m);
         }
         let lt = self.ety(left);
-        if lt.id == "Int" && matches!(name, "seconds" | "milliseconds" | "minutes") {
-            // `3.minutes`: a duration of that many units.
-            let n = self.expr(left)?;
-            if self.dead {
-                return Ok(n);
-            }
-            return self.duration_unit(name, n);
-        }
         if lt.kind != Kind::Record {
             return Err(Error::new(format!("unsupported member access .{name}")));
         }

@@ -13,7 +13,7 @@ fn check_services() Unit!:
 
     let before = monotonic()
     let after = monotonic()
-    (after - before < 0.milliseconds) | try expect_false
+    (after - before < 0.milliseconds()) | try expect_false
     (now().unix_seconds() <= 0) | try expect_false
     (system_info().cpu_count <= 0) | try expect_false
 
