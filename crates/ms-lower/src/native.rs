@@ -1495,9 +1495,15 @@ impl<'a> FnLower<'a> {
             return Ok((self.local(&b)?.var, false));
         }
         let t = self.ty_of(recv.v);
+        if !recv.own {
+            // A borrowed receiver stays borrowed across the loop: the owner cannot change while
+            // the borrow lives, so no hidden copy is needed.
+            let var = self.b.declare_var(t, Mode::Borrow);
+            self.b.def_var(var, recv.v);
+            return Ok((var, false));
+        }
         let var = self.fresh_var(t);
-        let v = self.owned(recv);
-        self.b.def_var(var, v);
+        self.b.def_var(var, recv.v);
         Ok((var, true))
     }
 
@@ -2274,9 +2280,13 @@ impl<'a> FnLower<'a> {
             some,
             out,
             &mut |s| {
-                let p = s.b.opt_get(r);
-                let o = s.owned(Val { v: p, own: false });
-                s.finish(recv);
+                // An owned optional hands its payload over; a borrowed `Clonable` one is cloned.
+                let o = if recv.own {
+                    s.b.opt_unbox(r)
+                } else {
+                    let p = s.b.opt_get(r);
+                    s.clone_value(p)
+                };
                 if let Some(c) = cause {
                     s.finish(c.val);
                 }
