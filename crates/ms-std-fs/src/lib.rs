@@ -188,6 +188,17 @@ native! {
         fs_status_at(path.as_bytes(), ops::write_file(path.as_bytes(), data, replace), &err)
     }
 
+    /// Takes an admission permit for copying `bytes` for a pool job, parking while the pool is
+    /// full; true when one is held and `msstd_fs_release` must follow.
+    safe fn msstd_fs_admit(bytes: i64) -> bool {
+        ms_rt::glue::pool::admit(usize::try_from(bytes).unwrap_or(0))
+    }
+
+    /// Returns a permit from `msstd_fs_admit`.
+    safe fn msstd_fs_release() -> () {
+        ms_rt::glue::pool::release()
+    }
+
     fn msstd_fs_append_file(path: &str, data: &[u8]; err: ErrOut) -> Result<(), StatusCode> {
         fs_status_at(path.as_bytes(), ops::append_file(path.as_bytes(), data), &err)
     }
