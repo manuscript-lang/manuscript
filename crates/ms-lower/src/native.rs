@@ -209,6 +209,7 @@ impl<'a> FnLower<'a> {
                     ct::Param {
                         name,
                         ty: ct::bool_(),
+                        mutable: false,
                     },
                 );
                 return self.rt_function(symbol, &decl, &args, result);
@@ -668,7 +669,7 @@ impl<'a> FnLower<'a> {
                 .ok_or_else(|| Error::new("format method without arguments"))?
                 .clone();
         let mut decl = vec![first.clone()];
-        decl.push(ct::Param { name, ty: first.ty });
+        decl.push(ct::Param::new(name, first.ty));
         decl.extend(m.ty.params.iter().skip(1).cloned());
         self.rt_function(sym, &decl, &args, result)
     }

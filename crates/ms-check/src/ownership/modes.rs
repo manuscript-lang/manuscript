@@ -204,9 +204,32 @@ pub fn call_modes(
             }
         }
         Resolution::Method(method) => method_modes(summaries, &method, args.len(), label),
-        Resolution::Native(_) | Resolution::Local(_) | Resolution::Type(_) | Resolution::Value => {
-            borrow_all(None)
+        Resolution::Local(_) | Resolution::Value => {
+            // A call through a function value: its type says which parameters it changes
+            // (`fn(var List[Int]) Unit`); the rest it lends.
+            let ExprKind::Call { callee, .. } = &call.kind else {
+                return borrow_all(None);
+            };
+            let fty = m.ty(callee);
+            if fty.kind != Kind::Function {
+                return borrow_all(None);
+            }
+            CallModes {
+                arguments: (0..args.len())
+                    .map(|i| {
+                        let p = label(i)
+                            .and_then(|l| fty.params.iter().find(|p| p.name == l))
+                            .or_else(|| fty.params.get(i));
+                        match p {
+                            Some(p) if p.mutable => ParamMode::Mutate,
+                            _ => ParamMode::Borrow,
+                        }
+                    })
+                    .collect(),
+                ..borrow_all(None)
+            }
         }
+        Resolution::Native(_) | Resolution::Type(_) => borrow_all(None),
     }
 }
 

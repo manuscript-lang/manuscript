@@ -121,6 +121,7 @@ fn invocation_default_metadata_survives_substitution_and_erases_recursively() {
     let params = vec![Param {
         name: cause,
         ty: primitive("Int"),
+        mutable: false,
     }];
     let plain = function_with(
         params.clone(),
@@ -155,6 +156,7 @@ fn invocation_default_metadata_survives_substitution_and_erases_recursively() {
         vec![Param {
             name: n("callback"),
             ty: marked.clone(),
+            mutable: false,
         }],
         std::rc::Rc::new(wrapper),
     );
