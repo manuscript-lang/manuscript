@@ -27,6 +27,13 @@ pub const EAGAIN: c_int = 35;
 #[cfg(not(target_os = "macos"))]
 pub const EAGAIN: c_int = 11;
 
+pub const F_GETFL: c_int = 3;
+pub const F_SETFL: c_int = 4;
+#[cfg(target_os = "macos")]
+pub const O_NONBLOCK: c_int = 0x4;
+#[cfg(not(target_os = "macos"))]
+pub const O_NONBLOCK: c_int = 0o4000;
+
 pub const SIGINT: c_int = 2;
 pub const SIGPIPE: c_int = 13;
 /// `SIG_IGN` as a `sigaction` handler value.
@@ -181,6 +188,7 @@ unsafe extern "C" {
     pub fn pthread_join(thread: usize, ret: *mut *mut c_void) -> c_int;
     pub fn open(path: *const c_char, flags: c_int, ...) -> c_int;
     pub fn close(fd: c_int) -> c_int;
+    pub fn fcntl(fd: c_int, cmd: c_int, ...) -> c_int;
     pub fn fork() -> c_int;
     pub fn pipe(fds: *mut c_int) -> c_int;
     pub fn dup2(from: c_int, to: c_int) -> c_int;

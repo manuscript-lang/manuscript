@@ -18,6 +18,8 @@ pub const READS: i64 = 1;
 pub const WRITES: i64 = 2;
 /// `msrt_streams_open` flag: closing the entry closes the descriptor.
 pub const OWNS: i64 = 4;
+/// `msrt_streams_open` flag: put the descriptor in non-blocking mode (only for descriptors nothing else shares).
+pub const NONBLOCK: i64 = 8;
 
 /// Bytes a read asks the system for.
 const CHUNK: usize = 64 * 1024;
@@ -55,6 +57,15 @@ fn slot(table: &mut [Entry], id: i64) -> Option<&mut Entry> {
 /// Adds a stream over `fd` and answers its id.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_streams_open(fd: i64, flags: i64) -> i64 {
+    if flags & NONBLOCK != 0 {
+        // SAFETY: plain fcntl calls on a descriptor the caller hands over.
+        unsafe {
+            let current = sys::fcntl(fd as i32, sys::F_GETFL);
+            if current >= 0 {
+                sys::fcntl(fd as i32, sys::F_SETFL, current | sys::O_NONBLOCK);
+            }
+        }
+    }
     let mut table = streams();
     let i = match table
         .iter()

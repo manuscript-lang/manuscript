@@ -199,6 +199,21 @@ impl Stream {
         self.closed
     }
 
+    /// Hands the descriptor of an owned stream to the caller and retires the stream without
+    /// closing it; -1 when the stream is closed, borrowed or not a plain descriptor (an adopted
+    /// Windows pipe).
+    pub fn take_fd(&mut self) -> i64 {
+        #[cfg(windows)]
+        if self.adopted {
+            return -1;
+        }
+        if self.closed || !self.owned {
+            return -1;
+        }
+        self.closed = true;
+        i64::from(self.fd as i32)
+    }
+
     /// Releases the descriptor of an owned stream once; later calls do nothing.
     pub fn close(&mut self) -> Result<(), IoFail> {
         if self.closed {

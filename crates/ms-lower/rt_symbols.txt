@@ -741,6 +741,7 @@ msstd_process_subprocess_kill(h: *mut ObjCell<Child>)
 msstd_process_subprocess_max_resident(h: *const ObjCell<Child>) -> i64
 msstd_process_subprocess_stdin(h: *const ObjCell<Child>) -> *mut ObjCell<Stream>
 msstd_process_subprocess_stream(h: *const ObjCell<Child>, which: i64) -> *mut ObjCell<Stream>
+msstd_process_subprocess_stream_id(h: *mut ObjCell<Child>, which: i64) -> i64
 msstd_process_subprocess_terminate(h: *mut ObjCell<Child>)
 msstd_process_subprocess_wait(h: *mut ObjCell<Child>, has_timeout: u8, timeout_ns: i64, out: *mut i64, err: *mut StrVal) -> u8
 msstd_process_title(out: *mut StrVal, err: *mut StrVal) -> u8

@@ -178,6 +178,8 @@ fn valid_command(program: &[u8], args: &[&[u8]]) -> Res<Vec<Vec<u8>>> {
 pub struct Child {
     proc: Subprocess,
     streams: [ObjBox<Stream>; 3],
+    /// The runtime stream-table id of each pipe once taken (-2 not yet, -1 no pipe).
+    ids: [i64; 3],
 }
 
 impl Drop for Child {
@@ -415,7 +417,7 @@ native! {
             ObjBox::new(parent_end(&mut p.stdout, b"|0")),
             ObjBox::new(parent_end(&mut p.stderr, b"|0")),
         ];
-        Ok(Object(Child { proc: p, streams }))
+        Ok(Object(Child { proc: p, streams, ids: [-2; 3] }))
     }
 
     /// The child's piped standard input; closed unless spawned with `Stdio.Pipe`.
@@ -426,6 +428,16 @@ native! {
     /// `which`: 0 stdin, 1 stdout, 2 stderr. Returns a new reference to the stream.
     fn msstd_process_subprocess_stream(h: ObjRef<Child>, which: i64) -> ObjShare<Stream> {
         h.streams[which.clamp(0, 2) as usize].share()
+    }
+
+    /// The runtime stream-table id of the child's pipe `which` (0 stdin, 1 stdout, 2 stderr): the
+    /// first call moves the descriptor into the table, later calls answer the same id; -1 when
+    /// there is no pipe (or the host cannot hand the descriptor over).
+    fn msstd_process_subprocess_stream_id(h: ObjMut<Child>, which: i64) -> i64 {
+        let mut h = h;
+        let which = which.clamp(0, 2) as usize;
+        let h = &mut *h;
+        stream_id(&mut h.streams[which], &mut h.ids[which], which == 0)
     }
 
     fn msstd_process_subprocess_wait(
@@ -589,4 +601,29 @@ mod exec {
             message: Some(m),
         })
     }
+}
+
+/// Moves the descriptor of `stream` into the runtime stream table once and answers its id.
+pub(crate) fn stream_id(stream: &mut ObjBox<Stream>, id: &mut i64, writes: bool) -> i64 {
+    if *id == -2 {
+        let fd = stream.get_mut().take_fd();
+        #[cfg(not(windows))]
+        {
+            use ms_rt::streams::{NONBLOCK, OWNS, READS, WRITES};
+            *id = if fd < 0 {
+                -1
+            } else {
+                ms_rt::streams::msrt_streams_open(
+                    fd,
+                    OWNS | NONBLOCK | if writes { WRITES } else { READS },
+                )
+            };
+        }
+        #[cfg(windows)]
+        {
+            let _ = (fd, writes);
+            *id = -1;
+        }
+    }
+    *id
 }
