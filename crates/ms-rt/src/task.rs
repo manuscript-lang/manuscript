@@ -1584,11 +1584,6 @@ pub(crate) unsafe fn pump() {
     unsafe { msrt_task_yield() };
 }
 
-/// How many tasks wait to run on this thread, not counting the running one.
-pub(crate) fn ready_count() -> usize {
-    sched().ready.len()
-}
-
 /// Cancels the task of promise `promise`, if it runs on this thread; answers whether it does.
 pub(crate) fn cancel_promise_task(promise: i64) -> bool {
     let s = sched();

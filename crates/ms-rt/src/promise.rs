@@ -347,6 +347,7 @@ fn request_cancel(id: i64) {
 
 /// Starts the promise `start` as a task on this thread and tells its creator.
 pub(crate) fn execute(start: Start) {
+    sched::live_add(1);
     // SAFETY: the creator holds a reference to the closure until it is told the task ended.
     unsafe { task::spawn_promise_task(start.closure as *mut ms_rt_abi::Closure, start.id) };
     deliver(
@@ -365,6 +366,7 @@ pub(crate) fn task_ended(id: i64, status: u8, msg: &ms_rt_abi::StrVal, started: 
     } else {
         Vec::new()
     };
+    sched::live_add(-1);
     deliver(id, Event::Ended { id, status, report });
 }
 
@@ -690,7 +692,7 @@ pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi
     if sched::current() == sched::NONE {
         execute(start);
     } else {
-        sched::submit(start, task::ready_count());
+        sched::submit(start);
     }
 }
 
