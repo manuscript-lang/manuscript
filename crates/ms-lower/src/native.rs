@@ -259,6 +259,7 @@ impl<'a> FnLower<'a> {
                     noreturn: true,
                     pure_: false,
                     fresh: false,
+                    role: ms_mir::ir::ExternRole::None,
                     leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
                     reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
                 });
@@ -602,6 +603,7 @@ impl<'a> FnLower<'a> {
                     noreturn: true,
                     pure_: false,
                     fresh: false,
+                    role: ms_mir::ir::ExternRole::None,
                     leaf: crate::rtcall::rt_flags(&format!("msrt_bits_{name}")).leaf,
                     reads: crate::rtcall::rt_flags(&format!("msrt_bits_{name}")).reads,
                 });
@@ -1735,6 +1737,7 @@ impl<'a> FnLower<'a> {
             MTy::INT,
         );
         tb.func_mut().linkage = ms_mir::ir::Linkage::Internal;
+        tb.func_mut().sort = ms_mir::ir::SortThunk::Generic;
         let args = tb.params();
         let mut load = |a| {
             tb.emit(
@@ -2142,6 +2145,7 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            role: ms_mir::ir::ExternRole::None,
             leaf: crate::rtcall::rt_flags("msrt_list_index_fault").leaf,
             reads: crate::rtcall::rt_flags("msrt_list_index_fault").reads,
         });
@@ -2184,6 +2188,7 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            role: ms_mir::ir::ExternRole::None,
             leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
             reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
         });
@@ -2205,6 +2210,7 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            role: ms_mir::ir::ExternRole::None,
             leaf: crate::rtcall::rt_flags(sym).leaf,
             reads: crate::rtcall::rt_flags(sym).reads,
         });

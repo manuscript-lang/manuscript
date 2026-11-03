@@ -10,7 +10,7 @@
 
 use crate::ir::{
     Block, BlockData, BlockParam, Func, FuncId, FuncKind, Imm, InlineHint, Inst, Linkage, Loc,
-    Mode, Module, Op, Param, Scope, Target, Term, Value,
+    Mode, Module, Op, Param, Scope, SortThunk, Target, Term, Value,
 };
 use crate::types::{RecId, Ty, TyKind};
 use crate::vmap::{ValueMap, ValueSet};
@@ -59,7 +59,9 @@ fn specialize_sort_thunks(m: &mut Module) -> bool {
                 (Op::ClosureNew, Imm::Func(g), Some(r)) => {
                     known.insert(r, g);
                 }
-                (Op::FuncAddr, Imm::Func(t), Some(r)) if m.funcs[t.index()].name == "sort.cmp" => {
+                (Op::FuncAddr, Imm::Func(t), Some(r))
+                    if m.funcs[t.index()].sort == SortThunk::Generic =>
+                {
                     addrs.insert(r, t);
                 }
                 _ => {}
@@ -118,6 +120,7 @@ fn specialized_thunk(m: &Module, thunk: FuncId, g: FuncId) -> Option<Func> {
     }
     let mut t = m.funcs[thunk.index()].clone();
     t.name = format!("sort.cmp.{}", code.name);
+    t.sort = SortThunk::Specialized;
     t.params[0].ty = Ty::PTR;
     let env = t.blocks[0].params[0].value;
     t.values[env.index()] = Ty::PTR;

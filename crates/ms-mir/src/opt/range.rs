@@ -408,7 +408,7 @@ fn byte_lists(m: &Module, f: &Func) -> Vec<bool> {
     for b in &f.blocks {
         for i in &b.insts {
             if let (Op::CallRt, Imm::Ext(e), Some(r)) = (i.op, i.imm, i.res)
-                && m.externs[e.index()].name == "msrt_bytes_values"
+                && m.externs[e.index()].role == ExternRole::BytesValues
             {
                 facts[r.index()] = true;
             }

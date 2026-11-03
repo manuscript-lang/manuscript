@@ -61,6 +61,7 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            role: ms_mir::ir::ExternRole::None,
             leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
             reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
         });

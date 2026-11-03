@@ -460,6 +460,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 };
                 let (mut noreturn, mut pure_, mut fresh) = (false, false, false);
                 let (mut leaf, mut reads) = (false, false);
+                let mut role = ExternRole::None;
                 while !c.done() {
                     match c.ident()?.as_str() {
                         "noreturn" => noreturn = true,
@@ -467,7 +468,10 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                         "fresh" => fresh = true,
                         "leaf" => leaf = true,
                         "reads" => reads = true,
-                        o => return c.err(format!("unknown extern attribute {o}")),
+                        o => match ExternRole::from_name(o) {
+                            Some(r) => role = r,
+                            None => return c.err(format!("unknown extern attribute {o}")),
+                        },
                     }
                 }
                 m.externs.push(ExternDef {
@@ -477,6 +481,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     noreturn,
                     pure_,
                     fresh,
+                    role,
                     leaf,
                     reads,
                 });
@@ -543,6 +548,8 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 match c.ident()?.as_str() {
                     "export" => f.linkage = Linkage::Export,
                     "method" => f.kind = FuncKind::Method,
+                    "sort_cmp" => f.sort = SortThunk::Generic,
+                    "sort_cmp_for" => f.sort = SortThunk::Specialized,
                     "inline" => {
                         c.expect_p('(')?;
                         f.inline = match c.ident()?.as_str() {
