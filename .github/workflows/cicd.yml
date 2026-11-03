@@ -6,16 +6,18 @@ name: CI/CD
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
 #                 every outside merge.
 #   merge queue   the same as a pull request, in case a queue is configured again.
-#   push to main  all six platforms, each split into `tests` and `conformance` (twelve jobs, see
+#   main          every 30 minutes (cron), when main has a commit that no earlier scheduled or manual run
+#                 checked: all six platforms, each split into `tests` and `conformance` (twelve jobs, see
 #                 .github/actions/rust-checks); linux-arm64 also builds the book for Pages and the tests
-#                 jobs save the sccache caches. The running main run finishes; only the newest push waits. A failure is fixed or reverted.
-#   manual run    the same as a push; its `os` input runs one platform.
+#                 jobs save the sccache caches. A failure is fixed or reverted.
+#   manual run    the same as a main run; its `os` input runs one platform.
 # Require `Platform checks`.
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  schedule:
+    # Pushes to main no longer start a run: twelve runners per push took too many slots.
+    - cron: '*/30 * * * *'
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
@@ -48,7 +50,7 @@ concurrency:
   # A new commit cancels the earlier run of the same pull request. Main runs are not cancelled: with pull
   # requests merging every few minutes, cancelling meant no main run finished. The running one completes and
   # only the newest push waits (GitHub replaces a pending run with a newer one), so middle commits are skipped.
-  group: ci-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref) || github.run_id }}
+  group: ci-${{ github.event.pull_request.number || (github.event_name == 'schedule' && github.ref) || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
@@ -56,6 +58,30 @@ defaults:
     shell: bash
 
 jobs:
+  # A scheduled run does nothing when the last scheduled or manual run of main already checked this commit
+  # (whatever its result: a red main waits for a fix). Every other trigger always runs.
+  due:
+    name: Main changed
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      run: ${{ steps.due.outputs.run }}
+    steps:
+      - id: due
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          run=true
+          if [ "$EVENT" = schedule ]; then
+            seen=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow cicd.yml --branch main --limit 40 \
+              --json databaseId,headSha,event,status,conclusion \
+              --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID and (.event == \"schedule\" or .event == \"workflow_dispatch\") and .conclusion != \"cancelled\" and .conclusion != \"skipped\")][0].headSha")
+            if [ "$seen" = "$GITHUB_SHA" ]; then run=false; fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
   # One job per platform leg and part. Pull requests run the Linux legs; a manual run's `os` input picks
   # one platform; a push runs all six. The matrix is picked in an expression because a job `if`
   # cannot read it, and a separate job to pick it would cost one more job per run.
@@ -68,6 +94,8 @@ jobs:
   # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
   # in tests/conformance/expect-fail.<os>.txt with a reason.
   rust:
+    needs: due
+    if: needs.due.outputs.run == 'true'
     name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }}${{ matrix.part == 'a' && ' · tests' || matrix.part == 'b' && ' · conformance' || '' }}
     runs-on: ${{ matrix.leg.runner }}
     timeout-minutes: 75
@@ -131,19 +159,20 @@ jobs:
   platforms:
     name: Platform checks
     if: always()
-    needs: rust
+    needs: [due, rust]
     runs-on: ubuntu-latest
     steps:
       - name: Require every platform leg
         env:
           RESULT: ${{ needs.rust.result }}
-        run: test "$RESULT" = success
+          DUE: ${{ needs.due.outputs.run }}
+        run: test "$RESULT" = success || test "$DUE" = false
 
   pages:
     name: Publish Pages docs
-    needs: rust
+    needs: [due, rust]
     # Deploys whenever the book built, even if another platform failed.
-    if: ${{ !cancelled() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    if: ${{ !cancelled() && needs.due.outputs.run == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
     runs-on: ubuntu-24.04
     permissions:
       pages: write
