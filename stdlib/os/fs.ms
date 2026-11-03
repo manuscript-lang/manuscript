@@ -590,9 +590,9 @@ Returns entries matching the include patterns of `options`, sorted by path. `pat
 returns True. A malformed pattern, one over 4096 bytes, or a negative limit returns InvalidInput.
 
 ```manuscript
+let sources = glob(".", GlobOptions(patterns: ["*.ms"]))
+```
 */
-// let sources = glob(".", GlobOptions(patterns: ["**/*.ms"]))
-// ```
 export fn glob(
     path: String,
     options: GlobOptions,
