@@ -270,8 +270,9 @@ impl Sink[T] for PipeSink[T]:
         return ok(unit)
 
 // An in-memory stream of whole values, in order: any number of writers and one reader. A write hands the pipe a copy
-// (the stream interface only lends the argument), so `T` must be `Clonable`; the copy then moves through by pointer. `capacity` is the number of queued values above which a writer's `flush` waits. The reader ends once
-// every writer is closed, the pipe itself counting as one until it is closed (or goes out of scope); closing the reader
+// (the stream interface only lends the argument), so `T` must be `Clonable`; the copy then moves through by pointer.
+// `capacity` is the number of queued values above which a writer's `flush` waits. The pipe itself is not a writer: the
+// reader ends once every writer from `writer()` has closed, so make the writers before reading. Closing the reader
 // makes later writes fail with `Closed`.
 export opaque type Pipe[T: Clonable]:
     id: Int
@@ -279,7 +280,8 @@ export opaque type Pipe[T: Clonable]:
     taken: Bool
 
 impl Pipe[T]:
-    // A new writing end, like dup on a descriptor. Close it when done: the reader ends when every writer has closed.
+    // A new writing end, like dup on a descriptor. Close it when done: the reader ends when every writer has closed. Safe
+    // to call from a promise that owns the pipe: each call makes a writer of its own.
     fn writer() WriteStream[T]:
         msrt_pipe_add_writer(self.id)
         return writer[T](PipeSink[T](self.id))
@@ -293,9 +295,8 @@ impl Pipe[T]:
         return stream[T](PipeSource[T](self.id))
 
 impl Closeable for Pipe[T]:
-    // Releases the pipe's own writer, and the reading end if no one took it.
+    // Releases the reading end if no one took it.
     var fn close() Unit!:
-        msrt_pipe_close_writer(self.id)
         if not self.taken:
             msrt_pipe_close_reader(self.id)
 
@@ -303,7 +304,10 @@ impl Closeable for Pipe[T]:
 
 // Makes an in-memory pipe whose writers' `flush` waits while more than `capacity` values are queued.
 export fn pipe[T: Clonable](capacity: Int) Pipe[T]:
-    return Pipe[T](id: msrt_pipe_new(capacity), taken: false)
+    let id = msrt_pipe_new(capacity)
+    // The runtime starts a pipe with one writer, which the Pipe value would hold; writers come from `writer()` instead.
+    msrt_pipe_close_writer(id)
+    return Pipe[T](id: id, taken: false)
 
 // Standard output and error share the runtime's process-wide buffers.
 type StdoutSink:
