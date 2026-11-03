@@ -564,7 +564,8 @@ impl<'a> FnLower<'a> {
             .expect("copy result")
     }
 
-    /// An owned `none` of optional type `t` (a bare `opt.none` is a borrow).
+    /// An owned `none` of optional type `t` (a bare `opt.none` is a borrow; its copy owns
+    /// nothing, so the copy costs a null check and never touches an object).
     pub fn none_owned(&mut self, t: MTy) -> Value {
         let n = self.b.opt_none(t);
         self.owned(Val { v: n, own: false })

@@ -2270,9 +2270,13 @@ impl<'a> FnLower<'a> {
                     some,
                     inner,
                     &mut |s| {
-                        let p = s.b.opt_get(r);
-                        let o = s.owned(Val { v: p, own: false });
-                        s.finish(recv);
+                        // An owned optional hands its payload over; a borrowed one is copied.
+                        let o = if recv.own {
+                            s.b.opt_unbox(r)
+                        } else {
+                            let p = s.b.opt_get(r);
+                            s.owned(Val { v: p, own: false })
+                        };
                         if let Some(d) = default {
                             // The default goes unused: an owned resource there closes now.
                             if d.wrapped {
@@ -2470,9 +2474,15 @@ impl<'a> FnLower<'a> {
                     is_ok,
                     out,
                     &mut |s| {
-                        let p = s.b.alt_get(alt, ok, 0, r);
-                        let o = s.owned(Val { v: p, own: false });
-                        s.finish(recv);
+                        // An owned result hands its payload over; a borrowed one is copied.
+                        let o = if recv.own {
+                            let p = s.b.alt_take(alt, ok, 0, r);
+                            s.b.alt_release(alt, ok, 1, r);
+                            p
+                        } else {
+                            let p = s.b.alt_get(alt, ok, 0, r);
+                            s.owned(Val { v: p, own: false })
+                        };
                         if let Some(d) = default {
                             // The default goes unused: an owned resource there closes now.
                             if d.wrapped {
