@@ -64,7 +64,6 @@ const HAND_LOWERED: &[HandLowered] = &[
     plain("msstd_io_stderr", "io/stderr"),
     handle("msstd_io_stdin", "io/stdin", "io", "msstd_io_standard"),
     plain("msstd_io_stdout", "io/stdout"),
-    handle("msstd_io_terminal", "io/terminal", "terminal", ""),
     handle("msstd_process_commands", "process/commands", "process", ""),
     handle("msstd_process_control", "process/control", "process", ""),
     handle("msstd_process_system", "process/system", "system", ""),
