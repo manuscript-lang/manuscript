@@ -124,8 +124,6 @@ export extern fn msstd_net_listener_accept_raw(
     timeout: Duration?
 ) Int!
 
-
-
 export extern fn msstd_net_listener_address(handle: NativeListener) String
 
 export extern fn msstd_net_listener_close(handle: NativeListener) Unit
