@@ -3,9 +3,9 @@ import (
     Commands,
     CpuUsage,
     MemoryUsage,
+    NativeSignals,
     NativeSubprocess,
-    ResourceUsage,
-    SignalStream
+    ResourceUsage
 ) from "@std/os/process.ms"
 import Duration from "@std/os/time.ms"
 
@@ -84,7 +84,11 @@ export extern fn msstd_process_elapsed() Duration!
 export extern fn msstd_process_watch_signals(
     signals: List[Int],
     capacity: Int?
-) SignalStream!
+) NativeSignals!
+
+export extern fn msstd_process_signal_next(signals: NativeSignals) Int!
+
+export extern fn msstd_process_signal_close(signals: NativeSignals) Unit
 
 export extern fn msstd_process_working_directory() String!
 

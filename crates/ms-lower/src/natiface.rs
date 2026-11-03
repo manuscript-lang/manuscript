@@ -378,22 +378,6 @@ const METHODS: &[MethodRow] = &[
         Shape::Walk,
     ),
     (
-        "crypto",
-        "Hasher",
-        "update",
-        "msstd_crypto_hasher_update",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "crypto",
-        "Hasher",
-        "finish",
-        "msstd_crypto_hasher_finish",
-        &[],
-        Shape::Plain,
-    ),
-    (
         "process",
         "Commands",
         "run",
@@ -408,22 +392,6 @@ const METHODS: &[MethodRow] = &[
         "msstd_process_command_spawn",
         &[],
         Shape::SplitEnv,
-    ),
-    (
-        "process",
-        "SignalStream",
-        "next",
-        "msstd_process_signal_next",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "process",
-        "SignalStream",
-        "close",
-        "msstd_process_signal_close",
-        &[],
-        Shape::Plain,
     ),
 ];
 
