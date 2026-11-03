@@ -1846,6 +1846,8 @@ pub unsafe extern "C-unwind" fn msrt_token_post(id: u64, value: u64) {
 
 /// Posts `value` to `id` from any thread. It takes effect when the scheduler next looks, and
 /// interrupts a scheduler that is blocked. Touches no runtime state but a locked queue.
+/// A post to a token that already holds an untaken post is coalesced into it: a token carries a wake, not a
+/// count, so a waiter re-checks its own state after waking (promise waits and pipes do; they never lose work).
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_token_post_remote(id: u64, value: u64) {
     isolate::post_remote(id, value);
