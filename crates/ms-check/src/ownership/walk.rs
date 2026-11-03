@@ -384,43 +384,6 @@ impl Walker<'_> {
         }
     }
 
-    /// The value is made from another resource, which owns and closes it: `group.spawn(..)`, or a
-    /// reader that wraps a source it was given.
-    fn derived_from_resource(&self, e: &Expr) -> bool {
-        match &e.kind {
-            ExprKind::Unary { operand, .. } => self.derived_from_resource(operand),
-            ExprKind::Call { callee, args, .. } => {
-                // A constructor takes its arguments: the value it builds owns them.
-                if matches!(self.cx.m.resolution(e), Resolution::Constructor { .. }) {
-                    return false;
-                }
-                let result = self.cx.m.ty(e);
-                // A source holding the result's own type (`keep(r)`, `Optional.get(d)`) or a
-                // value of it (`result.get()`) hands the value over: the binding owns it.
-                // An owned `Optional` or `Result` of a part the source holds (`pop()`) hands the part
-                // over too.
-                let modes = call_modes(self.cx.m, e, args, self.cx.summaries);
-                let wraps = |src: &Expr| {
-                    self.class_of(src) == Class::Resource
-                        && !ty_holds(&self.cx.m.ty(src), &result)
-                        && !wraps_part(&self.cx.m.ty(src), &result)
-                };
-                let receiver = match &callee.kind {
-                    ExprKind::Member { left, .. } => wraps(left),
-                    _ => false,
-                };
-                // An argument the callee consumes belongs to the result now, not the other way.
-                let kept = |i: usize| modes.arguments.get(i) == Some(&ParamMode::Consume);
-                receiver
-                    || args
-                        .iter()
-                        .enumerate()
-                        .any(|(i, a)| !kept(i) && wraps(&a.value))
-            }
-            _ => false,
-        }
-    }
-
     /// Whether the scope can close a resource binding of `ty`: it has a close operation, or it
     /// is a record, alternative or collection that closes the resources it holds.
     fn closable(&self, s: &Stmt, ty: &Ty) -> bool {
@@ -1717,10 +1680,10 @@ impl Walker<'_> {
                 let scrutinee = self.scrutinee(probed.unwrap_or(cond));
                 if mutable {
                     self.mutable_payload(p, cond, &scrutinee);
-                    self.payload_resource(s, p, cond, &scrutinee);
+                    self.payload_resource(s, p, &scrutinee);
                 } else {
                     self.pattern_bindings(p, &scrutinee, Role::Pattern);
-                    self.payload_resource(s, p, cond, &scrutinee);
+                    self.payload_resource(s, p, &scrutinee);
                 }
             }
             None => self.expr(cond, Demand::Read),
@@ -1745,14 +1708,14 @@ impl Walker<'_> {
 
     /// An `if let name = value` that owns a resource payload closes it when the branch ends,
     /// unless the branch moves it on.
-    fn payload_resource(&mut self, s: &Stmt, p: &Pattern, value: &Expr, source: &Scrutinee) {
+    fn payload_resource(&mut self, s: &Stmt, p: &Pattern, source: &Scrutinee) {
         if !source.owned || !matches!(p.kind, PatternKind::Name(_)) {
             return;
         }
         let Some(b) = self.cx.m.pattern_binding(p) else {
             return;
         };
-        if self.may_close(&b.ty) && !self.derived_from_resource(value) {
+        if self.may_close(&b.ty) {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, p.pos, closable));
         }
@@ -2010,7 +1973,10 @@ impl Walker<'_> {
             None,
             false,
         );
-        if self.may_close(&b.ty) && !self.derived_from_resource(value) {
+        // The binding owns the value (a call result among them: a resource a method on another
+        // resource returns, `client.request(..)`, is the caller's to close), so a resource it holds
+        // closes at the scope end unless the scope moves it on.
+        if self.may_close(&b.ty) {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, pattern.pos, closable));
         }
@@ -4226,21 +4192,6 @@ fn ty_contains(src: &Ty, part: &Ty) -> bool {
     src.args
         .iter()
         .any(|a| crate::types::same(a, part) || ty_contains(a, part))
-}
-
-/// Whether `result` is an `Optional` or `Result` around a type `src` holds (or around another
-/// such wrapper).
-fn wraps_part(src: &Ty, result: &Ty) -> bool {
-    (result.is_std("Optional") || result.is_std("Result"))
-        && result
-            .args
-            .first()
-            .is_some_and(|a| ty_holds(src, a) || wraps_part(src, a))
-}
-
-/// Whether `src` is `part` or has it among its type arguments, at any depth.
-fn ty_holds(src: &Ty, part: &Ty) -> bool {
-    src.id == part.id || src.args.iter().any(|a| ty_holds(a, part))
 }
 
 /// Whether `t` mentions a type parameter.
