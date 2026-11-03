@@ -228,7 +228,30 @@ fn submit<I: Send + Sync + 'static, O: Send + 'static>(
     };
     READY.notify_one();
     if start && !spawn_thread() {
-        lock().threads -= 1;
+        let orphaned = {
+            let mut pool = lock();
+            pool.threads -= 1;
+            // With no thread at all (the process is out of memory mappings or threads), nothing
+            // would ever take the job and its waiter would hang: run it here instead.
+            if pool.threads == 0 && pool.idle == 0 {
+                pool.queue
+                    .iter()
+                    .position(|q| q.head == ptr.head)
+                    .map(|at| pool.queue.remove(at))
+                    .is_some()
+            } else {
+                false
+            }
+        };
+        if orphaned {
+            // SAFETY: the job left the queue, so only this thread can reach it.
+            unsafe {
+                (ptr.run)(ptr.head);
+                let _lock = lock();
+                (*ptr.head).state = State::Done;
+                msrt_token_post_remote((*ptr.head).token, 1);
+            }
+        }
     }
     (job, ptr)
 }
