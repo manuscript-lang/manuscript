@@ -57,7 +57,12 @@ pub fn fs_status_at<T>(path: &[u8], r: Res<T>, err: &ErrOut) -> Result<T, Status
 }
 
 /// Like [`fs_status_at`] for a two-path operation: the detail reads `<source> -> <destination>`.
-pub fn fs_status_pair<T>(source: &[u8], destination: &[u8], r: Res<T>, err: &ErrOut) -> Result<T, StatusCode> {
+pub fn fs_status_pair<T>(
+    source: &[u8],
+    destination: &[u8],
+    r: Res<T>,
+    err: &ErrOut,
+) -> Result<T, StatusCode> {
     let both = [source, b" -> ", destination].concat();
     fs_status_at(&both, r, err)
 }
