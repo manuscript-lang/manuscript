@@ -40,7 +40,7 @@ fn grow(var b: Box) Int:
     xs.append(1)
     return b.items.length()
 ```
-`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` lend the element, so `let x = m.get(k)` keeps `m` unchangeable until `x` is last used and `if var x = m.get(k)` changes the entry in place; `trim` and `Optional.get` return owned values. `Error.message` is an interface method, so an implementation that returns a stored field writes `.clone()`.
+`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` lend the element, so `let x = m.get(k)` keeps `m` unchangeable until `x` is last used and `if var x = m.get(k)` changes the entry in place; `trim` and `Optional.get` return owned values, so `m.get(k).get(default)` cannot take a value with one owner (a function value, a resource) out of the lent element; read it in place with `if let`. `Error.message` is an interface method, so an implementation that returns a stored field writes `.clone()`.
 
 ## Reassignment
 
@@ -53,7 +53,7 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 ## Data copies
 
-`.clone()` is a deep copy of nested values. Opaque handles have no built-in clone and are never copied. See [mutation and cloning](records.md#mutation-and-cloning).
+`.clone()` is a deep copy of nested values. Opaque handles and function values have no clone and are never copied, and a value that holds one is not `Clonable` either. See [mutation and cloning](records.md#mutation-and-cloning).
 
 ## Sharing a value
 

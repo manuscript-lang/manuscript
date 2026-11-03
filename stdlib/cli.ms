@@ -176,11 +176,9 @@ export type Parsed:
         // The rendered help ending in a newline, ready to write to stdout.
         text: String
     )
-    // A leaf to run.
+    // A leaf to run: `Command.run` passes the values to the handler at `matches.path`.
     case Run(
-        // The command reached by following the subcommand words; its `exec` is the handler.
-        node: Command,
-        // The values to pass its handler.
+        // The values to pass the handler; `path` names the command reached from the root.
         matches: Matches
     )
 
@@ -206,8 +204,8 @@ impl Command:
             Help(text):
                 stdout().write(text).get()
                 return 0
-            Run(node, matches):
-                let result = node.exec(matches)
+            Run(matches):
+                let result = self.run(matches)
 
                 if result.is_error():
                     stderr().write(result.err().message + "\n").get()
@@ -215,27 +213,50 @@ impl Command:
 
                 return result.get()
 
+    // Runs the handler of the command `matches.path` names, as `parse` resolved it, and returns its exit status.
+    // The path starts at this node's name; an unknown path is an `InvalidInput` error.
+    fn run(matches: Matches) Int!:
+        if let node = node_at(self, matches.path, 1): return node.exec(matches)
+
+        return error(cli_unknown_command(matches.path.join(" "), self.name.clone()))
+
     // Returns the help text for the command reached by following `path` from this node, or none for an unknown path.
     fn help(path: List[String] = []) String?:
-        var node = self.clone()
-        var names = [self.name.clone()]
-        var inherited: List[Flag] = []
+        let rendered = help_at(self, path, 0, [self.name.clone()], [])
+        if rendered.is_error(): return none
 
-        for word in path:
-            let next = node.child(word)
-            if next.is_none(): return none
+        return rendered.get()
 
-            inherited = inherited.concat(persistent_flags(node.flags))
-            node = next.get().clone()
-            names.append(word.clone())
-
-        return render_help(node, names, inherited)
-
-    // Returns the child named `word`, or none.
+    // Returns the child named `word`, or none; the result reads the child in place.
     fn child(word: String) Command?:
         for candidate in self.children:
-            if candidate.name == word: return candidate.clone()
+            if candidate.name == word: return candidate
         return none
+
+// The command reached by following `path` from `from` on, or none for an unknown word.
+fn node_at(node: Command, path: List[String], from: Int) Command?:
+    if from >= path.length(): return node
+    if let next = node.child(path[from]): return node_at(next, path, from + 1)
+
+    return none
+
+// The help of the command reached by following `words` from `from` on, under `names` and the
+// persistent flags `inherited` so far; an unknown word is an error naming the path reached.
+fn help_at(
+    node: Command,
+    words: List[String],
+    from: Int,
+    names: List[String],
+    inherited: List[Flag]
+) String!:
+    if from >= words.length(): return ok(render_help(node, names, inherited))
+    if let next = node.child(words[from]):
+        return help_at(
+            next, words, from + 1, names.concat([words[from].clone()]),
+            inherited.concat(persistent_flags(node.flags))
+        )
+
+    return error(cli_unknown_command(words[from].clone(), names.join(" ")))
 
 /*
 Builds a leaf command whose handler receives the options record `T`.
@@ -472,13 +493,24 @@ fn store(var values: Map[String, List[String]], flag: Flag, value: String) Resul
 
 // Resolves subcommands, flags and positionals from `argv`.
 fn walk(root: Command, argv: List[String]) Parsed!:
-    var node = root.clone()
-    var path = [root.name.clone()]
-    var inherited: List[Flag] = []
-    var values = Map[String, List[String]]()
+    return walk_from(
+        root, argv, 0, [root.name.clone()], [], Map[String, List[String]]()
+    )
+
+// Resolves `argv` from `start` on at `node`, reached by `path` with the persistent flags
+// `inherited` and the flag values `given` so far; a subcommand word continues at the child.
+fn walk_from(
+    node: Command,
+    argv: List[String],
+    start: Int,
+    path: List[String],
+    inherited: List[Flag],
+    given: Map[String, List[String]]
+) Parsed!:
+    var values = given
     var words: List[String] = []
     var literal = false
-    var index = 0
+    var index = start
 
     while index < argv.length():
         let token = argv[index].clone()
@@ -540,30 +572,12 @@ fn walk(root: Command, argv: List[String]) Parsed!:
 
         if words.is_empty():
             if let next = node.child(token):
-                inherited = inherited.concat(persistent_flags(node.flags))
-                node = next
-                path.append(token)
-                continue
-
+                return walk_from(
+                    next, argv, index, path.concat([token.clone()]),
+                    inherited.concat(persistent_flags(node.flags)), values
+                )
             if token == "help" and not node.children.is_empty():
-                var target = node.clone()
-                var names = path.clone()
-                var chain = inherited.clone()
-
-                while index < argv.length():
-                    let step = target.child(argv[index])
-                    if step.is_none(): return error(
-                        cli_unknown_command(
-                            argv[index].clone(), names.join(" ")
-                        )
-                    )
-
-                    chain = chain.concat(persistent_flags(target.flags))
-                    target = step.get().clone()
-                    names.append(argv[index].clone())
-                    index += 1
-
-                return ok(Parsed.Help(render_help(target, names, chain)))
+                return ok(Parsed.Help(try help_at(node, argv, index, path, inherited)))
 
         words.append(token)
 
@@ -575,7 +589,7 @@ fn walk(root: Command, argv: List[String]) Parsed!:
         try fill(var values, flag)
 
     let fields = collect_fields(values, inherited.concat(node.flags), node.args)
-    return ok(Parsed.Run(node, Matches(values, path, fields)))
+    return ok(Parsed.Run(Matches(values, path, fields)))
 
 // Assigns positional words to the node's arguments.
 fn bind(

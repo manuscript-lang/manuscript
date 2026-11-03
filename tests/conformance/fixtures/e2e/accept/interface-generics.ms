@@ -49,5 +49,5 @@ test "parameters and bounds belong to interfaces and types":
     let pair = Pair(1, value)
     try expect_equal(pair.get(), 7)
 
-    let callback = Box(identity)
-    try expect_equal(read(callback)(9), 9)
+    let text = Box("seven")
+    try expect_equal(read(text), "seven")

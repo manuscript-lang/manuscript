@@ -321,6 +321,16 @@ fn no_clone(t: &Ty) -> Option<&'static str> {
     }
 }
 
+/// `no_clone`, and a record or alternative holding a function value, which `Classifier::clonable`
+/// rejects.
+fn clone_blocker(t: &Ty) -> Option<&'static str> {
+    no_clone(t).or_else(|| {
+        holds_function(t).then_some(
+            "a value that holds a function cannot be cloned (a function value has one owner)",
+        )
+    })
+}
+
 fn copy_after(e: &Expr) -> Option<DiagnosticFix> {
     (e.end.offset > e.pos.offset).then(|| insert_at(e.end, &format!(".{COPY}()")))
 }
@@ -1457,7 +1467,7 @@ impl Walker<'_> {
                 format!("iterate over a copy instead: `for ... in {shown}.{COPY}()`")
             } else if why == PROMISE_WHY {
                 String::new()
-            } else if held_ty.as_ref().and_then(no_clone).is_some() {
+            } else if held_ty.as_ref().and_then(clone_blocker).is_some() {
                 format!(
                     "or give `{holder}` its own value by converting a clone of the concrete value"
                 )
@@ -3185,7 +3195,7 @@ impl Walker<'_> {
                     e.pos,
                     format!("cannot move `{name}` out: it only borrows its value ({}), and its owner closes it; a resource cannot be cloned, so use `{name}` in place", role_text(role, perm)),
                 );
-            } else if let Some(why) = no_clone(&b.ty) {
+            } else if let Some(why) = clone_blocker(&b.ty) {
                 self.error(
                     e.pos,
                     format!("cannot move `{name}` out: it only borrows its value ({}); {why}, so use `{name}` in place", role_text(role, perm)),
@@ -3227,7 +3237,7 @@ impl Walker<'_> {
                     e.pos,
                     format!("`{name}` is moved here but used again{later}; a resource has one owner and cannot be cloned, so move it only at its last use, or pass it where it is only read"),
                 );
-            } else if let Some(why) = no_clone(&b.ty) {
+            } else if let Some(why) = clone_blocker(&b.ty) {
                 self.error(
                     e.pos,
                     format!("`{name}` is moved here but used again{later}; {why}, so move it only at its last use"),
@@ -3637,6 +3647,13 @@ impl Walker<'_> {
                     e.pos,
                     format!("`{text}` holds a resource, which has one owner and cannot be cloned: a copy would be closed a second time; move it instead"),
                 );
+            } else if self.cx.m.info(e).native_str() == "clone" && holds_function(&self.cx.m.ty(r))
+            {
+                let text = self.expr_text(r);
+                self.error(
+                    e.pos,
+                    format!("`{text}` holds a function value, which owns its captures and has one owner, so it cannot be cloned; move it, or build the value again"),
+                );
             }
             let mut mode = modes.receiver.unwrap_or(ParamMode::Borrow);
             // A value with one owner taken out of a receiver that holds it (`o.get(default)` of
@@ -3652,6 +3669,20 @@ impl Walker<'_> {
                 && self.native_lend_receiver(e).is_none()
             {
                 mode = ParamMode::Consume;
+                if !args.is_empty()
+                    && let Some(source) = self.native_lend_receiver(r)
+                {
+                    // The receiver is itself a native lend (`m.get(k)`, `xs.first()`): the
+                    // element stays in its collection, so `get(default)` taking it out would
+                    // copy it (`get()` without a default lends the payload in place).
+                    let (from, text) = (self.expr_text(source), self.expr_text(r));
+                    let why =
+                        clone_blocker(&result_ty).unwrap_or("it has one owner and no `clone`");
+                    self.error(
+                        e.pos,
+                        format!("`{name}` would take `{result_ty}` out of `{text}`, which only lends an element of `{from}`; {why}, so read it in place (`if let`)"),
+                    );
+                }
             }
             let held = self.held(r, mode);
             self.receiver(r, mode);
@@ -3736,7 +3767,7 @@ impl Walker<'_> {
                     roots.sort();
                     roots.dedup();
                     let ty = self.cx.m.ty(e);
-                    if let Some(why) = no_clone(&ty) {
+                    if let Some(why) = clone_blocker(&ty) {
                         self.error(
                             e.pos,
                             format!(
@@ -3796,17 +3827,16 @@ impl Walker<'_> {
     }
 
     /// How the caller owns the result of a lending call over a temporary: the whole of one
-    /// temporary operand comes back (`id(make())`, or `relay(cause)` through a view temporary
-    /// when `through_view`), so the caller keeps that temporary as the result instead of
-    /// copying it; otherwise a copy is taken before the temporary is dropped.
+    /// temporary operand comes back (`id(make())`, `choose(first, second)` over function values
+    /// made from named functions, or `relay(cause)` through a view temporary when
+    /// `through_view`), so the caller keeps that temporary as the result instead of copying it;
+    /// otherwise a copy is taken before the temporary is dropped.
     fn owned_lend(&self, e: &Expr, lend: &Lend, through_view: bool) -> OwnedLend {
         let whole = match (&lend.path, self.lend_operands(e, lend)) {
             (Some((source, fields)), Some(operands))
                 if fields.is_empty()
                     && operands.len() == 1
-                    && (through_view
-                        || (!self.is_place(operands[0])
-                            && !matches!(operands[0].kind, ExprKind::Name(_)))) =>
+                    && (through_view || !self.is_place(operands[0])) =>
             {
                 Some(*source)
             }
@@ -4436,7 +4466,7 @@ impl Walker<'_> {
         let perm = self.meta[&b.uid].perm;
         let name = b.name;
         if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
-            if let Some(why) = no_clone(&b.ty) {
+            if let Some(why) = clone_blocker(&b.ty) {
                 self.error(
                     e.pos,
                     format!("this closure outlives the statement but captures `{name}`, which only borrows its value; {why}, so capture an owned value instead"),

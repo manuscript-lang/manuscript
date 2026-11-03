@@ -334,16 +334,36 @@ test "mount places a router under a prefix with its own middleware":
     try expect_equal(body_of(try r.call(get("/health"))), "top")
     try expect_equal((try r.call(get("/items/5"))).status, 404)
 
-test "mount rejects a trailing slash and a clashing route":
+fn x_router() Router:
     var api = Router()
     api.get("/x", say("x")).get()
+    return api
+
+test "mount rejects a trailing slash and a clashing route":
+    var r = Router()
+    try expect_true(r.mount("/api/", x_router()).is_error())
+    r.mount("/api", x_router()).get()
+    try expect_true(r.mount("/api", x_router()).is_error())
+    r.mount("/", x_router()).get()
+    try expect_equal(body_of(try r.call(get("/x"))), "x")
+
+test "a mounted router keeps the groups of the routers mounted into it":
+    var inner = Router()
+    inner.use(tag("inner"))
+    inner.get("/", trail).get()
+
+    var mid = Router()
+    mid.use(tag("mid"))
+    mid.get("/own", trail).get()
+    mid.mount("/inner", inner).get()
 
     var r = Router()
-    try expect_true(r.mount("/api/", api).is_error())
-    r.mount("/api", api).get()
-    try expect_true(r.mount("/api", api).is_error())
-    r.mount("/", api).get()
-    try expect_equal(body_of(try r.call(get("/x"))), "x")
+    r.use(tag("top"))
+    r.mount("/mid", mid).get()
+    r.get("/plain", trail).get()
+    try expect_equal(body_of(try r.call(get("/mid/inner"))), "top>mid>inner")
+    try expect_equal(body_of(try r.call(get("/mid/own"))), "top>mid")
+    try expect_equal(body_of(try r.call(get("/plain"))), "top")
 
 type Answer:
     name: String
