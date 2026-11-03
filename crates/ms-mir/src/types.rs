@@ -410,6 +410,9 @@ pub struct RecordDef {
     pub name: String,
     /// Fields in declaration (and layout) order.
     pub fields: Vec<(String, Ty)>,
+    /// Whether this is the `{items, sealed}` box of a `Shared[T]` handle
+    /// (see [`crate::ir::Module::shared_handle`]). Not part of the text format.
+    pub shared_box: bool,
 }
 
 /// One case of an alternative.

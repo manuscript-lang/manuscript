@@ -1330,7 +1330,7 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// `{items, sealed}` keeps owning its items once sealed).
     fn is_shared_box(&self, ty: Ty) -> bool {
         let m = self.g.m;
-        matches!(m.types.kind(ty), TyKind::Rec(r) if m.records[r.index()].name.starts_with("Shared#"))
+        matches!(m.types.kind(ty), TyKind::Rec(r) if m.records[r.index()].shared_box)
     }
 
     fn is_wide(&self, ty: Ty) -> bool {

@@ -495,7 +495,7 @@ impl Cx {
         }
         if t.is_std("Shared") {
             let payload = self.lower_ty(m, &t.args[0])?;
-            return Ok(crate::sharedbuilder::handle_ty(m, "Shared", payload));
+            return Ok(m.shared_handle(payload));
         }
         let name = ["Map", "Set"].into_iter().find(|n| t.is_std(n));
         if let Some(name) = name {
