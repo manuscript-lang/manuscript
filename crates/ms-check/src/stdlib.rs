@@ -184,8 +184,28 @@ pub fn standard_symbol(name: &str) -> Option<SymRef> {
     world(|w| w.symbols.get(&n(name)).cloned())
 }
 
+/// Source-backed prelude functions as (module path, name); every module sees them without an import.
+pub const STANDARD_PRELUDE_FUNCTIONS: [(&str, &str); 1] = [("@std/core.ms", "print")];
+
+/// The implicit import that gives user code a prelude function.
+pub fn prelude_function_import(path: &str, name: &str) -> Import {
+    Import {
+        id: ms_syntax::NodeId(0),
+        pos: ms_syntax::Pos::default(),
+        name_pos: ms_syntax::Pos::default(),
+        name: n(name),
+        path: path.into(),
+    }
+}
+
 /// Whether a symbol is a canonical source-backed prelude declaration.
 pub fn is_prelude_symbol(symbol: &SymRef) -> bool {
+    if STANDARD_PRELUDE_FUNCTIONS
+        .iter()
+        .any(|(path, name)| symbol.name == n(name) && symbol.module == n(path))
+    {
+        return true;
+    }
     if !STANDARD_PRELUDE_NAMES.contains(&symbol.name.as_str()) {
         return false;
     }
@@ -584,6 +604,14 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
     });
     if benching && let Some(driver) = standard_source_module(n("@std/test/bench.ms")) {
         visit(&driver, &mut state, &mut ordered, &mut diagnostics);
+    }
+    // Prelude functions reach user code without an import, so their modules come with any program of its own.
+    if modules.iter().any(|m| !m.is_standard()) {
+        for (path, name) in STANDARD_PRELUDE_FUNCTIONS {
+            if let Some(dep) = import_source(&prelude_function_import(path, name)) {
+                visit(&dep, &mut state, &mut ordered, &mut diagnostics);
+            }
+        }
     }
     for m in &modules {
         visit(m, &mut state, &mut ordered, &mut diagnostics);

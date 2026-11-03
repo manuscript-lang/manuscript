@@ -37,6 +37,22 @@ export type ErrorCategory:
 // Raises a programming fault with the supplied message and stops the current operation.
 export fn panic(message: String) Never: ...
 
+// The process-wide output buffer; standard output is flushed at exit (crates/ms-rt/src/io.rs).
+extern fn msrt_io_write_stdout(text: String) Unit
+
+/*
+Writes `value` as text, then a newline, to standard output, in the same representation as `{value}` interpolation. It never fails: output is buffered and
+flushed at exit. Use `@std/io/io.ms` `stdout()` when you need write errors, bytes, or no trailing newline.
+
+```manuscript
+print("total: {total}")
+print(order)
+```
+*/
+export fn print[T](value: T) Unit:
+    msrt_io_write_stdout(value.to_string())
+    msrt_io_write_stdout("\n")
+
 /*
 A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
 The implicit close behaves like `try value.close()`: a failed close becomes the function's error, after the

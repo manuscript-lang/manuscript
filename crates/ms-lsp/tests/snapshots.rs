@@ -656,6 +656,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
     let expected = std::collections::BTreeMap::from([
         ("collections/collections.ms", 7),
         ("concurrency/promise.ms", 1),
+        ("core.ms", 1),
         ("io/io.ms", 9),
         ("internal/random.ms", 1),
         ("main.ms", 1),

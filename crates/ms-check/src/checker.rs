@@ -1726,6 +1726,31 @@ impl Checker {
         {
             self.names.borrow_mut().insert(n(".."), range);
         }
+        for (path, name) in stdlib::STANDARD_PRELUDE_FUNCTIONS {
+            let nm = n(name);
+            let pn = n(path);
+            let explicit = m
+                .imports
+                .iter()
+                .any(|i| i.name == nm && i.path.starts_with("@std/"));
+            // Standard modules import it explicitly: resolving the twin from inside one would be a dependency cycle.
+            if m.is_standard() || explicit {
+                continue;
+            }
+            // The function has a body, so it lives in the module's source twin.
+            let import = stdlib::prelude_function_import(path, name);
+            let found = stdlib::standard_module_symbol(pn, nm).or_else(|| {
+                let twin = stdlib::import_source(&import)?;
+                stdlib::ensure_source(&twin)
+                    .exports
+                    .get(&nm)
+                    .filter(|s| s.module == twin.file)
+                    .cloned()
+            });
+            if let Some(symbol) = found {
+                self.names.borrow_mut().insert(nm, symbol);
+            }
+        }
         for name in stdlib::STANDARD_PRELUDE_NAMES {
             let nm = n(name);
             let Some(symbol) = stdlib::standard_symbol(name) else {
