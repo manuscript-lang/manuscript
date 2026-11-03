@@ -1,8 +1,10 @@
 import Closeable, Iterator from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
-import Promise, deferred, complete, adopt from "@std/concurrency/promise.ms"
+import Promise, complete, adopt from "@std/concurrency/promise.ms"
 import Duration from "@std/os/time.ms"
 import (
+    msrt_promise_new,
+    msrt_promise_defer,
     msrt_promise_take,
     msrt_promise_wait,
     msrt_promise_drop,
@@ -101,8 +103,10 @@ impl ReadStream[T]:
     // One step, started now and run where it is waited; none at the end.
     var fn read() Promise[T?]:
         let cell = self.cell
-        let work = fn(id: Int) Unit: step[T](id, cell)
-        return deferred[T?](work)
+        // One closure that owns the promise's id and the cell, instead of `deferred`'s wrapper around a second one.
+        let id = msrt_promise_new()
+        msrt_promise_defer(id, fn: step[T](id, cell))
+        return adopt[T?](id)
 
     // The items as an iterator for `for x in s.wait()`: each is `T!`, so a failure arrives in the loop and ends it.
     var fn wait() Waiting[T]:
@@ -121,15 +125,27 @@ impl Iterator[T!] for Waiting[T]:
         if self.ended:
             return none
 
-        let cell = self.cell
-        let work = fn(id: Int) Unit: step[T](id, cell)
-        let step = deferred[T?](work).wait()
+        // The waiter runs the source's step itself: the same work a deferred read would run on this stack, without a
+        // promise, a closure or a result copy per item.
+        var result: T?! = ok(none)
 
-        if step.is_error():
+        match msrt_cells_take[Source[T]](self.cell):
+            source:
+                var running = source
+                result = running.next()
+                msrt_cells_put[Source[T]](self.cell, running)
+            none:
+                result = error(
+                    Error(
+                        "stream: a read is already waiting", kind: ErrorCategory.Closed
+                    )
+                )
+
+        if result.is_error():
             self.ended = true
-            return error(step.err())
+            return error(result.err())
 
-        if let item = step.get():
+        if let item = result.get():
             return ok(item)
 
         self.ended = true
