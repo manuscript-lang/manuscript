@@ -10,17 +10,17 @@ use std::collections::HashMap;
 #[repr(u8)]
 pub enum Fact {
     /// A callable whose result is a reference into its arguments.
-    Lender = 1,
+    ReturnsBorrow = 1,
     /// A callable whose result is an owned interface view of its arguments.
-    ViewLender = 1 << 1,
-    /// A wrapper (`x?`, `ok(x)`, `error(x)`) of a lent value that stays a reference.
+    ReturnsView = 1 << 1,
+    /// A wrapper (`x?`, `ok(x)`, `error(x)`) of a borrowed value that stays a reference.
     ViewWrap = 1 << 2,
     /// A method value that stays local and borrows its receiver's place.
     BoundBorrow = 1 << 3,
     /// A name expression moving an interface view out of its local.
     ViewMove = 1 << 4,
     /// A conditional or match expression whose value is a reference.
-    LentMatch = 1 << 5,
+    BorrowedMatch = 1 << 5,
 }
 
 /// Fact flags by module file, then by node id.

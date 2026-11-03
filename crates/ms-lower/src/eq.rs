@@ -125,7 +125,7 @@ pub(crate) fn build_eq(
         let (x, y) = (b.params()[0], b.params()[1]);
         let owned = other_mode != Mode::Borrow && b.m.needs_drop(t);
         let other = if owned {
-            b.emit(Op::Copy, &[y], Imm::None, Some(t)).expect("copy")
+            b.emit(Op::Clone, &[y], Imm::None, Some(t)).expect("copy")
         } else {
             y
         };

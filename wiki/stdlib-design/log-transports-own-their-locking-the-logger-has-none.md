@@ -4,7 +4,7 @@
 
 Decision: `Logger` (a concrete type, so `info[F: Data = Unit](message, fields: F? = none)`, `log` and `child` can be generic) never locks. `Transport` has `duplicate()`: `child` gives the child its own transport onto the same destination (a file transport opens its own handle), so loggers on several threads share nothing and a transport needs no locking. Records are single appends, so the OS keeps them whole.
 
-Why: promises only read their captures and there is no `Shared`, so one transport cannot be mutated from several threads. Closing a logger closes only its own transport. `Logger` is `Closeable`: `close()` returns `Unit!` and consumes it, and a scope that owns a logger closes its transport on every exit (a dropped child closes only its own duplicate).
+Why: promises only read their captures and there is no `Shared`, so one transport cannot be mutated from several threads. Closing a logger closes only its own transport. `Logger` is `Closeable`: `close()` returns `Unit!` and moving_params it, and a scope that owns a logger closes its transport on every exit (a dropped child closes only its own duplicate).
 
 Verify: "loggers on several threads never interleave a record" in `tests/e2e/testdata/stdlib/log.ms`.
 

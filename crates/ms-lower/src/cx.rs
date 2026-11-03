@@ -15,7 +15,7 @@ use std::rc::Rc;
 /// What an instance is requested with besides its type variables.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Variant {
-    /// The instance takes the parameters its body consumes owned.
+    /// The instance takes the parameters its body moving_params owned.
     pub owned: bool,
     /// The module whose local implementations the instance's type variables use.
     pub evidence: Option<ms_check::types::Name>,
@@ -332,7 +332,7 @@ pub struct Cx {
     pub session: Rc<ms_check::Session>,
     /// `MS_STRICT_COPIES=1`: an owning position that receives a borrowed place is an error.
     pub strict_copies: bool,
-    /// Boolean ownership facts per node (lenders, view wraps, bound borrows, view moves, lent matches).
+    /// Boolean ownership facts per node (returners, view wraps, bound borrows, view moves, borrowed matches).
     pub node_facts: Rc<ms_check::ownership::NodeFacts>,
     /// Boolean ownership facts per binding (borrows, closes, conditional moves).
     pub binding_facts: Rc<ms_check::ownership::BindingFlags>,
@@ -387,14 +387,14 @@ pub struct Cx {
         Rc<HashMap<usize, HashMap<ms_syntax::ast::NodeId, Vec<ms_check::types::Name>>>>,
     /// Captures a non-escaping lambda only reads: the closure points at them instead of copying.
     pub borrowed_captures: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId, usize)>>,
-    /// Parameters each callable consumes, by module file and node.
-    pub consumes: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<bool>>>,
+    /// Parameters each callable moving_params, by module file and node.
+    pub moving_params: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<bool>>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
     pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
     /// Lending calls whose result the caller owns because an argument is a temporary: the
     /// result is copied out before the temporary is dropped.
-    pub owned_lends: Rc<
-        std::collections::HashMap<(Name, ms_syntax::ast::NodeId), ms_check::ownership::OwnedLend>,
+    pub owned_borrows: Rc<
+        std::collections::HashMap<(Name, ms_syntax::ast::NodeId), ms_check::ownership::OwnedBorrow>,
     >,
     /// Which types are resources, for the closers of records and collections that hold them.
     pub classes: ms_check::ownership::Classifier,
@@ -473,9 +473,9 @@ impl Cx {
             moves: program.moves.clone(),
             resource_moves: program.resource_moves.clone(),
             borrowed_captures: program.borrowed_captures.clone(),
-            consumes: program.consumes.clone(),
+            moving_params: program.moving_params.clone(),
             getters: program.getter_borrows.clone(),
-            owned_lends: program.owned_lends.clone(),
+            owned_borrows: program.owned_borrows.clone(),
             classes: ms_check::ownership::Classifier::new(program),
         }
     }

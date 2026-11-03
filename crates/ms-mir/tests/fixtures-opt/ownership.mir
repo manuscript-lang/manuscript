@@ -1,6 +1,6 @@
 module "own"
 entry @main
-fn @push2(%l: own list<int>, %v: int) -> list<int> {
+fn @push2(%l: move list<int>, %v: int) -> list<int> {
 b0:
   %a: list<int> = list.push %l, %v
   %b: list<int> = list.push %a, %v

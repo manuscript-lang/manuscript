@@ -178,7 +178,7 @@ impl FnLower<'_> {
         // The server keeps the exchange alive for the call: the handler sees a view of it in a
         // slot it may replace (middleware wraps the exchange in place); whatever the slot holds
         // afterwards is dropped here, and a view frees nothing.
-        let ex = fl.b.iface_lend(vt, p[1], exchange);
+        let ex = fl.b.iface_borrow(vt, p[1], exchange);
         let slot =
             fl.b.emit(Op::Slot, &[], Imm::Ty(exchange), Some(MTy::PTR))
                 .expect("slot");

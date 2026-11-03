@@ -459,7 +459,7 @@ pub const KINDS: &[Kind] = &[
         "MS3000.11",
         "cannot move ",
         "Move out of a borrow",
-        "take an owned copy with `.clone()`"
+        "take an clone with `.clone()`"
     ),
     kind!(
         "MS3000",

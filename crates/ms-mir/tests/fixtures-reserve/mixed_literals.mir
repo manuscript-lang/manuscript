@@ -15,7 +15,7 @@ b0:
   %l0: list<int> = list.lit
   %z: int = iconst 0
   br head(%z, %l0)
-head(%i: int, %l: own list<int>):
+head(%i: int, %l: move list<int>):
   %c: bool = icmp.lt %i, %n
   br_if %c, body(), out()
 body:

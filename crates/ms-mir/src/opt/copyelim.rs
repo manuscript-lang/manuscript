@@ -76,7 +76,7 @@ impl BlockUses {
     }
 }
 
-/// Turns `c = copy v; ...; drop v` into a move when `v` is not touched in between: the copy
+/// Turns `c = clone v; ...; drop v` into a move when `v` is not touched in between: the copy
 /// and the drop cancel, and `c` is `v`. This is the shape of `l = More(l)` in a loop, which
 /// would otherwise deep-copy the old value on every iteration.
 fn move_dead_sources(m: &mut Module, fi: usize) -> bool {
@@ -89,7 +89,7 @@ fn move_dead_sources(m: &mut Module, fi: usize) -> bool {
     let at = operand_uses(f);
     for (bi, b) in f.blocks.iter().enumerate() {
         for (i, inst) in b.insts.iter().enumerate() {
-            let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
+            let (Op::Clone, Some(c)) = (inst.op, inst.res) else {
                 continue;
             };
             let v = inst.args[0];
@@ -146,14 +146,14 @@ fn move_dead_sources(m: &mut Module, fi: usize) -> bool {
     true
 }
 
-/// The values each value of function `fi` lends out: results that borrow from their operands.
+/// The values each value of function `fi` returns borrows of: results that borrow from their operands.
 fn borrows_of(m: &Module, fi: usize) -> Vec<Vec<Value>> {
     let f = &m.funcs[fi];
     let mut borrows_of: Vec<Vec<Value>> = vec![Vec::new(); f.values.len()];
     for b in &f.blocks {
         for inst in &b.insts {
             let Some(r) = inst.res else { continue };
-            if !matches!(m.result_mode(f, inst), Some(Mode::Own) | None) || m.result_views(inst) {
+            if !matches!(m.result_mode(f, inst), Some(Mode::Move) | None) || m.result_views(inst) {
                 inst.args.iter().for_each(|a| borrows_of[a.index()].push(r));
             }
         }
@@ -161,8 +161,8 @@ fn borrows_of(m: &Module, fi: usize) -> Vec<Vec<Value>> {
     borrows_of
 }
 
-/// Values of function `fi` that may be interface views (`iface.lend`, `iface.view`, a view
-/// lender's result) or hold one: an owned value whose payload is borrowed from elsewhere. A copy
+/// Values of function `fi` that may be interface views (`iface.borrow`, `iface.view`, a view
+/// returner's result) or hold one: an owned value whose payload is borrowed from elsewhere. A copy
 /// of such a value owns its payload, so the copy is never turned into a move or a take of the
 /// source; a copy's result itself is never a view.
 fn view_tainted(m: &Module, fi: usize) -> Vec<bool> {
@@ -177,7 +177,7 @@ fn view_tainted(m: &Module, fi: usize) -> Vec<bool> {
                     continue;
                 }
                 let hit = m.result_views(inst)
-                    || (!matches!(inst.op, Op::Copy)
+                    || (!matches!(inst.op, Op::Clone)
                         && !inst.op.is_call()
                         && inst.args.iter().any(|a| tainted[a.index()]));
                 if hit {
@@ -204,7 +204,7 @@ fn view_tainted(m: &Module, fi: usize) -> Vec<bool> {
     }
 }
 
-/// Turns `c = copy v` into a move when every path from the copy reaches `v` again only to drop
+/// Turns `c = clone v` into a move when every path from the copy reaches `v` again only to drop
 /// it: the copy is `v`'s last use, like `keys.append(key)` before a loop body ends or returns.
 /// The copy and the drops cancel, and `c` is `v`. Nothing borrowed out of `v` may be read after
 /// the copy, and each block on those paths is entered only from them, so a path that skipped
@@ -219,17 +219,17 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
     for (bi, b) in f.blocks.iter().enumerate() {
         for p in &b.params {
             home[p.value.index()] = bi;
-            owned[p.value.index()] = p.mode == Mode::Own;
+            owned[p.value.index()] = p.mode == Mode::Move;
         }
         for inst in &b.insts {
             let Some(r) = inst.res else { continue };
             home[r.index()] = bi;
             match m.result_mode(f, inst) {
-                Some(Mode::Own) if m.result_views(inst) => {
+                Some(Mode::Move) if m.result_views(inst) => {
                     owned[r.index()] = true;
                     inst.args.iter().for_each(|a| borrows_of[a.index()].push(r));
                 }
-                Some(Mode::Own) => owned[r.index()] = true,
+                Some(Mode::Move) => owned[r.index()] = true,
                 Some(_) => inst.args.iter().for_each(|a| borrows_of[a.index()].push(r)),
                 None => {}
             }
@@ -242,7 +242,7 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
     let mut dead: Vec<(usize, usize)> = Vec::new();
     for (bc, b) in f.blocks.iter().enumerate() {
         for (i, inst) in b.insts.iter().enumerate() {
-            let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
+            let (Op::Clone, Some(c)) = (inst.op, inst.res) else {
                 continue;
             };
             let v = inst.args[0];
@@ -329,7 +329,7 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
     true
 }
 
-/// Removes `c = copy v; ...; drop c` when the span only borrows the copy and its
+/// Removes `c = clone v; ...; drop c` when the span only borrows the copy and its
 /// source stays alive. Composite values additionally require a span without writes
 /// that could change or release a projection's owner. String length may cache its
 /// result, but cannot release or replace data. This includes read-only iteration
@@ -362,7 +362,7 @@ fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
             std::iter::once(0)
                 .chain(b.insts.iter().map(|i| {
                     let e = i.op.info().effects;
-                    if (e.writes && i.op != Op::StrLen) || (e.rc && i.op != Op::Copy) {
+                    if (e.writes && i.op != Op::StrLen) || (e.ownership && i.op != Op::Clone) {
                         n += 1;
                     }
                     n
@@ -387,7 +387,7 @@ fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
     let mut dead: Vec<(usize, usize)> = Vec::new();
     for (bi, b) in f.blocks.iter().enumerate() {
         for (i, inst) in b.insts.iter().enumerate() {
-            let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
+            let (Op::Clone, Some(c)) = (inst.op, inst.res) else {
                 continue;
             };
             let v = inst.args[0];
@@ -461,7 +461,7 @@ fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
     true
 }
 
-/// Removes `c = copy v; ...; drop c` for a string `v` read out of a list when the copy lives
+/// Removes `c = clone v; ...; drop c` for a string `v` read out of a list when the copy lives
 /// across several blocks (a loop body with an `if`), which the single-block pass cannot see.
 /// Every instruction that can run between the copy and the drop must only borrow `c`, `v`
 /// and the list; the paths from the copy reach the list's release only through the drop.
@@ -490,7 +490,7 @@ fn borrow_str_copies_across_blocks(m: &mut Module, fi: usize) -> bool {
     let mut alias: Vec<Option<Value>> = vec![None; f.values.len()];
     for (bc, b) in f.blocks.iter().enumerate() {
         for (i, inst) in b.insts.iter().enumerate() {
-            let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
+            let (Op::Clone, Some(c)) = (inst.op, inst.res) else {
                 continue;
             };
             let v = inst.args[0];
@@ -588,7 +588,7 @@ fn borrow_str_copies_across_blocks(m: &mut Module, fi: usize) -> bool {
 }
 
 /// Removes string copies that only meet at a block parameter which is borrowed and dropped:
-/// `b1: c1 = copy s1; br b3(c1)`, `b2: c2 = copy s2; br b3(c2)`, `b3(p): ... borrow p ...; drop p`.
+/// `b1: c1 = clone s1; br b3(c1)`, `b2: c2 = clone s2; br b3(c2)`, `b3(p): ... borrow p ...; drop p`.
 /// This is the shape of an inlined `xs.get(i, default: "")` compared and discarded. When every
 /// source stays alive and unchanged until the drop, `p` borrows the sources instead.
 fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
@@ -615,7 +615,7 @@ fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
     for (bb, b) in f.blocks.iter().enumerate() {
         'param: for (pi, param) in b.params.iter().enumerate() {
             let p = param.value;
-            if param.mode != Mode::Own || !matches!(m.types.kind(f.ty(p)), TyKind::Str) {
+            if param.mode != Mode::Move || !matches!(m.types.kind(f.ty(p)), TyKind::Str) {
                 continue;
             }
             // Incoming copies, one per edge.
@@ -630,7 +630,7 @@ fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
                     match defs[a.index()] {
                         Some((db, di))
                             if db == x
-                                && blk.insts[di].op == Op::Copy
+                                && blk.insts[di].op == Op::Clone
                                 && uses[a.index()] == 1
                                 && !taken[a.index()] =>
                         {
@@ -785,7 +785,7 @@ fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
     true
 }
 
-/// Removes `c = copy v; ... opt.unbox c ...; drop s` for an optional string `v` read out of a
+/// Removes `c = clone v; ... opt.unbox c ...; drop s` for an optional string `v` read out of a
 /// list when the copy only feeds `opt.is_some`, one `opt.unbox` whose string is only borrowed
 /// before its drop, and drops of `c` on the other paths: the payload is viewed in place instead.
 /// This is the shape of `if let item = container.at(index)` over a list of optionals, which
@@ -818,7 +818,7 @@ fn borrow_opt_str_reads(m: &mut Module, fi: usize) -> bool {
     let mut alias: Vec<Option<Value>> = vec![None; f.values.len()];
     'copies: for (bc, b) in f.blocks.iter().enumerate() {
         for (i, inst) in b.insts.iter().enumerate() {
-            let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
+            let (Op::Clone, Some(c)) = (inst.op, inst.res) else {
                 continue;
             };
             let v = inst.args[0];
@@ -929,7 +929,7 @@ fn borrow_opt_str_reads(m: &mut Module, fi: usize) -> bool {
                 {
                     return false;
                 }
-                !(e.writes || e.rc || e.io)
+                !(e.writes || e.ownership || e.io)
             };
             let mut span_ok = f.blocks[bc].insts[i + 1..].iter().all(&quiet);
             for x in (0..nb).filter(|&x| seen[x]) {
@@ -1041,7 +1041,7 @@ fn remove_insts(f: &mut Func, dead: &[(usize, usize)]) {
     }
 }
 
-/// Turns `p = opt.get v; c = copy p; ...; drop v` into `c = opt.unbox v` when `v` is not
+/// Turns `p = opt.get v; c = clone p; ...; drop v` into `c = opt.unbox v` when `v` is not
 /// touched in between and `p` has no other use: the payload moves out and the shell is freed
 /// instead of the payload being deep-copied and then dropped with its source. This is the
 /// shape of unwrapping a recursive result, which would otherwise copy every subtree once per
@@ -1075,7 +1075,7 @@ fn unbox_dead_options(m: &mut Module, fi: usize) -> bool {
                 if uses[p.index()] != 1 || tainted[v.index()] {
                     continue;
                 }
-                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Copy) else {
+                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Clone) else {
                     continue;
                 };
                 let Some(di) = idx.first_after(&b.insts, v, ci, Op::Drop) else {
@@ -1098,7 +1098,7 @@ fn unbox_dead_options(m: &mut Module, fi: usize) -> bool {
     changed
 }
 
-/// Turns `p = alt.get f v; c = copy p; ...; drop v` into `c = alt.unbox f v` when `v` is
+/// Turns `p = alt.get f v; c = clone p; ...; drop v` into `c = alt.unbox f v` when `v` is
 /// otherwise only read through `alt.get`s of fields that need no drop (those are hoisted
 /// above it). This is the shape of `match cur: Link(_, next): cur = next` in a loop, which
 /// would otherwise deep-copy the whole tail on every iteration.
@@ -1128,7 +1128,7 @@ fn unbox_dead_sources(m: &mut Module, fi: usize) -> bool {
                 if uses[p.index()] != 1 || !nd[p.index()] || tainted[v.index()] {
                     continue;
                 }
-                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Copy) else {
+                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Clone) else {
                     continue;
                 };
                 let Some(di) = idx.first_after(&b.insts, v, ci, Op::Drop) else {
@@ -1188,7 +1188,7 @@ fn unbox_dead_sources(m: &mut Module, fi: usize) -> bool {
     changed
 }
 
-/// Turns `p = alt.get f v; c = copy p; ...; drop v` into `c = alt.take f v; ...; alt.release v`
+/// Turns `p = alt.get f v; c = clone p; ...; drop v` into `c = alt.take f v; ...; alt.release v`
 /// for two or more payload fields that need a drop, when `v` is only read through `alt.get`s
 /// until its drop. The release frees the block and drops the fields that were not taken, so
 /// rebuilding a node from its children (`Node(insert(l, x), v, r)`) moves them instead of
@@ -1205,7 +1205,7 @@ pub fn run_takes(m: &mut Module) -> bool {
     changed
 }
 
-/// Turns `p = rec.get f v; c = copy p; ...; drop v` into `c = rec.get f v` plus drops of the
+/// Turns `p = rec.get f v; c = clone p; ...; drop v` into `c = rec.get f v` plus drops of the
 /// other droppable fields of `v`, when `v` is only read through `rec.get`s until its drop. The
 /// field moves out of the dying record instead of being deep-copied and then freed with it, so
 /// `w.inner.clone()` on a record that is dead afterwards costs no allocation. Nothing that can
@@ -1259,7 +1259,7 @@ fn take_record_fields(m: &mut Module, fi: usize) -> bool {
             // Between the first load and the drop there is nothing that can fault or unwind.
             if b.insts[first..di]
                 .iter()
-                .any(|n| !matches!(n.op, Op::RecGet | Op::Copy))
+                .any(|n| !matches!(n.op, Op::RecGet | Op::Clone))
             {
                 continue;
             }
@@ -1273,7 +1273,7 @@ fn take_record_fields(m: &mut Module, fi: usize) -> bool {
                 if uses[p.index()] != 1 || !nd[p.index()] {
                     continue;
                 }
-                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Copy) else {
+                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Clone) else {
                     continue;
                 };
                 let fld = field_of(gi);
@@ -1366,7 +1366,7 @@ fn take_dead_sources(m: &mut Module, fi: usize) -> bool {
             // Between the first load and the drop there is nothing that can fault or unwind.
             if b.insts[first..di]
                 .iter()
-                .any(|n| !matches!(n.op, Op::AltGet | Op::Copy))
+                .any(|n| !matches!(n.op, Op::AltGet | Op::Clone))
             {
                 continue;
             }
@@ -1379,7 +1379,7 @@ fn take_dead_sources(m: &mut Module, fi: usize) -> bool {
                 if uses[p.index()] != 1 || !nd[p.index()] {
                     continue;
                 }
-                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Copy) else {
+                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Clone) else {
                     continue;
                 };
                 if ci < di {
@@ -1431,7 +1431,7 @@ fn run_func(m: &mut Module, fi: usize) -> bool {
     let mut any = false;
     for b in &f.blocks {
         for i in &b.insts {
-            if let (Op::Copy, Some(res)) = (i.op, i.res)
+            if let (Op::Clone, Some(res)) = (i.op, i.res)
                 && stable[i.args[0].index()]
             {
                 alias[res.index()] = Some(i.args[0]);
@@ -1468,7 +1468,7 @@ fn run_func(m: &mut Module, fi: usize) -> bool {
     for b in &mut f.blocks {
         b.insts.retain(|i| {
             let dead = match i.op {
-                Op::Copy => i.res.is_some_and(|r| alias[r.index()].is_some()),
+                Op::Clone => i.res.is_some_and(|r| alias[r.index()].is_some()),
                 Op::Drop => alias[i.args[0].index()].is_some(),
                 _ => false,
             };

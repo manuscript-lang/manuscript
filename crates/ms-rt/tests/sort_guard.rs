@@ -152,7 +152,7 @@ fn input(n: usize, words: usize, interleaved: bool, strings: bool) -> Sort {
     };
     for i in 0..n {
         let key = if interleaved { (i % 2) * n + i } else { n - i };
-        // SAFETY: the append consumes an initialized independent slot of this descriptor.
+        // SAFETY: the append moving_params an initialized independent slot of this descriptor.
         unsafe {
             if strings {
                 let value = string::from_bytes(
@@ -224,7 +224,7 @@ fn guarded_difference_sort_drops_unpublished_output_on_comparator_exit() {
         state.callback.exit_at = exit_at;
         state.callback.cancel = cancel;
         for value in [i64::MAX, i64::MIN, 0] {
-            // SAFETY: each append consumes an independent live Int.
+            // SAFETY: each append moving_params an independent live Int.
             unsafe {
                 vec::msrt_list_push(
                     &raw mut state.list,

@@ -12,6 +12,6 @@ fn main() Int:
     var kept = List[String]()
     var r = Res("b")
     let n = r.name
-    kept.append(n)  // error: cannot move `n` out: it only borrows its value
+    kept.append(n)  // error: cannot move `n` out: it is borrowed, not owned
     r.close().get(none)
     return kept.length()

@@ -122,7 +122,7 @@ impl<'m> FuncBuilder<'m> {
                 (crate::ir::Op::ClosureNew, crate::ir::Imm::Func(g)) => {
                     return self.m.funcs.get(g.index()).is_some_and(|c| c.scoped);
                 }
-                (crate::ir::Op::Copy, _) if !i.args.is_empty() => cur = i.args[0],
+                (crate::ir::Op::Clone, _) if !i.args.is_empty() => cur = i.args[0],
                 _ => return false,
             }
         }
@@ -136,7 +136,7 @@ impl<'m> FuncBuilder<'m> {
                 return p.mode == crate::ir::Mode::Borrow;
             }
             if let Some(i) = b.insts.iter().find(|i| i.res == Some(v)) {
-                return self.m.result_mode(&self.f, i) != Some(crate::ir::Mode::Own);
+                return self.m.result_mode(&self.f, i) != Some(crate::ir::Mode::Move);
             }
         }
         false
@@ -333,10 +333,10 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.alt(a);
         self.val(Op::AltView, fields, Imm::Case(a, case), t)
     }
-    /// `iface.lend`: an interface value whose box holds a bitwise copy of the borrowed `data`
+    /// `iface.borrow`: an interface value whose box holds a bitwise copy of the borrowed `data`
     /// leaves (vtable word tagged 1): dropping it frees the box and leaves the payload alone.
-    pub fn iface_lend(&mut self, vt: VtableId, data: Value, t: Ty) -> Value {
-        self.val(Op::IfaceLend, &[data], Imm::Vtable(vt), t)
+    pub fn iface_borrow(&mut self, vt: VtableId, data: Value, t: Ty) -> Value {
+        self.val(Op::IfaceBorrow, &[data], Imm::Vtable(vt), t)
     }
     /// `iface.view`: the borrowed interface value `x` as an owned value that owns nothing
     /// (vtable word tagged 2): dropping it frees nothing.
@@ -460,7 +460,7 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.opt_inner(self.ty(o)).expect("optional operand");
         self.val(Op::OptGet, &[o], Imm::None, t)
     }
-    /// `opt.unbox`: moves the payload out of an owned present optional, which it consumes.
+    /// `opt.unbox`: moves the payload out of an owned present optional, which it moving_params.
     pub fn opt_unbox(&mut self, o: Value) -> Value {
         let t = self.m.opt_inner(self.ty(o)).expect("optional operand");
         self.val(Op::OptUnbox, &[o], Imm::None, t)

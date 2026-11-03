@@ -397,7 +397,7 @@ impl FnLower<'_> {
             // the box. The checker holds the value's owner for as long as the view lives. An
             // interface with a `var fn` copies instead: a call through it (a native stream
             // reader, say) would change leaves the view only borrows.
-            let v = self.b.iface_lend(vt, x.v, want);
+            let v = self.b.iface_borrow(vt, x.v, want);
             return Ok(Val { v, own: true });
         }
         let o = self.owned(x);
@@ -435,10 +435,10 @@ impl FnLower<'_> {
             .ok_or_else(|| Error::new("not a Result conversion"))?
             .clone();
         let want_err = self.b.m.alts[dst.index()].cases[derr].fields[0].1;
-        let res = self.b.declare_var(want, Mode::Own);
+        let res = self.b.declare_var(want, Mode::Move);
         let held = self.b.declare_var(
             self.ty_of(x.v),
-            if x.own { Mode::Own } else { Mode::Borrow },
+            if x.own { Mode::Move } else { Mode::Borrow },
         );
         self.b.def_var(held, x.v);
         let (okb, errb, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());

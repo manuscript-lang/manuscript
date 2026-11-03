@@ -522,7 +522,7 @@ pub fn source_frame(
                 return None;
             }
             if is_source(pc) {
-                // The generated walker consumes this first source frame. A
+                // The generated walker moving_params this first source frame. A
                 // missing anchor must never grant it a fresh/full budget.
                 return Some((pc, sp, fp, budget.remaining()?));
             }

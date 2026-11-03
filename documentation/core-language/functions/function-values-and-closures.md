@@ -40,7 +40,7 @@ An anonymous function may omit parameter types when context supplies them (argum
 - An omitted result type comes from context or the body: returns must share one exact type, fallthrough adds `Unit`, `Never` adds nothing.
 - Without context, callbacks need parameter annotations.
 - A generic function must be instantiated to be a value: `identity[Int]`, not bare `identity`.
-- A bound method value has the operation's function type with the receiver bound. It borrows the receiver while it stays local, as a closure capturing it would, and takes the receiver when it is stored, returned or passed to a consuming parameter: `let find = re.find_all` keeps `re` readable, `holders.append(re.find_all)` moves `re` at its last use.
+- A bound method value has the operation's function type with the receiver bound. It borrows the receiver while it stays local, as a closure capturing it would, and takes the receiver when it is stored, returned or passed to a moving parameter: `let find = re.find_all` keeps `re` readable, `holders.append(re.find_all)` moves `re` at its last use.
 - An anonymous function is its own boundary for `return`, `try`, `break`, and `continue`.
 
 ## Changing parameters
@@ -64,8 +64,6 @@ fn changed() List[Int]:
 The value travels by address, so a value with one owner (a list, a record holding one) is changed where it lives and never copied. A function with both a `var` parameter and a parameter default cannot be a function value; call it from a closure that supplies the default.
 
 A `var` parameter is the caller's value, so the function cannot move it out (`let old = values` is an error). The one exception is the right side of an assignment to the parameter itself, which refills it before the caller sees it: `values = rebuilt(values)`, or `exchange = Tap(inner: exchange, ...)` to replace an interface value with a wrapper that owns it. A [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) recovers the wrapper afterwards.
-
-<a id="snapshot-captures"></a>
 
 ## Closure captures
 

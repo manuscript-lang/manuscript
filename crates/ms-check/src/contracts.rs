@@ -1474,7 +1474,7 @@ impl Checker {
                 "a native value without a `clone` of its own, which has one owner"
             };
             return format!(
-                "{prefix}it is or holds {what}, so it cannot be copied; move it, or use it in place"
+                "{prefix}it is or holds {what}, so it cannot be cloned; move it, or use it in place"
             );
         }
         if matches!(t.kind, Kind::Record | Kind::Alternative)

@@ -499,7 +499,7 @@ entry @main
 fn @main() -> int {
 b0:
   %literal: str = str \"kept\"
-  %s: str = copy %literal
+  %s: str = clone %literal
   %o: opt<str> = opt.some %s
   %p: str = opt.get %o
   %n: int = str.len %p
@@ -596,9 +596,9 @@ b0:
 "#;
 
 /// `opt.view` of a borrow folds like `opt.some`: its presence is known and `opt.get` of it is
-/// the lent payload itself, which stays a borrow.
+/// the borrowed payload itself, which stays a borrow.
 #[test]
-fn a_lent_optional_folds_to_its_payload() {
+fn a_borrowed_optional_folds_to_its_payload() {
     let m = check(LEND);
     let text = print_module(&m);
     assert!(!text.contains("opt.is_some"), "{text}");

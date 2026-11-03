@@ -898,7 +898,7 @@ impl<'a> FnLower<'a> {
             .map(|(i, a)| ms_mir::ir::Param {
                 ty: self.ty_of(*a),
                 mode: if crate::rtcall::hands_over(sym, i) {
-                    ms_mir::ir::Mode::Own
+                    ms_mir::ir::Mode::Move
                 } else {
                     ms_mir::ir::Mode::Borrow
                 },

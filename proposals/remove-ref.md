@@ -23,7 +23,7 @@ Status: implemented, 2026-10-31 (syntax, checker, lowering and fixtures removed 
 | `lend_via_*` | 42 / 60 | 42 / 60 |
 
 - `get` already matches; `field` matches in release; `view` and `lend` carry extra callee-side allocations.
-- Measured wall time (Release, best of 2, `lend_via_clone.ms` shape written with `.clone()` vs a move through `pop()`, so no copy): deep descent 200k iterations clone 7.74-7.87 s vs move 7.97-8.17 s; shallow descent 3000 iterations on a depth-9 tree, where the clone copies about 40% of the tree, 1.25-1.42 s vs 1.33-1.38 s. The difference is inside noise. The string-view case was not timed; it has the same shape (one small allocation against hundreds of ns of other work).
+- Measured wall time (Release, best of 2, `borrow_via_clone.ms` shape written with `.clone()` vs a move through `pop()`, so no copy): deep descent 200k iterations clone 7.74-7.87 s vs move 7.97-8.17 s; shallow descent 3000 iterations on a depth-9 tree, where the clone copies about 40% of the tree, 1.25-1.42 s vs 1.33-1.38 s. The difference is inside noise. The string-view case was not timed; it has the same shape (one small allocation against hundreds of ns of other work).
 - So `ref` buys allocation counts, not speed, in the measured cases.
 - Non-goals: changing `var`, `.clone()`, moves, `Shared[T]`, or the lexical borrow rules for bindings of places (`let x = a.b`), which stay.
 
@@ -74,7 +74,7 @@ fn size(l: Line) Int:
 
 Each stage is its own PR on auto-merge and lands green on Linux, macOS and Windows; no test is disabled.
 
-1. Evidence first: run `bench/perf` (5 runs, stated noise band) plus a hot `trim()` / `Map.get` loop over large values; record in `bench/perf` results. Update the `lend_via_clone.ms` header that names guaranteed elision as the precondition for removing `ref`, and say why it is dropped (no measured wall-time gain).
+1. Evidence first: run `bench/perf` (5 runs, stated noise band) plus a hot `trim()` / `Map.get` loop over large values; record in `bench/perf` results. Update the `borrow_via_clone.ms` header that names guaranteed elision as the precondition for removing `ref`, and say why it is dropped (no measured wall-time gain).
 2. Leaf lenders, one family per PR, each re-recording `count-check` headers with the reason: `trim*`, `List.get/first/last`, then `Map.get`, then `json` and `http`.
 3. Interface and carrier lenders together, because every implementation of a `ref` operation must agree: `Iterator.next`, `DequeIter`, `QueueIter`, `PriorityQueueIter`, `io.ms` line reader, and the `source: ref` carrier fields.
 4. Remove syntax, checker rules, MIR `ret_borrowed`, docs (`references.md`, `grammar.md`, `OWNERSHIP.md`), tooling; keep a migration hint for one release.

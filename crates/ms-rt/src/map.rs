@@ -1247,7 +1247,7 @@ pub unsafe extern "C-unwind" fn msrt_map_merge(
         if o.len == 0 {
             return;
         }
-        // Each insertion consumes the copied values, so their scratch slots can be reused.
+        // Each insertion moving_params the copied values, so their scratch slots can be reused.
         // Wide records need one temporary allocation per merge, rather than per entry.
         let mut kb = [0u64; 8];
         let mut vb = [0u64; 8];
@@ -1285,7 +1285,7 @@ pub unsafe extern "C-unwind" fn msrt_map_merge(
 
 /// Copies a key, checking for a duplicate unless its caller already knows the output is unique.
 unsafe fn add_copy<const CHECK: bool>(m: &mut MapVal, kd: &TypeDesc, p: *const u8) {
-    // SAFETY: `p` is a live key slot; insert consumes its fresh copy.
+    // SAFETY: `p` is a live key slot; insert moving_params its fresh copy.
     unsafe {
         if CHECK && contains_key(m, kd, None, p) {
             return;

@@ -124,7 +124,7 @@ impl Native {
         Ok(())
     }
 
-    /// Whether a registered path changed since the last call; consumes what is pending.
+    /// Whether a registered path changed since the last call; moving_params what is pending.
     fn woken(&mut self) -> bool {
         let none = libc::timespec {
             tv_sec: 0,

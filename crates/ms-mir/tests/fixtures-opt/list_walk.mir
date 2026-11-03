@@ -8,7 +8,7 @@ b0:
   %l0: list<int> = list.lit %a, %b, %c
   %z: int = iconst 0
   br loop(%z, %z, %l0)
-loop(%i: int, %acc: int, %l: own list<int>):
+loop(%i: int, %acc: int, %l: move list<int>):
   %n: int = list.len %l
   %cond: bool = icmp.lt %i, %n
   br_if %cond, body(), done()

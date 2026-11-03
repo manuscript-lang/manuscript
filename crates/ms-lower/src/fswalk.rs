@@ -132,7 +132,7 @@ impl FnLower<'_> {
             opt_ty,
             &mut |s| {
                 let f = s.b.opt_get(user);
-                // The wrapper only lends the predicate for the runtime call: it captures the
+                // The wrapper only borrows the predicate for the runtime call: it captures the
                 // address of a stack copy of the borrowed value, which nothing drops.
                 let slot =
                     s.b.emit(Op::Slot, &[], Imm::Ty(fn_ty), Some(MTy::PTR))
@@ -187,7 +187,7 @@ impl FnLower<'_> {
             .emit(Op::Load, &[at], Imm::Ty(user_ty), Some(user_ty))
             .expect("load");
         let text = |b: &mut FuncBuilder<'_>, v: Value| {
-            b.emit(Op::Copy, &[v], Imm::None, Some(MTy::STR))
+            b.emit(Op::Clone, &[v], Imm::None, Some(MTy::STR))
                 .expect("copy")
         };
         let r = match entry {

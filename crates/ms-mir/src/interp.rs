@@ -917,9 +917,9 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Iface(v, Rc::new(arg(f, regs, a[0], true, m))));
             }
-            Op::IfaceLend => {
+            Op::IfaceBorrow => {
                 let Imm::Vtable(v) = inst.imm else {
-                    return Err(Raw::internal("iface.lend without vtable"));
+                    return Err(Raw::internal("iface.borrow without vtable"));
                 };
                 set!(Val::Iface(v, Rc::new(arg(f, regs, a[0], false, m))));
             }
@@ -937,7 +937,7 @@ impl<'m> Interp<'m> {
                 };
                 set!((**d).clone());
             }
-            Op::Copy | Op::MoveOut => set!(regs[a[0].index()].clone()),
+            Op::Clone | Op::MoveOut => set!(regs[a[0].index()].clone()),
             Op::Drop => {
                 self.drops += 1;
                 arg(f, regs, a[0], true, m);
@@ -1095,7 +1095,7 @@ impl<'m> Interp<'m> {
         Ok(Flow::Next)
     }
 
-    /// Reads operands for an op that consumes all of them.
+    /// Reads operands for an op that moving_params all of them.
     fn take_args(&self, f: &Func, regs: &mut [Val], args: &[Value]) -> Vec<Val> {
         args.iter()
             .map(|v| arg(f, regs, *v, true, self.m))
@@ -1108,7 +1108,7 @@ fn take(regs: &mut [Val], v: Value) -> Val {
     std::mem::take(&mut regs[v.index()])
 }
 
-/// Reads an operand: moves it out when the position consumes a droppable
+/// Reads an operand: moves it out when the position moving_params a droppable
 /// value, so that unique owners keep mutating in place; clones otherwise.
 fn arg(f: &Func, regs: &mut [Val], v: Value, own: bool, m: &Module) -> Val {
     if own && m.needs_drop(f.ty(v)) {
@@ -1124,7 +1124,7 @@ fn jump(m: &Module, f: &Func, fr: &mut Frame, t: &Target) {
         .args
         .iter()
         .zip(&dest.params)
-        .map(|(a, p)| arg(f, &mut fr.regs, *a, p.mode == Mode::Own, m))
+        .map(|(a, p)| arg(f, &mut fr.regs, *a, p.mode == Mode::Move, m))
         .collect();
     for (p, v) in dest.params.iter().zip(vals) {
         fr.regs[p.value.index()] = v;

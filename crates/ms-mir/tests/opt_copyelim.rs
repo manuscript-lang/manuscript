@@ -36,9 +36,9 @@ b1():
   ret %2
 b2():
   %3: Tree = alt.get Tree.Node.left %0
-  %4: Tree = copy %3
+  %4: Tree = clone %3
   %5: Tree = alt.get Tree.Node.right %0
-  %6: Tree = copy %5
+  %6: Tree = clone %5
   %7: int = iconst 1
   %8: int = call @check (%4)
   %9: int = iadd.chk %7, %8
@@ -61,9 +61,9 @@ b1():
   ret %2
 b2():
   %3: Tree = alt.get Tree.Node.left %0
-  %4: Tree = copy %3
+  %4: Tree = clone %3
   %5: Tree = alt.get Tree.Node.right %0
-  %6: Tree = copy %5
+  %6: Tree = clone %5
   %7: Tree = alt.new Tree.Node %6, %4
   ret %7
 b3():
@@ -103,10 +103,10 @@ fn copies_that_only_feed_borrows_are_removed() {
     if let Err(e) = verify_module(&m) {
         panic!("{e:?}\n{}", print_module(&m));
     }
-    assert_eq!(count(&m, "check", Op::Copy), 0);
+    assert_eq!(count(&m, "check", Op::Clone), 0);
     assert_eq!(count(&m, "check", Op::Drop), 0);
     // Consumed copies stay.
-    assert_eq!(count(&m, "mirror", Op::Copy), 2);
+    assert_eq!(count(&m, "mirror", Op::Clone), 2);
     let after = Interp::new(&m).run_entry().map_err(|f| f.message);
     assert_eq!(before, after);
 }
@@ -120,11 +120,11 @@ b0:
   %z: int = iconst 0
   %nil: List = alt.new List.Nil
   br b1(%nil, %z)
-b1(%l: own List, %i: int):
+b1(%l: move List, %i: int):
   %lt: bool = icmp.lt %i, %n
   br_if %lt, b2(), b3()
 b2():
-  %c: List = copy %l
+  %c: List = clone %l
   %m: List = alt.new List.More %c
   drop %l
   %one: int = iconst 1
@@ -153,7 +153,7 @@ fn a_copy_whose_source_dies_right_after_becomes_a_move() {
     if let Err(e) = verify_module(&m) {
         panic!("{e:?}\n{}", print_module(&m));
     }
-    assert_eq!(count(&m, "build", Op::Copy), 0);
+    assert_eq!(count(&m, "build", Op::Clone), 0);
     assert_eq!(count(&m, "build", Op::Drop), 0);
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
 }
@@ -179,7 +179,7 @@ b2():
   br_if %ok, b3(), b4()
 b3():
   %p: List = opt.get %r
-  %c: List = copy %p
+  %c: List = clone %p
   drop %r
   %more: List = alt.new List.More %c
   %s2: opt<List> = opt.some %more
@@ -187,7 +187,7 @@ b3():
 b4():
   drop %r
   %none: opt<List> = opt.none
-  %own: opt<List> = copy %none
+  %own: opt<List> = clone %none
   ret %own
 }
 
@@ -212,7 +212,7 @@ fn unwrapping_an_owned_option_moves_the_payload_out() {
         panic!("{e:?}\n{}", print_module(&m));
     }
     // Only the owned `none` copy stays.
-    assert_eq!(count(&m, "build", Op::Copy), 1);
+    assert_eq!(count(&m, "build", Op::Clone), 1);
     assert_eq!(count(&m, "build", Op::OptUnbox), 1);
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
 }
@@ -229,7 +229,7 @@ fn @main() -> int {
 b0:
   %k: int = iconst 10
   %f: fn(int) -> int = closure.new @add %k
-  %c: fn(int) -> int = copy %f
+  %c: fn(int) -> int = clone %f
   %x: int = iconst 5
   %r: int = call.ind (%c, %x)
   drop %c
@@ -247,7 +247,7 @@ fn a_closure_copy_that_only_feeds_calls_is_removed() {
     if let Err(e) = verify_module(&m) {
         panic!("{e:?}\n{}", print_module(&m));
     }
-    assert_eq!(count(&m, "main", Op::Copy), 0);
+    assert_eq!(count(&m, "main", Op::Clone), 0);
     assert_eq!(count(&m, "main", Op::Drop), 1);
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
 }
@@ -272,7 +272,7 @@ fn readonly_record_projections_borrow_the_original_without_a_deep_copy() {
         let before = Interp::new(&m).run_entry().map_err(|e| e.message);
         opt::copyelim::run(&mut m);
         verify_module(&m).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&m)));
-        assert_eq!(count(&m, "main", Op::Copy), copies, "{}", print_module(&m));
+        assert_eq!(count(&m, "main", Op::Clone), copies, "{}", print_module(&m));
         assert_eq!(before, Interp::new(&m).run_entry().map_err(|e| e.message));
         assert_eq!(before, Ok(10));
     }
@@ -289,13 +289,13 @@ b0:
   br_if %3, b1(), b2()
 b1():
   %4: str = list.get.u %0, %1
-  %5: str = copy %4
+  %5: str = clone %4
   br b3(%5)
 b2():
   %6: str = str ""
-  %7: str = copy %6
+  %7: str = clone %6
   br b3(%7)
-b3(%8: own str):
+b3(%8: move str):
   %9: str = str "q"
   %10: bool = call.rt @msrt_string_eq (%8, %9)
   drop %8
@@ -306,8 +306,8 @@ fn @main() -> int export {
 b0:
   %20: str = str "q"
   %21: str = str "r"
-  %0: str = copy %20
-  %1: str = copy %21
+  %0: str = clone %20
+  %1: str = clone %21
   %2: list<str> = list.lit %0, %1
   %3: int = iconst 0
   %4: bool = call @is_q (%2, %3)
@@ -332,7 +332,7 @@ fn copies_meeting_at_a_borrowed_block_parameter_are_removed() {
     if let Err(e) = verify_module(&m) {
         panic!("{e:?}\n{}", print_module(&m));
     }
-    assert_eq!(count(&m, "is_q", Op::Copy), 0);
+    assert_eq!(count(&m, "is_q", Op::Clone), 0);
     assert_eq!(count(&m, "is_q", Op::Drop), 0);
     let after = Interp::new(&m).run_entry().map_err(|f| f.message);
     assert_eq!(before, after);
@@ -347,10 +347,10 @@ b0:
   %z: int = iconst 0
   %nil: List = alt.new List.Nil
   br b1(%nil, %z)
-b1(%acc: own List, %i: int):
+b1(%acc: move List, %i: int):
   %nil2: List = alt.new List.Nil
   %k: List = alt.new List.More %nil2
-  %c: List = copy %k
+  %c: List = clone %k
   %acc2: List = alt.new List.More %c
   %one: int = iconst 1
   %i2: int = iadd.chk %i, %one
@@ -373,7 +373,7 @@ b0:
   %lt: bool = icmp.lt %z, %n
   br_if %lt, b1(), b2()
 b1():
-  %c: List = copy %k
+  %c: List = clone %k
   %t: int = alt.tag %c
   drop %c
   br b2()
@@ -403,13 +403,13 @@ fn a_copy_at_the_last_use_across_blocks_becomes_a_move() {
     if let Err(e) = verify_module(&m) {
         panic!("{e:?}\n{}", print_module(&m));
     }
-    assert_eq!(count(&m, "collect", Op::Copy), 0, "{}", print_module(&m));
+    assert_eq!(count(&m, "collect", Op::Clone), 0, "{}", print_module(&m));
     // Only the drop of the previous accumulator remains.
     assert_eq!(count(&m, "collect", Op::Drop), 1, "{}", print_module(&m));
     // The drop in b2 also runs on the path that skips the copy, so it stays.
     assert_eq!(
         count(&m, "skipped", Op::Drop),
-        1 + count(&m, "skipped", Op::Copy)
+        1 + count(&m, "skipped", Op::Clone)
     );
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
 }
@@ -436,7 +436,7 @@ b0:
     let mut copies = Vec::new();
     for i in 0..n {
         s.push_str(&format!(
-            "  %{v}: str = str \"k{i}\"\n  %{c}: str = copy %{v}\n  %{t}: list<int> = take list<int> %1\n  %{sl}: ptr = slot list<int>\n  put %{sl}, %{t}\n  %{d}: ptr = typedesc str\n  %{u}: unit = call.rt @msrt_coll_add (%{sl}, %{d}, %{c})\n  %{b}: list<int> = take list<int> %{sl}\n  put %1, %{b}\n",
+            "  %{v}: str = str \"k{i}\"\n  %{c}: str = clone %{v}\n  %{t}: list<int> = take list<int> %1\n  %{sl}: ptr = slot list<int>\n  put %{sl}, %{t}\n  %{d}: ptr = typedesc str\n  %{u}: unit = call.rt @msrt_coll_add (%{sl}, %{d}, %{c})\n  %{b}: list<int> = take list<int> %{sl}\n  put %1, %{b}\n",
             c = v + 1,
             t = v + 2,
             sl = v + 3,
@@ -475,7 +475,7 @@ fn a_long_literal_is_optimized_in_linear_time() {
     if let Err(e) = verify_module(&m) {
         panic!("{e:?}\n{}", &print_module(&m)[..2000]);
     }
-    assert_eq!(count(&m, "main", Op::Copy), 0);
+    assert_eq!(count(&m, "main", Op::Clone), 0);
     assert_eq!(count(&m, "main", Op::TypeDesc), 1);
     // Only the collection's own slot is left; every entry's roundtrip through a slot is gone.
     assert_eq!(count(&m, "main", Op::Slot), 1);
@@ -487,7 +487,7 @@ fn many_moves(n: usize) -> String {
     );
     for i in 0..n {
         s.push_str(&format!(
-            "  %a{i}: List = alt.new List.Nil\n  %c{i}: List = copy %a{i}\n  drop %a{i}\n"
+            "  %a{i}: List = alt.new List.Nil\n  %c{i}: List = clone %a{i}\n  drop %a{i}\n"
         ));
     }
     for i in 0..n {
@@ -504,7 +504,7 @@ fn a_long_run_of_copy_then_drop_pairs_becomes_moves_in_linear_time() {
     let start = std::time::Instant::now();
     assert!(opt::copyelim::run(&mut m));
     assert!(start.elapsed().as_secs() < 10, "took {:?}", start.elapsed());
-    assert_eq!(count(&m, "main", Op::Copy), 0);
+    assert_eq!(count(&m, "main", Op::Clone), 0);
     assert_eq!(count(&m, "main", Op::Drop), n);
 }
 
@@ -524,11 +524,11 @@ b0:
   %5: int = iconst 5
   %6: int = iconst 1
   br b1(%4, %3)
-b1(%7: int, %8: own Link):
+b1(%7: int, %8: move Link):
   %9: bool = icmp.lt %7, %5
   br_if %9, b2(), b4()
 b2():
-  %10: Link = copy %8
+  %10: Link = clone %8
   %11: opt<Link> = opt.some %10
   %12: Link = rec.new Link %11, %7
   drop %8
@@ -552,7 +552,7 @@ fn an_unoptimized_build_moves_a_value_rebuilt_from_itself() {
         .blocks
         .iter()
         .flat_map(|b| &b.insts)
-        .filter(|i| i.op == ms_mir::ir::Op::Copy)
+        .filter(|i| i.op == ms_mir::ir::Op::Clone)
         .count();
     assert_eq!(copies, 0);
 }
@@ -568,7 +568,7 @@ b0:
   %3: list<int> = list.lit %1, %1
   %4: Pair = rec.new Pair %2, %3
   %5: list<int> = rec.get Pair.a %4
-  %6: list<int> = copy %5
+  %6: list<int> = clone %5
   drop %4
   %7: int = list.len %6
   drop %6
@@ -585,7 +585,7 @@ fn a_field_cloned_out_of_a_dying_record_is_moved_not_copied() {
     if let Err(e) = verify_module(&m) {
         panic!("{e:?}\n{}", print_module(&m));
     }
-    assert_eq!(count(&m, "main", Op::Copy), 0);
+    assert_eq!(count(&m, "main", Op::Clone), 0);
     assert_eq!(count(&m, "main", Op::RecRelease), 1);
     assert_eq!(count(&m, "main", Op::Drop), 1);
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));

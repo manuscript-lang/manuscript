@@ -586,7 +586,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat(
     unsafe { (msrt_string_concat_val(a, b)).write_to(out) }
 }
 
-/// `a + b` that consumes `a`: an owned `a` grows in place, so `s = s + piece` in a loop reuses
+/// `a + b` that moving_params `a`: an owned `a` grows in place, so `s = s + piece` in a loop reuses
 /// one allocation instead of copying the prefix every time.
 ///
 /// # Safety

@@ -25,8 +25,13 @@ Unfamiliar term? Follow its link for exact rules.
 | [Result](core-language/errors/results.md) | Either a success value or an expected error value. Callers can handle or forward the error. |
 | [Optional](core-language/types/optionals.md) | Either a present value or `none`. Absence does not carry an error explanation. |
 | [Fault](core-language/errors/faults.md) | A programming failure, such as a violated invariant. It ends the current operation after cleanup. |
-| [Closure / capture](core-language/functions/function-values-and-closures.md) | A function value that keeps the surrounding values it uses. |
-| [Alias](core-language/types/references.md) | Another reference to the same object. Closing a resource affects every alias. |
+| [Closure](core-language/functions/function-values-and-closures.md) | A function value that keeps the surrounding values it uses. |
+| [Own](core-language/types/references.md) | One binding, field, or collection slot holds a value and frees it when that holder ends. |
+| [Borrow](core-language/types/references.md#borrowing) | Access to a value another holder owns, without taking it: shared (`let`, plain argument) or exclusive (`var`). It ends at its last use. |
+| [Move](core-language/types/references.md) | Ownership transfers to a new holder at the value's last use. The old name is dead until reassigned. |
+| [Clone](core-language/types/records.md#mutation-and-cloning) | `.clone()`: the only explicit, deep duplicate of an owned value. Numbers and other plain values copy implicitly. |
+| [Capture](core-language/functions/function-values-and-closures.md) | A closure holds a binding: it borrows it while the closure stays local and owns it (moved in) once the closure escapes. |
+| [Alias](core-language/types/references.md) | Another borrow of the same object. Closing a resource affects every alias. |
 | [Resource lifetime](core-language/cleanup/_index.md) | How long a file, connection, or other external resource remains open and usable. |
 | Sharing | Values may be passed between operations. |
 | Capability / authority | A service object that permits external operations, obtained through a host accessor or passed to a helper. |
