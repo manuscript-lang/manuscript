@@ -29,6 +29,7 @@ pub mod stmts;
 pub mod suggestions;
 pub mod syntax;
 pub mod types;
+pub mod tytable;
 mod unused;
 
 #[cfg(test)]
@@ -39,6 +40,8 @@ mod record_fields_tests;
 mod type_argument_defaults_tests;
 #[cfg(test)]
 mod type_graph_tests;
+#[cfg(test)]
+mod tytable_tests;
 
 pub use checker::{CheckOptions, ImportMap, Program, TestFixture, self_variable};
 pub use syntax::{ModRef, ModuleData};

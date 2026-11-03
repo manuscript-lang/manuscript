@@ -42,7 +42,7 @@ impl FnLower<'_> {
         )?;
         let fid = self.cx.function_for(self.b.m, &factory, &Subst::new())?;
         let made = self.b.call(fid, &[]);
-        let hook = |s: &Self, name: &str| s.fixture_hook(&fixture.ty, name);
+        let hook = |s: &mut Self, name: &str| s.fixture_hook(&fixture.ty, name);
         let (before_all, before_each) = (hook(self, "before_all"), hook(self, "before_each"));
         let (after_each, after_all) = (hook(self, "after_each"), hook(self, "after_all"));
         // A fault or skip runs the registered hooks from the cleanup stack, which reads the fixture
@@ -123,13 +123,14 @@ impl FnLower<'_> {
     }
 
     /// The `TestHooks` method `name` the fixture type implements.
-    fn fixture_hook(&self, fixture: &ct::Ty, name: &str) -> Option<Rc<Callable>> {
-        let key = ct::type_key(fixture);
+    fn fixture_hook(&mut self, fixture: &ct::Ty, name: &str) -> Option<Rc<Callable>> {
+        let key = self.cx.tys.shape(fixture);
+        let tys = &mut self.cx.tys;
         let m = self.cx.methods.iter().find(|m| {
             m.contract
                 .as_ref()
                 .is_some_and(|c| c.is(Builtin::TestHooks))
-                && ct::type_key(&m.receiver) == key
+                && tys.shape(&m.receiver) == key
                 && m.name().is_some_and(|n| n.as_str() == name)
         })?;
         let decl = m.decl.as_ref()?;
