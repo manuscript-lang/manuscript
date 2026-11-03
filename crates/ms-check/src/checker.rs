@@ -719,6 +719,16 @@ impl Checker {
                     // A file that mixes native declarations and bodies exports both halves under its own name.
                     stdlib::standard_module_symbol(pn, item.name).or_else(|| {
                         let twin = stdlib::import_source(item)?;
+                        if self.group.iter().any(|g| g.file == twin.file) {
+                            // The twin is checked together with this module: its symbols
+                            // are declared in this program, not yet in the shared world.
+                            return self
+                                .p
+                                .symbols
+                                .get(&twin.file)
+                                .and_then(|names| names.borrow().get(&item.name).cloned())
+                                .filter(|s| s.module == twin.file);
+                        }
                         stdlib::ensure_source(&twin)
                             .exports
                             .get(&item.name)
