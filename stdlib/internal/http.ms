@@ -1,5 +1,4 @@
 import Bytes from "@std/bytes.ms"
-import ReadStream from "@std/io/io.ms"
 import (
     HttpHeaders,
     HttpMethod,
@@ -9,7 +8,7 @@ import (
     HttpServerOptions,
     NativeServing,
     NativeResponseBody,
-    ResponseBody
+    RawResponse
 ) from "@std/net/http.ms"
 import Duration from "@std/os/time.ms"
 
@@ -23,7 +22,7 @@ export extern fn msstd_http_client_request(
     body: String,
     max_response_bytes: Int?,
     timeout: Duration?
-) ResponseBody!
+) RawResponse!
 
 export extern fn msstd_http_client_request_bytes(
     handle: NativeHttpClient,
@@ -33,17 +32,7 @@ export extern fn msstd_http_client_request_bytes(
     body: Bytes,
     max_response_bytes: Int?,
     timeout: Duration?
-) ResponseBody!
-
-export extern fn msstd_http_client_request_stream(
-    handle: NativeHttpClient,
-    method: HttpMethod,
-    url: String,
-    headers: HttpHeaders,
-    body: ReadStream,
-    max_response_bytes: Int?,
-    timeout: Duration?
-) ResponseBody!
+) RawResponse!
 
 export extern fn msstd_http_serving_new(
     address: String,

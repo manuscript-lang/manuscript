@@ -1,9 +1,9 @@
 import Closeable, Data from "@std/core.ms"
 import Bytes, join from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
-import Promise from "@std/concurrency/promise.ms"
+import Promise, deferred, complete from "@std/concurrency/promise.ms"
 import stringify from "@std/data/json.ms"
-import ReadStream from "@std/io/io.ms"
+import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
 import TlsOptions from "@std/net/net.ms"
 import WebSocket from "@std/net/net.ms"
 import (
@@ -16,7 +16,6 @@ import (
     msstd_http_headers_new,
     msstd_http_client_request,
     msstd_http_client_request_bytes,
-    msstd_http_client_request_stream,
     msstd_http_body_close,
     msstd_http_body_metadata,
     msstd_http_body_read,
@@ -154,7 +153,7 @@ impl Closeable for HttpClient:
         return ok(unit)
 
 impl HttpClient:
-    // Sends the UTF-8 text body and returns a scoped streaming response body.
+    // Sends the UTF-8 text body and returns the response with its body as a stream.
     fn request(
         method: HttpMethod,
         url: String,
@@ -162,12 +161,13 @@ impl HttpClient:
         body: String = "",
         max_response_bytes: Int?,
         timeout: Duration?
-    ) ResponseBody!:
-        return msstd_http_client_request(
+    ) StreamingResponse!:
+        let raw = try msstd_http_client_request(
             self.native, method, url, headers, body, max_response_bytes, timeout
         )
+        return ok(response(raw))
 
-    // Sends immutable Bytes and returns a scoped streaming response body.
+    // Sends immutable Bytes and returns the response with its body as a stream.
     fn request_bytes(
         method: HttpMethod,
         url: String,
@@ -175,23 +175,43 @@ impl HttpClient:
         body: Bytes = "".to_bytes(),
         max_response_bytes: Int?,
         timeout: Duration?
-    ) ResponseBody!:
+    ) StreamingResponse!:
+        let raw = try self.request_raw(method, url, headers, body, max_response_bytes, timeout)
+        return ok(response(raw))
+
+    // Sends immutable Bytes and returns the native response, for callers that buffer the whole body.
+    fn request_raw(
+        method: HttpMethod,
+        url: String,
+        headers: HttpHeaders,
+        body: Bytes,
+        max_response_bytes: Int?,
+        timeout: Duration?
+    ) RawResponse!:
         return msstd_http_client_request_bytes(
             self.native, method, url, headers, body, max_response_bytes, timeout
         )
 
-    // Borrows ReadStream upload data through the scoped response lifetime.
+    // Reads `body` to its end, then sends it as the request body. The upload is buffered until the request can
+    // return a `WriteStream` for the body to be written into.
     fn request_stream(
         method: HttpMethod,
         url: String,
         headers: HttpHeaders,
-        body: ReadStream,
+        body: ReadStream[Bytes],
         max_response_bytes: Int?,
         timeout: Duration?
-    ) ResponseBody!:
-        return msstd_http_client_request_stream(
-            self.native, method, url, headers, body, max_response_bytes, timeout
-        )
+    ) StreamingResponse!:
+        var input = body
+        var chunks: List[Bytes] = []
+        while true:
+            let chunk = try input.read().wait()
+            if let bytes = chunk:
+                chunks.append(bytes)
+            else:
+                break
+        try input.close()
+        return self.request_bytes(method, url, headers, join(chunks), max_response_bytes, timeout)
 
 // Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
 export type HttpClientOptions:
@@ -329,36 +349,89 @@ export type HttpServerOptions:
     // How many threads serve connections: the runtime starts at most this many scheduler threads. Must be at least 1; none uses every core.
     cores: Int?
 
-// The runtime handle behind a `ResponseBody`.
+// The runtime handle behind a `RawResponse`.
 export extern type NativeResponseBody
 
-// Streaming response body returned by reusable HTTP client operations.
+// The native response a client operation returns: its body is read through `StreamingResponse.body`.
 // Metadata remains available after close and shares one mutable header object.
-export type ResponseBody:
+export type RawResponse:
     // The runtime handle; it is released by `close` and owned by this value.
     native: NativeResponseBody
 
-impl Closeable for ResponseBody:
+impl Closeable for RawResponse:
     // Cancels the rest of the response and releases its connection.
     // Safe to call repeatedly; reads afterwards return Closed. A fully read body lets the connection be reused.
     var fn close() Unit!:
         msstd_http_body_close(self.native)
         return ok(unit)
 
-impl ResponseBody:
+impl RawResponse:
     // Returns the response head (status and headers) without copying; it stays available after close.
     fn metadata() HttpResponseMetadata:
         return msstd_http_body_metadata(self.native)
 
-    // Returns the next chunk of the response body, at most `max_bytes` and never more than 65536, or none at the end of the body.
-    // Reading past the request's `max_response_bytes` returns an `Error` of kind `Failed`, and a non-positive `max_bytes` returns InvalidInput.
-    fn read(max_bytes: Int?) Bytes?!:
-        return msstd_http_body_read(self.native, max_bytes)
-
-    // Reads the rest of the body into one value, with `read`'s limit and error rules.
+    // Reads the rest of the body into one value, bounded by the request's `max_response_bytes`.
     // A plain HTTP/1.1 body of known length arrives straight into the result without intermediate copies.
     fn read_all() Bytes!:
         return msstd_http_body_read_all(self.native)
+
+// A client response: the head and the body as a stream. Closing or dropping the body cancels the rest of the
+// response and releases its connection; a fully read body lets the connection be reused.
+export type StreamingResponse:
+    // Status and headers, available whether or not the body is read.
+    metadata: HttpResponseMetadata
+    // The body, at most 64 KiB per item. Reading past the request's `max_response_bytes` is an `Error` of kind `Failed`.
+    body: ReadStream[Bytes]
+
+type ResponseSource:
+    raw: RawResponse
+
+impl Source[Bytes] for ResponseSource:
+    var fn next() Bytes?!:
+        return msstd_http_body_read(self.raw.native, none)
+
+    var fn close() Unit!:
+        return self.raw.close()
+
+fn response(raw: RawResponse) StreamingResponse:
+    let metadata = raw.metadata()
+    return StreamingResponse(metadata: metadata, body: stream[Bytes](ResponseSource(raw)))
+
+type ExchangeBody:
+    exchange: HttpExchange
+
+impl Source[Bytes] for ExchangeBody:
+    var fn next() Bytes?!:
+        return self.exchange.read(none)
+
+    var fn close() Unit!:
+        return ok(unit)
+
+// The request body as a stream of chunks of at most 64 KiB. Reading past `max_body_bytes` is an `Error` of kind `Failed`.
+export fn body(exchange: HttpExchange) ReadStream[Bytes]:
+    return stream[Bytes](ExchangeBody(exchange))
+
+type ExchangeSink:
+    exchange: HttpExchange
+
+impl Sink[Bytes] for ExchangeSink:
+    var fn put(value: Bytes) Unit!:
+        return self.exchange.write_bytes(value)
+
+    var fn drain() Promise[Unit]:
+        return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
+
+    fn buffered() Int:
+        return 0
+
+    var fn close() Unit!:
+        return ok(unit)
+
+// Sends the status line and headers, then returns the stream the response body is written to.
+// The rules of `send_headers` apply; writing beyond `max_response_bytes` is an `Error` of kind `Failed`.
+export fn respond(exchange: HttpExchange, status: Int, headers: HttpHeaders) WriteStream[Bytes]!:
+    try exchange.send_headers(status, headers)
+    return ok(writer[Bytes](ExchangeSink(exchange)))
 
 // Reads the rest of the request body into one value.
 // A body over `max_body_bytes` of the server's options returns LimitExceeded; `limit` also bounds it when given.
@@ -453,18 +526,3 @@ fn serve_buffered(handler: fn(HttpRequest) HttpResponse, exchange: HttpExchange)
         headers: exchange.headers(), body: body, protocol: exchange.protocol()
     )
     return reply(exchange, handler(request))
-
-type OwnedBody:
-    body: ResponseBody
-
-impl ReadStream for OwnedBody:
-    var fn close() Unit:
-        self.body.close().get(none)
-
-    var fn read(max_bytes: Int? = none) Bytes?!:
-        return self.body.read(max_bytes)
-
-// Turns an HTTP response body into a ReadStream that owns it. Closing the stream closes the body.
-// Temporary: the network streams work replaces `ResponseBody` with a `ReadStream[Bytes]` field.
-export fn body_stream(body: ResponseBody) ReadStream:
-    return OwnedBody(body)

@@ -58,8 +58,10 @@ test "deadline expires and ticker paces":
     let start = monotonic()
     var count = 0
 
-    for tick in ticker(10.milliseconds):
+    var ticks = ticker(10.milliseconds)
+    while count < 3:
+        let tick = try ticks.read().wait()
+        try expect_true(tick.is_some())
         count += 1
-        if count == 3: break
 
     try expect_true(monotonic().difference(start).to_milliseconds() >= 29)
