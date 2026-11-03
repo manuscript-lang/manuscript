@@ -87,6 +87,7 @@ impl Failure {
 
 fn resolution(file: &Arc<str>, pos: Pos, message: String) -> Diagnostic {
     Diagnostic {
+        opener: None,
         file: file.clone(),
         pos,
         phase: Phase::Resolution,
@@ -393,9 +394,7 @@ impl Loader<'_> {
                         // One unclosed delimiter is one mistake: the strict
                         // parse reports it at the end of the file and recovery
                         // at the next declaration, naming the same opener.
-                        .filter(|d| {
-                            !(d.message == first.message && d.message.contains(" opened at line "))
-                        })
+                        .filter(|d| d.opener.is_none() || d.opener != first.opener)
                         .collect();
                     self.graph.diagnostics.extend(secondary.iter().cloned());
                     return Err(Failure::Diagnostic(first, secondary));

@@ -52,6 +52,8 @@ pub struct CallSite {
     pub owner: String,
     pub target: String,
     pub kind: String,
+    /// Whether this starts a task: a `TaskGroup.spawn` call.
+    pub spawn: bool,
     pub span: Span,
 }
 
@@ -361,6 +363,7 @@ impl Sites<'_> {
             owner: self.owner.clone(),
             target: "indirect".to_string(),
             kind: "function".to_string(),
+            spawn: false,
             span: source_span(self.module, e.pos, self.ends),
         };
         if self.module.facts().const_use.contains(&e.id) {
@@ -376,6 +379,8 @@ impl Sites<'_> {
             }
             if let Some(method) = &info.method {
                 site.kind = "operation".to_string();
+                site.spawn = method.receiver.is_source_type("@std/concurrency/tasks.ms", "TaskGroup")
+                    && method.name().is_some_and(|n| n.as_str() == "spawn");
                 site.target = match self.method_ids.get(method.id.as_str()) {
                     Some(id) => id.clone(),
                     None => format!(
@@ -430,6 +435,7 @@ impl Visitor for Sites<'_> {
                 owner: self.owner.clone(),
                 target,
                 kind: "cleanup".to_string(),
+                spawn: false,
                 span: source_span(self.module, s.pos, self.ends),
             });
         }
@@ -649,6 +655,7 @@ impl Inspection {
                     owner: c.owner.clone(),
                     target: c.target.clone(),
                     kind: c.kind.clone(),
+                    spawn: c.spawn,
                 })
                 .collect(),
         }

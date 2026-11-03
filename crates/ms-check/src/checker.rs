@@ -374,6 +374,7 @@ impl Checker {
             return;
         }
         self.p.diagnostics.push(Diagnostic {
+            opener: None,
             file: file.as_str().into(),
             pos,
             phase,
@@ -751,6 +752,7 @@ impl Checker {
                 );
                 let message = self.export_message(item);
                 self.p.diagnostics.push(Diagnostic {
+                    opener: None,
                     file: module.file.as_str().into(),
                     pos: item.name_pos,
                     phase: Phase::Resolution,

@@ -119,6 +119,7 @@ fn check_entry(program: &Program, entry: &str) -> Option<Diagnostic> {
         };
     }
     Some(Diagnostic {
+        opener: None,
         file,
         pos: position,
         phase: Phase::Type,

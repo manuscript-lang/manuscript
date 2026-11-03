@@ -53,6 +53,7 @@ struct Loader {
 
 fn resolution(file: &Arc<str>, pos: Pos, message: String) -> Diagnostic {
     Diagnostic {
+        opener: None,
         file: file.clone(),
         pos,
         phase: Phase::Resolution,

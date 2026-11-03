@@ -57,6 +57,7 @@ pub fn load_module(m: &Module) -> ModRef {
     data.inherent = errors
         .into_iter()
         .map(|e| Diagnostic {
+            opener: None,
             file: m.file.clone(),
             pos: e.pos,
             phase: Phase::Type,

@@ -1315,6 +1315,7 @@ impl Walker<'_> {
             return;
         }
         self.diags.push(Diagnostic {
+            opener: None,
             file: Arc::from(self.cx.m.data.file.as_str()),
             pos,
             phase: Phase::Type,

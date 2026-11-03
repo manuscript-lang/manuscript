@@ -243,6 +243,7 @@ mod tests {
 
     fn unknown(file: &str) -> Diagnostic {
         Diagnostic {
+            opener: None,
             file: file.into(),
             pos: Pos::new(12, 1, 13),
             phase: Phase::Resolution,
