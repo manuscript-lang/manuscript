@@ -5,6 +5,7 @@ export fn main() Int:
     var values: Map[String, Int] = {"b": 2, "a": 1}
     var seen: List[String] = []
     let any_of = values.any
+
     let found = any_of(
         fn key,
         value:
@@ -12,6 +13,8 @@ export fn main() Int:
             values.remove("a")
             return value == 1
     )
+
     if found:
         return 1
+
     return 0
