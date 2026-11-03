@@ -18,7 +18,7 @@ import (
     Listener,
     Connection
 ) from "@std/net/net.ms"
-import promise, wait_all from "@std/concurrency/promise.ms"
+import promise from "@std/concurrency/promise.ms"
 import sleep from "@std/os/time.ms"
 
 test "IP parsing CIDR normalization and containment":
@@ -126,19 +126,15 @@ fn accept_one(l: Listener) Int:
 
     return 0
 
-test "two tasks accept on one listener":
-    var listener = try listen("127.0.0.1:0")
+test "a promise accepts on a listener it owns":
+    let listener = try listen("127.0.0.1:0")
+    let address = listener.address()
     let a = promise(fn: ok(accept_one(listener)))
-    let b = promise(fn: ok(accept_one(listener)))
     sleep(50.milliseconds)
 
-    var c1 = try connect(listener.address(), 2.seconds)
-    var c2 = try connect(listener.address(), 2.seconds)
-    let got = try wait_all([a, b])
-    try expect_equal(got[0] + got[1], 2)
-    try c1.close()
-    try c2.close()
-    try listener.close()
+    var client = try connect(address, 2.seconds)
+    try expect_equal(try a.wait(), 1)
+    try client.close()
 
 fn read_some(c: Connection) Int:
     let r = c.read(1, 2.seconds)
@@ -147,19 +143,16 @@ fn read_some(c: Connection) Int:
 
     return 0
 
-test "two tasks read one connection":
-    let listener = try listen("127.0.0.1:0")
+test "a promise reads a connection it owns":
+    var listener = try listen("127.0.0.1:0")
     var client = try connect(listener.address(), 2.seconds)
-    var server = try listener.accept(2.seconds)
+    let server = try listener.accept(2.seconds)
     let a = promise(fn: ok(read_some(server)))
-    let b = promise(fn: ok(read_some(server)))
     sleep(50.milliseconds)
     try client.write("xy", 2.seconds)
-
-    let got = try wait_all([a, b])
-    try expect_equal(got[0] + got[1], 2)
+    try expect_equal(try a.wait(), 1)
     try client.close()
-    try server.close()
+    try listener.close()
 
 // Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
 fn answer_mx(socket: DatagramSocket) Int!:

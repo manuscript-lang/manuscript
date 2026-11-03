@@ -176,9 +176,10 @@ test "raw TLS listeners and clients handshake and report negotiated details":
         server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
         private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: false
     )
-    var listener = try listen_tls("127.0.0.1:0", server_tls, 3.seconds)
+    let listener = try listen_tls("127.0.0.1:0", server_tls, 3.seconds)
+    let address = listener.address()
     let served = promise(fn: ok(serve_one_tls(listener)))
-    var client = try connect_tls_config(listener.address(), client_tls, 3.seconds)
+    var client = try connect_tls_config(address.clone(), client_tls, 3.seconds)
     try client.write("ping", 3.seconds)
     try expect_equal((try client.read(4, 3.seconds)).get(), "pong".to_bytes())
 
@@ -195,21 +196,19 @@ test "raw TLS listeners and clients handshake and report negotiated details":
     try expect_equal(more[1].length(), more[0].length())
     try client.close()
     try expect_equal((try wait_all([served]))[0], 1)
-    try listener.close()
 
 test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
     let server_tls = TlsOptions(
         server_name: "", roots_pem: "", certificate_pem: certificate(),
         private_key_pem: private_key(), alpn: [], require_client_certificate: false
     )
-    var listener = try listen_tls("127.0.0.1:0", server_tls, 3.seconds)
+    let listener = try listen_tls("127.0.0.1:0", server_tls, 3.seconds)
+    let address = listener.address()
     let served = promise(fn: ok(serve_one_tls(listener)))
     let _failure = try expect_error(
-        connect_tls(listener.address(), "stdlib.test", 3.seconds)
+        connect_tls(address.clone(), "stdlib.test", 3.seconds)
     )
     let _served = try wait_all([served])
-    try listener.close()
-
     let plain = try listen("127.0.0.1:0")
     let client = try connect(plain.address(), 2.seconds)
     try expect_false(client.tls_info().is_ok())
@@ -243,12 +242,12 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
         server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
         private_key_pem: "", alpn: [], require_client_certificate: false
     )
-    var listener = try listen_tls("127.0.0.1:0", server_tls, 5.seconds)
+    let listener = try listen_tls("127.0.0.1:0", server_tls, 5.seconds)
+    let address = listener.address()
     let served = promise(fn: ok(count_until_eof(listener)))
-    var client = try connect_tls_config(listener.address(), client_tls, 5.seconds)
+    var client = try connect_tls_config(address.clone(), client_tls, 5.seconds)
     try client.write("y".repeat(20000000).get(), 20.seconds)
 
     // No read first: the server's post-handshake bytes must not reset the connection.
     try client.close()
     try expect_equal((try wait_all([served]))[0], 20000000)
-    try listener.close()
