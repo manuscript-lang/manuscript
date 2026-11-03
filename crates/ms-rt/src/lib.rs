@@ -50,7 +50,6 @@ pub mod promise;
 pub mod scan;
 pub mod sched;
 pub mod start;
-#[cfg(not(windows))]
 pub mod streams;
 pub mod string;
 #[cfg(not(windows))]

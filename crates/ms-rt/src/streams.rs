@@ -8,7 +8,7 @@
 //! * A failure ends the promise with no value and is kept on the entry; `msrt_streams_error`
 //!   reads it, so the Manuscript side builds the `Error`.
 use crate::vec::bytes_from;
-use crate::{alloc, promise, sys, task};
+use crate::{alloc, promise, task};
 use ms_rt_abi::VecVal;
 use std::sync::Mutex;
 
@@ -42,6 +42,125 @@ struct Entry {
     flushes: Vec<i64>,
 }
 
+/// The system calls under the table. Unix works on any descriptor; Windows serves the three
+/// standard handles through `std::io`, whose calls block the calling thread until they finish.
+#[cfg(not(windows))]
+mod plat {
+    use crate::sys;
+
+    pub enum Fail {
+        Interrupted,
+        WouldBlock,
+        Other(i32),
+    }
+
+    fn classify() -> Fail {
+        match sys::last_errno() {
+            sys::EINTR => Fail::Interrupted,
+            sys::EAGAIN => Fail::WouldBlock,
+            n => Fail::Other(n),
+        }
+    }
+
+    pub fn set_nonblocking(fd: i32) {
+        // SAFETY: plain fcntl calls on a descriptor the caller hands over.
+        unsafe {
+            let current = sys::fcntl(fd, sys::F_GETFL);
+            if current >= 0 {
+                sys::fcntl(fd, sys::F_SETFL, current | sys::O_NONBLOCK);
+            }
+        }
+    }
+
+    /// Whether a read of `fd` would not block.
+    pub fn readable_now(fd: i32) -> bool {
+        let mut p = libc::pollfd {
+            fd,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        // SAFETY: one valid pollfd and a zero timeout.
+        unsafe { libc::poll(&mut p, 1, 0) != 0 }
+    }
+
+    pub fn read(fd: i32, buf: &mut [u8]) -> Result<usize, Fail> {
+        // SAFETY: `buf` is writable for its length.
+        let n = unsafe { sys::read(fd, buf.as_mut_ptr().cast(), buf.len()) };
+        if n >= 0 {
+            Ok(n as usize)
+        } else {
+            Err(classify())
+        }
+    }
+
+    pub fn write(fd: i32, buf: &[u8]) -> Result<usize, Fail> {
+        // SAFETY: `buf` is readable for its length.
+        let n = unsafe { sys::write(fd, buf.as_ptr().cast(), buf.len()) };
+        if n >= 0 {
+            Ok(n as usize)
+        } else {
+            Err(classify())
+        }
+    }
+
+    pub fn close(fd: i32) {
+        // SAFETY: the entry owns the descriptor.
+        unsafe { sys::close(fd) };
+    }
+}
+
+#[cfg(windows)]
+mod plat {
+    use std::io::{Read, Write};
+
+    pub enum Fail {
+        Interrupted,
+        WouldBlock,
+        Other(i32),
+    }
+
+    fn classify(e: std::io::Error) -> Fail {
+        match e.kind() {
+            std::io::ErrorKind::Interrupted => Fail::Interrupted,
+            std::io::ErrorKind::WouldBlock => Fail::WouldBlock,
+            _ => Fail::Other(e.raw_os_error().unwrap_or(-1)),
+        }
+    }
+
+    /// Only the standard handles exist here, and they are shared, so nothing changes their mode.
+    pub fn set_nonblocking(_fd: i32) {}
+
+    /// A read blocks its thread until data or the end arrives.
+    pub fn readable_now(_fd: i32) -> bool {
+        true
+    }
+
+    pub fn read(fd: i32, buf: &mut [u8]) -> Result<usize, Fail> {
+        if fd != 0 {
+            return Err(Fail::Other(6));
+        }
+        std::io::stdin().lock().read(buf).map_err(classify)
+    }
+
+    pub fn write(fd: i32, buf: &[u8]) -> Result<usize, Fail> {
+        match fd {
+            1 => {
+                let mut out = std::io::stdout().lock();
+                out.write(buf).and_then(|n| out.flush().map(|()| n))
+            }
+            2 => {
+                let mut err = std::io::stderr().lock();
+                err.write(buf).and_then(|n| err.flush().map(|()| n))
+            }
+            _ => return Err(Fail::Other(6)),
+        }
+        .map_err(classify)
+    }
+
+    /// The process owns its standard handles; closing an entry never closes them.
+    pub fn close(_fd: i32) {}
+}
+
 static STREAMS: Mutex<Vec<Entry>> = Mutex::new(Vec::new());
 
 fn streams() -> std::sync::MutexGuard<'static, Vec<Entry>> {
@@ -58,13 +177,7 @@ fn slot(table: &mut [Entry], id: i64) -> Option<&mut Entry> {
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_streams_open(fd: i64, flags: i64) -> i64 {
     if flags & NONBLOCK != 0 {
-        // SAFETY: plain fcntl calls on a descriptor the caller hands over.
-        unsafe {
-            let current = sys::fcntl(fd as i32, sys::F_GETFL);
-            if current >= 0 {
-                sys::fcntl(fd as i32, sys::F_SETFL, current | sys::O_NONBLOCK);
-            }
-        }
+        plat::set_nonblocking(fd as i32);
     }
     let mut table = streams();
     let i = match table
@@ -100,8 +213,8 @@ pub extern "C-unwind" fn msrt_streams_open(fd: i64, flags: i64) -> i64 {
     (i64::from(e.generation) << 32) | (i as i64 + 1)
 }
 
-fn fail(e: &mut Entry, what: &str) {
-    e.error = format!("{what}: os error {}", sys::last_errno()).into_bytes();
+fn fail(e: &mut Entry, what: &str, code: i32) {
+    e.error = format!("{what}: os error {code}").into_bytes();
 }
 
 enum Step {
@@ -115,17 +228,7 @@ enum Step {
 /// standard input, whose file description is shared with other processes) is polled first so a
 /// silent pipe parks the task instead of the thread.
 fn readable_now(e: &Entry) -> bool {
-    if e.flags & NONBLOCK != 0 {
-        return true;
-    }
-    let mut fd = libc::pollfd {
-        fd: e.fd,
-        events: libc::POLLIN,
-        revents: 0,
-    };
-    // SAFETY: one valid pollfd and a zero timeout.
-    let n = unsafe { libc::poll(&mut fd, 1, 0) };
-    n != 0
+    e.flags & NONBLOCK != 0 || plat::readable_now(e.fd)
 }
 
 fn try_read(e: &mut Entry) -> Step {
@@ -134,20 +237,16 @@ fn try_read(e: &mut Entry) -> Step {
     }
     let mut buf = vec![0u8; CHUNK];
     loop {
-        // SAFETY: `buf` is writable for CHUNK bytes.
-        let n = unsafe { sys::read(e.fd, buf.as_mut_ptr().cast(), CHUNK) };
-        if n > 0 {
-            buf.truncate(n as usize);
-            return Step::Data(buf);
-        }
-        if n == 0 {
-            return Step::End;
-        }
-        match sys::last_errno() {
-            sys::EINTR => continue,
-            sys::EAGAIN => return Step::Blocked,
-            _ => {
-                fail(e, "read");
+        match plat::read(e.fd, &mut buf) {
+            Ok(0) => return Step::End,
+            Ok(n) => {
+                buf.truncate(n);
+                return Step::Data(buf);
+            }
+            Err(plat::Fail::Interrupted) => continue,
+            Err(plat::Fail::WouldBlock) => return Step::Blocked,
+            Err(plat::Fail::Other(code)) => {
+                fail(e, "read", code);
                 return Step::Failed;
             }
         }
@@ -277,18 +376,18 @@ pub unsafe extern "C-unwind" fn msrt_streams_write(stream: i64, data: *const Vec
 /// Writes as much of the buffer as the descriptor takes now; whether it is empty.
 fn drain(e: &mut Entry) -> bool {
     while e.out_start < e.out.len() {
-        let rest = &e.out[e.out_start..];
-        // SAFETY: `rest` is readable.
-        let n = unsafe { sys::write(e.fd, rest.as_ptr().cast(), rest.len()) };
-        if n > 0 {
-            e.out_start += n as usize;
-            continue;
-        }
-        match sys::last_errno() {
-            sys::EINTR => continue,
-            sys::EAGAIN => return false,
-            _ => {
-                fail(e, "write");
+        match plat::write(e.fd, &e.out[e.out_start..]) {
+            Ok(0) => {
+                fail(e, "write", 0);
+                e.out.clear();
+                e.out_start = 0;
+                return true;
+            }
+            Ok(n) => e.out_start += n,
+            Err(plat::Fail::Interrupted) => continue,
+            Err(plat::Fail::WouldBlock) => return false,
+            Err(plat::Fail::Other(code)) => {
+                fail(e, "write", code);
                 e.out.clear();
                 e.out_start = 0;
                 return true;
@@ -365,8 +464,7 @@ pub extern "C-unwind" fn msrt_streams_close(stream: i64) {
         drain(e);
     }
     if e.flags & OWNS != 0 && e.fd >= 0 {
-        // SAFETY: the entry owns the descriptor.
-        unsafe { sys::close(e.fd) };
+        plat::close(e.fd);
     }
     e.live = false;
     e.fd = -1;
