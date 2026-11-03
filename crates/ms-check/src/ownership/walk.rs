@@ -3477,6 +3477,11 @@ impl Walker<'_> {
                     | Operand::Part(x) => *x,
                 };
                 *passing = self.nested_writes(x);
+                for p in self.arm_writes(x) {
+                    if !passing.contains(&p) {
+                        passing.push(p);
+                    }
+                }
             }
             self.check_overlap(e.pos, &format!("`{name}`"), &operands);
         }
@@ -3638,18 +3643,62 @@ impl Walker<'_> {
                 }
             }
         }
-        if let ExprKind::Match { arms, .. } = &e.kind {
-            // An arm's statements run inside the operand too: an assignment there changes a
-            // place the call may be holding.
-            for arm in arms {
-                for p in self.block_writes(&arm.body) {
-                    if !out.contains(&p) {
-                        out.push(p);
+        self.nested_cache.insert(e.id, out.clone());
+        out
+    }
+
+    /// The places the statements of the `match` arms inside `e` assign, change or move. They run
+    /// while a call's receiver, callee and borrowed arguments are held in place, so a call
+    /// counts them with [`Self::nested_writes`]; a literal's parts are finished before the next
+    /// part runs, so a literal does not.
+    fn arm_writes(&mut self, e: &Expr) -> Vec<Place> {
+        let mut out: Vec<Place> = Vec::new();
+        let mut stack = vec![e];
+        while let Some(e) = stack.pop() {
+            match &e.kind {
+                ExprKind::Number(_)
+                | ExprKind::Bool(_)
+                | ExprKind::Unit
+                | ExprKind::Name(_)
+                | ExprKind::Lambda(_) => {}
+                ExprKind::Text(parts) => {
+                    for p in parts {
+                        if let TextPart::Interp(x) = p {
+                            stack.push(x);
+                        }
+                    }
+                }
+                ExprKind::Member { left, .. } | ExprKind::Probe(left) => stack.push(left),
+                ExprKind::Unary { operand, .. } => stack.push(operand),
+                ExprKind::Apply { left, value, .. } => {
+                    stack.push(left);
+                    stack.extend(value.as_deref());
+                }
+                ExprKind::Index { left, index }
+                | ExprKind::Binary {
+                    left, right: index, ..
+                } => stack.extend([&**left, &**index]),
+                ExprKind::List(items) => stack.extend(items.iter()),
+                ExprKind::Map(entries) => {
+                    stack.extend(entries.iter().flat_map(|en| [&en.key, &en.value]))
+                }
+                ExprKind::Call { callee, args } => {
+                    stack.push(callee);
+                    stack.extend(args.iter().map(|a| &a.value));
+                }
+                ExprKind::Match { scrutinee, arms } => {
+                    stack.push(scrutinee);
+                    for arm in arms {
+                        stack.extend(arm.value.as_ref());
+                        for p in self.block_writes(&arm.body) {
+                            if !out.contains(&p) {
+                                out.push(p);
+                            }
+                        }
                     }
                 }
             }
         }
-        self.nested_cache.insert(e.id, out.clone());
         out
     }
 

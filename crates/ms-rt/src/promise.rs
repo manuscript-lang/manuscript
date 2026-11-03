@@ -1075,13 +1075,12 @@ mod tests {
     }
 
     fn start(id: i64, code: unsafe extern "C-unwind" fn(*mut Closure)) {
-        // SAFETY: the task retains the capture-free closure until it ends.
+        // SAFETY: the capture-free closure is handed to the promise, which drops it when the task ends.
         unsafe {
             *ID.ptr() = id;
             let closure = crate::obj::new_obj(size_of::<Closure>(), drop_closure).cast::<Closure>();
             (*closure).code = code as *const u8;
             msrt_promise_start(id, closure);
-            crate::obj::release(closure.cast());
         }
     }
 
@@ -1299,14 +1298,13 @@ mod tests {
 
     // Closures that carry the id of their promise after the header.
     fn start_with_id(id: i64, code: unsafe extern "C-unwind" fn(*mut Closure)) {
-        // SAFETY: the promise keeps a reference to the closure until its task has ended.
+        // SAFETY: the closure is handed to the promise, which drops it when its task has ended.
         unsafe {
             let size = size_of::<Closure>() + 8;
             let closure = crate::obj::new_obj(size, drop_closure).cast::<Closure>();
             (*closure).code = code as *const u8;
             closure.add(1).cast::<i64>().write(id);
             msrt_promise_start(id, closure);
-            crate::obj::release(closure.cast());
         }
     }
 
