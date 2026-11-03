@@ -5,7 +5,7 @@ use crate::func::{FnLower, Val};
 use crate::nativerec::native_rec;
 use ms_check::hir::Resolution;
 use ms_check::types::{self as ct, Builtin, Kind};
-use ms_mir::ir::{Cc, Op, Value};
+use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Native;
 use ms_mir::types::NativeRec;
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -520,9 +520,21 @@ impl<'a> FnLower<'a> {
             return Ok(Val { v: f, own: false });
         }
         if obj.own {
-            // Take a copy out of the temporary, then release the temporary.
-            let o = self.owned(Val { v: f, own: false });
-            self.drop_temp(obj.v);
+            // Move the field out of the temporary and release the rest of it.
+            let fty = self.ty_of(f);
+            let o = if self.needs_drop(fty) && self.b.m.records[rid.index()].fields.len() <= 32 {
+                let o = self
+                    .b
+                    .emit(Op::MoveOut, &[f], Imm::None, Some(fty))
+                    .expect("move out");
+                self.b
+                    .emit(Op::RecRelease, &[obj.v], Imm::RecMask(rid, 1 << idx), None);
+                o
+            } else {
+                let o = self.owned(Val { v: f, own: false });
+                self.drop_temp(obj.v);
+                o
+            };
             return Ok(Val {
                 v: o,
                 own: self.holds(self.ty_of(o)),
