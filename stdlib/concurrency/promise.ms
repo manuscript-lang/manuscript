@@ -134,9 +134,9 @@ export fn wait_first[T](promises: List[Promise[T]]) T!:
     let which = msrt_promise_wait_any(ids, -1)
     return pending[which].wait()
 
-# A promise whose work runs in the task that first waits on it, on that task's stack, with no task of its own.
-# The work may wait itself. `make` receives the new promise's id and returns the work; it ends with `complete(id, ...)`.
-# For stream implementations: dropping the promise first discards the work unrun.
+// A promise whose work runs in the task that first waits on it, on that task's stack, with no task of its own.
+// The work may wait itself. `make` receives the new promise's id and returns the work; it ends with `complete(id, ...)`.
+// For stream implementations: dropping the promise first discards the work unrun.
 export fn deferred[U](work: fn(Int) Unit) Promise[U]:
     let id = msrt_promise_new()
     msrt_promise_defer(id, fn: work(id))
