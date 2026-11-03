@@ -1,6 +1,6 @@
 import panic from "@std/core.ms"
 import Duration, Instant, monotonic, nanoseconds, sleep from "@std/os/time.ms"
-import ReadStream, Source, stream from "@std/io/stream.ms"
+import ReadStream, Source, stream from "@std/io/io.ms"
 
 /*
 A source of evenly spaced instants, for loops that run work on a schedule.

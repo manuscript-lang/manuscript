@@ -278,7 +278,7 @@ fn write_retry(id: i64, stream: usize, bits: u32) -> bool {
         None => true,
     };
     if drained {
-        promise::io_done(id);
+        promise::io_done_unit(id);
     }
     drained
 }
@@ -300,7 +300,7 @@ pub extern "C-unwind" fn msrt_streams_flush(stream: i64) -> i64 {
     if drained
         || !promise::io_on_ready(id, fd, task::WAIT_WRITE, -1, write_retry, stream as usize)
     {
-        promise::io_done(id);
+        promise::io_done_unit(id);
     }
     id
 }

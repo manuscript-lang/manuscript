@@ -213,6 +213,7 @@ msrt_promise_defer(id: i64, work: *mut Closure)
 msrt_promise_done(id: i64) -> u8
 msrt_promise_drop(id: i64)
 msrt_promise_fault_report(id: i64, out: *mut StrVal)
+msrt_promise_finished() -> i64
 msrt_promise_new() -> i64
 msrt_promise_put(id: i64, value: *mut u8, d: *const TypeDesc, failed: i64)
 msrt_promise_ready(fd: i64, events: i64, timeout_ns: i64) -> i64
