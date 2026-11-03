@@ -1,5 +1,5 @@
-// expect-debug: allocs=4 alloc_bytes=680
-// expect-release: allocs=3 alloc_bytes=648
+// expect-debug: allocs=4 alloc_bytes=696
+// expect-release: allocs=3 alloc_bytes=664
 // A closure that captures a local and is only passed down to a call: Release specializes it away (no environment), Debug keeps one environment allocation. Stack environments must not raise either.
 fn apply(xs: List[Int], f: fn(Int) Int) Int:
     var t = 0

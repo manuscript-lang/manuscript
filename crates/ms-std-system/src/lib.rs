@@ -12,7 +12,6 @@
 use ms_rt as _;
 
 extern crate alloc;
-#[cfg(unix)]
 extern crate std;
 
 mod inventory;
