@@ -57,6 +57,29 @@ pub(crate) struct RtParam {
     pub ty: String,
 }
 
+impl RtSig {
+    /// Whether the function returns a new runtime handle object.
+    pub(crate) fn returns_handle(&self) -> bool {
+        is_handle_type(&self.ret)
+    }
+}
+
+impl RtParam {
+    /// Whether this parameter is a runtime handle object (`ObjCell<T>`) rather than a value.
+    pub(crate) fn is_handle(&self) -> bool {
+        is_handle_type(&self.ty)
+    }
+}
+
+/// Whether a declared runtime type is a pointer to a handle object (`ObjCell<T>`). The one
+/// place that reads the handle role from the declaration; call sites ask [`RtParam::is_handle`]
+/// or [`RtSig::returns_handle`].
+fn is_handle_type(ty: &str) -> bool {
+    ty.trim_start_matches("*mut ")
+        .trim_start_matches("*const ")
+        .starts_with("ObjCell<")
+}
+
 /// A runtime function's parameters and return type (empty for none).
 pub(crate) struct RtSig {
     pub params: Vec<RtParam>,
@@ -765,7 +788,7 @@ impl FnLower<'_> {
         let object = sig.ret.starts_with("*mut ")
             && match self.b.m.types.kind(result) {
                 TyKind::Obj(..) => true,
-                TyKind::Iface(_) => is_handle_return(&sig.ret),
+                TyKind::Iface(_) => sig.returns_handle(),
                 _ => false,
             };
         let ret = direct(&sig.ret)
@@ -822,7 +845,7 @@ impl FnLower<'_> {
                 });
             }
             // A handle for a stream interface: `Subprocess.stdout()`.
-            if is_handle_return(&sig.ret)
+            if sig.returns_handle()
                 && let TyKind::Iface(i) = self.b.m.types.kind(result).clone()
             {
                 let hir = self.hir.clone();
@@ -1342,9 +1365,4 @@ fn failure_symbol(sym: &str) -> Option<String> {
     let module = sym.strip_prefix("msstd_")?.split('_').next()?;
     let failure = format!("msstd_{module}_failure_message");
     rt_sig(&failure).map(|_| failure)
-}
-
-/// Whether a runtime function returns a new runtime handle object for an interface value.
-fn is_handle_return(ret: &str) -> bool {
-    ret.starts_with("*mut ObjCell<")
 }
