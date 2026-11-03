@@ -135,3 +135,28 @@ pub extern "C-unwind" fn msrt_cells_drop(id: i64) {
     drop(table);
     free_block(ptr, desc);
 }
+
+/// Whether the cell holds a value now (a read that is not running).
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_cells_full(id: i64) -> u8 {
+    slot(&mut cells(), id).is_some_and(|c| c.ptr != 0) as u8
+}
+
+/// `take` for a caller that binds the value with `try`: moves the value into `out` and answers
+/// `STATUS_OK`, or answers `STATUS_CLOSED` when the cell is empty or gone.
+///
+/// # Safety
+/// `out` is writable memory for a value of `d`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_cells_take_result(
+    id: i64,
+    d: *const TypeDesc,
+    out: *mut u8,
+) -> u8 {
+    // SAFETY: forwarded contract.
+    if unsafe { msrt_cells_take(id, d, out) } == 1 {
+        ms_rt_abi::STATUS_OK
+    } else {
+        ms_rt_abi::STATUS_CLOSED
+    }
+}

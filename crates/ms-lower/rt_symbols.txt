@@ -46,9 +46,11 @@ msrt_bytes_values(b: *const VecVal, out: *mut VecVal)
 msrt_bytes_with_value(b: *const VecVal, index: i64, value: i64, out: *mut VecVal)
 msrt_cancelled() -> !
 msrt_cells_drop(id: i64)
+msrt_cells_full(id: i64) -> u8
 msrt_cells_new(value: *mut u8, d: *const TypeDesc) -> i64
 msrt_cells_put(id: i64, value: *mut u8, d: *const TypeDesc)
 msrt_cells_take(id: i64, d: *const TypeDesc, out: *mut u8) -> u8
+msrt_cells_take_result(id: i64, d: *const TypeDesc, out: *mut u8) -> u8
 msrt_channel_group_add(group: *mut ChannelGroup, close: *mut Closure) -> *mut ChannelLease
 msrt_channel_group_close(group: *mut ChannelGroup)
 msrt_channel_group_new() -> *mut ChannelGroup

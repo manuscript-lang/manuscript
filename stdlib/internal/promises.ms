@@ -84,3 +84,9 @@ export extern fn msrt_cells_take[T](id: Int) T?
 export extern fn msrt_cells_put[T](id: Int, value: T) Unit
 
 export extern fn msrt_cells_drop(id: Int) Unit
+
+# Whether the cell holds a value now.
+export extern fn msrt_cells_full(id: Int) Bool
+
+# Moves the value out; Closed when the cell is empty or gone. A plain `try` binds it without a copy.
+export extern fn msrt_cells_take_result[T](id: Int) T!
