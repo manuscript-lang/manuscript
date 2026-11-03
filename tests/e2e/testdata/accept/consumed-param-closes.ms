@@ -1,17 +1,22 @@
 import Closeable from "@std/core.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
-import expect_equal from "@std/test/test.ms"
+import append_file, read_file, temporary from "@std/os/fs.ms"
+import expect_equal, expect_ok from "@std/test/test.ms"
 
 type Door:
     id: Int
-    log: Shared[List[Int]]
+    log: String
 
 impl Closeable for Door:
     var fn close() Unit!:
-        var seen = lock(self.log)
-        seen.value.append(self.id)
+        let _ = append_file(self.log, "{self.id},")
         return ok(unit)
+
+fn logged(path: String) String:
+    let read = read_file(path)
+    if let bytes = read:
+        return bytes.decode_utf8().get("")
+
+    return ""
 
 fn keep_if(d: Door, keep: Bool) Door?:
     if keep:
@@ -20,19 +25,21 @@ fn keep_if(d: Door, keep: Bool) Door?:
     return none
 
 test "a parameter the callee drops on some path is closed there":
-    let log: Shared[List[Int]] = share([])
-    let kept = keep_if(Door(1, log), true)
-    log.get().clone() | try expect_equal([])
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
+    let kept = keep_if(Door(1, log.clone()), true)
+    logged(log.clone()) | try expect_equal("")
 
-    let dropped = keep_if(Door(2, log), false)
-    log.get().clone() | try expect_equal([2])
+    let dropped = keep_if(Door(2, log.clone()), false)
+    logged(log.clone()) | try expect_equal("2,")
     if kept.is_some() and dropped.is_none():
-        log.get().clone() | try expect_equal([2])
+        logged(log.clone()) | try expect_equal("2,")
 
 test "a bound resource passed to such a callee closes once":
-    let log: Shared[List[Int]] = share([])
-    let door = Door(3, log)
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
+    let door = Door(3, log.clone())
     let dropped = keep_if(door, false)
-    log.get().clone() | try expect_equal([3])
+    logged(log.clone()) | try expect_equal("3,")
     if dropped.is_none():
-        log.get().clone() | try expect_equal([3])
+        logged(log.clone()) | try expect_equal("3,")

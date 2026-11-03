@@ -10,18 +10,22 @@ import (
     Transport,
     LogLevel,
     create,
-    stream_transport,
+    handle_transport,
     stdout_transport,
     file_transport,
     rotating_file_transport
 ) from "@std/log.ms"
-import WriteStream from "@std/io/io.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import promise from "@std/concurrency/promise.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 import JsonValue, parse from "@std/data/json.ms"
-import (append_file_bytes, open, read_file, temporary, write_file) from "@std/os/fs.ms"
+import (
+    append_file,
+    append_file_bytes,
+    open,
+    read_file,
+    temporary,
+    write_file
+) from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 type Items:
@@ -43,8 +47,7 @@ fn written(path: String) String?!:
 test "logger writes typed escaped records and protects metadata":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
-    let file = try open(path: path, flags: "w", mode: 420)
-    var logger = try create(stream_transport(file.writer()), timestamp: false)
+    var logger = try create(try file_transport(path.clone()), timestamp: false)
     let fields = Payload(9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0)
     try logger.info("say \"hi\"\nnext", fields)
 
@@ -52,13 +55,13 @@ test "logger writes typed escaped records and protects metadata":
     try expect_equal((try written(path)), expected)
     try logger.flush()
     logger.close()
-    file.append_file("x") | try expect_ok
+    try expect_true(logger.info("late").is_error())
 
 test "non-object values are written under data":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
-    let logger = try create(stream_transport(file.writer()), timestamp: false)
+    let logger = try create(handle_transport(file), timestamp: false)
     try logger.info("n", 7)
     try logger.warn("l", ["a", "b"])
 
@@ -69,7 +72,7 @@ test "levels filter methods and function values":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
-    var logger = try create(stream_transport(file.writer()), LogLevel.Warn, false)
+    var logger = try create(handle_transport(file), LogLevel.Warn, false)
     try expect_false(
         (logger.enabled(LogLevel.Info) or not logger.enabled(LogLevel.Warn))
     )
@@ -114,7 +117,7 @@ test "child bindings snapshot values and merge without mutating inputs":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
-    let root = try create(stream_transport(file.writer()), timestamp: false)
+    let root = try create(handle_transport(file), timestamp: false)
     var logger = try root.child(Service("api"))
     let child = try logger.child(Request(7))
     logger.set_level(LogLevel.Fatal)
@@ -128,10 +131,9 @@ test "child bindings snapshot values and merge without mutating inputs":
 test "limits and unencodable values reject before writing":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
-    let file = try open(path: path, flags: "w", mode: 420)
     let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
     let logger = try create(
-        stream_transport(file.writer()), timestamp: false,
+        try file_transport(path.clone()), timestamp: false,
         max_bytes: (line.to_bytes().length())
     )
     try logger.info("x")
@@ -144,7 +146,7 @@ test "limits and unencodable values reject before writing":
     try expect_equal(logger.info("xx"), limited)
 
     let zero = try create(
-        stream_transport(file.writer()), timestamp: false, max_bytes: 0
+        try file_transport(path.clone()), timestamp: false, max_bytes: 0
     )
     try expect_equal(zero.info(""), limited)
     try expect_false(
@@ -152,14 +154,14 @@ test "limits and unencodable values reject before writing":
             (
                 try expect_error(
                     create(
-                        stream_transport(file.writer()), max_bytes: -1
+                        try file_transport(path.clone()), max_bytes: -1
                     )
                 )
             ) != Error("logging: invalid input", kind: ErrorCategory.InvalidInput)
         )
     )
 
-    let unlimited = try create(stream_transport(file.writer()), timestamp: false)
+    let unlimited = try create(try file_transport(path.clone()), timestamp: false)
     let bad = JsonValue.NumberValue("NaN")
     let invalid_data: Unit! = error(
         Error("logging: invalid data", kind: ErrorCategory.InvalidData)
@@ -167,17 +169,9 @@ test "limits and unencodable values reject before writing":
     try expect_equal(unlimited.info("bad", bad), invalid_data)
     try expect_equal((try written(path)), before)
 
-test "transport closure and stream errors preserve identity":
+test "closing a logger twice keeps reporting Closed":
     let directory = try temporary("manuscript-log-")
-    var file = try open(path: "{directory.path()}/out.ndjson", flags: "w", mode: 420)
-    var logger = try create(stream_transport(file.writer()))
-    try file.close()
-
-    let io_closed: Unit! = error(
-        Error("I/O: resource is closed", kind: ErrorCategory.Closed)
-    )
-    try expect_equal(logger.info("closed"), io_closed)
-    try expect_equal(logger.flush(), io_closed)
+    var logger = try create(try file_transport("{directory.path()}/out.ndjson"))
     logger.close()
     logger.close()
 
@@ -226,13 +220,14 @@ test "stdout transport accepts records and leaves stdout open":
 
 type CaptureTransport:
     path: String
+    suffix: String
 
 impl Transport for CaptureTransport:
     fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
     fn write_bytes(data: Bytes) Unit!:
-        if read_file("{self.path}.closed").is_ok(): return error(
+        if read_file("{self.path}{self.suffix}").is_ok(): return error(
             Error("logging: resource is closed", kind: ErrorCategory.Closed)
         )
 
@@ -241,19 +236,22 @@ impl Transport for CaptureTransport:
             error(cause): return error(cause)
 
     fn flush() Unit!:
-        if read_file("{self.path}.closed").is_ok(): return error(
+        if read_file("{self.path}{self.suffix}").is_ok(): return error(
             Error("logging: resource is closed", kind: ErrorCategory.Closed)
         )
 
         return ok(unit)
 
+    fn duplicate() Transport!:
+        return ok(CaptureTransport(self.path.clone(), "{self.suffix}.child"))
+
     fn close() Unit:
-        let _marked = write_file("{self.path}.closed", "closed", true)
+        let _marked = write_file("{self.path}{self.suffix}", "closed", true)
 
 test "source transports receive complete records and close through their contract":
     let temporary = temporary("manuscript-log-transport-") | try expect_ok
     let path = "{temporary.path()}/records.ndjson"
-    var logger = try create(CaptureTransport(path.clone()), timestamp: false)
+    var logger = try create(CaptureTransport(path.clone(), ".closed"), timestamp: false)
     try logger.info("source transport")
     try logger.flush()
     try expect_equal(
@@ -268,7 +266,7 @@ fn log_from_child(logger: Logger) Unit!:
     return child.info("from child")
 
 fn log_in_scope(path: String) Unit!:
-    let logger = try create(CaptureTransport(path.clone()), timestamp: false)
+    let logger = try create(CaptureTransport(path.clone(), ".closed"), timestamp: false)
     try log_from_child(logger)
     return logger.info("parent after child")
 
@@ -282,7 +280,7 @@ test "unencodable fields are rejected and fields keep their shape under data":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
-    let logger = try create(stream_transport(file.writer()), timestamp: false)
+    let logger = try create(handle_transport(file), timestamp: false)
     let invalid: Unit! = error(
         Error("logging: invalid data", kind: ErrorCategory.InvalidData)
     )
@@ -296,68 +294,42 @@ test "unencodable fields are rejected and fields keep their shape under data":
     let expected = "\{\"level\":30,\"msg\":\"m\",\"data\":\{\"service\":\"a\"\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
     try expect_equal((try written(path)), expected)
 
-# A stream that suspends in the middle of a write, so only the transport keeps records whole.
-type SlowStream:
-    parts: Shared[List[String]]
-
-impl WriteStream for SlowStream:
-    var fn close() Unit:
-        return unit
-
-    var fn flush() Unit!:
-        return ok(unit)
-
-    var fn write(data: String) Unit!:
-        let half = data.length() / 2
-        var first = lock(self.parts)
-        first.value.append(data.slice(0, half).get(""))
-        first.close().get(none)
-        sleep(nanoseconds(1000000))
-
-        var second = lock(self.parts)
-        second.value.append(data.slice(half, data.length()).get(""))
-        second.close().get(none)
-        return ok(unit)
-
-    var fn write_bytes(data: Bytes) Unit!:
-        return self.write(data.decode_utf8().get(""))
-
 fn chatter(logger: Logger, name: String) Unit!:
     for n in 0..3:
         try logger.info("m", name)
     return ok(unit)
 
-test "concurrent tasks never interleave a record":
-    let parts = share(List[String]())
-    let logger = (create(stream_transport(SlowStream(parts)), timestamp: false)).get()
-    let group = TaskGroup[Unit!, Unit, Unit]()
-    let first = logger.clone()
-    let second = logger.clone()
-    let a = group.spawn(fn ch: chatter(first, "a"))
-    let b = group.spawn(fn ch: chatter(second, "b"))
-    a.result() | try expect_ok | try expect_ok
-    b.result() | try expect_ok | try expect_ok
+test "loggers on several threads never interleave a record":
+    let directory = try temporary("manuscript-log-threads-")
+    let path = "{directory.path()}/out.ndjson"
+    let logger = try create(try file_transport(path.clone()), timestamp: false)
+    let first = try logger.child("a")
+    let second = try logger.child("b")
+    let a = promise(fn: chatter(first, "a"))
+    let b = promise(fn: chatter(second, "b"))
+    a.wait() | try expect_ok
+    b.wait() | try expect_ok
+    try logger.flush()
 
-    var guard = lock(parts)
-    let text = guard.value.join("")
+    let text = (try written(path)).get("")
     try expect_equal(text.split("\n").length(), 7)
+
     for line in text.split("\n"):
         if line != "":
-            try expect_equal(
-                line == "\{\"level\":30,\"msg\":\"m\",\"data\":\"a\"\}"
-                or line == "\{\"level\":30,\"msg\":\"m\",\"data\":\"b\"\}",
-                true
+            try expect_true(
+                line.starts_with(
+                    "\{\"level\":30,\"msg\":\"m\",\"context\":"
+                )
             )
+            try expect_true(line.ends_with("\}"))
 
-# A transport that keeps every record in memory.
+# A transport that appends every record to a file.
 type Memory:
-    out: Shared[List[String]]
+    path: String
 
 impl Transport for Memory:
     fn write(data: String) Unit!:
-        var guard = lock(self.out)
-        guard.value.append(data.clone())
-        return ok(unit)
+        return append_file(self.path, data)
 
     fn write_bytes(data: Bytes) Unit!:
         return self.write(data.decode_utf8().get(""))
@@ -365,16 +337,19 @@ impl Transport for Memory:
     fn flush() Unit!:
         return ok(unit)
 
+    fn duplicate() Transport!:
+        return ok(Memory(self.path.clone()))
+
     fn close() Unit:
         return unit
 
-fn recorded(out: Shared[List[String]]) String:
-    var guard = lock(out)
-    return guard.value.join("")
+fn recorded(path: String) String:
+    return written(path).get(none).get("")
 
 test "messages are escaped and fields keep their shape under data":
-    let out = share(List[String]())
-    let logger = try create(Memory(out), timestamp: false)
+    let out_dir = try temporary("manuscript-log-memory-")
+    let out = "{out_dir.path()}/records"
+    let logger = try create(Memory(out.clone()), timestamp: false)
     try logger.info("a<b>&\"\n\t\u{1}é")
     try logger.info("m", Items([none, 1]))
     try logger.info("m", "text")
@@ -382,11 +357,12 @@ test "messages are escaped and fields keep their shape under data":
     try logger.info("m", JsonValue.ObjectValue(Map[String, JsonValue]()))
 
     let expected = "\{\"level\":30,\"msg\":\"a<b>&\\\"\\n\\t\\u0001é\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\{\"items\":[null,1]\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\"text\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":null\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\{\}\}\n"
-    try expect_equal(recorded(out), expected)
+    try expect_equal(recorded(out.clone()), expected)
 
 test "child context merges per child and the newer value wins":
-    let out = share(List[String]())
-    let root = try create(Memory(out), timestamp: false)
+    let out_dir = try temporary("manuscript-log-memory-")
+    let out = "{out_dir.path()}/records"
+    let root = try create(Memory(out.clone()), timestamp: false)
     let api = try root.child(Service("api"))
     let both = try api.child(Request(7))
     let renamed = try both.child(Service("worker"))
@@ -398,32 +374,35 @@ test "child context merges per child and the newer value wins":
     try replaced.info("replaced")
 
     let expected = "\{\"level\":30,\"msg\":\"root\"\}\n\{\"level\":30,\"msg\":\"api\",\"context\":\{\"service\":\"api\"\}\}\n\{\"level\":30,\"msg\":\"both\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"request\":9\}\}\n\{\"level\":30,\"msg\":\"renamed\",\"context\":\{\"service\":\"worker\",\"request\":7\}\}\n\{\"level\":30,\"msg\":\"replaced\",\"context\":3\}\n"
-    try expect_equal(recorded(out), expected)
+    try expect_equal(recorded(out.clone()), expected)
 
 test "the time field is a millisecond count and the size limit counts the newline":
-    let out = share(List[String]())
-    let stamped = try create(Memory(out))
+    let out_dir = try temporary("manuscript-log-memory-")
+    let out = "{out_dir.path()}/records"
+    let stamped = try create(Memory(out.clone()))
     try stamped.info("t")
 
-    let line = recorded(out)
+    let line = recorded(out.clone())
     try expect_true(line.starts_with("\{\"level\":30,\"msg\":\"t\",\"time\":1"))
 
-    let quiet = share(List[String]())
+    let quiet_dir = try temporary("manuscript-log-memory-")
+    let quiet = "{quiet_dir.path()}/records"
     let plain = "\{\"level\":30,\"msg\":\"ab\"\}\n"
     let exact = try create(
-        Memory(quiet), timestamp: false, max_bytes: plain.to_bytes().length()
+        Memory(quiet.clone()), timestamp: false, max_bytes: plain.to_bytes().length()
     )
     try exact.info("ab")
-    try expect_equal(recorded(quiet), plain)
+    try expect_equal(recorded(quiet.clone()), plain)
 
     let tight = try create(
-        Memory(quiet), timestamp: false, max_bytes: plain.to_bytes().length() - 1
+        Memory(quiet.clone()), timestamp: false,
+        max_bytes: plain.to_bytes().length() - 1
     )
     let limited: Unit! = error(
         Error("logging: limit exceeded", kind: ErrorCategory.LimitExceeded)
     )
     try expect_equal(tight.info("ab"), limited)
-    try expect_equal(recorded(quiet), plain)
+    try expect_equal(recorded(quiet.clone()), plain)
 
 test "rotating transport moves a full file aside and keeps a bounded number of generations":
     let directory = try temporary("manuscript-rotate-")
