@@ -40,6 +40,8 @@ import (
     msstd_process_umask,
     msstd_process_elapsed,
     msstd_process_watch_signals,
+    msstd_process_signal_next,
+    msstd_process_signal_close,
     msstd_process_working_directory,
     msstd_system_get_priority,
     msstd_system_home_directory,
@@ -272,6 +274,18 @@ export interface SignalStream:
     // Returns Closed after `close`. Cancelling the waiting task unwinds it.
     fn next() Int!
 
+// The runtime handle behind a `SignalStream`.
+export extern type NativeSignals
+
+impl SignalStream for NativeSignals:
+    // Stops observing signals, wakes a pending `next` with Closed, and waits for it. Safe to call repeatedly.
+    fn close() Unit:
+        msstd_process_signal_close(self)
+
+    // Waits for the next observed signal and returns its number; Closed after `close`.
+    fn next() Int!:
+        return msstd_process_signal_next(self)
+
 // The child-process operations of the current host.
 fn host_commands() Commands:
     return msstd_process_commands()
@@ -418,7 +432,8 @@ Numeric validation does not guarantee OS support. Observing does not suppress ho
 Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
 */
 export fn watch_signals(signals: List[Int], capacity: Int?) SignalStream!:
-    return msstd_process_watch_signals(signals, capacity)
+    let native = try msstd_process_watch_signals(signals, capacity)
+    return ok(native)
 
 // Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0 when no limit applies or the platform has no such limit.
 export fn constrained_memory() Int!:
