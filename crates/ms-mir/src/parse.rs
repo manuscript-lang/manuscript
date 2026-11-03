@@ -459,11 +459,14 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     Ty::UNIT
                 };
                 let (mut noreturn, mut pure_, mut fresh) = (false, false, false);
+                let (mut leaf, mut reads) = (false, false);
                 while !c.done() {
                     match c.ident()?.as_str() {
                         "noreturn" => noreturn = true,
                         "pure" => pure_ = true,
                         "fresh" => fresh = true,
+                        "leaf" => leaf = true,
+                        "reads" => reads = true,
                         o => return c.err(format!("unknown extern attribute {o}")),
                     }
                 }
@@ -474,6 +477,8 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     noreturn,
                     pure_,
                     fresh,
+                    leaf,
+                    reads,
                 });
             }
             "global" => {

@@ -1033,6 +1033,12 @@ pub struct ExternDef {
     /// Whether the result points into no borrowed argument (it is an owned allocation, an
     /// inline value or a static), so a borrowed argument may be dropped once the call returns.
     pub fresh: bool,
+    /// Whether the call never reaches a cancellation point (declared `leaf` on the runtime
+    /// function), so a task cannot be cancelled inside it.
+    pub leaf: bool,
+    /// Whether the call only reads memory, cannot fault and cannot run user code (declared `pure`
+    /// on the runtime function), so the backend may assume it does not clobber the caller's memory.
+    pub reads: bool,
 }
 
 /// A module-level variable.

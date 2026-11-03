@@ -156,6 +156,8 @@ fn apply(m: &mut Module, fi: usize, site: Site) {
         noreturn: false,
         pure_: false,
         fresh: true,
+        leaf: true,
+        reads: false,
     });
     let f = &mut m.funcs[fi];
     let empty = f.new_value(Ty::BYTES);

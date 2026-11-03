@@ -36,6 +36,7 @@ pub unsafe fn cloned(s: &StrVal) -> StrVal {
 
 /// Writes an owned copy of `s` to `out` (what `.clone()` and every implicit copy of a string do).
 #[unsafe(no_mangle)]
+// ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_clone(s: *const StrVal, out: *mut StrVal) {
     #[cfg(feature = "stats")]
     // SAFETY: caller passes a live string.
@@ -46,6 +47,7 @@ pub unsafe extern "C-unwind" fn msrt_string_clone(s: *const StrVal, out: *mut St
 
 /// Frees an owned string's bytes (the drop compiled code calls when `cap != 0`).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_str_free(ptr: *mut u8) {
     // SAFETY: `ptr` is the start of an owned string.
     unsafe { free_owned(ptr) }
@@ -54,6 +56,7 @@ pub unsafe extern "C-unwind" fn msrt_str_free(ptr: *mut u8) {
 /// Writes a copy of the owned string or view `{ptr, tagged}` to `out`: inline when it fits, so
 /// copying a short string allocates nothing (what compiled code calls to copy a string).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_str_copy(ptr: *const u8, tagged: usize, out: *mut StrVal) {
     // SAFETY: an owned string or a view has `len` readable bytes at `ptr`.
     unsafe { owned_copy(core::slice::from_raw_parts(ptr, tagged & STR_LEN_MASK)).write_to(out) }
@@ -61,6 +64,7 @@ pub unsafe extern "C-unwind" fn msrt_str_copy(ptr: *const u8, tagged: usize, out
 
 /// Frees an owned string.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_free(s: *const StrVal) {
     // SAFETY: caller owns `s`.
     unsafe { release(&*s) }
@@ -156,6 +160,7 @@ pub fn empty() -> StrVal {
 
 /// Writes the static empty string to `out`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_empty(out: *mut StrVal) {
     // SAFETY: caller passes a writable out.
     unsafe { (empty()).write_to(out) }
@@ -212,6 +217,7 @@ pub fn from_buf(b: Vec<u8>) -> StrVal {
 /// # Safety
 /// `ptr..ptr+len` must be readable; `out` writable.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
     ptr: *const u8,
     len: usize,
@@ -383,12 +389,14 @@ unsafe fn sub_scalars(s: *const StrVal, a: usize, b: usize) -> StrVal {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_length(s: *const StrVal) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe { scalar_count(s) as i64 }
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_scalar_length(s: *const StrVal) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe { scalar_count(s) as i64 }
@@ -410,6 +418,7 @@ fn relative(count: usize, index: i64) -> Option<usize> {
 
 /// `String.get(index, default)`: a one-scalar string. `default` is borrowed and may be absent.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_get(
     s: *const StrVal,
     index: i64,
@@ -451,6 +460,7 @@ unsafe fn string_get(
 
 /// `String.scalar_at(index, default)`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
     s: *const StrVal,
     index: i64,
@@ -610,18 +620,21 @@ pub fn rfind(hay: &[u8], needle: &[u8]) -> Option<usize> {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8 {
     // SAFETY: caller passes live strings.
     unsafe { find(bytes(a), bytes(v)).is_some() as u8 }
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_starts_with(a: *const StrVal, v: *const StrVal) -> u8 {
     // SAFETY: caller passes live strings.
     unsafe { bytes(a).starts_with(bytes(v)) as u8 }
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8 {
     // SAFETY: caller passes live strings.
     unsafe { bytes(a).ends_with(bytes(v)) as u8 }
@@ -629,6 +642,7 @@ pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: *const StrVal, v: *cons
 
 /// Int? result: present flag, value through `out`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_index_of(
     a: *const StrVal,
     v: *const StrVal,
@@ -648,6 +662,7 @@ pub unsafe extern "C-unwind" fn msrt_string_index_of(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_last_index_of(
     a: *const StrVal,
     v: *const StrVal,
@@ -671,6 +686,7 @@ pub unsafe extern "C-unwind" fn msrt_string_last_index_of(
 // ---------------------------------------------------------------------------
 
 #[unsafe(no_mangle)]
+// ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_concat(
     a: *const StrVal,
     b: *const StrVal,
@@ -686,6 +702,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat(
 /// # Safety
 /// `a` is owned by the caller and dead after the call; `b` is live; `out` is writable.
 #[unsafe(no_mangle)]
+// ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_append(
     a: *const StrVal,
     b: *const StrVal,
@@ -770,6 +787,7 @@ unsafe fn concat_parts(parts: &[*const StrVal]) -> StrVal {
 
 /// `a + b + c` with one allocation.
 #[unsafe(no_mangle)]
+// ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_concat3(
     a: *const StrVal,
     b: *const StrVal,
@@ -782,6 +800,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat3(
 
 /// `a + b + c + d` with one allocation.
 #[unsafe(no_mangle)]
+// ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_concat4(
     a: *const StrVal,
     b: *const StrVal,
@@ -795,6 +814,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat4(
 
 /// `a + b + c + d + e` with one allocation.
 #[unsafe(no_mangle)]
+// ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_concat5(
     a: *const StrVal,
     b: *const StrVal,
@@ -809,6 +829,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat5(
 
 /// `a + b + c + d + e + f` with one allocation.
 #[unsafe(no_mangle)]
+// ms: leaf fresh
 pub unsafe extern "C-unwind" fn msrt_string_concat6(
     a: *const StrVal,
     b: *const StrVal,
@@ -875,6 +896,7 @@ unsafe fn format_parts<const N: usize>(mask: i64, parts: [usize; N]) -> StrVal {
 
 /// `f"{a}{b}"` where a part may be an integer: see [`format_parts`].
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal) {
     // SAFETY: caller passes live strings and a writable `out`.
     unsafe { format_parts(mask, [a, b]).write_to(out) }
@@ -882,6 +904,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt2(mask: i64, a: usize, b: usize, 
 
 /// Three parts, any of them integers: see [`format_parts`].
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_fmt3(
     mask: i64,
     a: usize,
@@ -895,6 +918,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt3(
 
 /// Four parts, any of them integers: see [`format_parts`].
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_fmt4(
     mask: i64,
     a: usize,
@@ -909,6 +933,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt4(
 
 /// Five parts, any of them integers: see [`format_parts`].
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_fmt5(
     mask: i64,
     a: usize,
@@ -924,6 +949,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt5(
 
 /// Six parts, any of them integers: see [`format_parts`].
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_fmt6(
     mask: i64,
     a: usize,
@@ -943,6 +969,7 @@ pub struct StrBuf(Vec<u8>);
 
 /// Starts an empty string builder (finish it with [`msrt_strbuf_finish`]).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_strbuf_new() -> *mut StrBuf {
     Box::into_raw(Box::new(StrBuf(Vec::new())))
 }
@@ -952,6 +979,7 @@ pub extern "C-unwind" fn msrt_strbuf_new() -> *mut StrBuf {
 /// # Safety
 /// `buf` must come from `msrt_strbuf_new` and `s` must be live.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_strbuf_push(buf: *mut StrBuf, s: *const StrVal) {
     // SAFETY: the caller passes a live builder and string.
     unsafe {
@@ -969,6 +997,7 @@ pub unsafe extern "C-unwind" fn msrt_strbuf_push(buf: *mut StrBuf, s: *const Str
 /// # Safety
 /// `buf` must come from `msrt_strbuf_new` and is not used afterwards.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_strbuf_finish(buf: *mut StrBuf, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_strbuf_finish_val(buf)).write_to(out) }
@@ -981,6 +1010,7 @@ unsafe fn msrt_strbuf_finish_val(buf: *mut StrBuf) -> StrVal {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_reverse(a: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_reverse_val(a)).write_to(out) }
@@ -1076,24 +1106,28 @@ unsafe fn trim_view(s: *const StrVal, start: bool, end: bool, out: *mut StrVal) 
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: forwarded contract.
     unsafe { trim_view(s, true, true, out) }
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: forwarded contract.
     unsafe { trim_view(s, true, false, out) }
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: forwarded contract.
     unsafe { trim_view(s, false, true, out) }
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_trim(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_trim_val(s)).write_to(out) }
@@ -1106,6 +1140,7 @@ unsafe fn msrt_string_trim_val(s: *const StrVal) -> StrVal {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_trim_start_val(s)).write_to(out) }
@@ -1118,6 +1153,7 @@ unsafe fn msrt_string_trim_start_val(s: *const StrVal) -> StrVal {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_trim_end_val(s)).write_to(out) }
@@ -1150,6 +1186,7 @@ fn map_case(text: &[u8], upper: bool) -> Vec<u8> {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_upper(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_upper_val(s)).write_to(out) }
@@ -1162,6 +1199,7 @@ unsafe fn msrt_string_upper_val(s: *const StrVal) -> StrVal {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_lower(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_lower_val(s)).write_to(out) }
@@ -1175,6 +1213,7 @@ unsafe fn msrt_string_lower_val(s: *const StrVal) -> StrVal {
 
 /// `repeat` with `has_max`/`max`; status protocol, ok through `out`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_repeat(
     s: *const StrVal,
     count: i64,
@@ -1375,6 +1414,7 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal 
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_replace_first(
     s: *const StrVal,
     old: *const StrVal,
@@ -1462,6 +1502,7 @@ unsafe fn replace_shrinking(s: *const StrVal, old: &[u8], new: &[u8]) -> StrVal 
 
 /// Replaces every nonoverlapping occurrence; output beyond the string limit faults like `concat`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_replace(
     s: *const StrVal,
     old: *const StrVal,
@@ -1542,6 +1583,7 @@ unsafe fn pad(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_pad_start(
     s: *const StrVal,
     target: i64,
@@ -1553,6 +1595,7 @@ pub unsafe extern "C-unwind" fn msrt_string_pad_start(
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_pad_end(
     s: *const StrVal,
     target: i64,
@@ -1568,6 +1611,7 @@ pub unsafe extern "C-unwind" fn msrt_string_pad_end(
 // ---------------------------------------------------------------------------
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_slice_scalars(
     s: *const StrVal,
     start: i64,
@@ -1598,6 +1642,7 @@ unsafe fn scalar_count_arg(name: &str, s: *const StrVal, count: i64) -> usize {
 
 /// `take(count)`: the first `count` scalars, clamped to the string.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_take(s: *const StrVal, count: i64, out: *mut StrVal) {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
@@ -1608,6 +1653,7 @@ pub unsafe extern "C-unwind" fn msrt_string_take(s: *const StrVal, count: i64, o
 
 /// `drop(count)` (named `drop_n` because `msrt_string_drop` releases a value).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_drop_n(s: *const StrVal, count: i64, out: *mut StrVal) {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
@@ -1617,6 +1663,7 @@ pub unsafe extern "C-unwind" fn msrt_string_drop_n(s: *const StrVal, count: i64,
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_slice(
     s: *const StrVal,
     start: i64,
@@ -1670,6 +1717,7 @@ const EMPTY_VEC: VecVal = VecVal {
 };
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrVal, out: *mut VecVal) {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
@@ -1710,6 +1758,7 @@ pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrVal, out: *mut Ve
 /// The character that starts at byte `at`, which `for c in text.chars()` reaches for a non-ASCII
 /// lead byte (or a stray byte, which reads as U+FFFD): an owned one-character string.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_char_at_val(s, at)).write_to(out) }
@@ -1731,6 +1780,7 @@ unsafe fn msrt_string_char_at_val(s: *const StrVal, at: i64) -> StrVal {
 
 /// Byte width of the character that starts at byte `at`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_char_width(s: *const StrVal, at: i64) -> i64 {
     // SAFETY: caller passes a live string and an offset inside it.
     unsafe { utf8::decode(&bytes(s)[at as usize..]).1 as i64 }
@@ -1738,12 +1788,14 @@ pub unsafe extern "C-unwind" fn msrt_string_char_width(s: *const StrVal, at: i64
 
 /// The Unicode scalar value of the character that starts at byte `at`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64 {
     // SAFETY: caller passes a live string and an offset inside it.
     unsafe { utf8::decode(&bytes(s)[at as usize..]).0 as i64 }
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_lines(s: *const StrVal, out: *mut VecVal) {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
@@ -1779,6 +1831,7 @@ fn find_newline(text: &[u8]) -> Option<usize> {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_split(
     s: *const StrVal,
     sep: *const StrVal,
@@ -1793,6 +1846,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
 /// `let parts = text.split(separator)` where `text` outlives `parts` unchanged and nothing keeps
 /// `parts` or its pieces without copying them: the pieces are views of `text`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_split_view(
     s: *const StrVal,
     sep: *const StrVal,
@@ -1899,6 +1953,7 @@ unsafe extern "C" fn split_iter_drop(o: *mut Obj) {
 
 /// Starts a split loop; the same fault as `split` for a negative `max_parts`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_split_iter(
     s: *const StrVal,
     sep: *const StrVal,
@@ -1932,6 +1987,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split_iter(
 /// Makes the next piece current and writes a borrow of it to `out` (the iterator owns the bytes
 /// until the next call); returns 0 when the pieces are used up.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_split_next(it: *mut SplitIter, out: *mut StrVal) -> u8 {
     // SAFETY: caller passes a live iterator and a writable `out`.
     unsafe {
@@ -2046,6 +2102,7 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_scalar_values(s: *const StrVal, out: *mut VecVal) {
     // SAFETY: caller passes a live string and a writable out; 8-byte elements.
     unsafe {
@@ -2084,6 +2141,7 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_values(s: *const StrVal, out:
 
 /// `String.from_scalars(values: List[Int])`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_from_scalars(
     values: *const VecVal,
     out: *mut StrVal,
@@ -2112,6 +2170,7 @@ pub unsafe extern "C-unwind" fn msrt_string_from_scalars(
 
 /// `String.to_bytes()`: a Bytes value (VecVal of u8).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal) {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
@@ -2134,6 +2193,7 @@ pub unsafe extern "C-unwind" fn msrt_string_to_bytes(s: *const StrVal, out: *mut
 
 /// `String.parse_int()`: present flag, value through `out`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8 {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
@@ -2149,6 +2209,7 @@ pub unsafe extern "C-unwind" fn msrt_string_parse_int(s: *const StrVal, out: *mu
 
 /// `String.parse_float()`: present flag, value through `out`; the `Result` form is `math.parse_float`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 {
     // SAFETY: caller passes a live string and a writable out.
     unsafe { u8::from(crate::num::msrt_numbers_parse_float(s, out) == STATUS_OK) }
@@ -2156,6 +2217,7 @@ pub unsafe extern "C-unwind" fn msrt_string_parse_float(s: *const StrVal, out: *
 
 /// Normalization forms by the spelling `String.normalize` takes.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_normalize(
     s: *const StrVal,
     form: *const StrVal,
@@ -2181,6 +2243,7 @@ pub unsafe extern "C-unwind" fn msrt_string_normalize(
 
 /// `NormalizationForm.normalize`: `kind` is the case index (Nfc 0, Nfd 1, Nfkc 2, Nfkd 3).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_normalize_kind(
     s: *const StrVal,
     kind: i64,
@@ -2248,6 +2311,7 @@ unsafe fn normalize_kind(
 // ---------------------------------------------------------------------------
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_int_to_string(v: i64, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_int_to_string_val(v)).write_to(out) }
@@ -2279,12 +2343,14 @@ unsafe fn msrt_int_to_string_val(v: i64) -> StrVal {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_float32_to_string(v: f64, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { from_buf(crate::num::float32_to_string(v)).write_to(out) }
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_float_to_string(v: f64, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_float_to_string_val(v)).write_to(out) }
@@ -2295,6 +2361,7 @@ unsafe fn msrt_float_to_string_val(v: f64) -> StrVal {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_bool_to_string(v: u8, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_bool_to_string_val(v)).write_to(out) }
@@ -2305,6 +2372,7 @@ unsafe fn msrt_bool_to_string_val(v: u8) -> StrVal {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_int_to_string_radix_val(v, radix)).write_to(out) }
@@ -2323,6 +2391,7 @@ unsafe fn msrt_int_to_string_radix_val(v: i64, radix: i64) -> StrVal {
 
 /// The double-quoted, escaped spelling of a string (as `%q` writes it).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_quote(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_string_quote_val(s)).write_to(out) }
@@ -2378,6 +2447,7 @@ pub fn count_copy(kind: usize, bytes: usize) {
 }
 /// Records one executed string drop (`kind` 0) or copy (1) of a string whose capacity word is `cap`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C" fn msrt_str_count(kind: i64, cap: i64) {
     // SAFETY: single threaded access to the counters.
     unsafe { (*STR_COUNTS.ptr())[(kind as usize) * 2 + (cap >= 0) as usize] += 1 };

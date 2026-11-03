@@ -561,6 +561,8 @@ fn build_builtin_compare(
             noreturn: false,
             pure_: false,
             fresh: false,
+            leaf: crate::rtcall::rt_flags(sym).leaf,
+            reads: crate::rtcall::rt_flags(sym).reads,
         });
         b.call_rt(ext, &[me, you])
     };
