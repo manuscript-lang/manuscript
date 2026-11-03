@@ -13,7 +13,7 @@ type Resource:
 
 impl Closeable for Resource:
     var fn close() Unit!:
-        let _ = self.output.write(data: "close {self.label}\n")
+        let _ = self.output.write("close {self.label}\n")
         return ok(unit)
 
 type Pair:
@@ -21,14 +21,14 @@ type Pair:
     second: Int
 
 fn report(var output: WriteStream, label: String, value: Int) Int:
-    let _ = output.write(data: "{label}\n")
+    let _ = output.write("{label}\n")
     return value
 
 fn combine(first: Int, second: Int) Int:
     return first + second
 
 fn select(var output: WriteStream) fn(Int, Int) Int:
-    let _ = output.write(data: "callable\n")
+    let _ = output.write("callable\n")
     return combine
 
 fn early(var output: WriteStream) Int:
@@ -45,7 +45,7 @@ fn propagate(output: WriteStream) Int!Error:
     return ok(number)
 
 fn iterable(var output: WriteStream) List[Int]:
-    let _ = output.write(data: "iterable\n")
+    let _ = output.write("iterable\n")
     return [1, 2]
 
 fn exercise() Int!:
@@ -72,7 +72,7 @@ fn exercise() Int!:
     let completed = unit
     try _resource.close()
 
-    let _ = stdout().write(data: "after normal\n")
+    let _ = stdout().write("after normal\n")
     var count = 0
 
     while count < 2:
@@ -95,7 +95,7 @@ fn exercise() Int!:
     var early_out = stdout()
     early(output: var early_out) | try expect_equal(5)
 
-    let _ = stdout().write(data: "finished\n")
+    let _ = stdout().write("finished\n")
     return ok(0)
 
 export fn main() Int:

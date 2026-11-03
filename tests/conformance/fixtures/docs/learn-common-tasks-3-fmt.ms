@@ -13,7 +13,7 @@ fn run() Result[Unit, Error]:
         Error("filesystem: invalid data", kind: ErrorCategory.InvalidData)
     ) | try
     try stdout().write(text)
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     if run().is_error():

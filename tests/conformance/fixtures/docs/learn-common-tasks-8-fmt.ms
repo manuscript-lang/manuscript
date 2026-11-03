@@ -14,7 +14,7 @@ fn run() Result[Unit, Error]:
     let encoded = try parse[Config](text)
         | try stringify
     try stdout().write("{encoded}\n")
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     if run().is_error():

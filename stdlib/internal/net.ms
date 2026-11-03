@@ -92,7 +92,9 @@ export extern fn msstd_net_datagram_address(handle: NativeDatagramSocket) String
 
 export extern fn msstd_net_datagram_close(handle: NativeDatagramSocket) Unit
 
-export extern fn msstd_net_datagram_share(handle: NativeDatagramSocket) NativeDatagramSocket
+export extern fn msstd_net_datagram_share(
+    handle: NativeDatagramSocket
+) NativeDatagramSocket
 
 export extern fn msstd_net_datagram_close_if_last(handle: NativeDatagramSocket) Unit
 

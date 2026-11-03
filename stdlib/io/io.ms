@@ -71,7 +71,11 @@ fn step[T](id: Int, cell: Int) Unit:
         none:
             complete[T?](
                 id,
-                error(Error("stream: a read is already waiting", kind: ErrorCategory.Closed))
+                error(
+                    Error(
+                        "stream: a read is already waiting", kind: ErrorCategory.Closed
+                    )
+                )
             )
 
 impl ReadStream[T]:
@@ -87,6 +91,7 @@ impl Closeable for ReadStream[T]:
         if let source = msrt_cells_take[Source[T]](self.cell):
             var closing = source
             try closing.close()
+
         msrt_cells_drop(self.cell)
         return ok(unit)
 
@@ -100,16 +105,20 @@ impl Source[Bytes] for DescriptorSource:
     var fn next() Bytes?!:
         let p = msrt_streams_read(self.id)
         let code = msrt_promise_wait(p, -1)
+
         if code != 0:
             msrt_promise_drop(p)
             return error(Error("stream: read timed out", kind: ErrorCategory.Timeout))
+
         let chunk = msrt_promise_take[Bytes](p)
         msrt_promise_drop(p)
         if let data = chunk:
             return ok(data)
+
         let message = msrt_streams_error(self.id)
         if message.length() > 0:
             return error(Error(message, kind: ErrorCategory.Failed))
+
         return ok(none)
 
     var fn close() Unit!:
@@ -129,6 +138,7 @@ impl Sink[Bytes] for DescriptorSink:
     var fn put(value: Bytes) Unit!:
         if msrt_streams_write(self.id, value) != 0:
             return error(Error("stream: closed", kind: ErrorCategory.Closed))
+
         return ok(unit)
 
     var fn drain() Promise[Unit]:
@@ -269,7 +279,6 @@ export fn stdout() WriteStream[String]:
 export fn stderr() WriteStream[String]:
     return writer[String](StderrSink(false))
 
-
 // A changed stream: never waits; appends zero or more items per input, and what it held back at the end.
 export interface Transform[A, B]:
     var fn feed(value: A) List[B]!
@@ -289,15 +298,19 @@ impl Source[B] for Through[A, B]:
                 return ok(item)
             if self.finished:
                 return ok(none)
+
             let step = try self.input.read().wait()
             var produced: List[B] = []
+
             if let value = step:
                 produced = try self.transform.feed(value)
             else:
                 self.finished = true
                 produced = try self.transform.finish()
+
             produced.reverse()
             self.pending = produced
+
         return ok(none)
 
     var fn close() Unit!:
@@ -452,7 +465,15 @@ impl RawTerminal:
     // Input events as a stream: keys, text and resizes, one per read. Waits honor cancellation and `wait(timeout:)`.
     // The stream ends with an error once the terminal is closed; closing the stream leaves the terminal open.
     fn events() ReadStream[TerminalEvent]:
-        return stream[TerminalEvent](TerminalEvents(RawHandle(msstd_terminal_raw_terminal_share(self.handle.native))))
+        return stream[TerminalEvent](
+            TerminalEvents(
+                RawHandle(
+                    msstd_terminal_raw_terminal_share(
+                        self.handle.native
+                    )
+                )
+            )
+        )
 
     // Returns the current terminal size, or `Closed` after close.
     fn size() TerminalSize!:
@@ -462,7 +483,9 @@ impl RawTerminal:
                 columns: msstd_terminal_raw_terminal_size_columns(
                     self.handle.native
                 ),
-                rows: msstd_terminal_raw_terminal_size_rows(self.handle.native)
+                rows: msstd_terminal_raw_terminal_size_rows(
+                    self.handle.native
+                )
             )
         )
 
