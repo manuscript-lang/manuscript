@@ -43,6 +43,7 @@ pub mod mem;
 pub mod num;
 pub mod obj;
 pub mod pipe;
+pub mod pipes;
 pub mod poller;
 pub mod process;
 pub mod profile;

@@ -38,11 +38,15 @@ pub(crate) enum Event {
     Started { id: i64, thread: u8 },
     /// To the creator: the work produced a value (or the operation's own error). The result block
     /// is in the process heap and now belongs to the promise.
+    /// A null `ptr` completes without a value (the end of a pipe, a finished flush). `pipe` names
+    /// the pipe the value was read from, or 0: if the promise is gone by the time this arrives,
+    /// the value goes back to the front of that pipe, since a cancelled read takes no value.
     Done {
         id: i64,
         failed: bool,
         ptr: usize,
         desc: usize,
+        pipe: i64,
     },
     /// To the creator: the task is over, by return (0), fault (1, with the report) or
     /// cancellation (2). The creator may release the closure now.
@@ -200,6 +204,20 @@ fn ensure_started(index: usize) {
             Err(_) => crate::fault::fatal(b"cannot start a scheduler thread"),
         }
         STARTED.store(i + 1, Ordering::Release);
+    }
+}
+
+/// Starts threads `1..n` and waits until each is idle. Tests use it so that placement is not
+/// decided by how quickly the operating system gets a new thread running.
+#[cfg(test)]
+pub(crate) fn warm(n: usize) {
+    for i in 1..n {
+        ensure_started(i);
+    }
+    let want = (1..n).fold(0u64, |m, i| m | 1 << i);
+    let end = crate::sys::monotonic_ns() + 5_000_000_000;
+    while IDLE.load(Ordering::Acquire) & want != want && crate::sys::monotonic_ns() < end {
+        std::thread::sleep(std::time::Duration::from_millis(1));
     }
 }
 

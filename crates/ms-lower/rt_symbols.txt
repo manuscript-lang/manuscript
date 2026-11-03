@@ -193,6 +193,14 @@ msrt_pipe_receive(end: i64, out: *mut StrVal) -> u8
 msrt_pipe_receive_bytes(end: i64, out: *mut VecVal) -> u8
 msrt_pipe_send(end: i64, message: *const StrVal) -> i64
 msrt_pipe_send_bytes(end: i64, message: *const VecVal) -> i64
+msrt_pipes_add_writer(pipe: i64)
+msrt_pipes_buffered(pipe: i64) -> i64
+msrt_pipes_close_reader(pipe: i64)
+msrt_pipes_close_writer(pipe: i64)
+msrt_pipes_flush(pipe: i64) -> i64
+msrt_pipes_new(capacity: i64) -> i64
+msrt_pipes_read(pipe: i64) -> i64
+msrt_pipes_write(pipe: i64, value: *mut u8, d: *const TypeDesc) -> i64
 msrt_process_exit(code: i64) -> !
 msrt_process_on_exit(hook: extern "C" fn())
 msrt_promise_done(id: i64) -> u8
