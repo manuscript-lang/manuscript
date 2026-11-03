@@ -586,12 +586,26 @@ impl Checker {
         let r: Rc<StdResult> = if held {
             self.session.done(module.file).expect("dependency checked")
         } else {
-            self.session.ensure_source(module)
+            match self.session.ensure_source(module) {
+                Ok(r) => r,
+                Err(e) => return self.internal_error(e),
+            }
         };
         self.p.symbols.insert(module.file, r.symbols.clone());
         for method in &r.methods {
             self.add_method(method.clone());
         }
+    }
+
+    /// Reports a defect in the bundled library as a diagnostic instead of panicking.
+    fn internal_error(&mut self, message: String) {
+        let file = self.current_file();
+        self.error_in(
+            file,
+            Pos::default(),
+            Phase::Type,
+            format!("internal error: {message}"),
+        );
     }
 
     /// Declaration passes for one module, in order.
@@ -700,6 +714,7 @@ impl Checker {
     }
 
     fn import_symbols(&mut self, module: &ModRef) {
+        let mut broken: Option<String> = None;
         for item in &module.imports {
             let path = item.path.as_ref();
             let found: Option<SymRef> = if path.starts_with("@std/") {
@@ -727,12 +742,17 @@ impl Checker {
                                     .and_then(|names| names.borrow().get(&item.name).cloned())
                                     .filter(|s| s.module == twin.file);
                             }
-                            self.session
-                                .ensure_source(&twin)
-                                .exports
-                                .get(&item.name)
-                                .filter(|s| s.module == twin.file)
-                                .cloned()
+                            match self.session.ensure_source(&twin) {
+                                Ok(r) => r
+                                    .exports
+                                    .get(&item.name)
+                                    .filter(|s| s.module == twin.file)
+                                    .cloned(),
+                                Err(e) => {
+                                    broken = Some(e);
+                                    None
+                                }
+                            }
                         })
                 }
             } else {
@@ -746,6 +766,10 @@ impl Checker {
                     })
                 })
             };
+            if let Some(e) = broken.take() {
+                self.internal_error(e);
+                continue;
+            }
             let hidden = crate::stdlib::is_internal(path) && !module.file.starts_with("@std/");
             // An internal module declares the natives of its host and names the host's private types.
             let host = crate::stdlib::is_internal(module.file.as_str());
