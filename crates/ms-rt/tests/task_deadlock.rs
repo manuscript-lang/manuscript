@@ -7,9 +7,18 @@ use std::sync::Mutex;
 
 static LOCK: Mutex<()> = Mutex::new(());
 
+unsafe extern "C-unwind" fn free_token(arg: *mut u8) {
+    // SAFETY: the cleanup frees the single-use token its guarded call owned.
+    unsafe { task::msrt_token_free(arg as u64) };
+}
+
 unsafe extern "C-unwind" fn park_token(arg: *mut u8) {
-    // SAFETY: the guarded call owns the token and no completion is provided.
-    unsafe { task::msrt_token_park(arg as u64, -1, null_mut()) };
+    // SAFETY: the guarded call owns the token and no completion is provided. A deadlock jumps out
+    // of the park, so the cleanup stack frees the token.
+    unsafe {
+        fault::msrt_cleanup_push(free_token, arg);
+        task::msrt_token_park(arg as u64, -1, null_mut());
+    }
 }
 
 #[test]

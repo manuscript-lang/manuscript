@@ -268,11 +268,7 @@ impl Logger:
         let text = try encode_fields(fields)
         let context = try merge_context(self.context, text)
         let own = try self.transport.duplicate()
-        return ok(
-            Logger(
-                self.threshold, self.timestamp, self.max_bytes, context, own
-            )
-        )
+        return ok(Logger(self.threshold, self.timestamp, self.max_bytes, context, own))
 
     # Tests the current filtering threshold; Silent is never enabled as a record level.
     fn enabled(level: LogLevel) Bool:
@@ -312,11 +308,7 @@ export fn create(
     var threshold = 30
     if let chosen = level:
         threshold = level_value(chosen)
-    return ok(
-        Logger(
-            threshold, timestamp.get(true), max_bytes, none, transport
-        )
-    )
+    return ok(Logger(threshold, timestamp.get(true), max_bytes, none, transport))
 
 # Writes log records to the process standard-output stream.
 export fn stdout_transport() Transport:
@@ -407,6 +399,8 @@ export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Trans
             var probe = file
             probe.close().get(none)
             return ok(
-                RotatingTransport(path: path.clone(), max_bytes: max_bytes, keep: keep, closed: false)
+                RotatingTransport(
+                    path: path.clone(), max_bytes: max_bytes, keep: keep, closed: false
+                )
             )
         error(cause): return error(cause)

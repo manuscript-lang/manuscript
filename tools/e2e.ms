@@ -286,13 +286,10 @@ export fn main() Int:
         var mine = List[String]()
         for i in 0..parallel.length():
             if (i + 1) % jobs == worker: mine.append(parallel[i].clone())
-
         tasks.append(promise(fn: ok(run_all(ctx, mine))))
 
     for task in tasks:
-        for message in task.wait().get(List[String]()): messages.append(
-            message.clone()
-        )
+        for message in task.wait().get(List[String]()): messages.append(message.clone())
     count += parallel.length()
 
     for f in serial:

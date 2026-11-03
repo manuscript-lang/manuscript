@@ -64,6 +64,7 @@ impl Closeable for Held[T]:
         if self.held:
             self.held = false
             put_slot(self.slot, self.value)
+
         return ok(unit)
 
 # The values a matched pattern captured, by name.
@@ -424,6 +425,7 @@ fn next_step(
 fn finish(target: Target, exchange: HttpExchange) Unit!:
     let method = target.method.clone()
     let found = target.found.clone()
+
     if not target.matched.is_empty():
         let route = target.matched[0].clone()
         let params = found.params.clone()
@@ -772,6 +774,7 @@ fn with_access_log(
     let result = next(tap)
     let sent = snapshot(state)
     release_slot(state)
+
     let status = answered(sent.status, result.is_ok())
     let entry = AccessEntry(
         method: method, path: path, protocol: protocol, status: status,

@@ -186,11 +186,7 @@ impl CircuitBreaker:
 # ```manuscript
 # let pages = try map_concurrent(urls, 4, fn url: fetch(url).wait())
 # ```
-export fn map_concurrent[T, U](
-    items: List[T],
-    limit: Int,
-    work: fn(T) U
-) List[U]!:
+export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U]!:
     if limit < 1:
         panic("map_concurrent: limit must be at least 1, found {limit}")
 
@@ -202,10 +198,12 @@ export fn map_concurrent[T, U](
     var parts = try wait_all(running)
     var results: List[U] = []
     var index = items.length()
+
     while index > 0:
         index -= 1
         if let value = parts[index % stripes].pop():
             results.append(value)
+
     results.reverse()
     return ok(results)
 
@@ -213,9 +211,11 @@ export fn map_concurrent[T, U](
 fn stripe_results[T, U](items: List[T], first: Int, step: Int, work: fn(T) U) List[U]!:
     var out: List[U] = []
     var index = first
+
     while index < items.length():
         out.append(work(items[index]))
         index += step
+
     return ok(out)
 
 # A minimum spacing between actions: at most one per `interval`, the first one at once. Use it to throttle a stream of events.

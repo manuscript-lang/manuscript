@@ -275,4 +275,3 @@ export fn section(file: FileHandle, offset: Int, length: Int) ReadStream!:
 
     let copy = try file.clone()
     return ok(SectionStream(copy, offset, length))
-
