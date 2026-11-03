@@ -497,7 +497,8 @@ impl<'a> FnLower<'a> {
                     return Ok(self.val(arg, true));
                 }
             }
-            let copy = self.owned(Val { v, own: false });
+            // The checker recorded this as a clone of a part of the temporary (`OwnedBorrow::Clone`).
+            let copy = self.clone_value(v);
             return Ok(self.val(copy, true));
         }
         Ok(self.val(v, true))

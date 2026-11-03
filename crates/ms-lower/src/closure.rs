@@ -1027,7 +1027,7 @@ impl FnLower<'_> {
             inner,
             &mut |s| {
                 let u = s.b.opt_get(opt);
-                Ok(Some(s.owned(Val { v: u, own: false })))
+                Ok(Some(s.clone_value(u)))
             },
             &mut |s| {
                 let d = default(s)?;
@@ -1980,7 +1980,8 @@ fn lower_fn_adapter(fl: &mut FnLower<'_>, have: MTy, scoped: bool) -> Result<(),
             args.push(v);
             continue;
         }
-        let o = fl.owned(Val { v, own: false });
+        // A function value borrows its arguments; the adapter's copy is checked by `require_clonable`.
+        let o = fl.clone_value(v);
         let some = fl.b.opt_some(o);
         args.push(fl.borrow(Val { v: some, own: true }));
     }
