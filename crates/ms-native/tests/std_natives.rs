@@ -206,7 +206,7 @@ fn timestamps_round_trip_through_strings() {
 
 mod fs_io {
     use super::*;
-    use ms_rt_abi::{STATUS_ALREADY_EXISTS, STATUS_NONE, STATUS_NOT_FOUND, VecVal};
+    use ms_rt_abi::{STATUS_ALREADY_EXISTS, STATUS_NOT_FOUND, VecVal};
     use ms_std_fs::*;
     use ms_std_io::*;
     use std::vec::Vec;
@@ -705,10 +705,10 @@ mod process {
             let stdout = msstd_process_subprocess_stream(child, 1);
             let mut data = empty();
             ms_rt::glue::write_bytes(b"ping", &mut data);
-            assert_eq!(msstd_io_write_bytes(stdin.cast(), &data), STATUS_OK);
+            assert_eq!(msstd_io_write_bytes(stdin.cast(), &data, core::ptr::null_mut()), STATUS_OK);
             msstd_io_close(stdin.cast());
             let mut chunk = empty();
-            assert_eq!(msstd_io_read(stdout.cast(), 0, 0, &mut chunk), STATUS_OK);
+            assert_eq!(msstd_io_read(stdout.cast(), 0, 0, &mut chunk, core::ptr::null_mut()), STATUS_OK);
             assert_eq!(ms_rt::glue::vec_bytes(&chunk), b"ping");
             let mut code = -9;
             assert_eq!(
