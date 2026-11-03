@@ -933,6 +933,8 @@ impl<'a> Parser<'a> {
             let mut params = Vec::new();
             if !self.take(Tok::RParen) {
                 loop {
+                    // `fn(var List[Int]) Unit`: a parameter the function changes in place.
+                    let mutable = self.take(Tok::Var);
                     let ty = self.typ()?;
                     let id = self.id();
                     params.push(Param {
@@ -941,7 +943,7 @@ impl<'a> Parser<'a> {
                         name: Symbol::intern(&format!("_{}", params.len())),
                         ty: Some(ty),
                         default: None,
-                        mutable: false,
+                        mutable,
                     });
                     if !self.take(Tok::Comma) {
                         break;

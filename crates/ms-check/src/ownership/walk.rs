@@ -3458,11 +3458,35 @@ impl Walker<'_> {
         for (i, a) in args.iter().enumerate() {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             let param = param_names.get(i).copied().unwrap_or_else(|| n("?"));
+            // A function type names its parameters by position (`_0`): say which argument.
+            let positional = param
+                .as_str()
+                .strip_prefix('_')
+                .is_some_and(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()));
+            let which = if positional {
+                format!("argument {} of `{name}`", i + 1)
+            } else {
+                format!("parameter `{param}` of `{name}`")
+            };
             match (mode, a.mutable) {
+                (ParamMode::Mutate, false) if positional => self.error_fix(
+                    a.value.pos,
+                    format!("{which} is var in its type `{}`, so the call must say so; write `var {}`", self.cx.m.ty(callee), self.expr_text(&a.value)),
+                    insert_at(a.value.pos, "var "),
+                ),
                 (ParamMode::Mutate, false) => self.error_fix(
                     a.value.pos,
-                    format!("parameter `{param}` of `{name}` is declared var, so the call must say so; write `var {}`", self.expr_text(&a.value)),
+                    format!("{which} is declared var, so the call must say so; write `var {}`", self.expr_text(&a.value)),
                     insert_at(a.value.pos, "var "),
+                ),
+                (ParamMode::Borrow | ParamMode::Consume, true) if positional => self.error_fix(
+                    a.value.pos,
+                    format!("`{name}` does not change {}: its type is `{}`; remove `var` from the argument", which.trim_end_matches(&format!(" of `{name}`")), self.cx.m.ty(callee)),
+                    DiagnosticFix {
+                        pos: back(a.value.pos, 4),
+                        end: a.value.pos,
+                        replacement: String::new(),
+                    },
                 ),
                 (ParamMode::Borrow | ParamMode::Consume, true) => self.error_fix(
                     a.value.pos,

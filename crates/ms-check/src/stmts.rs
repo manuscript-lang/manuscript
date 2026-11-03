@@ -1158,10 +1158,7 @@ impl Checker {
                     );
                 }
             }
-            let placeholder = Param {
-                name: n(""),
-                ty: target.clone().unwrap_or_else(invalid),
-            };
+            let placeholder = Param::new(n(""), target.clone().unwrap_or_else(invalid));
             self.match_binding_names(arm, &[placeholder]);
             let old = self.scope.clone();
             self.scope = Scope::new(Some(old.clone()));
