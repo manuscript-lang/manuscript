@@ -308,6 +308,8 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 m.records.push(RecordDef {
                     name,
                     fields: Vec::new(),
+                    shared_box: false,
+                    native: None,
                 });
             }
             "alt" => {

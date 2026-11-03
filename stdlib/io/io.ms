@@ -41,7 +41,16 @@ import (
     msstd_terminal_event_columns,
     msstd_terminal_event_rows,
     msstd_io_redirect_null,
-    msstd_io_terminal,
+    msstd_terminal_raw_mode,
+    msstd_terminal_capabilities_input_is_terminal,
+    msstd_terminal_capabilities_output_is_terminal,
+    msstd_terminal_capabilities_error_is_terminal,
+    msstd_terminal_capabilities_raw_mode,
+    msstd_terminal_capabilities_resize_events,
+    msstd_terminal_capabilities_colors,
+    msstd_terminal_size_status,
+    msstd_terminal_size_columns,
+    msstd_terminal_size_rows,
     msstd_terminal_raw_terminal_close,
     msstd_terminal_raw_terminal_share,
     msstd_terminal_raw_terminal_next_event,
@@ -548,15 +557,6 @@ export type EraseRegion:
     case LineEnd  // From the cursor to the end of the line.
     case LineStart  // From the start of the line to the cursor.
 
-// Queries the terminal and enters raw input mode.
-interface Terminal:
-    // Reports terminal availability and color support without changing terminal state.
-    fn capabilities() TerminalCapabilities
-    // Returns the terminal size, or `NotTerminal` when output is redirected.
-    fn size() TerminalSize!
-    // Acquires raw input with an optional alternate screen; returns `Busy` while another raw terminal is open and `NotTerminal` when streams are redirected.
-    fn raw_mode(alternate_screen: Bool) RawHandle!
-
 // Reads decoded events from a raw terminal's native handle.
 type TerminalEvents:
     handle: RawHandle
@@ -652,19 +652,27 @@ impl RawTerminal:
             LineEnd: return msstd_terminal_raw_terminal_erase(self.handle.native, 2)
             LineStart: return msstd_terminal_raw_terminal_erase(self.handle.native, 3)
 
-// Returns terminal operations for the current process.
-fn host_terminal() Terminal:
-    return msstd_io_terminal()
-
 // Reports terminal availability and color support without changing terminal state.
 export fn terminal_capabilities() TerminalCapabilities:
-    return host_terminal().capabilities()
+    return TerminalCapabilities(
+        input_is_terminal: msstd_terminal_capabilities_input_is_terminal(),
+        output_is_terminal: msstd_terminal_capabilities_output_is_terminal(),
+        error_is_terminal: msstd_terminal_capabilities_error_is_terminal(),
+        raw_mode: msstd_terminal_capabilities_raw_mode(),
+        resize_events: msstd_terminal_capabilities_resize_events(),
+        colors: msstd_terminal_capabilities_colors()
+    )
 
 // Returns the terminal size, or `NotTerminal` when output is redirected.
 export fn terminal_size() TerminalSize!:
-    return host_terminal().size()
+    try msstd_terminal_size_status()
+    return ok(
+        TerminalSize(
+            columns: msstd_terminal_size_columns(), rows: msstd_terminal_size_rows()
+        )
+    )
 
 // Acquires raw input with an optional alternate screen; returns `Busy` while another raw terminal is open and `NotTerminal` when streams are redirected.
 export fn raw_mode(alternate_screen: Bool) RawTerminal!:
-    let handle = try host_terminal().raw_mode(alternate_screen)
-    return ok(RawTerminal(handle: handle))
+    let native = try msstd_terminal_raw_mode(alternate_screen)
+    return ok(RawTerminal(handle: RawHandle(native)))

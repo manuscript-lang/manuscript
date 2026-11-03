@@ -367,7 +367,7 @@ impl Checker {
             }
         }
         let t = i.t();
-        if t.is_std("Result")
+        if t.is(Builtin::Result)
             && !matches!(
                 &value.kind,
                 ExprKind::Unary {
@@ -410,7 +410,8 @@ impl Checker {
         let i = self.expression(cond, None);
         let t = i.t();
         let mut payload = invalid();
-        if (t.is_std("Optional") && t.args.len() == 1) || (t.is_std("Result") && t.args.len() == 2)
+        if (t.is(Builtin::Optional) && t.args.len() == 1)
+            || (t.is(Builtin::Result) && t.args.len() == 2)
         {
             payload = t.args[0].clone();
         } else if !t.is_invalid() {
@@ -456,11 +457,11 @@ impl Checker {
         let i = self.expression(iter, None);
         let t = i.t();
         let mut element = invalid();
-        if t.is_std("List") || t.is_std("Set") {
+        if t.is(Builtin::List) || t.is(Builtin::Set) {
             if !t.args.is_empty() {
                 element = t.args[0].clone();
             }
-        } else if t.is_std("Map") {
+        } else if t.is(Builtin::Map) {
             if t.args.len() == 2 {
                 element = standard("MapEntry", t.args.clone());
             }
@@ -497,11 +498,11 @@ impl Checker {
     fn iterator_item(&self, t: &Ty) -> Option<Ty> {
         self.methods(t, n("next")).into_iter().find_map(|m| {
             let contract = m.contract.as_ref()?;
-            if !contract.is_std("Iterator") || !m.ty.params.is_empty() {
+            if !contract.is(Builtin::Iterator) || !m.ty.params.is_empty() {
                 return None;
             }
             let result = m.ty.result_ty();
-            (result.is_std("Optional") && result.args.len() == 1).then(|| result.args[0].clone())
+            (result.is(Builtin::Optional) && result.args.len() == 1).then(|| result.args[0].clone())
         })
     }
 
@@ -615,7 +616,7 @@ impl Checker {
         self.methods(t, n("at")).into_iter().any(|m| {
             m.contract
                 .as_ref()
-                .is_some_and(|contract| contract.is_std("Iterable"))
+                .is_some_and(|contract| contract.is(Builtin::Iterable))
         })
     }
 
@@ -768,7 +769,7 @@ impl Checker {
                 if method
                     .contract
                     .as_ref()
-                    .is_some_and(|c| c.is_std("Closeable"))
+                    .is_some_and(|c| c.is(Builtin::Closeable))
                 {
                     return vec![method];
                 }
@@ -822,7 +823,7 @@ impl Checker {
                 }
             }
             PatternKind::List(elements) => {
-                if t.is_std("List") && t.args.len() == 1 {
+                if t.is(Builtin::List) && t.args.len() == 1 {
                     if let Some(src) = source
                         && let ExprKind::List(items) = &src.kind
                         && items.len() != elements.len()
@@ -858,7 +859,7 @@ impl Checker {
     ) -> (bool, bool) {
         let info = self.expression(value, None);
         let t = info.t();
-        if arms.first().is_some_and(|a| a.chain) && !t.is_invalid() && !t.is_std("Optional") {
+        if arms.first().is_some_and(|a| a.chain) && !t.is_invalid() && !t.is(Builtin::Optional) {
             self.type_error(
                 value.pos,
                 format!("`?.` needs an optional receiver, found {t}; write `.` to read a member of a value that is always present"),
@@ -1401,7 +1402,7 @@ impl Checker {
             s.kind == SymKind::Type
                 && s.ty_opt().is_some_and(|st| {
                     st.kind == Kind::Alternative
-                        && !st.is_std("Optional")
+                        && !st.is(Builtin::Optional)
                         && st
                             .opaque_module()
                             .is_none_or(|module| module == self.current_file())
@@ -1456,9 +1457,9 @@ impl Checker {
                 ..Info::default()
             };
         }
-        let list = rt.is_std("List") && rt.args.len() == 1;
-        let map = rt.is_std("Map") && rt.args.len() == 2;
-        let bytes = rt.is_std("Bytes");
+        let list = rt.is(Builtin::List) && rt.args.len() == 1;
+        let map = rt.is(Builtin::Map) && rt.args.len() == 2;
+        let bytes = rt.is(Builtin::Bytes);
         // A Map key keeps its own type; Lists and Bytes are indexed by Int.
         let expected = if map {
             Some(rt.args[0].clone())
@@ -1512,7 +1513,7 @@ impl Checker {
         let mut info = self.expression(target, None);
         let receiver = self.info_of(left).and_then(|i| i.ty);
         let entries = receiver.is_some_and(|r| {
-            (r.is_std("List") && r.args.len() == 1) || (r.is_std("Map") && r.args.len() == 2)
+            (r.is(Builtin::List) && r.args.len() == 1) || (r.is(Builtin::Map) && r.args.len() == 2)
         });
         info.ty = match info.ty {
             Some(t) if entries => Some(standard("Optional", vec![t])),
@@ -1602,7 +1603,7 @@ impl Checker {
                             && crate::inference::inference_type_known(&t, &self.inference_variables)
                         {
                             let t = required_type(&t);
-                            result = Some(if arm.chain && !t.is_std("Optional") {
+                            result = Some(if arm.chain && !t.is(Builtin::Optional) {
                                 crate::types::standard("Optional", vec![t])
                             } else {
                                 t
@@ -1611,7 +1612,7 @@ impl Checker {
                         }
                         // A chain's present value becomes optional by being checked
                         // again against the optional result.
-                        let rewrap = arm.chain && !info.t().is_std("Optional");
+                        let rewrap = arm.chain && !info.t().is(Builtin::Optional);
                         if rewrap {
                             self.p.diagnostics.truncate(before);
                         }

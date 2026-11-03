@@ -21,14 +21,6 @@ pub(crate) struct HandLowered {
     pub handle: Option<Handle>,
 }
 
-const fn plain(symbol: &'static str, identity: &'static str) -> HandLowered {
-    HandLowered {
-        symbol,
-        identity,
-        handle: None,
-    }
-}
-
 const fn handle(
     symbol: &'static str,
     identity: &'static str,
@@ -47,7 +39,6 @@ const fn handle(
 }
 
 const HAND_LOWERED: &[HandLowered] = &[
-    plain("msstd_html_parse", "html/parse"),
     handle(
         "msstd_net_network",
         "net/network",
@@ -58,18 +49,7 @@ const HAND_LOWERED: &[HandLowered] = &[
     // The rules are the table: `path_win` forwards with the Windows flag set.
     handle("msstd_fs_posix", "fs/posix", "path", ""),
     handle("msstd_fs_win32", "fs/win32", "path_win", ""),
-    handle("msstd_io_terminal", "io/terminal", "terminal", ""),
     handle("msstd_process_commands", "process/commands", "process", ""),
-    plain("msstd_random_draw_choice", "random/draw_choice"),
-    plain("msstd_random_draw_float", "random/draw_float"),
-    plain("msstd_random_draw_int", "random/draw_int"),
-    plain("msstd_random_draw_shuffle", "random/draw_shuffle"),
-    plain("msstd_random_draw_uuid", "random/draw_uuid"),
-    handle("msstd_random_entropy", "random/host_entropy", "random", ""),
-    handle("msstd_process_control", "process/control", "process", ""),
-    handle("msstd_process_system", "process/system", "system", ""),
-    handle("msstd_time_clock", "time/clock", "time", ""),
-    handle("msstd_time_wall_clock", "time/wall_clock", "time", ""),
 ];
 
 pub(crate) fn by_symbol(symbol: &str) -> Option<&'static HandLowered> {

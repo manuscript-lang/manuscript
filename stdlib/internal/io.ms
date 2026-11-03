@@ -1,4 +1,4 @@
-import (NativeRawTerminal, Terminal) from "@std/io/io.ms"
+import NativeRawTerminal from "@std/io/io.ms"
 import Duration from "@std/os/time.ms"
 
 export extern fn msstd_terminal_event_kind() Int
@@ -17,7 +17,25 @@ export extern fn msstd_terminal_event_rows() Int
 
 export extern fn msstd_io_redirect_null(which: Int) Unit!
 
-export extern fn msstd_io_terminal() Terminal
+export extern fn msstd_terminal_raw_mode(alternate_screen: Bool) NativeRawTerminal!
+
+export extern fn msstd_terminal_capabilities_input_is_terminal() Bool
+
+export extern fn msstd_terminal_capabilities_output_is_terminal() Bool
+
+export extern fn msstd_terminal_capabilities_error_is_terminal() Bool
+
+export extern fn msstd_terminal_capabilities_raw_mode() Bool
+
+export extern fn msstd_terminal_capabilities_resize_events() Bool
+
+export extern fn msstd_terminal_capabilities_colors() Int
+
+export extern fn msstd_terminal_size_status() Unit!
+
+export extern fn msstd_terminal_size_columns() Int
+
+export extern fn msstd_terminal_size_rows() Int
 
 export extern fn msstd_terminal_raw_terminal_close(handle: NativeRawTerminal) Unit
 

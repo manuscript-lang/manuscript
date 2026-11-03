@@ -2,11 +2,10 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use crate::text::runtime_fn;
 use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
-use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{FuncId, FuncKind, Linkage, Mode, Param, Value};
+use ms_check::types::Builtin;
+use ms_mir::ir::{Mode, Param, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
@@ -52,9 +51,6 @@ type ElementBody<'b, S> = dyn FnMut(&mut S, Value, Value) -> Result<Option<Value
 
 /// A branch body producing an owned value, or `None` when it diverges.
 type BranchBody<'b, S> = dyn FnMut(&mut S) -> Result<Option<Value>, Error> + 'b;
-
-/// Builds one method of a native interface value from its name, parameters and result.
-type MethodBuilder<'b> = dyn FnMut(&mut ms_mir::ir::Module, &str, &[MTy], MTy) -> FuncId + 'b;
 
 /// Whether `name` is an `Optional` method lowered inline.
 fn opt_method(name: &str) -> bool {
@@ -289,28 +285,6 @@ impl<'a> FnLower<'a> {
                 let want = self.emty(e)?;
                 self.fit_ty(r, &declared, want)
             }
-            "random/draw_int"
-            | "random/draw_uuid"
-            | "random/draw_float"
-            | "random/draw_shuffle"
-            | "random/draw_choice" => self.random_native(e, view, native),
-            "html/parse" => {
-                let mut args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let func = sym.decl.as_ref().and_then(|d| d.func());
-                self.fill_native_defaults(sym.module, func, params, &mut args)?;
-                self.at(e.pos);
-                let rty = self.emty(e)?;
-                let node = self
-                    .ety(e)
-                    .args
-                    .first()
-                    .cloned()
-                    .ok_or_else(|| Error::new("parse without a node type"))?;
-                self.html_parse(&node, rty, &args)
-            }
             "collections/map_from_entries" => {
                 let args = self.native_args(view)?;
                 if self.dead {
@@ -319,10 +293,6 @@ impl<'a> FnLower<'a> {
                 let result = self.emty(e)?;
                 self.at(e.pos);
                 self.native_call(native, params, &args, result)
-            }
-            "time/clock" | "time/wall_clock" => {
-                let it = self.emty(e)?;
-                self.time_clock(it, native == "time/wall_clock")
             }
             "math/min" => self.math_extreme(view, false),
             "math/max" => self.math_extreme(view, true),
@@ -459,8 +429,7 @@ impl<'a> FnLower<'a> {
             let c = self.call_runtime("msrt_string_compare", &[a, b], MTy::INT)?;
             let zero = self.b.iconst(0);
             self.b.icmp(Cc::Gt, c, zero)
-        } else if let Some(sym) = self.ordering_symbol(t) {
-            let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
+        } else if let Some(c) = self.native_compare(t, a, b)? {
             let zero = self.b.iconst(0);
             self.b.icmp(Cc::Gt, c, zero)
         } else {
@@ -577,50 +546,6 @@ impl<'a> FnLower<'a> {
             }
         };
         Ok(Val { v, own: false })
-    }
-
-    /// `clock()` / `wall_clock()`: an interface whose `now` reads the runtime clock.
-    pub(crate) fn time_clock(&mut self, it: MTy, wall: bool) -> Result<Val, Error> {
-        let name = if wall { "wall_clock" } else { "clock" };
-        self.native_iface(it, name, &mut |m, method, params, ret| {
-            build_clock_method(m, method, params, ret, wall)
-        })
-    }
-
-    /// An interface value of the expression's type over a vtable of MIR-built methods.
-    fn native_iface(
-        &mut self,
-        it: MTy,
-        name: &str,
-        build: &mut MethodBuilder<'_>,
-    ) -> Result<Val, Error> {
-        let TyKind::Iface(iface) = self.b.m.types.kind(it).clone() else {
-            return Err(Error::new(format!("{name}() is not an interface")));
-        };
-        let key = format!("vtable:{name}:{}", iface.0);
-        let vt = match self.cx.vtables.get(&key) {
-            Some(v) => *v,
-            None => {
-                let sigs = self.b.m.ifaces[iface.index()].methods.clone();
-                let mut methods = Vec::new();
-                for s in &sigs {
-                    methods.push(build(self.b.m, &s.name, &s.params, s.ret));
-                }
-                self.cx
-                    .intern_vtable(self.b.m, key, iface, methods, MTy::UNIT)
-            }
-        };
-        let u = self.b.unit();
-        let v = self
-            .b
-            .emit(
-                ms_mir::ir::Op::IfaceNew,
-                &[u],
-                ms_mir::ir::Imm::Vtable(vt),
-                Some(it),
-            )
-            .expect("iface");
-        Ok(Val { v, own: true })
     }
 
     /// `value.hash()` of any hashable value: the runtime hashes the value in memory as map keys are.
@@ -1719,7 +1644,9 @@ impl<'a> FnLower<'a> {
         let result_ty = self.ety(e);
         let result_mty = self.emty(e)?;
         let hands_back = !discarded
-            && (result_ty.is_std("List") || result_ty.is_std("Map") || result_ty.is_std("Set"));
+            && (result_ty.is(Builtin::List)
+                || result_ty.is(Builtin::Map)
+                || result_ty.is(Builtin::Set));
         // A mutator that discards an entry closes a resource in it first; the fast paths below
         // overwrite entries without a look at the old one.
         let discards = self.discards_resource(recv_expr, name)?;
@@ -1785,9 +1712,9 @@ impl<'a> FnLower<'a> {
             return Ok(false);
         }
         let ty = self.ety(recv_expr);
-        let held = if ty.is_std("List") && matches!(name, "set" | "remove" | "splice") {
+        let held = if ty.is(Builtin::List) && matches!(name, "set" | "remove" | "splice") {
             ty.args.first()
-        } else if ty.is_std("Map") && matches!(name, "add" | "remove" | "clear") {
+        } else if ty.is(Builtin::Map) && matches!(name, "add" | "remove" | "clear") {
             ty.args.get(1)
         } else {
             None
@@ -1809,7 +1736,7 @@ impl<'a> FnLower<'a> {
         if name == "splice" {
             return self.close_list_range(recv_expr, &args[0], &args[1]);
         }
-        if ty.is_std("List") {
+        if ty.is(Builtin::List) {
             return self.close_list_entry(recv_expr, &args[0]);
         }
         if name == "clear" {
@@ -1942,7 +1869,7 @@ impl<'a> FnLower<'a> {
     fn close_list_entry(&mut self, recv_expr: &Expr, index: &NArg) -> Result<(), Error> {
         use ms_mir::ir::{Cc, Op};
         let list_ty = self.ety(recv_expr);
-        let Some(elem) = list_ty.args.first().filter(|_| list_ty.is_std("List")) else {
+        let Some(elem) = list_ty.args.first().filter(|_| list_ty.is(Builtin::List)) else {
             return Ok(());
         };
         if self.part_closer(elem)?.is_none() {
@@ -3311,7 +3238,7 @@ impl<'a> FnLower<'a> {
                 }
             };
             let mut val = r?;
-            if p.ty.is_std("Optional") {
+            if p.ty.is(Builtin::Optional) {
                 let o = self.owned(val);
                 val = Val {
                     v: self.b.opt_some(o),
@@ -3506,37 +3433,6 @@ impl<'a> FnLower<'a> {
         let r = self.b.use_var(acc);
         Ok(Val { v: r, own: true })
     }
-}
-
-/// A method of the clock vtable: `now` writes the reading through the runtime's out pointer.
-fn build_clock_method(
-    m: &mut ms_mir::ir::Module,
-    name: &str,
-    params: &[MTy],
-    ret: MTy,
-    wall: bool,
-) -> FuncId {
-    let mut ps = vec![Param {
-        ty: MTy::PTR,
-        mode: Mode::Borrow,
-    }];
-    ps.extend(params.iter().map(|t| Param {
-        ty: *t,
-        mode: Mode::Borrow,
-    }));
-    let mut b = FuncBuilder::new(m, &format!("clock.{name}"), ps, ret);
-    b.func_mut().kind = FuncKind::Method;
-    b.func_mut().linkage = Linkage::Internal;
-    let sym = if wall {
-        "msstd_time_wall_clock_now"
-    } else {
-        "msstd_time_clock_now"
-    };
-    let ext = runtime_fn(b.m, sym, &[], ret);
-    let reading = b.call_rt(ext, &[]);
-    b.ret(Some(reading));
-    let f = b.into_func();
-    m.add_func(f)
 }
 
 /// The runtime symbol of a `HashAlgorithm` operation, by native identity.

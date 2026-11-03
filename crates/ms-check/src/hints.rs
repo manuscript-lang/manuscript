@@ -250,7 +250,7 @@ pub fn signature_text(t: &Ty) -> String {
     let result = t.result_ty();
     // `T!` is the declared spelling of `Result[T, Error]`.
     let result = match result.args.as_slice() {
-        [ok, err] if result.is_std("Result") && err.is_std("Error") => format!("{ok}!"),
+        [ok, err] if result.is(Builtin::Result) && err.is(Builtin::Error) => format!("{ok}!"),
         _ => result.to_string(),
     };
     format!("({}) {result}", parts.join(", "))
@@ -270,7 +270,7 @@ fn type_alias(name: &str) -> Option<&'static str> {
 
 /// Names the fix when an Optional is used where a plain value is required.
 pub fn optional_use_hint(actual: &Ty, expected: &Ty) -> String {
-    if !actual.is_std("Optional") || actual.args.len() != 1 || expected.is_std("Optional") {
+    if !actual.is(Builtin::Optional) || actual.args.len() != 1 || expected.is(Builtin::Optional) {
         return String::new();
     }
     format!(
@@ -280,7 +280,7 @@ pub fn optional_use_hint(actual: &Ty, expected: &Ty) -> String {
 
 /// Names the fix when a Result is used where its success type is required.
 pub fn result_use_hint(actual: &Ty, expected: &Ty) -> String {
-    if !actual.is_std("Result") || actual.args.is_empty() || !same(&actual.args[0], expected) {
+    if !actual.is(Builtin::Result) || actual.args.is_empty() || !same(&actual.args[0], expected) {
         return String::new();
     }
     "unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'".to_string()
@@ -308,7 +308,8 @@ pub fn number_conversion_hint(actual: &Ty, expected: &Ty) -> String {
 
 /// A plain value where a Result is required: wrap it in `ok(...)`.
 pub fn ok_wrap_hint(actual: &Ty, expected: &Ty) -> String {
-    if !expected.is_std("Result") || expected.args.is_empty() || !same(&expected.args[0], actual) {
+    if !expected.is(Builtin::Result) || expected.args.is_empty() || !same(&expected.args[0], actual)
+    {
         return String::new();
     }
     "wrap the value in ok(...), e.g. return ok(value)".to_string()
@@ -665,7 +666,7 @@ impl Checker {
                 }
             }
         }
-        if receiver.is_std("Optional") {
+        if receiver.is(Builtin::Optional) {
             let fix = match name.as_str() {
                 "unwrap" | "expect" | "value" | "unwrap_or" | "unwrap_or_else" | "or_default"
                 | "unwrap_or_default" => {
@@ -680,7 +681,7 @@ impl Checker {
                 return format!("{message}; {fix}");
             }
         }
-        if receiver.is_std("Result") {
+        if receiver.is(Builtin::Result) {
             let fix = match name.as_str() {
                 "unwrap" | "expect" | "unwrap_or" | "unwrap_or_else" | "unwrap_or_default" => {
                     "read a Result with `try x` inside a fn that returns Result, x.get(default), x.get_or_else(create) for a lazy fallback, or `if let value = x:`"
@@ -694,7 +695,7 @@ impl Checker {
                 return format!("{message}; {fix}");
             }
         }
-        if (receiver.is_std("List") || receiver.is_std("Map") || receiver.is_std("Set"))
+        if (receiver.is(Builtin::List) || receiver.is(Builtin::Map) || receiver.is(Builtin::Set))
             && matches!(name.as_str(), "some" | "every")
         {
             let now = if name.as_str() == "some" {
@@ -704,7 +705,7 @@ impl Checker {
             };
             return format!("{message}; {name}(predicate) is now {now}(predicate)");
         }
-        if receiver.is_std("Map") && name == "set" {
+        if receiver.is(Builtin::Map) && name == "set" {
             return format!(
                 "{message}; write m[key] = value or m.add(key, value) to insert or replace a Map entry; available: {}",
                 available.join(", ")
@@ -836,7 +837,7 @@ impl Checker {
 
     /// Adds a view hint only when the expected type itself is an interface.
     pub(crate) fn assignment_mismatch(&mut self, actual: &Ty, expected: &Ty) -> String {
-        if actual.is_std("Optional") && actual.args.len() == 1 && actual.args[0].is_invalid() {
+        if actual.is(Builtin::Optional) && actual.args.len() == 1 && actual.args[0].is_invalid() {
             return format!(
                 "expected {expected}, found none; none is absent, so it fits only an Optional position: declare the target {expected}? or give a value"
             );

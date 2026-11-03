@@ -7,7 +7,14 @@ import (
     expect_some,
     expect_true
 ) from "@std/test/test.ms"
-import sample, seeded, weighted_choice from "@std/os/random.ms"
+import (
+    choice,
+    secure_int,
+    sample,
+    seeded,
+    shuffle,
+    weighted_choice
+) from "@std/os/random.ms"
 
 test "seeded sample picks distinct items":
     var rng = seeded(7)
@@ -69,3 +76,18 @@ test "secure sample and weighted_choice":
 
     let _other = try expect_error(weighted_choice(["a"], [0.0]))
     try expect_none(try expect_ok(weighted_choice(List[String](), List[Float]())))
+
+test "secure_int covers wide and empty ranges":
+    let _same = try expect_error(secure_int(3, 3))
+    let _reversed = try expect_error(secure_int(5, 2))
+    try expect_equal(try secure_int(7, 8), 7)
+
+    let wide = try secure_int(-9223372036854775807 - 1, none)
+    try expect_true(wide <= 9223372036854775806)
+
+    let low = try secure_int(-9223372036854775807 - 1, -9223372036854775807)
+    try expect_equal(low, -9223372036854775807 - 1)
+
+    let empty: List[Int] = []
+    try expect_equal(try choice(empty), none)
+    try expect_equal(try shuffle([5]), [5])

@@ -58,8 +58,9 @@ pub fn verify_module(m: &Module) -> Result<(), Vec<VerifyError>> {
 pub fn verify_module_with(m: &Module, opts: VerifyOptions) -> Result<(), Vec<VerifyError>> {
     let mut errs = Vec::new();
     verify_decls(m, &mut errs);
+    let drops = drop_table(m);
     for f in &m.funcs {
-        if let Err(e) = verify_func_with(m, f, opts) {
+        if let Err(e) = verify_func_in(m, f, opts, &drops) {
             errs.extend(e);
         }
     }
@@ -118,11 +119,28 @@ pub fn verify_func(m: &Module, f: &Func) -> Result<(), Vec<VerifyError>> {
 
 /// Verifies one function.
 pub fn verify_func_with(m: &Module, f: &Func, opts: VerifyOptions) -> Result<(), Vec<VerifyError>> {
+    verify_func_in(m, f, opts, &drop_table(m))
+}
+
+/// [`Module::needs_drop`] of every type, indexed by [`Ty`].
+fn drop_table(m: &Module) -> Vec<bool> {
+    (0..m.types.len() as u32)
+        .map(|i| m.needs_drop(Ty(i)))
+        .collect()
+}
+
+fn verify_func_in(
+    m: &Module,
+    f: &Func,
+    opts: VerifyOptions,
+    drops: &[bool],
+) -> Result<(), Vec<VerifyError>> {
     let mut v = Verifier {
         m,
         f,
         opts,
         errs: Vec::new(),
+        drops,
     };
     v.run();
     if v.errs.is_empty() {
@@ -184,9 +202,17 @@ struct Verifier<'a> {
     f: &'a Func,
     opts: VerifyOptions,
     errs: Vec<VerifyError>,
+    /// [`Module::needs_drop`] of every type, indexed by [`Ty`] and built once per module: it
+    /// scans every case of an enum, so asking per instruction made a function over a large enum
+    /// quadratic.
+    drops: &'a [bool],
 }
 
 impl Verifier<'_> {
+    fn needs_drop(&self, ty: Ty) -> bool {
+        self.drops[ty.index()]
+    }
+
     fn err(&mut self, block: Option<usize>, msg: impl Into<String>) {
         self.errs.push(VerifyError {
             func: self.f.name.clone(),
@@ -307,7 +333,7 @@ impl Verifier<'_> {
         for (bp, p) in entry.params.iter().zip(&f.params) {
             if bp.value.index() >= f.values.len()
                 || f.ty(bp.value) != p.ty
-                || (self.m.needs_drop(p.ty) && bp.mode != p.mode)
+                || (self.needs_drop(p.ty) && bp.mode != p.mode)
             {
                 self.err(Some(0), "entry block parameter differs from the signature");
                 return;
@@ -321,7 +347,7 @@ impl Verifier<'_> {
                 }
                 if f.params
                     .iter()
-                    .any(|p| p.mode == Mode::Own && self.m.needs_drop(p.ty))
+                    .any(|p| p.mode == Mode::Own && self.needs_drop(p.ty))
                 {
                     self.err(
                         None,
@@ -739,7 +765,7 @@ impl Verifier<'_> {
             Op::Select => {
                 arity(3)?;
                 want(
-                    t(0) == Ty::BOOL && t(1) == t(2) && res == Some(t(1)) && !m.needs_drop(t(1)),
+                    t(0) == Ty::BOOL && t(1) == t(2) && res == Some(t(1)) && !self.needs_drop(t(1)),
                     "select takes bool, two equal non-reference values",
                 )
             }
@@ -1191,25 +1217,25 @@ impl Verifier<'_> {
             Op::Copy => {
                 arity(1)?;
                 want(
-                    res == Some(t(0)) && m.needs_drop(t(0)),
+                    res == Some(t(0)) && self.needs_drop(t(0)),
                     "copy duplicates a droppable value",
                 )
             }
             Op::MoveOut => {
                 arity(1)?;
                 want(
-                    res == Some(t(0)) && m.needs_drop(t(0)),
+                    res == Some(t(0)) && self.needs_drop(t(0)),
                     "move.out takes ownership of a droppable value",
                 )
             }
             Op::Drop => {
                 arity(1)?;
-                want(m.needs_drop(t(0)), "drop takes a droppable value")
+                want(self.needs_drop(t(0)), "drop takes a droppable value")
             }
             Op::DropIf => {
                 arity(2)?;
                 want(
-                    t(0) == Ty::BOOL && m.needs_drop(t(1)),
+                    t(0) == Ty::BOOL && self.needs_drop(t(1)),
                     "drop.if takes a flag and a droppable value",
                 )
             }
@@ -1336,7 +1362,8 @@ impl Verifier<'_> {
 
     fn check_ownership(&mut self, rpo: &[Block]) {
         let (m, f) = (self.m, self.f);
-        let rc = |v: Value| m.needs_drop(f.ty(v));
+        let drops = self.drops;
+        let rc = |v: Value| drops[f.ty(v).index()];
         // Ownership mode of every value from its definition.
         let mut owned_def = vec![false; f.values.len()];
         for b in &f.blocks {

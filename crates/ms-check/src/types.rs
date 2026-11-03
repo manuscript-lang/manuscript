@@ -124,6 +124,87 @@ impl ParameterDefaults {
 /// Parameters flagged as omittable on a known callable; erasure removes all default metadata.
 pub type Defaults = Option<Rc<ParameterDefaults>>;
 
+/// Identity of a built-in standard type, fixed when the type is built so checks compare a tag
+/// instead of the id text.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Builtin {
+    /// `Optional`.
+    Optional,
+    /// `Result`.
+    Result,
+    /// `List`.
+    List,
+    /// `Map`.
+    Map,
+    /// `Set`.
+    Set,
+    /// `Bytes`.
+    Bytes,
+    /// `Shared`.
+    Shared,
+    /// `BigInt`.
+    BigInt,
+    /// `Decimal`.
+    Decimal,
+    /// `Error`.
+    Error,
+    /// `Closeable`.
+    Closeable,
+    /// `Hashable`.
+    Hashable,
+    /// `Comparable`.
+    Comparable,
+    /// `Equal`.
+    Equal,
+    /// `Data`.
+    Data,
+    /// `Copy`.
+    Copy,
+    /// `Clonable`.
+    Clonable,
+    /// `Iterator`.
+    Iterator,
+    /// `Iterable`.
+    Iterable,
+    /// `BytesBuilder`.
+    BytesBuilder,
+    /// `Regex`.
+    Regex,
+    /// `TestHooks`.
+    TestHooks,
+}
+
+impl Builtin {
+    /// The built-in named by a type id (`@std/<name>`), if any.
+    pub fn from_id(id: &str) -> Option<Builtin> {
+        match id.strip_prefix("@std/")? {
+            "Optional" => Some(Builtin::Optional),
+            "Result" => Some(Builtin::Result),
+            "List" => Some(Builtin::List),
+            "Map" => Some(Builtin::Map),
+            "Set" => Some(Builtin::Set),
+            "Bytes" => Some(Builtin::Bytes),
+            "Shared" => Some(Builtin::Shared),
+            "BigInt" => Some(Builtin::BigInt),
+            "Decimal" => Some(Builtin::Decimal),
+            "Error" => Some(Builtin::Error),
+            "Closeable" => Some(Builtin::Closeable),
+            "Hashable" => Some(Builtin::Hashable),
+            "Comparable" => Some(Builtin::Comparable),
+            "Equal" => Some(Builtin::Equal),
+            "Data" => Some(Builtin::Data),
+            "Copy" => Some(Builtin::Copy),
+            "Clonable" => Some(Builtin::Clonable),
+            "Iterator" => Some(Builtin::Iterator),
+            "Iterable" => Some(Builtin::Iterable),
+            "BytesBuilder" => Some(Builtin::BytesBuilder),
+            "Regex" => Some(Builtin::Regex),
+            "TestHooks" => Some(Builtin::TestHooks),
+            _ => None,
+        }
+    }
+}
+
 /// A checked type.
 pub struct Type {
     /// Display name.
@@ -146,6 +227,8 @@ pub struct Type {
     pub default: RefCell<Option<Ty>>,
     /// Omittable parameters of a known source callable.
     pub defaults: Defaults,
+    /// The built-in standard type this is, if any.
+    pub builtin: Option<Builtin>,
 }
 
 impl Clone for Type {
@@ -161,6 +244,7 @@ impl Clone for Type {
             bounds: RefCell::new(self.bounds.borrow().clone()),
             default: RefCell::new(self.default.borrow().clone()),
             defaults: self.defaults.clone(),
+            builtin: self.builtin,
         }
     }
 }
@@ -187,7 +271,7 @@ impl fmt::Display for Type {
                 None => f.write_str("<unknown>"),
             };
         }
-        if self.is_std("Optional") && self.args.len() == 1 {
+        if self.is(Builtin::Optional) && self.args.len() == 1 {
             let inner = &self.args[0];
             return if inner.kind == Kind::Function {
                 write!(f, "({inner})?")
@@ -232,6 +316,7 @@ impl Type {
             bounds: RefCell::new(Vec::new()),
             default: RefCell::new(None),
             defaults: None,
+            builtin: Builtin::from_id(id.as_str()),
         }
     }
 
@@ -284,6 +369,11 @@ impl Type {
     pub fn is_std(&self, name: &str) -> bool {
         let id = self.id.as_str();
         id.len() == 5 + name.len() && id.starts_with("@std/") && &id[5..] == name
+    }
+
+    /// Whether this is the built-in standard type `b`.
+    pub fn is(&self, b: Builtin) -> bool {
+        self.builtin == Some(b)
     }
 
     /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/os/time.ms`.
@@ -367,6 +457,9 @@ pub struct Definition {
     pub fields: RefCell<Vec<Param>>,
     /// Alternative cases.
     pub cases: RefCell<Vec<Case>>,
+    /// Position in [`Definition::cases`] of each case name (the first on a duplicate), so finding a
+    /// case does not scan an enum with thousands of them once per match arm.
+    case_indices: RefCell<HashMap<Name, usize>>,
     /// Contract or native operations.
     pub operations: RefCell<Vec<Operation>>,
 }
@@ -388,8 +481,19 @@ impl Definition {
             variables: RefCell::new(Vec::new()),
             fields: RefCell::new(Vec::new()),
             cases: RefCell::new(Vec::new()),
+            case_indices: RefCell::new(HashMap::new()),
             operations: RefCell::new(Vec::new()),
         })
+    }
+
+    /// Appends a case; add cases only through this so the name index stays in step.
+    pub fn push_case(&self, case: Case) {
+        let mut cases = self.cases.borrow_mut();
+        self.case_indices
+            .borrow_mut()
+            .entry(case.name)
+            .or_insert(cases.len());
+        cases.push(case);
     }
 
     /// The owning symbol.
@@ -750,7 +854,10 @@ pub fn test_outcome() -> Ty {
 
 /// Whether `t` is `Result[Unit, Error]`, the result of every `close`.
 pub fn is_close_result(t: &Ty) -> bool {
-    t.is_std("Result") && t.args.len() == 2 && t.args[0].id == "Unit" && t.args[1].is_std("Error")
+    t.is(Builtin::Result)
+        && t.args.len() == 2
+        && t.args[0].id == "Unit"
+        && t.args[1].is(Builtin::Error)
 }
 
 // ------------------------------------------------------------ type algebra
@@ -914,6 +1021,7 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
         bounds: RefCell::new(t.bounds.borrow().clone()),
         default: RefCell::new(t.default.borrow().clone()),
         defaults: t.defaults.clone(),
+        builtin: t.builtin,
     })
 }
 
@@ -1015,7 +1123,7 @@ pub fn fields(t: &Ty) -> Vec<Param> {
 /// Whether the bound `b` makes a type parameter `Clonable`: `Data` and `Hashable` hold no
 /// resource, so their values can be copied, as `Hashable` implies `Equal`.
 pub fn implies_clonable(b: &Ty) -> bool {
-    b.is_std("Clonable") || b.is_std("Data") || b.is_std("Hashable")
+    b.is(Builtin::Clonable) || b.is(Builtin::Data) || b.is(Builtin::Hashable)
 }
 
 /// Whether the native `t` declares an infallible `clone` of its own as an operation of its
@@ -1087,7 +1195,7 @@ pub fn cases(t: &Ty) -> Vec<Case> {
 pub fn case_of(t: &Ty, name: Name) -> Option<Case> {
     let def = t.def.as_ref()?;
     let cs = def.cases.borrow();
-    let c = cs.iter().find(|c| c.name == name)?;
+    let c = cs.get(*def.case_indices.borrow().get(&name)?)?;
     let mut s = Subst::new();
     if !c.fields.is_empty() {
         bind_type_arguments(t, &mut s);
@@ -1108,13 +1216,13 @@ pub fn case_of(t: &Ty, name: Name) -> Option<Case> {
 /// Constructor inputs and omission permissions.
 pub fn constructor_signature(t: &Ty) -> Ty {
     let mut params = fields(t);
-    if t.is_std("Bytes") {
+    if t.is(Builtin::Bytes) {
         params = vec![Param {
             name: n("values"),
             ty: standard("List", vec![primitive("UInt8")]),
         }];
     }
-    if t.is_std("Set") && t.args.len() == 1 {
+    if t.is(Builtin::Set) && t.args.len() == 1 {
         params = vec![Param {
             name: n("values"),
             ty: standard("List", vec![t.args[0].clone()]),

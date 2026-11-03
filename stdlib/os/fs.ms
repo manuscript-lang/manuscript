@@ -18,6 +18,31 @@ import (
     msstd_path_delimiter,
     msstd_path_to_namespaced_path,
     msstd_fs_filesystem,
+    msstd_fs_canonicalize,
+    msstd_fs_create_directory,
+    msstd_fs_create_link,
+    msstd_fs_read_file,
+    msstd_fs_read_link,
+    msstd_fs_remove,
+    msstd_fs_rename,
+    msstd_fs_temporary_root,
+    msstd_fs_temporary_directory,
+    msstd_fs_write_file,
+    msstd_fs_access,
+    msstd_fs_append_file,
+    msstd_fs_chmod,
+    msstd_fs_chown,
+    msstd_fs_truncate,
+    msstd_fs_hard_link,
+    msstd_fs_open,
+    msstd_fs_directory_open,
+    msstd_fs_temporary_open,
+    msstd_fs_stat,
+    msstd_fs_list,
+    msstd_fs_set_times,
+    msstd_fs_stat_filesystem,
+    msstd_fs_watch,
+    msstd_fs_watch_native,
     msstd_path_relative,
     msstd_fs_posix,
     msstd_fs_win32,
@@ -595,20 +620,20 @@ export fn copy(
 
 // Resolves symlinks and returns the canonical absolute path.
 export fn canonicalize(path: String) String!:
-    return host().canonicalize(path)
+    return msstd_fs_canonicalize(path)
 
 // Creates one directory; recursive defaults to False, requiring its parent to exist.
 export fn create_directory(path: String, recursive: Bool = false) Unit!:
-    return host().create_directory(path, recursive)
+    return msstd_fs_create_directory(path, recursive)
 
 // Creates a symbolic link at `path` pointing to `target`.
 export fn create_link(path: String, target: String) Unit!:
-    return host().create_link(path, target)
+    return msstd_fs_create_link(path, target)
 
 // Lists a directory, optionally limiting the number of returned entries.
 // A name that is not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer addresses the entry. The same holds for `glob`, `stat` names and directory cursors.
 export fn list(path: String, max_entries: Int?) List[DirectoryEntry]!:
-    return host().list(path, max_entries)
+    return msstd_fs_list(path, max_entries)
 
 type ReadArgs:
     path: String
@@ -628,42 +653,42 @@ type WriteBytesArgs:
 export fn read_file(path: String, max_bytes: Int?) Promise[Bytes]:
     return owned_promise[ReadArgs, Bytes](
         ReadArgs(path: path.clone(), max_bytes: max_bytes),
-        fn a: host().read_file(a.path, a.max_bytes)
+        fn a: msstd_fs_read_file(a.path, a.max_bytes)
     )
 
 // Returns the target text stored in the symbolic link at `path`, without resolving it.
 // A path that is not a link returns InvalidInput.
 export fn read_link(path: String) String!:
-    return host().read_link(path)
+    return msstd_fs_read_link(path)
 
 // Removes a file or empty directory; recursive defaults to False, retaining nonempty trees.
 // A missing path returns NotFound, except that a recursive removal of a missing path succeeds.
 export fn remove(path: String, recursive: Bool = false) Unit!:
-    return host().remove(path, recursive)
+    return msstd_fs_remove(path, recursive)
 
 // Moves `source` to `destination` using the operating system's rename, applying its rules for replacing an existing destination.
 // It never falls back to copying, so a move across devices returns an error.
 export fn rename(source: String, destination: String) Unit!:
-    return host().rename(source, destination)
+    return msstd_fs_rename(source, destination)
 
 // Returns metadata for `path`. `follow_links` True describes the link target and False describes the link itself.
 export fn stat(path: String, follow_links: Bool) FileInfo!:
-    return host().stat(path, follow_links)
+    return msstd_fs_stat(path, follow_links)
 
 // Queries the host temp root without creating or checking a directory.
 export fn temporary_root() String!:
-    return host().temporary_root()
+    return ok(msstd_fs_temporary_root())
 
 // Creates a new directory under the host temp root; the caller must remove it.
 // Prefix must be nonempty and contain no slash, backslash, or NUL.
 export fn temporary_directory(prefix: String) String!:
-    return host().temporary_directory(prefix)
+    return msstd_fs_temporary_directory(prefix)
 
 // Starts creating a file exclusively and returns its promise; replace defaults to False, retaining an existing file.
 export fn write_file(path: String, data: String, replace: Bool = false) Promise[Unit]:
     return owned_promise[WriteArgs, Unit](
         WriteArgs(path: path.clone(), data: data.clone(), replace: replace),
-        fn a: host().write_file(a.path, a.data, a.replace)
+        fn a: msstd_fs_write_file(a.path, a.data.to_bytes(), a.replace)
     )
 
 // Starts creating a file exclusively from raw bytes and returns its promise; replace defaults to False, retaining an existing file.
@@ -676,34 +701,34 @@ export fn write_file_bytes(
         WriteBytesArgs(
             path: path.clone(), data: data.clone(), replace: replace
         ),
-        fn a: host().write_file_bytes(a.path, a.data, a.replace)
+        fn a: msstd_fs_write_file(a.path, a.data, a.replace)
     )
 
 // Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined bits.
 // Native permissions and Windows access policy still apply.
 export fn access(path: String, mode: Int) Unit!:
-    return host().access(path, mode)
+    return msstd_fs_access(path, mode)
 
 // Appends `data` to the end of the file, creating it with mode 0600 when absent. Writes every byte or fails, possibly leaving a partial append.
 export fn append_file(path: String, data: String) Unit!:
-    return host().append_file(path, data)
+    return msstd_fs_append_file(path, data.to_bytes())
 
 // Appends raw bytes to the end of the file, with the same creation and partial-write rules as append_file.
 export fn append_file_bytes(path: String, data: Bytes) Unit!:
-    return host().append_file_bytes(path, data)
+    return msstd_fs_append_file(path, data)
 
 // Changes target permissions with mode 0..4095; follows a final symbolic link.
 export fn chmod(path: String, mode: Int) Unit!:
-    return host().chmod(path, mode)
+    return msstd_fs_chmod(path, mode, true)
 
 // Sets the owning user and group of `path` by numeric id; -1 leaves that id unchanged.
 // `follow_links` chooses the link target (True) or the link itself (False). Usually needs privilege, and Windows returns Unsupported.
 export fn chown(path: String, uid: Int, gid: Int, follow_links: Bool) Unit!:
-    return host().chown(path, uid, gid, follow_links)
+    return msstd_fs_chown(path, uid, gid, follow_links)
 
 // Sets the target size in bytes; follows a final symbolic link.
 export fn truncate(path: String, size: Int) Unit!:
-    return host().truncate(path, size)
+    return msstd_fs_truncate(path, size)
 
 // Sets the access and modification times of `path`.
 // `follow_links` chooses the link target (True) or the link itself (False); no-follow updates return Unsupported where the host lacks them, such as Windows.
@@ -713,22 +738,22 @@ export fn set_times(
     modified: Timestamp,
     follow_links: Bool
 ) Unit!:
-    return host().set_times(path, accessed, modified, follow_links)
+    return msstd_fs_set_times(path, accessed, modified, follow_links)
 
 // Creates `destination` as another name for the file at `source`.
 // An existing destination returns AlreadyExists; it must be on the same filesystem as `source`.
 export fn hard_link(source: String, destination: String) Unit!:
-    return host().hard_link(source, destination)
+    return msstd_fs_hard_link(source, destination)
 
 // Opens with exactly r, r+, w, wx, w+, wx+, a, ax, a+, or ax+; other strings return InvalidInput.
 // Mode is permission bits in 0..4095, applied on creation subject to umask/OS policy.
 export fn open(path: String, flags: String, mode: Int) FileHandle!:
-    return host().open(path, flags, mode)
+    return msstd_fs_open(path, flags, mode)
 
 // Opens `path` as a directory cursor that yields one child per `read` in native order; close it when done.
 // A path that is not a directory returns InvalidInput.
 export fn open_directory(path: String) Directory!:
-    return host().open_directory(path)
+    return msstd_fs_directory_open(path)
 
 /*
 Replaces the file at `path` with `data` all-or-nothing: readers see the old contents or the new, never a partial file.
@@ -828,7 +853,7 @@ export fn watch(
 
         return ok(
             watch_stream(
-                try host().watch(
+                try msstd_fs_watch(
                     path, recursive, interval, options.max_entries
                 )
             )
@@ -836,7 +861,7 @@ export fn watch(
 
     return ok(
         watch_stream(
-            try host().watch_native(
+            try msstd_fs_watch_native(
                 path, recursive, options.max_entries, options.max_events,
                 options.overflow.get("error")
             )
@@ -846,16 +871,16 @@ export fn watch(
 // Creates a new temp directory whose contents are removed by scoped close.
 // Prefix has the same validation as temporary_directory; this does not query the temp root.
 export fn temporary(prefix: String) TemporaryDirectory!:
-    return host().temporary(prefix)
+    return msstd_fs_temporary_open(prefix)
 
 // Returns capacity and free-space statistics for the filesystem containing `path`.
 // Hosts without the query return Unsupported.
 export fn stat_filesystem(path: String) FileSystemInfo!:
-    return host().stat_filesystem(path)
+    return msstd_fs_stat_filesystem(path)
 
 // Changes the link itself without following it; Unsupported on hosts lacking this operation.
 export fn chmod_link(path: String, mode: Int) Unit!:
-    return host().chmod_link(path, mode)
+    return msstd_fs_chmod(path, mode, false)
 
 // Returns the final path component, excluding trailing separators.
 export fn basename(path: String) String:

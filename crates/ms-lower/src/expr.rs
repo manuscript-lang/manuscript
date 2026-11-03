@@ -2,11 +2,12 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use crate::nativerec::NativeRec;
+use crate::nativerec::native_rec;
 use ms_check::hir::Resolution;
-use ms_check::types::{self as ct, Kind};
+use ms_check::types::{self as ct, Builtin, Kind};
 use ms_mir::ir::{Cc, Op, Value};
 use ms_mir::types::Native;
+use ms_mir::types::NativeRec;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -439,7 +440,7 @@ impl<'a> FnLower<'a> {
         let Some(case) = case else {
             return Err(Error::new("type used as a value"));
         };
-        if t.is_std("Optional") {
+        if t.is(Builtin::Optional) {
             let v = self.b.opt_none(mt);
             return Ok(Val { v, own: false });
         }
@@ -535,7 +536,7 @@ impl<'a> FnLower<'a> {
     }
 
     fn index(&mut self, e: &Expr, left: &Expr, index: &Expr) -> Result<Val, Error> {
-        if self.ety(left).is_std("Map") {
+        if self.ety(left).is(Builtin::Map) {
             return self.map_index(e, left, index);
         }
         let l = self.expr(left)?;
@@ -812,34 +813,27 @@ impl<'a> FnLower<'a> {
             let (a, b) = (self.duration_nanos(a)?, self.duration_nanos(b)?);
             return Ok(self.b.icmp(cc, a, b));
         }
-        let sym = if self.is_bigint(t) {
-            Some("msstd_bigint_compare")
+        let (a, b) = (self.borrow(l), self.borrow(r));
+        let c = if self.is_bigint(t) {
+            Some(self.call_runtime("msstd_bigint_compare", &[a, b], MTy::INT)?)
         } else {
-            self.ordering_symbol(t)
+            self.native_compare(t, a, b)?
         };
-        if let Some(sym) = sym {
-            let a = self.borrow(l);
-            let b = self.borrow(r);
-            let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
+        if let Some(c) = c {
             let zero = self.b.iconst(0);
             return Ok(self.b.icmp(cc, c, zero));
         }
         Err(Error::new("ordering this type is not supported yet"))
     }
 
-    /// The runtime function ordering two values of a native record type (`-1`, `0` or `1`).
-    pub(crate) fn ordering_symbol(&self, t: MTy) -> Option<&'static str> {
-        NativeRec::of(self.b.m, t)?.compare_symbol()
-    }
-
     /// Whether `t` is the `Duration` record.
     pub(crate) fn is_duration(&self, t: MTy) -> bool {
-        NativeRec::of(self.b.m, t) == Some(NativeRec::Duration)
+        native_rec(self.b.m, t) == Some(NativeRec::Duration)
     }
 
     /// Whether `t` is the `Instant` record.
     fn is_instant(&self, t: MTy) -> bool {
-        NativeRec::of(self.b.m, t) == Some(NativeRec::Instant)
+        native_rec(self.b.m, t) == Some(NativeRec::Instant)
     }
 
     /// Whether `t` is the `BigInt` runtime object.
@@ -849,7 +843,7 @@ impl<'a> FnLower<'a> {
 
     /// Whether `t` is the `Decimal` record.
     pub(crate) fn is_decimal(&self, t: MTy) -> bool {
-        NativeRec::of(self.b.m, t) == Some(NativeRec::Decimal)
+        native_rec(self.b.m, t) == Some(NativeRec::Decimal)
     }
 
     /// Structural equality of two operands of the same type.

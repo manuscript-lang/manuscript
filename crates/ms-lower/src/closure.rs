@@ -7,6 +7,7 @@ use crate::cx::{
 use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
+use ms_check::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncId, FuncKind, Imm, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -1070,8 +1071,8 @@ impl FnLower<'_> {
             args.push(match s {
                 Some(v) => v,
                 None if missing_value == Some(declared[i].name)
-                    && declared[i].ty.is_std("Optional")
-                    && declared[i].ty.args[0].is_std("Error") =>
+                    && declared[i].ty.is(Builtin::Optional)
+                    && declared[i].ty.args[0].is(Builtin::Error) =>
                 {
                     self.at(e.pos);
                     let cause_ty = self.mty(&declared[i].ty.args[0])?;
@@ -1312,28 +1313,6 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
             fl.emit_return(Some(out));
             return Ok(());
         }
-        "html/parse" => {
-            fl.fill_native_defaults(job.sym.module, func, &job.params, &mut args)?;
-            let node = job.result.args.first().cloned();
-            let node = node.ok_or_else(|| Error::new("parse without a node type"))?;
-            let out = fl.html_parse(&node, ret, &args)?;
-            fl.emit_return(Some(out));
-            return Ok(());
-        }
-        "random/draw_int"
-        | "random/draw_uuid"
-        | "random/draw_float"
-        | "random/draw_shuffle"
-        | "random/draw_choice" => {
-            let out = fl.random_with(&job.native, &args, ret)?;
-            fl.emit_return(Some(out));
-            return Ok(());
-        }
-        "time/clock" | "time/wall_clock" => {
-            let out = fl.time_clock(ret, job.native == "time/wall_clock")?;
-            fl.emit_return(Some(out));
-            return Ok(());
-        }
         other => {
             if let Some(handle) = crate::stdnative::handle_of(other) {
                 let out = fl.handle_interface(
@@ -1366,7 +1345,7 @@ impl FnLower<'_> {
         let mut args: Vec<crate::native::NArg> = Vec::new();
         for (i, (p, v)) in params.iter().zip(vals).enumerate() {
             let default = func.and_then(|f| f.params.get(i)?.default.as_ref());
-            let omittable = default.is_some() || p.ty.is_std("Optional");
+            let omittable = default.is_some() || p.ty.is(Builtin::Optional);
             let passed = self.ty_of(*v);
             let declared = if omittable && matches!(self.b.m.types.kind(passed), TyKind::Opt(_)) {
                 self.mty(&p.ty)?
@@ -1374,7 +1353,7 @@ impl FnLower<'_> {
                 passed
             };
             let lifted = passed != declared;
-            let none_default = p.ty.is_std("Optional")
+            let none_default = p.ty.is(Builtin::Optional)
                 && default
                     .is_none_or(|d| matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none"));
             let val = if lifted && none_default {

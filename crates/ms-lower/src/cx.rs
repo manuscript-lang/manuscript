@@ -4,9 +4,10 @@ use crate::Error;
 use ms_check::Program;
 use ms_check::hir::{Callable, ModuleHir};
 use ms_check::ownership::BorrowKind;
-use ms_check::types::{self as ct, Kind, Name, Subst};
+use ms_check::types::{self as ct, Builtin, Kind, Name, Subst};
 use ms_mir::ir::{FuncId, Module};
 use ms_mir::types::{CaseDef, IfaceDef, MethodSig, Ty as MTy};
+use ms_mir::types::{Native, NativeRec};
 use ms_syntax::NodeId;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -62,8 +63,6 @@ pub enum JobKind {
     FnAdapt(Rc<FnAdaptJob>),
     /// A JSON decoder or encoder of a type.
     Json(Rc<crate::json::JsonJob>),
-    /// A copy of an HTML parse tree into `HtmlNode`.
-    Html(Rc<crate::html::HtmlJob>),
     /// A forwarder of an interface operation to a runtime handle function.
     HandleMethod(Rc<crate::natiface::MethodJob>),
 }
@@ -415,8 +414,8 @@ impl Cx {
                 Ok(m.types.func(params, ret))
             }
             Kind::Native => self.lower_native_ty(m, t),
-            Kind::Record if t.is_std("Bytes") => Ok(MTy::BYTES),
-            Kind::Alternative if t.is_std("Optional") => {
+            Kind::Record if t.is(Builtin::Bytes) => Ok(MTy::BYTES),
+            Kind::Alternative if t.is(Builtin::Optional) => {
                 let inner = self.lower_ty(m, &t.args[0])?;
                 Ok(m.types.opt(inner))
             }
@@ -425,6 +424,15 @@ impl Cx {
             }
             Kind::Record => {
                 let (id, ty) = m.add_record(&t.to_string(), Vec::new());
+                m.records[id.index()].native = if t.is_time("Timestamp") {
+                    Some(NativeRec::Timestamp)
+                } else if t.is_time("Instant") {
+                    Some(NativeRec::Instant)
+                } else if t.is_time("Duration") {
+                    Some(NativeRec::Duration)
+                } else {
+                    None
+                };
                 self.tycache.insert(key.to_string(), ty);
                 if t.opaque_module().is_some() {
                     self.opaque_tys.insert(ty);
@@ -517,24 +525,28 @@ impl Cx {
     }
 
     fn is_native_collection(&self, t: &ct::Ty) -> bool {
-        t.is_std("List") || t.is_std("Map") || t.is_std("Set")
+        t.is(Builtin::List) || t.is(Builtin::Map) || t.is(Builtin::Set)
     }
 
     fn lower_native_ty(&mut self, m: &mut Module, t: &ct::Ty) -> Result<MTy, Error> {
-        if t.is_std("List") {
+        if t.is(Builtin::List) {
             let e = self.lower_ty(m, &t.args[0])?;
             return Ok(m.types.list(e));
         }
-        let name = ["Map", "Set"].into_iter().find(|n| t.is_std(n));
-        if let Some(name) = name {
+        let native = match t.builtin {
+            Some(Builtin::Map) => Some(Native::Map),
+            Some(Builtin::Set) => Some(Native::Set),
+            _ => None,
+        };
+        if let Some(native) = native {
             let mut args = Vec::new();
             for a in &t.args {
                 args.push(self.lower_ty(m, a)?);
             }
-            return Ok(m.types.obj(name, args));
+            return Ok(m.types.native(native, args));
         }
         // Bytes is a growable byte buffer; the text and byte builders are owned values over one.
-        if t.is_std("Bytes") || ms_check::effects::is_text_builder(t) {
+        if t.is(Builtin::Bytes) || ms_check::effects::is_text_builder(t) {
             return Ok(MTy::BYTES);
         }
         // Plain-data natives share the runtime's `repr(C)` layout.
@@ -542,6 +554,7 @@ impl Cx {
         for (name, fields) in pod {
             if t.is_std(name) {
                 let (id, ty) = m.add_record(name, Vec::new());
+                m.records[id.index()].native = Some(NativeRec::Decimal);
                 m.records[id.index()].fields =
                     fields.iter().map(|f| (f.to_string(), MTy::INT)).collect();
                 return Ok(ty);
@@ -549,7 +562,7 @@ impl Cx {
         }
         // Arbitrary-precision integers have no runtime yet; the type exists so interfaces
         // that mention one (`FileInfo.exact`) can be declared.
-        if t.is_std("BigInt") {
+        if t.is(Builtin::BigInt) {
             return Ok(m.types.obj("BigInt", Vec::new()));
         }
         // Any other opaque runtime type is a reference-counted handle.

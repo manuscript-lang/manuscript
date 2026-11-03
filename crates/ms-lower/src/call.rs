@@ -3,7 +3,7 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::hir::{CallView, Callable, Resolution};
-use ms_check::types::{self as ct, Subst};
+use ms_check::types::{self as ct, Builtin, Subst};
 use ms_mir::ir::{Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
@@ -283,7 +283,7 @@ impl<'a> FnLower<'a> {
         let ty = ct::sub(&binding.ty, subst);
         let mty = self.cx.lower_ty(self.b.m, &ty)?;
         let Some(d) = default else {
-            if ty.is_std("Optional") {
+            if ty.is(Builtin::Optional) {
                 let v = self.b.opt_none(mty);
                 return Ok(Val { v, own: false });
             }
@@ -293,7 +293,8 @@ impl<'a> FnLower<'a> {
             return Err(Error::new(format!("missing argument {}", binding.name)));
         };
         // `none` in a bundled declaration carries no checked expression.
-        if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") && ty.is_std("Optional") {
+        if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") && ty.is(Builtin::Optional)
+        {
             let v = self.b.opt_none(mty);
             return Ok(Val { v, own: false });
         }
@@ -741,7 +742,7 @@ impl<'a> FnLower<'a> {
                 }
                 // Equality is derived for every type that has no implementation of its own.
                 if m.name().is_some_and(|n| n.as_str() == "equals")
-                    && contract.is_std("Equal")
+                    && contract.is(Builtin::Equal)
                     && let [other] = view.arguments.as_slice()
                 {
                     let recv = self.expr(recv_expr)?;
@@ -758,7 +759,7 @@ impl<'a> FnLower<'a> {
                 }
                 // Built-in scalars order themselves against another of their own type.
                 if m.name().is_some_and(|n| n.as_str() == "compare")
-                    && contract.is_std("Comparable")
+                    && contract.is(Builtin::Comparable)
                     && let [other] = view.arguments.as_slice()
                 {
                     let recv = self.expr(recv_expr)?;
@@ -777,7 +778,7 @@ impl<'a> FnLower<'a> {
                 // A resource closed through its parts (a record holding one) has no `close` of
                 // its own: closing it closes what it holds.
                 if m.name().is_some_and(|n| n.as_str() == "close")
-                    && contract.is_std("Closeable")
+                    && contract.is(Builtin::Closeable)
                     && let Some(kind) = self.part_closer(&static_ty)?
                 {
                     let recv = self.expr(recv_expr)?;
@@ -940,7 +941,7 @@ impl<'a> FnLower<'a> {
         let mt = self.cx.lower_ty(self.b.m, &t)?;
         if crate::mapset::is_map_or_set(self.b.m, mt)
             || matches!(self.b.m.types.kind(mt), TyKind::List(_))
-            || t.is_std("Bytes")
+            || t.is(Builtin::Bytes)
             || ms_check::effects::is_text_builder(&t)
         {
             return self.construct_collection(view, mt);
@@ -1068,12 +1069,13 @@ impl<'a> FnLower<'a> {
         let ft = ct::fields(t)[i].ty.clone();
         let fm = self.cx.lower_ty(self.b.m, &ft)?;
         let Some(d) = &field.default else {
-            if ft.is_std("Optional") {
+            if ft.is(Builtin::Optional) {
                 return Ok(self.none_owned(fm));
             }
             return Err(Error::new(format!("missing field {}", field.name)));
         };
-        if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") && ft.is_std("Optional") {
+        if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") && ft.is(Builtin::Optional)
+        {
             return Ok(self.none_owned(fm));
         }
         if self.cx.module(sym.module).is_err() {
@@ -1112,7 +1114,7 @@ impl<'a> FnLower<'a> {
         let val = |v| Val { v, own: false };
         Ok(match &d.kind {
             ExprKind::Bool(b) => Some(val(self.b.bconst(*b))),
-            ExprKind::Name(n) if n.as_str() == "none" && t.is_std("Optional") => {
+            ExprKind::Name(n) if n.as_str() == "none" && t.is(Builtin::Optional) => {
                 Some(val(self.b.opt_none(mt)))
             }
             ExprKind::Number(n) if t.id.as_str() == "Int" => {
@@ -1156,7 +1158,7 @@ impl<'a> FnLower<'a> {
             ExprKind::Call { args, .. }
                 if args.is_empty()
                     && crate::mapset::is_map_or_set(self.b.m, mt)
-                    && t.is_std("Map") =>
+                    && t.is(Builtin::Map) =>
             {
                 let v = self.map_new(mt)?;
                 Some(Val { v, own: true })

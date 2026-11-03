@@ -9,6 +9,7 @@ use crate::native::NArg;
 use crate::rtcall::Input;
 use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
+use ms_check::types::Builtin;
 use ms_mir::builder::Var;
 use ms_mir::ir::{Cc, Imm, Mode, Op, Value};
 use ms_mir::types::Native;
@@ -242,9 +243,9 @@ impl<'a> FnLower<'a> {
         }
         let same_map = matches!(map.kind, ExprKind::Name(_))
             && matches!(self.hir.resolution(map), Resolution::Local(b) if b.uid == uid)
-            && self.ety(map).is_std("Map")
-            && self.ety(opt).is_std("Optional")
-            && self.ety(recv_expr).is_std("Map");
+            && self.ety(map).is(Builtin::Map)
+            && self.ety(opt).is(Builtin::Optional)
+            && self.ety(recv_expr).is(Builtin::Map);
         (same_map && self.same_key(&k2.value, key)).then_some(&d.value)
     }
 
@@ -272,7 +273,8 @@ impl<'a> FnLower<'a> {
         recv_expr: &Expr,
         name: &str,
     ) -> Result<Option<Val>, Error> {
-        if !matches!(name, "get" | "is_some" | "is_none") || !self.ety(recv_expr).is_std("Optional")
+        if !matches!(name, "get" | "is_some" | "is_none")
+            || !self.ety(recv_expr).is(Builtin::Optional)
         {
             return Ok(None);
         }
@@ -285,7 +287,7 @@ impl<'a> FnLower<'a> {
         let [key] = args.as_slice() else {
             return Ok(None);
         };
-        if n.as_str() != "get" || key.name.is_some() || !self.ety(map).is_std("Map") {
+        if n.as_str() != "get" || key.name.is_some() || !self.ety(map).is(Builtin::Map) {
             return Ok(None);
         }
         // A key the checker converts on the way in (an `Optional` key given a plain value) takes

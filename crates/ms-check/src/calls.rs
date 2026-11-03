@@ -198,7 +198,7 @@ impl Checker {
                 return i;
             }
             // `reserve` is named-only: `List[T](n)` stays an error.
-            let named_only = typ.is_std("List") && args.iter().any(|a| a.name.is_none());
+            let named_only = typ.is(Builtin::List) && args.iter().any(|a| a.name.is_none());
             let mut resolved = bind_arguments(args, &fields, !named_only);
             i.arguments = slots(&resolved);
             typ = self.instantiate(&typ, &fields, &resolved, expected, e.pos);
@@ -217,7 +217,7 @@ impl Checker {
                 }
             }
             fields = signature.params.clone();
-            if typ.is_std("Set") && args.is_empty() {
+            if typ.is(Builtin::Set) && args.is_empty() {
                 fields.clear();
             }
             i.no_return = self.arguments_for(
@@ -241,7 +241,7 @@ impl Checker {
                     self.res_error(e.pos, msg);
                     return i;
                 }
-                if alt.is_std("Optional") {
+                if alt.is(Builtin::Optional) {
                     self.res_error(
                         e.pos,
                         "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. let x: Int? = none",
@@ -284,7 +284,7 @@ impl Checker {
             cs = case;
         }
         if let (Some(alt), Some(cs)) = (alternative, cs) {
-            if alt.is_std("Optional") && cs.name == "some" {
+            if alt.is(Builtin::Optional) && cs.name == "some" {
                 self.type_error(
                     e.pos,
                     "there is no some(...); a plain value converts where a T? is expected, so pass it directly, or annotate the binding, e.g. let x: Int? = 5",
@@ -693,8 +693,8 @@ impl Checker {
         };
         // A plain constructor can infer its arguments from a matching Optional payload.
         let expected = expected.map(|exp| {
-            if !t.is_std("Optional")
-                && exp.is_std("Optional")
+            if !t.is(Builtin::Optional)
+                && exp.is(Builtin::Optional)
                 && exp.args.len() == 1
                 && exp.args[0].id == t.id
             {
@@ -794,7 +794,7 @@ impl Checker {
         {
             self.p.diagnostics.extend(c.diagnostics.iter().cloned());
         }
-        let optional = expected.filter(|x| x.is_std("Optional") && x.args.len() == 1);
+        let optional = expected.filter(|x| x.is(Builtin::Optional) && x.args.len() == 1);
         let Some(expected_optional) = optional else {
             return match info {
                 Some(i) => self.check_expression(e, i, expected),

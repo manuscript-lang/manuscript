@@ -27,16 +27,10 @@ import (
     msstd_time_parse_timestamp,
     msstd_time_from_calendar,
     msstd_time_timestamp,
-    msstd_time_clock,
-    msstd_time_wall_clock
+    msstd_time_clock_now,
+    msstd_time_wall_clock_now
 ) from "@std/internal/time.ms"
 import msrt_promise_sleep from "@std/internal/promises.ms"
-
-// A monotonic clock whose readings are suitable for measuring elapsed time.
-interface Clock:
-    // Returns the current reading of this monotonic clock.
-    // Readings are only comparable with others from the same clock and do not correspond to a calendar date.
-    fn now() Instant
 
 // A span of elapsed time, counted in signed nanoseconds.
 export type Duration:
@@ -296,12 +290,6 @@ export type Calendar:
     // The zone abbreviation at this moment, such as `UTC` or `EST`.
     zone: String
 
-// A clock that reports calendar time.
-interface WallClock:
-    // Returns the current calendar time as a UTC Timestamp with nanosecond precision.
-    // It can jump when the system clock is adjusted, so use Clock for elapsed time.
-    fn now() Timestamp
-
 // Writes `whole` with the digits of a fractional part `frac` of `width` places, trailing zeros dropped.
 fn duration_decimal(whole: Int, frac: Int, width: Int) String:
     if frac == 0:
@@ -515,12 +503,12 @@ export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!:
 // Returns the current reading of the monotonic clock, for measuring elapsed time.
 // Readings are only comparable with others from this clock and do not correspond to a calendar date.
 export fn monotonic() Instant:
-    return msstd_time_clock().now()
+    return msstd_time_clock_now()
 
 // Returns the current calendar time as a UTC Timestamp with nanosecond precision.
 // It can jump when the system clock is adjusted, so use `monotonic` for elapsed time.
 export fn now() Timestamp:
-    return msstd_time_wall_clock().now()
+    return msstd_time_wall_clock_now()
 
 // A point on the monotonic clock to wait for or check against, such as a request's time budget.
 export type Deadline:

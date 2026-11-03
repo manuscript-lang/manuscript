@@ -4,6 +4,7 @@
 use super::{Finding, finding, module_file};
 use crate::walk::walk_module;
 use ms_check::ModuleData;
+use ms_check::types::Builtin;
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
 
@@ -39,7 +40,7 @@ impl Visitor for Scan<'_> {
             .facts()
             .info(left.id)
             .and_then(|i| i.ty.as_ref())
-            .is_some_and(|t| t.is_std("Optional"));
+            .is_some_and(|t| t.is(Builtin::Optional));
         if absent_faults {
             self.findings.push(finding(
                 "MSL110",

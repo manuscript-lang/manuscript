@@ -306,7 +306,7 @@ struct Walker<'a> {
 fn no_clone(t: &Ty) -> Option<&'static str> {
     match t.kind {
         Kind::Function => Some("a function value cannot be cloned"),
-        Kind::Contract if !t.is_std("Closeable") => Some(
+        Kind::Contract if !t.is(Builtin::Closeable) => Some(
             "an interface value cannot be cloned (convert a clone of the concrete value instead)",
         ),
         _ => None,
@@ -677,7 +677,7 @@ impl Walker<'_> {
             // A conversion to an interface with a `var fn` copies: a call through the view
             // could change leaves the view only borrows.
             let target = self.cx.m.ty(x);
-            let iface = if target.is_std("Result") {
+            let iface = if target.is(Builtin::Result) {
                 target.args.get(1).cloned()
             } else {
                 Some(target)
@@ -948,7 +948,8 @@ impl Walker<'_> {
         let Resolution::Constructor { ty, case: Some(_) } = self.cx.m.resolution(e) else {
             return None;
         };
-        (ty.is_std("Result") && args.len() == 1 && args[0].name.is_none()).then(|| &args[0].value)
+        (ty.is(Builtin::Result) && args.len() == 1 && args[0].name.is_none())
+            .then(|| &args[0].value)
     }
 
     /// The parameters and receiver a returned expression is a part of, when it is one: a place
@@ -1160,8 +1161,8 @@ impl Walker<'_> {
         }
         let recv = self.cx.m.ty(left);
         let lends = match (name.as_str(), args.len()) {
-            ("get", 1) => recv.is_std("Map"),
-            ("first" | "last", 0) => recv.is_std("List"),
+            ("get", 1) => recv.is(Builtin::Map),
+            ("first" | "last", 0) => recv.is(Builtin::List),
             _ => false,
         };
         lends.then_some(&**left)
@@ -1177,7 +1178,7 @@ impl Walker<'_> {
         };
         name.as_str() == "get"
             && args.len() == 1
-            && self.cx.m.ty(left).is_std("Map")
+            && self.cx.m.ty(left).is(Builtin::Map)
             && matches!(self.cx.m.resolution(e), Resolution::Method(m) if !m.native.as_str().is_empty())
     }
 
@@ -1525,7 +1526,7 @@ impl Walker<'_> {
             return Step::Element;
         };
         let literal = || ms_syntax::number::canonical(t.as_str()).parse::<u64>().ok();
-        if self.cx.m.ty(left).is_std("List")
+        if self.cx.m.ty(left).is(Builtin::List)
             && !t.as_str().contains(['.', 'e', 'E'])
             && !t.ends_with('d')
         {
@@ -4159,7 +4160,7 @@ impl Walker<'_> {
         self.declared.truncate(mark);
         self.captured.pop();
         let mutated = self.mutated.pop().unwrap_or_default();
-        for (uid, perm) in saved_meta {
+        for &(uid, perm) in &saved_meta {
             if let Some(m) = self.meta.get_mut(&uid) {
                 m.perm = perm;
             }
@@ -4192,6 +4193,21 @@ impl Walker<'_> {
                 // closure cannot take it over (it is borrowed or used again), `capture_move` asks
                 // for an explicit `.clone()` rather than copying it silently.
                 if class == Class::Copy {
+                    // A `var` used again would diverge from the closure's copy: the closure
+                    // cannot borrow it (it outlives the statement), so refuse the silent snapshot.
+                    if saved_perm(&saved_meta, b.uid) == Some(Perm::Mutable)
+                        && !self.is_last(e.id, b)
+                    {
+                        let name = b.name;
+                        let later = self
+                            .next_use(e.id, b)
+                            .map(|n| format!(" at {}", self.at(n)))
+                            .unwrap_or_default();
+                        self.error(
+                            e.pos,
+                            format!("this closure outlives the statement but captures the `var` `{name}`, which is used again{later}; the closure would keep a stale copy, so bind a `let` copy before the closure and capture that"),
+                        );
+                    }
                     self.record(e.id, b, Access::Copy);
                     facts.push((b.uid, CaptureMode::Copy));
                 } else {
@@ -4314,6 +4330,10 @@ impl Walker<'_> {
             self.escaped.insert(l);
         }
     }
+}
+
+fn saved_perm(saved: &[(usize, Perm)], uid: usize) -> Option<Perm> {
+    saved.iter().find(|(u, _)| *u == uid).map(|(_, p)| *p)
 }
 
 /// How the parts of a matched or destructured value are held.

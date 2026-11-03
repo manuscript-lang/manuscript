@@ -36,7 +36,7 @@ pub(crate) const CONFLICTING_INFERENCE: &str = "conflicting generic inference; a
 /// The function type a callback argument is checked against.
 pub(crate) fn callback_context(expected: Option<&Ty>) -> Option<Ty> {
     let mut expected = expected?.clone();
-    if expected.is_std("Optional") && expected.args.len() == 1 {
+    if expected.is(Builtin::Optional) && expected.args.len() == 1 {
         expected = expected.args[0].clone();
     }
     (expected.kind == Kind::Function).then_some(expected)
@@ -278,7 +278,7 @@ impl Checker {
         };
         let actual_ty = actual.t();
         if invalid_ty(&actual_ty) {
-            if pattern.is_std("Optional") && actual_ty.kind == Kind::Function {
+            if pattern.is(Builtin::Optional) && actual_ty.kind == Kind::Function {
                 pattern = pattern.args[0].clone();
             }
             if !infer_invalid_argument(Some(&pattern), Some(&actual_ty), vars, s) {
@@ -292,16 +292,16 @@ impl Checker {
         }
         // A `T?` argument after a plain value widens the variable to the optional.
         if vars.contains(&pattern.id)
-            && actual_ty.is_std("Optional")
+            && actual_ty.is(Builtin::Optional)
             && actual_ty.args.len() == 1
-            && !substituted.is_std("Optional")
+            && !substituted.is(Builtin::Optional)
             && compatible(&Some(substituted.clone()), &actual_ty.args[0])
         {
             s.insert(pattern.id, actual_ty.clone());
             return;
         }
         // A plain value beside an inferred `T?` wraps into it, as at a typed binding.
-        if substituted.is_std("Optional")
+        if substituted.is(Builtin::Optional)
             && substituted.args.len() == 1
             && compatible(&Some(actual_ty.clone()), &substituted.args[0])
         {
@@ -470,7 +470,7 @@ impl Checker {
         if attempt(pattern, s) {
             return true;
         }
-        pattern.is_std("Optional") && pattern.args.len() == 1 && attempt(&pattern.args[0], s)
+        pattern.is(Builtin::Optional) && pattern.args.len() == 1 && attempt(&pattern.args[0], s)
     }
 }
 
@@ -486,7 +486,7 @@ fn sized_literal_list(e: &Expr, parameter: Option<Ty>) -> bool {
     !items.is_empty()
         && items.iter().all(is_plain_literal)
         && parameter.is_some_and(|p| {
-            p.is_std("List") && p.args.len() == 1 && sized_number(Some(p.args[0].clone()))
+            p.is(Builtin::List) && p.args.len() == 1 && sized_number(Some(p.args[0].clone()))
         })
 }
 

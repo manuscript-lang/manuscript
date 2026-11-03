@@ -296,6 +296,11 @@ impl TyTable {
         self.intern(TyKind::Obj(Native::from_name(name), args))
     }
 
+    /// A runtime object type of a known identity.
+    pub fn native(&mut self, native: Native, args: Vec<Ty>) -> Ty {
+        self.intern(TyKind::Obj(native, args))
+    }
+
     /// Whether values of `ty` own storage that must be dropped.
     pub fn is_rc(&self, ty: Ty) -> bool {
         match self.kind(ty) {
@@ -410,6 +415,25 @@ pub struct RecordDef {
     pub name: String,
     /// Fields in declaration (and layout) order.
     pub fields: Vec<(String, Ty)>,
+    /// Whether this is the `{items, sealed}` box of a `Shared[T]` handle
+    /// (see [`crate::ir::Module::shared_handle`]). Not part of the text format.
+    pub shared_box: bool,
+    /// Which plain-data native record this is, when the runtime implements its operations.
+    /// Set where the record is lowered from its declaration; not part of the text format.
+    pub native: Option<NativeRec>,
+}
+
+/// A native record type known by identity: the runtime implements its ordering and text.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum NativeRec {
+    /// `Timestamp` of `@std/os/time.ms`.
+    Timestamp,
+    /// `Instant` of `@std/os/time.ms`.
+    Instant,
+    /// `Decimal` of `@std/math/decimal.ms`.
+    Decimal,
+    /// `Duration` of `@std/os/time.ms`.
+    Duration,
 }
 
 /// One case of an alternative.

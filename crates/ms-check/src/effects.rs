@@ -12,9 +12,9 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 /// methods say so with `var fn` in their `@std` declaration; so do `StringBuilder` and `BytesBuilder`.
 pub fn collection_mutation(method: &Method) -> bool {
     let receiver = &method.receiver;
-    (receiver.is_std("List")
-        || receiver.is_std("Map")
-        || receiver.is_std("Set")
+    (receiver.is(Builtin::List)
+        || receiver.is(Builtin::Map)
+        || receiver.is(Builtin::Set)
         || is_text_builder(receiver))
         && method
             .decl
@@ -25,7 +25,7 @@ pub fn collection_mutation(method: &Method) -> bool {
 
 /// `StringBuilder` and `BytesBuilder`: owned values whose `build` consumes them.
 pub fn is_text_builder(t: &Ty) -> bool {
-    t.is_std("StringBuilder") || t.is_std("BytesBuilder")
+    t.is_std("StringBuilder") || t.is(Builtin::BytesBuilder)
 }
 
 enum Target {
@@ -111,7 +111,6 @@ impl Scan<'_> {
         let add =
             |s: &mut BTreeSet<&'static str>, list: &[&'static str]| s.extend(list.iter().copied());
         match receiver.id.as_str() {
-            "@std/Clock" => add(&mut self.effects, &["read"]),
             "@std/Files" | "@std/File" | "@std/ReadStream" => {
                 add(&mut self.effects, &["external-call", "read"]);
                 if name == "close" {
