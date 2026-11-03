@@ -226,10 +226,7 @@ impl FnLower<'_> {
         let mut all = drops.to_vec();
         all.push(r);
         self.jrequire(ok, &all, vars);
-        let x = self.b.opt_get(r);
-        let owned = self.owned(Val { v: x, own: false });
-        self.drop_value(r);
-        owned
+        self.b.opt_unbox(r)
     }
 
     fn jdecode_call(
@@ -1469,10 +1466,8 @@ impl FnLower<'_> {
                     good,
                     rty,
                     &mut |s| {
-                        // Dropping `r` beside the copy lets the optimizer move the payload out.
-                        let x = s.b.opt_get(r);
-                        let x = s.owned(Val { v: x, own: false });
-                        s.drop_value(r);
+                        // The decoded value moves out of the optional.
+                        let x = s.b.opt_unbox(r);
                         Ok(Some(s.b.alt_new(ra, ok as u32, &[x])))
                     },
                     &mut |s| {

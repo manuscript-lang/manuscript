@@ -2846,7 +2846,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let (e, leaves, size) = self.elem_info(lt);
                 let l = self.a(inst, 0);
                 let nl = self.b.ins().iadd_imm_s(l[1], -1);
-                if self.g.m.needs_drop(e) {
+                // `list.droplast 1` follows a `list.take` of that element: nothing to drop.
+                if self.g.m.needs_drop(e) && inst.imm != Imm::Int(1) {
                     let off = self.b.ins().imul_imm_s(nl, size);
                     let at = self.b.ins().iadd(l[0], off);
                     let old = self.load_leaves(at, 0, &leaves);

@@ -1212,10 +1212,7 @@ impl<'a> FnLower<'a> {
             (_, "to_string") if m.receiver.is_time("Duration") => self.duration_text(recv),
             (_, "to_string") => self.format_value(recv),
             (_, "clone") => {
-                let v = self.owned(Val {
-                    v: recv.v,
-                    own: false,
-                });
+                let v = self.clone_value(recv.v);
                 if recv.own {
                     self.drop_value(recv.v);
                 }
@@ -1357,10 +1354,7 @@ impl<'a> FnLower<'a> {
             });
         }
         if name == "clone" {
-            let v = self.owned(Val {
-                v: recv.v,
-                own: false,
-            });
+            let v = self.clone_value(recv.v);
             return Ok(Val { v, own: true });
         }
         if let (TyKind::Alt(a), "is_ok" | "is_error") =
@@ -2144,9 +2138,10 @@ impl<'a> FnLower<'a> {
                 self.close_finish(recv);
                 Ok(Val { v, own: false })
             }
-            "get" if args.is_empty() && self.needs_drop(inner) => {
-                // The payload is a borrow of the optional, which stays alive as a temporary; a
-                // consumer that keeps it copies it, and a `let` extends the temporary's life.
+            "get" if args.is_empty() && self.needs_drop(inner) && !recv.own => {
+                // The payload of a borrowed optional is a borrow of it: a reader uses it in
+                // place and a `let` holds it as a lexical borrow. (An owned optional hands its
+                // payload over below.)
                 let (good, bad) = (self.b.new_block(), self.b.new_block());
                 self.b.br_if(some, good, &[], bad, &[]);
                 self.b.seal_block(good);
@@ -2360,6 +2355,20 @@ impl<'a> FnLower<'a> {
         let tag = self.b.alt_tag(r);
         let k = self.b.iconst(ok as i64);
         let is_ok = self.b.icmp(ms_mir::ir::Cc::Eq, tag, k);
+        let payload = self.b.m.alts[alt.index()].cases[ok as usize].fields[0].1;
+        if name == "get" && args.is_empty() && !recv.own && self.needs_drop(payload) {
+            // The payload of a borrowed result is a borrow of it: a reader uses it in place, a
+            // `let` holds it as a lexical borrow, and only a consumer copies it.
+            let (good, bad) = (self.b.new_block(), self.b.new_block());
+            self.b.br_if(is_ok, good, &[], bad, &[]);
+            self.b.seal_block(good);
+            self.b.seal_block(bad);
+            self.b.switch_to(bad);
+            self.runtime_fault("msrt_fault_result_get");
+            self.b.switch_to(good);
+            let p = self.b.alt_get(alt, ok, 0, r);
+            return Ok(Val { v: p, own: false });
+        }
         let f = args.first().copied();
         match name {
             "get" => {
@@ -2742,13 +2751,13 @@ impl<'a> FnLower<'a> {
                 let cur = self.b.use_var(acc);
                 let one = self.b.iconst(1);
                 let last = self.b.binop(Op::ISub, n, one);
-                let x = self.b.list_get(cur, last);
-                let xo = self.owned(Val { v: x, own: false });
+                // The element moves out of the list; the list is shortened past it.
+                let xo = self.b.list_take(cur, last);
                 let some = self.b.opt_some(xo);
                 let placeholder = self.b.use_var(res);
                 self.drop_value(placeholder);
                 self.b.def_var(res, some);
-                let rest = self.b.list_drop_last(cur);
+                let rest = self.b.list_drop_last_taken(cur);
                 self.b.def_var(acc, rest);
                 self.b.br(join, &[]);
                 self.b.seal_block(join);

@@ -11,7 +11,7 @@ loop(%i: int, %list: own list<int>):
   br_if %inside, body(), done()
 body:
   %x: int = list.get %list, %i
-  %shorter: list<int> = list.droplast %list
+  %shorter: list<int> = list.droplast 0 %list
   %j: int = iadd.chk %i, %one
   br loop(%j, %shorter)
 done:

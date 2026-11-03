@@ -508,7 +508,7 @@ fn key_value(var reader: Reader, table: Int, depth: Int) Unit!:
 fn seal(var reader: Reader, value: Node) Unit:
     match value:
         TableNode(id):
-            var state = flags(reader, id)
+            var state = flags(reader, id).clone()
             if state.sealed: return unit
 
             state.sealed = true
@@ -990,7 +990,7 @@ export fn parse(text: String, limits: TomlLimits?) TomlValue!:
                     reader: var reader, parent: parent, key: key, dotted: false
                 )
 
-                var state = flags(reader, current)
+                var state = flags(reader, current).clone()
                 if state.explicit or state.dotted: return error(
                     invalid(reader, "table already defined")
                 )

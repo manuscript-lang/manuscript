@@ -537,7 +537,9 @@ impl Walker<'_> {
                 if wrapped {
                     self.facts.view_wraps.insert(e.id);
                     self.wrap_returns.push(e.id);
-                } else {
+                } else if !self.list_get(e) {
+                    // `xs.get(i)` beside a new value is withdrawn like a wrapper, and the
+                    // element is copied out; any other reference has no owned form.
                     self.plain_lent = true;
                 }
                 self.lend_receiver |= src.receiver;
@@ -554,7 +556,10 @@ impl Walker<'_> {
                 self.expr(e, Demand::Read);
                 return;
             }
-            self.owned_return.get_or_insert(e.pos);
+            // A bare `none` owns nothing, so a lender can hand it back beside its references.
+            if !matches!(&e.kind, ExprKind::Name(n) if n.as_str() == "none") {
+                self.owned_return.get_or_insert(e.pos);
+            }
         }
         // A reference converted on the way out (a lending call widened to another error type or
         // an interface) is read: the conversion builds the new value from it.
@@ -1039,6 +1044,19 @@ impl Walker<'_> {
                 _ => None,
             };
         }
+        // `xs.get(i)` is the element itself, a part of the receiver's sources whose field
+        // chain ends there. The other native lends (`m.get(k)`, `xs.first()`) wrap the element
+        // in an `Optional` the caller owns, so a function returning one owns its result.
+        if let Some(recv) = self.native_lend_receiver(e)
+            && self.list_get(e)
+        {
+            let mut src = self.lend_source(recv)?;
+            if src.view {
+                return None;
+            }
+            src.path = None;
+            return Some(src);
+        }
         if let ExprKind::Call { .. } = &e.kind {
             let lend = call_lend(self.cx.m, e, self.cx.summaries);
             if !lend.lends {
@@ -1165,11 +1183,22 @@ impl Walker<'_> {
         }
         let recv = self.cx.m.ty(left);
         let lends = match (name.as_str(), args.len()) {
-            ("get", 1) => recv.is(Builtin::Map),
+            ("get", 1) => recv.is(Builtin::Map) || recv.is(Builtin::List),
             ("first" | "last", 0) => recv.is(Builtin::List),
             _ => false,
         };
         lends.then_some(&**left)
+    }
+
+    /// Whether `e` is `xs.get(i)` on a `List`, without a default: the element read in place.
+    fn list_get(&self, e: &Expr) -> bool {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return false;
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return false;
+        };
+        name.as_str() == "get" && args.len() == 1 && self.cx.m.ty(left).is(Builtin::List)
     }
 
     /// Whether `e` is `map.get(key)` on a `Map`: an entry read in place.

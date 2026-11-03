@@ -602,6 +602,18 @@ impl<'a> FnLower<'a> {
             .expect("copy result")
     }
 
+    /// The copy a written `.clone()` makes of the borrowed `v` (`copy 1`): the one copy of an
+    /// object value a program may write, which the copy sweep leaves out.
+    pub fn clone_value(&mut self, v: Value) -> Value {
+        let t = self.ty_of(v);
+        if !self.needs_drop(t) {
+            return v;
+        }
+        self.b
+            .emit(Op::Copy, &[v], ms_mir::ir::Imm::Int(1), Some(t))
+            .expect("copy result")
+    }
+
     /// An owned `none` of optional type `t` (a bare `opt.none` is a borrow; its copy owns
     /// nothing, so the copy costs a null check and never touches an object).
     pub fn none_owned(&mut self, t: MTy) -> Value {

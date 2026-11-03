@@ -38,9 +38,9 @@ fn new_slot[T](value: T) Int:
 fn take_slot[T](slot: Int) T:
     let read = msrt_pipe_read(slot)
     let _code = msrt_promise_wait(read, -1)
-    let value = msrt_promise_take[T](read)
+    let value = msrt_promise_take[T](read).get()
     msrt_promise_drop(read)
-    return value.get()
+    return value
 
 fn put_slot[T](slot: Int, value: T) Unit:
     let _written = msrt_pipe_write(slot, value)
