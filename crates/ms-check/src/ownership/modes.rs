@@ -350,18 +350,15 @@ fn native_method_modes(
                 || same(held, &result)
                 || receiver.args.iter().any(|a| same(a, held));
             retained[i] = (mutator && stored) || value;
-            if p.ty.kind == Kind::Function {
-                return if callbacks_borrowed {
-                    ParamMode::Borrow
-                } else {
-                    ParamMode::Consume
-                };
-            }
+            // An element the mutator stores is owned by the collection, a function value
+            // included; a callback the native runs and drops is only lent.
             if mutator && stored {
-                ParamMode::Consume
-            } else {
-                ParamMode::Borrow
+                return ParamMode::Consume;
             }
+            if p.ty.kind == Kind::Function && !callbacks_borrowed {
+                return ParamMode::Consume;
+            }
+            ParamMode::Borrow
         })
         .collect();
     CallModes {
