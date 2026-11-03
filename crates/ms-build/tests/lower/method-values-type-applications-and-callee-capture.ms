@@ -13,13 +13,10 @@ export fn main() Int:
     let lookup = items.get
     let same = identity[Int]
     var selected = identity[Int]
-    let n = selected(
-        match present(0):
-            _value:
-                selected = fn(value: Int): value + 1
-                3
-            none: 3
-    )
+    if present(0).is_some():
+        selected = fn(value: Int): value + 1
+
+    let n = selected(3)
     let _r = stdout().write("{lookup(1)} {n} {run(same)} {count(fn(x: Int): x > 4)}\n")
     return 0
 
