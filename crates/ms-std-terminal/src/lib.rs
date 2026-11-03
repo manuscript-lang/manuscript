@@ -21,7 +21,7 @@ mod raw;
 mod raw;
 
 use core::cell::RefCell;
-use ms_rt::ffi::{Global, Has, ObjRef, Object, Out, StatusCode, abi_handle, native};
+use ms_rt::ffi::{ErrOut, Global, Has, ObjRef, Object, Out, StatusCode, abi_handle, native};
 use ms_rt::glue::poll_cancel;
 use ms_rt_abi::StrVal;
 use ms_rt_abi::{STATUS_NOT_TERMINAL, STATUS_OK, STATUS_UNSUPPORTED};
@@ -40,7 +40,7 @@ mod imp {
         std::env::var_os(name)
     }
 
-    pub fn open_raw(alternate: bool) -> Result<crate::raw::Raw, u8> {
+    pub fn open_raw(alternate: bool) -> Result<crate::raw::Raw, ms_rt::ffi::Failure> {
         crate::raw::Raw::open(stdin(), stdout(), alternate)
     }
 
@@ -80,9 +80,9 @@ mod imp {
         None
     }
 
-    pub fn open_raw(alternate: bool) -> Result<crate::raw::Raw, u8> {
+    pub fn open_raw(alternate: bool) -> Result<crate::raw::Raw, ms_rt::ffi::Failure> {
         if !is_terminal(0) || !is_terminal(1) {
-            return Err(ms_rt_abi::STATUS_NOT_TERMINAL);
+            return Err(ms_rt_abi::STATUS_NOT_TERMINAL.into());
         }
         crate::raw::Raw::open(0, 1, alternate)
     }
@@ -120,11 +120,6 @@ fn raw_mode_capable() -> bool {
 }
 
 native! {
-    /// The text of the last `FAILED` result.
-    fn msstd_terminal_failure_message() -> out StrVal {
-        ms_rt::glue::failure_message()
-    }
-
     safe fn msstd_terminal_capabilities_input_is_terminal() -> bool {
         is_terminal(0)
     }
@@ -169,9 +164,10 @@ native! {
 
     fn msstd_terminal_raw_mode(
         alternate_screen: bool,
-        out: Out<Object<raw::Raw>>,
+        out: Out<Object<raw::Raw>>;
+        err: ErrOut
     ) -> Result<(), StatusCode> {
-        out.write(Object(imp::open_raw(alternate_screen).map_err(StatusCode)?));
+        out.write(Object(imp::open_raw(alternate_screen).map_err(|f| err.fail(f))?));
         Ok(())
     }
 
@@ -192,19 +188,19 @@ native! {
         h.size().map_or(0, |s| s.1)
     }
 
-    fn msstd_terminal_raw_terminal_move_cursor(h: ObjRef<raw::Raw>, row: i64, column: i64) -> u8 {
+    fn msstd_terminal_raw_terminal_move_cursor(h: ObjRef<raw::Raw>, row: i64, column: i64; err: ErrOut) -> Result<(), StatusCode> {
         poll_cancel();
-        h.move_cursor(row, column)
+        h.move_cursor(row, column).map_err(|f| err.fail(f))
     }
 
-    fn msstd_terminal_raw_terminal_show_cursor(h: ObjRef<raw::Raw>, visible: bool) -> u8 {
+    fn msstd_terminal_raw_terminal_show_cursor(h: ObjRef<raw::Raw>, visible: bool; err: ErrOut) -> Result<(), StatusCode> {
         poll_cancel();
-        h.show_cursor(visible)
+        h.show_cursor(visible).map_err(|f| err.fail(f))
     }
 
-    fn msstd_terminal_raw_terminal_erase(h: ObjRef<raw::Raw>, region: i64) -> u8 {
+    fn msstd_terminal_raw_terminal_erase(h: ObjRef<raw::Raw>, region: i64; err: ErrOut) -> Result<(), StatusCode> {
         poll_cancel();
-        h.erase(region)
+        h.erase(region).map_err(|f| err.fail(f))
     }
 
     fn msstd_terminal_raw_terminal_next_event(
@@ -285,7 +281,9 @@ mod tests {
         }
         let mut out = core::ptr::null_mut();
         // SAFETY: the handle pointer is never written.
-        let status = unsafe { msstd_terminal_raw_mode(0, &mut out) };
+        let status = unsafe {
+            msstd_terminal_raw_mode(0, &mut out, ms_rt_abi::ErrSlot(core::ptr::null_mut()))
+        };
         assert_eq!(status, STATUS_NOT_TERMINAL);
         assert_eq!(msstd_terminal_capabilities_raw_mode(), 0);
     }
