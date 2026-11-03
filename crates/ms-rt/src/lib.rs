@@ -28,6 +28,7 @@ macro_rules! sym_prefix {
 
 pub mod alloc;
 pub mod bits;
+pub mod cells;
 pub mod cabi;
 pub mod channel;
 pub mod desc;
@@ -52,6 +53,8 @@ pub mod scan;
 pub mod sched;
 pub mod scope;
 pub mod start;
+#[cfg(not(windows))]
+pub mod streams;
 pub mod string;
 #[cfg(not(windows))]
 pub mod sys;
