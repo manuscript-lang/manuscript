@@ -123,7 +123,8 @@ impl Serving {
         }
     }
 
-    /// The serving whose identity (`msstd_http_serving_id`) is `id`.
+    /// The serving whose identity (`msstd_http_serving_id`) is `id`. Workaround for promises that
+    /// cannot own resources yet: https://github.com/manuscript-lang/manuscript/issues/2409
     ///
     /// # Safety
     /// The serving must be alive and stay so while the result is used.

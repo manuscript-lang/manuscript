@@ -674,7 +674,7 @@ export fn serve(
     if let cores = options.cores:
         msrt_runtime_set_threads(cores)
 
-    // The accept loop captures only the serving's id, a number, so it owns everything it uses.
+    // The accept loop captures only the serving's id, a number, so it owns everything it uses. Workaround until a promise can own resources: https://github.com/manuscript-lang/manuscript/issues/2409
     let accepting = promise(fn: accept_loop(id))
     return ok(
         HttpServer(

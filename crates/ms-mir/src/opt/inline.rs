@@ -296,7 +296,13 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
             };
             let gi = g.index();
             let callee = &m.funcs[gi];
-            if gi == fi || cyc[gi] || !matches!(callee.kind, FuncKind::Normal) {
+            // A callee that keeps a scoped closure (it starts a promise on it) stays a call: inlined,
+            // its closure would keep the scoped one, which the verifier rejects.
+            if gi == fi
+                || cyc[gi]
+                || callee.keeps_scoped
+                || !matches!(callee.kind, FuncKind::Normal)
+            {
                 continue;
             }
             let size = callee.inst_count();
@@ -818,6 +824,7 @@ fn specialize_in(
             if ci == fi
                 || cyc.get(ci).copied().unwrap_or(false)
                 || !matches!(callee.kind, FuncKind::Normal)
+                || callee.keeps_scoped
                 || callee.inline == InlineHint::Never
                 || callee.inst_count() > SPECIALIZE_MAX_SIZE
                 || !callee
