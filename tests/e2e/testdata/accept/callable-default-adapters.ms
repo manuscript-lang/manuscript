@@ -44,7 +44,9 @@ test "required native functions replace defaulted callable values":
 test "required bound methods replace defaulted callable values":
     let offset = Offset(2)
     var callback = offset.original
-    callback = offset.replacement
+
+    // Assigning a method value takes its receiver, as assigning a closure takes its captures.
+    callback = offset.clone().replacement
     try expect_equal(callback(3), 6)
 
 fn original_text(value: String = "default") Int: value.length()

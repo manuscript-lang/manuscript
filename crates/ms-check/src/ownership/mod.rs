@@ -183,6 +183,9 @@ pub struct CallableOwnership {
     /// Wrappers of a lent value (`x` as `x?`, `ok(x)`, `error(x)`) that stay references:
     /// lowering builds them with `opt.view` / `alt.view` instead of copying the payload.
     pub view_wraps: HashSet<NodeId>,
+    /// Method values (`re.find`) that stay local and borrow their receiver's place while they
+    /// live: lowering captures the receiver's address instead of copying the receiver.
+    pub bound_borrows: HashSet<NodeId>,
     /// Name expressions that move an interface view out of the local holding it, into a result
     /// that holds the same origins: lowering takes the value and leaves a view that owns nothing.
     pub view_moves: HashSet<NodeId>,
@@ -242,6 +245,8 @@ pub struct Ownership {
     pub view_lenders: HashSet<Key>,
     /// Wrappers of lent values that stay references, by module file and node.
     pub view_wraps: HashSet<(Name, NodeId)>,
+    /// Method values borrowing their receiver's place, by module file and node.
+    pub bound_borrows: HashSet<(Name, NodeId)>,
     /// Name expressions moving an interface view out of its local, by module file and node.
     pub view_moves: HashSet<(Name, NodeId)>,
     /// Lending calls whose result the caller owns (a source was a temporary), by module file and
@@ -341,6 +346,7 @@ impl Hir<'_> {
         let mut lenders = HashSet::new();
         let mut view_lenders = HashSet::new();
         let mut view_wraps = HashSet::new();
+        let mut bound_borrows = HashSet::new();
         let mut view_moves = HashSet::new();
         let mut owned_lends = HashMap::new();
         let mut getter_borrows = HashMap::new();
@@ -353,6 +359,7 @@ impl Hir<'_> {
                 lenders.insert((c.module.file, c.id()));
             }
             view_wraps.extend(out.facts.view_wraps.iter().map(|n| (c.module.file, *n)));
+            bound_borrows.extend(out.facts.bound_borrows.iter().map(|n| (c.module.file, *n)));
             view_moves.extend(out.facts.view_moves.iter().map(|n| (c.module.file, *n)));
             owned_lends.extend(
                 out.facts
@@ -432,6 +439,7 @@ impl Hir<'_> {
             lenders,
             view_lenders,
             view_wraps,
+            bound_borrows,
             view_moves,
             owned_lends,
             getter_borrows,

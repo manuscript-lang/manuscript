@@ -524,6 +524,7 @@ impl Walker<'_> {
         if self.class_of(e) == Class::Move
             && (self.returns_as_declared(e) || wrapped)
             && !self.implements_contract()
+            && !self.moves_withdrawn_lend(e)
         {
             if let Some(src) = self.lend_source(e) {
                 // A part of an argument comes back as a reference into it: nothing moves. A
@@ -564,6 +565,16 @@ impl Walker<'_> {
                 Demand::Consume
             },
         );
+    }
+
+    /// Whether a returned part is moved out instead of lent: an earlier round found this
+    /// function returning a new value on another path and withdrew the lend (`mixed_returns`), so
+    /// the part would be copied out, and a value with one owner and no `clone` cannot be. Moving
+    /// it consumes the argument it came from, which the caller then hands over.
+    fn moves_withdrawn_lend(&self, e: &Expr) -> bool {
+        let key = (self.cx.c.module.file, self.cx.c.id());
+        self.cx.summaries.get(&key).is_some_and(|s| !s.result.lends)
+            && !self.cx.classes.clonable(&self.cx.m.ty(e))
     }
 
     /// The fields from a variable to a place written as a plain chain of them.
@@ -1898,7 +1909,11 @@ impl Walker<'_> {
             return;
         }
         if let Some(recv) = self.changing_method_value(value) {
-            self.method_value_binding(value, recv, &b, role, mutable);
+            self.method_value_binding(value, recv, &b, role, mutable, true);
+            return;
+        }
+        if let Some(recv) = self.method_value(value) {
+            self.method_value_binding(value, recv, &b, role, mutable, false);
             return;
         }
         // A name bound to another name of the same type is a reference to it: shared for `let`,
@@ -2106,18 +2121,36 @@ impl Walker<'_> {
         }
     }
 
-    /// The receiver of a method value that changes it (`xs.append`).
-    fn changing_method_value<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
-        let ExprKind::Member { left, .. } = &e.kind else {
+    /// A method used as a value (`xs.append`, `re.find`, or specialized, `log.error[Unit]`):
+    /// the method and its receiver expression.
+    fn method_value_parts<'e>(&self, e: &'e Expr) -> Option<(MethodRef, &'e Expr)> {
+        let member = match &e.kind {
+            ExprKind::Apply { left, .. } if self.cx.m.info(e).native_str() != "index" => left,
+            _ => e,
+        };
+        let ExprKind::Member { left, .. } = &member.kind else {
             return None;
         };
-        if self.cx.m.ty(e).kind != Kind::Function {
+        if self.cx.m.ty(e).kind != Kind::Function
+            || self.callees.contains(&e.id)
+            || self.callees.contains(&member.id)
+        {
             return None;
         }
-        let Resolution::Method(m) = self.cx.m.resolution(e) else {
+        let resolution = match self.cx.m.resolution(member) {
+            Resolution::Value => self.cx.m.resolution(e),
+            r => r,
+        };
+        let Resolution::Method(m) = resolution else {
             return None;
         };
-        (receiver_mode(self.cx.summaries, &m) == Some(ParamMode::Mutate)).then_some(&**left)
+        Some((m, &**left))
+    }
+
+    /// The receiver of a method value that changes it (`xs.append`).
+    fn changing_method_value<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let (m, left) = self.method_value_parts(e)?;
+        (receiver_mode(self.cx.summaries, &m) == Some(ParamMode::Mutate)).then_some(left)
     }
 
     /// Takes the receiver of a method value that changes it as a mutable borrow. The value
@@ -2144,7 +2177,37 @@ impl Walker<'_> {
             return Vec::new();
         }
         self.mutate(e.pos, &info, "change");
+        self.facts.bound_borrows.insert(e.id);
         info.resolved.into_iter().map(|p| (p, true)).collect()
+    }
+
+    /// The receiver of a method value that only reads it (`re.find`).
+    fn method_value<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let (m, left) = self.method_value_parts(e)?;
+        (receiver_mode(self.cx.summaries, &m) != Some(ParamMode::Mutate)).then_some(left)
+    }
+
+    /// Walks the receiver of a method value that only reads it. The value is a closure over the
+    /// receiver, which has one owner: a value that stays local borrows the receiver's place while
+    /// it lives (`bound_borrows`), and one that escapes takes the receiver over, moving it at its
+    /// last use. A `Copy` receiver is copied, and a temporary one is owned by the value. Returns
+    /// the places a borrowing value holds.
+    fn method_value_use(&mut self, e: &Expr, recv: &Expr, escaping: bool) -> Vec<(Place, bool)> {
+        if self.class_of(recv) == Class::Copy || !self.is_place(recv) {
+            self.expr(recv, Demand::Read);
+            return Vec::new();
+        }
+        if escaping {
+            self.expr(recv, Demand::Consume);
+            return Vec::new();
+        }
+        self.expr(recv, Demand::Read);
+        self.facts.bound_borrows.insert(e.id);
+        self.pure_places(recv)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|p| (p, false))
+            .collect()
     }
 
     fn method_value_binding(
@@ -2154,9 +2217,14 @@ impl Walker<'_> {
         b: &BindingRef,
         role: Role,
         mutable: bool,
+        changing: bool,
     ) {
         let escaping = self.escaped.contains(&value.id);
-        let origins = self.changing_method_use(value, recv, escaping);
+        let origins = if changing {
+            self.changing_method_use(value, recv, escaping)
+        } else {
+            self.method_value_use(value, recv, escaping)
+        };
         self.declare(
             b,
             role,
@@ -3057,12 +3125,13 @@ impl Walker<'_> {
     }
 
     fn projection(&mut self, e: &Expr, d: Demand) {
+        let escaping = d == Demand::Consume || self.escaped.contains(&e.id);
         if let Some(recv) = self.changing_method_value(e) {
-            self.changing_method_use(
-                e,
-                recv,
-                d == Demand::Consume || self.escaped.contains(&e.id),
-            );
+            self.changing_method_use(e, recv, escaping);
+            return;
+        }
+        if let Some(recv) = self.method_value(e) {
+            self.method_value_use(e, recv, escaping);
             return;
         }
         if !self.is_place(e) {
@@ -3409,12 +3478,17 @@ impl Walker<'_> {
                 );
             }
             let mut mode = modes.receiver.unwrap_or(ParamMode::Borrow);
-            // An owned resource taken out of a receiver that holds it (`o.get(default)`) is the
-            // receiver's one owner handing it over, not a copy.
+            // A value with one owner taken out of a receiver that holds it (`o.get(default)` of
+            // a resource, or of a native without a `clone`) is the receiver's one owner handing
+            // it over, not a copy. A read in place (`xs.first()`) stays a borrow, and a type
+            // parameter copies as its bound allows.
+            let result_ty = self.cx.m.ty(e);
             if mode == ParamMode::Borrow
-                && self.class_of(r) == Class::Resource
-                && self.class_of(e) == Class::Resource
-                && ty_contains(&self.cx.m.ty(r), &self.cx.m.ty(e))
+                && self.class_of(e) != Class::Copy
+                && !self.cx.classes.clonable(&result_ty)
+                && unbounded_parameter(&result_ty).is_none()
+                && ty_contains(&self.cx.m.ty(r), &result_ty)
+                && self.native_lend_receiver(e).is_none()
             {
                 mode = ParamMode::Consume;
             }
@@ -3523,11 +3597,13 @@ impl Walker<'_> {
                     // The callee lends from a view temporary of a held value: the caller owns
                     // the result (the view itself when it comes back whole) and holds the value.
                     let how = self.owned_lend(e, &lend, true);
+                    self.copied_lend(e, &name, how);
                     self.facts.owned_lends.insert(e.id, how);
                 }
                 Some(_) => {}
                 None => {
                     let how = self.owned_lend(e, &lend, false);
+                    self.copied_lend(e, &name, how);
                     self.facts.owned_lends.insert(e.id, how);
                 }
             }
@@ -3539,6 +3615,22 @@ impl Walker<'_> {
                 format!("`{name}` changes `{recv}` in place and its result cannot be used, because the collection has one owner; call it as a statement and keep using `{recv}`"),
             );
         }
+    }
+
+    /// A lending call over a temporary whose result is a part of it: the caller copies the part
+    /// out before the temporary is dropped, which a value with one owner and no `clone` cannot be.
+    fn copied_lend(&mut self, e: &Expr, name: &str, how: OwnedLend) {
+        if how != OwnedLend::Copy {
+            return;
+        }
+        let t = self.cx.m.ty(e);
+        if self.cx.classes.clonable(&t) {
+            return;
+        }
+        self.error(
+            e.pos,
+            format!("`{name}` returns a part of a temporary argument, which would be copied out as the argument is dropped; `{t}` has one owner and no `clone`, so bind the argument first and use the result while that binding lives"),
+        );
     }
 
     /// How the caller owns the result of a lending call over a temporary: the whole of one

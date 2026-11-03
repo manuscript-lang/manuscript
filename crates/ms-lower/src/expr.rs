@@ -156,7 +156,7 @@ impl<'a> FnLower<'a> {
     /// A method used as a value (`value.name`).
     fn method_value(&mut self, e: &Expr, left: &Expr, m: &ct::MethodRef) -> Result<Val, Error> {
         if m.native.as_str() == "to_string" && m.ty.params.is_empty() {
-            return self.bound_to_string(left);
+            return self.bound_to_string(e, left);
         }
         if !m.native.as_str().is_empty() && m.native.as_str() != "contract" {
             return self.bound_native_method(e, left, m);

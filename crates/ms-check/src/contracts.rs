@@ -813,10 +813,13 @@ impl Checker {
             return false;
         }
         if t.kind == Kind::Native {
-            return t
-                .args
-                .iter()
-                .all(|a| self.property_in(a, Property::Clonable, state));
+            // A native owns storage the runtime cannot duplicate blindly: it is cloned only
+            // through the `clone` it declares (`List`, `Bytes`, `BigInt`), unless it is plain
+            // words (`impl Copy`). `ownership::Classifier::clonable` applies the same rule.
+            return (self.copy_native(t) || self.declares_clone(t))
+                && t.args
+                    .iter()
+                    .all(|a| self.property_in(a, Property::Clonable, state));
         }
         if t.def.is_some() {
             return fields(t)
@@ -824,6 +827,24 @@ impl Checker {
                 .all(|f| self.property_in(&f.ty, Property::Clonable, state));
         }
         true
+    }
+
+    /// Whether the native `t` declares `impl Copy`: its values are plain words.
+    fn copy_native(&self, t: &Ty) -> bool {
+        self.p
+            .methods
+            .iter()
+            .any(|m| m.receiver.id == t.id && m.contract.as_ref().is_some_and(|c| c.is_std("Copy")))
+    }
+
+    /// Whether the native `t` declares an infallible `clone` of its own, as an operation of its
+    /// definition or as an implemented method.
+    fn declares_clone(&self, t: &Ty) -> bool {
+        native_declares_clone(t)
+            || self
+                .implemented_methods(t, n("clone"))
+                .iter()
+                .any(|m| m.ty.result_ty().id == t.id)
     }
 
     /// Whether `t` is, or holds, a `Closeable` value. Such a value is an identity to close once,
@@ -1398,8 +1419,13 @@ impl Checker {
             );
         }
         if bound.is_std("Clonable") && t.kind != Kind::Variable {
+            let what = if self.holds_resource(t, &mut Vec::new()) {
+                "a Closeable resource, which has one owner and closes once"
+            } else {
+                "a native value without a `clone` of its own, which has one owner"
+            };
             return format!(
-                "{prefix}it is or holds a Closeable resource, which has one owner and closes once, so it cannot be copied; move it, or use it in place"
+                "{prefix}it is or holds {what}, so it cannot be copied; move it, or use it in place"
             );
         }
         if matches!(t.kind, Kind::Record | Kind::Alternative)

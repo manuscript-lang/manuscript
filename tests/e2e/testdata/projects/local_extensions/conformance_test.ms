@@ -20,8 +20,9 @@ test "views and functions retain local implementations across modules":
     (first.get() != 12 or second.get() != 22) | try expect_false
     try expect_false((read_view(first) != 12 or read_view(second) != 22))
 
-    let first_call = first_method(item)
-    let second_call = second_method(item)
+    // A returned method value owns its receiver, so each call takes a clone.
+    let first_call = first_method(item.clone())
+    let second_call = second_method(item.clone())
     (first_call() != 12 or second_call() != 22) | try expect_false
 
     let first_fn = first_generic()

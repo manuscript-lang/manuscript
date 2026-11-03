@@ -138,6 +138,8 @@ pub struct Program {
     pub view_lenders: Rc<HashSet<(Name, NodeId)>>,
     /// Wrappers (`x?`, `ok(x)`, `error(x)`) of lent values that stay references.
     pub view_wraps: Rc<HashSet<(Name, NodeId)>>,
+    /// Method values that stay local and borrow their receiver's place, by module file and node.
+    pub bound_borrows: Rc<HashSet<(Name, NodeId)>>,
     /// Name expressions moving an interface view out of the local holding it.
     pub view_moves: Rc<HashSet<(Name, NodeId)>>,
     /// Lending calls whose result the caller owns, by module file and call node.

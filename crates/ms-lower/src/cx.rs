@@ -77,8 +77,33 @@ pub struct IfaceThunkJob {
     pub method: ct::MethodRef,
     /// Module the use is written in.
     pub hir: Rc<ModuleHir>,
-    /// The closure holds the address of the variable it changes.
+    /// The interface type of the receiver.
+    pub recv: MTy,
+    /// The closure holds the address of the receiver (a variable the method changes, or one a
+    /// value that stays local only reads) instead of the receiver.
     pub shared: bool,
+}
+
+/// How a method value's closure holds its receiver.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Held {
+    /// The receiver itself, owned by the closure.
+    Value,
+    /// The address of the variable the method changes, and the receiver's type.
+    Shared(MTy),
+    /// The address of the receiver a value that stays local only reads (`bound_borrows`), and
+    /// the receiver's type.
+    Borrowed(MTy),
+}
+
+impl Held {
+    /// The type of the closure's capture.
+    pub fn capture(self, recv: MTy) -> MTy {
+        match self {
+            Held::Value => recv,
+            Held::Shared(_) | Held::Borrowed(_) => MTy::PTR,
+        }
+    }
 }
 
 /// A function value whose omittable parameters are optionals, passed where plain ones are taken.
@@ -98,8 +123,8 @@ pub struct BoundNativeJob {
     pub method: ct::MethodRef,
     /// Module the use is written in.
     pub hir: Rc<ModuleHir>,
-    /// The receiver's type when the closure holds the address of the variable it changes.
-    pub shared: Option<MTy>,
+    /// How the closure holds the receiver.
+    pub held: Held,
     /// The module whose local implementations the method's key and element types use.
     pub scope: Name,
 }
@@ -230,6 +255,9 @@ pub struct Cx {
     pub view_lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Wrappers of lent values built as `opt.view` / `alt.view`, by module file and node.
     pub view_wraps: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Method values that stay local and borrow their receiver's place: the closure holds the
+    /// receiver's address instead of a copy.
+    pub bound_borrows: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Name expressions moving an interface view out of the local holding it.
     pub view_moves: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Lending calls whose result the caller owns because an argument is a temporary: the
@@ -302,6 +330,7 @@ impl Cx {
             lenders: program.lenders.clone(),
             view_lenders: program.view_lenders.clone(),
             view_wraps: program.view_wraps.clone(),
+            bound_borrows: program.bound_borrows.clone(),
             view_moves: program.view_moves.clone(),
             owned_lends: program.owned_lends.clone(),
             lent_matches: program.lent_matches.clone(),
