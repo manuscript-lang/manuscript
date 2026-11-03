@@ -308,8 +308,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         if os == target_lexicon::OperatingSystem::Windows {
             return self.rt_call("msrt_isolate_hdr", &[])[0];
         }
+        // The block is the last 16 bytes of the stack's slot.
         let sp = self.b.ins().get_stack_pointer(types::I64);
-        self.b.ins().band_imm_s(sp, !(STACK_SLOT - 1))
+        let base = self.b.ins().band_imm_s(sp, !(STACK_SLOT - 1));
+        self.b.ins().iadd_imm_s(base, STACK_SLOT - 16)
     }
 
     fn add_imm(&mut self, p: Value, off: i64) -> Value {

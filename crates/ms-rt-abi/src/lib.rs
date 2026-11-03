@@ -719,8 +719,8 @@ unsafe impl Sync for Tables {}
 /// Names of the data symbols generated code reads or writes directly.
 pub mod symbols {
     /// Function returning the running task's header block (`msrt_isolate_hdr() -> *mut u8`).
-    /// On Linux and macOS task stacks are [`STACK_SLOT`]-aligned slots with the block at the
-    /// slot's base, so generated code finds it by masking the stack pointer instead of calling.
+    /// On Linux and macOS task stacks are [`STACK_SLOT`]-aligned slots with the block in the
+    /// slot's last 16 bytes, so generated code finds it by masking the stack pointer instead of calling.
     /// Word 0 (`usize`) is the lowest stack address recursive calls may reach (0 = no limit): on
     /// entry to a recursive function compare the stack pointer against it and call
     /// `msrt_fault_depth` when below.

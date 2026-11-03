@@ -10,6 +10,8 @@ Verified: load is a thread's live promise tasks plus queued starts, and only a t
 
 Verified: a native that blocks hands its work to the blocking pool itself (`pool::run`, `fs` `offload`, net `wait`) when other tasks share its thread, and this works from scheduler threads. There is no declared blocking marker on externs; a Rust name list or a new keyword was not needed. Terminal natives stay on the main thread (`Global::get`); the system inventory is per thread.
 
+Verified: a Unix task stack is a 256 MB slot whose last 16 bytes are the `fault::Hdr` (generated code finds it as `(sp & !(SLOT-1)) + SLOT - 16`), so an idle task costs one resident page, about 5 KB with its records, and two mappings (guard plus stack); vm.max_map_count (65530) bounds a process at about 32,000 tasks. A header in its own page doubled the cost. A connection that holds no stack needs the work to start on readiness (`msrt_promise_ready` with `wait_any`) rather than a task that blocks.
+
 Apply when: changing `promise.rs`, `sched.rs`, `pipes.rs`, the poller, or adding a native that completes a promise.
 Evidence: `crates/ms-rt/src/promise.rs` tests (spread, steal, remote cancel, remote fault, pool jobs from scheduler threads); `tools/leak-check.ms` on cancel and fault programs.
 Verify: `cargo test -p ms-rt --lib` repeated; leak-check clean after a dropped running promise.
