@@ -4,11 +4,11 @@
 
 use crate::guide::render;
 use crate::guide::source::{Source, leading_comment};
-use ms_check::Program;
 use ms_check::checker::Names;
 use ms_check::stdlib;
 use ms_check::syntax::{DeclRef, FuncRef};
 use ms_check::types::{Definition, MethodRef, Name, SymKind, SymRef, Ty, n, same};
+use ms_check::{Program, Session};
 use ms_syntax::{DeclKind, Func};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::rc::Rc;
@@ -128,7 +128,8 @@ pub fn standard_library() -> &'static [ApiModule] {
 }
 
 fn compute_standard_library() -> Vec<ApiModule> {
-    stdlib::ensure_all_sources();
+    let session = Session::new();
+    session.ensure_all_sources();
     let mut sources = HashMap::new();
     for (name, text, _) in stdlib::SOURCES {
         let file = n(&format!("@std/{name}"));
@@ -137,18 +138,18 @@ fn compute_standard_library() -> Vec<ApiModule> {
         sources.insert(file, Source::new(Arc::from(*text)));
     }
     let sources = Sources(sources);
-    let mut methods = stdlib::standard_implementations();
+    let mut methods = session.standard_implementations();
     // Mixed native/source files keep their checked implementations under
     // `<path>+source`, which the public module list deliberately omits.
     let source_files: BTreeSet<_> = sources.0.keys().copied().collect();
     for path in source_files {
-        if let Some(done) = stdlib::done(path) {
+        if let Some(done) = session.done(path) {
             methods.extend(done.methods.iter().cloned());
         }
     }
     let mut modules: BTreeMap<String, Vec<SymRef>> = BTreeMap::new();
-    for path in stdlib::standard_module_names() {
-        for symbol in stdlib::standard_exports(path).into_values() {
+    for path in session.standard_module_names() {
+        for symbol in session.standard_exports(path).into_values() {
             if symbol.export {
                 modules.entry(path.to_string()).or_default().push(symbol);
             }
@@ -159,7 +160,7 @@ fn compute_standard_library() -> Vec<ApiModule> {
         prelude.push(primitive_symbol(name));
     }
     for name in stdlib::STANDARD_PRELUDE_NAMES {
-        if let Some(symbol) = stdlib::standard_symbol(name) {
+        if let Some(symbol) = session.standard_symbol(name) {
             prelude.push(symbol);
         }
     }
@@ -170,7 +171,7 @@ fn compute_standard_library() -> Vec<ApiModule> {
             let declarations = symbols
                 .iter()
                 .map(|symbol| {
-                    let mut d = document_symbol(symbol, &sources);
+                    let mut d = document_symbol(&session, symbol, &sources);
                     document_implementations(&mut d, symbol, &methods, &sources);
                     d
                 })
@@ -219,7 +220,7 @@ pub fn module_documentation(program: &Program) -> Vec<ApiModule> {
             if !symbol.decl.as_ref().is_some_and(|d| d.same(decl)) {
                 continue;
             }
-            let mut d = document_symbol(&symbol, &sources);
+            let mut d = document_symbol(&program.session, &symbol, &sources);
             document_implementations(&mut d, &symbol, &program.methods, &sources);
             declarations.push(d);
         }
@@ -242,8 +243,8 @@ fn variable_text(v: &Ty) -> String {
     parameter
 }
 
-fn document_operation_name(receiver: &Ty, name: &str) -> String {
-    let variables = stdlib::operation_variables(&format!("{}/{}", receiver.id, name));
+fn document_operation_name(session: &Rc<Session>, receiver: &Ty, name: &str) -> String {
+    let variables = session.operation_variables(&format!("{}/{}", receiver.id, name));
     if variables.is_empty() {
         return name.to_string();
     }
@@ -329,7 +330,12 @@ fn sort_members(members: &mut [ApiMember]) {
     });
 }
 
-fn document_members(decl: &DeclRef, source: Option<&Source>, receiver: &Ty) -> Vec<ApiMember> {
+fn document_members(
+    session: &Rc<Session>,
+    decl: &DeclRef,
+    source: Option<&Source>,
+    receiver: &Ty,
+) -> Vec<ApiMember> {
     let text = source.map_or("", Source::text);
     let comment = |offset: u32| leading_comment(text, offset as usize);
     let mut members = Vec::new();
@@ -377,7 +383,7 @@ fn document_members(decl: &DeclRef, source: Option<&Source>, receiver: &Ty) -> V
         }
     }
     for method in decl.methods() {
-        let name = document_operation_name(receiver, method.func.name.as_str());
+        let name = document_operation_name(session, receiver, method.func.name.as_str());
         let mut signature = fn_declaration(
             method.func.name.as_str(),
             &method.func,
@@ -404,7 +410,7 @@ fn document_members(decl: &DeclRef, source: Option<&Source>, receiver: &Ty) -> V
     members
 }
 
-fn document_symbol(symbol: &SymRef, sources: &Sources) -> ApiDeclaration {
+fn document_symbol(session: &Rc<Session>, symbol: &SymRef, sources: &Sources) -> ApiDeclaration {
     let ty = symbol.ty();
     let source = sources.of(symbol.module);
     let kind = match symbol.kind {
@@ -420,7 +426,7 @@ fn document_symbol(symbol: &SymRef, sources: &Sources) -> ApiDeclaration {
     if symbol.decl.is_none() {
         d.doc = primitive_documentation(ty.id.as_str()).to_string();
     }
-    let intrinsic = stdlib::intrinsic_operations(ty.id);
+    let intrinsic = session.intrinsic_operations(ty.id);
     if let Some(decl) = &symbol.decl {
         let keyword = match source {
             Some(s)
@@ -439,7 +445,7 @@ fn document_symbol(symbol: &SymRef, sources: &Sources) -> ApiDeclaration {
             d.declaration = format!("let {}: {}\n", symbol.name, d.ty);
         }
         d.doc = leading_comment(source.map_or("", Source::text), decl.pos().offset as usize);
-        d.members = document_members(decl, source, &ty);
+        d.members = document_members(session, decl, source, &ty);
     } else if let Some(decl) = intrinsic
         .as_ref()
         .and_then(|t| t.def.as_ref())
@@ -448,7 +454,7 @@ fn document_symbol(symbol: &SymRef, sources: &Sources) -> ApiDeclaration {
     {
         let (decl, module) = decl;
         d.declaration = document_declaration(&decl, "type", symbol.name.as_str(), None);
-        d.members = document_members(&decl, sources.of(module), &ty);
+        d.members = document_members(session, &decl, sources.of(module), &ty);
     } else {
         d.declaration = format!("type {}:\n", symbol.name);
     }
@@ -476,7 +482,7 @@ fn document_symbol(symbol: &SymRef, sources: &Sources) -> ApiDeclaration {
         }
         for op in def.operations.borrow().iter() {
             operations.insert(
-                document_operation_name(&ty, op.name.as_str()),
+                document_operation_name(session, &ty, op.name.as_str()),
                 op.ty.to_string(),
             );
         }

@@ -14,7 +14,7 @@ pub mod imports;
 pub mod load;
 pub mod project;
 
-pub use compile::{CheckRequest, Checked, check_graph, check_graph_at};
+pub use compile::{CheckRequest, Checked, check_graph, check_graph_at, check_graph_in};
 pub use load::{EditorOptions, Graph, LoadOptions, load_editor_file, load_file};
 
 /// The syntax types diagnostics are made of.

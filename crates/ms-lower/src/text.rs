@@ -607,7 +607,7 @@ impl<'a> FnLower<'a> {
     pub(crate) fn duration_of(&mut self, nanos: Value) -> Result<Value, Error> {
         let t = self
             .cx
-            .lower_ty(self.b.m, &ms_check::types::time_type("Duration"))?;
+            .lower_ty(self.b.m, &self.cx.session.time_type("Duration"))?;
         let TyKind::Rec(rid) = self.b.m.types.kind(t).clone() else {
             return Err(Error::new("Duration is not a record"));
         };

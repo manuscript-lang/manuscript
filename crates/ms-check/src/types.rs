@@ -846,27 +846,6 @@ pub fn with_args(t: &Ty, args: Vec<Ty>) -> Ty {
     Rc::new(r)
 }
 
-/// Standard declaration lookup is provided by the loaded standard world.
-pub fn standard(name: &str, args: Vec<Ty>) -> Ty {
-    let sym =
-        crate::stdlib::standard_symbol(name).unwrap_or_else(|| panic!("standard type {name}"));
-    with_args(&sym.ty(), args)
-}
-
-/// `Duration`, `Instant` or `Timestamp`, the records of `@std/os/time.ms`.
-pub fn time_type(name: &str) -> Ty {
-    // The module is checked on first use; its records have no fields before that.
-    crate::stdlib::standard_exports("@std/os/time.ms");
-    let sym = crate::stdlib::source_type(n("@std/os/time.ms"), n(name))
-        .unwrap_or_else(|| panic!("standard time type {name}"));
-    sym.ty()
-}
-
-/// `TestOutcome`: the implicit `Result[Unit, Error]` of a test block.
-pub fn test_outcome() -> Ty {
-    standard("Result", vec![unit(), standard("Error", vec![])])
-}
-
 /// Whether `t` is `Result[Unit, Error]`, the result of every `close`.
 pub fn is_close_result(t: &Ty) -> bool {
     t.is(Builtin::Result)
@@ -1219,18 +1198,18 @@ pub fn case_of(t: &Ty, name: Name) -> Option<Case> {
 }
 
 /// Constructor inputs and omission permissions.
-pub fn constructor_signature(t: &Ty) -> Ty {
+pub fn constructor_signature(session: &Rc<crate::stdlib::Session>, t: &Ty) -> Ty {
     let mut params = fields(t);
     if t.is(Builtin::Bytes) {
         params = vec![Param::new(
             n("values"),
-            standard("List", vec![primitive("UInt8")]),
+            session.standard("List", vec![primitive("UInt8")]),
         )];
     }
     if t.is(Builtin::Set) && t.args.len() == 1 {
         params = vec![Param::new(
             n("values"),
-            standard("List", vec![t.args[0].clone()]),
+            session.standard("List", vec![t.args[0].clone()]),
         )];
     }
     let mut defaults: HashSet<Name> = HashSet::new();

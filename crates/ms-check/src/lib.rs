@@ -41,6 +41,7 @@ mod type_argument_defaults_tests;
 mod type_graph_tests;
 
 pub use checker::{CheckOptions, ImportMap, Program, TestFixture, self_variable};
+pub use stdlib::Session;
 pub use syntax::{ModRef, ModuleData};
 
 use ms_syntax::ast::Module;
@@ -72,8 +73,18 @@ pub fn load_module(m: &Module) -> ModRef {
 /// Checks modules given in dependency order. `imports` resolves each local
 /// import to the module it names.
 pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) -> Program {
-    stdlib::ensure_standard();
-    let mut checker = checker::Checker::new(&options);
+    check_in(&Session::new(), modules, imports, options)
+}
+
+/// Like [`check`], against a session the caller keeps, so the standard library loads once.
+pub fn check_in(
+    session: &Rc<Session>,
+    modules: Vec<ModRef>,
+    imports: ImportMap,
+    options: CheckOptions,
+) -> Program {
+    session.ensure_standard();
+    let mut checker = checker::Checker::new(session, &options);
     checker.imports = imports;
     let bundled = options.bundled;
     let mut program = checker.check_modules(modules, bundled);

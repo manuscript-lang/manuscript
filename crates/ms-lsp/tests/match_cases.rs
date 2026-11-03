@@ -16,7 +16,7 @@ fn case_references_and_rename_include_bare_and_qualified_match_arms() {
         let source = fixture.replace('\n', newline);
         let d = Document::new(ws.uri("cases.ms"), &source);
         let docs = Documents::from([(d.uri.clone(), d.clone())]);
-        let checked = analyze(&d, &docs);
+        let checked = analyze(&ms_check::Session::new(), &d, &docs);
         assert!(checked.success(), "{:?}", checked.diagnostics);
         let declaration = source.find("Value").unwrap();
         let at = text::position(&source, declaration);
@@ -71,7 +71,7 @@ fn case_references_and_rename_include_bare_and_qualified_match_arms() {
             updated.replace_range(start..end, name);
         }
         let d = Document::new(d.uri, updated);
-        assert!(analyze(&d, &Documents::new()).success());
+        assert!(analyze(&ms_check::Session::new(), &d, &Documents::new()).success());
     }
 }
 
@@ -87,7 +87,7 @@ fn invalid_match_paths_do_not_acquire_a_case_identity() {
         let offset = fixture.find(from).unwrap();
         let source = fixture.replacen(from, to, 1);
         let d = Document::new(ws.uri("invalid.ms"), &source);
-        let checked = analyze(&d, &Documents::new());
+        let checked = analyze(&ms_check::Session::new(), &d, &Documents::new());
         assert!(!checked.success());
         // Select the case component, preserving navigation of a valid qualifier.
         let offset = offset + selected.rfind('.').map_or(0, |at| at + 1);
@@ -106,7 +106,7 @@ fn synthesized_paths_and_type_suffixes_do_not_become_written_occurrences() {
     let ws = Workspace::new("case-navigation-controls");
     let source = include_str!("match_cases/controls.ms");
     let d = Document::new(ws.uri("controls.ms"), source);
-    let checked = analyze(&d, &Documents::new());
+    let checked = analyze(&ms_check::Session::new(), &d, &Documents::new());
     assert!(checked.success(), "{:?}", checked.diagnostics);
     let file = checked.module_file(&d);
     for entry in checked

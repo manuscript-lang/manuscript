@@ -11,13 +11,14 @@ use crate::nav;
 use crate::text::{self, EditorKind, Position, Range};
 use crate::uri;
 use crate::workspace::workspace_documents;
+use ms_check::Session;
 use ms_check::editor::{MemberKind, members, prelude_type_names, standard_export_inventory};
-use ms_check::stdlib::is_prelude_symbol;
 use ms_check::syntax::{DeclRef, FuncRef};
 use ms_check::types::{Kind, Name, SymKind, SymRef, Ty, cases, constructor_signature, n};
 use ms_driver::project::pathops;
 use ms_syntax::ast::{DeclKind, Expr, ExprKind, Param};
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 /// One completion item before JSON encoding.
 pub struct Item {
@@ -132,10 +133,10 @@ fn sort(items: &mut [Item]) {
 }
 
 /// Bundled module paths that export something outside the prelude.
-fn standard_paths() -> Vec<String> {
-    let mut paths: Vec<String> = standard_export_inventory()
+fn standard_paths(session: &Rc<Session>) -> Vec<String> {
+    let mut paths: Vec<String> = standard_export_inventory(session)
         .into_iter()
-        .filter(|(_, symbols)| symbols.iter().any(|s| !is_prelude_symbol(s)))
+        .filter(|(_, symbols)| symbols.iter().any(|s| !session.is_prelude_symbol(s)))
         .map(|(path, _)| path)
         .collect();
     paths.sort();
@@ -484,7 +485,7 @@ impl Completer<'_> {
                     insert = format!("{name}[{}]", parts.join(", "));
                 }
                 if !c.type_context && ty.kind == Kind::Record && self.structure_visible(&ty) {
-                    let signature = constructor_signature(&ty);
+                    let signature = constructor_signature(&self.a.result.session, &ty);
                     insert = callable_text(
                         name.as_str(),
                         Some(&signature),
@@ -611,10 +612,11 @@ impl Completer<'_> {
     }
 
     fn standard_imports(&mut self) {
-        let inventory = standard_export_inventory();
-        for path in standard_paths() {
+        let session = self.a.result.session.clone();
+        let inventory = standard_export_inventory(&session);
+        for path in standard_paths(&session) {
             for s in inventory.get(&path).into_iter().flatten() {
-                if is_prelude_symbol(s)
+                if session.is_prelude_symbol(s)
                     || self.seen.contains(s.name.as_str())
                     || !name_matches(s.name.as_str(), &self.c.prefix)
                     || (self.c.type_context && s.kind != SymKind::Type)
@@ -645,7 +647,7 @@ impl Completer<'_> {
             if !matches {
                 continue;
             }
-            let checked = workspace_analysis(&file, self.docs);
+            let checked = workspace_analysis(&self.a.result.session, &file, self.docs);
             let (Some(module), Some(program)) = (checked.module(&file), &checked.program) else {
                 continue;
             };
@@ -706,6 +708,7 @@ fn decl_name(decl: &ms_syntax::ast::Decl) -> String {
 
 /// Completion items at a position.
 pub fn completion_at(
+    session: &Rc<Session>,
     d: &Document,
     docs: &Documents,
     p: Position,
@@ -715,7 +718,7 @@ pub fn completion_at(
     if c.comment {
         return Ok(Vec::new());
     }
-    if let Some(items) = import_completion(d, docs, &c) {
+    if let Some(items) = import_completion(session, d, docs, &c) {
         return Ok(items);
     }
     if c.literal {
@@ -763,7 +766,12 @@ fn simple_item(name: &str, detail: &str, kind: i64, range: Range, text: &str) ->
 }
 
 /// Completion inside an `import` declaration, or `None` outside one.
-fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Option<Vec<Item>> {
+fn import_completion(
+    session: &Rc<Session>,
+    d: &Document,
+    docs: &Documents,
+    c: &CursorContext,
+) -> Option<Vec<Item>> {
     // Token context handles compact imports and multiline groups without
     // mistaking comments or strings for an import declaration.
     let (mut start, mut braces, mut grouped) = (None::<usize>, 0i32, false);
@@ -818,7 +826,7 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
             start: text::position(&d.text, path_start),
             end: text::position(&d.text, end),
         };
-        for path in standard_paths() {
+        for path in standard_paths(session) {
             if path.starts_with(prefix) {
                 items.push(simple_item(&path, &path, 17, range, &path));
             }
@@ -911,7 +919,7 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
         end: text::position(&d.text, c.end),
     };
     if let Some(path) = path {
-        let mut exports: Vec<SymRef> = standard_export_inventory()
+        let mut exports: Vec<SymRef> = standard_export_inventory(session)
             .remove(&path)
             .unwrap_or_default();
         if exports.is_empty()
@@ -932,7 +940,7 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
             let source = opened.or_else(|| std::fs::read_to_string(&file).ok());
             if let Some(source) = source.filter(|_| !file.is_empty()) {
                 let target = Document::new(uri::file_uri(&file), source);
-                let checked = workspace_analysis(&target, docs);
+                let checked = workspace_analysis(session, &target, docs);
                 if let (Some(m), Some(program)) = (checked.module(&target), &checked.program)
                     && let Some(names) = program.symbols.get(&m.file)
                 {
@@ -950,7 +958,7 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
             }
         }
         for s in &exports {
-            if !is_prelude_symbol(s)
+            if !session.is_prelude_symbol(s)
                 && !imported.contains(s.name.as_str())
                 && name_matches(s.name.as_str(), &c.prefix)
             {
@@ -973,9 +981,9 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
         sort(&mut items);
         return Some(items);
     }
-    for (path, exports) in standard_export_inventory() {
+    for (path, exports) in standard_export_inventory(session) {
         for s in exports {
-            if !is_prelude_symbol(&s)
+            if !session.is_prelude_symbol(&s)
                 && !imported.contains(s.name.as_str())
                 && name_matches(s.name.as_str(), &c.prefix)
             {

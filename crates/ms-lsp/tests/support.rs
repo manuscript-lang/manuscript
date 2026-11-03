@@ -268,7 +268,8 @@ fn mask_workspace_ids(text: &str) -> String {
 
 /// The source text a standard-library location's `range` covers.
 fn stdlib_range_text(uri: &str, range: &Json) -> String {
-    let source = ms_lsp::analysis::standard_library_source(uri).expect("bundled stdlib module");
+    let source = ms_lsp::analysis::standard_library_source(&ms_check::Session::new(), uri)
+        .expect("bundled stdlib module");
     let position = |key: &str| {
         let at = range.get(key).expect("range end");
         let n = |k: &str| at.get(k).and_then(Json::as_i64).expect("position") as usize;

@@ -142,6 +142,7 @@ pub fn workspace_references(
     include: bool,
     cancel: Option<CancelCheck>,
 ) -> Vec<Json> {
+    let session = &analysis.session;
     if canceled(cancel).is_err() {
         return Vec::new();
     }
@@ -184,7 +185,7 @@ pub fn workspace_references(
         if file.uri != d.uri && !file.text.contains(selected.name.as_str()) {
             continue;
         }
-        let checked = workspace_analysis(file, docs);
+        let checked = workspace_analysis(session, file, docs);
         if canceled(cancel).is_err() {
             return Vec::new();
         }
@@ -210,6 +211,7 @@ pub fn workspace_references(
 /// Declarations whose name contains `query` (case-insensitive), across the
 /// open documents and the given workspace roots.
 pub fn workspace_symbols(
+    session: &std::rc::Rc<ms_check::Session>,
     docs: &Documents,
     roots: &[String],
     query: &str,
@@ -217,6 +219,7 @@ pub fn workspace_symbols(
 ) -> Option<Vec<Json>> {
     let lowered = query.to_lowercase();
     workspace_symbols_matching(
+        session,
         docs,
         roots,
         &|name| name.to_lowercase().contains(&lowered),
@@ -227,6 +230,7 @@ pub fn workspace_symbols(
 /// Share discovery and checked symbol identities with CLI fuzzy lookup, while
 /// rejecting sources without matching identifiers before running the checker.
 pub(crate) fn workspace_symbols_matching(
+    session: &std::rc::Rc<ms_check::Session>,
     docs: &Documents,
     roots: &[String],
     matches: &dyn Fn(&str) -> bool,
@@ -281,7 +285,7 @@ pub(crate) fn workspace_symbols_matching(
         if !may_contain_symbol(d, matches, &mut names) {
             continue;
         }
-        let checked = workspace_analysis(d, docs);
+        let checked = workspace_analysis(session, d, docs);
         if canceled(cancel).is_err() {
             return None;
         }

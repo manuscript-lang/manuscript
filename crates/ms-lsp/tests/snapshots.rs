@@ -689,7 +689,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
             let source = if uri == main {
                 ws.read("main.ms")
             } else {
-                ms_lsp::analysis::standard_library_source(uri).unwrap()
+                ms_lsp::analysis::standard_library_source(&ms_check::Session::new(), uri).unwrap()
             };
             let start = ms_lsp::text::offset(&source, range.start).unwrap();
             let end = ms_lsp::text::offset(&source, range.end).unwrap();

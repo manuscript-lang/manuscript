@@ -4,7 +4,8 @@ use crate::CheckOptions;
 use std::sync::Arc;
 
 fn diagnostics(sources: &[(&str, &str)]) -> Vec<(String, u32, u32, String)> {
-    crate::stdlib::ensure_standard();
+    let session = crate::Session::new();
+    session.ensure_standard();
     let modules = sources
         .iter()
         .map(|(file, source)| {
@@ -13,7 +14,7 @@ fn diagnostics(sources: &[(&str, &str)]) -> Vec<(String, u32, u32, String)> {
             crate::load_module(&ast)
         })
         .collect();
-    Checker::new(&CheckOptions::default())
+    Checker::new(&session, &CheckOptions::default())
         .check_modules(modules, None)
         .diagnostics
         .into_iter()
@@ -151,7 +152,7 @@ fn all_three_node_graphs_match_original_diagnostics() {
                     .collect();
                 let components = components(&edges);
                 let mut completed = HashSet::new();
-                let mut checker = Checker::new(&CheckOptions::default());
+                let mut checker = Checker::new(&crate::Session::new(), &CheckOptions::default());
                 let mut expected = Vec::new();
                 for &root in &ids {
                     reference(

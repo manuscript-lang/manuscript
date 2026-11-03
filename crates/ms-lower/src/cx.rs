@@ -191,6 +191,8 @@ pub struct Job {
 
 /// Whole-program lowering context.
 pub struct Cx {
+    /// The session whose standard library the program was checked against.
+    pub session: Rc<ms_check::Session>,
     /// Module queries by file.
     pub mods: HashMap<Name, Rc<ModuleHir>>,
     /// Callables by (module file, declaration or method node id).
@@ -302,6 +304,7 @@ impl Cx {
             .map(|m| m.receiver.id)
             .collect();
         Cx {
+            session: program.session.clone(),
             extended,
             scope_names: Vec::new(),
             mods,

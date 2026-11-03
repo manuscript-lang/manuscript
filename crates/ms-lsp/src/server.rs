@@ -40,6 +40,7 @@ pub fn serve_with(
     lint: &dyn Lint,
 ) -> Result<(), String> {
     let mut server = Server {
+        session: ms_check::Session::new(),
         transport: Transport::new(input),
         output: Box::new(output),
         lint,
@@ -222,6 +223,8 @@ impl Params {
 
 /// Two sessions never share this state; one thread mutates it.
 struct Server<'a> {
+    /// The standard library every analysis of this server reads.
+    session: Rc<ms_check::Session>,
     transport: Transport,
     output: Box<dyn Write + 'a>,
     lint: &'a dyn Lint,
@@ -327,7 +330,7 @@ impl Server<'_> {
     fn checked_document(&mut self, d: &Document) -> Rc<Analysis> {
         if self.docs.get(&d.uri) != Some(d) {
             // Private repaired/cursor snapshots cannot read or poison live caches.
-            return analyze(d, &self.docs);
+            return analyze(&self.session, d, &self.docs);
         }
         if let Some(result) = self.cache.get(&d.uri) {
             return result.clone();
@@ -336,6 +339,7 @@ impl Server<'_> {
         let analyses = &mut self.analyses;
         let options = Options {
             recover: true,
+            session: Some(self.session.clone()),
             ..Options::default()
         };
         let result = analyze_with(d, &self.docs, options, &mut |target, options| {
@@ -601,10 +605,12 @@ impl Server<'_> {
         match r.method.as_str() {
             "initialize" => return Ok(ok(self.initialize(r))),
             "manuscript/standardLibrarySource" => {
-                return Ok(match analysis::standard_library_source(&p.document.uri) {
-                    Ok(source) => ok(source.into()),
-                    Err(message) => Outcome::Error(failure(-32602, message)),
-                });
+                return Ok(
+                    match analysis::standard_library_source(&self.session, &p.document.uri) {
+                        Ok(source) => ok(source.into()),
+                        Err(message) => Outcome::Error(failure(-32602, message)),
+                    },
+                );
             }
             "initialized" => return Ok(ok(Json::Null)),
             "shutdown" => {
@@ -646,7 +652,13 @@ impl Server<'_> {
             }
             "workspace/symbol" => {
                 let cancel = || self.request_canceled(r);
-                let found = workspace_symbols(&self.docs, &self.roots, &p.query, Some(&cancel));
+                let found = workspace_symbols(
+                    &self.session,
+                    &self.docs,
+                    &self.roots,
+                    &p.query,
+                    Some(&cancel),
+                );
                 return Ok(ok(found.map_or(Json::Null, Json::Arr)));
             }
             _ => {}
@@ -758,7 +770,7 @@ impl Server<'_> {
             if r.method == "textDocument/didChange" {
                 return Ok(());
             }
-            match analysis::standard_library_source(&d.uri) {
+            match analysis::standard_library_source(&self.session, &d.uri) {
                 Ok(source) => d.text = source,
                 Err(_) => return Ok(()),
             }
@@ -871,7 +883,7 @@ impl Server<'_> {
                 let Some(d) = open else {
                     return ok(Json::Arr(Vec::new()));
                 };
-                match completion_at(&d, &self.docs, p.position, self.snippets) {
+                match completion_at(&self.session, &d, &self.docs, p.position, self.snippets) {
                     Ok(items) => ok(Json::Arr(items.iter().map(|i| i.json()).collect())),
                     Err(message) => Outcome::Error(failure(-32602, message)),
                 }

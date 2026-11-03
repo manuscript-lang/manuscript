@@ -19,7 +19,7 @@ fn unrelated_methods_have_constant_size_candidate_buckets() {
                     .replace("get0", &format!("get{i}"))
             })
             .collect();
-        let mut checker = Checker::new(&CheckOptions::default());
+        let mut checker = Checker::new(&crate::Session::new(), &CheckOptions::default());
         checker.check_module(&module("candidates.ms", &source));
         assert!(
             checker.p.diagnostics.is_empty(),
@@ -36,7 +36,7 @@ fn unrelated_methods_have_constant_size_candidate_buckets() {
 
 #[test]
 fn generic_receivers_bounds_and_operation_parameters() {
-    let p = Checker::new(&CheckOptions::default()).check_modules(
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
         vec![module(
             "generics.ms",
             include_str!("../tests/method_candidates/generics.ms"),
@@ -48,7 +48,7 @@ fn generic_receivers_bounds_and_operation_parameters() {
 
 #[test]
 fn generic_specialization_still_overlaps() {
-    let p = Checker::new(&CheckOptions::default()).check_modules(
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
         vec![module(
             "overlap.ms",
             include_str!("../tests/method_candidates/overlap.ms"),
@@ -66,7 +66,7 @@ fn generic_specialization_still_overlaps() {
 #[test]
 fn ambiguity_preserves_declaration_order() {
     let source = include_str!("../tests/method_candidates/ambiguity.ms");
-    let mut checker = Checker::new(&CheckOptions::default());
+    let mut checker = Checker::new(&crate::Session::new(), &CheckOptions::default());
     checker.check_module(&module("ambiguity.ms", source));
     let receiver = checker.names.borrow()[&n("Item")]
         .ty
@@ -110,7 +110,7 @@ fn local_extensions_stay_local_and_owner_methods_travel() {
             include_str!("../tests/method_candidates/user.ms"),
         ),
     ];
-    let mut checker = Checker::new(&CheckOptions::default());
+    let mut checker = Checker::new(&crate::Session::new(), &CheckOptions::default());
     for m in &modules {
         for import in &m.imports {
             checker.imports.insert(m.file, import.id, n(&import.path));
@@ -139,7 +139,7 @@ fn local_extensions_stay_local_and_owner_methods_travel() {
 
 #[test]
 fn interface_bounds_still_restrict_generic_candidates() {
-    let p = Checker::new(&CheckOptions::default()).check_modules(
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
         vec![module(
             "restricted.ms",
             include_str!("../tests/method_candidates/restricted.ms"),
@@ -158,7 +158,7 @@ fn interface_bounds_still_restrict_generic_candidates() {
 
 #[test]
 fn invalid_receivers_do_not_register_methods() {
-    let p = Checker::new(&CheckOptions::default()).check_modules(
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
         vec![module(
             "invalid.ms",
             include_str!("../tests/method_candidates/invalid.ms"),
@@ -177,7 +177,7 @@ fn invalid_receivers_do_not_register_methods() {
 
 #[test]
 fn merged_inherent_blocks_keep_duplicate_diagnostic() {
-    let p = Checker::new(&CheckOptions::default()).check_modules(
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
         vec![module(
             "duplicates.ms",
             include_str!("../tests/method_candidates/duplicates.ms"),
@@ -195,7 +195,7 @@ fn merged_inherent_blocks_keep_duplicate_diagnostic() {
 
 #[test]
 fn editor_queries_rebuild_candidate_indexes() {
-    let p = Checker::new(&CheckOptions::default()).check_modules(
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
         vec![module(
             "editor.ms",
             include_str!("../tests/method_candidates/template.ms"),
@@ -217,7 +217,7 @@ fn editor_queries_rebuild_candidate_indexes() {
 
 #[test]
 fn unmet_list_element_bound_names_the_bound() {
-    let p = Checker::new(&CheckOptions::default()).check_modules(
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
         vec![module(
             "bound.ms",
             "fn has[T](xs: List[T], x: T) Bool: xs.contains(x)\nexport fn main() Int: 0\n",
@@ -235,7 +235,7 @@ fn unmet_list_element_bound_names_the_bound() {
 
 #[test]
 fn self_referential_bound_is_not_an_arity_error() {
-    let p = Checker::new(&CheckOptions::default()).check_modules(
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
         vec![module(
             "selfbound.ms",
             include_str!("../tests/method_candidates/selfbound.ms"),
@@ -261,7 +261,7 @@ fn self_referential_bound_is_not_an_arity_error() {
 #[test]
 fn interface_parameter_inference_failure_is_one_clear_error() {
     let source = include_str!("../tests/method_candidates/iface_infer.ms");
-    let p = Checker::new(&CheckOptions::default())
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default())
         .check_modules(vec![module("iface_infer.ms", source)], None);
     assert_eq!(p.diagnostics.len(), 1, "{:?}", p.diagnostics);
     assert!(
@@ -275,7 +275,7 @@ fn interface_parameter_inference_failure_is_one_clear_error() {
 
 #[test]
 fn generic_argument_conflict_is_reported_once() {
-    let p = Checker::new(&CheckOptions::default()).check_modules(
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
         vec![module(
             "conflict.ms",
             include_str!("../tests/method_candidates/conflict.ms"),

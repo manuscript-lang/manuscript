@@ -461,9 +461,10 @@ impl FnLower<'_> {
         }
         if t.is(Builtin::Set) {
             self.jexpect_kind(doc, id, KIND_ARRAY)?;
-            let lt = self
-                .cx
-                .lower_ty(self.b.m, &ct::standard("List", vec![t.args[0].clone()]))?;
+            let lt = self.cx.lower_ty(
+                self.b.m,
+                &self.cx.session.standard("List", vec![t.args[0].clone()]),
+            )?;
             let l = self.jdecode_items(&t.args[0], lt, doc, id, strict)?;
             let mark = self.temps.len();
             let set = self.set_from_list(Val { v: l, own: true }, mt)?;

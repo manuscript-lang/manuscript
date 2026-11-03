@@ -3,7 +3,6 @@
 //! across files .
 
 use crate::analysis::Analysis;
-use ms_check::stdlib;
 use ms_check::syntax::{DeclRef, FuncRef, Info, ModRef};
 use ms_check::types::{BindingRef, Kind, Method, MethodRef, Name, SymRef, Ty, fields, n};
 use ms_syntax::Symbol;
@@ -456,7 +455,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
         }
         for imp in &m.imports {
             let imported = if m.file.as_str().starts_with("@std/") {
-                stdlib::standard_exports(&imp.path)
+                analysis.session.standard_exports(&imp.path)
             } else {
                 symbols.clone()
             };
@@ -565,7 +564,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
 /// The symbols a module declares or sees.
 fn module_symbols(analysis: &Analysis, m: &ModRef) -> HashMap<Name, SymRef> {
     if m.file.as_str().starts_with("@std/") {
-        return stdlib::standard_exports(m.file.as_str());
+        return analysis.session.standard_exports(m.file.as_str());
     }
     analysis
         .program
