@@ -19,7 +19,7 @@ import (
 // A new stream: next may wait.
 export interface Source[T]:
     var fn next() T?!
-    # Releases what the source owns; the stream calls it once, when it closes.
+    // Releases what the source owns; the stream calls it once, when it closes.
     var fn close() Unit!
 
 // A stream of values over time. It owns its source, parked in a runtime cell so that a pending read carries only the
@@ -46,14 +46,14 @@ fn step[T](id: Int, cell: Int) Unit:
             )
 
 impl ReadStream[T]:
-    # One step, started now and run where it is waited; none at the end.
+    // One step, started now and run where it is waited; none at the end.
     var fn read() Promise[T?]:
         let cell = self.cell
         let work = fn(id: Int) Unit: step[T](id, cell)
         return deferred[T?](work)
 
 impl Closeable for ReadStream[T]:
-    # Drops the source and everything it owns. A read in flight ends with an error.
+    // Drops the source and everything it owns. A read in flight ends with an error.
     var fn close() Unit!:
         if let source = msrt_cells_take[Source[T]](self.cell):
             var closing = source

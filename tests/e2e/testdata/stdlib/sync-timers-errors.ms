@@ -3,7 +3,8 @@ import wrap_error, join_errors from "@std/core.ms"
 import share from "@std/concurrency/shared.ms"
 import once, lock from "@std/concurrency/sync.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
-import sleep, deadline_after, ticker, monotonic from "@std/os/time.ms"
+import sleep, deadline_after, monotonic from "@std/os/time.ms"
+import ticker from "@std/os/ticker.ms"
 
 test "once runs the action a single time across tasks":
     let gate = once()
@@ -58,8 +59,10 @@ test "deadline expires and ticker paces":
     let start = monotonic()
     var count = 0
 
-    for tick in ticker(10.milliseconds):
+    var ticks = ticker(10.milliseconds)
+    while count < 3:
+        let tick = try ticks.read().wait()
+        try expect_true(tick.is_some())
         count += 1
-        if count == 3: break
 
     try expect_true(monotonic().difference(start).to_milliseconds() >= 29)
