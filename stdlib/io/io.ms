@@ -124,6 +124,7 @@ impl Closeable for ReadStream[T]:
         // Close the source by hand so its error is returned, then park it back in the cell: moved
         // out, it is not closed again at scope end, and dropping the cell only frees it.
         var failure: Error? = none
+
         if let source = msrt_cells_take[Source[T]](self.cell):
             var closing = source
             let result = closing.close()
@@ -134,6 +135,7 @@ impl Closeable for ReadStream[T]:
         msrt_cells_drop(self.cell)
         if let cause = failure:
             return error(cause)
+
         return ok(unit)
 
 // Wraps `source` as a ReadStream that owns it.
