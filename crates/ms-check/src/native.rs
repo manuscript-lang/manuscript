@@ -29,6 +29,10 @@ impl Checker {
         if invalid_ty(&rt) {
             return Some(Info::of(invalid()));
         }
+        if rt.is(Builtin::Bytes) && *name == "to_string" {
+            self.type_error(member.pos, crate::exprs::BYTES_TO_STRING);
+            return Some(Info::of(invalid()));
+        }
         if rt.kind == Kind::Record
             && *name != "to_string"
             && fields(&rt).iter().any(|f| f.name == *name)

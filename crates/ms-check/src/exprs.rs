@@ -5,6 +5,9 @@ use crate::hints::*;
 use crate::inference::inference_type_known;
 use crate::stdlib;
 use crate::suggestions;
+
+/// The diagnostic for `Bytes.to_string()`, which has no text form.
+pub(crate) const BYTES_TO_STRING: &str = "Bytes has no text form: to_string() would print a debug dump of the byte values; decode with bytes.decode_utf8(), which returns a String? (none for invalid UTF-8)";
 use crate::syntax::*;
 use crate::types::*;
 use ms_syntax::ast::*;
@@ -645,6 +648,11 @@ impl Checker {
         {
             self.opaque_denied(e.pos, &rt, &format!("field {name} is hidden"));
             i.ty = Some(f.ty);
+            return i;
+        }
+        if rt.is(Builtin::Bytes) && name == "to_string" {
+            self.type_error(e.pos, BYTES_TO_STRING);
+            i.ty = Some(invalid());
             return i;
         }
         if rt.id == "Int" && matches!(name.as_str(), "seconds" | "milliseconds" | "minutes") {
