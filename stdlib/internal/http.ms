@@ -14,6 +14,8 @@ import Duration from "@std/os/time.ms"
 
 export extern fn msstd_http_client_close(handle: NativeHttpClient) Unit
 
+export extern fn msstd_http_client_share(handle: NativeHttpClient) NativeHttpClient
+
 export extern fn msstd_http_client_request(
     handle: NativeHttpClient,
     method: HttpMethod,

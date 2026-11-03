@@ -300,6 +300,12 @@ native! {
         Ok(())
     }
 
+    /// Another handle on the same client, for a promise that sends a request on it. Dropping the
+    /// handle leaves the client open; `HttpClient.close()` closes it.
+    fn msstd_http_client_share(c: ObjRef<ClientH>) -> Object<ClientH> {
+        Object(ClientH(c.0.0.clone()))
+    }
+
     /// `HttpClient.close()`.
     fn msstd_http_client_close(c: ObjRef<ClientH>) -> () {
         c.close();

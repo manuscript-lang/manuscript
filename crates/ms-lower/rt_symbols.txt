@@ -509,6 +509,7 @@ msstd_http_body_read_all(b: *const ObjCell<BodyH>, out: *mut VecVal, err: ErrSlo
 msstd_http_client_close(c: *const ObjCell<ClientH>)
 msstd_http_client_request(c: *const ObjCell<ClientH>, method: *const StrVal, address: *const StrVal, headers: *const ObjCell<HeadersH>, body: *const StrVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8
 msstd_http_client_request_bytes(c: *const ObjCell<ClientH>, method: *const StrVal, address: *const StrVal, headers: *const ObjCell<HeadersH>, body: *const VecVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8
+msstd_http_client_share(c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH>
 msstd_http_error_message(status: u8, has_failed: HasRaw, failed: *const StrVal, out: *mut StrVal)
 msstd_http_exchange_close(x: *const ObjCell<ExchH>)
 msstd_http_exchange_headers(x: *const ObjCell<ExchH>) -> *mut ObjCell<HeadersH>

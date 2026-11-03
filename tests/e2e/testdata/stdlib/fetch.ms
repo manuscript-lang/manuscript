@@ -98,7 +98,7 @@ test "fetch follows redirects unless max_redirects is 0":
     try expect_equal(followed.head.status, 200)
 
     let client = try fetcher(FetcherOptions(max_redirects: 0))
-    let stopped = try client.fetch(url)
+    let stopped = try client.fetch(url).wait()
     try expect_equal(stopped.head.status, 302)
 
 test "fetch does not restore Content-Type after a redirect drops its body":
@@ -141,7 +141,7 @@ test "Fetcher.stream returns the body incrementally and reuses the client":
     try expect_equal(response.metadata.status, 200)
     try response.body.close()
 
-    let again = try client.fetch(url)
+    let again = try client.fetch(url).wait()
     try expect_equal(again.body.length(), 10)
 
 test "a closed Fetcher returns Closed":
@@ -150,4 +150,4 @@ test "a closed Fetcher returns Closed":
     try client.close()
 
     let sent = client.fetch("http://{server.address()}/big")
-    try expect_equal(sent.err().message, "HTTP: resource is closed")
+    try expect_equal(sent.wait().err().message, "HTTP: resource is closed")

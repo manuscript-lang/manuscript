@@ -10,7 +10,7 @@ fn worker(url: String, nanos: Int) Int:
     var n = 0
 
     while monotonic().difference(started).compare(nanoseconds(nanos)) < 0:
-        if let r = f.fetch(url):
+        if let r = f.fetch(url).wait():
             n += r.body.length()
             n -= r.body.length() - 1
         else:
