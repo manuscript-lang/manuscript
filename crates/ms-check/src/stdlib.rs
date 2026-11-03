@@ -367,6 +367,13 @@ pub fn standard_exports(path: &str) -> HashMap<Name, SymRef> {
     exports
 }
 
+/// Whether a bundled source module is being checked right now. Queries that visit every
+/// module (import hints) must not run then: they would re-enter modules of the open group
+/// and replace the real diagnostic with a cyclic-dependency panic.
+pub fn checking_sources() -> bool {
+    world(|w| !w.checking.is_empty())
+}
+
 /// The checked result of a bundled source module, if it has been checked.
 pub fn done(file: Name) -> Option<Rc<StdResult>> {
     world(|w| w.done.get(&file).cloned())
