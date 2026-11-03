@@ -59,15 +59,15 @@ native! {
     }
 
     // Feeds a chunk and returns the output it completes; empty while the codec needs more input.
-    fn msstd_compress_decoder_push(d: ObjRef<DecoderObj>, data: &[u8]) -> Result<Vec<u8>, Fail> {
-        let mut codec = d.codec.borrow_mut();
+    fn msstd_compress_decoder_push(decoder: ObjRef<DecoderObj>, data: &[u8]) -> Result<Vec<u8>, Fail> {
+        let mut codec = decoder.codec.borrow_mut();
         codec.feed(data);
         drain(&mut codec, false)
     }
 
     // Ends the input and returns the rest of the output; input that ends inside the format is `InvalidData`.
-    fn msstd_compress_decoder_end(d: ObjRef<DecoderObj>) -> Result<Vec<u8>, Fail> {
-        let mut codec = d.codec.borrow_mut();
+    fn msstd_compress_decoder_end(decoder: ObjRef<DecoderObj>) -> Result<Vec<u8>, Fail> {
+        let mut codec = decoder.codec.borrow_mut();
         codec.finish_input();
         drain(&mut codec, true)
     }
@@ -160,6 +160,34 @@ mod tests {
                 ms_rt::vec::msrt_bytes_drop(v);
             }
             ms_rt::ffi::str_release(&f);
+        }
+    }
+
+    #[test]
+    fn push_roundtrip() {
+        let f = new_string("gzip");
+        let mut enc = MaybeUninit::<*mut ObjCell<EncoderObj>>::uninit();
+        let mut dec = MaybeUninit::<*mut ObjCell<DecoderObj>>::uninit();
+        let (data, mut head, mut tail, mut plain) = (bytes(b"hello hello hello"), blank(), blank(), blank());
+        // SAFETY: all pointers are live; handles are released at the end.
+        unsafe {
+            assert_eq!(
+                msstd_compress_encoder_new(&f, 10, enc.as_mut_ptr()),
+                ms_rt::ffi::STATUS_INVALID_INPUT
+            );
+            assert_eq!(msstd_compress_encoder_new(&f, 6, enc.as_mut_ptr()), 0);
+            let enc = enc.assume_init();
+            msstd_compress_encoder_push(enc, &data, head.as_mut_ptr());
+            msstd_compress_encoder_end(enc, tail.as_mut_ptr());
+            let packed = [bytes_ref(head.as_ptr()), bytes_ref(tail.as_ptr())].concat();
+            assert_eq!(msstd_compress_decoder_new(&f, 0, 0, dec.as_mut_ptr()), 0);
+            let dec = dec.assume_init();
+            let chunk = bytes(&packed);
+            assert_eq!(msstd_compress_decoder_push(dec, &chunk, plain.as_mut_ptr()), 0);
+            assert_eq!(bytes_ref(plain.as_ptr()), b"hello hello hello");
+            assert_eq!(msstd_compress_decoder_end(dec, plain.as_mut_ptr()), 0);
+            ms_rt::obj::msrt_release(enc.cast());
+            ms_rt::obj::msrt_release(dec.cast());
         }
     }
 }

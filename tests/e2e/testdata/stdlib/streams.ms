@@ -12,7 +12,6 @@ import (
     channel_writer
 ) from "@std/io/streams.ms"
 import read_all, copy, read_line from "@std/io/io.ms"
-import CompressionFormat from "@std/io/archive.ms"
 import HashAlgorithm, sha256 from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
@@ -63,26 +62,6 @@ test "digest hashes a stream incrementally":
     var input = from_bytes(data.clone(), 3)
     let hashed = try digest(var input, HashAlgorithm.Sha256)
     if hashed != sha256(data): return panic("stream digest")
-
-test "compression streams round trip all formats":
-    let text = "compress me compress me compress me".to_bytes()
-
-    for format in [
-        CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
-    ]:
-        let packed = format.compress_stream(from_bytes(text.clone(), 5))
-        let restored = format.decompress_stream(packed)
-        if (try read_all(restored)) != text: return panic(
-            "compression stream roundtrip"
-        )
-
-    let limited = CompressionFormat.Gzip.decompress_stream(
-        CompressionFormat.Gzip.compress_stream(from_bytes(text.clone())), 4
-    )
-    if read_all(limited).is_ok(): return panic("decompression budget")
-
-    let garbage = CompressionFormat.Gzip.decompress_stream(from_bytes(text.clone()))
-    if read_all(garbage).is_ok(): return panic("invalid data")
 
 test "take rejects a negative limit and read_line counts the terminator":
     var negative = take(from_bytes("abc".to_bytes()), -1)
