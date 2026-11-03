@@ -1,11 +1,9 @@
 //! Starting and reaping children with `std::process::Command`, on every platform.
 //!
 //! Each standard stream of the child is a given pipe end (std duplicates it), the parent's own
-//! stream, or the null device. The child leads its own process group on Unix, unless this process
-//! is itself a `ProcessGroup` child: then it joins ours, so the kill of our group reaches it; on Windows it starts
+//! stream, or the null device. The child leads its own process group on Unix; on Windows it starts
 //! suspended and runs only once it is in a job object, so a kill reaches its whole process tree,
 //! including anything it starts right away.
-use crate::ipc::ChildEnd;
 use alloc::vec::Vec;
 use ms_rt_abi::{STATUS_FAILED, STATUS_UNAVAILABLE};
 use ms_std_fs::err::{Fail, Res, describe};
@@ -26,10 +24,6 @@ pub struct Child {
     /// before 5.3), a kqueue watching the pid on Apple platforms.
     #[cfg(unix)]
     exit: i32,
-    /// The child shares our process group (we are a `ProcessGroup` child), so it is signalled by
-    /// pid: its group is ours.
-    #[cfg(unix)]
-    shared: bool,
 }
 
 #[cfg(unix)]
@@ -88,17 +82,12 @@ fn duplicate(fd: sys::Fd) -> Result<Stdio, i32> {
     }
 }
 
-/// Held while a child starts, so an IPC end made inheritable reaches only its own child.
-#[cfg(windows)]
-static INHERIT: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-/// Starts `program` with `args`, the given standard streams, the extra variables `env`, and the
-/// child's end of `ipc` as described in `crate::ipc`; `Unavailable` when it is missing.
+/// Starts `program` with `args`, the given standard streams and the extra variables `env`;
+/// `Unavailable` when it is missing.
 pub fn start(
     program: &[u8],
     args: &[Vec<u8>],
     [stdin, stdout, stderr]: [StdStream; 3],
-    ipc: Option<&ChildEnd>,
     env: &[(&str, &[u8])],
     cwd: Option<&[u8]>,
 ) -> Res<Child> {
@@ -123,44 +112,10 @@ pub fn start(
     if let Some(dir) = cwd {
         cmd.current_dir(os_string(dir));
     }
-    if let Some(end) = ipc {
-        cmd.env(crate::ipc::ENV, os_string(&end.env_value()));
-        #[cfg(unix)]
-        {
-            use std::os::unix::process::CommandExt;
-            let fd = std::os::fd::AsRawFd::as_raw_fd(&end.end.0);
-            // SAFETY: only async-signal-safe calls between fork and exec.
-            unsafe {
-                cmd.pre_exec(move || {
-                    let target = crate::ipc::CHILD_FD;
-                    // `dup2` clears close-on-exec on the copy; a descriptor already in place
-                    // keeps its flag, so clear it.
-                    let r = if fd == target {
-                        libc::fcntl(fd, libc::F_SETFD, 0)
-                    } else {
-                        libc::dup2(fd, target)
-                    };
-                    if r < 0 {
-                        return Err(std::io::Error::last_os_error());
-                    }
-                    Ok(())
-                });
-            }
-        }
-    }
-    #[cfg(unix)]
-    let shared = crate::ipc::started_by_group();
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        // A group child's own children stay in its group, which its parent kills as a whole.
-        let group = if shared {
-            // SAFETY: plain call.
-            unsafe { libc::getpgrp() }
-        } else {
-            0
-        };
-        cmd.process_group(group);
+        cmd.process_group(0);
     }
     #[cfg(windows)]
     {
@@ -171,25 +126,8 @@ pub fn start(
         // Suspended until `Child::new` has put it in its job.
         cmd.creation_flags(CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW | CREATE_SUSPENDED);
     }
-    // The child's IPC end is inheritable only while this child starts, and every start holds
-    // the lock, so no other child started here inherits it.
-    #[cfg(windows)]
-    let _held = INHERIT.lock().unwrap_or_else(|e| e.into_inner());
-    #[cfg(windows)]
-    if let Some(end) = ipc {
-        end.end.inherit(true).map_err(failed)?;
-    }
-    let spawned = cmd.spawn();
-    #[cfg(windows)]
-    if let Some(end) = ipc {
-        let _ = end.end.inherit(false);
-    }
-    match spawned {
-        Ok(inner) => Ok(Child::new(
-            inner,
-            #[cfg(unix)]
-            shared,
-        )),
+    match cmd.spawn() {
+        Ok(inner) => Ok(Child::new(inner)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(Fail::status(STATUS_UNAVAILABLE)),
         // Windows reports a missing working directory as "directory name is invalid".
         Err(_) if cwd.is_some_and(|d| !std::path::Path::new(&os_string(d)).is_dir()) => {
@@ -270,7 +208,7 @@ fn exit_code(status: std::process::ExitStatus) -> i64 {
 }
 
 impl Child {
-    fn new(inner: std::process::Child, #[cfg(unix)] shared: bool) -> Child {
+    fn new(inner: std::process::Child) -> Child {
         #[cfg(windows)]
         {
             use std::os::windows::io::AsRawHandle;
@@ -300,7 +238,6 @@ impl Child {
                 code: None,
                 max_resident: 0,
                 exit,
-                shared,
             }
         }
     }
@@ -440,7 +377,7 @@ impl Child {
         #[cfg(unix)]
         {
             let pid = self.inner.id() as libc::pid_t;
-            let target = self.target(pid);
+            let target = -pid;
             // SAFETY: plain system calls on this child's group, or on the child alone.
             unsafe {
                 if !force && libc::kill(target, libc::SIGTERM) == 0 {
@@ -456,31 +393,13 @@ impl Child {
         }
     }
 
-    /// For a child sharing our process group: freezes it and everything below it, then kills
-    /// them all, so nothing it started outlives it whatever it is doing. A no-op for any other
-    /// child, whose whole group the kill reaches.
-    pub fn kill_tree(&mut self) {
-        #[cfg(unix)]
-        {
-            if self.shared && !self.poll() {
-                tree::kill(self.inner.id() as libc::pid_t);
-            }
-        }
-    }
-
-    /// What to signal: the child's group, or only the child when it shares ours.
-    #[cfg(unix)]
-    fn target(&self, pid: libc::pid_t) -> libc::pid_t {
-        if self.shared { pid } else { -pid }
-    }
-
     /// Kills whatever is left of the child's process group (job on Windows).
     pub fn kill_group(&mut self) {
         #[cfg(unix)]
         {
             let pid = self.inner.id() as libc::pid_t;
             // SAFETY: plain system call.
-            unsafe { libc::kill(self.target(pid), libc::SIGKILL) };
+            unsafe { libc::kill(-pid, libc::SIGKILL) };
         }
         #[cfg(windows)]
         {
@@ -508,151 +427,6 @@ impl Drop for Child {
     fn drop(&mut self) {
         if self.exit >= 0 {
             let _ = sys::close(self.exit);
-        }
-    }
-}
-
-/// Killing a process and all its descendants on Unix, for children that share their parent's
-/// group and so cannot be reached through a group of their own.
-#[cfg(unix)]
-mod tree {
-    use alloc::vec::Vec;
-
-    /// Every process below `root`, or empty when they cannot be listed.
-    #[cfg(target_os = "linux")]
-    fn descendants(root: libc::pid_t) -> Vec<libc::pid_t> {
-        let mut edges: Vec<(libc::pid_t, libc::pid_t)> = Vec::new();
-        let Ok(dir) = std::fs::read_dir("/proc") else {
-            return Vec::new();
-        };
-        for entry in dir.flatten() {
-            let Some(pid) = entry.file_name().to_str().and_then(|n| n.parse().ok()) else {
-                continue;
-            };
-            let Ok(stat) = std::fs::read_to_string(entry.path().join("stat")) else {
-                continue;
-            };
-            // `pid (comm) state ppid ...`; comm may hold spaces and parentheses.
-            let after = stat.rsplit_once(')').map_or("", |(_, rest)| rest);
-            if let Some(ppid) = after.split_whitespace().nth(1).and_then(|p| p.parse().ok()) {
-                edges.push((pid, ppid));
-            }
-        }
-        let mut found = alloc::vec![root];
-        let mut next = 0;
-        while next < found.len() {
-            let parent = found[next];
-            next += 1;
-            for &(pid, ppid) in &edges {
-                if ppid == parent && !found.contains(&pid) {
-                    found.push(pid);
-                }
-            }
-        }
-        found.remove(0);
-        found
-    }
-
-    #[cfg(all(unix, not(target_os = "linux")))]
-    fn descendants(root: libc::pid_t) -> Vec<libc::pid_t> {
-        let mut found = alloc::vec![root];
-        let mut next = 0;
-        while next < found.len() {
-            let parent = found[next];
-            next += 1;
-            let mut buf = [0 as libc::pid_t; 1024];
-            // SAFETY: `buf` is writable for the byte size passed. The return value is ignored: libproc
-            // documents it as a count of pids in some releases and bytes in others, and dividing
-            // a count by the pid size dropped every child of a parent with fewer than four.
-            // Unused slots stay zero and no pid is zero.
-            unsafe {
-                libc::proc_listchildpids(
-                    parent,
-                    buf.as_mut_ptr().cast(),
-                    core::mem::size_of_val(&buf) as libc::c_int,
-                )
-            };
-            for &pid in buf.iter().take_while(|p| **p > 0) {
-                if !found.contains(&pid) {
-                    found.push(pid);
-                }
-            }
-        }
-        found.remove(0);
-        found
-    }
-
-    /// Whether `pid` has stopped, or is gone.
-    #[cfg(target_os = "linux")]
-    fn stopped(pid: libc::pid_t) -> bool {
-        let Ok(stat) = std::fs::read_to_string(alloc::format!("/proc/{pid}/stat")) else {
-            return true;
-        };
-        let after = stat.rsplit_once(')').map_or("", |(_, rest)| rest);
-        !matches!(
-            after.trim_start().chars().next(),
-            Some('R' | 'S' | 'D' | 'I')
-        )
-    }
-
-    #[cfg(all(unix, not(target_os = "linux")))]
-    fn stopped(pid: libc::pid_t) -> bool {
-        /// `SSTOP` and `SZOMB` of `pbi_status`.
-        const STOPPED: u32 = 4;
-        const ZOMBIE: u32 = 5;
-        // SAFETY: `info` is writable for the size passed; all-zero is a valid `proc_bsdinfo`.
-        let (read, info) = unsafe {
-            let mut info: libc::proc_bsdinfo = core::mem::zeroed();
-            let read = libc::proc_pidinfo(
-                pid,
-                libc::PROC_PIDTBSDINFO,
-                0,
-                (&raw mut info).cast(),
-                core::mem::size_of::<libc::proc_bsdinfo>() as libc::c_int,
-            );
-            (read, info)
-        };
-        read <= 0 || info.pbi_status == STOPPED || info.pbi_status == ZOMBIE
-    }
-
-    /// Waits until every process in `pids` has stopped. `kill` with SIGSTOP returns before the
-    /// target stops, and a process in the middle of `fork` creates its child before it does, so
-    /// the children of a process are only all listed once it has stopped.
-    fn settle(pids: &[libc::pid_t]) {
-        for &pid in pids {
-            for _ in 0..2000 {
-                if stopped(pid) {
-                    break;
-                }
-                std::thread::sleep(std::time::Duration::from_micros(500));
-            }
-        }
-    }
-
-    /// Stops `root` and its descendants until no new one appears (a stopped process cannot fork),
-    /// then kills them all.
-    pub fn kill(root: libc::pid_t) {
-        let mut frozen = alloc::vec![root];
-        // SAFETY: plain system call.
-        unsafe { libc::kill(root, libc::SIGSTOP) };
-        loop {
-            settle(&frozen);
-            let fresh: Vec<libc::pid_t> = descendants(root)
-                .into_iter()
-                .filter(|p| !frozen.contains(p))
-                .collect();
-            if fresh.is_empty() {
-                break;
-            }
-            for &pid in &fresh {
-                // SAFETY: plain system call.
-                unsafe { libc::kill(pid, libc::SIGSTOP) };
-            }
-            frozen.extend(fresh);
-        }
-        for pid in frozen {
-            // SAFETY: plain system call.
-            unsafe { libc::kill(pid, libc::SIGKILL) };
         }
     }
 }

@@ -26,8 +26,6 @@ use std::collections::{HashMap, HashSet};
 
 /// Offset of `code` in a closure object.
 pub const CLOSURE_CODE: i32 = 16;
-/// Offset of the payload in a MIR `Shared` box (internal; builders use it).
-pub const SHARED_VALUE: i64 = 16;
 /// Offset of the first capture in a closure object.
 pub const CLOSURE_CAPTURES: u32 = 24;
 
@@ -47,7 +45,6 @@ pub enum Glue {
     /// `fn(arg: *mut u8)` thunk used by cleanup.push; key carries the closer function.
     CleanupThunk(u32),
     /// Destructor of a MIR `Shared` box `fn(obj)`; the `Ty` is `T`. Drops the payload, frees the box.
-    SharedDrop,
     /// `fn(slot)` that drops the value stored in memory at `slot` (descriptor `drop`).
     SlotDrop,
     /// `fn(src, dst)` that copies the value at `src` into uninitialised `dst` (descriptor `copy`).
@@ -381,11 +378,9 @@ impl<'m> Gen<'m> {
             Glue::Drop => self.sig(&leaves, &[]),
             Glue::Copy => self.sig(&leaves, &leaves),
             Glue::BlockCopy => self.sig(&[Leaf::I64], &[Leaf::I64]),
-            Glue::ClosureDrop(_)
-            | Glue::BlockDrop
-            | Glue::CleanupThunk(_)
-            | Glue::SlotDrop
-            | Glue::SharedDrop => self.sig(&[Leaf::I64], &[]),
+            Glue::ClosureDrop(_) | Glue::BlockDrop | Glue::CleanupThunk(_) | Glue::SlotDrop => {
+                self.sig(&[Leaf::I64], &[])
+            }
             Glue::SlotCopy => self.sig(&[Leaf::I64, Leaf::I64], &[]),
         };
         let name = format!(
@@ -399,7 +394,6 @@ impl<'m> Gen<'m> {
                 Glue::BlockCopy => "block_copy",
                 Glue::CleanupThunk(_) => "cleanup_thunk",
                 Glue::SlotDrop => "slot_drop",
-                Glue::SharedDrop => "shared_drop",
                 Glue::SlotCopy => "slot_copy",
             }
         );

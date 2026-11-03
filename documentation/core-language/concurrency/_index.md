@@ -5,18 +5,27 @@ weight = 8
 
 # Concurrent tasks
 
-Run several pieces of work at once with a `TaskGroup`, or spread CPU-bound work over cores with a `WorkerGroup`. Tasks are cooperative and run on one thread, so there is no `async` or `await`: any function can wait, and callers do not change.
+A call that can wait starts its work at once and returns a `Promise[T]`. `wait()` gives the result, so there is no `async` or `await`: any function can wait, and callers do not change. `promise(fn: ...)` runs your own function the same way, on a thread the runtime picks.
 
-1. [Task groups](task-groups.md)
-2. [Worker threads](workers.md)
-3. [Process groups](process-groups.md): the same shape, in child processes.
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import promise, wait_all from "@std/concurrency/promise.ms"
+import expect_equal from "@std/test/test.ms"
 
-| Choose | For | Entry |
-| --- | --- | --- |
-| `TaskGroup[T, In, Out]` | Cooperative work that waits for I/O or messages | A callable taking `TaskChannel[Out, In]` and returning `T` |
-| `WorkerGroup[In, Out]` | CPU work on isolated OS threads | A named zero-argument `fn` returning `Unit`; obtains `worker_channel()` |
-| `ProcessGroup[T, In, Out]` | Work in child processes, with separate standard streams when needed | A named `fn` taking `Channel[Out, In]` and returning `T` |
+fn square(n: Int) Int:
+    return n * n
 
-Each group owns the work it starts until its scope ends. Collect task or process results, or call `worker.wait()`, before leaving the scope to finish the work; leaving early cancels or stops it. Tasks move values through channels; workers and processes serialize messages as JSON. Their cleanup and failure behavior differ: read the relevant guide before choosing a boundary.
+test "run work at once and collect it":
+    let first = promise(fn: ok(square(3)))
+    let second = promise(fn: ok(square(4)))
+    let results = try wait_all([first, second])
+    try expect_equal(results, [9, 16])
+```
 
-`Channel[In, Out]` sends `In` and receives `Out` through typed `send`, `receive` and `close` operations. Its `Transport[In, Out]` supplies the underlying task queue, worker queue or process pipe; see the [channel API](../../standard-library/reference/channels.md).
+- A promise only reads what it captures. Concurrent code never changes a shared value; give state one owner and send it values over a `pipe`.
+- `wait(timeout: ...)` stops waiting and cancels the promise when the limit passes. Dropping an unfinished promise cancels it and waits for it to end, so work never outlives the values it uses.
+- A fault inside a promise ends only that promise; `wait` reports it as a failure.
+- `wait_all` returns results in order and cancels the rest on the first error; `wait_first` returns the first result.
+- Cancellation is delivered at the next wait, and a loop that never waits is not stopped. Lint rule **MSL111** flags a `while true` loop that neither waits nor exits.
+
+The API reference is generated from `stdlib/concurrency/promise.ms`.

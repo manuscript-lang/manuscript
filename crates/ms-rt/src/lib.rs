@@ -30,7 +30,6 @@ pub mod alloc;
 pub mod bits;
 pub mod cells;
 pub mod cabi;
-pub mod channel;
 pub mod desc;
 pub mod fault;
 pub mod ffi;
@@ -44,14 +43,12 @@ pub mod mem;
 pub mod num;
 pub mod obj;
 pub mod pipe;
-pub mod pipes;
 pub mod poller;
 pub mod process;
 pub mod profile;
 pub mod promise;
 pub mod scan;
 pub mod sched;
-pub mod scope;
 pub mod start;
 #[cfg(not(windows))]
 pub mod streams;
@@ -70,7 +67,6 @@ pub mod trap;
 pub mod tree;
 pub mod utf8;
 pub mod vec;
-pub mod worker;
 
 #[cfg(test)]
 mod model_tests;

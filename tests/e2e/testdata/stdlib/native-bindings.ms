@@ -11,6 +11,7 @@ import (
 ) from "@std/os/process.ms"
 import (
     FileEvent,
+    FileWatcher,
     join,
     create_directory,
     stat_filesystem,
@@ -19,10 +20,7 @@ import (
     WatchOptions,
     write_file
 ) from "@std/os/fs.ms"
-import ReadStream from "@std/io/io.ms"
 import milliseconds, sleep from "@std/os/time.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
-import Shared, share from "@std/concurrency/shared.ms"
 
 fn expect_process_error[T](outcome: T!, expected: Error) Unit!:
     match outcome:
@@ -144,13 +142,9 @@ test "stat_filesystem describes the filesystem under a path":
         )
     )
 
-// Reads up to six events and reports whether one has the path and kind.
-fn saw(var events: ReadStream[FileEvent], path: String, kind: String) Bool:
-    for attempt in [1, 2, 3, 4, 5, 6]:
-        let next = events.read().wait(timeout: 2.seconds)
-        if next.is_error(): return false
-        if let event = next.get(none):
-            if event.path == path and event.kind == kind: return true
+fn saw(events: List[FileEvent], path: String, kind: String) Bool:
+    for event in events:
+        if event.path == path and event.kind == kind: return true
     return false
 
 test "polling and native watchers report a created file and close":
@@ -160,12 +154,17 @@ test "polling and native watchers report a created file and close":
         path: root, recursive: false, options: WatchOptions(interval: milliseconds(20))
     )
     try write_file(path: "{root}/a.txt", data: "x", replace: false)
-    try expect_true(saw(var polling, join([root.clone(), "a.txt"]), "rename"))
+    try expect_true(saw(try polling.next(), join([root.clone(), "a.txt"]), "rename"))
     try polling.close()
 
-    var native = try watch(path: root, recursive: false)
+    let native = try watch(path: root, recursive: false)
     try write_file(path: "{root}/b.txt", data: "y", replace: false)
-    try expect_true(saw(var native, join([root.clone(), "b.txt"]), "rename"))
+
+    var found = false
+    for attempt in [1, 2, 3, 4, 5, 6]:
+        if not found:
+            found = saw(try native.next(), join([root.clone(), "b.txt"]), "rename")
+    try expect_true(found)
 
 test "native watcher max_entries counts the paths under the root":
     let t = temporary("ms-me-") | try expect_ok
@@ -209,15 +208,6 @@ test "polling options reject native-only settings":
     var w = try watch(path: t.path(), options: polled)
     try w.close()
 
-test "a wait on a watcher honors its timeout":
-    let t = temporary("ms-r2-") | try expect_ok
-    var w = try watch(
-        path: t.path(), recursive: false,
-        options: WatchOptions(interval: milliseconds(20))
-    )
-    let waited = w.read().wait(timeout: 100.milliseconds)
-    try expect_true(waited.is_error())
-
 test "recursive native watch sees a file in a new subdirectory":
     let t = temporary("ms-r2-") | try expect_ok
     let r = t.path()
@@ -228,7 +218,6 @@ test "recursive native watch sees a file in a new subdirectory":
     var seen = false
     for i in [1, 2, 3, 4, 5, 6, 7, 8]:
         if not seen:
-            let next = (try w.read().wait(timeout: 2.seconds))
-            if let e = next:
+            for e in try w.next():
                 if e.path == join([r.clone(), "d", "f"]): seen = true
     try expect_true(seen)

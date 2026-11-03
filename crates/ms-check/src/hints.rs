@@ -512,7 +512,7 @@ impl Checker {
             }
             "spawn" | "Promise" | "Future" | "Thread" | "thread" | "setTimeout" | "setInterval" => {
                 return format!(
-                    "{message}; there is no free {name}: start tasks with a TaskGroup from \"@std/concurrency/tasks.ms\" bound to a local, e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))"
+                    "{message}; there is no free {name}: start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\" and wait on it with timeout: seconds(...)"
                 );
             }
             "filesystem" | "network" | "commands" | "control" | "system" | "clock"

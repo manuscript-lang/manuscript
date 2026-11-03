@@ -292,7 +292,7 @@ fn apply(event: Event) {
                     wake(t, i);
                 }
                 _ if ptr == 0 => {}
-                _ if pipe != 0 => crate::pipes::unread(pipe, ptr, desc),
+                _ if pipe != 0 => crate::pipe::unread(pipe, ptr, desc),
                 _ => drop_block(ptr, desc),
             }
         }

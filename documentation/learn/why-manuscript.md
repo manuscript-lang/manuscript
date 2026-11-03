@@ -23,9 +23,9 @@ Diagnostics read `cause; fix`. When an agent writes `len(xs)`, `.unwrap()`, `nam
 
 ## Concurrency without `async`
 
-Any function can wait, so there is no `async`, no `await` and no function coloring. A `TaskGroup` runs cooperative tasks on one thread, a `WorkerGroup` runs isolated entries on OS threads, and a `ProcessGroup` runs them in child processes. All three own their work until the binding that holds the group goes out of scope, cancel what is still running then, and communicate over typed channels. Values move into tasks and come back as results or messages; `Shared[T]` is the one explicit, reference-counted way to share.
+Any function can wait, so there is no `async`, no `await` and no function coloring. A call that can wait returns a `Promise[T]` already running, `promise(fn: ...)` starts your own work the same way, and `wait()` gives the result. A promise only reads what it captures, dropping one cancels it, and values move between owners over a `pipe` instead of being shared.
 
-A recorded eight-job run achieved 3.95x scaling from one to four workers ([worker scaling](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/workers/README.md)). Adversarial reviews probe the task, worker and process runtimes for leaks, hangs and unsound sharing. Cleanup, fault containment and deadlock detection have limits; read [concurrency](../core-language/concurrency/_index.md) before choosing a boundary.
+Cancellation, fault containment and deadlock detection have limits; read [concurrency](../core-language/concurrency/_index.md) before relying on them.
 
 ## Ownership you can follow
 

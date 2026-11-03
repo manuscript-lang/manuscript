@@ -1,7 +1,8 @@
 import open, read_file from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"
 import stdout, open_read from "@std/io/io.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import promise from "@std/concurrency/promise.ms"
+import milliseconds from "@std/os/time.ms"
 
 fn read_whole(path: String) Int:
     let read = read_file(path)
@@ -32,20 +33,23 @@ fn open_io_then_read(path: String) Int:
 
 export fn main() Int:
     let path = arguments()[0].clone()
-    var group = TaskGroup[Int](timeout: 300.milliseconds)
     let first = path.clone()
     let second = path.clone()
     let third = path.clone()
-    let a = group.spawn(fn ch: read_whole(first.clone()))
-    let b = group.spawn(fn ch: open_then_read(second.clone()))
-    let d = group.spawn(fn ch: open_io_then_read(third.clone()))
-    let c = group.spawn(fn ch: 5)
+    let a = promise(fn: ok(read_whole(first.clone())))
+    let b = promise(fn: ok(open_then_read(second.clone())))
+    let d = promise(fn: ok(open_io_then_read(third.clone())))
+    let c = promise(fn: ok(5))
+    let limit = milliseconds(300)
+    let c_result = c.wait(timeout: limit)
+    let a_result = a.wait(timeout: limit)
+    let b_result = b.wait(timeout: limit)
+    let d_result = d.wait(timeout: limit)
     (
         stdout()
         .write(
-            "{c.result().get(-9)} {a.result().is_error()} {b.result().is_error()} {d.result().is_error()}\n"
+            "{c_result.get(-9)} {a_result.is_error()} {b_result.is_error()} {d_result.is_error()}\n"
         )
         .get()
     )
-    group.close().get(none)
     return 0

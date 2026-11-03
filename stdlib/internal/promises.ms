@@ -32,25 +32,25 @@ export extern fn msrt_promise_sleep(ns: Int) Int
 export extern fn msrt_promise_ready(fd: Int, events: Int, timeout_ns: Int) Int
 
 // In-memory pipes (crates/ms-rt/src/pipes.rs). A pipe starts with one writer, the Pipe value itself.
-export extern fn msrt_pipes_new(capacity: Int) Int
+export extern fn msrt_pipe_new(capacity: Int) Int
 
 // Another writing end.
-export extern fn msrt_pipes_add_writer(pipe: Int) Unit
+export extern fn msrt_pipe_add_writer(pipe: Int) Unit
 
 // Moves a value in; 0 written, 1 the reader is gone (the value is dropped). Never waits.
-export extern fn msrt_pipes_write[T](pipe: Int, value: T) Int
+export extern fn msrt_pipe_write[T](pipe: Int, value: T) Int
 
 // A promise for the next value (take it with msrt_promise_take[T]); finishes with no value at the end.
-export extern fn msrt_pipes_read(pipe: Int) Int
+export extern fn msrt_pipe_read(pipe: Int) Int
 
 // A promise that finishes when no more than `capacity` values are queued, or the reader is gone.
-export extern fn msrt_pipes_flush(pipe: Int) Int
+export extern fn msrt_pipe_flush(pipe: Int) Int
 
-export extern fn msrt_pipes_buffered(pipe: Int) Int
+export extern fn msrt_pipe_buffered(pipe: Int) Int
 
-export extern fn msrt_pipes_close_writer(pipe: Int) Unit
+export extern fn msrt_pipe_close_writer(pipe: Int) Unit
 
-export extern fn msrt_pipes_close_reader(pipe: Int) Unit
+export extern fn msrt_pipe_close_reader(pipe: Int) Unit
 
 // The native stream table (crates/ms-rt/src/streams.rs): descriptor-backed byte streams.
 // Flags of msrt_streams_open: 1 reads, 2 writes, 4 closing the stream closes the descriptor.

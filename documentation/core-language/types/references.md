@@ -57,32 +57,7 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 ## Sharing a value
 
-`Shared[T]` from `@std/concurrency/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
-
-To change the value, lock it with `lock(box)` from `@std/concurrency/sync.ms` into a `var` binding. The guard holds the payload as `guard.value` and puts it back when the binding goes out of scope, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. `ms check` rejects the visible case, a `lock` of the same written place (`box`, `self.lines`) while the guard of an earlier `lock` of it is still open (before its scope ends or its `close()`) in the same function; a second handle to the box, or a call that locks it, is caught only by the runtime. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
-import share, Shared from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
-import expect_equal from "@std/test/test.ms"
-
-type Counter:
-    values: List[Int]
-
-impl Counter:
-    var fn bump() Unit:
-        self.values.append(1)
-
-fn bump(shared: Shared[Counter]) Unit:
-    var guard = lock(shared)
-    guard.value.bump()
-
-test "change a shared value through its guard":
-    let shared = share(Counter([]))
-    bump(shared)
-    shared.get().values.length() | try expect_equal(1)
-```
+There is no shared mutable value. A value has one owner; a promise reads what it captures, and changes travel as messages over a `pipe` to the owner. See [concurrent tasks](../concurrency/_index.md).
 
 ## References inside other values
 

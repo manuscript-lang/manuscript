@@ -20,7 +20,7 @@ fn exercise(mode: String, path: String) Unit!:
         let logger = try root.child_json("\{\"service\":\"api\"\}")
         try emit(logger)
         try logger.flush()
-        root.close()
+        try root.close()
         return ok(unit)
 
     if mode == "limit":
@@ -29,7 +29,7 @@ fn exercise(mode: String, path: String) Unit!:
     else if mode == "closed":
         var root = try create(stdout_transport())
         let logger = try root.child_json("\{\"service\":\"api\"\}")
-        root.close()
+        try root.close()
         try logger.info("closed")
     else:
         let root = try create(stdout_transport())
@@ -46,7 +46,7 @@ fn exercise(mode: String, path: String) Unit!:
 
     var logger = try create(stdout_transport(), timestamp: false)
     try logger.info("still open")
-    logger.close()
+    try logger.close()
     return ok(unit)
 
 export fn main() Int:

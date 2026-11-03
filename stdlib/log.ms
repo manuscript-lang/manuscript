@@ -1,10 +1,7 @@
 import Closeable, Data from "@std/core.ms"
-import WriteStream, stdout_bytes from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
 import FileHandle, open, remove, rename, stat from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
+import stdout, stdout_bytes from "@std/io/io.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
 import now from "@std/os/time.ms"
 
@@ -27,18 +24,18 @@ export type LogLevel:
 
 // A destination that accepts encoded log records and can be flushed and closed.
 export interface Transport:
-    /*
-    Accepts encoded record bytes and may return the original I/O cause. Errors can follow a partial
-    external write, without rollback. Child loggers call a shared transport concurrently, so an
-    implementation that keeps mutable state guards it itself, as the standard transports do.
-    */
+    // Accepts encoded record bytes and may return the original I/O cause. Errors can follow a partial
+    // external write, without rollback. Loggers on several threads each own a
+    // transport (see `duplicate`), so an implementation needs no locking.
     fn write(data: String) Unit!
     // Accepts encoded record bytes with the same rules as write.
     fn write_bytes(data: Bytes) Unit!
     // Delegates flush to the destination; persistence and buffering depend on that destination.
     fn flush() Unit!
-    // Releases owned resources; native close cancels admitted operations and leaves borrowed streams open.
-    fn close() Unit
+    // A new transport onto the same destination with its own handle; child loggers write through one each.
+    fn duplicate() Transport!
+    // Releases owned resources. Later writes return `Closed`.
+    var fn close() Unit
 
 // The number a level writes into the record's `level` field. Silent is a threshold that no record reaches.
 fn level_value(level: LogLevel) Int:
@@ -109,96 +106,85 @@ fn encode_error(cause: Error) Error:
 
     return Error("logging: invalid data", kind: ErrorCategory.InvalidData)
 
-// The open stream of a stream transport and whether the transport was closed.
-type StreamState:
-    stream: WriteStream[Bytes]
-    closed: Bool
-
-// Writes to a byte stream. Child loggers share one transport, so the state is guarded here: the
-// logger itself never locks. Closing a transport over a caller's stream leaves the stream open.
-type StreamTransport:
-    state: Shared[StreamState]
-
-impl Transport for StreamTransport:
-    fn write(data: String) Unit!:
-        var guard = lock(self.state)
-        if guard.value.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
-        )
-
-        match guard.value.stream.write(data.to_bytes()):
-            ok(_): return ok(unit)
-            error(cause): return error(cause)
-
-    fn write_bytes(data: Bytes) Unit!:
-        var guard = lock(self.state)
-        if guard.value.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
-        )
-
-        match guard.value.stream.write(data):
-            ok(_): return ok(unit)
-            error(cause): return error(cause)
-
-    fn flush() Unit!:
-        var guard = lock(self.state)
-        if guard.value.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
-        )
-
-        match guard.value.stream.flush().wait():
-            ok(_): return ok(unit)
-            error(cause): return error(cause)
-
-    fn close() Unit:
-        let _first = self.shut()
-
-impl StreamTransport:
-    // Marks the transport closed and tells whether this call closed it.
-    fn shut() Bool:
-        var guard = lock(self.state)
-        if guard.value.closed: return false
-
-        guard.value.closed = true
-        return true
-
-// Appends to a file the transport opened, and closes the file with the transport.
+// Appends to an open file. Each logger owns its handle (`duplicate` dups it), so loggers on several threads write without sharing state.
 type FileTransport:
-    file: Shared[FileHandle]
-    inner: StreamTransport
+    file: FileHandle
+    closed: Bool
 
 impl Transport for FileTransport:
     fn write(data: String) Unit!:
-        return self.inner.write(data)
+        return self.write_bytes(data.to_bytes())
 
     fn write_bytes(data: Bytes) Unit!:
-        return self.inner.write_bytes(data)
+        if self.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
+
+        return self.file.write_bytes(data)
 
     fn flush() Unit!:
-        return self.inner.flush()
+        if self.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
 
-    fn close() Unit:
-        if self.inner.shut():
-            var file = lock(self.file)
-            file.value.close().get(none)
+        return self.file.sync()
 
-// The transport behind a logger and its children. The last holder to drop closes it, so a scope that owns a
-// logger closes the transport on every exit; an earlier `close()` makes that close a no-op.
-export type OwnedTransport:
-    // The transport records are written to.
-    inner: Transport
+    fn duplicate() Transport!:
+        if self.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
 
-impl Closeable for OwnedTransport:
-    // Closes the transport. Safe to call again, as `Transport.close` is.
-    var fn close() Unit!:
-        self.inner.close()
-        return ok(unit)
+        return ok(FileTransport(file: try self.file.clone(), closed: false))
 
-/*
-A structured logger: level filtering, bound fields, and a pluggable `Transport`. The level methods
-take optional fields of any `Data` type and encode them with `stringify`. Child loggers share the
-transport; closing any of them closes it for all, and the last one dropped closes it if none did.
-*/
+    var fn close() Unit:
+        if self.closed: return
+
+        self.closed = true
+        self.file.close().get(none)
+
+// Writes to the process standard-output stream. It keeps no handle: every write reaches the process-wide buffer.
+type StdoutTransport:
+    closed: Bool
+
+impl Transport for StdoutTransport:
+    fn write(data: String) Unit!:
+        if self.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
+
+        var out = stdout()
+        return out.write(data)
+
+    fn write_bytes(data: Bytes) Unit!:
+        if self.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
+
+        var out = stdout_bytes()
+        return out.write(data)
+
+    fn flush() Unit!:
+        if self.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
+
+        var out = stdout()
+        return out.flush().wait()
+
+    fn duplicate() Transport!:
+        if self.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
+
+        return ok(StdoutTransport(closed: false))
+
+    var fn close() Unit:
+        self.closed = true
+
+// A structured logger: level filtering, bound fields, and a pluggable `Transport`. The level methods
+// take optional fields of any `Data` type and encode them with `stringify`. A child logger owns a
+// duplicate of the transport (its own handle on the same destination), so loggers can write from several threads and
+// closing one leaves the others open.
 export type Logger:
     // Internal state: the lowest level number that is written.
     threshold: Int
@@ -208,8 +194,8 @@ export type Logger:
     max_bytes: Int?
     // Internal state: JSON text of the fields bound by `child`, written as `context`; none if unbound.
     context: String?
-    // Internal state: the transport this logger and its children write to.
-    transport: Shared[OwnedTransport]
+    // Internal state: the transport this logger writes to; each child owns a duplicate.
+    transport: Transport
 
 impl Logger:
     // Internal: writes one record at a level number. `data` is JSON text attached as is.
@@ -228,7 +214,7 @@ impl Logger:
                     "logging: limit exceeded", kind: ErrorCategory.LimitExceeded
                 )
             )
-        return self.transport.get().inner.write(line)
+        return self.transport.write(line)
 
     /*
     Writes a record at the selected level. `fields` is any `Data` value `stringify` accepts.
@@ -285,11 +271,8 @@ impl Logger:
     fn child[F: Data](fields: F) Logger!:
         let text = try encode_fields(fields)
         let context = try merge_context(self.context, text)
-        return ok(
-            Logger(
-                self.threshold, self.timestamp, self.max_bytes, context, self.transport
-            )
-        )
+        let own = try self.transport.duplicate()
+        return ok(Logger(self.threshold, self.timestamp, self.max_bytes, context, own))
 
     // Tests the current filtering threshold; Silent is never enabled as a record level.
     fn enabled(level: LogLevel) Bool:
@@ -306,12 +289,13 @@ impl Logger:
 
     // Flushes the logger's transport.
     fn flush() Unit!:
-        return self.transport.get().inner.flush()
+        return self.transport.flush()
 
-    // Closes the transport this logger shares with its children, so every one of them reports `Closed`
-    // afterwards. Without it, the transport closes when the last logger holding it is dropped.
-    var fn close() Unit:
-        self.transport.get().inner.close()
+impl Closeable for Logger:
+    // Closes this logger's transport, which consumes the logger; a scope that owns one closes it on every exit. Children and the parent are not affected.
+    var fn close() Unit!:
+        self.transport.close()
+        return ok(unit)
 
 // Creates a logger that owns `transport`. Defaults to `Info`, timestamps enabled, and no record-size limit.
 export fn create(
@@ -330,106 +314,83 @@ export fn create(
     var threshold = 30
     if let chosen = level:
         threshold = level_value(chosen)
-    return ok(
-        Logger(
-            threshold, timestamp.get(true), max_bytes, none,
-            share(OwnedTransport(transport))
-        )
-    )
-
-// Writes log records to an existing byte stream.
-export fn stream_transport(output: WriteStream[Bytes]) Transport:
-    return StreamTransport(share(StreamState(output, false)))
+    return ok(Logger(threshold, timestamp.get(true), max_bytes, none, transport))
 
 // Writes log records to the process standard-output stream.
 export fn stdout_transport() Transport:
-    return stream_transport(stdout_bytes())
+    return StdoutTransport(closed: false)
+
+// Appends log records to an open file. The transport owns `file`; closing the transport closes it.
+export fn handle_transport(file: FileHandle) Transport:
+    return FileTransport(file: file, closed: false)
 
 // Appends log records to a file at `path`.
 export fn file_transport(path: String) Transport!:
     match open(path, "a", 420):
-        ok(file): return file_stream_transport(file)
+        ok(file): return ok(handle_transport(file))
         error(cause): return error(cause)
 
-fn file_stream_transport(file: FileHandle) Transport!:
-    let stream = StreamTransport(share(StreamState(try file.writer(), false)))
-    return ok(FileTransport(share(file), stream))
-
-// The open file of a rotating transport with its running size in bytes.
-type RotatingState:
+// Appends to a file and moves it aside once it would exceed a size, as `file_transport` does otherwise. It opens the file for each record, so a rotation by one logger is seen by the others; two loggers rotating at the same instant can lose records.
+type RotatingTransport:
     path: String
     max_bytes: Int
     keep: Int
-    file: FileHandle
-    size: Int
     closed: Bool
 
-// Appends to a file and moves it aside once it would exceed a size, as `file_transport` does otherwise.
-type RotatingTransport:
-    state: Shared[RotatingState]
+// Shifts `path.1` to `path.2` and so on (dropping the oldest), then moves `path` to `path.1`.
+fn rotate(path: String, keep: Int) Unit:
+    let _oldest = remove("{path}.{keep}", false)
+    var index = keep - 1
 
-impl RotatingState:
-    // Closes the file, shifts `path.1` to `path.2` and so on (dropping the oldest), moves `path` to `path.1`, and opens a fresh `path`.
-    var fn rotate() Unit!:
-        self.file.close().get(none)
+    while index >= 1:
+        let _shifted = rename("{path}.{index}", "{path}.{index + 1}")
+        index -= 1
 
-        let _oldest = remove("{self.path}.{self.keep}", false)
-        var index = self.keep - 1
-
-        while index >= 1:
-            let _shifted = rename("{self.path}.{index}", "{self.path}.{index + 1}")
-            index -= 1
-
-        if self.keep >= 1:
-            let _aside = rename(self.path, "{self.path}.1")
-        else:
-            let _discarded = remove(self.path, false)
-
-        match open(self.path, "a", 420):
-            ok(file):
-                self.file = file
-                self.size = 0
-                return ok(unit)
-            error(cause):
-                self.closed = true
-                return error(cause)
+    if keep >= 1:
+        let _aside = rename(path, "{path}.1")
+    else:
+        let _discarded = remove(path, false)
 
 impl Transport for RotatingTransport:
     fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
     fn write_bytes(data: Bytes) Unit!:
-        var guard = lock(self.state)
-        if guard.value.closed: return error(
+        if self.closed: return error(
             Error("logging: resource is closed", kind: ErrorCategory.Closed)
         )
 
-        let length = data.length()
-        if guard.value.size > 0 and guard.value.size + length > guard.value.max_bytes:
-            try guard.value.rotate()
+        var size = 0
+        if let existing = stat(self.path, true): size = existing.size
+        if size > 0 and size + data.length() > self.max_bytes:
+            rotate(self.path, self.keep)
 
-        match guard.value.file.write_bytes(data):
-            ok(_):
-                guard.value.size += length
-                return ok(unit)
-            error(cause): return error(cause)
+        var file = try open(self.path, "a", 420)
+        let written = file.write_bytes(data)
+        file.close().get(none)
+        return written
 
     fn flush() Unit!:
-        var guard = lock(self.state)
-        if guard.value.closed: return error(
+        if self.closed: return error(
             Error("logging: resource is closed", kind: ErrorCategory.Closed)
         )
 
-        match guard.value.file.sync():
-            ok(_): return ok(unit)
-            error(cause): return error(cause)
+        return ok(unit)
 
-    fn close() Unit:
-        var guard = lock(self.state)
-        if guard.value.closed: return
+    fn duplicate() Transport!:
+        if self.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
 
-        guard.value.closed = true
-        guard.value.file.close().get(none)
+        return ok(
+            RotatingTransport(
+                path: self.path.clone(), max_bytes: self.max_bytes, keep: self.keep,
+                closed: false
+            )
+        )
+
+    var fn close() Unit:
+        self.closed = true
 
 /*
 Appends log records to the file at `path` and rotates it by size.
@@ -441,18 +402,13 @@ export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Trans
         Error("logging: invalid input", kind: ErrorCategory.InvalidInput)
     )
 
-    var size = 0
-    if let existing = stat(path, true): size = existing.size
-
     match open(path, "a", 420):
         ok(file):
+            var probe = file
+            probe.close().get(none)
             return ok(
                 RotatingTransport(
-                    share(
-                        RotatingState(
-                            path, max_bytes, keep, file, size, false
-                        )
-                    )
+                    path: path.clone(), max_bytes: max_bytes, keep: keep, closed: false
                 )
             )
         error(cause): return error(cause)

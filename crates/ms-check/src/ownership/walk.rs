@@ -601,12 +601,6 @@ impl Walker<'_> {
         );
     }
 
-    /// Whether `e` is a `Copy` handle such as `Shared[T]`: it is not the storage it lends from,
-    /// and another copy of the handle can change that storage, so what it lends is a copy.
-    fn copy_handle(&self, e: &Expr) -> bool {
-        self.class_of(e) == Class::Copy && self.cx.m.ty(e).is_std("Shared")
-    }
-
     /// The fields from a variable to a place written as a plain chain of them.
     fn field_path(&self, e: &Expr) -> Option<Vec<Name>> {
         match &e.kind {
@@ -1625,7 +1619,35 @@ impl Walker<'_> {
             self.release_pending();
         }
         let ended: Vec<usize> = self.declared.drain(mark..).collect();
+        self.promises_outliving(&ended);
         self.active.retain(|a| !ended.contains(&a.holder));
+    }
+
+    /// A promise kept by a binding that outlives the block must not read a local that ends with it.
+    fn promises_outliving(&mut self, ended: &[usize]) {
+        let mut found: Vec<(Pos, String, String)> = Vec::new();
+        for a in &self.active {
+            if a.why != PROMISE_WHY || ended.contains(&a.holder) {
+                continue;
+            }
+            for (place, _) in &a.origins {
+                if ended.contains(&place.root) {
+                    found.push((
+                        a.pos,
+                        a.holder_name.as_str().to_string(),
+                        self.name_of(place.root).as_str().to_string(),
+                    ));
+                }
+            }
+        }
+        for (pos, holder, name) in found {
+            self.error(
+                pos,
+                format!(
+                    "this promise reads `{name}`, which ends before `{holder}` does; start the promise from a value that outlives `{holder}`, or wait for it before the block ends"
+                ),
+            );
+        }
     }
 
     fn stmt(&mut self, s: &Stmt) {
@@ -1802,25 +1824,6 @@ impl Walker<'_> {
             self.let_pos.insert(b.uid, s.pos);
         }
         let class = self.cx.classes.class(&b.ty);
-        // `var x = handle.get()` would change a copy, not the shared value.
-        if mutable
-            && class != Class::Copy
-            && let ExprKind::Call { callee, .. } = &value.kind
-            && let ExprKind::Member { left, .. } = &callee.kind
-            && self.copy_handle(left)
-        {
-            let text = self.expr_text(value);
-            self.expr(value, Demand::Read);
-            self.error(
-                pattern.pos,
-                format!(
-                    "`var {}` cannot borrow `{text}` mutably: it is a read-only result; copy it with `{text}.{COPY}()` to own it",
-                    b.name
-                ),
-            );
-            self.declare(&b, role, Perm::Mutable, None, false);
-            return;
-        }
         // A scalar copies, `let` or `var`; any other binding of a place borrows it, shared for
         // `let` and exclusive for `var`.
         if class != Class::Copy
@@ -3445,6 +3448,28 @@ impl Walker<'_> {
                 held.extend(self.argument(a, mode, &modes, i));
             }
             operands.push((Operand::Argument(&a.value), held, Vec::new()));
+        }
+        // A promise handed to a local container (`tasks.append(promise(fn: ...))`) is kept by that
+        // local: it reads its captures until the container's scope ends.
+        if let Some(r) = receiver_expr
+            && let ExprKind::Name(_) = &r.kind
+            && let Resolution::Local(holder) = self.cx.m.resolution(r)
+        {
+            for a in args {
+                if !self.entry_call(&a.value) {
+                    continue;
+                }
+                let origins = self.entry_places(&a.value);
+                if !origins.is_empty() {
+                    self.active.push(Borrow {
+                        holder: holder.uid,
+                        holder_name: holder.name,
+                        origins: origins.into_iter().map(|p| (p, false)).collect(),
+                        pos: a.value.pos,
+                        why: PROMISE_WHY.to_string(),
+                    });
+                }
+            }
         }
         // An operand that already failed its own check is not reported twice. Only a held
         // place can clash, so the operands' inner changes are collected only when one is held.

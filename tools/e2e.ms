@@ -15,7 +15,7 @@ import (
     run,
     system_info
 ) from "@std/os/process.ms"
-import TaskGroup, Task from "@std/concurrency/tasks.ms"
+import Promise, promise from "@std/concurrency/promise.ms"
 import Instant, monotonic from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"
 
@@ -280,21 +280,20 @@ export fn main() Int:
         )
         else: parallel.append(f.clone())
 
-    let group = TaskGroup[List[String]]()
-    var tasks = List[Task[List[String], Unit, Unit]]()
+    // A promise reads its captures until it is dropped, so the chunks outlive the loop that starts them.
+    var chunks = List[List[String]]()
 
     for worker in 0..jobs:
         var mine = List[String]()
         for i in 0..parallel.length():
             if (i + 1) % jobs == worker: mine.append(parallel[i].clone())
+        chunks.append(mine)
 
-        let shared = ctx.clone()
-        tasks.append(group.spawn(fn ch: run_all(shared, mine.clone()), none))
-
+    var tasks = List[Promise[List[String]]]()
+    for worker in 0..jobs:
+        tasks.append(promise(fn: ok(run_all(ctx, chunks[worker]))))
     for task in tasks:
-        for message in task.result().get(List[String]()): messages.append(
-            message.clone()
-        )
+        for message in task.wait().get(List[String]()): messages.append(message.clone())
     count += parallel.length()
 
     for f in serial:

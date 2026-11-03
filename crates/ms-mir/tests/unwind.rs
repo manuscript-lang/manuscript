@@ -4,7 +4,7 @@ use ms_mir::print::print_module;
 use ms_mir::unwind;
 use ms_mir::verify::verify_module;
 
-const SPAWNER: &str = "extern @msrt_scope_spawn(int) -> int spawns_task\n";
+const SPAWNER: &str = "extern @msrt_promise_start(int) -> int spawns_task\n";
 
 fn module(body: &str, spawner: bool) -> Module {
     let src = format!(
