@@ -5,8 +5,12 @@
 import Closeable from "@std/core.ms"
 import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
 import stdout from "@std/io/io.ms"
-import connect, serve from "@std/net/net.ms"
+import Connection, connect, serve from "@std/net/net.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
+
+fn send(var conn: Connection, text: String) Unit!:
+    try conn.output.write(text.to_bytes())
+    return conn.output.flush().wait()
 
 type Reporter:
     name: String
@@ -27,7 +31,7 @@ export fn main() Int:
         var server = acquired
 
         if var conn = connect(server.address()):
-            let _sent = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
+            let _sent = send(var conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
             // Let the handler start, then leave without waiting for the response.
             sleep(nanoseconds(100000000))

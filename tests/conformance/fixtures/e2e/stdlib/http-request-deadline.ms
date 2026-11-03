@@ -11,9 +11,13 @@ import (
     HttpServerOptions
 ) from "@std/net/http.ms"
 import stdout from "@std/io/io.ms"
-import connect, serve from "@std/net/net.ms"
+import Connection, connect, serve from "@std/net/net.ms"
 import monotonic_time from "@std/os/process.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
+
+fn send(var conn: Connection, text: String) Unit!:
+    try conn.output.write(text.to_bytes())
+    return conn.output.flush().wait()
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
@@ -22,13 +26,13 @@ fn handle(request: HttpRequest) HttpResponse:
 
 fn fetch(address: String, path: String) String:
     if var conn = connect(address):
-        let _sent = conn.write(
-            "GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
+        let _sent = send(
+            var conn, "GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
         )
         var text = ""
 
         while true:
-            if let chunk = conn.read(timeout: nanoseconds(5000000000)):
+            if let chunk = conn.input.read().wait(timeout: nanoseconds(5000000000)):
                 if let data = chunk:
                     text = "{text}{data.decode_utf8().get("?")}"
                     continue
