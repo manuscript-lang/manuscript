@@ -10,7 +10,7 @@ import (
     process_info,
     set_environment
 ) from "@std/os/process.ms"
-import read_line from "@std/io/io.ms"
+import lines from "@std/io/streams.ms"
 
 test "CLI test roots have empty arguments and host metadata agrees":
     try expect_false(not arguments().is_empty())
@@ -69,19 +69,25 @@ test "subprocess streams that are not piped are closed":
     )
     try expect_equal((try child.wait()), 0)
 
-    let line = try read_line(child.stderr())
+    var errors = lines(child.stderr())
+    let line = try errors.read().wait()
     try expect_equal(line.get(""), "done")
-    try expect_false(child.stdout().read().is_ok())
-    try expect_false(child.stdin().write("x").is_ok())
+    var silent = child.stdout()
+    try expect_false((try silent.read().wait()).is_some())
+    var input = child.stdin()
+    try expect_false(input.write("x".to_bytes()).is_ok())
 
 test "managed subprocess streams incrementally and cleans up on scope exit":
     if os_type() == "windows": return
 
     let child = try spawn("cat", [])
-    try child.stdin().write("ping\n")
+    var input = child.stdin()
+    try input.write("ping\n".to_bytes())
+    try input.flush().wait()
 
-    let line = try read_line(child.stdout())
+    var output = lines(child.stdout())
+    let line = try output.read().wait()
     try expect_equal(line.get(""), "ping")
-    child.stdin().close()
+    try input.close()
     try expect_equal((try child.wait()), 0)
-    try expect_false((try child.stdout().read()).is_some())
+    try expect_false((try output.read().wait()).is_some())
