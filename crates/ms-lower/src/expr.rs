@@ -891,14 +891,19 @@ impl<'a> FnLower<'a> {
         Ok(Val { v: jp, own: false })
     }
 
-    /// Calls a runtime function by symbol, declaring it from the operand types
-    /// (all operands borrowed, result owned).
+    /// Calls a runtime function by symbol, declaring it from the operand types: operands are
+    /// borrowed, except the function values an extern keeps, which it is handed; the result is owned.
     pub fn call_runtime(&mut self, sym: &str, args: &[Value], ret: MTy) -> Result<Value, Error> {
         let params = args
             .iter()
-            .map(|a| ms_mir::ir::Param {
+            .enumerate()
+            .map(|(i, a)| ms_mir::ir::Param {
                 ty: self.ty_of(*a),
-                mode: ms_mir::ir::Mode::Borrow,
+                mode: if crate::rtcall::hands_over(sym, i) {
+                    ms_mir::ir::Mode::Own
+                } else {
+                    ms_mir::ir::Mode::Borrow
+                },
             })
             .collect();
         let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {

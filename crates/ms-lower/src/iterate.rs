@@ -201,10 +201,7 @@ impl FnLower<'_> {
             _ => args.iter().find(|a| self.is_fn_value(a.val.v)).copied(),
         }
         .ok_or_else(|| Error::new("missing function argument"))?;
-        let ft = self.ty_of(f.val.v);
-        let fvar = self.fresh_var(ft);
-        let fo = self.owned(f.val);
-        self.b.def_var(fvar, fo);
+        let (fvar, fhidden) = self.callback_var(f.val);
         let (sv, hidden) = self.list_source(recv_expr, recv)?;
         let items = match self.b.m.types.kind(rty) {
             TyKind::List(_) => Items::List(sv),
@@ -375,7 +372,7 @@ impl FnLower<'_> {
             other => return Err(Error::new(format!("unsupported collection method {other}"))),
         };
         self.release_source(sv, hidden);
-        self.release_source(fvar, true);
+        self.release_source(fvar, fhidden);
         Ok(result)
     }
 }
