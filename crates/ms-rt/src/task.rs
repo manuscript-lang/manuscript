@@ -1515,7 +1515,7 @@ pub(crate) unsafe fn spawn_promise_task(closure: *mut ms_rt_abi::Closure, promis
 }
 
 /// The deadline of the deferred promise the running task is executing (`i64::MAX`: none).
-pub(crate) fn defer_deadline() -> i64 {
+pub fn defer_deadline() -> i64 {
     // SAFETY: single threaded scheduler; the running task's record is live.
     unsafe { (*ensure_init()).defer_deadline }
 }

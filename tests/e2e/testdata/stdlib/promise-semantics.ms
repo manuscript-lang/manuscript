@@ -1,7 +1,7 @@
 import panic from "@std/core.ms"
 import promise, wait_all, wait_first from "@std/concurrency/promise.ms"
 import (expect_equal, expect_error, expect_ok) from "@std/test/test.ms"
-import milliseconds, sleep from "@std/os/time.ms"
+import milliseconds, nanoseconds, sleep from "@std/os/time.ms"
 
 fn report(reason: Error) String:
     if reason.kind == ErrorCategory.Failed:
@@ -39,3 +39,8 @@ test "a second wait reports that the result was taken":
 
     let again = work.wait() | try expect_error
     try expect_equal(again.kind, ErrorCategory.Closed)
+
+test "a negative timeout waits no time instead of waiting forever":
+    let slow = promise(fn: ok(forever()))
+    let reason = slow.wait(timeout: nanoseconds(-1)) | try expect_error
+    try expect_equal(reason.kind, ErrorCategory.Timeout)
