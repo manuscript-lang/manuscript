@@ -17,6 +17,15 @@ A stream is anything that produces or accepts values over time and can wait. The
 7. **Chunk size is on every call.** `read(max_bytes)` mixes a buffering choice into the stream contract.
 8. **`BufferedWriter`** duplicates the write buffer every native `WriteStream` now has (concurrency decision 6).
 
+## Rules added by review
+
+- **Supersedes** the concurrency proposal where it makes `ReadStream` an interface or adds `read_chunk`/`write_text`; those become `text_writer` and `Source`.
+- **Cancellation keeps items.** Each fused stage's `out` list lives in the stream, so a cancelled read that already consumed input keeps the produced items for the next `read`; "takes no value" holds only when nothing was consumed. Fixtures cover multi-stage, `finish`, and `through_writer` flush on close, not only `lines`.
+- **Windows** pipes and consoles cannot be polled: their reads run on the blocking pool, and cancel abandons the read and discards or stashes the bytes in the stream's own read-ahead, never in a global.
+- **Scope-end drop of a `WriteStream`** hands buffered data to the runtime like any close; code that needs delivery errors calls `flush().wait()`.
+- **Placement:** a `Source` runs in the waiting task; a native-headed pipeline moved into a promise is placed by the pinning rule in Internal model 7.
+- **Measure first:** a prototype of `stdin() | lines` and a five-stage fusion is benchmarked before the Rust deletions; `lines` must not allocate more than one `String` per line, and the `wc -l` gate is pass/fail.
+
 ## Public API (the whole of it)
 
 `@std/io/io.ms`
@@ -170,7 +179,7 @@ Four rules, written into the runtime checklist and checked by `ms-repo-check` fr
 | `SseReader`, `next_event`, `body_stream`, `SseDecoder`, `JsonDecoder` | `sse_events`, `json_reader` |
 | `compress_stream`, `decompress_stream` (Rust calls back into the stream) | `compress`/`decompress`: a private transform over a Rust push primitive `feed(Bytes) Bytes!`/`finish() Bytes!` |
 | `LineReader`, `Scanner`, `ScanMode`, `ScanStep`, `read_line`, `read_lines`, `BufferedReader` | `lines`, `split`, `map`; anything else is a `Transform` |
-| `BufferedWriter`, `tee`, `multi_writer`, `map_writer`, `take`, `concat`, `read_chunk` | deleted (one user each outside their own tests) |
+| `BufferedWriter`, `tee`, `multi_writer`, `map_writer`, `take`, `concat`, `read_chunk` | deleted (no stdlib users; only e2e fixtures such as `tests/e2e/testdata/stdlib/streams.ms`; `read_chunk` is only in the concurrency text) |
 | `section(file, offset, length)` | `file.reader_at(offset, length)` |
 | `channel_reader`/`channel_writer`, `Channel`, `Transport` | `pipe[T]` (already in the concurrency PR) |
 | log `Transport`, `stream_transport`, rotating transport | `Logger` writes to a `WriteStream[String]`; rotation stays inside the logger (concurrency PR: `fstat` on its own handle) |
@@ -202,8 +211,8 @@ Every Rust special case for streams goes; what remains is listed under "Rust tha
 | `ms-lower/src/natiface.rs:247-258, 640-665, 706-709, 1036-1100` | interface vtables over runtime handles for `ReadStream`, `WriteStream`, `File`, `SignalStream`; the "streams are `@std/io` handles" rename; the `IfaceIs` native-or-Manuscript fast path for `read_line` | opaque stream types dispatch on their tag; `natiface.rs` keeps only non-stream handles (`Network`, `FileSystem`, `Clock`, ...) |
 | `ms-lower/src/native.rs:347-359, 618-623, 3514-3576`; `closure.rs:1281-1300` | `io/stdout`, `io/stderr`, `io/read_line`, `io/read_all`, `io/copy` lowering and the MIR-built stdio vtable (`build_stream_method`) | stdio are ordinary native streams; the rest is Manuscript |
 | `ms-lower/src/stdnative.rs:61-67` | `msstd_io_copy`, `read_all`, `read_line`, `stdin` handle rows | same |
-| `ms-std-fs/src/stream.rs:3-4, 76-170, 393-490` and `ms-rt/src/glue/mod.rs:423-445` | line reader, `pending` read-ahead, the stdin stash shared between handles, `poll(2)` slicing for cancellation | `lines` owns the buffer; cancellation is the I/O promise's |
-| `ms-std-io/src/lib.rs:44-66` | global shared `STDIN` handle with `Handed::Shared` refcount and its exit hook | one native stdin stream in the stream table, no refcount |
+| `ms-std-fs/src/stream.rs:3-4, 76-170, 235, 389-490` and `ms-rt/src/glue/mod.rs:417-440` (`STDIN_PENDING`) | line reader, `pending` read-ahead, the stdin stash shared between handles, `poll(2)` slicing and `poll_cancel` | `lines` owns the buffer; cancellation is the I/O promise's (Windows: below) |
+| `ms-std-fs/src/stream.rs:113-138` (`Stream::standard`) | stdin handle rebuilt per `stdin()` call, sharing the stash | one native stdin stream in the stream table |
 | `ms-check/src/effects.rs:115-121` | effects by interface name (`@std/ReadStream`, `@std/File`, `@std/WriteStream`) | effects come from the stream methods' declarations (project rule: no Rust name lists) |
 | `ms-std-net` connection, WebSocket and datagram natives | `write`/`write_bytes` pairs, per-call `timeout` arguments, `ping`, `shutdown_write` entry points | one `write(Bytes)`; timeouts are `wait(timeout:)`; ping is a message; half-close is closing `output` |
 | `ms-std-process` signals, `ms-std-fs` watcher, `ms-std-terminal` events, `time` ticker | each one's own `next`/`close` natives and lowering rows | each is a native stream in the table, read through the one `read` path |
@@ -224,7 +233,7 @@ The native stream table: open, read, write, flush and close for each fd, socket,
 
 ## Size
 
-The public surface goes from about 45 stream names across 15 shapes to 24. Deleted: `buffered.ms` (453 lines), `channels.ms`, most of `streams.ms`, `streamloop.rs` (371), `accumulate.rs` (214), the `ReadSource` ABI, the Rust line reader and stdin stash, `SseReader` and both public decoders, `File`/`Files`, log `Transport`. Call sites re-counted at the start; by grep today: `.receive(` 119, `lines(` 42, `read_line(` 41, `read(max)` 39, `read_all(` 36, `.write_bytes(` 37, `next_event(` 26, SSE/JSON `feed(` 50, mostly fixtures. Codemod as in the concurrency PR.
+The public surface goes from about 45 stream names across 15 shapes to 24. Deleted: `buffered.ms` (453 lines), `channels.ms`, most of `streams.ms`, `streamloop.rs` (371), `accumulate.rs` (214), the `ReadSource` ABI, the Rust line reader and stdin stash, `SseReader` and both public decoders, `File`/`Files`, log `Transport`. Call sites re-counted at the start; by grep over `.ms`, `.md` and `.rs` at review time: `.receive(` 187, `read_line(` 94, `read_all(` 86, `.write_bytes(` 49, `next_event(` 34 (`lines(` is noisy); the first count of the thread was lower, so recount with a pinned scope before the codemod. Codemod as in the concurrency PR.
 
 ## Alternatives considered
 
