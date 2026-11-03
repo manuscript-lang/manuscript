@@ -563,13 +563,11 @@ impl Server {
     /// Admits a request for the handler, or answers 503.
     fn h2_queue(&self, conn: &Rc<Conn>, reactor: &Reactor, id: u32) {
         let refusal = {
-            let mut s = self.st.borrow_mut();
-            if s.closing {
+            if self.st.borrow().closing {
                 Some("server closed")
-            } else if s.admitted >= self.limits.admission {
+            } else if !self.admit() {
                 Some("server busy")
             } else {
-                s.admitted += 1;
                 None
             }
         };
@@ -590,8 +588,7 @@ impl Server {
         if queued {
             reactor.enqueue(conn);
         } else {
-            let mut s = self.st.borrow_mut();
-            s.admitted = s.admitted.saturating_sub(1);
+            self.unadmit(1);
         }
     }
 
@@ -659,8 +656,7 @@ impl Server {
         .unwrap_or(false);
         crate::rt::cancel_task(task);
         if was_queued {
-            let mut s = self.st.borrow_mut();
-            s.admitted = s.admitted.saturating_sub(1);
+            self.unadmit(1);
         }
     }
 
@@ -671,10 +667,7 @@ impl Server {
             return;
         };
         run_streaming(self, conn, id, head, started);
-        {
-            let mut s = self.st.borrow_mut();
-            s.admitted = s.admitted.saturating_sub(1);
-        }
+        self.unadmit(1);
         self.h2_pump_out(conn, reactor);
     }
 }

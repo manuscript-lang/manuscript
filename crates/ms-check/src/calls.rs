@@ -546,10 +546,7 @@ impl Checker {
             self.m().file.as_str(),
             "@std/concurrency/workers.ms" | "@std/net/net.ms"
         );
-        let is_serve_cores = callable.symbol.as_ref().is_some_and(|s| {
-            s.module.as_str() == "@std/net/net.ms" && s.name.as_str() == "serve_cores"
-        });
-        if !is_spawn && !is_serve_cores {
+        if !is_spawn {
             return;
         }
         let Some(entry) = args.iter().find(|a| a.name.as_str() == "entry") else {

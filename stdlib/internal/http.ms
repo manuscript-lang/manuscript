@@ -5,7 +5,9 @@ import (
     HttpMethod,
     HttpResponseMetadata,
     NativeHttpClient,
-    NativeHttpServer,
+    HttpExchange,
+    HttpServerOptions,
+    NativeServing,
     NativeResponseBody,
     ResponseBody
 ) from "@std/net/http.ms"
@@ -43,13 +45,13 @@ export extern fn msstd_http_client_request_stream(
     timeout: Duration?
 ) ResponseBody!
 
-export extern fn msstd_http_server_address(handle: NativeHttpServer) String
+export extern fn msstd_http_serving_new(options: HttpServerOptions) NativeServing!
 
-export extern fn msstd_http_server_adopt(handle: NativeHttpServer, connection: Int) Unit
-
-export extern fn msstd_http_server_close(handle: NativeHttpServer) Unit
-
-export extern fn msstd_http_server_wait(handle: NativeHttpServer) Unit!
+export extern fn msstd_http_serving_connect(
+    serving: NativeServing,
+    handler: fn(HttpExchange) Unit!,
+    connection: Int
+) Unit
 
 export extern fn msstd_http_body_close(handle: NativeResponseBody) Unit
 
@@ -82,3 +84,6 @@ export extern fn msstd_http_headers_remove(value: HttpHeaders, name: String) Boo
 export extern fn msstd_http_headers_clone(value: HttpHeaders) HttpHeaders
 
 export extern fn msstd_http_headers_new() HttpHeaders
+
+# Limits the scheduler threads the runtime starts to `n` (at least 1).
+export extern fn msrt_runtime_set_threads(n: Int) Unit

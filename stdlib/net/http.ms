@@ -1,6 +1,7 @@
 import Closeable, Data from "@std/core.ms"
 import Bytes, join from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
+import Promise from "@std/concurrency/promise.ms"
 import stringify from "@std/data/json.ms"
 import ReadStream from "@std/io/io.ms"
 import TlsOptions from "@std/net/net.ms"
@@ -16,10 +17,6 @@ import (
     msstd_http_client_request,
     msstd_http_client_request_bytes,
     msstd_http_client_request_stream,
-    msstd_http_server_address,
-    msstd_http_server_adopt,
-    msstd_http_server_close,
-    msstd_http_server_wait,
     msstd_http_body_close,
     msstd_http_body_metadata,
     msstd_http_body_read,
@@ -278,35 +275,37 @@ export type HttpResponse:
     # The response body bytes, which must not exceed `max_response_bytes`; the server sets the content length.
     body: Bytes
 
-# The runtime handle behind a `HttpServer`.
-export extern type NativeHttpServer
+# The limits, TLS settings and admission count that every connection of one `serve` call shares.
+export extern type NativeServing
 
-# A running HTTP server. Close it to stop accepting new requests.
+# A running HTTP server. Close it, or drop it, to stop accepting and drain.
 export type HttpServer:
-    # The runtime handle; it is released by `close` and owned by this value.
-    native: NativeHttpServer
+    # The bound local address as `host:port`.
+    bound: String
+    # The accept loop, which owns the connection promises.
+    accepting: Promise[Unit]
+    # Whether `close` has been called, so `wait` reports a normal stop.
+    stopped: Bool
 
 impl Closeable for HttpServer:
-    # Stops accepting connections, waits up to the grace period for in-flight requests, then cancels the rest and waits for them.
-    # SIGINT/SIGTERM drains the same way when grace is nonzero: in-flight requests finish within the grace period before the program exits 130/143.
-    # Safe to call repeatedly. A request handler calling close on its own server faults, and a shutdown error is raised as a fault.
+    # Stops accepting and asks every connection to finish: idle ones close at once, requests in flight finish within `grace`, then the rest are cancelled. It returns without waiting; `wait` or dropping the server joins. Safe to call repeatedly.
     var fn close() Unit!:
-        msstd_http_server_close(self.native)
+        self.stopped = true
+        let _ = self.accepting.wait(timeout: 0.seconds)
         return ok(unit)
 
 impl HttpServer:
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
     fn address() String:
-        return msstd_http_server_address(self.native)
+        return self.bound.clone()
 
-    # Serves the socket handle `Listener.accept_raw` returned, on the thread that started this server. The server owns the socket from here, also when it is closing and drops the connection. Use each handle once.
-    fn adopt(connection: Int) Unit:
-        msstd_http_server_adopt(self.native, connection)
+    # Waits until the server has stopped. Returns Ok after `close`, or the error that ended accepting (`Failed` with the host's text). `timeout` bounds the wait and cancels the server when it passes.
+    fn wait(timeout: Duration? = none) Unit!:
+        let ended = self.accepting.wait(timeout)
+        if self.stopped:
+            return ok(unit)
 
-    # Blocks until the server stops. Returns Ok after a normal `close`, or an `Error` of kind `Failed` with the host's text if serving ended with an error.
-    # Cancelling the waiting task stops the wait.
-    fn wait() Unit!:
-        return msstd_http_server_wait(self.native)
+        return ended
 
 # Request and response limits, deadlines, graceful shutdown, and TLS server settings.
 export type HttpServerOptions:
@@ -324,6 +323,8 @@ export type HttpServerOptions:
     grace: Duration?
     # Some(options) serves HTTPS and negotiates HTTP/2 or HTTP/1.1 through ALPN; none, the default, serves plain HTTP/1.1.
     tls: TlsOptions?
+    # How many threads serve connections: the runtime starts at most this many scheduler threads. Must be at least 1; none uses every core.
+    cores: Int?
 
 # The runtime handle behind a `ResponseBody`.
 export extern type NativeResponseBody

@@ -68,8 +68,8 @@ handle_newtype! {
     DgramH(std::rc::Rc<crate::conn::Datagrams>);
     /// An `HttpHeaders` handle.
     HeadersH(crate::http::headers::Shared);
-    /// An `HttpServer` handle.
-    ServerH(std::rc::Rc<crate::http::server::Server>);
+    /// The settings every connection of one `serve` call shares.
+    ServingH(crate::http::server::Options);
     /// An `HttpClient` handle.
     ClientH(std::rc::Rc<crate::http::client::Client>);
     /// An `HttpResponseBody` handle.

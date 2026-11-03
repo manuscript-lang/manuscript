@@ -148,14 +148,6 @@ const METHODS: &[MethodRow] = &[
         "msstd_net_network_request_bytes",
         &[],
     ),
-    ("net", "Network", "serve", "msstd_net_network_serve", &[]),
-    (
-        "net",
-        "Network",
-        "serve_connections",
-        "msstd_net_network_serve_connections",
-        &[],
-    ),
     (
         "http",
         "HttpExchange",

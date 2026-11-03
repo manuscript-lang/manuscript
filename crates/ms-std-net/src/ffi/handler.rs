@@ -30,13 +30,6 @@ pub struct Program {
     streaming: StreamThunk,
 }
 
-impl Drop for Program {
-    fn drop(&mut self) {
-        // SAFETY: `env` is the closure reference the native took when serving began.
-        unsafe { msrt_release(self.env) }
-    }
-}
-
 /// Runs one request under `msrt_guard_call`. `None` means it returned normally;
 /// otherwise the outcome that ends the request (a fault becomes a 500 for the caller).
 /// The abandoned frames' cleanups run before this returns: a fault unwinds with
@@ -106,14 +99,15 @@ impl Dispatch for Program {
 }
 
 impl Program {
-    /// A program that hands each exchange to the streaming handler `env` (a reference is taken).
+    /// A program that hands each exchange to the streaming handler `env`. It only borrows `env`,
+    /// which must outlive the program: the promise that serves with it keeps the handler alive.
     pub fn streaming(env: &Handler) -> Box<Program> {
         let env = env.as_ptr();
         // SAFETY: the compiler built `env` as a `fn(HttpExchange) Result[Unit, Error]`
         // closure, whose code word is a `StreamThunk`; `env` is live for the call.
         unsafe {
             Box::new(Program {
-                env: retained(env),
+                env,
                 streaming: closure_code(env),
             })
         }
@@ -128,19 +122,6 @@ unsafe fn closure_code<T: Copy>(env: *mut Obj) -> T {
     const { assert!(size_of::<T>() == size_of::<usize>()) };
     // SAFETY: caller contract; the code word follows the 16-byte header.
     unsafe { std::mem::transmute_copy(&*env.cast::<usize>().add(2)) }
-}
-
-/// Takes a reference to `env` for the server.
-///
-/// # Safety
-/// `env` is a live object.
-unsafe fn retained(env: *mut Obj) -> *mut Obj {
-    // SAFETY: caller contract.
-    unsafe {
-        use ms_rt::obj::msrt_retain;
-        msrt_retain(env);
-    }
-    env
 }
 
 #[cfg(test)]

@@ -3,13 +3,12 @@
 use super::handler::Program;
 use super::http_client::{chunk, limit};
 use super::tls::tls_options;
-use super::{ExchH, HeadersH, NetH, ServerH, opt, report};
+use super::{ExchH, HeadersH, ServingH, opt, report};
 use crate::error::HttpErr;
-use crate::http::server::{CloseError, Limits, Options, Server};
+use crate::http::server::{Limits, Options, Server};
 use crate::tls;
 use ms_rt::ffi::{
-    ErrOut, Handler, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record, fault,
-    native,
+    ErrOut, Handler, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record, native,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -33,6 +32,8 @@ abi_record! {
         pub tls_private_key_pem: Str,
         pub tls_alpn: StringList,
         pub tls_require_client_certificate: u8,
+        // Read by `serve` itself, not by the server: the runtime thread limit.
+        pub cores: OptInt,
     }
 }
 
@@ -94,72 +95,43 @@ fn server_options(opts: &HttpServerOptionsWire) -> Result<Options, HttpErr> {
     } else {
         None
     };
-    Ok(Options { limits, tls })
+    Ok(Options {
+        limits,
+        admitted: Default::default(),
+        tls,
+    })
 }
 
 native! {
     // -------------------------------------------------------------------- server
 
-    /// `Network.serve(address, handler, options) -> Result[HttpServer, Error]`; the server takes a
-    /// reference to the handler closure and releases it when dropped.
-    fn msstd_net_network_serve(
-        net: ObjRef<NetH>,
-        address: &str,
-        env: Handler,
+    /// `serving(options)`: the limits, TLS settings and admission count that every connection of
+    /// one `serve` call shares.
+    fn msstd_http_serving_new(
         opts: &HttpServerOptionsWire,
-        out: Out<Object<ServerH>>,
+        out: Out<Object<ServingH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        let program = Program::streaming(&env);
-        let result = (|| {
-            let options = server_options(opts)?;
-            if !net.listen_allowed(address) {
-                return Err(HttpErr::PermissionDenied);
-            }
-            Server::start(&net, address, program, options).map_err(HttpErr::from)
-        })();
-        out.write(Object(ServerH(report(result, &err)?)));
+        out.write(Object(ServingH(report(server_options(opts), &err)?)));
         Ok(())
     }
 
-    /// `Network.serve_connections(handler, options) -> Result[HttpServer, Error]`: a server
-    /// without a listener that serves what `HttpServer.adopt` hands it.
-    fn msstd_net_network_serve_connections(
-        net: ObjRef<NetH>,
+    /// `Serving.connect(handler, connection)`: serves the socket handle `Listener.accept_raw`
+    /// returned, on this thread, and returns when the connection has ended. The handler is only
+    /// borrowed: the promise that calls this keeps it alive.
+    fn msstd_http_serving_connect(
+        serving: ObjRef<ServingH>,
         env: Handler,
-        opts: &HttpServerOptionsWire,
-        out: Out<Object<ServerH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let program = Program::streaming(&env);
-        let result = server_options(opts).and_then(|options| {
-            Server::start_adopting(&net, program, options).map_err(HttpErr::from)
-        });
-        out.write(Object(ServerH(report(result, &err)?)));
-        Ok(())
-    }
-
-    /// `HttpServer.adopt(connection)`: serves a handle from `Listener.accept_raw`.
-    fn msstd_http_server_adopt(s: ObjRef<ServerH>, connection: i64) -> () {
-        s.adopt(connection);
-    }
-
-    /// `HttpServer.address()`.
-    fn msstd_http_server_address(s: ObjRef<ServerH>) -> String {
-        s.address().to_string()
-    }
-
-    /// `HttpServer.close()`; closing from one of its own handlers faults.
-    fn msstd_http_server_close(s: ObjRef<ServerH>) -> () {
-        if let Err(CloseError::FromHandler) = s.close() {
-            fault("HTTP server cannot close from its own request");
+        connection: i64,
+    ) -> () {
+        let options = Options {
+            limits: serving.limits.clone(),
+            admitted: serving.admitted.clone(),
+            tls: serving.tls.clone(),
+        };
+        if let Ok(server) = Server::start_adopting(&crate::net::root(), Program::streaming(&env), options) {
+            server.serve_connection(connection);
         }
-    }
-
-    /// `HttpServer.wait()`.
-    fn msstd_http_server_wait(s: ObjRef<ServerH>) -> u8 {
-        s.wait();
-        0
     }
 
     // ------------------------------------------------------------------ exchange

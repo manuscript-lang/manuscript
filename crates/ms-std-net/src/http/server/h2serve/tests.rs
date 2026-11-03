@@ -5,7 +5,7 @@ use super::*;
 use crate::error::HttpErr;
 use crate::h2::{Connection, Event, Settings};
 use crate::http::server::buffered::{Buffered, Handle, Reply, Request};
-use crate::http::server::tests::with_client;
+use crate::http::server::tests::{Started, start_with, with_client};
 use crate::net::Network;
 use crate::tls::{self, TlsOptions};
 use std::io::{Read, Write};
@@ -136,14 +136,13 @@ impl Dispatch for Streamer {
     }
 }
 
-fn start(dispatch: Box<dyn Dispatch>, limits: Limits) -> (Rc<Network>, Rc<Server>) {
-    let net = Network::new_root();
+fn start(dispatch: Box<dyn Dispatch>, limits: Limits) -> (Rc<Network>, Started) {
     let options = Options {
         limits,
+        admitted: Default::default(),
         tls: Some(server_tls()),
     };
-    let server = Server::start(&net, "127.0.0.1:0", dispatch, options).unwrap();
-    (net, server)
+    start_with(dispatch, options)
 }
 
 fn limits() -> Limits {
