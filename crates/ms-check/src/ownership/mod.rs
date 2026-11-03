@@ -8,6 +8,8 @@
 //! rules and records, for lowering, how every use treats its value.
 
 mod classify;
+mod facts;
+pub use facts::{Fact, NodeFacts};
 mod live;
 mod modes;
 mod moved;
@@ -238,25 +240,14 @@ pub struct Ownership {
     /// For each callable with a `Consume` parameter or receiver, which parameters (declaration
     /// order, the receiver first for a method) the body moves, stores or returns.
     pub consumes: HashMap<Key, Vec<bool>>,
-    /// Callables whose result is a reference into their arguments.
-    pub lenders: HashSet<Key>,
-    /// Callables whose result is an owned interface view of their arguments: the caller drops
-    /// it and holds the arguments while it lives (`ret_view` in MIR).
-    pub view_lenders: HashSet<Key>,
-    /// Wrappers of lent values that stay references, by module file and node.
-    pub view_wraps: HashSet<(Name, NodeId)>,
-    /// Method values borrowing their receiver's place, by module file and node.
-    pub bound_borrows: HashSet<(Name, NodeId)>,
-    /// Name expressions moving an interface view out of its local, by module file and node.
-    pub view_moves: HashSet<(Name, NodeId)>,
+    /// Boolean per-node facts (lenders, view wraps, bound borrows, view moves, lent matches).
+    pub node_facts: NodeFacts,
     /// Lending calls whose result the caller owns (a source was a temporary), by module file and
     /// call node.
     pub owned_lends: HashMap<(Name, NodeId), OwnedLend>,
     /// `var` bindings of a lending call, by module file and call node: the field chain of the
     /// argument the binding borrows exclusively.
     pub getter_borrows: HashMap<(Name, NodeId), Vec<Name>>,
-    /// Conditional and match expressions whose value is a reference, by module file and node.
-    pub lent_matches: HashSet<(Name, NodeId)>,
 }
 
 impl Ownership {
@@ -343,24 +334,28 @@ impl Hir<'_> {
         let mut resource_moves = HashMap::new();
         let mut borrowed_captures = HashSet::new();
         let mut consumes = HashMap::new();
-        let mut lenders = HashSet::new();
-        let mut view_lenders = HashSet::new();
-        let mut view_wraps = HashSet::new();
-        let mut bound_borrows = HashSet::new();
-        let mut view_moves = HashSet::new();
         let mut owned_lends = HashMap::new();
         let mut getter_borrows = HashMap::new();
-        let mut lent_matches = HashSet::new();
+        let mut node_facts = NodeFacts::default();
         for (c, out) in callables.iter().zip(outcomes) {
-            lent_matches.extend(out.facts.lent_matches.iter().map(|n| (c.module.file, *n)));
-            if out.facts.lends && out.facts.view {
-                view_lenders.insert((c.module.file, c.id()));
-            } else if out.facts.lends {
-                lenders.insert((c.module.file, c.id()));
+            let file = c.module.file;
+            for n in &out.facts.lent_matches {
+                node_facts.set(file, *n, Fact::LentMatch);
             }
-            view_wraps.extend(out.facts.view_wraps.iter().map(|n| (c.module.file, *n)));
-            bound_borrows.extend(out.facts.bound_borrows.iter().map(|n| (c.module.file, *n)));
-            view_moves.extend(out.facts.view_moves.iter().map(|n| (c.module.file, *n)));
+            if out.facts.lends && out.facts.view {
+                node_facts.set(c.module.file, c.id(), Fact::ViewLender);
+            } else if out.facts.lends {
+                node_facts.set(c.module.file, c.id(), Fact::Lender);
+            }
+            for n in &out.facts.view_wraps {
+                node_facts.set(file, *n, Fact::ViewWrap);
+            }
+            for n in &out.facts.bound_borrows {
+                node_facts.set(file, *n, Fact::BoundBorrow);
+            }
+            for n in &out.facts.view_moves {
+                node_facts.set(file, *n, Fact::ViewMove);
+            }
             owned_lends.extend(
                 out.facts
                     .owned_lends
@@ -436,14 +431,9 @@ impl Hir<'_> {
             conditional_moves,
             borrowed_captures,
             consumes,
-            lenders,
-            view_lenders,
-            view_wraps,
-            bound_borrows,
-            view_moves,
             owned_lends,
             getter_borrows,
-            lent_matches,
+            node_facts,
         }
     }
 }

@@ -88,7 +88,11 @@ impl<'a> FnLower<'a> {
             Some(_)
                 if !self.dead
                     && !x.own
-                    && self.cx.view_wraps.contains(&(self.hir.data.file, e.id)) =>
+                    && self.cx.fact(
+                        self.hir.data.file,
+                        e.id,
+                        ms_check::ownership::Fact::ViewWrap,
+                    ) =>
             {
                 Val {
                     v: self.b.opt_view(x.v),
@@ -388,7 +392,12 @@ impl<'a> FnLower<'a> {
     fn name(&mut self, e: &Expr) -> Result<Val, Error> {
         match self.hir.resolution(e) {
             Resolution::Local(b) => {
-                if self.cx.view_moves.contains(&(self.hir.data.file, e.id)) && !self.dead {
+                if self.cx.fact(
+                    self.hir.data.file,
+                    e.id,
+                    ms_check::ownership::Fact::ViewMove,
+                ) && !self.dead
+                {
                     // The interface view this local holds moves into the result; what stays
                     // behind owns nothing, so the scope's drop frees nothing.
                     let l = self.local(&b)?;

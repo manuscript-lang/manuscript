@@ -300,6 +300,8 @@ pub struct Job {
 pub struct Cx {
     /// `MS_STRICT_COPIES=1`: an owning position that receives a borrowed place is an error.
     pub strict_copies: bool,
+    /// Boolean ownership facts per node (lenders, view wraps, bound borrows, view moves, lent matches).
+    pub node_facts: Rc<ms_check::ownership::NodeFacts>,
     /// Lowering sites that copied a borrow into an owning position, with the producer op.
     pub copy_gaps: Vec<String>,
     /// Module queries by file.
@@ -365,24 +367,11 @@ pub struct Cx {
     pub consumes: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<bool>>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
     pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
-    /// Callables whose result is a reference into their arguments, by module file and node.
-    pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
-    /// Callables whose result is an interface view of their arguments (`ret_view`).
-    pub view_lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
-    /// Wrappers of lent values built as `opt.view` / `alt.view`, by module file and node.
-    pub view_wraps: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
-    /// Method values that stay local and borrow their receiver's place: the closure holds the
-    /// receiver's address instead of a copy.
-    pub bound_borrows: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
-    /// Name expressions moving an interface view out of the local holding it.
-    pub view_moves: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Lending calls whose result the caller owns because an argument is a temporary: the
     /// result is copied out before the temporary is dropped.
     pub owned_lends: Rc<
         std::collections::HashMap<(Name, ms_syntax::ast::NodeId), ms_check::ownership::OwnedLend>,
     >,
-    /// Conditional and match expressions whose value is a reference on every arm.
-    pub lent_matches: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Which types are resources, for the closers of records and collections that hold them.
     pub classes: ms_check::ownership::Classifier,
 }
@@ -432,6 +421,7 @@ impl Cx {
             .map(|m| m.receiver.id)
             .collect();
         Cx {
+            node_facts: program.node_facts.clone(),
             strict_copies: std::env::var_os("MS_STRICT_COPIES").is_some(),
             copy_gaps: Vec::new(),
             extended,
@@ -464,13 +454,7 @@ impl Cx {
             borrowed_captures: program.borrowed_captures.clone(),
             consumes: program.consumes.clone(),
             getters: program.getter_borrows.clone(),
-            lenders: program.lenders.clone(),
-            view_lenders: program.view_lenders.clone(),
-            view_wraps: program.view_wraps.clone(),
-            bound_borrows: program.bound_borrows.clone(),
-            view_moves: program.view_moves.clone(),
             owned_lends: program.owned_lends.clone(),
-            lent_matches: program.lent_matches.clone(),
             classes: ms_check::ownership::Classifier::new(program),
         }
     }
@@ -724,5 +708,17 @@ impl Cx {
         }
         // Any other opaque runtime type is a reference-counted handle.
         Ok(m.types.obj(t.name.as_str(), Vec::new()))
+    }
+}
+
+impl Cx {
+    /// Whether `fact` holds for node `id` of module `file`.
+    pub fn fact(
+        &self,
+        file: Name,
+        id: ms_syntax::ast::NodeId,
+        fact: ms_check::ownership::Fact,
+    ) -> bool {
+        self.node_facts.has(file, id, fact)
     }
 }
