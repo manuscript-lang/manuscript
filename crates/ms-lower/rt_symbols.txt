@@ -213,6 +213,7 @@ msrt_promise_take(id: i64, d: ValueDesc, out: *mut u8) -> u8
 msrt_promise_wait(id: i64, timeout_ns: i64) -> i64
 msrt_promise_wait_any(ids: *const VecVal, timeout_ns: i64) -> i64
 msrt_realloc(p: *mut u8, size: usize) -> *mut u8
+msrt_runtime_limit() -> i64
 msrt_runtime_set_threads(n: i64)
 msrt_runtime_threads() -> i64
 msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, key: *const u8) @leaf
@@ -526,10 +527,12 @@ msstd_http_headers_remove(h: *const ObjCell<HeadersH>, name: *const StrVal) -> u
 msstd_http_headers_values(h: *const ObjCell<HeadersH>, name: *const StrVal, out: *mut VecVal) -> u8
 msstd_http_serving_accept(s: *const ObjCell<ServingH>, out: *mut i64, err: ErrSlot) -> u8
 msstd_http_serving_address(s: *const ObjCell<ServingH>, out: *mut StrVal)
-msstd_http_serving_connect(s: *const ObjCell<ServingH>, connection: i64)
 msstd_http_serving_new(address: *const StrVal, opts: *const HttpServerOptionsWire, env: *mut Obj, out: *mut *mut ObjCell<ServingH>, err: ErrSlot) -> u8
 msstd_http_serving_release(s: *const ObjCell<ServingH>)
 msstd_http_serving_share(s: *const ObjCell<ServingH>) -> *mut ObjCell<ServingH>
+msstd_http_serving_worker(s: *const ObjCell<ServingH>, out: *mut *mut ObjCell<WorkerH>, err: ErrSlot) -> u8
+msstd_http_worker_adopt(w: *const ObjCell<WorkerH>, connection: i64)
+msstd_http_worker_close(w: *const ObjCell<WorkerH>)
 msstd_io_close(h: *mut ObjCell<Stream>)
 msstd_io_read(h: *mut ObjCell<Stream>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_io_redirect_null(which: i64, err: ErrSlot) -> u8

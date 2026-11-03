@@ -307,6 +307,9 @@ export type HttpResponse:
 // The listener, handler, limits, TLS settings and admission count that every connection of one `serve` call shares.
 export extern type NativeServing
 
+// One worker thread's HTTP engine: the connections it adopted, driven by the poller without a task each.
+export extern type NativeWorker
+
 // A running HTTP server. Close it, or drop it, to stop accepting and drain.
 export type HttpServer:
     // The accept loop, which owns the connection promises. It is declared first so it ends before what it uses.

@@ -3,7 +3,7 @@
 use super::handler::Program;
 use super::http_client::{chunk, limit};
 use super::tls::tls_options;
-use super::{ExchH, HeadersH, ServingH, opt, report};
+use super::{ExchH, HeadersH, ServingH, WorkerH, opt, report};
 use crate::conn::Listener;
 use crate::error::HttpErr;
 use crate::http::server::{Limits, Options, Server};
@@ -167,14 +167,33 @@ native! {
         Ok(())
     }
 
-    /// Serves the socket handle `accept` returned, on this thread, and returns when the connection
-    /// has ended. The handler is only borrowed from the serving, which this handle keeps alive.
-    fn msstd_http_serving_connect(s: ObjRef<ServingH>, connection: i64) -> () {
+    /// Starts the server of one serving worker on this thread: it serves the connections handed to
+    /// `worker_adopt` here, and its handle closes (drains) it. The handler is only borrowed from
+    /// the serving, which the worker keeps alive.
+    fn msstd_http_serving_worker(
+        s: ObjRef<ServingH>,
+        out: Out<Object<WorkerH>>,
+        err: ErrOut,
+    ) -> Result<(), StatusCode> {
         // SAFETY: the serving keeps the handler alive while this handle exists.
         let program = unsafe { Program::borrowed(s.handler) };
-        if let Ok(server) = Server::start_adopting(&crate::net::root(), program, s.options.clone()) {
-            server.serve_connection(connection);
-        }
+        let server = report(
+            Server::start_adopting(&crate::net::root(), program, s.options.clone()),
+            &err,
+        )?;
+        out.write(Object(WorkerH(server)));
+        Ok(())
+    }
+
+    /// Hands the socket handle `accept` returned to the worker's server, on the worker's thread.
+    fn msstd_http_worker_adopt(w: ObjRef<WorkerH>, connection: i64) -> () {
+        w.adopt(connection);
+    }
+
+    /// Drains and closes the worker's server: idle connections go at once and requests in flight
+    /// finish within the grace period.
+    fn msstd_http_worker_close(w: ObjRef<WorkerH>) -> () {
+        w.finish();
     }
 
     /// Closes the listener of the serving and the connections accepted and never served.
