@@ -1000,58 +1000,6 @@ impl<T: AbiHandle> AbiSlot for ObjSlot<T> {
     }
 }
 
-type ReadCode =
-    unsafe extern "C-unwind" fn(*mut Closure, u8, i64, *mut VecVal, *mut u8, *mut StrVal) -> u8;
-
-/// A compiled `ReadStream` closure, read with the `Connection.read` convention of `ABI.md`. It
-/// borrows the closure for the duration of the native call that received it.
-pub struct ReadSource(*mut Closure, ReadCode);
-
-impl AbiType for ReadSource {
-    type Raw = *mut Closure;
-}
-// SAFETY: a closure argument is a live closure whose code has the `ReadStream` signature.
-unsafe impl FromAbi<'_> for ReadSource {
-    unsafe fn from_raw(raw: *mut Closure) -> ReadSource {
-        // SAFETY: the code word follows the 16-byte header (`Closure`).
-        ReadSource(raw, unsafe { core::mem::transmute_copy(&(*raw).code) })
-    }
-}
-
-impl ReadSource {
-    /// Reads up to `max` bytes: `Ok(None)` at the end, `Err` with the stream's status byte.
-    pub fn read(&self, max: usize) -> Result<Option<Vec<u8>>, u8> {
-        let mut out = core::mem::MaybeUninit::<VecVal>::uninit();
-        let mut present = 0u8;
-        let mut message = StrVal::owned(core::ptr::null_mut(), 0);
-        // SAFETY: the code follows the `Connection.read` convention, filling `out` with an owned
-        // `Bytes` when it reports a chunk; the closure is borrowed for the call.
-        unsafe {
-            let status = (self.1)(
-                self.0,
-                1,
-                max as i64,
-                out.as_mut_ptr(),
-                &mut present,
-                &mut message,
-            );
-            if message.owns() && !message.ptr_word.is_null() {
-                crate::ffi::str_release(&message);
-            }
-            if status != 0 {
-                return Err(status);
-            }
-            if present == 0 {
-                return Ok(None);
-            }
-            let mut v = out.assume_init();
-            let data = bytes_ref(&raw const v).to_vec();
-            msrt_bytes_drop(&raw mut v);
-            Ok(Some(data))
-        }
-    }
-}
-
 /// An extra result slot of a native, written through a trailing pointer parameter.
 pub struct Out<'a, T: IntoAbi>(*mut T::Raw, PhantomData<&'a mut T::Raw>);
 

@@ -1318,8 +1318,7 @@ impl FnLower<'_> {
     }
 }
 
-impl FnLower<'_> {
-}
+impl FnLower<'_> {}
 
 impl FnLower<'_> {
     /// A record (or `Result` of one) built from one runtime getter per field, `<base>_<name>`.

@@ -310,5 +310,3 @@ pub(crate) fn method(s: &FnLower<'_>, v: Value, name: &str) -> Result<(IfaceId, 
         .ok_or_else(|| Error::new(format!("no entropy method {name}")))?;
     Ok((i, k as u32))
 }
-
-

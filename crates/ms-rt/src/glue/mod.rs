@@ -417,31 +417,6 @@ pub fn failure_message() -> StrVal {
     new_string(unsafe { &*FAILURE.ptr() })
 }
 
-crate::isolate_static! {
-    /// Read-ahead standard input a dropped `stdin()` handle left: the bytes, and the offset of the first unread one.
-    static STDIN_PENDING: (Vec<u8>, usize) = (Vec::new(), 0);
-}
-
-/// Keeps read-ahead standard input for the next `stdin()` handle: `bytes[head..]` is unread.
-///
-/// The buffer is handed over without copying unless an earlier stash is still unread.
-pub fn stash_stdin_pending(bytes: Vec<u8>, head: usize) {
-    // SAFETY: single-threaded runtime; no reference into STDIN_PENDING outlives a call.
-    let (held, held_head) = unsafe { &mut *STDIN_PENDING.ptr() };
-    if *held_head >= held.len() {
-        *held = bytes;
-        *held_head = head;
-    } else {
-        held.extend_from_slice(&bytes[head..]);
-    }
-}
-
-/// Takes the read-ahead standard input a previous handle left, with the offset of its first unread byte.
-pub fn take_stdin_pending() -> (Vec<u8>, usize) {
-    // SAFETY: single-threaded runtime.
-    unsafe { core::mem::take(&mut *STDIN_PENDING.ptr()) }
-}
-
 /// Adds a reference to a runtime object.
 ///
 /// # Safety

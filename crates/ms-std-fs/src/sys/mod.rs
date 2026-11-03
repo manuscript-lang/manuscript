@@ -564,11 +564,6 @@ pub fn seek(fd: Fd, offset: i64, origin: i64) -> Result<i64, Errno> {
     with(fd, |mut f| f.seek(to)).map(|at| at as i64)
 }
 
-/// Moves the position back by `by` bytes (returning read-ahead to the file).
-pub fn rewind_by(fd: Fd, by: usize) {
-    let _ = seek(fd, -(by as i64), 1);
-}
-
 pub fn ftruncate(fd: Fd, size: i64) -> Result<(), Errno> {
     with(fd, |f| f.set_len(size as u64))
 }
