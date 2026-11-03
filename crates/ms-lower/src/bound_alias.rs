@@ -117,6 +117,7 @@ pub(crate) fn build_bound_alias(
             var,
             ty,
             slot: Some(slot),
+            opt: false,
         },
     );
     // Reuse the existing source/native/default method thunk, now sharing this

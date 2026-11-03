@@ -210,7 +210,11 @@ pub struct Cx {
     /// The name expressions that move a closed resource binding, by binding: the scope-end close
     /// runs only on the paths that never reach one.
     pub close_moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
-    pub moved_payloads: Rc<std::collections::HashSet<usize>>,
+    /// Every move of a whole binding, by binding: the name expressions (or lambdas) that take
+    /// its value out of the local.
+    pub moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
+    /// The moved bindings some path keeps to the end of their scope: their local can be empty.
+    pub conditional_moves: Rc<std::collections::HashSet<usize>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves:
         Rc<HashMap<usize, HashMap<ms_syntax::ast::NodeId, Vec<ms_check::types::Name>>>>,
@@ -289,7 +293,8 @@ impl Cx {
             implicit_closes: program.implicit_closes.clone(),
             explicit_closes: program.explicit_closes.clone(),
             close_moves: program.close_moves.clone(),
-            moved_payloads: program.moved_payloads.clone(),
+            moves: program.moves.clone(),
+            conditional_moves: program.conditional_moves.clone(),
             resource_moves: program.resource_moves.clone(),
             borrowed_captures: program.borrowed_captures.clone(),
             consumes: program.consumes.clone(),

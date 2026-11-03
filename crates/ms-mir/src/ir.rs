@@ -282,7 +282,7 @@ pub enum Op {
     // Records and alternatives.
     RecNew, RecGet, RecSet, RecFill, AltNew, AltView, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
     // Lists.
-    ListNew, ListLit, ListConst, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast,
+    ListNew, ListLit, ListConst, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
     // Optionals.
     OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
     // Strings.
@@ -403,8 +403,8 @@ impl Op {
         Op::ICmp, Op::UICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
         Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltView, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
-        Op::ListNew, Op::ListLit, Op::ListConst, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
-        Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
+        Op::ListNew, Op::ListLit, Op::ListConst, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU, Op::ListTake,
+        Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast, Op::ListRelease,
         Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
         Op::StrLen, Op::StrByte, Op::StrAscii, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceLend, Op::IfaceView, Op::IfaceData, Op::IfaceIs,
@@ -495,12 +495,14 @@ impl Op {
             Op::ListGet => ("list.get", K::None, true, effects!(reads, faults)),
             Op::ListGetNn => ("list.get.nn", K::None, true, effects!(reads, faults)),
             Op::ListGetU => ("list.get.u", K::None, true, effects!(reads)),
+            Op::ListTake => ("list.take", K::None, true, effects!(reads)),
             Op::ListSet => ("list.set", K::None, true, effects!(reads, writes, faults, rc)),
             Op::ListSetNn => ("list.set.nn", K::None, true, effects!(reads, writes, faults, rc)),
             Op::ListSetU => ("list.set.u", K::None, true, effects!(reads, writes, rc)),
             Op::ListFill => ("list.fill", K::None, true, effects!(reads, writes, faults)),
             Op::ListPush => ("list.push", K::None, true, effects!(reads, writes, alloc, faults)),
             Op::ListDropLast => ("list.droplast", K::None, true, effects!(reads, writes, rc)),
+            Op::ListRelease => ("list.release", K::None, false, effects!(reads, writes, rc)),
             Op::OptSome => ("opt.some", K::None, true, effects!()),
             Op::OptView => ("opt.view", K::None, true, effects!()),
             Op::OptNone => ("opt.none", K::None, true, effects!()),

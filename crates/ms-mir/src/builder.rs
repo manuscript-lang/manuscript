@@ -396,6 +396,17 @@ impl<'m> FuncBuilder<'m> {
         let t = self.ty(l);
         self.val(Op::ListFill, &[l, i, v], Imm::None, t)
     }
+    /// `list.take`: moves element `i` (in bounds) out of the list without copying it. The list
+    /// must be released with `list.release` past the taken elements, never dropped or read there.
+    pub fn list_take(&mut self, l: Value, i: Value) -> Value {
+        let elem = self.m.list_elem(self.ty(l)).expect("list operand");
+        self.val(Op::ListTake, &[l, i], Imm::None, elem)
+    }
+    /// `list.release`: drops the elements of the owned list `l` from index `from` on (the ones
+    /// before it were taken out) and frees the list.
+    pub fn list_release(&mut self, l: Value, from: Value) {
+        self.emit(Op::ListRelease, &[l, from], Imm::None, None);
+    }
     /// `list.push`.
     pub fn list_push(&mut self, l: Value, v: Value) -> Value {
         let t = self.ty(l);
