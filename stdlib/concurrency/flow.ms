@@ -60,7 +60,7 @@ export fn retry[T, E](
             if let accepts = retryable:
                 if not accepts(result.err()):
                     return result
-            sleep(jittered(policy, attempt))
+            sleep(jittered(policy, attempt)).wait().get(unit)
             attempt += 1
         else:
             return result
@@ -132,7 +132,7 @@ impl RateLimiter:
     var fn acquire() Unit:
         while not self.try_acquire():
             let ready = self.stamp.shift(self.interval)
-            sleep(ready.difference(monotonic()).max(Duration(nanos: 1)))
+            sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(unit)
 
 // Why a circuit breaker call produced no result.
 export type CircuitError[E]:
@@ -257,6 +257,6 @@ impl Throttle:
         if let previous = self.last:
             let remaining = self.interval.subtract(monotonic().difference(previous))
             if remaining.nanos > 0:
-                sleep(remaining)
+                sleep(remaining).wait().get(unit)
 
         self.last = monotonic()

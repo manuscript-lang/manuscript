@@ -1,6 +1,7 @@
 import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
+import Promise, owned_promise from "@std/concurrency/promise.ms"
 import access, join, stat from "@std/os/fs.ms"
 import IpFamily from "@std/net/net.ms"
 import (
@@ -439,8 +440,17 @@ export fn constants() Map[String, Int]:
 fn host_system() System:
     return msstd_process_system()
 
+type RunArgs:
+    program: String
+    arguments: List[String]
+    input: Bytes
+    max_output_bytes: Int?
+    timeout: Duration?
+    cwd: String?
+    env: Map[String, String]
+
 /*
-Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
+Starts `program` directly, without a shell, searching the PATH, and returns a promise that finishes when it does. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
 Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
 `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
 */
@@ -452,9 +462,15 @@ export fn run(
     timeout: Duration?,
     cwd: String?,
     env: Map[String, String] = Map[String, String]()
-) CommandOutput!:
-    return host_commands().run(
-        program, arguments, input, max_output_bytes, timeout, cwd, env
+) Promise[CommandOutput]:
+    return owned_promise[RunArgs, CommandOutput](
+        RunArgs(
+            program: program.clone(), arguments: arguments.clone(), input: input.clone(),
+            max_output_bytes: max_output_bytes, timeout: timeout, cwd: cwd.clone(), env: env.clone()
+        ),
+        fn a: host_commands().run(
+            a.program, a.arguments, a.input, a.max_output_bytes, a.timeout, a.cwd, a.env
+        )
     )
 
 // Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.

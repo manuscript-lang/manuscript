@@ -445,12 +445,12 @@ pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
 /// Completes `i` with no value (a finished sleep): `wait` answers 0 and nothing is left to take.
 fn complete_unit(t: &mut Table, i: usize) {
     if t.state[i] == State::Pending {
-        t.state[i] = State::Ok;
-        wake(t, i);
+        // A unit value, so `wait` takes `Unit` (an empty result reads as closed).
+        put_int(t, i, 0);
     }
 }
 
-/// A promise that finishes after `ns` nanoseconds; it has no task and no result to take.
+/// A promise that finishes after `ns` nanoseconds; it has no task; it finishes with a unit value.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_sleep(ns: i64) -> i64 {
     let id = msrt_promise_new();

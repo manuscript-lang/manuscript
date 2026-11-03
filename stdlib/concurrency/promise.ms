@@ -111,6 +111,26 @@ export fn promise[U](entry: fn() U!) Promise[U]:
     msrt_promise_start(id, fn: complete(id, entry()))
     return Promise[U](id: id)
 
+// The values an operation copied for its promise, with the function that uses them. It is a resource, so the promise
+// moves it in and owns it: the promise borrows nothing from the caller.
+type Owned[A, U]:
+    args: A
+    work: fn(A) U!
+
+impl Closeable for Owned[A, U]:
+    var fn close() Unit!:
+        return ok(unit)
+
+impl Owned[A, U]:
+    fn run() U!:
+        return self.work(self.args)
+
+// Runs `work(args)` as a promise that owns `args`, for operations that copy their small arguments (a path, a URL, headers)
+// so the promise borrows nothing and may outlive the caller's values. `work` captures nothing.
+export fn owned_promise[A, U](args: A, work: fn(A) U!) Promise[U]:
+    let owned = Owned[A, U](args: args, work: work)
+    return promise(fn: owned.run())
+
 // Waits for every promise and returns the results in order. The first error ends the wait: the promises still running
 // are cancelled and waited for before `wait_all` returns it.
 export fn wait_all[T](promises: List[Promise[T]]) List[T]!:

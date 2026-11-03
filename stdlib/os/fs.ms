@@ -2,7 +2,7 @@ import BigInt from "@std/math/math.ms"
 import Bytes from "@std/bytes.ms"
 import Duration, milliseconds, monotonic, now, sleep from "@std/os/time.ms"
 import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
-import Promise, adopt from "@std/concurrency/promise.ms"
+import Promise, adopt, owned_promise from "@std/concurrency/promise.ms"
 import msrt_promise_finished from "@std/internal/promises.ms"
 import Timestamp from "@std/os/time.ms"
 import Closeable from "@std/core.ms"
@@ -369,7 +369,7 @@ impl FileHandle:
 
             if let limit = timeout:
                 if monotonic().difference(started).compare(limit) >= 0: return ok(false)
-            sleep(milliseconds(5))
+            try sleep(milliseconds(5)).wait()
 
         return ok(false)
 
@@ -610,9 +610,26 @@ export fn create_link(path: String, target: String) Unit!:
 export fn list(path: String, max_entries: Int?) List[DirectoryEntry]!:
     return host().list(path, max_entries)
 
-// Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
-export fn read_file(path: String, max_bytes: Int?) Bytes!:
-    return host().read_file(path, max_bytes)
+type ReadArgs:
+    path: String
+    max_bytes: Int?
+
+type WriteArgs:
+    path: String
+    data: String
+    replace: Bool
+
+type WriteBytesArgs:
+    path: String
+    data: Bytes
+    replace: Bool
+
+// Starts reading a file fully into memory and returns its promise. Supply `max_bytes` for untrusted or large files.
+export fn read_file(path: String, max_bytes: Int?) Promise[Bytes]:
+    return owned_promise[ReadArgs, Bytes](
+        ReadArgs(path: path.clone(), max_bytes: max_bytes),
+        fn a: host().read_file(a.path, a.max_bytes)
+    )
 
 // Returns the target text stored in the symbolic link at `path`, without resolving it.
 // A path that is not a link returns InvalidInput.
@@ -642,13 +659,19 @@ export fn temporary_root() String!:
 export fn temporary_directory(prefix: String) String!:
     return host().temporary_directory(prefix)
 
-// Creates a file exclusively; replace defaults to False, retaining an existing file.
-export fn write_file(path: String, data: String, replace: Bool = false) Unit!:
-    return host().write_file(path, data, replace)
+// Starts creating a file exclusively and returns its promise; replace defaults to False, retaining an existing file.
+export fn write_file(path: String, data: String, replace: Bool = false) Promise[Unit]:
+    return owned_promise[WriteArgs, Unit](
+        WriteArgs(path: path.clone(), data: data.clone(), replace: replace),
+        fn a: host().write_file(a.path, a.data, a.replace)
+    )
 
-// Creates a file exclusively from raw bytes; replace defaults to False, retaining an existing file.
-export fn write_file_bytes(path: String, data: Bytes, replace: Bool = false) Unit!:
-    return host().write_file_bytes(path, data, replace)
+// Starts creating a file exclusively from raw bytes and returns its promise; replace defaults to False, retaining an existing file.
+export fn write_file_bytes(path: String, data: Bytes, replace: Bool = false) Promise[Unit]:
+    return owned_promise[WriteBytesArgs, Unit](
+        WriteBytesArgs(path: path.clone(), data: data.clone(), replace: replace),
+        fn a: host().write_file_bytes(a.path, a.data, a.replace)
+    )
 
 // Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined bits.
 // Native permissions and Windows access policy still apply.

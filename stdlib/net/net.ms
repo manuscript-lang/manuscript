@@ -12,7 +12,7 @@ import HttpServer from "@std/net/http.ms"
 import NativeServing from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
 import Timestamp from "@std/os/time.ms"
-import Promise, promise, deferred, complete from "@std/concurrency/promise.ms"
+import Promise, promise, owned_promise, deferred, complete from "@std/concurrency/promise.ms"
 import sleep from "@std/os/time.ms"
 import (
     msstd_url_encode_component,
@@ -327,20 +327,27 @@ impl Closeable for Listener:
         return ok(unit)
 
 impl Listener:
-    // Waits for the next incoming connection and returns it. A timeout returns Timeout and a closed listener returns Closed.
-    // On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and returns Failed.
-    fn accept(timeout: Duration?) Connection!:
-        let raw = try msstd_net_listener_accept(self.native, timeout)
-        return ok(connection(raw))
+    // Starts waiting for the next incoming connection and returns its promise. A timeout gives Timeout and a closed listener gives Closed from `wait`.
+    // On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and gives Failed.
+    fn accept(timeout: Duration?) Promise[Connection]:
+        return owned_promise[Duration?, Connection](
+            timeout.clone(), fn limit: accepted(self.native, limit)
+        )
 
-    // Waits for the next incoming connection and returns its socket handle without wrapping it, to give to `HttpServer.adopt` (on this or another thread). The caller owns the handle until then; one that is never adopted leaks its socket.
-    // A timeout returns Timeout and a closed listener returns Closed. A TLS listener returns InvalidInput: the adopting server performs the handshake.
-    fn accept_raw(timeout: Duration?) Int!:
-        return msstd_net_listener_accept_raw(self.native, timeout)
+    // Starts waiting for the next incoming connection and returns a promise of its socket handle without wrapping it. The caller owns the handle until then; one that is never adopted leaks its socket.
+    // A timeout gives Timeout and a closed listener gives Closed from `wait`. A TLS listener gives InvalidInput: the adopting server performs the handshake.
+    fn accept_raw(timeout: Duration?) Promise[Int]:
+        return owned_promise[Duration?, Int](
+            timeout.clone(), fn limit: msstd_net_listener_accept_raw(self.native, limit)
+        )
 
     // Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
     fn address() String:
         return msstd_net_listener_address(self.native)
+
+fn accepted(native: NativeListener, timeout: Duration?) Connection!:
+    let raw = try msstd_net_listener_accept(native, timeout)
+    return ok(connection(raw))
 
 // Reports whether an IP address belongs to a CIDR range.
 export fn contains_ip(cidr: Cidr, address: IpAddress) Bool!:
@@ -670,23 +677,58 @@ export type WebSocketOptions:
 export fn bind_datagram(address: String) DatagramSocket!:
     return ok(datagram_socket(try host_network().bind_datagram(address)))
 
-// Resolves `address` (`host:port`) and opens a TCP connection to the first reachable permitted address.
-// Returns PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
-export fn connect(address: String, timeout: Duration?) Connection!:
+// Starts resolving `address` (`host:port`) and opening a TCP connection to the first reachable permitted address, and returns its promise.
+// `wait` gives PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
+export fn connect(address: String, timeout: Duration?) Promise[Connection]:
+    return owned_promise[ConnectArgs, Connection](
+        ConnectArgs(address: address.clone(), timeout: timeout), fn a: connected(a.address, a.timeout)
+    )
+
+type ConnectArgs:
+    address: String
+    timeout: Duration?
+
+fn connected(address: String, timeout: Duration?) Connection!:
     return ok(connection(try host_network().connect(address, timeout)))
 
-// Connects over TCP to `address` and completes a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2.
-// An empty `server_name` returns InvalidInput, and `timeout` bounds the whole attempt.
+// Starts connecting over TCP to `address` and completing a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2, and returns its promise.
+// An empty `server_name` gives InvalidInput from `wait`, and `timeout` bounds the whole attempt.
 export fn connect_tls(
     address: String,
     server_name: String,
     timeout: Duration?
-) Connection!:
+) Promise[Connection]:
+    return owned_promise[ConnectTlsArgs, Connection](
+        ConnectTlsArgs(address: address.clone(), server_name: server_name.clone(), timeout: timeout),
+        fn a: connected_tls(a.address, a.server_name, a.timeout)
+    )
+
+type ConnectTlsArgs:
+    address: String
+    server_name: String
+    timeout: Duration?
+
+fn connected_tls(address: String, server_name: String, timeout: Duration?) Connection!:
     return ok(connection(try host_network().connect_tls(address, server_name, timeout)))
 
-// Connects over TCP to `address` and completes a TLS handshake using `options`, with at least TLS 1.2.
-// Invalid options return InvalidInput, handshake and verification failures return Failed, and `timeout` bounds the whole attempt.
+// Starts connecting over TCP to `address` and completing a TLS handshake using `options`, with at least TLS 1.2, and returns its promise.
+// Invalid options give InvalidInput from `wait`, handshake and verification failures give Failed, and `timeout` bounds the whole attempt.
 export fn connect_tls_config(
+    address: String,
+    options: TlsOptions,
+    timeout: Duration?
+) Promise[Connection]:
+    return owned_promise[ConnectTlsConfigArgs, Connection](
+        ConnectTlsConfigArgs(address: address.clone(), options: options.clone(), timeout: timeout),
+        fn a: connected_tls_config(a.address, a.options, a.timeout)
+    )
+
+type ConnectTlsConfigArgs:
+    address: String
+    options: TlsOptions
+    timeout: Duration?
+
+fn connected_tls_config(
     address: String,
     options: TlsOptions,
     timeout: Duration?
@@ -697,9 +739,14 @@ export fn connect_tls_config(
         )
     )
 
-// Connects to the Unix domain socket at `path`.
-// Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path returns InvalidInput. `timeout` bounds the attempt.
-export fn connect_unix(path: String, timeout: Duration?) Connection!:
+// Starts connecting to the Unix domain socket at `path` and returns its promise.
+// Any restricted network gives PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path gives InvalidInput. `timeout` bounds the attempt.
+export fn connect_unix(path: String, timeout: Duration?) Promise[Connection]:
+    return owned_promise[ConnectArgs, Connection](
+        ConnectArgs(address: path.clone(), timeout: timeout), fn a: connected_unix(a.address, a.timeout)
+    )
+
+fn connected_unix(path: String, timeout: Duration?) Connection!:
     return ok(connection(try host_network().connect_unix(path, timeout)))
 
 // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
@@ -851,7 +898,7 @@ fn accept_loop(listening: ServingHandle) Unit!:
             if accepted.err().kind == ErrorCategory.Closed:
                 return ok(unit)
 
-            sleep(50.milliseconds)
+            let _ = sleep(50.milliseconds).wait()
             continue
 
         let raw = accepted.get()
