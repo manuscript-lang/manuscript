@@ -2,11 +2,11 @@ import send, recv, send_bytes from "./support/conn.ms"
 import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 import http_result from "./support/http.ms"
-import headers, HttpMethod, buffered from "@std/net/http.ms"
+import headers, HttpMethod, buffered, upgrade from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import connect, http_client, request, serve, web_socket from "@std/net/net.ms"
 import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
-import WebSocketOptions from "@std/net/net.ms"
+import WebSocketOptions, WebSocketMessage from "@std/net/net.ms"
 import TlsOptions from "@std/net/net.ms"
 
 fn tls_options() TlsOptions:
@@ -19,16 +19,16 @@ fn echo(exchange: HttpExchange) Unit!:
     if exchange.path() == "/ws":
         var socket = (
             try http_result(
-                exchange.upgrade(
-                    allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
+                upgrade(
+                    exchange, allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
                 )
             )
         )
-        let message = (try http_result(socket.receive())).get()
+        let message = (try http_result(socket.input.read().wait())).get()
         let _sent = (
             try http_result(
-                socket.send_bytes(
-                    data: message.data, text: message.text
+                socket.output.write(
+                    WebSocketMessage(data: message.data, text: message.text)
                 )
             )
         )
@@ -65,14 +65,14 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
         decompress: true, cookies: true, tls: tls_options()
     )
     var client = http_client(client_options) | try expect_ok
-    let body = client.request(
+    var body = client.request(
         method: HttpMethod.Get, url: url,
         headers: (try text_headers(Map[String, String]())), body: "",
         max_response_bytes: 5, timeout: 2.seconds
     ) | try expect_ok
-    body.metadata().status | try expect_equal(201)
-    (body.read(5) | try expect_ok).get() | try expect_equal("hello".to_bytes())
-    ((body.read(5) | try expect_ok).is_none()) | try expect_true
+    body.metadata.status | try expect_equal(201)
+    (body.body.read().wait() | try expect_ok).get() | try expect_equal("hello".to_bytes())
+    ((body.body.read().wait() | try expect_ok).is_none()) | try expect_true
     try client.close()
 
     let _limited: Unit! = error(
@@ -100,15 +100,15 @@ test "WebSocket negotiates a protocol and echoes a text frame":
         max_message_bytes: 1024, timeout: 2.seconds, tls: tls_options(),
         compression: false
     )
-    let socket = web_socket(
+    var socket = web_socket(
         url: "ws://{server.address()}/ws",
         headers: (try text_headers(Map[String, String]())), subprotocols: ["echo"],
         options: client_options
     ) | try expect_ok
-    socket.subprotocol() | try expect_equal("echo")
+    socket.subprotocol | try expect_equal("echo")
 
-    let _sent = socket.send(data: "é🙂") | try expect_ok
-    let message = (socket.receive() | try expect_ok).get()
+    let _sent = socket.output.write(WebSocketMessage(data: "é🙂".to_bytes(), text: true)) | try expect_ok
+    let message = (socket.input.read().wait() | try expect_ok).get()
     (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
 
 fn upgrade_status(address: String, version: String, extra: String) String!:
