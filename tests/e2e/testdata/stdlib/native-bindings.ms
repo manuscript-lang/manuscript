@@ -146,10 +146,12 @@ test "stat_filesystem describes the filesystem under a path":
 fn saw(var events: ReadStream[FileEvent], path: String, kind: String, tries: Int) Bool!:
     for attempt in 0..tries:
         let next = try events.read().wait(timeout: 2.seconds)
+
         if let event = next:
             if event.path == path and event.kind == kind: return ok(true)
         else:
             return ok(false)
+
     return ok(false)
 
 test "polling and native watchers report a created file and close":
@@ -164,7 +166,6 @@ test "polling and native watchers report a created file and close":
 
     var native = try watch(path: root, recursive: false)
     try write_file(path: "{root}/b.txt", data: "y", replace: false)
-
     try expect_true(try saw(var native, join([root.clone(), "b.txt"]), "rename", 8))
 
 test "native watcher max_entries counts the paths under the root":

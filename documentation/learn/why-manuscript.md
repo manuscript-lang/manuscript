@@ -25,7 +25,7 @@ Diagnostics read `cause; fix`. When an agent writes `len(xs)`, `.unwrap()`, `nam
 
 Any function can wait, so there is no `async`, no `await` and no function coloring. A call that can wait returns a `Promise[T]` already running, `promise(fn: ...)` starts your own work the same way, and `wait()` gives the result. A promise only reads what it captures, dropping one cancels it, and values move between owners over a `pipe` instead of being shared.
 
-Cancellation, fault containment and deadlock detection have limits; read [concurrency](../core-language/concurrency/_index.md) before relying on them.
+Cancellation happens only at a `wait`, and a fault ends only the promise it happened in; read [concurrency](../core-language/concurrency/_index.md) before relying on them.
 
 ## Ownership you can follow
 

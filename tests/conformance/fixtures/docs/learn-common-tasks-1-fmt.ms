@@ -5,7 +5,7 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
     try stdout().write("Hello, Manuscript!\n")
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     if run().is_error():

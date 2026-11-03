@@ -47,7 +47,9 @@ test "TCP loopback writes reads half close and EOF":
     var server = try listener.accept(2.seconds)
     try client.output.write("hello".to_bytes())
     try client.output.flush().wait()
-    try expect_equal((try server.input.read().wait(timeout: 2.seconds)).get(), "hello".to_bytes())
+    try expect_equal(
+        (try server.input.read().wait(timeout: 2.seconds)).get(), "hello".to_bytes()
+    )
     try expect_equal(server.info.peer_address, client.info.local_address)
     try client.output.close()
     try expect_true((try server.input.read().wait(timeout: 2.seconds)).is_none())
@@ -61,7 +63,10 @@ test "closing the input leaves the output open and closing both ends the connect
     try client.input.close()
     try client.output.write("still open".to_bytes())
     try client.output.flush().wait()
-    try expect_equal((try server.input.read().wait(timeout: 2.seconds)).get(), "still open".to_bytes())
+    try expect_equal(
+        (try server.input.read().wait(timeout: 2.seconds)).get(),
+        "still open".to_bytes()
+    )
 
     // Closing the output too closes the socket: the peer sees the end of the stream.
     try client.output.close()
@@ -91,10 +96,7 @@ test "UDP loopback preserves datagram data and sender":
 
     let packet = (try receiver.input.read().wait(timeout: 2.seconds)).get()
     try expect_false(
-        (
-            packet.data != "packet".to_bytes()
-            or packet.address != sender.address
-        )
+        (packet.data != "packet".to_bytes() or packet.address != sender.address)
     )
 
 test "network restriction denies admission and close rejects acquisitions":
@@ -186,7 +188,11 @@ fn answer_mx(var served: DatagramSocket) Int!:
             116, 0
         ]
     )
-    try served.output.write(Datagram(header.concat(question).concat(record).concat(name), query.address))
+    try served.output.write(
+        Datagram(
+            header.concat(question).concat(record).concat(name), query.address
+        )
+    )
     try served.output.flush().wait()
     return ok(1)
 
@@ -198,7 +204,9 @@ test "resolve returns typed DNS records from the configured resolver":
 
     let server = try bind_datagram("127.0.0.1:0")
     let derived = try with_resolver(server.address.clone())
-    let asking = promise(fn: derived.resolve("example.test", DnsKind.MX, none, 2.seconds))
+    let asking = promise(
+        fn: derived.resolve("example.test", DnsKind.MX, none, 2.seconds)
+    )
     var answering = server
     let answered = try answer_mx(var answering)
     let mx = try asking.wait()
@@ -206,7 +214,6 @@ test "resolve returns typed DNS records from the configured resolver":
     try expect_equal(mx[0].kind.text(), "MX")
     try expect_equal(mx[0].priority, 10)
     try expect_equal(mx[0].value, "mail.example.test.")
-
     try expect_equal(answered, 1)
 
 test "an empty host listens on every interface, with or without IPv6":
@@ -217,7 +224,9 @@ test "an empty host listens on every interface, with or without IPv6":
     var server = try listener.accept(2.seconds)
     try client.output.write("hi".to_bytes())
     try client.output.flush().wait()
-    try expect_equal((try server.input.read().wait(timeout: 2.seconds)).get(), "hi".to_bytes())
+    try expect_equal(
+        (try server.input.read().wait(timeout: 2.seconds)).get(), "hi".to_bytes()
+    )
     try listener.close()
 
     let socket = try bind_datagram(":0")

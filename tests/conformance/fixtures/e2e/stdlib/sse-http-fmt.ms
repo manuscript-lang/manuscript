@@ -7,24 +7,10 @@ import (
     HttpClientOptions,
     HttpExchange,
     HttpMethod,
-    HttpServerOptions,
-    ResponseBody
+    HttpServerOptions
 ) from "@std/net/http.ms"
-import Bytes from "@std/bytes.ms"
-import ReadStream, Source, stream from "@std/io/io.ms"
 import sse_events from "@std/net/sse.ms"
 import http_client, serve from "@std/net/net.ms"
-
-// A response body as a stream source, until response bodies are streams themselves.
-type BodySource:
-    body: ResponseBody
-
-impl Source[Bytes] for BodySource:
-    var fn next() Bytes?!:
-        return self.body.read(none)
-
-    var fn close() Unit!:
-        return self.body.close()
 
 // Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
 fn stream_events(exchange: HttpExchange) Unit!:
@@ -43,8 +29,9 @@ test "HTTP response bodies decode as SSE and close with the reader":
     let response = try client.request(
         HttpMethod.Get, "http://{server.address()}/", headers()
     )
-    let status = response.metadata().status
-    var events = sse_events(stream[Bytes](BodySource(response)))
+    let {metadata: head, body: payload} = response
+    let status = head.status
+    var events = sse_events(payload)
     let first = (try events.read().wait()).get()
     let second = (try events.read().wait()).get()
     if first.event != "greet" or first.data != "h\u{e9}!": return fail(

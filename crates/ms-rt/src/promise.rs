@@ -65,7 +65,10 @@ const HELD_ERROR: u8 = 8;
 /// Another thread completes this promise (a pipe peer), so a waiter's token must be remote.
 const REMOTE_WAKE: u8 = 2;
 /// The promise has no task: its work runs in the first task that waits on it.
-const DEFERRED: u8 = 4;
+const DEFERRED: u8 = 16;
+
+// Each flag is its own bit: two sharing one made a held result look like deferred work.
+const _: () = assert!((WANT_CANCEL | REMOTE_WAKE | HELD | HELD_ERROR | DEFERRED).count_ones() == 5);
 
 const NO_RESULT: Result = Result {
     ptr: core::ptr::null_mut(),
@@ -404,7 +407,11 @@ fn wake(t: &mut Table, i: usize) {
 /// # Safety
 /// `out` is writable memory for a value of `d`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_promise_take(id: i64, d: ms_rt_abi::ValueDesc, out: *mut u8) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_promise_take(
+    id: i64,
+    d: ms_rt_abi::ValueDesc,
+    out: *mut u8,
+) -> u8 {
     let t = table();
     let Some(i) = index(t, id) else { return 0 };
     let r = core::mem::replace(&mut t.result[i], NO_RESULT);
@@ -774,13 +781,19 @@ fn run_deferred(id: i64, deadline: Option<i64>) {
     // its own waits can notice the limit.
     let earlier =
         task::set_defer_deadline(deadline.map_or(i64::MAX, |d| d.min(task::defer_deadline())));
-    // SAFETY: the closure handed over to `msrt_promise_defer` is ours; the code is the closure's entry.
-    unsafe {
+    // The closure handed over to `msrt_promise_defer` is dropped when the work ends, and by the
+    // cleanup when a cancelled wait inside the work jumps out of it, which skips Rust destructors.
+    let release = || {
+        // SAFETY: the closure is ours, dropped once.
+        unsafe { crate::obj::release(closure.cast()) };
+    };
+    // SAFETY: the code is the closure's entry.
+    fault::with_cleanup(&mut || release(), || unsafe {
         let code: unsafe extern "C-unwind" fn(*mut ms_rt_abi::Closure) =
             core::mem::transmute((*closure).code);
         code(closure);
-        crate::obj::release(closure.cast());
-    }
+    });
+    release();
     task::set_defer_deadline(earlier);
 }
 

@@ -176,7 +176,9 @@ impl HttpClient:
         max_response_bytes: Int?,
         timeout: Duration?
     ) StreamingResponse!:
-        let raw = try self.request_raw(method, url, headers, body, max_response_bytes, timeout)
+        let raw = try self.request_raw(
+            method, url, headers, body, max_response_bytes, timeout
+        )
         return ok(response(raw))
 
     // Sends immutable Bytes and returns the native response, for callers that buffer the whole body.
@@ -204,14 +206,19 @@ impl HttpClient:
     ) StreamingResponse!:
         var input = body
         var chunks: List[Bytes] = []
+
         while true:
             let chunk = try input.read().wait()
+
             if let bytes = chunk:
                 chunks.append(bytes)
             else:
                 break
+
         try input.close()
-        return self.request_bytes(method, url, headers, join(chunks), max_response_bytes, timeout)
+        return self.request_bytes(
+            method, url, headers, join(chunks), max_response_bytes, timeout
+        )
 
 // Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
 export type HttpClientOptions:
@@ -383,6 +390,11 @@ export type StreamingResponse:
     // The body, at most 64 KiB per item. Reading past the request's `max_response_bytes` is an `Error` of kind `Failed`.
     body: ReadStream[Bytes]
 
+impl Closeable for StreamingResponse:
+    // Closes the body, which cancels what is unread and releases the connection.
+    var fn close() Unit!:
+        return self.body.close()
+
 type ResponseSource:
     raw: RawResponse
 
@@ -395,7 +407,9 @@ impl Source[Bytes] for ResponseSource:
 
 fn response(raw: RawResponse) StreamingResponse:
     let metadata = raw.metadata()
-    return StreamingResponse(metadata: metadata, body: stream[Bytes](ResponseSource(raw)))
+    return StreamingResponse(
+        metadata: metadata, body: stream[Bytes](ResponseSource(raw))
+    )
 
 type ExchangeBody:
     exchange: HttpExchange
@@ -429,7 +443,11 @@ impl Sink[Bytes] for ExchangeSink:
 
 // Sends the status line and headers, then returns the stream the response body is written to.
 // The rules of `send_headers` apply; writing beyond `max_response_bytes` is an `Error` of kind `Failed`.
-export fn respond(exchange: HttpExchange, status: Int, headers: HttpHeaders) WriteStream[Bytes]!:
+export fn respond(
+    exchange: HttpExchange,
+    status: Int,
+    headers: HttpHeaders
+) WriteStream[Bytes]!:
     try exchange.send_headers(status, headers)
     return ok(writer[Bytes](ExchangeSink(exchange)))
 

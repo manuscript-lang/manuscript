@@ -10,10 +10,23 @@ import (
     HttpResponse,
     buffered
 ) from "@std/net/http.ms"
-import ReadStream, read_all from "@std/io/io.ms"
-import body_stream from "@std/net/http.ms"
+import ReadStream, Source, stream from "@std/io/io.ms"
 import http_client, serve from "@std/net/net.ms"
-import Bytes from "@std/bytes.ms"
+import Bytes, join from "@std/bytes.ms"
+
+// Reads `input` to its end and joins the chunks.
+fn read_to_end(var input: ReadStream[Bytes]) Bytes!:
+    var chunks: List[Bytes] = []
+
+    while true:
+        let chunk = try input.read().wait()
+
+        if let bytes = chunk:
+            chunks.append(bytes)
+        else:
+            break
+
+    return ok(join(chunks))
 
 // Hands out its parts one chunk at a time, then reports the end of the stream.
 type Chunks:
@@ -21,11 +34,11 @@ type Chunks:
     next: Int = 0
     failure: String?
 
-impl ReadStream for Chunks:
-    fn close() Unit:
-        return unit
+impl Source[Bytes] for Chunks:
+    var fn close() Unit!:
+        return ok(unit)
 
-    var fn read(max_bytes: Int? = none) Bytes?!:
+    var fn next() Bytes?!:
         if self.next == self.parts.length():
             match self.failure:
                 message: return error(
@@ -45,19 +58,19 @@ fn echo(request: HttpRequest) HttpResponse:
 test "request_stream uploads each chunk of a ReadStream":
     let server = try serve("127.0.0.1:0", buffered(echo))
     let client = try http_client(HttpClientOptions())
-    let upload = Chunks(parts: ["alpha ", "beta ", "gamma"])
-    let response = try client.request_stream(
+    let upload = stream[Bytes](Chunks(parts: ["alpha ", "beta ", "gamma"]))
+    var response = try client.request_stream(
         HttpMethod.Post, "http://{server.address()}/", headers(), upload
     )
-    try expect_equal(response.metadata().status, 200)
+    try expect_equal(response.metadata.status, 200)
 
-    let body = try read_all(body_stream(response))
+    let body = try read_to_end(var response.body)
     try expect_equal(body, "alpha beta gamma".to_bytes())
 
 test "request_stream reports a failing ReadStream":
     let server = try serve("127.0.0.1:0", buffered(echo))
     let client = try http_client(HttpClientOptions())
-    let upload = Chunks(parts: ["partial"], failure: "disk gone")
+    let upload = stream[Bytes](Chunks(parts: ["partial"], failure: "disk gone"))
     let sent = client.request_stream(
         HttpMethod.Post, "http://{server.address()}/", headers(), upload
     )

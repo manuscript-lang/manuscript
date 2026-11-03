@@ -7,7 +7,7 @@ weight = 5
 
 ## How memory works
 
-Every value has exactly one owner: a variable, a field, or a slot in a collection. When the owner goes out of scope, the value is freed, right there and on time. There is no garbage collector and no reference counting, and the compiler never copies a value behind your back. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, alternatives without payloads, `Shared` handles) are the exception: they own nothing, so they copy freely.
+Every value has exactly one owner: a variable, a field, or a slot in a collection. When the owner goes out of scope, the value is freed, right there and on time. There is no garbage collector and no reference counting, and the compiler never copies a value behind your back. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, alternatives without payloads) are the exception: they own nothing, so they copy freely.
 
 Everything else, including strings, records, lists and maps, is handed around by reference until you put it somewhere that must own it:
 

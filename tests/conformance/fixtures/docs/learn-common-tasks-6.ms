@@ -6,7 +6,7 @@ import stdout from "@std/io/io.ms"
 
 fn show(number: Int) Result[Unit, Error]:
     try stdout().write("{number}\n")
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     let number = arguments().get(0, default: "42").parse_int()

@@ -56,4 +56,6 @@ export fn main() Int:
 - `var` parameter: `fn add(var xs: List[Int])`, called `add(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints: `ms lint`/`ms verify` fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail check (prefix `_`).
 - `Closeable` (files, `impl Closeable for T:` with `var fn close() Unit!`) closes at scope end unless moved; a failed close is returned or faults.
+- Waiting: calls that can wait (`read(path)`, `fetch`, `sleep`) return a running `Promise[T]`; `p.wait(timeout: d)` gives `T!` (timeout cancels). `promise(fn: f())` runs on another thread; `wait_all(ps)`, `wait_first(ps)`. Dropping a promise cancels it at its next wait. Promises only read captures; change shared state via one owner and `pipe[T](cap)` (`writer()`, `reader()`).
+- Streams: `for x in s.wait():` (`x` is `T!`; bare `for x in s` is an error); `w.write(v)` never waits, `w.flush().wait()` drains; steps `input | lines | map(f) | collect(none)`. `serve(":8080", h)` uses every core; `server.wait()`.
 - Not Python: no exceptions, classes, `async`, `null`, `pass`; `fn` not `def`/`lambda`, `true`/`false`, `else if`, `none`, no `f""`.

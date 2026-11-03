@@ -23,24 +23,19 @@
           "index": 2,
           "name": "stdlib-revamp.ms::limits can be omitted or supplied",
           "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "stdlib-revamp.ms::native compositions preserve Optional arguments for source implementations",
-          "status": "passed"
         }
       ],
       "summary": {
-        "available": 4,
-        "selected": 4,
-        "passed": 4,
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN stdlib-revamp.ms::domain equality and hashing select interfaces\nPASS stdlib-revamp.ms::domain equality and hashing select interfaces\nRUN stdlib-revamp.ms::stable priority queue and optional capacity\nPASS stdlib-revamp.ms::stable priority queue and optional capacity\nRUN stdlib-revamp.ms::limits can be omitted or supplied\nPASS stdlib-revamp.ms::limits can be omitted or supplied\nRUN stdlib-revamp.ms::native compositions preserve Optional arguments for source implementations\nPASS stdlib-revamp.ms::native compositions preserve Optional arguments for source implementations\n4 tests, 0 failed\n",
+      "stdout": "RUN stdlib-revamp.ms::domain equality and hashing select interfaces\nPASS stdlib-revamp.ms::domain equality and hashing select interfaces\nRUN stdlib-revamp.ms::stable priority queue and optional capacity\nPASS stdlib-revamp.ms::stable priority queue and optional capacity\nRUN stdlib-revamp.ms::limits can be omitted or supplied\nPASS stdlib-revamp.ms::limits can be omitted or supplied\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

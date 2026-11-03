@@ -17,13 +17,13 @@ fn accept_one(address: String) Int:
     return 0
 
 fn read_one(address: String) Int:
-    let client = connect(address, nanoseconds(2000000000)).get()
-    let got = client.read(none, none)
+    var client = connect(address, nanoseconds(2000000000)).get()
+    let got = client.input.read().wait()
     return got.get(none).map(fn b: b.length()).get(-1)
 
 fn receive_one(address: String) Int:
-    let socket = bind_datagram(address).get()
-    let got = socket.receive(none, none)
+    var socket = bind_datagram(address).get()
+    let got = socket.input.read().wait()
     if got.is_ok():
         return 1
 
@@ -81,7 +81,7 @@ export fn main() Int:
     stdout().write("cancelled reads rebound: {rebound(third_address.clone())}\n").get()
 
     var udp = bind_datagram("127.0.0.1:0").get()
-    let udp_address = udp.address().clone()
+    let udp_address = udp.address.clone()
     udp.close().get(none)
     (
         stdout().write(

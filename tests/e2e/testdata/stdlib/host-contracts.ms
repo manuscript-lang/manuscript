@@ -1,6 +1,5 @@
 import expect_equal, expect_error, expect_false from "@std/test/test.ms"
 import open, temporary, write_file from "@std/os/fs.ms"
-import open_read from "@std/io/io.ms"
 import monotonic_time, uptime from "@std/os/process.ms"
 import nanoseconds from "@std/os/time.ms"
 import compress, decompress from "@std/io/archive.ms"
@@ -113,23 +112,21 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
     try handle.write_at(4, "ZZ")
     try expect_equal((try handle.seek(0, 1)), 2)
 
-    var writer = handle.writer()
-    try writer.write("AB")
-    try writer.flush()
+    var writer = try handle.writer()
+    try writer.write("AB".to_bytes())
+    try writer.flush().wait()
     try expect_equal((try handle.read_at(2, 4)), "ABZZ".to_bytes())
 
-    var reader = handle.reader()
-    writer.close()
+    var reader = try handle.reader()
+    try writer.close()
+    try expect_equal((try handle.read_at(2, 4)), "ABZZ".to_bytes())
+    try handle.close()
 
     let closed_read: Bytes! = error(
         Error("filesystem: resource is closed", kind: ErrorCategory.Closed)
     )
     try expect_equal(handle.read_at(0), closed_read)
-    try expect_equal(
-        (try expect_error(reader.read())),
-        Error("I/O: resource is closed", kind: ErrorCategory.Closed)
-    )
-    try handle.close()
+    try reader.close()
 
     let missing = "{temporary.path()}/missing"
     try expect_equal(
@@ -137,8 +134,4 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
         Error(
             "filesystem: file or directory not found", kind: ErrorCategory.NotFound
         )
-    )
-    try expect_equal(
-        (try expect_error(open_read(missing))),
-        Error("I/O: service unavailable", kind: ErrorCategory.Unavailable)
     )

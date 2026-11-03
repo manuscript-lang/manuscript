@@ -1,11 +1,12 @@
 import FileHandle, open, temporary, write_file from "@std/os/fs.ms"
 import ReadStream from "@std/io/io.ms"
+import Bytes from "@std/bytes.ms"
 import expect_true, expect_ok from "@std/test/test.ms"
 
 // `FileHandle` is a nominal type with `impl Closeable`, so a binding of one owns the file.
-fn view_of(path: String) ReadStream!:
+fn view_of(path: String) ReadStream[Bytes]!:
     let file = try open(path, "r", 0)
-    return ok(file.reader())
+    return ok(try file.reader())
 
 test "a file handle binding is closed when its scope ends":
     let temporary = temporary("manuscript-owned-") | try expect_ok
@@ -13,7 +14,7 @@ test "a file handle binding is closed when its scope ends":
     try expect_true(write_file(path, "x", true).is_ok())
 
     var view = view_of(path) | try expect_ok
-    try expect_true(view.read(none).is_error())
+    try expect_true(view.read().wait().is_ok())
 
 test "closing a file handle by hand is allowed once more at scope end":
     let temporary = temporary("manuscript-owned-") | try expect_ok
