@@ -207,6 +207,20 @@ fn ensure_started(index: usize) {
     }
 }
 
+/// Starts threads `1..n` and waits until each is idle. Tests use it so that placement is not
+/// decided by how quickly the operating system gets a new thread running.
+#[cfg(test)]
+pub(crate) fn warm(n: usize) {
+    for i in 1..n {
+        ensure_started(i);
+    }
+    let want = (1..n).fold(0u64, |m, i| m | 1 << i);
+    let end = crate::sys::monotonic_ns() + 5_000_000_000;
+    while IDLE.load(Ordering::Acquire) & want != want && crate::sys::monotonic_ns() < end {
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+}
+
 /// Sends a start to a scheduler thread, placed by load. `ready_here` counts the tasks waiting on
 /// the calling thread.
 pub(crate) fn submit(start: Start, ready_here: usize) {

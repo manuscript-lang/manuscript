@@ -1,49 +1,91 @@
 //! Buffered standard output and unbuffered standard error.
-use crate::global::Process;
 use crate::sys;
+use core::cell::UnsafeCell;
 use ms_rt_abi::{StrVal, VecVal};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 const BUF_LIMIT: usize = 64 * 1024;
-static OUT: Process<Vec<u8>> = Process::new(Vec::new());
+/// The process-wide output buffer. Every thread that runs Manuscript code writes through it, so
+/// lines stay in program order. The lock is held only to append or to write out what is buffered,
+/// so it is a flag and not a `Mutex`: a lone writer pays one atomic swap.
+struct Out {
+    locked: AtomicBool,
+    buf: UnsafeCell<Vec<u8>>,
+}
+
+// SAFETY: `buf` is only reached through a `Guard`, which holds `locked`.
+unsafe impl Sync for Out {}
+
+static OUT: Out = Out {
+    locked: AtomicBool::new(false),
+    buf: UnsafeCell::new(Vec::new()),
+};
 /// 0 unknown, 1 pipe/file, 2 terminal.
-static TTY: Process<u8> = Process::new(0);
+static TTY: AtomicU8 = AtomicU8::new(0);
 
-/// Serializes whole writes from worker isolates, which skip the main isolate's buffer.
-static WORKER_OUT: std::sync::Mutex<()> = std::sync::Mutex::new(());
+struct Guard(&'static Out);
 
-pub fn flush_stdout() {
-    // The buffer belongs to the main isolate; a worker writes straight through.
-    if crate::isolate::is_worker() {
-        return;
+impl core::ops::Deref for Guard {
+    type Target = Vec<u8>;
+    fn deref(&self) -> &Vec<u8> {
+        // SAFETY: the guard holds the lock.
+        unsafe { &*self.0.buf.get() }
     }
-    // SAFETY: single threaded access to the output buffer (the fault path may
-    // run on the same thread inside a write; the buffer is only appended to).
-    let out = unsafe { &mut *OUT.ptr() };
+}
+
+impl core::ops::DerefMut for Guard {
+    fn deref_mut(&mut self) -> &mut Vec<u8> {
+        // SAFETY: the guard holds the lock.
+        unsafe { &mut *self.0.buf.get() }
+    }
+}
+
+impl Drop for Guard {
+    fn drop(&mut self) {
+        self.0.locked.store(false, Ordering::Release);
+    }
+}
+
+fn out() -> Guard {
+    let mut spins = 0u32;
+    while OUT.locked.swap(true, Ordering::Acquire) {
+        spins += 1;
+        if spins < 64 {
+            core::hint::spin_loop();
+        } else {
+            // The holder may be writing to a full pipe.
+            std::thread::yield_now();
+        }
+    }
+    Guard(&OUT)
+}
+
+fn flush_locked(out: &mut Vec<u8>) {
     if !out.is_empty() {
         sys::write_all(sys::STDOUT, out.as_slice());
         out.clear();
     }
 }
 
+pub fn flush_stdout() {
+    flush_locked(&mut out());
+}
+
 pub fn write_stdout(data: &[u8]) {
-    if crate::isolate::is_worker() {
-        let _turn = WORKER_OUT.lock().unwrap_or_else(|e| e.into_inner());
-        sys::write_all(sys::STDOUT, data);
-        return;
-    }
-    // SAFETY: single threaded access.
-    let (out, tty) = unsafe { (&mut *OUT.ptr(), &mut *TTY.ptr()) };
-    if *tty == 0 {
+    let mut tty = TTY.load(Ordering::Relaxed);
+    if tty == 0 {
         // SAFETY: plain libc call.
-        *tty = if unsafe { sys::isatty(sys::STDOUT) } != 0 {
+        tty = if unsafe { sys::isatty(sys::STDOUT) } != 0 {
             2
         } else {
             1
         };
+        TTY.store(tty, Ordering::Relaxed);
     }
+    let mut out = out();
     out.extend_from_slice(data);
-    if out.len() >= BUF_LIMIT || (*tty == 2 && data.contains(&b'\n')) {
-        flush_stdout();
+    if out.len() >= BUF_LIMIT || (tty == 2 && data.contains(&b'\n')) {
+        flush_locked(&mut out);
     }
 }
 
