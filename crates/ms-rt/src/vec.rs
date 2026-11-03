@@ -190,11 +190,7 @@ pub unsafe extern "C-unwind" fn msrt_list_new(out: *mut VecVal) {
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_with_capacity(
-    d: *const TypeDesc,
-    cap: i64,
-    out: *mut VecVal,
-) {
+pub unsafe extern "C-unwind" fn msrt_list_with_capacity(d: ElemDesc, cap: i64, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
         let mut v = EMPTY;
@@ -207,25 +203,21 @@ pub unsafe extern "C-unwind" fn msrt_list_with_capacity(
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_drop(v: *mut VecVal, d: *const TypeDesc) {
+pub unsafe extern "C-unwind" fn msrt_list_drop(v: *mut VecVal, d: ElemDesc) {
     // SAFETY: caller contract.
     unsafe { drop_list(v, &*d) }
 }
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_copy(
-    v: *const VecVal,
-    d: *const TypeDesc,
-    out: *mut VecVal,
-) {
+pub unsafe extern "C-unwind" fn msrt_list_copy(v: *const VecVal, d: ElemDesc, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe { copy_list(v, &*d, out) }
 }
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_push(v: *mut VecVal, d: *const TypeDesc, e: *const u8) {
+pub unsafe extern "C-unwind" fn msrt_list_push(v: *mut VecVal, d: ElemDesc, e: *const u8) {
     // SAFETY: caller contract.
     unsafe { push(&mut *v, &*d, e) }
 }
@@ -233,7 +225,7 @@ pub unsafe extern "C-unwind" fn msrt_list_push(v: *mut VecVal, d: *const TypeDes
 /// Grows capacity for at least `extra` more elements.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_reserve(v: *mut VecVal, d: *const TypeDesc, extra: i64) {
+pub unsafe extern "C-unwind" fn msrt_list_reserve(v: *mut VecVal, d: ElemDesc, extra: i64) {
     // SAFETY: caller contract.
     unsafe { reserve(&mut *v, &*d, extra.max(0) as usize) }
 }
@@ -246,7 +238,7 @@ pub unsafe extern "C-unwind" fn msrt_list_reserve(v: *mut VecVal, d: *const Type
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_at(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     index: i64,
     default: *const u8,
 ) -> *const u8 {
@@ -269,7 +261,7 @@ pub unsafe extern "C-unwind" fn msrt_list_at(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_get(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     index: i64,
     default: *const u8,
     out: *mut u8,
@@ -283,11 +275,7 @@ pub unsafe extern "C-unwind" fn msrt_list_get(
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_first(
-    v: *const VecVal,
-    d: *const TypeDesc,
-    out: *mut u8,
-) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_list_first(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         if (*v).len == 0 {
@@ -300,11 +288,7 @@ pub unsafe extern "C-unwind" fn msrt_list_first(
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_last(
-    v: *const VecVal,
-    d: *const TypeDesc,
-    out: *mut u8,
-) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_list_last(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         let v = &*v;
@@ -321,7 +305,7 @@ pub unsafe extern "C-unwind" fn msrt_list_last(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_index_of(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     probe: *const u8,
     out: *mut i64,
 ) -> u8 {
@@ -365,7 +349,7 @@ fn find_int(items: &[i64], target: i64) -> Option<usize> {
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_last_index_of(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     probe: *const u8,
     out: *mut i64,
 ) -> u8 {
@@ -386,7 +370,7 @@ pub unsafe extern "C-unwind" fn msrt_list_last_index_of(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_contains(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     probe: *const u8,
 ) -> u8 {
     let mut i = 0i64;
@@ -399,11 +383,7 @@ pub unsafe extern "C-unwind" fn msrt_list_contains(
 /// Inserts `e` (consumed) at the front.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_prepend(
-    v: *mut VecVal,
-    d: *const TypeDesc,
-    e: *const u8,
-) {
+pub unsafe extern "C-unwind" fn msrt_list_prepend(v: *mut VecVal, d: ElemDesc, e: *const u8) {
     // SAFETY: caller contract.
     unsafe { msrt_list_insert(v, d, 0, e) }
 }
@@ -412,7 +392,7 @@ pub unsafe extern "C-unwind" fn msrt_list_prepend(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_insert(
     v: *mut VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     index: i64,
     e: *const u8,
 ) {
@@ -446,7 +426,7 @@ pub unsafe extern "C-unwind" fn msrt_list_insert(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_insert_copy(
     v: *mut VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     index: i64,
     e: *const u8,
 ) {
@@ -470,11 +450,7 @@ pub unsafe extern "C-unwind" fn msrt_list_insert_copy(
 /// Removes the last element into `out`; 0 when empty.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_pop(
-    v: *mut VecVal,
-    d: *const TypeDesc,
-    out: *mut u8,
-) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_list_pop(v: *mut VecVal, d: ElemDesc, out: *mut u8) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
@@ -511,7 +487,7 @@ fn index_fault(operation: &str, len: usize, index: i64) -> ! {
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_set(
     v: *mut VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     index: i64,
     e: *const u8,
 ) {
@@ -533,7 +509,7 @@ pub unsafe extern "C-unwind" fn msrt_list_set(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_replace(
     v: *mut VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     index: i64,
     e: *mut u8,
     out: *mut u8,
@@ -554,7 +530,7 @@ pub unsafe extern "C-unwind" fn msrt_list_replace(
 /// Exchanges the elements at `i` and `j` in place; nothing is copied or dropped.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_swap(v: *mut VecVal, d: *const TypeDesc, i: i64, j: i64) {
+pub unsafe extern "C-unwind" fn msrt_list_swap(v: *mut VecVal, d: ElemDesc, i: i64, j: i64) {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
@@ -595,7 +571,7 @@ unsafe fn swap_slots(a: *mut u8, b: *mut u8, size: usize) {
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_remove(v: *mut VecVal, d: *const TypeDesc, index: i64) {
+pub unsafe extern "C-unwind" fn msrt_list_remove(v: *mut VecVal, d: ElemDesc, index: i64) {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
@@ -617,7 +593,7 @@ pub unsafe extern "C-unwind" fn msrt_list_remove(v: *mut VecVal, d: *const TypeD
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_reverse(v: *mut VecVal, d: *const TypeDesc) {
+pub unsafe extern "C-unwind" fn msrt_list_reverse(v: *mut VecVal, d: ElemDesc) {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
@@ -635,7 +611,7 @@ pub unsafe extern "C-unwind" fn msrt_list_reverse(v: *mut VecVal, d: *const Type
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_reversed(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     out: *mut VecVal,
 ) {
     // SAFETY: caller contract.
@@ -650,7 +626,7 @@ pub unsafe extern "C-unwind" fn msrt_list_reversed(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_splice(
     v: *mut VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     start: i64,
     count: i64,
     replacement: *mut VecVal,
@@ -706,7 +682,7 @@ fn check_slice(op: &str, len: usize, start: i64, end: i64) {
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_fill(
     v: *mut VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     value: *const u8,
     start: i64,
     end: i64,
@@ -727,7 +703,7 @@ pub unsafe extern "C-unwind" fn msrt_list_fill(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_copy_within(
     v: *mut VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     target: i64,
     start: i64,
     end: i64,
@@ -785,7 +761,7 @@ pub unsafe extern "C-unwind" fn msrt_list_copy_within(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_slice(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     start: i64,
     end: i64,
     out: *mut VecVal,
@@ -820,7 +796,7 @@ fn take_count(name: &str, count: i64, len: usize) -> usize {
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_take(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     count: i64,
     out: *mut VecVal,
 ) {
@@ -843,7 +819,7 @@ pub unsafe extern "C-unwind" fn msrt_list_take(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_pieces(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     od: *const TypeDesc,
     size: i64,
     step: i64,
@@ -883,7 +859,7 @@ pub unsafe extern "C-unwind" fn msrt_list_pieces(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_drop_n(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     count: i64,
     out: *mut VecVal,
 ) {
@@ -908,7 +884,7 @@ pub unsafe extern "C-unwind" fn msrt_list_drop_n(
 pub unsafe extern "C-unwind" fn msrt_list_concat(
     a: *const VecVal,
     b: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     out: *mut VecVal,
 ) {
     // SAFETY: caller contract.
@@ -961,11 +937,7 @@ unsafe fn extend_copy(v: &mut VecVal, d: &TypeDesc, other: &VecVal) {
 /// Appends the elements of `other` (consumed: its buffer is freed, elements moved).
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_extend(
-    v: *mut VecVal,
-    d: *const TypeDesc,
-    other: *mut VecVal,
-) {
+pub unsafe extern "C-unwind" fn msrt_list_extend(v: *mut VecVal, d: ElemDesc, other: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
         let (v, d, o) = (&mut *v, &*d, &mut *other);
@@ -986,7 +958,7 @@ pub unsafe extern "C-unwind" fn msrt_list_extend(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_flatten(
     lists: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     out: *mut VecVal,
 ) {
     // SAFETY: caller contract.
@@ -1009,7 +981,7 @@ pub unsafe extern "C-unwind" fn msrt_list_flatten(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_distinct(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     out: *mut VecVal,
 ) {
     // SAFETY: caller contract.
@@ -1229,7 +1201,7 @@ unsafe fn merge_sort(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
     v: *mut VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     cmp: CmpFn,
     env: *mut u8,
 ) {
@@ -1322,7 +1294,7 @@ pub unsafe extern "C" fn msrt_list_sort_ints(v: *mut VecVal, desc: i64) {
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_sorted_by_difference(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     cmp: CmpFn,
     env: *mut u8,
     desc: i64,
@@ -1355,7 +1327,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted_by_difference(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_sorted(
     v: *const VecVal,
-    d: *const TypeDesc,
+    d: ElemDesc,
     cmp: CmpFn,
     env: *mut u8,
     out: *mut VecVal,
@@ -1373,7 +1345,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted(
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_filled(
     value: *const u8,
-    d: *const TypeDesc,
+    d: ElemDesc,
     count: i64,
     has_max: u8,
     max: i64,
@@ -1482,11 +1454,7 @@ pub unsafe extern "C-unwind" fn msrt_list_range_by(
 /// `to_set`: builds a set value from a list's elements (copies).
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_to_set(
-    v: *const VecVal,
-    d: *const TypeDesc,
-    out: *mut MapVal,
-) {
+pub unsafe extern "C-unwind" fn msrt_list_to_set(v: *const VecVal, d: ElemDesc, out: *mut MapVal) {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&*v, &*d);
@@ -2119,7 +2087,7 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_drop(b: *mut VecVal) {
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_hash_list(v: *const VecVal, d: *const TypeDesc) -> i64 {
+pub unsafe extern "C-unwind" fn msrt_hash_list(v: *const VecVal, d: ElemDesc) -> i64 {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&*v, &*d);
