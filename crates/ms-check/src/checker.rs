@@ -221,6 +221,9 @@ pub struct Checker {
     pub(crate) methods_by_contract: HashMap<Name, Vec<usize>>,
     pub(crate) generic_contract_methods: Vec<usize>,
     pub(crate) methods_by_name: HashMap<(Name, Name), Vec<usize>>,
+    /// Types whose own `clone` is being looked up; a recursive type meets itself through its
+    /// `List[Self]` field, whose `clone` bounds ask whether the element is clonable.
+    pub(crate) clone_probes: RefCell<Vec<String>>,
     pub(crate) module: Option<ModRef>,
     pub(crate) names: Names,
     pub(crate) scope: Rc<Scope>,
@@ -273,6 +276,7 @@ impl Checker {
             methods_by_contract: HashMap::new(),
             generic_contract_methods: Vec::new(),
             methods_by_name: HashMap::new(),
+            clone_probes: RefCell::new(Vec::new()),
             module: None,
             names: Rc::new(RefCell::new(HashMap::new())),
             scope: Scope::new(None),
