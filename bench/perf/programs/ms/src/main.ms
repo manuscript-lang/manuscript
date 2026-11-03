@@ -1,4 +1,5 @@
-import stdout, stdin, read_line, ReadStream from "@std/io/io.ms"
+import stdout, stdin, ReadStream from "@std/io/io.ms"
+import lines from "@std/io/streams.ms"
 import Instant, monotonic from "@std/os/time.ms"
 import StringBuilder from "@std/string.ms"
 
@@ -18,8 +19,8 @@ type Shape:
     case Square(s: Int)
     case Tri(b: Int)
 
-fn got_line(input: ReadStream) Bool:
-    if let line = read_line(input):
+fn got_line(var input: ReadStream[String]) Bool:
+    if let line = input.read().wait():
         return line.is_some()
 
     return false
@@ -74,17 +75,17 @@ fn bench_string() Int:
 
 fn bench_read_line() Unit:
     let t = monotonic()
-    let input = stdin()
-    var lines = 0
+    var input = lines(stdin())
+    var count = 0
     var more = true
 
     while more:
-        if got_line(input):
-            lines += 1
+        if got_line(var input):
+            count += 1
         else:
             more = false
 
-    report("read_line", lines, t)
+    report("read_line", count, t)
 
 fn bench_map() Int:
     let t = monotonic()
