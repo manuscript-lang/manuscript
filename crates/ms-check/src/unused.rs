@@ -106,7 +106,7 @@ impl Scan<'_> {
 
     fn report(&mut self, binding: &BindingRef, pos: ms_syntax::Pos) {
         self.found.push(Diagnostic {
-            opener: None,
+            opener_line: 0,
             file: std::sync::Arc::from(self.module.file.as_str()),
             pos,
             phase: ms_syntax::Phase::Type,

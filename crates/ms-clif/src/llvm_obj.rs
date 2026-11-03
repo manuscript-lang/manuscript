@@ -1,7 +1,7 @@
 //! Compiles LLVM IR text to an object file.
 
-use crate::{BuildOptions, Error, RtHot};
 use crate::link::llvm_tools;
+use crate::{BuildOptions, Error, RtHot};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 

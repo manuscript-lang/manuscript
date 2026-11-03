@@ -51,7 +51,7 @@ fn missing_opaque_types_and_grouped_constants_get_import_fixes() {
     );
     for (kind, name) in [("type", "Opaque"), ("binding", "LOW"), ("binding", "HIGH")] {
         let mut issues = vec![Diagnostic {
-            opener: None,
+            opener_line: 0,
             file: main.as_str().into(),
             pos: Pos::new(0, 1, 1),
             phase: Phase::Resolution,

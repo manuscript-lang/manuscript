@@ -1087,8 +1087,11 @@ pub struct Module {
     pub list_consts: Vec<Vec<i64>>,
     /// Index of [`Module::strings`] by content; only [`Module::add_string`] writes both.
     string_ids: HashMap<String, StrId>,
-    /// Runtime functions called.
+    /// Runtime functions called. Grow it only through [`Module::add_extern`] or
+    /// [`Module::push_extern`], which keep [`Module::extern_ids`] in step.
     pub externs: Vec<ExternDef>,
+    /// Index of [`Module::externs`] by symbol, so a declaration never scans the list.
+    extern_ids: HashMap<String, Vec<ExtId>>,
     /// Module-level variables.
     pub globals: Vec<GlobalDef>,
     /// Functions.
@@ -1127,6 +1130,7 @@ impl Module {
             list_consts: Vec::new(),
             string_ids: HashMap::new(),
             externs: Vec::new(),
+            extern_ids: HashMap::new(),
             globals: Vec::new(),
             funcs: Vec::new(),
             entry: None,
@@ -1185,16 +1189,34 @@ impl Module {
     /// Declares a runtime function (or returns the existing one with this symbol and signature).
     pub fn add_extern(&mut self, def: ExternDef) -> ExtId {
         let same = |e: &ExternDef| {
-            e.name == def.name
-                && e.ret == def.ret
+            e.ret == def.ret
                 && e.params.len() == def.params.len()
                 && e.params.iter().zip(&def.params).all(|(a, b)| a.ty == b.ty)
         };
-        if let Some(i) = self.externs.iter().position(same) {
-            return ExtId(i as u32);
-        }
+        let found = self.extern_ids.get(&def.name).and_then(|ids| {
+            ids.iter()
+                .copied()
+                .find(|id| same(&self.externs[id.index()]))
+        });
+        found.unwrap_or_else(|| self.push_extern(def))
+    }
+
+    /// Appends a declaration without looking for an existing one.
+    pub fn push_extern(&mut self, def: ExternDef) -> ExtId {
+        let id = ExtId(self.externs.len() as u32);
+        self.extern_ids
+            .entry(def.name.clone())
+            .or_default()
+            .push(id);
         self.externs.push(def);
-        ExtId(self.externs.len() as u32 - 1)
+        id
+    }
+
+    /// The first runtime function declared with this symbol.
+    pub fn extern_by_name(&self, name: &str) -> Option<ExtId> {
+        self.extern_ids
+            .get(name)
+            .and_then(|ids| ids.first().copied())
     }
 
     /// Adds a function.

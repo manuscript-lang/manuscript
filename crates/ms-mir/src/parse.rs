@@ -470,7 +470,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                         o => return c.err(format!("unknown extern attribute {o}")),
                     }
                 }
-                m.externs.push(ExternDef {
+                m.push_extern(ExternDef {
                     name,
                     params,
                     ret,
@@ -1036,15 +1036,10 @@ fn parse_line(
         }
         ImmKind::Ext => {
             let n = c.at()?;
-            Imm::Ext(ExtId(
-                m.externs
-                    .iter()
-                    .position(|e| e.name == n)
-                    .ok_or_else(|| ParseError {
-                        line: c.line,
-                        message: format!("unknown extern @{n}"),
-                    })? as u32,
-            ))
+            Imm::Ext(m.extern_by_name(&n).ok_or_else(|| ParseError {
+                line: c.line,
+                message: format!("unknown extern @{n}"),
+            })?)
         }
         ImmKind::Vtable => {
             let n = c.at()?;

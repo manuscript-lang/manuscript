@@ -306,7 +306,7 @@ fn recover_statements(
         // is redirected: a delimiter left open by an earlier blanking is a
         // cascade, and the declaration is omitted rather than reported twice.
         let mut line = issue.pos.line as usize;
-        let opened = issue.opener.map_or(0, |p| p.line as usize);
+        let opened = issue.opener_line as usize;
         if opened > 0 && attempt == 0 {
             line = opened;
         }
@@ -393,12 +393,12 @@ fn trim_dangling(file: &Arc<str>, lines: &[String], at: usize) -> Option<String>
 /// Rewrites the chunk-relative opener position in an unterminated-delimiter
 /// diagnostic to the file-relative one.
 fn shift_opened(issue: &mut Diagnostic, lines: u32) {
-    let Some(opener) = issue.opener.as_mut() else {
+    if issue.opener_line == 0 {
         return;
-    };
-    let old = format!("opened at line {}:{}", opener.line, opener.column);
-    opener.line += lines;
-    let new = format!("opened at line {}:{}", opener.line, opener.column);
+    }
+    let old = format!("opened at line {}:", issue.opener_line);
+    issue.opener_line += lines;
+    let new = format!("opened at line {}:", issue.opener_line);
     issue.message = issue.message.replacen(&old, &new, 1);
 }
 

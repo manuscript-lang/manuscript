@@ -60,8 +60,14 @@ fn main() {
         std::fs::write(&llvm_object, llvm).unwrap();
     });
     stage("link", || {
-        ms_clif::link::link_with(&object, &[&llvm_object, Path::new(&args[3])], output, false, &ms_clif::BuildOptions::default())
-            .unwrap()
+        ms_clif::link::link_with(
+            &object,
+            &[&llvm_object, Path::new(&args[3])],
+            output,
+            false,
+            &ms_clif::BuildOptions::default(),
+        )
+        .unwrap()
     });
     std::fs::remove_file(object).unwrap();
     std::fs::remove_file(llvm_object).unwrap();

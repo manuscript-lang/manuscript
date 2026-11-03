@@ -246,7 +246,7 @@ pub fn compile_source(filename: &str, source: &str, options: &Options) -> Analys
                 continue;
             }
             graph.diagnostics.push(Diagnostic {
-                opener: None,
+                opener_line: 0,
                 file: file.clone(),
                 pos: item.pos,
                 phase: Phase::Resolution,

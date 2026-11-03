@@ -356,7 +356,7 @@ pub(crate) fn compile_target<L: Lower>(
             let file = if entry.is_empty() { filename } else { &entry };
             Err(failure(
                 vec![Diagnostic {
-                    opener: None,
+                    opener_line: 0,
                     file: file.into(),
                     pos: Pos::new(0, 1, 1),
                     phase: Phase::Lowering,
@@ -378,7 +378,7 @@ fn library_failure(graph: &Graph) -> Failure {
     Failure {
         source_root: graph.source_root.clone(),
         diagnostics: vec![Diagnostic {
-            opener: None,
+            opener_line: 0,
             file: file.as_str().into(),
             pos,
             phase: Phase::Resolution,

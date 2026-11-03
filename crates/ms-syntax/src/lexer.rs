@@ -748,7 +748,7 @@ impl Scanner<'_> {
                     open as char, where_.line, where_.column, close
                 ),
             );
-            d.opener = Some(where_);
+            d.opener_line = where_.line;
             return Err(d);
         }
         while self.levels.len() > 1 {

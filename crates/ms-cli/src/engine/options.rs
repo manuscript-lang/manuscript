@@ -2,7 +2,6 @@
 //! the command line receives them as a [`BuildOptions`] value.
 
 use ms_build::{BuildOptions, RtHot};
-use std::ffi::OsString;
 use std::path::PathBuf;
 
 /// The settings the `MS_*` build variables select; unset variables keep the defaults.
@@ -17,8 +16,8 @@ pub fn from_env() -> BuildOptions {
         keep_ll: var("MS_KEEP_LL").is_some(),
         rt_hot: match var("MS_RT_HOT") {
             None => RtHot::Embedded,
-            Some(v) if v == OsString::from("1") => RtHot::Embedded,
-            Some(v) if v == OsString::from("0") => RtHot::Off,
+            Some(v) if v == "1" => RtHot::Embedded,
+            Some(v) if v == "0" => RtHot::Off,
             Some(v) => RtHot::File(PathBuf::from(v)),
         },
         llvm_tools: path("MS_LLVM_TOOLS"),

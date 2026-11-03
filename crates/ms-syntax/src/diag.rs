@@ -64,9 +64,10 @@ pub struct Diagnostic {
     pub end: Option<Pos>,
     /// Machine-applicable fix, when one exists.
     pub fix: Option<DiagnosticFix>,
-    /// Where the unclosed delimiter this diagnostic reports was opened; the
-    /// cause by which two reports of one mistake are recognised as one.
-    pub opener: Option<Pos>,
+    /// Line where the unclosed delimiter this diagnostic reports was opened (0
+    /// when it reports none): the cause by which two reports of one mistake are
+    /// recognised as one.
+    pub opener_line: u32,
 }
 
 impl Diagnostic {
@@ -79,7 +80,7 @@ impl Diagnostic {
             message: message.into(),
             end: None,
             fix: None,
-            opener: None,
+            opener_line: 0,
         }
     }
 

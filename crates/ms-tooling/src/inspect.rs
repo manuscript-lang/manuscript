@@ -379,7 +379,9 @@ impl Sites<'_> {
             }
             if let Some(method) = &info.method {
                 site.kind = "operation".to_string();
-                site.spawn = method.receiver.is_source_type("@std/concurrency/tasks.ms", "TaskGroup")
+                site.spawn = method
+                    .receiver
+                    .is_source_type("@std/concurrency/tasks.ms", "TaskGroup")
                     && method.name().is_some_and(|n| n.as_str() == "spawn");
                 site.target = match self.method_ids.get(method.id.as_str()) {
                     Some(id) => id.clone(),

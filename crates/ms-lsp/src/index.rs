@@ -347,11 +347,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
             if let Some(symbol) = symbols.get(&d.name())
                 && symbol.decl.as_ref().is_some_and(|sd| sd.same(d))
             {
-                let at = b.header(
-                    m.file,
-                    d.pos().offset as usize,
-                    symbol.name.as_str(),
-                );
+                let at = b.header(m.file, d.pos().offset as usize, symbol.name.as_str());
                 b.add(
                     symbol_key(&b.root, Some(symbol)),
                     symbol.name.as_str(),
@@ -501,11 +497,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
         let Some(file) = b.files.of_decl(&decl.decl) else {
             continue;
         };
-        let at = b.header(
-            file,
-            decl.pos().offset as usize,
-            decl.name().as_str(),
-        );
+        let at = b.header(file, decl.pos().offset as usize, decl.name().as_str());
         let key = method_key(&b.root, &b.files, method);
         b.add(
             key,
