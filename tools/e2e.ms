@@ -25,7 +25,7 @@ type Ran:
     output: String
 
 fn exec(ms: String, args: List[String]) Ran:
-    if let out = run(ms, args):
+    if let out = run(ms, args).wait():
         let text = out.stdout.decode_utf8().get("") + out.stderr.decode_utf8().get("")
         return Ran(out.exit_code, text)
 
@@ -46,7 +46,7 @@ fn read_expected(files: List[String]) Map[String, String]:
     var listed = Map[String, String]()
 
     for file in files:
-        let text = read_file(file).get().decode_utf8().get("")
+        let text = read_file(file).wait().get().decode_utf8().get("")
 
         for line in text.split("\n"):
             if line.starts_with("#") or line == "": continue
@@ -78,12 +78,12 @@ fn covered_by_corpus(ctx: Context, case_path: String) Bool:
     if not access(twin, 0).is_ok(): return false
     if ctx.expected.contains(case_path): return false
 
-    let lines = read_file(twin).get().decode_utf8().get("").split("\n")
+    let lines = read_file(twin).wait().get().decode_utf8().get("").split("\n")
     if not lines.contains("// conform: phase=test"): return false
     if lines.any(fn l: l.starts_with("// conform: tags=") and l.contains("aliasing")): return false
 
     let body = lines.filter(fn l: not l.starts_with("// conform:")).join("\n")
-    return body == read_file(case_path).get().decode_utf8().get("")
+    return body == read_file(case_path).wait().get().decode_utf8().get("")
 
 // Whether the project's tests pass, or its main.ms checks and prints expected-output.txt.
 fn project_passes(ctx: Context, dir: String) Ran:
@@ -113,7 +113,7 @@ fn project_passes(ctx: Context, dir: String) Ran:
     change_directory(back(dir)).get()
     if ran.code != 0: return ran
 
-    let want = read_file("{dir}/expected-output.txt").get().decode_utf8().get("")
+    let want = read_file("{dir}/expected-output.txt").wait().get().decode_utf8().get("")
     if ran.output == want: return ran
 
     return Ran(1, "output differs from expected-output.txt\n")

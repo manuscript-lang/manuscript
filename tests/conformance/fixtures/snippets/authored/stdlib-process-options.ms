@@ -29,15 +29,15 @@ fn root() String:
     return "/"
 
 test "run starts the child in cwd with extra environment":
-    let output = try run(shell(), print_cwd(), cwd: root())
+    let output = try run(shell(), print_cwd(), cwd: root()).wait()
     try expect_equal(output.exit_code, 0)
     try expect_contains(output.stdout.decode_utf8().get(""), root())
 
-    let probed = try run(shell(), print_probe(), env: {"MS_PROBE": "from-env"})
+    let probed = try run(shell(), print_probe(), env: {"MS_PROBE": "from-env"}).wait()
     try expect_contains(probed.stdout.decode_utf8().get(""), "from-env")
 
 test "run reports the child's peak resident set":
-    let output = try run(shell(), print_cwd())
+    let output = try run(shell(), print_cwd()).wait()
     try expect_true(output.max_resident_bytes > 0)
 
 test "spawn accepts cwd and env and reports the peak resident set after wait":
@@ -52,9 +52,9 @@ test "bad cwd and variable names are rejected":
     let invalid: CommandOutput! = error(
         Error("process: invalid input", kind: ErrorCategory.InvalidInput)
     )
-    try expect_equal(run(shell(), print_cwd(), env: {"A=B": "x"}), invalid)
+    try expect_equal(run(shell(), print_cwd(), env: {"A=B": "x"}).wait(), invalid)
 
     let missing: CommandOutput! = error(
         Error("process: service unavailable", kind: ErrorCategory.Unavailable)
     )
-    try expect_equal(run(shell(), print_cwd(), cwd: "/definitely/not/here"), missing)
+    try expect_equal(run(shell(), print_cwd(), cwd: "/definitely/not/here").wait(), missing)

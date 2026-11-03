@@ -43,8 +43,8 @@ test "IP parsing CIDR normalization and containment":
 
 test "TCP loopback writes reads half close and EOF":
     let listener = try listen("127.0.0.1:0")
-    var client = try connect(listener.address(), 2.seconds)
-    var server = try listener.accept(2.seconds)
+    var client = try connect(listener.address(), 2.seconds).wait()
+    var server = try listener.accept(2.seconds).wait()
     try client.output.write("hello".to_bytes())
     try client.output.flush().wait()
     try expect_equal(
@@ -56,8 +56,8 @@ test "TCP loopback writes reads half close and EOF":
 
 test "closing the input leaves the output open and closing both ends the connection":
     let listener = try listen("127.0.0.1:0")
-    var client = try connect(listener.address(), 2.seconds)
-    var server = try listener.accept(2.seconds)
+    var client = try connect(listener.address(), 2.seconds).wait()
+    var server = try listener.accept(2.seconds).wait()
 
     // Closing only the input does not end the stream the peer reads.
     try client.input.close()
@@ -75,8 +75,8 @@ test "closing the input leaves the output open and closing both ends the connect
 test "host names resolve whatever their case":
     let listener = try listen("127.0.0.1:0")
     let port = listener.address().split(":").last().get("")
-    let client = try connect("LocalHost:{port}", 2.seconds)
-    let server = try listener.accept(2.seconds)
+    let client = try connect("LocalHost:{port}", 2.seconds).wait()
+    let server = try listener.accept(2.seconds).wait()
     try expect_equal(server.info.peer_address, client.info.local_address)
 
 test "an empty Unix socket path is invalid input":
@@ -85,7 +85,7 @@ test "an empty Unix socket path is invalid input":
         Error("network: invalid input", kind: ErrorCategory.InvalidInput)
     )
     try expect_equal(
-        try expect_error(connect_unix("", 1.seconds)),
+        try expect_error(connect_unix("", 1.seconds).wait()),
         Error("network: invalid input", kind: ErrorCategory.InvalidInput)
     )
 
@@ -137,7 +137,7 @@ fn expect_ip_error(input: String) Unit!:
     return ok(unit)
 
 fn accept_one(l: Listener) Int:
-    let r = l.accept(2.seconds)
+    let r = l.accept(2.seconds).wait()
 
     if r.is_ok():
         r.get().close().get(none)
@@ -149,15 +149,14 @@ test "a promise accepts on a listener it owns":
     let listener = try listen("127.0.0.1:0")
     let address = listener.address()
     let a = promise(fn: ok(accept_one(listener)))
-    sleep(50.milliseconds)
-
-    var client = try connect(address, 2.seconds)
+    let _ = sleep(50.milliseconds).wait()
+    var client = try connect(address, 2.seconds).wait()
     try expect_equal(try a.wait(), 1)
     try client.close()
 
 // Accepts one connection and reads from it, all inside the promise that owns the connection.
 fn accept_and_read(listener: Listener) Int:
-    var conn = listener.accept(2.seconds).get()
+    var conn = listener.accept(2.seconds).wait().get()
     let r = conn.input.read().wait(timeout: 2.seconds)
     if r.is_ok() and r.get().is_some():
         return 1
@@ -168,7 +167,7 @@ test "a promise reads a connection it owns":
     let listener = try listen("127.0.0.1:0")
     let address = listener.address()
     let a = promise(fn: ok(accept_and_read(listener)))
-    var client = try connect(address, 2.seconds)
+    var client = try connect(address, 2.seconds).wait()
     try client.output.write("xy".to_bytes())
     try client.output.flush().wait()
     try expect_equal(try a.wait(), 1)
@@ -220,8 +219,8 @@ test "an empty host listens on every interface, with or without IPv6":
     var listener = try listen(":0")
     let parts = listener.address().split(":")
     let port = parts[parts.length() - 1]
-    var client = try connect("127.0.0.1:{port}", 2.seconds)
-    var server = try listener.accept(2.seconds)
+    var client = try connect("127.0.0.1:{port}", 2.seconds).wait()
+    var server = try listener.accept(2.seconds).wait()
     try client.output.write("hi".to_bytes())
     try client.output.flush().wait()
     try expect_equal(

@@ -1,5 +1,6 @@
 import Data, panic from "@std/core.ms"
 import ReadStream, Source, stream from "@std/io/io.ms"
+import Promise, adopt from "@std/concurrency/promise.ms"
 import (
     msstd_time_duration_add,
     msstd_time_duration_subtract,
@@ -13,7 +14,6 @@ import (
     msstd_time_duration_to_minutes,
     msstd_time_duration_to_hours,
     msstd_time_local_zone,
-    msstd_time_sleep,
     msstd_time_instant_shift,
     msstd_time_instant_unshift,
     msstd_time_instant_difference,
@@ -30,6 +30,7 @@ import (
     msstd_time_clock,
     msstd_time_wall_clock
 ) from "@std/internal/time.ms"
+import msrt_promise_sleep from "@std/internal/promises.ms"
 
 // A monotonic clock whose readings are suitable for measuring elapsed time.
 interface Clock:
@@ -502,9 +503,10 @@ export fn from_calendar(
 export fn local_zone() String:
     return msstd_time_local_zone()
 
-// Suspends the current task for at least the requested duration.
-export fn sleep(duration: Duration) Unit:
-    msstd_time_sleep(duration.nanos)
+// Starts a timer for the requested duration and returns its promise; `wait()` it to pause the current task for at least
+// that long. The timer has no task of its own, and dropping the promise cancels it.
+export fn sleep(duration: Duration) Promise[Unit]:
+    return adopt[Unit](msrt_promise_sleep(duration.nanos))
 
 // Constructs a timestamp from Unix seconds and a nanosecond adjustment.
 export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!:
@@ -540,7 +542,7 @@ impl Deadline:
 
     // Suspends the current task until the deadline passes. Returns at once if it already has.
     fn wait() Unit:
-        sleep(self.remaining())
+        sleep(self.remaining()).wait().get(unit)
 
 /*
 A source of evenly spaced instants, for loops that run work on a schedule.
@@ -557,7 +559,7 @@ impl Source[Instant] for TickSource:
     // Waits for the next tick and returns the instant it was due; never ends.
     var fn next() Instant?!:
         let tick = self.due.clone()
-        sleep(tick.difference(monotonic()).max(nanoseconds(0)))
+        try sleep(tick.difference(monotonic()).max(nanoseconds(0))).wait()
         self.due = tick.shift(self.period.clone()).max(monotonic())
         return ok(tick)
 

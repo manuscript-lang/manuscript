@@ -12,7 +12,7 @@ type Request:
     request: Int
 
 fn lines(path: String) String!:
-    let data = try read_file(path)
+    let data = try read_file(path).wait()
     return ok(data.decode_utf8().get(""))
 
 test "levels filter, fields nest under data, and bound fields merge":

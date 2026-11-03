@@ -21,11 +21,11 @@ fn send(var conn: Connection, text: String) Unit!:
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
-        sleep(nanoseconds(3000000000))
+        let _ = sleep(nanoseconds(3000000000)).wait()
     return HttpResponse(200, headers(), "ok {request.path}\n".to_bytes())
 
 fn fetch(address: String, path: String) String:
-    if var conn = connect(address):
+    if var conn = connect(address).wait():
         let _sent = send(
             var conn, "GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
         )

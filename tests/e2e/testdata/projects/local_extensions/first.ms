@@ -68,7 +68,7 @@ test "first local cleanup":
     let dir = temporary("ms-ext-") | try expect_ok
     let events = "{dir.path()}/events"
     leave(Resource(events.clone()))
-    (try expect_ok(read_file(events))).decode_utf8() | try expect_equal("10,")
+    (try expect_ok(read_file(events).wait())).decode_utf8() | try expect_equal("10,")
 
 export fn mixed[T: Read[Int]](value: T, concrete: Item) Int:
     return value.get() + concrete.get()

@@ -97,9 +97,10 @@ test "HEAD is answered from the GET route without a body":
     try expect_equal(response.body.length(), 0)
 
 fn stream_parts(exchange: HttpExchange, params: RouteParams) Unit!:
-    try exchange.send_headers(200, headers())
-    try exchange.write("one")
-    try exchange.write("two")
+    var live = exchange
+    try live.send_headers(200, headers())
+    try live.write("one")
+    try live.write("two")
     return ok(unit)
 
 test "a streaming GET route answers HEAD, dropping the body writes":
@@ -201,11 +202,13 @@ test "a handler that sends nothing answers 204":
     try expect_equal((try r.call(get("/n"))).status, 204)
 
 fn whole_response(exchange: HttpExchange, params: RouteParams) Unit!:
-    let body = if exchange.path() == "/empty": "" else: "done"
-    try reply(exchange, text(200, body))
+    var live = exchange
+    let body = if live.path() == "/empty": "" else: "done"
+    let whole = text(200, body)
+    try live.send(whole.status, whole.headers, whole.body)
 
     for extra in ["extra", ""]:
-        let written = exchange.write(extra)
+        let written = live.write(extra)
         if written.is_ok(): return error(
             Error("write after send succeeded", kind: Failed)
         )
@@ -223,12 +226,13 @@ test "a whole in-process response rejects subsequent writes":
     try expect_equal(body_of(try r.call(get("/empty"))), "")
 
 fn small_reads(exchange: HttpExchange, params: RouteParams) Unit!:
-    let first = try exchange.read(1)
-    let second = try exchange.read(2)
-    let end = try exchange.read(1)
+    var live = exchange
+    let first = try live.read(1)
+    let second = try live.read(2)
+    let end = try live.read(1)
     let a = first.get(Bytes([])).decode_utf8().get("")
     let b = second.get(Bytes([])).decode_utf8().get("")
-    return reply(exchange, text(200, "{a}|{b}|{end.is_none()}"))
+    return reply(live, text(200, "{a}|{b}|{end.is_none()}"))
 
 test "in-process reads retain the unread body after a bounded chunk":
     var r = Router()
@@ -243,13 +247,14 @@ test "in-process reads retain the unread body after a bounded chunk":
     try expect_equal(body_of(response), "a|bc|true")
 
 fn read_sizes(exchange: HttpExchange, params: RouteParams) Unit!:
+    var live = exchange
     let limit: Int? = if params.get_or("mode", "") == "default": none else: 100000
-    let first = try exchange.read(limit)
-    let second = try exchange.read(limit)
-    let end = try exchange.read(limit)
+    let first = try live.read(limit)
+    let second = try live.read(limit)
+    let end = try live.read(limit)
     let a = first.get(Bytes([])).length()
     let b = second.get(Bytes([])).length()
-    return reply(exchange, text(200, "{a}|{b}|{end.is_none()}"))
+    return reply(live, text(200, "{a}|{b}|{end.is_none()}"))
 
 test "in-process reads cap default and explicit chunks at 65536 bytes":
     var r = Router()
@@ -265,9 +270,10 @@ test "in-process reads cap default and explicit chunks at 65536 bytes":
         try expect_equal(body_of(response), "65536|1|true")
 
 fn read_empty(exchange: HttpExchange, params: RouteParams) Unit!:
-    let first = try exchange.read()
-    let second = try exchange.read()
-    return reply(exchange, text(200, "{first.is_none()}|{second.is_none()}"))
+    var live = exchange
+    let first = try live.read()
+    let second = try live.read()
+    return reply(live, text(200, "{first.is_none()}|{second.is_none()}"))
 
 test "in-process reads report EOF immediately for an empty body":
     var r = Router()
@@ -275,14 +281,16 @@ test "in-process reads report EOF immediately for an empty body":
     try expect_equal(body_of(try r.call(get("/"))), "true|true")
 
 fn invalid_reads(exchange: HttpExchange, params: RouteParams) Unit!:
+    var live = exchange
+
     for limit in [0, -1]:
-        let read = exchange.read(limit)
+        let read = live.read(limit)
         if read.is_ok(): return error(Error("invalid read size accepted", kind: Failed))
         if read.err().kind != ErrorCategory.InvalidInput: return error(
             Error("wrong read error", kind: Failed)
         )
 
-    return small_reads(exchange, params)
+    return small_reads(live, params)
 
 test "in-process reads reject nonpositive sizes without consuming input":
     var r = Router()
@@ -411,7 +419,7 @@ impl Transport for Sink:
         return unit
 
 fn logged(path: String) String:
-    let read = read_file(path)
+    let read = read_file(path).wait()
     if let bytes = read:
         return bytes.decode_utf8().get("")
 

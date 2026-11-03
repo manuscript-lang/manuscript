@@ -36,7 +36,7 @@ export fn main() Int:
         ]:
             for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get([]):
                 let path = "{dir}/{f.path}"
-                if read_file(path.clone()).get().decode_utf8().get(
+                if read_file(path.clone()).wait().get().decode_utf8().get(
                     ""
                 ).contains("fn main"): files.append(path.clone())
 
@@ -50,7 +50,7 @@ export fn main() Int:
     for f in files:
         let absolute = "{root}/{f}"
 
-        if let out = run(ms.clone(), ["run", absolute.clone()], timeout: seconds(60)):
+        if let out = run(ms.clone(), ["run", absolute.clone()], timeout: seconds(60)).wait():
             let counts = live_blocks(out.stderr.decode_utf8().get(""))
             if counts.length() == 0: continue
 

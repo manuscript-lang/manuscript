@@ -8,7 +8,7 @@ fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(
         Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
     )
-    return write_file(path, "saved notes\n", replace: false)
+    return write_file(path, "saved notes\n", replace: false).wait()
 
 export fn main() Int:
     if run().is_error():

@@ -10,14 +10,14 @@ import nanoseconds from "@std/os/time.ms"
 
 fn accept_one(address: String) Int:
     let listener = listen(address).get()
-    let accepted = listener.accept(nanoseconds(10000000000))
+    let accepted = listener.accept(nanoseconds(10000000000)).wait()
     if accepted.is_ok():
         return 1
 
     return 0
 
 fn read_one(address: String) Int:
-    var client = connect(address, nanoseconds(2000000000)).get()
+    var client = connect(address, nanoseconds(2000000000)).wait().get()
     let got = client.input.read().wait()
     return got.get(none).map(fn b: b.length()).get(-1)
 
@@ -73,7 +73,7 @@ export fn main() Int:
     for round in 0..20:
         cancel_read(target.clone())
 
-        let accepted = server.accept(nanoseconds(500000000))
+        let accepted = server.accept(nanoseconds(500000000)).wait()
         if accepted.is_ok():
             accepted.get().close().get(none)
 

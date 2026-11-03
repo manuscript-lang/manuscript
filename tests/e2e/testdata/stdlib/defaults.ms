@@ -188,4 +188,4 @@ test "Commands defaults cross concrete bound view and generic boundaries":
         Error("process: invalid input", kind: ErrorCategory.InvalidInput)
     )
     let native = run
-    try expect_equal(native("", []), invalid)
+    try expect_equal(native("", []).wait(), invalid)

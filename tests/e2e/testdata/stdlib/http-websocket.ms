@@ -1,8 +1,8 @@
-import send, recv, send_bytes from "./support/conn.ms"
+import send, recv from "./support/conn.ms"
 import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 import http_result from "./support/http.ms"
-import headers, HttpMethod, buffered, upgrade from "@std/net/http.ms"
+import headers, HttpMethod, upgrade from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import connect, http_client, request, serve, web_socket from "@std/net/net.ms"
 import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
@@ -16,11 +16,13 @@ fn tls_options() TlsOptions:
     )
 
 fn echo(exchange: HttpExchange) Unit!:
-    if exchange.path() == "/ws":
+    var live = exchange
+
+    if live.path() == "/ws":
         var socket = (
             try http_result(
                 upgrade(
-                    exchange, allowed_origins: [], subprotocols: ["echo"],
+                    live, allowed_origins: [], subprotocols: ["echo"],
                     max_message_bytes: 1024
                 )
             )
@@ -42,8 +44,8 @@ fn echo(exchange: HttpExchange) Unit!:
     chain_1.add(key: "X-Test", value: ["manuscript"])
 
     let headers = (try list_headers(chain_1))
-    let _started = try exchange.send_headers(status: 201, headers: headers)
-    let _written = (try http_result(exchange.write("hello")))
+    let _started = try live.send_headers(status: 201, headers: headers)
+    let _written = (try http_result(live.write("hello")))
     return ok(unit)
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
@@ -119,7 +121,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     (message.kind != WebSocketKind.Text or message.data != "é🙂".to_bytes()) | try expect_false
 
 fn upgrade_status(address: String, version: String, extra: String) String!:
-    var client = try connect(address, 2.seconds)
+    var client = try connect(address, 2.seconds).wait()
     let key = "dGhlIHNhbXBsZSBub25jZQ=="
     let request = (
         "GET /ws {version}\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
@@ -148,9 +150,10 @@ test "WebSocket upgrades need HTTP/1.1 and one key":
     )
 
 fn report_host(exchange: HttpExchange) Unit!:
-    let hosts = exchange.headers().values("Host")
-    let _started = try exchange.send_headers(status: 200, headers: headers())
-    let _written = (try http_result(exchange.write(hosts.join(","))))
+    var live = exchange
+    let hosts = live.headers().values("Host")
+    let _started = try live.send_headers(status: 200, headers: headers())
+    let _written = (try http_result(live.write(hosts.join(","))))
     return ok(unit)
 
 test "HTTP streaming handlers see the Host request header":

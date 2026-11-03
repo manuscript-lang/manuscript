@@ -30,7 +30,7 @@ impl Closeable for Server:
 
         self.closed = true
         try self.listener.close()
-        sleep(10.milliseconds)
+        let _ = sleep(10.milliseconds).wait()
 
         var farewell = self.client.output.write("farewell\n".to_bytes())
         if farewell.is_ok():
@@ -50,7 +50,7 @@ fn serve() Result[Unit, Error]:
     let listener = try listen("127.0.0.1:0")
     say("{listener.address()}\n")
 
-    let client = try listener.accept()
+    let client = try listener.accept().wait()
     let _server = Server(listener: listener, client: client)
     let _cleanup = WorkerCleanup(label: "worker")
     say("ready\n")

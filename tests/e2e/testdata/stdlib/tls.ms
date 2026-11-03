@@ -1,7 +1,7 @@
-import send, recv, send_bytes, read_to_end from "./support/conn.ms"
+import send, recv, read_to_end from "./support/conn.ms"
 import expect_equal, expect_error, expect_false, expect_ok from "@std/test/test.ms"
 import http_result from "./support/http.ms"
-import headers, HttpMethod, buffered from "@std/net/http.ms"
+import HttpMethod from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import (
     parse_certificates,
@@ -26,10 +26,11 @@ import Listener, Connection from "@std/net/net.ms"
 import certificate, private_key from "./support/certificates.ms"
 
 fn hello(exchange: HttpExchange) Unit!:
-    let _started = try exchange.send_headers(
+    var live = exchange
+    let _started = try live.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
-    let _written = (try http_result(exchange.write("secure")))
+    let _written = (try http_result(live.write("secure")))
     return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
@@ -118,10 +119,11 @@ test "HTTPS trusts only the explicitly supplied local test root":
     )
 
 fn report_protocol(exchange: HttpExchange) Unit!:
-    let _started = try exchange.send_headers(
+    var live = exchange
+    let _started = try live.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
-    let _written = (try http_result(exchange.write(exchange.protocol())))
+    let _written = (try http_result(live.write(live.protocol())))
     return ok(unit)
 
 test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
@@ -161,7 +163,7 @@ fn answer_ping(var connection: Connection) Int:
     return 1
 
 fn serve_one_tls(listener: Listener) Int:
-    match listener.accept(3.seconds):
+    match listener.accept(3.seconds).wait():
         ok(accepted):
             var connection = accepted
             return answer_ping(var connection)
@@ -180,7 +182,7 @@ test "raw TLS listeners and clients handshake and report negotiated details":
     let listener = try listen_tls("127.0.0.1:0", server_tls, 3.seconds)
     let address = listener.address()
     let served = promise(fn: ok(serve_one_tls(listener)))
-    var client = try connect_tls_config(address.clone(), client_tls, 3.seconds)
+    var client = try connect_tls_config(address.clone(), client_tls, 3.seconds).wait()
     try send(var client, "ping")
     try expect_equal((try recv(var client, 3.seconds)).get(), "pong".to_bytes())
 
@@ -207,15 +209,15 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
     let address = listener.address()
     let served = promise(fn: ok(serve_one_tls(listener)))
     let _failure = try expect_error(
-        connect_tls(address.clone(), "stdlib.test", 3.seconds)
+        connect_tls(address.clone(), "stdlib.test", 3.seconds).wait()
     )
     let _served = try wait_all([served])
     let plain = try listen("127.0.0.1:0")
-    var client = try connect(plain.address(), 2.seconds)
+    var client = try connect(plain.address(), 2.seconds).wait()
     try expect_false(client.info.tls_info().is_ok())
 
 fn count_until_eof(listener: Listener) Int:
-    var accepted = listener.accept(5.seconds)
+    var accepted = listener.accept(5.seconds).wait()
     if accepted.is_error(): return -1
 
     var connection = accepted.get()
@@ -246,7 +248,7 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
     let listener = try listen_tls("127.0.0.1:0", server_tls, 5.seconds)
     let address = listener.address()
     let served = promise(fn: ok(count_until_eof(listener)))
-    var client = try connect_tls_config(address.clone(), client_tls, 5.seconds)
+    var client = try connect_tls_config(address.clone(), client_tls, 5.seconds).wait()
     try send(var client, "y".repeat(20000000).get())
 
     // No read first: the server's post-handshake bytes must not reset the connection.

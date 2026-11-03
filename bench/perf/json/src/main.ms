@@ -60,7 +60,7 @@ fn bench_one(name: String, op: String, budget: Int, runs: Int) Unit:
         bench_records(budget, runs)
         return
 
-    let read = read_file("bench/perf/json/data/{name}.json")
+    let read = read_file("bench/perf/json/data/{name}.json").wait()
 
     if let bytes = read:
         if let text = bytes.decode_utf8():

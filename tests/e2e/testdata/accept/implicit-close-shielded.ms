@@ -22,19 +22,19 @@ type Holder:
 impl Closeable for Holder:
     var fn close() Unit!:
         if self.pause:
-            sleep(nanoseconds(5000000))
+            let _ = sleep(nanoseconds(5000000)).wait()
 
-        let _ = write_file("{self.dir}/{self.id}", "closed", true)
+        let _ = write_file("{self.dir}/{self.id}", "closed", true).wait()
         if self.breaks:
             panic("close fault")
         return ok(unit)
 
 fn closed(dir: String, id: Int) Bool:
-    return read_file("{dir}/{id}").is_ok()
+    return read_file("{dir}/{id}").wait().is_ok()
 
 fn hold_and_wait(dir: String, id: Int, pause: Bool) Int:
     let holder = Holder(dir, id, pause, false)
-    sleep(nanoseconds(5000000000))
+    let _ = sleep(nanoseconds(5000000000)).wait()
     return holder.id
 
 fn hold_and_fault(dir: String, id: Int) Unit:

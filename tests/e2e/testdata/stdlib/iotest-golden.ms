@@ -46,12 +46,12 @@ test "fail_writer_after writes the prefix that fits and then fails":
     try expect_true(out.write("cdef".to_bytes()).is_error())
     try expect_true(out.write("g".to_bytes()).is_error())
     try expect_ok(out.close())
-    try expect_equal(try expect_ok(read_file(path, none)), "abc".to_bytes())
+    try expect_equal(try expect_ok(read_file(path, none).wait()), "abc".to_bytes())
 
 test "golden comparison passes and names the first differing line":
     let dir = try expect_ok(temporary("golden-"))
     let path = join([dir.path(), "out.txt"])
-    try expect_ok(write_file(path, "a\nb\nc", true))
+    try expect_ok(write_file(path, "a\nb\nc", true).wait())
     try expect_golden(path, "a\nb\nc")
 
     let cause = try expect_error(expect_golden(path, "a\nx\nc"))

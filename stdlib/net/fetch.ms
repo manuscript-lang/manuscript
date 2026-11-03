@@ -14,6 +14,7 @@ import (
 import parse, stringify from "@std/data/json.ms"
 import Network, TlsOptions, http_client from "@std/net/net.ms"
 import Duration, Instant, seconds, monotonic from "@std/os/time.ms"
+import Promise, owned_promise from "@std/concurrency/promise.ms"
 
 // The request body: empty, text, raw bytes, or JSON text; `fetch` derives a default `Content-Type` from the case.
 export type FetchBody:
@@ -211,8 +212,21 @@ export fn fetcher(
     let client = try http_client(settings)
     return ok(Fetcher(client: client))
 
-// Performs one buffered request on a one-shot client.
+// Starts one buffered request on a one-shot client and returns its promise; requests started together are in flight together.
 // Redirects are followed up to 20 times, the body is limited to 16 MiB, and the exchange to 30 seconds; override them in `options`.
-export fn fetch(url: String, options: FetchOptions = FetchOptions()) FetchResponse!:
+export fn fetch(
+    url: String,
+    options: FetchOptions = FetchOptions()
+) Promise[FetchResponse]:
+    return owned_promise[FetchArgs, FetchResponse](
+        FetchArgs(url: url.clone(), options: options.clone()),
+        fn a: fetched(a.url, a.options)
+    )
+
+type FetchArgs:
+    url: String
+    options: FetchOptions
+
+fn fetched(url: String, options: FetchOptions) FetchResponse!:
     let client = try fetcher()
     return client.fetch(url, options)

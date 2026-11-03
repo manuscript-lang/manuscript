@@ -1,3 +1,4 @@
+import lines from "@std/io/streams.ms"
 import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
 import ReadStream, lines, read_line from "@std/io/io.ms"

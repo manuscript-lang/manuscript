@@ -30,7 +30,7 @@ impl Sink[Int] for Counted:
         return ok(unit)
 
 fn closes(log: String) String:
-    if let bytes = read_file(log):
+    if let bytes = read_file(log).wait():
         return bytes.decode_utf8().get("")
 
     return ""

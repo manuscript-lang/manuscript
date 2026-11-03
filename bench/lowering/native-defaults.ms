@@ -1,3 +1,4 @@
+import Promise from "@std/concurrency/promise.ms"
 import base64_encode from "@std/data/encoding.ms"
 import CsvOptions from "@std/data/csv.ms"
 import Bytes from "@std/bytes.ms"
@@ -24,10 +25,10 @@ fn csv_explicit() CsvOptions: CsvOptions(",", "\n")
 fn csv_omitted() CsvOptions: CsvOptions()
 
 fn command_explicit() Result[CommandOutput, Error]:
-    return run(program: "", arguments: [], input: "".to_bytes())
+    return run(program: "", arguments: [], input: "".to_bytes()).wait()
 
 fn command_omitted() Result[CommandOutput, Error]:
-    return run(program: "", arguments: [])
+    return run(program: "", arguments: []).wait()
 
 fn command_bind() fn(
     String,
@@ -37,14 +38,14 @@ fn command_bind() fn(
     Duration?,
     String?,
     Map[String, String]
-) Result[CommandOutput, Error]:
+) Promise[CommandOutput]:
     return run
 
 fn filesystem_explicit(data: Bytes) Result[Unit, Error]:
-    return write_file_bytes("", data, false)
+    return write_file_bytes("", data, false).wait()
 
 fn filesystem_omitted(data: Bytes) Result[Unit, Error]:
-    return write_file_bytes("", data)
+    return write_file_bytes("", data).wait()
 
-fn filesystem_bind() fn(String, Bytes, Bool) Result[Unit, Error]:
+fn filesystem_bind() fn(String, Bytes, Bool) Promise[Unit]:
     return write_file_bytes

@@ -208,6 +208,7 @@ msrt_promise_put(id: i64, value: *mut u8, d: ValueDesc, failed: i64)
 msrt_promise_ready(fd: i64, events: i64, timeout_ns: i64) -> i64
 msrt_promise_sleep(ns: i64) -> i64
 msrt_promise_start(id: i64, work: *mut Closure)
+msrt_promise_start_here(id: i64, work: *mut Closure)
 msrt_promise_take(id: i64, d: ValueDesc, out: *mut u8) -> u8
 msrt_promise_wait(id: i64, timeout_ns: i64) -> i64
 msrt_promise_wait_any(ids: *const VecVal, timeout_ns: i64) -> i64
@@ -654,6 +655,7 @@ msstd_net_listener_accept_raw(l: *const ObjCell<ListenerH>, has_timeout: HasRaw,
 msstd_net_listener_address(l: *const ObjCell<ListenerH>, out: *mut StrVal)
 msstd_net_listener_close(l: *const ObjCell<ListenerH>)
 msstd_net_listener_raw_owner(l: *const ObjCell<ListenerH>) -> i64
+msstd_net_listener_share(l: *const ObjCell<ListenerH>) -> *mut ObjCell<ListenerH>
 msstd_net_network() -> *mut ObjCell<NetH>
 msstd_net_network_bind_datagram(net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<DgramH>, err: ErrSlot) -> u8
 msstd_net_network_close(net: *const ObjCell<NetH>)

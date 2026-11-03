@@ -35,12 +35,14 @@ export type Challenge:
     dir: String
 
 impl Challenge:
-    fn spec() String: read_file("{self.dir}/spec.md").get().decode_utf8().get("")
+    fn spec() String: read_file("{self.dir}/spec.md").wait().get().decode_utf8().get("")
 
     // `which` is `examples` (visible to the agent) or `hidden`.
     fn cases(which: String) List[Case]:
         let text = (
             read_file("{self.dir}/{which}/cases.json")
+            .wait()
+            .wait()
             .get()
             .decode_utf8()
             .get("")
@@ -74,7 +76,7 @@ impl Lang:
     fn reference() String: "{self.solution.split("/").last().get("")}.ref"
 
 fn text_of(file: String) String:
-    return read_file(file).get().decode_utf8().get("")
+    return read_file(file).wait().get().decode_utf8().get("")
 
 fn field(doc: JsonValue, key: String) String:
     if let value = doc.get(key):
@@ -91,7 +93,7 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
 
     for name in names.sorted():
         let dir = "{root()}/challenges/{name}"
-        let meta_text = read_file("{dir}/challenge.json")
+        let meta_text = read_file("{dir}/challenge.json").wait()
         if not meta_text.is_ok(): continue
 
         let m = parse[Meta](meta_text.get().decode_utf8().get("")).get(

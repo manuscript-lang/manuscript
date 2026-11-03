@@ -64,8 +64,8 @@ test "circuit opens after threshold and recovers after cooldown":
     let _second = try expect_error(breaker.call(boom))
     let third = try expect_error(breaker.call(fine))
     try expect_equal(third, CircuitError[String].Open)
-    sleep(milliseconds(30))
 
+    let _ = sleep(milliseconds(30)).wait()
     let value = try expect_ok(breaker.call(fine))
     try expect_equal(value, 1)
 
@@ -80,7 +80,8 @@ test "throttle allows one action per interval":
     var spacing = Throttle(interval: milliseconds(20))
     try expect_true(spacing.allow())
     try expect_true(not spacing.allow())
-    sleep(milliseconds(30))
+
+    let _ = sleep(milliseconds(30)).wait()
     try expect_true(spacing.allow())
 
     let start = monotonic()

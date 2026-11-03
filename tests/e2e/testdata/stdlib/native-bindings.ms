@@ -1,4 +1,4 @@
-import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
+import expect_false, expect_ok, expect_true from "@std/test/test.ms"
 import (
     cpu_usage,
     groups,
@@ -19,7 +19,7 @@ import (
     WatchOptions,
     write_file
 ) from "@std/os/fs.ms"
-import milliseconds, sleep from "@std/os/time.ms"
+import milliseconds from "@std/os/time.ms"
 import ReadStream from "@std/io/io.ms"
 
 fn expect_process_error[T](outcome: T!, expected: Error) Unit!:
@@ -160,17 +160,17 @@ test "polling and native watchers report a created file and close":
     var polling = try watch(
         path: root, recursive: false, options: WatchOptions(interval: milliseconds(20))
     )
-    try write_file(path: "{root}/a.txt", data: "x", replace: false)
+    try write_file(path: "{root}/a.txt", data: "x", replace: false).wait()
     try expect_true(try saw(var polling, join([root.clone(), "a.txt"]), "rename", 8))
     try polling.close()
 
     var native = try watch(path: root, recursive: false)
-    try write_file(path: "{root}/b.txt", data: "y", replace: false)
+    try write_file(path: "{root}/b.txt", data: "y", replace: false).wait()
     try expect_true(try saw(var native, join([root.clone(), "b.txt"]), "rename", 8))
 
 test "native watcher max_entries counts the paths under the root":
     let t = temporary("ms-me-") | try expect_ok
-    try write_file(path: "{t.path()}/a", data: "x", replace: false)
+    try write_file(path: "{t.path()}/a", data: "x", replace: false).wait()
     try expect_fs_error(
         watch(
             path: t.path(), recursive: true, options: WatchOptions(max_entries: 1)
@@ -215,7 +215,7 @@ test "recursive native watch sees a file in a new subdirectory":
     let r = t.path()
     var w = try watch(path: r, recursive: true)
     try create_directory(path: "{r}/d", recursive: false)
-    try write_file(path: "{r}/d/f", data: "1", replace: false)
+    try write_file(path: "{r}/d/f", data: "1", replace: false).wait()
 
     var seen = false
     for i in 0..8:

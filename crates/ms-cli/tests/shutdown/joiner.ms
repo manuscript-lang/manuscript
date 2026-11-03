@@ -4,7 +4,7 @@ import promise from "@std/concurrency/promise.ms"
 
 fn long() Int:
     for i in 0..600:
-        sleep(nanoseconds(100000000))
+        let _ = sleep(nanoseconds(100000000)).wait()
     return 0
 
 export fn main() Int:

@@ -6,6 +6,7 @@ import (
     msrt_promise_take,
     msrt_promise_done,
     msrt_promise_start,
+    msrt_promise_start_here,
     msrt_promise_defer,
     msrt_promise_wait,
     msrt_promise_wait_any,
@@ -110,6 +111,34 @@ export fn promise[U](entry: fn() U!) Promise[U]:
     let id = msrt_promise_new()
     msrt_promise_start(id, fn: complete(id, entry()))
     return Promise[U](id: id)
+
+// The values an operation copied for its promise, with the function that uses them. It is a resource, so the promise
+// moves it in and owns it: the promise borrows nothing from the caller.
+type Owned[A, U]:
+    args: A
+    work: fn(A) U!
+
+impl Closeable for Owned[A, U]:
+    var fn close() Unit!:
+        return ok(unit)
+
+impl Owned[A, U]:
+    fn run() U!:
+        return self.work(self.args)
+
+// Runs `work(args)` as a promise that owns `args`, for operations that copy their small arguments (a path, a URL, headers)
+// so the promise borrows nothing and may outlive the caller's values. `work` captures nothing. The operation only waits
+// (on a file, a socket, a child process), so its task stays on the calling thread.
+export fn owned_promise[A, U](args: A, work: fn(A) U!) Promise[U]:
+    let id = msrt_promise_new()
+    msrt_promise_start_here(
+        id, owned_job[A, U](id, Owned[A, U](args: args, work: work))
+    )
+    return Promise[U](id: id)
+
+// The entry of an owning promise: a closure that owns `owned`, since a closure that is returned owns its captures.
+fn owned_job[A, U](id: Int, owned: Owned[A, U]) fn() Unit:
+    return fn: complete(id, owned.run())
 
 // Waits for every promise and returns the results in order. The first error ends the wait: the promises still running
 // are cancelled and waited for before `wait_all` returns it.
