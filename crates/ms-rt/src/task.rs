@@ -651,9 +651,12 @@ unsafe fn trim_idle_stacks() {
     let mut s = sched();
     let end = s.pool.len().saturating_sub(STACK_POOL_WARM);
     for at in s.pool_clean..end {
-        let (base, _) = s.pool[at];
+        let (base, len) = s.pool[at];
+        // The stack proper, above the guard: `madvise` on macOS refuses a range that crosses the
+        // protected guard, and the guard holds no pages to give back.
+        let usable = len.min(DEFAULT_STACK) - GUARD;
         // SAFETY: a pooled slot is unused; its guard stays protected and the stack reads as zero.
-        unsafe { sys::release(base as *mut u8, STACK_SLOT) };
+        unsafe { sys::release((base + STACK_SLOT - usable) as *mut u8, usable) };
     }
     s.pool_clean = s.pool_clean.max(end);
 }
