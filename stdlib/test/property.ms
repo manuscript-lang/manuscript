@@ -474,7 +474,7 @@ fn report[T](
     let final = replay(gen, property, small)
     let {value: shown} = gen.make(Source(small.clone(), 0, 0, false, false))
     let reason = final.failure.get(message)
-    # The failure keeps the details of the assertion that failed, which name its source position.
+    // The failure keeps the details of the assertion that failed, which name its source position.
     return error(
         Error(
             "property '{name}' failed after {executed} cases (case seed {seed}; rerun with --seed {seed})\ncounterexample: {shown}\n{reason.message}",
