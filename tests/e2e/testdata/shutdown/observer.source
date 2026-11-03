@@ -15,7 +15,7 @@ export fn main() Int:
 
         let _observed = signals.next()
         say("got signal\n")
-        sleep(100.milliseconds)
+        let _ = sleep(100.milliseconds).wait()
         say("after sleep\n")
         return 0
     else:
