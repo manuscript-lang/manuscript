@@ -2,12 +2,14 @@ import expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms"
 import (
     GlobOptions,
     PathEntry,
+    copy,
     create_directory,
     glob,
     list,
     open,
     read_file,
     remove,
+    rename,
     stat,
     temporary,
     write_file
@@ -180,3 +182,16 @@ test "empty paths are rejected instead of resolving to the working directory":
                     "filesystem: invalid input", kind: ErrorCategory.InvalidInput
                 )
             )
+
+test "rename and copy failures name source and destination":
+    let temporary = temporary("manuscript-pair-") | try expect_ok
+    let root = temporary.path()
+    let from = "{root}/missing"
+    let to = "{root}/target"
+    let expected = "filesystem: file or directory not found: {from} -> {to}"
+    match rename(from, to):
+        ok(_): return fail("rename of a missing file succeeded")
+        error(cause): cause.message | try expect_equal(expected)
+    match copy(from, to):
+        ok(_): return fail("copy of a missing file succeeded")
+        error(cause): cause.message | try expect_equal(expected)

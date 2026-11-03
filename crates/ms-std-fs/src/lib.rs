@@ -56,6 +56,12 @@ pub fn fs_status_at<T>(path: &[u8], r: Res<T>, err: &ErrOut) -> Result<T, Status
     })
 }
 
+/// Like [`fs_status_at`] for a two-path operation: the detail reads `<source> -> <destination>`.
+pub fn fs_status_pair<T>(source: &[u8], destination: &[u8], r: Res<T>, err: &ErrOut) -> Result<T, StatusCode> {
+    let both = [source, b" -> ", destination].concat();
+    fs_status_at(&both, r, err)
+}
+
 /// A decoded optional size limit.
 fn lim(has: bool, v: i64) -> Res<i64> {
     ops::limit(has, v)
@@ -215,7 +221,7 @@ native! {
     }
 
     fn msstd_fs_rename(source: &str, destination: &str; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(ops::rename(source.as_bytes(), destination.as_bytes()), &err)
+        fs_status_pair(source.as_bytes(), destination.as_bytes(), ops::rename(source.as_bytes(), destination.as_bytes()), &err)
     }
 
     fn msstd_fs_read_link(path: &str; err: ErrOut) -> Result<Text, StatusCode> {
@@ -480,7 +486,7 @@ native! {
         };
         let mut call = |s: &[u8], d: &[u8]| filter.as_ref().is_some_and(|f| f.call(s, d));
         let f: Option<walk::Filter<'_>> = if filter.is_some() { Some(&mut call) } else { None };
-        fs_status(walk::copy(source.as_bytes(), destination.as_bytes(), options, f), &err)
+        fs_status_pair(source.as_bytes(), destination.as_bytes(), walk::copy(source.as_bytes(), destination.as_bytes(), options, f), &err)
     }
 
     /// `glob_entries`: `patterns` and `exclude` are `List[String]`; matches come back as a
