@@ -340,7 +340,7 @@ impl FnLower<'_> {
         while i < end {
             let p = &sig.params[i];
             match p.name.as_str() {
-                "d" => {
+                _ if p.ty == "ElemDesc" => {
                     // A function has no receiver: the descriptor is that of its list result.
                     let recv_ty = recv_ty
                         .or_else(|| self.result_list(result))
@@ -352,13 +352,13 @@ impl FnLower<'_> {
                     };
                     vals.push(self.type_desc(e));
                 }
-                "kd" | "vd" => {
+                _ if p.ty == "KeyDesc" || p.ty == "ValDesc" => {
                     let recv_ty = recv_ty
                         .ok_or_else(|| Error::new(format!("{sym}: descriptor without receiver")))?;
                     let TyKind::Obj(_, a) = self.b.m.types.kind(recv_ty).clone() else {
                         return Err(Error::new(format!("{sym}: not a map or set")));
                     };
-                    let k = usize::from(p.name == "vd");
+                    let k = usize::from(p.ty == "ValDesc");
                     match a.get(k) {
                         Some(t) => vals.push(self.type_desc(*t)),
                         // A set is a map without a value descriptor.

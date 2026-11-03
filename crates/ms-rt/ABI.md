@@ -132,7 +132,7 @@ recorded here before it is committed.)_
 - **Slot pointers.** Generic operations pass an element, key or value as a pointer
   to a slot of `desc.size` bytes, `desc.align` aligned (stack slot is fine).
 - **Descriptors are explicit**: every generic collection operation takes the
-  element descriptor (`desc`) or key/value descriptors (`kdesc`, `vdesc`; sets pass
+  element descriptor (a parameter of type `ElemDesc`) or key/value descriptors (`KeyDesc`, `ValDesc`; lowering reads the role from the type, not the name; sets pass
   `vdesc = null`) as arguments, right after the receiver pointer(s).
 - **Faults** never return; messages are stable text.
 - `msrt_retain`/`msrt_release` accept null. Everything else requires non-null.
