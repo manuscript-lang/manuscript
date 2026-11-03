@@ -462,12 +462,6 @@ pub fn duplicate(fd: Fd) -> Result<Fd, Errno> {
     file.try_clone().map(into_fd).map_err(|e| code(&e))
 }
 
-/// The descriptor of standard stream `which` (0 input, 1 output, 2 error).
-#[cfg(unix)]
-pub fn standard(which: i64) -> Fd {
-    which as Fd
-}
-
 /// Points standard stream `which` (0 input, 1 output, 2 error) of this process at the null
 /// device, so children started afterwards inherit it too.
 #[cfg(unix)]
