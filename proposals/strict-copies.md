@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal, 2026-11-03, checked against `e222a770`. Direction (Chinmay): "no implicit copying"; the compiler must follow the one-owner model itself.
+Proposal; stage 1 (gate, opt-in) implemented, 2026-11-03, checked against `e222a770`. Direction (Chinmay): "no implicit copying"; the compiler must follow the one-owner model itself.
 
 ## Problem
 

@@ -321,6 +321,7 @@ pub(crate) fn lower_program(program: &Program, options: &Options) -> Result<Modu
         .ok_or_else(|| Error::new("no main function"))?;
     let main_id = cx.function_for(&mut m, &main, &Subst::new())?;
     drain(&mut cx, &mut m)?;
+    cx.check_strict_copies()?;
     let f = &mut m.funcs[main_id.index()];
     f.linkage = Linkage::Export;
     m.entry = Some(main_id);
@@ -378,6 +379,7 @@ pub(crate) fn lower_tests(
         ids = crate::runner::bench_entries(&mut m, &ids, &per, driver);
     }
     drain(&mut cx, &mut m)?;
+    cx.check_strict_copies()?;
     m.entry = Some(crate::runner::build_runner(&mut m, &ids)?);
     Ok((m, names))
 }
@@ -592,16 +594,53 @@ impl<'a> FnLower<'a> {
     // ----------------------------------------------------------- ownership
 
     /// An owned reference to the operand: the temporary itself, or a copy of a borrow.
+    #[track_caller]
     pub fn owned(&mut self, x: Val) -> Value {
         if x.own || !self.needs_drop(self.ty_of(x.v)) {
             return x.v;
         }
-        let t = self.ty_of(x.v);
-        if std::env::var_os("MS_COPY_TRACE").is_some() {
-            eprintln!("IMPLICIT_COPY {:?} {}", self.b.defining_op(x.v), std::backtrace::Backtrace::force_capture().to_string().lines().filter(|l| l.contains("ms_lower::")).nth(1).unwrap_or("?").trim());
+        if self.cx.strict_copies
+            && !matches!(self.b.defining_op(x.v), Some(Op::StrLit | Op::OptNone))
+        {
+            let at = std::panic::Location::caller();
+            let site = format!(
+                "{}:{} ({:?})",
+                at.file().rsplit('/').next().unwrap_or("?"),
+                at.line(),
+                self.b.defining_op(x.v)
+            );
+            self.cx.copy_gaps.push(site);
         }
+        self.clone_value(x.v)
+    }
+
+    /// The payload `field` of the active `case` of the alternative `obj`, owned by the caller,
+    /// which consumes `obj`: an owned temporary hands the payload over and releases the rest; a
+    /// borrowed one is a gap in the checker's facts (`owned` records it in strict mode).
+    pub fn take_alt_field(
+        &mut self,
+        alt: ms_mir::types::AltId,
+        case: u32,
+        field: u32,
+        obj: Val,
+    ) -> Value {
+        let ty = self.b.m.alts[alt.index()].cases[case as usize].fields[field as usize].1;
+        if obj.own && self.needs_drop(ty) {
+            let p = self.b.alt_take(alt, case, field, obj.v);
+            self.b.alt_release(alt, case, 1 << field, obj.v);
+            return p;
+        }
+        let p = self.b.alt_get(alt, case, field, obj.v);
+        let o = self.owned(Val { v: p, own: false });
+        self.finish(obj);
+        o
+    }
+
+    /// An explicit `.clone()`: a deep copy of `v`, owned by the caller.
+    pub fn clone_value(&mut self, v: Value) -> Value {
+        let t = self.ty_of(v);
         self.b
-            .emit(Op::Copy, &[x.v], ms_mir::ir::Imm::None, Some(t))
+            .emit(Op::Copy, &[v], ms_mir::ir::Imm::None, Some(t))
             .expect("copy result")
     }
 
