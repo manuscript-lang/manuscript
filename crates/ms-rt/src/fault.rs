@@ -79,6 +79,9 @@ impl PublishedHdr {
         // observe the replacement pointer. Acquire/release alone permits both to miss.
         self.readers.fetch_add(1, Ordering::SeqCst);
         let hdr = self.ptr.load(Ordering::SeqCst);
+        // Pairs with the fence in `unshielded_cancel_flag`: the request recorded before this call
+        // and the shield depth read below cannot both miss each other (store-buffering).
+        core::sync::atomic::fence(Ordering::SeqCst);
         if !hdr.is_null() {
             // SAFETY: publication cannot finish retiring this header until this reader exits.
             unsafe {
@@ -271,6 +274,10 @@ crate::isolate_static! {
 }
 /// Value of the cancel flag when cancellation is not shielded.
 pub(crate) fn unshielded_cancel_flag() -> u8 {
+    // The caller just lowered a shield depth. A concurrent `PublishedHdr::cancel` records its
+    // request, fences, then reads the depth; this fence makes either it sees the lowered depth or
+    // this read sees the request, so a stop request is never lost between them.
+    core::sync::atomic::fence(Ordering::SeqCst);
     // SAFETY: single threaded access.
     let task = unsafe { *TASK_CANCEL.ptr() };
     // SAFETY: the running task's block is live.
