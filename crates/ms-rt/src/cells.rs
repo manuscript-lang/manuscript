@@ -52,6 +52,7 @@ fn free_block(ptr: usize, desc: usize) {
 ///
 /// # Safety
 /// `value` holds an owned value of `d`.
+// ms: owns
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_cells_new(value: *mut u8, d: ms_rt_abi::ValueDesc) -> i64 {
     // SAFETY: forwarded contract.
@@ -110,6 +111,7 @@ pub unsafe extern "C-unwind" fn msrt_cells_take(
 ///
 /// # Safety
 /// `value` holds an owned value of `d`.
+// ms: owns
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_cells_put(id: i64, value: *mut u8, d: ms_rt_abi::ValueDesc) {
     // SAFETY: forwarded contract.

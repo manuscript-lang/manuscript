@@ -92,33 +92,29 @@ const INTRINSIC_RECEIVERS: &[&str] = &[
     "UInt8",
 ];
 
-/// Externs that store their function arguments instead of running them before they return. A parameter-level
-/// marker would replace this list.
-const KEPT_CALLBACKS: &[&str] = &[
-    "extern:msrt_promise_start",
-    "extern:msrt_promise_start_here",
-    "extern:msrt_promise_defer",
-    "extern:msstd_http_serving_new",
-    "extern:msrt_fn_new",
-];
+/// The generated runtime signature table; its `@keeps` and `@owns` flags come from the `// ms:` comments
+/// in the runtime source.
+const RUNTIME_SYMBOLS: &str = include_str!("../../ms-lower/rt_symbols.txt");
 
-/// Externs that take ownership of the generic value argument (it moves into the runtime). Like
-/// `KEPT_CALLBACKS`, a parameter-level marker would replace this list.
-const OWNING_VALUES: &[&str] = &[
-    "extern:msrt_cells_new",
-    "extern:msrt_cells_put",
-    "extern:msrt_pipe_write",
-    "extern:msrt_promise_put",
-];
-
-/// Whether a native function (`extern:name`) moves its `value` argument into the runtime.
-pub fn owns_value(native: &str) -> bool {
-    OWNING_VALUES.contains(&native)
+/// Whether the runtime function behind the native `extern:name` declares `@flag`.
+fn runtime_flag(native: &str, flag: &str) -> bool {
+    let Some(name) = native.strip_prefix("extern:") else {
+        return false;
+    };
+    RUNTIME_SYMBOLS
+        .lines()
+        .find(|l| l.split('(').next() == Some(name))
+        .is_some_and(|l| l.rsplit(" @").skip(1).any(|f| f == flag))
 }
 
-/// Whether a native function (`module/name`, or `extern:name`) keeps the function values it is given.
+/// Whether a native function (`extern:name`) moves its `value` argument into the runtime (`@owns`).
+pub fn owns_value(native: &str) -> bool {
+    runtime_flag(native, "owns")
+}
+
+/// Whether a native function (`extern:name`) keeps the function values it is given (`@keeps`).
 pub fn keeps_callbacks(native: &str) -> bool {
-    KEPT_CALLBACKS.contains(&native)
+    runtime_flag(native, "keeps")
 }
 
 /// Native types that declare fields, so they cannot be written `extern type`.
