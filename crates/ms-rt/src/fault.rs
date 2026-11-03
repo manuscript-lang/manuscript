@@ -1006,8 +1006,9 @@ pub fn fault(msg: &[u8]) -> ! {
 }
 
 /// [`fault`] for a fault of a specific family, which the structured record names.
-#[cold]
-#[inline(never)]
+// Inlined so it adds no stack frame: the report's repeat count is bounded by the frame walk
+// budget, and a fault at the recursion limit counts every frame between it and the fault.
+#[inline(always)]
 pub fn fault_kind(kind: FaultKind, msg: &[u8]) -> ! {
     // SAFETY: single threaded access to the fault state.
     unsafe { *NEXT_KIND.ptr() = kind };
