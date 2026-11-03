@@ -22,8 +22,5 @@ fn successive_stdin_handles_continue_one_stream() {
     let out = child.wait_with_output().unwrap();
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert_eq!(out.status.code(), Some(0), "{stderr}");
-    assert_eq!(
-        String::from_utf8_lossy(&out.stdout),
-        "a\nb\nc\nd\ne\n"
-    );
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "a\nb\nc\nd\ne\n");
 }
