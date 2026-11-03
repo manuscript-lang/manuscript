@@ -310,14 +310,23 @@ impl<'a> FnLower<'a> {
     fn bind_pattern(&mut self, pattern: &Pattern, x: Val) -> Result<(), Error> {
         match &pattern.kind {
             PatternKind::Name(_) => {
-                // `_` introduces no binding.
-                if let Some(b) = self.hir.pattern_binding(pattern) {
-                    self.bind_local(&b, x);
+                // `_` introduces no binding: an owned value handed to it is closed and dropped.
+                // A name the checker registered for the scope-end close (a resource the pattern
+                // owns) binds like a plain `let` of a resource.
+                match self.hir.pattern_binding(pattern) {
+                    Some(b) if self.cx.implicit_closes.contains(&b.uid) => {
+                        return self.bind_closing(&b, x, None);
+                    }
+                    Some(b) => self.bind_local(&b, x),
+                    None if x.own => self.drop_temp(x.v),
+                    None => {}
                 }
                 Ok(())
             }
             PatternKind::List(items) => {
-                let list = self.borrow(x);
+                // An owned list hands its elements to the patterns and releases the shell; a
+                // borrowed one is read in place.
+                let list = if x.own { x.v } else { self.borrow(x) };
                 let len = self.b.list_len(list);
                 let want = self.b.iconst(items.len() as i64);
                 let same = self.b.icmp(Cc::Eq, len, want);
@@ -338,24 +347,76 @@ impl<'a> FnLower<'a> {
                 self.b.switch_to(good);
                 for (i, p) in items.iter().enumerate() {
                     let at = self.b.iconst(i as i64);
-                    let e = self.b.list_get(list, at);
-                    self.bind_pattern(p, Val { v: e, own: false })?;
+                    let e = if x.own {
+                        self.b.list_take(list, at)
+                    } else {
+                        self.b.list_get(list, at)
+                    };
+                    self.bind_pattern(p, Val { v: e, own: x.own })?;
+                }
+                if x.own {
+                    self.b.list_release(list, want);
                 }
                 Ok(())
             }
             PatternKind::Record(fields) => {
-                let rec = self.borrow(x);
-                let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(rec)).clone() else {
+                let rt = self.ty_of(x.v);
+                let TyKind::Rec(rid) = self.b.m.types.kind(rt).clone() else {
                     return Err(Error::new("a record pattern needs a record"));
                 };
+                let decl = self.b.m.records[rid.index()].fields.clone();
+                let index = |name: &str| {
+                    decl.iter()
+                        .position(|d| d.0 == name)
+                        .ok_or_else(|| Error::new(format!("no field {name}")))
+                };
+                if !x.own {
+                    let rec = self.borrow(x);
+                    for f in fields {
+                        let idx = index(f.name.as_str())?;
+                        let fv = self.b.rec_get(rid, idx as u32, rec);
+                        self.bind_pattern(&f.pattern, Val { v: fv, own: false })?;
+                    }
+                    return Ok(());
+                }
+                // An owned record hands each named field to its pattern and drops the others:
+                // the fields are taken out of the record where it lies, never copied.
+                let slot = self
+                    .b
+                    .emit(Op::Slot, &[], Imm::Ty(rt), Some(MTy::PTR))
+                    .expect("slot");
+                self.move_into(slot, x.v);
+                let mut named = vec![false; decl.len()];
                 for f in fields {
-                    let idx = self.b.m.records[rid.index()]
-                        .fields
-                        .iter()
-                        .position(|d| d.0 == f.name.as_str())
-                        .ok_or_else(|| Error::new(format!("no field {}", f.name)))?;
-                    let fv = self.b.rec_get(rid, idx as u32, rec);
-                    self.bind_pattern(&f.pattern, Val { v: fv, own: false })?;
+                    let idx = index(f.name.as_str())?;
+                    named[idx] = true;
+                    let fp = self
+                        .b
+                        .emit(
+                            Op::PtrField,
+                            &[slot],
+                            Imm::Field(rid, idx as u32),
+                            Some(MTy::PTR),
+                        )
+                        .expect("field address");
+                    let fv = self.move_out(fp, decl[idx].1);
+                    self.bind_pattern(&f.pattern, Val { v: fv, own: true })?;
+                }
+                for (idx, (_, fty)) in decl.iter().enumerate() {
+                    if named[idx] || !self.needs_drop(*fty) {
+                        continue;
+                    }
+                    let fp = self
+                        .b
+                        .emit(
+                            Op::PtrField,
+                            &[slot],
+                            Imm::Field(rid, idx as u32),
+                            Some(MTy::PTR),
+                        )
+                        .expect("field address");
+                    let fv = self.move_out(fp, *fty);
+                    self.drop_temp(fv);
                 }
                 Ok(())
             }

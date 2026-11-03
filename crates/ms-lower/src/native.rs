@@ -1336,14 +1336,11 @@ impl<'a> FnLower<'a> {
             .into_iter()
             .find(|a| self.is_fn(a.val.v))
             .ok_or_else(|| Error::new("missing function argument"))?;
-        let ft = self.ty_of(f.val.v);
-        let fvar = self.fresh_var(ft);
-        let fo = self.owned(f.val);
-        self.b.def_var(fvar, fo);
+        let (fvar, fhidden) = self.callback_var(f.val);
         let (lv, hidden) = self.list_source(recv_expr, recv)?;
         let r = self.list_higher_order(name, lv, elem, fvar, out);
         self.release_source(lv, hidden);
-        self.release_source(fvar, true);
+        self.release_source(fvar, fhidden);
         r
     }
 
@@ -1558,6 +1555,19 @@ impl<'a> FnLower<'a> {
         Ok((var, true))
     }
 
+    /// A variable holding the callback `f` for the loop a higher-order method runs: an owned
+    /// callback (a lambda written in the call) is held and dropped afterwards (`true`); a
+    /// borrowed one (a function value a local holds) is read in place, never copied.
+    pub(crate) fn callback_var(&mut self, f: Val) -> (ms_mir::builder::Var, bool) {
+        let ft = self.ty_of(f.v);
+        let hidden = f.own && self.needs_drop(ft);
+        let var = self
+            .b
+            .declare_var(ft, if hidden { Mode::Own } else { Mode::Borrow });
+        self.b.def_var(var, f.v);
+        (var, hidden)
+    }
+
     pub(crate) fn release_source(&mut self, var: ms_mir::builder::Var, hidden: bool) {
         if hidden {
             let v = self.b.use_var(var);
@@ -1582,14 +1592,11 @@ impl<'a> FnLower<'a> {
                 "sorted takes a comparator function; omit compare to sort in natural order",
             ));
         }
-        let ft = self.ty_of(f.val.v);
-        let fvar = self.fresh_var(ft);
-        let fo = self.owned(f.val);
-        self.b.def_var(fvar, fo);
+        let (fvar, fhidden) = self.callback_var(f.val);
         let (lv, hidden) = self.list_source(recv_expr, recv)?;
         let r = self.list_sorted(lv, fvar, elem);
         self.release_source(lv, hidden);
-        self.release_source(fvar, true);
+        self.release_source(fvar, fhidden);
         r
     }
 

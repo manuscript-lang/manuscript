@@ -99,8 +99,9 @@ impl FnLower<'_> {
         Ok(r.v)
     }
 
-    /// The handler closure the server calls, wrapping the user's `handler`; an owned
-    /// temporary released at the end of the statement.
+    /// The handler closure the server calls, wrapping the user's `handler`, which the checker
+    /// hands over owned (`msstd_http_serving_new` keeps its callback); the serving owns the
+    /// closure from here and drops it when it ends.
     pub(crate) fn handler_env(&mut self, handler: Val) -> Result<ms_mir::ir::Value, Error> {
         let user_ty = self.ty_of(handler.v);
         let TyKind::Fn(params, result) = self.b.m.types.kind(user_ty).clone() else {
@@ -123,7 +124,6 @@ impl FnLower<'_> {
             .b
             .emit(Op::ClosureNew, &[user], Imm::Func(thunk), Some(fty))
             .expect("closure");
-        self.temps.push(closure);
         Ok(closure)
     }
 
@@ -169,14 +169,9 @@ impl FnLower<'_> {
         let handler =
             fl.b.emit(Op::ClosureCap, &[p[0]], Imm::Idx(0), Some(user_ty))
                 .expect("capture");
-        // The server keeps its reference; the interface value takes its own.
-        let handle = fl.owned(Val {
-            v: p[1],
-            own: false,
-        });
-        let ex =
-            fl.b.emit(Op::IfaceNew, &[handle], Imm::Vtable(vt), Some(exchange))
-                .expect("iface");
+        // The server keeps the exchange alive for the call: the handler sees a view of it (a
+        // function value borrows its arguments, so the handler cannot keep it).
+        let ex = fl.b.iface_lend(vt, p[1], exchange);
         let r = fl.b.call_ind(handler, &[ex]);
         fl.drop_value(ex);
         let tag = fl.b.alt_tag(r);

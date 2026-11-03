@@ -107,15 +107,13 @@ fn server_options(opts: &HttpServerOptionsWire) -> Result<Options, HttpErr> {
 /// What every connection of one `serve` call shares.
 pub struct Serving {
     options: Options,
-    /// The handler closure, one reference held until the serving drops.
+    /// The handler closure, which the serving owns until it drops (`serve` hands it over).
     handler: *mut Obj,
     listener: Rc<Listener>,
 }
 
 impl Serving {
     fn new(options: Options, handler: *mut Obj, listener: Rc<Listener>) -> Serving {
-        // SAFETY: `handler` is a live closure object.
-        unsafe { ms_rt::obj::msrt_retain(handler) };
         Serving {
             options,
             handler,
@@ -127,7 +125,7 @@ impl Serving {
 impl Drop for Serving {
     fn drop(&mut self) {
         self.listener.close();
-        // SAFETY: the reference taken in `new`.
+        // SAFETY: the closure `serve` handed over, dropped once here.
         unsafe { ms_rt::obj::msrt_release(self.handler) };
     }
 }

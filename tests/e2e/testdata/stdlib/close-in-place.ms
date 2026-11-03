@@ -90,6 +90,45 @@ fn fault_plain(log: String) Unit:
 
     let _ = one.id
 
+fn destructured_record(log: String) Int:
+    let holder = Holder(latch(log, 13), 3)
+    let {inner: part, tag: n} = holder
+    return part.id + n
+
+fn destructured_list(log: String) Int:
+    let xs = [latch(log.clone(), 14), latch(log, 15)]
+    let [first, _] = xs
+    return first.id
+
+// A resource that hands out other resources: what it returns is the caller's to close (#2435).
+type Maker:
+    made: Int
+
+impl Closeable for Maker:
+    var fn close() Unit!:
+        return ok(unit)
+
+impl Maker:
+    var fn make(log: String, id: Int) Latch:
+        self.made += 1
+        return latch(log, id)
+
+    var fn find(log: String, id: Int) Latch?:
+        self.made += 1
+        return latch(log, id)
+
+fn made_by_resource(log: String) Int:
+    var maker = Maker(0)
+    var made = maker.make(log, 16)
+    return made.id + maker.made
+
+fn found_by_resource(log: String) Int:
+    var maker = Maker(0)
+    if let found = maker.find(log, 17):
+        return found.id
+
+    return 0
+
 fn reassigned(log: String, swap: Bool) Int:
     var one = latch(log.clone(), 11)
     if swap:
@@ -131,6 +170,30 @@ test "a closure's capture closes when the closure is dropped":
     let log = "{temporary.path()}/log"
     try expect_equal(closure_capture(log.clone()), 7)
     try expect_equal(closed(log), "7,")
+
+test "a part a record pattern binds closes at the scope end":
+    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
+    let log = "{temporary.path()}/log"
+    try expect_equal(destructured_record(log.clone()), 16)
+    try expect_equal(closed(log), "13,")
+
+test "a list pattern closes the elements it binds and the ones it drops":
+    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
+    let log = "{temporary.path()}/log"
+    try expect_equal(destructured_list(log.clone()), 14)
+    try expect_equal(closed(log), "15,14,")
+
+test "a resource a method on another resource returns closes at the scope end":
+    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
+    let log = "{temporary.path()}/log"
+    try expect_equal(made_by_resource(log.clone()), 17)
+    try expect_equal(closed(log), "16,")
+
+test "a resource payload a method on another resource returns closes with its branch":
+    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
+    let log = "{temporary.path()}/log"
+    try expect_equal(found_by_resource(log.clone()), 17)
+    try expect_equal(closed(log), "17,")
 
 test "map values close in place":
     let temporary = temporary("manuscript-close-in-place-") | try expect_ok
