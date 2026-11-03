@@ -1,4 +1,4 @@
-import Closeable from "@std/core.ms"
+import Closeable, Iterator from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Promise, deferred, complete, adopt from "@std/concurrency/promise.ms"
 import Duration from "@std/os/time.ms"
@@ -80,6 +80,30 @@ impl ReadStream[T]:
         let cell = self.cell
         let work = fn(id: Int) Unit: step[T](id, cell)
         return deferred[T?](work)
+
+    // The items as an iterator for `for x in s.wait()`: each is `T!`, so a failure arrives in the loop and ends it.
+    var fn wait() Waiting[T]:
+        return Waiting[T](self.cell, false)
+
+// The items of a stream, one read at a time; `for item in stream.wait()` waits for each.
+export type Waiting[T]:
+    cell: Int
+    ended: Bool
+
+impl Iterator[T!] for Waiting[T]:
+    var fn next() T!?:
+        if self.ended:
+            return none
+        let cell = self.cell
+        let work = fn(id: Int) Unit: step[T](id, cell)
+        let step = deferred[T?](work).wait()
+        if step.is_error():
+            self.ended = true
+            return error(step.err())
+        if let item = step.get():
+            return ok(item)
+        self.ended = true
+        return none
 
 impl Closeable for ReadStream[T]:
     // Drops the source and everything it owns. A read in flight ends with an error.

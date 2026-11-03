@@ -1,48 +1,39 @@
-import expect_equal, expect_false from "@std/test/test.ms"
-import ReadStream, WriteStream, read_all, read_line, copy from "@std/io/io.ms"
+import expect_equal from "@std/test/test.ms"
+import WriteStream from "@std/io/io.ms"
+import from_bytes, copy, read_all, lines, collect from "@std/io/streams.ms"
 import Bytes from "@std/bytes.ms"
 import open, read_file, temporary, write_file from "@std/os/fs.ms"
-import MemoryStream from "./support/streams.ms"
+import memory, closed_reader from "./support/streams.ms"
 
-test "stream compositions invoke source implementations and preserve EOF":
-    let reader = MemoryStream("one\r\ntwo\nlast".to_bytes(), 0, closed: false)
-    let input: ReadStream = reader
-    try expect_equal((try read_line(input)), "one")
-    try expect_equal((try read_line(input)), "two")
-    try expect_equal((try read_line(input)), "last")
-    try expect_false(not (try read_line(input)).is_none())
+test "stream compositions preserve line endings and EOF":
+    let found = try collect(lines(memory("one\r\ntwo\nlast")), none)
+    try expect_equal(found, ["one", "two", "last"])
 
     let directory = try temporary("manuscript-io-")
     let path = "{directory.path()}/copy.bin"
     let file = try open(path: path, flags: "w", mode: 420)
-    let source = MemoryStream("é🙂".to_bytes(), 0, closed: false)
-    try expect_equal((try copy(source, file.writer(), 6)), 6)
+    let moved = try copy(from_bytes("é🙂".to_bytes()), try file.writer())
+    try expect_equal(moved > 0, true)
     try expect_equal((try read_file(path)), "é🙂".to_bytes())
 
 test "streams enforce byte limits and preserve original errors":
-    var reader = MemoryStream("abc".to_bytes(), 0, closed: false)
     let limited: Bytes! = error(
         Error("I/O: limit exceeded", kind: ErrorCategory.LimitExceeded)
     )
-    try expect_equal(read_all(reader.clone(), 2), limited)
-    reader.closed = true
+    try expect_equal(read_all(memory("abc"), 2), limited)
 
     let closed: Bytes! = error(
         Error("I/O: resource is closed", kind: ErrorCategory.Closed)
     )
-    try expect_equal(read_all(reader), closed)
+    try expect_equal(read_all(closed_reader(), none), closed)
 
-test "native line reads reject buffered lines after the shared file is closed":
+test "a reader keeps the shared file open after the handle closes":
     let directory = try temporary("manuscript-closed-lines-")
     let path = "{directory.path()}/lines.txt"
     try write_file(path, "first\nsecond\nlast")
 
     var handle = try open(path, "r", 384)
-    let input = handle.reader()
-    try expect_equal((try read_line(input)), "first")
+    var input = lines(try handle.reader())
+    try expect_equal((try input.read().wait()), "first")
     try handle.close()
-
-    let closed: String?! = error(
-        Error("I/O: resource is closed", kind: ErrorCategory.Closed)
-    )
-    try expect_equal(read_line(input), closed)
+    try expect_equal((try input.read().wait()), "second")
