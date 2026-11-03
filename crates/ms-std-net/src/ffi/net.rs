@@ -343,6 +343,12 @@ native! {
         Ok(())
     }
 
+    /// Another handle on the same listener, for a promise that accepts on it. Dropping the handle
+    /// leaves the listener open; `Listener.close()` stops it.
+    fn msstd_net_listener_share(l: ObjRef<ListenerH>) -> Object<ListenerH> {
+        Object(ListenerH(l.0.0.clone()))
+    }
+
     /// `Listener.raw_owner()`: the identity under which this listener's raw handles are tracked.
     fn msstd_net_listener_raw_owner(l: ObjRef<ListenerH>) -> i64 {
         l.owner_key() as i64

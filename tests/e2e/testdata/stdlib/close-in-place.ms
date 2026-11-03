@@ -23,7 +23,7 @@ fn latch(log: String, id: Int) Latch:
     return Latch(log, id, true)
 
 fn closed(log: String) String:
-    if let bytes = read_file(log):
+    if let bytes = read_file(log).wait():
         return bytes.decode_utf8().get("")
 
     return ""

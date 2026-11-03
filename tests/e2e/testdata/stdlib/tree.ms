@@ -7,7 +7,6 @@ import (
     WalkEntry
 ) from "@std/os/tree.ms"
 import create_directory, write_file, temporary from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
 import expect_ok from "@std/test/test.ms"
 
@@ -110,8 +109,8 @@ test "walk is depth first and sorted":
 test "host tree walks the same way":
     let dir = temporary("manuscript-tree-") | try expect_ok
     create_directory("{dir.path()}/b", true) | try expect_ok
-    write_file(path: "{dir.path()}/b/two.txt", data: "22") | try expect_ok
-    write_file(path: "{dir.path()}/one.txt", data: "1") | try expect_ok
+    write_file(path: "{dir.path()}/b/two.txt", data: "22").wait() | try expect_ok
+    write_file(path: "{dir.path()}/one.txt", data: "1").wait() | try expect_ok
 
     let tree = host_tree(dir.path())
     if paths(walk(tree) | try expect_ok) != ["b/", "b/two.txt", "one.txt"]: return panic(

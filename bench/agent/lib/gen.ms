@@ -36,7 +36,7 @@ export fn build_oracle(id: String) String:
             CopyOptions(replace: true)
         ).get()
 
-    write_file("{tmp}/go.mod", "module oracle\n\ngo 1.21\n", replace: true).get()
+    write_file("{tmp}/go.mod", "module oracle\n\ngo 1.21\n", replace: true).wait().get()
 
     let built = bash("go build -o oracle .", tmp, 600, "")
     if built.code != 0: panic("go build failed: {built.err}")

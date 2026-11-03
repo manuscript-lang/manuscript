@@ -411,7 +411,7 @@ impl Transport for Sink:
         return unit
 
 fn logged(path: String) String:
-    let read = read_file(path)
+    let read = read_file(path).wait()
     if let bytes = read:
         return bytes.decode_utf8().get("")
 

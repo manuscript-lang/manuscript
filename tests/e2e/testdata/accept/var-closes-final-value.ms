@@ -14,7 +14,7 @@ impl Closeable for Counter:
         return ok(unit)
 
 fn logged(path: String) String:
-    let read = read_file(path)
+    let read = read_file(path).wait()
     if let bytes = read:
         return bytes.decode_utf8().get("")
 
@@ -23,7 +23,8 @@ fn logged(path: String) String:
 fn count_then_wait(log: String) Int:
     var counter = Counter(value: 0, log: log.clone())
     counter.value = 7
-    sleep(nanoseconds(5000000000))
+
+    let _ = sleep(nanoseconds(5000000000)).wait()
     counter.close().get(none)
     return 0
 

@@ -47,7 +47,7 @@ type TailCleanup:
 // Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for TailCleanup:
     var fn close() Unit!:
-        let _written = write_file(self.marker, "closed", true)
+        let _written = write_file(self.marker, "closed", true).wait()
         return ok(unit)
 
 fn tail_cleanup(result: Int!Error, var visits: List[Int], marker: String) Int!Error:
@@ -77,11 +77,11 @@ test "tail Results preserve cleanup on success and failure":
         42
     )
     visits | try expect_equal([1])
-    read_file(first).is_ok() | try expect_true
-    read_file(second).is_ok() | try expect_false
+    read_file(first).wait().is_ok() | try expect_true
+    read_file(second).wait().is_ok() | try expect_false
     tail_cleanup(Result[Int, Error].error(Error("")), var visits, second.clone()).is_error() | try expect_true
     visits | try expect_equal([1, 1])
-    read_file(second).is_ok() | try expect_true
+    read_file(second).wait().is_ok() | try expect_true
 
 test "function Result payloads keep their calling convention":
     let original = fn() Int: 42

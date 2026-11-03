@@ -25,7 +25,7 @@ test "a promise owns the resource moved into it and closes it when it ends":
     let p = promise(fn: size(door))
     try expect_equal(try p.wait(), 5)
 
-    let data = try read_file(log, none)
+    let data = try read_file(log, none).wait()
     let text = data.decode_utf8().get("")
     try expect_equal(text, "closed front;")
     try remove(dir, true)
@@ -38,7 +38,7 @@ test "a promise dropped before waiting still closes what it owns":
         let door = Door(name: "back", log: log.clone())
         let _p = promise(fn: slow(door))
 
-    let data = try read_file(log, none)
+    let data = try read_file(log, none).wait()
     let text = data.decode_utf8().get("")
     try expect_equal(text, "closed back;")
     try remove(dir, true)

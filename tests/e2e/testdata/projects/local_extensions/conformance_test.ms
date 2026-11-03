@@ -2,7 +2,7 @@ import expect_equal, expect_false, expect_ok from "@std/test/test.ms"
 import first_view, first_method, first_generic, first_resource from "./first.ms"
 import second_view, second_method, second_generic, second_resource from "./second.ms"
 import Item, Resource from "./domain.ms"
-import Read, read_view from "./contracts.ms"
+import read_view from "./contracts.ms"
 import read_file, temporary from "@std/os/fs.ms"
 
 fn close_first(resource: Resource) Unit:
@@ -35,4 +35,4 @@ test "views and functions retain local implementations across modules":
     // Each `Closeable` closes through its own module's implementation when its scope ends.
     close_first(Resource(events.clone()))
     close_second(resource)
-    (try expect_ok(read_file(events))).decode_utf8() | try expect_equal("10,20,")
+    (try expect_ok(read_file(events).wait())).decode_utf8() | try expect_equal("10,20,")

@@ -1,4 +1,4 @@
-import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import (
     chmod,
     create_directory,
@@ -16,7 +16,7 @@ import milliseconds from "@std/os/time.ms"
 import os_type, which from "@std/os/process.ms"
 
 fn text_of(path: String) String!:
-    let data = try read_file(path)
+    let data = try read_file(path).wait()
     return ok(data.decode_utf8().get(""))
 
 test "write_atomic replaces contents, keeps mode, and leaves no temporary file":
@@ -25,7 +25,7 @@ test "write_atomic replaces contents, keeps mode, and leaves no temporary file":
     let path = "{root}/config.txt"
     try write_atomic(path, "one")
     try expect_equal(try text_of(path), "one")
-    try write_file("{root}/mode.txt", "x", false)
+    try write_file("{root}/mode.txt", "x", false).wait()
     try chmod("{root}/mode.txt", 384)
 
     let before = (try stat("{root}/mode.txt", true)).permissions
@@ -48,7 +48,7 @@ test "write_atomic fails without touching the target when the directory is missi
 test "advisory locks exclude other handles until unlocked or closed":
     let directory = try temporary("manuscript-lock-")
     let path = "{directory.path()}/lock"
-    try write_file(path, "", false)
+    try write_file(path, "", false).wait()
 
     var first = try open(path, "r", 0)
     var second = try open(path, "r", 0)
@@ -70,11 +70,11 @@ test "move renames files and trees":
     let directory = try temporary("manuscript-move-")
     let root = directory.path()
     try create_directory("{root}/tree/sub", true)
-    try write_file("{root}/tree/sub/a.txt", "a", false)
+    try write_file("{root}/tree/sub/a.txt", "a", false).wait()
     try move("{root}/tree", "{root}/moved")
     try expect_equal(try text_of("{root}/moved/sub/a.txt"), "a")
     try expect_true(stat("{root}/tree", false).is_error())
-    try write_file("{root}/f.txt", "f", false)
+    try write_file("{root}/f.txt", "f", false).wait()
     try move("{root}/f.txt", "{root}/g.txt")
     try expect_equal(try text_of("{root}/g.txt"), "f")
     try expect_true(move("{root}/missing", "{root}/other").is_error())

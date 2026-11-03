@@ -105,7 +105,7 @@ test "binary search matches sorted Float ordering including NaN and signed zero"
     try check_search(narrow, narrow_nan)
 
 fn count(path: String) Int:
-    let read = read_file(path)
+    let read = read_file(path).wait()
     if let bytes = read:
         return bytes.length()
 
@@ -125,7 +125,7 @@ test "binary search uses logarithmically many comparisons":
             remaining /= 2
 
         for target in [-1, 0, length / 3, length / 2, length]:
-            try write_file(comparisons.clone(), "", true)
+            try write_file(comparisons.clone(), "", true).wait()
 
             let result = values.binary_search(Counted(target, comparisons.clone()))
             let used = count(comparisons.clone())

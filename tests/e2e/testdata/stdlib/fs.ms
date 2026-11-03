@@ -1,6 +1,5 @@
 import expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms"
 import (
-    FileHandle,
     GlobOptions,
     PathEntry,
     create_directory,
@@ -29,7 +28,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
     let root = temporary.path()
     create_directory(path: "{root}/sub", recursive: false) | try expect_ok
     for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
-        write_file(path: "{root}/{name}", data: "", replace: false) | try expect_ok
+        write_file(path: "{root}/{name}", data: "", replace: false).wait() | try expect_ok
 
     let all = GlobOptions(patterns: ["**/*.\{txt,md\}"])
     let matches = glob(path: root, options: all.clone()) | try expect_ok
@@ -61,15 +60,15 @@ test "ordinary filesystem misuse retains typed cases":
     let directory = "{temporary.path()}/directory"
     let file = "{temporary.path()}/file"
     let _created = create_directory(path: directory, recursive: false) | try expect_ok
-    let _child = write_file(path: "{directory}/child", data: "x", replace: false) | try expect_ok
-    let _written = write_file(path: file, data: "abc", replace: false) | try expect_ok
+    let _child = write_file(path: "{directory}/child", data: "x", replace: false).wait() | try expect_ok
+    let _written = write_file(path: file, data: "abc", replace: false).wait() | try expect_ok
     remove(path: directory, recursive: false) | try expect_fs_error(
         Error("filesystem: directory not empty", kind: ErrorCategory.Other)
     )
     list(path: file) | try expect_fs_error(
         Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
     )
-    read_file(path: directory) | try expect_fs_error(
+    read_file(path: directory).wait() | try expect_fs_error(
         Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
     )
     create_directory(path: file, recursive: false) | try expect_fs_error(
@@ -110,20 +109,20 @@ test "filesystem scoped temporary directories and bounded file reads":
     directory = temporary.path()
 
     let path = "{directory}/data.txt"
-    let _written = write_file(path: path, data: "hello", replace: false) | try expect_ok
-    read_file(path: path, max_bytes: 5) | try expect_ok | try expect_equal(
+    let _written = write_file(path: path, data: "hello", replace: false).wait() | try expect_ok
+    read_file(path: path, max_bytes: 5).wait() | try expect_ok | try expect_equal(
         "hello".to_bytes()
     )
 
     let limited: Bytes! = error(
         Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
     )
-    read_file(path: path, max_bytes: 4) | try expect_equal(limited)
+    read_file(path: path, max_bytes: 4).wait() | try expect_equal(limited)
 
     let exists: Unit! = error(
         Error("filesystem: already exists", kind: ErrorCategory.AlreadyExists)
     )
-    ((write_file(path: path, data: "changed", replace: false) != exists)) | try expect_false
+    ((write_file(path: path, data: "changed", replace: false).wait() != exists)) | try expect_false
     (stat(path: path, follow_links: true) | try expect_ok).size | try expect_equal(5)
     (list(path: directory) | try expect_ok).length() | try expect_equal(1)
 
@@ -146,7 +145,7 @@ test "filesystem scoped temporary directories and bounded file reads":
 test "file handles positional I/O stream adapters and closed errors":
     let temporary = temporary("manuscript-handles-") | try expect_ok
     let path = "{temporary.path()}/data.txt"
-    let _written = write_file(path: path, data: "abcdef", replace: false) | try expect_ok
+    let _written = write_file(path: path, data: "abcdef", replace: false).wait() | try expect_ok
     var handle = open(path: path, flags: "r+", mode: 384) | try expect_ok
     handle.read_at(offset: 2, max_bytes: 2) | try expect_ok | try expect_equal(
         "cd".to_bytes()
@@ -175,7 +174,7 @@ test "empty paths are rejected instead of resolving to the working directory":
     )
     remove(path: "", recursive: true) | try expect_equal(invalid)
     create_directory(path: "", recursive: true) | try expect_equal(invalid)
-    write_file(path: "", data: "x", replace: true) | try expect_equal(invalid)
+    write_file(path: "", data: "x", replace: true).wait() | try expect_equal(invalid)
 
     match stat(path: "", follow_links: true):
         ok(_): return fail("stat empty path")

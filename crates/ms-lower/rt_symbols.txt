@@ -666,6 +666,7 @@ msstd_net_listener_accept_raw(l: *const ObjCell<ListenerH>, has_timeout: u8, tim
 msstd_net_listener_address(l: *const ObjCell<ListenerH>, out: *mut StrVal)
 msstd_net_listener_close(l: *const ObjCell<ListenerH>)
 msstd_net_listener_raw_owner(l: *const ObjCell<ListenerH>) -> i64
+msstd_net_listener_share(l: *const ObjCell<ListenerH>) -> *mut ObjCell<ListenerH>
 msstd_net_network() -> *mut ObjCell<NetH>
 msstd_net_network_bind_datagram(net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<DgramH>, err: *mut StrVal) -> u8
 msstd_net_network_close(net: *const ObjCell<NetH>)

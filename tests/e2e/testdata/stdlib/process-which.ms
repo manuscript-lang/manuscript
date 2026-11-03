@@ -41,7 +41,7 @@ fn save_search_environment() SearchEnvironment!:
     )
 
 fn make_program(path: String) Unit!:
-    try write_file(path, "#!/bin/sh\nexit 0\n", false)
+    try write_file(path, "#!/bin/sh\nexit 0\n", false).wait()
     try chmod(path, 493)
     return ok(unit)
 
@@ -72,7 +72,7 @@ test "which preserves PATH order and rejects directories and nonexecutable files
     try expect_equal(which(""), none)
 
     let mode_path = join([first, "mode{suffix}"])
-    try write_file(mode_path, "fixture", false)
+    try write_file(mode_path, "fixture", false).wait()
     try chmod(mode_path, 384)
     try expect_equal(which("mode").is_some(), windows)
     try chmod(mode_path, 493)

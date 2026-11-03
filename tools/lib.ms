@@ -71,19 +71,19 @@ export fn run_program(program: String, arguments: List[String]) Int:
 
 // Runs `program` and returns its standard output; empty when it cannot run or fails.
 export fn capture(program: String, arguments: List[String]) String:
-    if let out = run(program, arguments):
+    if let out = run(program, arguments).wait():
         if out.exit_code == 0: return out.stdout.decode_utf8().get("")
     return ""
 
 // Whether `program` runs and exits zero with `arguments`.
 export fn works(program: String, arguments: List[String]) Bool:
-    if let out = run(program, arguments): return out.exit_code == 0
+    if let out = run(program, arguments).wait(): return out.exit_code == 0
 
     return false
 
 // The SHA-256 of the file at `path` as lowercase hex.
 export fn file_sha256(path: String) String:
-    let data = read_file(path).get()
+    let data = read_file(path).wait().get()
     return hex_encode(sha256(data))
 
 // The host triple's architecture field, as `rustc` reports it (`x86_64`, `aarch64`).

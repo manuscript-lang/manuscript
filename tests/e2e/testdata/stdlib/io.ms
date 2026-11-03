@@ -1,5 +1,4 @@
 import expect_equal from "@std/test/test.ms"
-import WriteStream from "@std/io/io.ms"
 import from_bytes, copy, read_all, lines, collect from "@std/io/streams.ms"
 import Bytes from "@std/bytes.ms"
 import open, read_file, temporary, write_file from "@std/os/fs.ms"
@@ -14,7 +13,7 @@ test "stream compositions preserve line endings and EOF":
     let file = try open(path: path, flags: "w", mode: 420)
     let moved = try copy(from_bytes("é🙂".to_bytes()), try file.writer())
     try expect_equal(moved > 0, true)
-    try expect_equal((try read_file(path)), "é🙂".to_bytes())
+    try expect_equal((try read_file(path).wait()), "é🙂".to_bytes())
 
 test "streams enforce byte limits and preserve original errors":
     let limited: Bytes! = error(
@@ -30,7 +29,7 @@ test "streams enforce byte limits and preserve original errors":
 test "a reader keeps the shared file open after the handle closes":
     let directory = try temporary("manuscript-closed-lines-")
     let path = "{directory.path()}/lines.txt"
-    try write_file(path, "first\nsecond\nlast")
+    try write_file(path, "first\nsecond\nlast").wait()
 
     var handle = try open(path, "r", 384)
     var input = lines(try handle.reader())

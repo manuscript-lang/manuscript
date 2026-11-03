@@ -1,4 +1,4 @@
-import FileHandle, open, temporary, write_file from "@std/os/fs.ms"
+import open, temporary, write_file from "@std/os/fs.ms"
 import ReadStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import expect_true, expect_ok from "@std/test/test.ms"
@@ -11,7 +11,7 @@ fn view_of(path: String) ReadStream[Bytes]!:
 test "a file handle binding is closed when its scope ends":
     let temporary = temporary("manuscript-owned-") | try expect_ok
     let path = "{temporary.path()}/a.txt"
-    try expect_true(write_file(path, "x", true).is_ok())
+    try expect_true(write_file(path, "x", true).wait().is_ok())
 
     var view = view_of(path) | try expect_ok
     try expect_true(view.read().wait().is_ok())

@@ -45,8 +45,8 @@ test "uuid_v7 is a version-7 uuid that sorts by creation time":
     let first = (uuid_v7() | try expect_ok)
     uuid_version(first) | try expect_equal(7)
     first.length() | try expect_equal(36)
-    sleep(milliseconds(3))
 
+    let _ = sleep(milliseconds(3)).wait()
     let second = (uuid_v7() | try expect_ok)
     (first < second) | try expect_true
 
@@ -57,8 +57,8 @@ test "ulid has 26 Crockford characters and sorts by creation time":
         if not "0123456789ABCDEFGHJKMNPQRSTVWXYZ".contains(ch): return fail(
             "bad character {ch}"
         )
-    sleep(milliseconds(3))
 
+    let _ = sleep(milliseconds(3)).wait()
     let second = (ulid() | try expect_ok)
     (first < second) | try expect_true
 

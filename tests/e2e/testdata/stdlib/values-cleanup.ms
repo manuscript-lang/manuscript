@@ -28,8 +28,8 @@ type Resource:
 // resource 1 notes whether resource 2 had already closed.
 impl Closeable for Resource:
     var fn close() Unit!:
-        let inner_closed = read_file("{self.dir}/2").is_ok()
-        let _ = write_file("{self.dir}/{self.id}", "{inner_closed}", true)
+        let inner_closed = read_file("{self.dir}/2").wait().is_ok()
+        let _ = write_file("{self.dir}/{self.id}", "{inner_closed}", true).wait()
         return ok(unit)
 
 fn leave(dir: String) Int:
@@ -79,5 +79,5 @@ test "Closeable cleanup runs in reverse order before return delivery":
     let temporary = temporary("manuscript-cleanup-") | try expect_ok
     let dir = temporary.path()
     try expect_equal(leave(dir.clone()), 42)
-    try expect_equal((try read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
-    try expect_equal((try read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))
+    try expect_equal((try read_file("{dir}/1").wait()), Bytes([116, 114, 117, 101]))
+    try expect_equal((try read_file("{dir}/2").wait()), Bytes([102, 97, 108, 115, 101]))

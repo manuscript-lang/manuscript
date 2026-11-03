@@ -13,4 +13,4 @@ test "a cloned file handle writes through its own descriptor after the original 
     try file.close()
     try copy.write("two")
     try copy.close()
-    try expect_equal(try read_file(path), "one two".to_bytes())
+    try expect_equal(try read_file(path).wait(), "one two".to_bytes())

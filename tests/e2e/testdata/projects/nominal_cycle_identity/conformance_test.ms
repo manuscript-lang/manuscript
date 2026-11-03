@@ -7,6 +7,6 @@ test "same display names keep nested resource cleanup":
     let _gone = remove(path, false)
     exercise(path.clone())
 
-    let seen = try read_file(path.clone(), none)
+    let seen = try read_file(path.clone(), none).wait()
     let _cleaned = remove(path, false)
     seen.length() | try expect_equal(1)

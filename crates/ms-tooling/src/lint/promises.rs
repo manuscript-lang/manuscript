@@ -35,20 +35,32 @@ impl Scan<'_> {
             .is_some_and(|t| t.is_source_type("@std/concurrency/promise.ms", "Promise"))
     }
 
-    fn report(&mut self, e: &Expr) {
+    fn report(&mut self, e: &Expr, statement: bool) {
         let mut found = finding(
             "MSL115",
             "This promise is dropped as soon as it is made, which cancels it; bind it and call wait() on it, or pass it to wait_all",
             self.file,
             e.pos,
         );
-        // A call that used to wait for its result and ignored it: wait for it, still ignoring the result.
+        // A call that used to wait for its result and ignored it: wait for it, still ignoring the result. As a
+        // statement the result must be dropped on purpose, since `wait()` gives a `Result`.
         if matches!(e.kind, ExprKind::Call { .. }) {
-            found.fix = Some(DiagnosticFix {
-                pos: e.end,
-                end: e.end,
-                replacement: ".wait()".to_string(),
-            });
+            let text = self
+                .module
+                .source
+                .get(e.pos.offset as usize..e.end.offset as usize);
+            found.fix = match (statement, text) {
+                (true, Some(text)) => Some(DiagnosticFix {
+                    pos: e.pos,
+                    end: e.end,
+                    replacement: format!("let _ = {text}.wait()"),
+                }),
+                _ => Some(DiagnosticFix {
+                    pos: e.end,
+                    end: e.end,
+                    replacement: ".wait()".to_string(),
+                }),
+            };
         }
         self.findings.push(found);
     }
@@ -57,12 +69,12 @@ impl Scan<'_> {
 impl Visitor for Scan<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
         match &stmt.kind {
-            StmtKind::Call(e) if self.is_promise(e) => self.report(e),
+            StmtKind::Call(e) if self.is_promise(e) => self.report(e, true),
             StmtKind::Bind { pattern, value, .. }
                 if matches!(&pattern.kind, PatternKind::Name(n) if n.as_str() == "_")
                     && self.is_promise(value) =>
             {
-                self.report(value);
+                self.report(value, false);
             }
             _ => {}
         }

@@ -25,14 +25,15 @@ export fn main() Int:
     let allow = ".artifacts/conform-expect-fail.txt"
     var text = (
         read_file("tests/conformance/expect-fail.txt")
+        .wait()
         .get()
         .decode_utf8()
         .get("")
     )
     let host_list = "tests/conformance/expect-fail.{host()}.txt"
     if access(host_list, 0).is_ok():
-        text = text + read_file(host_list).get().decode_utf8().get("")
-    write_file(allow, text, replace: true).get()
+        text = text + read_file(host_list).wait().get().decode_utf8().get("")
+    write_file(allow, text, replace: true).wait().get()
 
     let conform = "target/debug/ms-conform{exe()}"
     let ms = "target/debug/ms{exe()}"

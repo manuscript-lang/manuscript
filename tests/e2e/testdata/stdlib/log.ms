@@ -16,8 +16,7 @@ import (
     rotating_file_transport
 ) from "@std/log.ms"
 import promise from "@std/concurrency/promise.ms"
-import nanoseconds, sleep from "@std/os/time.ms"
-import JsonValue, parse from "@std/data/json.ms"
+import JsonValue from "@std/data/json.ms"
 import (
     append_file,
     append_file_bytes,
@@ -41,7 +40,7 @@ type Payload:
 
 // The text a test's file sink received so far.
 fn written(path: String) String?!:
-    let data = try read_file(path)
+    let data = try read_file(path).wait()
     return ok(data.decode_utf8())
 
 test "logger writes typed escaped records and protects metadata":
@@ -193,7 +192,7 @@ test "file transport appends and flushes with scoped cleanup":
     try logger2.warn("second")
     try logger2.close()
 
-    let data = try read_file(path)
+    let data = try read_file(path).wait()
     try expect_false(
         (
             data.decode_utf8() != "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
@@ -227,7 +226,7 @@ impl Transport for CaptureTransport:
         return self.write_bytes(data.to_bytes())
 
     fn write_bytes(data: Bytes) Unit!:
-        if read_file("{self.path}{self.suffix}").is_ok(): return error(
+        if read_file("{self.path}{self.suffix}").wait().is_ok(): return error(
             Error("logging: resource is closed", kind: ErrorCategory.Closed)
         )
 
@@ -236,7 +235,7 @@ impl Transport for CaptureTransport:
             error(cause): return error(cause)
 
     fn flush() Unit!:
-        if read_file("{self.path}{self.suffix}").is_ok(): return error(
+        if read_file("{self.path}{self.suffix}").wait().is_ok(): return error(
             Error("logging: resource is closed", kind: ErrorCategory.Closed)
         )
 
@@ -246,7 +245,7 @@ impl Transport for CaptureTransport:
         return ok(CaptureTransport(self.path.clone(), "{self.suffix}.child"))
 
     fn close() Unit:
-        let _marked = write_file("{self.path}{self.suffix}", "closed", true)
+        let _marked = write_file("{self.path}{self.suffix}", "closed", true).wait()
 
 test "source transports receive complete records and close through their contract":
     let temporary = temporary("manuscript-log-transport-") | try expect_ok
@@ -255,11 +254,11 @@ test "source transports receive complete records and close through their contrac
     try logger.info("source transport")
     try logger.flush()
     try expect_equal(
-        (read_file(path) | try expect_ok).decode_utf8(),
+        (read_file(path).wait() | try expect_ok).decode_utf8(),
         "\{\"level\":30,\"msg\":\"source transport\"\}\n"
     )
     try logger.close()
-    try expect_true(read_file("{path}.closed").is_ok())
+    try expect_true(read_file("{path}.closed").wait().is_ok())
 
 fn log_from_child(logger: Logger) Unit!:
     let child = try logger.child("worker")
@@ -274,8 +273,8 @@ test "a logger scope closes its transport and a dropped child closes only its ow
     let temporary = temporary("manuscript-log-scope-") | try expect_ok
     let path = "{temporary.path()}/records.ndjson"
     try expect_ok(log_in_scope(path.clone()))
-    try expect_true(read_file("{path}.closed").is_ok())
-    try expect_true(read_file("{path}.closed.child").is_ok())
+    try expect_true(read_file("{path}.closed").wait().is_ok())
+    try expect_true(read_file("{path}.closed.child").wait().is_ok())
 
 test "unencodable fields are rejected and fields keep their shape under data":
     let directory = try temporary("manuscript-log-")
@@ -419,7 +418,7 @@ test "rotating transport moves a full file aside and keeps a bounded number of g
     let second = (try written("{path}.2")).get("")
     try expect_true(current != "" and first != "" and second != "")
     try expect_true(current.to_bytes().length() <= 80)
-    try expect_true(read_file("{path}.3").is_error())
+    try expect_true(read_file("{path}.3").wait().is_error())
     try expect_true(current.contains("record number 11"))
     try logger.close()
     try expect_true(logger.info("late").is_error())

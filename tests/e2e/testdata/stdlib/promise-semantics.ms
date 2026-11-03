@@ -1,7 +1,7 @@
 import panic from "@std/core.ms"
 import promise, wait_all, wait_first from "@std/concurrency/promise.ms"
-import (expect_equal, expect_error, expect_ok, expect_true) from "@std/test/test.ms"
-import milliseconds, nanoseconds, sleep from "@std/os/time.ms"
+import (expect_equal, expect_error, expect_ok) from "@std/test/test.ms"
+import milliseconds, sleep from "@std/os/time.ms"
 
 fn report(reason: Error) String:
     if reason.kind == ErrorCategory.Failed:
@@ -11,7 +11,7 @@ fn report(reason: Error) String:
 
 fn forever() Int:
     for i in 0..600:
-        sleep(milliseconds(100))
+        let _ = sleep(milliseconds(100)).wait()
     return 0
 
 test "a fault inside a promise ends only that promise":

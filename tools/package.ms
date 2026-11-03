@@ -105,6 +105,6 @@ export fn main() Int:
     if code != 0: return code
 
     let digest = file_sha256(archive)
-    write_file("{archive}.sha256", "{digest}  {archive_name}\n", replace: true).get()
+    write_file("{archive}.sha256", "{digest}  {archive_name}\n", replace: true).wait().get()
     stdout().write("{archive}\n").get()
     return 0

@@ -47,6 +47,7 @@ import (
     msstd_net_datagram_receive,
     msstd_net_datagram_send_bytes,
     msstd_net_listener_accept,
+    msstd_net_listener_share,
     msstd_net_listener_accept_raw,
     msstd_net_listener_address,
     msstd_net_listener_close,
@@ -330,20 +331,27 @@ impl Listener:
     // Starts waiting for the next incoming connection and returns its promise. A timeout gives Timeout and a closed listener gives Closed from `wait`.
     // On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and gives Failed.
     fn accept(timeout: Duration?) Promise[Connection]:
-        return owned_promise[Duration?, Connection](
-            timeout.clone(), fn limit: accepted(self.native, limit)
+        return owned_promise[AcceptArgs, Connection](
+            AcceptArgs(native: msstd_net_listener_share(self.native), timeout: timeout.clone()),
+            fn a: accepted(a.native, a.timeout)
         )
 
     // Starts waiting for the next incoming connection and returns a promise of its socket handle without wrapping it. The caller owns the handle until then; one that is never adopted leaks its socket.
     // A timeout gives Timeout and a closed listener gives Closed from `wait`. A TLS listener gives InvalidInput: the adopting server performs the handshake.
     fn accept_raw(timeout: Duration?) Promise[Int]:
-        return owned_promise[Duration?, Int](
-            timeout.clone(), fn limit: msstd_net_listener_accept_raw(self.native, limit)
+        return owned_promise[AcceptArgs, Int](
+            AcceptArgs(native: msstd_net_listener_share(self.native), timeout: timeout.clone()),
+            fn a: msstd_net_listener_accept_raw(a.native, a.timeout)
         )
 
     // Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
     fn address() String:
         return msstd_net_listener_address(self.native)
+
+// What an accepting promise owns: its own handle on the listener, and the time it waits.
+type AcceptArgs:
+    native: NativeListener
+    timeout: Duration?
 
 fn accepted(native: NativeListener, timeout: Duration?) Connection!:
     let raw = try msstd_net_listener_accept(native, timeout)

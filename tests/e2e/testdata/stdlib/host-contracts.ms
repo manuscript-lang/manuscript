@@ -70,7 +70,7 @@ test "all ten string open modes are accepted and changed spellings are invalid":
     for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
         let path = "{temporary.path()}/{mode}"
         if mode == "r" or mode == "r+":
-            try write_file(path, "", replace: false)
+            try write_file(path, "", replace: false).wait()
 
         let handle = try open(path, mode, 384)
         let _fileinfo = try handle.stat()

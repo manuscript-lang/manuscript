@@ -48,7 +48,7 @@ test "subprocess validation returns expected domain errors":
     let invalid: CommandOutput! = error(
         Error("process: invalid input", kind: ErrorCategory.InvalidInput)
     )
-    try expect_equal(run("", [], "".to_bytes()), invalid)
+    try expect_equal(run("", [], "".to_bytes()).wait(), invalid)
 
     let unavailable: CommandOutput! = error(
         Error("process: service unavailable", kind: ErrorCategory.Unavailable)
@@ -57,7 +57,7 @@ test "subprocess validation returns expected domain errors":
         (
             run(
                 "manuscript-nonexistent-command-stdlib", [], "".to_bytes()
-            ) != unavailable
+            ).wait() != unavailable
         )
     )
 
