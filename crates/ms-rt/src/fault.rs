@@ -638,20 +638,18 @@ unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut
     // where the register chain is discontinuous. Find each frame's own record by its contents
     // instead of following the register.
     // SAFETY: `sp` is the live stack pointer of the recovered frame, below `hi`.
-    unsafe { walk_scanned_frames(pc, sp, fp, t, lo, hi, remaining, f) }
+    unsafe { walk_scanned_frames((pc, sp, fp), t, lo, hi, remaining, f) }
 }
 
 /// Visits the source frames above the one running at `pc` with stack pointer `sp` and frame
-/// register `fp`, finding each frame's record with [`frame_record`]. Ends at the first frame no
+/// register `fp` (the `start` triple), finding each frame's record with [`frame_record`]. Ends at the first frame no
 /// record leads out of.
 ///
 /// # Safety
 /// `sp..hi` is live stack memory.
 #[cfg(windows)]
 unsafe fn walk_scanned_frames(
-    mut pc: usize,
-    mut sp: usize,
-    mut fp: usize,
+    (mut pc, mut sp, mut fp): (usize, usize, usize),
     t: &Tables,
     lo: usize,
     hi: usize,
