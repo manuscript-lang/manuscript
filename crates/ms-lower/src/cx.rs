@@ -66,8 +66,6 @@ pub enum JobKind {
     Html(Rc<crate::html::HtmlJob>),
     /// A forwarder of an interface operation to a runtime handle function.
     HandleMethod(Rc<crate::natiface::MethodJob>),
-    /// An operation of a compression stream.
-    Codec(Rc<crate::codecstream::CodecJob>),
 }
 
 /// An interface method value waiting to be lowered; the closure holds the interface value.

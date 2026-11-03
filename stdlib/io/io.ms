@@ -188,6 +188,50 @@ impl Sink[String] for StderrSink:
     var fn close() Unit!:
         return ok(unit)
 
+type StdoutBytesSink:
+    bytes_too: Bool
+
+impl Sink[Bytes] for StdoutBytesSink:
+    var fn put(value: Bytes) Unit!:
+        msrt_io_write_bytes_stdout(value)
+        return ok(unit)
+
+    var fn drain() Promise[Unit]:
+        msrt_io_flush()
+        return adopt[Unit](msrt_promise_finished())
+
+    fn buffered() Int:
+        return 0
+
+    var fn close() Unit!:
+        msrt_io_flush()
+        return ok(unit)
+
+type StderrBytesSink:
+    bytes_too: Bool
+
+impl Sink[Bytes] for StderrBytesSink:
+    var fn put(value: Bytes) Unit!:
+        msrt_io_write_bytes_stderr(value)
+        return ok(unit)
+
+    var fn drain() Promise[Unit]:
+        return adopt[Unit](msrt_promise_finished())
+
+    fn buffered() Int:
+        return 0
+
+    var fn close() Unit!:
+        return ok(unit)
+
+// Standard output as bytes; it shares its buffer with `stdout()`.
+export fn stdout_bytes() WriteStream[Bytes]:
+    return writer[Bytes](StdoutBytesSink(true))
+
+// Standard error as bytes.
+export fn stderr_bytes() WriteStream[Bytes]:
+    return writer[Bytes](StderrBytesSink(true))
+
 export fn stdout() WriteStream[String]:
     return writer[String](StdoutSink(false))
 

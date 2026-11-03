@@ -15,7 +15,6 @@ mod bound_alias;
 mod call;
 mod close;
 mod closure;
-mod codecstream;
 mod cx;
 mod eq;
 mod expr;

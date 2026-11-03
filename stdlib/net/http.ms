@@ -526,3 +526,18 @@ fn serve_buffered(handler: fn(HttpRequest) HttpResponse, exchange: HttpExchange)
         headers: exchange.headers(), body: body, protocol: exchange.protocol()
     )
     return reply(exchange, handler(request))
+
+type OwnedBody:
+    body: ResponseBody
+
+impl ReadStream for OwnedBody:
+    var fn close() Unit:
+        self.body.close().get(none)
+
+    var fn read(max_bytes: Int? = none) Bytes?!:
+        return self.body.read(max_bytes)
+
+// Turns an HTTP response body into a ReadStream that owns it. Closing the stream closes the body.
+// Temporary: the network streams work replaces `ResponseBody` with a `ReadStream[Bytes]` field.
+export fn body_stream(body: ResponseBody) ReadStream:
+    return OwnedBody(body)

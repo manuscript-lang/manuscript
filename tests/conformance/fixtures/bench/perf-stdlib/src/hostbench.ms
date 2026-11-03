@@ -1,7 +1,8 @@
 import bench from "./harness.ms"
 import Bytes from "@std/bytes.ms"
 import pack, unpack, ArchiveEntry from "@std/io/archive.ms"
-import decoder, SseDecoder from "@std/net/sse.ms"
+import sse_events from "@std/net/sse.ms"
+import ReadStream, Source, stream from "@std/io/io.ms"
 import parse_timestamp from "@std/os/time.ms"
 import uuid_v4 from "@std/os/random.ms"
 
@@ -65,17 +66,34 @@ fn bench_sse() Unit:
         "sse.feed",
         2000,
         fn() Int:
-            if let d = decoder():
-                return feed_all(d, stream)
-
-            return 0
+            return count_events(stream.clone())
     )
 
-fn feed_all(d: SseDecoder, stream: Bytes) Int:
-    if let events = d.feed(stream):
-        return events.length()
+// Hands out its bytes as one chunk.
+type Whole:
+    data: Bytes
+    done: Bool
 
-    return 0
+impl Source[Bytes] for Whole:
+    var fn next() Bytes?!:
+        if self.done: return ok(none)
+        self.done = true
+        return ok(self.data.clone())
+
+    var fn close() Unit!:
+        return ok(unit)
+
+fn count_events(data: Bytes) Int:
+    var events = sse_events(stream[Bytes](Whole(data, false)))
+    var count = 0
+    while true:
+        if let next = events.read().wait():
+            if next.is_none(): break
+            count += 1
+        else:
+            break
+
+    return count
 
 export fn bench_host() Unit:
     bench_archive()

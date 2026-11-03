@@ -25,7 +25,7 @@ import (
     Router,
     with_request_headers
 ) from "@std/net/router.ms"
-import body_stream from "@std/net/sse.ms"
+import body_stream from "@std/net/http.ms"
 
 fn get(path: String) HttpRequest:
     return request(HttpMethod.Get, path)
