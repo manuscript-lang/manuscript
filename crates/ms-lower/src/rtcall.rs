@@ -1257,61 +1257,9 @@ impl FnLower<'_> {
 }
 
 /// The `ErrorCategory` case and message words of each runtime status of `sym`'s module, as
-/// `(status, kind, words)`. Modules that number their failures from 1 in declaration order
-/// (`ms-std-net/ABI.md`) list their kinds in that order.
-fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> {
-    let words = |kind: &str| match kind {
-        "InvalidInput" => "invalid input",
-        "InvalidData" => "invalid data",
-        "LimitExceeded" => "limit exceeded",
-        "PermissionDenied" => "permission denied",
-        "Closed" => "resource is closed",
-        "Timeout" => "operation timed out",
-        "Unsupported" => "operation not supported",
-        _ => "failed",
-    };
-    let ordinal = |kinds: &[&'static str]| {
-        kinds
-            .iter()
-            .enumerate()
-            .map(|(i, k)| (i as i64 + 1, *k, words(k)))
-            .collect::<Vec<_>>()
-    };
-    if sym.starts_with("msstd_net_") {
-        return ordinal(&[
-            "InvalidInput",
-            "InvalidData",
-            "LimitExceeded",
-            "PermissionDenied",
-            "Unsupported",
-            "Closed",
-            "Timeout",
-            "Failed",
-        ]);
-    }
-    if sym.starts_with("msstd_http_") || sym.starts_with("msstd_websocket_") {
-        return ordinal(&[
-            "InvalidInput",
-            "InvalidData",
-            "LimitExceeded",
-            "PermissionDenied",
-            "Closed",
-            "Timeout",
-            "Failed",
-        ]);
-    }
-    if sym.starts_with("msstd_tls_") {
-        let mut t = ordinal(&["InvalidInput", "InvalidData", "LimitExceeded"]);
-        t.push((4, "Other", "authentication failed"));
-        return t;
-    }
-    if sym.starts_with("msstd_crypto_") {
-        return vec![
-            (1, "InvalidInput", "invalid input"),
-            (9, "Unsupported", "operation not supported"),
-            (6, "Other", "authentication failed"),
-        ];
-    }
+/// `(status, kind, words)`. Every runtime crate uses the shared `ms-rt-abi` `STATUS_*` numbers;
+/// only the `NotFound` words name the module.
+pub(crate) fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> {
     let not_found = if sym.starts_with("msstd_fs_") {
         "file or directory not found"
     } else {
@@ -1334,6 +1282,7 @@ fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> {
         (14, "LimitExceeded", "output limit exceeded"),
         (15, "Unsupported", "not a terminal"),
         (17, "Unavailable", "terminal is busy"),
+        (18, "Other", "authentication failed"),
     ]
 }
 

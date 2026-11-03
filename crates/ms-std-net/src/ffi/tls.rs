@@ -7,6 +7,7 @@ use ms_rt::ffi::{
     Bytes, BytesVec, ErrOut, ObjRef, Object, Out, RecList, StatusCode, Str, StringList, abi_record,
     native,
 };
+use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 
 abi_record! {
     /// `TlsOptions` as the compiler lays it out for natives.
@@ -185,9 +186,9 @@ native! {
     /// `TlsError.message()` for a status.
     fn msstd_tls_error_message(status: u8) -> String {
         match status {
-            1 => TlsErr::InvalidInput,
-            2 => TlsErr::InvalidData,
-            3 => TlsErr::LimitExceeded,
+            STATUS_INVALID_INPUT => TlsErr::InvalidInput,
+            STATUS_INVALID_DATA => TlsErr::InvalidData,
+            STATUS_LIMIT_EXCEEDED => TlsErr::LimitExceeded,
             _ => TlsErr::AuthenticationFailed,
         }
         .message()
@@ -198,7 +199,7 @@ native! {
 mod tests {
     use super::*;
     use ms_rt::ffi::new_string;
-    use ms_rt_abi::StrVal;
+    use ms_rt_abi::{STATUS_AUTHENTICATION_FAILED, StrVal};
 
     fn s(text: &str) -> *const StrVal {
         Box::leak(Box::new(new_string(text)))
@@ -233,9 +234,11 @@ mod tests {
             );
             assert_eq!(
                 msstd_tls_verify_certificates(s(pem), s(pem), s("nope.test"), &now),
-                4
+                STATUS_AUTHENTICATION_FAILED
             );
-            let m = ms_rt::ffi::take_string(|o| msstd_tls_error_message(4, o));
+            let m = ms_rt::ffi::take_string(|o| {
+                msstd_tls_error_message(STATUS_AUTHENTICATION_FAILED, o)
+            });
             assert_eq!(m, "TLS: authentication failed");
         }
     }
