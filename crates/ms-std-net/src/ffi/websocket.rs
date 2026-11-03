@@ -151,11 +151,6 @@ native! {
         report(s.ping(data), &err)
     }
 
-    /// `WebSocket.send(data)`.
-    fn msstd_websocket_send(s: ObjRef<SocketH>, data: &str, err: ErrOut) -> Result<(), StatusCode> {
-        report(s.send_text(data, None), &err)
-    }
-
     /// `WebSocket.send(data: Bytes, text)`.
     fn msstd_websocket_send_bytes(
         s: ObjRef<SocketH>,

@@ -286,17 +286,6 @@ native! {
         Ok(())
     }
 
-    /// `Connection.write(data, timeout)`.
-    fn msstd_net_connection_write(
-        c: ObjRef<ConnH>,
-        data: &str,
-        has_timeout: bool,
-        timeout: i64,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        report(c.write(data.as_bytes(), opt(has_timeout, timeout)), &err)
-    }
-
     /// `Connection.write(data: Bytes, timeout)`.
     fn msstd_net_connection_write_bytes(
         c: ObjRef<ConnH>,
@@ -306,17 +295,6 @@ native! {
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         report(c.write(data, opt(has_timeout, timeout)), &err)
-    }
-
-    /// `Connection.clone()`.
-    fn msstd_net_connection_clone(
-        c: ObjRef<ConnH>,
-        out: Out<Object<ConnH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let d = report(c.duplicate(), &err)?;
-        out.write(Object(ConnH(d)));
-        Ok(())
     }
 
     /// `Connection.shutdown_write()`.
@@ -398,18 +376,6 @@ native! {
             sender: Str::new(&dg.sender),
         });
         Ok(())
-    }
-
-    /// `DatagramSocket.send(data, address, timeout)`.
-    fn msstd_net_datagram_send(
-        sock: ObjRef<DgramH>,
-        data: &str,
-        address: &str,
-        has_timeout: bool,
-        timeout: i64,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        report(sock.send(data.as_bytes(), address, opt(has_timeout, timeout)), &err)
     }
 
     /// `DatagramSocket.send(data: Bytes, address, timeout)`.
@@ -529,8 +495,16 @@ mod tests {
                 msstd_net_listener_accept(listener, 1, 2_000_000_000, &mut server, &mut err),
                 0
             );
+            let mut hello = MaybeUninit::<VecVal>::uninit();
+            ms_rt::ffi::write_bytes(hello.as_mut_ptr(), b"hello");
             assert_eq!(
-                msstd_net_connection_write(client, s("hello"), 1, 2_000_000_000, &mut err),
+                msstd_net_connection_write_bytes(
+                    client,
+                    hello.as_ptr(),
+                    1,
+                    2_000_000_000,
+                    &mut err
+                ),
                 0
             );
             let mut out = MaybeUninit::<VecVal>::uninit();

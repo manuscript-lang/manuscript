@@ -37,15 +37,12 @@ import (
     msstd_net_connection_local_address,
     msstd_net_connection_peer_address,
     msstd_net_connection_read,
-    msstd_net_connection_clone,
     msstd_net_connection_shutdown_write,
     msstd_net_connection_tls_info,
-    msstd_net_connection_write,
     msstd_net_connection_write_bytes,
     msstd_net_datagram_address,
     msstd_net_datagram_close,
     msstd_net_datagram_receive,
-    msstd_net_datagram_send,
     msstd_net_datagram_send_bytes,
     msstd_net_listener_accept,
     msstd_net_listener_accept_raw,
@@ -57,7 +54,6 @@ import (
     msstd_websocket_ping,
     msstd_websocket_ping_bytes,
     msstd_websocket_receive,
-    msstd_websocket_send,
     msstd_websocket_send_bytes,
     msstd_websocket_subprotocol
 ) from "@std/internal/net.ms"

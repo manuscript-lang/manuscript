@@ -74,17 +74,9 @@ export extern fn msstd_net_connection_read(
     timeout: Duration?
 ) Bytes?!
 
-export extern fn msstd_net_connection_clone(handle: NativeConnection) RawConnection!
-
 export extern fn msstd_net_connection_shutdown_write(handle: NativeConnection) Unit!
 
 export extern fn msstd_net_connection_tls_info(handle: NativeConnection) TlsInfo!
-
-export extern fn msstd_net_connection_write(
-    handle: NativeConnection,
-    data: String,
-    timeout: Duration?
-) Unit!
 
 export extern fn msstd_net_connection_write_bytes(
     handle: NativeConnection,
@@ -101,13 +93,6 @@ export extern fn msstd_net_datagram_receive(
     max_bytes: Int?,
     timeout: Duration?
 ) Datagram!
-
-export extern fn msstd_net_datagram_send(
-    handle: NativeDatagramSocket,
-    data: String,
-    address: String,
-    timeout: Duration?
-) Unit!
 
 export extern fn msstd_net_datagram_send_bytes(
     handle: NativeDatagramSocket,
@@ -141,8 +126,6 @@ export extern fn msstd_websocket_ping(handle: NativeWebSocket, data: String) Uni
 export extern fn msstd_websocket_ping_bytes(handle: NativeWebSocket, data: Bytes) Unit!
 
 export extern fn msstd_websocket_receive(handle: NativeWebSocket) WebSocketMessage?!
-
-export extern fn msstd_websocket_send(handle: NativeWebSocket, data: String) Unit!
 
 export extern fn msstd_websocket_send_bytes(
     handle: NativeWebSocket,
