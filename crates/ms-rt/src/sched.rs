@@ -26,6 +26,58 @@ pub const MAX_THREADS: usize = 63;
 /// promises itself.
 pub const NONE: usize = 63;
 
+/// Per scheduler thread: how many native streams last used there are still alive.
+static PINNED: [AtomicUsize; MAX_THREADS] = [const { AtomicUsize::new(0) }; MAX_THREADS];
+
+/// Whether a live native stream was last used on the calling thread. A promise started from such
+/// a thread runs on it: a stream's two ends share one non-atomic session, so every task that
+/// might use it stays on the thread that does.
+pub(crate) fn pinned_here() -> bool {
+    let me = current();
+    me < MAX_THREADS && PINNED[me].load(Ordering::Relaxed) > 0
+}
+
+/// A native stream's place: the thread that last used it. A fresh stream has none, so promises
+/// that capture it stay free to be placed anywhere until it is first used.
+pub struct Pin(core::cell::Cell<usize>);
+
+impl Pin {
+    pub const fn new() -> Pin {
+        Pin(core::cell::Cell::new(usize::MAX))
+    }
+
+    /// Records a use on the calling thread; the pin follows the stream to where it is used.
+    pub fn touch(&self) {
+        let now = current();
+        let before = self.0.get();
+        if before == now {
+            return;
+        }
+        if before < MAX_THREADS {
+            PINNED[before].fetch_sub(1, Ordering::Relaxed);
+        }
+        if now < MAX_THREADS {
+            PINNED[now].fetch_add(1, Ordering::Relaxed);
+        }
+        self.0.set(now);
+    }
+}
+
+impl Default for Pin {
+    fn default() -> Pin {
+        Pin::new()
+    }
+}
+
+impl Drop for Pin {
+    fn drop(&mut self) {
+        let at = self.0.get();
+        if at < MAX_THREADS {
+            PINNED[at].fetch_sub(1, Ordering::Relaxed);
+        }
+    }
+}
+
 /// A promise that has not started: its id and its closure.
 pub(crate) struct Start {
     pub id: i64,

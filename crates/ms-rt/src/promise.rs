@@ -513,7 +513,12 @@ pub fn io_done_unit(id: i64) {
     let ptr = alloc::alloc(8);
     // SAFETY: `ptr` is a fresh 8-byte block.
     unsafe { ptr.cast::<i64>().write(0) };
-    io_done_block(id, ptr as usize, &crate::desc::msrt_desc_int as *const _ as usize, 0);
+    io_done_block(
+        id,
+        ptr as usize,
+        &crate::desc::msrt_desc_int as *const _ as usize,
+        0,
+    );
 }
 
 /// A promise that is already finished with no value: the answer of a flush with nothing to drain.
@@ -716,8 +721,8 @@ pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi
     unsafe { start_on(id, work, false) }
 }
 
-/// Starts `work` as the task of promise `id`, on this thread when `here`, else where the runtime
-/// picks.
+/// Starts `work` as the task of promise `id`, on this thread when `here` or when a live native
+/// stream is pinned to it, else where the runtime picks.
 ///
 /// # Safety
 /// `work` is a live closure object.
@@ -735,7 +740,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, here: bool) {
         id,
         closure: work as usize,
     };
-    if here || sched::current() == sched::NONE {
+    if here || sched::current() == sched::NONE || sched::pinned_here() {
         execute(start);
     } else {
         sched::submit(start);
@@ -1414,6 +1419,32 @@ mod tests {
         for id in ids {
             msrt_promise_drop(id);
         }
+        sched::shutdown();
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn promises_started_beside_a_used_native_stream_stay_on_its_thread() {
+        let _g = lock();
+        sched::msrt_runtime_set_threads(4);
+        sched::warm(4);
+        let pin = sched::Pin::new();
+        pin.touch();
+        let ids: Vec<i64> = (0..4).map(|_| msrt_promise_new()).collect();
+        for &id in &ids {
+            start_with_id(id, spin_thread);
+        }
+        let mut threads = std::collections::BTreeSet::new();
+        for &id in &ids {
+            assert_eq!(msrt_promise_wait(id, -1), OK);
+            threads.insert(take_int(id));
+        }
+        assert_eq!(threads.len(), 1, "ran on {threads:?}");
+        for id in ids {
+            msrt_promise_drop(id);
+        }
+        drop(pin);
         sched::shutdown();
         task::teardown();
     }

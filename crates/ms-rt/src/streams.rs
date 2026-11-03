@@ -8,8 +8,8 @@
 //! * A failure ends the promise with no value and is kept on the entry; `msrt_streams_error`
 //!   reads it, so the Manuscript side builds the `Error`.
 use crate::vec::bytes_from;
-use ms_rt_abi::VecVal;
 use crate::{alloc, promise, sys, task};
+use ms_rt_abi::VecVal;
 use std::sync::Mutex;
 
 /// `msrt_streams_open` flag: the entry reads.
@@ -297,8 +297,7 @@ pub extern "C-unwind" fn msrt_streams_flush(stream: i64) -> i64 {
             None => (true, -1),
         }
     };
-    if drained
-        || !promise::io_on_ready(id, fd, task::WAIT_WRITE, -1, write_retry, stream as usize)
+    if drained || !promise::io_on_ready(id, fd, task::WAIT_WRITE, -1, write_retry, stream as usize)
     {
         promise::io_done_unit(id);
     }
