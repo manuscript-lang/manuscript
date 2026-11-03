@@ -4251,12 +4251,14 @@ impl Walker<'_> {
                 if class == Class::Copy {
                     // A `var` used again would diverge from the closure's copy: the closure
                     // cannot borrow it (it outlives the statement), so refuse the silent snapshot.
+                    let stored = self.cx.live.assigned_after.get(&(e.id, b.uid)).copied();
                     if saved_perm(&saved_meta, b.uid) == Some(Perm::Mutable)
-                        && !self.is_last(e.id, b)
+                        && (!self.is_last(e.id, b) || stored.is_some())
                     {
                         let name = b.name;
                         let later = self
                             .next_use(e.id, b)
+                            .or(stored)
                             .map(|n| format!(" at {}", self.at(n)))
                             .unwrap_or_default();
                         self.error(

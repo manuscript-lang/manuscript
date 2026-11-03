@@ -58,7 +58,7 @@ f.parameters, f.receiver              // inferred ParamMode: Borrow | Mutate (va
 | Borrow exclusivity | `borrow_held_across_mutation`, `borrow_held_across_loop`, `borrow_held_across_branch`, `loop_mutates_iterable`, `match_payload_reassign`, `reborrow_chain` |
 | Partial moves | accepted: `partial_move_return`, `partial_move_resource`; rejected resource cases: `partial_move_resource_*`; `partial_move_used_again`, `partial_move_whole_after`, `partial_move_in_loop`, `partial_move_closure`, `partial_move_closes` |
 | Move out of borrow/var | `lend_mixed_with_new_value`, `let_name_borrow_then_change`, `var_name_borrow_read_origin`; accepted (returned parts lend): `lender_consume_borrowed_binding`, `lender_projection_move_out`, `lender_loop_variable_moved_out`, `lender_return_borrowed_binding`, `lender_var_parameter_moved_out`, `lender_partial_move_*`, `var_name_borrows_exclusively`, `scalar_var_binding_copies` |
-| Closures | `closure_exclusive_borrow`, `closure_borrow_then_mutation`, `closure_reads_changed_variable`, `escaping_closure_changes_capture`, `escaping_closure_takes_capture` |
+| Closures | `closure_exclusive_borrow`, `closure_borrow_then_mutation`, `closure_reads_changed_variable`, `escaping_closure_changes_capture`, `escaping_closure_takes_capture`, `escaping_closure_var_assigned_after`; accepted: `escaping_closure_var_unchanged_after` |
 | String views | `view_result_stored`, `view_bound_then_stored`, `view_source_changed`, `view_result_returned_from_local`; accepted: `view_in_place`, `view_lent_result` |
 | Wrapped lends | `wrapped_lend_held`; accepted: `wrapped_lends` |
 | Interface views | `interface_view_held`; accepted: `interface_views` |
