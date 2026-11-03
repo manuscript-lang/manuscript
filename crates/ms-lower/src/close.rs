@@ -491,12 +491,16 @@ impl FnLower<'_> {
             self.b.def_var(flag, held);
             flag
         });
-        let explicit = self.cx.explicit_closes.contains(&binding.uid).then(|| {
-            let explicit = self.b.declare_var(MTy::BOOL, Mode::Borrow);
-            let no = self.b.bconst(false);
-            self.b.def_var(explicit, no);
-            explicit
-        });
+        let explicit = self
+            .cx
+            .binding_facts
+            .has(binding.uid, ms_check::ownership::BindingFact::ExplicitClose)
+            .then(|| {
+                let explicit = self.b.declare_var(MTy::BOOL, Mode::Borrow);
+                let no = self.b.bconst(false);
+                self.b.def_var(explicit, no);
+                explicit
+            });
         let entry = (flag.is_some() && binding.mutable).then(|| {
             let entry = self.b.declare_var(MTy::INT, Mode::Borrow);
             self.b.def_var(entry, handle);

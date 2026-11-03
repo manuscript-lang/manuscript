@@ -113,21 +113,10 @@ pub struct Program {
     pub diagnostics: Vec<Diagnostic>,
     /// Identities handed out while checking.
     pub serial: usize,
-    /// Bindings that borrow a place another binding owns, and how, for lowering. Filled when
-    /// the ownership pass ran (every program that type checks).
-    pub borrows: Rc<HashMap<usize, crate::ownership::BorrowKind>>,
-    /// Resource bindings closed implicitly when their scope ends. Filled together with `borrows`.
-    pub implicit_closes: Rc<HashSet<usize>>,
-    /// Closed resource bindings that also have an explicit `.close()` call.
-    pub explicit_closes: Rc<HashSet<usize>>,
     /// The name expressions that move a closed resource binding, by binding.
     pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
-    /// Payload bindings of a consumed match scrutinee that some path moves out.
-    pub moved_payloads: Rc<HashSet<usize>>,
     /// Every move of a whole binding, by binding: the nodes that take its value.
     pub moves: Rc<HashMap<usize, HashSet<NodeId>>>,
-    /// The moved bindings some path keeps to the end of their scope.
-    pub conditional_moves: Rc<HashSet<usize>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves: Rc<HashMap<usize, HashMap<NodeId, Vec<Name>>>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
@@ -143,6 +132,8 @@ pub struct Program {
     pub consumes: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
     /// Boolean per-node ownership facts in a dense table (`ownership::NodeFacts`).
     pub node_facts: Rc<crate::ownership::NodeFacts>,
+    /// Boolean per-binding ownership facts in a dense table (`ownership::BindingFlags`).
+    pub binding_facts: Rc<crate::ownership::BindingFlags>,
 }
 
 /// A body-check result retained from an inference probe.

@@ -390,7 +390,11 @@ impl FnLower<'_> {
             }
             return Ok(());
         };
-        if self.cx.implicit_closes.contains(&b.uid) {
+        if self
+            .cx
+            .binding_facts
+            .has(b.uid, ms_check::ownership::BindingFact::ImplicitClose)
+        {
             let cty = ms_check::types::sub(&b.ty, &self.subst);
             if let Some(kind) = self.part_closer(&cty)? {
                 return self.bind_closing_kind(b, x, kind);

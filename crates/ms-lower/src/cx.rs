@@ -302,6 +302,8 @@ pub struct Cx {
     pub strict_copies: bool,
     /// Boolean ownership facts per node (lenders, view wraps, bound borrows, view moves, lent matches).
     pub node_facts: Rc<ms_check::ownership::NodeFacts>,
+    /// Boolean ownership facts per binding (borrows, closes, conditional moves).
+    pub binding_facts: Rc<ms_check::ownership::BindingFlags>,
     /// Lowering sites that copied a borrow into an owning position, with the producer op.
     pub copy_gaps: Vec<String>,
     /// Module queries by file.
@@ -344,20 +346,12 @@ pub struct Cx {
     pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
     /// The `make_fixture` factory and hooks type of each module with tests.
     pub fixtures: HashMap<Name, ms_check::TestFixture>,
-    /// Bindings that borrow a place another binding owns, and how.
-    pub borrows: Rc<HashMap<usize, BorrowKind>>,
-    /// Resource bindings closed implicitly when their scope ends.
-    pub implicit_closes: Rc<std::collections::HashSet<usize>>,
-    /// Closing bindings the program also closes with an explicit `.close()` call.
-    pub explicit_closes: Rc<std::collections::HashSet<usize>>,
     /// The name expressions that move a closed resource binding, by binding: the scope-end close
     /// runs only on the paths that never reach one.
     pub close_moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
     /// Every move of a whole binding, by binding: the name expressions (or lambdas) that take
     /// its value out of the local.
     pub moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
-    /// The moved bindings some path keeps to the end of their scope: their local can be empty.
-    pub conditional_moves: Rc<std::collections::HashSet<usize>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves:
         Rc<HashMap<usize, HashMap<ms_syntax::ast::NodeId, Vec<ms_check::types::Name>>>>,
@@ -394,12 +388,12 @@ impl Cx {
 
     /// The binding is a `var` borrow: it lowers as a path into its origin.
     pub fn exclusive(&self, uid: usize) -> bool {
-        self.borrows.get(&uid) == Some(&BorrowKind::Exclusive)
+        self.binding_facts.borrow(uid) == Some(BorrowKind::Exclusive)
     }
 
     /// The binding is a `let` borrow of a place: it may point into its origin instead of copying.
     pub fn shared(&self, uid: usize) -> bool {
-        self.borrows.get(&uid) == Some(&BorrowKind::Shared)
+        self.binding_facts.borrow(uid) == Some(BorrowKind::Shared)
     }
 
     /// Indexes every module of the program.
@@ -422,6 +416,7 @@ impl Cx {
             .collect();
         Cx {
             node_facts: program.node_facts.clone(),
+            binding_facts: program.binding_facts.clone(),
             strict_copies: std::env::var_os("MS_STRICT_COPIES").is_some(),
             copy_gaps: Vec::new(),
             extended,
@@ -444,12 +439,8 @@ impl Cx {
             contracts: HashMap::new(),
             methods: program.methods.clone(),
             fixtures: program.test_fixtures.clone(),
-            borrows: program.borrows.clone(),
-            implicit_closes: program.implicit_closes.clone(),
-            explicit_closes: program.explicit_closes.clone(),
             close_moves: program.close_moves.clone(),
             moves: program.moves.clone(),
-            conditional_moves: program.conditional_moves.clone(),
             resource_moves: program.resource_moves.clone(),
             borrowed_captures: program.borrowed_captures.clone(),
             consumes: program.consumes.clone(),

@@ -9,7 +9,7 @@
 
 mod classify;
 mod facts;
-pub use facts::{Fact, NodeFacts};
+pub use facts::{BindingFact, BindingFlags, Fact, NodeFacts};
 mod live;
 mod modes;
 mod moved;
@@ -214,26 +214,14 @@ pub struct Ownership {
     facts: HashMap<Key, CallableOwnership>,
     /// Rejected programs, in callable order.
     pub diagnostics: Vec<Diagnostic>,
-    /// Bindings that borrow a place another binding owns, by identity. A binding of a
-    /// temporary owns its value and is absent.
-    pub borrows: HashMap<usize, BorrowKind>,
-    /// Resource bindings closed implicitly when their scope ends.
-    pub closes: HashSet<usize>,
-    /// Closed resource bindings with an explicit `.close()` call.
-    pub explicit_closes: HashSet<usize>,
     /// Name expressions that move a closed resource binding, by binding.
     pub close_moves: HashMap<usize, HashSet<NodeId>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves: HashMap<usize, HashMap<NodeId, Vec<Name>>>,
-    /// Payload bindings of a consumed match scrutinee that some path moves out.
-    pub moved_payloads: HashSet<usize>,
     /// Every move of a whole binding, by binding: the name expressions (or lambdas) that take
     /// its value. Lowering moves the value out there instead of copying it, and drops the
     /// binding at scope end only on the paths that kept it.
     pub moves: HashMap<usize, HashSet<NodeId>>,
-    /// The moved bindings some path keeps to the end of their scope: lowering holds them so
-    /// that a move leaves them empty. The other moved bindings are consumed on every path.
-    pub conditional_moves: HashSet<usize>,
     /// Captures a non-escaping lambda only reads in place, by module file, lambda node and
     /// binding identity: the closure may point at the variable instead of copying it.
     pub borrowed_captures: HashSet<(Name, NodeId, usize)>,
@@ -242,6 +230,8 @@ pub struct Ownership {
     pub consumes: HashMap<Key, Vec<bool>>,
     /// Boolean per-node facts (lenders, view wraps, bound borrows, view moves, lent matches).
     pub node_facts: NodeFacts,
+    /// Boolean per-binding facts (borrows, closes, moved payloads, conditional moves).
+    pub binding_facts: BindingFlags,
     /// Lending calls whose result the caller owns (a source was a temporary), by module file and
     /// call node.
     pub owned_lends: HashMap<(Name, NodeId), OwnedLend>,
@@ -324,13 +314,9 @@ impl Hir<'_> {
         }
         let mut facts = HashMap::new();
         let mut diagnostics = Vec::new();
-        let mut borrows = HashMap::new();
-        let mut closes = HashSet::new();
-        let mut explicit_closes = HashSet::new();
+        let mut binding_facts = BindingFlags::default();
         let mut close_moves = HashMap::new();
-        let mut moved_payloads = HashSet::new();
         let mut moves: HashMap<usize, HashSet<NodeId>> = HashMap::new();
-        let mut conditional_moves = HashSet::new();
         let mut resource_moves = HashMap::new();
         let mut borrowed_captures = HashSet::new();
         let mut consumes = HashMap::new();
@@ -376,19 +362,25 @@ impl Hir<'_> {
                 }
             }
             for f in out.facts.bindings.values() {
-                let kind = if f.exclusive {
-                    BorrowKind::Exclusive
+                let fact = if f.exclusive {
+                    BindingFact::ExclusiveBorrow
                 } else if !f.owned && !f.borrows.is_empty() && f.class != Class::Copy {
-                    BorrowKind::Shared
+                    BindingFact::SharedBorrow
                 } else {
                     continue;
                 };
-                borrows.insert(f.binding.uid, kind);
+                binding_facts.set(f.binding.uid, fact);
             }
-            closes.extend(out.facts.implicit_closes.iter().copied());
-            explicit_closes.extend(out.facts.explicit_closes.iter().copied());
+            for u in &out.facts.implicit_closes {
+                binding_facts.set(*u, BindingFact::ImplicitClose);
+            }
+            for u in &out.facts.explicit_closes {
+                binding_facts.set(*u, BindingFact::ExplicitClose);
+            }
             close_moves.extend(out.facts.close_moves.iter().map(|(k, v)| (*k, v.clone())));
-            moved_payloads.extend(out.facts.moved_payloads.iter().copied());
+            for u in &out.facts.moved_payloads {
+                binding_facts.set(*u, BindingFact::MovedPayload);
+            }
             let mut moved: HashSet<(NodeId, usize)> = HashSet::new();
             for u in out.facts.uses.values() {
                 if u.access == Access::Move {
@@ -397,7 +389,9 @@ impl Hir<'_> {
                 }
             }
             if !moved.is_empty() {
-                conditional_moves.extend(moved::conditional(&modules[&c.module.file], c, &moved));
+                for u in moved::conditional(&modules[&c.module.file], c, &moved) {
+                    binding_facts.set(u, BindingFact::ConditionalMove);
+                }
             }
             resource_moves.extend(
                 out.facts
@@ -421,19 +415,15 @@ impl Hir<'_> {
         Ownership {
             facts,
             diagnostics,
-            borrows,
-            closes,
-            explicit_closes,
             close_moves,
             resource_moves,
-            moved_payloads,
             moves,
-            conditional_moves,
             borrowed_captures,
             consumes,
             owned_lends,
             getter_borrows,
             node_facts,
+            binding_facts,
         }
     }
 }

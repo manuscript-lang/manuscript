@@ -84,17 +84,13 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         // Value semantics is part of the language: every program that type checks is also
         // checked for ownership and exclusivity.
         let own = program.hir().ownership();
-        program.borrows = Rc::new(own.borrows);
-        program.implicit_closes = Rc::new(own.closes);
-        program.explicit_closes = Rc::new(own.explicit_closes);
         program.close_moves = Rc::new(own.close_moves);
         program.resource_moves = Rc::new(own.resource_moves);
-        program.moved_payloads = Rc::new(own.moved_payloads);
         program.moves = Rc::new(own.moves);
-        program.conditional_moves = Rc::new(own.conditional_moves);
         program.borrowed_captures = Rc::new(own.borrowed_captures);
         program.consumes = Rc::new(own.consumes);
         program.node_facts = Rc::new(own.node_facts);
+        program.binding_facts = Rc::new(own.binding_facts);
         program.owned_lends = Rc::new(own.owned_lends);
         program.getter_borrows = Rc::new(own.getter_borrows);
         program.diagnostics.extend(own.diagnostics);

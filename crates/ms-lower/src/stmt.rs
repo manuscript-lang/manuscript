@@ -275,7 +275,10 @@ impl<'a> FnLower<'a> {
         }
         if let PatternKind::Name(_) = pattern.kind
             && let Some(b) = self.hir.pattern_binding(pattern)
-            && self.cx.implicit_closes.contains(&b.uid)
+            && self
+                .cx
+                .binding_facts
+                .has(b.uid, ms_check::ownership::BindingFact::ImplicitClose)
         {
             let cleanup = self.hir.stmt(s).cleanup;
             return self.bind_closing(&b, x, cleanup.as_ref());
@@ -314,7 +317,12 @@ impl<'a> FnLower<'a> {
                 // A name the checker registered for the scope-end close (a resource the pattern
                 // owns) binds like a plain `let` of a resource.
                 match self.hir.pattern_binding(pattern) {
-                    Some(b) if self.cx.implicit_closes.contains(&b.uid) => {
+                    Some(b)
+                        if self
+                            .cx
+                            .binding_facts
+                            .has(b.uid, ms_check::ownership::BindingFact::ImplicitClose) =>
+                    {
                         return self.bind_closing(&b, x, None);
                     }
                     Some(b) => self.bind_local(&b, x),
@@ -840,8 +848,8 @@ impl<'a> FnLower<'a> {
                 };
                 let closing = self
                     .cx
-                    .implicit_closes
-                    .contains(&bnd.uid)
+                    .binding_facts
+                    .has(bnd.uid, ms_check::ownership::BindingFact::ImplicitClose)
                     .then(|| self.hir.stmt(s).cleanup);
                 let lend = closing.is_none()
                     && !o.own
@@ -1431,7 +1439,11 @@ impl<'a> FnLower<'a> {
         let one = self.b.iconst(1);
         let idx = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
         self.b.def_var(idx, start);
-        let closing = if list_var.is_some() && self.cx.implicit_closes.contains(&loop_var.uid) {
+        let closing = if list_var.is_some()
+            && self.cx.binding_facts.has(
+                loop_var.uid,
+                ms_check::ownership::BindingFact::ImplicitClose,
+            ) {
             self.closer_opt(
                 self.hir.binding_cleanup(loop_var.uid).as_ref(),
                 &loop_var.ty,

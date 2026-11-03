@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal; stage 1 (gate, opt-in) in #2474; stage 2 begun: the six node-keyed boolean sets are one `NodeFacts` table, 2026-11-03, checked against `e222a770`. Direction (Chinmay): "no implicit copying"; the compiler must follow the one-owner model itself.
+Proposal; stage 1 (gate, opt-in) in #2474; stage 2 begun: the six node-keyed boolean sets are one `NodeFacts` table and the binding-keyed boolean sets (`borrows`, closes, `moved_payloads`, `conditional_moves`) one `BindingFlags` table, 2026-11-03, checked against `e222a770`. Direction (Chinmay): "no implicit copying"; the compiler must follow the one-owner model itself.
 
 ## Problem
 

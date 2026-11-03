@@ -27,7 +27,12 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
     for (uid, name, pos, ty) in scan.owned {
         // A binding every path moves is left alone: the new owner reports the close.
         let kept = !program.close_moves.contains_key(&uid) || scan.kept.contains(&uid);
-        if scan.finished.contains(&uid) || !program.implicit_closes.contains(&uid) || !kept {
+        if scan.finished.contains(&uid)
+            || !program
+                .binding_facts
+                .has(uid, ms_check::ownership::BindingFact::ImplicitClose)
+            || !kept
+        {
             continue;
         }
         let Some(method) = finisher(program, module, &ty) else {
