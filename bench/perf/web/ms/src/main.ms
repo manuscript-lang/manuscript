@@ -8,7 +8,7 @@ import (
     HttpResponse,
     buffered
 ) from "@std/net/http.ms"
-import serve_core, serve_cores, listen, lookup, serve from "@std/net/net.ms"
+import lookup, serve from "@std/net/net.ms"
 import arguments from "@std/os/process.ms"
 
 fn score(id: Int) Int:
@@ -124,26 +124,9 @@ fn serve_here(port: String, dir: String) Int:
 
     return 1
 
-# One serving thread of a multi-threaded run: serves the connections its starter sends.
-fn serve_worker() Unit:
-    let args = arguments()
-    let _ = serve_core(make_handler(args.get(1)))
-
-# Accepts on the main thread and deals the connections to `threads` workers.
-fn serve_threads(port: String, threads: Int) Int:
-    if let bound = listen("127.0.0.1:{port}"):
-        let _ = serve_cores(bound, serve_worker, threads)
-    return 1
-
 export fn main() Int:
     let args = arguments()
     if args.length() < 2 or args.length() > 3:
         return 2
 
-    var threads = 1
-    if args.length() == 3:
-        threads = args.get(2).parse_int().get(1)
-    if threads <= 1:
-        return serve_here(args.get(0), args.get(1))
-
-    return serve_threads(args.get(0), threads)
+    return serve_here(args.get(0), args.get(1))
