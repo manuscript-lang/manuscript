@@ -992,8 +992,11 @@ impl<'a> FnLower<'a> {
             self.b.m.types.kind(mt).clone(),
             case,
             view.arguments.as_slice(),
-        ) && self.cx.view_wraps.contains(&(self.hir.data.file, e.id))
-        {
+        ) && self.cx.fact(
+            self.hir.data.file,
+            e.id,
+            ms_check::ownership::Fact::ViewWrap,
+        ) {
             let x = self.expr(arg.expr)?;
             if self.dead {
                 return Ok(x);

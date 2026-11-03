@@ -120,7 +120,11 @@ impl FnLower<'_> {
         };
         let rty = self.emty(e)?;
         // A reference on every arm is joined as one: the checker holds its origins.
-        let lent = self.cx.lent_matches.contains(&(self.hir.data.file, e.id));
+        let lent = self.cx.fact(
+            self.hir.data.file,
+            e.id,
+            ms_check::ownership::Fact::LentMatch,
+        );
         let owned = self.needs_drop(rty) && !lent;
         let res = self
             .b
@@ -485,7 +489,11 @@ impl FnLower<'_> {
         if !hidden
             && !x.own
             && self.b.func_mut().ret_borrowed
-            && self.cx.view_wraps.contains(&(self.hir.data.file, e.id))
+            && self.cx.fact(
+                self.hir.data.file,
+                e.id,
+                ms_check::ownership::Fact::ViewWrap,
+            )
         {
             // The operand lends its error from this function's arguments: hand the reference on.
             let out = self.b.alt_view(ra, ret_err as u32, &[x.v]);

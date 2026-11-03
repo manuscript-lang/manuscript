@@ -6,6 +6,7 @@
 //! values. `HttpMethod` crosses as its token text.
 
 use crate::Error;
+use crate::cx::HelperKey;
 use crate::func::{FnLower, Val};
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncKind, Imm, Mode, Op, Param};
@@ -111,7 +112,7 @@ impl FnLower<'_> {
         let TyKind::Fn(_, result) = self.b.m.types.kind(user_ty).clone() else {
             return Err(Error::new("a server handler is not a function"));
         };
-        let key = format!("serve-thunk:{}", user_ty.0);
+        let key = HelperKey::ServeThunk(user_ty);
         let thunk = match self.cx.helpers.get(&key) {
             Some(t) => *t,
             None => {

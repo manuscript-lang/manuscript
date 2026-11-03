@@ -1,6 +1,7 @@
 //! `@std/test/test.ms` expectations, lowered inline.
 
 use crate::Error;
+use crate::cx::HelperKey;
 use crate::func::{FnLower, Val};
 use crate::text::runtime_fn;
 use ms_check::hir::CallView;
@@ -306,7 +307,7 @@ impl FnLower<'_> {
     /// back into this frame: inlining it before unwind lowering would register drops for
     /// caller locals inside the operation, then resume the caller after freeing those locals.
     fn fault_trap(&mut self, operation_ty: MTy) -> FuncId {
-        let key = format!("testing.trap:{}", operation_ty.0);
+        let key = HelperKey::TestingTrap(operation_ty);
         if let Some(f) = self.cx.helpers.get(&key) {
             return *f;
         }

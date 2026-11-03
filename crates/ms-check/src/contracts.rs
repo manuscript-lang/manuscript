@@ -6,6 +6,7 @@ use crate::stdlib;
 use crate::syntax::*;
 use crate::types::Method;
 use crate::types::*;
+use crate::tytable::TyId;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use std::collections::{HashMap, HashSet};
@@ -36,15 +37,23 @@ pub(crate) enum Property {
 impl Property {
     /// The property a standard contract names, if it is one.
     pub(crate) fn of(contract: &Ty) -> Option<Property> {
-        [
-            ("Equal", Property::Equal),
-            ("Hashable", Property::Hashable),
-            ("Clonable", Property::Clonable),
-            ("Data", Property::Data),
-        ]
-        .into_iter()
-        .find(|(name, _)| contract.is_std(name))
-        .map(|(_, p)| p)
+        match contract.builtin? {
+            Builtin::Equal => Some(Property::Equal),
+            Builtin::Hashable => Some(Property::Hashable),
+            Builtin::Clonable => Some(Property::Clonable),
+            Builtin::Data => Some(Property::Data),
+            _ => None,
+        }
+    }
+
+    /// The standard contract this property is.
+    pub(crate) fn builtin(self) -> Builtin {
+        match self {
+            Property::Equal => Builtin::Equal,
+            Property::Hashable => Builtin::Hashable,
+            Property::Clonable => Builtin::Clonable,
+            Property::Data => Builtin::Data,
+        }
     }
 
     /// The standard contract's name.
@@ -61,8 +70,8 @@ impl Property {
 /// Visit state of a structural property query.
 #[derive(Default)]
 pub(crate) struct PropertyState {
-    active: HashSet<(String, Property)>,
-    completed: HashMap<(String, Property), bool>,
+    active: HashSet<(TyId, Property)>,
+    completed: HashMap<(TyId, Property), bool>,
 }
 
 /// Whether two implementations could apply to one receiver and contract.
@@ -770,6 +779,11 @@ impl Checker {
         own
     }
 
+    /// The structural identity of `t`.
+    pub(crate) fn shape(&self, t: &Ty) -> TyId {
+        self.tys.borrow_mut().shape(t)
+    }
+
     /// Whether `receiver` implements `contract`.
     pub(crate) fn implements(&self, receiver: &Ty, contract: &Ty) -> bool {
         if receiver.id == contract.id {
@@ -850,7 +864,7 @@ impl Checker {
         }
         // The bounds of a generic `clone` ask again whether `t`'s element is clonable; a cycle
         // through a recursive type is assumed clonable, as `property_in` does for `active`.
-        let key = type_key(t);
+        let key = self.shape(t);
         if self.clone_probes.borrow().contains(&key) {
             return true;
         }
@@ -865,8 +879,8 @@ impl Checker {
 
     /// Whether `t` is, or holds, a `Closeable` value. Such a value is an identity to close once,
     /// not a key to file by hash, and a set or map would drop a duplicate without closing it.
-    fn holds_resource(&self, t: &Ty, seen: &mut Vec<String>) -> bool {
-        let key = type_key(t);
+    fn holds_resource(&self, t: &Ty, seen: &mut Vec<TyId>) -> bool {
+        let key = self.shape(t);
         if seen.contains(&key) {
             return false;
         }
@@ -923,7 +937,7 @@ impl Checker {
     pub(crate) fn data_blocker(
         &self,
         t: &Ty,
-        visiting: &mut Vec<String>,
+        visiting: &mut Vec<TyId>,
         path: &mut Vec<String>,
     ) -> Option<DataBlocker> {
         let blocked = |reason: DataReason, path: &[String]| {
@@ -987,7 +1001,7 @@ impl Checker {
             // The type's own `JsonEncode` decides its JSON form, whatever its fields hold.
             return None;
         }
-        let key = type_key(t);
+        let key = self.shape(t);
         if visiting.contains(&key) {
             return None;
         }
@@ -1069,7 +1083,7 @@ impl Checker {
         {
             return false;
         }
-        let key = (type_key(t), property);
+        let key = (self.shape(t), property);
         if let Some(&r) = state.completed.get(&key) {
             return r;
         }
@@ -1080,7 +1094,7 @@ impl Checker {
         if state.active.len() > 200 {
             return false;
         }
-        state.active.insert(key.clone());
+        state.active.insert(key);
         let result = self.property_compute(t, property, state);
         state.active.remove(&key);
         state.completed.insert(key, result);
@@ -1093,8 +1107,7 @@ impl Checker {
         }
         if t.kind == Kind::Variable {
             return t.bounds().iter().any(|b| {
-                b.is_std(property.name())
-                    || (b.is(Builtin::Hashable) && property == Property::Equal)
+                b.is(property.builtin()) || (b.is(Builtin::Hashable) && property == Property::Equal)
             });
         }
         // Explicit implementations take precedence over structural data semantics.
@@ -1103,7 +1116,7 @@ impl Checker {
                 || !m
                     .contract
                     .as_ref()
-                    .is_some_and(|c| c.is_std(property.name()))
+                    .is_some_and(|c| c.is(property.builtin()))
             {
                 continue;
             }
@@ -1388,8 +1401,8 @@ impl Checker {
         }
     }
 
-    fn public(&mut self, t: &Ty, pos: Pos, seen: &mut HashSet<String>) {
-        if !seen.insert(type_key(t)) {
+    fn public(&mut self, t: &Ty, pos: Pos, seen: &mut HashSet<TyId>) {
+        if !seen.insert(self.shape(t)) {
             return;
         }
         if let Some(symbol) = t.symbol()

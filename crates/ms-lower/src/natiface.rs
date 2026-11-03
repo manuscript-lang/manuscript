@@ -5,13 +5,13 @@
 //! through the same marshalling as any native method, so statuses become `Result` values.
 
 use crate::Error;
+use crate::cx::VtableKey;
 use crate::cx::{Cx, Job, JobKind};
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
 use crate::text::runtime_fn;
 use ms_check::hir::ModuleHir;
 use ms_check::types as ct;
-use ms_check::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Param, VtableId};
 use ms_mir::types::{IfaceId, Ty as MTy, TyKind};
@@ -21,7 +21,6 @@ use std::rc::Rc;
 const UNIT_DATA: &[(&str, &str)] = &[
     ("io", "Files"),
     ("fs", "FileSystem"),
-    ("process", "Commands"),
     ("path", "PathOperations"),
     ("path_win", "PathOperations"),
 ];
@@ -43,8 +42,6 @@ enum Shape {
     Record,
     /// A list of records read through the getters of the group named by the row's symbol.
     Records,
-    /// The environment map argument crosses as the lists `env_names` and `env_values`.
-    SplitEnv,
     /// A directory walk (`glob_entries`, `copy`) with a predicate closure.
     Walk,
     /// A path entry point: the rules flag leads its arguments.
@@ -62,150 +59,6 @@ type MethodRow = (
 );
 
 const METHODS: &[MethodRow] = &[
-    (
-        "net",
-        "Network",
-        "bind_datagram",
-        "msstd_net_network_bind_datagram",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "close",
-        "msstd_net_network_close",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "connect",
-        "msstd_net_network_connect",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "connect_unix",
-        "msstd_net_network_connect_unix",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "listen",
-        "msstd_net_network_listen",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "connect_tls",
-        "msstd_net_network_connect_tls",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "connect_tls_config",
-        "msstd_net_network_connect_tls_config",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "listen_tls",
-        "msstd_net_network_listen_tls",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "listen_unix",
-        "msstd_net_network_listen_unix",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "restrict",
-        "msstd_net_network_restrict",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "with_resolver",
-        "msstd_net_network_with_resolver",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "lookup",
-        "msstd_net_network_lookup",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "resolve",
-        "msstd_net_network_resolve",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "http_client",
-        "msstd_net_network_http_client",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "web_socket",
-        "msstd_net_network_web_socket",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "request",
-        "msstd_net_network_request",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "request_bytes",
-        "msstd_net_network_request_bytes",
-        &[],
-        Shape::Plain,
-    ),
-    (
-        "net",
-        "Network",
-        "serve",
-        "msstd_net_network_serve",
-        &[],
-        Shape::Plain,
-    ),
     (
         "http",
         "HttpExchange",
@@ -318,22 +171,6 @@ const METHODS: &[MethodRow] = &[
         &[],
         Shape::Walk,
     ),
-    (
-        "process",
-        "Commands",
-        "run",
-        "msstd_process_command_run",
-        &[],
-        Shape::SplitEnv,
-    ),
-    (
-        "process",
-        "Commands",
-        "spawn",
-        "msstd_process_command_spawn",
-        &[],
-        Shape::SplitEnv,
-    ),
 ];
 
 /// The MIR type of a runtime handle object.
@@ -396,7 +233,10 @@ impl Cx {
         ity: &ct::Ty,
         iface: IfaceId,
     ) -> Result<VtableId, Error> {
-        let key = format!("handle:{}:{}", module, iface.0);
+        let key = VtableKey::Handle {
+            module: ct::Name::intern(module),
+            iface: iface.0,
+        };
         if let Some(v) = self.vtables.get(&key) {
             return Ok(*v);
         }
@@ -549,25 +389,6 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
             },
         );
     }
-    // The runtime takes the environment map as two parallel lists.
-    let mut lists = Vec::new();
-    if job.shape == Shape::SplitEnv {
-        let map_at = decl
-            .iter()
-            .position(|p| is_map(&p.ty))
-            .ok_or_else(|| Error::new(format!("{sym}: no environment map argument")))?;
-        let list_at = decl
-            .iter()
-            .position(|p| is_list(&p.ty))
-            .ok_or_else(|| Error::new(format!("{sym}: no list argument")))?;
-        lists = fl.split_map_argument(
-            &mut decl,
-            &mut nargs,
-            map_at,
-            list_at,
-            ["env_names", "env_values"],
-        )?;
-    }
     if job.shape == Shape::Walk {
         let r = fl.fs_walk(sym, &decl, &nargs, job.ret)?;
         fl.emit_return(Some(r));
@@ -577,9 +398,6 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         Some(recv) => fl.rt_method(sym, recv, &decl, &nargs, job.ret)?,
         None => fl.rt_function(sym, &decl, &nargs, job.ret)?,
     };
-    for list in lists {
-        fl.drop_value(list);
-    }
     let r = fit_result(fl, r, job.ret)?;
     fl.emit_return(Some(r));
     Ok(())
@@ -612,16 +430,6 @@ fn fit_result(fl: &mut FnLower<'_>, r: Val, ret: MTy) -> Result<Val, Error> {
     Ok(Val { v, own: true })
 }
 
-/// Whether a declared parameter type is a `Map`.
-fn is_map(ty: &ct::Ty) -> bool {
-    ty.is(Builtin::Map)
-}
-
-/// Whether a declared parameter type is a `List`.
-fn is_list(ty: &ct::Ty) -> bool {
-    ty.is(Builtin::List)
-}
-
 /// Whether the runtime function `sym` takes the receiver's handle first.
 fn takes_handle(sym: &str) -> bool {
     crate::rtcall::rt_sig(sym)
@@ -645,50 +453,6 @@ fn load_handle(
 }
 
 impl FnLower<'_> {
-    /// Replaces the map argument at `at` by its keys and values as two lists named `names`, typed
-    /// like the list argument at `list_at`. The lists are owned by the caller, which drops them after the
-    /// call.
-    fn split_map_argument(
-        &mut self,
-        decl: &mut Vec<ct::Param>,
-        nargs: &mut Vec<NArg>,
-        at: usize,
-        list_at: usize,
-        names: [&str; 2],
-    ) -> Result<Vec<ms_mir::ir::Value>, Error> {
-        let map = nargs[at].val;
-        let map_ty = self.ty_of(map.v);
-        let list_ty = self.ty_of(nargs[list_at].val.v);
-        let list_decl = decl[list_at].ty.clone();
-        let mut lists = Vec::new();
-        let mut split = Vec::new();
-        for (name, method) in names.into_iter().zip(["keys", "values"]) {
-            let sym = crate::rtcall::method_symbol(self.b.m, map_ty, method)
-                .ok_or_else(|| Error::new(format!("no {method} for a map")))?;
-            let list = self.rt_method(&sym, map, &[], &[], list_ty)?;
-            lists.push(list.v);
-            split.push((ct::n(name), list));
-        }
-        decl.splice(
-            at..=at,
-            split
-                .iter()
-                .map(|(name, _)| ct::Param::new(*name, list_decl.clone())),
-        );
-        nargs.splice(
-            at..=at,
-            split.into_iter().map(|(name, val)| NArg {
-                name,
-                val: Val {
-                    v: val.v,
-                    own: false,
-                },
-                wrapped: false,
-            }),
-        );
-        Ok(lists)
-    }
-
     /// `stdin()`: an interface value over a runtime handle made by `make(constant)`.
     pub(crate) fn handle_interface(
         &mut self,

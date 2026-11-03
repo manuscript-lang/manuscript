@@ -21,6 +21,113 @@ pub struct Variant {
     pub evidence: Option<ms_check::types::Name>,
 }
 
+/// What a bound-method thunk reaches the method through.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum BoundTarget {
+    /// Interface `iface`, method `k`.
+    Iface(u32, usize),
+    /// A source instance.
+    Func(FuncId),
+}
+
+/// Identity of a generated helper function: one variant per kind, with the types and flags
+/// that distinguish its instances.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum HelperKey {
+    Eq(MTy, u32),
+    Fmt(MTy, bool),
+    Json {
+        encode: bool,
+        ty: ms_check::tytable::TyId,
+    },
+    JsonTree(ms_check::tytable::TyId),
+    JsonTreeView(ms_check::tytable::TyId),
+    CloseParts(ms_check::tytable::TyId, bool),
+    CloseIface {
+        iface: u32,
+        k: u32,
+        in_slot: bool,
+    },
+    CloseFunc {
+        fid: FuncId,
+        writes_back: bool,
+        in_slot: bool,
+    },
+    Thunk(FuncId),
+    DefaultThunk {
+        fid: FuncId,
+        fty: MTy,
+        shared: bool,
+    },
+    DirectDefault(FuncId),
+    IfaceThunk {
+        iface: u32,
+        k: usize,
+        fty: MTy,
+        addr: bool,
+    },
+    BoundSharedIface {
+        iface: u32,
+        k: usize,
+        fty: MTy,
+    },
+    BoundSharedFunc {
+        fid: FuncId,
+        fty: MTy,
+    },
+    Bound {
+        target: BoundTarget,
+        fty: MTy,
+        addr: bool,
+    },
+    BoundNative {
+        native: Name,
+        rty: MTy,
+        fty: MTy,
+        held: Held,
+        scope: Option<Name>,
+    },
+    NativeThunk {
+        native: Name,
+        fty: MTy,
+    },
+    TostringThunk(MTy, bool),
+    MsFn(MTy),
+    WalkThunk(MTy, bool),
+    ServeThunk(MTy),
+    TestingTrap(MTy),
+}
+
+/// Identity of a generated interface implementation table.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum VtableKey {
+    Impl {
+        ty: ms_check::tytable::TyId,
+        iface: u32,
+        scope: Option<Name>,
+    },
+    Handle {
+        module: Name,
+        iface: u32,
+    },
+}
+
+impl std::fmt::Display for VtableKey {
+    /// The table's name in the module, as before keys were typed.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VtableKey::Impl { ty, iface, scope } => {
+                write!(f, "impl:{}:{iface}", ty.index())?;
+                match scope {
+                    Some(s) => write!(f, "@{s}"),
+                    None => Ok(()),
+                }
+            }
+            VtableKey::Handle { module, iface } => write!(f, "handle:{module}:{iface}"),
+        }
+    }
+}
+
 /// The key of a reserved instance: the callable, its type variables and its variant.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct InstKey {
@@ -84,7 +191,7 @@ pub struct IfaceThunkJob {
 }
 
 /// How a method value's closure holds its receiver.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Held {
     /// The receiver itself, owned by the closure.
     Value,
@@ -191,6 +298,12 @@ pub struct Job {
 
 /// Whole-program lowering context.
 pub struct Cx {
+    /// `MS_STRICT_COPIES=1`: an owning position that receives a borrowed place is an error.
+    pub strict_copies: bool,
+    /// Boolean ownership facts per node (lenders, view wraps, bound borrows, view moves, lent matches).
+    pub node_facts: Rc<ms_check::ownership::NodeFacts>,
+    /// Lowering sites that copied a borrow into an owning position, with the producer op.
+    pub copy_gaps: Vec<String>,
     /// Module queries by file.
     pub mods: HashMap<Name, Rc<ModuleHir>>,
     /// Callables by (module file, declaration or method node id).
@@ -210,9 +323,9 @@ pub struct Cx {
     /// Alternatives declared by the standard library.
     pub std_alts: std::collections::HashSet<usize>,
     /// Helper functions (formatting, equality, ...) by key.
-    pub helpers: HashMap<String, FuncId>,
+    pub helpers: HashMap<HelperKey, FuncId>,
     /// Interface implementation tables built by lowering.
-    pub vtables: HashMap<String, ms_mir::ir::VtableId>,
+    pub vtables: HashMap<VtableKey, ms_mir::ir::VtableId>,
     /// The checker type of every lowered interface.
     pub contracts: HashMap<ms_mir::types::IfaceId, ct::Ty>,
     /// Every implementation method of the program.
@@ -254,29 +367,31 @@ pub struct Cx {
     pub consumes: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<bool>>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
     pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
-    /// Callables whose result is a reference into their arguments, by module file and node.
-    pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
-    /// Callables whose result is an interface view of their arguments (`ret_view`).
-    pub view_lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
-    /// Wrappers of lent values built as `opt.view` / `alt.view`, by module file and node.
-    pub view_wraps: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
-    /// Method values that stay local and borrow their receiver's place: the closure holds the
-    /// receiver's address instead of a copy.
-    pub bound_borrows: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
-    /// Name expressions moving an interface view out of the local holding it.
-    pub view_moves: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Lending calls whose result the caller owns because an argument is a temporary: the
     /// result is copied out before the temporary is dropped.
     pub owned_lends: Rc<
         std::collections::HashMap<(Name, ms_syntax::ast::NodeId), ms_check::ownership::OwnedLend>,
     >,
-    /// Conditional and match expressions whose value is a reference on every arm.
-    pub lent_matches: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Which types are resources, for the closers of records and collections that hold them.
     pub classes: ms_check::ownership::Classifier,
 }
 
 impl Cx {
+    /// Fails when strict mode recorded an implicit copy of a borrow.
+    pub fn check_strict_copies(&self) -> Result<(), crate::Error> {
+        if self.copy_gaps.is_empty() {
+            return Ok(());
+        }
+        let mut sites = self.copy_gaps.clone();
+        sites.sort();
+        let total = sites.len();
+        sites.dedup();
+        Err(crate::Error::new(format!(
+            "internal: {total} implicit copies of a borrow at {}",
+            sites.join(", ")
+        )))
+    }
+
     /// The binding is a `var` borrow: it lowers as a path into its origin.
     pub fn exclusive(&self, uid: usize) -> bool {
         self.borrows.get(&uid) == Some(&BorrowKind::Exclusive)
@@ -306,6 +421,9 @@ impl Cx {
             .map(|m| m.receiver.id)
             .collect();
         Cx {
+            node_facts: program.node_facts.clone(),
+            strict_copies: std::env::var_os("MS_STRICT_COPIES").is_some(),
+            copy_gaps: Vec::new(),
             extended,
             scope_names: Vec::new(),
             mods,
@@ -336,13 +454,7 @@ impl Cx {
             borrowed_captures: program.borrowed_captures.clone(),
             consumes: program.consumes.clone(),
             getters: program.getter_borrows.clone(),
-            lenders: program.lenders.clone(),
-            view_lenders: program.view_lenders.clone(),
-            view_wraps: program.view_wraps.clone(),
-            bound_borrows: program.bound_borrows.clone(),
-            view_moves: program.view_moves.clone(),
             owned_lends: program.owned_lends.clone(),
-            lent_matches: program.lent_matches.clone(),
             classes: ms_check::ownership::Classifier::new(program),
         }
     }
@@ -596,5 +708,17 @@ impl Cx {
         }
         // Any other opaque runtime type is a reference-counted handle.
         Ok(m.types.obj(t.name.as_str(), Vec::new()))
+    }
+}
+
+impl Cx {
+    /// Whether `fact` holds for node `id` of module `file`.
+    pub fn fact(
+        &self,
+        file: Name,
+        id: ms_syntax::ast::NodeId,
+        fact: ms_check::ownership::Fact,
+    ) -> bool {
+        self.node_facts.has(file, id, fact)
     }
 }
