@@ -423,7 +423,7 @@ b0:
 fn @main() -> int {
 b0:
   %b: str = str "held"
-  %s: str = copy %b
+  %s: str = clone %b
   %slot: ptr = slot str
   put %slot, %s
   %h: int = cleanup.push @close %slot
