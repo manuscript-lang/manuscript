@@ -1124,6 +1124,8 @@ impl<'a> FnLower<'a> {
                 }
                 if let Some((kind, list, idx)) = self.rest_closers.get(uid).cloned() {
                     self.close_rest(&kind, list, idx);
+                    // A later close that fails returns without closing the rest again.
+                    self.scope_done.push(*uid);
                     continue;
                 }
                 if let Some(closer) = self.closers.get(uid).cloned() {
