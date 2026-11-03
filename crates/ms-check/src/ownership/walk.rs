@@ -1999,7 +1999,7 @@ impl Walker<'_> {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, pattern.pos, closable));
         }
-        if self.entry_call(value) {
+        if self.entry_call(value) || self.holds_lambda_promises(value) {
             // The promise reads what its entry captures until it is dropped with its scope.
             let origins = self.entry_places(value);
             if !origins.is_empty() {
@@ -2761,11 +2761,50 @@ impl Walker<'_> {
         }
     }
 
-    /// The captured bindings of the lambda arguments of promise-starting call `e`.
+    /// The promise-starting calls a lambda argument of `e` returns, when `e` itself yields promises
+    /// (`xs.map(fn x: promise(fn: f(x)))`): the result holds them, so it keeps their borrows.
+    fn lambda_promises<'e>(&self, e: &'e Expr) -> Vec<&'e Expr> {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return Vec::new();
+        };
+        if !ty_holds_promise(&self.cx.m.ty(e)) {
+            return Vec::new();
+        }
+        args.iter()
+            .filter_map(|a| match &a.value.kind {
+                ExprKind::Lambda(l) => Some(l),
+                _ => None,
+            })
+            .flat_map(|l| l.body.iter())
+            .filter_map(|s| match &s.kind {
+                StmtKind::Return(Some(r)) if self.entry_call(r) => Some(r),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn holds_lambda_promises(&self, e: &Expr) -> bool {
+        !self.lambda_promises(e).is_empty()
+    }
+
+    /// The captured bindings of the lambda arguments of promise-starting call `e`, or of the
+    /// promises its lambda arguments start.
     fn entry_captures(&self, e: &Expr) -> Vec<BindingRef> {
         let ExprKind::Call { args, .. } = &e.kind else {
             return Vec::new();
         };
+        if !self.entry_call(e) {
+            // Bindings made inside the outer lambda (its parameters) are not the caller's to hold.
+            return self
+                .lambda_promises(e)
+                .into_iter()
+                .flat_map(|p| self.entry_captures(p))
+                .filter(|b| {
+                    args.iter()
+                        .any(|a| self.cx.m.captures(&a.value).iter().any(|o| o.uid == b.uid))
+                })
+                .collect();
+        }
         args.iter()
             .filter(|a| matches!(a.value.kind, ExprKind::Lambda(_)))
             .flat_map(|a| self.cx.m.captures(&a.value))
@@ -4433,6 +4472,11 @@ fn role_text(role: Role, perm: Perm) -> &'static str {
         Role::Pattern => "a pattern variable",
         _ => "a borrow",
     }
+}
+
+/// Whether `t` is, or holds as a type argument, a `Promise`.
+fn ty_holds_promise(t: &Ty) -> bool {
+    t.is_source_type(PROMISE_MODULE, "Promise") || t.args.iter().any(ty_holds_promise)
 }
 
 /// Whether `part` is exactly one of the type arguments of `src`, at any depth.
