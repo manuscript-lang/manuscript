@@ -439,7 +439,11 @@ impl FnLower<'_> {
     /// itself. A borrowed receiver that is not a variable in memory is stored in a frame slot the
     /// closure points to; the checker keeps the place unchanged while the value lives.
     fn method_receiver(&mut self, e: &Expr, left: &Expr, changes: bool) -> Result<Receiver, Error> {
-        let borrowed = self.cx.bound_borrows.contains(&(self.hir.data.file, e.id));
+        let borrowed = self.cx.fact(
+            self.hir.data.file,
+            e.id,
+            ms_check::ownership::Fact::BoundBorrow,
+        );
         // A variable converted to an interface on the way is read as a view of it below.
         let want = self.emty(left)?;
         if (changes || borrowed)

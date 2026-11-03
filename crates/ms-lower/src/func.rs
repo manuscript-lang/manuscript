@@ -289,10 +289,10 @@ impl Cx {
         // The checker keeps a `var` argument from overlapping any other argument.
         f.noalias = vars.iter().map(|&i| i as u32).collect();
         // The checker found every result a reference into the arguments.
-        f.ret_borrowed = self.lenders.contains(&(c.module.file, c.id()));
+        f.ret_borrowed = self.fact(c.module.file, c.id(), ms_check::ownership::Fact::Lender);
         // The checker found the result an interface view of the arguments: owned, dropped by
         // the caller, held as a borrow of the arguments while it lives.
-        f.ret_view = self.view_lenders.contains(&(c.module.file, c.id()));
+        f.ret_view = self.fact(c.module.file, c.id(), ms_check::ownership::Fact::ViewLender);
         // A function that returns a promise from a closure it is given keeps that closure alive.
         f.keeps_scoped =
             result.is_source_type("@std/concurrency/promise.ms", "Promise") && takes_function;
