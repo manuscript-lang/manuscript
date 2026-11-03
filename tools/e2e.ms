@@ -280,14 +280,18 @@ export fn main() Int:
         )
         else: parallel.append(f.clone())
 
-    var tasks = List[Promise[List[String]]]()
+    # A promise reads its captures until it is dropped, so the chunks outlive the loop that starts them.
+    var chunks = List[List[String]]()
 
     for worker in 0..jobs:
         var mine = List[String]()
         for i in 0..parallel.length():
             if (i + 1) % jobs == worker: mine.append(parallel[i].clone())
-        tasks.append(promise(fn: ok(run_all(ctx, mine))))
+        chunks.append(mine)
 
+    var tasks = List[Promise[List[String]]]()
+    for worker in 0..jobs:
+        tasks.append(promise(fn: ok(run_all(ctx, chunks[worker]))))
     for task in tasks:
         for message in task.wait().get(List[String]()): messages.append(message.clone())
     count += parallel.length()
