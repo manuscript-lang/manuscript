@@ -304,28 +304,6 @@ impl<'a> FnLower<'a> {
                 let want = self.emty(e)?;
                 self.fit_ty(r, &declared, want)
             }
-            "random/draw_int"
-            | "random/draw_uuid"
-            | "random/draw_float"
-            | "random/draw_shuffle"
-            | "random/draw_choice" => self.random_native(e, view, native),
-            "html/parse" => {
-                let mut args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let func = sym.decl.as_ref().and_then(|d| d.func());
-                self.fill_native_defaults(sym.module, func, params, &mut args)?;
-                self.at(e.pos);
-                let rty = self.emty(e)?;
-                let node = self
-                    .ety(e)
-                    .args
-                    .first()
-                    .cloned()
-                    .ok_or_else(|| Error::new("parse without a node type"))?;
-                self.html_parse(&node, rty, &args)
-            }
             "shared/share" => {
                 let args = self.native_args(view)?;
                 if self.dead {
