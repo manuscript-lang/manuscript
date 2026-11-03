@@ -298,6 +298,7 @@ impl Sink[T] for PipeSink[T]:
 // reader ends once every writer from `writer()` has closed, so make the writers before reading. Closing the reader
 // makes later writes fail with `Closed`.
 export opaque type Pipe[T: Clonable]:
+    // The runtime pipe's id.
     id: Int
     // Whether `reader` has handed out the reading end.
     taken: Bool
