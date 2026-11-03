@@ -215,9 +215,6 @@ pub struct Checker {
     /// Mutually importing bundled source modules checked together.
     pub(crate) group: Vec<ModRef>,
     pub(crate) p: Program,
-    /// Property queries in progress. A bound check inside one (`List.clone` needs `T: Clonable`) starts
-    /// a query with its own state, so cycles are detected here as well.
-    pub(crate) property_active: RefCell<HashSet<(String, crate::contracts::Property)>>,
     /// Candidate positions in declaration order; type arguments are matched at use.
     pub(crate) methods_by_receiver: HashMap<Name, Vec<usize>>,
     /// Method indices by implemented contract id; methods of a contract variable are in `generic_contract_methods`.
@@ -276,7 +273,6 @@ impl Checker {
             methods_by_contract: HashMap::new(),
             generic_contract_methods: Vec::new(),
             methods_by_name: HashMap::new(),
-            property_active: RefCell::new(HashSet::new()),
             module: None,
             names: Rc::new(RefCell::new(HashMap::new())),
             scope: Scope::new(None),
@@ -1481,7 +1477,11 @@ impl Checker {
                 );
             }
             let ty = self.resolve(p.ty.as_ref());
-            result.push(Param { name: p.name, ty });
+            result.push(Param {
+                name: p.name,
+                ty,
+                mutable: p.mutable,
+            });
         }
         result
     }

@@ -451,6 +451,30 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
 }
 
 impl<'a> FnLower<'a> {
+    /// Binds a `var` parameter: `v` is the address of a slot the caller filled; the callee owns
+    /// the value it takes out and puts the final value back on return (`var_slots`).
+    pub(crate) fn bind_var_parameter(&mut self, b: &BindingRef, v: Value) -> Result<(), Error> {
+        let ty = self.mty(&b.ty)?;
+        let owned = self.needs_drop(ty);
+        let var = self
+            .b
+            .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
+        let x = self.move_out(v, ty);
+        self.b.def_var(var, x);
+        self.locals.insert(
+            b.uid,
+            Local {
+                var,
+                ty,
+                slot: None,
+                opt: false,
+            },
+        );
+        self.slotify(b.uid);
+        self.var_slots.push(VarSlot { uid: b.uid, ptr: v });
+        Ok(())
+    }
+
     pub(crate) fn new(
         cx: &'a mut Cx,
         b: FuncBuilder<'a>,
@@ -1172,25 +1196,7 @@ impl<'a> FnLower<'a> {
         };
         for (i, (b, v)) in bindings.iter().zip(params).enumerate() {
             if vars.contains(&i) {
-                // The callee owns the value it takes from the slot and puts back on return.
-                let ty = self.mty(&b.ty)?;
-                let owned = self.needs_drop(ty);
-                let var = self
-                    .b
-                    .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
-                let x = self.move_out(v, ty);
-                self.b.def_var(var, x);
-                self.locals.insert(
-                    b.uid,
-                    Local {
-                        var,
-                        ty,
-                        slot: None,
-                        opt: false,
-                    },
-                );
-                self.slotify(b.uid);
-                self.var_slots.push(VarSlot { uid: b.uid, ptr: v });
+                self.bind_var_parameter(b, v)?;
                 continue;
             }
             if owned_mask.as_ref().is_some_and(|mask| mask[i]) && self.needs_drop(self.ty_of(v)) {

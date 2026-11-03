@@ -180,6 +180,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         view_locals: HashSet::new(),
         view_calls: HashSet::new(),
         view_move: None,
+        self_assign: None,
         entry_lambda: None,
     };
     w.run();
@@ -296,6 +297,9 @@ struct Walker<'a> {
     /// The name of a view local being returned: moving it out of the function is allowed even
     /// though it borrows, because the result holds the same origins.
     view_move: Option<NodeId>,
+    /// The `var` parameter being reassigned (`exchange = wrap(exchange)`): moving it out on the
+    /// right side is allowed, because the assignment refills it before the caller sees it.
+    self_assign: Option<usize>,
     /// The lambda argument of a promise-starting call being walked: concurrent code.
     entry_lambda: Option<NodeId>,
 }
@@ -715,10 +719,9 @@ impl Walker<'_> {
         let DeclKind::Impl(i) = &c.func.decl.0.decl.kind else {
             return false;
         };
-        // A type's own methods are checked as an implementation of a synthesized interface.
-        i.contract
-            .as_ref()
-            .is_some_and(|t| !t.name().ends_with(crate::passes::INHERENT_SUFFIX))
+        // A type's own methods are checked as an implementation of a synthesized interface;
+        // the desugaring marks that impl synthetic.
+        i.contract.is_some() && !c.func.decl.0.decl.synthetic
     }
 
     /// Whether the declared result type is an interface.
@@ -2252,7 +2255,18 @@ impl Walker<'_> {
     }
 
     fn assign(&mut self, s: &Stmt, target: &AssignTarget, value: &Expr) {
+        let refilled = match target {
+            AssignTarget::Name(_) => self.cx.m.assigned(value).filter(|b| {
+                self.meta
+                    .get(&b.uid)
+                    .is_some_and(|m| m.parameter.is_some() && m.perm == Perm::Mutable)
+            }),
+            AssignTarget::Member(_) => None,
+        };
+        let saved = self.self_assign;
+        self.self_assign = refilled.map(|b| b.uid);
         self.expr(value, Demand::Consume);
+        self.self_assign = saved;
         match target {
             AssignTarget::Name(name) => {
                 let Some(b) = self.cx.m.assigned(value) else {
@@ -3020,7 +3034,10 @@ impl Walker<'_> {
             (m.perm, m.role, m.parameter, m.lambda, m.is_receiver)
         };
         let name = b.name;
-        let var_param = parameter.is_some() && perm == Perm::Mutable;
+        // A `var` parameter is the caller's value; it may move only into the right side of an
+        // assignment to itself, which refills it (`exchange = wrap(exchange)`).
+        let var_param =
+            parameter.is_some() && perm == Perm::Mutable && self.self_assign != Some(b.uid);
         if role == Role::LambdaParameter && self.cx.classes.class(&b.ty) == Class::Resource {
             // A function value is called with its arguments lent, so taking one would copy it,
             // and the caller still closes the original.
@@ -3473,11 +3490,35 @@ impl Walker<'_> {
         for (i, a) in args.iter().enumerate() {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             let param = param_names.get(i).copied().unwrap_or_else(|| n("?"));
+            // A function type names its parameters by position (`_0`): say which argument.
+            let positional = param
+                .as_str()
+                .strip_prefix('_')
+                .is_some_and(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()));
+            let which = if positional {
+                format!("argument {} of `{name}`", i + 1)
+            } else {
+                format!("parameter `{param}` of `{name}`")
+            };
             match (mode, a.mutable) {
+                (ParamMode::Mutate, false) if positional => self.error_fix(
+                    a.value.pos,
+                    format!("{which} is var in its type `{}`, so the call must say so; write `var {}`", self.cx.m.ty(callee), self.expr_text(&a.value)),
+                    insert_at(a.value.pos, "var "),
+                ),
                 (ParamMode::Mutate, false) => self.error_fix(
                     a.value.pos,
-                    format!("parameter `{param}` of `{name}` is declared var, so the call must say so; write `var {}`", self.expr_text(&a.value)),
+                    format!("{which} is declared var, so the call must say so; write `var {}`", self.expr_text(&a.value)),
                     insert_at(a.value.pos, "var "),
+                ),
+                (ParamMode::Borrow | ParamMode::Consume, true) if positional => self.error_fix(
+                    a.value.pos,
+                    format!("`{name}` does not change {}: its type is `{}`; remove `var` from the argument", which.trim_end_matches(&format!(" of `{name}`")), self.cx.m.ty(callee)),
+                    DiagnosticFix {
+                        pos: back(a.value.pos, 4),
+                        end: a.value.pos,
+                        replacement: String::new(),
+                    },
                 ),
                 (ParamMode::Borrow | ParamMode::Consume, true) => self.error_fix(
                     a.value.pos,

@@ -409,6 +409,12 @@ impl Cx {
             Kind::Function => {
                 let mut params = Vec::new();
                 for p in &t.params {
+                    if p.mutable {
+                        // A changed parameter travels as the address of a slot the callee takes
+                        // the value from and puts the final value back into, as in a direct call.
+                        params.push(MTy::PTR);
+                        continue;
+                    }
                     let pt = self.lower_ty(m, &p.ty)?;
                     // A parameter that may be omitted crosses a function value as an optional.
                     let lifted = t.is_lifted(p.name);
@@ -428,8 +434,6 @@ impl Cx {
             }
             Kind::Record => {
                 let (id, ty) = m.add_record(&t.to_string(), Vec::new());
-                m.records[id.index()].shared_guard =
-                    t.is_source_type("@std/concurrency/sync.ms", "SharedGuard");
                 m.records[id.index()].native = if t.is_time("Timestamp") {
                     Some(NativeRec::Timestamp)
                 } else if t.is_time("Instant") {

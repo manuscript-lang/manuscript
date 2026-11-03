@@ -68,7 +68,7 @@ test "one header type preserves repeated values through buffered requests":
         ((response.metadata().headers.values("X-Dup")) != ["first", "second"])
     )
 
-fn echo_headers(exchange: HttpExchange) Unit!:
+fn echo_headers(var exchange: HttpExchange) Unit!:
     let received = exchange.headers()
     if received.values("X-DUP") != ["first", "second"]: return error(
         Error("HTTP: invalid data", kind: ErrorCategory.InvalidData)

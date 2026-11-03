@@ -15,12 +15,12 @@ fn tls_options() TlsOptions:
         alpn: [], require_client_certificate: false
     )
 
-fn echo(exchange: HttpExchange) Unit!:
+fn echo(var exchange: HttpExchange) Unit!:
     if exchange.path() == "/ws":
         var socket = (
             try http_result(
                 upgrade(
-                    exchange, allowed_origins: [], subprotocols: ["echo"],
+                    var exchange, allowed_origins: [], subprotocols: ["echo"],
                     max_message_bytes: 1024
                 )
             )
@@ -147,7 +147,7 @@ test "WebSocket upgrades need HTTP/1.1 and one key":
         "HTTP/1.1 400 Bad Request"
     )
 
-fn report_host(exchange: HttpExchange) Unit!:
+fn report_host(var exchange: HttpExchange) Unit!:
     let hosts = exchange.headers().values("Host")
     let _started = try exchange.send_headers(status: 200, headers: headers())
     let _written = (try http_result(exchange.write(hosts.join(","))))

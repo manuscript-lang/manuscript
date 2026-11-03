@@ -807,6 +807,7 @@ impl FnLower<'_> {
                     .map(|p| ct::Param {
                         name: p.name,
                         ty: ct::sub(&p.ty, &subst),
+                        mutable: p.mutable,
                     })
                     .collect();
                 self.cx.queue.push(Job {
@@ -1041,10 +1042,23 @@ impl FnLower<'_> {
             return Err(Error::new("call of a non-function value"));
         };
         let mut slots: Vec<Option<Value>> = vec![None; ptys.len()];
+        // A `var` position gets the address of a slot holding the argument; the final value
+        // moves back after the call.
+        let mut slots_out: Vec<crate::call::VarArgument> = Vec::new();
+        let mut places: Vec<Option<Expr>> = vec![None; ptys.len()];
         for (i, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
+            }
+            let at = declared
+                .iter()
+                .position(|p| p.name == a.slot.name)
+                .unwrap_or(i);
+            if declared.get(at).is_some_and(|p| p.mutable) {
+                places[at] = Some(a.expr.clone());
+                slots[at] = Some(self.var_argument(e, at, x, Some(a.expr), &mut slots_out));
+                continue;
             }
             let x = match &a.wrap_optional {
                 Some(_) => {
@@ -1054,10 +1068,6 @@ impl FnLower<'_> {
                 }
                 None => x,
             };
-            let at = declared
-                .iter()
-                .position(|p| p.name == a.slot.name)
-                .unwrap_or(i);
             let x = self.lift_argument(x, ptys[at]);
             slots[at] = Some(self.borrow(x));
         }
@@ -1096,6 +1106,7 @@ impl FnLower<'_> {
         }
         self.at(e.pos);
         let v = self.b.call_ind(fv, &args);
+        self.restore_var_arguments(slots_out, |p| places.get(p).cloned().flatten())?;
         Ok(self.val(v, true))
     }
 }
@@ -1633,6 +1644,12 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
     }
     let bindings = fl.hir.lambda_parameters(&job.expr);
     for (i, (b, v)) in bindings.iter().zip(params.iter().skip(1)).enumerate() {
+        if lam.params.get(i).is_some_and(|p| p.mutable) {
+            // A `var` parameter: the lambda owns the value it takes from the slot and puts back
+            // on return, as a named function does.
+            fl.bind_var_parameter(b, *v)?;
+            continue;
+        }
         let default = lam.params.get(i).and_then(|p| p.default.as_ref());
         // Only an extra ABI wrapper denotes omission; T itself may instantiate as Optional.
         let lifted = default.is_some()
