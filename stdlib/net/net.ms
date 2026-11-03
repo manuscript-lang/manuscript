@@ -874,7 +874,7 @@ export fn restrict(
 // A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
 export fn serve(
     address: String,
-    handler: fn(HttpExchange) Unit!,
+    handler: fn(var HttpExchange) Unit!,
     options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!:
     if let cores = options.cores:

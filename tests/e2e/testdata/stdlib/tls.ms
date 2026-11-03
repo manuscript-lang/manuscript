@@ -25,7 +25,7 @@ import promise, wait_all from "@std/concurrency/promise.ms"
 import Listener, Connection from "@std/net/net.ms"
 import certificate, private_key from "./support/certificates.ms"
 
-fn hello(exchange: HttpExchange) Unit!:
+fn hello(var exchange: HttpExchange) Unit!:
     let _started = try exchange.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
@@ -117,7 +117,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
         )
     )
 
-fn report_protocol(exchange: HttpExchange) Unit!:
+fn report_protocol(var exchange: HttpExchange) Unit!:
     let _started = try exchange.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )

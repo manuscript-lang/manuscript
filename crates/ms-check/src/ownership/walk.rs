@@ -180,6 +180,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         view_locals: HashSet::new(),
         view_calls: HashSet::new(),
         view_move: None,
+        self_assign: None,
         entry_lambda: None,
     };
     w.run();
@@ -296,6 +297,9 @@ struct Walker<'a> {
     /// The name of a view local being returned: moving it out of the function is allowed even
     /// though it borrows, because the result holds the same origins.
     view_move: Option<NodeId>,
+    /// The `var` parameter being reassigned (`exchange = wrap(exchange)`): moving it out on the
+    /// right side is allowed, because the assignment refills it before the caller sees it.
+    self_assign: Option<usize>,
     /// The lambda argument of a promise-starting call being walked: concurrent code.
     entry_lambda: Option<NodeId>,
 }
@@ -2252,7 +2256,18 @@ impl Walker<'_> {
     }
 
     fn assign(&mut self, s: &Stmt, target: &AssignTarget, value: &Expr) {
+        let refilled = match target {
+            AssignTarget::Name(_) => self.cx.m.assigned(value).filter(|b| {
+                self.meta
+                    .get(&b.uid)
+                    .is_some_and(|m| m.parameter.is_some() && m.perm == Perm::Mutable)
+            }),
+            AssignTarget::Member(_) => None,
+        };
+        let saved = self.self_assign;
+        self.self_assign = refilled.map(|b| b.uid);
         self.expr(value, Demand::Consume);
+        self.self_assign = saved;
         match target {
             AssignTarget::Name(name) => {
                 let Some(b) = self.cx.m.assigned(value) else {
@@ -3020,7 +3035,10 @@ impl Walker<'_> {
             (m.perm, m.role, m.parameter, m.lambda, m.is_receiver)
         };
         let name = b.name;
-        let var_param = parameter.is_some() && perm == Perm::Mutable;
+        // A `var` parameter is the caller's value; it may move only into the right side of an
+        // assignment to itself, which refills it (`exchange = wrap(exchange)`).
+        let var_param =
+            parameter.is_some() && perm == Perm::Mutable && self.self_assign != Some(b.uid);
         if role == Role::LambdaParameter && self.cx.classes.class(&b.ty) == Class::Resource {
             // A function value is called with its arguments lent, so taking one would copy it,
             // and the caller still closes the original.

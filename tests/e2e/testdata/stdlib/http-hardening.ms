@@ -104,8 +104,8 @@ test "serve answers requests while handlers read and write files":
     try server.close()
     try dir.close()
 
-fn oversized(exchange: HttpExchange) Unit!:
-    return reply(exchange, text(200, "z".repeat(5000).get("")))
+fn oversized(var exchange: HttpExchange) Unit!:
+    return reply(var exchange, text(200, "z".repeat(5000).get("")))
 
 test "serve answers 500 when a whole response exceeds max_response_bytes":
     let server = serve(

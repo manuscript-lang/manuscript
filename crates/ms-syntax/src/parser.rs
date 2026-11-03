@@ -2464,7 +2464,11 @@ impl<'a> Parser<'a> {
                     params
                 } else {
                     let mut params = Vec::new();
-                    while self.kind() == Tok::Name {
+                    while self.kind() == Tok::Name
+                        || (self.kind() == Tok::Var && self.ahead(1).kind == Tok::Name)
+                    {
+                        // `fn var exchange, next: ...`: a parameter the function changes in place.
+                        let mutable = self.take(Tok::Var);
                         let name = self.next();
                         let id = self.id();
                         params.push(Param {
@@ -2473,7 +2477,7 @@ impl<'a> Parser<'a> {
                             name: self.sym(name),
                             ty: None,
                             default: None,
-                            mutable: false,
+                            mutable,
                         });
                         if !self.take(Tok::Comma) {
                             break;

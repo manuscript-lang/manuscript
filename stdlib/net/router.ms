@@ -27,9 +27,9 @@ import (
 ) from "@std/internal/promises.ms"
 
 // A value with one holder at a time, kept in a one-message in-memory pipe whose id is the slot: `take_slot` moves it out
-// (waiting while another holder has it) and `put_slot` moves it back. This is a
-// stopgap for the exchange state below, which `HttpExchange` methods update through `fn`; it goes when those methods
-// become `var fn` and the state is a plain field.
+// (waiting while another holder has it) and `put_slot` moves it back. The exchange state below lives in one because
+// middleware replaces the exchange with a wrapper of its own type, so the value that comes back from a handler is not
+// the one that was handed in; the slot is what both sides can reach.
 fn new_slot[T](value: T) Int:
     let pipe = msrt_pipe_new(1)
     let _first = msrt_pipe_write(pipe, value)
@@ -115,9 +115,9 @@ export type Route:
     // The pattern split at `/` into segments, in path order.
     segments: List[Segment]
     // Middleware of the routers this route was mounted through, outermost first.
-    around: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!]
+    around: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]
     // Runs when the route matches, with the values the pattern captured.
-    handler: fn(HttpExchange, RouteParams) Unit!
+    handler: fn(var HttpExchange, RouteParams) Unit!
 
 // Routes requests by method and path and wraps them in middleware.
 //
@@ -128,7 +128,7 @@ export type Router:
     // Registered routes in registration order.
     routes: List[Route] = []
     // Middleware in the order it wraps requests: the first one added runs outermost.
-    middleware: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!] = []
+    middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!] = []
 
 impl Router:
     // Registers `handler` for `method` and `pattern`.
@@ -137,37 +137,46 @@ impl Router:
     var fn route(
         method: HttpMethod,
         pattern: String,
-        handler: fn(HttpExchange, RouteParams) Unit!
+        handler: fn(var HttpExchange, RouteParams) Unit!
     ) Unit!:
         let segments = try parse_pattern(pattern.clone())
         return insert(var self.routes, method.text(), pattern, segments, [], handler)
 
     // Registers `handler` for GET requests to `pattern`; shorthand for `route(HttpMethod.Get, pattern, handler)`.
-    var fn get(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
+    var fn get(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
         return self.route(HttpMethod.Get, pattern, handler)
 
     // Registers `handler` for HEAD requests to `pattern`; shorthand for `route(HttpMethod.Head, pattern, handler)`.
-    var fn head(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
+    var fn head(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
         return self.route(HttpMethod.Head, pattern, handler)
 
     // Registers `handler` for POST requests to `pattern`; shorthand for `route(HttpMethod.Post, pattern, handler)`.
-    var fn post(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
+    var fn post(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
         return self.route(HttpMethod.Post, pattern, handler)
 
     // Registers `handler` for PUT requests to `pattern`; shorthand for `route(HttpMethod.Put, pattern, handler)`.
-    var fn put(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
+    var fn put(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
         return self.route(HttpMethod.Put, pattern, handler)
 
     // Registers `handler` for PATCH requests to `pattern`; shorthand for `route(HttpMethod.Patch, pattern, handler)`.
-    var fn patch(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
+    var fn patch(
+        pattern: String,
+        handler: fn(var HttpExchange, RouteParams) Unit!
+    ) Unit!:
         return self.route(HttpMethod.Patch, pattern, handler)
 
     // Registers `handler` for DELETE requests to `pattern`; shorthand for `route(HttpMethod.Delete, pattern, handler)`.
-    var fn delete(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
+    var fn delete(
+        pattern: String,
+        handler: fn(var HttpExchange, RouteParams) Unit!
+    ) Unit!:
         return self.route(HttpMethod.Delete, pattern, handler)
 
     // Registers `handler` for OPTIONS requests to `pattern`; shorthand for `route(HttpMethod.Options, pattern, handler)`.
-    var fn options(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
+    var fn options(
+        pattern: String,
+        handler: fn(var HttpExchange, RouteParams) Unit!
+    ) Unit!:
         return self.route(HttpMethod.Options, pattern, handler)
 
     // Registers every route of `routes` under `prefix`, wrapped in that router's own middleware.
@@ -195,23 +204,25 @@ impl Router:
     // Adds middleware around every route and around the 404, 405 and OPTIONS answers.
     // It receives the exchange and a continuation that runs the rest of the chain with the exchange
     // it is given, so a middleware can pass on a wrapped one (see `request_id` and `access_log`).
-    var fn use(middleware: fn(HttpExchange, fn(HttpExchange) Unit!) Unit!) Unit:
+    var fn use(middleware: fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!) Unit:
         self.middleware.append(middleware)
 
     // Returns the function to pass to `serve`.
     // Unmatched paths answer 404, a path matched only under other methods answers 405 with
     // `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *` answers 204 with
     // the `Allow` of every registered method.
-    fn handler() fn(HttpExchange) Unit!:
+    fn handler() fn(var HttpExchange) Unit!:
         let routes = self.routes.clone()
         let middleware = self.middleware.clone()
-        return fn exchange: dispatch(routes, middleware.clone(), exchange)
+        return fn(var exchange: HttpExchange): dispatch(
+            routes, middleware.clone(), var exchange
+        )
 
 // Adds a route unless one with the same method and shape exists.
 fn insert(
     var routes: List[Route], token: String, pattern: String, segments: List[Segment],
-    around: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!],
-    handler: fn(HttpExchange, RouteParams) Unit!
+    around: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!],
+    handler: fn(var HttpExchange, RouteParams) Unit!
 ) Unit!:
     let shape = shape_of(segments)
     for existing in routes:
@@ -235,7 +246,7 @@ fn insert(
 
 // The end of a chain held by value so a closure can own it.
 type Tail:
-    last: fn(HttpExchange) Unit!
+    last: fn(var HttpExchange) Unit!
 
 fn invalid_pattern(pattern: String) Error:
     return Error(
@@ -388,8 +399,8 @@ type Target:
 
 fn dispatch(
     routes: List[Route],
-    middleware: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!],
-    exchange: HttpExchange
+    middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!],
+    var exchange: HttpExchange
 ) Unit!:
     let method = exchange.method().text()
     let found = lookup(routes, method, split_path(exchange.path()))
@@ -402,29 +413,34 @@ fn dispatch(
         every = routes.map(fn route: route.method.clone())
 
     let target = Target(method: method, found: found, matched: matched, every: every)
-    return chain(middleware, 0, exchange, fn last: finish(target.clone(), last))
+    return chain(
+        middleware, 0, var exchange,
+        fn(var last: HttpExchange): finish(target.clone(), var last)
+    )
 
 fn chain(
-    middleware: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!],
+    middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!],
     at: Int,
-    exchange: HttpExchange,
-    last: fn(HttpExchange) Unit!
+    var exchange: HttpExchange,
+    last: fn(var HttpExchange) Unit!
 ) Unit!:
-    if at >= middleware.length(): return last(exchange)
+    if at >= middleware.length(): return last(var exchange)
 
-    return middleware[at](exchange, next_step(middleware, at + 1, last))
+    return middleware[at](var exchange, next_step(middleware, at + 1, last))
 
 // The continuation handed to the middleware at `at - 1`.
 fn next_step(
-    middleware: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!],
+    middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!],
     at: Int,
-    last: fn(HttpExchange) Unit!
-) fn(HttpExchange) Unit!:
+    last: fn(var HttpExchange) Unit!
+) fn(var HttpExchange) Unit!:
     let rest = Tail(last: last)
-    return fn exchange: chain(middleware.clone(), at, exchange, rest.last)
+    return fn(var exchange: HttpExchange): chain(
+        middleware.clone(), at, var exchange, rest.last
+    )
 
 // Runs the matched route, or answers 404, 405 or the OPTIONS listing.
-fn finish(target: Target, exchange: HttpExchange) Unit!:
+fn finish(target: Target, var exchange: HttpExchange) Unit!:
     let method = target.method.clone()
     let found = target.found.clone()
 
@@ -432,20 +448,24 @@ fn finish(target: Target, exchange: HttpExchange) Unit!:
         let route = target.matched[0].clone()
         let params = found.params.clone()
         return chain(
-            route.around.clone(), 0, exchange,
-            fn last: route.handler(last, params.clone())
+            route.around.clone(),
+            0,
+            var exchange,
+            fn(var last: HttpExchange): route.handler(
+                var last, params.clone()
+            )
         )
 
     if method == "OPTIONS" and exchange.path() == "*":
         var server_wide = text(204, "")
         try server_wide.headers.append("Allow", allow_text(target.every))
-        return reply(exchange, server_wide)
+        return reply(var exchange, server_wide)
 
-    if found.allow.is_empty(): return reply(exchange, text(404, "not found\n"))
+    if found.allow.is_empty(): return reply(var exchange, text(404, "not found\n"))
 
     var response = text(if method != "OPTIONS": 405 else: 204, "")
     try response.headers.append("Allow", allow_text(found.allow))
-    return reply(exchange, response)
+    return reply(var exchange, response)
 
 // Methods with a route for the path, sorted and without repeats; GET adds HEAD, and OPTIONS is always answered.
 fn allow_text(methods: List[String]) String:
@@ -465,8 +485,10 @@ impl Router:
                 body: BytesBuilder(), unread: request.body.clone()
             )
         )
-        let exchange = TestExchange(request: request.clone(), state: state)
-        let ran = self.handler()(exchange)
+        var exchange: HttpExchange = TestExchange(
+            request: request.clone(), state: state
+        )
+        let ran = self.handler()(var exchange)
         let outcome = finished(state)
         release_slot(state)
         if ran.is_error(): return error(ran.err().clone())
@@ -500,7 +522,7 @@ fn finished(state: Int) HttpResponse!:
     )
 
 impl HttpExchange for TestExchange:
-    fn close() Unit:
+    var fn close() Unit:
         var guard = hold[TestState](self.state)
         guard.items[0].closed = true
 
@@ -519,7 +541,7 @@ impl HttpExchange for TestExchange:
     fn query() String:
         return self.request.query.clone()
 
-    fn read(max_bytes: Int?) Bytes?!:
+    var fn read(max_bytes: Int?) Bytes?!:
         let requested = max_bytes.get(65536)
         if requested <= 0: return error(Error("I/O: invalid input", kind: InvalidInput))
 
@@ -542,7 +564,7 @@ impl HttpExchange for TestExchange:
 
         return ok(none)
 
-    fn send_headers(status: Int, headers: HttpHeaders) Unit!:
+    var fn send_headers(status: Int, headers: HttpHeaders) Unit!:
         if status < 200 or status > 599: return error(
             Error("HTTP: invalid input", kind: InvalidInput)
         )
@@ -569,7 +591,7 @@ impl HttpExchange for TestExchange:
         guard.items[0].sent = true
         return ok(unit)
 
-    fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
+    var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
         try self.send_headers(status, headers)
 
         var guard = hold[TestState](self.state)
@@ -579,7 +601,7 @@ impl HttpExchange for TestExchange:
         guard.items[0].body.append_bytes(body)
         return ok(unit)
 
-    fn upgrade(
+    var fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
@@ -590,10 +612,10 @@ impl HttpExchange for TestExchange:
             )
         )
 
-    fn write(data: String) Unit!:
+    var fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
-    fn write_bytes(data: Bytes) Unit!:
+    var fn write_bytes(data: Bytes) Unit!:
         var guard = hold[TestState](self.state)
         if guard.items[0].closed: return error(
             Error("I/O: resource is closed", kind: Closed)
@@ -625,25 +647,19 @@ type Tap:
     request: HttpHeaders
     state: Int?
 
-// `counting` keeps a slot that counts what is sent; the caller reads it and releases it with `release_slot`.
+// `state` is a slot counting what is sent, which the caller made and reads afterwards.
 fn new_tap(
     inner: HttpExchange,
     extra: HttpHeaders,
     request: HttpHeaders,
-    counting: Bool = false
+    state: Int? = none
 ) Tap:
-    return Tap(
-        inner: inner, extra: extra, request: request,
-        state: if counting: new_slot(TapState(status: 0, bytes: 0)) else: none
-    )
+    return Tap(inner: inner, extra: extra, request: request, state: state)
 
-// Wraps `exchange` so that `headers()` reports `request` and everything else passes through.
+// Replaces `exchange` with one whose `headers()` reports `request` and everything else passes through.
 // Middleware uses it to hand later layers changed request headers, since a received header set is a copy.
-export fn with_request_headers(
-    exchange: HttpExchange,
-    request: HttpHeaders
-) HttpExchange:
-    return new_tap(exchange, headers(), request)
+export fn with_request_headers(var exchange: HttpExchange, request: HttpHeaders) Unit:
+    exchange = new_tap(exchange, headers(), request)
 
 fn counted(slot: Int?, status: Int, bytes: Int) Unit:
     if let state = slot:
@@ -665,7 +681,7 @@ fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
     return all
 
 impl HttpExchange for Tap:
-    fn close() Unit:
+    var fn close() Unit:
         self.inner.close()
 
     fn headers() HttpHeaders:
@@ -683,32 +699,32 @@ impl HttpExchange for Tap:
     fn query() String:
         return self.inner.query()
 
-    fn read(max_bytes: Int?) Bytes?!:
+    var fn read(max_bytes: Int?) Bytes?!:
         return self.inner.read(max_bytes)
 
-    fn send_headers(status: Int, headers: HttpHeaders) Unit!:
+    var fn send_headers(status: Int, headers: HttpHeaders) Unit!:
         try self.inner.send_headers(status, with_extra(headers, self.extra))
         counted(self.state, status, 0)
         return ok(unit)
 
-    fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
+    var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
         try self.inner.send(status, with_extra(headers, self.extra), body)
         counted(self.state, status, body.length())
         return ok(unit)
 
-    fn upgrade(
+    var fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
     ) RawWebSocket!:
         return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
 
-    fn write(data: String) Unit!:
+    var fn write(data: String) Unit!:
         try self.inner.write(data)
         counted(self.state, 0, data.byte_length())
         return ok(unit)
 
-    fn write_bytes(data: Bytes) Unit!:
+    var fn write_bytes(data: Bytes) Unit!:
         try self.inner.write_bytes(data)
         counted(self.state, 0, data.length())
         return ok(unit)
@@ -716,10 +732,12 @@ impl HttpExchange for Tap:
 // Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128
 // printable ASCII characters, otherwise a new UUID. The id is set on the request headers the wrapped exchange reports, where
 // handlers and later middleware read it, and added to the response as `X-Request-Id`.
-export fn request_id() fn(HttpExchange, fn(HttpExchange) Unit!) Unit!:
-    return fn exchange, next: with_request_id(exchange, next)
+export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!:
+    return fn(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!): with_request_id(
+        var exchange, next
+    )
 
-fn with_request_id(exchange: HttpExchange, next: fn(HttpExchange) Unit!) Unit!:
+fn with_request_id(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!) Unit!:
     var request = exchange.headers()
     var id = request.values("X-Request-Id").first().get("")
 
@@ -730,7 +748,8 @@ fn with_request_id(exchange: HttpExchange, next: fn(HttpExchange) Unit!) Unit!:
 
     var extra = headers()
     try extra.append("X-Request-Id", id)
-    return next(new_tap(exchange, extra, request))
+    exchange = new_tap(exchange, extra, request)
+    return next(var exchange)
 
 fn usable_id(id: String) Bool:
     return (
@@ -758,22 +777,27 @@ type AccessEntry:
 // the method, path, protocol, response status, body bytes written and duration in milliseconds.
 // A handler that sends nothing is logged as 204 and one that fails before sending as 500. A
 // logging failure never fails the request.
-export fn access_log(logger: Logger) fn(HttpExchange, fn(HttpExchange) Unit!) Unit!:
-    return fn exchange, next: with_access_log(logger, exchange, next)
+export fn access_log(
+    logger: Logger
+) fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!:
+    return fn(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!): with_access_log(
+        logger, var exchange, next
+    )
 
 fn with_access_log(
     logger: Logger,
-    exchange: HttpExchange,
-    next: fn(HttpExchange) Unit!
+    var exchange: HttpExchange,
+    next: fn(var HttpExchange) Unit!
 ) Unit!:
     let started = monotonic()
     let method = exchange.method().text()
     let path = exchange.path()
     let protocol = exchange.protocol()
     let request = exchange.headers()
-    let tap = new_tap(exchange, headers(), request, true)
-    let state = tap.state.get()
-    let result = next(tap)
+    let state = new_slot(TapState(status: 0, bytes: 0))
+    exchange = new_tap(exchange, headers(), request, state)
+
+    let result = next(var exchange)
     let sent = snapshot(state)
     release_slot(state)
 

@@ -63,6 +63,8 @@ fn changed() List[Int]:
 
 The value travels by address, so a value with one owner (a list, a record holding one) is changed where it lives and never copied. A function with both a `var` parameter and a parameter default cannot be a function value; call it from a closure that supplies the default.
 
+A `var` parameter is the caller's value, so the function cannot move it out (`let old = values` is an error). The one exception is the right side of an assignment to the parameter itself, which refills it before the caller sees it: `values = rebuilt(values)`, or `exchange = Tap(inner: exchange, ...)` to replace an interface value with a wrapper that owns it. A [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) recovers the wrapper afterwards.
+
 <a id="snapshot-captures"></a>
 
 ## Closure captures
