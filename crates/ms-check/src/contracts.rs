@@ -832,7 +832,10 @@ impl Checker {
             // The payload of an interface value has a type the interface does not name; one over
             // a native without a `clone` faults when copied (`ownership::Classifier::clonable`).
             Kind::Contract => return !t.is(Builtin::Closeable),
-            Kind::Function | Kind::Primitive => return true,
+            // A function value owns its captures and has no `clone`; a record holding one is
+            // not Clonable either (`ownership::Classifier::clonable`).
+            Kind::Function => return false,
+            Kind::Primitive => return true,
             _ => {}
         }
         if self.closeable(t) {
@@ -1468,6 +1471,8 @@ impl Checker {
         if bound.is(Builtin::Clonable) && t.kind != Kind::Variable {
             let what = if self.holds_resource(t, &mut Vec::new()) {
                 "a Closeable resource, which has one owner and closes once"
+            } else if holds_function(t) {
+                "a function value, which owns its captures and has one owner"
             } else {
                 "a native value without a `clone` of its own, which has one owner"
             };

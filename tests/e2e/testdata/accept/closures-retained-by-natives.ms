@@ -21,7 +21,7 @@ fn mk(o: (fn() String)?, s: String) Box:
 
 fn mk2(m: Map[Int, fn() String], s: String) List[fn() String]:
     var out = List[fn() String]()
-    out.append(m.get(7).get(fn: s + "y"))
+    if m.get(7).is_none(): out.append(fn: s + "y")
     return out
 
 fn inc(x: Int) Int: x + 1
@@ -36,10 +36,9 @@ fn build(r: fn(Int) Int) List[fn(Int) Int]:
     return out
 
 test "closures kept by natives own their captures":
-    let n: (fn() String)? = none
-    try expect_equal(dflt(n, "a")(), "ad")
+    try expect_equal(dflt(none, "a")(), "ad")
 
-    let b = mk(n, "hello" + "world")
+    let b = mk(none, "hello" + "world")
     let c = churn(100)
     let m = Map[Int, fn() String]()
     let l = mk2(m, "abc" + "def")

@@ -1121,6 +1121,30 @@ pub fn implies_clonable(b: &Ty) -> bool {
     b.is(Builtin::Clonable) || b.is(Builtin::Data) || b.is(Builtin::Hashable)
 }
 
+/// Whether `t` is, or holds, a function value, which owns its captures and has no `clone`.
+pub fn holds_function(t: &Ty) -> bool {
+    holds_function_in(t, &mut Vec::new())
+}
+
+fn holds_function_in(t: &Ty, seen: &mut Vec<Name>) -> bool {
+    match t.kind {
+        Kind::Function => true,
+        Kind::Record | Kind::Alternative => {
+            if seen.contains(&t.id) {
+                return false;
+            }
+            seen.push(t.id);
+            let found = fields(t).iter().any(|f| holds_function_in(&f.ty, seen))
+                || cases(t)
+                    .iter()
+                    .any(|c| c.fields.iter().any(|f| holds_function_in(&f.ty, seen)));
+            seen.pop();
+            found
+        }
+        _ => t.args.iter().any(|a| holds_function_in(a, seen)),
+    }
+}
+
 /// Whether the native `t` declares an infallible `clone` of its own as an operation of its
 /// definition (`fn clone() Bytes: ...` in `impl Bytes:`): the runtime can duplicate its storage.
 /// A clone implemented in source (`BigInt`, `List` through `ListCopies`) is a method instead.

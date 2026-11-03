@@ -114,8 +114,9 @@ export type Route:
     pattern: String
     // The pattern split at `/` into segments, in path order.
     segments: List[Segment]
-    // Middleware of the routers this route was mounted through, outermost first.
-    around: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]
+    // The middleware groups of the routers this route was mounted through, outermost first, as
+    // positions in `Router.groups`.
+    around: List[Int]
     // Runs when the route matches, with the values the pattern captured.
     handler: fn(var HttpExchange, RouteParams) Unit!
 
@@ -129,6 +130,8 @@ export type Router:
     routes: List[Route] = []
     // Middleware in the order it wraps requests: the first one added runs outermost.
     middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!] = []
+    // The middleware of each mounted router, in mount order; a route names the groups around it.
+    groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]] = []
 
 impl Router:
     // Registers `handler` for `method` and `pattern`.
@@ -140,7 +143,13 @@ impl Router:
         handler: fn(var HttpExchange, RouteParams) Unit!
     ) Unit!:
         let segments = try parse_pattern(pattern.clone())
-        return insert(var self.routes, method.text(), pattern, segments, [], handler)
+        return insert(
+            var self.routes,
+            Route(
+                method: method.text(), pattern: pattern, segments: segments, around: [],
+                handler: handler
+            )
+        )
 
     // Registers `handler` for GET requests to `pattern`; shorthand for `route(HttpMethod.Get, pattern, handler)`.
     var fn get(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
@@ -179,25 +188,30 @@ impl Router:
     ) Unit!:
         return self.route(HttpMethod.Options, pattern, handler)
 
-    // Registers every route of `routes` under `prefix`, wrapped in that router's own middleware.
+    // Moves every route of `routes` under `prefix`, wrapped in that router's own middleware.
     // The prefix is `/` followed by segments with no trailing slash, and it may hold parameters.
-    // The mounted router's `/` route answers `prefix` itself. Later changes to `routes` do not
-    // reach this router.
+    // The mounted router's `/` route answers `prefix` itself. A router holds functions, which
+    // have one owner, so `routes` is taken: build it again to mount it elsewhere.
     var fn mount(prefix: String, routes: Router) Unit!:
         if prefix.ends_with("/") and prefix != "/":
             return error(invalid_pattern(prefix))
 
+        var mounted = routes
         let base = if prefix == "/": "" else: prefix.clone()
+        let offset = self.groups.length()
+        var groups = drain(var mounted.groups)
+        while not groups.is_empty():
+            self.groups.append(groups.pop().get())
 
-        for source in routes.routes:
-            let tail = if source.pattern == "/": "" else: source.pattern.clone()
-            let pattern = if not (base + tail).is_empty(): base + tail else: "/"
-            let segments = try parse_pattern(pattern.clone())
-            let around = routes.middleware.concat(source.around)
-            try insert(
-                var self.routes, source.method.clone(), pattern, segments, around,
-                source.handler
-            )
+        let own = self.groups.length()
+        self.groups.append(in_order(var mounted.middleware))
+
+        var sources = drain(var mounted.routes)
+
+        while not sources.is_empty():
+            var route = sources.pop().get()
+            try remount(var route, base, own, offset)
+            try insert(var self.routes, route)
 
         return ok(unit)
 
@@ -207,46 +221,57 @@ impl Router:
     var fn use(middleware: fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!) Unit:
         self.middleware.append(middleware)
 
-    // Returns the function to pass to `serve`.
+    // Returns the function to pass to `serve`; it takes the router, so register every route first.
     // Unmatched paths answer 404, a path matched only under other methods answers 405 with
     // `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *` answers 204 with
     // the `Allow` of every registered method.
     fn handler() fn(var HttpExchange) Unit!:
-        let routes = self.routes.clone()
-        let middleware = self.middleware.clone()
         return fn(var exchange: HttpExchange): dispatch(
-            routes, middleware.clone(), var exchange
+            self.routes, self.middleware, self.groups, var exchange
         )
 
 // Adds a route unless one with the same method and shape exists.
-fn insert(
-    var routes: List[Route], token: String, pattern: String, segments: List[Segment],
-    around: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!],
-    handler: fn(var HttpExchange, RouteParams) Unit!
-) Unit!:
-    let shape = shape_of(segments)
+fn insert(var routes: List[Route], route: Route) Unit!:
+    let shape = shape_of(route.segments)
     for existing in routes:
-        if existing.method == token and shape_of(existing.segments) == shape:
+        if existing.method == route.method and shape_of(existing.segments) == shape:
             return error(
                 Error(
-                    "router: duplicate route {token} {pattern}",
+                    "router: duplicate route {route.method} {route.pattern}",
                     kind: AlreadyExists,
                     details: {
-                        "method": token, "pattern": pattern.clone()
+                        "method": route.method.clone(), "pattern": route.pattern.clone()
                     }
                 )
             )
-    routes.append(
-        Route(
-            method: token, pattern: pattern, segments: segments, around: around,
-            handler: handler
-        )
-    )
+    routes.append(route)
     return ok(unit)
 
-// The end of a chain held by value so a closure can own it.
-type Tail:
-    last: fn(var HttpExchange) Unit!
+// Rewrites a route moved out of a mounted router: its pattern under `base`, the mounted
+// router's middleware group `own` outermost, and its own groups moved up by `offset`.
+fn remount(var route: Route, base: String, own: Int, offset: Int) Unit!:
+    let tail = if route.pattern == "/": "" else: route.pattern.clone()
+    let pattern = if not (base + tail).is_empty(): base + tail else: "/"
+    route.segments = try parse_pattern(pattern.clone())
+    route.pattern = pattern
+
+    var around = [own]
+    for group in route.around:
+        around.append(group + offset)
+    route.around = around
+    return ok(unit)
+
+// Empties `from` into a new list, last element first; popping the result walks `from` in order.
+fn drain[T](var from: List[T]) List[T]:
+    var stack: List[T] = []
+    while not from.is_empty():
+        stack.append(from.pop().get())
+    return stack
+
+// Empties `from` into a new list in the same order.
+fn in_order[T](var from: List[T]) List[T]:
+    var stack = drain(var from)
+    return drain(var stack)
 
 fn invalid_pattern(pattern: String) Error:
     return Error(
@@ -390,34 +415,33 @@ fn accepts(segment: Segment, part: String, var values: List[String]) Bool:
 
 // What `finish` needs from the routes: the matched route and, for `OPTIONS *`, every registered method. Copies of
 // the little the request uses, so the continuation handed to middleware owns it.
+// Where a request goes: the method, the lookup, and the `Allow` of every route for `OPTIONS *`.
 type Target:
     method: String
     found: Lookup
-    // The matched route, or empty.
-    matched: List[Route]
     every: List[String]
 
+// Runs one request through the router's middleware and into `finish`. The continuations borrow
+// the routing table: each is called once by the middleware before it and owns nothing.
 fn dispatch(
     routes: List[Route],
     middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!],
+    groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]],
     var exchange: HttpExchange
 ) Unit!:
     let method = exchange.method().text()
     let found = lookup(routes, method, split_path(exchange.path()))
-    var matched: List[Route] = []
-    if let index = found.found:
-        matched.append(routes[index].clone())
-
     var every: List[String] = []
     if method == "OPTIONS" and exchange.path() == "*":
         every = routes.map(fn route: route.method.clone())
 
-    let target = Target(method: method, found: found, matched: matched, every: every)
+    let target = Target(method: method, found: found, every: every)
     return chain(
         middleware, 0, var exchange,
-        fn(var last: HttpExchange): finish(target.clone(), var last)
+        fn(var last: HttpExchange): finish(routes, groups, target, var last)
     )
 
+// Runs `middleware` from `at` on, then `last`.
 fn chain(
     middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!],
     at: Int,
@@ -426,33 +450,49 @@ fn chain(
 ) Unit!:
     if at >= middleware.length(): return last(var exchange)
 
-    return middleware[at](var exchange, next_step(middleware, at + 1, last))
+    return middleware[at](
+        var exchange,
+        fn(var next: HttpExchange): chain(middleware, at + 1, var next, last)
+    )
 
-// The continuation handed to the middleware at `at - 1`.
-fn next_step(
-    middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!],
+// Runs the middleware groups `around` from `at` on, then `last`.
+fn chain_groups(
+    groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]],
+    around: List[Int],
     at: Int,
+    var exchange: HttpExchange,
     last: fn(var HttpExchange) Unit!
-) fn(var HttpExchange) Unit!:
-    let rest = Tail(last: last)
-    return fn(var exchange: HttpExchange): chain(
-        middleware.clone(), at, var exchange, rest.last
+) Unit!:
+    if at >= around.length(): return last(var exchange)
+
+    return chain(
+        groups[around[at]],
+        0,
+        var exchange,
+        fn(var next: HttpExchange): chain_groups(
+            groups, around, at + 1, var next, last
+        )
     )
 
 // Runs the matched route, or answers 404, 405 or the OPTIONS listing.
-fn finish(target: Target, var exchange: HttpExchange) Unit!:
-    let method = target.method.clone()
-    let found = target.found.clone()
+fn finish(
+    routes: List[Route],
+    groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]],
+    target: Target,
+    var exchange: HttpExchange
+) Unit!:
+    let method = target.method
+    let found = target.found
 
-    if not target.matched.is_empty():
-        let route = target.matched[0].clone()
-        let params = found.params.clone()
-        return chain(
-            route.around.clone(),
+    if let index = found.found:
+        let route = routes[index]
+        return chain_groups(
+            groups,
+            route.around,
             0,
             var exchange,
             fn(var last: HttpExchange): route.handler(
-                var last, params.clone()
+                var last, found.params
             )
         )
 
@@ -488,7 +528,7 @@ impl Router:
         var exchange: HttpExchange = TestExchange(
             request: request.clone(), state: state
         )
-        let ran = self.handler()(var exchange)
+        let ran = dispatch(self.routes, self.middleware, self.groups, var exchange)
         let outcome = finished(state)
         release_slot(state)
         if ran.is_error(): return error(ran.err().clone())
