@@ -718,7 +718,7 @@ impl<'a> FnLower<'a> {
         self.rt_method_at(&sym, recv, Some(slot), decl, &args, MTy::UNIT)?;
         let new = self.take_slot(slot, mt);
         let result = copy_result.then(|| {
-            let v = self.owned(Val { v: new, own: false });
+            let v = self.clone_value(new);
             Val { v, own: true }
         });
         Ok((new, result))
@@ -856,7 +856,7 @@ impl<'a> FnLower<'a> {
                 let hit =
                     s.b.emit(Op::Load, &[ptr], Imm::Ty(result), Some(result))
                         .expect("load");
-                let hit = s.owned(Val { v: hit, own: false });
+                let hit = s.clone_value(hit);
                 // The eager fallback is unused on this path.
                 s.finish(fallback);
                 Ok(Some(hit))
@@ -914,11 +914,8 @@ impl<'a> FnLower<'a> {
         let m = self.b.use_var(mv);
         self.each_entry(m, &mut |s, key, value| {
             let value = value.ok_or_else(|| Error::new("entries of a set"))?;
-            let ko = s.owned(Val { v: key, own: false });
-            let vo = s.owned(Val {
-                v: value,
-                own: false,
-            });
+            let ko = s.clone_value(key);
+            let vo = s.clone_value(value);
             let rec = s.b.rec_new(rid, &[ko, vo]);
             let cur = s.b.use_var(acc);
             let next = s.b.list_push(cur, rec);
