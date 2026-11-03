@@ -14,7 +14,7 @@ impl Door:
 
 fn f() Int!:
     var door = Door(count: 0)
-    let p = promise(fn:  // error: this promise owns `door` and cannot change it
+    let p = promise(fn:
         door.knock()
         return ok(1)
     )

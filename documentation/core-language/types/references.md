@@ -47,7 +47,7 @@ fn grow(var b: Box) Int:
 - Reassigning a `var` replaces its value; it does not close the old object or affect other references. A `let` cannot be reassigned.
 - A resource in a `let` binding cannot be reassigned. A `var` binding can change, and the scope-end cleanup closes its final value. Closing early is fine because `close()` is idempotent. See [scope-end cleanup](../cleanup/scopes.md).
 - Every binding is initialized at declaration, and an outer `var` keeps its declared type.
-- Non-escaping closures borrow captures; escaping closures own them. Borrowed roots cannot be changed or moved while the borrow is live.
+- Non-escaping closures borrow captures; escaping closures own them, so a parameter captured by one is consumed by the function (the caller passes `.clone()` to keep the value). Borrowed roots cannot be changed or moved while the borrow is live.
 
 See [bindings](../basics/bindings.md), [closure captures](../functions/function-values-and-closures.md), and [scope-end cleanup](../cleanup/scopes.md).
 

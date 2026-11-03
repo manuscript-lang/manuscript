@@ -21,7 +21,7 @@ test "join_errors reports each error and none for empty":
         try expect_equal(joined.details["count"], "2")
 
 test "deadline expires and ticker paces":
-    let d = deadline_after(20.milliseconds)
+    let d = deadline_after(20.milliseconds())
     try expect_false(d.expired())
     d.wait()
     try expect_true(d.expired())
@@ -29,7 +29,7 @@ test "deadline expires and ticker paces":
 
     let start = monotonic()
     var count = 0
-    var ticks = ticker(10.milliseconds)
+    var ticks = ticker(10.milliseconds())
 
     while count < 3:
         let tick = try ticks.read().wait()

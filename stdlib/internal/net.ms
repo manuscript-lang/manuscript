@@ -10,13 +10,26 @@ import (
     NativeConnection,
     NativeDatagramSocket,
     NativeListener,
+    NativeNetwork,
     NativeWebSocket,
+    DnsKind,
+    DnsRecord,
+    Listener,
     Network,
+    TlsOptions,
+    WebSocketOptions,
     QueryEntry,
     TlsInfo,
     Url,
     RawWebSocketMessage
 ) from "@std/net/net.ms"
+import (
+    ClientResponse,
+    HttpClient,
+    HttpClientOptions,
+    HttpHeaders,
+    HttpMethod
+) from "@std/net/http.ms"
 import Duration, Timestamp from "@std/os/time.ms"
 
 export extern fn msstd_url_encode_component(text: String) String
@@ -33,7 +46,7 @@ export extern fn msstd_net_parse_cidr(text: String) Cidr!
 
 export extern fn msstd_net_parse_ip(text: String) IpAddress!
 
-export extern fn msstd_net_network() Network
+export extern fn msstd_net_network() NativeNetwork
 
 export extern fn msstd_tls_parse_certificates(
     pem: String,
@@ -151,3 +164,110 @@ export extern fn msstd_websocket_send_bytes(
 ) Unit!
 
 export extern fn msstd_websocket_subprotocol(handle: NativeWebSocket) String
+
+export extern fn msstd_net_network_bind_datagram(
+    net: NativeNetwork,
+    address: String
+) RawDatagramSocket!
+
+export extern fn msstd_net_network_close(net: NativeNetwork) Unit
+
+export extern fn msstd_net_network_connect(
+    net: NativeNetwork,
+    address: String,
+    timeout: Duration?
+) RawConnection!
+
+export extern fn msstd_net_network_connect_tls(
+    net: NativeNetwork,
+    address: String,
+    server_name: String,
+    timeout: Duration?
+) RawConnection!
+
+export extern fn msstd_net_network_connect_tls_config(
+    net: NativeNetwork,
+    address: String,
+    options: TlsOptions,
+    timeout: Duration?
+) RawConnection!
+
+export extern fn msstd_net_network_connect_unix(
+    net: NativeNetwork,
+    path: String,
+    timeout: Duration?
+) RawConnection!
+
+export extern fn msstd_net_network_http_client(
+    net: NativeNetwork,
+    options: HttpClientOptions
+) HttpClient!
+
+export extern fn msstd_net_network_listen(net: NativeNetwork, address: String) Listener!
+
+export extern fn msstd_net_network_listen_tls(
+    net: NativeNetwork,
+    address: String,
+    options: TlsOptions,
+    handshake_timeout: Duration?
+) Listener!
+
+export extern fn msstd_net_network_listen_unix(
+    net: NativeNetwork,
+    path: String
+) Listener!
+
+export extern fn msstd_net_network_lookup(
+    net: NativeNetwork,
+    name: String,
+    max_records: Int?,
+    timeout: Duration?
+) List[String]!
+
+export extern fn msstd_net_network_request(
+    net: NativeNetwork,
+    method: HttpMethod,
+    url: String,
+    headers: HttpHeaders,
+    body: String,
+    max_response_bytes: Int?,
+    timeout: Duration?
+) ClientResponse!
+
+export extern fn msstd_net_network_request_bytes(
+    net: NativeNetwork,
+    method: HttpMethod,
+    url: String,
+    headers: HttpHeaders,
+    body: Bytes,
+    max_response_bytes: Int?,
+    timeout: Duration?
+) ClientResponse!
+
+export extern fn msstd_net_network_resolve(
+    net: NativeNetwork,
+    name: String,
+    kind: DnsKind,
+    max_records: Int?,
+    timeout: Duration?
+) List[DnsRecord]!
+
+export extern fn msstd_net_network_restrict(
+    net: NativeNetwork,
+    hosts: List[String],
+    cidrs: List[String],
+    allow_listen: Bool
+) Network!
+
+export extern fn msstd_net_network_web_socket(
+    net: NativeNetwork,
+    url: String,
+    headers: HttpHeaders,
+    subprotocols: List[String],
+    options: WebSocketOptions
+) RawWebSocket!
+
+export extern fn msstd_net_network_with_resolver(
+    net: NativeNetwork,
+    address: String
+) Network!

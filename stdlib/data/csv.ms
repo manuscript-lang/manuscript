@@ -10,6 +10,27 @@ export type CsvOptions:
     // Row terminator for encoding, either LF or CRLF; defaults to LF.
     line_ending: String = "\n"
 
+// A malformed-input error at the one-based line and character column of byte offset `at`.
+fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
+    var line = 1
+    var start = 0
+
+    for i in 0..at:
+        if bytes[i] == 10:
+            line += 1
+            start = i + 1
+
+    let before = bytes.decode_utf8_range(start, at).get("")
+    let column = before.length() + 1
+    return Error(
+        "CSV {line}:{column}: {reason}",
+        kind: InvalidData,
+        details: {
+            "line": line.to_string(), "column": column.to_string(),
+            "reason": reason.clone()
+        }
+    )
+
 // Parses CSV into rows of cells, using fresh default options when omitted.
 // Optional row and cell limits bound large inputs.
 export fn parse(
@@ -163,8 +184,8 @@ impl Reader:
                 while true:
                     let close = self.next_quote(at)
                     if close >= self.total: return error(
-                        Error(
-                            "CSV: invalid data", kind: InvalidData
+                        invalid_at(
+                            self.bytes, self.at.to_int(), "unterminated quoted cell"
                         )
                     )
 
@@ -188,7 +209,10 @@ impl Reader:
                     return ok(row)
 
                 if self.bytes[at] != self.delimiter: return error(
-                    Error("CSV: invalid data", kind: InvalidData)
+                    invalid_at(
+                        self.bytes, at,
+                        "expected a delimiter or line end after the closing quote"
+                    )
                 )
 
                 row.append(cell)
@@ -199,8 +223,12 @@ impl Reader:
             let newline = self.next_line(at)
             var end = stop
             if newline < stop: end = newline
-            if self.next_quote(at) < end: return error(
-                Error("CSV: invalid data", kind: InvalidData)
+
+            let quote = self.next_quote(at)
+            if quote < end: return error(
+                invalid_at(
+                    self.bytes, quote, "quote inside an unquoted cell"
+                )
             )
 
             if end < stop or stop >= self.total:

@@ -17,9 +17,9 @@ test "timestamps preserve nanoseconds and shift across epoch":
     try expect_false(epoch.unix_seconds() != 0 or epoch.nanoseconds() != 123)
     try expect_equal((try parse_timestamp(epoch.to_string())), epoch)
 
-    let later = try epoch.shift(2.seconds)
-    try expect_equal((try later.difference(epoch)), 2.seconds)
-    try expect_equal((try later.shift((-2).seconds)), epoch)
+    let later = try epoch.shift(2.seconds())
+    try expect_equal((try later.difference(epoch)), 2.seconds())
+    try expect_equal((try later.shift((-2).seconds())), epoch)
 
 test "time rejects invalid timestamps and out of range nanoseconds":
     let invalid: Timestamp! = error(
@@ -34,7 +34,7 @@ test "time rejects invalid timestamps and out of range nanoseconds":
 
 test "host clocks are usable and zero sleep completes":
     let before = monotonic()
-    let _ = sleep(0.milliseconds).wait()
+    let _ = sleep(0.milliseconds()).wait()
     try expect_false(monotonic() < before)
 
     let current = now()

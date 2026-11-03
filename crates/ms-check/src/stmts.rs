@@ -6,6 +6,7 @@ use crate::suggestions;
 use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
+use crate::tytable::TyId;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use std::collections::HashSet;
@@ -1087,7 +1088,7 @@ impl Checker {
         body: &mut dyn FnMut(&mut Checker, &'a Arm) -> (bool, bool),
     ) -> (bool, bool) {
         let contract = info.t();
-        let mut seen: HashSet<String> = HashSet::new();
+        let mut seen: HashSet<TyId> = HashSet::new();
         let (mut wildcard, mut fall, mut breaks) = (false, false, false);
         for (index, arm) in arms.iter().enumerate() {
             self.set_arm_bindings(arm, Vec::new());
@@ -1116,7 +1117,7 @@ impl Checker {
                         if !self.implements(&t, &contract) {
                             self.type_error(arm.pos, format!("{t} does not implement {contract}"));
                         }
-                        let key = type_key(&t);
+                        let key = self.shape(&t);
                         if seen.contains(&key) || wildcard {
                             self.type_error(
                                 arm.pos,

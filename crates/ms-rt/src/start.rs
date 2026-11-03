@@ -100,15 +100,17 @@ unsafe fn run_main() {
     unsafe { crate::task::run_main_task(main_task) };
     // Scheduler threads end with the program; a counting build then sees their heaps released too.
     crate::sched::shutdown();
+    // The scheduler state lives in a thread-local with no destructor: release it here so a leak
+    // checker (valgrind) sees nothing still owned by the exiting thread.
+    crate::task::teardown();
     #[cfg(feature = "stats")]
     report_leaks();
 }
 
-/// Counting builds: sweeps the main isolate's scheduler state, then reports what is still live.
+/// Counting builds: reports what is still live after the scheduler state was released.
 /// Runs on the isolate's own thread, whose allocator and task state it reads.
 #[cfg(feature = "stats")]
 fn report_leaks() {
-    crate::task::teardown();
     {
         eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());
         let [allocs, bytes] = crate::alloc::requested();

@@ -32,7 +32,15 @@ pub struct Liveness {
     /// Field-path reads (`b.f.g`, by the outermost member expression and the root binding): no
     /// later use of the place, a prefix of it or an extension of it can run.
     pub places: HashMap<(NodeId, usize), UseLive>,
+    /// Lambda creations (node, captured binding) after which the binding is assigned again on
+    /// some path, with the node of the assigned value. A store ends the old value's life, so
+    /// `uses` calls the capture the last use, yet a closure that copied the value in goes stale.
+    pub assigned_after: HashMap<(NodeId, usize), NodeId>,
 }
+
+/// Offset added to a binding identity to key "assigned again later" in the live set, apart from
+/// the uses of the binding itself.
+const STORED: usize = 1 << 62;
 
 /// A live place: a binding identity and the fields below it.
 type Key = (usize, Vec<Name>);
@@ -157,6 +165,11 @@ impl Pass<'_> {
         live.retain(|(u, _), _| *u != uid);
     }
 
+    /// Marks `uid` as assigned at `node`, for closures created before it.
+    fn mark_stored(live: &mut Live, uid: usize, node: NodeId) {
+        live.insert((uid | STORED, Vec::new()), node);
+    }
+
     fn block(&mut self, body: &[Stmt], mut live: Live) -> Live {
         for s in body.iter().rev() {
             live = self.stmt(s, live);
@@ -176,6 +189,7 @@ impl Pass<'_> {
                         if let Some(b) = self.m.assigned(value) {
                             // The store ends the old value's life.
                             Self::kill(&mut live, b.uid);
+                            Self::mark_stored(&mut live, b.uid, value.id);
                         }
                     }
                     AssignTarget::Member(t) => {
@@ -378,6 +392,9 @@ impl Pass<'_> {
         (self.exit, self.breaks, self.continues) = saved;
         for b in &captures {
             self.record(e.id, b, live);
+            if let Some(at) = live.get(&(b.uid | STORED, Vec::new())) {
+                self.out.assigned_after.insert((e.id, b.uid), *at);
+            }
         }
     }
 }

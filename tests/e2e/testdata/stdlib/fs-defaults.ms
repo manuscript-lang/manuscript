@@ -1,4 +1,4 @@
-import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
+import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
 import (
     copy,
     CopyOptions,
@@ -12,6 +12,14 @@ import (
     write_file_bytes
 ) from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
+
+fn expect_limit(outcome: Unit!) Unit!:
+    let cause = try expect_error(outcome)
+    try expect_equal(cause.kind, ErrorCategory.LimitExceeded)
+    if not cause.message.starts_with("filesystem: limit exceeded"):
+        return error(Error("wrong limit message: {cause.message}"))
+
+    return ok(unit)
 
 fn generic_write(path: String, data: String) Unit!:
     return write_file(path, data).wait()
@@ -78,16 +86,8 @@ test "filesystem file copies default to no replacement and retain byte limits":
     (copy(source, destination, CopyOptions(replace: true)) | try expect_ok)
     (try text(destination)) | try expect_equal("changed")
     (generic_copy(source, "{temporary.path()}/generic") | try expect_ok)
-
-    let limited: Unit! = error(
-        Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
-    )
-    copy(source, "{temporary.path()}/limited", CopyOptions(max_bytes: 0)) | try expect_equal(
-        limited
-    )
-    copy(source, "{temporary.path()}/limited", CopyOptions(max_bytes: 6)) | try expect_equal(
-        limited
-    )
+    copy(source, "{temporary.path()}/limited", CopyOptions(max_bytes: 0)) | try expect_limit
+    copy(source, "{temporary.path()}/limited", CopyOptions(max_bytes: 6)) | try expect_limit
     (
         copy(
             source, "{temporary.path()}/exact", CopyOptions(max_bytes: 7)
@@ -122,17 +122,11 @@ test "filesystem tree copies default to no replacement with distinct budgets":
     )
     (try text("{destination}/data")) | try expect_equal("xyz")
     (generic_tree(source, "{temporary.path()}/generic") | try expect_ok)
-
-    let limited: Unit! = error(
-        Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
-    )
     copy(
         source, "{temporary.path()}/entries",
         CopyOptions(recursive: true, max_entries: 1)
-    ) | try expect_equal(limited)
-    copy(source, "{temporary.path()}/bytes", CopyOptions(recursive: true, max_bytes: 2)) | try expect_equal(
-        limited
-    )
+    ) | try expect_limit
+    copy(source, "{temporary.path()}/bytes", CopyOptions(recursive: true, max_bytes: 2)) | try expect_limit
 
     let invalid: Unit! = error(
         Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)

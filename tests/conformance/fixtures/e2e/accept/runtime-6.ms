@@ -25,4 +25,4 @@ test "numeric boundary rules":
 
     let absent: Int? = none
     try expect_equal(1e300.truncate_to_int(), absent)
-    try expect_equal((2.seconds + 1.seconds), 3.seconds)
+    try expect_equal((2.seconds() + 1.seconds()), 3.seconds())

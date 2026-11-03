@@ -73,8 +73,9 @@ To make your own stream, implement `Source[T]` (`next` may wait) and wrap it wit
 A `Pipe[T]` is an in-memory stream between promises: any number of writers, one reader, values whole and in order.
 
 ```manuscript
-let p = pipe[Int](capacity: 64)
-let producer = promise(fn: send_numbers(p.writer()))
+var p = pipe[Int](capacity: 64)
+var out = p.writer()
+let producer = promise(fn: send_numbers(var out))
 var total = 0
 for n in p.reader().wait():
     total += try n
@@ -84,6 +85,6 @@ try producer.wait()
 - `writer()` returns a new writing end each time, like `dup` on a file descriptor. `reader()` returns the one reading end.
 - `capacity` is the level above which a writer's `flush` waits.
 - The reader ends when every writer is closed, after it has read what was sent. Closing the reader makes writers fail with `Closed`.
-- `write` is a `var fn`, so two promises cannot share one writer; each takes its own.
+- `write` is a `var fn`, so two promises cannot share one writer; each takes its own. Make one `var` writer per producer before starting the promises: the promise takes it over and may pass it on or write to it, so any number of producers can feed one reader.
 
 `json_reader[T]` and `json_writer[T]` give a typed view of a byte stream, for example to send newline-delimited JSON over a socket.

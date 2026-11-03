@@ -2,6 +2,7 @@
 //! caller predicates wrapped in closures the runtime calls with plain arguments.
 
 use crate::Error;
+use crate::cx::HelperKey;
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
 use ms_check::types as ct;
@@ -155,7 +156,7 @@ impl FnLower<'_> {
         runtime_params: &[MTy],
         copy: bool,
     ) -> Result<ms_mir::ir::FuncId, Error> {
-        let key = format!("walk-thunk:{}:{copy}", user_ty.0);
+        let key = HelperKey::WalkThunk(user_ty, copy);
         if let Some(t) = self.cx.helpers.get(&key) {
             return Ok(*t);
         }

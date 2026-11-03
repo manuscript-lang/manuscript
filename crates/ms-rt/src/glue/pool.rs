@@ -16,6 +16,11 @@
 //! or cancelled wait abandons a running job: its token is freed at once, and the pool thread
 //! hands the finished job back on a list that the runtime thread empties at the next submit.
 //! A job still queued is removed and dropped at once.
+//!
+//! Admission. A caller about to copy a large payload for a pool job first asks [`admit`] for a
+//! permit; at most `threads()` permits are out at once, and the others park on a remote token
+//! until [`release`] hands one over. So the copies in flight are bounded by the pool, not by the
+//! number of connections, and nothing polls.
 
 use std::boxed::Box;
 use std::collections::VecDeque;
@@ -125,6 +130,10 @@ struct Pool {
     /// Idle threads already signalled for a queued job but not yet awake.
     wakes: usize,
     dns_running: usize,
+    /// Admission permits out.
+    permits: usize,
+    /// Tokens of callers parked in [`admit`], oldest first; grown only by the runtime thread.
+    waiters: VecDeque<u64>,
 }
 
 // SAFETY: the raw pointers are only followed under the rules above.
@@ -138,6 +147,8 @@ static POOL: Mutex<Pool> = Mutex::new(Pool {
     idle: 0,
     wakes: 0,
     dns_running: 0,
+    permits: 0,
+    waiters: VecDeque::new(),
 });
 static READY: Condvar = Condvar::new();
 /// Signalled whenever a job is done, for a shielded wait that cannot park.
@@ -228,7 +239,30 @@ fn submit<I: Send + Sync + 'static, O: Send + 'static>(
     };
     READY.notify_one();
     if start && !spawn_thread() {
-        lock().threads -= 1;
+        let orphaned = {
+            let mut pool = lock();
+            pool.threads -= 1;
+            // With no thread at all (the process is out of memory mappings or threads), nothing
+            // would ever take the job and its waiter would hang: run it here instead.
+            if pool.threads == 0 && pool.idle == 0 {
+                pool.queue
+                    .iter()
+                    .position(|q| q.head == ptr.head)
+                    .map(|at| pool.queue.remove(at))
+                    .is_some()
+            } else {
+                false
+            }
+        };
+        if orphaned {
+            // SAFETY: the job left the queue, so only this thread can reach it.
+            unsafe {
+                (ptr.run)(ptr.head);
+                let _lock = lock();
+                (*ptr.head).state = State::Done;
+                msrt_token_post_remote((*ptr.head).token, 1);
+            }
+        }
     }
     (job, ptr)
 }
@@ -295,6 +329,66 @@ fn call_lent<I, O>(lent: &Lent<I, O>) -> O {
 fn state(_pool: &Pool, ptr: Ptr) -> State {
     // SAFETY: written only under the lock the caller holds.
     unsafe { (*ptr.head).state }
+}
+
+/// Payloads at least this large take an admission permit before they are copied.
+pub const ADMIT_BYTES: usize = 64 * 1024;
+
+/// Takes a permit for copying a payload of `bytes` for a pool job, parking the task while
+/// `threads()` permits are out. True when a permit is held and [`release`] must follow; false
+/// for a small payload or a program with one task, which need none. A stop request ends the
+/// wait without a permit and unwinds.
+pub fn admit(bytes: usize) -> bool {
+    if bytes < ADMIT_BYTES || on_pool_thread() || alone() {
+        return false;
+    }
+    let token = {
+        let mut pool = lock();
+        if pool.permits < threads() {
+            pool.permits += 1;
+            return true;
+        }
+        // SAFETY: creates a token on the runtime thread.
+        let token = unsafe { msrt_token_new(TOKEN_REMOTE) };
+        pool.waiters.push_back(token);
+        token
+    };
+    let mut value = 0u64;
+    // SAFETY: parks the current task on its own token.
+    let got = unsafe { msrt_token_park(token, -1, &mut value) };
+    let mut granted = true;
+    if got & WAIT_CANCELLED != 0 {
+        let mut pool = lock();
+        if let Some(at) = pool.waiters.iter().position(|&t| t == token) {
+            pool.waiters.remove(at);
+            granted = false;
+        }
+        // Otherwise `release` already handed this caller a permit, which it passes on below.
+    }
+    // SAFETY: frees this call's token; `release` removed it from the list before posting.
+    unsafe { msrt_token_free(token) };
+    if got & WAIT_CANCELLED != 0 {
+        if granted {
+            release();
+        }
+        crate::glue::cancelled();
+    }
+    true
+}
+
+/// Returns a permit from [`admit`]: the oldest parked caller takes it over, else it is freed.
+pub fn release() {
+    let next = {
+        let mut pool = lock();
+        let next = pool.waiters.pop_front();
+        if next.is_none() {
+            pool.permits = pool.permits.saturating_sub(1);
+        }
+        next
+    };
+    if let Some(token) = next {
+        msrt_token_post_remote(token, 1);
+    }
 }
 
 /// Runs `f(&input, bytes)` on a pool thread and parks the task until it finishes, however long

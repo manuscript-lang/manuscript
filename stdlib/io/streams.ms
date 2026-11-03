@@ -27,6 +27,18 @@ impl LineSplitter:
 
         return chunk.clone()
 
+impl LineSplitter:
+    // Decodes one line, or fails with `InvalidData` rather than turning bytes that are not UTF-8 into an empty line.
+    fn decode(line: Bytes) String!:
+        if let text = line.decode_utf8():
+            return ok(text)
+
+        return error(
+            Error(
+                "I/O: line is not valid UTF-8", kind: ErrorCategory.InvalidData
+            )
+        )
+
 impl Transform[Bytes, String] for LineSplitter:
     var fn feed(value: Bytes) List[String]!:
         var out: List[String] = []
@@ -44,11 +56,15 @@ impl Transform[Bytes, String] for LineSplitter:
             try self.check(stop - start)
 
             let line = try data.slice(start, stop)
-            out.append(line.decode_utf8().get(""))
+            out.append(try self.decode(line))
             start = end.get() + 1
 
         if start < data.length():
-            try self.check(data.length() - start)
+            // A final `\r` may be the first half of a `\r\n` split across chunks, so it does not count toward the limit yet.
+            var pending = data.length() - start
+            if data.get(data.length() - 1, 0) == 13:
+                pending -= 1
+            try self.check(pending)
             self.tail = try data.slice(start, data.length())
         else:
             self.tail = none
@@ -59,7 +75,8 @@ impl Transform[Bytes, String] for LineSplitter:
         var out: List[String] = []
 
         if let held = self.tail:
-            out.append(held.decode_utf8().get(""))
+            try self.check(held.length())
+            out.append(try self.decode(held))
             self.tail = none
 
         return ok(out)

@@ -1,10 +1,13 @@
+import Bytes from "@std/bytes.ms"
 import (
-    Commands,
+    CommandOutput,
     CpuUsage,
     MemoryUsage,
     NativeSignals,
     NativeSubprocess,
-    ResourceUsage
+    ResourceUsage,
+    Stdio,
+    Subprocess
 ) from "@std/os/process.ms"
 import Duration from "@std/os/time.ms"
 
@@ -20,7 +23,27 @@ export extern fn msstd_system_os_type() String
 
 export extern fn msstd_system_constants() Map[String, Int]
 
-export extern fn msstd_process_commands() Commands
+export extern fn msstd_process_command_run(
+    program: String,
+    arguments: List[String],
+    input: Bytes,
+    max_output_bytes: Int?,
+    timeout: Duration?,
+    cwd: String?,
+    env_names: List[String],
+    env_values: List[String]
+) CommandOutput!
+
+export extern fn msstd_process_command_spawn(
+    program: String,
+    arguments: List[String],
+    stdin: Stdio,
+    stdout: Stdio,
+    stderr: Stdio,
+    cwd: String?,
+    env_names: List[String],
+    env_values: List[String]
+) Subprocess!
 
 // The runtime stream-table id of the child's pipe: 0 stdin, 1 stdout, 2 stderr; -1 when there is no pipe.
 export extern fn msstd_process_subprocess_stream_id(

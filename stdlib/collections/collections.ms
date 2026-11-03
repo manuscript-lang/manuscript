@@ -901,7 +901,7 @@ impl MapUpdate[T, U] for Map[T, U]:
     var fn update(key: T, initial: U, change: fn(U) U) Unit:
         self.add(key.clone(), change(self.get_or(key, initial)))
 
-import Closeable, panic from "@std/core.ms"
+import panic from "@std/core.ms"
 import StringBuilder from "@std/string.ms"
 import (
     msrt_list_distinct,
@@ -909,21 +909,6 @@ import (
     msrt_list_flatten,
     msrt_list_range_by
 ) from "@std/internal/collections.ms"
-
-// Closing the resources a map holds. The compiler calls this when a map of resources goes out of scope; the values close newest entry first.
-interface MapCloseValues[U: Closeable]:
-    var fn close_values() Unit
-
-impl MapCloseValues[U] for Map[T, U]:
-    // Closes every value in place, last inserted first. The entries stay in the map.
-    var fn close_values() Unit:
-        let keys = self.keys()
-        var i = keys.length() - 1
-
-        while i >= 0:
-            if var value = self[keys[i]]?:
-                value.close().get(none)
-            i -= 1
 
 interface MapRetain[T: Hashable & Clonable, U]:
     var fn retain(keep: fn(T, U) Bool) Unit

@@ -81,7 +81,7 @@ test "capture rows clear absent groups and retain all group indices":
     rows[2] | slots | try expect_equal(last)
 
     let bytes = "é🙂é".to_bytes()
-    let present = rows[1][2] | try expect_some
+    let present = rows[1][2].clone() | try expect_some
     bytes.decode_utf8_range(
         present.start, present.end
     ) | try expect_some | try expect_equal("🙂")

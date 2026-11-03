@@ -9,7 +9,7 @@ extern crate alloc;
 
 pub mod ffi;
 
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use ms_rt::ffi::Fail;
 
@@ -59,10 +59,15 @@ impl Iterator for Spans<'_> {
 }
 
 pub fn compile(pattern: &str) -> Result<Regex, Fail> {
+    compile_explained(pattern).map_err(|_| Fail::InvalidData)
+}
+
+/// Like [`compile`], with the reason and one-based pattern column of a syntax error.
+pub fn compile_explained(pattern: &str) -> Result<Regex, String> {
     let pattern = regex::RegexBuilder::new(pattern)
         .size_limit(64 << 20)
         .build()
-        .map_err(|_| Fail::InvalidData)?;
+        .map_err(|e| explain(&e.to_string()))?;
     let has_named_groups = pattern.capture_names().any(|name| name.is_some());
     Ok(Regex {
         pattern,
@@ -70,6 +75,26 @@ pub fn compile(pattern: &str) -> Result<Regex, Fail> {
         #[cfg(test)]
         scans: core::cell::Cell::new(0),
     })
+}
+
+/// "<reason> at column N" from the pretty-printed error of the regex crate, whose last line is
+/// `error: <reason>` and whose caret line sits under the offending column after a four-space margin.
+fn explain(text: &str) -> String {
+    let reason = text
+        .lines()
+        .rev()
+        .find_map(|l| l.strip_prefix("error: "))
+        .or_else(|| text.lines().next())
+        .unwrap_or("invalid pattern");
+    let column = text
+        .lines()
+        .find(|l| l.trim_start().starts_with('^'))
+        .and_then(|l| l.find('^'))
+        .and_then(|at| at.checked_sub(4));
+    match column {
+        Some(c) => alloc::format!("{reason} at column {}", c + 1),
+        None => String::from(reason),
+    }
 }
 
 impl Regex {

@@ -79,8 +79,8 @@ pub struct Parts {
     /// Cranelift's object: everything when `llvm` is `None`, else data, descriptors, tables and
     /// `main`.
     pub object: Vec<u8>,
-    /// The functions LLVM compiled, when [`Options::llvm`] is set.
-    pub llvm: Option<Vec<u8>>,
+    /// The objects holding the functions LLVM compiled, when [`Options::llvm`] is set.
+    pub llvm: Vec<Vec<u8>>,
 }
 
 /// Compiles a verified module to relocatable objects.

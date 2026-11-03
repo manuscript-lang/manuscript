@@ -435,6 +435,7 @@ msstd_encoding_base64_decode_unpadded(text: *const StrVal, url_safe: u8, has_max
 msstd_encoding_base64_encode(data: *const VecVal, url_safe: u8, out: *mut StrVal) @leaf
 msstd_encoding_base64_encode_unpadded(data: *const VecVal, url_safe: u8, out: *mut StrVal) @leaf
 msstd_fs_access(path: *const StrVal, mode: i64, err: ErrSlot) -> u8
+msstd_fs_admit(bytes: i64) -> u8
 msstd_fs_append_file(path: *const StrVal, data: *const VecVal, err: ErrSlot) -> u8
 msstd_fs_canonicalize(path: *const StrVal, out: *mut StrVal, err: ErrSlot) -> u8
 msstd_fs_chmod(path: *const StrVal, mode: i64, follow: u8, err: ErrSlot) -> u8
@@ -470,6 +471,7 @@ msstd_fs_list(path: *const StrVal, has_limit: HasRaw, limit: i64, out: *mut VecV
 msstd_fs_open(path: *const StrVal, flags: *const StrVal, mode: i64, out: *mut *mut ObjCell<Stream>, err: ErrSlot) -> u8
 msstd_fs_read_file(path: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_fs_read_link(path: *const StrVal, out: *mut StrVal, err: ErrSlot) -> u8
+msstd_fs_release()
 msstd_fs_remove(path: *const StrVal, recursive: u8, err: ErrSlot) -> u8
 msstd_fs_rename(source: *const StrVal, destination: *const StrVal, err: ErrSlot) -> u8
 msstd_fs_set_times(path: *const StrVal, accessed: *const Timestamp, modified: *const Timestamp, follow: u8, err: ErrSlot) -> u8
@@ -552,8 +554,10 @@ msstd_json_item(handle d: *const ObjCell<Doc>, id: u32, i: i64) -> u32 @leaf
 msstd_json_key(handle d: *const ObjCell<Doc>, id: u32, i: i64, out: *mut StrVal) @leaf
 msstd_json_kind(handle d: *const ObjCell<Doc>, id: u32) -> u8 @leaf
 msstd_json_len(handle d: *const ObjCell<Doc>, id: u32) -> i64 @leaf
-msstd_json_parse(text: *const StrVal, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth: HasRaw, max_depth: i64, has_max_values: HasRaw, max_values: i64, out: *mut *mut ObjCell<Doc>, root: *mut u32) -> u8 @leaf
-msstd_json_parse_tree(text: *const StrVal, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth: HasRaw, max_depth: i64, has_max_values: HasRaw, max_values: i64, desc: *const TypeDesc, ctor: unsafe extern "C-unwind" fn(i64, *mut u8, *mut u8) -> i64, out: *mut u8) -> u8 @leaf
+msstd_json_mismatch(handle d: *const ObjCell<Doc>, id: u32, code: i64, text: *const StrVal) @leaf
+msstd_json_mismatch_text(handle d: *const ObjCell<Doc>, root: u32, out: *mut StrVal) @leaf
+msstd_json_parse(text: *const StrVal, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth: HasRaw, max_depth: i64, has_max_values: HasRaw, max_values: i64, out: *mut *mut ObjCell<Doc>, root: *mut u32, err: ErrSlot) -> u8 @leaf
+msstd_json_parse_tree(text: *const StrVal, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth: HasRaw, max_depth: i64, has_max_values: HasRaw, max_values: i64, desc: *const TypeDesc, ctor: unsafe extern "C-unwind" fn(i64, *mut u8, *mut u8) -> i64, out: *mut u8, err: ErrSlot) -> u8 @leaf
 msstd_json_text(handle d: *const ObjCell<Doc>, id: u32, out: *mut StrVal) @leaf
 msstd_json_tree_array(walk: *mut Walk<Writer>, list: *const VecVal) @leaf
 msstd_json_tree_object(walk: *mut Walk<Writer>, map: *const MapVal) @leaf
@@ -741,7 +745,7 @@ msstd_regex_capture_all_spans(handle re: *const ObjCell<Regex>, text: *const Str
 msstd_regex_capture_spans(handle re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_regex_captures(handle re: *const ObjCell<Regex>, text: *const StrVal, out: *mut VecVal) @leaf
 msstd_regex_captures_all(handle re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
-msstd_regex_compile(pattern: *const StrVal, out: *mut *mut ObjCell<Regex>) -> u8 @leaf
+msstd_regex_compile(pattern: *const StrVal, out: *mut *mut ObjCell<Regex>, err: ErrSlot) -> u8
 msstd_regex_find_all(handle re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_regex_find_all_spans(handle re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_regex_find_span(handle re: *const ObjCell<Regex>, text: *const StrVal, out: *mut VecVal) -> u8 @leaf

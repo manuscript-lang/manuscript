@@ -10,3 +10,5 @@ closed and abandoned rather than resumed with potentially partial state.
 Apply when: native operations take state or resource ownership across a cancellable wait.
 Evidence: [response body guard and cancellation regression](../../crates/ms-std-net/src/http/client.rs), [runtime guard](../../crates/ms-rt/src/fault.rs).
 Verify: `make leak-check` on `tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release.ms` reports zero live blocks; use the production runtime dependency (not `ms-rt`'s own unwinding unit-test guard), assert a stack destructor is skipped, join reports cancellation, later reads return Closed, and the peer observes connection release.
+
+Main-isolate scheduler state is a `ManuallyDrop` thread-local; `run_main` calls `task::teardown()` in every build so valgrind sees no definite losses in an empty program (#2470). Check new per-isolate state is released there.

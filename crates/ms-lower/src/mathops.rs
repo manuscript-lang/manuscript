@@ -43,7 +43,8 @@ impl FnLower<'_> {
 
     /// `a.compare(b)` through the `Comparable` implementation of `concrete`.
     fn user_order(&mut self, concrete: &ct::Ty, a: Value, b: Value) -> Result<Value, Error> {
-        let key = ct::type_key(concrete);
+        let key = self.cx.tys.shape(concrete);
+        let tys = &mut self.cx.tys;
         let im = self
             .cx
             .methods
@@ -53,7 +54,7 @@ impl FnLower<'_> {
                     .as_ref()
                     .is_some_and(|c| c.is(Builtin::Comparable))
                     && m.name().is_some_and(|n| n.as_str() == "compare")
-                    && ct::type_key(&m.receiver) == key
+                    && tys.shape(&m.receiver) == key
             })
             .cloned()
             .ok_or_else(|| Error::new("ordering this type is not supported yet"))?;
