@@ -1171,7 +1171,7 @@ impl Checker {
         match op {
             BinaryOp::Eq | BinaryOp::Ne => {
                 i.ty = Some(bool_());
-                if !self.property(&common, "Equal", None) {
+                if !self.property(&common, crate::contracts::Property::Equal, None) {
                     self.type_error(
                         e.pos,
                         format!("equality requires Equal operands; {common} has no equality, so add 'impl Equal for {common}:' or compare fields"),

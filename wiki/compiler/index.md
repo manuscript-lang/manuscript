@@ -15,3 +15,4 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [Omitted library entries must stay empty through module loading](omitted-library-entries-must-stay-empty-through-module-loadi.md): executable manifests require an entry; libraries omit the key, and an explicitly empty or invalid entry remains an error.
 - [The implementation is Rust and Cranelift under a value-semantics model](the-implementation-is-rust-and-cranelift-under-a-value-seman.md): the compiler, runtime, standard library, and tools use Rust with Cranelift under a value-semantics memory model.
 - [Compiler change checklist](compiler-change-checklist.md): syntax, checking, lowering, MIR, Cranelift, build, and linking rules to check before editing the compiler.
+- [Structural property bits are not worth a whole-program pass](structural-property-bits-are-not-worth-a-whole-program-pass.md): a typical check makes about 270 property queries, and answers depend on per-file impl visibility.
