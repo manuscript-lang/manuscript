@@ -16,16 +16,20 @@ type OneByte:
 impl Source[Bytes] for OneByte:
     var fn next() Bytes?!:
         var data = "".to_bytes()
+
         if let held = self.held:
             data = held.clone()
         else:
             let fresh = try self.input.read().wait()
             if fresh.is_none():
                 return ok(none)
+
             data = fresh.get().clone()
+
         if data.length() <= 1:
             self.held = none
             return ok(data)
+
         self.held = try data.slice(1, data.length())
         return ok(try data.slice(0, 1))
 
@@ -45,13 +49,17 @@ impl Source[Bytes] for FailAfter:
     var fn next() Bytes?!:
         if self.remaining <= 0:
             return error(self.cause.clone())
+
         let chunk = try self.input.read().wait()
+
         if let data = chunk:
             if data.length() > self.remaining:
                 let head = try data.slice(0, self.remaining)
                 self.remaining = 0
                 return ok(head)
+
             self.remaining -= data.length()
+
         return ok(chunk)
 
     var fn close() Unit!:
@@ -59,7 +67,11 @@ impl Source[Bytes] for FailAfter:
 
 // Returns `input` that delivers `after` bytes and then fails every read with `cause`, even if `input` has ended.
 // Use it to check that a parser reports a truncated or broken source instead of treating it as clean end of input.
-export fn fail_after(input: ReadStream[Bytes], after: Int, cause: Error) ReadStream[Bytes]:
+export fn fail_after(
+    input: ReadStream[Bytes],
+    after: Int,
+    cause: Error
+) ReadStream[Bytes]:
     return stream[Bytes](FailAfter(input, after, cause))
 
 type FailingSink:
@@ -70,6 +82,7 @@ type FailingSink:
 impl Sink[Bytes] for FailingSink:
     var fn put(value: Bytes) Unit!:
         let size = value.length()
+
         if size <= self.remaining:
             self.remaining -= size
             return self.output.write(value)
@@ -92,7 +105,11 @@ impl Sink[Bytes] for FailingSink:
 
 // Returns a writer that passes `after` bytes through to `output`, writes the prefix of the write that crosses the limit,
 // and then fails that write and every later one with `cause`. Use it to check error handling on a full disk or closed pipe.
-export fn fail_writer_after(output: WriteStream[Bytes], after: Int, cause: Error) WriteStream[Bytes]:
+export fn fail_writer_after(
+    output: WriteStream[Bytes],
+    after: Int,
+    cause: Error
+) WriteStream[Bytes]:
     return writer[Bytes](FailingSink(output, after, cause))
 
 // Checks that `make` builds a well-behaved `ReadStream[Bytes]` over exactly `expected`: whole reads, one-byte reads, and
@@ -114,13 +131,16 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
 
     var again = make()
     var total = 0
+
     while true:
         let chunk = again.read().wait()
         if chunk.is_error():
             return fail("check_reader: a read failed")
+
         let piece = chunk.get()
         if piece.is_none():
             break
+
         total += piece.get().length()
 
     let after_end = again.read().wait()

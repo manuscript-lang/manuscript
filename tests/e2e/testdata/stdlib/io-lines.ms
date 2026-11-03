@@ -12,7 +12,9 @@ test "an empty stream has no lines":
     try expect_equal(gather(memory("")), ok([]))
 
 test "lines drop terminators and keep an unterminated last line":
-    try expect_equal(gather(memory("one\r\ntwo\n\nlast")), ok(["one", "two", "", "last"]))
+    try expect_equal(
+        gather(memory("one\r\ntwo\n\nlast")), ok(["one", "two", "", "last"])
+    )
 
 test "a final newline adds no empty line":
     try expect_equal(gather(memory("a\nb\n")), ok(["a", "b"]))
@@ -21,15 +23,19 @@ test "an over-budget line fails the read after the lines before it":
     var input = lines(memory("ok\ntoo long line\nnever"), 5)
     var seen: List[String] = []
     var failure: Error? = none
+
     while true:
         let step = input.read().wait()
+
         if step.is_error():
             failure = step.err()
             break
+
         if let line = step.get():
             seen.append(line.clone())
         else:
             break
+
     try expect_equal(seen, ["ok"])
     try expect_equal(
         failure, Error("I/O: limit exceeded", kind: ErrorCategory.LimitExceeded)
@@ -44,6 +50,7 @@ test "a closed stream fails the first read with its error":
 
 test "break and continue work in a stream loop":
     var seen: List[String] = []
+
     for line in lines(memory("1\nskip\n3\n4\n")).wait():
         let text = try line
         if text == "skip":

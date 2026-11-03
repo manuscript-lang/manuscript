@@ -24,5 +24,7 @@ test "from_list and collect bridge lists and streams":
     try expect_equal(limited.is_error(), true)
 
 test "read_all joins chunks and enforces its limit":
-    try expect_equal((try read_all(from_bytes("abcdef".to_bytes(), 4), none)), "abcdef".to_bytes())
+    try expect_equal(
+        (try read_all(from_bytes("abcdef".to_bytes(), 4), none)), "abcdef".to_bytes()
+    )
     try expect_equal(read_all(from_bytes("abcdef".to_bytes(), 4), 5).is_error(), true)

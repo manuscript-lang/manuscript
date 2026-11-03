@@ -72,8 +72,10 @@ test "subprocess streams that are not piped are closed":
     var errors = lines(child.stderr())
     let line = try errors.read().wait()
     try expect_equal(line.get(""), "done")
+
     var silent = child.stdout()
     try expect_false((try silent.read().wait()).is_some())
+
     var input = child.stdin()
     try expect_false(input.write("x".to_bytes()).is_ok())
 

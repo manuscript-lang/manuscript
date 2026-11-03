@@ -98,14 +98,18 @@ impl Iterator[T!] for Waiting[T]:
     var fn next() T!?:
         if self.ended:
             return none
+
         let cell = self.cell
         let work = fn(id: Int) Unit: step[T](id, cell)
         let step = deferred[T?](work).wait()
+
         if step.is_error():
             self.ended = true
             return error(step.err())
+
         if let item = step.get():
             return ok(item)
+
         self.ended = true
         return none
 
