@@ -305,7 +305,8 @@ pub fn commit(_p: *mut u8, _len: usize) -> bool {
 }
 
 /// Gives the pages of `len` bytes at `p` (inside a [`map_anon`] mapping) back to the system.
-/// They read as zero when next touched, and need no [`commit`] again on Unix.
+/// They need no [`commit`] again on Unix. What they read as is unspecified: Linux zero-fills them,
+/// but macOS frees them lazily and may keep the old contents.
 ///
 /// # Safety
 /// The range lies inside a live mapping and holds nothing in use.
