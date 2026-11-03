@@ -4,17 +4,14 @@
 //! owns one). Operations return an `ErrorCategory` status: `0` ok, `STATUS_NONE` for end of stream,
 //! `CLOSED`, `INVALID_INPUT`, `UNAVAILABLE`, `INVALID_DATA`, `LIMIT_EXCEEDED`, or `FAILED` with
 //! its Go-style text from `msstd_io_failure_message`. Outputs are written only on success.
-//! Generic `copy`/`read_all`/`read_line` over user-defined `ReadStream`s stay compiler-lowered.
 #![no_std]
 
 extern crate alloc;
 
 pub use ms_std_fs::stream;
 
-mod accumulate;
-
 use alloc::vec::Vec;
-use ms_rt::ffi::{IntoAbi, ObjMut, ObjRef, Object, StatusCode, Text, native};
+use ms_rt::ffi::{ObjMut, ObjRef, Object, StatusCode, native};
 use ms_rt::glue::{fault, record_failure};
 use ms_rt_abi::{STATUS_NONE, StrVal};
 use stream::{IoFail, IoRes, Stream};
@@ -32,22 +29,6 @@ fn chunk(r: IoRes<Option<Vec<u8>>>) -> Result<Vec<u8>, StatusCode> {
     status(r)?.ok_or(StatusCode(STATUS_NONE))
 }
 
-/// A line read: built in place from the read-ahead buffer, or collected from several reads.
-pub enum Line {
-    Made(StrVal),
-    Bytes(Text),
-}
-
-impl IntoAbi for Line {
-    type Raw = StrVal;
-    fn into_raw(self) -> StrVal {
-        match self {
-            Line::Made(s) => s,
-            Line::Bytes(t) => t.into_raw(),
-        }
-    }
-}
-
 fn optional(has: bool, v: i64) -> Option<i64> {
     has.then_some(v)
 }
@@ -56,11 +37,6 @@ native! {
     /// The text of the last `FAILED` stream result.
     fn msstd_io_failure_message() -> out StrVal {
         ms_rt::glue::failure_message()
-    }
-
-    /// `which`: 0 standard input, 1 standard output, 2 standard error. The descriptor stays open.
-    safe fn msstd_io_standard(which: i64) -> Object<Stream> {
-        Object(Stream::standard(which))
     }
 
     /// Points this process's standard stream `which` (0 input, 1 output, 2 error) at the null device. Pending buffered output is written first.
@@ -87,20 +63,6 @@ native! {
     ) -> Result<Vec<u8>, StatusCode> {
         let mut h = h;
         chunk(h.read(optional(has_max, max)))
-    }
-
-    /// Reads one line without its ending; `STATUS_NONE` at end of stream.
-    fn msstd_io_read_line(
-        h: ObjMut<Stream>,
-        has_max: bool,
-        max: i64,
-    ) -> Result<Line, StatusCode> {
-        let mut h = h;
-        let max = optional(has_max, max);
-        if let Some(line) = h.read_buffered_line(max, ms_rt::ffi::new_string_bytes) {
-            return status(line).map(Line::Made);
-        }
-        chunk(h.read_line(max)).map(|b| Line::Bytes(Text(b)))
     }
 
     fn msstd_io_write_bytes(h: ObjMut<Stream>, data: &[u8]) -> Result<(), StatusCode> {

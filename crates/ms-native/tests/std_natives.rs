@@ -499,7 +499,6 @@ mod fs_io {
             len: 0,
             cap: 0,
         };
-        let mut line = ms_rt::string::NO_STR;
         // SAFETY: valid handles and out pointers throughout.
         unsafe {
             assert_eq!(
@@ -507,16 +506,12 @@ mod fs_io {
                 ms_rt_abi::STATUS_UNAVAILABLE
             );
             assert_eq!(msstd_io_open(path, &mut h), STATUS_OK);
-            assert_eq!(msstd_io_read_line(h, 1, 0, &mut line), STATUS_INVALID_INPUT);
-            assert_eq!(msstd_io_read_line(h, 0, 0, &mut line), STATUS_OK);
-            assert!(!text(&line).is_empty());
+            assert_eq!(msstd_io_read(h, 0, 0, &mut chunk), STATUS_OK);
             assert_eq!(msstd_io_read(h, 0, 0, &mut chunk), STATUS_NONE);
             assert_eq!(msstd_io_is_closed(h), 0);
             msstd_io_close(h);
             assert_eq!(msstd_io_is_closed(h), 1);
             assert_eq!(msstd_io_read(h, 0, 0, &mut chunk), ms_rt_abi::STATUS_CLOSED);
-            let err = msstd_io_standard(2);
-            assert_eq!(msstd_io_flush(err), STATUS_OK);
             std::fs::remove_file(&one_line).unwrap();
         }
     }
