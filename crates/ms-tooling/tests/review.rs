@@ -442,7 +442,7 @@ fn tasks_view_keeps_groups_and_spawned_work() {
     let load = fact("r.ms", "fn", "load", 3);
     let spawn = Node {
         kind: "spawn".into(),
-        label: "spawn  group.spawn(fn: fetch(1))".into(),
+        label: "spawn  promise(fn: fetch(1))".into(),
         children: vec![Node {
             kind: "call".into(),
             label: "call fetch".into(),
@@ -452,12 +452,12 @@ fn tasks_view_keeps_groups_and_spawned_work() {
     };
     let with = Node {
         kind: "scope".into(),
-        label: "let group = TaskGroup[Int]()  [closed on exit]".into(),
+        label: "let work = promise(fn: fetch(1))  [closed on exit]".into(),
         children: vec![
             spawn,
             Node {
                 kind: "call".into(),
-                label: "call TaskGroup.results".into(),
+                label: "call work.wait".into(),
                 ..Node::default()
             },
         ],
@@ -473,7 +473,7 @@ fn tasks_view_keeps_groups_and_spawned_work() {
     let tasks = build_view(&facts, "tasks", "load", 0).unwrap().ascii();
     assert_eq!(
         tasks,
-        "TASKS VIEW\n`- load  [fn] r.ms:3\n   `- let group = TaskGroup[Int]()  [closed on exit]\n      `- spawn  group.spawn(fn: fetch(1))\n         `- call fetch\n"
+        "TASKS VIEW\n`- load  [fn] r.ms:3\n   `- let work = promise(fn: fetch(1))  [closed on exit]\n      `- spawn  promise(fn: fetch(1))\n         `- call fetch\n"
     );
 }
 

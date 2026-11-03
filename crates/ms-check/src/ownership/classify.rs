@@ -26,7 +26,7 @@ fn same_instance(a: &Ty, b: &Ty) -> bool {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Class {
     /// Duplicated implicitly: scalars, records of those,
-    /// and handle types whose identity is shared (native handles and `Shared[T]`).
+    /// and handle types whose identity is shared (native handles).
     Copy,
     /// One owner. Moves at its last use into a consuming position; `.clone()`
     /// duplicates it explicitly. Strings, lists, maps, sets, bytes, records and

@@ -10,7 +10,7 @@
 //! memory model: records, lists, optionals and the like are *values*, flattened
 //! into scalar leaves by the backend (see [`crate::layout`]), not heap objects
 //! with identity. A value whose type [needs a drop](Module::needs_drop) (lists,
-//! maps, strings, boxed alternatives, `Shared[T]`, records containing them) is
+//! maps, strings, boxed alternatives, records containing them) is
 //! either **owned** (it must be consumed exactly once: moved into a consuming
 //! position or `drop`ped) or **borrowed** (a read-only view the producer keeps
 //! alive). Ownership is determined by the defining instruction (see

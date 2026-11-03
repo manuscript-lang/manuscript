@@ -1,8 +1,7 @@
 //! Starting and reaping children with `std::process::Command`, on every platform.
 //!
 //! Each standard stream of the child is a given pipe end (std duplicates it), the parent's own
-//! stream, or the null device. The child leads its own process group on Unix, unless this process
-//! is itself a `ProcessGroup` child: then it joins ours, so the kill of our group reaches it; on Windows it starts
+//! stream, or the null device. The child leads its own process group on Unix; on Windows it starts
 //! suspended and runs only once it is in a job object, so a kill reaches its whole process tree,
 //! including anything it starts right away.
 use alloc::vec::Vec;
