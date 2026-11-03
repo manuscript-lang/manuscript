@@ -32,8 +32,8 @@ impl FnLower<'_> {
             TyKind::Str => "msrt_string_compare",
             TyKind::Obj(Native::BigInt, _) => "msstd_bigint_compare",
             _ => {
-                if let Some(sym) = self.ordering_symbol(t) {
-                    return self.call_runtime(sym, &[a, b], MTy::INT);
+                if let Some(c) = self.native_compare(t, a, b)? {
+                    return Ok(c);
                 }
                 return self.user_order(concrete, a, b);
             }

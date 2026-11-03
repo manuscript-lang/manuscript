@@ -502,8 +502,7 @@ impl<'a> FnLower<'a> {
             let c = self.call_runtime("msrt_string_compare", &[a, b], MTy::INT)?;
             let zero = self.b.iconst(0);
             self.b.icmp(Cc::Gt, c, zero)
-        } else if let Some(sym) = self.ordering_symbol(t) {
-            let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
+        } else if let Some(c) = self.native_compare(t, a, b)? {
             let zero = self.b.iconst(0);
             self.b.icmp(Cc::Gt, c, zero)
         } else {

@@ -11,13 +11,44 @@ pub(crate) fn native_rec(m: &Module, t: MTy) -> Option<NativeRec> {
     m.records[rid.index()].native
 }
 
-/// The runtime function ordering two values (`-1`, `0` or `1`).
-pub(crate) fn compare_symbol(r: NativeRec) -> Option<&'static str> {
-    match r {
-        NativeRec::Timestamp => Some("msstd_time_timestamp_compare"),
-        NativeRec::Instant => Some("msstd_time_instant_compare"),
-        NativeRec::Decimal => Some("msstd_decimal_compare"),
-        NativeRec::Duration => None,
+impl crate::func::FnLower<'_> {
+    /// `a.compare(b)` of a native record that orders itself (`Timestamp`, `Instant`,
+    /// `Decimal`), through the `compare` method its `.ms` declaration defines; `None` for any
+    /// other type.
+    pub(crate) fn native_compare(
+        &mut self,
+        t: MTy,
+        a: ms_mir::ir::Value,
+        b: ms_mir::ir::Value,
+    ) -> Result<Option<ms_mir::ir::Value>, crate::Error> {
+        if !matches!(
+            native_rec(self.b.m, t),
+            Some(NativeRec::Timestamp | NativeRec::Instant | NativeRec::Decimal)
+        ) {
+            return Ok(None);
+        }
+        let Some(ty) = self.cx.source_tys.get(&t).cloned() else {
+            return Ok(None);
+        };
+        let key = ms_check::types::type_key(&ty);
+        let Some(method) = self
+            .cx
+            .methods
+            .iter()
+            .find(|m| {
+                m.decl.as_ref().is_some_and(|d| d.name() == "compare")
+                    && ms_check::types::type_key(&m.receiver) == key
+            })
+            .cloned()
+        else {
+            return Ok(None);
+        };
+        let callable =
+            self.callable_of_decl(method.module, method.decl.as_ref().map(|d| d.id()))?;
+        let f = self
+            .cx
+            .function_for(self.b.m, &callable, &ms_check::types::Subst::new())?;
+        Ok(Some(self.b.call(f, &[a, b])))
     }
 }
 

@@ -478,7 +478,7 @@ fn builtin_compare(m: &Module, t: MTy) -> Option<&'static str> {
     if t == MTy::STR {
         return Some("msrt_string_compare");
     }
-    crate::nativerec::compare_symbol(crate::nativerec::native_rec(m, t)?)
+    None
 }
 
 /// `compare(other)` of a built-in type: the sign of the comparison; a value of
