@@ -1,19 +1,23 @@
 import Bytes from "@std/bytes.ms"
 import ReadStream, WriteStream from "@std/io/io.ms"
 import (
+    Directory,
     DirectoryEntry,
     FileEvent,
     FileHandle,
     FileInfo,
     FileSystem,
+    FileSystemInfo,
+    FileWatcher,
     NativeDirectory,
     NativeFile,
     NativeTemporary,
     NativeWatcher,
     PathOperations,
-    PathParts
+    PathParts,
+    TemporaryDirectory
 ) from "@std/os/fs.ms"
-import Timestamp from "@std/os/time.ms"
+import Duration, Timestamp from "@std/os/time.ms"
 
 export extern fn msstd_path_basename(path: String) String
 
@@ -134,3 +138,69 @@ export extern fn msstd_fs_watch_close(watcher: NativeWatcher) Unit
 export extern fn msstd_fs_temporary_path(temporary: NativeTemporary) String
 
 export extern fn msstd_fs_temporary_close(temporary: NativeTemporary) Unit!
+
+export extern fn msstd_fs_canonicalize(path: String) String!
+
+export extern fn msstd_fs_create_directory(path: String, recursive: Bool) Unit!
+
+export extern fn msstd_fs_create_link(path: String, target: String) Unit!
+
+export extern fn msstd_fs_read_file(path: String, max_bytes: Int?) Bytes!
+
+export extern fn msstd_fs_read_link(path: String) String!
+
+export extern fn msstd_fs_remove(path: String, recursive: Bool) Unit!
+
+export extern fn msstd_fs_rename(source: String, destination: String) Unit!
+
+export extern fn msstd_fs_temporary_root() String
+
+export extern fn msstd_fs_temporary_directory(prefix: String) String!
+
+export extern fn msstd_fs_write_file(path: String, data: Bytes, replace: Bool) Unit!
+
+export extern fn msstd_fs_access(path: String, mode: Int) Unit!
+
+export extern fn msstd_fs_append_file(path: String, data: Bytes) Unit!
+
+export extern fn msstd_fs_chmod(path: String, mode: Int, follow: Bool) Unit!
+
+export extern fn msstd_fs_chown(path: String, uid: Int, gid: Int, follow: Bool) Unit!
+
+export extern fn msstd_fs_truncate(path: String, size: Int) Unit!
+
+export extern fn msstd_fs_hard_link(source: String, destination: String) Unit!
+
+export extern fn msstd_fs_open(path: String, flags: String, mode: Int) FileHandle!
+
+export extern fn msstd_fs_directory_open(path: String) Directory!
+
+export extern fn msstd_fs_temporary_open(prefix: String) TemporaryDirectory!
+
+export extern fn msstd_fs_stat(path: String, follow: Bool) FileInfo!
+
+export extern fn msstd_fs_list(path: String, max_entries: Int?) List[DirectoryEntry]!
+
+export extern fn msstd_fs_set_times(
+    path: String,
+    accessed: Timestamp,
+    modified: Timestamp,
+    follow: Bool
+) Unit!
+
+export extern fn msstd_fs_stat_filesystem(path: String) FileSystemInfo!
+
+export extern fn msstd_fs_watch(
+    path: String,
+    recursive: Bool,
+    interval: Duration,
+    max_entries: Int?
+) FileWatcher!
+
+export extern fn msstd_fs_watch_native(
+    path: String,
+    recursive: Bool,
+    max_entries: Int?,
+    max_events: Int?,
+    overflow: String
+) FileWatcher!
