@@ -650,6 +650,7 @@ fn compile_with_isa(
     let isa = isa_builder
         .finish(settings::Flags::new(flags))
         .map_err(|e| e.to_string())?;
+    let worker_isa = isa.clone();
     let builder = ObjectBuilder::new(isa, m.name.as_str(), default_libcall_names())
         .map_err(|e| e.to_string())?;
     let module = ObjectModule::new(builder);
@@ -785,29 +786,30 @@ fn compile_with_isa(
     }
     let mut ctx = Context::new();
     let mut fctx = FunctionBuilderContext::new();
-    let mut pending: Vec<Pending> = Vec::new();
-    for (i, f) in m.funcs.iter().enumerate() {
-        ctx.clear();
-        ctx.func.signature = g.func_sig(f);
-        ctx.func.name = UserFuncName::user(0, g.funcs[i].as_u32());
-        {
-            let mut l = Lower::new(&mut g, &mut ctx.func, &mut fctx);
-            l.lower_func(f);
-            if let Some(u) = l.unsupported.clone() {
-                return Err(Error(format!("{}: unsupported: {u}", f.name)));
+    // Lowering and defining stay on this thread, in function order; Cranelift compiles in between
+    // on the other cores, so no stage waits for a whole batch of the others.
+    std::thread::scope(|scope| -> Result<(), Error> {
+        let mut pipe = Pipeline::start(scope, &worker_isa);
+        for (i, f) in m.funcs.iter().enumerate() {
+            ctx.clear();
+            ctx.func.signature = g.func_sig(f);
+            ctx.func.name = UserFuncName::user(0, g.funcs[i].as_u32());
+            {
+                let mut l = Lower::new(&mut g, &mut ctx.func, &mut fctx);
+                l.lower_func(f);
+                if let Some(u) = l.unsupported.clone() {
+                    return Err(Error(format!("{}: unsupported: {u}", f.name)));
+                }
+                l.finish();
             }
-            l.finish();
+            let fid = g.funcs[i];
+            if prepare(&mut g, &mut ctx, fid, &f.name, Some(f)) {
+                continue;
+            }
+            pipe.submit(&mut g, std::mem::replace(&mut ctx, Context::new()), fid, i)?;
         }
-        let fid = g.funcs[i];
-        if prepare(&mut g, &mut ctx, fid, &f.name, Some(f)) {
-            continue;
-        }
-        pending.push((std::mem::replace(&mut ctx, Context::new()), fid, i));
-        if pending.len() >= BATCH {
-            flush(&mut g, &mut pending)?;
-        }
-    }
-    flush(&mut g, &mut pending)?;
+        pipe.finish(&mut g)
+    })?;
     while let Some((kind, ty)) = g.queue.pop() {
         let id = g.glue[&(kind, ty)];
         ctx.clear();
@@ -1116,59 +1118,107 @@ fn define_with(
     finish(g, ctx, id, name, source)
 }
 
-/// A lowered function waiting for Cranelift: its context, symbol and index in the MIR module.
-type Pending = (Context, FuncId, usize);
+/// Lowered functions in flight at once; bounds the contexts held.
+const IN_FLIGHT: usize = 512;
 
-/// Functions lowered before a batch is compiled; bounds the contexts held at once.
-const BATCH: usize = 256;
+/// A function compiled by a worker: its position in the order, its MIR index and symbol, and the
+/// context (or the error) that Cranelift returned.
+type Done = (usize, FuncId, usize, Result<Context, String>);
 
-/// Compiles `pending` on all cores, then defines the results in order so the object is the same
-/// as a serial build's.
-fn flush(g: &mut Gen, pending: &mut Vec<Pending>) -> Result<(), Error> {
-    use std::sync::Mutex;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    let batch = std::mem::take(pending);
-    let slots: Vec<Mutex<(Context, Option<String>)>> = batch
-        .iter()
-        .map(|_| Mutex::new((Context::new(), None)))
-        .collect();
-    let mut work: Vec<(Context, FuncId, usize)> = batch;
-    for (slot, item) in slots.iter().zip(work.iter_mut()) {
-        std::mem::swap(&mut slot.lock().unwrap().0, &mut item.0);
+/// Cranelift compilation on worker threads. Functions are submitted as they are lowered and defined
+/// in submission order as their results arrive, so the object is the same as a serial build's.
+struct Pipeline {
+    jobs: Option<std::sync::mpsc::Sender<(usize, FuncId, usize, Context)>>,
+    done: std::sync::mpsc::Receiver<Done>,
+    /// Results that arrived ahead of an earlier function's.
+    early: HashMap<usize, Done>,
+    submitted: usize,
+    defined: usize,
+}
+
+impl Pipeline {
+    fn start<'s>(
+        scope: &'s std::thread::Scope<'s, '_>,
+        isa: &'s cranelift_codegen::isa::OwnedTargetIsa,
+    ) -> Pipeline {
+        use std::sync::{Mutex, mpsc};
+        let (jobs, queue) = mpsc::channel::<(usize, FuncId, usize, Context)>();
+        let (sender, done) = mpsc::channel::<Done>();
+        let queue = std::sync::Arc::new(Mutex::new(queue));
+        let threads = std::thread::available_parallelism().map_or(1, usize::from);
+        for _ in 0..threads {
+            let (queue, sender) = (queue.clone(), sender.clone());
+            scope.spawn(move || {
+                let mut plane = cranelift_codegen::control::ControlPlane::default();
+                loop {
+                    let job = queue.lock().unwrap().recv();
+                    let Ok((seq, id, i, mut ctx)) = job else {
+                        return;
+                    };
+                    let result = match ctx.compile(&**isa, &mut plane) {
+                        Ok(_) => Ok(ctx),
+                        Err(e) => Err(format!("{e:?}")),
+                    };
+                    if sender.send((seq, id, i, result)).is_err() {
+                        return;
+                    }
+                }
+            });
+        }
+        Pipeline {
+            jobs: Some(jobs),
+            done,
+            early: HashMap::new(),
+            submitted: 0,
+            defined: 0,
+        }
     }
-    let next = AtomicUsize::new(0);
-    let isa = g.module.isa();
-    let threads = std::thread::available_parallelism()
-        .map_or(1, usize::from)
-        .min(slots.len())
-        .max(1);
-    let run = || {
-        let mut plane = cranelift_codegen::control::ControlPlane::default();
+
+    fn submit(&mut self, g: &mut Gen, ctx: Context, id: FuncId, i: usize) -> Result<(), Error> {
+        let seq = self.submitted;
+        self.submitted += 1;
+        self.jobs
+            .as_ref()
+            .expect("pipeline open")
+            .send((seq, id, i, ctx))
+            .map_err(|_| Error("Cranelift worker stopped".into()))?;
+        self.drain(g, self.submitted - self.defined > IN_FLIGHT)
+    }
+
+    /// Defines every function whose turn has come; with `block`, waits until the backlog is
+    /// back under the bound.
+    fn drain(&mut self, g: &mut Gen, mut block: bool) -> Result<(), Error> {
         loop {
-            let k = next.fetch_add(1, Ordering::Relaxed);
-            let Some(slot) = slots.get(k) else { return };
-            let mut guard = slot.lock().unwrap();
-            if let Err(e) = guard.0.compile(isa, &mut plane) {
-                guard.1 = Some(format!("{e:?}"));
+            while let Ok(d) = self.done.try_recv() {
+                self.early.insert(d.0, d);
             }
+            while let Some(d) = self.early.remove(&self.defined) {
+                self.define(g, d)?;
+                self.defined += 1;
+                block = block && self.submitted - self.defined > IN_FLIGHT / 2;
+            }
+            if !block {
+                return Ok(());
+            }
+            let d = self
+                .done
+                .recv()
+                .map_err(|_| Error("Cranelift worker stopped".into()))?;
+            self.early.insert(d.0, d);
         }
-    };
-    if threads == 1 {
-        run();
-    } else {
-        std::thread::scope(|scope| {
-            for _ in 1..threads {
-                scope.spawn(run);
-            }
-            run();
-        });
     }
-    for (slot, (_, id, i)) in slots.into_iter().zip(work) {
-        let (mut ctx, failed) = slot.into_inner().unwrap();
-        let f = &g.m.funcs[i];
-        if let Some(e) = failed {
-            return Err(Error(format!("{}: {e}", f.name)));
+
+    fn finish(mut self, g: &mut Gen) -> Result<(), Error> {
+        self.jobs = None;
+        while self.defined < self.submitted {
+            self.drain(g, true)?;
         }
+        Ok(())
+    }
+
+    fn define(&mut self, g: &mut Gen, (_, id, i, result): Done) -> Result<(), Error> {
+        let f = &g.m.funcs[i];
+        let mut ctx = result.map_err(|e| Error(format!("{}: {e}", f.name)))?;
         let cc = ctx.compiled_code().expect("function compiled");
         let relocs: Vec<_> = cc
             .buffer
@@ -1180,9 +1230,8 @@ fn flush(g: &mut Gen, pending: &mut Vec<Pending>) -> Result<(), Error> {
         g.module
             .define_function_bytes(id, alignment, cc.buffer.data(), &relocs)
             .map_err(|e| Error(format!("{}: {e:?}", f.name)))?;
-        finish(g, &mut ctx, id, &f.name, Some(f))?;
+        finish(g, &mut ctx, id, &f.name, Some(f))
     }
-    Ok(())
 }
 
 /// Runs the passes that precede Cranelift's own compilation. `true` when the function went to
