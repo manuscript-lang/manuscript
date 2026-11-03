@@ -12,7 +12,13 @@ import HttpServer from "@std/net/http.ms"
 import NativeServing from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
 import Timestamp from "@std/os/time.ms"
-import Promise, promise, owned_promise, deferred, complete from "@std/concurrency/promise.ms"
+import (
+    Promise,
+    promise,
+    owned_promise,
+    deferred,
+    complete
+) from "@std/concurrency/promise.ms"
 import sleep from "@std/os/time.ms"
 import (
     msstd_url_encode_component,
@@ -333,7 +339,9 @@ impl Listener:
     // On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and gives Failed.
     fn accept(timeout: Duration?) Promise[Connection]:
         return owned_promise[AcceptArgs, Connection](
-            AcceptArgs(native: msstd_net_listener_share(self.native), timeout: timeout.clone()),
+            AcceptArgs(
+                native: msstd_net_listener_share(self.native), timeout: timeout.clone()
+            ),
             fn a: accepted(a.native, a.timeout)
         )
 
@@ -341,7 +349,9 @@ impl Listener:
     // A timeout gives Timeout and a closed listener gives Closed from `wait`. A TLS listener gives InvalidInput: the adopting server performs the handshake.
     fn accept_raw(timeout: Duration?) Promise[Int]:
         return owned_promise[AcceptArgs, Int](
-            AcceptArgs(native: msstd_net_listener_share(self.native), timeout: timeout.clone()),
+            AcceptArgs(
+                native: msstd_net_listener_share(self.native), timeout: timeout.clone()
+            ),
             fn a: msstd_net_listener_accept_raw(a.native, a.timeout)
         )
 
@@ -693,7 +703,8 @@ export fn bind_datagram(address: String) DatagramSocket!:
 // `wait` gives PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
 export fn connect(address: String, timeout: Duration?) Promise[Connection]:
     return owned_promise[ConnectArgs, Connection](
-        ConnectArgs(address: address.clone(), timeout: timeout), fn a: connected(a.address, a.timeout)
+        ConnectArgs(address: address.clone(), timeout: timeout),
+        fn a: connected(a.address, a.timeout)
     )
 
 type ConnectArgs:
@@ -711,7 +722,9 @@ export fn connect_tls(
     timeout: Duration?
 ) Promise[Connection]:
     return owned_promise[ConnectTlsArgs, Connection](
-        ConnectTlsArgs(address: address.clone(), server_name: server_name.clone(), timeout: timeout),
+        ConnectTlsArgs(
+            address: address.clone(), server_name: server_name.clone(), timeout: timeout
+        ),
         fn a: connected_tls(a.address, a.server_name, a.timeout)
     )
 
@@ -731,7 +744,9 @@ export fn connect_tls_config(
     timeout: Duration?
 ) Promise[Connection]:
     return owned_promise[ConnectTlsConfigArgs, Connection](
-        ConnectTlsConfigArgs(address: address.clone(), options: options.clone(), timeout: timeout),
+        ConnectTlsConfigArgs(
+            address: address.clone(), options: options.clone(), timeout: timeout
+        ),
         fn a: connected_tls_config(a.address, a.options, a.timeout)
     )
 
@@ -755,7 +770,8 @@ fn connected_tls_config(
 // Any restricted network gives PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path gives InvalidInput. `timeout` bounds the attempt.
 export fn connect_unix(path: String, timeout: Duration?) Promise[Connection]:
     return owned_promise[ConnectArgs, Connection](
-        ConnectArgs(address: path.clone(), timeout: timeout), fn a: connected_unix(a.address, a.timeout)
+        ConnectArgs(address: path.clone(), timeout: timeout),
+        fn a: connected_unix(a.address, a.timeout)
     )
 
 fn connected_unix(path: String, timeout: Duration?) Connection!:

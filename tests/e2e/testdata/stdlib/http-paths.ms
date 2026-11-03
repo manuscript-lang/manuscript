@@ -34,12 +34,8 @@ fn stream_route(exchange: HttpExchange) Unit!:
     var chain_1 = Map[String, List[String]]()
     chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
-    let _sent = try live.send_headers(
-        status: 200, headers: (try list_headers(chain_1))
-    )
-    let _written = (
-        try http_result(live.write("{live.path()}|{live.query()}"))
-    )
+    let _sent = try live.send_headers(status: 200, headers: (try list_headers(chain_1)))
+    let _written = (try http_result(live.write("{live.path()}|{live.query()}")))
     return ok(unit)
 
 fn check_route(url: String, expected: String) Unit!:

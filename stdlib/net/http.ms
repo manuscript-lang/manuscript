@@ -480,12 +480,7 @@ fn read_rest(var exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
 
     return ok(head)
 
-fn read_more(
-    var exchange: HttpExchange,
-    chunks: List[Bytes],
-    total: Int,
-    limit: Int?
-) Bytes!:
+fn read_more(var exchange: HttpExchange, chunks: List[Bytes], total: Int, limit: Int?) Bytes!:
     var parts = chunks
     var size = total
 

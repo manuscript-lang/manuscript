@@ -62,6 +62,7 @@ test "a write fails with Closed once the reader is gone":
     var out = p.writer()
     var input = p.reader()
     try input.close()
+
     let refused = try expect_error(out.write(1))
     try expect_equal(refused.kind, ErrorCategory.Closed)
 
@@ -77,6 +78,7 @@ test "a pipe has one reader; asking again gives a stream that has already ended"
 test "a promise that owns a pipe writes to it through a writer of its own":
     var p = pipe[Int](2)
     var input = p.reader()
+
     // Holds the pipe open until the producer is done, since the reader ends when the last writer closes.
     var gate = p.writer()
     let producer = promise(fn: produce(p, 5))

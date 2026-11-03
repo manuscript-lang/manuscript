@@ -214,9 +214,13 @@ export fn fetcher(
 
 // Starts one buffered request on a one-shot client and returns its promise; requests started together are in flight together.
 // Redirects are followed up to 20 times, the body is limited to 16 MiB, and the exchange to 30 seconds; override them in `options`.
-export fn fetch(url: String, options: FetchOptions = FetchOptions()) Promise[FetchResponse]:
+export fn fetch(
+    url: String,
+    options: FetchOptions = FetchOptions()
+) Promise[FetchResponse]:
     return owned_promise[FetchArgs, FetchResponse](
-        FetchArgs(url: url.clone(), options: options.clone()), fn a: fetched(a.url, a.options)
+        FetchArgs(url: url.clone(), options: options.clone()),
+        fn a: fetched(a.url, a.options)
     )
 
 type FetchArgs:

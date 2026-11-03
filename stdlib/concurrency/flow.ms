@@ -132,7 +132,9 @@ impl RateLimiter:
     var fn acquire() Unit:
         while not self.try_acquire():
             let ready = self.stamp.shift(self.interval)
-            sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(unit)
+            sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(
+                unit
+            )
 
 // Why a circuit breaker call produced no result.
 export type CircuitError[E]:

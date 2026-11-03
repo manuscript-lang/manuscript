@@ -132,7 +132,6 @@ impl Closeable for ReadStream[T]:
         // The source closes once, when `closing` goes out of scope: an explicit close here would run twice.
         if let source = msrt_cells_take[Source[T]](self.cell):
             let _closing = source
-
         msrt_cells_drop(self.cell)
         return ok(unit)
 
@@ -248,6 +247,7 @@ impl Source[T] for PipeSource[T]:
     var fn next() T?!:
         let p = msrt_pipe_read(self.id)
         let code = msrt_promise_wait(p, -1)
+
         if code != 0:
             msrt_promise_drop(p)
             return error(Error("pipe: read cancelled", kind: ErrorCategory.Other))
@@ -311,12 +311,12 @@ impl Closeable for Pipe[T]:
     var fn close() Unit!:
         if not self.taken:
             msrt_pipe_close_reader(self.id)
-
         return ok(unit)
 
 // Makes an in-memory pipe whose writers' `flush` waits while more than `capacity` values are queued.
 export fn pipe[T: Clonable](capacity: Int) Pipe[T]:
     let id = msrt_pipe_new(capacity)
+
     // The runtime starts a pipe with one writer, which the Pipe value would hold; writers come from `writer()` instead.
     msrt_pipe_close_writer(id)
     return Pipe[T](id: id, taken: false)

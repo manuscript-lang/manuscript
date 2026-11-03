@@ -282,6 +282,7 @@ test "in-process reads report EOF immediately for an empty body":
 
 fn invalid_reads(exchange: HttpExchange, params: RouteParams) Unit!:
     var live = exchange
+
     for limit in [0, -1]:
         let read = live.read(limit)
         if read.is_ok(): return error(Error("invalid read size accepted", kind: Failed))

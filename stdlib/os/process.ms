@@ -465,8 +465,9 @@ export fn run(
 ) Promise[CommandOutput]:
     return owned_promise[RunArgs, CommandOutput](
         RunArgs(
-            program: program.clone(), arguments: arguments.clone(), input: input.clone(),
-            max_output_bytes: max_output_bytes, timeout: timeout, cwd: cwd.clone(), env: env.clone()
+            program: program.clone(), arguments: arguments.clone(),
+            input: input.clone(), max_output_bytes: max_output_bytes, timeout: timeout,
+            cwd: cwd.clone(), env: env.clone()
         ),
         fn a: host_commands().run(
             a.program, a.arguments, a.input, a.max_output_bytes, a.timeout, a.cwd, a.env

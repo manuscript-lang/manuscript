@@ -131,7 +131,9 @@ impl Owned[A, U]:
 // (on a file, a socket, a child process), so its task stays on the calling thread.
 export fn owned_promise[A, U](args: A, work: fn(A) U!) Promise[U]:
     let id = msrt_promise_new()
-    msrt_promise_start_here(id, owned_job[A, U](id, Owned[A, U](args: args, work: work)))
+    msrt_promise_start_here(
+        id, owned_job[A, U](id, Owned[A, U](args: args, work: work))
+    )
     return Promise[U](id: id)
 
 // The entry of an owning promise: a closure that owns `owned`, since a closure that is returned owns its captures.

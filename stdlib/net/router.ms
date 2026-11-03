@@ -410,12 +410,13 @@ impl Router:
         var events = pipe[TestEvent](16)
         var recorded = events.reader()
         let exchange = TestExchange(
-            request: request.clone(), output: events.writer(), status: 0,
-            sent: false, complete: false, closed: false, unread: request.body.clone()
+            request: request.clone(), output: events.writer(), status: 0, sent: false,
+            complete: false, closed: false, unread: request.body.clone()
         )
         var end = events.writer()
         let ran = self.handler()(exchange)
         try end.write(TestEvent.End)
+
         let outcome = try finished(var recorded)
         try events.close()
         if ran.is_error(): return error(ran.err().clone())
@@ -424,13 +425,8 @@ impl Router:
 
 // What an in-process handler sent, in order, as the exchange writes it to the pipe `Router.call` reads.
 type TestEvent:
-    case Head(
-        status: Int,
-        headers: HttpHeaders
-    )
-    case Chunk(
-        data: Bytes
-    )
+    case Head(status: Int, headers: HttpHeaders)
+    case Chunk(data: Bytes)
     // Written by `Router.call` after the handler returns: nothing follows it.
     case End
 
@@ -449,6 +445,7 @@ fn finished(var recorded: ReadStream[TestEvent]) HttpResponse!:
     var status = 204
     var head = headers()
     var body = BytesBuilder()
+
     for event in recorded.wait():
         match try event:
             Head(code, sent):
@@ -522,7 +519,6 @@ impl HttpExchange for TestExchange:
 
     var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
         try self.send_headers(status, headers)
-
         self.complete = true
         if self.request.method.text() == "HEAD" or not has_body(status): return ok(unit)
 
@@ -560,12 +556,8 @@ fn has_body(status: Int) Bool:
 
 // What a wrapped exchange has sent, as `access_log` reads it from its pipe.
 type Counted:
-    case Status(
-        code: Int
-    )
-    case Body(
-        count: Int
-    )
+    case Status(code: Int)
+    case Body(count: Int)
     // Written by `access_log` after the handler returns: nothing follows it.
     case End
 
@@ -721,9 +713,9 @@ fn with_access_log(
     let result = next(tap)
     let ended = end.write(Counted.End)
     let closed = counts.close()
-
     var sent_status = 0
     var sent_bytes = 0
+
     for event in tally.wait():
         match event.get(Counted.End):
             Status(code):

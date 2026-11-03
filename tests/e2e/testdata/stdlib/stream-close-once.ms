@@ -32,6 +32,7 @@ impl Sink[Int] for Counted:
 fn closes(log: String) String:
     if let bytes = read_file(log).wait():
         return bytes.decode_utf8().get("")
+
     return ""
 
 test "a read stream closes its source once":

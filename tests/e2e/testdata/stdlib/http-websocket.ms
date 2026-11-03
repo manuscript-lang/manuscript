@@ -17,6 +17,7 @@ fn tls_options() TlsOptions:
 
 fn echo(exchange: HttpExchange) Unit!:
     var live = exchange
+
     if live.path() == "/ws":
         var socket = (
             try http_result(

@@ -667,9 +667,15 @@ export fn write_file(path: String, data: String, replace: Bool = false) Promise[
     )
 
 // Starts creating a file exclusively from raw bytes and returns its promise; replace defaults to False, retaining an existing file.
-export fn write_file_bytes(path: String, data: Bytes, replace: Bool = false) Promise[Unit]:
+export fn write_file_bytes(
+    path: String,
+    data: Bytes,
+    replace: Bool = false
+) Promise[Unit]:
     return owned_promise[WriteBytesArgs, Unit](
-        WriteBytesArgs(path: path.clone(), data: data.clone(), replace: replace),
+        WriteBytesArgs(
+            path: path.clone(), data: data.clone(), replace: replace
+        ),
         fn a: host().write_file_bytes(a.path, a.data, a.replace)
     )
 
