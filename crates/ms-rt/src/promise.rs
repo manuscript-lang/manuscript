@@ -65,7 +65,10 @@ const HELD_ERROR: u8 = 8;
 /// Another thread completes this promise (a pipe peer), so a waiter's token must be remote.
 const REMOTE_WAKE: u8 = 2;
 /// The promise has no task: its work runs in the first task that waits on it.
-const DEFERRED: u8 = 4;
+const DEFERRED: u8 = 16;
+
+// Each flag is its own bit: two sharing one made a held result look like deferred work.
+const _: () = assert!((WANT_CANCEL | REMOTE_WAKE | HELD | HELD_ERROR | DEFERRED).count_ones() == 5);
 
 const NO_RESULT: Result = Result {
     ptr: core::ptr::null_mut(),
