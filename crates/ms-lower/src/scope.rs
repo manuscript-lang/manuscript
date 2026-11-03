@@ -23,7 +23,7 @@ impl crate::func::FnLower<'_> {
 
     /// The module whose evidence this generic instance was created for.
     fn instance_evidence(&self) -> Option<Name> {
-        self.subst.get(&ct::n(EVIDENCE)).map(|t| t.id)
+        self.variant.evidence
     }
 
     /// The evidence scope for an expression whose declared (unsubstituted) types are `pre`.
@@ -51,9 +51,6 @@ impl crate::func::FnLower<'_> {
     }
 }
 
-/// The substitution entry naming the module that provides an instance's type evidence.
-const EVIDENCE: &str = "$evidence";
-
 impl Cx {
     /// The instance of `c` under `subst`. An instance over a type with a local extension is
     /// separate per `scope`, the module whose implementations its type variables use.
@@ -64,13 +61,23 @@ impl Cx {
         subst: &ct::Subst,
         scope: Name,
     ) -> Result<ms_mir::ir::FuncId, crate::Error> {
-        let key = ct::n(EVIDENCE);
-        if subst.contains_key(&key) || !subst.values().any(|t| self.mentions_extension(t)) {
-            return self.function_for(m, c, subst);
-        }
-        let mut scoped = subst.clone();
-        scoped.insert(key, ct::primitive(scope.as_str()));
-        self.function_for(m, c, &scoped)
+        self.function_in_as(m, c, subst, scope, false)
+    }
+
+    /// [`Cx::function_in`], taking the consumed parameters owned when `owned`.
+    pub(crate) fn function_in_as(
+        &mut self,
+        m: &mut Module,
+        c: &std::rc::Rc<ms_check::hir::Callable>,
+        subst: &ct::Subst,
+        scope: Name,
+        owned: bool,
+    ) -> Result<ms_mir::ir::FuncId, crate::Error> {
+        let evidence = subst
+            .values()
+            .any(|t| self.mentions_extension(t))
+            .then_some(scope);
+        self.function_variant(m, c, subst, crate::cx::Variant { owned, evidence })
     }
 
     /// The descriptor scope number of a module (`0` is no scope).

@@ -11,6 +11,24 @@ use ms_syntax::NodeId;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+/// What an instance is requested with besides its type variables.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Variant {
+    /// The instance takes the parameters its body consumes owned.
+    pub owned: bool,
+    /// The module whose local implementations the instance's type variables use.
+    pub evidence: Option<ms_check::types::Name>,
+}
+
+/// The key of a reserved instance: the callable, its type variables and its variant.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct InstKey {
+    pub file: ms_check::types::Name,
+    pub node: NodeId,
+    pub subst: Vec<(ms_check::types::Name, String)>,
+    pub variant: Variant,
+}
+
 /// What a reserved function is made of.
 pub enum JobKind {
     /// A source callable under a substitution.
@@ -19,6 +37,8 @@ pub enum JobKind {
         callable: Rc<Callable>,
         /// Type variables of the instance.
         subst: Subst,
+        /// Ownership and evidence the instance was requested with.
+        variant: Variant,
     },
     /// The text form of a value of the MIR type.
     Format(MTy, bool),
@@ -121,6 +141,8 @@ pub struct LambdaJob {
     pub hir: Rc<ModuleHir>,
     /// Type variables of the enclosing instance.
     pub subst: Subst,
+    /// Ownership and evidence of the enclosing instance.
+    pub variant: Variant,
     /// Source captures and their slots in the closure environment.
     pub captures: Vec<crate::closure::LambdaCapture>,
 }
@@ -154,7 +176,7 @@ pub struct Cx {
     /// MIR types by checker type key.
     pub tycache: HashMap<String, MTy>,
     /// Function instances by key.
-    pub insts: HashMap<String, FuncId>,
+    pub insts: HashMap<InstKey, FuncId>,
     /// Bodies waiting to be lowered.
     pub queue: Vec<Job>,
     /// Records and alternatives declared `opaque type`; their text form is the type name.
