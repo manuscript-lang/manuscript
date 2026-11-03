@@ -156,6 +156,25 @@ test "encoding variant function values retain defaults":
     try expect_equal(raw_encode("f".to_bytes()), "Zg")
     try expect_equal(try raw_decode("Zg"), "f".to_bytes())
 
+test "Base32 rejects interior padding before output budgets":
+    let invalid: Bytes!EncodingError = error(EncodingError.InvalidData)
+    let negative: Bytes!EncodingError = error(EncodingError.InvalidInput)
+    let limited: Bytes!EncodingError = error(EncodingError.LimitExceeded)
+
+    for hex in [false, true]:
+        for text in ["A=AAAAAA", "AA======AA======"]:
+            try expect_equal(base32_decode(text, hex, true, 0), invalid)
+            try expect_equal(base32_decode(text, hex, true, -1), negative)
+            try expect_equal(base32_decode(text, hex, true), invalid)
+            try expect_equal(base32_decode(text, hex, true, 100), invalid)
+
+        try expect_equal(base32_decode("A=AA", hex, false, 0), invalid)
+        try expect_equal(base32_decode("A=AA", hex, false, 100), invalid)
+        try expect_equal(base32_decode("!!!!!!!!", hex, true, 0), limited)
+        try expect_equal(base32_decode("!!!!!!!!", hex, true, 100), invalid)
+
+    try expect_equal(base64_decode_unpadded("A=AA", max_bytes: 0), limited)
+
 test "unpadded Base64 preserves byte budget precedence for invalid padding":
     let invalid: Bytes! = error(
         Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
