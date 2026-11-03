@@ -177,6 +177,8 @@ unsafe fn run_main() {
     // SAFETY: this thread is the runtime thread; the root flow waits shielded so a stop request
     // reaches the main task, not this wait.
     unsafe { crate::task::run_main_task(main_task) };
+    // Scheduler threads end with the program; a counting build then sees their heaps released too.
+    crate::sched::shutdown();
     #[cfg(feature = "stats")]
     report_leaks();
 }

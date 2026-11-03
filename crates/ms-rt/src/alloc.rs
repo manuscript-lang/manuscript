@@ -445,7 +445,7 @@ pub fn alloc(size: usize) -> *mut u8 {
             s.free[class] = unsafe { *(head as *mut *mut u8) };
             #[cfg(any(test, feature = "stats"))]
             {
-                s.live += 1;
+                live_add(s, 1);
             }
             return head;
         }
@@ -471,7 +471,7 @@ fn alloc_slow(size: usize) -> *mut u8 {
             s.free[class] = unsafe { *(head as *mut *mut u8) };
             #[cfg(any(test, feature = "stats"))]
             {
-                s.live += 1;
+                live_add(s, 1);
             }
             return head;
         }
@@ -484,7 +484,7 @@ fn alloc_slow(size: usize) -> *mut u8 {
             s.bump[class] = unsafe { p.add(CLASS_SIZES[class] as usize) };
             #[cfg(any(test, feature = "stats"))]
             {
-                s.live += 1;
+                live_add(s, 1);
             }
             return p;
         }
@@ -508,7 +508,7 @@ fn alloc_large(s: &mut State, size: usize) -> *mut u8 {
             }
             #[cfg(any(test, feature = "stats"))]
             {
-                s.live += 1;
+                live_add(s, 1);
             }
             return head;
         }
@@ -517,7 +517,7 @@ fn alloc_large(s: &mut State, size: usize) -> *mut u8 {
         if !shared.is_null() {
             #[cfg(any(test, feature = "stats"))]
             {
-                s.live += 1;
+                live_add(s, 1);
             }
             return shared;
         }
@@ -529,7 +529,7 @@ fn alloc_large(s: &mut State, size: usize) -> *mut u8 {
     }
     #[cfg(any(test, feature = "stats"))]
     {
-        s.live += 1;
+        live_add(s, 1);
     }
     p
 }
@@ -573,7 +573,7 @@ pub fn alloc_zeroed_cached(size: usize) -> *mut u8 {
     }
     #[cfg(any(test, feature = "stats"))]
     {
-        s.live += 1;
+        live_add(s, 1);
     }
     head
 }
@@ -599,7 +599,7 @@ pub unsafe fn free(p: *mut u8) {
     let s = unsafe { &mut *STATE.ptr() };
     #[cfg(any(test, feature = "stats"))]
     {
-        s.live -= 1;
+        live_add(s, -1);
     }
     if let Some(word) = page_word(p) {
         let class = word as u8 as usize;
@@ -804,7 +804,7 @@ fn grow_take(s: &mut State, size: usize) -> Option<*mut u8> {
     GROW_LEN[s.grow_chunk].store(size, Ordering::Release);
     #[cfg(any(test, feature = "stats"))]
     {
-        s.live += 1;
+        live_add(s, 1);
     }
     Some(grow_base(s.grow_chunk) as *mut u8)
 }
@@ -833,7 +833,7 @@ fn grow_resize(s: &mut State, p: *mut u8, new_size: usize) -> *mut u8 {
     grow_release(s, s.grow_chunk);
     #[cfg(any(test, feature = "stats"))]
     {
-        s.live -= 1;
+        live_add(s, -1);
     }
     q
 }
@@ -884,11 +884,29 @@ pub fn requested() -> [u64; 2] {
     unsafe { (*STATE.ptr()).requested }
 }
 
-/// Live allocation count (tests and the `stats` feature).
-#[cfg(any(test, feature = "stats"))]
+/// Live allocation count (tests and the `stats` feature). Counting builds count the whole
+/// process, since a block may be freed on another thread than the one that allocated it.
+#[cfg(feature = "stats")]
+pub fn live_blocks() -> isize {
+    LIVE_ALL.load(Ordering::Relaxed)
+}
+
+/// Live allocation count of the calling thread (tests).
+#[cfg(all(test, not(feature = "stats")))]
 pub fn live_blocks() -> isize {
     // SAFETY: this thread's allocator state.
     unsafe { (*STATE.ptr()).live }
+}
+
+/// Live blocks of the whole process (the `stats` feature).
+#[cfg(feature = "stats")]
+static LIVE_ALL: core::sync::atomic::AtomicIsize = core::sync::atomic::AtomicIsize::new(0);
+
+#[cfg(any(test, feature = "stats"))]
+fn live_add(s: &mut State, delta: isize) {
+    s.live += delta;
+    #[cfg(feature = "stats")]
+    LIVE_ALL.fetch_add(delta, Ordering::Relaxed);
 }
 
 #[cfg(test)]

@@ -193,6 +193,14 @@ msrt_pipe_receive(end: i64, out: *mut StrVal) -> u8
 msrt_pipe_receive_bytes(end: i64, out: *mut VecVal) -> u8
 msrt_pipe_send(end: i64, message: *const StrVal) -> i64
 msrt_pipe_send_bytes(end: i64, message: *const VecVal) -> i64
+msrt_pipes_add_writer(pipe: i64)
+msrt_pipes_buffered(pipe: i64) -> i64
+msrt_pipes_close_reader(pipe: i64)
+msrt_pipes_close_writer(pipe: i64)
+msrt_pipes_flush(pipe: i64) -> i64
+msrt_pipes_new(capacity: i64) -> i64
+msrt_pipes_read(pipe: i64) -> i64
+msrt_pipes_write(pipe: i64, value: *mut u8, d: *const TypeDesc) -> i64
 msrt_process_exit(code: i64) -> !
 msrt_process_on_exit(hook: extern "C" fn())
 msrt_promise_done(id: i64) -> u8
@@ -209,6 +217,8 @@ msrt_promise_wait_any(ids: *const VecVal, timeout_ns: i64) -> i64
 msrt_realloc(p: *mut u8, size: usize) -> *mut u8
 msrt_release(o: *mut Obj)
 msrt_retain(o: *mut Obj)
+msrt_runtime_set_threads(n: i64)
+msrt_runtime_threads() -> i64
 msrt_scope_close(scope: i64)
 msrt_scope_contain(scope: i64)
 msrt_scope_fault_message(out: *mut StrVal)

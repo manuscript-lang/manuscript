@@ -174,6 +174,28 @@ pub fn post_remote(id: u64, value: u64) {
     }
 }
 
+/// Interrupts the poller of the isolate in registry slot `slot` so it looks at its mail.
+/// Callable from any thread; an unregistered slot is ignored.
+pub fn kick(slot: usize) {
+    let inbox = {
+        let reg = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
+        match reg.get(slot).and_then(|slot| slot.inbox.as_ref()) {
+            Some(i) => i.clone(),
+            _ => return,
+        }
+    };
+    // The target stops counting as parked before it is woken (see `post_remote`).
+    {
+        let mut idle = IDLE.lock().unwrap_or_else(|e| e.into_inner());
+        if inbox.idle.swap(false, Ordering::Relaxed) {
+            idle.idle -= 1;
+        }
+    }
+    if let Some(wake) = &*inbox.wake.lock().unwrap_or_else(|e| e.into_inner()) {
+        wake();
+    }
+}
+
 /// Takes the posts queued for the calling isolate.
 pub fn take_posts() -> Vec<(u64, u64)> {
     let (_, inbox) = current();
