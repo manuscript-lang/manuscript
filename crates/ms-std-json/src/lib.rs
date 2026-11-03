@@ -87,6 +87,8 @@ pub struct Doc {
     members: Vec<Member>,
     arrays: Vec<Vec<NodeId>>,
     objects: Vec<Vec<Member>>,
+    /// The last node a typed decoder rejected: `(node, reason code, text)`, see [`Doc::mismatch_text`].
+    mismatch: core::cell::RefCell<Option<(NodeId, u8, String)>>,
 }
 
 fn budget(o: Option<i64>) -> Result<usize, Fail> {
@@ -127,6 +129,66 @@ impl Doc {
             Some(&Node::ArrB(i)) => self.arrays.get(i as usize).map_or(&[], Vec::as_slice),
             _ => &[],
         }
+    }
+
+    /// Records the node a typed decode rejected; the last record before the decode fails wins.
+    pub fn note_mismatch(&self, id: NodeId, code: u8, text: &str) {
+        *self.mismatch.borrow_mut() = Some((id, code, String::from(text)));
+    }
+
+    /// `JSON: invalid data: at $.items[0].count: expected Int, found string` for the recorded
+    /// rejection under `root`, else `JSON: invalid data`. Codes: 0 value does not fit type `text`; 1 expected kind `text`; 2 missing
+    /// field `text`; 3 unknown field; 4 unknown variant.
+    pub fn mismatch_text(&self, root: NodeId) -> String {
+        let plain = String::from("JSON: invalid data");
+        let Some((id, code, text)) = self.mismatch.borrow().clone() else {
+            return plain;
+        };
+        let mut path = String::from("$");
+        if !self.path_to(root, id, &mut path) {
+            return plain;
+        }
+        let found = match self.node(id) {
+            Some(Node::Null) => "null",
+            Some(Node::Bool(_)) => "boolean",
+            Some(Node::Num(_) | Node::RawNum(_)) => "number",
+            Some(Node::Str(_)) => "string",
+            Some(Node::Arr { .. } | Node::ArrB(_)) => "array",
+            Some(Node::Obj { .. } | Node::ObjB(_)) => "object",
+            None => "value",
+        };
+        let why = match code {
+            0 => alloc::format!("{found} does not fit {text}"),
+            1 => alloc::format!("expected {text}, found {found}"),
+            2 => alloc::format!("missing field \"{text}\""),
+            3 => String::from("unknown field"),
+            _ => alloc::format!("{found} is not a known variant"),
+        };
+        alloc::format!("{plain}: at {path}: {why}")
+    }
+
+    /// Appends the path from `from` to `target` to `path`; false when `target` is not below it.
+    fn path_to(&self, from: NodeId, target: NodeId, path: &mut String) -> bool {
+        if from == target {
+            return true;
+        }
+        let mark = path.len();
+        for (i, &item) in self.items(from).iter().enumerate() {
+            path.push_str(&alloc::format!("[{i}]"));
+            if self.path_to(item, target, path) {
+                return true;
+            }
+            path.truncate(mark);
+        }
+        for m in self.members(from) {
+            path.push('.');
+            path.push_str(self.slice(m.key));
+            if self.path_to(m.val, target, path) {
+                return true;
+            }
+            path.truncate(mark);
+        }
+        false
     }
 
     /// The members of an object node, else none.

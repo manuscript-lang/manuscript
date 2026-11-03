@@ -97,6 +97,10 @@ pub(crate) struct FnLower<'a> {
     /// The current position is unreachable.
     pub dead: bool,
     pub ret_ty: MTy,
+    /// In a JSON decoder: the document, the node and the type name a failure reports.
+    pub jnode: Option<(Value, Value, String)>,
+    /// Why the next JSON decoder failure happens, as `(code, text)` (see `Doc::mismatch_text`).
+    pub jwhy: Option<(i64, String)>,
     /// The body is bracketed by `depth.enter` / `depth.leave` (the optimizer removes it for non-recursive functions).
     pub counts_depth: bool,
     /// The value `return` is carrying while the scopes unwind, which a close error replaces.
@@ -510,6 +514,8 @@ impl<'a> FnLower<'a> {
             loops: Vec::new(),
             dead: false,
             ret_ty,
+            jnode: None,
+            jwhy: None,
             counts_depth: false,
             pending_return: None,
             prologue_done: false,

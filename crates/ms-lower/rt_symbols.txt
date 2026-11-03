@@ -555,6 +555,8 @@ msstd_json_item(handle d: *const ObjCell<Doc>, id: u32, i: i64) -> u32 @leaf
 msstd_json_key(handle d: *const ObjCell<Doc>, id: u32, i: i64, out: *mut StrVal) @leaf
 msstd_json_kind(handle d: *const ObjCell<Doc>, id: u32) -> u8 @leaf
 msstd_json_len(handle d: *const ObjCell<Doc>, id: u32) -> i64 @leaf
+msstd_json_mismatch(handle d: *const ObjCell<Doc>, id: u32, code: i64, text: *const StrVal) @leaf
+msstd_json_mismatch_text(handle d: *const ObjCell<Doc>, root: u32, out: *mut StrVal) @leaf
 msstd_json_parse(text: *const StrVal, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth: HasRaw, max_depth: i64, has_max_values: HasRaw, max_values: i64, out: *mut *mut ObjCell<Doc>, root: *mut u32, err: ErrSlot) -> u8 @leaf
 msstd_json_parse_tree(text: *const StrVal, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth: HasRaw, max_depth: i64, has_max_values: HasRaw, max_values: i64, desc: *const TypeDesc, ctor: unsafe extern "C-unwind" fn(i64, *mut u8, *mut u8) -> i64, out: *mut u8, err: ErrSlot) -> u8 @leaf
 msstd_json_text(handle d: *const ObjCell<Doc>, id: u32, out: *mut StrVal) @leaf
