@@ -155,8 +155,6 @@ pub enum Builtin {
     Set,
     /// `Bytes`.
     Bytes,
-    /// `Shared`.
-    Shared,
     /// `BigInt`.
     BigInt,
     /// `Decimal`.
@@ -199,7 +197,6 @@ impl Builtin {
             "Map" => Some(Builtin::Map),
             "Set" => Some(Builtin::Set),
             "Bytes" => Some(Builtin::Bytes),
-            "Shared" => Some(Builtin::Shared),
             "BigInt" => Some(Builtin::BigInt),
             "Decimal" => Some(Builtin::Decimal),
             "Error" => Some(Builtin::Error),
