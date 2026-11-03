@@ -18,3 +18,4 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [The implementation is Rust and Cranelift under a value-semantics model](the-implementation-is-rust-and-cranelift-under-a-value-seman.md): the compiler, runtime, standard library, and tools use Rust with Cranelift under a value-semantics memory model.
 - [Compiler change checklist](compiler-change-checklist.md): syntax, checking, lowering, MIR, Cranelift, build, and linking rules to check before editing the compiler.
 - [Structural property bits are not worth a whole-program pass](structural-property-bits-are-not-worth-a-whole-program-pass.md): a typical check makes about 270 property queries, and answers depend on per-file impl visibility.
+- [Unwind leaves slot values to an active scope close](unwind-leaves-slot-values-to-an-active-scope-close.md): a value taken from a scope-closed slot must not get its own unwind drop, which would free the receiver before the slot's close runs.
