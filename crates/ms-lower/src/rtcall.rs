@@ -11,6 +11,7 @@ use crate::func::{FnLower, Val};
 use crate::native::NArg;
 use ms_check::types as ct;
 use ms_mir::ir::{Cc, Imm, Op, Value};
+use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 
 /// Every exported runtime function with its parameters and return type, sorted by name. Generated
@@ -123,7 +124,7 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         .strip_prefix("map_")
         .or_else(|| name.strip_prefix("set_"))
         .unwrap_or(name);
-    if matches!(m.types.kind(recv), TyKind::Obj(n, _) if n == "BigInt") {
+    if matches!(m.types.kind(recv), TyKind::Obj(Native::BigInt, _)) {
         let name = if name == "format" {
             "to_string_radix"
         } else {
@@ -144,8 +145,8 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         | TyKind::UInt16
         | TyKind::UInt32 => "int",
         TyKind::Float | TyKind::Float32 => "float",
-        TyKind::Obj(n, _) if n == "Map" => "map",
-        TyKind::Obj(n, _) if n == "Set" => "set",
+        TyKind::Obj(Native::Map, _) => "map",
+        TyKind::Obj(Native::Set, _) => "set",
         _ => return None,
     };
     let sym = format!("msrt_{prefix}_{name}");
@@ -252,7 +253,7 @@ impl FnLower<'_> {
         let TyKind::Obj(n, a) = self.b.m.types.kind(map) else {
             return None;
         };
-        if n != "Map" || a.len() != 2 {
+        if *n != Native::Map || a.len() != 2 {
             return None;
         }
         let types = &self.b.m.types;
