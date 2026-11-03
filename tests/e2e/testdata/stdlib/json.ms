@@ -26,6 +26,24 @@ fn expect_syntax_error[T](actual: T!) Unit!:
     try expect_contains(cause.message, "JSON: invalid data: line ")
     return ok(unit)
 
+fn expect_invalid_data[T](actual: T!) Unit!:
+    let cause = try expect_error(actual)
+    try expect_equal(cause.kind, ErrorCategory.InvalidData)
+    try expect_contains(cause.message, "JSON: invalid data")
+    return ok(unit)
+
+test "JSON decode errors name the failing path":
+    let wrong = parse[Profile]("\{\"name\":1\}")
+    try expect_equal(
+        (try expect_error(wrong)).message,
+        "JSON: invalid data: at $.name: expected string, found number"
+    )
+
+    let nested = parse[List[Profile]]("[\{\"name\":\"a\",\"scores\":[]\}, 3]")
+    try expect_contains(
+        (try expect_error(nested)).message, "at $[1]: expected object, found number"
+    )
+
 test "JSON rejects duplicate keys malformed Unicode and trailing values":
     for text in [
         "\{\"a\":1,\"\\u0061\":2\}", "\"\\uD800\"", "\"\\uDC00\"", "1 2", "NaN", "[1,]"
@@ -352,27 +370,24 @@ test "JSON parse decodes records by field name with defaults and optional fields
     try expect_false(other.age != 30 or other.nickname.get() != "bee")
 
 test "JSON parse rejects shape mismatches as InvalidData":
-    let invalid: Profile! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
     let missing = "\{\"scores\":[]\}"
-    try expect_equal(parse[Profile](missing), invalid)
+    try expect_invalid_data(parse[Profile](missing))
 
     let unknown = "\{\"name\":\"A\",\"scores\":[],\"extra\":1\}"
-    try expect_equal(parse[Profile](unknown, ignore_unknown_fields: false), invalid)
+    try expect_invalid_data(parse[Profile](unknown, ignore_unknown_fields: false))
 
     let lenient: Profile = try parse[Profile](unknown)
     try expect_equal(lenient.name, "A")
 
     let wrong = "\{\"name\":1,\"scores\":[]\}"
-    try expect_equal(parse[Profile](wrong), invalid)
+    try expect_invalid_data(parse[Profile](wrong))
 
     let fractional = "\{\"name\":\"A\",\"age\":1.5,\"scores\":[]\}"
-    try expect_equal(parse[Profile](fractional), invalid)
+    try expect_invalid_data(parse[Profile](fractional))
 
     let overflow = "\{\"name\":\"A\",\"age\":9223372036854775808,\"scores\":[]\}"
-    try expect_equal(parse[Profile](overflow), invalid)
-    try expect_equal(parse[Profile]("[]"), invalid)
+    try expect_invalid_data(parse[Profile](overflow))
+    try expect_invalid_data(parse[Profile]("[]"))
     try expect_syntax_error(parse[Profile]("\{"))
 
     let limited: Profile! = error(
@@ -386,15 +401,11 @@ test "JSON parse decodes alternatives and generic records":
 
     let circle: Shape = try parse[Shape]("\{\"Circle\":\{\"radius\":2\}\}")
     try expect_equal(circle, Shape.Circle(2))
-
-    let invalid: Shape! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
-    try expect_equal(parse[Shape]("\"Circle\""), invalid)
-    try expect_equal(parse[Shape]("\{\"Dot\":\{\}\}"), invalid)
-    try expect_equal(parse[Shape]("\"Square\""), invalid)
-    try expect_equal(
-        parse[Shape]("\{\"Circle\":\{\"radius\":1\},\"Dot\":\{\}\}"), invalid
+    try expect_invalid_data(parse[Shape]("\"Circle\""))
+    try expect_invalid_data(parse[Shape]("\{\"Dot\":\{\}\}"))
+    try expect_invalid_data(parse[Shape]("\"Square\""))
+    try expect_invalid_data(
+        parse[Shape]("\{\"Circle\":\{\"radius\":1\},\"Dot\":\{\}\}")
     )
 
     let scene: Scene = try parse[Scene](
@@ -466,11 +477,7 @@ fn load_default(text: String) JsonValue!:
 test "JSON parse takes its type from an explicit argument, the expected result or the JsonValue default":
     let profile = try load_profile("\{\"name\":\"Ada\",\"scores\":[]\}")
     try expect_equal(profile.name, "Ada")
-
-    let invalid: Profile! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
-    try expect_equal(load_profile("\{\"name\":1\}"), invalid)
+    try expect_invalid_data(load_profile("\{\"name\":1\}"))
 
     let raw = try load_default("\{\"a\":[1]\}")
     let again = try parse("\{\"a\":[1]\}")
@@ -568,14 +575,11 @@ test "JSON parse and stringify bound to a type argument pipe like the call":
     try expect_equal(BoundReading(1) | write, ok("\{\"id\":1\}"))
 
 test "JSON Decimal fields out of range or inexact are InvalidData":
-    let invalid: Price! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
     let tiny = "\{\"amount\":1e-9990,\"cents\":1\}"
-    try expect_equal(parse[Price](tiny), invalid)
+    try expect_invalid_data(parse[Price](tiny))
 
     let huge = "\{\"amount\":1e9990,\"cents\":1\}"
-    try expect_equal(parse[Price](huge), invalid)
+    try expect_invalid_data(parse[Price](huge))
 
     let wide = "\{\"amount\":0.1234567890123456789012345678901234567890,\"cents\":1\}"
-    try expect_equal(parse[Price](wide), invalid)
+    try expect_invalid_data(parse[Price](wide))

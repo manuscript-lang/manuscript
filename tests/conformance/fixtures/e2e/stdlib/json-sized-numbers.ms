@@ -1,6 +1,6 @@
 // conform: tags=records,stdlib-json,testing
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import expect_equal, expect_error from "@std/test/test.ms"
 import parse, stringify from "@std/data/json.ms"
 
 type Sized:
@@ -35,39 +35,62 @@ test "JSON reads sized numbers back":
     try expect_equal(stringify(back).get(), text)
 
 test "JSON rejects sized numbers outside their range":
-    let invalid: Sized! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
     let head = "\{\"signed\":0,\"wide\":0,\"single\":0,\"items\":[]"
-    try expect_equal(parse[Sized](head + ",\"small\":256\}"), invalid)
-    try expect_equal(parse[Sized](head + ",\"small\":-1\}"), invalid)
     try expect_equal(
-        parse[Sized](
-            "\{\"small\":0,\"signed\":-129,\"wide\":0,\"single\":0,\"items\":[]\}"
-        ),
-        invalid
+        (try expect_error(parse[Sized](head + ",\"small\":256\}"))).kind,
+        ErrorCategory.InvalidData
     )
     try expect_equal(
-        parse[Sized](
-            "\{\"small\":0,\"signed\":0,\"wide\":18446744073709551616,\"single\":0,\"items\":[]\}"
-        ),
-        invalid
+        (try expect_error(parse[Sized](head + ",\"small\":-1\}"))).kind,
+        ErrorCategory.InvalidData
     )
     try expect_equal(
-        parse[Sized](
-            "\{\"small\":0,\"signed\":0,\"wide\":-1,\"single\":0,\"items\":[]\}"
-        ),
-        invalid
+        (
+            try expect_error(
+                parse[Sized](
+                    "\{\"small\":0,\"signed\":-129,\"wide\":0,\"single\":0,\"items\":[]\}"
+                )
+            )
+        ).kind,
+        ErrorCategory.InvalidData
     )
     try expect_equal(
-        parse[Sized](
-            "\{\"small\":0,\"signed\":0,\"wide\":0,\"single\":1e39,\"items\":[]\}"
-        ),
-        invalid
+        (
+            try expect_error(
+                parse[Sized](
+                    "\{\"small\":0,\"signed\":0,\"wide\":18446744073709551616,\"single\":0,\"items\":[]\}"
+                )
+            )
+        ).kind,
+        ErrorCategory.InvalidData
     )
     try expect_equal(
-        parse[Sized](
-            "\{\"small\":0,\"signed\":0,\"wide\":0,\"single\":0,\"items\":[2147483648]\}"
-        ),
-        invalid
+        (
+            try expect_error(
+                parse[Sized](
+                    "\{\"small\":0,\"signed\":0,\"wide\":-1,\"single\":0,\"items\":[]\}"
+                )
+            )
+        ).kind,
+        ErrorCategory.InvalidData
+    )
+    try expect_equal(
+        (
+            try expect_error(
+                parse[Sized](
+                    "\{\"small\":0,\"signed\":0,\"wide\":0,\"single\":1e39,\"items\":[]\}"
+                )
+            )
+        ).kind,
+        ErrorCategory.InvalidData
+    )
+    try expect_equal(
+        (
+            try expect_error(
+                parse[Sized](
+                    "\{\"small\":0,\"signed\":0,\"wide\":0,\"single\":0,\"items\":[2147483648]\}"
+                )
+            )
+        ).kind,
+        ErrorCategory.InvalidData
     )

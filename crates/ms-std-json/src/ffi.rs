@@ -8,7 +8,7 @@ use crate::{Doc, Limits, Node, Writer};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use ms_rt::ffi::{
-    ErrOut, Fail, Has, ObjMut, ObjRef, Object, Out, Status, StatusCode, abi_handle, native,
+    ErrOut, Fail, Has, ObjMut, ObjRef, Object, Out, Status, StatusCode, Text, abi_handle, native,
 };
 use ms_rt::tree::{
     ListRef, MapRef, SinkObj, TreeBuilder, TreeCtor, TreeSink, TreeView, ValueDesc, ValueOut,
@@ -116,6 +116,18 @@ native! {
     // ms: leaf
     fn msstd_json_text(d: ObjRef<'_, Doc>, id: u32) -> &str {
         d.0.text_of(id)
+    }
+
+    /// Cold path of a typed decode: records why node `id` was rejected.
+    // ms: leaf
+    fn msstd_json_mismatch(d: ObjRef<Doc>, id: u32, code: i64, text: &str) -> () {
+        d.note_mismatch(id, code as u8, text);
+    }
+
+    /// The error message of a failed typed decode of the document under `root`.
+    // ms: leaf
+    fn msstd_json_mismatch_text(d: ObjRef<Doc>, root: u32) -> Text {
+        Text(d.mismatch_text(root).into())
     }
 
     // ms: leaf
