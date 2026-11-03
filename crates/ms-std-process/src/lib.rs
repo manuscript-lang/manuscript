@@ -1,7 +1,7 @@
 //! `@std/process` natives. Symbols are `msstd_process_<name>`.
 //!
 //! Fallible functions return a `STATUS_*` code (`0` ok) and write results only on success; for
-//! `STATUS_FAILED` the Go-style text comes from `msstd_process_failure_message`. control errors
+//! `STATUS_FAILED` the Go-style text is the `err` out string of the call. control errors
 //! map to the shared statuses (`InvalidInput`, `InvalidData`, `LimitExceeded`, `NotFound`,
 //! `AlreadyExists`, `PermissionDenied`, `Unsupported`, `Closed`, `Failed`) and command errors to
 //! `InvalidInput`, `Unavailable`, `Timeout` (13), `OutputLimit` (14) and `Failed`. Optional values
@@ -40,11 +40,12 @@ pub(crate) fn environment_guard() -> std::sync::MutexGuard<'static, ()> {
 
 use alloc::vec::Vec;
 use command::Subprocess;
+use ms_rt::ffi::ErrOut;
 use ms_rt::ffi::{
     Bytes, IntList, ObjBox, ObjMut, ObjRef, ObjShare, Object, StatusCode, Str, StrMap, StringList,
     Text, TextList, abi_handle, abi_record, argv, monotonic_nanos, native, start_nanos,
 };
-use ms_rt_abi::{STATUS_INVALID_INPUT, StrVal};
+use ms_rt_abi::STATUS_INVALID_INPUT;
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::fs_status;
 use ms_std_io::stream::Stream;
@@ -206,11 +207,6 @@ fn info_or_default() -> control::Info {
 }
 
 native! {
-    /// The text of the last `FAILED` result.
-    fn msstd_process_failure_message() -> out StrVal {
-        ms_rt::glue::failure_message()
-    }
-
     safe fn msstd_process_monotonic_time() -> i64 {
         uptime_ns()
     }
@@ -221,79 +217,77 @@ native! {
     }
 
     /// The live environment as parallel `names` and `values` string lists.
-    fn msstd_process_environment() -> Result<(TextList, TextList), StatusCode> {
-        let (names, values): (Vec<_>, Vec<_>) = fs_status(control::environment())?.into_iter().unzip();
+    fn msstd_process_environment(; err: ErrOut) -> Result<(TextList, TextList), StatusCode> {
+        let (names, values): (Vec<_>, Vec<_>) = fs_status(control::environment(), &err)?.into_iter().unzip();
         Ok((TextList(names), TextList(values)))
     }
 
     fn msstd_process_set_environment(
         name: &str,
         has_value: bool,
-        value: &str,
-    ) -> Result<(), StatusCode> {
+        value: &str; err: ErrOut) -> Result<(), StatusCode> {
         let value = has_value.then_some(value.as_bytes());
-        fs_status(control::set_environment(name.as_bytes(), value))
+        fs_status(control::set_environment(name.as_bytes(), value), &err)
     }
 
     fn msstd_process_load_environment(
         path: &str,
         has_max: bool,
-        max: i64,
-    ) -> Result<(), StatusCode> {
+        max: i64; err: ErrOut) -> Result<(), StatusCode> {
         fs_status(ms_std_fs::ops::limit(has_max, max)
-            .and_then(|m| control::load_environment(path.as_bytes(), m)))
+            .and_then(|m| control::load_environment(path.as_bytes(), m)), &err)
     }
 
-    fn msstd_process_working_directory() -> Result<Text, StatusCode> {
-        fs_status(control::working_directory()).map(Text)
+    fn msstd_process_working_directory(; err: ErrOut) -> Result<Text, StatusCode> {
+        fs_status(control::working_directory(), &err).map(Text)
     }
 
-    fn msstd_process_change_directory(path: &str) -> Result<(), StatusCode> {
-        fs_status(control::change_directory(path.as_bytes()))
+    fn msstd_process_change_directory(path: &str; err: ErrOut) -> Result<(), StatusCode> {
+        fs_status(control::change_directory(path.as_bytes()), &err)
     }
 
-    safe fn msstd_process_send_signal(pid: i64, signal: i64) -> Result<(), StatusCode> {
-        fs_status(control::send_signal(pid, signal))
+    fn msstd_process_send_signal(pid: i64, signal: i64; err: ErrOut) -> Result<(), StatusCode> {
+        fs_status(control::send_signal(pid, signal), &err)
     }
 
-    fn msstd_process_groups() -> Result<IntList, StatusCode> {
-        fs_status(control::groups()).map(IntList)
+    fn msstd_process_groups(; err: ErrOut) -> Result<IntList, StatusCode> {
+        fs_status(control::groups(), &err).map(IntList)
     }
 
-    fn msstd_process_set_groups(groups: &[i64]) -> Result<(), StatusCode> {
-        fs_status(control::set_groups(groups))
+    fn msstd_process_set_groups(groups: &[i64]; err: ErrOut) -> Result<(), StatusCode> {
+        fs_status(control::set_groups(groups), &err)
     }
 
-    fn msstd_process_initialize_groups(username: &str, gid: i64) -> Result<(), StatusCode> {
-        fs_status(control::initialize_groups(username.as_bytes(), gid))
+    fn msstd_process_initialize_groups(username: &str, gid: i64; err: ErrOut) -> Result<(), StatusCode> {
+        fs_status(control::initialize_groups(username.as_bytes(), gid), &err)
     }
 
-    fn msstd_process_umask(mask: i64) -> Result<i64, StatusCode> {
-        fs_status(control::umask(mask))
+    fn msstd_process_umask(mask: i64; err: ErrOut) -> Result<i64, StatusCode> {
+        fs_status(control::umask(mask), &err)
     }
 
-    fn msstd_process_set_identity(kind: &str, id: i64) -> Result<(), StatusCode> {
-        fs_status(control::set_identity(kind.as_bytes(), id))
+    fn msstd_process_set_identity(kind: &str, id: i64; err: ErrOut) -> Result<(), StatusCode> {
+        fs_status(control::set_identity(kind.as_bytes(), id), &err)
     }
 
-    fn msstd_process_title() -> Result<Text, StatusCode> {
-        fs_status(control::title()).map(Text)
+    fn msstd_process_title(; err: ErrOut) -> Result<Text, StatusCode> {
+        fs_status(control::title(), &err).map(Text)
     }
 
-    fn msstd_process_set_title(title: &str) -> Result<(), StatusCode> {
-        fs_status(control::set_title(title.as_bytes()))
+    fn msstd_process_set_title(title: &str; err: ErrOut) -> Result<(), StatusCode> {
+        fs_status(control::set_title(title.as_bytes()), &err)
     }
 
-    fn msstd_process_constrained_memory() -> Result<i64, StatusCode> {
-        fs_status(control::memory_limit()).map(|(limit, _)| limit)
+    fn msstd_process_constrained_memory(; err: ErrOut) -> Result<i64, StatusCode> {
+        fs_status(control::memory_limit(), &err).map(|(limit, _)| limit)
     }
 
-    fn msstd_process_available_memory() -> Result<i64, StatusCode> {
-        fs_status(control::available_memory())
+    fn msstd_process_available_memory(; err: ErrOut) -> Result<i64, StatusCode> {
+        fs_status(control::available_memory(), &err)
     }
 
-    fn msstd_process_resource_usage() -> Result<ResourceOut, StatusCode> {
-        fs_status(control::resource_usage()).map(|u| ResourceOut {
+    fn msstd_process_resource_usage(; err: ErrOut) -> Result<ResourceOut, StatusCode> {
+        fs_status(control::resource_usage(), &err).map(|u| ResourceOut {
             user_microseconds: u.user_us,
             system_microseconds: u.system_us,
             max_resident_bytes: u.max_rss,
@@ -310,15 +304,14 @@ native! {
     fn msstd_process_watch_signals(
         signals: &[i64],
         has_capacity: bool,
-        capacity: i64,
-    ) -> Result<Object<signals::Watcher>, StatusCode> {
-        fs_status(signals::Watcher::new(signals, has_capacity.then_some(capacity))).map(Object)
+        capacity: i64; err: ErrOut) -> Result<Object<signals::Watcher>, StatusCode> {
+        fs_status(signals::Watcher::new(signals, has_capacity.then_some(capacity)), &err).map(Object)
     }
 
     /// Waits for the next signal; `STATUS_CLOSED` after `msstd_process_signal_close`.
-    fn msstd_process_signal_next(h: ObjMut<signals::Watcher>) -> Result<i64, StatusCode> {
+    fn msstd_process_signal_next(h: ObjMut<signals::Watcher>; err: ErrOut) -> Result<i64, StatusCode> {
         let mut h = h;
-        fs_status(h.wait())
+        fs_status(h.wait(), &err)
     }
 
     fn msstd_process_signal_close(h: ObjMut<signals::Watcher>) -> () {
@@ -326,15 +319,15 @@ native! {
         h.close()
     }
 
-    fn msstd_process_cpu_usage() -> Result<CpuOut, StatusCode> {
-        fs_status(control::resource_usage()).map(|u| CpuOut {
+    fn msstd_process_cpu_usage(; err: ErrOut) -> Result<CpuOut, StatusCode> {
+        fs_status(control::resource_usage(), &err).map(|u| CpuOut {
             user_microseconds: u.user_us,
             system_microseconds: u.system_us,
         })
     }
 
-    fn msstd_process_memory_usage() -> Result<MemoryOut, StatusCode> {
-        fs_status(control::memory_usage()).map(|m| MemoryOut {
+    fn msstd_process_memory_usage(; err: ErrOut) -> Result<MemoryOut, StatusCode> {
+        fs_status(control::memory_usage(), &err).map(|m| MemoryOut {
             heap_used: m[0],
             heap_total: m[1],
             heap_system: m[2],
@@ -343,8 +336,8 @@ native! {
         })
     }
 
-    fn msstd_process_info() -> Result<InfoOut, StatusCode> {
-        fs_status(control::info()).map(|i| InfoOut {
+    fn msstd_process_info(; err: ErrOut) -> Result<InfoOut, StatusCode> {
+        fs_status(control::info(), &err).map(|i| InfoOut {
             pid: i.pid,
             parent_pid: i.parent_pid,
             executable: Str::from_bytes(&i.executable),
@@ -364,14 +357,13 @@ native! {
         program: &str,
         arguments: Vec<&str>,
         env_names: Vec<&str>,
-        env_values: Vec<&str>,
-    ) -> Result<(), StatusCode> {
+        env_values: Vec<&str>; err: ErrOut) -> Result<(), StatusCode> {
         fs_status(replace(
             program.as_bytes(),
             &bytes_of(&arguments),
             &bytes_of(&env_names),
             &bytes_of(&env_values),
-        ))
+        ), &err)
     }
 
     fn msstd_process_command_run(
@@ -385,8 +377,7 @@ native! {
         has_cwd: bool,
         cwd: &str,
         env_names: Vec<&str>,
-        env_values: Vec<&str>,
-    ) -> Result<CommandOut, StatusCode> {
+        env_values: Vec<&str>; err: ErrOut) -> Result<CommandOut, StatusCode> {
         let program = program.as_bytes();
         let cwd = has_cwd.then_some(cwd.as_bytes());
         let ran = ms_std_fs::ops::limit(has_max, max)
@@ -396,7 +387,7 @@ native! {
                 let env = valid_environment(cwd, &env_names, &env_values)?;
                 command::run(program, &args, input, limit, t, cwd, &env)
             });
-        fs_status(ran).map(|o| CommandOut {
+        fs_status(ran, &err).map(|o| CommandOut {
             exit_code: o.code,
             stdout: Bytes::new(&o.stdout),
             stderr: Bytes::new(&o.stderr),
@@ -414,15 +405,14 @@ native! {
         has_cwd: bool,
         cwd: &str,
         env_names: Vec<&str>,
-        env_values: Vec<&str>,
-    ) -> Result<Object<Child>, StatusCode> {
+        env_values: Vec<&str>; err: ErrOut) -> Result<Object<Child>, StatusCode> {
         let program = program.as_bytes();
         let cwd = has_cwd.then_some(cwd.as_bytes());
         let spawned = valid_command(program, &bytes_of(&arguments)).and_then(|args| {
             let env = valid_environment(cwd, &env_names, &env_values)?;
             command::spawn(program, &args, [stdin, stdout, stderr], cwd, &env)
         });
-        let mut p = fs_status(spawned)?;
+        let mut p = fs_status(spawned, &err)?;
         let streams = [
             ObjBox::new(parent_end(&mut p.stdin, b"|1")),
             ObjBox::new(parent_end(&mut p.stdout, b"|0")),
@@ -444,10 +434,9 @@ native! {
     fn msstd_process_subprocess_wait(
         h: ObjMut<Child>,
         has_timeout: bool,
-        timeout_ns: i64,
-    ) -> Result<i64, StatusCode> {
+        timeout_ns: i64; err: ErrOut) -> Result<i64, StatusCode> {
         let mut h = h;
-        fs_status(timeout(has_timeout, timeout_ns).and_then(|t| h.proc.wait(t)))
+        fs_status(timeout(has_timeout, timeout_ns).and_then(|t| h.proc.wait(t)), &err)
     }
 
     /// The peak resident set size of the exited child in bytes; 0 while it runs or when unknown.
@@ -480,8 +469,8 @@ native! {
     }
 
     /// The live environment as a `Map[String, String]`.
-    fn msstd_process_environment_map() -> Result<StrMap, StatusCode> {
-        fs_status(control::environment()).map(StrMap)
+    fn msstd_process_environment_map(; err: ErrOut) -> Result<StrMap, StatusCode> {
+        fs_status(control::environment(), &err).map(StrMap)
     }
 
     safe fn msstd_process_info_pid() -> i64 {

@@ -9,7 +9,7 @@ use cranelift_codegen::ir::{
 };
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
-use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
+use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_SLOT};
 use ms_rt_abi::{
@@ -442,7 +442,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 });
             }
             TyKind::Fn(..) => self.release(vs[0]),
-            TyKind::Obj(n, _) if n != "Map" && n != "Set" => self.release(vs[0]),
+            TyKind::Obj(n, _) if !n.is_map_or_set() => self.release(vs[0]),
             TyKind::Opt(inner)
                 if self.g.lay.opt_is_nullable(*inner) && !self.g.lay.opt_is_boxed(*inner) =>
             {
@@ -493,7 +493,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.retain(vs[0]);
                 vs.to_vec()
             }
-            TyKind::Obj(n, _) if n != "Map" && n != "Set" => {
+            TyKind::Obj(n, _) if !n.is_map_or_set() => {
                 self.retain(vs[0]);
                 vs.to_vec()
             }
@@ -1335,7 +1335,7 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     fn is_wide(&self, ty: Ty) -> bool {
         matches!(self.g.m.types.kind(ty), TyKind::Str)
-            || matches!(self.g.m.types.kind(ty), TyKind::Obj(n, _) if n == "Map" || n == "Set")
+            || matches!(self.g.m.types.kind(ty), TyKind::Obj(n, _) if n.is_map_or_set())
     }
 
     fn new_slot(&mut self, size: u32) -> ir::StackSlot {
@@ -3139,13 +3139,13 @@ impl<'a, 'm> Lower<'a, 'm> {
         let Imm::Ext(e) = inst.imm else {
             unreachable!()
         };
-        if self.g.m.externs[e.index()].name == "msrt_string_eq" {
+        if self.g.m.externs[e.index()].role == ExternRole::StringEq {
             if let Some(r) = self.string_eq_literal(inst) {
                 return r;
             }
             return self.string_eq_inline(f, inst);
         }
-        if self.g.m.externs[e.index()].name == "msrt_cleanup_discard" {
+        if self.g.m.externs[e.index()].role == ExternRole::CleanupDiscard {
             // Handle 0 is a registration skipped for lack of a guard.
             let h = self.a(inst, 0)[0];
             self.if_then(h, |s| {
@@ -3227,7 +3227,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         let ret_ty = def.ret;
         let _ = f;
-        if def.name == "msrt_strbuilder_append"
+        if def.role == ExternRole::StrBuilderAppend
             && args.len() == 2
             && self.g.lay.leaves(ret_ty).is_empty()
         {
@@ -3239,7 +3239,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             return self.strbuilder_append(id, args[0], args[1]);
         }
-        if def.name == "msrt_bytes_append"
+        if def.role == ExternRole::BytesAppend
             && args.len() == 2
             && self.g.lay.leaves(ret_ty).is_empty()
         {
@@ -3460,7 +3460,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | TyKind::Ptr
             | TyKind::Fn(..)
             | TyKind::Iface(_) => true,
-            TyKind::Obj(n, _) => n != "Map" && n != "Set",
+            TyKind::Obj(n, _) => !n.is_map_or_set(),
             TyKind::Opt(inner) => lay.opt_is_nullable(*inner) || lay.m.types.is_scalar(*inner),
             _ => false,
         }

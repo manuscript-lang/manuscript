@@ -3,7 +3,7 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_mir::ir::{Imm, Mode, Module, Op, Param, Value};
-use ms_mir::types::{RecId, Ty as MTy, TyKind};
+use ms_mir::types::{Native, RecId, Ty as MTy, TyKind};
 
 /// The handle type of a builder over the payload type `items`.
 pub(crate) fn handle_ty(m: &mut Module, name: &str, items: MTy) -> MTy {
@@ -26,7 +26,7 @@ pub(crate) fn handle_ty(m: &mut Module, name: &str, items: MTy) -> MTy {
 impl<'a> FnLower<'a> {
     pub(crate) fn builder_rec(&self, handle: MTy) -> Result<RecId, Error> {
         if let TyKind::Obj(n, a) = self.b.m.types.kind(handle)
-            && n == "Shared"
+            && *n == Native::Shared
             && let Some(&r) = a.first()
             && let TyKind::Rec(id) = self.b.m.types.kind(r)
         {
@@ -61,6 +61,7 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            role: ms_mir::ir::ExternRole::None,
             leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
             reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
         });

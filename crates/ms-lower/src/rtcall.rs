@@ -11,6 +11,7 @@ use crate::func::{FnLower, Val};
 use crate::native::NArg;
 use ms_check::types as ct;
 use ms_mir::ir::{Cc, Imm, Op, Value};
+use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 
 /// Every exported runtime function with its parameters and return type, sorted by name. Generated
@@ -94,6 +95,28 @@ pub(crate) fn fresh_result(sym: &str) -> bool {
     rt_flags(sym).fresh
 }
 
+/// The role of the runtime function `sym` for passes and code generation. This table is the one
+/// place lowering names those functions; passes read the role from the extern.
+pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
+    use ms_mir::ir::ExternRole as R;
+    match sym {
+        "msrt_strbuilder_append" => R::StrBuilderAppend,
+        "msrt_strbuilder_append_int" => R::StrBuilderAppendInt,
+        "msrt_string_concat" => R::StringConcat,
+        "msrt_string_append" => R::StringAppend,
+        "msrt_int_to_string" => R::IntToString,
+        "msrt_list_sorted" => R::ListSorted,
+        "msrt_list_new" => R::ListNew,
+        "msrt_bytes_values" => R::BytesValues,
+        "msrt_string_eq" => R::StringEq,
+        "msrt_cleanup_discard" => R::CleanupDiscard,
+        "msrt_bytes_append" => R::BytesAppend,
+        "msrt_scope_spawn" | "msrt_worker_start" => R::SpawnsTask,
+        s if s.contains("_serve") => R::SpawnsTask,
+        _ => R::None,
+    }
+}
+
 /// A language-level argument of the call being marshalled.
 #[derive(Clone, Copy)]
 pub(crate) struct Input {
@@ -123,7 +146,7 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         .strip_prefix("map_")
         .or_else(|| name.strip_prefix("set_"))
         .unwrap_or(name);
-    if matches!(m.types.kind(recv), TyKind::Obj(n, _) if n == "BigInt") {
+    if matches!(m.types.kind(recv), TyKind::Obj(Native::BigInt, _)) {
         let name = if name == "format" {
             "to_string_radix"
         } else {
@@ -144,8 +167,8 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         | TyKind::UInt16
         | TyKind::UInt32 => "int",
         TyKind::Float | TyKind::Float32 => "float",
-        TyKind::Obj(n, _) if n == "Map" => "map",
-        TyKind::Obj(n, _) if n == "Set" => "set",
+        TyKind::Obj(Native::Map, _) => "map",
+        TyKind::Obj(Native::Set, _) => "set",
         _ => return None,
     };
     let sym = format!("msrt_{prefix}_{name}");
@@ -252,7 +275,7 @@ impl FnLower<'_> {
         let TyKind::Obj(n, a) = self.b.m.types.kind(map) else {
             return None;
         };
-        if n != "Map" || a.len() != 2 {
+        if *n != Native::Map || a.len() != 2 {
             return None;
         }
         let types = &self.b.m.types;
@@ -707,7 +730,7 @@ impl FnLower<'_> {
     }
 
     /// Passes the slot a trailing `err` parameter writes the `Failed` text to.
-    fn push_err_slot(&mut self, sig: &RtSig, vals: &mut Vec<Value>) {
+    pub(crate) fn push_err_slot(&mut self, sig: &RtSig, vals: &mut Vec<Value>) {
         if sig.params.last().is_some_and(|p| p.name == "err") {
             let slot = self
                 .b
@@ -832,8 +855,13 @@ impl FnLower<'_> {
             return Ok(Val { v: out, own: true });
         }
         // `InfoOut` is flat words that become a `FileInfo` record.
-        if sig.params.last().is_some_and(|p| p.ty == "*mut InfoOut") {
-            return self.finish_stat(sym, vals, result);
+        let body =
+            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.name == "err"));
+        if sig.params[..body]
+            .last()
+            .is_some_and(|p| p.ty == "*mut InfoOut")
+        {
+            return self.finish_stat(sym, sig, vals, result);
         }
         // A status (or presence flag) plus a value through `out`.
         let payload = match self.b.m.types.kind(result).clone() {
@@ -1084,7 +1112,7 @@ impl FnLower<'_> {
                 let l = s.lit(&format!("{domain}: {words}")).v;
                 s.owned(Val { v: l, own: false })
             };
-            s.error_record(er, kind, text)
+            s.error_record(er, kind, text, None)
         };
         if rest.is_empty() {
             return build(self);
@@ -1098,12 +1126,14 @@ impl FnLower<'_> {
         Ok(r.v)
     }
 
-    /// An `Error` record: the owned `message`, the `ErrorCategory` case named `kind`, no details.
+    /// An `Error` record: the owned `message`, the `ErrorCategory` case named `kind`, and the
+    /// details `{"site": site}` when a failed test expectation passes its source `site`.
     pub(crate) fn error_record(
         &mut self,
         er: ms_mir::types::RecId,
         kind: &str,
         message: Value,
+        site: Option<Value>,
     ) -> Result<Value, Error> {
         let fields = self.b.m.records[er.index()].fields.clone();
         let kind_ty = fields[1].1;
@@ -1116,8 +1146,21 @@ impl FnLower<'_> {
             .position(|c| c.name == kind)
             .ok_or_else(|| Error::new(format!("ErrorCategory lacks {kind}")))?;
         let kind_value = self.b.alt_new(ka, idx as u32, &[]);
-        let details = self.map_new(fields[2].1)?;
+        let mut details = self.map_new(fields[2].1)?;
+        if let Some(site) = site {
+            let key = self.b.str_lit("site");
+            // The map takes owned strings; literals are borrowed.
+            let (key, site) = (self.owned_copy(key), self.owned_copy(site));
+            details = self.map_insert(details, key, site)?;
+        }
         Ok(self.b.rec_new(er, &[message, kind_value, details]))
+    }
+
+    /// An owned copy of the borrowed string `v`.
+    fn owned_copy(&mut self, v: Value) -> Value {
+        self.b
+            .emit(Op::Copy, &[v], Imm::None, Some(MTy::STR))
+            .expect("copy")
     }
 
     /// Whether the `ok` payload of `result` is `Unit?`.

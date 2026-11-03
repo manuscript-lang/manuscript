@@ -1243,7 +1243,10 @@ impl FnLower<'_> {
                 }
                 Ok(Val { v: list, own: true })
             }
-            TyKind::Rec(rid) if self.b.m.records[rid.index()].name == "Duration" => {
+            TyKind::Rec(rid)
+                if crate::nativerec::NativeRec::of(self.b.m, ty)
+                    == Some(crate::nativerec::NativeRec::Duration) =>
+            {
                 let nanos = self.getter_call(sym, MTy::INT, lead)?;
                 Ok(Val {
                     v: self.b.rec_new(rid, &[nanos]),

@@ -7,6 +7,7 @@ use ms_check::types::Kind;
 use ms_mir::builder::{FuncBuilder, Var};
 use ms_mir::ir::{Cc, ExternDef, FuncId, Imm, Mode, Module, Op, Param, Value, VtableId};
 use ms_mir::print::ty_str;
+use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -30,6 +31,7 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
         noreturn: false,
         pure_: false,
         fresh: crate::rtcall::fresh_result(sym),
+        role: crate::rtcall::extern_role(sym),
         leaf: crate::rtcall::rt_flags(sym).leaf,
         reads: crate::rtcall::rt_flags(sym).reads,
     })
@@ -37,14 +39,7 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
 
 /// The runtime formatter of a native record type whose text is not its fields.
 fn native_record_text(b: &FuncBuilder<'_>, t: MTy) -> Option<&'static str> {
-    let TyKind::Rec(rid) = b.m.types.kind(t) else {
-        return None;
-    };
-    match b.m.records[rid.index()].name.as_str() {
-        "Decimal" => Some("msstd_decimal_to_string"),
-        "Timestamp" => Some("msstd_time_timestamp_to_string"),
-        _ => None,
-    }
+    crate::nativerec::NativeRec::of(b.m, t)?.text_symbol()
 }
 
 /// Calls a leaf formatter for scalar/string types; `None` for compound types.
@@ -373,8 +368,8 @@ pub(crate) fn build_format(
                 b.ret(Some(out));
             }
         }
-        TyKind::Obj(n, args) if n == "Map" || n == "Set" => {
-            let is_map = n == "Map";
+        TyKind::Obj(n, args) if n.is_map_or_set() => {
+            let is_map = n == Native::Map;
             let acc = start(&mut b, if is_map { "Map(" } else { "Set(" });
             let ptr_ty = MTy::PTR;
             let desc = |b: &mut FuncBuilder<'_>, t: MTy| {
@@ -461,7 +456,7 @@ pub(crate) fn build_format(
             let r = finish(&mut b, acc);
             b.ret(Some(r));
         }
-        TyKind::Obj(name, _) if name == "BigInt" => {
+        TyKind::Obj(Native::BigInt, _) => {
             let ext = runtime_fn(
                 b.m,
                 "msstd_bigint_to_string_radix",
@@ -549,8 +544,8 @@ impl<'a> FnLower<'a> {
         if t == MTy::STR {
             return Ok(x);
         }
-        if let TyKind::Rec(rid) = self.b.m.types.kind(t).clone()
-            && self.b.m.records[rid.index()].name == "Timestamp"
+        if crate::nativerec::NativeRec::of(self.b.m, t)
+            == Some(crate::nativerec::NativeRec::Timestamp)
         {
             // RFC 3339 text from the runtime, which takes the two words by address.
             let slot = self

@@ -280,7 +280,7 @@ fn readonly_record_projections_borrow_the_original_without_a_deep_copy() {
 
 const PHI: &str = r#"module "t"
 entry @main
-extern @msrt_string_eq(str, str) -> bool
+extern @msrt_string_eq(str, str) -> bool string_eq
 
 fn @is_q(%0: list<str>, %1: int) -> bool inline(never) {
 b0:

@@ -256,9 +256,9 @@ fn slotfuse_passes_the_field_to_the_mutator_without_a_slot() {
 const BUILDER_APPEND: &str = r#"module "main"
 file 0 "a.ms"
 record SB { sealed: bool, items: bytes }
-extern @msrt_list_new() -> bytes
+extern @msrt_list_new() -> bytes list_new
 extern @msrt_fault_string(str) -> unit noreturn
-extern @msrt_strbuilder_append(ptr, str) -> unit
+extern @msrt_strbuilder_append(ptr, str) -> unit strbuilder_append
 extern @msrt_strbuilder_freeze(ptr) -> str
 extern @msrt_string_byte_length(str) -> int
 entry @main
@@ -467,8 +467,8 @@ b0:
 
 const BYTE_VALUES: &str = r#"module "main"
 file 0 "a.ms"
-extern @msrt_list_new() -> bytes
-extern @msrt_bytes_values(bytes) -> list<int>
+extern @msrt_list_new() -> bytes list_new
+extern @msrt_bytes_values(bytes) -> list<int> bytes_values
 entry @main
 
 fn @main() -> int export {
@@ -504,8 +504,8 @@ done:
 
 const BYTE_VALUES_REPLACED: &str = r#"module "main"
 file 0 "a.ms"
-extern @msrt_list_new() -> bytes
-extern @msrt_bytes_values(bytes) -> list<int>
+extern @msrt_list_new() -> bytes list_new
+extern @msrt_bytes_values(bytes) -> list<int> bytes_values
 entry @main
 
 fn @main() -> int export {

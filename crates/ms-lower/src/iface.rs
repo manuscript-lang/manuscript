@@ -478,15 +478,7 @@ fn builtin_compare(m: &Module, t: MTy) -> Option<&'static str> {
     if t == MTy::STR {
         return Some("msrt_string_compare");
     }
-    let TyKind::Rec(rid) = m.types.kind(t) else {
-        return None;
-    };
-    match m.records[rid.index()].name.as_str() {
-        "Timestamp" => Some("msstd_time_timestamp_compare"),
-        "Instant" => Some("msstd_time_instant_compare"),
-        "Decimal" => Some("msstd_decimal_compare"),
-        _ => None,
-    }
+    crate::nativerec::NativeRec::of(m, t)?.compare_symbol()
 }
 
 /// `compare(other)` of a built-in type: the sign of the comparison; a value of
@@ -561,6 +553,7 @@ fn build_builtin_compare(
             noreturn: false,
             pure_: false,
             fresh: false,
+            role: crate::rtcall::extern_role(sym),
             leaf: crate::rtcall::rt_flags(sym).leaf,
             reads: crate::rtcall::rt_flags(sym).reads,
         });

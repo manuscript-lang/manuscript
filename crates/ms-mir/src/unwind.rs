@@ -30,9 +30,6 @@ use crate::ir::*;
 use crate::types::Ty;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-/// Runtime symbols whose presence means the program starts tasks that can be cancelled.
-const SPAWNERS: &[&str] = &["msrt_scope_spawn", "msrt_worker_start"];
-
 /// Rewrites `m` so cancellation releases owned locals; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
     if !starts_tasks(m) {
@@ -51,6 +48,7 @@ pub fn run(m: &mut Module) -> bool {
         noreturn: false,
         pure_: false,
         fresh: false,
+        role: ExternRole::None,
         leaf: true,
         reads: false,
     });
@@ -90,9 +88,7 @@ struct Cx {
 }
 
 fn starts_tasks(m: &Module) -> bool {
-    m.externs
-        .iter()
-        .any(|e| SPAWNERS.contains(&e.name.as_str()) || e.name.contains("_serve"))
+    m.externs.iter().any(|e| e.role == ExternRole::SpawnsTask)
 }
 
 fn leaf_extern(m: &Module, e: ExtId) -> bool {
@@ -196,6 +192,7 @@ fn closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
         noreturn: false,
         pure_: false,
         fresh: false,
+        role: ExternRole::None,
         leaf: true,
         reads: false,
     });
@@ -250,6 +247,7 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
         noreturn: false,
         pure_: false,
         fresh: false,
+        role: ExternRole::None,
         leaf: true,
         reads: false,
     });
@@ -307,6 +305,7 @@ fn slot_with_closer(m: &mut Module, cx: &mut Cx, close: FuncId, ty: Ty) -> Optio
         noreturn: false,
         pure_: false,
         fresh: false,
+        role: ExternRole::None,
         leaf: true,
         reads: false,
     });

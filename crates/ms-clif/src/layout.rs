@@ -240,7 +240,7 @@ impl<'m> Layouts<'m> {
     pub fn opt_is_nullable(&self, inner: Ty) -> bool {
         self.opt_is_boxed(inner)
             || matches!(self.m.types.kind(inner), TyKind::Fn(..))
-            || matches!(self.m.types.kind(inner), TyKind::Obj(n, _) if n != "Map" && n != "Set")
+            || matches!(self.m.types.kind(inner), TyKind::Obj(n, _) if !n.is_map_or_set())
     }
 
     /// Whether values of `ty` have the string layout and drop and copy like a string: `String`,
@@ -271,9 +271,7 @@ impl<'m> Layouts<'m> {
             TyKind::Float32 => plain(vec![F32]),
             TyKind::Str => plain(vec![I64, I64]),
             TyKind::Bytes | TyKind::List(_) => plain(vec![I64, I64, I64]),
-            TyKind::Obj(n, _) if n == "Map" || n == "Set" => {
-                plain(vec![I64; ms_rt_abi::MAP_SIZE / 8])
-            }
+            TyKind::Obj(n, _) if n.is_map_or_set() => plain(vec![I64; ms_rt_abi::MAP_SIZE / 8]),
             TyKind::Obj(..) => plain(vec![I64]),
             TyKind::Iface(_) => plain(vec![I64, I64]),
             TyKind::Rec(r) => plain(

@@ -5,10 +5,8 @@
 //! the copy is the last use: the buffer moves out and an empty one takes its place, so the drop
 //! frees nothing. Building a large string then costs no second copy of its bytes.
 
-use crate::ir::{ExternDef, Func, Imm, Inst, Module, Op, Value};
+use crate::ir::{ExternDef, ExternRole, Func, Imm, Inst, Module, Op, Value};
 use crate::types::Ty;
-
-const LIST_NEW: &str = "msrt_list_new";
 
 /// Runs the pass; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
@@ -150,12 +148,13 @@ fn last_use(f: &Func, kind: &[u8], def_block: usize, site: &Site) -> bool {
 /// `c = copy (load p)` becomes `c = take p; put p, empty`.
 fn apply(m: &mut Module, fi: usize, site: Site) {
     let ext = m.add_extern(ExternDef {
-        name: LIST_NEW.to_string(),
+        name: "msrt_list_new".to_string(),
         params: Vec::new(),
         ret: Ty::BYTES,
         noreturn: false,
         pure_: false,
         fresh: true,
+        role: ExternRole::None,
         leaf: true,
         reads: false,
     });

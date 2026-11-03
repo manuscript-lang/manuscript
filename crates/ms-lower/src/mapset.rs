@@ -11,12 +11,13 @@ use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
 use ms_mir::builder::Var;
 use ms_mir::ir::{Cc, Imm, Mode, Op, Value};
+use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::{BinaryOp, Expr, ExprKind, MapEntry};
 
 /// Whether `t` is a `Map` or `Set`.
 pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
-    matches!(m.types.kind(t), TyKind::Obj(n, _) if n == "Map" || n == "Set")
+    matches!(m.types.kind(t), TyKind::Obj(n, _) if n.is_map_or_set())
 }
 
 /// `x` of `x.clone()`.
@@ -84,7 +85,7 @@ impl<'a> FnLower<'a> {
         let TyKind::Obj(n, a) = self.b.m.types.kind(mt).clone() else {
             return Ok(None);
         };
-        if n != "Map" || a.get(1) != Some(&MTy::INT) || self.emty(value)? != MTy::INT {
+        if n != Native::Map || a.get(1) != Some(&MTy::INT) || self.emty(value)? != MTy::INT {
             return Ok(None);
         }
         // The fused update checks 64-bit overflow only; sized integers take the general path.
@@ -168,7 +169,7 @@ impl<'a> FnLower<'a> {
         let TyKind::Obj(n, a) = self.b.m.types.kind(mt).clone() else {
             return Ok(None);
         };
-        if n != "Map" || a.first() != Some(&MTy::STR) {
+        if n != Native::Map || a.first() != Some(&MTy::STR) {
             return Ok(None);
         }
         let k = self.expr(inner)?;
@@ -436,6 +437,7 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            role: ms_mir::ir::ExternRole::None,
             leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
             reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
         });
@@ -465,7 +467,7 @@ impl<'a> FnLower<'a> {
         let TyKind::Obj(n, args) = self.b.m.types.kind(t).clone() else {
             return Ok(v);
         };
-        if (n != "Map" && n != "Set") || !self.cx.holds_extension(self.b.m, args[0]) {
+        if (n != Native::Map && n != Native::Set) || !self.cx.holds_extension(self.b.m, args[0]) {
             return Ok(v);
         }
         let kd = self.type_desc(args[0]);
@@ -660,7 +662,7 @@ impl<'a> FnLower<'a> {
         if name == "add_default_from" {
             return self.add_default_from(old, decl, args, copy_result);
         }
-        let set = matches!(self.b.m.types.kind(mt), TyKind::Obj(n, _) if n == "Set");
+        let set = matches!(self.b.m.types.kind(mt), TyKind::Obj(Native::Set, _));
         let text = decl.first().is_some_and(|p| p.ty.to_string() == "String");
         let sym = match (set, name) {
             (true, "add") => "msrt_set_add_copy".to_string(),
