@@ -88,7 +88,6 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         program.moved_payloads = Rc::new(own.moved_payloads);
         program.moves = Rc::new(own.moves);
         program.conditional_moves = Rc::new(own.conditional_moves);
-        program.consumed_scrutinees = Rc::new(own.consumed_scrutinees);
         program.borrowed_captures = Rc::new(own.borrowed_captures);
         program.consumes = Rc::new(own.consumes);
         program.lenders = Rc::new(own.lenders);
