@@ -10,7 +10,7 @@ fault in the child ends only the child, and the parent sees its exit status.
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import Channel, Transport from "@std/io/channels.ms"
 import Closeable, Data from "@std/core.ms"
-import ReadStream, WriteStream from "@std/io/io.ms"
+import ReadStream, WriteStream, descriptor_reader, descriptor_writer from "@std/io/io.ms"
 import parse, stringify from "@std/data/json.ms"
 import Stdio from "@std/os/process.ms"
 import Shared, share from "@std/concurrency/shared.ms"
@@ -20,8 +20,7 @@ import (
     msrt_obj_share,
     msstd_process_fork,
     msstd_process_forked_link,
-    msstd_process_forked_stdin,
-    msstd_process_forked_output,
+    msstd_process_forked_stream_id,
     msstd_process_forked_wait,
     msstd_process_forked_signal,
     msstd_process_forked_close,
@@ -329,18 +328,18 @@ impl Process[T, In, Out]:
 
     // The child's standard input, when spawned with `stdin: Stdio.Pipe`; otherwise already closed,
     // so writes return `Closed`. Closing it delivers end of input to the child.
-    fn stdin() WriteStream:
-        return msstd_process_forked_stdin(self.native)
+    fn stdin() WriteStream[Bytes]:
+        return descriptor_writer(msstd_process_forked_stream_id(self.native, 0))
 
     // The child's standard output, when spawned with `stdout: Stdio.Pipe`; otherwise already
     // closed. Read it while the child runs: a child whose pipe is full waits until it is read.
-    fn stdout() ReadStream:
-        return msstd_process_forked_output(self.native, 1)
+    fn stdout() ReadStream[Bytes]:
+        return descriptor_reader(msstd_process_forked_stream_id(self.native, 1))
 
     // The child's standard error, when spawned with `stderr: Stdio.Pipe`; otherwise already
     // closed. Read it like `stdout`.
-    fn stderr() ReadStream:
-        return msstd_process_forked_output(self.native, 2)
+    fn stderr() ReadStream[Bytes]:
+        return descriptor_reader(msstd_process_forked_stream_id(self.native, 2))
 
     // Waits for the child to exit and returns its exit status. Returns `Timeout` if `timeout`
     // elapses first, leaving the child running.

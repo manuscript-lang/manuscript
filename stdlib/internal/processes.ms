@@ -1,5 +1,4 @@
 import Bytes from "@std/bytes.ms"
-import ReadStream, WriteStream from "@std/io/io.ms"
 import Stdio from "@std/os/process.ms"
 import NativeLink, NativeProcess from "@std/os/processes.ms"
 
@@ -14,12 +13,8 @@ export extern fn msstd_process_fork(
 
 export extern fn msstd_process_forked_link(process: NativeProcess) NativeLink
 
-export extern fn msstd_process_forked_stdin(process: NativeProcess) WriteStream
-
-export extern fn msstd_process_forked_output(
-    process: NativeProcess,
-    which: Int
-) ReadStream
+// The runtime stream-table id of the child's pipe: 0 stdin, 1 stdout, 2 stderr; -1 when there is no pipe.
+export extern fn msstd_process_forked_stream_id(process: NativeProcess, which: Int) Int
 
 export extern fn msstd_process_forked_wait(process: NativeProcess, timeout_ns: Int) Int!
 

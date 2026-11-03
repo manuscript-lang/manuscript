@@ -92,7 +92,7 @@ impl Closeable for ReadStream[T]:
 export fn stream[T](source: Source[T]) ReadStream[T]:
     return ReadStream[T](cell: msrt_cells_new[Source[T]](source))
 
-export type DescriptorSource:
+type DescriptorSource:
     id: Int
 
 impl Source[Bytes] for DescriptorSource:
@@ -111,6 +111,34 @@ impl Source[Bytes] for DescriptorSource:
     var fn close() Unit!:
         msrt_streams_close(self.id)
         return ok(unit)
+
+// A stream over the runtime stream-table descriptor `id` (a pipe, socket or file): chunks until the end. A negative
+// id is a stream that is already at its end.
+export fn descriptor_reader(id: Int) ReadStream[Bytes]:
+    return stream[Bytes](DescriptorSource(id))
+
+// Writes to the runtime stream-table descriptor `id`; a negative id fails every write with `Closed`.
+type DescriptorSink:
+    id: Int
+
+impl Sink[Bytes] for DescriptorSink:
+    var fn put(value: Bytes) Unit!:
+        if msrt_streams_write(self.id, value) != 0:
+            return error(Error("stream: closed", kind: ErrorCategory.Closed))
+        return ok(unit)
+
+    var fn drain() Promise[Unit]:
+        return adopt[Unit](msrt_streams_flush(self.id))
+
+    fn buffered() Int:
+        return msrt_streams_buffered(self.id)
+
+    var fn close() Unit!:
+        msrt_streams_close(self.id)
+        return ok(unit)
+
+export fn descriptor_writer(id: Int) WriteStream[Bytes]:
+    return writer[Bytes](DescriptorSink(id))
 
 // Returns the process standard-input stream.
 export fn stdin() ReadStream[Bytes]:

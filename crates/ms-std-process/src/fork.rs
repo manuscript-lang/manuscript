@@ -125,6 +125,7 @@ pub struct Forked {
     proc: Subprocess,
     link: ObjBox<IpcLink>,
     streams: [ObjBox<Stream>; 3],
+    ids: [i64; 3],
 }
 
 abi_handle!(Forked);
@@ -154,6 +155,7 @@ fn start(runner: Handler, modes: [i64; 3]) -> Res<Forked> {
         proc: p,
         link: ObjBox::new(IpcLink::new(link)?),
         streams,
+        ids: [-2; 3],
     })
 }
 
@@ -181,6 +183,14 @@ native! {
     /// The child's piped standard output (`which` 1) or error (2); closed unless piped.
     fn msstd_process_forked_output(h: ObjRef<Forked>, which: i64) -> ObjShare<Stream> {
         h.streams[which.clamp(1, 2) as usize].share()
+    }
+
+    /// The runtime stream-table id of the child's pipe `which` (0 stdin, 1 stdout, 2 stderr), -1 when unpiped.
+    fn msstd_process_forked_stream_id(h: ObjMut<Forked>, which: i64) -> i64 {
+        let mut h = h;
+        let which = which.clamp(0, 2) as usize;
+        let h = &mut *h;
+        crate::stream_id(&mut h.streams[which], &mut h.ids[which], which == 0)
     }
 
     /// Waits for exit; a negative `timeout_ns` waits without limit. `Timeout` leaves the child running.

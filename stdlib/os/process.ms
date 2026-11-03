@@ -3,8 +3,7 @@ import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
 import access, join, stat from "@std/os/fs.ms"
 import IpFamily from "@std/net/net.ms"
-import ReadStream from "@std/io/io.ms"
-import WriteStream from "@std/io/io.ms"
+import ReadStream, WriteStream, descriptor_reader, descriptor_writer from "@std/io/io.ms"
 import (
     msrt_args,
     msstd_system_endianness,
@@ -15,8 +14,7 @@ import (
     msstd_process_commands,
     msstd_process_control,
     msstd_process_system,
-    msstd_process_subprocess_stdin,
-    msstd_process_subprocess_stream,
+    msstd_process_subprocess_stream_id,
     msstd_process_subprocess_wait,
     msstd_process_subprocess_max_resident,
     msstd_process_subprocess_terminate,
@@ -91,16 +89,16 @@ impl Closeable for Subprocess:
 
 impl Subprocess:
     // The child's standard input as a WriteStream; writes block when the pipe is full. Closing the stream delivers end-of-input to the child.
-    fn stdin() WriteStream:
-        return msstd_process_subprocess_stdin(self.native)
+    fn stdin() WriteStream[Bytes]:
+        return descriptor_writer(msstd_process_subprocess_stream_id(self.native, 0))
 
     // The child's standard output as a ReadStream over the OS pipe; reads block until output or end-of-file, and nothing is buffered without bound.
-    fn stdout() ReadStream:
-        return msstd_process_subprocess_stream(self.native, 1)
+    fn stdout() ReadStream[Bytes]:
+        return descriptor_reader(msstd_process_subprocess_stream_id(self.native, 1))
 
     // The child's standard error as a ReadStream over the OS pipe, with the same blocking and backpressure behavior as stdout.
-    fn stderr() ReadStream:
-        return msstd_process_subprocess_stream(self.native, 2)
+    fn stderr() ReadStream[Bytes]:
+        return descriptor_reader(msstd_process_subprocess_stream_id(self.native, 2))
 
     // Waits for the child to exit and returns its exit status. Returns Timeout if `timeout` elapses first, leaving the child running.
     fn wait(timeout: Duration?) Int!:
