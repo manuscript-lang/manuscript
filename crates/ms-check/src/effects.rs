@@ -111,7 +111,6 @@ impl Scan<'_> {
         let add =
             |s: &mut BTreeSet<&'static str>, list: &[&'static str]| s.extend(list.iter().copied());
         match receiver.id.as_str() {
-            "@std/Clock" => add(&mut self.effects, &["read"]),
             "@std/Files" | "@std/File" | "@std/ReadStream" => {
                 add(&mut self.effects, &["external-call", "read"]);
                 if name == "close" {

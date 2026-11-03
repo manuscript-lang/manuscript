@@ -1,4 +1,4 @@
-import Calendar, Clock, Instant, Timestamp, WallClock from "@std/os/time.ms"
+import Calendar, Instant, Timestamp from "@std/os/time.ms"
 
 export extern fn msstd_time_duration_add(value: Int, other: Int) Int
 
@@ -68,6 +68,6 @@ export extern fn msstd_time_from_calendar(
 
 export extern fn msstd_time_timestamp(seconds: Int, nanoseconds: Int) Timestamp!
 
-export extern fn msstd_time_clock() Clock
+export extern fn msstd_time_clock_now() Instant
 
-export extern fn msstd_time_wall_clock() WallClock
+export extern fn msstd_time_wall_clock_now() Timestamp

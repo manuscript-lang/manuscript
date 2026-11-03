@@ -15,7 +15,7 @@ import (
     sqrt
 ) from "@std/math/math.ms"
 import (
-    msstd_random_entropy,
+    msstd_random_os_bytes,
     draw_int,
     draw_uuid,
     draw_float,
@@ -24,21 +24,13 @@ import (
     invalid_input
 ) from "@std/internal/random.ms"
 
-// A source of cryptographically secure random bytes.
-interface Entropy:
-    // Returns exactly `count` unpredictable bytes, with `count` from 0 through 16 MiB (16777216).
-    // A negative or larger count returns InvalidInput; a source failure returns Failed. The operating system source observes task cancellation between 64 KiB chunks.
-    var fn bytes(count: Int) Bytes!
-
 // Returns a secure integer at least `min` and below `max_exclusive` when supplied, from the operating system's entropy.
 export fn secure_int(min: Int, max_exclusive: Int?) Int!:
-    var source = msstd_random_entropy()
-    return draw_int(var source, min, max_exclusive)
+    return draw_int(min, max_exclusive)
 
 // Creates a version-4 UUID from the operating system's entropy.
 export fn uuid_v4() String!:
-    var source = msstd_random_entropy()
-    return draw_uuid(var source)
+    return draw_uuid()
 
 /*
 Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time in milliseconds and 80 random bits.
@@ -87,18 +79,15 @@ export fn token(size: Int = 32) String!:
 
 // Returns a secure Float at least 0.0 and below 1.0 with 53 random bits (JavaScript `Math.random`, but cryptographically secure).
 export fn float() Float!:
-    var source = msstd_random_entropy()
-    return draw_float(var source)
+    return draw_float()
 
 // Shuffles the list in place with an unbiased Fisher-Yates shuffle and returns it.
 export fn shuffle[T](values: List[T]) List[T]!:
-    var source = msstd_random_entropy()
-    return draw_shuffle(var source, values)
+    return draw_shuffle(values)
 
 // Returns a uniformly chosen item, or none for an empty list.
 export fn choice[T](values: List[T]) T?!:
-    var source = msstd_random_entropy()
-    return draw_choice(var source, values)
+    return draw_choice(values)
 
 // Returns `count` distinct positions' items chosen uniformly without replacement, in random order, as copies; the input is unchanged.
 // A `count` outside 0 through the list length returns InvalidInput.
@@ -176,8 +165,7 @@ fn weighted_position(weights: List[Float], point: Float) Int:
 // Returns exactly `count` unpredictable bytes from the operating system, with `count` from 0 through 16 MiB (16777216).
 // A negative or larger count returns InvalidInput; a source failure returns Failed. The call observes task cancellation between 64 KiB chunks.
 export fn random_bytes(count: Int) Bytes!:
-    var source = msstd_random_entropy()
-    return source.bytes(count)
+    return msstd_random_os_bytes(count)
 
 /*
 A deterministic pseudo-random generator: the same seed always gives the same sequence, on every platform.
