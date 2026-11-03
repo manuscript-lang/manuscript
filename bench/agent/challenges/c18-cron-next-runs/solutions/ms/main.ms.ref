@@ -1,4 +1,5 @@
-import stdin, stdout, read_line from "@std/io/io.ms"
+import stdin, stdout from "@std/io/io.ms"
+import lines from "@std/io/streams.ms"
 
 fn pad2(n: Int) String:
     if n < 10:
@@ -163,13 +164,14 @@ fn parse_start(s: String) List[Int]:
     return [days_from_civil(year, month, day), h.get() * 60 + mi.get()]
 
 fn run() Result[Unit, Error]:
+    var input = lines(stdin(), 1048576)
     let names = ["minute", "hour", "day-of-month", "month", "day-of-week"]
     let lows = [0, 0, 1, 1, 0]
     let highs = [59, 23, 31, 12, 6]
     var n = 0
 
     while true:
-        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        let next = try input.read().wait()
         if next.is_none():
             break
 
@@ -267,7 +269,7 @@ fn run() Result[Unit, Error]:
         for r in runs:
             try stdout().write("{r}\n")
 
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     match run():

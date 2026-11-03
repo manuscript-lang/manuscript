@@ -1,4 +1,5 @@
-import stdin, stdout, read_line from "@std/io/io.ms"
+import stdin, stdout from "@std/io/io.ms"
+import lines from "@std/io/streams.ms"
 import StringBuilder from "@std/string.ms"
 
 type Account:
@@ -175,10 +176,11 @@ fn step(var l: Ledger, t: List[String]) Unit:
     money(var l, cmd, t)
 
 fn run() Result[Unit, Error]:
+    var input = lines(stdin(), 1048576)
     var l = Ledger(accounts: Map[String, Account](), out: StringBuilder(), fees: 0)
 
     while true:
-        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        let next = try input.read().wait()
         if next.is_none():
             break
 
@@ -189,7 +191,7 @@ fn run() Result[Unit, Error]:
         step(var l, t)
 
     try stdout().write(l.out.build())
-    return stdout().flush()
+    return stdout().flush().wait()
 
 export fn main() Int:
     match run():
