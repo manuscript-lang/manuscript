@@ -338,7 +338,7 @@ fn native_method_modes(
             // An element a mutator stores, or a value of the receiver's or result's type.
             // An optional parameter (`default: T?`) holds a `T`.
             let held = match p.ty.args.first() {
-                Some(inner) if p.ty.is_std("Optional") => inner,
+                Some(inner) if p.ty.is(Builtin::Optional) => inner,
                 _ => &p.ty,
             };
             let stored = p.ty.kind == Kind::Variable

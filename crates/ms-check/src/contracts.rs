@@ -655,7 +655,10 @@ impl Checker {
         if ops.is_empty() && imp.methods.is_empty() && contract.kind == Kind::Contract {
             // A property without operations has no method to carry its evidence, so record the
             // implementation itself.
-            if contract.is_std("Data") && receiver.kind != Kind::Native && !self.m().is_standard() {
+            if contract.is(Builtin::Data)
+                && receiver.kind != Kind::Native
+                && !self.m().is_standard()
+            {
                 self.type_error(
                     d.pos(),
                     format!(
@@ -680,7 +683,7 @@ impl Checker {
             if seen.contains(&op.name) {
                 continue;
             }
-            if contract.is_std("TestHooks") {
+            if contract.is(Builtin::TestHooks) {
                 // This standard lifecycle contract has no-op defaults; retain ordinary
                 // checked methods so interface calls and generic bounds use normal dispatch.
                 let decl_id = self.m().facts_mut().fresh_id();
@@ -798,14 +801,14 @@ impl Checker {
                 return true;
             }
         }
-        contract.is_std("Comparable") && builtin_comparable(receiver)
+        contract.is(Builtin::Comparable) && builtin_comparable(receiver)
     }
 
     /// Whether `.clone()` is available for `t`: every value but a resource, which has one owner.
     fn clonable(&self, t: &Ty, state: &mut PropertyState) -> bool {
         match t.kind {
             Kind::Variable => return t.bounds().iter().any(implies_clonable),
-            Kind::Contract => return !t.is_std("Closeable"),
+            Kind::Contract => return !t.is(Builtin::Closeable),
             Kind::Function | Kind::Primitive => return true,
             _ => {}
         }
@@ -830,7 +833,7 @@ impl Checker {
     /// value alias one payload, so a key stored in a Map or Set could change its
     /// hash through another handle.
     fn shares_state(&self, t: &Ty, seen: &mut Vec<String>) -> bool {
-        if t.is_std("Shared") {
+        if t.is(Builtin::Shared) {
             return true;
         }
         let key = type_key(t);
@@ -858,7 +861,9 @@ impl Checker {
         seen.push(key);
         let closeable = self.p.methods.iter().any(|m| {
             self.method_visible(m)
-                && m.contract.as_ref().is_some_and(|c| c.is_std("Closeable"))
+                && m.contract
+                    .as_ref()
+                    .is_some_and(|c| c.is(Builtin::Closeable))
                 && unify(
                     &m.receiver,
                     t,
@@ -880,7 +885,7 @@ impl Checker {
         self.p.methods.iter().any(|m| {
             self.method_visible(m)
                 && m.decl.is_none()
-                && m.contract.as_ref().is_some_and(|c| c.is_std("Data"))
+                && m.contract.as_ref().is_some_and(|c| c.is(Builtin::Data))
                 && m.receiver.id == t.id
         })
     }
@@ -921,7 +926,7 @@ impl Checker {
         }
         match t.kind {
             Kind::Variable => {
-                return if t.bounds().iter().any(|b| b.is_std("Data")) {
+                return if t.bounds().iter().any(|b| b.is(Builtin::Data)) {
                     None
                 } else {
                     blocked(DataReason::Unbounded, path)
@@ -933,20 +938,20 @@ impl Checker {
             Kind::Contract => return blocked(DataReason::Interface, path),
             _ => {}
         }
-        if t.is_std("List") {
+        if t.is(Builtin::List) {
             return t
                 .args
                 .first()
                 .and_then(|a| self.data_blocker(a, visiting, path));
         }
-        if t.is_std("Map") && t.args.first().is_some_and(|k| k.id.as_str() == "String") {
+        if t.is(Builtin::Map) && t.args.first().is_some_and(|k| k.id.as_str() == "String") {
             // A `Map[String, T]` is a JSON object.
             return t
                 .args
                 .get(1)
                 .and_then(|a| self.data_blocker(a, visiting, path));
         }
-        if t.is_std("Map") || t.is_std("Set") {
+        if t.is(Builtin::Map) || t.is(Builtin::Set) {
             return blocked(DataReason::Collection, path);
         }
         if t.kind == Kind::Native {
@@ -1076,7 +1081,8 @@ impl Checker {
         }
         if t.kind == Kind::Variable {
             return t.bounds().iter().any(|b| {
-                b.is_std(property.name()) || (b.is_std("Hashable") && property == Property::Equal)
+                b.is_std(property.name())
+                    || (b.is(Builtin::Hashable) && property == Property::Equal)
             });
         }
         // Explicit implementations take precedence over structural data semantics.
@@ -1105,7 +1111,7 @@ impl Checker {
         if property == Property::Hashable {
             for m in &self.p.methods {
                 if !self.method_visible(m)
-                    || !m.contract.as_ref().is_some_and(|c| c.is_std("Equal"))
+                    || !m.contract.as_ref().is_some_and(|c| c.is(Builtin::Equal))
                 {
                     continue;
                 }
@@ -1122,18 +1128,21 @@ impl Checker {
             Kind::Primitive => return float_bits(t).is_none() || property != Property::Hashable,
             _ => {}
         }
-        if t.is_std("Decimal") || t.is_std("Bytes") || t.is_time("Duration") || t.is_time("Instant")
+        if t.is(Builtin::Decimal)
+            || t.is(Builtin::Bytes)
+            || t.is_time("Duration")
+            || t.is_time("Instant")
         {
             return true;
         }
-        if t.is_std("List") || t.is_std("Map") || t.is_std("Set") {
+        if t.is(Builtin::List) || t.is(Builtin::Map) || t.is(Builtin::Set) {
             if property == Property::Hashable {
                 return false;
             }
             return t.args.iter().all(|a| self.property_in(a, property, state));
         }
-        if t.is_std("BigInt") || t.is_std("Regex") || t.is_time("Timestamp") {
-            return property == Property::Equal && !t.is_std("Regex");
+        if t.is(Builtin::BigInt) || t.is(Builtin::Regex) || t.is_time("Timestamp") {
+            return property == Property::Equal && !t.is(Builtin::Regex);
         }
         if t.kind == Kind::Native {
             return false;
@@ -1402,32 +1411,34 @@ impl Checker {
     /// collection types cannot take one, so they are told what to use instead.
     pub(crate) fn unsatisfied_message(&self, t: &Ty, bound: &Ty, alternative: &str) -> String {
         let prefix = format!("{t} does not satisfy {bound}; ");
-        if bound.is_std("Data")
+        if bound.is(Builtin::Data)
             && let Some(blocker) = self.data_blocker(t, &mut Vec::new(), &mut Vec::new())
         {
             return blocker.message(t);
         }
-        if bound.is_std("Hashable") && float_bits(t).is_some() {
+        if bound.is(Builtin::Hashable) && float_bits(t).is_some() {
             return format!(
                 "{t} does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimal"
             );
         }
-        if bound.is_std("Hashable") && (t.is_std("List") || t.is_std("Map") || t.is_std("Set")) {
+        if bound.is(Builtin::Hashable)
+            && (t.is(Builtin::List) || t.is(Builtin::Map) || t.is(Builtin::Set))
+        {
             return format!(
                 "{prefix}collections have no Hashable implementation, so use a record key or join the elements into a String"
             );
         }
-        if bound.is_std("Hashable") && self.shares_state(t, &mut Vec::new()) {
+        if bound.is(Builtin::Hashable) && self.shares_state(t, &mut Vec::new()) {
             return format!(
                 "{prefix}it holds a Shared handle, and a key changed through another handle stays filed under its old hash; key on a plain value such as an Int id instead"
             );
         }
-        if bound.is_std("Hashable") && self.holds_resource(t, &mut Vec::new()) {
+        if bound.is(Builtin::Hashable) && self.holds_resource(t, &mut Vec::new()) {
             return format!(
                 "{prefix}it is or holds a Closeable resource, which is closed once by its owner and cannot be a set element or map key; key on a plain value such as an Int id instead"
             );
         }
-        if bound.is_std("Clonable") && t.kind != Kind::Variable {
+        if bound.is(Builtin::Clonable) && t.kind != Kind::Variable {
             return format!(
                 "{prefix}it is or holds a Closeable resource, which has one owner and closes once, so it cannot be copied; move it, or use it in place"
             );
@@ -1468,10 +1479,10 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
         && (matches!(t.kind, Kind::Record | Kind::Alternative)
             || (t.kind == Kind::Variable && t.bounds().iter().any(implies_clonable))
             || (t.kind == Kind::Primitive && t.id.as_str() == "String")
-            || t.is_std("List")
-            || t.is_std("Map")
-            || t.is_std("Set")
-            || t.is_std("Bytes"))
+            || t.is(Builtin::List)
+            || t.is(Builtin::Map)
+            || t.is(Builtin::Set)
+            || t.is(Builtin::Bytes))
     {
         let mut owner = t.clone();
         if matches!(

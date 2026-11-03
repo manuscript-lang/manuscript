@@ -63,7 +63,7 @@ pub(crate) fn integer(t: &Ty) -> bool {
 
 /// Whether a type is an integer or float of any width, or Decimal.
 pub(crate) fn numeric(t: &Ty) -> bool {
-    integer(t) || float_bits(t).is_some() || t.is_std("Decimal") || t.is_std("BigInt")
+    integer(t) || float_bits(t).is_some() || t.is(Builtin::Decimal) || t.is(Builtin::BigInt)
 }
 
 /// An unsuffixed number literal, possibly negated.
@@ -105,7 +105,7 @@ fn literal_tree_fractional(e: &Expr) -> Option<bool> {
 pub(crate) fn literal_hint<'a>(literal: &Expr, other: &'a Ty) -> Option<&'a Ty> {
     if let ExprKind::List(items) = &literal.kind {
         // A list of plain literals takes the element type of a `List` of a sized number.
-        let element = (other.is_std("List") && other.args.len() == 1).then(|| &other.args[0])?;
+        let element = (other.is(Builtin::List) && other.args.len() == 1).then(|| &other.args[0])?;
         let all = !items.is_empty() && items.iter().all(|i| literal_hint(i, element).is_some());
         return all.then_some(other);
     }
@@ -161,7 +161,7 @@ impl Checker {
     /// Checks an expression against an expected type.
     pub(crate) fn expression(&mut self, e: &Expr, expected: Option<&Ty>) -> Info {
         if let Some(x) = expected
-            && x.is_std("Optional")
+            && x.is(Builtin::Optional)
             && x.args.len() == 1
             && !matches!(e.kind, ExprKind::Lambda(_))
         {
@@ -173,7 +173,7 @@ impl Checker {
             return info;
         }
         if let Some(x) = expected
-            && x.is_std("Optional")
+            && x.is(Builtin::Optional)
             && x.args.len() == 1
             && matches!(e.kind, ExprKind::Lambda(_))
         {
@@ -597,7 +597,7 @@ impl Checker {
                 self.res_error(e.pos, msg);
                 return i;
             }
-            if typ.is_std("Optional") {
+            if typ.is(Builtin::Optional) {
                 self.res_error(
                     e.pos,
                     "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. let x: Int? = none",
@@ -650,7 +650,7 @@ impl Checker {
         // `m[key] = value` is `m.add(key, value)` and `xs[i] = value` is `xs.set(i, value)`.
         let index_set = name == ms_syntax::parser::INDEX_SET;
         let name = match index_set {
-            true if rt.is_std("Map") => n("add"),
+            true if rt.is(Builtin::Map) => n("add"),
             true => n("set"),
             false => name,
         };
@@ -730,7 +730,7 @@ impl Checker {
         }
         let mut element: Option<Ty> = None;
         if let Some(exp) = expected
-            && exp.is_std("List")
+            && exp.is(Builtin::List)
             && exp.args.len() == 1
             && inference_type_known(&exp.args[0], &self.inference_variables)
         {
@@ -779,7 +779,7 @@ impl Checker {
         }
         let mut types: [Option<Ty>; 2] = [None, None];
         if let Some(exp) = expected
-            && exp.is_std("Map")
+            && exp.is(Builtin::Map)
             && exp.args.len() == 2
             && inference_type_known(&exp.args[0], &self.inference_variables)
             && inference_type_known(&exp.args[1], &self.inference_variables)
@@ -1009,7 +1009,7 @@ impl Checker {
     /// boundary.
     fn check_try(&mut self, e: &Expr, operand: &Info, i: &mut Info) {
         let result = operand.t();
-        if !result.is_std("Result") || result.args.len() != 2 {
+        if !result.is(Builtin::Result) || result.args.len() != 2 {
             self.type_error(
                 e.pos,
                 format!("try requires Result, found {result}; apply try only to a call returning Result[T, E]"),
@@ -1021,7 +1021,7 @@ impl Checker {
         }
         i.ty = Some(result.args[0].clone());
         let enclosing = self.result_ty();
-        if !enclosing.is_std("Result") || enclosing.args.len() != 2 {
+        if !enclosing.is(Builtin::Result) || enclosing.args.len() != 2 {
             self.type_error(
                 e.pos,
                 "try requires an enclosing Result; declare this function to return Result[T, E], or use 'if let', '.get(default)', or '.get()'",
@@ -1086,7 +1086,7 @@ impl Checker {
             let at = a.t();
             // `opt == 3` compares as `opt == Int?`; the plain side wraps without `some`.
             let wraps = matches!(op, BinaryOp::Eq | BinaryOp::Ne)
-                && at.is_std("Optional")
+                && at.is(Builtin::Optional)
                 && at.args.len() == 1;
             let hint = if wraps {
                 Some(&at)
@@ -1127,7 +1127,7 @@ impl Checker {
             return i;
         }
         let wrapped_operand = matches!(op, BinaryOp::Eq | BinaryOp::Ne)
-            && common.is_std("Optional")
+            && common.is(Builtin::Optional)
             && common.args.len() == 1
             && compatible(&Some(bt.clone()), &common.args[0]);
         if common.is_never()
@@ -1201,7 +1201,7 @@ impl Checker {
                     self.type_error(e.pos, "arithmetic requires numeric operands");
                 }
                 self.constant_arithmetic(e, op, left, right, &common);
-                if op == BinaryOp::Rem && !integer(&common) && !common.is_std("BigInt") {
+                if op == BinaryOp::Rem && !integer(&common) && !common.is(Builtin::BigInt) {
                     self.type_error(
                         e.pos,
                         format!("remainder requires integer operands, found {common}; convert to Int or use math functions"),

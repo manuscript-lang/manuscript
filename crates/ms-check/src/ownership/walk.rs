@@ -294,7 +294,7 @@ struct Walker<'a> {
 fn no_clone(t: &Ty) -> Option<&'static str> {
     match t.kind {
         Kind::Function => Some("a function value cannot be cloned"),
-        Kind::Contract if !t.is_std("Closeable") => Some(
+        Kind::Contract if !t.is(Builtin::Closeable) => Some(
             "an interface value cannot be cloned (convert a clone of the concrete value instead)",
         ),
         _ => None,
@@ -583,7 +583,7 @@ impl Walker<'_> {
     /// Whether `e` is a `Copy` handle such as `Shared[T]`: it is not the storage it lends from,
     /// and another copy of the handle can change that storage, so what it lends is a copy.
     fn copy_handle(&self, e: &Expr) -> bool {
-        self.class_of(e) == Class::Copy && self.cx.m.ty(e).is_std("Shared")
+        self.class_of(e) == Class::Copy && self.cx.m.ty(e).is(Builtin::Shared)
     }
 
     /// The fields from a variable to a place written as a plain chain of them.
@@ -686,7 +686,7 @@ impl Walker<'_> {
             // A conversion to an interface with a `var fn` copies: a call through the view
             // could change leaves the view only borrows.
             let target = self.cx.m.ty(x);
-            let iface = if target.is_std("Result") {
+            let iface = if target.is(Builtin::Result) {
                 target.args.get(1).cloned()
             } else {
                 Some(target)
@@ -957,7 +957,8 @@ impl Walker<'_> {
         let Resolution::Constructor { ty, case: Some(_) } = self.cx.m.resolution(e) else {
             return None;
         };
-        (ty.is_std("Result") && args.len() == 1 && args[0].name.is_none()).then(|| &args[0].value)
+        (ty.is(Builtin::Result) && args.len() == 1 && args[0].name.is_none())
+            .then(|| &args[0].value)
     }
 
     /// The parameters and receiver a returned expression is a part of, when it is one: a place
@@ -1169,8 +1170,8 @@ impl Walker<'_> {
         }
         let recv = self.cx.m.ty(left);
         let lends = match (name.as_str(), args.len()) {
-            ("get", 1) => recv.is_std("Map"),
-            ("first" | "last", 0) => recv.is_std("List"),
+            ("get", 1) => recv.is(Builtin::Map),
+            ("first" | "last", 0) => recv.is(Builtin::List),
             _ => false,
         };
         lends.then_some(&**left)
@@ -1186,7 +1187,7 @@ impl Walker<'_> {
         };
         name.as_str() == "get"
             && args.len() == 1
-            && self.cx.m.ty(left).is_std("Map")
+            && self.cx.m.ty(left).is(Builtin::Map)
             && matches!(self.cx.m.resolution(e), Resolution::Method(m) if !m.native.as_str().is_empty())
     }
 
@@ -1511,7 +1512,7 @@ impl Walker<'_> {
             return Step::Element;
         };
         let literal = || ms_syntax::number::canonical(t.as_str()).parse::<u64>().ok();
-        if self.cx.m.ty(left).is_std("List")
+        if self.cx.m.ty(left).is(Builtin::List)
             && !t.as_str().contains(['.', 'e', 'E'])
             && !t.ends_with('d')
         {
@@ -3932,7 +3933,7 @@ fn ty_contains(src: &Ty, part: &Ty) -> bool {
 /// Whether `result` is an `Optional` or `Result` around a type `src` holds (or around another
 /// such wrapper).
 fn wraps_part(src: &Ty, result: &Ty) -> bool {
-    (result.is_std("Optional") || result.is_std("Result"))
+    (result.is(Builtin::Optional) || result.is(Builtin::Result))
         && result
             .args
             .first()
