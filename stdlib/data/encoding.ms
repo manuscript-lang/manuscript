@@ -14,9 +14,11 @@ import (
 export fn ascii85_encode(data: Bytes) String:
     return msstd_encoding_ascii85_encode(data)
 
-// Decodes unframed ASCII85, ignoring ASCII bytes 0 through 32; `z` is valid only between groups.
-// Rejects Adobe delimiters, one-digit tails, invalid characters and overflowing complete or partial 32-bit groups.
-// Negative `max_bytes` returns InvalidInput; decoded output above it returns LimitExceeded before allocating output.
+/*
+Decodes unframed ASCII85, ignoring ASCII bytes 0 through 32; `z` is valid only between groups.
+Rejects Adobe delimiters, one-digit tails, invalid characters and overflowing complete or partial 32-bit groups.
+Negative `max_bytes` returns InvalidInput; decoded output above it returns LimitExceeded before allocating output.
+*/
 export fn ascii85_decode(text: String, max_bytes: Int?) Bytes!:
     return msstd_encoding_ascii85_decode(text, max_bytes)
 
@@ -43,9 +45,11 @@ export fn base32_encode(
 ) String:
     return msstd_encoding_base32_encode(data, hex_alphabet, padded)
 
-// Decodes uppercase RFC 4648 Base32, or 0-9/A-V when `hex_alphabet` is true.
-// Padding must be exact and only at the end; `padded: false` forbids `=`. Whitespace and nonzero unused bits return InvalidData.
-// Negative `max_bytes` returns InvalidInput; output exceeding it returns LimitExceeded.
+/*
+Decodes uppercase RFC 4648 Base32, or 0-9/A-V when `hex_alphabet` is true.
+Padding must be exact and only at the end; `padded: false` forbids `=`. Whitespace and nonzero unused bits return InvalidData.
+Negative `max_bytes` returns InvalidInput; output exceeding it returns LimitExceeded.
+*/
 export fn base32_decode(
     text: String,
     hex_alphabet: Bool = false,

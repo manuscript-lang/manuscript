@@ -1,9 +1,11 @@
 import Iterator from "@std/core.ms"
 import Iterable from "@std/collections/iterable.ms"
 
-// A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.
-// Written in Manuscript over a ring buffer, so a copy of a Deque is an independent deque.
-// Use Queue for plain FIFO work and Deque when either end is pushed or popped, such as a sliding window or work stealing.
+/*
+A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.
+Written in Manuscript over a ring buffer, so a copy of a Deque is an independent deque.
+Use Queue for plain FIFO work and Deque when either end is pushed or popped, such as a sliding window or work stealing.
+*/
 export type Deque[T]:
     // Ring-buffer storage; `none` marks unused slots. Internal state: use the operations, not this field.
     slots: List[T?] = []
@@ -103,9 +105,11 @@ impl Deque[T]:
 
 // Ring behaviour: a Deque is also a ring buffer that can be turned.
 impl Deque[T]:
-    // Moves `count` values from the front to the back, one at a time, so the value `count` places in becomes the front;
-    // a negative `count` moves values from the back to the front. Any magnitude is reduced modulo the length, and an empty deque is unchanged.
-    // Example: with 1, 2, 3, 4 queued, `rotate(1)` leaves 2, 3, 4, 1.
+    /*
+    Moves `count` values from the front to the back, one at a time, so the value `count` places in becomes the front;
+    a negative `count` moves values from the back to the front. Any magnitude is reduced modulo the length, and an empty deque is unchanged.
+    Example: with 1, 2, 3, 4 queued, `rotate(1)` leaves 2, 3, 4, 1.
+    */
     var fn rotate(count: Int) Unit:
         if self.size < 2:
             return

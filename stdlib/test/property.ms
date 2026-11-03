@@ -13,13 +13,15 @@ import secure_int from "@std/os/random.ms"
 import expect_fault, fail from "@std/test/test.ms"
 import milliseconds, monotonic from "@std/os/time.ms"
 
-// Property-based testing for `test` blocks. A property is a function that must hold for every value a generator produces.
-// `check` runs it on many generated values and, on failure, shrinks the input to a small counterexample.
-// Generators draw integers from a `Source` that records them, so a failing input shrinks by editing the recorded
-// draws (deleting spans, lowering values) and replaying the generator. Every generator, including your own
-// composed with `map`, `flat_map`, `lists`, and the rest, therefore shrinks without a shrinker of its own.
-// Example: `try check("reverse twice", lists(ints(-100, 100)), lambda xs: expect_equal(xs.reversed().reversed(), xs))`.
-// `ms test --runs N`, `--seed N`, and `--fuzz DURATION` set the case count, the starting seed, and a time budget.
+/*
+Property-based testing for `test` blocks. A property is a function that must hold for every value a generator produces.
+`check` runs it on many generated values and, on failure, shrinks the input to a small counterexample.
+Generators draw integers from a `Source` that records them, so a failing input shrinks by editing the recorded
+draws (deleting spans, lowering values) and replaying the generator. Every generator, including your own
+composed with `map`, `flat_map`, `lists`, and the rest, therefore shrinks without a shrinker of its own.
+Example: `try check("reverse twice", lists(ints(-100, 100)), lambda xs: expect_equal(xs.reversed().reversed(), xs))`.
+`ms test --runs N`, `--seed N`, and `--fuzz DURATION` set the case count, the starting seed, and a time budget.
+*/
 
 // The recorded stream of draws a generator reads. Create one with `source`; generators call `draw`.
 export type Source:
@@ -292,9 +294,11 @@ fn run_case[T](gen: Gen[T], property: fn(T) Unit!, s: Source) Outcome:
     if source.invalid:
         return Outcome(source, none)
 
-    // The property runs under `expect_fault` so a fault becomes a failing case that shrinks like an error.
-    // It faults with `property_failed` when the property returns an error; that message is then read in full by rerunning
-    // on a regenerated value, because the faulted run may have consumed `value` (Windows runs it in this process).
+    /*
+    The property runs under `expect_fault` so a fault becomes a failing case that shrinks like an error.
+    It faults with `property_failed` when the property returns an error; that message is then read in full by rerunning
+    on a regenerated value, because the faulted run may have consumed `value` (Windows runs it in this process).
+    */
     let faulted = expect_fault(fn: run_property(property, value))
     if faulted.is_error():
         return Outcome(source, none)
@@ -390,9 +394,11 @@ fn shrink[T](
 
     return best
 
-// Runs `property` on generated values and fails, naming a shrunk counterexample, when it returns an error.
-// Properties return `Result` like test assertions; write them with `expect_*` calls and `try`.
-// A fault (`panic`) inside a property counts as a failing case and shrinks like an error; each case runs under `expect_fault`.
+/*
+Runs `property` on generated values and fails, naming a shrunk counterexample, when it returns an error.
+Properties return `Result` like test assertions; write them with `expect_*` calls and `try`.
+A fault (`panic`) inside a property counts as a failing case and shrinks like an error; each case runs under `expect_fault`.
+*/
 export fn check[T](
     name: String,
     gen: Gen[T],

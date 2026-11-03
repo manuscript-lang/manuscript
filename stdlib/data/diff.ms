@@ -1,9 +1,11 @@
 import panic from "@std/core.ms"
 import StringBuilder from "@std/string.ms"
 
-// Text comparison: how far apart two strings are, how alike, which candidate is closest, and a line diff in unified format (Python `difflib`).
-// Strings are compared by Unicode scalar, lines by exact equality.
-// `diff.edit_distance("kitten", "sitting")` is `3`.
+/*
+Text comparison: how far apart two strings are, how alike, which candidate is closest, and a line diff in unified format (Python `difflib`).
+Strings are compared by Unicode scalar, lines by exact equality.
+`diff.edit_distance("kitten", "sitting")` is `3`.
+*/
 
 // Returns the number of single-scalar insertions, deletions and substitutions that turn `left` into `right` (Levenshtein distance).
 // Example: `edit_distance("kitten", "sitting")` is `3`; equal strings give 0.
@@ -50,9 +52,11 @@ fn common_length(a: List[String], b: List[String]) Int:
 
     return previous[b.length()]
 
-// Returns how alike two strings are, from 0.0 (nothing shared) to 1.0 (equal): twice the length of their longest common subsequence of scalars, divided by the total length.
-// Two empty strings give 1.0. This measures the same idea as Python's `SequenceMatcher.ratio` with a different matching rule, so the values can differ.
-// Example: `similarity_ratio("abcd", "abd")` is about `0.857`.
+/*
+Returns how alike two strings are, from 0.0 (nothing shared) to 1.0 (equal): twice the length of their longest common subsequence of scalars, divided by the total length.
+Two empty strings give 1.0. This measures the same idea as Python's `SequenceMatcher.ratio` with a different matching rule, so the values can differ.
+Example: `similarity_ratio("abcd", "abd")` is about `0.857`.
+*/
 export fn similarity_ratio(left: String, right: String) Float:
     let a = left.chars()
     let b = right.chars()
@@ -67,9 +71,11 @@ type Scored:
     text: String
     score: Float
 
-// Returns up to `limit` candidates whose `similarity_ratio` with `word` is at least `cutoff`, best match first; ties keep the candidates' order.
-// A `limit` below 1 or a `cutoff` outside 0.0 to 1.0 faults.
-// Example: `close_matches("appel", ["ape", "apple", "peach"], 2, 0.6)` is `["apple", "ape"]`.
+/*
+Returns up to `limit` candidates whose `similarity_ratio` with `word` is at least `cutoff`, best match first; ties keep the candidates' order.
+A `limit` below 1 or a `cutoff` outside 0.0 to 1.0 faults.
+Example: `close_matches("appel", ["ape", "apple", "peach"], 2, 0.6)` is `["apple", "ape"]`.
+*/
 export fn close_matches(
     word: String,
     candidates: List[String],
@@ -209,10 +215,12 @@ fn hunk_range(start: Int, length: Int) String:
 
     return "{start + 1},{length}"
 
-// Compares two lists of lines and returns the differences in unified diff format, or an empty string when the lists are equal.
-// Lines carry no trailing newline, and the result lines are joined with "\n" with a final newline. `context` is the number of unchanged lines kept around each change (default 3) and must not be negative.
-// `old_name` and `new_name` label the `---` and `+++` headers.
-// Example: `unified_diff(["a", "b"], ["a", "c"], 1)` is `"--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n"`.
+/*
+Compares two lists of lines and returns the differences in unified diff format, or an empty string when the lists are equal.
+Lines carry no trailing newline, and the result lines are joined with "\n" with a final newline. `context` is the number of unchanged lines kept around each change (default 3) and must not be negative.
+`old_name` and `new_name` label the `---` and `+++` headers.
+Example: `unified_diff(["a", "b"], ["a", "c"], 1)` is `"--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n"`.
+*/
 export fn unified_diff(
     old: List[String],
     new: List[String],

@@ -86,10 +86,12 @@ impl Connection:
     fn read(max_bytes: Int?, timeout: Duration?) Bytes?!:
         return msstd_net_connection_read(self.native, max_bytes, timeout)
 
-    // Returns a second connection over a duplicate of the socket, which closes on its own, so one task
-    // can read while another writes. Both share the stream: bytes read through one are not seen by the other.
-    // While a clone is open, closing a copy closes only its descriptor: the peer sees no end of stream, and a call parked on the closed copy ends at its timeout or the next data.
-    // Returns Unsupported for a TLS connection, whose session state cannot be shared, and Closed on a closed connection.
+    /*
+    Returns a second connection over a duplicate of the socket, which closes on its own, so one task
+    can read while another writes. Both share the stream: bytes read through one are not seen by the other.
+    While a clone is open, closing a copy closes only its descriptor: the peer sees no end of stream, and a call parked on the closed copy ends at its timeout or the next data.
+    Returns Unsupported for a TLS connection, whose session state cannot be shared, and Closed on a closed connection.
+    */
     fn clone() Connection!:
         return msstd_net_connection_clone(self.native)
 
@@ -154,22 +156,14 @@ impl DatagramSocket:
 
 // Supported DNS query categories; unknown spellings are rejected by checking.
 export type DnsKind:
-    // IPv4 address records for the queried name.
-    case A
-    // IPv6 address records for the queried name.
-    case AAAA
-    // Canonical name alias records for the queried name.
-    case CNAME
-    // Mail exchange records with priority values.
-    case MX
-    // Name server records for the queried zone.
-    case NS
-    // Text records returned as string values.
-    case TXT
-    // Reverse address pointer records for an IP.
-    case PTR
-    // Service location records with priority, weight and port.
-    case SRV
+    case A  // IPv4 address records for the queried name.
+    case AAAA  // IPv6 address records for the queried name.
+    case CNAME  // Canonical name alias records for the queried name.
+    case MX  // Mail exchange records with priority values.
+    case NS  // Name server records for the queried zone.
+    case TXT  // Text records returned as string values.
+    case PTR  // Reverse address pointer records for an IP.
+    case SRV  // Service location records with priority, weight and port.
 
 impl DnsKind:
     // Returns the uppercase wire category.
@@ -186,10 +180,8 @@ impl DnsKind:
 
 // Numeric address families reported by IP values and host interfaces.
 export type IpFamily:
-    // A four-byte numeric address.
-    case IPv4
-    // A sixteen-byte numeric address.
-    case IPv6
+    case IPv4  // A four-byte numeric address.
+    case IPv6  // A sixteen-byte numeric address.
 
 impl IpFamily:
     // Returns IPv4 or IPv6.
@@ -321,9 +313,11 @@ export interface Network:
     // Listens on a Unix domain socket at `path`.
     // Any restricted network returns PermissionDenied, and an empty path returns InvalidInput.
     fn listen_unix(path: String) Listener!
-    // Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
-    // More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
-    // System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
+    /*
+    Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
+    More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
+    System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
+    */
     fn lookup(name: String, max_records: Int?, timeout: Duration?) List[String]!
     // Performs one buffered HTTP request and returns the status, headers, and complete body.
     // Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `max_response_bytes` returns LimitExceeded; error statuses are ordinary responses.
@@ -354,11 +348,13 @@ export interface Network:
     // Returns a derived network limited to the given host names and CIDR ranges.
     // Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns InvalidInput.
     fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) Network!
-    // Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
-    // A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
-    // Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
-    // A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end, `tasks.cancelled()` turns true, and its cleanups run. A client that half-closes its end after sending the request counts as disconnected.
-    // A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
+    /*
+    Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
+    A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
+    Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
+    A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end, `tasks.cancelled()` turns true, and its cleanups run. A client that half-closes its end after sending the request counts as disconnected.
+    A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
+    */
     fn serve(
         address: String,
         handler: fn(HttpExchange) Unit!,
@@ -555,9 +551,11 @@ export type WebSocketOptions:
     // When True, offers per-message compression during the handshake; it applies only if the peer agrees.
     compression: Bool
 
-// Serves on `cores` threads: this thread accepts from `listener` and deals each connection, round robin, to one of `cores` workers that run `entry`, a named top-level fn that ends in `serve_core(handler, options)`. A connection, and every request on it, stays on its worker, and each worker builds its own handler, so no closure or other memory crosses threads.
-// Runs until accepting fails, returning that error (`Closed` after the listener was closed), or a worker's channel closes (returns `Failed`). Workers still running afterwards are cancelled.
-// Returns InvalidInput when `cores` is below 1, and `Failed` when a worker cannot start.
+/*
+Serves on `cores` threads: this thread accepts from `listener` and deals each connection, round robin, to one of `cores` workers that run `entry`, a named top-level fn that ends in `serve_core(handler, options)`. A connection, and every request on it, stays on its worker, and each worker builds its own handler, so no closure or other memory crosses threads.
+Runs until accepting fails, returning that error (`Closed` after the listener was closed), or a worker's channel closes (returns `Failed`). Workers still running afterwards are cancelled.
+Returns InvalidInput when `cores` is below 1, and `Failed` when a worker cannot start.
+*/
 export fn serve_cores(listener: Listener, entry: fn() Unit, cores: Int) Unit!:
     if cores < 1:
         return error(Error("network: invalid input", kind: InvalidInput))
@@ -676,9 +674,11 @@ export fn listen_tls(
 export fn listen_unix(path: String) Listener!:
     return host_network().listen_unix(path)
 
-// Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
-// More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
-// System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
+/*
+Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
+More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
+System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
+*/
 export fn lookup(name: String, max_records: Int?, timeout: Duration?) List[String]!:
     return host_network().lookup(name, max_records, timeout)
 
@@ -727,11 +727,13 @@ export fn restrict(
 ) Network!:
     return host_network().restrict(hosts, cidrs, allow_listen)
 
-// Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
-// A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
-// Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
-// A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end, `tasks.cancelled()` turns true, and its cleanups run. A client that half-closes its end after sending the request counts as disconnected.
-// A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
+/*
+Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
+A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
+Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
+A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end, `tasks.cancelled()` turns true, and its cleanups run. A client that half-closes its end after sending the request counts as disconnected.
+A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
+*/
 export fn serve(
     address: String,
     handler: fn(HttpExchange) Unit!,

@@ -1,14 +1,16 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 
-// MIME building blocks: media types, header blocks, and multipart bodies.
-// `parse_media_type` splits `text/html; charset=utf-8`; `parse_headers` reads an RFC 5322 style
-// header block (folded lines joined, names kept as written, lookup case-insensitive);
-// `parse_multipart` and `encode_multipart` read and write `multipart/form-data` and `multipart/mixed` bodies.
-//
-//     import parse_media_type, media_type_for_extension from "@std/net/mime.ms"
-//     media_type_for_extension(".json")                     # "application/json"
-//     parse_media_type("text/html; charset=utf-8").get().params["charset"]
+/*
+MIME building blocks: media types, header blocks, and multipart bodies.
+`parse_media_type` splits `text/html; charset=utf-8`; `parse_headers` reads an RFC 5322 style
+header block (folded lines joined, names kept as written, lookup case-insensitive);
+`parse_multipart` and `encode_multipart` read and write `multipart/form-data` and `multipart/mixed` bodies.
+
+    import parse_media_type, media_type_for_extension from "@std/net/mime.ms"
+    media_type_for_extension(".json")                     # "application/json"
+    parse_media_type("text/html; charset=utf-8").get().params["charset"]
+*/
 
 // A parsed media type with lower-cased `essence` and parameters keyed by lower-cased name.
 export type MediaType:
@@ -246,9 +248,11 @@ export fn multipart_boundary(content_type: String) String?:
 
     return media.params.get("boundary")
 
-// Splits a multipart body into parts using `boundary`. Text before the first delimiter and after the
-// closing delimiter is ignored. Parts keep their body bytes exactly; headers are parsed as `Headers`.
-// A body without a closing delimiter is `InvalidMultipart`.
+/*
+Splits a multipart body into parts using `boundary`. Text before the first delimiter and after the
+closing delimiter is ignored. Parts keep their body bytes exactly; headers are parsed as `Headers`.
+A body without a closing delimiter is `InvalidMultipart`.
+*/
 export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
     if boundary.is_empty(): return error(
         Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData)

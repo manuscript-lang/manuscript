@@ -5,16 +5,18 @@ fn config_error(line: Int, reason: String) Error:
         details: {"line": "{line}"}
     )
 
-// Parses `.env` text into a map in file order, without touching the process environment.
-// Use it to layer settings: read the file, then let real variables win, `values.add(name, value)`.
-// To load a file straight into the environment use `process.control().load_environment`, which accepts the same syntax.
-//
-// - Blank lines and `#` comment lines are skipped; a leading byte-order mark is ignored.
-// - `export NAME=value` is accepted, and a name is letters, digits and `_`, not starting with a digit.
-// - A bare value ends at an inline ` # comment` and is trimmed. A single-, double- or backtick-quoted value is literal, may span lines, and keeps any `#`.
-// - Only text after a closing quote may be a comment. A later duplicate name replaces the earlier value and keeps its first position.
-//
-// Example: `parse_dotenv("PORT=8080\nNAME='my app' # label")` holds `PORT` as `"8080"` and `NAME` as `"my app"`.
+/*
+Parses `.env` text into a map in file order, without touching the process environment.
+Use it to layer settings: read the file, then let real variables win, `values.add(name, value)`.
+To load a file straight into the environment use `process.control().load_environment`, which accepts the same syntax.
+
+- Blank lines and `#` comment lines are skipped; a leading byte-order mark is ignored.
+- `export NAME=value` is accepted, and a name is letters, digits and `_`, not starting with a digit.
+- A bare value ends at an inline ` # comment` and is trimmed. A single-, double- or backtick-quoted value is literal, may span lines, and keeps any `#`.
+- Only text after a closing quote may be a comment. A later duplicate name replaces the earlier value and keeps its first position.
+
+Example: `parse_dotenv("PORT=8080\nNAME='my app' # label")` holds `PORT` as `"8080"` and `NAME` as `"my app"`.
+*/
 export fn parse_dotenv(text: String) Map[String, String]!:
     var out = Map[String, String]()
     let lines = text.cut_prefix("\u{feff}").get(text).lines()
@@ -68,14 +70,16 @@ export fn parse_dotenv(text: String) Map[String, String]!:
 
     return ok(out)
 
-// Parses INI text into sections of settings, both in file order. Keys before the first `[section]` header go in the section named `""`.
-//
-// - `[name]` starts a section; a repeated header continues the earlier one. Names and keys are trimmed.
-// - `key = value` and `key: value` both assign; the first `=` or `:` splits, so values may contain the other.
-// - Lines starting with `#` or `;` are comments, and so is text after ` #` or ` ;` in a value. A value wrapped in matching `"` or `'` keeps such text and loses the quotes.
-// - A later duplicate key in a section replaces the earlier value. A line without `=` or `:` returns InvalidData.
-//
-// Example: `parse_ini("[db]\nhost = localhost\nport: 5432")` holds `ini["db"]["port"]` as `"5432"`.
+/*
+Parses INI text into sections of settings, both in file order. Keys before the first `[section]` header go in the section named `""`.
+
+- `[name]` starts a section; a repeated header continues the earlier one. Names and keys are trimmed.
+- `key = value` and `key: value` both assign; the first `=` or `:` splits, so values may contain the other.
+- Lines starting with `#` or `;` are comments, and so is text after ` #` or ` ;` in a value. A value wrapped in matching `"` or `'` keeps such text and loses the quotes.
+- A later duplicate key in a section replaces the earlier value. A line without `=` or `:` returns InvalidData.
+
+Example: `parse_ini("[db]\nhost = localhost\nport: 5432")` holds `ini["db"]["port"]` as `"5432"`.
+*/
 export fn parse_ini(text: String) Map[String, Map[String, String]]!:
     var sections = Map[String, Map[String, String]]()
     sections.add("", Map[String, String]())

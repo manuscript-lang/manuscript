@@ -50,9 +50,11 @@ export interface ReadStream:
     // A supplied positive max_bytes requests a chunk size; native omission/none uses 64 KiB.
     var fn read(max_bytes: Int? = none) Bytes?!
 
-// A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
-// Buffering/flush depends on the implementation: native stderr is unbuffered and native stdout is buffered when not a terminal (flush drains it),
-// while FileHandle.writer().flush synchronizes the file. Success does not acknowledge peer processing.
+/*
+A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
+Buffering/flush depends on the implementation: native stderr is unbuffered and native stdout is buffered when not a terminal (flush drains it),
+while FileHandle.writer().flush synchronizes the file. Success does not acknowledge peer processing.
+*/
 export interface WriteStream:
     // Releases this implementation's write resource; close does not imply a successful flush.
     var fn close() Unit
@@ -77,12 +79,14 @@ export fn read_all(input: ReadStream, max_bytes: Int?) Bytes!:
 export fn read_line(input: ReadStream, max_bytes: Int?) String?!:
     return msstd_io_read_line(input, max_bytes)
 
-// Lines of a stream, read on demand. `for line in reader:` walks the lines without their
-// terminators (`\n` or `\r\n`) and stops at end of input, at the first I/O error, or at a line
-// longer than `max_bytes`; `error()` then tells the last two apart from a clean end.
-//
-// Iterate a `var` reader with `for` so the loop advances it in place and `error()` can be read
-// afterwards; see "Read standard input line by line" in the common tasks guide.
+/*
+Lines of a stream, read on demand. `for line in reader:` walks the lines without their
+terminators (`\n` or `\r\n`) and stops at end of input, at the first I/O error, or at a line
+longer than `max_bytes`; `error()` then tells the last two apart from a clean end.
+
+Iterate a `var` reader with `for` so the loop advances it in place and `error()` can be read
+afterwards; see "Read standard input line by line" in the common tasks guide.
+*/
 export type LineReader:
     // The stream being read.
     input: ReadStream
@@ -134,12 +138,9 @@ export fn stderr() WriteStream:
 
 // One of this process's three standard streams.
 export type StdStream:
-    // Standard input; once redirected it reads as end of file.
-    case Input
-    // Standard output; once redirected its writes are discarded.
-    case Output
-    // Standard error; once redirected its writes are discarded.
-    case Error
+    case Input  // Standard input; once redirected it reads as end of file.
+    case Output  // Standard output; once redirected its writes are discarded.
+    case Error  // Standard error; once redirected its writes are discarded.
 
 // Points the process's own standard stream at the null device (`/dev/null`, or `NUL` on Windows): input reads as end of file and output is discarded.
 // This replaces the descriptor itself, so it also affects children started afterwards that inherit it. Buffered standard output is written first. The change cannot be undone.
@@ -164,9 +165,11 @@ export type TerminalSize:
     // Height in character rows.
     rows: Int
 
-// What the current process can do with its standard streams as a terminal.
-// `colors` is 0 when output is not a terminal, `NO_COLOR` is set, or `TERM` is
-// `dumb`; otherwise 16, 256, or 16777216 from `TERM` and `COLORTERM`.
+/*
+What the current process can do with its standard streams as a terminal.
+`colors` is 0 when output is not a terminal, `NO_COLOR` is set, or `TERM` is
+`dumb`; otherwise 16, 256, or 16777216 from `TERM` and `COLORTERM`.
+*/
 export type TerminalCapabilities:
     // True when standard input is a terminal.
     input_is_terminal: Bool
@@ -181,11 +184,13 @@ export type TerminalCapabilities:
     // Supported color count, or 0 when color output should be avoided.
     colors: Int
 
-// One decoded terminal input event. `Text` carries printable characters typed
-// together. `Key` names a non-printing or modified key: `enter`, `tab`,
-// `backspace`, `escape`, `space`, `up`, `down`, `left`, `right`, `home`, `end`,
-// `insert`, `delete`, `page_up`, `page_down`, `f1` to `f12`, or a letter with
-// `ctrl` or `alt` set. `Resize` carries the new size.
+/*
+One decoded terminal input event. `Text` carries printable characters typed
+together. `Key` names a non-printing or modified key: `enter`, `tab`,
+`backspace`, `escape`, `space`, `up`, `down`, `left`, `right`, `home`, `end`,
+`insert`, `delete`, `page_up`, `page_down`, `f1` to `f12`, or a letter with
+`ctrl` or `alt` set. `Resize` carries the new size.
+*/
 export type TerminalEvent:
     // Printable characters typed together.
     case Text(
@@ -213,14 +218,10 @@ export type TerminalEvent:
 
 // The part of the screen cleared by `RawTerminal.erase`.
 export type EraseRegion:
-    // Every cell of the screen; the cursor does not move.
-    case Screen
-    // The whole cursor line.
-    case Line
-    // From the cursor to the end of the line.
-    case LineEnd
-    // From the start of the line to the cursor.
-    case LineStart
+    case Screen  // Every cell of the screen; the cursor does not move.
+    case Line  // The whole cursor line.
+    case LineEnd  // From the cursor to the end of the line.
+    case LineStart  // From the start of the line to the cursor.
 
 // Queries the terminal and enters raw input mode.
 interface Terminal:
@@ -234,10 +235,12 @@ interface Terminal:
 // The runtime handle behind a `RawTerminal`.
 export extern type NativeRawTerminal
 
-// Raw terminal input and cursor control. Closing it, or leaving the
-// scope that acquired it by return, error, fault, or cancellation, restores the
-// original terminal settings, shows the cursor, and leaves the alternate screen.
-// In raw mode, Ctrl-C arrives as a `c` key with `ctrl` set instead of cancelling.
+/*
+Raw terminal input and cursor control. Closing it, or leaving the
+scope that acquired it by return, error, fault, or cancellation, restores the
+original terminal settings, shows the cursor, and leaves the alternate screen.
+In raw mode, Ctrl-C arrives as a `c` key with `ctrl` set instead of cancelling.
+*/
 export type RawTerminal:
     // The runtime handle; it is released by `close` and owned by this value.
     native: NativeRawTerminal

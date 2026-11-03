@@ -33,9 +33,11 @@ impl TaskChannelLease:
     fn clone() TaskChannelLease:
         return msrt_obj_share(self)
 
-// Whether the running task was cancelled: its group was closed, its timeout passed, or the program was asked to stop.
-// A plain query: it neither waits nor unwinds, so a task can poll it between steps and finish early.
-// It stays true inside cleanups (scope-end closes), where a cancelled task should do minimal work.
+/*
+Whether the running task was cancelled: its group was closed, its timeout passed, or the program was asked to stop.
+A plain query: it neither waits nor unwinds, so a task can poll it between steps and finish early.
+It stays true inside cleanups (scope-end closes), where a cancelled task should do minimal work.
+*/
 export fn cancelled() Bool:
     return msrt_task_cancel_requested() != 0
 
@@ -151,9 +153,11 @@ impl Closeable for WaitTicket[T]:
             lane.value.waiting = List[Int]()
         return ok(unit)
 
-// One end of a two-way channel between tasks on the runtime thread: sends `In`, receives `Out`. Values move
-// from one end to the other, so they may be resources; a task that must wait parks until the other end posts
-// its token. An end is a handle on shared state: `.clone()` shares it, and every holder closes explicitly.
+/*
+One end of a two-way channel between tasks on the runtime thread: sends `In`, receives `Out`. Values move
+from one end to the other, so they may be resources; a task that must wait parks until the other end posts
+its token. An end is a handle on shared state: `.clone()` shares it, and every holder closes explicitly.
+*/
 export type TaskChannel[In, Out]:
     // Values this end sends.
     outgoing: Shared[Lane[In]]
@@ -339,17 +343,19 @@ impl Task[T, In, Out]:
         forget(self.registry, self.handle)
         return collected
 
-// A scope that owns the tasks started in it. Every task returns a `T` (use `Unit` for effect-only work).
-// Each task has a two-way channel to the group: it sends `Out` values and receives `In` values, both `Unit` unless given.
-// Bind a group to a local: when its scope ends it cancels tasks that are still running and waits for all of them.
-// Call `results`, `wait` or a task's `result` before the block ends to keep the work.
-// Collecting a task (`result`, or `results`) makes the group forget it, so a long-lived group holds only
-// tasks that are running or uncollected.
-// Retained channels may drain buffered values after collection; group close closes them too and drops unread values.
-// `timeout` limits the whole group, counted from its creation; `spawn` can set a shorter limit for one task.
-// A task that passes its limit is cancelled and has the result `TimedOut`. There is no limit unless one is given. A cancelled task releases the values its functions own.
-// Tasks run on the one runtime thread and switch only when one waits (`result`, `wait`, a channel, sleeping, I/O).
-// A fault in a task ends the program, unless `contain_faults` is set: then the task ends with the result `Faulted(report)`, its siblings keep running, and values its frames owned are not released. A task owns the values its closure captures; return results instead of sharing them.
+/*
+A scope that owns the tasks started in it. Every task returns a `T` (use `Unit` for effect-only work).
+Each task has a two-way channel to the group: it sends `Out` values and receives `In` values, both `Unit` unless given.
+Bind a group to a local: when its scope ends it cancels tasks that are still running and waits for all of them.
+Call `results`, `wait` or a task's `result` before the block ends to keep the work.
+Collecting a task (`result`, or `results`) makes the group forget it, so a long-lived group holds only
+tasks that are running or uncollected.
+Retained channels may drain buffered values after collection; group close closes them too and drops unread values.
+`timeout` limits the whole group, counted from its creation; `spawn` can set a shorter limit for one task.
+A task that passes its limit is cancelled and has the result `TimedOut`. There is no limit unless one is given. A cancelled task releases the values its functions own.
+Tasks run on the one runtime thread and switch only when one waits (`result`, `wait`, a channel, sleeping, I/O).
+A fault in a task ends the program, unless `contain_faults` is set: then the task ends with the result `Faulted(report)`, its siblings keep running, and values its frames owned are not released. A task owns the values its closure captures; return results instead of sharing them.
+*/
 export type TaskGroup[T, In = Unit, Out = Unit]:
     // Limit for every task started in the group, counted from the group's creation; none for no limit.
     timeout: Duration?
@@ -363,10 +369,12 @@ export type TaskGroup[T, In = Unit, Out = Unit]:
     channels: TaskChannels = msrt_channel_group_new()
 
 impl TaskGroup[T, In, Out]:
-    // Starts `entry` as a task and returns its handle. The task gets its end of a new channel, and the
-    // handle's `channel` is the group's end. The task's end closes when `entry` returns.
-    // The task first runs when the caller waits.
-    // `timeout` limits this task; the group's own limit still applies if it ends sooner.
+    /*
+    Starts `entry` as a task and returns its handle. The task gets its end of a new channel, and the
+    handle's `channel` is the group's end. The task's end closes when `entry` returns.
+    The task first runs when the caller waits.
+    `timeout` limits this task; the group's own limit still applies if it ends sooner.
+    */
     fn spawn(entry: fn(TaskChannel[Out, In]) T, timeout: Duration?) Task[T, In, Out]:
         let down: Shared[Lane[In]] = share(Lane[In]())
         let up: Shared[Lane[Out]] = share(Lane[Out]())

@@ -59,9 +59,11 @@ impl ReadStream for MappedStream:
 
         return ok(none)
 
-// Applies `transform` to each chunk read from `input`. Chunks that transform to empty bytes are skipped.
-// The result is only as stateless as `transform`: it sees chunk boundaries as `input` produces them.
-// Closing the result closes `input`.
+/*
+Applies `transform` to each chunk read from `input`. Chunks that transform to empty bytes are skipped.
+The result is only as stateless as `transform`: it sees chunk boundaries as `input` produces them.
+Closing the result closes `input`.
+*/
 export fn map(input: ReadStream, transform: fn(Bytes) Bytes) ReadStream:
     return MappedStream(input, transform)
 
@@ -265,10 +267,12 @@ impl ReadStream for SectionStream:
         self.remaining -= bytes.length()
         return ok(bytes)
 
-// Streams `length` bytes of `file` starting at byte `offset`, without moving the file's own position, so several sections
-// of one file can be read independently. Fewer bytes arrive when the file ends first. The section reads through its own
-// duplicate of the descriptor and closes it when closed; the caller still owns `file`.
-// A negative offset or length, or a closed file, fails with the `Error` of the duplication.
+/*
+Streams `length` bytes of `file` starting at byte `offset`, without moving the file's own position, so several sections
+of one file can be read independently. Fewer bytes arrive when the file ends first. The section reads through its own
+duplicate of the descriptor and closes it when closed; the caller still owns `file`.
+A negative offset or length, or a closed file, fails with the `Error` of the duplication.
+*/
 export fn section(file: FileHandle, offset: Int, length: Int) ReadStream!:
     if offset < 0 or length < 0: return error(
         Error("file system: invalid input", kind: ErrorCategory.InvalidInput)
@@ -336,8 +340,10 @@ impl WriteStream for ChannelSink[Out]:
 
         return ok(unit)
 
-// Sends each write as one chunk over a task channel, so the other end reads it with `channel_reader`.
-// A write waits while the reader has many unread chunks; once the reader closes, writes return an `Error` of kind `Closed`.
-// Closing the writer closes this end of the channel, which ends the reader's stream.
+/*
+Sends each write as one chunk over a task channel, so the other end reads it with `channel_reader`.
+A write waits while the reader has many unread chunks; once the reader closes, writes return an `Error` of kind `Closed`.
+Closing the writer closes this end of the channel, which ends the reader's stream.
+*/
 export fn channel_writer[Out](channel: Channel[Bytes, Out]) WriteStream:
     return ChannelSink(channel)

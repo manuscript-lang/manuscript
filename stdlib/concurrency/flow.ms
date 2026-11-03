@@ -6,13 +6,15 @@ import lock from "@std/concurrency/sync.ms"
 import Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/os/time.ms"
 import float from "@std/os/random.ms"
 
-// How `retry` spaces and bounds its attempts. The wait before attempt `n + 1` is `delay` doubled `n - 1` times, never more than `max_delay`;
-// with `jitter` the wait is a random share of that, so many callers do not retry in step.
-//
-// ```manuscript
-// let policy = RetryPolicy(attempts: 5, delay: milliseconds(50))
-// let body = retry(policy, fn attempt: fetch(url))
-// ```
+/*
+How `retry` spaces and bounds its attempts. The wait before attempt `n + 1` is `delay` doubled `n - 1` times, never more than `max_delay`;
+with `jitter` the wait is a random share of that, so many callers do not retry in step.
+
+```manuscript
+let policy = RetryPolicy(attempts: 5, delay: milliseconds(50))
+let body = retry(policy, fn attempt: fetch(url))
+```
+*/
 export type RetryPolicy:
     // Total tries, including the first; at least 1.
     attempts: Int = 3
@@ -36,9 +38,11 @@ impl RetryPolicy:
 
         return Duration(nanos: wait.nanos.min(self.max_delay.nanos))
 
-// Runs `operation` until it succeeds, `retryable` rejects its error, or `policy.attempts` is used up, and returns the last result.
-// `operation` receives the attempt number, starting at 1. `retryable` defaults to retrying every error.
-// Waiting uses `sleep`, so cancelling the task ends the wait. A policy with fewer than one attempt faults.
+/*
+Runs `operation` until it succeeds, `retryable` rejects its error, or `policy.attempts` is used up, and returns the last result.
+`operation` receives the attempt number, starting at 1. `retryable` defaults to retrying every error.
+Waiting uses `sleep`, so cancelling the task ends the wait. A policy with fewer than one attempt faults.
+*/
 export fn retry[T, E](
     policy: RetryPolicy,
     operation: fn(Int) T!E,
@@ -71,14 +75,16 @@ fn jittered(policy: RetryPolicy, attempt: Int) Duration:
     let share = float().get(1.0)
     return Duration(nanos: (wait.nanos.to_float() * share).truncate_to_int().get(0))
 
-// A token bucket: holds up to `burst` tokens and gains one every `interval`. Each use of the limited resource takes a token.
-//
-// ```manuscript
-// var limiter = rate_limiter(10, burst: 20)
-// for url in urls:
-//     limiter.acquire()
-//     fetch(url)
-// ```
+/*
+A token bucket: holds up to `burst` tokens and gains one every `interval`. Each use of the limited resource takes a token.
+
+```manuscript
+var limiter = rate_limiter(10, burst: 20)
+for url in urls:
+    limiter.acquire()
+    fetch(url)
+```
+*/
 export type RateLimiter:
     // Most tokens held at once; at least 1.
     burst: Int
@@ -140,13 +146,15 @@ export type CircuitError[E]:
         error: E
     )
 
-// Stops calling something that keeps failing. After `threshold` failures in a row the circuit opens and calls fail at once with `Open`;
-// after `cooldown` one call is let through, and its result closes the circuit (success) or opens it again (failure).
-//
-// ```manuscript
-// var breaker = CircuitBreaker(threshold: 5, cooldown: seconds(10))
-// let reply = breaker.call(fn: send(request))
-// ```
+/*
+Stops calling something that keeps failing. After `threshold` failures in a row the circuit opens and calls fail at once with `Open`;
+after `cooldown` one call is let through, and its result closes the circuit (success) or opens it again (failure).
+
+```manuscript
+var breaker = CircuitBreaker(threshold: 5, cooldown: seconds(10))
+let reply = breaker.call(fn: send(request))
+```
+*/
 export type CircuitBreaker:
     // Consecutive failures that open the circuit; at least 1.
     threshold: Int
@@ -182,12 +190,14 @@ impl CircuitBreaker:
             self.opened = monotonic()
         return error(CircuitError.Failed(result.err().clone()))
 
-// Applies `work` to every item with at most `limit` running at once and returns the results in the order of `items`.
-// Items start in order; a worker takes the next as soon as it finishes one. Returns the task error if a worker is cancelled or timed out.
-//
-// ```manuscript
-// let pages = map_concurrent(urls, 4, fn url: fetch(url))
-// ```
+/*
+Applies `work` to every item with at most `limit` running at once and returns the results in the order of `items`.
+Items start in order; a worker takes the next as soon as it finishes one. Returns the task error if a worker is cancelled or timed out.
+
+```manuscript
+let pages = map_concurrent(urls, 4, fn url: fetch(url))
+```
+*/
 export fn map_concurrent[T: Clonable, U: Clonable](
     items: List[T],
     limit: Int,
@@ -253,14 +263,16 @@ export opaque type Use[K]:
     // The cache counter at that use.
     stamp: Int
 
-// A bounded key-value cache that evicts the least recently used entry when full, and drops entries older than `ttl`.
-// `get` returns a copy of the value, so cached values are never shared with callers.
-//
-// ```manuscript
-// var cache = Cache[String, Int](capacity: 100, ttl: seconds(60))
-// cache.set("a", 1)
-// let hit = cache.get("a").get(0)
-// ```
+/*
+A bounded key-value cache that evicts the least recently used entry when full, and drops entries older than `ttl`.
+`get` returns a copy of the value, so cached values are never shared with callers.
+
+```manuscript
+var cache = Cache[String, Int](capacity: 100, ttl: seconds(60))
+cache.set("a", 1)
+let hit = cache.get("a").get(0)
+```
+*/
 export type Cache[K: Hashable & Clonable, V: Clonable]:
     // Most entries held; at least 1.
     capacity: Int
@@ -351,14 +363,16 @@ impl Cache[K, V]:
         self.set(key.clone(), made.clone())
         return made
 
-// A minimum spacing between actions: at most one per `interval`, the first one at once. Use it to throttle a stream of events.
-//
-// ```manuscript
-// var spacing = Throttle(interval: milliseconds(200))
-// for event in events:
-//     if spacing.allow():
-//         redraw(event)
-// ```
+/*
+A minimum spacing between actions: at most one per `interval`, the first one at once. Use it to throttle a stream of events.
+
+```manuscript
+var spacing = Throttle(interval: milliseconds(200))
+for event in events:
+    if spacing.allow():
+        redraw(event)
+```
+*/
 export type Throttle:
     // The least time between two allowed actions.
     interval: Duration
@@ -384,15 +398,17 @@ impl Throttle:
 
         self.last = monotonic()
 
-// Collapses a burst of events into one: after the last `trigger` and a `quiet` time with no further one, the action is due.
-// Share one `Debounce` between tasks with `Shared` and `lock`.
-//
-// ```manuscript
-// var search = Debounce(quiet: milliseconds(300))
-// search.trigger()
-// search.wait_due()
-// run_search()
-// ```
+/*
+Collapses a burst of events into one: after the last `trigger` and a `quiet` time with no further one, the action is due.
+Share one `Debounce` between tasks with `Shared` and `lock`.
+
+```manuscript
+var search = Debounce(quiet: milliseconds(300))
+search.trigger()
+search.wait_due()
+run_search()
+```
+*/
 export type Debounce:
     // How long without a `trigger` before the action is due.
     quiet: Duration
@@ -427,13 +443,15 @@ impl Debounce:
                     ).max(Duration(nanos: 1))
                 )
 
-// Runs one computation per key at a time: while a call for a key is in flight, other calls for it wait and share its result
-// instead of repeating the work. Calls for different keys run independently. Share one value between tasks with `Shared`.
-//
-// ```manuscript
-// let flights = share(SingleFlight[String, String]())
-// let page = flights.get().run("/home", fn: render("/home"))
-// ```
+/*
+Runs one computation per key at a time: while a call for a key is in flight, other calls for it wait and share its result
+instead of repeating the work. Calls for different keys run independently. Share one value between tasks with `Shared`.
+
+```manuscript
+let flights = share(SingleFlight[String, String]())
+let page = flights.get().run("/home", fn: render("/home"))
+```
+*/
 export type SingleFlight[K: Hashable & Clonable, V: Clonable]:
     // Internal state: the in-flight calls; a call holds the lock of its cell while it computes and the result lands in the cell.
     flights: Shared[Map[K, Shared[V?]]] = share(Map[K, Shared[V?]]())

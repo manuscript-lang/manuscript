@@ -1,16 +1,18 @@
 import StringBuilder, from_scalars from "@std/string.ms"
 import parse_int_radix from "@std/text.ms"
 
-// XML documents as a tree of elements, text and comments, parsed and written in Manuscript.
-// `parse` accepts well-formed XML 1.0 without DTD processing (a DOCTYPE is skipped, entities beyond
-// the five predefined and numeric references are rejected). Names keep their prefix as written
-// (`svg:rect`); namespaces are not resolved. `stringify` writes a tree back with escaping.
-//
-//     import parse, stringify, XmlNode from "@std/data/xml.ms"
-//     let doc = parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>").get()
-//     let item = doc.find("item").get()
-//     item.attribute("id")           # "1"
-//     item.text()                    # "Hi & bye"
+/*
+XML documents as a tree of elements, text and comments, parsed and written in Manuscript.
+`parse` accepts well-formed XML 1.0 without DTD processing (a DOCTYPE is skipped, entities beyond
+the five predefined and numeric references are rejected). Names keep their prefix as written
+(`svg:rect`); namespaces are not resolved. `stringify` writes a tree back with escaping.
+
+    import parse, stringify, XmlNode from "@std/data/xml.ms"
+    let doc = parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>").get()
+    let item = doc.find("item").get()
+    item.attribute("id")           # "1"
+    item.text()                    # "Hi & bye"
+*/
 
 // An XML attribute with its decoded value.
 export type XmlAttribute:
@@ -348,9 +350,11 @@ fn scalar(value: Int?) String!:
 
     return ok(text.get())
 
-// Parses a document with a single root element and returns that element.
-// `max_depth` bounds element nesting (default 1000); deeper input is `LimitExceeded`.
-// A document with several roots, text outside the root, or any syntax error is `InvalidData`.
+/*
+Parses a document with a single root element and returns that element.
+`max_depth` bounds element nesting (default 1000); deeper input is `LimitExceeded`.
+A document with several roots, text outside the root, or any syntax error is `InvalidData`.
+*/
 export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
     if max_depth <= 0: return error(
         Error("XML: invalid input", kind: ErrorCategory.InvalidInput)

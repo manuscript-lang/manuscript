@@ -43,10 +43,8 @@ export fn unpack(
 // Selects a supported archive format without a runtime string spelling check.
 // Existing pack/unpack format: String calls remain available.
 export type ArchiveFormat:
-    // ZIP files and directories.
-    case Zip
-    // TAR files and directories.
-    case Tar
+    case Zip  // ZIP files and directories.
+    case Tar  // TAR files and directories.
 
 fn archive_format_name(format: ArchiveFormat) String:
     match format:
@@ -62,10 +60,12 @@ impl ArchiveFormat:
     fn unpack(data: Bytes, limits: ArchiveLimits?) List[ArchiveEntry]!:
         return unpack(data, archive_format_name(self), limits)
 
-// Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).
-// Other formats return Unsupported; level defaults to 6 (balanced DEFLATE compression).
-// Explicit levels must be 0..9 (0 stores data), else InvalidInput.
-// `max_bytes` bounds the encoded output when supplied.
+/*
+Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).
+Other formats return Unsupported; level defaults to 6 (balanced DEFLATE compression).
+Explicit levels must be 0..9 (0 stores data), else InvalidInput.
+`max_bytes` bounds the encoded output when supplied.
+*/
 export fn compress(data: Bytes, format: String, level: Int = 6, max_bytes: Int?) Bytes!:
     return msstd_compress_compress(data, format, level, max_bytes)
 
@@ -77,12 +77,9 @@ export fn decompress(data: Bytes, format: String, max_bytes: Int?) Bytes!:
 // Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
 // Existing compress/decompress format: String calls remain available.
 export type CompressionFormat:
-    // DEFLATE data wrapped in GZIP headers and a checksum trailer.
-    case Gzip
-    // DEFLATE data with ZLIB header and Adler-32 checksum framing.
-    case Zlib
-    // Raw DEFLATE without framing.
-    case Deflate
+    case Gzip  // DEFLATE data wrapped in GZIP headers and a checksum trailer.
+    case Zlib  // DEFLATE data with ZLIB header and Adler-32 checksum framing.
+    case Deflate  // Raw DEFLATE without framing.
 
 fn compression_format_name(format: CompressionFormat) String:
     match format:
@@ -100,17 +97,21 @@ impl CompressionFormat:
     fn decompress(data: Bytes, max_bytes: Int?) Bytes!:
         return decompress(data, compression_format_name(self), max_bytes)
 
-    // Returns a stream of this format's compressed bytes, reading `input` chunk by chunk.
-    // Level defaults to 6 and must be 0..9, otherwise reads fail with InvalidInput.
-    // Closing the result closes `input`.
+    /*
+    Returns a stream of this format's compressed bytes, reading `input` chunk by chunk.
+    Level defaults to 6 and must be 0..9, otherwise reads fail with InvalidInput.
+    Closing the result closes `input`.
+    */
     fn compress_stream(input: ReadStream, level: Int = 6) ReadStream:
         return msstd_archive_compress_stream(
             compression_format_name(self), input, level
         )
 
-    // Returns a stream of decompressed bytes, reading `input` chunk by chunk.
-    // Malformed data fails reads with InvalidData; `max_bytes` bounds total output and exceeding it fails with LimitExceeded.
-    // Closing the result closes `input`.
+    /*
+    Returns a stream of decompressed bytes, reading `input` chunk by chunk.
+    Malformed data fails reads with InvalidData; `max_bytes` bounds total output and exceeding it fails with LimitExceeded.
+    Closing the result closes `input`.
+    */
     fn decompress_stream(input: ReadStream, max_bytes: Int?) ReadStream:
         return msstd_archive_decompress_stream(
             compression_format_name(self), input, max_bytes

@@ -48,19 +48,21 @@ type JwtHeader:
     alg: String
     typ: String
 
-// Creates a signed token from `claims`, a record or `JsonValue` object such as `Session(sub: "42", exp: 1900000000)`.
-// The result is the compact `header.claims.signature` form, ready for an `Authorization: Bearer` header or a cookie.
-// `key` is the secret for the HMAC algorithms and the private key for the others, in the form `JwtAlgorithm` describes.
-// Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library does not add any. A key that does not suit the algorithm returns InvalidKey.
-//
-// ```manuscript
-// type Session:
-//     sub: String
-//     exp: Int
-//
-// let token = sign_token(Session(sub: "42", exp: 1900000000), secret).get_or_fault()
-// let session = verify_token[Session](token, secret).get_or_fault()
-// ```
+/*
+Creates a signed token from `claims`, a record or `JsonValue` object such as `Session(sub: "42", exp: 1900000000)`.
+The result is the compact `header.claims.signature` form, ready for an `Authorization: Bearer` header or a cookie.
+`key` is the secret for the HMAC algorithms and the private key for the others, in the form `JwtAlgorithm` describes.
+Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library does not add any. A key that does not suit the algorithm returns InvalidKey.
+
+```manuscript
+type Session:
+    sub: String
+    exp: Int
+
+let token = sign_token(Session(sub: "42", exp: 1900000000), secret).get_or_fault()
+let session = verify_token[Session](token, secret).get_or_fault()
+```
+*/
 export fn sign_token[T: Data](
     claims: T,
     key: Bytes,
@@ -81,11 +83,13 @@ export fn sign_token[T: Data](
     let signature = try sign_bytes(algorithm, key, signing_input.to_bytes())
     return ok("{signing_input}.{base64_encode_unpadded(signature, url_safe: true)}")
 
-// Checks a token's signature and claims, and returns its claims decoded as `T` (a record, or `JsonValue` for the raw object).
-// The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `none`.
-// `exp` and `nbf` (seconds since the Unix epoch) are enforced when present; `iss` and `aud` are enforced when `check` names them.
-// `key` is the secret for the HMAC algorithms and the public key for the others, in the form `JwtAlgorithm` describes.
-// Failures return an `Error` that says which check failed; show a caller one generic message, as the specific cause helps an attacker.
+/*
+Checks a token's signature and claims, and returns its claims decoded as `T` (a record, or `JsonValue` for the raw object).
+The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `none`.
+`exp` and `nbf` (seconds since the Unix epoch) are enforced when present; `iss` and `aud` are enforced when `check` names them.
+`key` is the secret for the HMAC algorithms and the public key for the others, in the form `JwtAlgorithm` describes.
+Failures return an `Error` that says which check failed; show a caller one generic message, as the specific cause helps an attacker.
+*/
 export fn verify_token[T: Data = JsonValue](
     token: String,
     key: Bytes,

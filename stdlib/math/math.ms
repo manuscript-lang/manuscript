@@ -184,9 +184,11 @@ export fn ldexp(fraction: Float, exponent: Int) Float:
 export fn modf(value: Float) FloatParts:
     return msstd_math_modf(value)
 
-// Returns `left - n * right`, where n is the nearest integer to left/right, choosing an even n at a tie.
-// The result's magnitude is at most abs(right)/2; a zero result keeps left's sign.
-// A zero right, infinite left, or NaN input gives NaN; an infinite right returns finite left unchanged.
+/*
+Returns `left - n * right`, where n is the nearest integer to left/right, choosing an even n at a tie.
+The result's magnitude is at most abs(right)/2; a zero result keeps left's sign.
+A zero right, infinite left, or NaN input gives NaN; an infinite right returns finite left unchanged.
+*/
 export fn ieee_remainder(left: Float, right: Float) Float:
     return msstd_math_ieee_remainder(left, right)
 
@@ -456,9 +458,11 @@ export fn wrapping_subtract(left: Int, right: Int) Int:
 export fn wrapping_multiply(left: Int, right: Int) Int:
     return msrt_bits_wrapping_multiply(left, right)
 
-// An arbitrary-precision signed integer. Use the operators + - * / % and unary - for arithmetic and < <= > >= == != for comparison;
-// both operands must be BigInt (convert an Int with from_int), and / or % by zero is a fault. The named methods below are the same operations;
-// divide and remainder return a Result for callers that want an error value instead of a fault.
+/*
+An arbitrary-precision signed integer. Use the operators + - * / % and unary - for arithmetic and < <= > >= == != for comparison;
+both operands must be BigInt (convert an Int with from_int), and / or % by zero is a fault. The named methods below are the same operations;
+divide and remainder return a Result for callers that want an error value instead of a fault.
+*/
 export extern type BigInt
 
 impl Data for BigInt:
@@ -493,9 +497,11 @@ impl BigInt:
     fn sqrt() BigInt!:
         return msstd_bigint_sqrt(self)
 
-    // Returns `self` raised to a non-negative BigInt exponent modulo a positive modulus, in 0 through modulus - 1.
-    // A negative exponent or non-positive modulus returns InvalidInput. A zero exponent gives 1 modulo modulus, including 0^0.
-    // Reduces during exponentiation instead of constructing the full power. Variable-time; unsuitable for secret exponents.
+    /*
+    Returns `self` raised to a non-negative BigInt exponent modulo a positive modulus, in 0 through modulus - 1.
+    A negative exponent or non-positive modulus returns InvalidInput. A zero exponent gives 1 modulo modulus, including 0^0.
+    Reduces during exponentiation instead of constructing the full power. Variable-time; unsuitable for secret exponents.
+    */
     fn pow_mod(exponent: BigInt, modulus: BigInt) BigInt!:
         return msstd_bigint_pow_mod(self, exponent, modulus)
 
@@ -604,19 +610,23 @@ impl BigInt:
     fn to_string_radix(radix: Int) String:
         return msstd_bigint_to_string_radix(self, radix)
 
-    // Reports whether this value is probably prime: trial division by the primes below 100, then Miller-Rabin
-    // with the first `rounds` primes as bases (at most 25). The default 13 rounds is exact below 3.3e24. Above that,
-    // `rounds` more bases are drawn from operating-system entropy, so a composite passes with odds at most 4^-rounds
-    // even when it was built to fool fixed bases; an entropy failure is a fault.
-    // Values below 2, including negatives, are not prime. A `rounds` below 1 is a programming fault.
+    /*
+    Reports whether this value is probably prime: trial division by the primes below 100, then Miller-Rabin
+    with the first `rounds` primes as bases (at most 25). The default 13 rounds is exact below 3.3e24. Above that,
+    `rounds` more bases are drawn from operating-system entropy, so a composite passes with odds at most 4^-rounds
+    even when it was built to fool fixed bases; an entropy failure is a fault.
+    Values below 2, including negatives, are not prime. A `rounds` below 1 is a programming fault.
+    */
     fn is_probable_prime(rounds: Int = 13) Bool:
         if rounds < 1:
             panic("is_probable_prime: rounds must be at least 1")
         return bigint_probable_prime(self, rounds)
 
-    // Returns a square root of this value modulo the odd prime `modulus`, in 0 through modulus - 1, or none when the value is not a square there.
-    // The other root is `modulus` minus the result. A modulus below 3, an even modulus, or one that is not prime returns InvalidInput
-    // (a composite modulus is detected only when the computation fails to produce a root).
+    /*
+    Returns a square root of this value modulo the odd prime `modulus`, in 0 through modulus - 1, or none when the value is not a square there.
+    The other root is `modulus` minus the result. A modulus below 3, an even modulus, or one that is not prime returns InvalidInput
+    (a composite modulus is detected only when the computation fails to produce a root).
+    */
     fn mod_sqrt(modulus: BigInt) BigInt?!:
         return bigint_mod_sqrt(self, modulus)
 

@@ -237,9 +237,11 @@ impl Closeable for FileHandle:
         return ok(unit)
 
 impl FileHandle:
-    // Returns a second handle over a duplicate of the file's descriptor, which closes on its own.
-    // Both share the file position, so a read or write through one moves the other; bytes this handle already read ahead stay with it.
-    // A closed handle returns Closed.
+    /*
+    Returns a second handle over a duplicate of the file's descriptor, which closes on its own.
+    Both share the file position, so a read or write through one moves the other; bytes this handle already read ahead stay with it.
+    A closed handle returns Closed.
+    */
     fn clone() FileHandle!:
         return msstd_fs_file_clone(self.native)
 
@@ -319,9 +321,11 @@ impl FileHandle:
     fn data_sync() Unit!:
         return msstd_fs_file_data_sync(self.native)
 
-    // Tries to take an advisory lock on the whole file without waiting: shared (many readers) or `exclusive` (one writer).
-    // Returns False when another handle holds a conflicting lock. The lock is advisory: it only excludes other lockers (`flock` on Unix, `LockFileEx` on Windows), and closing the handle releases it.
-    // Handles made by `clone` share one lock, and locking a handle that already holds one converts it. A closed handle returns Closed.
+    /*
+    Tries to take an advisory lock on the whole file without waiting: shared (many readers) or `exclusive` (one writer).
+    Returns False when another handle holds a conflicting lock. The lock is advisory: it only excludes other lockers (`flock` on Unix, `LockFileEx` on Windows), and closing the handle releases it.
+    Handles made by `clone` share one lock, and locking a handle that already holds one converts it. A closed handle returns Closed.
+    */
     fn try_lock(exclusive: Bool) Bool!:
         let taken = try msstd_fs_file_try_lock(self.native, exclusive)
         return ok(taken == 1)
@@ -474,9 +478,11 @@ export type CopyOptions:
     // Most file bytes copied in total. Exceeding it returns LimitExceeded. none sets no limit.
     max_bytes: Int? = none
 
-// How `watch` observes a path: with native OS events by default, or by polling snapshots when `interval` is set.
-// Every field has a default, so `WatchOptions()` watches natively with no limits and `WatchOptions(interval: seconds(1))` polls.
-// `max_events` and `overflow` apply only to native watching; combining them with `interval` returns `InvalidInput`.
+/*
+How `watch` observes a path: with native OS events by default, or by polling snapshots when `interval` is set.
+Every field has a default, so `WatchOptions()` watches natively with no limits and `WatchOptions(interval: seconds(1))` polls.
+`max_events` and `overflow` apply only to native watching; combining them with `interval` returns `InvalidInput`.
+*/
 export type WatchOptions:
     // Polling period, which must be positive. none watches with native OS events.
     interval: Duration? = none
@@ -511,11 +517,13 @@ export type GlobOptions:
 fn host() FileSystem:
     return msstd_fs_filesystem()
 
-// Returns entries matching the include patterns of `options`, sorted by path. `path` is the root; each result's
-// `path` is relative to it and always `/`-separated. `exclude` skips an entry (and does not enter a skipped directory) when it
-// returns True. A malformed pattern, one over 4096 bytes, or a negative limit returns InvalidInput.
-//
-// ```manuscript
+/*
+Returns entries matching the include patterns of `options`, sorted by path. `path` is the root; each result's
+`path` is relative to it and always `/`-separated. `exclude` skips an entry (and does not enter a skipped directory) when it
+returns True. A malformed pattern, one over 4096 bytes, or a negative limit returns InvalidInput.
+
+```manuscript
+*/
 // let sources = glob(".", GlobOptions(patterns: ["**/*.ms"]))
 // ```
 export fn glob(
@@ -525,14 +533,16 @@ export fn glob(
 ) List[PathEntry]!:
     return host().glob(path, options, exclude)
 
-// Copies a file or, with `options.recursive`, a directory tree.
-// By default an existing destination returns AlreadyExists; set `replace` to overwrite it. `filter` is called with each
-// source and destination path and skips the entry when it returns False.
-// Entry and byte limits apply cumulatively across the whole copy.
-//
-// ```manuscript
-// copy("a.txt", "b.txt", CopyOptions(replace: true))
-// ```
+/*
+Copies a file or, with `options.recursive`, a directory tree.
+By default an existing destination returns AlreadyExists; set `replace` to overwrite it. `filter` is called with each
+source and destination path and skips the entry when it returns False.
+Entry and byte limits apply cumulatively across the whole copy.
+
+```manuscript
+copy("a.txt", "b.txt", CopyOptions(replace: true))
+```
+*/
 export fn copy(
     source: String,
     destination: String,
@@ -649,9 +659,11 @@ export fn open(path: String, flags: String, mode: Int) FileHandle!:
 export fn open_directory(path: String) Directory!:
     return host().open_directory(path)
 
-// Replaces the file at `path` with `data` all-or-nothing: readers see the old contents or the new, never a partial file.
-// The text goes to a new file beside `path`, is synced to stable storage, and then renamed over `path`, so `path`'s directory must be writable. An existing file keeps its permission bits and a new one gets 0644. On failure the temporary file is removed and `path` is unchanged.
-// Example: `write_atomic("config.json", text)`.
+/*
+Replaces the file at `path` with `data` all-or-nothing: readers see the old contents or the new, never a partial file.
+The text goes to a new file beside `path`, is synced to stable storage, and then renamed over `path`, so `path`'s directory must be writable. An existing file keeps its permission bits and a new one gets 0644. On failure the temporary file is removed and `path` is unchanged.
+Example: `write_atomic("config.json", text)`.
+*/
 export fn write_atomic(path: String, data: String) Unit!:
     return write_atomic_bytes(path, data.to_bytes())
 
@@ -719,16 +731,18 @@ fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
 
     return remove(source, true)
 
-// Watches `path` for changes and returns a `FileWatcher`.
-// Without `options.interval` it uses native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows).
-// With an interval it compares snapshots of the tree every `interval`, which must be positive, and can miss transient changes;
-// `max_events` and `overflow` apply only to native events and return InvalidInput together with an interval.
-// `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts, and
-// fails with LimitExceeded the same way on every platform.
-//
-// ```manuscript
-// var watcher = watch("src", true, WatchOptions(interval: some(seconds(1))))
-// ```
+/*
+Watches `path` for changes and returns a `FileWatcher`.
+Without `options.interval` it uses native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows).
+With an interval it compares snapshots of the tree every `interval`, which must be positive, and can miss transient changes;
+`max_events` and `overflow` apply only to native events and return InvalidInput together with an interval.
+`max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts, and
+fails with LimitExceeded the same way on every platform.
+
+```manuscript
+var watcher = watch("src", true, WatchOptions(interval: some(seconds(1))))
+```
+*/
 export fn watch(
     path: String,
     recursive: Bool = false,

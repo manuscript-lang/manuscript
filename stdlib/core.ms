@@ -30,33 +30,36 @@ export type ErrorCategory:
     case Timeout
     // The service/resource is unavailable; this does not imply NotFound or PermissionDenied.
     case Unavailable
-    // A value or index is outside its range.
-    case OutOfRange
-    // A task, process or peer ended abnormally.
-    case Failed
-    // No other kind fits.
-    case Other
+    case OutOfRange  // A value or index is outside its range.
+    case Failed  // A task, process or peer ended abnormally.
+    case Other  // No other kind fits.
 
 // Raises a programming fault with the supplied message and stops the current operation.
 export fn panic(message: String) Never: ...
 
-// A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
-// The implicit close behaves like `try value.close()`: a failed close becomes the function's error, after the
-// other bindings of the scopes it leaves have closed. Where the function cannot return an `Error`, or the
-// close happens inside a holder (a record, list or temporary), a failed close is a fault. If the scope is
-// already returning an error, that error is kept and the close error is dropped. Call `close()` yourself to
-// handle the failure; the binding is then consumed.
+/*
+A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
+The implicit close behaves like `try value.close()`: a failed close becomes the function's error, after the
+other bindings of the scopes it leaves have closed. Where the function cannot return an `Error`, or the
+close happens inside a holder (a record, list or temporary), a failed close is a fault. If the scope is
+already returning an error, that error is kept and the close error is dropped. Call `close()` yourself to
+handle the failure; the binding is then consumed.
+*/
 export interface Closeable:
-    // Releases the implementation's resource state; with calls this on every scope exit.
-    // Cleanup runs during return, expected errors, faults, and cancellation too. A type whose release cannot
-    // fail returns `ok(unit)`.
+    /*
+    Releases the implementation's resource state; with calls this on every scope exit.
+    Cleanup runs during return, expected errors, faults, and cancellation too. A type whose release cannot
+    fail returns `ok(unit)`.
+    */
     var fn close() Unit!
 
-// A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
-// `for item in source:` calls `next` until `none`; a variable or field path advances in place and
-// keeps its final state, while any other expression is held by the loop alone. `next` should keep
-// returning `none` after the end. The item is a borrow: it stays valid, and the iterator
-// unchanged, until the loop body ends; clone it to keep it.
+/*
+A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
+`for item in source:` calls `next` until `none`; a variable or field path advances in place and
+keeps its final state, while any other expression is held by the loop alone. `next` should keep
+returning `none` after the end. The item is a borrow: it stays valid, and the iterator
+unchanged, until the loop body ends; clone it to keep it.
+*/
 export interface Iterator[T]:
     // Returns the next item, or none when no items remain. The item borrows from the iterator
     // (an iterator over a container borrows from the container instead).
@@ -164,17 +167,21 @@ export interface Clonable:
     // Returns an independent deep copy of this value.
     fn clone() Self
 
-// A type whose values are plain data: no resource, function, interface value, or runtime handle
-// anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify`, and the
-// message types of processes, workers, tasks and channels require `T: Data`.
-// There is nothing to implement. Records and alternatives are `Data` when every field is; among the collections
-// only `List` is, when its element is, and a `Map[String, T]` is, when `T` is (it is a JSON object). A `Set` or a `Map` with another key type is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
-// is `Data` by declaration, so a dynamic JSON object travels as a `JsonValue`.
+/*
+A type whose values are plain data: no resource, function, interface value, or runtime handle
+anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify`, and the
+message types of processes, workers, tasks and channels require `T: Data`.
+There is nothing to implement. Records and alternatives are `Data` when every field is; among the collections
+only `List` is, when its element is, and a `Map[String, T]` is, when `T` is (it is a JSON object). A `Set` or a `Map` with another key type is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
+is `Data` by declaration, so a dynamic JSON object travels as a `JsonValue`.
+*/
 export interface Data: ...
 
-// A type whose values are plain words in the runtime, so passing one duplicates it with a bit copy and
-// the original stays usable. Only an extern type in the standard library declares it, with `impl Copy for T:`;
-// records and alternatives are copied when every field is, and every other native moves.
+/*
+A type whose values are plain words in the runtime, so passing one duplicates it with a bit copy and
+the original stays usable. Only an extern type in the standard library declares it, with `impl Copy for T:`;
+records and alternatives are copied when every field is, and every other native moves.
+*/
 export interface Copy: ...
 
 // A type with a stable hash consistent with its `Equal` implementation.
@@ -182,9 +189,11 @@ export interface Hashable:
     // Returns a stable hash consistent with `equals` for the same value.
     fn hash() Int
 
-// Returns a copy of `cause` with `context` in front of its message: `try read(path)` becomes
-// `error(wrap_error("read config", cause))`. The kind and details are kept, and the original message is
-// in `details["cause"]`.
+/*
+Returns a copy of `cause` with `context` in front of its message: `try read(path)` becomes
+`error(wrap_error("read config", cause))`. The kind and details are kept, and the original message is
+in `details["cause"]`.
+*/
 export fn wrap_error(context: String, cause: Error) Error:
     var details = cause.details.clone()
     details.add("cause", cause.message.clone())

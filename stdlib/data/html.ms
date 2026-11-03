@@ -65,9 +65,11 @@ export type HtmlNode:
 export fn escape(text: String) String:
     return msstd_html_escape(text)
 
-// Decodes HTML5 named and numeric character references in text context, once.
-// Recognized references can omit semicolons; unrecognized text remains literal.
-// Does not parse markup or normalize text; invalid numeric scalars become U+FFFD.
+/*
+Decodes HTML5 named and numeric character references in text context, once.
+Recognized references can omit semicolons; unrecognized text remains literal.
+Does not parse markup or normalize text; invalid numeric scalars become U+FFFD.
+*/
 export fn unescape(text: String) String:
     return msstd_html_unescape(text)
 

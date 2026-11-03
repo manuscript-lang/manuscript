@@ -109,9 +109,11 @@ fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
 
     return out.build()
 
-// Encrypts or decrypts `data` with the ChaCha20 stream cipher (RFC 8439); the same call does both.
-// `key` is 32 bytes, `nonce` 12 bytes and `counter` the initial 32-bit block counter (normally 1 after the Poly1305 key block).
-// A wrong key or nonce length returns InvalidInput. Never reuse a key and nonce pair.
+/*
+Encrypts or decrypts `data` with the ChaCha20 stream cipher (RFC 8439); the same call does both.
+`key` is 32 bytes, `nonce` 12 bytes and `counter` the initial 32-bit block counter (normally 1 after the Poly1305 key block).
+A wrong key or nonce length returns InvalidInput. Never reuse a key and nonce pair.
+*/
 export fn chacha20(key: Bytes, nonce: Bytes, counter: Int, data: Bytes) Bytes!:
     if not check_key_nonce(key, nonce) or counter < 0 or counter > 4294967295:
         return error(Error("crypto: invalid input", kind: ErrorCategory.InvalidInput))

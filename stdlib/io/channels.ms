@@ -7,11 +7,13 @@ export interface Transport[In, Out]:
     // Closes this end. Safe to call again.
     var fn close() Unit
 
-// One end of a two-way channel: sends `In`, receives `Out`. `spawn` makes both ends.
-// A send waits while the other end has many unread values; a receive waits for the next one.
-// After either end closes, the other end still receives what was sent before, then `ok(none)`,
-// and its sends give an `Error` of kind `Closed`. Using an end after closing it gives `Closed`.
-// An end is a handle on shared state, so `send` and `receive` work on a `let` binding or a plain parameter; only `close` needs `var`.
+/*
+One end of a two-way channel: sends `In`, receives `Out`. `spawn` makes both ends.
+A send waits while the other end has many unread values; a receive waits for the next one.
+After either end closes, the other end still receives what was sent before, then `ok(none)`,
+and its sends give an `Error` of kind `Closed`. Using an end after closing it gives `Closed`.
+An end is a handle on shared state, so `send` and `receive` work on a `let` binding or a plain parameter; only `close` needs `var`.
+*/
 export type Channel[In, Out]:
     // Internal state: how this end moves values.
     transport: Transport[In, Out]

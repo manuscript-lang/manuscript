@@ -10,9 +10,11 @@ import (
     msstd_unicode_is_ascii
 ) from "@std/internal/unicode.ms"
 
-// Tests Unicode scalar values (integers), using the Unicode data of the pinned Rust toolchain.
-// Every predicate returns false for negative values, surrogates and values above U+10FFFF.
-// Example: `is_alphabetic("é".scalar_at(0))` is true; no case mapping or normalization is applied.
+/*
+Tests Unicode scalar values (integers), using the Unicode data of the pinned Rust toolchain.
+Every predicate returns false for negative values, surrogates and values above U+10FFFF.
+Example: `is_alphabetic("é".scalar_at(0))` is true; no case mapping or normalization is applied.
+*/
 
 // Tests the Unicode Alphabetic property, including alphabetic combining marks, not only letter categories.
 export fn is_alphabetic(scalar: Int) Bool:

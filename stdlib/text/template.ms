@@ -3,32 +3,34 @@ import StringBuilder from "@std/string.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
 import escape from "@std/data/html.ms"
 
-// Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
-//
-//     import compile, render, to_data from "@std/text/template.ms"
-//     let page = compile("Hello {{ name | title }}! {{ for t in tags }}#{{ t }} {{ end }}").get()
-//     page.render(to_data(user).get()).get()
-//
-// Actions sit between `{{` and `}}`:
-//
-// - `{{ user.name }}` prints a value; a path walks object members and list positions (`items.0`).
-//   Names resolve to loop variables first, then to members of the root object. A missing path is an
-//   error unless `strict: false`, or the value goes through `default`.
-// - `{{ name | upper | default("anonymous") }}` pipes a value through filters. Filters bind tighter than
-//   operators: `{{ if name | length > 3 }}`. Filters: `upper lower trim title length join(sep) json
-//   default(value) escape raw first last reverse keys contains(x) replace(old, new) truncate(n)`.
-// - `{{ if cond }}…{{ else if cond }}…{{ else }}…{{ end }}` with `== != < <= > >= and or not` and
-//   parentheses. Empty text, zero, null, false, and empty lists and objects are false; a missing path
-//   in a condition is false.
-// - `{{ for item in items }}…{{ else }}…{{ end }}` loops a list (the `else` branch runs when it is empty).
-//   `for i, item in items` adds the position; for an object, `for key, value in object`; a single name over
-//   an object binds `{key, value}`. Inside a loop `loop.index`, `loop.first`, `loop.last` and `loop.length` exist.
-// - `{{ include "name" }}` renders a partial from the `partials` map passed to `render`, in the current scope.
-// - `{{# comment }}` prints nothing. `{{-` and `-}}` trim adjacent white space. `{{ "{{" }}` prints braces.
-//
-// `compile(source, html: true)` escapes every printed value for HTML text and quoted attributes; end an
-// action with `| raw` to print trusted markup unchanged. Values come from data only: templates cannot
-// call functions or run code, and `max_output` bounds the result.
+/*
+Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
+
+    import compile, render, to_data from "@std/text/template.ms"
+    let page = compile("Hello {{ name | title }}! {{ for t in tags }}#{{ t }} {{ end }}").get()
+    page.render(to_data(user).get()).get()
+
+Actions sit between `{{` and `}}`:
+
+- `{{ user.name }}` prints a value; a path walks object members and list positions (`items.0`).
+  Names resolve to loop variables first, then to members of the root object. A missing path is an
+  error unless `strict: false`, or the value goes through `default`.
+- `{{ name | upper | default("anonymous") }}` pipes a value through filters. Filters bind tighter than
+  operators: `{{ if name | length > 3 }}`. Filters: `upper lower trim title length join(sep) json
+  default(value) escape raw first last reverse keys contains(x) replace(old, new) truncate(n)`.
+- `{{ if cond }}…{{ else if cond }}…{{ else }}…{{ end }}` with `== != < <= > >= and or not` and
+  parentheses. Empty text, zero, null, false, and empty lists and objects are false; a missing path
+  in a condition is false.
+- `{{ for item in items }}…{{ else }}…{{ end }}` loops a list (the `else` branch runs when it is empty).
+  `for i, item in items` adds the position; for an object, `for key, value in object`; a single name over
+  an object binds `{key, value}`. Inside a loop `loop.index`, `loop.first`, `loop.last` and `loop.length` exist.
+- `{{ include "name" }}` renders a partial from the `partials` map passed to `render`, in the current scope.
+- `{{# comment }}` prints nothing. `{{-` and `-}}` trim adjacent white space. `{{ "{{" }}` prints braces.
+
+`compile(source, html: true)` escapes every printed value for HTML text and quoted attributes; end an
+action with `| raw` to print trusted markup unchanged. Values come from data only: templates cannot
+call functions or run code, and `max_output` bounds the result.
+*/
 
 // A parsed template expression: a literal, a path, a filter call or an operator. Internal to the engine; hidden from callers.
 export opaque type TemplateExpr:

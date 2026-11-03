@@ -1,32 +1,34 @@
-// Command-line parsing for programs with nested subcommands, typed flags, positional arguments and generated help.
-//
-// A `Command` holds a schema (`flags`, `args`), `children`, and a handler. `command[T]` builds a leaf whose handler
-// receives your own options record `T`: every flag and argument is stored under its name (dashes become underscores),
-// and the record is decoded from those values like `json.parse[T]`, so each field needs a flag or argument with its name
-// and a matching type; flags and arguments without a field, such as inherited persistent flags, are ignored. Parsing reads only the `List[String]` you give it; pass
-// `process.arguments()` from `main`.
-//
-// ```manuscript
-// import Arg, Command, Flag, FlagKind, command from "@std/cli.ms"
-// import arguments from "@std/os/process.ms"
-//
-// type Greeting:
-//     name: String
-//     shout: Bool
-//
-// fn greet(options: Greeting) Int!:
-//     return ok(0)
-//
-// export fn main() Int:
-//     let greeting = command[Greeting](
-//         name: "greet",
-//         about: "Print a greeting",
-//         flags: [Flag("shout", FlagKind.Bool, "s", help: "Uppercase the greeting")],
-//         args: [Arg("name", help: "Who to greet")],
-//         run: fn options: greet(options)
-//     )
-//     return Command(name: "tool", children: [greeting]).execute(arguments())
-// ```
+/*
+Command-line parsing for programs with nested subcommands, typed flags, positional arguments and generated help.
+
+A `Command` holds a schema (`flags`, `args`), `children`, and a handler. `command[T]` builds a leaf whose handler
+receives your own options record `T`: every flag and argument is stored under its name (dashes become underscores),
+and the record is decoded from those values like `json.parse[T]`, so each field needs a flag or argument with its name
+and a matching type; flags and arguments without a field, such as inherited persistent flags, are ignored. Parsing reads only the `List[String]` you give it; pass
+`process.arguments()` from `main`.
+
+```manuscript
+import Arg, Command, Flag, FlagKind, command from "@std/cli.ms"
+import arguments from "@std/os/process.ms"
+
+type Greeting:
+    name: String
+    shout: Bool
+
+fn greet(options: Greeting) Int!:
+    return ok(0)
+
+export fn main() Int:
+    let greeting = command[Greeting](
+        name: "greet",
+        about: "Print a greeting",
+        flags: [Flag("shout", FlagKind.Bool, "s", help: "Uppercase the greeting")],
+        args: [Arg("name", help: "Who to greet")],
+        run: fn options: greet(options)
+    )
+    return Command(name: "tool", children: [greeting]).execute(arguments())
+```
+*/
 import Data from "@std/core.ms"
 import stderr, stdout from "@std/io/io.ms"
 import parse, stringify from "@std/data/json.ms"
@@ -95,10 +97,12 @@ export type Arg:
     // Takes every remaining word as a list; only the last argument may be rest.
     rest: Bool = false
 
-// The values one invocation produced.
-//
-// Reading a name the schema does not declare, or reading it as the wrong kind, is a programmer error and faults.
-// A flag with a default or `required`, and a required argument, always has a value.
+/*
+The values one invocation produced.
+
+Reading a name the schema does not declare, or reading it as the wrong kind, is a programmer error and faults.
+A flag with a default or `required`, and a required argument, always has a value.
+*/
 export type Matches:
     // Text values by flag or argument name; a List flag or rest argument holds several.
     values: Map[String, List[String]] = Map[String, List[String]]()
@@ -146,9 +150,11 @@ impl Matches:
 
         return none
 
-// A command or command group: its schema, subcommands and handler.
-//
-// A group is a Command with `children`. Build a leaf with `command[T]`, or set `exec` directly to read `Matches` yourself.
+/*
+A command or command group: its schema, subcommands and handler.
+
+A group is a Command with `children`. Build a leaf with `command[T]`, or set `exec` directly to read `Matches` yourself.
+*/
 export type Command:
     // The word that selects this node; the program name for the root.
     name: String
@@ -231,23 +237,25 @@ impl Command:
             if candidate.name == word: return candidate.clone()
         return none
 
-// Builds a leaf command whose handler receives the options record `T`.
-//
-// Each field of `T` is filled from the flag or argument with its name, dashes written as underscores, and has the
-// type its kind names:
-//
-// | declared | field type |
-// | --- | --- |
-// | `FlagKind.Bool` | `Bool` (absent is false) |
-// | `FlagKind.String` | `String` |
-// | `FlagKind.Int` | `Int` |
-// | `FlagKind.Float` | `Float` |
-// | `FlagKind.List`, and a `rest` argument | `List[String]` (absent is empty) |
-// | any other `Arg` | `String` |
-//
-// A flag with neither a default nor `required`, and an optional `Arg`, needs an `...?` field, which is `none`
-// when absent. A field with no matching value, or of the wrong type, fails the run with an `InvalidSchema` error. The
-// handler returns the exit status.
+/*
+Builds a leaf command whose handler receives the options record `T`.
+
+Each field of `T` is filled from the flag or argument with its name, dashes written as underscores, and has the
+type its kind names:
+
+| declared | field type |
+| --- | --- |
+| `FlagKind.Bool` | `Bool` (absent is false) |
+| `FlagKind.String` | `String` |
+| `FlagKind.Int` | `Int` |
+| `FlagKind.Float` | `Float` |
+| `FlagKind.List`, and a `rest` argument | `List[String]` (absent is empty) |
+| any other `Arg` | `String` |
+
+A flag with neither a default nor `required`, and an optional `Arg`, needs an `...?` field, which is `none`
+when absent. A field with no matching value, or of the wrong type, fails the run with an `InvalidSchema` error. The
+handler returns the exit status.
+*/
 export fn command[T: Data](
     name: String,
     run: fn(T) Int!,

@@ -1,7 +1,9 @@
-// An ordered mutable collection with indexing, iteration, and transformations.
-// Primitive backing stores Int values at the platform's Int width and Float values at 64 bits, Bool values as bytes, and String references without an element box.
-// Lists are owned values; clone makes a deep copy and accessors can borrow elements.
-// `List[T]()` creates an empty list; `List[T](reserve: n)` also preallocates room for `n` items without changing the length. A negative `n` reserves nothing.
+/*
+An ordered mutable collection with indexing, iteration, and transformations.
+Primitive backing stores Int values at the platform's Int width and Float values at 64 bits, Bool values as bytes, and String references without an element box.
+Lists are owned values; clone makes a deep copy and accessors can borrow elements.
+`List[T]()` creates an empty list; `List[T](reserve: n)` also preallocates room for `n` items without changing the length. A negative `n` reserves nothing.
+*/
 export type List[T]:
     // Constructor-only capacity hint in items: room for this many elements is allocated up front. The list starts empty; none or a negative value reserves nothing.
     reserve: Int?
@@ -42,9 +44,11 @@ impl List[T]:
     // Negative indexes count from the end; invalid indexes fault.
     var fn swap(i: Int, j: Int) Unit: ...
 
-    // Removes an element in place; negative indexes count from the end.
-    // Invalid indexes fault.
-    // Shifts the suffix without clearing prior values retained in spare backing capacity.
+    /*
+    Removes an element in place; negative indexes count from the end.
+    Invalid indexes fault.
+    Shifts the suffix without clearing prior values retained in spare backing capacity.
+    */
     var fn remove(index: Int) Unit: ...
 
     // Reverses this list in place.
@@ -84,9 +88,11 @@ impl List[T]:
     // Reduces values from right to left, starting with `initial`.
     fn fold_right[A](initial: A, step: fn(A, T) A) A: ...
 
-    // Replaces delete_count elements starting at start in place, consuming the replacement list and returning Unit.
-    // Requires 0 <= start <= length and 0 <= delete_count <= length - start; invalid bounds fault without clamping.
-    // Removed elements are dropped; replacement elements move into the receiver. Overlapping receiver and replacement arguments are rejected.
+    /*
+    Replaces delete_count elements starting at start in place, consuming the replacement list and returning Unit.
+    Requires 0 <= start <= length and 0 <= delete_count <= length - start; invalid bounds fault without clamping.
+    Removed elements are dropped; replacement elements move into the receiver. Overlapping receiver and replacement arguments are rejected.
+    */
     var fn splice(start: Int, delete_count: Int, replacement: List[T]) Unit: ...
 
     // Returns a new list of the zero-based indexes 0 through length() - 1.
@@ -411,9 +417,11 @@ export interface ListCopies[T: Clonable]:
     fn partition(predicate: fn(T) Bool) Partition[T]
     // Returns an independent reversed copy, including nested values.
     fn reversed() List[T]
-    // Returns a new list ordered by `compare`; the receiver is unchanged. The sort is stable: equal elements keep their order.
-    // A negative, zero or positive result puts the first argument before, level with or after the second. Comparable elements also have `sorted()` without a comparator.
-    // Example: `names.sorted(fn a, b: a.length() - b.length())` orders by length.
+    /*
+    Returns a new list ordered by `compare`; the receiver is unchanged. The sort is stable: equal elements keep their order.
+    A negative, zero or positive result puts the first argument before, level with or after the second. Comparable elements also have `sorted()` without a comparator.
+    Example: `names.sorted(fn a, b: a.length() - b.length())` orders by length.
+    */
     fn sorted(compare: fn(T, T) Int) List[T]
     // Keeps matching values in their original order.
     fn filter(predicate: fn(T) Bool) List[T]
@@ -462,9 +470,11 @@ impl ListCopies[T] for List[T]:
     // Returns an independent reversed copy, including nested values.
     fn reversed() List[T]: ...
 
-    // Returns a new list ordered by `compare`; the receiver is unchanged. The sort is stable: equal elements keep their order.
-    // A negative, zero or positive result puts the first argument before, level with or after the second. Comparable elements also have `sorted()` without a comparator.
-    // Example: `names.sorted(fn a, b: a.length() - b.length())` orders by length.
+    /*
+    Returns a new list ordered by `compare`; the receiver is unchanged. The sort is stable: equal elements keep their order.
+    A negative, zero or positive result puts the first argument before, level with or after the second. Comparable elements also have `sorted()` without a comparator.
+    Example: `names.sorted(fn a, b: a.length() - b.length())` orders by length.
+    */
     fn sorted(compare: fn(T, T) Int) List[T]: ...
 
     // Keeps matching values in their original order.
@@ -619,9 +629,11 @@ interface ListJoin[T]:
     fn join(separator: String) String
 
 impl ListJoin[T] for List[T]:
-    // Concatenates the elements' interpolation text (`"{value}"`) with `separator` between neighbors; an empty list returns an empty string.
-    // Strings join as they are and numbers as decimal text; a record or alternative joins in its structural form.
-    // Example: `[1, 2, 3].join(",")` is `"1,2,3"`.
+    /*
+    Concatenates the elements' interpolation text (`"{value}"`) with `separator` between neighbors; an empty list returns an empty string.
+    Strings join as they are and numbers as decimal text; a record or alternative joins in its structural form.
+    Example: `[1, 2, 3].join(",")` is `"1,2,3"`.
+    */
     fn join(separator: String) String:
         var out = StringBuilder()
 
@@ -638,15 +650,19 @@ interface ListOrder[T: Comparable]:
 
 // Ordering a list into a fresh copy; the elements must be Comparable and Clonable.
 export interface ListOrderCopy[T: Comparable & Clonable]:
-    // Returns a new list in ascending natural order; the receiver is unchanged. The sort is stable: equal elements keep their order.
-    // Float orders NaN above every other value.
-    // Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`.
+    /*
+    Returns a new list in ascending natural order; the receiver is unchanged. The sort is stable: equal elements keep their order.
+    Float orders NaN above every other value.
+    Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`.
+    */
     fn sorted() List[T]
 
 impl ListOrderCopy[T] for List[T]:
-    // Returns a new list in ascending natural order; the receiver is unchanged. The sort is stable: equal elements keep their order.
-    // Float orders NaN above every other value.
-    // Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`.
+    /*
+    Returns a new list in ascending natural order; the receiver is unchanged. The sort is stable: equal elements keep their order.
+    Float orders NaN above every other value.
+    Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`.
+    */
     fn sorted() List[T]:
         var out = self.clone()
         out.sort(fn a, b: a.compare(b))
@@ -658,11 +674,13 @@ impl ListOrder[T] for List[T]:
     var fn sort() Unit:
         self.sort(fn a, b: a.compare(b))
 
-    // Searches in O(log n) comparisons without copying elements or changing the list.
-    // Requires ascending natural order, as produced by `sorted()`: comparisons must form a total order, with Float NaNs last.
-    // Sortedness is not checked; an incorrectly ordered list has an unspecified result.
-    // Returns the first compare-equal element, or its insertion position with `found: false`; an empty list returns index 0.
-    // Example: `[1, 3, 3, 5].binary_search(3).index` is `1`; searching for 4 gives index 3 with `found: false`.
+    /*
+    Searches in O(log n) comparisons without copying elements or changing the list.
+    Requires ascending natural order, as produced by `sorted()`: comparisons must form a total order, with Float NaNs last.
+    Sortedness is not checked; an incorrectly ordered list has an unspecified result.
+    Returns the first compare-equal element, or its insertion position with `found: false`; an empty list returns index 0.
+    Example: `[1, 3, 3, 5].binary_search(3).index` is `1`; searching for 4 gives index 3 with `found: false`.
+    */
     fn binary_search(value: T) SearchResult:
         var low = 0
         var high = self.length()
@@ -711,9 +729,11 @@ interface ListKeyedExtremes[T: Clonable]:
     fn min_by[K: Comparable](key: fn(T) K) T?
 
 impl ListKeyedExtremes[T] for List[T]:
-    // Returns the first element whose `key` is greatest, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
-    // Returns a copy of the element, like `find`.
-    // Example: `["bb", "a", "ccc"].max_by(fn w: w.length())` is `"ccc"`.
+    /*
+    Returns the first element whose `key` is greatest, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
+    Returns a copy of the element, like `find`.
+    Example: `["bb", "a", "ccc"].max_by(fn w: w.length())` is `"ccc"`.
+    */
     fn max_by[K: Comparable](key: fn(T) K) T?:
         if self.length() == 0:
             return none
@@ -730,9 +750,11 @@ impl ListKeyedExtremes[T] for List[T]:
 
         return self[at].clone()
 
-    // Returns the first element whose `key` is least, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
-    // Returns a copy of the element, like `find`.
-    // Example: `["bb", "a", "ccc"].min_by(fn w: w.length())` is `"a"`.
+    /*
+    Returns the first element whose `key` is least, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
+    Returns a copy of the element, like `find`.
+    Example: `["bb", "a", "ccc"].min_by(fn w: w.length())` is `"a"`.
+    */
     fn min_by[K: Comparable](key: fn(T) K) T?:
         if self.length() == 0:
             return none
@@ -767,9 +789,11 @@ interface ListReshape[T]:
     fn is_sorted_by(compare: fn(T, T) Int) Bool
 
 impl ListReshape[T] for List[T]:
-    // Keeps only the elements for which `keep` is True, in place and in their original order; `keep` is called once per element in order.
-    // Dropped elements are dropped (closed when they are resources), kept ones are moved, not copied.
-    // Example: `var xs = [1, 2, 3, 4]` then `xs.retain(fn x: x % 2 == 0)` leaves `[2, 4]`.
+    /*
+    Keeps only the elements for which `keep` is True, in place and in their original order; `keep` is called once per element in order.
+    Dropped elements are dropped (closed when they are resources), kept ones are moved, not copied.
+    Example: `var xs = [1, 2, 3, 4]` then `xs.retain(fn x: x % 2 == 0)` leaves `[2, 4]`.
+    */
     var fn retain(keep: fn(T) Bool) Unit:
         var kept = 0
 
@@ -780,9 +804,11 @@ impl ListReshape[T] for List[T]:
 
         self.splice(kept, self.length() - kept, List[T]())
 
-    // Collapses each run of consecutive elements that `same` calls equal into its first element, in place.
-    // `same(previous, next)` gets the last kept element and the candidate, so it runs once per element after the first.
-    // Example: `var xs = [1, 1, 2, 1]` then `xs.compact_by(fn a, b: a == b)` leaves `[1, 2, 1]`.
+    /*
+    Collapses each run of consecutive elements that `same` calls equal into its first element, in place.
+    `same(previous, next)` gets the last kept element and the candidate, so it runs once per element after the first.
+    Example: `var xs = [1, 1, 2, 1]` then `xs.compact_by(fn a, b: a == b)` leaves `[1, 2, 1]`.
+    */
     var fn compact_by(same: fn(T, T) Bool) Unit:
         if self.length() < 2:
             return
@@ -796,9 +822,11 @@ impl ListReshape[T] for List[T]:
 
         self.splice(kept, self.length() - kept, List[T]())
 
-    // Moves every element `by` places toward the front in place, wrapping the first ones around to the end;
-    // a negative `by` rotates toward the back and any magnitude is reduced modulo the length. An empty list is unchanged.
-    // Example: `var xs = [1, 2, 3, 4]` then `xs.rotate(1)` leaves `[2, 3, 4, 1]`.
+    /*
+    Moves every element `by` places toward the front in place, wrapping the first ones around to the end;
+    a negative `by` rotates toward the back and any magnitude is reduced modulo the length. An empty list is unchanged.
+    Example: `var xs = [1, 2, 3, 4]` then `xs.rotate(1)` leaves `[2, 3, 4, 1]`.
+    */
     var fn rotate(by: Int) Unit:
         let size = self.length()
         if size < 2:
@@ -824,9 +852,11 @@ interface ListCompact[T: Equal]:
     var fn compact() Unit
 
 impl ListCompact[T] for List[T]:
-    // Collapses each run of consecutive equal elements into its first element, in place; elements require Equal.
-    // Sort first to remove every duplicate; `distinct()` keeps the first of all equal elements without sorting.
-    // Example: `var xs = [1, 1, 2, 2, 1]` then `xs.compact()` leaves `[1, 2, 1]`.
+    /*
+    Collapses each run of consecutive equal elements into its first element, in place; elements require Equal.
+    Sort first to remove every duplicate; `distinct()` keeps the first of all equal elements without sorting.
+    Example: `var xs = [1, 1, 2, 2, 1]` then `xs.compact()` leaves `[1, 2, 1]`.
+    */
     var fn compact() Unit:
         self.compact_by(fn a, b: a.equals(b))
 
@@ -899,9 +929,11 @@ interface MapRetain[T: Hashable & Clonable, U]:
     var fn retain(keep: fn(T, U) Bool) Unit
 
 impl MapRetain[T, U] for Map[T, U]:
-    // Keeps only the entries for which `keep(key, value)` is True, in place, like `List.retain`; the rest keep their insertion order.
-    // `keep` is called once per entry in insertion order, before any removal.
-    // Example: `cache.retain(fn key, hits: hits > 0)` evicts unused entries.
+    /*
+    Keeps only the entries for which `keep(key, value)` is True, in place, like `List.retain`; the rest keep their insertion order.
+    `keep` is called once per entry in insertion order, before any removal.
+    Example: `cache.retain(fn key, hits: hits > 0)` evicts unused entries.
+    */
     var fn retain(keep: fn(T, U) Bool) Unit:
         var doomed = List[T]()
         self.for_each(

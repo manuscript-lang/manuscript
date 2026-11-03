@@ -10,10 +10,12 @@ import (
 ) from "@std/os/fs.ms"
 import fail from "@std/test/test.ms"
 
-// Golden files: expected output kept in a file next to the test and compared by `expect_golden`.
-// Run the tests with `MS_UPDATE_GOLDEN=1` to write the actual output to the files instead of comparing;
-// review the changes with your version control, then run again without it.
-// A missing golden file fails with the update hint; it is created only when updating.
+/*
+Golden files: expected output kept in a file next to the test and compared by `expect_golden`.
+Run the tests with `MS_UPDATE_GOLDEN=1` to write the actual output to the files instead of comparing;
+review the changes with your version control, then run again without it.
+A missing golden file fails with the update hint; it is created only when updating.
+*/
 fn updating() Bool:
     let env = environment().get(Map[String, String]())
     if let value = env.get("MS_UPDATE_GOLDEN"):

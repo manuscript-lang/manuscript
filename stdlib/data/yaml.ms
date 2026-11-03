@@ -51,9 +51,11 @@ type Context:
     values: Int
     anchors: Map[String, YamlValue]
     sizes: Map[String, Int]
-    // Per-line facts computed once from the document bytes. A simple line is ASCII with no tab,
-    // quote, bracket, brace or `#`, no trailing space and no leading `?`, so its comment-free
-    // text, indentation and mapping colon need no character-by-character scan.
+    /*
+    Per-line facts computed once from the document bytes. A simple line is ASCII with no tab,
+    quote, bracket, brace or `#`, no trailing space and no leading `?`, so its comment-free
+    text, indentation and mapping colon need no character-by-character scan.
+    */
     simple: List[Bool]
     blank: List[Bool]
     dash: List[Bool]
@@ -616,9 +618,11 @@ fn flow_entry(
 
     return ok(unit)
 
-// Parses a flow value. Nested sequences and mappings are parsed with explicit stacks, not by
-// recursion, so the nesting depth is bounded by the depth limit and not by the call stack. Only
-// a mapping key recurses, and a key cannot be a container.
+/*
+Parses a flow value. Nested sequences and mappings are parsed with explicit stacks, not by
+recursion, so the nesting depth is bounded by the depth limit and not by the call stack. Only
+a mapping key recurses, and a key cannot be a container.
+*/
 fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
     // The open containers, innermost last: kind (1 sequence, 2 mapping), depth, anchors, and
     // the entries so far. The innermost one is held in the variables below `parents`.

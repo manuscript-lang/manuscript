@@ -40,16 +40,16 @@ export type CommandOutput:
 export type Stdio:
     // An OS pipe to the parent, read or written through the Subprocess's stream.
     case Pipe
-    // The parent's own stream, so the child reads or writes it directly.
-    case Inherit
-    // The null device: input is at end of file, output is discarded.
-    case Null
+    case Inherit  // The parent's own stream, so the child reads or writes it directly.
+    case Null  // The null device: input is at end of file, output is discarded.
 
 // The shape of `run` and `spawn`, for code that takes child-process operations as a parameter so a test can pass a fake. Programs call the module functions `run` and `spawn` directly.
 export interface Commands:
-    // Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
-    // Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
-    // `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+    /*
+    Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
+    Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
+    `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+    */
     fn run(
         program: String,
         arguments: List[String],
@@ -74,9 +74,11 @@ export interface Commands:
 // The runtime handle behind a `Subprocess`.
 export extern type NativeSubprocess
 
-// A long-lived child process with live stdin, stdout, and stderr streams. Closing it
-// kills the child's process group, joins it, and closes all three streams.
-// A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already closed, so reads and writes return Closed.
+/*
+A long-lived child process with live stdin, stdout, and stderr streams. Closing it
+kills the child's process group, joins it, and closes all three streams.
+A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already closed, so reads and writes return Closed.
+*/
 export type Subprocess:
     // The runtime handle; it is released by `close` and owned by this value.
     native: NativeSubprocess
@@ -116,18 +118,22 @@ impl Subprocess:
     fn kill() Unit:
         return msstd_process_subprocess_kill(self.native)
 
-// Process and operating-system controls for the current process.
-// `watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
-// `next()` and code following it have no shutdown guarantee. Register `Closeable` cleanup
-// and finish shutdown work directly in the shielded close call after joining cancelled workers.
+/*
+Process and operating-system controls for the current process.
+`watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
+`next()` and code following it have no shutdown guarantee. Register `Closeable` cleanup
+and finish shutdown work directly in the shielded close call after joining cancelled workers.
+*/
 interface ProcessControl:
     // Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
     // This is not Unix time or a Clock Instant; prefer monotonic().difference(start) for timing.
     fn monotonic_time() Int
-    // Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
-    // Capacity must be 1..1048576; omission/none uses 128 buffered signals.
-    // Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
-    // Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
+    /*
+    Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
+    Capacity must be 1..1048576; omission/none uses 128 buffered signals.
+    Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
+    Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
+    */
     fn watch_signals(signals: List[Int], capacity: Int?) SignalStream!
     // Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0 when no limit applies or the platform has no such limit.
     fn constrained_memory() Int!
@@ -233,10 +239,12 @@ export type CpuUsage:
     // Kernel CPU time in microseconds.
     system_microseconds: Int
 
-// Kernel resource counters for the current process. CPU times are integer microseconds;
-// max_resident_bytes is bytes; other fields are counts, not durations or byte totals.
-// Filesystem reads/writes count native block I/O on Unix and I/O operations on Windows.
-// Unavailable Windows fault/context-switch counters are zero.
+/*
+Kernel resource counters for the current process. CPU times are integer microseconds;
+max_resident_bytes is bytes; other fields are counts, not durations or byte totals.
+Filesystem reads/writes count native block I/O on Unix and I/O operations on Windows.
+Unavailable Windows fault/context-switch counters are zero.
+*/
 export type ResourceUsage:
     // Cumulative CPU time spent running this process's own code, in microseconds.
     user_microseconds: Int
@@ -257,9 +265,11 @@ export type ResourceUsage:
     // Context switches where the scheduler preempted the process, as a count.
     involuntary_switches: Int
 
-// A cancellable observer of operating-system signals selected by `watch_signals`.
-// SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
-// `next()` and following code have no shutdown guarantee; use registered `Closeable` cleanup.
+/*
+A cancellable observer of operating-system signals selected by `watch_signals`.
+SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
+`next()` and following code have no shutdown guarantee; use registered `Closeable` cleanup.
+*/
 export interface SignalStream:
     // Stops observing signals, wakes a pending `next` with Closed, and waits for it.
     // Safe to call repeatedly.
@@ -419,9 +429,11 @@ export fn constants() Map[String, Int]:
 fn host_system() System:
     return msstd_process_system()
 
-// Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
-// Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
-// `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+/*
+Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
+Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
+`cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+*/
 export fn run(
     program: String,
     arguments: List[String],
@@ -453,10 +465,12 @@ export fn spawn(
 export fn monotonic_time() Int:
     return host_control().monotonic_time()
 
-// Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
-// Capacity must be 1..1048576; omission/none uses 128 buffered signals.
-// Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
-// Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
+/*
+Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
+Capacity must be 1..1048576; omission/none uses 128 buffered signals.
+Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
+Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
+*/
 export fn watch_signals(signals: List[Int], capacity: Int?) SignalStream!:
     return host_control().watch_signals(signals, capacity)
 
@@ -510,9 +524,11 @@ export fn cpu_usage() CpuUsage!:
 export fn uptime() Duration!:
     return host_control().uptime()
 
-// Finds the executable that running `name` would start, or none.
-// A name containing a path separator is checked without searching PATH. Otherwise each directory of `PATH` is searched in order, skipping empty entries. Candidates are tried as given, then on Windows with each `PATHEXT` extension (`.COM;.EXE;.BAT;.CMD` when unset); environment variable names are case-insensitive there. The result is a regular file the process may execute (any regular file on Windows) and is not made absolute or canonical.
-// Example: `which("git")` is `/usr/bin/git`.
+/*
+Finds the executable that running `name` would start, or none.
+A name containing a path separator is checked without searching PATH. Otherwise each directory of `PATH` is searched in order, skipping empty entries. Candidates are tried as given, then on Windows with each `PATHEXT` extension (`.COM;.EXE;.BAT;.CMD` when unset); environment variable names are case-insensitive there. The result is a regular file the process may execute (any regular file on Windows) and is not made absolute or canonical.
+Example: `which("git")` is `/usr/bin/git`.
+*/
 export fn which(name: String) String?:
     if name == "": return none
 

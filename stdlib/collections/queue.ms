@@ -110,9 +110,11 @@ impl PriorityQueue[T]:
             self.swap_entries(at, parent)
             at = parent
 
-    // Moves the entry at `start` down the path of earlier children to the bottom, then back up to where it belongs:
-    // one comparison per level on the way down instead of two, since a displaced last entry usually belongs near the bottom.
-    // The loop runs while the entry has a left child, and the guards on `at` let the compiler prove every index in range.
+    /*
+    Moves the entry at `start` down the path of earlier children to the bottom, then back up to where it belongs:
+    one comparison per level on the way down instead of two, since a displaced last entry usually belongs near the bottom.
+    The loop runs while the entry has a left child, and the guards on `at` let the compiler prove every index in range.
+    */
     var fn sift_down(start: Int) Unit:
         let size = self.heap.length()
         let parents = size / 2

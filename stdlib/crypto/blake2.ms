@@ -64,9 +64,11 @@ fn check(length: Int, key: Bytes, max: Int) Unit:
     if key.length() > max:
         panic("blake2: key must be at most {max} bytes")
 
-// Returns the BLAKE2b digest (RFC 7693) of `data`, optionally keyed, of `length` bytes.
-// `length` is 1 through 64 and `key` at most 64 bytes; a violation faults. An empty key is unkeyed.
-// `blake2b("abc".to_bytes())` begins with the bytes ba80a53f981c4d0d.
+/*
+Returns the BLAKE2b digest (RFC 7693) of `data`, optionally keyed, of `length` bytes.
+`length` is 1 through 64 and `key` at most 64 bytes; a violation faults. An empty key is unkeyed.
+`blake2b("abc".to_bytes())` begins with the bytes ba80a53f981c4d0d.
+*/
 export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
     check(length, key, 64)
 
@@ -168,9 +170,11 @@ fn rotr32(value: Int, count: Int) Int:
         4294967295
     )
 
-// Returns the BLAKE2s digest (RFC 7693) of `data`, optionally keyed, of `length` bytes.
-// `length` is 1 through 32 and `key` at most 32 bytes; a violation faults. An empty key is unkeyed.
-// `blake2s("abc".to_bytes())` begins with the bytes 508c5e8c327c14e2.
+/*
+Returns the BLAKE2s digest (RFC 7693) of `data`, optionally keyed, of `length` bytes.
+`length` is 1 through 32 and `key` at most 32 bytes; a violation faults. An empty key is unkeyed.
+`blake2s("abc".to_bytes())` begins with the bytes 508c5e8c327c14e2.
+*/
 export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
     check(length, key, 32)
 

@@ -122,14 +122,10 @@ export fn verify(key: Bytes, data: Bytes, signature: Bytes) Bool:
 
 // Selects an elliptic curve for ECDSA and ECDH keys.
 export type Curve:
-    // NIST P-256 (secp256r1).
-    case P256
-    // NIST P-384 (secp384r1).
-    case P384
-    // NIST P-521 (secp521r1).
-    case P521
-    // Curve25519, valid for key agreement (`ecdh_shared_secret`) only.
-    case X25519
+    case P256  // NIST P-256 (secp256r1).
+    case P384  // NIST P-384 (secp384r1).
+    case P521  // NIST P-521 (secp521r1).
+    case X25519  // Curve25519, valid for key agreement (`ecdh_shared_secret`) only.
 
 // Incrementally hashes or authenticates data supplied in chunks.
 export interface Hasher:
@@ -220,24 +216,15 @@ export fn rsa_decrypt(private_key: Bytes, hash: HashAlgorithm, ciphertext: Bytes
 // Selects a supported hash algorithm for digests, HMAC, PBKDF2 and HKDF.
 // Md5 and Sha1 exist for interoperability with existing formats; prefer SHA-2 or SHA-3 for new designs.
 export type HashAlgorithm:
-    // MD5, producing a 16-byte digest or HMAC. Not collision resistant.
-    case Md5
-    // SHA-1, producing a 20-byte digest or HMAC. Not collision resistant.
-    case Sha1
-    // SHA-224, producing a 28-byte digest or HMAC.
-    case Sha224
-    // SHA-256, producing a 32-byte digest or HMAC.
-    case Sha256
-    // SHA-384, producing a 48-byte digest or HMAC.
-    case Sha384
-    // SHA-512, producing a 64-byte digest or HMAC.
-    case Sha512
-    // SHA3-256, producing a 32-byte digest or HMAC.
-    case Sha3_256
-    // SHA3-384, producing a 48-byte digest or HMAC.
-    case Sha3_384
-    // SHA3-512, producing a 64-byte digest or HMAC.
-    case Sha3_512
+    case Md5  // MD5, producing a 16-byte digest or HMAC. Not collision resistant.
+    case Sha1  // SHA-1, producing a 20-byte digest or HMAC. Not collision resistant.
+    case Sha224  // SHA-224, producing a 28-byte digest or HMAC.
+    case Sha256  // SHA-256, producing a 32-byte digest or HMAC.
+    case Sha384  // SHA-384, producing a 48-byte digest or HMAC.
+    case Sha512  // SHA-512, producing a 64-byte digest or HMAC.
+    case Sha3_256  // SHA3-256, producing a 32-byte digest or HMAC.
+    case Sha3_384  // SHA3-384, producing a 48-byte digest or HMAC.
+    case Sha3_512  // SHA3-512, producing a 64-byte digest or HMAC.
 
 impl HashAlgorithm:
     // Computes this algorithm's digest, checking cancellation between chunks.
@@ -253,9 +240,11 @@ impl HashAlgorithm:
     fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) Bytes!:
         return msstd_crypto_derive_key(self, password, salt, iterations, length)
 
-    // Expands secret into length bytes with HKDF (RFC 5869) using this algorithm.
-    // An empty salt uses the algorithm's zero-filled default. Fails with InvalidInput when
-    // length is not positive or exceeds 255 times the digest size.
+    /*
+    Expands secret into length bytes with HKDF (RFC 5869) using this algorithm.
+    An empty salt uses the algorithm's zero-filled default. Fails with InvalidInput when
+    length is not positive or exceeds 255 times the digest size.
+    */
     fn hkdf(secret: Bytes, salt: Bytes, info: Bytes, length: Int) Bytes!:
         return msstd_crypto_hkdf(self, secret, salt, info, length)
 

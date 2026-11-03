@@ -2,10 +2,12 @@ import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
 import msstd_utf8_is_valid from "@std/internal/utf8.ms"
 
-// Decodes one UTF-8 scalar at a byte position without decoding or copying the entire input.
-// Walk forward by adding the returned width: `let part = try decode_first(data, position)`.
-// The scalar decoders examine at most four input bytes; is_valid checks the whole buffer.
-// No normalization or replacement is applied.
+/*
+Decodes one UTF-8 scalar at a byte position without decoding or copying the entire input.
+Walk forward by adding the returned width: `let part = try decode_first(data, position)`.
+The scalar decoders examine at most four input bytes; is_valid checks the whole buffer.
+No normalization or replacement is applied.
+*/
 
 // Tests the entire byte sequence for strict, shortest UTF-8 without allocating decoded text.
 // Empty bytes are valid. Surrogates, overlong sequences, out-of-range scalars and incomplete sequences are invalid.
@@ -100,17 +102,21 @@ fn decoded(value: Int) Utf8Scalar!Utf8Error:
 
     return ok(Utf8Scalar(value, scalar_width(value)))
 
-// Decodes only the scalar beginning at absolute byte offset at (zero by default).
-// Later malformed bytes do not invalidate an earlier scalar. End of input returns Incomplete.
-// Requires 0 <= at <= data.length(); invalid offsets fault, without negative-index wrapping.
+/*
+Decodes only the scalar beginning at absolute byte offset at (zero by default).
+Later malformed bytes do not invalidate an earlier scalar. End of input returns Incomplete.
+Requires 0 <= at <= data.length(); invalid offsets fault, without negative-index wrapping.
+*/
 export fn decode_first(data: Bytes, at: Int = 0) Utf8Scalar!Utf8Error:
     if at < 0 or at > data.length():
         panic("utf8.decode_first: at must be between zero and the byte length")
     return decoded(decode_at(data, at, data.length()))
 
-// Decodes only the scalar ending at exclusive absolute byte offset end, or at the byte length when omitted.
-// Earlier malformed bytes do not invalidate a valid final scalar. An empty prefix returns Incomplete.
-// Requires 0 <= end <= data.length(); invalid offsets fault. A trailing proper scalar prefix returns Incomplete.
+/*
+Decodes only the scalar ending at exclusive absolute byte offset end, or at the byte length when omitted.
+Earlier malformed bytes do not invalidate a valid final scalar. An empty prefix returns Incomplete.
+Requires 0 <= end <= data.length(); invalid offsets fault. A trailing proper scalar prefix returns Incomplete.
+*/
 export fn decode_last(data: Bytes, end: Int?) Utf8Scalar!Utf8Error:
     let stop = end.get(data.length())
     if stop < 0 or stop > data.length():

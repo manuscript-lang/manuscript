@@ -47,9 +47,11 @@ impl Closeable for Ticket:
                 msrt_waitq_wake(self.key)
         return ok(unit)
 
-// Locks `box` and returns the guard that holds its payload. Waits while another guard holds it,
-// and stops waiting if the task is cancelled. Bind it with `var`; the scope end closes the guard:
-// `var guard = lock(box)`, then change `guard.value`.
+/*
+Locks `box` and returns the guard that holds its payload. Waits while another guard holds it,
+and stops waiting if the task is cancelled. Bind it with `var`; the scope end closes the guard:
+`var guard = lock(box)`, then change `guard.value`.
+*/
 export fn lock[T](box: Shared[T]) SharedGuard[T]:
     while box.locked():
         let key = box.id()

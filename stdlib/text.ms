@@ -1,12 +1,14 @@
 import StringBuilder, from_scalars from "@std/string.ms"
 
-// Conversions between text and values: booleans, integers in any base, and quoted literals.
-// Scalar classification lives in `@std/unicode.ms`; whole-string operations such as `fields_by`,
-// `trim_chars` and `title` are methods on String.
-//
-//     import quote, parse_int_radix from "@std/text.ms"
-//     quote("a\tb")                  # a double-quoted literal with the escape written out
-//     parse_int_radix("-ff", 16)     # -255
+/*
+Conversions between text and values: booleans, integers in any base, and quoted literals.
+Scalar classification lives in `@std/unicode.ms`; whole-string operations such as `fields_by`,
+`trim_chars` and `title` are methods on String.
+
+    import quote, parse_int_radix from "@std/text.ms"
+    quote("a\tb")                  # a double-quoted literal with the escape written out
+    parse_int_radix("-ff", 16)     # -255
+*/
 
 // Parses `true`/`false` ignoring case, and `1`/`0`, `t`/`f`, `yes`/`no`, `on`/`off`; anything else is none.
 export fn parse_bool(text: String) Bool?:
@@ -18,9 +20,11 @@ export fn parse_bool(text: String) Bool?:
 
     return none
 
-// Parses an integer in base 2 to 36 with an optional sign; `_` separators and surrounding
-// white space are not accepted. Base 0 chooses the base from a `0x`, `0o` or `0b` prefix and
-// otherwise uses 10. An overflow, bad digit or unsupported base is none.
+/*
+Parses an integer in base 2 to 36 with an optional sign; `_` separators and surrounding
+white space are not accepted. Base 0 chooses the base from a `0x`, `0o` or `0b` prefix and
+otherwise uses 10. An overflow, bad digit or unsupported base is none.
+*/
 export fn parse_int_radix(text: String, base: Int) Int?:
     var digits = text
     var negative = false
@@ -79,9 +83,11 @@ export fn parse_int_radix(text: String, base: Int) Int?:
 
     return 0 - value
 
-// Quotes text as a double-quoted literal using the escapes of Manuscript string literals.
-// Printable Unicode stays as is; controls, bidi controls and U+2028/U+2029 become `\u{..}`.
-// Braces are escaped so the result stays literal instead of starting interpolation.
+/*
+Quotes text as a double-quoted literal using the escapes of Manuscript string literals.
+Printable Unicode stays as is; controls, bidi controls and U+2028/U+2029 become `\u{..}`.
+Braces are escaped so the result stays literal instead of starting interpolation.
+*/
 export fn quote(text: String) String:
     return quote_with(text, false)
 
@@ -123,9 +129,11 @@ fn quote_with(text: String, ascii_only: Bool) String:
     out.append("\"")
     return out.build()
 
-// Reverses quote: reads a double-quoted literal and returns its text. Supports `\"`, `\\`, `\n`,
-// `\r`, `\t`, `\0`, escaped braces and `\u{hex}` with 1 to 6 hexadecimal digits;
-// anything else, or text that is not fully quoted, is InvalidInput.
+/*
+Reverses quote: reads a double-quoted literal and returns its text. Supports `\"`, `\\`, `\n`,
+`\r`, `\t`, `\0`, escaped braces and `\u{hex}` with 1 to 6 hexadecimal digits;
+anything else, or text that is not fully quoted, is InvalidInput.
+*/
 export fn unquote(text: String) String!:
     let cs = text.scalar_values()
     if cs.length() < 2 or cs[0] != 34 or cs[cs.length() - 1] != 34:

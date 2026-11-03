@@ -27,9 +27,11 @@ export type LogLevel:
 
 // A destination that accepts encoded log records and can be flushed and closed.
 export interface Transport:
-    // Accepts encoded record bytes and may return the original I/O cause. Errors can follow a partial
-    // external write, without rollback. Child loggers call a shared transport concurrently, so an
-    // implementation that keeps mutable state guards it itself, as the standard transports do.
+    /*
+    Accepts encoded record bytes and may return the original I/O cause. Errors can follow a partial
+    external write, without rollback. Child loggers call a shared transport concurrently, so an
+    implementation that keeps mutable state guards it itself, as the standard transports do.
+    */
     fn write(data: String) Unit!
     // Accepts encoded record bytes with the same rules as write.
     fn write_bytes(data: Bytes) Unit!
@@ -192,9 +194,11 @@ impl Closeable for OwnedTransport:
         self.inner.close()
         return ok(unit)
 
-// A structured logger: level filtering, bound fields, and a pluggable `Transport`. The level methods
-// take optional fields of any `Data` type and encode them with `stringify`. Child loggers share the
-// transport; closing any of them closes it for all, and the last one dropped closes it if none did.
+/*
+A structured logger: level filtering, bound fields, and a pluggable `Transport`. The level methods
+take optional fields of any `Data` type and encode them with `stringify`. Child loggers share the
+transport; closing any of them closes it for all, and the last one dropped closes it if none did.
+*/
 export type Logger:
     // Internal state: the lowest level number that is written.
     threshold: Int
@@ -226,13 +230,15 @@ impl Logger:
             )
         return self.transport.get().inner.write(line)
 
-    // Writes a record at the selected level. `fields` is any `Data` value `stringify` accepts.
-    //
-    // The value is written as is under the record's `data` key, so a record, map, list, or number
-    // keeps its shape. No fields, or `none`, write the message alone. A value that cannot be encoded,
-    // such as a cyclic one, returns `InvalidData`; encoding happens only when the level is enabled.
-    // The fields of `child` loggers are written under `context`. `Silent` is a threshold, not a
-    // record level, and returns `InvalidInput`.
+    /*
+    Writes a record at the selected level. `fields` is any `Data` value `stringify` accepts.
+
+    The value is written as is under the record's `data` key, so a record, map, list, or number
+    keeps its shape. No fields, or `none`, write the message alone. A value that cannot be encoded,
+    such as a cyclic one, returns `InvalidData`; encoding happens only when the level is enabled.
+    The fields of `child` loggers are written under `context`. `Silent` is a threshold, not a
+    record level, and returns `InvalidInput`.
+    */
     fn log[F: Data = Unit](level: LogLevel, message: String, fields: F? = none) Unit!:
         if level == LogLevel.Silent: return error(
             Error(
@@ -271,9 +277,11 @@ impl Logger:
     fn fatal[F: Data = Unit](message: String, fields: F? = none) Unit!:
         return self.log(LogLevel.Fatal, message, fields)
 
-    // Returns a logger that writes `fields` under `context` in each record. A child of a child merges
-    // object members, the newer value winning; any other combination keeps the newer value. A value
-    // that cannot be encoded returns `InvalidData`.
+    /*
+    Returns a logger that writes `fields` under `context` in each record. A child of a child merges
+    object members, the newer value winning; any other combination keeps the newer value. A value
+    that cannot be encoded returns `InvalidData`.
+    */
     fn child[F: Data](fields: F) Logger!:
         let text = try encode_fields(fields)
         let context = try merge_context(self.context, text)
@@ -423,9 +431,11 @@ impl Transport for RotatingTransport:
         guard.value.closed = true
         guard.value.file.close().get(none)
 
-// Appends log records to the file at `path` and rotates it by size.
-// When a record would take the file past `max_bytes` (a positive size; a single larger record is still written whole, to a fresh file), the file is renamed to `path.1`, an older `path.1` to `path.2`, and so on up to `path.<keep>`; the oldest is deleted. `keep` is the number of rotated files to retain, zero or more, and zero discards the old contents. A non-positive `max_bytes` or a negative `keep` returns `InvalidInput`. An existing file keeps being appended to, counting its current size.
-// Example: `create(rotating_file_transport("app.log", max_bytes: 1048576, keep: 5), none, none, none)`.
+/*
+Appends log records to the file at `path` and rotates it by size.
+When a record would take the file past `max_bytes` (a positive size; a single larger record is still written whole, to a fresh file), the file is renamed to `path.1`, an older `path.1` to `path.2`, and so on up to `path.<keep>`; the oldest is deleted. `keep` is the number of rotated files to retain, zero or more, and zero discards the old contents. A non-positive `max_bytes` or a negative `keep` returns `InvalidInput`. An existing file keeps being appended to, counting its current size.
+Example: `create(rotating_file_transport("app.log", max_bytes: 1048576, keep: 5), none, none, none)`.
+*/
 export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Transport!:
     if max_bytes <= 0 or keep < 0: return error(
         Error("logging: invalid input", kind: ErrorCategory.InvalidInput)

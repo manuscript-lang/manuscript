@@ -4,15 +4,17 @@ import parse_int_radix from "@std/text.ms"
 import base64_decode, latin1_decode from "@std/data/encoding.ms"
 import Headers, HeaderField, parse_headers from "@std/net/mime.ms"
 
-// Internet mail messages (RFC 5322): addresses, address lists, and message parsing.
-// `parse_address("Ada <ada@example.com>")` gives name and address; `parse_message` splits a raw
-// message into `Headers` and body and decodes RFC 2047 encoded words on request.
-//
-//     import parse_address, parse_message from "@std/net/mail.ms"
-//     let from = parse_address("Ada Lovelace <ada@example.com>").get()
-//     from.name                      # "Ada Lovelace"
-//     let mail = parse_message(raw).get()
-//     mail.headers.get("Subject")
+/*
+Internet mail messages (RFC 5322): addresses, address lists, and message parsing.
+`parse_address("Ada <ada@example.com>")` gives name and address; `parse_message` splits a raw
+message into `Headers` and body and decodes RFC 2047 encoded words on request.
+
+    import parse_address, parse_message from "@std/net/mail.ms"
+    let from = parse_address("Ada Lovelace <ada@example.com>").get()
+    from.name                      # "Ada Lovelace"
+    let mail = parse_message(raw).get()
+    mail.headers.get("Subject")
+*/
 
 // A mailbox: optional display name and the `local@domain` address.
 export type Address:

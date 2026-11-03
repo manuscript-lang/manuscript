@@ -37,9 +37,11 @@ export fn secure_int(min: Int, max_exclusive: Int?) Int!:
 export fn uuid_v4() String!:
     return msstd_random_draw_uuid(msstd_random_entropy())
 
-// Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time in milliseconds and 80 random bits.
-// ULIDs made later sort after earlier ones as strings; two made in the same millisecond are ordered randomly.
-// Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return an `Error`.
+/*
+Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time in milliseconds and 80 random bits.
+ULIDs made later sort after earlier ones as strings; two made in the same millisecond are ordered randomly.
+Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return an `Error`.
+*/
 export fn ulid() String!:
     let moment = now()
     let millis = moment.seconds * 1000 + moment.nanos / 1000000
@@ -71,9 +73,11 @@ export fn ulid() String!:
 
     return ok(out)
 
-// Returns a random token of `size` bytes as unpadded URL-safe Base64, the shape of Python's `secrets.token_urlsafe`.
-// The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API keys and password-reset links.
-// `size` follows `random_bytes`: 0 through 16 MiB, otherwise InvalidInput.
+/*
+Returns a random token of `size` bytes as unpadded URL-safe Base64, the shape of Python's `secrets.token_urlsafe`.
+The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API keys and password-reset links.
+`size` follows `random_bytes`: 0 through 16 MiB, otherwise InvalidInput.
+*/
 export fn token(size: Int = 32) String!:
     let data = try random_bytes(size)
     return ok(base64_encode_unpadded(data, url_safe: true))
@@ -123,9 +127,11 @@ fn positions(count: Int) List[Int]:
         out.append(i)
     return out
 
-// Reports whether `weights` has `count` finite, non-negative entries with a positive total.
-// Sums the weights. A loop rather than `List.sum`, because `@std/math/math.ms` imports this module and the
-// modules the collection extensions import cannot use those extensions.
+/*
+Reports whether `weights` has `count` finite, non-negative entries with a positive total.
+Sums the weights. A loop rather than `List.sum`, because `@std/math/math.ms` imports this module and the
+modules the collection extensions import cannot use those extensions.
+*/
 fn weight_total(weights: List[Float]) Float:
     var total = 0.0
     for weight in weights:
@@ -167,9 +173,11 @@ export fn random_bytes(count: Int) Bytes!:
     var source = msstd_random_entropy()
     return source.bytes(count)
 
-// A deterministic pseudo-random generator: the same seed always gives the same sequence, on every platform.
-// It is not secure; use `secure_int`, `float`, `shuffle` and `choice` when the values must be unpredictable.
-// `var rng = seeded(1)` then `rng.int(0, 10)` returns the same value on every run.
+/*
+A deterministic pseudo-random generator: the same seed always gives the same sequence, on every platform.
+It is not secure; use `secure_int`, `float`, `shuffle` and `choice` when the values must be unpredictable.
+`var rng = seeded(1)` then `rng.int(0, 10)` returns the same value on every run.
+*/
 export type SeededRandom:
     // Internal state: the SplitMix64 counter, advanced on every draw.
     state: Int

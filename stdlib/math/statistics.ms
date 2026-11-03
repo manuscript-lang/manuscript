@@ -1,10 +1,12 @@
 import panic from "@std/core.ms"
 import sqrt from "@std/math/math.ms"
 
-// Summary statistics over a `List[Float]`, in binary64 arithmetic.
-// An operation that needs more data than it was given returns none: the mean of an empty list, the sample variance of one value.
-// A violated precondition (a percentile outside 0 to 100, mismatched list lengths, a bin count below 1) faults.
-// `statistics.mean([1.0, 2.0, 6.0])` is `3.0`.
+/*
+Summary statistics over a `List[Float]`, in binary64 arithmetic.
+An operation that needs more data than it was given returns none: the mean of an empty list, the sample variance of one value.
+A violated precondition (a percentile outside 0 to 100, mismatched list lengths, a bin count below 1) faults.
+`statistics.mean([1.0, 2.0, 6.0])` is `3.0`.
+*/
 
 // Equal-width counts over a range of values, from `bin_counts`. (`@std/os/metrics.ms` has the recording `Histogram`.)
 export type BinCounts:
@@ -107,9 +109,11 @@ export fn stdev(values: List[Float]) Float?:
 
     return none
 
-// Returns the value `percent` percent of the way through the sorted list, interpolating linearly between neighbors, or none for an empty list.
-// `percent` runs from 0.0 (the least value) to 100.0 (the greatest); a value outside that range faults.
-// Example: `percentile([1.0, 2.0, 3.0, 4.0, 5.0], 25.0)` is `2.0`.
+/*
+Returns the value `percent` percent of the way through the sorted list, interpolating linearly between neighbors, or none for an empty list.
+`percent` runs from 0.0 (the least value) to 100.0 (the greatest); a value outside that range faults.
+Example: `percentile([1.0, 2.0, 3.0, 4.0, 5.0], 25.0)` is `2.0`.
+*/
 export fn percentile(values: List[Float], percent: Float) Float?:
     if not (percent >= 0.0 and percent <= 100.0):
         panic("percentile: percent must be from 0 to 100")
@@ -128,9 +132,11 @@ fn percentile_sorted(ordered: List[Float], percent: Float) Float:
 
     return ordered[below] + (ordered[below + 1] - ordered[below]) * fraction
 
-// Returns the `parts - 1` cut points that divide the sorted values into `parts` groups of equal probability, using the same interpolation as `percentile`.
-// An empty list gives an empty list; a `parts` below 2 faults.
-// Example: `quantiles([1.0, 2.0, 3.0, 4.0, 5.0], 4)` is `[2.0, 3.0, 4.0]`.
+/*
+Returns the `parts - 1` cut points that divide the sorted values into `parts` groups of equal probability, using the same interpolation as `percentile`.
+An empty list gives an empty list; a `parts` below 2 faults.
+Example: `quantiles([1.0, 2.0, 3.0, 4.0, 5.0], 4)` is `[2.0, 3.0, 4.0]`.
+*/
 export fn quantiles(values: List[Float], parts: Int) List[Float]:
     if parts < 2:
         panic("quantiles: parts must be at least 2")
@@ -144,9 +150,11 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
         cuts.append(percentile_sorted(ordered, 100.0 * i.to_float() / parts.to_float()))
     return cuts
 
-// Counts the values into `bins` equal-width bins between the least and greatest value, or returns none for an empty list.
-// Values equal to the greatest value fall in the last bin; when every value is equal they all fall in the first bin. A `bins` below 1 faults.
-// Example: `bin_counts([1.0, 2.0, 2.0, 3.0], 2).counts` is `[1, 3]`.
+/*
+Counts the values into `bins` equal-width bins between the least and greatest value, or returns none for an empty list.
+Values equal to the greatest value fall in the last bin; when every value is equal they all fall in the first bin. A `bins` below 1 faults.
+Example: `bin_counts([1.0, 2.0, 2.0, 3.0], 2).counts` is `[1, 3]`.
+*/
 export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
     if bins < 1:
         panic("bin_counts: bins must be at least 1")
@@ -199,9 +207,11 @@ fn spread(xs: List[Float], ys: List[Float]) Spread?:
 
     return Spread(xy: xy, xx: xx, yy: yy, mean_x: mean_x, mean_y: mean_y)
 
-// Returns the Pearson correlation of paired values, from -1.0 to 1.0, or none when there are fewer than two pairs or either list has no spread.
-// Lists of different lengths fault.
-// Example: `correlation([1.0, 2.0, 3.0], [2.0, 4.0, 6.0])` is `1.0`.
+/*
+Returns the Pearson correlation of paired values, from -1.0 to 1.0, or none when there are fewer than two pairs or either list has no spread.
+Lists of different lengths fault.
+Example: `correlation([1.0, 2.0, 3.0], [2.0, 4.0, 6.0])` is `1.0`.
+*/
 export fn correlation(xs: List[Float], ys: List[Float]) Float?:
     if let s = spread(xs, ys):
         if s.xx == 0.0 or s.yy == 0.0:
@@ -211,9 +221,11 @@ export fn correlation(xs: List[Float], ys: List[Float]) Float?:
 
     return none
 
-// Returns the least-squares line through paired values, or none when there are fewer than two pairs or the `xs` are all equal.
-// Lists of different lengths fault.
-// Example: `linear_regression([1.0, 2.0, 3.0], [3.0, 5.0, 7.0])` has slope `2.0` and intercept `1.0`.
+/*
+Returns the least-squares line through paired values, or none when there are fewer than two pairs or the `xs` are all equal.
+Lists of different lengths fault.
+Example: `linear_regression([1.0, 2.0, 3.0], [3.0, 5.0, 7.0])` has slope `2.0` and intercept `1.0`.
+*/
 export fn linear_regression(xs: List[Float], ys: List[Float]) Regression?:
     if let s = spread(xs, ys):
         if s.xx == 0.0:

@@ -62,9 +62,11 @@ impl StringBuilder:
 // A compiled regular expression that can be reused across input strings.
 export extern type Regex
 
-// A match or capture range in UTF-8 bytes, with an exclusive end; no normalization is applied.
-// Example: a match of `é` in `aé` spans bytes 1 through 3, not scalar positions 1 through 2.
-// Extract text with `data.decode_utf8_range(span.start, span.end)` on its original Bytes.
+/*
+A match or capture range in UTF-8 bytes, with an exclusive end; no normalization is applied.
+Example: a match of `é` in `aé` spans bytes 1 through 3, not scalar positions 1 through 2.
+Extract text with `data.decode_utf8_range(span.start, span.end)` on its original Bytes.
+*/
 export type RegexSpan:
     // Zero-based inclusive UTF-8 byte offset in the input string.
     start: Int
@@ -314,19 +316,23 @@ impl RegexSpanQueries for Regex:
             out.append(RegexSpan(raw[index * 2], raw[index * 2 + 1]))
         return ok(out)
 
-    // Returns the first match's [whole, group1, ...] byte ranges, or outer none when no match exists.
-    // An unmatched group is inner none; a participating empty group has start == end.
-    // max_captures bounds slots including the whole match and unmatched groups. Negative budgets return InvalidInput;
-    // excess returns LimitExceeded. The budget bounds output, not input scanning or engine scratch space.
+    /*
+    Returns the first match's [whole, group1, ...] byte ranges, or outer none when no match exists.
+    An unmatched group is inner none; a participating empty group has start == end.
+    max_captures bounds slots including the whole match and unmatched groups. Negative budgets return InvalidInput;
+    excess returns LimitExceeded. The budget bounds output, not input scanning or engine scratch space.
+    */
     fn capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!:
         let raw = try msstd_regex_capture_spans(self, text, max_captures)
         if raw.is_empty(): return ok(none)
 
         return ok(capture_slots(raw, 1, raw[0]))
 
-    // Like capture_spans for every match in captures_all order; no match gives an empty list.
-    // max_matches bounds rows; max_captures bounds total slots across rows, including whole and unmatched groups.
-    // Negative budgets return InvalidInput, excess returns LimitExceeded; these are output budgets, not search limits.
+    /*
+    Like capture_spans for every match in captures_all order; no match gives an empty list.
+    max_matches bounds rows; max_captures bounds total slots across rows, including whole and unmatched groups.
+    Negative budgets return InvalidInput, excess returns LimitExceeded; these are output budgets, not search limits.
+    */
     fn capture_all_spans(
         text: String,
         max_matches: Int?,

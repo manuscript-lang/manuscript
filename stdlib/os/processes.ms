@@ -1,10 +1,12 @@
-// Child processes that run a function of this program and talk to it over a channel.
-//
-// `ProcessGroup.spawn(entry)` starts this executable again in a new process, at `entry` instead
-// of `main`. The entry gets its end of a two-way channel, a `Channel[Out, In]`; the returned
-// `Process` holds the other end in its `channel` field. Values cross as JSON, so they are copied,
-// and the entry's return value comes back through `Process.result`. Each process is isolated: a
-// fault in the child ends only the child, and the parent sees its exit status.
+/*
+Child processes that run a function of this program and talk to it over a channel.
+
+`ProcessGroup.spawn(entry)` starts this executable again in a new process, at `entry` instead
+of `main`. The entry gets its end of a two-way channel, a `Channel[Out, In]`; the returned
+`Process` holds the other end in its `channel` field. Values cross as JSON, so they are copied,
+and the entry's return value comes back through `Process.result`. Each process is isolated: a
+fault in the child ends only the child, and the parent sees its exit status.
+*/
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import Channel, Transport from "@std/io/channels.ms"
 import Closeable, Data from "@std/core.ms"
@@ -113,9 +115,11 @@ fn decode[T: Data](body: String) T!:
             return ok(value)
         error(e): return error(channel_broken("cannot decode the value: " + e.message))
 
-// The next whole frame, waiting for more bytes as needed; `none` once the other process closed
-// the pipe or is gone. One task reads the pipe at a time: another waits, then returns a `RETRY`
-// frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
+/*
+The next whole frame, waiting for more bytes as needed; `none` once the other process closed
+the pipe or is gone. One task reads the pipe at a time: another waits, then returns a `RETRY`
+frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
+*/
 fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Frame?!:
     while true:
         var state = lock(inbox)
@@ -315,9 +319,11 @@ export type Process[T: Data, In: Data = Unit, Out: Data = Unit]:
     registry: Shared[List[Open]]
 
 impl Process[T, In, Out]:
-    // Waits for the entry to return and gives its result, or `Exited` with the status of a child
-    // that ended first. Another task may receive from the channel meanwhile; one task reads the
-    // pipe at a time and the other waits. Messages the child sent and the parent has not received are dropped.
+    /*
+    Waits for the entry to return and gives its result, or `Exited` with the status of a child
+    that ended first. Another task may receive from the channel meanwhile; one task reads the
+    pipe at a time and the other waits. Messages the child sent and the parent has not received are dropped.
+    */
     fn result() T!:
         return wait_result[T](self.native, self.link, self.inbox)
 
@@ -363,11 +369,13 @@ impl Closeable for Process[T, In, Out]:
 
         return ok(unit)
 
-// A scope that owns the child processes started in it. Each runs an entry returning `T` and has a
-// two-way channel to the group: the child sends `Out` values and receives `In` values, both
-// `Unit` unless given. Bind a group to a local: when its scope ends it stops every child still running.
-// `In`, `Out` and `T` cross as JSON, so use plain data: records, alternatives, lists, maps,
-// strings and numbers.
+/*
+A scope that owns the child processes started in it. Each runs an entry returning `T` and has a
+two-way channel to the group: the child sends `Out` values and receives `In` values, both
+`Unit` unless given. Bind a group to a local: when its scope ends it stops every child still running.
+`In`, `Out` and `T` cross as JSON, so use plain data: records, alternatives, lists, maps,
+strings and numbers.
+*/
 export type ProcessGroup[T: Data, In: Data = Unit, Out: Data = Unit]:
     // Internal state: the open processes in start order, changed through the shared handle so the
     // group closes when its scope ends.
@@ -376,11 +384,13 @@ export type ProcessGroup[T: Data, In: Data = Unit, Out: Data = Unit]:
     started: Shared[Int] = share(0)
 
 impl ProcessGroup[T, In, Out]:
-    // Starts this executable again in a new process at `entry`, a top-level `fn`, and returns the
-    // process. The child gets its end of a new channel, and the process's `channel` is the
-    // group's end. `stdin`, `stdout` and `stderr` each choose the parent's own stream (the
-    // default), the null device, or a pipe the process's `stdin()`, `stdout()` or `stderr()`
-    // reaches. Closing the process makes the group forget it.
+    /*
+    Starts this executable again in a new process at `entry`, a top-level `fn`, and returns the
+    process. The child gets its end of a new channel, and the process's `channel` is the
+    group's end. `stdin`, `stdout` and `stderr` each choose the parent's own stream (the
+    default), the null device, or a pipe the process's `stdin()`, `stdout()` or `stderr()`
+    reaches. Closing the process makes the group forget it.
+    */
     fn spawn(
         entry: fn(Channel[Out, In]) T,
         stdin: Stdio = Stdio.Inherit,

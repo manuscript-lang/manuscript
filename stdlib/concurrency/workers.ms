@@ -1,19 +1,21 @@
-// Worker threads: code that runs on another OS thread, with its own memory, and talks to its starter
-// over a two-way channel.
-//
-// A worker is started from a named top-level `fn` that takes no arguments and returns `Unit`; it
-// gets its end of the channel from `worker_channel`. Nothing is shared between the two sides:
-// every value sent through the channel is encoded as JSON and decoded on the other side, so the
-// message types are the ones `@std/data/json.ms` can read and write.
-//
-// ```manuscript
-// fn double_all() Unit:
-//     let ch = worker_channel[Int, Int]()
-//     while true:
-//         let received = ch.receive().get(none)
-//         if received.is_none(): return
-//         let _ = ch.send(received.get() * 2)
-// ```
+/*
+Worker threads: code that runs on another OS thread, with its own memory, and talks to its starter
+over a two-way channel.
+
+A worker is started from a named top-level `fn` that takes no arguments and returns `Unit`; it
+gets its end of the channel from `worker_channel`. Nothing is shared between the two sides:
+every value sent through the channel is encoded as JSON and decoded on the other side, so the
+message types are the ones `@std/data/json.ms` can read and write.
+
+```manuscript
+fn double_all() Unit:
+    let ch = worker_channel[Int, Int]()
+    while true:
+        let received = ch.receive().get(none)
+        if received.is_none(): return
+        let _ = ch.send(received.get() * 2)
+```
+*/
 import Bytes from "@std/bytes.ms"
 import Channel, Transport from "@std/io/channels.ms"
 import Closeable, Data from "@std/core.ms"
@@ -36,10 +38,8 @@ import (
 
 // Why a read from the pipe gave no message. The native side numbers these cases from 1 (1 + declaration index).
 type PipeEnd:
-    // This end is closed.
-    case Closed
-    // The other end closed and every message was read.
-    case Ended
+    case Closed  // This end is closed.
+    case Ended  // The other end closed and every message was read.
 
 // One end of the in-memory pipe between a group and a worker.
 type WorkerTransport[In: Data, Out: Data]:
@@ -119,10 +119,12 @@ impl Transport[Bytes, Bytes] for WorkerBytesTransport:
 fn bytes_channel(end: Int) Channel[Bytes, Bytes]:
     return Channel[Bytes, Bytes](transport: WorkerBytesTransport(end: end))
 
-// Returns the worker's end of its pipe as a `Channel[Bytes, Bytes]`, for large payloads that
-// should not be encoded as JSON. It shares the pipe, and so the order and the 16-message room,
-// with the channel from `worker_channel`: read each message with the kind that was sent, and
-// closing either closes the shared end. Call it on a worker's thread.
+/*
+Returns the worker's end of its pipe as a `Channel[Bytes, Bytes]`, for large payloads that
+should not be encoded as JSON. It shares the pipe, and so the order and the 16-message room,
+with the channel from `worker_channel`: read each message with the kind that was sent, and
+closing either closes the shared end. Call it on a worker's thread.
+*/
 export fn worker_bytes() Channel[Bytes, Bytes]:
     return bytes_channel(msrt_worker_end())
 
@@ -138,9 +140,11 @@ export type Worker[In: Data, Out: Data]:
     ended: Shared[List[Unit!]]
 
 impl Worker[In, Out]:
-    // Closes the group's end of the channel, waits for the worker to end, and returns how it ended.
-    // A worker that is still reading ends once its input is closed; call `cancel` first to stop one that is not.
-    // Safe to call again: later calls return the same outcome.
+    /*
+    Closes the group's end of the channel, waits for the worker to end, and returns how it ended.
+    A worker that is still reading ends once its input is closed; call `cancel` first to stop one that is not.
+    Safe to call again: later calls return the same outcome.
+    */
     var fn wait() Unit!:
         var held = lock(self.ended)
         if held.value.length() > 0:
@@ -179,18 +183,22 @@ fn outcome_of(report: String) Unit!:
 
     return ok(unit)
 
-// A group of workers. Every worker's channel sends `In` to it and receives `Out` from it.
-// Bind a group to a local: when its scope ends it cancels workers that are still running and waits for them.
-// Manuscript faults caught by the worker runtime are reported through `wait` as `Faulted`.
-// Worker threads are not a process-crash isolation boundary.
+/*
+A group of workers. Every worker's channel sends `In` to it and receives `Out` from it.
+Bind a group to a local: when its scope ends it cancels workers that are still running and waits for them.
+Manuscript faults caught by the worker runtime are reported through `wait` as `Faulted`.
+Worker threads are not a process-crash isolation boundary.
+*/
 export type WorkerGroup[In: Data = Unit, Out: Data = Unit]:
     // Internal state: the workers in start order, changed through the shared handle so the group closes when its scope ends.
     workers: Shared[List[Worker[In, Out]]] = share([])
 
 impl WorkerGroup[In, Out]:
-    // Starts `entry`, a named top-level `fn`, on a new thread and returns its handle. The handle's
-    // `channel` is this side of the worker's two-way channel; the worker takes the other from
-    // `worker_channel`.
+    /*
+    Starts `entry`, a named top-level `fn`, on a new thread and returns its handle. The handle's
+    `channel` is this side of the worker's two-way channel; the worker takes the other from
+    `worker_channel`.
+    */
     fn spawn(entry: fn() Unit) Worker[In, Out]!:
         return self.start(entry)
 

@@ -1,10 +1,12 @@
-// A reference-counted value that several owners hold at once.
-//
-// Copying a `Shared[T]` shares the payload instead of duplicating it; the payload is freed when
-// the last holder is dropped. `get` reads the payload. To change it, `lock` it from
-// `@std/concurrency/sync.ms` into a `var` binding: the guard holds the payload for its scope and returns it when the
-// scope ends, however it ends. `take`, `put`, `locked` and `id` are the primitives `lock` is built on;
-// calling them elsewhere is rejected.
+/*
+A reference-counted value that several owners hold at once.
+
+Copying a `Shared[T]` shares the payload instead of duplicating it; the payload is freed when
+the last holder is dropped. `get` reads the payload. To change it, `lock` it from
+`@std/concurrency/sync.ms` into a `var` binding: the guard holds the payload for its scope and returns it when the
+scope ends, however it ends. `take`, `put`, `locked` and `id` are the primitives `lock` is built on;
+calling them elsewhere is rejected.
+*/
 export extern type Shared[T]
 
 // Moves `value` into a new `Shared` with one holder; copy the result to add holders.

@@ -11,9 +11,11 @@ interface ValueOperations:
 interface CloneOperations[T]:
     fn clone() T
 
-// String receiver operations use UTF-8 text. Methods named `scalar_*` count Unicode
-// scalar values; ordinary indices and lengths count Unicode scalar positions unless
-// the method explicitly refers to bytes.
+/*
+String receiver operations use UTF-8 text. Methods named `scalar_*` count Unicode
+scalar values; ordinary indices and lengths count Unicode scalar positions unless
+the method explicitly refers to bytes.
+*/
 interface StringOperations:
     // Counts Unicode scalars, with the same unit as scalar_length.
     fn length() Int
@@ -44,9 +46,11 @@ interface StringOperations:
     // Replaces the first occurrence of old; text without a match is unchanged.
     // An empty old matches at the first scalar boundary, so new is inserted at the start.
     fn replace_first(old: String, new: String) String
-    // Replaces every nonoverlapping occurrence of old, scanning left to right; inserted text is not rescanned.
-    // An empty old matches at each scalar boundary, so "ab".replace("", "-") is "-a-b-".
-    // Output beyond the string limit faults like concat; use Regex.replace_all for a bounded replacement.
+    /*
+    Replaces every nonoverlapping occurrence of old, scanning left to right; inserted text is not rescanned.
+    An empty old matches at each scalar boundary, so "ab".replace("", "-") is "-a-b-".
+    Output beyond the string limit faults like concat; use Regex.replace_all for a bounded replacement.
+    */
     fn replace(old: String, new: String) String
     // Returns the number of Unicode scalar values in the string.
     fn scalar_length() Int
@@ -76,13 +80,13 @@ interface StringOperations:
     fn index_of(value: String) Int?
     // Returns the last matching Unicode scalar index or none; empty value matches at scalar_length().
     fn last_index_of(value: String) Int?
-    // Removes Unicode whitespace at the start.
-    fn trim_start() String
-    // Removes Unicode whitespace at the end.
-    fn trim_end() String
-    // Pads on the left until the scalar length reaches `target_length`, repeating `padding` and cutting its last copy.
-    // A shorter or negative target or empty padding returns the text unchanged; output beyond the string limit faults like `concat`.
-    // Example: `"7".pad_start(3, "0")` is `"007"`.
+    fn trim_start() String  // Removes Unicode whitespace at the start.
+    fn trim_end() String  // Removes Unicode whitespace at the end.
+    /*
+    Pads on the left until the scalar length reaches `target_length`, repeating `padding` and cutting its last copy.
+    A shorter or negative target or empty padding returns the text unchanged; output beyond the string limit faults like `concat`.
+    Example: `"7".pad_start(3, "0")` is `"007"`.
+    */
     fn pad_start(target_length: Int, padding: String) String
     // Pads on the right like `pad_start`. Example: `"id".pad_end(5, ".")` is `"id..."`.
     fn pad_end(target_length: Int, padding: String) String
@@ -412,7 +416,5 @@ interface Float32Operations:
     fn sign() Float32
     // Truncates toward zero, or returns none for nonfinite values or Int overflow.
     fn truncate_to_int() Int?
-    // Converts to Float; every Float32 converts exactly.
-    fn to_float() Float
-    // Converts to Float64; every Float32 converts exactly.
-    fn to_float64() Float64
+    fn to_float() Float  // Converts to Float; every Float32 converts exactly.
+    fn to_float64() Float64  // Converts to Float64; every Float32 converts exactly.

@@ -2,15 +2,17 @@ import Bytes from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 import base64_decode, base64_encode from "@std/data/encoding.ms"
 
-// PEM (RFC 7468) text armor: `-----BEGIN LABEL-----`, base64 body, `-----END LABEL-----`.
-// Certificates, keys and CSRs travel as PEM blocks; `parse` finds every block in a text and
-// `encode_all` writes blocks back with 64-column lines.
-//
-//     import parse, encode_all, PemBlock from "@std/data/pem.ms"
-//     let blocks = parse(text).get()
-//     blocks[0].label                # "CERTIFICATE"
-//     blocks[0].data                 # the decoded DER bytes
-//     encode_all([PemBlock(label: "NOTE", data: "hi".to_bytes())])
+/*
+PEM (RFC 7468) text armor: `-----BEGIN LABEL-----`, base64 body, `-----END LABEL-----`.
+Certificates, keys and CSRs travel as PEM blocks; `parse` finds every block in a text and
+`encode_all` writes blocks back with 64-column lines.
+
+    import parse, encode_all, PemBlock from "@std/data/pem.ms"
+    let blocks = parse(text).get()
+    blocks[0].label                # "CERTIFICATE"
+    blocks[0].data                 # the decoded DER bytes
+    encode_all([PemBlock(label: "NOTE", data: "hi".to_bytes())])
+*/
 
 // One PEM block: its label, optional RFC 1421 style headers, and decoded body bytes.
 export type PemBlock:

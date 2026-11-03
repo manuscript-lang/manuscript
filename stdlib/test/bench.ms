@@ -4,15 +4,17 @@ import environment, set_environment from "@std/os/process.ms"
 import fail from "@std/test/test.ms"
 import monotonic from "@std/os/time.ms"
 
-// Measurement driver for `bench` blocks. `ms bench` runs each block in its own process; the block's body is one iteration,
-// and this module repeats it, times it, and reports per-iteration statistics. The entry that `ms bench` builds calls
-// `run_bench_block` with the block's body, so programs do not call it themselves; a body may instead time its own work
-// with `measure`.
-// Settings come from environment variables that `ms bench` fills from its flags: MS_BENCH_TIME_MS (target time per sample,
-// default 100), MS_BENCH_SAMPLES (default 10), and MS_BENCH_ITERATIONS (a fixed iteration count; 0 calibrates).
-// A block written `bench "name" per N:` performs N operations per iteration, and every statistic is per operation.
-// The result is one line on standard output: `MSBENCH ` followed by a JSON object of nanoseconds per iteration.
-// Run settings.
+/*
+Measurement driver for `bench` blocks. `ms bench` runs each block in its own process; the block's body is one iteration,
+and this module repeats it, times it, and reports per-iteration statistics. The entry that `ms bench` builds calls
+`run_bench_block` with the block's body, so programs do not call it themselves; a body may instead time its own work
+with `measure`.
+Settings come from environment variables that `ms bench` fills from its flags: MS_BENCH_TIME_MS (target time per sample,
+default 100), MS_BENCH_SAMPLES (default 10), and MS_BENCH_ITERATIONS (a fixed iteration count; 0 calibrates).
+A block written `bench "name" per N:` performs N operations per iteration, and every statistic is per operation.
+The result is one line on standard output: `MSBENCH ` followed by a JSON object of nanoseconds per iteration.
+Run settings.
+*/
 type Settings:
     // Target duration of one sample in nanoseconds; calibration grows the iteration count until a sample takes this long.
     target_nanoseconds: Int
@@ -53,12 +55,14 @@ fn next_count(count: Int, elapsed: Int, target: Int) Int:
     let scaled = count * target / max(elapsed, 1) * 12 / 10
     return min(max(scaled, count + 1), min(count * 100, max_iterations))
 
-// Runs `work` repeatedly and writes the statistics line, per operation for `operations` operations per run.
-// A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
-//   bench "sorts":
-//       let data = ints(100000)
-//       try measure(100000, fn: keep(data.sorted().length()))
-// Everything the body does before `measure` runs once, untimed.
+/*
+Runs `work` repeatedly and writes the statistics line, per operation for `operations` operations per run.
+A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
+  bench "sorts":
+      let data = ints(100000)
+      try measure(100000, fn: keep(data.sorted().length()))
+Everything the body does before `measure` runs once, untimed.
+*/
 export fn measure(operations: Int, work: fn() Unit!) Unit!:
     let body = work
     let config = settings()

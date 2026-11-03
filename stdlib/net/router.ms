@@ -67,11 +67,13 @@ export type Route:
     // Runs when the route matches, with the values the pattern captured.
     handler: fn(HttpExchange, RouteParams) Unit!
 
-// Routes requests by method and path and wraps them in middleware.
-//
-// Patterns are `/` followed by literal segments, `:name` parameters that match one segment, and
-// a final `*name` that matches the rest of the path (possibly nothing). The first route
-// registered that matches wins, and a trailing slash is part of the path.
+/*
+Routes requests by method and path and wraps them in middleware.
+
+Patterns are `/` followed by literal segments, `:name` parameters that match one segment, and
+a final `*name` that matches the rest of the path (possibly nothing). The first route
+registered that matches wins, and a trailing slash is part of the path.
+*/
 export type Router:
     // Registered routes in registration order.
     routes: List[Route] = []
@@ -79,9 +81,11 @@ export type Router:
     middleware: List[fn(HttpExchange, fn(HttpExchange) Unit!) Unit!] = []
 
 impl Router:
-    // Registers `handler` for `method` and `pattern`.
-    // A route also answers HEAD when `method` is GET and no HEAD route matches. Registering the
-    // same method and pattern shape twice returns Duplicate.
+    /*
+    Registers `handler` for `method` and `pattern`.
+    A route also answers HEAD when `method` is GET and no HEAD route matches. Registering the
+    same method and pattern shape twice returns Duplicate.
+    */
     var fn route(
         method: HttpMethod,
         pattern: String,
@@ -118,10 +122,12 @@ impl Router:
     var fn options(pattern: String, handler: fn(HttpExchange, RouteParams) Unit!) Unit!:
         return self.route(HttpMethod.Options, pattern, handler)
 
-    // Registers every route of `routes` under `prefix`, wrapped in that router's own middleware.
-    // The prefix is `/` followed by segments with no trailing slash, and it may hold parameters.
-    // The mounted router's `/` route answers `prefix` itself. Later changes to `routes` do not
-    // reach this router.
+    /*
+    Registers every route of `routes` under `prefix`, wrapped in that router's own middleware.
+    The prefix is `/` followed by segments with no trailing slash, and it may hold parameters.
+    The mounted router's `/` route answers `prefix` itself. Later changes to `routes` do not
+    reach this router.
+    */
     var fn mount(prefix: String, routes: Router) Unit!:
         if prefix.ends_with("/") and prefix != "/":
             return error(invalid_pattern(prefix))
@@ -140,16 +146,20 @@ impl Router:
 
         return ok(unit)
 
-    // Adds middleware around every route and around the 404, 405 and OPTIONS answers.
-    // It receives the exchange and a continuation that runs the rest of the chain with the exchange
-    // it is given, so a middleware can pass on a wrapped one (see `request_id` and `access_log`).
+    /*
+    Adds middleware around every route and around the 404, 405 and OPTIONS answers.
+    It receives the exchange and a continuation that runs the rest of the chain with the exchange
+    it is given, so a middleware can pass on a wrapped one (see `request_id` and `access_log`).
+    */
     var fn use(middleware: fn(HttpExchange, fn(HttpExchange) Unit!) Unit!) Unit:
         self.middleware.append(middleware)
 
-    // Returns the function to pass to `serve`.
-    // Unmatched paths answer 404, a path matched only under other methods answers 405 with
-    // `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *` answers 204 with
-    // the `Allow` of every registered method.
+    /*
+    Returns the function to pass to `serve`.
+    Unmatched paths answer 404, a path matched only under other methods answers 405 with
+    `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *` answers 204 with
+    the `Allow` of every registered method.
+    */
     fn handler() fn(HttpExchange) Unit!:
         let routes = share(self.routes.clone())
         let middleware = self.middleware.clone()
@@ -402,9 +412,11 @@ fn allow_text(methods: List[String]) String:
     return all.distinct().sorted().join(", ")
 
 impl Router:
-    // Runs `request` through the router without a socket and returns the response it produced.
-    // A handler error is returned as is; the server would answer it with a 500. A handler that
-    // sends nothing answers 204.
+    /*
+    Runs `request` through the router without a socket and returns the response it produced.
+    A handler error is returned as is; the server would answer it with a 500. A handler that
+    sends nothing answers 204.
+    */
     fn call(request: HttpRequest) HttpResponse!:
         let state = share(
             TestState(
@@ -649,9 +661,11 @@ impl HttpExchange for Tap:
         counted(self.state, 0, data.length())
         return ok(unit)
 
-// Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128
-// printable ASCII characters, otherwise a new UUID. The id is set on the request headers the wrapped exchange reports, where
-// handlers and later middleware read it, and added to the response as `X-Request-Id`.
+/*
+Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128
+printable ASCII characters, otherwise a new UUID. The id is set on the request headers the wrapped exchange reports, where
+handlers and later middleware read it, and added to the response as `X-Request-Id`.
+*/
 export fn request_id() fn(HttpExchange, fn(HttpExchange) Unit!) Unit!:
     return fn exchange, next: with_request_id(exchange, next)
 
@@ -690,10 +704,12 @@ type AccessEntry:
     bytes: Int
     duration_ms: Int
 
-// Middleware that writes one Info record named `request` to `logger` after each request, with
-// the method, path, protocol, response status, body bytes written and duration in milliseconds.
-// A handler that sends nothing is logged as 204 and one that fails before sending as 500. A
-// logging failure never fails the request.
+/*
+Middleware that writes one Info record named `request` to `logger` after each request, with
+the method, path, protocol, response status, body bytes written and duration in milliseconds.
+A handler that sends nothing is logged as 204 and one that fails before sending as 500. A
+logging failure never fails the request.
+*/
 export fn access_log(logger: Logger) fn(HttpExchange, fn(HttpExchange) Unit!) Unit!:
     return fn exchange, next: with_access_log(logger, exchange, next)
 

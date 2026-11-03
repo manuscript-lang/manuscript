@@ -261,9 +261,11 @@ impl Timestamp:
     fn calendar(zone: String) Calendar!:
         return msstd_time_timestamp_calendar(self, zone)
 
-    // Formats this timestamp in a zone with a token pattern.
-    // Tokens are `YYYY`, `MM`, `DD`, `HH`, `mm`, `ss`, `SSS` (milliseconds), `ZZ` (offset such as `+05:30`), and `zone` (abbreviation); other text is copied.
-    // An unknown zone returns InvalidInput.
+    /*
+    Formats this timestamp in a zone with a token pattern.
+    Tokens are `YYYY`, `MM`, `DD`, `HH`, `mm`, `ss`, `SSS` (milliseconds), `ZZ` (offset such as `+05:30`), and `zone` (abbreviation); other text is copied.
+    An unknown zone returns InvalidInput.
+    */
     fn format(pattern: String, zone: String) String!:
         return msstd_time_timestamp_format(self, pattern, zone)
 
@@ -343,12 +345,14 @@ export fn minutes(n: Int) Duration:
 export fn hours(n: Int) Duration:
     return nanoseconds(n * 3600000000000)
 
-// Parses a span such as `1h30m`, `-250ms`, or `1.5µs`, including every Duration.to_string() result.
-// Accepts one optional leading `+` or `-`, then decimal components with units `ns`, `us`, `µs`, `μs`, `ms`, `s`, `m`, or `h`.
-// Components may repeat or appear in any order; `.5s` and `1.s` are valid. Bare `0` is also valid, including `+0` and `-0`.
-// Fractions may have any number of ASCII digits; each component truncates toward zero to whole nanoseconds, without floating-point rounding. Negative zero becomes zero.
-// Whitespace, exponents, missing units, and other syntax return InvalidData, even after an overflowing prefix.
-// A syntactically valid result outside -9223372036854775808 through 9223372036854775807 nanoseconds returns OutOfRange.
+/*
+Parses a span such as `1h30m`, `-250ms`, or `1.5µs`, including every Duration.to_string() result.
+Accepts one optional leading `+` or `-`, then decimal components with units `ns`, `us`, `µs`, `μs`, `ms`, `s`, `m`, or `h`.
+Components may repeat or appear in any order; `.5s` and `1.s` are valid. Bare `0` is also valid, including `+0` and `-0`.
+Fractions may have any number of ASCII digits; each component truncates toward zero to whole nanoseconds, without floating-point rounding. Negative zero becomes zero.
+Whitespace, exponents, missing units, and other syntax return InvalidData, even after an overflowing prefix.
+A syntactically valid result outside -9223372036854775808 through 9223372036854775807 nanoseconds returns OutOfRange.
+*/
 export fn parse_duration(text: String) Duration!:
     let data = text.to_bytes()
     let size = data.length()
@@ -474,9 +478,11 @@ export fn parse_duration(text: String) Duration!:
 export fn parse_timestamp(text: String) Timestamp!:
     return msstd_time_parse_timestamp(text)
 
-// Builds a timestamp from calendar fields interpreted in a time zone (see `Timestamp.calendar` for zone names).
-// Fields outside their calendar range, such as month 13 or February 30, return OutOfRange; an unknown zone returns InvalidInput.
-// A local time skipped or repeated by a daylight-saving change resolves to the earlier valid offset.
+/*
+Builds a timestamp from calendar fields interpreted in a time zone (see `Timestamp.calendar` for zone names).
+Fields outside their calendar range, such as month 13 or February 30, return OutOfRange; an unknown zone returns InvalidInput.
+A local time skipped or repeated by a daylight-saving change resolves to the earlier valid offset.
+*/
 export fn from_calendar(
     year: Int,
     month: Int,
@@ -535,9 +541,11 @@ impl Deadline:
     fn wait() Unit:
         sleep(self.remaining())
 
-// A source of evenly spaced instants, for `for tick in ticker(period):` loops that run work on a schedule.
-// Each `next` suspends the task until the next tick; leave the loop with `break` to stop. Ticks do not drift
-// with the loop body: a body slower than the period gets the next tick at once, and the ticks it missed are dropped.
+/*
+A source of evenly spaced instants, for `for tick in ticker(period):` loops that run work on a schedule.
+Each `next` suspends the task until the next tick; leave the loop with `break` to stop. Ticks do not drift
+with the loop body: a body slower than the period gets the next tick at once, and the ticks it missed are dropped.
+*/
 export type Ticker:
     // The time between ticks.
     period: Duration

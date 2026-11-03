@@ -2,9 +2,11 @@ import Bytes from "@std/bytes.ms"
 import ReadStream, WriteStream, read_all from "@std/io/io.ms"
 import fail from "@std/test/test.ms"
 
-// Misbehaving streams for testing code that reads and writes. Each wrapper takes its input first, like the
-// helpers in `@std/io/streams.ms`, so `from_bytes(data) | one_byte` is a reader that trickles.
-// `check_reader` is the conformance check for a `ReadStream` you wrote.
+/*
+Misbehaving streams for testing code that reads and writes. Each wrapper takes its input first, like the
+helpers in `@std/io/streams.ms`, so `from_bytes(data) | one_byte` is a reader that trickles.
+`check_reader` is the conformance check for a `ReadStream` you wrote.
+*/
 type OneByte:
     input: ReadStream
 

@@ -1,10 +1,12 @@
 import Pair from "@std/collections/collections.ms"
 import panic from "@std/core.ms"
 
-// Combinatorial and sequence helpers over lists, in the spirit of Python's `itertools`.
-// Every function builds a new list of copies and leaves its inputs unchanged, so the elements must be Clonable.
-// Results that grow combinatorially (`permutations`, `combinations`, `product`) are built whole: bound the input size.
-// `itertools.pairwise([1, 2, 3])` pairs each item with the next one. Chunking and sliding windows are `List.chunks` and `List.windows`.
+/*
+Combinatorial and sequence helpers over lists, in the spirit of Python's `itertools`.
+Every function builds a new list of copies and leaves its inputs unchanged, so the elements must be Clonable.
+Results that grow combinatorially (`permutations`, `combinations`, `product`) are built whole: bound the input size.
+`itertools.pairwise([1, 2, 3])` pairs each item with the next one. Chunking and sliding windows are `List.chunks` and `List.windows`.
+*/
 
 // A run of consecutive items that share a key, from `group_runs`.
 export type Run[K: Clonable, T: Clonable]:
@@ -21,9 +23,11 @@ export fn pairwise[T: Clonable](values: List[T]) List[Pair[T, T]]:
         out.append(Pair(values[i - 1].clone(), values[i].clone()))
     return out
 
-// Returns the running results of folding `step` over the items: the first item, then `step(first, second)`, and so on.
-// The result has as many items as the input; an empty list gives an empty list.
-// Example: `accumulate([1, 2, 3, 4], fn a, b: a + b)` is `[1, 3, 6, 10]`.
+/*
+Returns the running results of folding `step` over the items: the first item, then `step(first, second)`, and so on.
+The result has as many items as the input; an empty list gives an empty list.
+Example: `accumulate([1, 2, 3, 4], fn a, b: a + b)` is `[1, 3, 6, 10]`.
+*/
 export fn accumulate[T: Clonable](values: List[T], step: fn(T, T) T) List[T]:
     var out: List[T] = []
 
@@ -69,9 +73,11 @@ export fn zip_longest[A: Clonable, B: Clonable](
 
     return out
 
-// Splits the list into runs of consecutive items whose `key` is equal (Python `itertools.groupby`); `key` is called once per item in order.
-// Items with the same key that are not adjacent form separate runs: sort first to gather them. An empty list gives an empty list.
-// Example: `group_runs([1, 1, 2, 1], fn n: n)` has the runs `1 1`, `2` and `1`.
+/*
+Splits the list into runs of consecutive items whose `key` is equal (Python `itertools.groupby`); `key` is called once per item in order.
+Items with the same key that are not adjacent form separate runs: sort first to gather them. An empty list gives an empty list.
+Example: `group_runs([1, 1, 2, 1], fn n: n)` has the runs `1 1`, `2` and `1`.
+*/
 export fn group_runs[T: Clonable, K: Equal & Clonable](
     values: List[T],
     key: fn(T) K
@@ -89,9 +95,11 @@ export fn group_runs[T: Clonable, K: Equal & Clonable](
 
     return out
 
-// Returns every ordering of `size` items chosen from the list, in lexicographic order of position; items are distinguished by position, not value.
-// Omit `size` for full-length orderings. A `size` outside 0 through the list length faults.
-// Example: `permutations([1, 2, 3], 2)` is `[[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]`.
+/*
+Returns every ordering of `size` items chosen from the list, in lexicographic order of position; items are distinguished by position, not value.
+Omit `size` for full-length orderings. A `size` outside 0 through the list length faults.
+Example: `permutations([1, 2, 3], 2)` is `[[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]`.
+*/
 export fn permutations[T: Clonable](values: List[T], size: Int? = none) List[List[T]]:
     let n = values.length()
     let k = size.get(n)
@@ -125,9 +133,11 @@ fn extend_permutations[T: Clonable](
             chosen.pop()
             used.set(i, false)
 
-// Returns every selection of `size` items in their original order, in lexicographic order of position; items are distinguished by position, not value.
-// A `size` outside 0 through the list length faults.
-// Example: `combinations([1, 2, 3], 2)` is `[[1, 2], [1, 3], [2, 3]]`.
+/*
+Returns every selection of `size` items in their original order, in lexicographic order of position; items are distinguished by position, not value.
+A `size` outside 0 through the list length faults.
+Example: `combinations([1, 2, 3], 2)` is `[[1, 2], [1, 3], [2, 3]]`.
+*/
 export fn combinations[T: Clonable](values: List[T], size: Int) List[List[T]]:
     if size < 0 or size > values.length():
         panic("combinations: size must be from 0 to the list length")
@@ -153,9 +163,11 @@ fn extend_combinations[T: Clonable](
         extend_combinations(values, k, i + 1, var chosen, var out)
         chosen.pop()
 
-// Returns the cartesian product: one list per way of taking one item from each input list, in lexicographic order, the last list varying fastest.
-// No input lists gives one empty combination; any empty input list gives an empty result.
-// Example: `product([[1, 2], [3, 4]])` is `[[1, 3], [1, 4], [2, 3], [2, 4]]`.
+/*
+Returns the cartesian product: one list per way of taking one item from each input list, in lexicographic order, the last list varying fastest.
+No input lists gives one empty combination; any empty input list gives an empty result.
+Example: `product([[1, 2], [3, 4]])` is `[[1, 3], [1, 4], [2, 3], [2, 4]]`.
+*/
 export fn product[T: Clonable](lists: List[List[T]]) List[List[T]]:
     var out: List[List[T]] = [[]]
 

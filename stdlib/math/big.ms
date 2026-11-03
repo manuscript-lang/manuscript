@@ -1,10 +1,12 @@
 import panic from "@std/core.ms"
 import BigInt, frexp, from_int, ldexp, parse, parse_int from "@std/math/math.ms"
 
-// An exact fraction of two arbitrary-precision integers, always in lowest terms with a positive denominator,
-// so two equal values compare equal with `==`. Arithmetic uses named methods and never rounds.
-// Build values with `rat`, `rat_of_int`, `rat_of_big_int`, `rat_of_float` or `parse_rat`.
-// Example: `(try parse_rat("1/3")).add(try parse_rat("1/6")).format()` is `"1/2"`.
+/*
+An exact fraction of two arbitrary-precision integers, always in lowest terms with a positive denominator,
+so two equal values compare equal with `==`. Arithmetic uses named methods and never rounds.
+Build values with `rat`, `rat_of_int`, `rat_of_big_int`, `rat_of_float` or `parse_rat`.
+Example: `(try parse_rat("1/3")).add(try parse_rat("1/6")).format()` is `"1/2"`.
+*/
 export opaque type BigRat:
     // The signed numerator in lowest terms.
     num: BigInt
@@ -273,10 +275,12 @@ impl BigRat:
 // The largest supported precision in bits.
 export let max_big_float_precision: Int = 1000000
 
-// An arbitrary-precision binary floating-point number, `mantissa * 2^exponent`, whose mantissa holds at most `precision` bits.
-// Every operation rounds once, to nearest with ties to even, at the larger operand precision, so results are exact
-// up to that single rounding. Zero is unsigned and there are no infinities or NaN: out-of-domain operations return a Result.
-// Example: `big_float_of_int(2, 100).sqrt()` gives the square root of two to 100 bits, and `to_fixed(30)` prints it.
+/*
+An arbitrary-precision binary floating-point number, `mantissa * 2^exponent`, whose mantissa holds at most `precision` bits.
+Every operation rounds once, to nearest with ties to even, at the larger operand precision, so results are exact
+up to that single rounding. Zero is unsigned and there are no infinities or NaN: out-of-domain operations return a Result.
+Example: `big_float_of_int(2, 100).sqrt()` gives the square root of two to 100 bits, and `to_fixed(30)` prints it.
+*/
 export opaque type BigFloat:
     // The signed integer mantissa, at most `prec` bits; zero when the value is zero.
     mant: BigInt

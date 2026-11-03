@@ -24,15 +24,19 @@ impl Bytes:
     // Tests whether `value` occurs as a byte subsequence.
     fn contains(value: Bytes) Bool: ...
 
-    // Splits exact byte separators into a fresh list of immutable byte views.
-    // Nonempty separators retain empty parts; empty data then yields one empty Bytes.
-    // Omitted/none max_parts is unlimited; zero returns no parts, negatives fault.
-    // A cap truncates parts; empty separator yields one Bytes per byte, no parts for empty data.
+    /*
+    Splits exact byte separators into a fresh list of immutable byte views.
+    Nonempty separators retain empty parts; empty data then yields one empty Bytes.
+    Omitted/none max_parts is unlimited; zero returns no parts, negatives fault.
+    A cap truncates parts; empty separator yields one Bytes per byte, no parts for empty data.
+    */
     fn split(separator: Bytes, max_parts: Int?) List[Bytes]: ...
 
-    // Selects [start, end) in bytes; negative bounds are relative to the end.
-    // Bounds outside 0 <= start <= end <= length() return an `Error` of kind `OutOfRange`.
-    // The immutable result may share storage with the receiver.
+    /*
+    Selects [start, end) in bytes; negative bounds are relative to the end.
+    Bounds outside 0 <= start <= end <= length() return an `Error` of kind `OutOfRange`.
+    The immutable result may share storage with the receiver.
+    */
     fn slice(start: Int, end: Int) Bytes!: ...
 
     // Returns an unsigned byte; negative indexes are relative to the end. An out-of-range index returns `default`, and without one raises a fault.
@@ -255,9 +259,11 @@ impl BytesCodecs for Bytes:
     fn uint64_be(at: Int) UInt64!:
         return read_uint64(self, at, false)
 
-    // Reads an unsigned base-128 integer, least-significant group first, from absolute byte offset `at`.
-    // Reads at most ten bytes; byte ten must be 0 or 1. Accepts nonminimal encodings and ignores trailing bytes.
-    // Offsets require 0 <= at <= length(); an unterminated shorter input is Incomplete.
+    /*
+    Reads an unsigned base-128 integer, least-significant group first, from absolute byte offset `at`.
+    Reads at most ten bytes; byte ten must be 0 or 1. Accepts nonminimal encodings and ignores trailing bytes.
+    Offsets require 0 <= at <= length(); an unterminated shorter input is Incomplete.
+    */
     fn uvarint(at: Int) VarintRead[UInt64]!:
         if at < 0 or at > self.length():
             return error(Error("binary: invalid varint offset", kind: OutOfRange))

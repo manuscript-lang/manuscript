@@ -20,10 +20,12 @@ export type SseLimits:
     // Largest total of all field lines in one event, excluding line endings and comments; none adds no budget.
     max_event_bytes: Int?
 
-// Decodes a Server-Sent Events stream from byte chunks of any size.
-//
-// Chunks may split any line, line ending or UTF-8 scalar. The decoder never reads,
-// closes, or owns a stream.
+/*
+Decodes a Server-Sent Events stream from byte chunks of any size.
+
+Chunks may split any line, line ending or UTF-8 scalar. The decoder never reads,
+closes, or owns a stream.
+*/
 export interface SseDecoder:
     // Decodes one chunk and returns the events it completed, in order.
     // An error is final for the decoder, which returns it again on later calls.

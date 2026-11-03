@@ -1,8 +1,10 @@
 import Bytes from "@std/bytes.ms"
 
-// Fixed-width number codecs for Bytes and BytesBuilder, written in Manuscript over one word reader and four float bit casts.
-// They apply wherever Bytes and BytesBuilder are used, without an import.
-// The `width` bytes at `at` (1, 2, 4 or 8) as an unsigned number; eight bytes keep their bit pattern as an Int.
+/*
+Fixed-width number codecs for Bytes and BytesBuilder, written in Manuscript over one word reader and four float bit casts.
+They apply wherever Bytes and BytesBuilder are used, without an import.
+The `width` bytes at `at` (1, 2, 4 or 8) as an unsigned number; eight bytes keep their bit pattern as an Int.
+*/
 export extern fn msrt_bytes_read_word(
     data: Bytes,
     at: Int,

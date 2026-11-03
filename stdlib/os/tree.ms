@@ -2,19 +2,21 @@ import Bytes from "@std/bytes.ms"
 import DirectoryEntry, list, read_file from "@std/os/fs.ms"
 import base64_decode from "@std/data/encoding.ms"
 
-// Read-only file trees you can swap: code that takes a `FileTree` reads the host disk (`host_tree`) or an in-memory
-// tree (`MemoryTree`) the same way, so tests need no temporary directories. `walk` visits every entry under a root.
-//
-// Paths in a tree are `/`-separated and relative to the tree's root. `.` and empty parts are ignored and `..` steps
-// up; a path that would leave the root is `InvalidInput`.
-//
-// ```manuscript
-// import FileTree, walk from "@std/os/tree.ms"
-//
-// fn names(tree: FileTree) List[String]:
-//     let found = walk(tree).get(List())
-//     return found.map(fn e: e.path.clone())
-// ```
+/*
+Read-only file trees you can swap: code that takes a `FileTree` reads the host disk (`host_tree`) or an in-memory
+tree (`MemoryTree`) the same way, so tests need no temporary directories. `walk` visits every entry under a root.
+
+Paths in a tree are `/`-separated and relative to the tree's root. `.` and empty parts are ignored and `..` steps
+up; a path that would leave the root is `InvalidInput`.
+
+```manuscript
+import FileTree, walk from "@std/os/tree.ms"
+
+fn names(tree: FileTree) List[String]:
+    let found = walk(tree).get(List())
+    return found.map(fn e: e.path.clone())
+```
+*/
 
 // A directory tree whose files can be read and whose directories can be listed.
 export interface FileTree:
@@ -268,9 +270,11 @@ impl FileTree for MemoryTree:
                 )
         return limited(entries.sorted(by_name), max_entries)
 
-// A read-only tree whose files stay Base64 text until they are read. Generated modules for `[embed]` in
-// `ms.toml` build one with `embedded_tree`: making it costs one map entry per file and one index entry per path,
-// and `read` decodes only the file asked for.
+/*
+A read-only tree whose files stay Base64 text until they are read. Generated modules for `[embed]` in
+`ms.toml` build one with `embedded_tree`: making it costs one map entry per file and one index entry per path,
+and `read` decodes only the file asked for.
+*/
 export type EmbeddedTree:
     // Base64 text of each file, by clean path.
     encoded: Map[String, String]
@@ -364,9 +368,11 @@ export type WalkEntry:
     // True when the entry is a directory (its children follow it).
     directory: Bool
 
-// Lists everything below `root` depth first, a directory before its children and siblings sorted by name.
-// Symbolic links on a host tree appear as non-directory entries and are not followed. `max_entries` bounds the
-// number of entries found, returning `LimitExceeded` rather than a partial list.
+/*
+Lists everything below `root` depth first, a directory before its children and siblings sorted by name.
+Symbolic links on a host tree appear as non-directory entries and are not followed. `max_entries` bounds the
+number of entries found, returning `LimitExceeded` rather than a partial list.
+*/
 export fn walk(
     tree: FileTree,
     root: String = "",

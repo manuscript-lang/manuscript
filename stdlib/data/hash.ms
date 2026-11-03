@@ -13,9 +13,11 @@ fn unsigned(raw: Int) UInt64:
     let low = bit_and(raw, 4294967295).to_uint64().get(0)
     return high * 4294967296 + low
 
-// Hashes `data` with 32-bit FNV-1a (offset 2166136261, prime 16777619).
-// These hashes spread keys over buckets; they detect nothing adversarial and authenticate nothing.
-// `fnv1a32("a".to_bytes())` returns 3826002220 (0xE40C292C).
+/*
+Hashes `data` with 32-bit FNV-1a (offset 2166136261, prime 16777619).
+These hashes spread keys over buckets; they detect nothing adversarial and authenticate nothing.
+`fnv1a32("a".to_bytes())` returns 3826002220 (0xE40C292C).
+*/
 export fn fnv1a32(data: Bytes) UInt32:
     var hash = 2166136261
     for index in 0..data.length():
@@ -68,9 +70,11 @@ impl Crc64Polynomial:
             Ecma: return -3932672073523589310
             Iso: return -2882303761517117440
 
-// A 64-bit CRC built from ordered chunks, retaining no input bytes. Initial register and final XOR are all ones.
-// `var sum = Crc64(Crc64Polynomial.Ecma)` then `sum.update("123456789".to_bytes())` gives `sum.value()` = 11051210869376104954.
-// Reading the value does not reset it. It detects accidental corruption; it does not authenticate data.
+/*
+A 64-bit CRC built from ordered chunks, retaining no input bytes. Initial register and final XOR are all ones.
+`var sum = Crc64(Crc64Polynomial.Ecma)` then `sum.update("123456789".to_bytes())` gives `sum.value()` = 11051210869376104954.
+Reading the value does not reset it. It detects accidental corruption; it does not authenticate data.
+*/
 export type Crc64:
     // The polynomial this checksum uses.
     polynomial: Crc64Polynomial
@@ -105,10 +109,12 @@ export fn crc64(polynomial: Crc64Polynomial, data: Bytes) UInt64:
     sum.update(data)
     return sum.value()
 
-// A seeded, non-cryptographic 64-bit hash for hash tables and sharding.
-// Equal seeds hash equal bytes to equal values on every platform; `random_seed()` draws a fresh seed per call,
-// so hash values are not stable across runs. Do not use it to authenticate data or defend against chosen input.
-// `let seed = MapHash(seed: random_seed())` then `seed.hash("key".to_bytes())` buckets keys unpredictably.
+/*
+A seeded, non-cryptographic 64-bit hash for hash tables and sharding.
+Equal seeds hash equal bytes to equal values on every platform; `random_seed()` draws a fresh seed per call,
+so hash values are not stable across runs. Do not use it to authenticate data or defend against chosen input.
+`let seed = MapHash(seed: random_seed())` then `seed.hash("key".to_bytes())` buckets keys unpredictably.
+*/
 export type MapHash:
     // The seed mixed into every hash.
     seed: Int

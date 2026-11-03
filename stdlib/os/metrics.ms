@@ -27,11 +27,13 @@ fn bucket_top(index: Int) Int:
     let low = shift_left(offset % 32 + 32, shift)
     return low + shift_left(1, shift) - 1
 
-// A latency histogram: records non-negative `Int` values, usually nanoseconds, in fixed memory and
-// answers count, extremes, mean and percentiles. Values below 64 are exact and larger ones fall in
-// buckets about 3% wide, so a percentile is an upper bound within that error. One histogram belongs to
-// one task; share it between tasks behind a `Shared`.
-// Example: `latency.time(fn: handle(request))` records one span, and `latency.percentile(99.0)` reads the slowest 1%.
+/*
+A latency histogram: records non-negative `Int` values, usually nanoseconds, in fixed memory and
+answers count, extremes, mean and percentiles. Values below 64 are exact and larger ones fall in
+buckets about 3% wide, so a percentile is an upper bound within that error. One histogram belongs to
+one task; share it between tasks behind a `Shared`.
+Example: `latency.time(fn: handle(request))` records one span, and `latency.percentile(99.0)` reads the slowest 1%.
+*/
 export opaque type Histogram:
     // Observation count per bucket.
     counts: List[Int]

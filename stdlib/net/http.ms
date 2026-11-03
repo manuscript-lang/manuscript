@@ -26,9 +26,11 @@ import (
     msstd_http_body_read_all
 ) from "@std/internal/http.ms"
 
-// Mutable HTTP fields with ASCII case-insensitive names and separate values, which are Strings by default and Bytes on request.
-// Names keep first-insertion order and spelling; values keep append order.
-// Headers are an owned value: assignment moves them, mutation needs `var`, and clone() copies them.
+/*
+Mutable HTTP fields with ASCII case-insensitive names and separate values, which are Strings by default and Bytes on request.
+Names keep first-insertion order and spelling; values keep append order.
+Headers are an owned value: assignment moves them, mutation needs `var`, and clone() copies them.
+*/
 export extern type HttpHeaders
 
 impl HttpHeaders:
@@ -287,9 +289,11 @@ export type HttpServer:
     native: NativeHttpServer
 
 impl Closeable for HttpServer:
-    // Stops accepting connections, waits up to the grace period for in-flight requests, then cancels the rest and waits for them.
-    // SIGINT/SIGTERM drains the same way when grace is nonzero: in-flight requests finish within the grace period before the program exits 130/143.
-    // Safe to call repeatedly. A request handler calling close on its own server faults, and a shutdown error is raised as a fault.
+    /*
+    Stops accepting connections, waits up to the grace period for in-flight requests, then cancels the rest and waits for them.
+    SIGINT/SIGTERM drains the same way when grace is nonzero: in-flight requests finish within the grace period before the program exits 130/143.
+    Safe to call repeatedly. A request handler calling close on its own server faults, and a shutdown error is raised as a fault.
+    */
     var fn close() Unit!:
         msstd_http_server_close(self.native)
         return ok(unit)

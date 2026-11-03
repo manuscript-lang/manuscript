@@ -2,24 +2,26 @@ import Iterator from "@std/core.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import ReadStream, WriteStream from "@std/io/io.ms"
 
-// Buffered reading, buffered writing, and token scanning over byte streams.
-//
-// `BufferedReader` adds look-ahead (`peek`), delimiter reads (`read_until`), exact reads (`read_exact`) and
-// single-scalar reads (`read_rune`) to any `ReadStream`, and is itself a `ReadStream`. `BufferedWriter` batches
-// small writes into larger ones. `Scanner` walks a stream token by token (lines, words, scalars, a delimiter, or a
-// split function you supply).
-//
-// ```manuscript
-// import buffered_reader, scan, ScanMode from "@std/io/buffered.ms"
-// import from_bytes from "@std/io/streams.ms"
-//
-// fn words_of(text: String) List[String]:
-//     var scanner = scan(from_bytes(text.to_bytes()), ScanMode.Words)
-//     var out = List[String]()
-//     for word in scanner:
-//         out.append(word.clone())
-//     return out
-// ```
+/*
+Buffered reading, buffered writing, and token scanning over byte streams.
+
+`BufferedReader` adds look-ahead (`peek`), delimiter reads (`read_until`), exact reads (`read_exact`) and
+single-scalar reads (`read_rune`) to any `ReadStream`, and is itself a `ReadStream`. `BufferedWriter` batches
+small writes into larger ones. `Scanner` walks a stream token by token (lines, words, scalars, a delimiter, or a
+split function you supply).
+
+```manuscript
+import buffered_reader, scan, ScanMode from "@std/io/buffered.ms"
+import from_bytes from "@std/io/streams.ms"
+
+fn words_of(text: String) List[String]:
+    var scanner = scan(from_bytes(text.to_bytes()), ScanMode.Words)
+    var out = List[String]()
+    for word in scanner:
+        out.append(word.clone())
+    return out
+```
+*/
 
 // A read-ahead wrapper that lets callers inspect upcoming bytes before consuming them.
 // Closing it closes the wrapped stream. The wrapper owns the stream it reads; keep it in a `var` binding.
@@ -109,9 +111,11 @@ impl BufferedReader:
         self.consume(count)
         return ok(data)
 
-    // Consumes and returns the bytes before the next `delimiter`, and consumes the delimiter itself.
-    // Returns `none` at end of stream with nothing left; an unterminated tail is returned as the last result.
-    // `max_bytes` bounds the bytes before the delimiter: a longer run returns `LimitExceeded`.
+    /*
+    Consumes and returns the bytes before the next `delimiter`, and consumes the delimiter itself.
+    Returns `none` at end of stream with nothing left; an unterminated tail is returned as the last result.
+    `max_bytes` bounds the bytes before the delimiter: a longer run returns `LimitExceeded`.
+    */
     var fn read_until(delimiter: UInt8, max_bytes: Int? = none) Bytes?!:
         var searched = 0
 
@@ -197,9 +201,11 @@ impl ReadStream for BufferedReader:
         self.consume(size)
         return ok(piece)
 
-// A write-behind wrapper that collects small writes and passes them on in larger pieces.
-// Bytes reach `output` when the buffer holds `capacity` bytes, on `flush`, and on `close`. A failed
-// close flush is dropped, so call `flush` first when the result matters.
+/*
+A write-behind wrapper that collects small writes and passes them on in larger pieces.
+Bytes reach `output` when the buffer holds `capacity` bytes, on `flush`, and on `close`. A failed
+close flush is dropped, so call `flush` first when the result matters.
+*/
 export type BufferedWriter:
     // The wrapped stream that receives drained bytes; the writer owns it and closes it on close.
     output: WriteStream
@@ -275,9 +281,11 @@ export type ScanStep:
     // The token to yield, or none to yield nothing for these bytes.
     token: Bytes? = none
 
-// A token iterator over a byte stream: `for line in scanner:`.
-// Iteration stops at end of input or at the first error; `error()` tells the two apart. A token longer than
-// `max_bytes` stops the scan with `LimitExceeded`. Tokens must be valid UTF-8, otherwise the scan stops with `InvalidData`.
+/*
+A token iterator over a byte stream: `for line in scanner:`.
+Iteration stops at end of input or at the first error; `error()` tells the two apart. A token longer than
+`max_bytes` stops the scan with `LimitExceeded`. Tokens must be valid UTF-8, otherwise the scan stops with `InvalidData`.
+*/
 export type Scanner:
     // The buffered input being scanned.
     reader: BufferedReader
