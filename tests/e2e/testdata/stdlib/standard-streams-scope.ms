@@ -20,9 +20,9 @@ test "a binding of a standard stream does not close it at scope end":
 test "closing a standard stream flushes it and leaves the process stream open":
     var out = stdout()
     try out.write("")
-    out.close()
+    let _ = out.close()
     try expect_true(stdout().write("").is_ok())
 
     var err = stderr()
-    err.close()
+    let _ = err.close()
     try expect_true(stderr().write("").is_ok())

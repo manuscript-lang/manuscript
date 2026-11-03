@@ -13,7 +13,7 @@ import (
     temporary,
     write_file
 ) from "@std/os/fs.ms"
-import read_all, open_read from "@std/io/io.ms"
+import read_all from "@std/io/streams.ms"
 import Bytes from "@std/bytes.ms"
 
 fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
@@ -127,8 +127,9 @@ test "filesystem scoped temporary directories and bounded file reads":
     (stat(path: path, follow_links: true) | try expect_ok).size | try expect_equal(5)
     (list(path: directory) | try expect_ok).length() | try expect_equal(1)
 
-    let input = open_read(path) | try expect_ok
-    (input.read(5) | try expect_ok).get() | try expect_equal("hello".to_bytes())
+    let opened = open(path: path, flags: "r", mode: 0) | try expect_ok
+    var input = opened.reader() | try expect_ok
+    (input.read().wait() | try expect_ok).get() | try expect_equal("hello".to_bytes())
     try temporary.close()
 
     match stat(path: directory, follow_links: true):
@@ -156,9 +157,8 @@ test "file handles positional I/O stream adapters and closed errors":
     (handle.stat() | try expect_ok).size | try expect_equal(4)
 
     let _sought = handle.seek(offset: 0, origin: 0) | try expect_ok
-    read_all(input: handle.reader()) | try expect_ok | try expect_equal(
-        "aXYd".to_bytes()
-    )
+    let contents = read_all(input: try handle.reader(), max_bytes: none) | try expect_ok
+    contents | try expect_equal("aXYd".to_bytes())
     try handle.close()
 
     let closed: Bytes! = error(

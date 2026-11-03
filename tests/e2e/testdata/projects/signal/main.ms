@@ -4,7 +4,7 @@ import Closeable from "@std/core.ms"
 
 type Resource:
     label: String
-    output: WriteStream
+    output: WriteStream[String]
 
 impl Closeable for Resource:
     var fn close() Unit!:

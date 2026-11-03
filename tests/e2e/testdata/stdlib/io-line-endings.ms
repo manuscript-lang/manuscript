@@ -1,7 +1,7 @@
 import open, temporary, write_file from "@std/os/fs.ms"
-import ReadStream, read_line from "@std/io/io.ms"
+import lines, collect from "@std/io/streams.ms"
 import expect_equal from "@std/test/test.ms"
-import MemoryStream from "./support/streams.ms"
+import memory from "./support/streams.ms"
 
 test "an unterminated carriage return remains line content":
     let temporary = try temporary("manuscript-line-endings-")
@@ -11,11 +11,10 @@ test "an unterminated carriage return remains line content":
         try write_file(path, text, replace: true)
 
         let file = try open(path, "r", 384)
-        let input = file.reader()
-        try expect_equal((try read_line(input)), text)
-        try expect_equal((try read_line(input)), none)
+        let found = try collect(lines(try file.reader()), none)
+        try expect_equal(found, [text])
 
-test "native and source line readers agree on endings and byte limits":
+test "file and memory line readers agree on endings and byte limits":
     let limits: List[Int?] = [none, 0, 1, 2, 3, 8]
     let temporary = try temporary("manuscript-line-parity-")
     let path = "{temporary.path()}/lines.txt"
@@ -25,11 +24,5 @@ test "native and source line readers agree on endings and byte limits":
             try write_file(path, text, replace: true)
 
             let file = try open(path, "r", 384)
-            let input = file.reader()
-            let source: ReadStream = MemoryStream(text.to_bytes(), 0, closed: false)
-
-            for i in 0..3:
-                let actual = read_line(input, limit)
-                try expect_equal(actual, read_line(source, limit))
-                if actual.is_error():
-                    break
+            let actual = collect(lines(try file.reader(), limit), none)
+            try expect_equal(actual, collect(lines(memory(text), limit), none))

@@ -20,7 +20,8 @@ import (
     remove,
     access
 ) from "@std/os/fs.ms"
-import stderr, stdin, stdout, read_all from "@std/io/io.ms"
+import stderr, stdin, stdout from "@std/io/io.ms"
+import read_all from "@std/io/streams.ms"
 import JsonValue, stringify from "@std/data/json.ms"
 import hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto.ms"
