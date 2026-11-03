@@ -2796,7 +2796,10 @@ impl Walker<'_> {
                     self.active
                         .iter()
                         .filter(|a| a.holder == b.uid && a.why == PROMISE_WHY)
-                        .flat_map(|a| a.origins.iter().map(|(p, _)| self.name_of(p.root))),
+                        .flat_map(|a| a.origins.iter().map(|(p, _)| p.root))
+                        // A `Copy` capture is taken by value, so nothing is read after the call.
+                        .filter(|uid| self.meta.get(uid).is_none_or(|m| m.class == Class::Move))
+                        .map(|uid| self.name_of(uid)),
                 );
             }
         }
