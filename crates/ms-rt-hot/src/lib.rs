@@ -286,7 +286,7 @@ pub unsafe fn find_sw8(m: &MapVal, key: *const u8) -> *const u8 {
 
 /// `get_ptr` for a `String` key and an 8-byte, 8-aligned value: the value's address or null. The
 /// descriptors are accepted for signature parity with the generic entry point and ignored.
-/// C view: `msrt_map_get_ptr_sw8(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8) -> *const u8`
+/// C view: `msrt_map_get_ptr_sw8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> *const u8`
 #[unsafe(no_mangle)]
 // ms: leaf pure
 pub unsafe extern "C-unwind" fn msrt_map_get_ptr_sw8(
@@ -307,7 +307,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr_sw8(
 }
 
 /// `contains` for a `String` key and an 8-byte, 8-aligned value.
-/// C view: `msrt_map_contains_sw8(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8) -> u8`
+/// C view: `msrt_map_contains_sw8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8`
 #[unsafe(no_mangle)]
 // ms: leaf pure
 pub unsafe extern "C-unwind" fn msrt_map_contains_sw8(
@@ -321,7 +321,7 @@ pub unsafe extern "C-unwind" fn msrt_map_contains_sw8(
 }
 
 /// `get` for a `String` key and a plain 8-byte scalar value (`Int` or `Float`).
-/// C view: `msrt_map_get_sw8(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, out: *mut u8) -> u8`
+/// C view: `msrt_map_get_sw8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, out: *mut u8) -> u8`
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_get_sw8(
@@ -344,7 +344,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_sw8(
 
 /// `get_ptr` for an `Int` key and an 8-byte, 8-aligned value. The call site checked the shape;
 /// the descriptors are accepted for signature parity and ignored.
-/// C view: `msrt_map_get_ptr_w8(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8) -> *const u8`
+/// C view: `msrt_map_get_ptr_w8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> *const u8`
 #[unsafe(no_mangle)]
 // ms: leaf pure
 pub unsafe extern "C-unwind" fn msrt_map_get_ptr_w8(
@@ -361,7 +361,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr_w8(
 }
 
 /// `contains` for an `Int` key and an 8-byte, 8-aligned value.
-/// C view: `msrt_map_contains_w8(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8) -> u8`
+/// C view: `msrt_map_contains_w8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8`
 #[unsafe(no_mangle)]
 // ms: leaf pure
 pub unsafe extern "C-unwind" fn msrt_map_contains_w8(
@@ -375,7 +375,7 @@ pub unsafe extern "C-unwind" fn msrt_map_contains_w8(
 }
 
 /// `get` for an `Int` key and a plain 8-byte scalar value (`Int` or `Float`).
-/// C view: `msrt_map_get_w8(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, out: *mut u8) -> u8`
+/// C view: `msrt_map_get_w8(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, out: *mut u8) -> u8`
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_get_w8(
@@ -512,7 +512,7 @@ pub fn key_desc(m: *const MapVal, kd: *const TypeDesc) -> *const TypeDesc {
 }
 
 /// Borrowed pointers to the key and value of slot `i`; 0 for a hole.
-/// C view: `msrt_map_entry_ptrs(m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, i: i64, key_out: *mut *const u8, val_out: *mut *const u8) -> u8`
+/// C view: `msrt_map_entry_ptrs(m: *const MapVal, kd: KeyDesc, vd: ValDesc, i: i64, key_out: *mut *const u8, val_out: *mut *const u8) -> u8`
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_entry_ptrs(

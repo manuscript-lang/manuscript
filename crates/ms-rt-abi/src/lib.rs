@@ -367,6 +367,14 @@ pub type SlotEqFn = unsafe extern "C" fn(a: *const u8, b: *const u8) -> u8;
 /// Hash of a slot. Equal values must hash equally.
 pub type SlotHashFn = unsafe extern "C" fn(slot: *const u8) -> i64;
 
+/// The slot descriptor of a list's or set's element type. A runtime function declares this role by
+/// taking the alias; lowering reads the role from the declared parameter type, not its name.
+pub type ElemDesc = *const TypeDesc;
+/// The slot descriptor of a map's or set's key type.
+pub type KeyDesc = *const TypeDesc;
+/// The slot descriptor of a map's value type (absent for a set).
+pub type ValDesc = *const TypeDesc;
+
 /// Slot descriptor. The compiler emits one static, read-only descriptor per
 /// distinct slot type; the runtime provides builtins for `Int`, `Float`, `Bool`,
 /// `String` and `Bytes` (`msrt_desc_*`).
