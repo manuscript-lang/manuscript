@@ -230,23 +230,22 @@ export type FileHandle:
 
 // Chunks of a file from its current position, until the end.
 type FileSource:
-    native: NativeFile
+    file: FileHandle
 
 impl Source[Bytes] for FileSource:
     var fn next() Bytes?!:
-        return msstd_io_read(self.native, none)
+        return self.file.read(none)
 
     var fn close() Unit!:
-        msstd_io_close(self.native)
-        return ok(unit)
+        return self.file.close()
 
 // Complete writes to a file; `drain` synchronizes it.
 type FileSink:
-    native: NativeFile
+    file: FileHandle
 
 impl Sink[Bytes] for FileSink:
     var fn put(value: Bytes) Unit!:
-        return msstd_io_write_bytes(self.native, value)
+        return self.file.write_bytes(value)
 
     var fn drain() Promise[Unit]:
         return adopt[Unit](msrt_promise_finished())
@@ -255,8 +254,7 @@ impl Sink[Bytes] for FileSink:
         return 0
 
     var fn close() Unit!:
-        msstd_io_close(self.native)
-        return ok(unit)
+        return self.file.close()
 
 impl Closeable for FileHandle:
     // Closes the file, interrupts calls in progress, and waits for them to stop.
@@ -275,12 +273,14 @@ impl FileHandle:
         return msstd_fs_file_clone(self.native)
 
     // Adapts this handle to `Error`/Optional chunk reads; closing either view closes all aliases.
-    fn reader() ReadStream[Bytes]:
-        return stream[Bytes](FileSource(self.native))
+    fn reader() ReadStream[Bytes]!:
+        let own = try self.clone()
+        return ok(stream[Bytes](FileSource(own)))
 
     // Adapts complete writes to `Error`/Unit; flush synchronizes the file.
-    fn writer() WriteStream[Bytes]:
-        return writer[Bytes](FileSink(self.native))
+    fn writer() WriteStream[Bytes]!:
+        let own = try self.clone()
+        return ok(writer[Bytes](FileSink(own)))
 
     // Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
     fn read(max_bytes: Int?) Bytes?!:
