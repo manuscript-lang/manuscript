@@ -1,4 +1,5 @@
-import redirect_to_null, read_line, StdStream, stderr, stdin, stdout from "@std/io/io.ms"
+import redirect_to_null, StdStream, stderr, stdin, stdout from "@std/io/io.ms"
+import lines from "@std/io/streams.ms"
 
 fn shown(text: String) Int:
     if stdout().write(text).is_error():
@@ -20,7 +21,8 @@ export fn main() Int:
     if redirect_to_null(StdStream.Input).is_error():
         return 4
 
-    match read_line(stdin()):
+    var input = lines(stdin())
+    match input.read().wait():
         ok(line):
             if line.is_some():
                 return 5
