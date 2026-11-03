@@ -313,13 +313,24 @@ pub unsafe fn release(p: *mut u8, len: usize) {
     unsafe extern "C" {
         fn madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
     }
-    #[cfg(target_os = "macos")]
-    const MADV_DONTNEED: c_int = 5; // MADV_FREE: macOS leaves MADV_DONTNEED a no-op
     #[cfg(not(target_os = "macos"))]
     const MADV_DONTNEED: c_int = 4;
+    // macOS leaves MADV_DONTNEED a no-op and MADV_FREE (5) only lets the kernel reclaim the pages
+    // later, so they can still hold the old bytes. MADV_ZERO (11) discards them now and the pages
+    // read as zero.
+    #[cfg(target_os = "macos")]
+    const MADV_ZERO: c_int = 11;
     if !cfg!(miri) {
         // SAFETY: forwarded; the caller guarantees the range.
-        unsafe { madvise(p.cast(), len, MADV_DONTNEED) };
+        #[cfg(not(target_os = "macos"))]
+        unsafe {
+            madvise(p.cast(), len, MADV_DONTNEED)
+        };
+        // SAFETY: forwarded; the caller guarantees the range.
+        #[cfg(target_os = "macos")]
+        unsafe {
+            madvise(p.cast(), len, MADV_ZERO)
+        };
     }
 }
 
