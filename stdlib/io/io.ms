@@ -100,6 +100,9 @@ impl Source[Bytes] for DescriptorSource:
     var fn next() Bytes?!:
         let p = msrt_streams_read(self.id)
         let code = msrt_promise_wait(p, -1)
+        if code != 0:
+            msrt_promise_drop(p)
+            return error(Error("stream: read timed out", kind: ErrorCategory.Timeout))
         let chunk = msrt_promise_take[Bytes](p)
         msrt_promise_drop(p)
         if let data = chunk:
