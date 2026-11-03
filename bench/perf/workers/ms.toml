@@ -1,4 +1,0 @@
-[project]
-name = "workers-bench"
-source = "./src"
-entry = "./src/main.ms"

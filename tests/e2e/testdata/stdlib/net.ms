@@ -18,8 +18,7 @@ import (
     Listener,
     Connection
 ) from "@std/net/net.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import promise from "@std/concurrency/promise.ms"
 import sleep from "@std/os/time.ms"
 
 test "IP parsing CIDR normalization and containment":
@@ -118,8 +117,8 @@ fn expect_ip_error(input: String) Unit!:
     )
     return ok(unit)
 
-fn accept_one(l: Shared[Listener]) Int:
-    let r = l.get().accept(2.seconds)
+fn accept_one(l: Listener) Int:
+    let r = l.accept(2.seconds)
 
     if r.is_ok():
         r.get().close().get(none)
@@ -127,54 +126,37 @@ fn accept_one(l: Shared[Listener]) Int:
 
     return 0
 
-test "two tasks accept on one listener":
-    let shared: Shared[Listener] = share(try listen("127.0.0.1:0"))
-    var group = TaskGroup[Int]()
-    let a = shared
-    let b = shared
-    group.spawn(fn ch: accept_one(a))
-    group.spawn(fn ch: accept_one(b))
+test "a promise accepts on a listener it owns":
+    let listener = try listen("127.0.0.1:0")
+    let address = listener.address()
+    let a = promise(fn: ok(accept_one(listener)))
     sleep(50.milliseconds)
 
-    var c1 = try connect(shared.get().address(), 2.seconds)
-    var c2 = try connect(shared.get().address(), 2.seconds)
-    let got = try group.results()
-    try expect_equal(got.length(), 2)
-    try expect_equal(got[0] + got[1], 2)
-    try c1.close()
-    try c2.close()
-    try group.close()
-    try shared.get().close()
+    var client = try connect(address, 2.seconds)
+    try expect_equal(try a.wait(), 1)
+    try client.close()
 
-fn read_some(c: Shared[Connection]) Int:
-    let r = c.get().read(1, 2.seconds)
+fn read_some(c: Connection) Int:
+    let r = c.read(1, 2.seconds)
     if r.is_ok() and r.get().is_some():
         return 1
 
     return 0
 
-test "two tasks read one connection":
-    let listener = try listen("127.0.0.1:0")
+test "a promise reads a connection it owns":
+    var listener = try listen("127.0.0.1:0")
     var client = try connect(listener.address(), 2.seconds)
     let server = try listener.accept(2.seconds)
-    let shared: Shared[Connection] = share(server)
-    var group = TaskGroup[Int]()
-    let a = shared
-    let b = shared
-    group.spawn(fn ch: read_some(a))
-    group.spawn(fn ch: read_some(b))
+    let a = promise(fn: ok(read_some(server)))
     sleep(50.milliseconds)
     try client.write("xy", 2.seconds)
-
-    let got = try group.results()
-    try expect_equal(got[0] + got[1], 2)
-    try group.close()
+    try expect_equal(try a.wait(), 1)
     try client.close()
-    try shared.get().close()
+    try listener.close()
 
 // Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
-fn answer_mx(socket: Shared[DatagramSocket]) Int!:
-    let query = try socket.get().receive(512, 2.seconds)
+fn answer_mx(socket: DatagramSocket) Int!:
+    let query = try socket.receive(512, 2.seconds)
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
     let header = Bytes(
         [query.data.get(0), query.data.get(1), 129, 128, 0, 1, 0, 1, 0, 0, 0, 0]
@@ -186,7 +168,7 @@ fn answer_mx(socket: Shared[DatagramSocket]) Int!:
             116, 0
         ]
     )
-    try socket.get().send_bytes(
+    try socket.send_bytes(
         header.concat(question).concat(record).concat(name), query.sender, 2.seconds
     )
     return ok(1)
@@ -197,20 +179,17 @@ test "resolve returns typed DNS records from the configured resolver":
     try expect_equal(one[0].value, "127.0.0.1")
     try expect_equal(one[0].kind.text(), "A")
 
-    let server: Shared[DatagramSocket] = share(try bind_datagram("127.0.0.1:0"))
-    let derived = try with_resolver(server.get().address())
-    let group = TaskGroup[Int]()
-    let socket = server
-    group.spawn(fn ch: answer_mx(socket).get(0))
-
+    let server = try bind_datagram("127.0.0.1:0")
+    let derived = try with_resolver(server.address())
+    let answering = promise(fn: answer_mx(server))
     let mx = try derived.resolve("example.test", DnsKind.MX, none, 2.seconds)
     try expect_equal(mx.length(), 1)
     try expect_equal(mx[0].kind.text(), "MX")
     try expect_equal(mx[0].priority, 10)
     try expect_equal(mx[0].value, "mail.example.test.")
 
-    let answered = try group.results()
-    try expect_equal(answered[0], 1)
+    let answered = try answering.wait()
+    try expect_equal(answered, 1)
 
 test "an empty host listens on every interface, with or without IPv6":
     var listener = try listen(":0")

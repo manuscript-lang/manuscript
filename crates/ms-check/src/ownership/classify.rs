@@ -26,7 +26,7 @@ fn same_instance(a: &Ty, b: &Ty) -> bool {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Class {
     /// Duplicated implicitly: scalars, records of those,
-    /// and handle types whose identity is shared (native handles and `Shared[T]`).
+    /// and handle types whose identity is shared (native handles).
     Copy,
     /// One owner. Moves at its last use into a consuming position; `.clone()`
     /// duplicates it explicitly. Strings, lists, maps, sets, bytes, records and
@@ -98,8 +98,8 @@ impl Classifier {
     fn native(&self, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
         if self.closeable.contains(&t.id) {
             Class::Resource
-        } else if t.is_std("Shared") || self.copyable.contains(&t.id) {
-            // A declared `Copy` native is plain words. Copying `Shared` shares the box; the payload is closed once the last holder releases it.
+        } else if self.copyable.contains(&t.id) {
+            // A declared `Copy` native is plain words.
             Class::Copy
         } else if t.is_std("List") {
             // An owning collection of resources is itself a resource, closed with its elements.

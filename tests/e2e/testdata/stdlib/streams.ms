@@ -7,16 +7,13 @@ import (
     map_writer,
     digest,
     multi_writer,
-    section,
-    channel_reader,
-    channel_writer
+    section
 ) from "@std/io/streams.ms"
 import read_all, copy, read_line from "@std/io/io.ms"
 import HashAlgorithm, sha256 from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
 import open, read_file, temporary, write_file from "@std/os/fs.ms"
-import TaskChannel, TaskGroup, as_channel from "@std/concurrency/tasks.ms"
 import expect_ok from "@std/test/test.ms"
 
 fn upper(chunk: Bytes) Bytes:
@@ -85,25 +82,6 @@ test "take rejects a negative limit and read_line counts the terminator":
     if (read_line(unterminated, 3) | try expect_ok) != "abc": return panic(
         "final line at the limit"
     )
-
-fn produce(ch: TaskChannel[Bytes, Unit]) Unit:
-    var sink = channel_writer(as_channel(ch))
-    sink.write("alpha ").get()
-    sink.write_bytes("beta ".to_bytes()).get()
-    sink.write("gamma").get()
-    sink.close()
-
-test "channel pipe carries a task's writes to a reader":
-    var group = TaskGroup[Unit, Unit, Bytes]()
-    let task = group.spawn(produce)
-    var source = channel_reader(as_channel(task.channel.clone()))
-    let first = (try source.read(3)).get()
-    if first != "alp".to_bytes(): return panic("partial chunk")
-
-    let rest = try read_all(source)
-    if rest != "ha beta gamma".to_bytes(): return panic("rest")
-
-    try group.close()
 
 test "multi_writer duplicates writes":
     let temporary = temporary("manuscript-streams-") | try expect_ok

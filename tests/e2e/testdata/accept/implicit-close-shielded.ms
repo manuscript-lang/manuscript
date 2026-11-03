@@ -1,6 +1,6 @@
 import Closeable, panic from "@std/core.ms"
 import read_file, temporary, write_file from "@std/os/fs.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import promise from "@std/concurrency/promise.ms"
 import (
     expect_equal,
     expect_error,
@@ -54,10 +54,12 @@ fn hold_fault_and_break(dir: String, id: Int) Unit:
     let _ = holder.id
 
 fn cancel_a_holder(dir: String, id: Int, pause: Bool) Unit:
-    let group = TaskGroup[Int](timeout: nanoseconds(20000000))
-    group.spawn(fn ch: hold_and_wait(dir.clone(), id, pause))
+    let work = promise(fn: ok(hold_and_wait(dir.clone(), id, pause)))
+    let _ignored = work.wait(timeout: nanoseconds(20000000))
 
-    let _ignored = group.wait()
+fn faulting_holder(dir: String, id: Int) Unit!:
+    hold_and_fault(dir, id)
+    return ok(unit)
 
 test "cancellation closes the binding":
     let temporary = temporary("manuscript-shield-") | try expect_ok
@@ -78,15 +80,11 @@ test "a fault unwinding the scope closes the binding":
     try expect_equal(message, "body fault")
     try expect_true(closed(dir, 3))
 
-test "a faulted task closes its binding before the group reports":
+test "a faulted promise closes its binding before wait reports":
     let temporary = temporary("manuscript-shield-") | try expect_ok
     let dir = temporary.path()
-    let mine = dir.clone()
-    var group = TaskGroup[Unit](contain_faults: true)
-    group.spawn(fn ch: hold_and_fault(mine.clone(), 4))
-
-    let _reason = group.wait() | try expect_error
-    try group.close()
+    let work = promise(fn: faulting_holder(dir.clone(), 4))
+    let _reason = work.wait() | try expect_error
     try expect_true(closed(dir, 4))
 
 test "a fault in close on a normal return is the fault":

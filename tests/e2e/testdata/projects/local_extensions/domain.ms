@@ -1,4 +1,3 @@
-import Shared from "@std/concurrency/shared.ms"
 import Read from "./contracts.ms"
 
 export interface Original:
@@ -26,4 +25,4 @@ export type Choice:
     case Empty
 
 export type Resource:
-    events: Shared[List[Int]]
+    events: String

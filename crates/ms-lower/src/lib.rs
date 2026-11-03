@@ -40,12 +40,12 @@ mod random;
 mod rtcall;
 mod runner;
 mod scope;
-mod sharedbuilder;
 mod stdnative;
 mod stmt;
 mod streamloop;
 mod testing;
 mod text;
+mod textbuilder;
 
 use ms_check::Program;
 use ms_mir::ir::Module;

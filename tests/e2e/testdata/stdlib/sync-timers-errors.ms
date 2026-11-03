@@ -1,34 +1,6 @@
 import expect_equal, expect_true, expect_false from "@std/test/test.ms"
 import wrap_error, join_errors from "@std/core.ms"
-import share from "@std/concurrency/shared.ms"
-import once, lock from "@std/concurrency/sync.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
 import sleep, deadline_after, ticker, monotonic from "@std/os/time.ms"
-
-test "once runs the action a single time across tasks":
-    let gate = once()
-    let hits = share(0)
-    var group = TaskGroup[Unit]()
-
-    for i in 0..3:
-        let mine = gate.clone()
-        let count = hits
-        group.spawn(
-            fn(ch):
-                mine.run(
-                    fn():
-                        sleep(5.milliseconds)
-
-                        var guard = lock(count)
-                        guard.value += 1
-                )
-            ,
-            none
-        )
-
-    try group.wait()
-    try expect_equal(hits.get(), 1)
-    try expect_true(gate.is_done())
 
 test "wrap_error adds context and keeps the kind":
     let gone = Error("gone", kind: ErrorCategory.NotFound, details: {"path": "a.txt"})

@@ -2,7 +2,6 @@
 //! zero, an index outside a list literal and locking a `Shared` twice.
 
 use crate::checker::Checker;
-use crate::ownership::places::{Place, Step};
 use crate::types::*;
 use ms_syntax::ast::*;
 
@@ -94,67 +93,5 @@ impl Checker {
                 ),
             );
         }
-    }
-}
-
-/// The written place `a` or `a.b.c`, or none for any other expression.
-fn place_text(e: &Expr) -> Option<String> {
-    match &e.kind {
-        ExprKind::Name(name) => Some(name.as_str().to_string()),
-        ExprKind::Member { left, name } => Some(format!("{}.{}", place_text(left)?, name.as_str())),
-        _ => None,
-    }
-}
-
-impl Checker {
-    /// The binding and field path of `a` or `a.b.c`, so two spellings of one binding compare equal.
-    fn lock_place(&self, e: &Expr) -> Option<Place> {
-        match &e.kind {
-            ExprKind::Name(_) => {
-                let binding = self.m().facts().info(e.id)?.binding.clone()?;
-                Some(Place::local(binding.uid))
-            }
-            ExprKind::Member { left, name } => {
-                Some(self.lock_place(left)?.then(Step::Field(*name)))
-            }
-            _ => None,
-        }
-    }
-
-    /// Tracks `let guard = lock(box)` until its scope ends or `guard.close()` runs, and rejects
-    /// locking the same written place again meanwhile, which waits on itself forever. Returns
-    /// whether a lock was pushed; `block` pops it when the scope ends.
-    pub(crate) fn begin_lock(&mut self, s: &Stmt, guard: Name, value: &Expr, ty: &Ty) -> bool {
-        let ExprKind::Call { args, .. } = &value.kind else {
-            return false;
-        };
-        if !ty.is_source_type("@std/concurrency/sync.ms", "SharedGuard") {
-            return false;
-        }
-        let Some(argument) = args.first() else {
-            return false;
-        };
-        let (Some(text), Some(place)) = (
-            place_text(&argument.value),
-            self.lock_place(&argument.value),
-        ) else {
-            return false;
-        };
-        let function = self.function;
-        if self
-            .held_locks
-            .iter()
-            .any(|(f, p, _)| *f == function && *p == place)
-        {
-            self.type_error(
-                s.pos,
-                format!(
-                    "{text} is already locked by an earlier guard that is still open, so locking it again waits on itself forever; use that guard's value, or call its close() first"
-                ),
-            );
-            return false;
-        }
-        self.held_locks.push((function, place, guard));
-        true
     }
 }

@@ -64,7 +64,7 @@ pub fn normalize_text(text: &str, work: &Path) -> String {
     mask_stdlib_lines(&out)
 }
 
-/// Replace the line of a standard-library frame (`@std/concurrency/tasks.ms:312`) with `<LINE>`, so editing a
+/// Replace the line of a standard-library frame (`@std/concurrency/promise.ms:312`) with `<LINE>`, so editing a
 /// standard-library file does not change the expectation of every fixture that faults through it.
 fn mask_stdlib_lines(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
@@ -385,10 +385,10 @@ mod tests {
         let work = Path::new("/tmp/ms-conform-x/w1");
         assert_eq!(
             normalize_text(
-                "at @std/concurrency/tasks.ms:283 in run\nat a.ms:3 in f @std/x.ms:1 @std/y",
+                "at @std/concurrency/promise.ms:283 in run\nat a.ms:3 in f @std/x.ms:1 @std/y",
                 work
             ),
-            "at @std/concurrency/tasks.ms:<LINE> in run\nat a.ms:3 in f @std/x.ms:<LINE> @std/y"
+            "at @std/concurrency/promise.ms:<LINE> in run\nat a.ms:3 in f @std/x.ms:<LINE> @std/y"
         );
     }
 

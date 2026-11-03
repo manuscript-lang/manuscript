@@ -7,32 +7,39 @@ use std::sync::Mutex;
 
 static LOCK: Mutex<()> = Mutex::new(());
 
-unsafe extern "C-unwind" fn park_channel(arg: *mut u8) {
-    ms_rt::channel::msrt_channel_park(arg as i64);
+unsafe extern "C-unwind" fn free_token(arg: *mut u8) {
+    // SAFETY: the cleanup frees the single-use token its guarded call owned.
+    unsafe { task::msrt_token_free(arg as u64) };
+}
+
+unsafe extern "C-unwind" fn park_token(arg: *mut u8) {
+    // SAFETY: the guarded call owns the token and no completion is provided. A deadlock jumps out
+    // of the park, so the cleanup stack frees the token.
+    unsafe {
+        fault::msrt_cleanup_push(free_token, arg);
+        task::msrt_token_park(arg as u64, -1, null_mut());
+    }
 }
 
 #[test]
-fn repeated_deadlocked_channel_waits_reuse_their_token_storage() {
+fn repeated_deadlocked_token_waits_reuse_their_token_storage() {
     let _lock = LOCK.lock().unwrap_or_else(|error| error.into_inner());
     task::teardown();
-    // SAFETY: each guard owns its single-use channel token; no completion is provided.
+    // SAFETY: each guard owns its single-use token; no completion is provided.
     unsafe {
-        let mut token = ms_rt::channel::msrt_channel_token() as u64;
+        let mut token = task::msrt_token_new(0);
         let slot = token as u32;
         let mut reused = true;
         for _ in 0..64 {
-            let status = fault::msrt_guard_call(park_channel, token as *mut u8, null_mut());
+            let status = fault::msrt_guard_call(park_token, token as *mut u8, null_mut());
             assert_eq!(status, 1);
-            let next = ms_rt::channel::msrt_channel_token() as u64;
+            let next = task::msrt_token_new(0);
             reused &= next as u32 == slot && next != token;
             token = next;
         }
         task::msrt_token_free(token);
         task::teardown();
-        assert!(
-            reused,
-            "faulted channel waits must release their token slots"
-        );
+        assert!(reused, "faulted token waits must release their token slots");
     }
 }
 

@@ -32,7 +32,7 @@ test "levels filter, fields nest under data, and bound fields merge":
     try expect_equal(logger.level(), LogLevel.Trace)
     try logger.trace("trace")
     try logger.flush()
-    logger.close()
+    try logger.close()
 
     let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"n\",\"data\":7\}\n\{\"level\":60,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n\{\"level\":40,\"msg\":\"child\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"service\":\"worker\"\}\}\n\{\"level\":10,\"msg\":\"trace\"\}\n"
     try expect_equal(try lines(path), expected)
@@ -59,8 +59,8 @@ test "limits, invalid levels, and closed transports are errors":
         try expect_error(create(try file_transport(path), max_bytes: -1)),
         Error("logging: invalid input", kind: ErrorCategory.InvalidInput)
     )
-    logger.close()
-    logger.close()
+    try logger.close()
+    try logger.close()
 
     let closed: Unit! = error(
         Error("logging: resource is closed", kind: ErrorCategory.Closed)
