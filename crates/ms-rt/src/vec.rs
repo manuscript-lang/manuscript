@@ -1347,13 +1347,13 @@ pub unsafe extern "C-unwind" fn msrt_list_filled(
     value: *const u8,
     d: ElemDesc,
     count: i64,
-    has_max: u8,
+    has_max: HasRaw,
     max: i64,
     out: *mut VecVal,
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let limit = if has_max != 0 { max } else { i64::MAX };
+        let limit = if has_max.is_set() { max } else { i64::MAX };
         if count < 0 || limit < 0 {
             return STATUS_INVALID_INPUT;
         }
@@ -1404,13 +1404,13 @@ pub unsafe extern "C-unwind" fn msrt_list_range_by(
     start: i64,
     end: i64,
     step: i64,
-    has_max: u8,
+    has_max: HasRaw,
     max: i64,
     out: *mut VecVal,
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let limit = if has_max != 0 { max } else { i64::MAX };
+        let limit = if has_max.is_set() { max } else { i64::MAX };
         if step == 0 || limit < 0 {
             return STATUS_INVALID_INPUT;
         }
@@ -1628,7 +1628,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_ends_with(b: *const VecVal, v: *const
 pub unsafe extern "C-unwind" fn msrt_bytes_get(
     b: *const VecVal,
     index: i64,
-    has_default: u8,
+    has_default: HasRaw,
     default: i64,
 ) -> i64 {
     // SAFETY: caller contract.
@@ -1638,7 +1638,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_get(
         if i >= 0 && (i as usize) < s.len() {
             return s[i as usize] as i64;
         }
-        if has_default == 0 {
+        if !has_default.is_set() {
             fault::msrt_index_fault(index, s.len() as i64);
         }
         default
@@ -1724,14 +1724,14 @@ pub unsafe extern "C-unwind" fn msrt_bytes_concat(
 pub unsafe extern "C-unwind" fn msrt_bytes_split(
     b: *const VecVal,
     sep: *const VecVal,
-    has_max: u8,
+    has_max: HasRaw,
     max: i64,
     out: *mut VecVal,
 ) {
     // SAFETY: caller contract; result is a List[Bytes] (24-byte slots).
     unsafe {
         let (data, sepb) = (bslice(b), bslice(sep));
-        let limit = if has_max != 0 {
+        let limit = if has_max.is_set() {
             if max < 0 {
                 fault::fault_fmt(format_args!(
                     "split: max_parts must be nonnegative, found {max}"
@@ -2461,7 +2461,7 @@ mod tests {
                 || msrt_list_remove(&mut v, d, 7),
             );
             let mut r = EMPTY;
-            msrt_list_range_by(10, 0, -3, 0, 0, &mut r);
+            msrt_list_range_by(10, 0, -3, HasRaw(0), 0, &mut r);
             assert_eq!(ints(&r), [10, 7, 4, 1]);
             drop_list(&mut v, d);
             drop_list(&mut s, d);

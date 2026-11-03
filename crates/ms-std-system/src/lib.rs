@@ -1,7 +1,7 @@
 //! `@std/process` natives. Symbols are `msstd_system_<name>`.
 //!
 //! Fallible functions return a `STATUS_*` code (`0` ok) and write results only on success; for
-//! `STATUS_FAILED` the text comes from `msstd_system_failure_message`. A record result crosses as
+//! `STATUS_FAILED` the text is written to the trailing `err` slot. A record result crosses as
 //! one getter per field (`msstd_system_info_os`, ...) so the generated code builds the record
 //! without sharing a layout. `os` and `architecture` report the target names `@std/process`
 //! uses (`linux`, `darwin`, `windows`; `amd64`, `arm64`).
@@ -19,8 +19,8 @@ mod inventory;
 
 use alloc::vec::Vec;
 use inventory::{Cpu, Interface, Metrics, Slot};
-use ms_rt::ffi::{IntMap, StatusCode, Text, native};
-use ms_rt_abi::{STATUS_OK, STATUS_UNSUPPORTED, StrVal};
+use ms_rt::ffi::{ErrOut, Failure, IntMap, StatusCode, Text, native};
+use ms_rt_abi::STATUS_UNSUPPORTED;
 use ms_std_process::control;
 
 ms_rt::isolate_static! {
@@ -33,18 +33,13 @@ static INTERFACES: Slot<Vec<Interface>> = Slot::new(|| INTERFACE_CELL.ptr());
 static CPUS: Slot<Vec<Cpu>> = Slot::new(|| CPU_CELL.ptr());
 static METRICS: Slot<Metrics> = Slot::new(|| METRIC_CELL.ptr());
 
-fn text(r: Result<Vec<u8>, u8>) -> Result<Text, StatusCode> {
-    r.map(Text).map_err(StatusCode)
+fn text(r: Result<Vec<u8>, Failure>, err: &ErrOut) -> Result<Text, StatusCode> {
+    r.map(Text).map_err(|f| err.fail(f))
 }
 
-fn snapshot<T>(slot: &Slot<T>, taken: Result<T, u8>) -> u8 {
-    match taken {
-        Ok(v) => {
-            slot.set(v);
-            STATUS_OK
-        }
-        Err(status) => status,
-    }
+fn snapshot<T>(slot: &Slot<T>, taken: Result<T, Failure>, err: &ErrOut) -> Result<(), StatusCode> {
+    slot.set(taken.map_err(|f| err.fail(f))?);
+    Ok(())
 }
 
 /// Reads field `read` of list element `i` (`None` when out of range).
@@ -57,10 +52,6 @@ fn metric<T: Default>(read: impl FnOnce(&Metrics) -> T) -> T {
 }
 
 native! {
-    fn msstd_system_failure_message() -> out StrVal {
-        ms_rt::glue::failure_message()
-    }
-
     safe fn msstd_system_endianness() -> &'static str {
         if cfg!(target_endian = "little") { "LE" } else { "BE" }
     }
@@ -99,32 +90,32 @@ native! {
         Text(control::working_directory().unwrap_or_default())
     }
 
-    fn msstd_system_hostname() -> Result<Text, StatusCode> {
-        text(imp::hostname())
+    fn msstd_system_hostname(; err: ErrOut) -> Result<Text, StatusCode> {
+        text(imp::hostname(), &err)
     }
 
-    fn msstd_system_home_directory() -> Result<Text, StatusCode> {
-        text(imp::home_directory())
+    fn msstd_system_home_directory(; err: ErrOut) -> Result<Text, StatusCode> {
+        text(imp::home_directory(), &err)
     }
 
-    fn msstd_system_os_release() -> Result<Text, StatusCode> {
-        text(imp::uname(imp::Field::Release))
+    fn msstd_system_os_release(; err: ErrOut) -> Result<Text, StatusCode> {
+        text(imp::uname(imp::Field::Release), &err)
     }
 
-    fn msstd_system_os_version() -> Result<Text, StatusCode> {
-        text(imp::uname(imp::Field::Version))
+    fn msstd_system_os_version(; err: ErrOut) -> Result<Text, StatusCode> {
+        text(imp::uname(imp::Field::Version), &err)
     }
 
-    fn msstd_system_machine() -> Result<Text, StatusCode> {
-        text(imp::uname(imp::Field::Machine))
+    fn msstd_system_machine(; err: ErrOut) -> Result<Text, StatusCode> {
+        text(imp::uname(imp::Field::Machine), &err)
     }
 
-    fn msstd_system_get_priority(pid: i64) -> Result<i64, StatusCode> {
-        imp::get_priority(pid).map_err(StatusCode)
+    fn msstd_system_get_priority(pid: i64; err: ErrOut) -> Result<i64, StatusCode> {
+        imp::get_priority(pid).map_err(|f| err.fail(f))
     }
 
-    safe fn msstd_system_set_priority(pid: i64, priority: i64) -> u8 {
-        imp::set_priority(pid, priority).err().unwrap_or(STATUS_OK)
+    fn msstd_system_set_priority(pid: i64, priority: i64; err: ErrOut) -> Result<(), StatusCode> {
+        imp::set_priority(pid, priority).map_err(|f| err.fail(f))
     }
 
     fn msstd_system_constants() -> out IntMap {
@@ -137,8 +128,8 @@ native! {
     }
 
     // `user_info()` crosses as a status plus one getter per field.
-    safe fn msstd_system_user_info_status() -> u8 {
-        imp::user().err().unwrap_or(STATUS_OK)
+    fn msstd_system_user_info_status(; err: ErrOut) -> Result<(), StatusCode> {
+        imp::user().map(drop).map_err(|f| err.fail(f))
     }
 
     safe fn msstd_system_user_info_username() -> Text {
@@ -163,8 +154,8 @@ native! {
 
     // Lists and the metrics record cross as a status call that takes a snapshot, then getters
     // (indexed for lists): `msstd_system_<call>_status`, `_count`, `_<field>`.
-    safe fn msstd_system_network_interfaces_status() -> u8 {
-        snapshot(&INTERFACES, inventory::interfaces())
+    fn msstd_system_network_interfaces_status(; err: ErrOut) -> Result<(), StatusCode> {
+        snapshot(&INTERFACES, inventory::interfaces(), &err)
     }
 
     safe fn msstd_system_network_interfaces_count() -> i64 {
@@ -199,8 +190,8 @@ native! {
         item(&INTERFACES, i, |x| x.internal).unwrap_or(false)
     }
 
-    safe fn msstd_system_cpus_status() -> u8 {
-        snapshot(&CPUS, inventory::cpus())
+    fn msstd_system_cpus_status(; err: ErrOut) -> Result<(), StatusCode> {
+        snapshot(&CPUS, inventory::cpus(), &err)
     }
 
     safe fn msstd_system_cpus_count() -> i64 {
@@ -235,8 +226,8 @@ native! {
         item(&CPUS, i, |x| x.irq).unwrap_or(0)
     }
 
-    safe fn msstd_system_metrics_status() -> u8 {
-        snapshot(&METRICS, inventory::metrics())
+    fn msstd_system_metrics_status(; err: ErrOut) -> Result<(), StatusCode> {
+        snapshot(&METRICS, inventory::metrics(), &err)
     }
 
     safe fn msstd_system_metrics_total_memory() -> i64 {
@@ -314,12 +305,12 @@ mod imp {
     ];
 
     /// The status of an OS error; other errors are `Failed` with a fixed text.
-    fn status_of(e: Errno) -> u8 {
+    fn status_of(e: Errno) -> Failure {
         match e {
-            Errno::INVAL => STATUS_INVALID_INPUT,
-            Errno::SRCH | Errno::NOENT => STATUS_NOT_FOUND,
-            Errno::PERM | Errno::ACCESS => STATUS_PERMISSION_DENIED,
-            _ => ms_rt::glue::failed(b"system call failed"),
+            Errno::INVAL => STATUS_INVALID_INPUT.into(),
+            Errno::SRCH | Errno::NOENT => STATUS_NOT_FOUND.into(),
+            Errno::PERM | Errno::ACCESS => STATUS_PERMISSION_DENIED.into(),
+            _ => Failure::failed("system call failed"),
         }
     }
 
@@ -329,18 +320,18 @@ mod imp {
         i64::from(n.max(1) as i32)
     }
 
-    fn utf8(bytes: Vec<u8>) -> Result<Vec<u8>, u8> {
+    fn utf8(bytes: Vec<u8>) -> Result<Vec<u8>, Failure> {
         match core::str::from_utf8(&bytes) {
             Ok(_) => Ok(bytes),
-            Err(_) => Err(STATUS_UNSUPPORTED),
+            Err(_) => Err(STATUS_UNSUPPORTED.into()),
         }
     }
 
-    pub fn hostname() -> Result<Vec<u8>, u8> {
+    pub fn hostname() -> Result<Vec<u8>, Failure> {
         utf8(host_uname().nodename().to_bytes().to_vec())
     }
 
-    pub fn uname(field: Field) -> Result<Vec<u8>, u8> {
+    pub fn uname(field: Field) -> Result<Vec<u8>, Failure> {
         let u = host_uname();
         let text = match field {
             Field::Release => u.release(),
@@ -350,14 +341,14 @@ mod imp {
         utf8(text.to_bytes().trim_ascii().to_vec())
     }
 
-    pub fn home_directory() -> Result<Vec<u8>, u8> {
+    pub fn home_directory() -> Result<Vec<u8>, Failure> {
         if let Some(home) = std::env::var_os("HOME").filter(|h| !h.is_empty()) {
             return utf8(home.as_bytes().to_vec());
         }
         user().map(|u| u.home)
     }
 
-    pub fn user() -> Result<User, u8> {
+    pub fn user() -> Result<User, Failure> {
         let uid = getuid().as_raw();
         let mut buf = vec![0u8; 1024];
         loop {
@@ -376,9 +367,9 @@ mod imp {
                 return Err(status_of(Errno::from_raw_os_error(rc)));
             }
             if found.is_null() {
-                return Err(STATUS_NOT_FOUND);
+                return Err(STATUS_NOT_FOUND.into());
             }
-            let text = |p: *const libc::c_char| -> Result<Vec<u8>, u8> {
+            let text = |p: *const libc::c_char| -> Result<Vec<u8>, Failure> {
                 if p.is_null() {
                     return Ok(Vec::new());
                 }
@@ -396,24 +387,24 @@ mod imp {
     }
 
     /// `None` is the calling process, as for pid 0.
-    fn process(pid: i64) -> Result<Option<Pid>, u8> {
+    fn process(pid: i64) -> Result<Option<Pid>, Failure> {
         let raw = i32::try_from(pid).map_err(|_| STATUS_INVALID_INPUT)?;
         match raw {
             0 => Ok(None),
             1.. => Ok(Pid::from_raw(raw)),
-            _ => Err(STATUS_INVALID_INPUT),
+            _ => Err(STATUS_INVALID_INPUT.into()),
         }
     }
 
-    pub fn get_priority(pid: i64) -> Result<i64, u8> {
+    pub fn get_priority(pid: i64) -> Result<i64, Failure> {
         let pid = process(pid)?;
         getpriority_process(pid).map(i64::from).map_err(status_of)
     }
 
-    pub fn set_priority(pid: i64, priority: i64) -> Result<(), u8> {
+    pub fn set_priority(pid: i64, priority: i64) -> Result<(), Failure> {
         let pid = process(pid)?;
         if !(-20..=19).contains(&priority) {
-            return Err(STATUS_INVALID_INPUT);
+            return Err(STATUS_INVALID_INPUT.into());
         }
         setpriority_process(pid, priority as i32).map_err(status_of)
     }
@@ -456,28 +447,28 @@ mod imp {
         1
     }
 
-    pub fn hostname() -> Result<Vec<u8>, u8> {
-        Err(STATUS_UNSUPPORTED)
+    pub fn hostname() -> Result<Vec<u8>, Failure> {
+        Err(STATUS_UNSUPPORTED.into())
     }
 
-    pub fn uname(_: Field) -> Result<Vec<u8>, u8> {
-        Err(STATUS_UNSUPPORTED)
+    pub fn uname(_: Field) -> Result<Vec<u8>, Failure> {
+        Err(STATUS_UNSUPPORTED.into())
     }
 
-    pub fn home_directory() -> Result<Vec<u8>, u8> {
-        Err(STATUS_UNSUPPORTED)
+    pub fn home_directory() -> Result<Vec<u8>, Failure> {
+        Err(STATUS_UNSUPPORTED.into())
     }
 
-    pub fn user() -> Result<User, u8> {
-        Err(STATUS_UNSUPPORTED)
+    pub fn user() -> Result<User, Failure> {
+        Err(STATUS_UNSUPPORTED.into())
     }
 
-    pub fn get_priority(_: i64) -> Result<i64, u8> {
-        Err(STATUS_UNSUPPORTED)
+    pub fn get_priority(_: i64) -> Result<i64, Failure> {
+        Err(STATUS_UNSUPPORTED.into())
     }
 
-    pub fn set_priority(_: i64, _: i64) -> Result<(), u8> {
-        Err(STATUS_UNSUPPORTED)
+    pub fn set_priority(_: i64, _: i64) -> Result<(), Failure> {
+        Err(STATUS_UNSUPPORTED.into())
     }
 }
 
@@ -486,11 +477,34 @@ mod imp {
 mod tests {
     use super::*;
     use ms_rt as _; // links the msrt_* runtime symbols
-    use ms_rt_abi::STATUS_INVALID_INPUT;
+    use ms_rt_abi::{ErrSlot, STATUS_INVALID_INPUT, STATUS_OK};
+
+    const NO_ERR: ErrSlot = ErrSlot(core::ptr::null_mut());
+
+    fn interfaces_status() -> u8 {
+        // SAFETY: a null `err` slot is allowed, and `out` is writable.
+        unsafe { msstd_system_network_interfaces_status(NO_ERR) }
+    }
+    fn cpus_status() -> u8 {
+        // SAFETY: a null `err` slot is allowed, and `out` is writable.
+        unsafe { msstd_system_cpus_status(NO_ERR) }
+    }
+    fn metrics_status() -> u8 {
+        // SAFETY: a null `err` slot is allowed, and `out` is writable.
+        unsafe { msstd_system_metrics_status(NO_ERR) }
+    }
+    fn get_priority(pid: i64, out: &mut i64) -> u8 {
+        // SAFETY: a null `err` slot is allowed, and `out` is writable.
+        unsafe { msstd_system_get_priority(pid, out, NO_ERR) }
+    }
+    fn set_priority(pid: i64, priority: i64) -> u8 {
+        // SAFETY: a null `err` slot is allowed, and `out` is writable.
+        unsafe { msstd_system_set_priority(pid, priority, NO_ERR) }
+    }
 
     #[test]
     fn interfaces_include_a_loopback_address() {
-        assert_eq!(msstd_system_network_interfaces_status(), STATUS_OK);
+        assert_eq!(interfaces_status(), STATUS_OK);
         let n = msstd_system_network_interfaces_count();
         assert!(n >= 1);
         let loopback = (0..n).any(|i| msstd_system_network_interfaces_internal(i) == 1);
@@ -501,10 +515,10 @@ mod tests {
     #[cfg(target_os = "linux")]
     #[test]
     fn cpus_and_metrics_read_proc() {
-        assert_eq!(msstd_system_cpus_status(), STATUS_OK);
+        assert_eq!(cpus_status(), STATUS_OK);
         assert!(msstd_system_cpus_count() >= 1);
         assert!(msstd_system_cpus_idle(0) >= 0);
-        assert_eq!(msstd_system_metrics_status(), STATUS_OK);
+        assert_eq!(metrics_status(), STATUS_OK);
         assert!(msstd_system_metrics_total_memory() > 0);
         assert!(msstd_system_metrics_available_memory() <= msstd_system_metrics_total_memory());
         assert!(msstd_system_metrics_uptime() > 0);
@@ -518,11 +532,11 @@ mod tests {
         assert!(msstd_system_info_cpu_count() >= 1);
         let mut out = 0i64;
         // SAFETY: `out` is writable; pid 0 is the calling process.
-        assert_eq!(unsafe { msstd_system_get_priority(0, &mut out) }, STATUS_OK);
+        assert_eq!(get_priority(0, &mut out), STATUS_OK);
         assert!((-20..=19).contains(&out));
         // SAFETY: `out` is writable.
-        let bad = unsafe { msstd_system_get_priority(-1, &mut out) };
+        let bad = get_priority(-1, &mut out);
         assert_eq!(bad, STATUS_INVALID_INPUT);
-        assert_eq!(msstd_system_set_priority(0, 20), STATUS_INVALID_INPUT);
+        assert_eq!(set_priority(0, 20), STATUS_INVALID_INPUT);
     }
 }

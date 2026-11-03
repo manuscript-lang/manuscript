@@ -12,6 +12,11 @@ use std::boxed::Box;
 use std::sync::Mutex;
 use std::vec::Vec;
 
+/// The status a command ended with.
+fn code(r: Result<(), Failure>) -> u8 {
+    r.err().map_or(STATUS_OK, |f| f.status)
+}
+
 /// One raw terminal may be open at a time, so the tests take turns.
 static TURN: Mutex<()> = Mutex::new(());
 
@@ -125,7 +130,7 @@ fn raw_mode_decodes_input_and_restores_settings() {
     assert_eq!(settled(pty.local_modes()), settled(before));
     assert_eq!(next(raw, None).0, STATUS_CLOSED);
     assert_eq!(raw.size(), Err(STATUS_CLOSED));
-    assert_eq!(raw.move_cursor(0, 0), STATUS_CLOSED);
+    assert_eq!(code(raw.move_cursor(0, 0)), STATUS_CLOSED);
     release(h);
 }
 
@@ -146,12 +151,12 @@ fn cursor_and_screen_commands_write_escape_sequences() {
     let pty = Pty::new();
     let h = open(&pty, true);
     let raw = &h;
-    assert_eq!(raw.move_cursor(2, 9), STATUS_OK);
-    assert_eq!(raw.move_cursor(-1, 0), STATUS_INVALID_INPUT);
-    assert_eq!(raw.move_cursor(0, 70_000), STATUS_INVALID_INPUT);
-    assert_eq!(raw.show_cursor(false), STATUS_OK);
+    assert_eq!(code(raw.move_cursor(2, 9)), STATUS_OK);
+    assert_eq!(code(raw.move_cursor(-1, 0)), STATUS_INVALID_INPUT);
+    assert_eq!(code(raw.move_cursor(0, 70_000)), STATUS_INVALID_INPUT);
+    assert_eq!(code(raw.show_cursor(false)), STATUS_OK);
     for region in 0..4 {
-        assert_eq!(raw.erase(region), STATUS_OK);
+        assert_eq!(code(raw.erase(region)), STATUS_OK);
     }
     assert_eq!(raw.size(), Ok((80, 24)));
     assert_eq!(
@@ -169,7 +174,7 @@ fn one_raw_terminal_at_a_time_and_resize_events() {
     let pty = Pty::new();
     let h = open(&pty, false);
     assert_eq!(
-        Raw::open(pty.fd(), pty.fd(), false).err(),
+        Raw::open(pty.fd(), pty.fd(), false).err().map(|f| f.status),
         Some(ms_rt_abi::STATUS_BUSY)
     );
     let raw = &h;
@@ -192,7 +197,9 @@ fn redirected_streams_are_not_terminals() {
         Box::leak(Box::new(write_end)),
     );
     assert_eq!(
-        Raw::open(read_end.as_fd(), write_end.as_fd(), false).err(),
+        Raw::open(read_end.as_fd(), write_end.as_fd(), false)
+            .err()
+            .map(|f| f.status),
         Some(STATUS_NOT_TERMINAL)
     );
 }

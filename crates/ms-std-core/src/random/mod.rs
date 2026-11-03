@@ -20,6 +20,9 @@ pub enum RandomFail {
 
 type R<T> = Result<T, RandomFail>;
 
+/// The text of the `Failed` status of a draw whose fetched bytes had the wrong length.
+pub(crate) const SHORT_ENTROPY: &str = "entropy source returned incorrect length";
+
 /// The operating system's entropy source (`osEntropy.Bytes`).
 pub fn os_bytes(count: i64) -> R<Vec<u8>> {
     if !(0..=MAX_BYTES).contains(&count) {
@@ -148,7 +151,6 @@ impl Draw {
         }
         if data.len() as i64 != want {
             self.status = ms_rt_abi::STATUS_FAILED;
-            ms_rt::glue::record_failure(b"entropy source returned incorrect length".to_vec());
             return false;
         }
         let Some(range) = self.range else {

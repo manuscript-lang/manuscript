@@ -39,8 +39,8 @@ use alloc::vec::Vec;
 use command::Subprocess;
 use ms_rt::ffi::ErrOut;
 use ms_rt::ffi::{
-    Bytes, IntList, ObjBox, ObjMut, ObjRef, ObjShare, Object, StatusCode, Str, StrMap, StringList,
-    Text, TextList, abi_handle, abi_record, argv, monotonic_nanos, native, start_nanos,
+    Bytes, Has, IntList, ObjBox, ObjMut, ObjRef, ObjShare, Object, StatusCode, Str, StrMap,
+    StringList, Text, TextList, abi_handle, abi_record, argv, monotonic_nanos, native, start_nanos,
 };
 use ms_rt_abi::STATUS_INVALID_INPUT;
 use ms_std_fs::err::{Fail, Res};
@@ -223,7 +223,7 @@ native! {
 
     fn msstd_process_set_environment(
         name: &str,
-        has_value: bool,
+        has_value: Has,
         value: &str; err: ErrOut) -> Result<(), StatusCode> {
         let value = has_value.then_some(value.as_bytes());
         fs_status(control::set_environment(name.as_bytes(), value), &err)
@@ -231,9 +231,9 @@ native! {
 
     fn msstd_process_load_environment(
         path: &str,
-        has_max: bool,
+        has_max: Has,
         max: i64; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(ms_std_fs::ops::limit(has_max, max)
+        fs_status(ms_std_fs::ops::limit(*has_max, max)
             .and_then(|m| control::load_environment(path.as_bytes(), m)), &err)
     }
 
@@ -302,7 +302,7 @@ native! {
     /// `watch_signals`: `signals` is a `List[Int]`; the capacity is a present flag plus the value.
     fn msstd_process_watch_signals(
         signals: &[i64],
-        has_capacity: bool,
+        has_capacity: Has,
         capacity: i64; err: ErrOut) -> Result<Object<signals::Watcher>, StatusCode> {
         fs_status(signals::Watcher::new(signals, has_capacity.then_some(capacity)), &err).map(Object)
     }
@@ -369,18 +369,18 @@ native! {
         program: &str,
         arguments: Vec<&str>,
         input: &[u8],
-        has_max: bool,
+        has_max: Has,
         max: i64,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout_ns: i64,
-        has_cwd: bool,
+        has_cwd: Has,
         cwd: &str,
         env_names: Vec<&str>,
         env_values: Vec<&str>; err: ErrOut) -> Result<CommandOut, StatusCode> {
         let program = program.as_bytes();
         let cwd = has_cwd.then_some(cwd.as_bytes());
-        let ran = ms_std_fs::ops::limit(has_max, max)
-            .and_then(|limit| Ok((limit, timeout(has_timeout, timeout_ns)?)))
+        let ran = ms_std_fs::ops::limit(*has_max, max)
+            .and_then(|limit| Ok((limit, timeout(*has_timeout, timeout_ns)?)))
             .and_then(|(limit, t)| {
                 let args = valid_command(program, &bytes_of(&arguments))?;
                 let env = valid_environment(cwd, &env_names, &env_values)?;
@@ -401,7 +401,7 @@ native! {
         stdin: i64,
         stdout: i64,
         stderr: i64,
-        has_cwd: bool,
+        has_cwd: Has,
         cwd: &str,
         env_names: Vec<&str>,
         env_values: Vec<&str>; err: ErrOut) -> Result<Object<Child>, StatusCode> {
@@ -442,10 +442,10 @@ native! {
 
     fn msstd_process_subprocess_wait(
         h: ObjMut<Child>,
-        has_timeout: bool,
+        has_timeout: Has,
         timeout_ns: i64; err: ErrOut) -> Result<i64, StatusCode> {
         let mut h = h;
-        fs_status(timeout(has_timeout, timeout_ns).and_then(|t| h.proc.wait(t)), &err)
+        fs_status(timeout(*has_timeout, timeout_ns).and_then(|t| h.proc.wait(t)), &err)
     }
 
     /// The peak resident set size of the exited child in bytes; 0 while it runs or when unknown.

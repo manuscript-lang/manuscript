@@ -98,7 +98,7 @@ impl FnLower<'_> {
         vals.push(wrapped);
         // A trailing `err` follows any `out`; the call helper appends its slot.
         let body =
-            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.name == "err"));
+            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.ty == "ErrSlot"));
         let has_out = sig.params[..body].last().is_some_and(|p| p.name == "out");
         let r = self.finish_rt_call(sym, &sig, has_out, vals, result)?;
         self.b.emit(Op::Drop, &[wrapped], Imm::None, None);

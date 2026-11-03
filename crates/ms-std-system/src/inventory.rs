@@ -6,6 +6,7 @@
 #![allow(unsafe_code)] // libc `getifaddrs` and friends
 
 use alloc::vec::Vec;
+use ms_rt::ffi::Failure;
 use ms_rt_abi::STATUS_UNSUPPORTED;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use ms_rt_abi::{STATUS_NOT_FOUND, STATUS_PERMISSION_DENIED};
@@ -66,17 +67,17 @@ impl<T> Slot<T> {
 }
 
 #[cfg(unix)]
-pub fn interfaces() -> Result<Vec<Interface>, u8> {
+pub fn interfaces() -> Result<Vec<Interface>, Failure> {
     use core::ffi::CStr;
 
     let mut head: *mut libc::ifaddrs = core::ptr::null_mut();
     // SAFETY: `head` receives a list that `freeifaddrs` releases below.
     if unsafe { libc::getifaddrs(&mut head) } != 0 {
-        return Err(ms_rt::glue::failed(b"getifaddrs failed"));
+        return Err(Failure::failed("getifaddrs failed"));
     }
     let mut macs: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
     let mut found = Vec::new();
-    let mut result = Ok(());
+    let mut result: Result<(), Failure> = Ok(());
     let mut at = head;
     while !at.is_null() {
         // SAFETY: the list nodes stay valid until `freeifaddrs`.
@@ -88,7 +89,7 @@ pub fn interfaces() -> Result<Vec<Interface>, u8> {
         // SAFETY: `ifa_name` is a NUL-terminated string.
         let name = unsafe { CStr::from_ptr(ifa.ifa_name) }.to_bytes().to_vec();
         if core::str::from_utf8(&name).is_err() {
-            result = Err(STATUS_UNSUPPORTED);
+            result = Err(STATUS_UNSUPPORTED.into());
             break;
         }
         // SAFETY: a non-null `ifa_addr` points at a sockaddr.
@@ -174,19 +175,19 @@ fn hex_mac(bytes: &[u8]) -> Vec<u8> {
 }
 
 #[cfg(not(unix))]
-pub fn interfaces() -> Result<Vec<Interface>, u8> {
-    Err(STATUS_UNSUPPORTED)
+pub fn interfaces() -> Result<Vec<Interface>, Failure> {
+    Err(STATUS_UNSUPPORTED.into())
 }
 
 /// The whole of `path`; `/proc` files report no size, so it reads until the end.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-fn read_file(path: &str) -> Result<Vec<u8>, u8> {
+fn read_file(path: &str) -> Result<Vec<u8>, Failure> {
     use std::io::ErrorKind;
 
     std::fs::read(path).map_err(|e| match e.kind() {
-        ErrorKind::NotFound => STATUS_NOT_FOUND,
-        ErrorKind::PermissionDenied => STATUS_PERMISSION_DENIED,
-        _ => ms_rt::glue::failed(b"cannot read host statistics"),
+        ErrorKind::NotFound => STATUS_NOT_FOUND.into(),
+        ErrorKind::PermissionDenied => STATUS_PERMISSION_DENIED.into(),
+        _ => Failure::failed("cannot read host statistics"),
     })
 }
 
@@ -209,7 +210,7 @@ fn field<'a>(line: &'a [u8], key: &[u8]) -> Option<&'a [u8]> {
 }
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn cpus() -> Result<Vec<Cpu>, u8> {
+pub fn cpus() -> Result<Vec<Cpu>, Failure> {
     let stat = read_file("/proc/stat")?;
     let info = read_file("/proc/cpuinfo").unwrap_or_default();
     // (model, MHz) of each `processor` block.
@@ -262,7 +263,7 @@ pub fn cpus() -> Result<Vec<Cpu>, u8> {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 #[allow(clippy::useless_conversion)] // `sysinfo` fields are narrower than 64 bits on 32-bit hosts
-pub fn metrics() -> Result<Metrics, u8> {
+pub fn metrics() -> Result<Metrics, Failure> {
     let info = rustix::system::sysinfo();
     let unit = u64::from(info.mem_unit.max(1));
     let bytes = |n: u64| i64::try_from(n.saturating_mul(unit)).unwrap_or(i64::MAX);
@@ -299,11 +300,11 @@ fn parallelism() -> i64 {
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
-pub fn cpus() -> Result<Vec<Cpu>, u8> {
-    Err(STATUS_UNSUPPORTED)
+pub fn cpus() -> Result<Vec<Cpu>, Failure> {
+    Err(STATUS_UNSUPPORTED.into())
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
-pub fn metrics() -> Result<Metrics, u8> {
-    Err(STATUS_UNSUPPORTED)
+pub fn metrics() -> Result<Metrics, Failure> {
+    Err(STATUS_UNSUPPORTED.into())
 }

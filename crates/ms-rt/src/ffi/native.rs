@@ -12,7 +12,7 @@ use super::{
 };
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
-use ms_rt_abi::{Closure, MapVal, OptStr};
+use ms_rt_abi::{Closure, ErrSlot, HasRaw, MapVal, OptStr};
 use std::boxed::Box;
 use std::string::String;
 use std::vec::Vec;
@@ -90,6 +90,26 @@ impl IntoAbi for bool {
     type Raw = u8;
     fn into_raw(self) -> u8 {
         u8::from(self)
+    }
+}
+
+/// Whether an optional argument is present, for the `has_x` half of a flattened optional.
+#[derive(Clone, Copy)]
+pub struct Has(pub bool);
+
+impl std::ops::Deref for Has {
+    type Target = bool;
+    fn deref(&self) -> &bool {
+        &self.0
+    }
+}
+impl AbiType for Has {
+    type Raw = HasRaw;
+}
+// SAFETY: a presence flag is a byte, 0 or 1.
+unsafe impl FromAbi<'_> for Has {
+    unsafe fn from_raw(raw: HasRaw) -> Has {
+        Has(raw.0 != 0)
     }
 }
 
@@ -899,7 +919,38 @@ impl IntoAbi for Vec<String> {
 /// The nullable `err: *mut StrVal` slot where a fallible native stores a `Failed` message.
 pub struct ErrOut(*mut StrVal);
 
+/// A failed native: the status byte and, for `STATUS_FAILED`, its fixed diagnostic text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Failure {
+    pub status: u8,
+    pub text: &'static str,
+}
+
+impl Failure {
+    /// `STATUS_FAILED` with the diagnostic `text`.
+    pub const fn failed(text: &'static str) -> Failure {
+        Failure {
+            status: ms_rt_abi::STATUS_FAILED,
+            text,
+        }
+    }
+}
+
+impl From<u8> for Failure {
+    fn from(status: u8) -> Failure {
+        Failure { status, text: "" }
+    }
+}
+
 impl ErrOut {
+    /// The status of `failure`, storing its text in the slot for `STATUS_FAILED`.
+    pub fn fail(&self, failure: Failure) -> StatusCode {
+        if failure.status == ms_rt_abi::STATUS_FAILED {
+            self.set(failure.text);
+        }
+        StatusCode(failure.status)
+    }
+
     /// Stores `msg` as a fresh string, unless the caller passed no slot.
     pub fn set(&self, msg: &str) {
         if !self.0.is_null() {
@@ -917,11 +968,12 @@ impl ErrOut {
     }
 }
 impl AbiType for ErrOut {
-    type Raw = *mut StrVal;
+    type Raw = ErrSlot;
 }
 // SAFETY: the caller passes null or writable memory for one string.
 unsafe impl FromAbi<'_> for ErrOut {
-    unsafe fn from_raw(raw: *mut StrVal) -> ErrOut {
+    unsafe fn from_raw(raw: ErrSlot) -> ErrOut {
+        let raw = raw.0;
         if !raw.is_null() {
             // The slot may be read for any failure status: start it as the empty string, which
             // owns no allocation, so a status that sets no text leaves it valid.

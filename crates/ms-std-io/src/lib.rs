@@ -11,7 +11,7 @@ extern crate alloc;
 pub use ms_std_fs::stream;
 
 use alloc::vec::Vec;
-use ms_rt::ffi::{ErrOut, ObjMut, StatusCode, native};
+use ms_rt::ffi::{ErrOut, Has, ObjMut, StatusCode, native};
 use ms_rt::glue::fault;
 use ms_rt_abi::{STATUS_FAILED, STATUS_NONE};
 use stream::{IoFail, IoRes, Stream};
@@ -52,12 +52,12 @@ native! {
     /// Reads a chunk; `STATUS_NONE` at end of stream.
     fn msstd_io_read(
         h: ObjMut<Stream>,
-        has_max: bool,
+        has_max: Has,
         max: i64;
         err: ErrOut
     ) -> Result<Vec<u8>, StatusCode> {
         let mut h = h;
-        chunk(h.read(optional(has_max, max)), &err)
+        chunk(h.read(optional(*has_max, max)), &err)
     }
 
     fn msstd_io_write_bytes(h: ObjMut<Stream>, data: &[u8]; err: ErrOut) -> Result<(), StatusCode> {
