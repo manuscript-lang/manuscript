@@ -95,7 +95,7 @@ fn total(values: List[Int]) Int:
     return sum
 ```
 
-A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. It moves a captured variable in when the closure is its last use; when the variable is used again, or is only borrowed (a loop variable, a `let` that borrows another value), bind a `.clone()` before the closure and capture that. A parameter the closure takes is consumed by the function, so the caller gives the value up; pass `.clone()` to keep it:
+A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. It moves a captured variable in when the closure is its last use; when the variable is used again, or is only borrowed (a loop variable, a `let` that borrows another value), bind a `.clone()` before the closure and capture that. A parameter the closure takes is consumed by the function, so the caller gives the value up; pass `.clone()` to keep it. A returned or stored closure cannot capture a `var` that is used again after the closure is made, because it would keep a stale copy; bind a `let` copy first (`let base = offset`) and capture that. A bound method keeps its receiver by the same rules: a method that changes its receiver (`let add = xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it or write a closure. The parameter case, with the caller keeping its list:
 
 ```manuscript
 type Counter:
@@ -108,7 +108,7 @@ fn total() Int:
     let values = [1, 2]
     let c = counter(values.clone())
     return c.read() + values.length()
-``` A returned or stored closure cannot capture a `var` that is used again after the closure is made, because it would keep a stale copy; bind a `let` copy first (`let base = offset`) and capture that. A bound method keeps its receiver by the same rules: a method that changes its receiver (`let add = xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it or write a closure.
+```
 
 ## Resource captures
 
