@@ -7,18 +7,17 @@ import (
     fail
 ) from "@std/test/test.ms"
 import from_scalars from "@std/string.ms"
-import TextError from "@std/core.ms"
-import parse, stringify, YamlValue, YamlError, YamlLimits from "@std/data/yaml.ms"
+import parse, stringify, YamlValue, YamlLimits from "@std/data/yaml.ms"
 
 fn entries(value: YamlValue) Map[String, YamlValue]!:
     match value:
         ObjectValue(values): return ok(values)
-        _: return error(TextError("expected YAML mapping"))
+        _: return error(Error("expected YAML mapping"))
 
 fn items(value: YamlValue) List[YamlValue]!:
     match value:
         ArrayValue(values): return ok(values)
-        _: return error(TextError("expected YAML sequence"))
+        _: return error(Error("expected YAML sequence"))
 
 fn limits(bytes: Int?, depth: Int?, values: Int?) YamlLimits?:
     return YamlLimits(max_bytes: bytes, max_depth: depth, max_values: values)
@@ -30,7 +29,7 @@ type ScalarCase:
 fn scalar(text: String, expected: String) Unit!:
     let root = parse(text: text) | try expect_ok | try entries
     if root["a"] != YamlValue.StringValue(expected): return error(
-        TextError("scalar folding: {text}")
+        Error("scalar folding: {text}")
     )
 
     return ok(unit)
@@ -172,7 +171,9 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         )
     )
 
-    let limited: YamlValue!YamlError = error(YamlError.LimitExceeded)
+    let limited: YamlValue! = error(
+        Error("YAML limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     try expect_false(
         (
             parse(
@@ -200,19 +201,26 @@ test "YAML blank line folding retains byte node and malformed input contracts":
             ok(_): return fail("malformed multiline scalar accepted: {malformed}")
             error(cause): cause
 
-        match cause:
-            InvalidData(line, column, reason):
-                ((line < 1 or column < 1 or reason == "") | try expect_false)
-            _: return fail("wrong multiline error")
+        cause.kind | try expect_equal(ErrorCategory.InvalidData)
+        (
+            (
+                cause.details["line"].parse_int().get() < 1
+                or cause.details["column"].parse_int().get() < 1
+                or cause.details["reason"] == ""
+            ) | try expect_false
+        )
 
     let cause = match parse(text: "a: x\n\n  b: y"):
         error(cause): cause
         ok(_): return fail("indented mapping accepted as plain continuation")
 
-    match cause:
-        InvalidData(line, column, _):
-            ((line != 3 or column != 1) | try expect_false)
-        _: return fail("wrong continuation error")
+    cause.kind | try expect_equal(ErrorCategory.InvalidData)
+    (
+        (
+            cause.details["line"] != "3"
+            or cause.details["column"] != "1"
+        ) | try expect_false
+    )
 
 test "YAML block mappings sequences exact scalars and core schema":
     let text = "name: é🙂\nlarge: 9007199254740993\nboolean: TRUE\nlegacy: yes\ndate: 2024-02-29\nempty:\nvalues:\n- null\n- false\n- 0xFF\npeople:\n  - name: Ada\n    age: 37\n  - name: Grace\n    skills:\n      - compilers\n"
@@ -374,9 +382,10 @@ test "YAML plain scalars cannot start with an indicator":
 
     let _ = try expect_ok(parse(text: "a: -1\nb: -a\nc: ?x\nd: [-1, ?y, :z]\n"))
     let explicit = parse(text: "\{? a : 1\}\n") | try expect_error
-    try expect_equal(
-        explicit,
-        YamlError.UnsupportedFeature(1, "explicit mapping keys are unsupported")
+    explicit.kind | try expect_equal(ErrorCategory.Unsupported)
+    explicit.details["line"] | try expect_equal("1")
+    explicit.details["reason"] | try expect_equal(
+        "explicit mapping keys are unsupported"
     )
 
 test "YAML rejects duplicates invalid indentation malformed flow and aliases":
@@ -390,13 +399,15 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
             ok(_): return fail("invalid YAML accepted: {text}")
             error(cause): cause
 
-        match cause:
-            InvalidData(line, column, reason):
-                (line < 1 or column < 1 or reason == "") | try expect_false
-
-                let boundary: Error = cause
-                ((boundary.message().starts_with("YAML ")) | try expect_true)
-            _: return fail("wrong YAML error")
+        cause.kind | try expect_equal(ErrorCategory.InvalidData)
+        (
+            (
+                cause.details["line"].parse_int().get() < 1
+                or cause.details["column"].parse_int().get() < 1
+                or cause.details["reason"] == ""
+            ) | try expect_false
+        )
+        ((cause.message.starts_with("YAML ")) | try expect_true)
 
     for text in [
         "!custom value", "? complex\n: value", "%TAG ! tag:example.org\n---\na: 1"
@@ -405,13 +416,15 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
             ok(_): return fail("unsupported YAML accepted")
             error(cause): cause
 
-        match cause:
-            UnsupportedFeature(_, _): let _expected = unit
-            _: return fail("expected unsupported feature")
+        cause.kind | try expect_equal(ErrorCategory.Unsupported)
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
-    let limited: YamlValue!YamlError = error(YamlError.LimitExceeded)
-    let invalid: YamlValue!YamlError = error(YamlError.InvalidInput)
+    let limited: YamlValue! = error(
+        Error("YAML limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
+    let invalid: YamlValue! = error(
+        Error("invalid YAML input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_false(
         (
             parse(
@@ -489,7 +502,7 @@ test "YAML exact decimal syntax does not depend on binary64 conversion":
 fn failure(text: String) String:
     match parse(text: text):
         ok(_): return "accepted"
-        error(cause): return cause.message()
+        error(cause): return cause.message
 
 test "YAML merge and block header errors name their own line":
     failure("<<: 1") | try expect_equal("YAML 1:1: merge requires mappings")
@@ -500,7 +513,9 @@ test "YAML merge and block header errors name their own line":
     )
 
 test "YAML limits fields default to none":
-    let limited: YamlValue!YamlError = error(YamlError.LimitExceeded)
+    let limited: YamlValue! = error(
+        Error("YAML limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     parse(text: "a: 1", limits: YamlLimits(max_bytes: 2)) | try expect_equal(limited)
     parse(text: "a: 1", limits: YamlLimits()) | try expect_equal(parse(text: "a: 1"))
 
@@ -514,14 +529,18 @@ test "YAML stringify round trips scalars sequences and mappings":
     )
 
 test "YAML stringify validates numbers and honors max_bytes":
-    let invalid: String!YamlError = error(YamlError.InvalidInput)
-    let limited: String!YamlError = error(YamlError.LimitExceeded)
+    let invalid: String! = error(
+        Error("invalid YAML input", kind: ErrorCategory.InvalidInput)
+    )
+    let limited: String! = error(
+        Error("YAML limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     stringify(value: YamlValue.NumberValue("not a number")) | try expect_equal(invalid)
 
     let root = (parse(text: "a: 1") | try expect_ok)
     stringify(value: root, max_bytes: 3) | try expect_equal(limited)
 
-    let exact: String!YamlError = ok("a: 1\n")
+    let exact: String! = ok("a: 1\n")
     stringify(value: root, max_bytes: 5) | try expect_equal(exact)
     stringify(value: root, max_bytes: -1) | try expect_equal(invalid)
 

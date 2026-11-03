@@ -9,19 +9,19 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "reachable fallthrough in function returning Result[Int, TextError]; end every path with 'return <Result[Int, TextError]>' (or make the last branch return)",
+        "message": "reachable fallthrough in function returning Result[Int, Error]; end every path with 'return <Result[Int, Error]>' (or make the last branch return)",
         "position": {
           "file": "testreturnonlytypeparametercontext-2.ms",
-          "line": 8,
+          "line": 7,
           "column": 1,
-          "offset": 311
+          "offset": 266
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testreturnonlytypeparametercontext-2.ms:8:1: type: reachable fallthrough in function returning Result[Int, TextError]; end every path with 'return <Result[Int, TextError]>' (or make the last branch return)\n   |\n 8 | fn first() Int!TextError: ...\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testreturnonlytypeparametercontext-2.ms:7:1: type: reachable fallthrough in function returning Result[Int, Error]; end every path with 'return <Result[Int, Error]>' (or make the last branch return)\n   |\n 7 | fn first() Int!Error: ...\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

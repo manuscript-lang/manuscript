@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "",
-    "stderr": "called Result.get() on error; check is_ok first, or pass a default: get(default: ...)\n  at testfaultsourcelocations-9.ms:7 in deep\n  at testfaultsourcelocations-9.ms:10 in main\n"
+    "stderr": "called Result.get() on error; check is_ok first, or pass a default: get(default: ...)\n  at testfaultsourcelocations-9.ms:6 in deep\n  at testfaultsourcelocations-9.ms:9 in main\n"
   }
 }

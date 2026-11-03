@@ -9,19 +9,19 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "`socket` holds a resource, which has one owner and cannot be cloned: a copy would be closed a second time; move it instead",
+        "message": "this statement discards Result[Connection, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose",
         "position": {
           "file": "testmutationrejections-15.ms",
           "line": 7,
-          "column": 12,
-          "offset": 241
+          "column": 5,
+          "offset": 238
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testmutationrejections-15.ms:7:12: type: `socket` holds a resource, which has one owner and cannot be cloned: a copy would be closed a second time; move it instead\n   |\n 7 |     socket.clone()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testmutationrejections-15.ms:7:5: type: this statement discards Result[Connection, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose\n   |\n 7 |     socket.clone()\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

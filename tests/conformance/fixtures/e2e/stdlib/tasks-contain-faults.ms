@@ -1,15 +1,16 @@
 # conform: tags=closures,faults,stdlib-tasks,tier-stdlib,scope-cleanup
 # conform: phase=run
 import stdout from "@std/io/io.ms"
-import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 
 fn boom(xs: List[Int]) Int:
     return xs.get(5)
 
-fn describe(error: TaskError) String:
-    match error:
-        Faulted(report): return "faulted: " + report.split("\n").get(0)
-        _: return "other error"
+fn describe(error: Error) String:
+    if error.kind == ErrorCategory.Failed:
+        return "faulted: " + error.details["report"].split("\n").get(0)
+
+    return "other error"
 
 fn say(text: String) Unit:
     let _ = stdout().write(text + "\n")

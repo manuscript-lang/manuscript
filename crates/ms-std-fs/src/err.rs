@@ -1,4 +1,4 @@
-//! Failure classification shared by the filesystem natives, for the filesystem natives: errno values become `FileSystemError` cases; anything else is `Failed`
+//! Failure classification shared by the filesystem natives: errno values become `ErrorCategory` statuses; anything else is `Failed`
 //! with the operation, path and OS error text.
 use crate::sys::{self, Errno};
 use alloc::string::String;

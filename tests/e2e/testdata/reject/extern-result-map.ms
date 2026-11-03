@@ -1,10 +1,6 @@
 type ReadError:
     case Missing
 
-impl Error for ReadError:
-    fn message() String:
-        return "missing"
-
 extern fn read_values() Map[String, Int]!ReadError
 
 export fn main() Int:

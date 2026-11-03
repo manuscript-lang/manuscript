@@ -33,7 +33,11 @@ env:
   # sccache stores each compiler output, so the saved cache stays small and bounded
   # (`target/` grew to several GB) and a changed crate rebuilds only itself.
   RUSTC_WRAPPER: sccache
-  SCCACHE_CACHE_SIZE: 2G
+  # Six legs share the repository's 10 GB Actions cache. At 2G each, Linux and Windows filled the cap
+  # (macOS used about 1 GB), the total passed 10 GB, and GitHub evicted the least recently used
+  # entries: the macOS and Windows caches, which only main reads. 1.5G keeps all six with room
+  # for the LLVM tool caches; sccache drops its least recently used outputs past the cap.
+  SCCACHE_CACHE_SIZE: 1500M
   # Debug info makes the dev and test builds slower to link and the saved caches several times
   # larger; nothing in CI reads the compiler's own debug info. Release keeps the profile setting.
   CARGO_PROFILE_DEV_DEBUG: '0'

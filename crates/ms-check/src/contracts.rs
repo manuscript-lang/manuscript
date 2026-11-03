@@ -292,6 +292,16 @@ impl Checker {
                 .or_default()
                 .push(at);
         }
+        if let Some(contract) = &method.contract {
+            if contract.kind == Kind::Variable {
+                self.generic_contract_methods.push(at);
+            } else {
+                self.methods_by_contract
+                    .entry(contract.id)
+                    .or_default()
+                    .push(at);
+            }
+        }
         self.p.methods.push(method);
     }
 
@@ -750,7 +760,12 @@ impl Checker {
         if receiver.kind == Kind::Variable {
             return receiver.bounds().iter().any(|b| same(b, contract));
         }
-        for m in &self.p.methods {
+        let exact = self
+            .methods_by_contract
+            .get(&contract.id)
+            .map_or(&[][..], |v| v);
+        for &at in exact.iter().chain(&self.generic_contract_methods) {
+            let m = &self.p.methods[at];
             if !self.method_visible(m) {
                 continue;
             }
@@ -1410,33 +1425,6 @@ impl Checker {
             && actual.kind != Kind::Contract
             && !has_generic_operation(expected)
             && self.implements(actual, expected)
-    }
-
-    /// Whether the Error boundary accepts `actual` where `expected` is written.
-    pub(crate) fn error_assignable(&self, actual: &Ty, expected: &Ty) -> bool {
-        if expected.is_std("Error") {
-            return self.implements(actual, expected);
-        }
-        actual.is_std("Result")
-            && expected.is_std("Result")
-            && actual.args.len() == 2
-            && expected.args.len() == 2
-            && same(&actual.args[0], &expected.args[0])
-            && expected.args[1].is_std("Error")
-            && self.implements(&actual.args[1], &expected.args[1])
-    }
-
-    /// Whether crossing an Error boundary with `receiver` needs dispatch
-    /// evidence. Ordinary domain errors pass through unchanged; local
-    /// implementations and generic receivers retain the evidence needed outside
-    /// this module.
-    pub(crate) fn error_needs_scope(&self, receiver: &Ty) -> bool {
-        if receiver.kind == Kind::Variable || !receiver.args.is_empty() {
-            return true;
-        }
-        self.methods(receiver, n("message"))
-            .iter()
-            .any(|m| m.contract.as_ref().is_some_and(|c| c.is_std("Error")) && m.local)
     }
 }
 

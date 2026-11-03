@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/terminal.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
-import TerminalError, raw_mode, terminal_capabilities from "@std/io/io.ms"
+import raw_mode, terminal_capabilities from "@std/io/io.ms"
 
 test "redirected streams report no terminal and refuse raw mode":
     let capabilities = terminal_capabilities()
@@ -17,4 +17,9 @@ test "redirected streams report no terminal and refuse raw mode":
             try raw.close()
             return fail("raw mode on redirected input")
         error(cause):
-            try expect_equal(cause, TerminalError.NotTerminal)
+            try expect_equal(
+                cause,
+                Error(
+                    "terminal: not a terminal", kind: ErrorCategory.Unsupported
+                )
+            )

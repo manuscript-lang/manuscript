@@ -4,11 +4,10 @@ type DivideError:
     case DivideByZero
     case Overflow
 
-impl Error for DivideError:
-    fn message() String:
-        match self:
-            DivideByZero: return "divide by zero"
-            Overflow: return "overflow"
+fn text(cause: DivideError) String:
+    match cause:
+        DivideByZero: return "divide by zero"
+        Overflow: return "overflow"
 
 extern fn greet_divide(left: Int, right: Int) Result[Int, DivideError]
 
@@ -28,13 +27,13 @@ fn describe(result: Result[Int, DivideError]) String:
     if let value = result:
         return "ok {value}"
 
-    return "error {result.err().message()}"
+    return "error {text(result.err())}"
 
 fn shout(result: Result[String, DivideError]) String:
     if let value = result:
         return value.clone()
 
-    return "error {result.err().message()}"
+    return "error {text(result.err())}"
 
 export fn main() Int:
     var out = stdout()

@@ -4,6 +4,7 @@
 fn held() Int:
     var m = Map[String, List[Int]]()
     m.add("a", [1, 2, 3])
+
     let x = m.get("a")
     m.remove("a")
     return x.get([]).length()

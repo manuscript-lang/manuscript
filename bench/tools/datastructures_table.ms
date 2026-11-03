@@ -1,7 +1,7 @@
 # Validates complete data-structure trials before comparing minimum ns/op (bench/perf/datastructures).
 # Samples are `<version> <operation> <count> <nanoseconds>`. The runner appends `<version> # end` only after a successful
 # producer. Producers do not emit checksums.
-import Invalid, invalid, left, right from "./lib.ms"
+import invalid, left, right from "./lib.ms"
 
 export type Operation:
     name: String
@@ -44,7 +44,7 @@ fn cell(value: Float?) String:
 
     return right("-", 9)
 
-export fn summarize(lines: List[String], repeats: Int) Result[String, Invalid]:
+export fn summarize(lines: List[String], repeats: Int) String!:
     if repeats < 1: return invalid("repeats must be positive")
 
     var best = Map[String, Float]()

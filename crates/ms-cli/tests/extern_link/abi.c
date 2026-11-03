@@ -146,3 +146,83 @@ void abi_fault(void) {
     static const char text[] = "the shim gave up";
     ms_fault(text, sizeof text - 1);
 }
+
+/* ---- Functions (ms_call) ---- */
+
+/* f(f(x)). */
+int64_t abi_twice(ms_fn *f, int64_t x) {
+    ms_value arg = {MS_INT, {.i = x}}, r;
+    ms_call(f, &arg, 1, &r);
+    arg.as.i = r.as.i;
+    ms_call(f, &arg, 1, &r);
+    return r.as.i;
+}
+
+/* Calls f("ab", -3, true, 2.5, bytes "xy") and returns its string. */
+void abi_describe(ms_fn *f, ms_str *out) {
+    ms_value args[5] = {
+        {MS_STRING, {.buf = {(const uint8_t *)"ab", 2}}},
+        {MS_INT, {.i = -3}},
+        {MS_BOOL, {.b = true}},
+        {MS_FLOAT, {.f = 2.5}},
+        {MS_BYTES, {.buf = {(const uint8_t *)"xy", 2}}},
+    };
+    ms_value r;
+    ms_call(f, args, 5, &r);
+    ms_string_new(r.as.buf.data, r.as.buf.len, out);
+    ms_value_free(&r);
+}
+
+/* A kept callback: abi_keep retains it, abi_fire calls it with an object, abi_forget drops it. */
+static ms_fn *kept;
+void abi_keep(ms_fn *f) { kept = ms_fn_retain(f); }
+void abi_fire(ms_object *counter) {
+    ms_value arg = {MS_OBJECT, {.object = counter}};
+    ms_call(kept, &arg, 1, NULL);
+}
+void abi_forget(void) {
+    ms_fn_release(kept);
+    kept = NULL;
+}
+
+/* An argument of the wrong kind faults. */
+void abi_call_wrong(ms_fn *f) {
+    ms_value arg = {MS_STRING, {.buf = {(const uint8_t *)"x", 1}}};
+    ms_call(f, &arg, 1, NULL);
+}
+
+/* Runs f; a fault in it ends the program. */
+void abi_call_plain(ms_fn *f) { ms_call(f, NULL, 0, NULL); }
+
+/* ---- Stop hooks ---- */
+
+static volatile int stopped;
+static void on_stop(void *arg) { *(volatile int *)arg = 1; }
+
+static ms_stop_hook *hook;
+
+/* Registers the hook before the program reports it is ready. */
+void abi_arm_stop(void) { hook = ms_on_stop(on_stop, (void *)&stopped); }
+
+/* Asks for a stop the way a user would: SIGINT on Unix, Ctrl-Break to this process's own group
+   on Windows (the test starts it as a group leader). Windows delivers it on another thread. */
+#ifdef _WIN32
+int __stdcall GenerateConsoleCtrlEvent(unsigned long event, unsigned long group);
+unsigned long __stdcall GetCurrentProcessId(void);
+static int request_stop(void) { return GenerateConsoleCtrlEvent(1, GetCurrentProcessId()) != 0; }
+#else
+int raise(int sig);
+static int request_stop(void) { return raise(2) == 0; }
+#endif
+
+/* Requests a stop, then blocks until the hook runs, as a C event loop would. */
+int64_t abi_wait_for_stop(void) {
+    if (!request_stop()) {
+        static const char text[] = "the stop request could not be sent";
+        ms_fault(text, sizeof text - 1);
+    }
+    while (!stopped) {
+    }
+    ms_on_stop_remove(hook);
+    return stopped;
+}

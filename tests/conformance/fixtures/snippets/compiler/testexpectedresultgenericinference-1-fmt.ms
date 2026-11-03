@@ -2,4 +2,4 @@
 # conform: phase=parse
 # conform: origin=pkg/compiler/contextual_generics_test.go:38 TestExpectedResultGenericInference
 fn first() Unit:
-    let result: Int!TextError = fail("empty")
+    let result: Int!Error = fail("empty")

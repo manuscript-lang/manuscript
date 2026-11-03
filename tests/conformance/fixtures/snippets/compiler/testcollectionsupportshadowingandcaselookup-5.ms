@@ -4,4 +4,4 @@
 type CollectionError:
     case OutOfRange
 
-fn get() List[Int]!CollectionError: [1].slice(0, 1)
+fn get() List[Int]!: [1].slice(0, 1)

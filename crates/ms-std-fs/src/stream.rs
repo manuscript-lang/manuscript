@@ -16,7 +16,7 @@ use ms_rt_abi::{
     STATUS_NONE, STATUS_UNAVAILABLE,
 };
 
-/// The `IoError` outcome of an operation: a status and, for `STATUS_FAILED`, its text.
+/// The `Error` outcome of an operation: a status and, for `STATUS_FAILED`, its text.
 #[derive(Debug, PartialEq, Eq)]
 pub struct IoFail {
     pub status: u8,

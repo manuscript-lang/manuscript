@@ -1,7 +1,6 @@
 # conform: tags=control-flow,interpolation,lists,modules,mutation,optional,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/if-let.ms
-import TextError from "@std/core.ms"
 import expect_true, fail from "@std/test/test.ms"
 
 fn describe(name: String?) String:
@@ -37,9 +36,9 @@ test "if let takes else when absent and keeps falsy payloads":
     let empty: List[Int] = []
     if let value = empty.first(): return fail(message: "unexpected {value}")
 
-fn parse(text: String) Int!TextError:
+fn parse(text: String) Int!Error:
     if text == "":
-        return error(TextError("empty"))
+        return error(Error("empty"))
 
     return ok(text.length())
 

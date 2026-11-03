@@ -1,5 +1,4 @@
 import expect_ok from "@std/test/test.ms"
-import TextError from "@std/core.ms"
 import connect, listen from "@std/net/net.ms"
 import sleep from "@std/os/time.ms"
 
@@ -25,4 +24,4 @@ test "writing to a closed connection returns an error":
 
         attempts += 1
 
-    return error(TextError("writes to a closed peer never failed"))
+    return error(Error("writes to a closed peer never failed"))

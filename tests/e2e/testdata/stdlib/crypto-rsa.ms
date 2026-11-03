@@ -1,5 +1,4 @@
 import (
-    CryptoError,
     HashAlgorithm,
     public_key_der,
     rsa_generate,
@@ -69,22 +68,37 @@ test "RSA malformed keys and signatures fail without faulting":
 
     for key in [bad.clone(), public]:
         try expect_equal(
-            rsa_sign(key, HashAlgorithm.Sha256, data).err(), CryptoError.InvalidInput
+            rsa_sign(key, HashAlgorithm.Sha256, data).err(),
+            Error(
+                "cryptography: invalid input", kind: ErrorCategory.InvalidInput
+            )
         )
         try expect_equal(
             rsa_sign_pss(key, HashAlgorithm.Sha256, data).err(),
-            CryptoError.InvalidInput
+            Error(
+                "cryptography: invalid input", kind: ErrorCategory.InvalidInput
+            )
         )
         try expect_equal(
-            rsa_decrypt(key, HashAlgorithm.Sha256, data).err(), CryptoError.InvalidInput
+            rsa_decrypt(key, HashAlgorithm.Sha256, data).err(),
+            Error(
+                "cryptography: invalid input", kind: ErrorCategory.InvalidInput
+            )
         )
 
     try expect_equal(
-        rsa_encrypt(bad, HashAlgorithm.Sha256, data).err(), CryptoError.InvalidInput
+        rsa_encrypt(bad, HashAlgorithm.Sha256, data).err(),
+        Error("cryptography: invalid input", kind: ErrorCategory.InvalidInput)
     )
-    try expect_equal(rsa_generate(1024).err(), CryptoError.InvalidInput)
     try expect_equal(
-        widened_sign(bad).err().message(), CryptoError.InvalidInput.message()
+        rsa_generate(1024).err(),
+        Error("cryptography: invalid input", kind: ErrorCategory.InvalidInput)
+    )
+    try expect_equal(
+        widened_sign(bad).err().message,
+        Error(
+            "cryptography: invalid input", kind: ErrorCategory.InvalidInput
+        ).message
     )
     try expect_true(widened_sign(private).is_ok())
 
@@ -96,17 +110,19 @@ test "RSA OAEP rejects ciphertext and oversized plaintext with domain errors":
     for bytes in ["".to_bytes(), "invalid ciphertext".to_bytes()]:
         try expect_equal(
             rsa_decrypt(private, HashAlgorithm.Sha256, bytes).err(),
-            CryptoError.AuthenticationFailed
+            Error(
+                "cryptography: authentication failed", kind: ErrorCategory.Other
+            )
         )
     try expect_equal(
         rsa_decrypt(private, HashAlgorithm.Sha384, ciphertext).err(),
-        CryptoError.AuthenticationFailed
+        Error("cryptography: authentication failed", kind: ErrorCategory.Other)
     )
 
     let oversized = try "x".repeat(127)
     try expect_equal(
         rsa_encrypt(public, HashAlgorithm.Sha512, oversized.to_bytes()).err(),
-        CryptoError.InvalidInput
+        Error("cryptography: invalid input", kind: ErrorCategory.InvalidInput)
     )
 
     let empty = try rsa_encrypt(public, HashAlgorithm.Sha256, "".to_bytes())
@@ -114,8 +130,10 @@ test "RSA OAEP rejects ciphertext and oversized plaintext with domain errors":
         try rsa_decrypt(private, HashAlgorithm.Sha256, empty), "".to_bytes()
     )
     try expect_equal(
-        widened_decrypt(private, "bad".to_bytes()).err().message(),
-        CryptoError.AuthenticationFailed.message()
+        widened_decrypt(private, "bad".to_bytes()).err().message,
+        Error(
+            "cryptography: authentication failed", kind: ErrorCategory.Other
+        ).message
     )
     try expect_equal(try widened_decrypt(private, ciphertext), data)
 

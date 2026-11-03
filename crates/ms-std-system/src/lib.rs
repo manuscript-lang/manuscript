@@ -433,6 +433,19 @@ mod imp {
 
     pub const CONSTANTS: &[(&str, i64)] = &[];
 
+    #[cfg(windows)]
+    #[allow(unsafe_code)] // kernel32 `GetActiveProcessorCount`
+    pub fn cpu_count() -> i64 {
+        unsafe extern "system" {
+            fn GetActiveProcessorCount(group: u16) -> u32;
+        }
+        const ALL_PROCESSOR_GROUPS: u16 = 0xffff;
+        // SAFETY: a kernel32 call that takes no pointers.
+        let n = unsafe { GetActiveProcessorCount(ALL_PROCESSOR_GROUPS) };
+        i64::from(n.max(1))
+    }
+
+    #[cfg(not(windows))]
     pub fn cpu_count() -> i64 {
         1
     }

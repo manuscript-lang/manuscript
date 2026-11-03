@@ -1,5 +1,4 @@
 import Decimal, RoundingMode from "@std/math/decimal.ms"
-import NumberError from "@std/math/math.ms"
 
 export extern fn msstd_decimal_compare(left: Decimal, right: Decimal) Int
 
@@ -11,10 +10,10 @@ export extern fn msstd_decimal_round(
     value: Decimal,
     places: Int,
     mode: RoundingMode?
-) Decimal!NumberError
+) Decimal!
 
 export extern fn msstd_decimal_to_fixed(
     value: Decimal,
     digits: Int,
     mode: RoundingMode?
-) String!NumberError
+) String!

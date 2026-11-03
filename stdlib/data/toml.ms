@@ -42,22 +42,6 @@ export type TomlValue:
         values: Map[String, TomlValue]
     )
 
-# Errors returned for invalid limits, malformed TOML, or exceeded resource bounds.
-export type TomlError:
-    # A supplied limit is negative, or stringify received a value that is not a table or holds a DateTimeValue that is not a valid TOML date or time.
-    case InvalidInput
-    # Invalid syntax, duplicate/conflicting keys, unsupported value forms or numeric range failures.
-    case InvalidData(
-        # One-based line of the invalid token or conflicting construct.
-        line: Int,
-        # One-based Unicode scalar column after CRLF normalization.
-        column: Int,
-        # Parser diagnostic describing the rejected TOML construct.
-        reason: String
-    )
-    # Input, nesting or parsed/returned value counts exceed a supplied budget.
-    case LimitExceeded
-
 # Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
 # Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `TomlLimits` to change that.
 export type TomlLimits:
@@ -67,14 +51,6 @@ export type TomlLimits:
     max_depth: Int?
     # Maximum containers and leaves, excluding keys; checked during parsing and materialization.
     max_values: Int?
-
-impl Error for TomlError:
-    # Formats the source line, scalar column and parser reason for a malformed document.
-    fn message() String:
-        match self:
-            InvalidInput: return "invalid TOML input"
-            InvalidData(line, column, reason): return "TOML {line}:{column}: {reason}"
-            LimitExceeded: return "TOML limit exceeded"
 
 # The document is read as UTF-8 bytes; `pos` is a byte offset and line/column are derived from it
 # only when an error is reported.
@@ -182,13 +158,18 @@ fn locate(data: Bytes, pos: Int) List[Int]:
 
     return [line, column]
 
-fn invalid_at(reader: Reader, pos: Int, reason: String) TomlError:
-    let place = locate(reader.data, pos)
-    return TomlError.InvalidData(
-        line: place.get(0), column: place.get(1), reason: reason
+# A malformed-input error at a one-based source position.
+fn toml_invalid(line: Int, column: Int, reason: String) Error:
+    return Error(
+        "TOML {line}:{column}: {reason}", kind: InvalidData,
+        details: {"line": line.to_string(), "column": column.to_string()}
     )
 
-fn invalid(reader: Reader, reason: String) TomlError:
+fn invalid_at(reader: Reader, pos: Int, reason: String) Error:
+    let place = locate(reader.data, pos)
+    return toml_invalid(line: place.get(0), column: place.get(1), reason: reason)
+
+fn invalid(reader: Reader, reason: String) Error:
     return invalid_at(reader, reader.pos, reason)
 
 # The text between two byte offsets of the document.
@@ -223,16 +204,18 @@ fn within(value: Int, limit: Int?) Bool:
 
     return true
 
-fn allocate(var reader: Reader) Unit!TomlError:
+fn allocate(var reader: Reader) Unit!:
     reader.values += 1
     if not within(reader.values, reader.limits.max_values): return error(
-        TomlError.LimitExceeded
+        Error("TOML limit exceeded", kind: LimitExceeded)
     )
 
     return ok(unit)
 
-fn budget(reader: Reader, depth: Int) Unit!TomlError:
-    if not within(depth, reader.limits.max_depth): return error(TomlError.LimitExceeded)
+fn budget(reader: Reader, depth: Int) Unit!:
+    if not within(depth, reader.limits.max_depth): return error(
+        Error("TOML limit exceeded", kind: LimitExceeded)
+    )
 
     return ok(unit)
 
@@ -246,7 +229,7 @@ fn quote_char(quote: Int) String:
     return "'"
 
 # Basic and literal strings, including multiline delimiters and escaped newline folding.
-fn string_value(var reader: Reader, key: Bool) String!TomlError:
+fn string_value(var reader: Reader, key: Bool) String!:
     let quote = advance(var reader)
     var multiline = false
 
@@ -380,7 +363,7 @@ fn bare_key_byte(b: Int) Bool:
         or b == 45
     )
 
-fn key_path(var reader: Reader) List[String]!TomlError:
+fn key_path(var reader: Reader) List[String]!:
     var keys: List[String] = []
 
     while true:
@@ -405,9 +388,7 @@ fn key_path(var reader: Reader) List[String]!TomlError:
 
         advance(var reader)
 
-fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[
-    Int, TomlError
-]:
+fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int, Error]:
     if flags(reader, parent).sealed: return error(
         invalid(reader, "inline table is closed")
     )
@@ -439,7 +420,7 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[
         _: return error(invalid(reader, "key is already a value"))
 
 fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
-    Unit, TomlError
+    Unit, Error
 ]:
     let existing = lookup(reader, parent, key)
 
@@ -459,7 +440,7 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
         _: return error(invalid(reader, "table array conflicts with value"))
 
 fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Result[
-    Unit, TomlError
+    Unit, Error
 ]:
     var current = parent
     var index = 0
@@ -477,7 +458,7 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
 
 # Adds a key that must not exist yet to an open table.
 fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
-    Unit, TomlError
+    Unit, Error
 ]:
     if flags(reader, parent).sealed: return error(
         invalid(reader, "duplicate or closed key")
@@ -513,7 +494,7 @@ fn simple_key(var reader: Reader) String?:
     return slice_text(reader, start, end)
 
 # Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
-fn key_value(var reader: Reader, table: Int, depth: Int) Unit!TomlError:
+fn key_value(var reader: Reader, table: Int, depth: Int) Unit!:
     if let key = simple_key(var reader):
         let value = try read_value(var reader, depth + 1)
         return assign_one(reader: var reader, parent: table, key: key, value: value)
@@ -639,7 +620,7 @@ fn datetime_valid(text: String) Bool:
 
     return time_valid(rest)
 
-fn scalar(reader: Reader, text: String, at: Int) Node!TomlError:
+fn scalar(reader: Reader, text: String, at: Int) Node!:
     if text == "true": return ok(Node.Leaf(TomlValue.BoolValue(true)))
     if text == "false": return ok(Node.Leaf(TomlValue.BoolValue(false)))
     if datetime_valid(text): return ok(Node.Leaf(TomlValue.DateTimeValue(text)))
@@ -771,7 +752,7 @@ fn scalar_offset(reader: Reader, count: Int) Int:
 
     return pos
 
-fn read_value(var reader: Reader, depth: Int) Node!TomlError:
+fn read_value(var reader: Reader, depth: Int) Node!:
     try allocate(var reader)
     try budget(reader, depth)
     space(var reader, multiline: false)
@@ -883,12 +864,14 @@ fn materialize(
     node: Node,
     depth: Int,
     var budget: Budget
-) TomlValue!TomlError:
-    if not within(depth, budget.limits.max_depth): return error(TomlError.LimitExceeded)
+) TomlValue!:
+    if not within(depth, budget.limits.max_depth): return error(
+        Error("TOML limit exceeded", kind: LimitExceeded)
+    )
 
     budget.values += 1
     if not within(budget.values, budget.limits.max_values): return error(
-        TomlError.LimitExceeded
+        Error("TOML limit exceeded", kind: LimitExceeded)
     )
 
     match node:
@@ -923,15 +906,15 @@ fn control_pattern() Regex:
     return compile("[\\x00-\\x08\\x0b-\\x1f\\x7f]").get()
 
 # Parses a TOML document into a table value and reports source line and column on invalid input.
-export fn parse(text: String, limits: TomlLimits?) TomlValue!TomlError:
+export fn parse(text: String, limits: TomlLimits?) TomlValue!:
     var options = default_limits()
     if let value = limits:
         options = value
     for limit in [options.max_bytes, options.max_depth, options.max_values]:
         if let value = limit:
-            if value < 0: return error(TomlError.InvalidInput)
+            if value < 0: return error(Error("invalid TOML input", kind: InvalidInput))
     if not within(text.byte_length(), options.max_bytes): return error(
-        TomlError.LimitExceeded
+        Error("TOML limit exceeded", kind: LimitExceeded)
     )
 
     # TOML permits CR only as part of CRLF. Report the first offending scalar
@@ -949,7 +932,7 @@ export fn parse(text: String, limits: TomlLimits?) TomlValue!TomlError:
         var reason = "invalid control character"
         if reader.data.get(span.get(0)) == 13: reason = "bare carriage return"
         return error(
-            TomlError.InvalidData(
+            toml_invalid(
                 line: place.get(0), column: place.get(1), reason: reason
             )
         )
@@ -1194,21 +1177,25 @@ fn datetimes_valid(value: TomlValue) Bool:
         _: return true
 
 # Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
-export fn stringify(value: TomlValue, max_bytes: Int?) String!TomlError:
+export fn stringify(value: TomlValue, max_bytes: Int?) String!:
     if let limit = max_bytes:
-        if limit < 0: return error(TomlError.InvalidInput)
+        if limit < 0: return error(Error("invalid TOML input", kind: InvalidInput))
 
     let root = match value:
         TableValue(values): values.clone()
-        _: return error(TomlError.InvalidInput)
+        _: return error(Error("invalid TOML input", kind: InvalidInput))
 
-    if not datetimes_valid(value): return error(TomlError.InvalidInput)
+    if not datetimes_valid(value): return error(
+        Error("invalid TOML input", kind: InvalidInput)
+    )
 
     var writer = Writer(StringBuilder(), started: false)
     emit_table(var writer, [], root)
 
     let {out} = writer
     let text = out.build()
-    if not within(text.byte_length(), max_bytes): return error(TomlError.LimitExceeded)
+    if not within(text.byte_length(), max_bytes): return error(
+        Error("TOML limit exceeded", kind: LimitExceeded)
+    )
 
     return ok(text)

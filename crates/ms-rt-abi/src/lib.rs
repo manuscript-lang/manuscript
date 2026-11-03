@@ -455,39 +455,39 @@ pub const FATPTR_SIZE: usize = 16;
 /// Success. Fallible natives return a `u8` status and write the ok value
 /// through a trailing out-pointer. Non-zero values are error cases.
 pub const STATUS_OK: u8 = 0;
-/// `StringError`/`NumberError`/`CollectionError` case `InvalidInput`.
+/// `ErrorCategory.InvalidInput`.
 pub const STATUS_INVALID_INPUT: u8 = 1;
-/// `StringError.OutOfRange`, `NumberError.OutOfRange`, `CollectionError.OutOfRange`.
+/// `ErrorCategory.OutOfRange`.
 pub const STATUS_OUT_OF_RANGE: u8 = 2;
-/// `StringError.LimitExceeded`, `CollectionError.LimitExceeded`.
+/// `ErrorCategory.LimitExceeded`.
 pub const STATUS_LIMIT_EXCEEDED: u8 = 3;
-/// `NumberError.InvalidData`.
+/// `ErrorCategory.InvalidData`.
 pub const STATUS_INVALID_DATA: u8 = 4;
-/// `FileSystemError.NotFound`.
+/// `ErrorCategory.NotFound`.
 pub const STATUS_NOT_FOUND: u8 = 5;
-/// `FileSystemError.AlreadyExists`.
+/// `ErrorCategory.AlreadyExists`.
 pub const STATUS_ALREADY_EXISTS: u8 = 6;
-/// `FileSystemError.NotEmpty`.
+/// Directory not empty; surfaces as `ErrorCategory.Failed` with the text in `details`.
 pub const STATUS_NOT_EMPTY: u8 = 7;
-/// `FileSystemError.PermissionDenied`.
+/// `ErrorCategory.PermissionDenied`.
 pub const STATUS_PERMISSION_DENIED: u8 = 8;
-/// `FileSystemError.Unsupported`, `ControlError.Unsupported`.
+/// `ErrorCategory.Unsupported`.
 pub const STATUS_UNSUPPORTED: u8 = 9;
-/// `IoError.Closed`, `FileSystemError.Closed`.
+/// `ErrorCategory.Closed`.
 pub const STATUS_CLOSED: u8 = 10;
-/// `IoError.Failed`, `FileSystemError.Failed`: the diagnostic text comes back through the call's `message` out-pointer.
+/// `ErrorCategory.Failed`: the diagnostic text comes back through the call's `message` out-pointer.
 pub const STATUS_FAILED: u8 = 11;
-/// `IoError.Unavailable`.
+/// `ErrorCategory.Unavailable`.
 pub const STATUS_UNAVAILABLE: u8 = 12;
-/// `CommandError.Timeout`.
+/// `ErrorCategory.Timeout`.
 pub const STATUS_TIMEOUT: u8 = 13;
-/// `CommandError.OutputLimit`.
+/// Process output limit exceeded; surfaces as `ErrorCategory.LimitExceeded`.
 pub const STATUS_OUTPUT_LIMIT: u8 = 14;
-/// `TerminalError.NotTerminal`: a standard stream is redirected.
+/// A standard stream is redirected.
 pub const STATUS_NOT_TERMINAL: u8 = 15;
 /// Success with no value (`Ok(none)`): end of stream or an absent optional result.
 pub const STATUS_NONE: u8 = 16;
-/// `TerminalError.Busy`: another raw terminal holds the terminal.
+/// Another raw terminal holds the terminal.
 pub const STATUS_BUSY: u8 = 17;
 
 // ---------------------------------------------------------------------------
@@ -569,6 +569,10 @@ pub struct Value {
     pub kind: u32,
     pub as_: ValueAs,
 }
+/// The most parameters a function passed to a user extern may take (`ms_call`).
+pub const CALL_MAX_PARAMS: usize = 6;
+/// The most hooks `ms_on_stop` holds at once.
+pub const STOP_HOOKS_MAX: usize = 32;
 pub const VALUE_AS_OFFSET: usize = 8;
 pub const VALUE_SIZE: usize = 24;
 
@@ -804,6 +808,30 @@ void       ms_release(ms_object *o);
 /* An unrecoverable error: reported and cleaned up like a Manuscript fault. */
 MS_NORETURN void ms_fault(const char *text, size_t len);
 
+/* ---- 8. Calling Manuscript functions ------------------------------------------------- */
+/* A function argument (`f: fn(Int) Bool`) is a borrowed `ms_fn *`. Its parameters (at most
+   {call_max}) are sized numbers, Bool, String, Bytes or extern types; its result one of those
+   but an extern type, or Unit. */
+typedef struct ms_fn ms_fn;
+/* Calls f on this thread with copies of `count` arguments. An integer must have the kind
+   (MS_INT or MS_UINT) and range of its parameter, a string must be UTF-8, an object is
+   retained; anything else faults before the call. `result` (may be NULL) receives the value
+   as ms_list_get gives it: strings and bytes are malloc'd copies (ms_value_free). A fault in f
+   is a fault of the program; ms_call does not return from it. */
+void   ms_call(ms_fn *f, const ms_value *args, size_t count, ms_value *result);
+/* Keep f after the extern call returns, and drop it, on the thread that called the shim. */
+ms_fn *ms_fn_retain(ms_fn *f);
+void   ms_fn_release(ms_fn *f);
+
+/* ---- 10. Stop requests --------------------------------------------------------------- */
+typedef struct ms_stop_hook ms_stop_hook;
+/* fn(arg) runs when a stop is requested (SIGINT, SIGTERM, Ctrl-C), from a signal handler or
+   another thread, so it may only do async-signal-safe work: set a flag, write to a pipe, call
+   uv_async_send. Use it to return from a C call that blocks. NULL when {stop_hooks} hooks are
+   set. */
+ms_stop_hook *ms_on_stop(void (*fn)(void *arg), void *arg);
+void          ms_on_stop_remove(ms_stop_hook *h);
+
 /* Before version 1: the same as ms_string_new on an empty `out`. */
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);
 
@@ -829,6 +857,8 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);
             list = VALUE_LIST,
             fn_ = VALUE_FN,
             value_size = VALUE_SIZE,
+            call_max = CALL_MAX_PARAMS,
+            stop_hooks = STOP_HOOKS_MAX,
         )
     }
 
@@ -847,6 +877,11 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);
         "ms_retain",
         "ms_release",
         "ms_fault",
+        "ms_call",
+        "ms_fn_retain",
+        "ms_fn_release",
+        "ms_on_stop",
+        "ms_on_stop_remove",
     ];
 
     #[test]

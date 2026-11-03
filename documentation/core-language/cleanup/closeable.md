@@ -50,7 +50,7 @@ A similarly named method without `impl Closeable`, or an unconstrained type para
 `close()` returns `Unit!`, which is `Result[Unit, Error]`: releasing a resource can fail, and the failure is a value. A type whose release cannot fail returns `ok(unit)`.
 
 ```manuscript
-import Closeable, TextError from "@std/core.ms"
+import Closeable from "@std/core.ms"
 
 type Gate:
     fails: Bool
@@ -58,7 +58,7 @@ type Gate:
 impl Closeable for Gate:
     var fn close() Unit!:
         if self.fails:
-            return error(TextError("gate stuck"))
+            return error(Error("gate stuck"))
         return ok(unit)
 
 fn use_gate(fails: Bool) Unit!:

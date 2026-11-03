@@ -48,17 +48,16 @@ Computed values, interpolated text, ranges, and `Float` scrutinees are not liter
 An arm may hold statements then a final expression, which is its value; ending in a statement gives `Unit`. Value-producing arms must share a compatible type, taken from the annotation or expected type, or else from the arms themselves. Arms that exit via `return`, `break`, `continue`, or `Never` contribute no value.
 
 ```manuscript
-import TextError from "@std/core.ms"
 type Cents:
     case Valid(amount: Int)
     case Invalid
 
-fn total(cents: Cents) Result[Int, TextError]:
+fn total(cents: Cents) Result[Int, Error]:
     let amount = match cents:
         Valid(value):
             value
         Invalid:
-            return error(TextError("Invalid amount"))
+            return error(Error("Invalid amount"))
     return ok(amount)
 ```
 
@@ -114,24 +113,25 @@ Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return c
 A contract view keeps its concrete receiver. `ConcreteType(receiver)` recovers it for a particular implementation, and `_:` handles the rest. This is not a constructor call.
 
 ```text
-import JsonError from "@std/data/json.ms"
+interface Shape:
+    fn area() Int
 
-fn describe(cause: Error) String:
-    match cause:
-        JsonError(json): return describe_json(json)
+type Square:
+    side: Int
+
+impl Shape for Square:
+    fn area() Int: self.side * self.side
+
+fn describe(shape: Shape) String:
+    match shape:
+        Square(square): return "square {square.side}"
         _:
-            return cause.message()
-
-fn describe_json(cause: JsonError) String:
-    match cause:
-        InvalidInput: return "Invalid JSON limits"
-        InvalidData: return "Malformed JSON"
-        LimitExceeded: return "JSON limit exceeded"
+            return "area {shape.area()}"
 ```
 
 - The type is a local or imported nominal record or alternative with an explicit implementation of the scrutinee's exact contract.
 - Give exactly one receiver name or `_`, even for a payloadless alternative. The binding has the concrete type. Native opaque receivers fall to the wildcard.
-- Generic patterns name the full application: `MyError[Int](cause)` differs from `MyError[String]`; an in-scope parameter may be an argument (`MyError[T](cause)`). The first arm matching the exact runtime type wins; duplicate patterns are rejected. A pattern cannot name another contract, a bare type parameter, or a single alternative case.
+- Generic patterns name the full application: `Boxed[Int](value)` differs from `Boxed[String]`; an in-scope parameter may be an argument (`Boxed[T](value)`). The first arm matching the exact runtime type wins; duplicate patterns are rejected. A pattern cannot name another contract, a bare type parameter, or a single alternative case.
 - A final wildcard is required because contracts are open. It binds nothing; use the original value for generic handling.
 - The receiver is not copied, and matching adds no cleanup and catches no faults or cancellation. See [contract views](../types/contracts.md#interface-conversion).
 

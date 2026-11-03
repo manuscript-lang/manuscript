@@ -567,7 +567,7 @@ impl Walker<'_> {
         }
         // A reference converted on the way out (a lending call widened to another error type or
         // an interface) is read: the conversion builds the new value from it.
-        let converted = self.cx.m.info(e).error_source.is_some()
+        let converted = self.cx.m.info(e).interface_source.is_some()
             && matches!(e.kind, ExprKind::Call { .. })
             && self.lends(e);
         self.expr(
@@ -697,7 +697,7 @@ impl Walker<'_> {
             self.cx
                 .m
                 .info(x)
-                .error_source
+                .interface_source
                 .as_ref()
                 .is_some_and(|src| self.cx.classes.class(src) == Class::Move)
         };
@@ -756,7 +756,7 @@ impl Walker<'_> {
         let Some(declared) = self.cx.m.type_ref(result) else {
             return false;
         };
-        self.cx.m.info(e).error_source.is_none() && same(&self.cx.m.ty(e), &declared)
+        self.cx.m.info(e).interface_source.is_none() && same(&self.cx.m.ty(e), &declared)
     }
 
     /// Reports a function that returns a reference on one path and an owned value on another:
@@ -861,7 +861,7 @@ impl Walker<'_> {
             return true;
         };
         // A widened error or interface value is recorded with its source type.
-        if a.wrap_optional.is_some() || self.cx.m.info(arg).error_source.is_some() {
+        if a.wrap_optional.is_some() || self.cx.m.info(arg).interface_source.is_some() {
             return true;
         }
         let (sig, variables): (Option<Ty>, Vec<Ty>) = match &view.target {
@@ -893,7 +893,7 @@ impl Walker<'_> {
     /// `error(x)`. `None` when the value is converted (an interface, a widened error).
     fn wrapped_lend<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
         let info = self.cx.m.info(e);
-        if info.error_source.is_some() {
+        if info.interface_source.is_some() {
             return None;
         }
         if info.wrap_some.is_some() {
@@ -901,7 +901,7 @@ impl Walker<'_> {
         }
         let inner = self.result_payload(e)?;
         let inner_info = self.cx.m.info(inner);
-        (inner_info.error_source.is_none()
+        (inner_info.interface_source.is_none()
             && inner_info.wrap_some.is_none()
             && self.class_of(inner) != Class::Copy)
             .then_some(inner)
@@ -924,12 +924,11 @@ impl Walker<'_> {
         if self.cx.classes.class(&declared) == Class::Copy {
             return;
         }
-        let converted = self.cx.m.info(e).propagated_error.is_some();
         if self.class_of(operand) == Class::Move
             && let Some(src) = self.lend_source(operand)
         {
             self.lent_return.get_or_insert(e.pos);
-            if converted || src.view {
+            if src.view {
                 // The error leaves as an interface view (converted on the way out, or a view
                 // already): an owned value whose payload stays in the operand's sources.
                 self.view_return = true;
@@ -2663,7 +2662,7 @@ impl Walker<'_> {
 
     fn expr(&mut self, e: &Expr, d: Demand) {
         if d == Demand::Consume
-            && let Some(src) = &self.cx.m.info(e).error_source
+            && let Some(src) = &self.cx.m.info(e).interface_source
             && self.cx.classes.class(src) == Class::Resource
             && !declares_close(&self.cx.m.ty(e))
         {
@@ -2676,7 +2675,7 @@ impl Walker<'_> {
                 format!("`{text}` is the resource `{src}`, and the `{target}` it would become never closes it; keep it as a `{src}` so its owner closes it, or pass it where `{target}` is only read"),
             );
         }
-        if let Some(src) = self.cx.m.info(e).error_source.clone() {
+        if let Some(src) = self.cx.m.info(e).interface_source.clone() {
             self.adapter_copies(e, &src);
         }
         match &e.kind {

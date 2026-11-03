@@ -558,7 +558,7 @@ mod tests {
                 ),
                 STATUS_NONE
             );
-            // A timeout reports `Failed("operation timed out")` (IoError case 6).
+            // A timeout reports `Failed("operation timed out")` (status 6).
             assert_eq!(
                 msstd_net_connection_read(client, 0, 0, 1, 20_000_000, out.as_mut_ptr(), &mut err),
                 6

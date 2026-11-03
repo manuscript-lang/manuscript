@@ -1,6 +1,6 @@
 import Iterator from "@std/core.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, WriteStream, IoError from "@std/io/io.ms"
+import ReadStream, WriteStream from "@std/io/io.ms"
 
 # Buffered reading, buffered writing, and token scanning over byte streams.
 #
@@ -46,9 +46,11 @@ impl BufferedReader:
         return self.buffer.length() - self.offset
 
     # Reads one more chunk into the buffer. Returns false at end of stream.
-    var fn fill() Bool!IoError:
+    var fn fill() Bool!:
         if self.done: return ok(false)
-        if self.chunk <= 0: return error(IoError.InvalidInput)
+        if self.chunk <= 0: return error(
+            Error("I/O: invalid input", kind: ErrorCategory.InvalidInput)
+        )
 
         # While unconsumed bytes wait for more input (a long token), request as much as is already held so the
         # buffer doubles and the copies below total linear work instead of quadratic.
@@ -73,7 +75,7 @@ impl BufferedReader:
         return ok(true)
 
     # Makes at least `count` bytes available when the stream has them. Stops early only at end of stream.
-    var fn ensure(count: Int) Unit!IoError:
+    var fn ensure(count: Int) Unit!:
         while self.buffered() < count:
             let more = try self.fill()
             if not more: break
@@ -86,8 +88,10 @@ impl BufferedReader:
         return unit
 
     # Returns up to `count` upcoming bytes without consuming them; fewer only at end of stream.
-    var fn peek(count: Int) Bytes!IoError:
-        if count < 0: return error(IoError.InvalidInput)
+    var fn peek(count: Int) Bytes!:
+        if count < 0: return error(
+            Error("I/O: invalid input", kind: ErrorCategory.InvalidInput)
+        )
 
         try self.ensure(count)
 
@@ -96,9 +100,11 @@ impl BufferedReader:
         return ok((self.buffer.slice(self.offset, self.offset + size)).get())
 
     # Consumes and returns exactly `count` bytes. Ending before `count` bytes arrive returns `InvalidData`.
-    var fn read_exact(count: Int) Bytes!IoError:
+    var fn read_exact(count: Int) Bytes!:
         let data = try self.peek(count)
-        if data.length() < count: return error(IoError.InvalidData)
+        if data.length() < count: return error(
+            Error("I/O: invalid data", kind: ErrorCategory.InvalidData)
+        )
 
         self.consume(count)
         return ok(data)
@@ -106,14 +112,16 @@ impl BufferedReader:
     # Consumes and returns the bytes before the next `delimiter`, and consumes the delimiter itself.
     # Returns `none` at end of stream with nothing left; an unterminated tail is returned as the last result.
     # `max_bytes` bounds the bytes before the delimiter: a longer run returns `LimitExceeded`.
-    var fn read_until(delimiter: UInt8, max_bytes: Int? = none) Bytes?!IoError:
+    var fn read_until(delimiter: UInt8, max_bytes: Int? = none) Bytes?!:
         var searched = 0
 
         while true:
             if let found = self.buffer.index_of_byte(delimiter, self.offset + searched):
                 let size = found - self.offset
                 if max_bytes.is_some() and size > max_bytes.get(): return error(
-                    IoError.LimitExceeded
+                    Error(
+                        "I/O: limit exceeded", kind: ErrorCategory.LimitExceeded
+                    )
                 )
 
                 let line = (self.buffer.slice(self.offset, found)).get()
@@ -121,7 +129,9 @@ impl BufferedReader:
                 return ok(line)
 
             if max_bytes.is_some() and self.buffered() > max_bytes.get(): return error(
-                IoError.LimitExceeded
+                Error(
+                    "I/O: limit exceeded", kind: ErrorCategory.LimitExceeded
+                )
             )
 
             searched = self.buffered()
@@ -137,7 +147,7 @@ impl BufferedReader:
 
     # Consumes and returns the next Unicode scalar as a one-scalar string, or `none` at end of stream.
     # Malformed UTF-8, or a stream that ends inside a scalar, returns `InvalidData`.
-    var fn read_rune() String?!IoError:
+    var fn read_rune() String?!:
         let lead = try self.peek(1)
         if lead.is_empty(): return ok(none)
 
@@ -150,13 +160,15 @@ impl BufferedReader:
 
         let bytes = try self.peek(width)
         let text = bytes.decode_utf8()
-        if text.is_none() or bytes.length() < width: return error(IoError.InvalidData)
+        if text.is_none() or bytes.length() < width: return error(
+            Error("I/O: invalid data", kind: ErrorCategory.InvalidData)
+        )
 
         self.consume(width)
         return ok(text.get().clone())
 
     # Skips up to `count` bytes and returns how many were skipped; fewer only at end of stream.
-    var fn skip(count: Int) Int!IoError:
+    var fn skip(count: Int) Int!:
         let data = try self.peek(count)
         self.consume(data.length())
         return ok(data.length())
@@ -169,9 +181,9 @@ impl ReadStream for BufferedReader:
         return self.input.close()
 
     # Returns buffered bytes first (at most `max_bytes`), otherwise one chunk from the wrapped stream.
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
+    var fn read(max_bytes: Int? = none) Bytes?!:
         if max_bytes.is_some() and max_bytes.get() <= 0: return error(
-            IoError.InvalidInput
+            Error("I/O: invalid input", kind: ErrorCategory.InvalidInput)
         )
 
         if self.buffered() == 0:
@@ -204,7 +216,7 @@ export fn buffered_writer(output: WriteStream, capacity: Int = 65536) BufferedWr
 
 impl BufferedWriter:
     # Passes the held bytes to the wrapped stream without flushing that stream.
-    var fn drain() Unit!IoError:
+    var fn drain() Unit!:
         if self.held == 0: return ok(unit)
 
         let data = self.pending.drain()
@@ -218,16 +230,16 @@ impl WriteStream for BufferedWriter:
         return self.output.close()
 
     # Writes held bytes to the wrapped stream, then flushes it.
-    var fn flush() Unit!IoError:
+    var fn flush() Unit!:
         try self.drain()
         return self.output.flush()
 
     # Holds the UTF-8 bytes of `data`, with the rules of `write_bytes`.
-    var fn write(data: String) Unit!IoError:
+    var fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
     # Holds `data`; a piece that would not fit the buffer is written through after the held bytes.
-    var fn write_bytes(data: Bytes) Unit!IoError:
+    var fn write_bytes(data: Bytes) Unit!:
         if self.held + data.length() > self.capacity:
             try self.drain()
         if data.length() >= self.capacity:
@@ -274,7 +286,7 @@ export type Scanner:
     # Per-token byte limit, or none for no limit.
     max_bytes: Int?
     # The error that ended the scan, if any.
-    failure: IoError?
+    failure: Error?
 
 # Returns a scanner over `input`. Iterate a `var` scanner with `for` so `error()` can be read afterwards.
 export fn scan(
@@ -338,11 +350,11 @@ fn delimiter_step(data: Bytes, start: Int, mark: Bytes, at_eof: Bool) ScanStep:
 
 impl Scanner:
     # Returns the I/O error that ended the scan, or none after a clean end of input.
-    fn error() IoError?:
+    fn error() Error?:
         return self.failure.clone()
 
     # Cuts the next token at the front of the buffer as a `ScanStep`.
-    var fn cut(at_eof: Bool) ScanStep!IoError:
+    var fn cut(at_eof: Bool) ScanStep!:
         match self.split:
             Lines: return ok(lines_step(self.reader.buffer, self.reader.offset, at_eof))
             Words: return ok(words_step(self.reader.buffer, self.reader.offset, at_eof))
@@ -353,7 +365,11 @@ impl Scanner:
 
                 return ok(ScanStep(0, rune.get().to_bytes()))
             Delimiter(separator):
-                if separator.is_empty(): return error(IoError.InvalidInput)
+                if separator.is_empty(): return error(
+                    Error(
+                        "I/O: invalid input", kind: ErrorCategory.InvalidInput
+                    )
+                )
 
                 return ok(
                     delimiter_step(
@@ -372,7 +388,9 @@ impl Scanner:
                 ).get()
                 let result = step(window, at_eof)
                 if result.advance < 0 or result.advance > window.length(): return error(
-                    IoError.InvalidInput
+                    Error(
+                        "I/O: invalid input", kind: ErrorCategory.InvalidInput
+                    )
                 )
 
                 return ok(result)
@@ -395,7 +413,9 @@ impl Iterator[String] for Scanner:
 
             if step.advance == 0 and step.token.is_none() and not at_eof:
                 if self.max_bytes.is_some() and size > self.max_bytes.get():
-                    self.failure = IoError.LimitExceeded
+                    self.failure = Error(
+                        "I/O: limit exceeded", kind: ErrorCategory.LimitExceeded
+                    )
                     return none
 
                 let more = self.reader.fill()
@@ -415,13 +435,17 @@ impl Iterator[String] for Scanner:
             let bytes = step.token.get()
 
             if self.max_bytes.is_some() and bytes.length() > self.max_bytes.get():
-                self.failure = IoError.LimitExceeded
+                self.failure = Error(
+                    "I/O: limit exceeded", kind: ErrorCategory.LimitExceeded
+                )
                 return none
 
             let text = bytes.decode_utf8()
 
             if text.is_none():
-                self.failure = IoError.InvalidData
+                self.failure = Error(
+                    "I/O: invalid data", kind: ErrorCategory.InvalidData
+                )
                 return none
 
             return text.get().clone()

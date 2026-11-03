@@ -188,7 +188,7 @@ fn order_total(count: Int) Result[Int, QuantityError]:
 ```
 
 - `Result` is `ok(value)` or `error(cause)`; `try` unwraps success or returns the error.
-- Use one error type or the common `Error` boundary. Otherwise handle outcomes with `if let`, `get(default)`, or `is_error()` and `err()`; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
+- Use `Error` for most failures, or one domain error type. Otherwise handle outcomes with `if let`, `get(default)`, or `is_error()` and `err()`; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
 
 ## Modules
 
@@ -318,9 +318,9 @@ Use an interface when callers should depend on behavior rather than on the type.
 ## Files and cleanup
 
 ```manuscript
-import FileSystemError, open, write_file_bytes from "@std/os/fs.ms"
+import open, write_file_bytes from "@std/os/fs.ms"
 
-fn copy_notes() Result[Unit, FileSystemError]:
+fn copy_notes() Unit!:
     var source = try open("notes.txt", flags: "r", mode: 0)
     let contents = try source.read_file(max_bytes: 1048576)
     try write_file_bytes(path: "backup.txt", data: contents, replace: true)

@@ -211,6 +211,9 @@ pub struct Checker {
     pub(crate) p: Program,
     /// Candidate positions in declaration order; type arguments are matched at use.
     pub(crate) methods_by_receiver: HashMap<Name, Vec<usize>>,
+    /// Method indices by implemented contract id; methods of a contract variable are in `generic_contract_methods`.
+    pub(crate) methods_by_contract: HashMap<Name, Vec<usize>>,
+    pub(crate) generic_contract_methods: Vec<usize>,
     pub(crate) methods_by_name: HashMap<(Name, Name), Vec<usize>>,
     pub(crate) module: Option<ModRef>,
     pub(crate) names: Names,
@@ -260,6 +263,8 @@ impl Checker {
             group: Vec::new(),
             p: Program::default(),
             methods_by_receiver: HashMap::new(),
+            methods_by_contract: HashMap::new(),
+            generic_contract_methods: Vec::new(),
             methods_by_name: HashMap::new(),
             module: None,
             names: Rc::new(RefCell::new(HashMap::new())),
@@ -1393,10 +1398,17 @@ impl Checker {
                     p.pos,
                     format!("extern parameter {} cannot have a default; the native symbol takes every argument", p.name),
                 );
+            } else if ty.ty.kind == Kind::Function {
+                if !crosses_callback(&ty.ty) {
+                    self.type_error(
+                        p.pos,
+                        format!("extern parameter {} has type {}, which cannot cross the native boundary; a function an extern takes has at most {MAX_CALLBACK_PARAMS} parameters of sized numbers, Bool, String, Bytes or extern types this program declares, and returns a number, Bool, String, Bytes or Unit", p.name, ty.ty),
+                    );
+                }
             } else if ty.ty.id != "<invalid>" && !crosses_native(&ty.ty) {
                 self.type_error(
                     p.pos,
-                    format!("extern parameter {} has type {}, which cannot cross the native boundary; an extern takes {CROSSES}", p.name, ty.ty.name),
+                    format!("extern parameter {} has type {}, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, Lists of them, and functions of them", p.name, ty.ty.name),
                 );
             }
         }
@@ -1766,6 +1778,21 @@ fn crosses_element(t: &Ty) -> bool {
         "Float32", "Bool", "String",
     ];
     SCALARS.contains(&t.id.as_str()) || t.is_std("Bytes") || is_user_extern_type(t)
+}
+
+/// The most parameters a function passed to a user extern may take (`ms_call` packs the
+/// signature in one word; `ms_rt_abi::CALL_MAX_PARAMS`).
+pub(crate) const MAX_CALLBACK_PARAMS: usize = 6;
+
+/// Whether the function type `t` can be passed to a user extern as an `ms_fn`.
+fn crosses_callback(t: &Ty) -> bool {
+    let result_ok = t
+        .result
+        .as_ref()
+        .is_none_or(|r| r.id == "Unit" || (crosses_element(r) && !is_user_extern_type(r)));
+    t.params.len() <= MAX_CALLBACK_PARAMS
+        && t.params.iter().all(|p| crosses_element(&p.ty))
+        && result_ok
 }
 
 /// Whether `t` is an `extern type` declared outside the standard library.

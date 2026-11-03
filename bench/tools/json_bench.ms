@@ -2,7 +2,6 @@
 # Usage: ms run bench/tools/json_bench.ms   (NAMES="twitter canada" selects documents; MS picks the compiler)
 # The corpora are downloaded into bench/perf/json/data (not committed).
 import (
-    Invalid,
     capture,
     env,
     exists,
@@ -48,7 +47,7 @@ fn small() String:
     doc.add("user", jobject(user))
     return stringify(jobject(doc), none, none).get("") + "\n"
 
-fn fetch_corpora() Result[Unit, Invalid]:
+fn fetch_corpora() Unit!:
     let _dir = create_directory(DATA, recursive: true)
 
     for f in ["twitter", "canada", "citm_catalog"]:

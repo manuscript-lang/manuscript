@@ -68,8 +68,7 @@ fn greeting(name: String?) String:
 ```
 
 ```manuscript
-import TextError from "@std/core.ms"
-fn port(lookup: Result[Int, TextError]) Int:
+fn port(lookup: Result[Int, Error]) Int:
     if let value = lookup:
         return value
     return 8080

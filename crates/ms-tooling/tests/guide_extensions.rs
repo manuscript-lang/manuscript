@@ -258,17 +258,17 @@ fn regex_span_source_methods_reach_pages_and_search_once() {
     for (name, result, budgets) in [
         (
             "find_all_spans",
-            "Result[List[RegexSpan], RegexError]",
+            "Result[List[RegexSpan], Error]",
             &["max_matches: Int?"][..],
         ),
         (
             "capture_spans",
-            "Result[List[RegexSpan?]?, RegexError]",
+            "Result[List[RegexSpan?]?, Error]",
             &["max_captures: Int?"][..],
         ),
         (
             "capture_all_spans",
-            "Result[List[List[RegexSpan?]], RegexError]",
+            "Result[List[List[RegexSpan?]], Error]",
             &["max_matches: Int?", "max_captures: Int?"][..],
         ),
     ] {

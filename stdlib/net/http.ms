@@ -1,12 +1,10 @@
 import Closeable, Data from "@std/core.ms"
 import Bytes, join from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
-import IoError from "@std/io/io.ms"
 import stringify from "@std/data/json.ms"
 import ReadStream from "@std/io/io.ms"
 import TlsOptions from "@std/net/net.ms"
 import WebSocket from "@std/net/net.ms"
-import WebSocketError from "@std/net/net.ms"
 import (
     msstd_http_client_close,
     msstd_http_headers_append,
@@ -28,26 +26,6 @@ import (
     msstd_http_body_read_all
 ) from "@std/internal/http.ms"
 
-# Errors returned for invalid requests, transport failures, timeouts, and limits.
-export type HttpError:
-    # The URL is not an `http` or `https` URL with a host, valid port, and no user info; a method, header name, or value is malformed or host-managed; or a limit or timeout is negative.
-    case InvalidInput
-    # The response headers are not valid UTF-8, so they cannot become Strings.
-    case InvalidData
-    # A buffered response body is larger than `max_response_bytes`.
-    case LimitExceeded
-    # The network's restrictions disallow the host, a resolved address, or a redirect destination.
-    case PermissionDenied
-    # The client or network was closed before or during the request.
-    case Closed
-    # The request timeout elapsed before the response completed.
-    case Timeout
-    # Transport, TLS, or protocol failure reported by the host, such as a refused connection or an exceeded redirect limit.
-    case Failed(
-        # Host-provided failure text; `message()` returns it verbatim, so it can name addresses.
-        message: String
-    )
-
 # Mutable HTTP fields with ASCII case-insensitive names and separate values, which are Strings by default and Bytes on request.
 # Names keep first-insertion order and spelling; values keep append order.
 # Headers are an owned value: assignment moves them, mutation needs `var`, and clone() copies them.
@@ -56,11 +34,11 @@ export extern type HttpHeaders
 impl HttpHeaders:
     # Appends a String value under a valid HTTP name; invalid names return InvalidInput.
     # Transport operations additionally validate framing and field values.
-    var fn append(name: String, value: String) Unit!HttpError:
+    var fn append(name: String, value: String) Unit!:
         return msstd_http_headers_append(self, name, value.to_bytes())
 
     # Appends raw bytes, for the rare field whose value is not UTF-8 text.
-    var fn append_bytes(name: String, value: Bytes) Unit!HttpError:
+    var fn append_bytes(name: String, value: Bytes) Unit!:
         return msstd_http_headers_append(self, name, value)
 
     # Returns every value as an owned list, empty for an absent name.
@@ -185,7 +163,7 @@ impl HttpClient:
         body: String = "",
         max_response_bytes: Int?,
         timeout: Duration?
-    ) ResponseBody!HttpError:
+    ) ResponseBody!:
         return msstd_http_client_request(
             self.native, method, url, headers, body, max_response_bytes, timeout
         )
@@ -198,7 +176,7 @@ impl HttpClient:
         body: Bytes = "".to_bytes(),
         max_response_bytes: Int?,
         timeout: Duration?
-    ) ResponseBody!HttpError:
+    ) ResponseBody!:
         return msstd_http_client_request_bytes(
             self.native, method, url, headers, body, max_response_bytes, timeout
         )
@@ -211,7 +189,7 @@ impl HttpClient:
         body: ReadStream,
         max_response_bytes: Int?,
         timeout: Duration?
-    ) ResponseBody!HttpError:
+    ) ResponseBody!:
         return msstd_http_client_request_stream(
             self.native, method, url, headers, body, max_response_bytes, timeout
         )
@@ -255,26 +233,26 @@ export interface HttpExchange:
     # Returns the raw query string without the leading `?`; it is empty when there is none.
     fn query() String
     # Returns the next chunk of the request body, at most `max_bytes` and never more than 65536, or none at the end of the body.
-    # Reading past `max_body_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
-    fn read(max_bytes: Int?) Bytes?!IoError
+    # Reading past `max_body_bytes` returns an `Error` of kind `Failed`, and a non-positive `max_bytes` returns InvalidInput.
+    fn read(max_bytes: Int?) Bytes?!
     # Sends a whole response: the status line, `headers`, and `body` with its length known, so the response carries `Content-Length` rather than chunked framing. Requests with HEAD and statuses without a body get the head alone.
     # The rules of `send_headers` apply, `body` is bounded by `max_response_bytes`, and nothing else may be sent afterwards.
-    fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!HttpError
+    fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!
     # Sends the status line and headers once, before any body is written.
     # The status must be 200 through 599, header names cannot be `Content-Length`, `Transfer-Encoding`, or `Connection`, and header bytes are bounded by `max_header_bytes`. A second call returns InvalidInput and a closed exchange returns Closed.
-    fn send_headers(status: Int, headers: HttpHeaders) Unit!HttpError
+    fn send_headers(status: Int, headers: HttpHeaders) Unit!
     # Switches the connection to a WebSocket after checking the `Origin` header. Requests without an Origin are accepted; otherwise it must exactly match an entry of `allowed_origins`, or, when that list is empty, match the request's own scheme and host.
     # `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be positive when given. An exchange that already sent headers or upgraded returns InvalidInput, and a request that is not a valid WebSocket upgrade returns Failed.
     fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
-    ) WebSocket!WebSocketError
+    ) WebSocket!
     # Writes one chunk of the response body and flushes it.
-    # `send_headers` must come first, and writing beyond `max_response_bytes` returns IoError.Failed. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return InvalidInput.
-    fn write(data: String) Unit!IoError
+    # `send_headers` must come first, and writing beyond `max_response_bytes` returns an `Error` of kind `Failed`. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return InvalidInput.
+    fn write(data: String) Unit!
     # Writes one chunk of raw bytes with the same rules as write.
-    fn write_bytes(data: Bytes) Unit!IoError
+    fn write_bytes(data: Bytes) Unit!
 
 # Buffered request accepted by the simple HTTP server handler.
 export type HttpRequest:
@@ -325,9 +303,9 @@ impl HttpServer:
     fn adopt(connection: Int) Unit:
         msstd_http_server_adopt(self.native, connection)
 
-    # Blocks until the server stops. Returns Ok after a normal `close`, or IoError.Failed with the host's text if serving ended with an error.
+    # Blocks until the server stops. Returns Ok after a normal `close`, or an `Error` of kind `Failed` with the host's text if serving ended with an error.
     # Cancelling the waiting task stops the wait.
-    fn wait() Unit!IoError:
+    fn wait() Unit!:
         return msstd_http_server_wait(self.native)
 
 # Request and response limits, deadlines, graceful shutdown, and TLS server settings.
@@ -369,44 +347,38 @@ impl ResponseBody:
         return msstd_http_body_metadata(self.native)
 
     # Returns the next chunk of the response body, at most `max_bytes` and never more than 65536, or none at the end of the body.
-    # Reading past the request's `max_response_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
-    fn read(max_bytes: Int?) Bytes?!IoError:
+    # Reading past the request's `max_response_bytes` returns an `Error` of kind `Failed`, and a non-positive `max_bytes` returns InvalidInput.
+    fn read(max_bytes: Int?) Bytes?!:
         return msstd_http_body_read(self.native, max_bytes)
 
     # Reads the rest of the body into one value, with `read`'s limit and error rules.
     # A plain HTTP/1.1 body of known length arrives straight into the result without intermediate copies.
-    fn read_all() Bytes!IoError:
+    fn read_all() Bytes!:
         return msstd_http_body_read_all(self.native)
-
-# Maps a stream failure to the HTTP error with the same meaning, so exchange handlers need one error type.
-export fn from_io(error: IoError) HttpError:
-    match error:
-        Closed: return HttpError.Closed
-        InvalidInput: return HttpError.InvalidInput
-        InvalidData: return HttpError.InvalidData
-        LimitExceeded: return HttpError.LimitExceeded
-        Unavailable: return HttpError.Failed("HTTP: unavailable")
-        Failed(message): return HttpError.Failed(message.clone())
 
 # Reads the rest of the request body into one value.
 # A body over `max_body_bytes` of the server's options returns LimitExceeded; `limit` also bounds it when given.
-export fn read_body(exchange: HttpExchange, limit: Int?) Bytes!HttpError:
-    let first = try exchange.read().map_error(from_io)
+export fn read_body(exchange: HttpExchange, limit: Int?) Bytes!:
+    let first = try exchange.read()
     if let head = first:
         return read_rest(exchange, head, limit)
 
     return ok("".to_bytes())
 
 # Joins `head` with the chunks after it. A body that fits one chunk is returned without copying.
-fn read_rest(exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!HttpError:
+fn read_rest(exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
     var total = head.length()
-    if over_limit(total, limit): return error(HttpError.LimitExceeded)
+    if over_limit(total, limit): return error(
+        Error("HTTP: limit exceeded", kind: LimitExceeded)
+    )
 
-    let second = try exchange.read().map_error(from_io)
+    let second = try exchange.read()
 
     if let next = second:
         total += next.length()
-        if over_limit(total, limit): return error(HttpError.LimitExceeded)
+        if over_limit(total, limit): return error(
+            Error("HTTP: limit exceeded", kind: LimitExceeded)
+        )
 
         return read_more(exchange, [head, next], total, limit)
 
@@ -417,16 +389,18 @@ fn read_more(
     chunks: List[Bytes],
     total: Int,
     limit: Int?
-) Bytes!HttpError:
+) Bytes!:
     var parts = chunks
     var size = total
 
     while true:
-        let chunk = try exchange.read().map_error(from_io)
+        let chunk = try exchange.read()
 
         if let bytes = chunk:
             size += bytes.length()
-            if over_limit(size, limit): return error(HttpError.LimitExceeded)
+            if over_limit(size, limit): return error(
+                Error("HTTP: limit exceeded", kind: LimitExceeded)
+            )
 
             parts.append(bytes)
         else:
@@ -439,7 +413,7 @@ fn over_limit(total: Int, limit: Int?) Bool:
     return false
 
 # Sends `response` whole: its status and headers, then its body.
-export fn reply(exchange: HttpExchange, response: HttpResponse) Unit!HttpError:
+export fn reply(exchange: HttpExchange, response: HttpResponse) Unit!:
     return exchange.send(response.status, response.headers, response.body)
 
 # Builds a response with a UTF-8 text body and no headers.
@@ -448,9 +422,9 @@ export fn text(status: Int, body: String) HttpResponse:
 
 # Builds a response whose body is `value` encoded as JSON, with `Content-Type: application/json`.
 # A value `stringify` cannot encode returns Failed with its diagnostic.
-export fn json[T: Data](status: Int, value: T) HttpResponse!HttpError:
+export fn json[T: Data](status: Int, value: T) HttpResponse!:
     let body = stringify(value)
-    if body.is_error(): return error(HttpError.Failed(body.err().message()))
+    if body.is_error(): return error(Error(body.err().message, kind: Failed))
 
     var sent = headers()
     try sent.append("Content-Type", "application/json")
@@ -458,37 +432,20 @@ export fn json[T: Data](status: Int, value: T) HttpResponse!HttpError:
 
 # Builds a redirect to `location` with an empty body.
 # The status should be 301, 302, 303, 307, or 308; the default 303 sends a followed POST on as a GET.
-export fn redirect(location: String, status: Int = 303) HttpResponse!HttpError:
+export fn redirect(location: String, status: Int = 303) HttpResponse!:
     var sent = headers()
     try sent.append("Location", location)
     return ok(HttpResponse(status: status, headers: sent, body: "".to_bytes()))
 
 # Adapts a handler that maps a whole request to a whole response into an exchange handler for `serve`.
 # The request body is read in full first.
-export fn buffered(
-    handler: fn(HttpRequest) HttpResponse
-) fn(HttpExchange) Unit!HttpError:
+export fn buffered(handler: fn(HttpRequest) HttpResponse) fn(HttpExchange) Unit!:
     return fn exchange: serve_buffered(handler, exchange)
 
-fn serve_buffered(
-    handler: fn(HttpRequest) HttpResponse,
-    exchange: HttpExchange
-) Unit!HttpError:
+fn serve_buffered(handler: fn(HttpRequest) HttpResponse, exchange: HttpExchange) Unit!:
     let body = try read_body(exchange)
     let request = HttpRequest(
         method: exchange.method(), path: exchange.path(), query: exchange.query(),
         headers: exchange.headers(), body: body, protocol: exchange.protocol()
     )
     return reply(exchange, handler(request))
-
-impl Error for HttpError:
-    # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `HTTP: <reason>`.
-    fn message() String:
-        match self:
-            InvalidInput: return "HTTP: invalid input"
-            InvalidData: return "HTTP: invalid data"
-            LimitExceeded: return "HTTP: limit exceeded"
-            PermissionDenied: return "HTTP: permission denied"
-            Closed: return "HTTP: resource is closed"
-            Timeout: return "HTTP: operation timed out"
-            Failed(message): return message.clone()

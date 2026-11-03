@@ -33,29 +33,6 @@ export type YamlValue:
         values: Map[String, YamlValue]
     )
 
-# Errors returned for malformed YAML, unsupported features, or exceeded resource limits.
-export type YamlError:
-    # A supplied limit is negative, or stringify received a number whose text is not a YAML number.
-    case InvalidInput
-    # Malformed YAML or a form outside the supported parser's accepted grammar.
-    case InvalidData(
-        # One-based source line of the offending token or construct.
-        line: Int,
-        # One-based Unicode scalar column within that source line.
-        column: Int,
-        # Parser diagnostic describing the malformed construct.
-        reason: String
-    )
-    # An explicit tag, complex key or directive unsupported by this configuration parser.
-    case UnsupportedFeature(
-        # One-based source line where the unsupported construct appears.
-        line: Int,
-        # Diagnostic identifying the unsupported syntax or feature.
-        reason: String
-    )
-    # Parsing or validating the returned alias-expanded tree exceeds a supplied budget.
-    case LimitExceeded
-
 # Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
 # Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `YamlLimits` to change that.
 export type YamlLimits:
@@ -65,15 +42,6 @@ export type YamlLimits:
     max_depth: Int?
     # Maximum containers and leaves, excluding keys; aliases count at each checked occurrence.
     max_values: Int?
-
-impl Error for YamlError:
-    # Formats parser positions and reason text; match the typed fields for programmatic handling.
-    fn message() String:
-        match self:
-            InvalidInput: return "invalid YAML input"
-            InvalidData(line, column, reason): return "YAML {line}:{column}: {reason}"
-            UnsupportedFeature(line, reason): return "YAML {line}: {reason}"
-            LimitExceeded: return "YAML limit exceeded"
 
 type Context:
     lines: List[String]
@@ -170,22 +138,22 @@ fn define_anchor(var context: Context, name: String, value: YamlValue) Unit:
 
 # Counts an alias expansion against the value budget before the aliased value is copied, so
 # nested aliases cannot grow exponentially ahead of the limit.
-fn charge(var context: Context, size: Int) Unit!YamlError:
+fn charge(var context: Context, size: Int) Unit!:
     context.values += size
     if not within(context.values, context.limits.max_values): return error(
-        YamlError.LimitExceeded
+        Error("YAML limit exceeded", kind: LimitExceeded)
     )
 
     return ok(unit)
 
-fn count(var context: Context, depth: Int) Unit!YamlError:
+fn count(var context: Context, depth: Int) Unit!:
     if not within(depth, context.limits.max_depth): return error(
-        YamlError.LimitExceeded
+        Error("YAML limit exceeded", kind: LimitExceeded)
     )
 
     context.values += 1
     if not within(context.values, context.limits.max_values): return error(
-        YamlError.LimitExceeded
+        Error("YAML limit exceeded", kind: LimitExceeded)
     )
 
     return ok(unit)
@@ -201,8 +169,26 @@ fn source_column(context: Context, row: Int, column: Int) Int:
     if row == context.shift_row: result += context.shift_column
     return result
 
-fn invalid(context: Context, reason: String) YamlError:
-    return YamlError.InvalidData(
+# A malformed-input error at a one-based source position.
+fn yaml_invalid(line: Int, column: Int, reason: String) Error:
+    return Error(
+        "YAML {line}:{column}: {reason}",
+        kind: InvalidData,
+        details: {
+            "line": line.to_string(), "column": column.to_string(),
+            "reason": reason.clone()
+        }
+    )
+
+# An error for syntax this configuration parser does not support.
+fn yaml_unsupported(line: Int, reason: String) Error:
+    return Error(
+        "YAML {line}: {reason}", kind: Unsupported,
+        details: {"line": line.to_string(), "reason": reason.clone()}
+    )
+
+fn invalid(context: Context, reason: String) Error:
+    return yaml_invalid(
         line: source_line(context, context.index),
         column: source_column(context, context.index, 1), reason: reason
     )
@@ -257,11 +243,9 @@ fn cursor_position(
 fn flow_position(flow: Flow, cursor: Int) SourcePosition:
     return cursor_position(flow.chars, cursor, flow.line, flow.column)
 
-fn flow_invalid(flow: Flow, reason: String, cursor: Int = -1) YamlError:
+fn flow_invalid(flow: Flow, reason: String, cursor: Int = -1) Error:
     let position = flow_position(flow, if cursor < 0: flow.pos else: cursor)
-    return YamlError.InvalidData(
-        line: position.line, column: position.column, reason: reason
-    )
+    return yaml_invalid(line: position.line, column: position.column, reason: reason)
 
 # The first physical break folds to a space, or is removed before empty lines.
 # An escaped first break is removed even when no empty lines follow it.
@@ -279,7 +263,7 @@ fn folded_break(var flow: Flow, escaped: Bool) String:
 
     return result
 
-fn quoted(var flow: Flow) String!YamlError:
+fn quoted(var flow: Flow) String!:
     let quote = advance(var flow)
 
     # Append through a builder: per-character concatenation is quadratic on long strings.
@@ -431,7 +415,7 @@ fn plain(text: String) YamlValue:
 
     return YamlValue.StringValue(text)
 
-fn anchor_name(var flow: Flow) String!YamlError:
+fn anchor_name(var flow: Flow) String!:
     var name = ""
     while peek(flow) != "" and not " \t\n,[]\{\}".contains(peek(flow)):
         name = name.concat(advance(var flow))
@@ -444,7 +428,7 @@ fn merge(
     column: Int,
     var target: Map[String, YamlValue],
     value: YamlValue
-) Unit!YamlError:
+) Unit!:
     let values = match value:
         ObjectValue(entries):
             for entry in entries:
@@ -454,7 +438,7 @@ fn merge(
             return ok(unit)
         ArrayValue(values): values
         _: return error(
-            YamlError.InvalidData(
+            yaml_invalid(
                 line: line, column: column, reason: "merge requires mappings"
             )
         )
@@ -465,7 +449,7 @@ fn merge(
                 line: line, column: column, target: var target, value: item
             )
             _: return error(
-                YamlError.InvalidData(
+                yaml_invalid(
                     line: line, column: column, reason: "merge requires mappings"
                 )
             )
@@ -520,7 +504,7 @@ fn separates_colon(next: Int, delimited: Bool) Bool:
     )
 
 # A scalar, alias or quoted string at the cursor, whose first code is `c`.
-fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
+fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
     if c == 42:
         advance(var flow)
 
@@ -533,7 +517,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
         return error(flow_invalid(flow, "unknown or recursive alias"))
 
     if c == 33: return error(
-        YamlError.UnsupportedFeature(
+        yaml_unsupported(
             line: flow_position(flow, flow.pos).line,
             reason: "explicit tags are unsupported"
         )
@@ -577,7 +561,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
     # Slice once: appending each character to a string is quadratic on long scalars.
     var text = blank_trim(flow.chars.slice(start, flow.pos).get([]).join(""))
     if text.starts_with("?") and (text.length() == 1 or " \t".contains(text.get(1))): return error(
-        YamlError.UnsupportedFeature(
+        yaml_unsupported(
             line: flow_position(flow, start).line,
             reason: "explicit mapping keys are unsupported"
         )
@@ -597,7 +581,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
 fn flow_entry(
     var flow: Flow, name: String, quoted_key: Bool, var entries: Map[String, YamlValue],
     var explicit: Set[String], value: YamlValue
-) Unit!YamlError:
+) Unit!:
     if explicit.contains(name): return error(
         flow_invalid(flow, "duplicate mapping key")
     )
@@ -611,9 +595,9 @@ fn flow_entry(
             ok(_): return ok(unit)
             error(cause): cause
 
-        let reason = match cause:
-            InvalidData(_, _, reason): reason.clone()
-            _: return error(cause)
+        if cause.kind != ErrorCategory.InvalidData: return error(cause)
+
+        let reason = cause.details.get("reason").get("").clone()
 
         # A plain value may have consumed trailing separation before the delimiter.
         # Point this value-type error at its end, rather than a later closing line.
@@ -635,7 +619,7 @@ fn flow_entry(
 # Parses a flow value. Nested sequences and mappings are parsed with explicit stacks, not by
 # recursion, so the nesting depth is bounded by the depth limit and not by the call stack. Only
 # a mapping key recurses, and a key cannot be a container.
-fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
+fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
     # The open containers, innermost last: kind (1 sequence, 2 mapping), depth, anchors, and
     # the entries so far. The innermost one is held in the variables below `parents`.
     var kinds: List[Int] = []
@@ -687,7 +671,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
             if c == 91 or c == 123:
                 flow.delimited = true
                 if is_key: return error(
-                    YamlError.UnsupportedFeature(
+                    yaml_unsupported(
                         line: flow_position(
                             flow, flow.pos
                         ).line,
@@ -787,7 +771,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                 match parsed_key:
                     StringValue(text): name = text
                     _: return error(
-                        YamlError.UnsupportedFeature(
+                        yaml_unsupported(
                             line: flow_position(
                                 flow, key_start
                             ).line,
@@ -1029,7 +1013,7 @@ fn indent(text: String) Int:
     while text.scalar_at(result, default: 0) == 32: result += 1
     return result
 
-fn indentation(context: Context, text: String) Int!YamlError:
+fn indentation(context: Context, text: String) Int!:
     let spaces = indent(text)
     if text.get(spaces, default: "") == "\t": return error(
         invalid(context, "tabs cannot indent YAML")
@@ -1144,7 +1128,7 @@ fn structured_lead(code: Int, blank: Bool = false) Bool:
     )
 
 fn inline_value(var context: Context, text: String, depth: Int, line: Int, column: Int) Result[
-    YamlValue, YamlError
+    YamlValue, Error
 ]:
     # A plain scalar needs no character scan: only its trimmed text and a count.
     if (
@@ -1225,7 +1209,7 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
 fn block_string(
     var context: Context, header: String, base: Int, header_line: Int,
     header_column: Int
-) Result[YamlValue, YamlError]:
+) Result[YamlValue, Error]:
     var mode = ""
     var explicit = 0
     var offset = 0
@@ -1240,7 +1224,7 @@ fn block_string(
             .get()
         )
         else: return error(
-            YamlError.InvalidData(
+            yaml_invalid(
                 line: header_line, column: header_column + offset,
                 reason: "invalid block scalar header"
             )
@@ -1356,7 +1340,7 @@ fn may_continue(context: Context, base: Int) Bool:
 fn block_value(
     var context: Context, text: String, base: Int, depth: Int, indentless: Bool,
     column: Int
-) YamlValue!YamlError:
+) YamlValue!:
     let start_line = source_line(context, context.index - 1)
     var origin = source_column(context, context.index - 1, column)
     var remainder = blank_trim_start(text).clone()
@@ -1504,7 +1488,7 @@ fn nested_columns(line: String, base: Int) List[Int]:
 
 fn sequence_items(
     var context: Context, var values: List[YamlValue], base: Int, depth: Int
-) Unit!YamlError:
+) Unit!:
     while context.index < context.lines.length():
         skip(var context)
         if context.index >= context.lines.length(): break
@@ -1642,7 +1626,7 @@ fn sequence_items(
 
     return ok(unit)
 
-fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
+fn block(var context: Context, base: Int, depth: Int) YamlValue!:
     skip(var context)
 
     var first = ""
@@ -1655,7 +1639,7 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
     else:
         first = blank_trim_start(uncomment(context.lines.get(context.index)))
         if first.starts_with("?") and not plain_may_start(first): return error(
-            YamlError.UnsupportedFeature(
+            yaml_unsupported(
                 line: source_line(context, context.index),
                 reason: "explicit mapping keys are unsupported"
             )
@@ -1748,7 +1732,7 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
                 or key_start == 42
             ):
                 return error(
-                    YamlError.UnsupportedFeature(
+                    yaml_unsupported(
                         line: source_line(
                             context, context.index
                         ),
@@ -1805,7 +1789,7 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
         column: base + 1
     )
 
-fn validate(var context: Context, value: YamlValue, depth: Int) Unit!YamlError:
+fn validate(var context: Context, value: YamlValue, depth: Int) Unit!:
     try count(var context, depth)
 
     match value:
@@ -1818,15 +1802,15 @@ fn validate(var context: Context, value: YamlValue, depth: Int) Unit!YamlError:
     return ok(unit)
 
 # Parses a YAML document. Unsupported YAML features and invalid input include source locations.
-export fn parse(text: String, limits: YamlLimits?) YamlValue!YamlError:
+export fn parse(text: String, limits: YamlLimits?) YamlValue!:
     var options = default_limits()
     if let value = limits:
         options = value
     for limit in [options.max_bytes, options.max_depth, options.max_values]:
         if let value = limit:
-            if value < 0: return error(YamlError.InvalidInput)
+            if value < 0: return error(Error("invalid YAML input", kind: InvalidInput))
     if not within(text.byte_length(), options.max_bytes): return error(
-        YamlError.LimitExceeded
+        Error("YAML limit exceeded", kind: LimitExceeded)
     )
 
     var normalized = text.replace("\r\n", "\n").replace("\r", "\n")
@@ -1845,7 +1829,7 @@ export fn parse(text: String, limits: YamlLimits?) YamlValue!YamlError:
             let at = normalized.index_of(character).get(0)
             let position = cursor_position(normalized.split(""), at, 1, 1)
             return error(
-                YamlError.InvalidData(
+                yaml_invalid(
                     line: position.line, column: position.column,
                     reason: "invalid control character"
                 )
@@ -1867,7 +1851,7 @@ export fn parse(text: String, limits: YamlLimits?) YamlValue!YamlError:
         and context.lines.get(context.index).starts_with("%")
     ):
         if uncomment(context.lines.get(context.index)) != "%YAML 1.2": return error(
-            YamlError.UnsupportedFeature(
+            yaml_unsupported(
                 line: source_line(context, context.index),
                 reason: "only the YAML 1.2 directive is supported"
             )
@@ -2007,13 +1991,15 @@ fn valid_number(text: String) Bool:
 
     return false
 
-fn scalar_text(value: YamlValue) String!YamlError:
+fn scalar_text(value: YamlValue) String!:
     match value:
         Null: return ok("null")
         BoolValue(flag): return ok(flag.to_string())
         StringValue(text): return ok(quote_text(text))
         NumberValue(text):
-            if not valid_number(text.clone()): return error(YamlError.InvalidInput)
+            if not valid_number(text.clone()): return error(
+                Error("invalid YAML input", kind: InvalidInput)
+            )
 
             return ok(text)
         ArrayValue(values):
@@ -2032,7 +2018,7 @@ fn is_block(value: YamlValue) Bool:
         _: return false
 
 fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
-    Unit, YamlError
+    Unit, Error
 ]:
     match value:
         ArrayValue(values):
@@ -2067,9 +2053,9 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
         _: return ok(unit)
 
 # Serializes a YAML value in block style with double-quoted strings.
-export fn stringify(value: YamlValue, max_bytes: Int?) String!YamlError:
+export fn stringify(value: YamlValue, max_bytes: Int?) String!:
     if let limit = max_bytes:
-        if limit < 0: return error(YamlError.InvalidInput)
+        if limit < 0: return error(Error("invalid YAML input", kind: InvalidInput))
 
     var out = StringBuilder()
 
@@ -2079,6 +2065,8 @@ export fn stringify(value: YamlValue, max_bytes: Int?) String!YamlError:
         out.append(text.concat("\n"))
 
     let text = out.build()
-    if not within(text.byte_length(), max_bytes): return error(YamlError.LimitExceeded)
+    if not within(text.byte_length(), max_bytes): return error(
+        Error("YAML limit exceeded", kind: LimitExceeded)
+    )
 
     return ok(text)

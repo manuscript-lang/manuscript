@@ -1,4 +1,4 @@
-import ascii_decode, EncodingError from "@std/data/encoding.ms"
+import ascii_decode from "@std/data/encoding.ms"
 import Bytes from "@std/bytes.ms"
 import keep, measure from "@std/test/bench.ms"
 import expect_equal from "@std/test/test.ms"
@@ -44,7 +44,9 @@ bench "ascii.invalid.first.1":
     let data = bad.concat(good)
     try expect_equal(data.length(), 1)
 
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -60,7 +62,9 @@ bench "ascii.invalid.last.1":
     let data = good.concat(bad)
     try expect_equal(data.length(), 1)
 
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -76,7 +80,9 @@ bench "ascii.invalid.first.57":
     let data = bad.concat(good)
     try expect_equal(data.length(), 57)
 
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -92,7 +98,9 @@ bench "ascii.invalid.last.57":
     let data = good.concat(bad)
     try expect_equal(data.length(), 57)
 
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -108,7 +116,9 @@ bench "ascii.invalid.first.4096":
     let data = bad.concat(good)
     try expect_equal(data.length(), 4096)
 
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -124,7 +134,9 @@ bench "ascii.invalid.last.4096":
     let data = good.concat(bad)
     try expect_equal(data.length(), 4096)
 
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -140,7 +152,9 @@ bench "ascii.invalid.first.1048580":
     let data = bad.concat(good)
     try expect_equal(data.length(), 1048580)
 
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -156,7 +170,9 @@ bench "ascii.invalid.last.1048580":
     let data = good.concat(bad)
     try expect_equal(data.length(), 1048580)
 
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -168,7 +184,9 @@ bench "ascii.invalid.last.1048580":
 
 bench "ascii.unicode.accent.1":
     let data = (try "é".repeat(1)).to_bytes()
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -179,7 +197,9 @@ bench "ascii.unicode.accent.1":
 
 bench "ascii.unicode.emoji.1":
     let data = (try "🙂".repeat(1)).to_bytes()
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -190,7 +210,9 @@ bench "ascii.unicode.emoji.1":
 
 bench "ascii.unicode.accent.2048":
     let data = (try "é".repeat(2048)).to_bytes()
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -201,7 +223,9 @@ bench "ascii.unicode.accent.2048":
 
 bench "ascii.unicode.emoji.2048":
     let data = (try "🙂".repeat(2048)).to_bytes()
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -212,7 +236,9 @@ bench "ascii.unicode.emoji.2048":
 
 bench "ascii.unicode.accent.524288":
     let data = (try "é".repeat(524288)).to_bytes()
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -223,7 +249,9 @@ bench "ascii.unicode.accent.524288":
 
 bench "ascii.unicode.emoji.524288":
     let data = (try "🙂".repeat(524288)).to_bytes()
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -237,7 +265,9 @@ bench "ascii.unicode.first.8":
     let data = ("é" + tail).to_bytes()
     try expect_equal(data.length(), 10)
 
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -251,7 +281,9 @@ bench "ascii.unicode.last.8":
     let data = (tail + "é").to_bytes()
     try expect_equal(data.length(), 10)
 
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -265,7 +297,9 @@ bench "ascii.unicode.first.524288":
     let data = ("é" + tail).to_bytes()
     try expect_equal(data.length(), 524290)
 
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:
@@ -279,7 +313,9 @@ bench "ascii.unicode.last.524288":
     let data = (tail + "é").to_bytes()
     try expect_equal(data.length(), 524290)
 
-    let expected: String!EncodingError = error(EncodingError.InvalidData)
+    let expected: String! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(ascii_decode(data), expected)
 
     fn work() Unit!:

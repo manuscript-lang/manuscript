@@ -654,11 +654,10 @@ impl Checker {
                     self.p.diagnostics.remove(i);
                 }
             }
-            if let (Some(want), Some(have)) = (&expected, &v.error_source)
+            if let (Some(want), Some(have)) = (&expected, &v.interface_source)
                 && arg.mutable
                 && want.kind == Kind::Contract
                 && have.kind != Kind::Contract
-                && !want.is_std("Error")
             {
                 self.type_error(
                     arg.value.pos,
@@ -910,9 +909,9 @@ impl Checker {
             return self.check_expression(e, info, expected);
         }
         let payload_ok = compatible(&actual, &payload)
-            || actual.as_ref().is_some_and(|a| {
-                self.error_assignable(a, &payload) || self.interface_assignable(a, &payload)
-            });
+            || actual
+                .as_ref()
+                .is_some_and(|a| self.interface_assignable(a, &payload));
         if payload_ok {
             let mut info = self.check_expression(e, info, Some(&payload));
             info.optional_argument = Some(expected_optional.clone());

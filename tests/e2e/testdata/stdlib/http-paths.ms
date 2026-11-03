@@ -1,13 +1,11 @@
 import expect_ok from "@std/test/test.ms"
 import http_result from "./support/http.ms"
-import TextError from "@std/core.ms"
 import headers, HttpMethod, buffered from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import (
     HttpRequest,
     HttpResponse,
     HttpExchange,
-    HttpError,
     HttpServerOptions,
     HttpClientOptions,
     HttpHeaders
@@ -24,14 +22,14 @@ fn route(request: HttpRequest) HttpResponse:
     let fields = match text_headers(cookies):
         ok(found): found
         error(cause): return HttpResponse(
-            status: 500, headers: headers(), body: (cause.message().to_bytes())
+            status: 500, headers: headers(), body: (cause.message.to_bytes())
         )
 
     return HttpResponse(
         status: 200, headers: fields, body: "{request.path}|{request.query}".to_bytes()
     )
 
-fn stream_route(exchange: HttpExchange) Unit!HttpError:
+fn stream_route(exchange: HttpExchange) Unit!:
     var chain_1 = Map[String, List[String]]()
     chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
@@ -49,10 +47,10 @@ fn check_route(url: String, expected: String) Unit!:
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
     ) | try expect_ok
     if response.metadata().status != 200 or response.body != expected.to_bytes(): return error(
-        TextError("path or raw query changed")
+        Error("path or raw query changed")
     )
     if ((response.metadata().headers.values("SET-cookie")) != ["a=1", "b=2"]): return error(
-        TextError("#257 repeated cookies regressed")
+        Error("#257 repeated cookies regressed")
     )
 
     return ok(unit)
@@ -63,7 +61,7 @@ fn check_rejected(url: String) Unit!:
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
     ) | try expect_ok
     if response.metadata().status != 400: return error(
-        TextError("unsafe or invalid path was dispatched")
+        Error("unsafe or invalid path was dispatched")
     )
 
     return ok(unit)
@@ -89,12 +87,12 @@ test "streaming routes validate original input and decode once":
     ) | try expect_ok
     (try check_paths("http://{server.address()}"))
 
-fn expect_http_error[T](outcome: T!HttpError) Unit!:
+fn expect_http_error[T](outcome: T!) Unit!:
     match outcome:
-        ok(_): return error(TextError("invalid URL succeeded"))
+        ok(_): return error(Error("invalid URL succeeded"))
         error(cause):
-            if cause != HttpError.InvalidInput: return error(
-                TextError("malformed URL leaked transport error")
+            if cause.kind != ErrorCategory.InvalidInput: return error(
+                Error("malformed URL leaked transport error")
             )
 
     return ok(unit)

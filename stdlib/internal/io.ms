@@ -1,11 +1,9 @@
 import Bytes from "@std/bytes.ms"
 import (
     Files,
-    IoError,
     NativeRawTerminal,
     ReadStream,
     Terminal,
-    TerminalError,
     WriteStream
 ) from "@std/io/io.ms"
 import Duration from "@std/os/time.ms"
@@ -28,13 +26,13 @@ export extern fn msstd_io_copy(
     input: ReadStream,
     output: WriteStream,
     max_bytes: Int?
-) Int!IoError
+) Int!
 
-export extern fn msstd_io_read_all(input: ReadStream, max_bytes: Int?) Bytes!IoError
+export extern fn msstd_io_read_all(input: ReadStream, max_bytes: Int?) Bytes!
 
-export extern fn msstd_io_read_line(input: ReadStream, max_bytes: Int?) String?!IoError
+export extern fn msstd_io_read_line(input: ReadStream, max_bytes: Int?) String?!
 
-export extern fn msstd_io_redirect_null(which: Int) Unit!IoError
+export extern fn msstd_io_redirect_null(which: Int) Unit!
 
 export extern fn msstd_io_stdin() ReadStream
 
@@ -51,11 +49,11 @@ export extern fn msstd_terminal_raw_terminal_close(handle: NativeRawTerminal) Un
 export extern fn msstd_terminal_raw_terminal_next_event(
     handle: NativeRawTerminal,
     timeout: Duration?
-) Unit?!TerminalError
+) Unit?!
 
 export extern fn msstd_terminal_raw_terminal_size_status(
     handle: NativeRawTerminal
-) Unit!TerminalError
+) Unit!
 
 export extern fn msstd_terminal_raw_terminal_size_columns(handle: NativeRawTerminal) Int
 
@@ -65,14 +63,14 @@ export extern fn msstd_terminal_raw_terminal_move_cursor(
     handle: NativeRawTerminal,
     row: Int,
     column: Int
-) Unit!TerminalError
+) Unit!
 
 export extern fn msstd_terminal_raw_terminal_show_cursor(
     handle: NativeRawTerminal,
     visible: Bool
-) Unit!TerminalError
+) Unit!
 
 export extern fn msstd_terminal_raw_terminal_erase(
     handle: NativeRawTerminal,
     region: Int
-) Unit!TerminalError
+) Unit!

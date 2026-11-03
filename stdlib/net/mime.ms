@@ -10,15 +10,6 @@ import StringBuilder from "@std/string.ms"
 #     media_type_for_extension(".json")                     # "application/json"
 #     parse_media_type("text/html; charset=utf-8").get().params["charset"]
 
-# Errors returned for malformed media types, header blocks, or multipart bodies.
-export type MimeError:
-    # A media type is not `type/subtype` or a parameter is malformed.
-    case InvalidMediaType
-    # A header line has no colon or begins with a fold.
-    case InvalidHeader
-    # The boundary is empty or absent, or the body lacks the opening or closing delimiter.
-    case InvalidMultipart
-
 # A parsed media type with lower-cased `essence` and parameters keyed by lower-cased name.
 export type MediaType:
     # Lower-cased `type/subtype`, such as `text/html`.
@@ -102,7 +93,7 @@ export fn extension_for_media_type(media_type: String) String?:
 
 # Parses `type/subtype; name=value; name="quoted value"`. Names and the essence are lower-cased;
 # a missing slash, empty part, or unterminated quote is `InvalidMediaType`.
-export fn parse_media_type(text: String) MediaType!MimeError:
+export fn parse_media_type(text: String) MediaType!:
     let pieces = split_params(text)
     let essence = pieces[0].trim().lower()
     let parts = essence.split("/")
@@ -112,7 +103,7 @@ export fn parse_media_type(text: String) MediaType!MimeError:
         or parts[1].is_empty()
         or essence.contains(" ")
     ):
-        return error(MimeError.InvalidMediaType)
+        return error(Error("MIME: invalid media type", kind: ErrorCategory.InvalidData))
 
     var params = Map[String, String]()
 
@@ -121,14 +112,26 @@ export fn parse_media_type(text: String) MediaType!MimeError:
         if piece.is_empty(): continue
 
         let at = piece.index_of("=")
-        if not at.is_some(): return error(MimeError.InvalidMediaType)
+        if not at.is_some(): return error(
+            Error(
+                "MIME: invalid media type", kind: ErrorCategory.InvalidData
+            )
+        )
 
         let name = piece.take(at.get(0)).trim().lower()
         let raw = piece.drop(at.get(0) + 1).trim()
-        if name.is_empty(): return error(MimeError.InvalidMediaType)
+        if name.is_empty(): return error(
+            Error(
+                "MIME: invalid media type", kind: ErrorCategory.InvalidData
+            )
+        )
 
         let value = unquote(raw)
-        if not value.is_some(): return error(MimeError.InvalidMediaType)
+        if not value.is_some(): return error(
+            Error(
+                "MIME: invalid media type", kind: ErrorCategory.InvalidData
+            )
+        )
 
         params.add(name, value.get(""))
 
@@ -198,7 +201,7 @@ fn quote_value(value: String) String:
 
 # Parses a header block (up to the first blank line). Continuation lines starting with space or tab
 # join the previous value with one space. A line without a colon, or a fold before any field, is `InvalidHeader`.
-export fn parse_headers(text: String) Headers!MimeError:
+export fn parse_headers(text: String) Headers!:
     var fields = List[HeaderField]()
 
     for raw in text.lines():
@@ -206,7 +209,11 @@ export fn parse_headers(text: String) Headers!MimeError:
         if line.is_empty(): break
 
         if line.starts_with(" ") or line.starts_with("\t"):
-            if fields.is_empty(): return error(MimeError.InvalidHeader)
+            if fields.is_empty(): return error(
+                Error(
+                    "MIME: invalid header", kind: ErrorCategory.InvalidData
+                )
+            )
 
             let last = fields.length() - 1
             fields[last] = HeaderField(
@@ -216,7 +223,9 @@ export fn parse_headers(text: String) Headers!MimeError:
             continue
 
         let at = line.index_of(":")
-        if not at.is_some() or at.get(0) == 0: return error(MimeError.InvalidHeader)
+        if not at.is_some() or at.get(0) == 0: return error(
+            Error("MIME: invalid header", kind: ErrorCategory.InvalidData)
+        )
 
         fields.append(
             HeaderField(
@@ -240,8 +249,10 @@ export fn multipart_boundary(content_type: String) String?:
 # Splits a multipart body into parts using `boundary`. Text before the first delimiter and after the
 # closing delimiter is ignored. Parts keep their body bytes exactly; headers are parsed as `Headers`.
 # A body without a closing delimiter is `InvalidMultipart`.
-export fn parse_multipart(body: Bytes, boundary: String) List[Part]!MimeError:
-    if boundary.is_empty(): return error(MimeError.InvalidMultipart)
+export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
+    if boundary.is_empty(): return error(
+        Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData)
+    )
 
     let crlf = "\r\n".to_bytes()
     let sections = crlf.concat(body).split("\r\n--{boundary}".to_bytes(), none)
@@ -250,14 +261,20 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!MimeError:
     for i in 1..sections.length():
         let section = sections[i]
         if section.starts_with("--".to_bytes()): return ok(parts)
-        if not section.starts_with(crlf): return error(MimeError.InvalidMultipart)
+        if not section.starts_with(crlf): return error(
+            Error(
+                "MIME: invalid multipart body", kind: ErrorCategory.InvalidData
+            )
+        )
 
         let inner = section.slice(2, section.length()).get("".to_bytes())
         let blank = if inner.starts_with(crlf): 0 else: inner.index_of(
             "\r\n\r\n".to_bytes()
         ).get(-1)
         if blank < 0 and not inner.starts_with(crlf): return error(
-            MimeError.InvalidMultipart
+            Error(
+                "MIME: invalid multipart body", kind: ErrorCategory.InvalidData
+            )
         )
 
         let skip = if blank == 0: 2 else: 4
@@ -280,7 +297,7 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!MimeError:
 
         parts.append(part)
 
-    return error(MimeError.InvalidMultipart)
+    return error(Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData))
 
 # Encodes parts as a multipart body closed with the final delimiter. Each part's headers are
 # written as given, then a blank line and the data.
@@ -312,11 +329,3 @@ export fn form_part(
     return Part(
         headers: Headers(fields: fields), name: name, filename: filename, data: data
     )
-
-impl Error for MimeError:
-    # Returns a MIME-prefixed diagnostic without echoing the input.
-    fn message() String:
-        match self:
-            InvalidMediaType: return "MIME: invalid media type"
-            InvalidHeader: return "MIME: invalid header"
-            InvalidMultipart: return "MIME: invalid multipart body"

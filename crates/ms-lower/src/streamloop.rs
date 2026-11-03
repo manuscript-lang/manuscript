@@ -1,11 +1,12 @@
 //! `io.read_all`, `io.copy` and `io.read_line` over any `ReadStream`.
 //!
 //! The loop calls the stream's own `read`; the accumulator in `ms-std-io` owns the policy
-//! (chunk sizes, validation, limits). A failing `read` or `write_bytes` returns its `IoError`
+//! (chunk sizes, validation, limits). A failing `read` or `write_bytes` returns its `Error`
 //! unchanged.
 
 use crate::Error;
 use crate::func::{FnLower, Val};
+use crate::httpserve::IO_KINDS;
 use ms_check::hir::CallView;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Block, Cc, FuncKind, Imm, Mode, Op, Param, Value};
@@ -256,7 +257,7 @@ pub(crate) fn method(s: &FnLower<'_>, v: Value, name: &str) -> Result<(IfaceId, 
 
 impl FnLower<'_> {
     /// The closure a request upload reads through: `code(closure, has_max, max, out, present,
-    /// err) -> status` calls the captured `ReadStream`'s `read` and reports its `IoError` as a
+    /// err) -> status` calls the captured `ReadStream`'s `read` and reports its `Error` as a
     /// status (`Failed` text through `err`). An owned temporary released at the end of the
     /// statement.
     pub(crate) fn upload_env(&mut self, stream: Val) -> Result<Value, Error> {
@@ -336,7 +337,7 @@ impl FnLower<'_> {
                 MTy::INT,
                 &mut |s| {
                     let e = s.b.alt_get(src, serr as u32, 0, r);
-                    s.error_status(e, p[5]).map(Some)
+                    s.error_status(e, p[5], &IO_KINDS).map(Some)
                 },
                 &mut |s| {
                     let chunk = s.b.alt_get(src, sok as u32, 0, r);

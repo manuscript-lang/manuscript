@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import TextError from \"@std/core.ms\"\n\ntype Cents:\n    case Valid(amount: Int)\n    case Invalid\n\nfn total(cents: Cents) Result[Int, TextError]:\n    let amount = match cents:\n        Valid(value):\n            value\n        Invalid:\n            return error(TextError(\"Invalid amount\"))\n\n    return ok(amount)\n"
+    "fmt": "\ntype Cents:\n    case Valid(amount: Int)\n    case Invalid\n\nfn total(cents: Cents) Result[Int, Error]:\n    let amount = match cents:\n        Valid(value):\n            value\n        Invalid:\n            return error(Error(\"Invalid amount\"))\n\n    return ok(amount)\n"
   }
 }

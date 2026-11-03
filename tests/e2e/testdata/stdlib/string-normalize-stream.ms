@@ -1,5 +1,5 @@
 import expect_equal from "@std/test/test.ms"
-import NormalizationForm, StringError from "@std/string.ms"
+import NormalizationForm from "@std/string.ms"
 
 type BudgetCase:
     form: String
@@ -37,20 +37,30 @@ test "normalization keeps exact exceeded zero negative and invalid form budgets"
             normalization.text.normalize(
                 normalization.form, size - 1
             ).err(),
-            StringError.LimitExceeded
+            Error(
+                "string: limit exceeded", kind: ErrorCategory.LimitExceeded
+            )
         )
         try expect_equal(
             normalization.text.normalize(normalization.form, 0).err(),
-            StringError.LimitExceeded
+            Error(
+                "string: limit exceeded", kind: ErrorCategory.LimitExceeded
+            )
         )
         try expect_equal(
             normalization.text.normalize(normalization.form, -1).err(),
-            StringError.InvalidInput
+            Error("string: invalid input", kind: ErrorCategory.InvalidInput)
         )
 
     for form in ["", "nfc", "NFC\u{0}", "UNKNOWN"]:
-        try expect_equal("é".normalize(form).err(), StringError.InvalidInput)
-        try expect_equal("é".normalize(form, -1).err(), StringError.InvalidInput)
+        try expect_equal(
+            "é".normalize(form).err(),
+            Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+        )
+        try expect_equal(
+            "é".normalize(form, -1).err(),
+            Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+        )
 
 test "normalization retains lookahead across a complete combining segment":
     let text = "a" + "\u{315}\u{300}".repeat(32).get()
@@ -60,4 +70,7 @@ test "normalization retains lookahead across a complete combining segment":
     try expect_equal(text.normalize("NFD").get(), decomposed.clone())
     try expect_equal(text.normalize("NFKC").get(), composed)
     try expect_equal(text.normalize("NFKD").get(), decomposed)
-    try expect_equal(text.normalize("NFC", 0).err(), StringError.LimitExceeded)
+    try expect_equal(
+        text.normalize("NFC", 0).err(),
+        Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )

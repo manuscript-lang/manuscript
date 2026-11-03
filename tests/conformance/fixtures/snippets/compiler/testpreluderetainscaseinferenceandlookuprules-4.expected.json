@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Error, found String (in the return value); use a concrete value implementing Error",
+        "message": "expected Error, found String (in the return value)",
         "position": {
           "file": "testpreluderetainscaseinferenceandlookuprules-4.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testpreluderetainscaseinferenceandlookuprules-4.ms:5:12: type: expected Error, found String (in the return value); use a concrete value implementing Error\n   |\n 5 |     return \"failed\"\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testpreluderetainscaseinferenceandlookuprules-4.ms:5:12: type: expected Error, found String (in the return value)\n   |\n 5 |     return \"failed\"\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

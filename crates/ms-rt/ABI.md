@@ -11,6 +11,7 @@ the earlier Go runtime has been removed.
 _(Newest first. Anything that alters a layout, signature or ownership rule is
 recorded here before it is committed.)_
 
+- **`ms_abi.h` v1 functions (ABI_VERSION unchanged).** A function argument of a user extern crosses as an `ms_fn`: `msrt_fn_new(closure, sig)` makes an object (closure at offset 16, signature word at 24) around a generated closure that takes its arguments from 24-byte cells and puts its result in the cell after the last parameter slot (`CALL_MAX_PARAMS` = 6). `ms_call_v1` converts `ms_value` arguments into the cells, calls the closure through its code pointer (two pointer parameters, the platform C convention), and converts the result. `ms_on_stop_v1` hooks run from `stop_requested` (`start.rs`), after the main task's cancel is raised.
 - **`ms_abi.h` v1 (ABI_VERSION unchanged).** User `extern fn` shims follow `crates/ms-rt-abi/include/ms_abi.h` instead of the runtime conventions: sized numbers cross as the same-width C types (`signext`/`zeroext`), `Bytes` as `const ms_bytes *`, `List[T]` as an `ms_list` (`ListRef`: the list's address and an `ELEM_*` element code), a user `extern type` as an object from `ms_object_new_v1` (payload at offset 32, the shim's drop at 16). Outputs (`out`, `code_out`, `message_out`) are filled with empty values before the call and dropped after it, unlike the uninitialised `out` below. `ms-rt` exports the header's functions as `ms_*_v1` (`cabi.rs`).
 - **extern (ABI_VERSION unchanged).** `extern fn` declarations call a native symbol of the same name under the conventions below, for scalars, borrowed `String` arguments, and `Int`/`Float`/`Bool`/`String`/`Unit` results, or `Result[T, E]` as a `u8` status (`n` names the `n`th case of a payload-free `E`) plus `out` (`documentation/core-language/functions/native-functions.md`). `crates/ms-rt-abi/include/ms_abi.h` is the C view of `StrVal` for such natives; `msrt_string_from_bytes` is how they build owned string results.
 - **v3 (collection creator evidence).** `MapVal` appends a static key descriptor pointer (56 bytes).
@@ -37,7 +38,7 @@ recorded here before it is committed.)_
   `glob_entries`' returns non-zero to exclude it.
   Glob matching lives in `ms-std-path::glob` (shared with `@std/fs`) (braces, extglobs, `**`, and dotfile rules).
 - **v2.5 (`ms-std-process`).** `msstd_process_*` covers process control and child processes. `STATUS_TIMEOUT` (13) and `STATUS_OUTPUT_LIMIT` (14)
-  join the table for `CommandError`. `Map[String, String]` crosses as two parallel string lists (`environment`, `replace`). `command_run` takes
+  join the table (`Timeout`, `LimitExceeded`). `Map[String, String]` crosses as two parallel string lists (`environment`, `replace`). `command_run` takes
   the arguments, input bytes, optional limit and optional timeout and returns `CommandOut` (exit code, stdout, stderr); `command_spawn` returns a
   refcounted child handle whose three pipes are `@std/io` stream handles (`subprocess_stream`, each call adds a reference). Children start in their
   own process group and every wait polls in short slices so a pending cancellation kills the tree before unwinding. `ms-rt` adds `msrt_start_nanos`

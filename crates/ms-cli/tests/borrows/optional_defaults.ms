@@ -1,5 +1,4 @@
 import stdout from "@std/io/io.ms"
-import TextError from "@std/core.ms"
 
 fn fallback(var calls: Int) List[Int]?:
     calls += 1
@@ -11,8 +10,8 @@ fn choose[T](value: List[T]?, default: List[T]?) List[T]:
 export fn main() Int:
     let missing: List[Int]? = none
     let present: List[Int]? = [1]
-    let failure: Result[List[Int], TextError] = error(TextError("bad"))
-    let success: Result[List[Int], TextError] = ok([2])
+    let failure: Result[List[Int], Error] = error(Error("bad"))
+    let success: Result[List[Int], Error] = ok([2])
     let values = [[3]]
     let borrowed: List[Int]? = [88]
     let _ = stdout().write("{missing.get([99])} {present.get([99])}\n")
@@ -25,9 +24,9 @@ export fn main() Int:
     )
     let no_int: Int? = none
     let yes_int: Int? = 7
-    let bad = no_int.ok_or(TextError("missing"))
-    let good = yes_int.ok_or(TextError("unused"))
-    let _ = stdout().write("{bad.err().message()} {good.get()}\n")
+    let bad = no_int.ok_or(Error("missing"))
+    let good = yes_int.ok_or(Error("unused"))
+    let _ = stdout().write("{bad.err().message} {good.get()}\n")
     let _ = stdout().write(
         "{present.get(none)} {success.get(none)} {values.get(0, none)}\n"
     )
@@ -37,7 +36,7 @@ export fn main() Int:
     )
     let no_text: String? = none
     let text: String? = "fallback"
-    let text_failure: Result[String, TextError] = error(TextError("bad"))
+    let text_failure: Result[String, Error] = error(Error("bad"))
     let words = ["present"]
     let _ = stdout().write(
         "{no_text.get(text)} {text_failure.get(text)} {words.get(5, text)} {text}\n"

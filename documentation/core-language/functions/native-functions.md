@@ -35,12 +35,13 @@ An extern follows `crates/ms-rt-abi/include/ms_abi.h`, which a C shim includes.
 | `Bytes` | `const ms_bytes *`, borrowed | trailing `ms_bytes *out` |
 | `List[T]`, `T` one of the types above or an extern type | `const ms_list *`, borrowed | trailing `ms_list *out` |
 | an `extern type` | `ms_object *`, borrowed | `ms_object *`, owned by the program |
+| `fn(A, B) R`, each `A` a number, `Bool`, `String`, `Bytes` or extern type, `R` one of those but an extern type, or `Unit` | `ms_fn *`, borrowed | not allowed |
 | `Unit` | not allowed | `void` |
 | `Result[T, E]` | not allowed | `uint8_t` status, `T` through `out`, then `code_out`, `message_out` |
 
-Any other type is rejected by `ms check`. A record, alternative, map, optional or callback is converted in an ordinary Manuscript function around the extern.
+Any other type is rejected by `ms check`. A record, alternative, map or optional is converted in an ordinary Manuscript function around the extern.
 
-Arguments are borrowed: a native reads them and does not keep a pointer after returning. It builds results with `ms_string_new`, `ms_bytes_new` and `ms_list_push`, never with its own allocator, so the program can free them. A list knows its element type: `ms_list_get` widens an element into an `ms_value`, and `ms_list_push` faults on a value of another kind or out of the element's range. Strings and bytes from `ms_list_get` are `malloc` copies that `ms_value_free` releases. A native must not block indefinitely, since a native call is not a cancellation point.
+Arguments are borrowed: a native reads them and does not keep a pointer after returning. It builds results with `ms_string_new`, `ms_bytes_new` and `ms_list_push`, never with its own allocator, so the program can free them. A list knows its element type: `ms_list_get` widens an element into an `ms_value`, and `ms_list_push` faults on a value of another kind or out of the element's range. Strings and bytes from `ms_list_get` are `malloc` copies that `ms_value_free` releases. A native that blocks, such as an event loop, returns when a stop is requested only if it registers a stop hook (see [Calling back into Manuscript](#calling-back-into-manuscript)), since a native call is not a cancellation point.
 
 Every output arrives holding an empty value (0, `""`, an empty list, NULL), and the program drops every output after the call. A native that writes the wrong output, or none, therefore leaves nothing undefined. An object result that is still NULL faults.
 
@@ -97,6 +98,36 @@ impl Closeable for Connection:
         lib_disconnect(self)
         return ok(unit)
 ```
+
+## Calling back into Manuscript
+
+A function argument reaches the native as an `ms_fn *`, which `ms_call(f, args, count, result)` calls on the same thread with an array of `ms_value`s. Each argument must have the kind and range of its parameter (`MS_INT` for a signed type, `MS_UINT` for an unsigned one), or `ms_call` faults before the call. `result`, which may be NULL, receives the value as `ms_list_get` gives it. A fault in the function ends the program like any fault; `ms_call` does not return from it. A function takes at most six parameters.
+
+A native that keeps a function past the call, for a library that calls back later, takes a reference with `ms_fn_retain` and gives it back with `ms_fn_release`. It calls the function only on the thread that called the native. Because a native may keep it, a closure passed to an extern owns what it captures.
+
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
+# Calls `visit` once for each entry the library finds.
+extern fn lib_walk(root: String, visit: fn(String, Int) Unit) Unit
+```
+
+```c
+#include "ms_abi.h"
+
+static void each_entry(const char *name, size_t len, int64_t size, void *data) {
+    ms_value args[2] = {
+        {MS_STRING, {.buf = {(const uint8_t *)name, len}}},
+        {MS_INT, {.i = size}},
+    };
+    ms_call((ms_fn *)data, args, 2, NULL);
+}
+
+void lib_walk(const ms_str *root, ms_fn *visit) {
+    walk_entries(ms_str_data(root), ms_str_len(root), each_entry, visit);
+}
+```
+
+`ms_on_stop(fn, arg)` registers a hook that runs when a stop is requested (SIGINT, SIGTERM, Ctrl-C), from a signal handler or another thread, so it may only do async-signal-safe work, such as setting a flag or calling `uv_async_send`. It lets a native that blocks return; the program then stops with its usual cleanup. `ms_on_stop_remove` removes the hook.
 
 ## Linking the native code
 

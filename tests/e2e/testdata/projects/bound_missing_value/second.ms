@@ -1,4 +1,4 @@
-export fn second(value: Int?) Int!MissingValue:
-    let convert = value.ok_or[MissingValue]
+export fn second(value: Int?) Int!Error:
+    let convert = value.ok_or[Error]
     let copied = convert
     return copied()

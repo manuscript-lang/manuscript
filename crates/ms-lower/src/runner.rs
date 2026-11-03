@@ -104,10 +104,13 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
         b.seal_block(good);
         b.switch_to(bad);
         let payload = b.alt_get(a, err as u32, 0, r);
-        let TyKind::Iface(iface) = b.m.types.kind(b.ty(payload)).clone() else {
+        let TyKind::Rec(er) = b.m.types.kind(b.ty(payload)).clone() else {
             return Err(Error::new("a test error must be an Error"));
         };
-        let message = b.call_method(iface, 0, payload, &[]);
+        let field = b.rec_get(er, 0, payload);
+        let message = b
+            .emit(Op::Copy, &[field], Imm::None, Some(MTy::STR))
+            .expect("copy");
         let marker = b.str_lit(FAILURE_MARKER);
         let cat = runtime_fn(b.m, "msrt_string_concat", &[MTy::STR, MTy::STR], MTy::STR);
         let line = b.call_rt(cat, &[marker, message]);

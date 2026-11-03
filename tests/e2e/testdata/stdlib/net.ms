@@ -14,7 +14,6 @@ import (
     contains_ip,
     DatagramSocket,
     DnsKind,
-    NetworkError,
     IpFamily,
     Listener,
     Connection
@@ -60,9 +59,13 @@ test "host names resolve whatever their case":
     try expect_equal(server.peer_address(), client.local_address())
 
 test "an empty Unix socket path is invalid input":
-    try expect_equal(try expect_error(listen_unix("")), NetworkError.InvalidInput)
     try expect_equal(
-        try expect_error(connect_unix("", 1.seconds)), NetworkError.InvalidInput
+        try expect_error(listen_unix("")),
+        Error("network: invalid input", kind: ErrorCategory.InvalidInput)
+    )
+    try expect_equal(
+        try expect_error(connect_unix("", 1.seconds)),
+        Error("network: invalid input", kind: ErrorCategory.InvalidInput)
     )
 
 test "UDP loopback preserves datagram data and sender":
@@ -84,9 +87,9 @@ test "network restriction denies admission and close rejects acquisitions":
     var scoped = restricted
     try expect_false(
         (
-            (
-                try expect_error(scoped.listen("127.0.0.1:0"))
-            ) != NetworkError.PermissionDenied
+            (try expect_error(scoped.listen("127.0.0.1:0"))) != Error(
+                "network: permission denied", kind: ErrorCategory.PermissionDenied
+            )
         )
     )
     scoped.close()
@@ -97,7 +100,7 @@ test "network restriction denies admission and close rejects acquisitions":
                 try expect_error(
                     closing.connect("127.0.0.1:1", 1.seconds)
                 )
-            ) != NetworkError.Closed
+            ) != Error("network: resource is closed", kind: ErrorCategory.Closed)
         )
     )
 
@@ -109,7 +112,10 @@ test "typed addresses preserve normalization and reject zones":
     try expect_false((try contains_ip(try parse_cidr("::ffff:192.0.2.0/120"), ip)))
 
 fn expect_ip_error(input: String) Unit!:
-    try expect_equal((try expect_error(parse_ip(input))), NetworkError.InvalidData)
+    try expect_equal(
+        (try expect_error(parse_ip(input))),
+        Error("network: invalid data", kind: ErrorCategory.InvalidData)
+    )
     return ok(unit)
 
 fn accept_one(l: Shared[Listener]) Int:
@@ -167,7 +173,7 @@ test "two tasks read one connection":
     try shared.get().close()
 
 # Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
-fn answer_mx(socket: Shared[DatagramSocket]) Int!NetworkError:
+fn answer_mx(socket: Shared[DatagramSocket]) Int!:
     let query = try socket.get().receive(512, 2.seconds)
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
     let header = Bytes(

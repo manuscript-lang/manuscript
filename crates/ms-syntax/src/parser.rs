@@ -64,16 +64,53 @@ struct Parser<'a> {
     next_id: u32,
     /// While positive, failures are speculative: their messages are never shown.
     speculative: u32,
-    failed_type_args: Vec<FailedTypeArgs>,
+    /// One bit per token: set on a `[` whose bracketed tokens could all be type
+    /// arguments. Computed in one pass, so an index is never tried as types.
+    type_brackets: Vec<u64>,
 }
 
-struct FailedTypeArgs {
-    start: usize,
-    initial_depth: usize,
-    end: usize,
-    depth: usize,
-    ids: u32,
-    diagnostic: Box<Diagnostic>,
+/// Tokens that can appear between the brackets of type arguments.
+fn type_token(kind: Tok) -> bool {
+    matches!(
+        kind,
+        Tok::Name
+            | Tok::Dot
+            | Tok::LBracket
+            | Tok::RBracket
+            | Tok::Comma
+            | Tok::Question
+            | Tok::Bang
+            | Tok::Fn
+            | Tok::LParen
+            | Tok::RParen
+    )
+}
+
+fn type_brackets(tokens: &[Token]) -> Vec<u64> {
+    let mut bits = vec![0u64; tokens.len().div_ceil(64)];
+    let mut open: Vec<(usize, bool)> = Vec::new();
+    for (at, t) in tokens.iter().enumerate() {
+        match t.kind {
+            Tok::LBracket => open.push((at, true)),
+            Tok::RBracket => {
+                if let Some((from, ok)) = open.pop() {
+                    if ok {
+                        bits[from / 64] |= 1 << (from % 64);
+                    }
+                    if let Some(parent) = open.last_mut() {
+                        parent.1 &= ok;
+                    }
+                }
+            }
+            kind if !type_token(kind) => {
+                if let Some(top) = open.last_mut() {
+                    top.1 = false;
+                }
+            }
+            _ => {}
+        }
+    }
+    bits
 }
 
 /// The position of byte `index` of a text token's source.
@@ -294,6 +331,7 @@ impl<'a> Parser<'a> {
         Parser {
             file,
             src,
+            type_brackets: type_brackets(&tokens),
             tokens,
             boundaries,
             source_origin,
@@ -305,7 +343,6 @@ impl<'a> Parser<'a> {
             queued: Vec::new(),
             next_id,
             speculative: 0,
-            failed_type_args: Vec::new(),
         }
     }
 
@@ -776,11 +813,10 @@ impl<'a> Parser<'a> {
             );
         }
         if self.take(Tok::LBracket) {
-            args = if self.speculative > 0 && starts_type(self.kind()) {
-                self.speculative_type_args(true)?
-            } else {
-                self.type_args()?
-            };
+            if self.speculative > 0 && !self.type_bracket(self.at - 1) {
+                return Err(self.dummy());
+            }
+            args = self.type_args()?;
         }
         let lt = self.peek();
         if lt.kind == Tok::Lt
@@ -798,44 +834,9 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Nested type lists remember failures; expression brackets only replay them.
-    fn speculative_type_args(&mut self, remember: bool) -> PResult<Vec<TypeRef>> {
-        // Replaying a failed speculative parse must preserve its side effects.
-        // Include nesting depth: a limit failure is not a grammar failure.
-        let (start, initial_depth) = (self.at, self.depth);
-        // Recursive failures unwind in reverse source order; expression parsing
-        // then revisits them in forward order. Discard entries already passed.
-        while self
-            .failed_type_args
-            .last()
-            .is_some_and(|failed| failed.start < start)
-        {
-            self.failed_type_args.pop();
-        }
-        if let Some(failed) = self
-            .failed_type_args
-            .pop_if(|failed| failed.start == start && failed.initial_depth == initial_depth)
-        {
-            self.at = failed.end;
-            self.depth = failed.depth;
-            self.next_id += failed.ids;
-            return Err(failed.diagnostic);
-        }
-        let first_id = self.next_id;
-        let result = self.type_args();
-        // Only nested failures can be retried by the enclosing expression.
-        // Ordinary flat indexing never allocates a cache.
-        if remember && let Err(diagnostic) = &result {
-            self.failed_type_args.push(FailedTypeArgs {
-                start,
-                initial_depth,
-                end: self.at,
-                depth: self.depth,
-                ids: self.next_id - first_id,
-                diagnostic: diagnostic.clone(),
-            });
-        }
-        result
+    /// Whether the `[` at token `at` encloses only tokens a type can contain.
+    fn type_bracket(&self, at: usize) -> bool {
+        self.type_brackets[at / 64] >> (at % 64) & 1 == 1
     }
 
     fn type_args(&mut self) -> PResult<Vec<TypeRef>> {
@@ -3077,13 +3078,9 @@ impl<'a> Parser<'a> {
         let saved_depth = self.depth;
         let mut types = None;
         // A type starts with a name, `fn` or `(`; anything else is a value.
-        if starts_type(self.kind()) {
+        if starts_type(self.kind()) && self.type_bracket(start - 1) {
             self.speculative += 1;
-            let r = if self.failed_type_args.is_empty() {
-                self.type_args()
-            } else {
-                self.speculative_type_args(false)
-            };
+            let r = self.type_args();
             self.speculative -= 1;
             match r {
                 Ok(t) => types = Some(t),

@@ -1,6 +1,6 @@
 import Bytes from "@std/bytes.ms"
 import ReadStream, WriteStream from "@std/io/io.ms"
-import CommandError, Stdio from "@std/os/process.ms"
+import Stdio from "@std/os/process.ms"
 import NativeLink, NativeProcess from "@std/os/processes.ms"
 
 export extern fn msrt_obj_share[T](value: T) T
@@ -10,7 +10,7 @@ export extern fn msstd_process_fork(
     stdin: Stdio,
     stdout: Stdio,
     stderr: Stdio
-) NativeProcess!CommandError
+) NativeProcess!
 
 export extern fn msstd_process_forked_link(process: NativeProcess) NativeLink
 
@@ -21,10 +21,7 @@ export extern fn msstd_process_forked_output(
     which: Int
 ) ReadStream
 
-export extern fn msstd_process_forked_wait(
-    process: NativeProcess,
-    timeout_ns: Int
-) Int!CommandError
+export extern fn msstd_process_forked_wait(process: NativeProcess, timeout_ns: Int) Int!
 
 export extern fn msstd_process_forked_signal(process: NativeProcess, force: Bool) Unit
 

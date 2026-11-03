@@ -1,3 +1,3 @@
-export fn first(value: Int?) Int!MissingValue:
-    let convert = value.ok_or[MissingValue]
+export fn first(value: Int?) Int!Error:
+    let convert = value.ok_or[Error]
     return convert()

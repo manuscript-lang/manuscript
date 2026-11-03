@@ -7,9 +7,6 @@ type Row:
 type Bad:
     why: String
 
-impl Error for Bad:
-    fn message() String: self.why.clone()
-
 fn first_tag(r: Row) String?:
     return r.tags[0]
 

@@ -101,7 +101,7 @@ impl ParameterDefaults {
         self.names.is_empty()
     }
 
-    /// The already-omittable native parameter whose MissingValue is made at the call.
+    /// The already-omittable native parameter whose missing-value `Error` is made at the call.
     pub fn missing_value_at_call(&self) -> Option<Name> {
         self.missing_value_at_call
     }

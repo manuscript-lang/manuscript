@@ -16,8 +16,8 @@ impl Equal for Key:
 impl Hashable for Key:
     fn hash() Int: self.id
 
-impl Error for Cause:
-    fn message() String: "first {self.count}"
+fn describe(cause: Cause) Error:
+    return Error("first {cause.count}")
 
 export fn first_mapped() Set[Key]:
     let values = Set[Int]([1, 2])
@@ -35,7 +35,7 @@ export fn first_lookup() String:
     return values.filter(fn k, v: true) | lookup(Key(5, "different"), "absent")
 
 export fn first_failure(cause: Cause) String!:
-    let value: Int! = error(cause)
+    let value: Int! = error(describe(cause))
     return value.map(fn n: n.to_string()).and_then(fn text: ok(text))
 
 export fn first_queries() Bool:
@@ -51,12 +51,12 @@ export fn first_queries() Bool:
 
 export fn first_converted(cause: Cause) Int!:
     let missing: Int? = none
-    return convert(missing, fn() Error: cause.clone())
+    return convert(missing, fn() Error: describe(cause))
 
 export fn first_folded(cause: Cause) Error:
     var values = Map[String, Int]()
     values.add("key", 1)
-    return values.fold[Error](cause, fn acc, key, value: acc)
+    return values.fold[Error](describe(cause), fn acc, key, value: acc)
 
 export fn first_key_transform[T: Hashable](input: Map[T, Int]) Map[Key, Int]:
     return remap_keys(input, fn key, value: Key(0, key.to_string()))

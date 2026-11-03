@@ -34,31 +34,13 @@ export interface File:
     fn close() Unit
     # Returns a byte chunk or none at EOF; max_bytes is a positive chunk size, not a total budget.
     # Omission/none uses the native 64 KiB chunk; source implementations define their own buffering.
-    fn read(max_bytes: Int?) Bytes?!IoError
+    fn read(max_bytes: Int?) Bytes?!
 
 # Opens read-only file resources using the current host's default filesystem.
-# Native open failures (including missing paths and permission denial) become IoError.Unavailable.
+# Native open failures (including missing paths and permission denial) become an `Error` of kind `Unavailable`.
 interface Files:
     # Opens path for read-only access; native missing, denied, and other open failures become Unavailable.
-    fn open(path: String) File!IoError
-
-# Errors returned while reading, writing, or closing an I/O resource.
-export type IoError:
-    # The stream or shared native handle was closed before the operation completed.
-    case Closed
-    # An explicit chunk size, byte limit, or handle mode is invalid for this operation.
-    case InvalidInput
-    # The native service could not open or provide the requested stream.
-    case Unavailable
-    # Read bytes are invalid for the requested decoding, such as malformed UTF-8 text.
-    case InvalidData
-    # A supplied byte budget was exceeded; already consumed input may not be recoverable.
-    case LimitExceeded
-    # A native or adapter failure outside the more specific I/O cases.
-    case Failed(
-        # Original diagnostic text; message() returns it unchanged rather than redacting it.
-        message: String
-    )
+    fn open(path: String) File!
 
 # A readable byte stream. Each read returns a chunk or `none` at end of stream.
 export interface ReadStream:
@@ -66,7 +48,7 @@ export interface ReadStream:
     var fn close() Unit
     # Returns a chunk or none at EOF; a final nonempty chunk can precede EOF.
     # A supplied positive max_bytes requests a chunk size; native omission/none uses 64 KiB.
-    var fn read(max_bytes: Int? = none) Bytes?!IoError
+    var fn read(max_bytes: Int? = none) Bytes?!
 
 # A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
 # Buffering/flush depends on the implementation: native stderr is unbuffered and native stdout is buffered when not a terminal (flush drains it),
@@ -75,24 +57,24 @@ export interface WriteStream:
     # Releases this implementation's write resource; close does not imply a successful flush.
     var fn close() Unit
     # Completes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.
-    # File-handle writers synchronize the file, and failures retain IoError identity.
-    var fn flush() Unit!IoError
+    # File-handle writers synchronize the file, and failures keep their `Error` kind.
+    var fn flush() Unit!
     # Accepts the complete input on success; a source implementation may buffer until flush.
-    var fn write(data: String) Unit!IoError
+    var fn write(data: String) Unit!
     # Accepts the complete bytes on success, with the buffering rules of write.
-    var fn write_bytes(data: Bytes) Unit!IoError
+    var fn write_bytes(data: Bytes) Unit!
 
 # Copies bytes until end of input and returns the count. Input beyond `max_bytes` returns LimitExceeded.
-export fn copy(input: ReadStream, output: WriteStream, max_bytes: Int?) Int!IoError:
+export fn copy(input: ReadStream, output: WriteStream, max_bytes: Int?) Int!:
     return msstd_io_copy(input, output, max_bytes)
 
 # Reads a stream completely into memory. Supply a limit for untrusted streams.
-export fn read_all(input: ReadStream, max_bytes: Int?) Bytes!IoError:
+export fn read_all(input: ReadStream, max_bytes: Int?) Bytes!:
     return msstd_io_read_all(input, max_bytes)
 
 # Reads one line from a stream such as `stdin()`, omitting its line ending; returns `none` at end of stream.
 # `max_bytes` counts the terminator: a newline-ended line must be shorter than it, an unterminated last line may equal it. To read every line, iterate `lines(input)`.
-export fn read_line(input: ReadStream, max_bytes: Int?) String?!IoError:
+export fn read_line(input: ReadStream, max_bytes: Int?) String?!:
     return msstd_io_read_line(input, max_bytes)
 
 # Lines of a stream, read on demand. `for line in reader:` walks the lines without their
@@ -107,12 +89,12 @@ export type LineReader:
     # Per-line byte limit, or none for no limit.
     max_bytes: Int?
     # The error that ended iteration, if any.
-    failure: IoError?
+    failure: Error?
 
 impl LineReader:
     # Returns the I/O error that ended iteration, or none after a clean end of input
     # (and while lines remain). A line over the limit reports `LimitExceeded`.
-    fn error() IoError?:
+    fn error() Error?:
         return self.failure.clone()
 
 impl Iterator[String] for LineReader:
@@ -138,17 +120,6 @@ impl Iterator[String] for LineReader:
 export fn lines(input: ReadStream, max_bytes: Int?) LineReader:
     return LineReader(input, max_bytes, none)
 
-impl Error for IoError:
-    # Returns original Failed text, or an I/O-prefixed diagnostic for the other cases.
-    fn message() String:
-        match self:
-            Closed: return "I/O: resource is closed"
-            InvalidInput: return "I/O: invalid input"
-            Unavailable: return "I/O: service unavailable"
-            InvalidData: return "I/O: invalid data"
-            LimitExceeded: return "I/O: limit exceeded"
-            Failed(message): return message.clone()
-
 # Returns the process standard-input stream.
 export fn stdin() ReadStream:
     return msstd_io_stdin()
@@ -172,7 +143,7 @@ export type StdStream:
 
 # Points the process's own standard stream at the null device (`/dev/null`, or `NUL` on Windows): input reads as end of file and output is discarded.
 # This replaces the descriptor itself, so it also affects children started afterwards that inherit it. Buffered standard output is written first. The change cannot be undone.
-export fn redirect_to_null(stream: StdStream) Unit!IoError:
+export fn redirect_to_null(stream: StdStream) Unit!:
     var which = 2
 
     match stream:
@@ -185,24 +156,6 @@ export fn redirect_to_null(stream: StdStream) Unit!IoError:
 # Returns file operations for the current host.
 fn host_files() Files:
     return msstd_io_files()
-
-# Errors returned by terminal queries and raw-mode operations.
-export type TerminalError:
-    # An argument is outside its valid range.
-    case InvalidInput
-    # The required standard stream is redirected rather than a terminal.
-    case NotTerminal
-    # This host or platform has no terminal support for the operation.
-    case Unsupported
-    # Another raw terminal already holds the terminal.
-    case Busy
-    # The raw terminal was already closed.
-    case Closed
-    # The host call failed.
-    case Failed(
-        # The host diagnostic text reported by the failed call.
-        message: String
-    )
 
 # Character columns and rows of a terminal window.
 export type TerminalSize:
@@ -274,9 +227,9 @@ interface Terminal:
     # Reports terminal availability and color support without changing terminal state.
     fn capabilities() TerminalCapabilities
     # Returns the terminal size, or `NotTerminal` when output is redirected.
-    fn size() TerminalSize!TerminalError
+    fn size() TerminalSize!
     # Acquires raw input with an optional alternate screen; returns `Busy` while another raw terminal is open and `NotTerminal` when streams are redirected.
-    fn raw_mode(alternate_screen: Bool) RawTerminal!TerminalError
+    fn raw_mode(alternate_screen: Bool) RawTerminal!
 
 # The runtime handle behind a `RawTerminal`.
 export extern type NativeRawTerminal
@@ -297,7 +250,7 @@ impl Closeable for RawTerminal:
 
 impl RawTerminal:
     # Waits for the next event; none means the timeout elapsed. Waits honor cancellation and concurrent callers are serialized.
-    fn next_event(timeout: Duration?) TerminalEvent?!TerminalError:
+    fn next_event(timeout: Duration?) TerminalEvent?!:
         let ready = try msstd_terminal_raw_terminal_next_event(self.native, timeout)
         if ready.is_none(): return ok(none)
 
@@ -317,7 +270,7 @@ impl RawTerminal:
         )
 
     # Returns the current terminal size, or `Closed` after close.
-    fn size() TerminalSize!TerminalError:
+    fn size() TerminalSize!:
         try msstd_terminal_raw_terminal_size_status(self.native)
         return ok(
             TerminalSize(
@@ -329,31 +282,20 @@ impl RawTerminal:
         )
 
     # Moves the cursor to a zero-based row and column; negative or very large values return `InvalidInput`.
-    fn move_cursor(row: Int, column: Int) Unit!TerminalError:
+    fn move_cursor(row: Int, column: Int) Unit!:
         return msstd_terminal_raw_terminal_move_cursor(self.native, row, column)
 
     # Shows or hides the cursor until the terminal is restored on close.
-    fn show_cursor(visible: Bool) Unit!TerminalError:
+    fn show_cursor(visible: Bool) Unit!:
         return msstd_terminal_raw_terminal_show_cursor(self.native, visible)
 
     # Erases the selected screen region without moving the cursor.
-    fn erase(region: EraseRegion) Unit!TerminalError:
+    fn erase(region: EraseRegion) Unit!:
         match region:
             Screen: return msstd_terminal_raw_terminal_erase(self.native, 0)
             Line: return msstd_terminal_raw_terminal_erase(self.native, 1)
             LineEnd: return msstd_terminal_raw_terminal_erase(self.native, 2)
             LineStart: return msstd_terminal_raw_terminal_erase(self.native, 3)
-
-impl Error for TerminalError:
-    # Returns a fixed diagnostic, or the host message for `Failed`.
-    fn message() String:
-        match self:
-            InvalidInput: return "terminal: invalid input"
-            NotTerminal: return "terminal: standard stream is not a terminal"
-            Unsupported: return "terminal: operation not supported"
-            Busy: return "terminal: terminal is already in use"
-            Closed: return "terminal: resource is closed"
-            Failed(message): return message.clone()
 
 # Returns terminal operations for the current process.
 fn host_terminal() Terminal:
@@ -364,13 +306,13 @@ export fn terminal_capabilities() TerminalCapabilities:
     return host_terminal().capabilities()
 
 # Returns the terminal size, or `NotTerminal` when output is redirected.
-export fn terminal_size() TerminalSize!TerminalError:
+export fn terminal_size() TerminalSize!:
     return host_terminal().size()
 
 # Acquires raw input with an optional alternate screen; returns `Busy` while another raw terminal is open and `NotTerminal` when streams are redirected.
-export fn raw_mode(alternate_screen: Bool) RawTerminal!TerminalError:
+export fn raw_mode(alternate_screen: Bool) RawTerminal!:
     return host_terminal().raw_mode(alternate_screen)
 
 # Opens path for read-only access; native missing, denied, and other open failures become Unavailable.
-export fn open_read(path: String) File!IoError:
+export fn open_read(path: String) File!:
     return host_files().open(path)

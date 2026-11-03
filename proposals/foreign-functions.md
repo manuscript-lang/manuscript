@@ -16,7 +16,12 @@
   - `ms_bytes_len` and `ms_bytes_data` are inline, like `ms_str_len`.
   - `Bool` crosses as C `bool`.
   - `msrt_string_from_bytes` stays as declared, for existing shims.
-  - Stage 2 groups (functions, blocking work, sockets, stop hooks, isolate state) are not in the header yet.
+- Stage 2, part 1 (same-thread calls and stop hooks) implemented, 2026-11-02: `ms_call`, `ms_fn_retain`, `ms_fn_release`, `ms_on_stop`, `ms_on_stop_remove`. Chinmay paused the removal of concurrency the same day, so the cross-thread entries (`ms_post`, `ms_call_wait`, `ms_fn_hold`), group 9 (`ms_blocking`, `ms_wait_sockets`) and group 11 are held until that review ends. Differences from the header below:
+  - `ms_call` returns `void`. A wrong count, kind or range faults, like `ms_list_push`. A fault in the callback is the program's fault: no guard inside `ms_call`, no `MS_FAULTED`, and no re-raise. Under a task guard it leaves through the C frames, as `ms_fault` already does.
+  - A callback takes at most 6 parameters, which are numbers, `Bool`, `String`, `Bytes` or extern types. Its result is one of those but an extern type, or `Unit`. Lists are not supported. The signature fits one word.
+  - The `ms_fn` is a runtime object around a generated closure. The closure reads its arguments from 24-byte cells that the runtime fills, so the conversion is in Rust and the closure is plain MIR that both backends compile. There is no hand-written thunk at the Cranelift level.
+  - A callback that waits is not detected.
+  - Gate: `extern_link.rs` calls back with every parameter kind on both backends, keeps a callback past its call, and faults on a wrong kind and inside a callback. A shim blocked in C requests a stop (SIGINT on Unix, Ctrl-Break to its own process group on Windows); the hook lets it return, and the program exits 130.
 - Direction (Chinmay, 2026-10-31):
   - "design a process /ffi to enable integrating with other external software"
   - "use case could be to integrate with libuv for instance"

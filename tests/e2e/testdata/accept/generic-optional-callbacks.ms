@@ -28,13 +28,13 @@ fn same_optional(left: Int?, right: Int?) Bool:
 
 fn optional_default(value: Int? = 7) Int: value.get(-1)
 
-fn bound_missing[T](value: T?) T!MissingValue:
-    let convert = value.ok_or[MissingValue]
+fn bound_missing[T](value: T?) T!Error:
+    let convert = value.ok_or[Error]
     return convert()
 
-fn nested_bound_missing[T](value: T?) T!MissingValue:
+fn nested_bound_missing[T](value: T?) T!Error:
     let convert = fn:
-        let bound = value.ok_or[MissingValue]
+        let bound = value.ok_or[Error]
         return bound()
 
     return convert()
@@ -164,30 +164,28 @@ test "bound generic native defaults preserve concrete and Optional payload types
     let present: Int? = 0
     try expect_equal(nested(present).err().get(), 0)
 
-test "bound MissingValue defaults distinguish omission from explicit none":
+test "bound Error defaults distinguish omission from explicit none":
     let missing: Int? = none
     let direct = missing.ok_or()
-    try expect_true(direct.err().message().contains("generic-optional-callbacks.ms:"))
+    try expect_true(direct.err().message.contains("generic-optional-callbacks.ms:"))
 
-    let convert = missing.ok_or[MissingValue]
+    let convert = missing.ok_or[Error]
     let converted = convert()
+    try expect_true(converted.err().message.contains("generic-optional-callbacks.ms:"))
     try expect_true(
-        converted.err().message().contains("generic-optional-callbacks.ms:")
-    )
-    try expect_true(
-        bound_missing(missing).err().message().contains(
+        bound_missing(missing).err().message.contains(
             "generic-optional-callbacks.ms:"
         )
     )
     try expect_true(
-        nested_bound_missing(missing).err().message().contains(
+        nested_bound_missing(missing).err().message.contains(
             "generic-optional-callbacks.ms:"
         )
     )
 
     let direct_fault = try expect_fault(
         fn:
-            let _ignored = missing.ok_or[MissingValue](none)
+            let _ignored = missing.ok_or[Error](none)
     )
     let bound_fault = try expect_fault(
         fn:
@@ -197,7 +195,7 @@ test "bound MissingValue defaults distinguish omission from explicit none":
     try expect_true(bound_fault.contains("Optional.get() on none"))
 
     let present: Int? = 0
-    let keep = present.ok_or[MissingValue]
+    let keep = present.ok_or[Error]
     try expect_equal(keep().get(), 0)
     try expect_equal(keep(none).get(), 0)
     try expect_equal(bound_missing(present).get(), 0)

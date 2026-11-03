@@ -6,12 +6,6 @@ import expect_equal, expect_false from "@std/test/test.ms"
 fn append_generic[T](var values: List[T?], value: T) Unit:
     values.append(value)
 
-type Failure:
-    code: Int
-
-impl Error for Failure:
-    fn message() String: "failure"
-
 test "direct append preserves checked argument conversions":
     var values: List[Int?] = []
     values.append(7)
@@ -38,16 +32,16 @@ test "direct append preserves checked argument conversions":
     try expect_equal(callbacks.get(0).get()(7), 8)
 
     var errors: List[Error] = []
-    errors.append(Failure(1))
-    try expect_equal(errors.get(0).message(), "failure")
+    errors.append(Error("failure"))
+    try expect_equal(errors.get(0).message, "failure")
 
     var results: List[Int!?] = []
-    let failed: Int!Failure = error(Failure(2))
+    let failed: Int! = error(Error("failure"))
     results.append(failed)
 
     let widened = results.get(0).get()
     try expect_false(widened.is_ok())
-    try expect_equal(widened.err().message(), "failure")
+    try expect_equal(widened.err().message, "failure")
 
 test "direct keyed calls preserve optional keys and values":
     var values: List[Int?] = []

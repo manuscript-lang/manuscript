@@ -1,7 +1,13 @@
 # conform: tags=closures,control-flow,faults,formatter,interpolation,lists,match,modules,mutation,parser,records,stdlib-fs,stdlib-io,stdlib-json,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=scripts/conformance.ms
-import expect_equal, expect_false, expect_some, expect_true, fail from "@std/test/test.ms"
+import (
+    expect_equal,
+    expect_false,
+    expect_some,
+    expect_true,
+    fail
+) from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 import arguments from "@std/os/process.ms"
 import glob, GlobOptions from "@std/os/fs.ms"
@@ -68,7 +74,9 @@ fn inventory(suite: String) Result[List[String], Error]:
     var files: List[String] = []
 
     if suite == "all" or suite == "core":
-        let core = try glob("tests/e2e/testdata/accept", GlobOptions(patterns: ["*.ms"]))
+        let core = try glob(
+            "tests/e2e/testdata/accept", GlobOptions(patterns: ["*.ms"])
+        )
         core.is_empty() | try expect_false
         for file in core: files.append("tests/e2e/testdata/accept/{file.path}")
 
@@ -86,7 +94,9 @@ fn inventory(suite: String) Result[List[String], Error]:
             files.append(file)
 
     if suite == "all" or suite == "stdlib":
-        let library = try glob("tests/e2e/testdata/stdlib", GlobOptions(patterns: ["*.ms"]))
+        let library = try glob(
+            "tests/e2e/testdata/stdlib", GlobOptions(patterns: ["*.ms"])
+        )
         library.is_empty() | try expect_false
         for file in library: files.append("tests/e2e/testdata/stdlib/{file.path}")
 
@@ -125,7 +135,7 @@ fn run_conformance(args: List[String]) Result[Unit, Error]:
             match result:
                 ok(_): try emit("PASS {file}")
                 error(cause):
-                    try emit("FAIL {file}: {cause.message()}")
+                    try emit("FAIL {file}: {cause.message}")
                     failed = failed + 1
 
         index = index + 1
@@ -158,7 +168,7 @@ export fn main() Int:
     match run_conformance(arguments()):
         ok(_): return 0
         error(cause):
-            let _written = stdout().write("{cause.message()}\n")
+            let _written = stdout().write("{cause.message}\n")
             return 1
 
 test "reports require complete nonempty executions and count explicit skips":

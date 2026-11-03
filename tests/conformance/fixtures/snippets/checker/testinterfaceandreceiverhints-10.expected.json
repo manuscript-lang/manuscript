@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "Error is an interface, not an alternative; declare a concrete type and 'impl Error for <Type>:', then construct that concrete type",
+        "message": "Error has no cases or static members, so `Error.message(...)` does not exist; if message is a module function, import it and call message(...); if it is a method, call it on a value",
         "position": {
           "file": "testinterfaceandreceiverhints-10.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testinterfaceandreceiverhints-10.ms:4:31: resolution: Error is an interface, not an alternative; declare a concrete type and 'impl Error for <Type>:', then construct that concrete type\n   |\n 4 | fn error_value() Error: Error.message(\"bad input\")\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testinterfaceandreceiverhints-10.ms:4:31: resolution: Error has no cases or static members, so `Error.message(...)` does not exist; if message is a module function, import it and call message(...); if it is a method, call it on a value\n   |\n 4 | fn error_value() Error: Error.message(\"bad input\")\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

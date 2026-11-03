@@ -1,5 +1,4 @@
 import Copy, Data, panic from "@std/core.ms"
-import NumberError from "@std/math/math.ms"
 import (
     msstd_decimal_compare,
     msstd_decimal_to_float,
@@ -76,11 +75,11 @@ impl Decimal:
     # Places range from -6144 through 6176; negative places round tens, hundreds, etc.
     # Invalid places return InvalidInput; an unrepresentable result returns OutOfRange.
     # Omitted or `none` mode selects HalfEven. This does not preserve trailing zeros or change arithmetic.
-    fn round(places: Int, mode: RoundingMode?) Decimal!NumberError:
+    fn round(places: Int, mode: RoundingMode?) Decimal!:
         return msstd_decimal_round(self, places, mode)
 
     # Rounds exactly and prints plain decimal notation with exactly `digits` fractional digits.
     # Digits range from 0 through 6176; invalid digits return InvalidInput.
     # HalfEven is the default; rounded zero has no minus sign. Trailing zeros are retained.
-    fn to_fixed(digits: Int, mode: RoundingMode?) String!NumberError:
+    fn to_fixed(digits: Int, mode: RoundingMode?) String!:
         return msstd_decimal_to_fixed(self, digits, mode)

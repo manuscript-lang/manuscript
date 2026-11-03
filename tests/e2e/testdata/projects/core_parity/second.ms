@@ -15,15 +15,15 @@ impl Equal for Key:
 impl Hashable for Key:
     fn hash() Int: self.label.scalar_length()
 
-impl Error for Cause:
-    fn message() String: "second {self.count}"
+fn describe(cause: Cause) Error:
+    return Error("second {cause.count}")
 
 export fn second_mapped() Set[Key]:
     let values = Set[Int]([1, 2])
     return transform_set(values, fn n: Key(0, n.to_string()))
 
 export fn second_failure(cause: Cause) String!:
-    let value: Int! = error(cause)
+    let value: Int! = error(describe(cause))
     return value.and_then(fn n: Result[String, Error].ok(n.to_string()))
 
 export fn second_queries() Bool:
@@ -39,12 +39,12 @@ export fn second_queries() Bool:
 
 export fn second_converted(cause: Cause) Int!:
     let missing: Int? = none
-    return convert(missing, fn() Error: cause.clone())
+    return convert(missing, fn() Error: describe(cause))
 
 export fn second_folded(cause: Cause) Error:
     var values = Map[String, Int]()
     values.add("key", 1)
-    return values.fold[Error](cause, fn acc, key, value: acc)
+    return values.fold[Error](describe(cause), fn acc, key, value: acc)
 
 export fn second_key_transform[T: Hashable](input: Map[T, Int]) Map[Key, Int]:
     return remap_keys(input, fn key, value: Key(0, key.to_string()))

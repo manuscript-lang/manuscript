@@ -1,9 +1,11 @@
 import expect_equal from "@std/test/test.ms"
-import from_int, BigInt, BigIntError from "@std/math/math.ms"
+import from_int, BigInt from "@std/math/math.ms"
 
 test "big integer powers enforce the exact result bit limit":
     let limit = 16777216
-    let limited: BigInt!BigIntError = error(BigIntError.LimitExceeded)
+    let limited: BigInt! = error(
+        Error("big integer: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     let largest_power = try from_int(2).pow(limit - 1)
     try expect_equal((try largest_power.shift_right(limit - 1)).to_int(), 1)
     try expect_equal(from_int(2).pow(limit), limited)

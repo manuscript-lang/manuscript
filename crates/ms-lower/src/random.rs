@@ -220,13 +220,8 @@ impl FnLower<'_> {
                     let l = s.b.use_var(var);
                     s.drop_value(l);
                 }
-                let et = s.b.m.alts[ra.index()].cases[err].fields[0].1;
-                let TyKind::Alt(ea) = s.b.m.types.kind(et).clone() else {
-                    return Err(Error::new("a runtime status needs an error alternative"));
-                };
-                let cases = s.status_cases(ea);
-                let e = s.status_error(ea, code, &cases, Some("msstd_random_failure_message"))?;
-                Ok(Some(s.b.alt_new(ra, err as u32, &[e])))
+                let e = s.status_failure(result, code, "msstd_random_status")?;
+                Ok(Some(e))
             },
         )?;
         let draw = self.b.use_var(draw_var);

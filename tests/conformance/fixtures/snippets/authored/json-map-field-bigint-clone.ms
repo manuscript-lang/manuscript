@@ -11,8 +11,10 @@ type Report:
 test "a record with a Map[String, T] field is Data and roundtrips as a JSON object":
     var scores = Map[String, Int]()
     scores["a"] = 1
+
     let text = try stringify(Report(name: "x", scores: scores))
     try expect_equal(text, "\{\"name\":\"x\",\"scores\":\{\"a\":1\}\}")
+
     let back = try parse[Report](text)
     try expect_equal(back.scores["a"], 1)
 

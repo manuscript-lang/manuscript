@@ -3,7 +3,6 @@
 # expect-mir: "call.method"
 
 import stdout from "@std/io/io.ms"
-import TextError from "@std/core.ms"
 
 interface Shape:
     fn area() Int
@@ -20,7 +19,7 @@ fn total(x: Shape) Int:
 
 fn pick(n: Int) Result[Int, Error]:
     if n < 0:
-        return error(TextError(text: "neg"))
+        return error(Error(message: "neg"))
 
     return ok(n)
 

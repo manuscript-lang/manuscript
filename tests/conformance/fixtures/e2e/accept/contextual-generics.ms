@@ -1,12 +1,11 @@
 # conform: tags=closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/contextual-generics.ms
-import TextError from "@std/core.ms"
 import expect_equal, expect_false from "@std/test/test.ms"
 
-fn fail[T](message: String) T!TextError: error(TextError(message))
+fn fail[T](message: String) T!Error: error(Error(message))
 
-fn fail_cause[T, E: Error](cause: E) T!E: error(cause)
+fn fail_cause[T, E](cause: E) T!E: error(cause)
 
 fn absent[T]() T?: none
 
@@ -19,12 +18,11 @@ fn transform[T, U](callback: fn(T) U) fn(T) U: callback
 type Failure:
     detail: String
 
-impl Error for Failure:
-    fn message() String: self.detail.clone()
+fn failure_error(cause: Failure) Error: Error(cause.detail.clone())
 
-fn first() List[Int]!TextError: fail("empty")
+fn first() List[Int]!Error: fail("empty")
 
-fn failed() Int!: fail_cause(Failure("domain"))
+fn failed() Int!: fail_cause(failure_error(Failure("domain")))
 
 fn forward[T]() T?: absent()
 
@@ -42,13 +40,13 @@ fn combine[T](var events: Events, first: T?, second: T?) T?:
     return first
 
 test "expected generic results preserve behavior and call order":
-    let result: List[Int]!TextError = first()
+    let result: List[Int]!Error = first()
     try expect_false(result.is_ok())
-    try expect_equal(result.err().message(), "empty")
+    try expect_equal(result.err().message, "empty")
 
     let domain = failed()
     try expect_false(domain.is_ok())
-    try expect_equal(domain.err().message(), "domain")
+    try expect_equal(domain.err().message, "domain")
 
     let empty: Int? = forward()
     try expect_false(not empty.is_none())

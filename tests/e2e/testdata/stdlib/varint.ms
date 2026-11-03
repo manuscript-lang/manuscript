@@ -1,5 +1,5 @@
 import expect_equal, expect_true from "@std/test/test.ms"
-import Bytes, BytesBuilder, BinaryError, VarintError from "@std/bytes.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 
 fn unsigned(value: UInt64) Bytes:
     var out = BytesBuilder()
@@ -11,7 +11,7 @@ fn signed(value: Int) Bytes:
     out.append_varint(value)
     return out.build()
 
-fn expect_varint_error(data: Bytes, at: Int, expected: VarintError) Unit!:
+fn expect_varint_error(data: Bytes, at: Int, expected: Error) Unit!:
     let unsigned_result = data.uvarint(at)
     try expect_true(unsigned_result.is_error())
     try expect_equal(unsigned_result.err(), expected)
@@ -131,28 +131,62 @@ test "each proper prefix of a minimal multibyte varint is incomplete":
     for value in values:
         let data = unsigned(value)
         for end in 0..data.length():
-            try expect_varint_error(try data.slice(0, end), 0, VarintError.Incomplete)
+            try expect_varint_error(
+                try data.slice(0, end),
+                0,
+                Error(
+                    "binary: incomplete varint", kind: ErrorCategory.InvalidData
+                )
+            )
 
         let prefixed = Bytes([99]).concat(data)
         for end in 1..prefixed.length():
             try expect_varint_error(
-                try prefixed.slice(0, end), 1, VarintError.Incomplete
+                try prefixed.slice(0, end),
+                1,
+                Error(
+                    "binary: incomplete varint", kind: ErrorCategory.InvalidData
+                )
             )
 
 test "varint offset errors are distinct from missing input":
     let data = Bytes([0, 1])
     for at in [-9223372036854775808, -1, 3, 9223372036854775807]:
-        try expect_varint_error(data, at, VarintError.InvalidOffset)
-    try expect_varint_error(data, data.length(), VarintError.Incomplete)
-    try expect_varint_error(Bytes([]), 0, VarintError.Incomplete)
+        try expect_varint_error(
+            data,
+            at,
+            Error(
+                "binary: invalid varint offset", kind: ErrorCategory.OutOfRange
+            )
+        )
+    try expect_varint_error(
+        data, data.length(),
+        Error("binary: incomplete varint", kind: ErrorCategory.InvalidData)
+    )
+    try expect_varint_error(
+        Bytes([]), 0,
+        Error("binary: incomplete varint", kind: ErrorCategory.InvalidData)
+    )
 
 test "the tenth byte can only be zero or one":
     let prefix = Bytes([128, 128, 128, 128, 128, 128, 128, 128, 128])
 
     for byte in 2..256:
         let data = prefix.concat(Bytes([byte.to_uint8().get(0)]))
-        try expect_varint_error(data, 0, VarintError.Overflow)
-        try expect_varint_error(data.concat(Bytes([0])), 0, VarintError.Overflow)
+        try expect_varint_error(
+            data,
+            0,
+            Error(
+                "binary: varint overflows 64 bits", kind: ErrorCategory.OutOfRange
+            )
+        )
+        try expect_varint_error(
+            data.concat(Bytes([0])),
+            0,
+            Error(
+                "binary: varint overflows 64 bits", kind: ErrorCategory.OutOfRange
+            )
+        )
 
     for byte in 0..2:
         let decoded = try prefix.concat(Bytes([byte.to_uint8().get(0)])).uvarint(0)
@@ -165,13 +199,31 @@ test "continuation-only data stops at the representation bound":
 
     for length in 0..10:
         let prefix = out.drain()
-        try expect_varint_error(prefix, 0, VarintError.Incomplete)
+        try expect_varint_error(
+            prefix,
+            0,
+            Error(
+                "binary: incomplete varint", kind: ErrorCategory.InvalidData
+            )
+        )
         out.append_bytes(prefix)
         out.append(128)
 
     let ten = out.build()
-    try expect_varint_error(ten, 0, VarintError.Overflow)
-    try expect_varint_error(ten.concat(Bytes([0])), 0, VarintError.Overflow)
+    try expect_varint_error(
+        ten,
+        0,
+        Error(
+            "binary: varint overflows 64 bits", kind: ErrorCategory.OutOfRange
+        )
+    )
+    try expect_varint_error(
+        ten.concat(Bytes([0])),
+        0,
+        Error(
+            "binary: varint overflows 64 bits", kind: ErrorCategory.OutOfRange
+        )
+    )
 
 test "nonminimal encodings are accepted and preserve the next offset":
     let zero = try Bytes([128, 0, 255]).uvarint(0)
@@ -216,7 +268,9 @@ test "unsigned fixed-width codecs cover the entire UInt64 range":
     )
 
 test "unsigned fixed-width reads reject missing bytes and extreme offsets":
-    let expected: UInt64!BinaryError = error(BinaryError.OutOfRange)
+    let expected: UInt64! = error(
+        Error("binary: out of range", kind: ErrorCategory.OutOfRange)
+    )
     let data = Bytes([0, 0, 0, 0, 0, 0, 0, 0])
 
     for at in [-9223372036854775808, -1, 1, 8, 9223372036854775807]:
@@ -230,7 +284,20 @@ test "unsigned fixed-width reads reject missing bytes and extreme offsets":
 
 test "varint diagnostics describe the error without echoing input":
     try expect_equal(
-        VarintError.InvalidOffset.message(), "binary: invalid varint offset"
+        Error(
+            "binary: invalid varint offset", kind: ErrorCategory.OutOfRange
+        ).message,
+        "binary: invalid varint offset"
     )
-    try expect_equal(VarintError.Incomplete.message(), "binary: incomplete varint")
-    try expect_equal(VarintError.Overflow.message(), "binary: varint overflows 64 bits")
+    try expect_equal(
+        Error(
+            "binary: incomplete varint", kind: ErrorCategory.InvalidData
+        ).message,
+        "binary: incomplete varint"
+    )
+    try expect_equal(
+        Error(
+            "binary: varint overflows 64 bits", kind: ErrorCategory.OutOfRange
+        ).message,
+        "binary: varint overflows 64 bits"
+    )

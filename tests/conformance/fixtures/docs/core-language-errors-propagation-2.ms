@@ -1,10 +1,9 @@
 # conform: tags=diagnostics,modules,stdlib-errors,strings,tier-stdlib,try-result
 # conform: phase=check
 # conform: origin=documentation/core-language/errors/propagation.md:24
-import TextError from "@std/core.ms"
 
-fn prepare() Result[Unit, TextError]: ok(unit)
+fn prepare() Result[Unit, Error]: ok(unit)
 
-fn ready_label() Result[String, TextError]:
+fn ready_label() Result[String, Error]:
     try prepare()
     return ok("ready")

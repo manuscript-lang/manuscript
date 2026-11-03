@@ -1,5 +1,5 @@
 # Validates the shared `ms bench --json` result protocol before rendering comparisons (bench/perf/stdlib).
-import Invalid, invalid from "./lib.ms"
+import invalid from "./lib.ms"
 import parse from "@std/data/json.ms"
 
 export type Stats:
@@ -34,7 +34,7 @@ fn valid_optional(value: Float?) Bool:
     return true
 
 # The passed cases of one `ms bench --json` document, in order.
-export fn read_cases(output: String) Result[List[Bench], Invalid]:
+export fn read_cases(output: String) List[Bench]!:
     let parsed = parse[Document](output)
     if parsed.is_error(): return invalid("invalid benchmark document")
 

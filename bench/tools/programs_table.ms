@@ -1,5 +1,5 @@
 # Validates equivalent work before comparing paired process samples (bench/perf/programs).
-import Invalid, fixed, invalid, median from "./lib.ms"
+import fixed, invalid, median from "./lib.ms"
 
 export type Op:
     name: String
@@ -33,7 +33,7 @@ fn ops_of(name: String) Int?:
     return none
 
 # One sample line: `<version> <operation> <count> <ns>` or `<version> # sink <checksums>`.
-export fn summarize(lines: List[String], repeats: Int) Result[String, Invalid]:
+export fn summarize(lines: List[String], repeats: Int) String!:
     if repeats < 1: return invalid("repeats must be positive")
 
     var samples = Map[String, List[Float]]()

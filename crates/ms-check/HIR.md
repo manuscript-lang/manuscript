@@ -29,7 +29,7 @@ for c in hir.callables() {
 - A **constant** is not a value: each use is `call(e)` with `constant_use == true`; evaluating it runs the initializer (`Body::Expr`).
 - **Generics are not instantiated here.** `call(e).type_args` holds the inferred arguments and `Info.ty` is the generic-open type of the node; monomorphization belongs to `ms-mir`.
 - **Dispatch**: `Resolution::Method` with `native == ""` is a source method (`decl` names it); `native == "contract"` is dynamic dispatch through an interface view; any other native string is a runtime operation.
-- **Errors**: `Info.error_source`/`scoped_error` and `propagated_error`/`scoped_propagation` mark conversions at `try` and Error boundaries; `StmtFacts.cleanup` is the `close` method the binding's scope runs.
+- **Errors**: `Info.interface_source`/`scoped_error` and `propagated_error`/`scoped_propagation` mark conversions at `try` and Error boundaries; `StmtFacts.cleanup` is the `close` method the binding's scope runs.
 - Facts exist for nodes of checked modules only; a missing fact reads as `<invalid>` (`ty`) or `Resolution::Value`. Lower only programs whose `diagnostics` are empty.
 - Node ids are unique per module. Synthetic default-method nodes (ids from `0x8000_0000`) carry no facts.
 

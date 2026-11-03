@@ -9,11 +9,11 @@ A `ProcessGroup[T, In, Out]` runs functions of your program in child processes a
 
 <!-- manuscript-example: test -->
 ```manuscript
-import Channel, ChannelError from "@std/io/channels.ms"
+import Channel from "@std/io/channels.ms"
 import ProcessGroup from "@std/os/processes.ms"
 import expect_equal, expect_ok from "@std/test/test.ms"
 
-fn square_all(ch: Channel[Int, Int]) Result[Int, ChannelError]:
+fn square_all(ch: Channel[Int, Int]) Int!:
     var c = ch
     var count = 0
     while true:
@@ -25,7 +25,7 @@ fn square_all(ch: Channel[Int, Int]) Result[Int, ChannelError]:
     return ok(count)
 
 test "a child process answers messages on its channel":
-    let group = ProcessGroup[Result[Int, ChannelError], Int, Int]()
+    let group = ProcessGroup[Int!, Int, Int]()
     var child = group.spawn(square_all) | try expect_ok
     child.channel.send(3) | try expect_ok
     child.channel.receive() | try expect_ok | try expect_equal(9)
@@ -35,11 +35,11 @@ test "a child process answers messages on its channel":
 
 ## How processes run
 
-- `spawn(entry)` starts your executable again in a new process, at `entry` instead of `main`. No state is copied from the parent: the child starts fresh, and `entry` receives only its channel. It returns `Result[Process[T, In, Out], ProcessError]`; a child the host refuses to start is `ProcessError.NotStarted(cause)`, with the command runner's reason inside.
+- `spawn(entry)` starts your executable again in a new process, at `entry` instead of `main`. No state is copied from the parent: the child starts fresh, and `entry` receives only its channel. It returns `Process[T, In, Out]!`; a child the host refuses to start is an `Error` of kind `Unavailable`, with the command runner's reason in `details["cause"]`.
 - `entry` must name a top-level `fn`. A closure is rejected, because the values it captures cannot move to another process.
 - `In`, `Out` and `T` cross as JSON, so they are copied. Use plain data: records, alternatives, lists, maps, strings and supported numbers. `Unit` works too. Transport uses ordinary `stringify`, not opt-in strict encoding; a type parameter alone does not guarantee a lossless JSON round trip. Check send, receive and result errors.
-- The channel behaves as a task channel: `send` waits while the pipe is full, `receive` gives `ok(none)` once the other end closed and everything it sent was read, and `close` closes this end. A child that exits without closing its end gives `ChannelError.Broken`.
-- `child.result()` waits for the entry to return and gives its value. Messages the parent has not received by then are dropped. A child that ended first gives `ProcessError.Exited(status)`: 67 after a fault, -1 after a signal. A fault in the child never faults the parent.
+- The channel behaves as a task channel: `send` waits while the pipe is full, `receive` gives `ok(none)` once the other end closed and everything it sent was read, and `close` closes this end. A child that exits without closing its end gives an `Error` of kind `Closed`.
+- `child.result()` waits for the entry to return and gives its value. Messages the parent has not received by then are dropped. A child that ended first gives an `Error` of kind `Failed` with the status in `details["status"]`: 67 after a fault, -1 after a signal. A fault in the child never faults the parent.
 - `child.wait()` gives the exit status; `terminate()` and `kill()` signal the child's process group.
 - A parent and child that each wait to receive from the other hang: the deadlock fault covers tasks and workers inside one process, and cannot see into another process. Close the channel from the side that finishes first.
 - `group.results()` waits for every open child's result in start order, or gives the first error. Closing a process makes the group forget it and releases its descriptors once the `Process` value is dropped.

@@ -1,7 +1,7 @@
 # conform: tags=scope-cleanup,testing,try-result,records,tier-stdlib,stdlib-testing
 # conform: phase=test
 import expect_equal from "@std/test/test.ms"
-import Closeable, TextError from "@std/core.ms"
+import Closeable from "@std/core.ms"
 
 type Gate:
     closes: Int
@@ -9,13 +9,14 @@ type Gate:
 impl Closeable for Gate:
     var fn close() Unit!:
         self.closes += 1
-        return error(TextError("gate stuck"))
+        return error(Error("gate stuck"))
 
 fn handled() Unit!:
     var g = Gate(0)
     let r = g.close()
     if let _ok = r:
-        return error(TextError("close should have failed"))
+        return error(Error("close should have failed"))
+
     return ok(unit)
 
 fn branchy(explicit: Bool) Unit!:
@@ -30,12 +31,14 @@ fn relocked(second_fails: Bool) Unit!:
     g = Gate(0)
     if second_fails:
         return ok(unit)
+
     let _ = g.close()
     return ok(unit)
 
 fn ok_of(r: Unit!) Bool:
     if let _ok = r:
         return true
+
     return false
 
 test "an explicit close consumes the binding":

@@ -38,3 +38,14 @@ Caveat: synthetic code; real programs with heavier generics/closures may shift f
 Incremental builds first (per-module/function object cache keyed by content hash), then parallel LLVM partitioning and the rest.
 
 Reproduce: `bench/tools/compile_time.ms` (set `SKIP_LLVM=1` to skip the 5-minute release step).
+
+## Contract-indexed `implements` (2026-11-02)
+
+Workload `gen.py 40 25 10` (122k lines; `@std/io/io.ms` import path), `ms check`, release, base `c30abc7d`, callgrind instruction counts, one machine, diagnostics output byte-identical.
+
+| Build | Ir | wall |
+| --- | --- | --- |
+| before | 14.45G | 1.9 to 2.6 s |
+| `methods_by_contract` index | 8.65G (-40%) | 2.4 s (noisy VM) |
+
+`Checker::implements` was 40% inclusive (32.2M calls, linear scan of all methods). Proposal: `proposals/checker-type-interning.md`.

@@ -1,10 +1,3 @@
-# Errors returned for malformed Semantic Versioning 2.0.0 text.
-export type SemverError:
-    # The text is not a valid semantic version, such as a missing component, leading zero or empty identifier.
-    case InvalidData
-    # A numeric component is well formed but does not fit in Int.
-    case OutOfRange
-
 # A parsed semantic version as defined by Semantic Versioning 2.0.0.
 export type Version:
     # Major version number; incremented for incompatible changes.
@@ -56,11 +49,13 @@ export fn format(version: Version) String:
     return text
 
 # Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are rejected.
-export fn parse(text: String) Version!SemverError:
+export fn parse(text: String) Version!:
     let build_parts = split_first(text, "+")
     let core_and_pre = split_first(build_parts[0].clone(), "-")
     let numbers = core_and_pre[0].split(".")
-    if numbers.length() != 3: return error(SemverError.InvalidData)
+    if numbers.length() != 3: return error(
+        Error("semver: invalid data", kind: InvalidData)
+    )
 
     var values = List[Int]()
     var out_of_range = false
@@ -68,7 +63,7 @@ export fn parse(text: String) Version!SemverError:
     for part in numbers:
         let scalars = part.scalar_values()
         if not all_digits(scalars.clone()) or has_leading_zero(scalars): return error(
-            SemverError.InvalidData
+            Error("semver: invalid data", kind: InvalidData)
         )
 
         if let value = part.parse_int(): values.append(value)
@@ -82,10 +77,10 @@ export fn parse(text: String) Version!SemverError:
         for identifier in core_and_pre[1].split("."):
             let scalars = identifier.scalar_values()
             if not valid_identifier(scalars.clone()): return error(
-                SemverError.InvalidData
+                Error("semver: invalid data", kind: InvalidData)
             )
             if all_digits(scalars.clone()) and has_leading_zero(scalars): return error(
-                SemverError.InvalidData
+                Error("semver: invalid data", kind: InvalidData)
             )
 
             prerelease.append(identifier)
@@ -95,12 +90,12 @@ export fn parse(text: String) Version!SemverError:
     if build_parts.length() == 2:
         for identifier in build_parts[1].split("."):
             if not valid_identifier(identifier.scalar_values()): return error(
-                SemverError.InvalidData
+                Error("semver: invalid data", kind: InvalidData)
             )
 
             build.append(identifier)
 
-    if out_of_range: return error(SemverError.OutOfRange)
+    if out_of_range: return error(Error("semver: value out of range", kind: OutOfRange))
 
     return ok(
         Version(
@@ -159,10 +154,3 @@ fn compare_identifier(left: String, right: String) Int:
     if right_numeric: return 1
 
     return left.compare(right)
-
-impl Error for SemverError:
-    # Returns a semver-prefixed diagnostic without echoing the input text.
-    fn message() String:
-        match self:
-            InvalidData: return "semver: invalid data"
-            OutOfRange: return "semver: value out of range"

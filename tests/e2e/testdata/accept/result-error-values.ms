@@ -92,14 +92,14 @@ test "Result transforms preserve primitive errors and map to named cases":
     failure.get_or_else(fn message: message.length()) | try expect_equal(7)
 
 test "assertion failures can describe values without a reporting implementation":
-    expect_ok(checked(3)).err().message() | try expect_contains("BelowMinimum")
-    assert_ok(Result[Int, String].error("missing")).err().message() | try expect_contains(
+    expect_ok(checked(3)).err().message | try expect_contains("BelowMinimum")
+    assert_ok(Result[Int, String].error("missing")).err().message | try expect_contains(
         "missing"
     )
-    expect_error(Result[Int, Int].ok(4)).err().message() | try expect_contains(
+    expect_error(Result[Int, Int].ok(4)).err().message | try expect_contains(
         "expected error"
     )
-    assert_error(Result[Int, String].ok(4)).err().message() | try expect_contains(
+    assert_error(Result[Int, String].ok(4)).err().message | try expect_contains(
         "expected error"
     )
 

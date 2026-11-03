@@ -1,40 +1,15 @@
 import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 import headers, HttpMethod, buffered from "@std/net/http.ms"
 import http_client, serve, web_socket from "@std/net/net.ms"
-import HttpError from "@std/net/http.ms"
-import WebSocketError from "@std/net/net.ms"
-import IoError from "@std/io/io.ms"
 import HttpExchange from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
 import HttpClientOptions from "@std/net/http.ms"
 import TlsOptions from "@std/net/net.ms"
 import WebSocketOptions from "@std/net/net.ms"
 
-fn websocket_error(cause: WebSocketError) HttpError:
-    match cause:
-        InvalidInput:
-            return HttpError.InvalidInput
-        InvalidData:
-            return HttpError.InvalidData
-        LimitExceeded:
-            return HttpError.LimitExceeded
-        PermissionDenied:
-            return HttpError.PermissionDenied
-        Closed:
-            return HttpError.Closed
-        Timeout:
-            return HttpError.Timeout
-        Failed(message):
-            return HttpError.Failed(message)
+fn socket_result[T](result: T!) T!: result
 
-fn socket_result[T](result: T!WebSocketError) T!HttpError:
-    match result:
-        ok(value):
-            return ok(value)
-        error(cause):
-            return error(websocket_error(cause))
-
-fn echo(exchange: HttpExchange) Unit!HttpError:
+fn echo(exchange: HttpExchange) Unit!:
     if exchange.path() == "/ws":
         var socket = try socket_result(
             result: exchange.upgrade(
@@ -63,7 +38,7 @@ fn echo(exchange: HttpExchange) Unit!HttpError:
         ok(_):
             return ok(unit)
         error(_):
-            return error(HttpError.Failed("write failed"))
+            return error(Error("write failed", kind: ErrorCategory.Failed))
 
 fn exercise() Unit!:
     let tls = TlsOptions(

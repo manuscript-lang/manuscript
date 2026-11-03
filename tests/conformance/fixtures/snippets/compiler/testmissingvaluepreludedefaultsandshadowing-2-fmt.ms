@@ -6,7 +6,7 @@ type Other:
 
 fn other() Other: Other.Missing(1)
 
-fn standard() MissingValue: MissingValue.Missing("location")
+fn standard() Error: Error("location", kind: ErrorCategory.NotFound)
 
 fn read(value: Other) Int:
     match value:

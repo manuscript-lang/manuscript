@@ -3,7 +3,6 @@
 # Usage: ms run bench/tools/stdlib_bench.ms [-- samples [name-prefix]]
 # With `--table` as the first argument it reads an `ms bench --json` document from standard input instead of running it.
 import (
-    Invalid,
     finish,
     ms_binary,
     left,
@@ -16,7 +15,7 @@ import (
 import Stats, case_labels, read_cases from "./stdlib_results.ms"
 import arguments from "@std/os/process.ms"
 
-export fn stdlib_table(output: String) Result[String, Invalid]:
+export fn stdlib_table(output: String) String!:
     let cases = try read_cases(output)
     let labels = case_labels(cases.map(fn c: c.name.clone()))
     var width = 4

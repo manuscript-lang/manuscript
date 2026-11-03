@@ -20,5 +20,5 @@ export fn main() Int:
     match exercise():
         ok(status): return status
         error(cause):
-            let _written = stderr().write("{cause.message()}\n")
+            let _written = stderr().write("{cause.message}\n")
             return 1

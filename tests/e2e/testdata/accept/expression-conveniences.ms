@@ -1,4 +1,3 @@
-import TextError from "@std/core.ms"
 import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
 import read_file, temporary, write_file from "@std/os/fs.ms"
@@ -19,14 +18,14 @@ fn closed(marker: String) Bool: read_file(marker).is_ok()
 
 fn identity[T](value: T) T: return value
 
-fn amount(text: String, marker: String) Int!TextError:
+fn amount(text: String, marker: String) Int!Error:
     let _resource = Resource(marker: marker.clone())
 
     let cents = match text.parse_int():
         value:
             value
         none:
-            return error(cause: TextError("Invalid amount"))
+            return error(cause: Error("Invalid amount"))
 
     return ok(value: cents + 1)
 
@@ -101,11 +100,11 @@ test "match expressions preserve returns and cleanup":
     var temporary = temporary("manuscript-match-") | try expect_ok
     let dir = temporary.path()
     let parsed = amount(text: "3", marker: "{dir}/parsed")
-    (parsed != Result[Int, TextError].ok(value: 4)) | try expect_false
+    (parsed != Result[Int, Error].ok(value: 4)) | try expect_false
     closed("{dir}/parsed") | try expect_true
 
     let invalid = amount(text: "invalid", marker: "{dir}/invalid")
-    (invalid != Result[Int, TextError].error(cause: TextError("Invalid amount"))) | try expect_false
+    (invalid != Result[Int, Error].error(cause: Error("Invalid amount"))) | try expect_false
     closed("{dir}/invalid") | try expect_true
     try temporary.close()
 
@@ -203,12 +202,12 @@ fn returned_argument(var counter: Counter) Int!:
 
 fn combine(first: Int, second: Int) Int: return first + second
 
-fn propagated(text: String) Int!TextError:
+fn propagated(text: String) Int!Error:
     let result = match text.parse_int():
         value:
-            try Result[Int, TextError].ok(value: value)
+            try Result[Int, Error].ok(value: value)
         none:
-            try Result[Int, TextError].error(cause: TextError("missing"))
+            try Result[Int, Error].error(cause: Error("missing"))
 
     return ok(value: result)
 
@@ -229,9 +228,9 @@ fn returned_loop(value: Int?) Int:
 test "expression exits preserve caller boundaries and evaluation order":
     var counter = Counter(count: 0)
     ((try returned_argument(var counter)) != 17 or counter.count != 0) | try expect_false
-    propagated("3") | try expect_equal(Result[Int, TextError].ok(value: 3))
+    propagated("3") | try expect_equal(Result[Int, Error].ok(value: 3))
     propagated("no") | try expect_equal(
-        Result[Int, TextError].error(cause: TextError("missing"))
+        Result[Int, Error].error(cause: Error("missing"))
     )
 
     let present: Int? = 1

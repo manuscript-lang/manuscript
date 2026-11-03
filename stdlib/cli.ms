@@ -31,61 +31,26 @@ import Data from "@std/core.ms"
 import stderr, stdout from "@std/io/io.ms"
 import parse, stringify from "@std/data/json.ms"
 
-# Errors returned while checking a command schema or parsing arguments.
-export type CliError:
-    # A flag that no reachable command declares.
-    case UnknownFlag(
-        # The flag as written, including its dashes.
-        name: String
-    )
-    # A word that is neither a subcommand nor accepted as a positional argument.
-    case UnknownCommand(
-        # The unrecognized word exactly as it appeared in the arguments.
-        name: String,
-        # The command chain that was searched, such as `tool remote`.
-        path: String
-    )
-    # A flag that needs a value was last on the line.
-    case MissingValue(
-        # The flag as written.
-        name: String
-    )
-    # A value that does not fit the flag's kind or choices.
-    case InvalidValue(
-        # The flag name without dashes.
-        name: String,
-        # The rejected text exactly as the user wrote it, without the flag name or dashes.
-        value: String,
-        # What was expected, such as `an integer` or `one of dev, prod`.
-        expected: String
-    )
-    # A required flag or argument was not supplied.
-    case MissingRequired(
-        # The flag or argument name.
-        name: String
-    )
-    # More positional words than the command declares arguments for.
-    case TooManyArguments(
-        # The first extra word.
-        value: String
-    )
-    # The command tree itself is inconsistent; fix the program.
-    case InvalidSchema(
-        # What is wrong, such as `duplicate flag verbose`.
-        reason: String
-    )
+fn cli_unknown_flag(name: String) Error:
+    return Error("cli: unknown flag {name}", kind: InvalidInput)
 
-impl Error for CliError:
-    # Returns a `cli: ...` line naming the offending flag, word or schema entry.
-    fn message() String:
-        match self:
-            UnknownFlag(name): return "cli: unknown flag {name}"
-            UnknownCommand(name, path): return "cli: unknown command {name} for {path}"
-            MissingValue(name): return "cli: flag {name} needs a value"
-            InvalidValue(name, value, expected): return "cli: flag {name}: {value} is not {expected}"
-            MissingRequired(name): return "cli: missing required {name}"
-            TooManyArguments(value): return "cli: unexpected argument {value}"
-            InvalidSchema(reason): return "cli: invalid command schema: {reason}"
+fn cli_unknown_command(name: String, path: String) Error:
+    return Error("cli: unknown command {name} for {path}", kind: InvalidInput)
+
+fn cli_missing_value(name: String) Error:
+    return Error("cli: flag {name} needs a value", kind: InvalidInput)
+
+fn cli_invalid_value(name: String, value: String, expected: String) Error:
+    return Error("cli: flag {name}: {value} is not {expected}", kind: InvalidInput)
+
+fn cli_missing_required(name: String) Error:
+    return Error("cli: missing required {name}", kind: InvalidInput)
+
+fn cli_too_many_arguments(value: String) Error:
+    return Error("cli: unexpected argument {value}", kind: InvalidInput)
+
+fn cli_invalid_schema(reason: String) Error:
+    return Error("cli: invalid command schema: {reason}", kind: InvalidInput)
 
 # What a flag accepts. Each case fills the record field of the same language type.
 export type FlagKind:
@@ -216,7 +181,7 @@ export type Parsed:
 impl Command:
     # Checks the tree, resolves the subcommand chain, and validates flags and arguments.
     # Returns `Help` for `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
-    fn parse(argv: List[String]) Parsed!CliError:
+    fn parse(argv: List[String]) Parsed!:
         try check_schema(self, [], [self.name.clone()])
         return walk(self, argv)
 
@@ -227,7 +192,7 @@ impl Command:
 
         if parsed.is_error():
             stderr().write(
-                parsed.err().message() + "\nRun '{self.name} --help' for usage.\n"
+                parsed.err().message + "\nRun '{self.name} --help' for usage.\n"
             ).get()
             return 2
 
@@ -239,7 +204,7 @@ impl Command:
                 let result = node.exec(matches)
 
                 if result.is_error():
-                    stderr().write(result.err().message() + "\n").get()
+                    stderr().write(result.err().message + "\n").get()
                     return 1
 
                 return result.get()
@@ -296,15 +261,15 @@ export fn command[T: Data](
     )
 
 # Builds `T` from the JSON literals of the supplied values.
-fn decode[T: Data](matches: Matches) T!CliError:
+fn decode[T: Data](matches: Matches) T!:
     var members: List[String] = []
     for entry in matches.fields.entries():
         members.append(stringify(entry.key.clone()).get() + ":" + entry.value)
 
     let parsed = parse[T]("\{" + members.join(",") + "\}")
     return parsed.map_error(
-        fn cause: CliError.InvalidSchema(
-            "options record does not match the declared flags and arguments: {cause.message()}"
+        fn cause: cli_invalid_schema(
+            "options record does not match the declared flags and arguments: {cause.message}"
         )
     )
 
@@ -395,14 +360,14 @@ fn fits(flag: Flag, value: String) Bool:
         _: return true
 
 # Checks one flag name or short against names already seen.
-fn claim(var seen: List[String], key: String, label: String) Unit!CliError:
-    if seen.contains(key): return error(CliError.InvalidSchema("duplicate {label}"))
+fn claim(var seen: List[String], key: String, label: String) Unit!:
+    if seen.contains(key): return error(cli_invalid_schema("duplicate {label}"))
 
     seen.append(key)
     return ok(unit)
 
 # Validates a node and everything below it; `inherited` holds ancestors' persistent flags.
-fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!CliError:
+fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
     let where = path.join(" ")
     var names: List[String] = []
     var shorts: List[String] = []
@@ -410,17 +375,17 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!C
 
     for flag in all:
         if flag.name.is_empty(): return error(
-            CliError.InvalidSchema("empty flag name in {where}")
+            cli_invalid_schema("empty flag name in {where}")
         )
         if flag.name == "help": return error(
-            CliError.InvalidSchema("flag help is reserved in {where}")
+            cli_invalid_schema("flag help is reserved in {where}")
         )
 
         try claim(var names, flag.name.clone(), "flag {flag.name} in {where}")
         if flag.short.is_empty(): continue
         if flag.short.length() != 1 or flag.short == "h" or flag.short == "-":
             return error(
-                CliError.InvalidSchema(
+                cli_invalid_schema(
                     "bad short {flag.short} for {flag.name} in {where}"
                 )
             )
@@ -431,7 +396,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!C
         if let text = flag.default:
             if not fits(flag, text):
                 return error(
-                    CliError.InvalidSchema(
+                    cli_invalid_schema(
                         "default {text} does not fit flag {flag.name}"
                     )
                 )
@@ -441,22 +406,18 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!C
 
     for arg in node.args:
         if arg.name.is_empty() or names.contains(arg.name):
-            return error(
-                CliError.InvalidSchema(
-                    "argument {arg.name} clashes in {where}"
-                )
-            )
+            return error(cli_invalid_schema("argument {arg.name} clashes in {where}"))
 
         names.append(arg.name.clone())
         if arg.rest and index != node.args.length() - 1:
             return error(
-                CliError.InvalidSchema(
+                cli_invalid_schema(
                     "rest argument {arg.name} must be last in {where}"
                 )
             )
         if arg.required and optional_seen:
             return error(
-                CliError.InvalidSchema(
+                cli_invalid_schema(
                     "required argument {arg.name} follows an optional one in {where}"
                 )
             )
@@ -468,11 +429,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!C
 
     for child in node.children:
         if child.name == "help" or child.name.is_empty():
-            return error(
-                CliError.InvalidSchema(
-                    "bad command name {child.name} in {where}"
-                )
-            )
+            return error(cli_invalid_schema("bad command name {child.name} in {where}"))
 
         try claim(var words, child.name.clone(), "command {child.name} in {where}")
 
@@ -491,14 +448,10 @@ fn find_flag(flags: List[Flag], key: String, long: Bool) Flag?:
 
 # Stores one flag occurrence after checking it against the kind.
 fn store(var values: Map[String, List[String]], flag: Flag, value: String) Result[
-    Unit, CliError
+    Unit, Error
 ]:
     if not fits(flag, value):
-        return error(
-            CliError.InvalidValue(
-                flag.name.clone(), value, expected_text(flag)
-            )
-        )
+        return error(cli_invalid_value(flag.name.clone(), value, expected_text(flag)))
 
     if is_list(flag.kind):
         var items = values.get(flag.name).get([])
@@ -510,7 +463,7 @@ fn store(var values: Map[String, List[String]], flag: Flag, value: String) Resul
     return ok(unit)
 
 # Resolves subcommands, flags and positionals from `argv`.
-fn walk(root: Command, argv: List[String]) Parsed!CliError:
+fn walk(root: Command, argv: List[String]) Parsed!:
     var node = root.clone()
     var path = [root.name.clone()]
     var inherited: List[Flag] = []
@@ -550,7 +503,7 @@ fn walk(root: Command, argv: List[String]) Parsed!CliError:
                     flag = positive
                     negated = true
 
-            if flag.is_none(): return error(CliError.UnknownFlag(token))
+            if flag.is_none(): return error(cli_unknown_flag(token))
 
             let chosen = flag.get()
 
@@ -571,7 +524,7 @@ fn walk(root: Command, argv: List[String]) Parsed!CliError:
                 try store(var values, chosen, body.drop(cut.get() + 1))
                 continue
 
-            if index >= argv.length(): return error(CliError.MissingValue(token))
+            if index >= argv.length(): return error(cli_missing_value(token))
 
             try store(var values, chosen, argv[index].clone())
             index += 1
@@ -592,7 +545,7 @@ fn walk(root: Command, argv: List[String]) Parsed!CliError:
                 while index < argv.length():
                     let step = target.child(argv[index])
                     if step.is_none(): return error(
-                        CliError.UnknownCommand(
+                        cli_unknown_command(
                             argv[index].clone(), names.join(" ")
                         )
                     )
@@ -622,14 +575,14 @@ fn bind(
     words: List[String],
     var values: Map[String, List[String]],
     path: List[String]
-) Unit!CliError:
+) Unit!:
     var next = 0
 
     for arg in node.args:
         if arg.rest:
             let remaining = words.drop(next)
             if arg.required and remaining.is_empty(): return error(
-                CliError.MissingRequired(arg.name.clone())
+                cli_missing_required(arg.name.clone())
             )
 
             values[arg.name.clone()] = remaining
@@ -637,7 +590,7 @@ fn bind(
             continue
 
         if next >= words.length():
-            if arg.required: return error(CliError.MissingRequired(arg.name.clone()))
+            if arg.required: return error(cli_missing_required(arg.name.clone()))
 
             continue
 
@@ -646,14 +599,14 @@ fn bind(
 
     if next < words.length():
         if node.args.is_empty() and not node.children.is_empty():
-            return error(CliError.UnknownCommand(words[next].clone(), path.join(" ")))
+            return error(cli_unknown_command(words[next].clone(), path.join(" ")))
 
-        return error(CliError.TooManyArguments(words[next].clone()))
+        return error(cli_too_many_arguments(words[next].clone()))
 
     return ok(unit)
 
 # Applies the default of an absent flag or reports a missing required one.
-fn fill(var values: Map[String, List[String]], flag: Flag) Unit!CliError:
+fn fill(var values: Map[String, List[String]], flag: Flag) Unit!:
     if values.contains(flag.name): return ok(unit)
 
     if let text = flag.default:
@@ -668,7 +621,7 @@ fn fill(var values: Map[String, List[String]], flag: Flag) Unit!CliError:
         values[flag.name.clone()] = []
         return ok(unit)
 
-    if flag.required: return error(CliError.MissingRequired("--{flag.name}"))
+    if flag.required: return error(cli_missing_required("--{flag.name}"))
 
     return ok(unit)
 

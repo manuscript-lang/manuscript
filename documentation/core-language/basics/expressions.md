@@ -76,7 +76,7 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
 | `x \| try` | `try x`: unwrap the value so far |
 
 ```manuscript
-fn load(path: String) Result[Config, ConfigError]:
+fn load(path: String) Config!:
     let config = try read(path)
         | try parse
         | normalize

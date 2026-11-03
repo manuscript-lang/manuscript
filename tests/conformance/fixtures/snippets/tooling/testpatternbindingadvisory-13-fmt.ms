@@ -5,9 +5,6 @@ type Failure:
     case NotFound
     case Denied(reason: String)
 
-impl Error for Failure:
-    fn message() String: "f"
-
 fn failure_code(cause: Failure) Int:
     match cause:
         NotFound: return 1

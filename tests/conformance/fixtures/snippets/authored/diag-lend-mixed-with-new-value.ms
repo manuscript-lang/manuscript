@@ -6,6 +6,7 @@ type User:
 
 fn display(u: User, anonymous: Bool) String:
     if anonymous: return "anonymous"
+
     return u.name
 
 fn keep(u: User) List[String]:

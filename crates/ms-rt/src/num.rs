@@ -410,7 +410,7 @@ pub unsafe extern "C-unwind" fn msrt_numbers_parse_float(text: *const StrVal, ou
     }
 }
 
-/// `NumberError.message()` for a status code (`STATUS_INVALID_INPUT`, `_INVALID_DATA`, `_OUT_OF_RANGE`).
+/// The error message for a number status code (`STATUS_INVALID_INPUT`, `_INVALID_DATA`, `_OUT_OF_RANGE`).
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_numbers_error_message(status: u8, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.

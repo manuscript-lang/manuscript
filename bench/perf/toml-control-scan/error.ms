@@ -7,7 +7,7 @@ import monotonic from "@std/os/time.ms"
 fn diagnostic(text: String) String:
     match parse(text):
         ok(_): return "accepted"
-        error(cause): return cause.message()
+        error(cause): return cause.message
 
 export fn main() Int:
     let args = arguments()

@@ -1,14 +1,7 @@
 import expect_equal, expect_false from "@std/test/test.ms"
-import parse, stringify, CsvOptions, CsvError from "@std/data/csv.ms"
-import base64_encode, base64_decode, EncodingError from "@std/data/encoding.ms"
-import (
-    Commands,
-    Subprocess,
-    CommandOutput,
-    CommandError,
-    run,
-    Stdio
-) from "@std/os/process.ms"
+import parse, stringify, CsvOptions from "@std/data/csv.ms"
+import base64_encode, base64_decode from "@std/data/encoding.ms"
+import (Commands, Subprocess, CommandOutput, run, Stdio) from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"
 
 fn forward[T](item: T) T: item
@@ -25,7 +18,7 @@ impl Commands for Capture:
         timeout: Duration?,
         cwd: String?,
         env: Map[String, String]
-    ) CommandOutput!CommandError:
+    ) CommandOutput!:
         return ok(CommandOutput(0, input, "".to_bytes(), 0))
 
     fn spawn(
@@ -36,8 +29,12 @@ impl Commands for Capture:
         stderr: Stdio,
         cwd: String?,
         env: Map[String, String]
-    ) Subprocess!CommandError:
-        return error(CommandError.Unavailable)
+    ) Subprocess!:
+        return error(
+            Error(
+                "process: service unavailable", kind: ErrorCategory.Unavailable
+            )
+        )
 
 import Duration from "@std/os/time.ms"
 
@@ -56,7 +53,7 @@ impl Commands for Override:
         timeout: Duration?,
         cwd: String?,
         env: Map[String, String]
-    ) CommandOutput!CommandError:
+    ) CommandOutput!:
         return ok(CommandOutput(0, input, "".to_bytes(), 0))
 
     fn spawn(
@@ -67,8 +64,12 @@ impl Commands for Override:
         stderr: Stdio,
         cwd: String?,
         env: Map[String, String]
-    ) Subprocess!CommandError:
-        return error(CommandError.Unavailable)
+    ) Subprocess!:
+        return error(
+            Error(
+                "process: service unavailable", kind: ErrorCategory.Unavailable
+            )
+        )
 
 test "concrete implementation defaults and interface defaults stay distinct":
     let service = Override("custom".to_bytes())
@@ -107,7 +108,9 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     let typed = forward(stringify)
     try expect_equal((try typed([["a", "b"]], second, none)), "a,b\n")
 
-    let limited: List[List[String]]!CsvError = error(CsvError.LimitExceeded)
+    let limited: List[List[String]]! = error(
+        Error("CSV: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     try expect_false(
         (
             parse("a,b\n", max_cells: 1) != limited
@@ -115,7 +118,9 @@ test "CSV defaults are fresh and explicit options retain their meaning":
         )
     )
 
-    let invalid: String!CsvError = error(CsvError.InvalidInput)
+    let invalid: String! = error(
+        Error("CSV: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(stringify([["a"]], CsvOptions("")), invalid)
 
 test "Base64 defaults support stored functions and explicit alphabets":
@@ -144,10 +149,14 @@ test "Base64 defaults support stored functions and explicit alphabets":
     let decode = base64_decode
     try expect_equal((try decode("/w==", max_bytes: 1)), bytes)
 
-    let invalid: Bytes!EncodingError = error(EncodingError.InvalidData)
+    let invalid: Bytes! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(base64_decode("_w=="), invalid)
 
-    let limited: Bytes!EncodingError = error(EncodingError.LimitExceeded)
+    let limited: Bytes! = error(
+        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     try expect_equal(base64_decode("/w==", max_bytes: 0), limited)
 
 test "Commands defaults cross concrete bound view and generic boundaries":
@@ -175,6 +184,8 @@ test "Commands defaults cross concrete bound view and generic boundaries":
         42
     )
 
-    let invalid: CommandOutput!CommandError = error(CommandError.InvalidInput)
+    let invalid: CommandOutput! = error(
+        Error("process: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     let native = run
     try expect_equal(native("", []), invalid)

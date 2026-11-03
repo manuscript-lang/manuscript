@@ -1,4 +1,3 @@
-import TextError from "@std/core.ms"
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 
 type Shape:
@@ -8,7 +7,7 @@ type Point:
     x: Int
     y: Int
 
-fn roll(i: Int) Int!TextError: ok(i)
+fn roll(i: Int) Int!Error: ok(i)
 
 fn count(values: List[String]) Int: values.length()
 

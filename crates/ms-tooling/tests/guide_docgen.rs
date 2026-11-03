@@ -119,11 +119,11 @@ fn mixed_prelude_module_import_guidance() {
     for (path, guidance) in [
         (
             "@std/core.ms",
-            "`Error`, `MissingValue`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations",
+            "`Error`, `ErrorCategory`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations",
         ),
         (
             "@std/collections/collections.ms",
-            "`List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry`",
+            "`List`, `Map`, `Set`, `ListEntry`, and `MapEntry`",
         ),
     ] {
         let text = render_module(&module(path, vec![]));

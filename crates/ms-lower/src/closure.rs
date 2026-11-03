@@ -1017,7 +1017,7 @@ impl FnLower<'_> {
                 Some(v) => v,
                 None if missing_value == Some(declared[i].name)
                     && declared[i].ty.is_std("Optional")
-                    && declared[i].ty.args[0].is_std("MissingValue") =>
+                    && declared[i].ty.args[0].is_std("Error") =>
                 {
                     self.at(e.pos);
                     let cause_ty = self.mty(&declared[i].ty.args[0])?;

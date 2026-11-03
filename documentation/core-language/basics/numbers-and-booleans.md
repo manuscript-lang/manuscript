@@ -132,7 +132,7 @@ let big = from_int(2) * from_int(3) + from_int(1)
 
 #### Scale rounding and fixed places
 
-`round(places:)` yields a Decimal at a chosen scale; `to_fixed(digits:)` yields text with stable trailing zeros (`25.50d` shows as `"25.50"`). Both return `Result[..., NumberError]` (from `@std/math/math.ms`) and work on the exact value. Negative places round to tens, hundreds, and so on.
+`round(places:)` yields a Decimal at a chosen scale; `to_fixed(digits:)` yields text with stable trailing zeros (`25.50d` shows as `"25.50"`). Both return `Result[..., Error]` with kind `OutOfRange` or `InvalidInput` and work on the exact value. Negative places round to tens, hundreds, and so on.
 
 The default `mode` is `RoundingMode.HalfEven`; import `RoundingMode` from `@std/math/decimal.ms` for others:
 
@@ -152,10 +152,9 @@ Decimal imposes no currency policy; scaled Int cents also work. This example rou
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
-import NumberError from "@std/math/math.ms"
 import expect_equal from "@std/test/test.ms"
 
-fn amount_text() Result[String, NumberError]:
+fn amount_text() String!:
     let subtotal = 19.99d * 3d
     let tax = try (subtotal * 0.0825d).round(places: 2)
     let tax_text = try tax.to_fixed(digits: 2)

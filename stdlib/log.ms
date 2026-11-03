@@ -1,34 +1,12 @@
 import Closeable, Data from "@std/core.ms"
-import IoError from "@std/io/io.ms"
 import WriteStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
-import FileHandle, FileSystemError, open, remove, rename, stat from "@std/os/fs.ms"
+import FileHandle, open, remove, rename, stat from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
-import JsonError, JsonValue, parse, stringify from "@std/data/json.ms"
+import JsonValue, parse, stringify from "@std/data/json.ms"
 import now from "@std/os/time.ms"
-
-# Errors returned while validating or writing a structured log record.
-export type LogError:
-    # The selected record level or an explicit record-size budget is invalid.
-    case InvalidInput
-    # Structured fields cannot be encoded as valid JSON, including cyclic values.
-    case InvalidData
-    # The JSON record plus its terminating newline exceeds the supplied byte budget.
-    case LimitExceeded
-    # The native transport has closed, so an admitted write or flush cannot complete.
-    case Closed
-    # A transport's underlying byte-stream operation returned its original I/O error.
-    case Io(
-        # Original stream error; its message and concrete case are preserved.
-        cause: IoError
-    )
-    # Opening the owned file transport returned a filesystem error.
-    case FileSystem(
-        # Original filesystem error retained from file acquisition.
-        cause: FileSystemError
-    )
 
 # Severity levels accepted by a logger, ordered from Trace through Fatal.
 export type LogLevel:
@@ -52,11 +30,11 @@ export interface Transport:
     # Accepts encoded record bytes and may return the original I/O cause. Errors can follow a partial
     # external write, without rollback. Child loggers call a shared transport concurrently, so an
     # implementation that keeps mutable state guards it itself, as the standard transports do.
-    fn write(data: String) Unit!LogError
+    fn write(data: String) Unit!
     # Accepts encoded record bytes with the same rules as write.
-    fn write_bytes(data: Bytes) Unit!LogError
+    fn write_bytes(data: Bytes) Unit!
     # Delegates flush to the destination; persistence and buffering depend on that destination.
-    fn flush() Unit!LogError
+    fn flush() Unit!
     # Releases owned resources; native close cancels admitted operations and leaves borrowed streams open.
     fn close() Unit
 
@@ -87,21 +65,25 @@ fn now_ms() Int:
     return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
 
 # Encodes `fields` as JSON text. Anything `stringify` rejects is `InvalidData`.
-fn encode_fields[F: Data](fields: F) String!LogError:
+fn encode_fields[F: Data](fields: F) String!:
     let text = stringify(fields)
-    if text.is_error(): return error(LogError.InvalidData)
+    if text.is_error(): return error(
+        Error("logging: invalid data", kind: ErrorCategory.InvalidData)
+    )
 
     return ok(text.get())
 
 # The context of a child: the parent's object members with the child's added, or the child's text
 # alone when either side is not an object. This runs once per child, never per record.
-fn merge_context(parent: String?, child: String) String!LogError:
+fn merge_context(parent: String?, child: String) String!:
     let base = parent.get("")
     if base == "": return ok(child)
 
     let left = parse(base)
     let right = parse(child)
-    if left.is_error() or right.is_error(): return error(LogError.InvalidData)
+    if left.is_error() or right.is_error(): return error(
+        Error("logging: invalid data", kind: ErrorCategory.InvalidData)
+    )
 
     let members = left.get().as_map()
     let added = right.get().as_map()
@@ -112,14 +94,18 @@ fn merge_context(parent: String?, child: String) String!LogError:
         merged.add(entry.key, entry.value.clone())
 
     let text = stringify(JsonValue.ObjectValue(merged))
-    if text.is_error(): return error(LogError.InvalidData)
+    if text.is_error(): return error(
+        Error("logging: invalid data", kind: ErrorCategory.InvalidData)
+    )
 
     return ok(text.get())
 
-fn encode_error(cause: JsonError) LogError:
-    if cause == JsonError.LimitExceeded: return LogError.LimitExceeded
+fn encode_error(cause: Error) Error:
+    if cause.kind == ErrorCategory.LimitExceeded: return Error(
+        "logging: limit exceeded", kind: ErrorCategory.LimitExceeded
+    )
 
-    return LogError.InvalidData
+    return Error("logging: invalid data", kind: ErrorCategory.InvalidData)
 
 # The open stream of a stream transport and whether the transport was closed.
 type StreamState:
@@ -132,29 +118,35 @@ type StreamTransport:
     state: Shared[StreamState]
 
 impl Transport for StreamTransport:
-    fn write(data: String) Unit!LogError:
+    fn write(data: String) Unit!:
         var guard = lock(self.state)
-        if guard.value.closed: return error(LogError.Closed)
+        if guard.value.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
 
         match guard.value.stream.write(data):
             ok(_): return ok(unit)
-            error(cause): return error(LogError.Io(cause))
+            error(cause): return error(cause)
 
-    fn write_bytes(data: Bytes) Unit!LogError:
+    fn write_bytes(data: Bytes) Unit!:
         var guard = lock(self.state)
-        if guard.value.closed: return error(LogError.Closed)
+        if guard.value.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
 
         match guard.value.stream.write_bytes(data):
             ok(_): return ok(unit)
-            error(cause): return error(LogError.Io(cause))
+            error(cause): return error(cause)
 
-    fn flush() Unit!LogError:
+    fn flush() Unit!:
         var guard = lock(self.state)
-        if guard.value.closed: return error(LogError.Closed)
+        if guard.value.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
 
         match guard.value.stream.flush():
             ok(_): return ok(unit)
-            error(cause): return error(LogError.Io(cause))
+            error(cause): return error(cause)
 
     fn close() Unit:
         let _first = self.shut()
@@ -174,13 +166,13 @@ type FileTransport:
     inner: StreamTransport
 
 impl Transport for FileTransport:
-    fn write(data: String) Unit!LogError:
+    fn write(data: String) Unit!:
         return self.inner.write(data)
 
-    fn write_bytes(data: Bytes) Unit!LogError:
+    fn write_bytes(data: Bytes) Unit!:
         return self.inner.write_bytes(data)
 
-    fn flush() Unit!LogError:
+    fn flush() Unit!:
         return self.inner.flush()
 
     fn close() Unit:
@@ -217,7 +209,7 @@ export type Logger:
 
 impl Logger:
     # Internal: writes one record at a level number. `data` is JSON text attached as is.
-    fn emit(level: Int, message: String, data: String?) Unit!LogError:
+    fn emit(level: Int, message: String, data: String?) Unit!:
         let msg = stringify(JsonValue.StringValue(message))
         if msg.is_error(): return error(encode_error(msg.err()))
 
@@ -227,7 +219,11 @@ impl Logger:
         if let text = data: line = "{line},\"data\":{text}"
         line = "{line}\}\n"
         if let max = self.max_bytes:
-            if line.byte_length() > max: return error(LogError.LimitExceeded)
+            if line.byte_length() > max: return error(
+                Error(
+                    "logging: limit exceeded", kind: ErrorCategory.LimitExceeded
+                )
+            )
         return self.transport.get().inner.write(line)
 
     # Writes a record at the selected level. `fields` is any `Data` value `stringify` accepts.
@@ -237,12 +233,12 @@ impl Logger:
     # such as a cyclic one, returns `InvalidData`; encoding happens only when the level is enabled.
     # The fields of `child` loggers are written under `context`. `Silent` is a threshold, not a
     # record level, and returns `InvalidInput`.
-    fn log[F: Data = Unit](
-        level: LogLevel,
-        message: String,
-        fields: F? = none
-    ) Unit!LogError:
-        if level == LogLevel.Silent: return error(LogError.InvalidInput)
+    fn log[F: Data = Unit](level: LogLevel, message: String, fields: F? = none) Unit!:
+        if level == LogLevel.Silent: return error(
+            Error(
+                "logging: invalid input", kind: ErrorCategory.InvalidInput
+            )
+        )
         if not self.enabled(level): return ok(unit)
 
         if let value = fields:
@@ -252,33 +248,33 @@ impl Logger:
         return self.emit(level_value(level), message, none)
 
     # Logs at Trace when enabled. Most detailed records; a filtered call returns ok without encoding or transport access. Fields are encoded as in `log`.
-    fn trace[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+    fn trace[F: Data = Unit](message: String, fields: F? = none) Unit!:
         return self.log(LogLevel.Trace, message, fields)
 
     # Logs at Debug when enabled. Development diagnostics, including the logger's `context`. Fields are encoded as in `log`.
-    fn debug[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+    fn debug[F: Data = Unit](message: String, fields: F? = none) Unit!:
         return self.log(LogLevel.Debug, message, fields)
 
     # Logs at Info when enabled. Ordinary operational records. Fields are encoded as in `log`.
-    fn info[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+    fn info[F: Data = Unit](message: String, fields: F? = none) Unit!:
         return self.log(LogLevel.Info, message, fields)
 
     # Logs at Warn when enabled. Warning records, returning encoding, size-budget, or transport errors unchanged. Fields are encoded as in `log`.
-    fn warn[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+    fn warn[F: Data = Unit](message: String, fields: F? = none) Unit!:
         return self.log(LogLevel.Warn, message, fields)
 
     # Logs at Error when enabled. Failure records: an expected diagnostic rather than a fault. Fields are encoded as in `log`.
-    fn error[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+    fn error[F: Data = Unit](message: String, fields: F? = none) Unit!:
         return self.log(LogLevel.Error, message, fields)
 
     # Logs at Fatal when enabled. Critical records; the caller remains responsible for process termination. Fields are encoded as in `log`.
-    fn fatal[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+    fn fatal[F: Data = Unit](message: String, fields: F? = none) Unit!:
         return self.log(LogLevel.Fatal, message, fields)
 
     # Returns a logger that writes `fields` under `context` in each record. A child of a child merges
     # object members, the newer value winning; any other combination keeps the newer value. A value
     # that cannot be encoded returns `InvalidData`.
-    fn child[F: Data](fields: F) Logger!LogError:
+    fn child[F: Data](fields: F) Logger!:
         let text = try encode_fields(fields)
         let context = try merge_context(self.context, text)
         return ok(
@@ -301,7 +297,7 @@ impl Logger:
         self.threshold = level_value(level)
 
     # Flushes the logger's transport.
-    fn flush() Unit!LogError:
+    fn flush() Unit!:
         return self.transport.get().inner.flush()
 
     # Closes the transport this logger shares with its children, so every one of them reports `Closed`
@@ -315,9 +311,13 @@ export fn create(
     level: LogLevel?,
     timestamp: Bool?,
     max_bytes: Int?
-) Logger!LogError:
+) Logger!:
     if let max = max_bytes:
-        if max < 0: return error(LogError.InvalidInput)
+        if max < 0: return error(
+            Error(
+                "logging: invalid input", kind: ErrorCategory.InvalidInput
+            )
+        )
 
     var threshold = 30
     if let chosen = level:
@@ -338,10 +338,10 @@ export fn stdout_transport() Transport:
     return stream_transport(stdout())
 
 # Appends log records to a file at `path`.
-export fn file_transport(path: String) Transport!LogError:
+export fn file_transport(path: String) Transport!:
     match open(path, "a", 420):
         ok(file): return ok(file_stream_transport(file))
-        error(cause): return error(LogError.FileSystem(cause))
+        error(cause): return error(cause)
 
 fn file_stream_transport(file: FileHandle) Transport:
     let stream = StreamTransport(share(StreamState(file.writer(), false)))
@@ -362,7 +362,7 @@ type RotatingTransport:
 
 impl RotatingState:
     # Closes the file, shifts `path.1` to `path.2` and so on (dropping the oldest), moves `path` to `path.1`, and opens a fresh `path`.
-    var fn rotate() Unit!LogError:
+    var fn rotate() Unit!:
         self.file.close().get(none)
 
         let _oldest = remove("{self.path}.{self.keep}", false)
@@ -384,15 +384,17 @@ impl RotatingState:
                 return ok(unit)
             error(cause):
                 self.closed = true
-                return error(LogError.FileSystem(cause))
+                return error(cause)
 
 impl Transport for RotatingTransport:
-    fn write(data: String) Unit!LogError:
+    fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
-    fn write_bytes(data: Bytes) Unit!LogError:
+    fn write_bytes(data: Bytes) Unit!:
         var guard = lock(self.state)
-        if guard.value.closed: return error(LogError.Closed)
+        if guard.value.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
 
         let length = data.length()
         if guard.value.size > 0 and guard.value.size + length > guard.value.max_bytes:
@@ -402,15 +404,17 @@ impl Transport for RotatingTransport:
             ok(_):
                 guard.value.size += length
                 return ok(unit)
-            error(cause): return error(LogError.FileSystem(cause))
+            error(cause): return error(cause)
 
-    fn flush() Unit!LogError:
+    fn flush() Unit!:
         var guard = lock(self.state)
-        if guard.value.closed: return error(LogError.Closed)
+        if guard.value.closed: return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
 
         match guard.value.file.sync():
             ok(_): return ok(unit)
-            error(cause): return error(LogError.FileSystem(cause))
+            error(cause): return error(cause)
 
     fn close() Unit:
         var guard = lock(self.state)
@@ -422,12 +426,10 @@ impl Transport for RotatingTransport:
 # Appends log records to the file at `path` and rotates it by size.
 # When a record would take the file past `max_bytes` (a positive size; a single larger record is still written whole, to a fresh file), the file is renamed to `path.1`, an older `path.1` to `path.2`, and so on up to `path.<keep>`; the oldest is deleted. `keep` is the number of rotated files to retain, zero or more, and zero discards the old contents. A non-positive `max_bytes` or a negative `keep` returns `InvalidInput`. An existing file keeps being appended to, counting its current size.
 # Example: `create(rotating_file_transport("app.log", max_bytes: 1048576, keep: 5), none, none, none)`.
-export fn rotating_file_transport(
-    path: String,
-    max_bytes: Int,
-    keep: Int
-) Transport!LogError:
-    if max_bytes <= 0 or keep < 0: return error(LogError.InvalidInput)
+export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Transport!:
+    if max_bytes <= 0 or keep < 0: return error(
+        Error("logging: invalid input", kind: ErrorCategory.InvalidInput)
+    )
 
     var size = 0
     if let existing = stat(path, true): size = existing.size
@@ -443,15 +445,4 @@ export fn rotating_file_transport(
                     )
                 )
             )
-        error(cause): return error(LogError.FileSystem(cause))
-
-impl Error for LogError:
-    # Returns the preserved I/O/filesystem cause message, or a logging-prefixed diagnostic.
-    fn message() String:
-        match self:
-            InvalidInput: return "logging: invalid input"
-            InvalidData: return "logging: invalid data"
-            LimitExceeded: return "logging: limit exceeded"
-            Closed: return "logging: resource is closed"
-            Io(cause): return cause.message()
-            FileSystem(cause): return cause.message()
+        error(cause): return error(cause)

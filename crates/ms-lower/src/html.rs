@@ -252,7 +252,7 @@ impl FnLower<'_> {
             return Err(Error::new("parse returns a Result"));
         };
         let ok = self.ok_case_index(ra)?;
-        let err = self.b.m.alts[ra.index()]
+        let _err = self.b.m.alts[ra.index()]
             .cases
             .iter()
             .position(|c| c.name == "error")
@@ -301,13 +301,8 @@ impl FnLower<'_> {
                 Ok(Some(s.b.alt_new(ra, ok as u32, &[v])))
             },
             &mut |s| {
-                let et = s.b.m.alts[ra.index()].cases[err].fields[0].1;
-                let TyKind::Alt(ea) = s.b.m.types.kind(et).clone() else {
-                    return Err(Error::new("a runtime status needs an error alternative"));
-                };
-                let cases = s.status_cases(ea);
-                let e = s.status_error(ea, code, &cases, None)?;
-                Ok(Some(s.b.alt_new(ra, err as u32, &[e])))
+                let e = s.status_failure(rty, code, "msstd_html_status")?;
+                Ok(Some(e))
             },
         )
     }

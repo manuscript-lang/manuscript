@@ -54,6 +54,16 @@ runs:
       if: env.UNIT == 'true'
       with:
         tool: nextest
+    # MSVC rejects a test binary whose crates reference msrt_* runtime symbols that only ms-rt
+    # defines, even when nothing calls them; ELF and Mach-O drop the unused code first. Crates
+    # that ms-rt itself depends on cannot link it back in, so Windows builds in this job let the
+    # linker leave those references unresolved. Every cargo step uses the same flags so they share
+    # one build (a flag change recompiles everything, about 2 minutes); `target/debug/ms` links the
+    # whole runtime, so the flag changes nothing there. The packaged distribution is built without it.
+    - name: Let Windows test binaries leave runtime symbols unresolved
+      if: runner.os == 'Windows'
+      shell: bash
+      run: echo 'RUSTFLAGS=-C link-arg=/FORCE:UNRESOLVED' >> "$GITHUB_ENV"
     - name: Build the native runtime
       shell: bash
       run: cargo xtask runtime
@@ -65,17 +75,10 @@ runs:
         cargo clippy --workspace --all-targets -- -D warnings
     # nextest runs each test in its own process, so tests that share process-global
     # state (the runtime allocator, the environment) cannot interfere.
-    # MSVC rejects a test binary whose crates reference msrt_* runtime symbols that only ms-rt
-    # defines, even when nothing calls them; ELF and Mach-O drop the unused code first. Crates
-    # that ms-rt itself depends on cannot link it back in, so test builds on Windows let the
-    # linker leave those references unresolved. Distribution builds never use this flag.
     - name: Tests and doc tests
       if: env.UNIT == 'true'
       shell: bash
       run: |
-        if [ "$RUNNER_OS" = Windows ]; then
-          export RUSTFLAGS='-C link-arg=/FORCE:UNRESOLVED'
-        fi
         # One build with every target: the later steps (nextest, the CLI, the native tests, the
         # corpus runner) then reuse it instead of rebuilding dependencies with other features.
         cargo build --workspace --all-targets --locked --keep-going
@@ -93,10 +96,8 @@ runs:
         rustc -vV > "$reports/host.txt"
         # `-p ms-cli` unifies features differently from the workspace build and recompiles the
         # cranelift crates, ms-clif, ms-build and ms-cli (about 40 s). Parts that ran the workspace
-        # build above reuse it: the same command is a no-op and relinks target/debug/ms. Windows
-        # keeps the separate build: its test build links with /FORCE:UNRESOLVED, which a shipped
-        # `ms` must not use.
-        if [ "$UNIT" = true ] && [ "$RUNNER_OS" != Windows ]; then
+        # build above reuse it: the same command is a no-op and relinks target/debug/ms.
+        if [ "$UNIT" = true ]; then
           cargo build --workspace --all-targets --locked 2>&1 | tee "$reports/build.log"
         else
           cargo build --locked -p ms-cli 2>&1 | tee "$reports/build.log"
@@ -176,6 +177,8 @@ runs:
       if: env.GATES == 'true'
       shell: bash
       run: |
+        # The shipped `ms` links without the test-only Windows flag.
+        unset RUSTFLAGS
         target/debug/ms run tools/package.ms -- "${{ inputs.os }}" "${{ inputs.arch }}"
         name="manuscript-rust-${{ inputs.os }}-${{ inputs.arch }}"
         mkdir -p "extracted distribution"

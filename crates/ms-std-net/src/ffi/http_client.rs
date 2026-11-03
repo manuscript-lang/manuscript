@@ -259,7 +259,7 @@ fn one_shot(
 native! {
     // -------------------------------------------------------------------- errors
 
-    /// `HttpError.message()` for a status and the `Failed` text (nullable).
+    /// The error message for a status and the `Failed` text (nullable).
     fn msstd_http_error_message(status: u8, has_failed: bool, failed: &str) -> String {
         http_from_code(status, (if has_failed { failed } else { "" }).to_string()).message()
     }
@@ -303,7 +303,7 @@ native! {
 
     // -------------------------------------------------------------------- client
 
-    /// `Network.http_client(options) -> Result[HttpClient, HttpError]`.
+    /// `Network.http_client(options) -> Result[HttpClient, Error]`.
     fn msstd_net_network_http_client(
         net: ObjRef<NetH>,
         opts: &HttpClientOptionsWire,

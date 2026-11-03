@@ -23,44 +23,24 @@ import (
     msstd_random_entropy
 ) from "@std/internal/random.ms"
 
-# Errors returned when random input is invalid or entropy generation fails.
-export type RandomError:
-    # The requested byte count is negative or above 16 MiB, or `secure_int` was given `min` not below `max_exclusive`.
-    case InvalidInput
-    # Reserved for requests that exceed a configured random-generation budget; the current operations do not return it.
-    case LimitExceeded
-    # The entropy source could not produce bytes, or returned a different number of bytes than requested.
-    case Failed(
-        # The source's failure text, which `message()` returns verbatim.
-        message: String
-    )
-
 # A source of cryptographically secure random bytes.
 interface Entropy:
     # Returns exactly `count` unpredictable bytes, with `count` from 0 through 16 MiB (16777216).
     # A negative or larger count returns InvalidInput; a source failure returns Failed. The operating system source observes task cancellation between 64 KiB chunks.
-    var fn bytes(count: Int) Bytes!RandomError
-
-impl Error for RandomError:
-    # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `random: <reason>`.
-    fn message() String:
-        match self:
-            InvalidInput: return "random: invalid input"
-            LimitExceeded: return "random: limit exceeded"
-            Failed(message): return message.clone()
+    var fn bytes(count: Int) Bytes!
 
 # Returns a secure integer at least `min` and below `max_exclusive` when supplied, from the operating system's entropy.
-export fn secure_int(min: Int, max_exclusive: Int?) Int!RandomError:
+export fn secure_int(min: Int, max_exclusive: Int?) Int!:
     return msstd_random_draw_int(msstd_random_entropy(), min, max_exclusive)
 
 # Creates a version-4 UUID from the operating system's entropy.
-export fn uuid_v4() String!RandomError:
+export fn uuid_v4() String!:
     return msstd_random_draw_uuid(msstd_random_entropy())
 
 # Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time in milliseconds and 80 random bits.
 # ULIDs made later sort after earlier ones as strings; two made in the same millisecond are ordered randomly.
-# Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return RandomError.
-export fn ulid() String!RandomError:
+# Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return an `Error`.
+export fn ulid() String!:
     let moment = now()
     let millis = moment.seconds * 1000 + moment.nanos / 1000000
     let noise = try random_bytes(10)
@@ -94,27 +74,27 @@ export fn ulid() String!RandomError:
 # Returns a random token of `size` bytes as unpadded URL-safe Base64, the shape of Python's `secrets.token_urlsafe`.
 # The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API keys and password-reset links.
 # `size` follows `random_bytes`: 0 through 16 MiB, otherwise InvalidInput.
-export fn token(size: Int = 32) String!RandomError:
+export fn token(size: Int = 32) String!:
     let data = try random_bytes(size)
     return ok(base64_encode_unpadded(data, url_safe: true))
 
 # Returns a secure Float at least 0.0 and below 1.0 with 53 random bits (JavaScript `Math.random`, but cryptographically secure).
-export fn float() Float!RandomError:
+export fn float() Float!:
     return msstd_random_draw_float(msstd_random_entropy())
 
 # Shuffles the list in place with an unbiased Fisher-Yates shuffle and returns it.
-export fn shuffle[T](values: List[T]) List[T]!RandomError:
+export fn shuffle[T](values: List[T]) List[T]!:
     return msstd_random_draw_shuffle(msstd_random_entropy(), values)
 
 # Returns a uniformly chosen item, or none for an empty list.
-export fn choice[T](values: List[T]) T?!RandomError:
+export fn choice[T](values: List[T]) T?!:
     return msstd_random_draw_choice(msstd_random_entropy(), values)
 
 # Returns `count` distinct positions' items chosen uniformly without replacement, in random order, as copies; the input is unchanged.
 # A `count` outside 0 through the list length returns InvalidInput.
-export fn sample[T: Clonable](values: List[T], count: Int) List[T]!RandomError:
+export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
     if count < 0 or count > values.length():
-        return error(RandomError.InvalidInput)
+        return error(Error("random: invalid input", kind: ErrorCategory.InvalidInput))
 
     var order = positions(values.length())
     var out: List[T] = []
@@ -128,14 +108,11 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!RandomError:
 
 # Returns an item chosen with probability proportional to its weight, or none for an empty list.
 # `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this returns InvalidInput.
-export fn weighted_choice[T: Clonable](
-    values: List[T],
-    weights: List[Float]
-) T?!RandomError:
+export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?!:
     if values.is_empty() and weights.is_empty():
         return ok(none)
     if not valid_weights(values.length(), weights):
-        return error(RandomError.InvalidInput)
+        return error(Error("random: invalid input", kind: ErrorCategory.InvalidInput))
 
     let point = try float() * weight_total(weights)
     return ok(values[weighted_position(weights, point)].clone())
@@ -186,7 +163,7 @@ fn weighted_position(weights: List[Float], point: Float) Int:
 
 # Returns exactly `count` unpredictable bytes from the operating system, with `count` from 0 through 16 MiB (16777216).
 # A negative or larger count returns InvalidInput; a source failure returns Failed. The call observes task cancellation between 64 KiB chunks.
-export fn random_bytes(count: Int) Bytes!RandomError:
+export fn random_bytes(count: Int) Bytes!:
     var source = msstd_random_entropy()
     return source.bytes(count)
 

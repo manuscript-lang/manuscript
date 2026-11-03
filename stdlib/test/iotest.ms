@@ -1,5 +1,5 @@
 import Bytes from "@std/bytes.ms"
-import ReadStream, WriteStream, IoError, read_all from "@std/io/io.ms"
+import ReadStream, WriteStream, read_all from "@std/io/io.ms"
 import fail from "@std/test/test.ms"
 
 # Misbehaving streams for testing code that reads and writes. Each wrapper takes its input first, like the
@@ -12,9 +12,13 @@ impl ReadStream for OneByte:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
+    var fn read(max_bytes: Int? = none) Bytes?!:
         if let wanted = max_bytes:
-            if wanted <= 0: return error(IoError.InvalidInput)
+            if wanted <= 0: return error(
+                Error(
+                    "I/O: invalid input", kind: ErrorCategory.InvalidInput
+                )
+            )
         return self.input.read(1)
 
 # Returns `input` limited to one byte per read, which exposes code that assumes a read fills its buffer.
@@ -24,19 +28,23 @@ export fn one_byte(input: ReadStream) ReadStream:
 type FailAfter:
     input: ReadStream
     remaining: Int
-    cause: IoError
+    cause: Error
 
 impl ReadStream for FailAfter:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
+    var fn read(max_bytes: Int? = none) Bytes?!:
         if self.remaining <= 0: return error(self.cause.clone())
 
         var size = self.remaining
 
         if let wanted = max_bytes:
-            if wanted <= 0: return error(IoError.InvalidInput)
+            if wanted <= 0: return error(
+                Error(
+                    "I/O: invalid input", kind: ErrorCategory.InvalidInput
+                )
+            )
 
             if wanted < size: size = wanted
 
@@ -47,25 +55,25 @@ impl ReadStream for FailAfter:
 
 # Returns `input` that delivers `after` bytes and then fails every read with `cause`, even if `input` has ended.
 # Use it to check that a parser reports a truncated or broken source instead of treating it as clean end of input.
-export fn fail_after(input: ReadStream, after: Int, cause: IoError) ReadStream:
+export fn fail_after(input: ReadStream, after: Int, cause: Error) ReadStream:
     return FailAfter(input, after, cause)
 
 type FailingWriter:
     output: WriteStream
     remaining: Int
-    cause: IoError
+    cause: Error
 
 impl WriteStream for FailingWriter:
     var fn close() Unit:
         return self.output.close()
 
-    var fn flush() Unit!IoError:
+    var fn flush() Unit!:
         return self.output.flush()
 
-    var fn write(data: String) Unit!IoError:
+    var fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
-    var fn write_bytes(data: Bytes) Unit!IoError:
+    var fn write_bytes(data: Bytes) Unit!:
         let size = data.length()
 
         if size <= self.remaining:
@@ -81,7 +89,7 @@ impl WriteStream for FailingWriter:
 
 # Returns a writer that passes `after` bytes through to `output`, writes the prefix of the write that crosses the limit,
 # and then fails that write and every later one with `cause`. Use it to check error handling on a full disk or closed pipe.
-export fn fail_writer_after(output: WriteStream, after: Int, cause: IoError) WriteStream:
+export fn fail_writer_after(output: WriteStream, after: Int, cause: Error) WriteStream:
     return FailingWriter(output, after, cause)
 
 # Checks that `make` builds a well-behaved `ReadStream` over exactly `expected`: whole reads, one-byte reads, a chunk size

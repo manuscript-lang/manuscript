@@ -9,12 +9,11 @@ type ParseError:
     case Empty
     case Unknown(code: Int)
 
-impl Error for ParseError:
-    fn message() String:
-        match self:
-            Failed(code, message): return "failed at {code}: {message}"
-            Empty: return "empty"
-            Unknown(code): return "unknown {code}"
+fn text(cause: ParseError) String:
+    match cause:
+        Failed(code, message): return "failed at {code}: {message}"
+        Empty: return "empty"
+        Unknown(code): return "unknown {code}"
 
 extern fn abi_i8(x: Int8) Int8
 extern fn abi_i16(x: Int16) Int16
@@ -42,12 +41,38 @@ extern fn abi_noisy() String!ParseError
 extern fn abi_lazy() String!ParseError
 extern fn abi_bad_status() Unit!ParseError
 extern fn abi_fault() Unit
+extern fn abi_twice(f: fn(Int) Int, x: Int) Int
+extern fn abi_describe(f: fn(String, Int8, Bool, Float32, Bytes) String) String
+extern fn abi_keep(f: fn(Counter) Unit) Unit
+extern fn abi_fire(counter: Counter) Unit
+extern fn abi_forget() Unit
+extern fn abi_call_wrong(f: fn(Int) Unit) Unit
+extern fn abi_call_plain(f: fn() Unit) Unit
+extern fn abi_arm_stop() Unit
+extern fn abi_wait_for_stop() Int
 
 fn describe(result: Counter!ParseError) String:
     if let counter = result:
         return "ok {abi_counter_bump(counter)}"
 
-    return "error {result.err().message()}"
+    return "error {text(result.err())}"
+
+fn callbacks() Unit:
+    var out = stdout()
+    let step = 5
+    let _ = out.write("{abi_twice(fn(x: Int) Int: x * 2 + step, 1)}\n")
+    let _ = out.write(
+        abi_describe(fn(s: String, i: Int8, b: Bool, f: Float32, data: Bytes) String: "{s} {i} {b} {f} {data.length()}")
+        + "\n"
+    )
+    let label = "fired"
+    abi_keep(fn(c: Counter) Unit:
+        let _ = stdout().write("{label} {abi_counter_bump(c)}\n")
+    )
+    let c = abi_counter(40)
+    abi_fire(c)
+    abi_fire(c)
+    abi_forget()
 
 fn counters() Unit:
     let a = abi_counter(1)
@@ -71,6 +96,16 @@ export fn main() Int:
     if mode == "fault":
         abi_fault()
         return 0
+    if mode == "callkind":
+        abi_call_wrong(fn(x: Int) Unit: return)
+        return 0
+    if mode == "callfault":
+        abi_call_plain(fn() Unit: abi_fault())
+        return 0
+    if mode == "stop":
+        abi_arm_stop()
+        let _ = out.write("hooks {abi_wait_for_stop()}\n")
+        return 0
     let _ = out.write(
         "{abi_i8(-128)} {abi_i16(-32768)} {abi_i32(-2147483648)} {abi_u8(255)} {abi_u16(65535)} {abi_u32(4294967295)} {abi_u64(18446744073709551615)}\n"
     )
@@ -83,4 +118,6 @@ export fn main() Int:
     let _ = out.write("{describe(abi_parse("42"))} {describe(abi_parse("4x"))} {describe(abi_parse(""))} {describe(abi_parse("?"))}\n")
     let _ = out.write("drops {abi_drops()}\n")
     let _ = out.write("{abi_noisy().get("")} [{abi_lazy().get("x")}]\n")
+    callbacks()
+    let _ = out.write("drops {abi_drops()}\n")
     return 0
