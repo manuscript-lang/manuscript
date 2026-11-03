@@ -43,11 +43,11 @@ pub fn code<E: Status>(e: E) -> ms_rt::ffi::StatusCode {
 }
 
 macro_rules! handle_newtype {
-    ($($(#[$m:meta])* $name:ident($t:ty);)*) => {$(
+    ($($(#[$m:meta])* $name:ident($t:ty) $(: $clone:ident)?;)*) => {$(
         $(#[$m])*
         #[repr(transparent)]
         pub struct $name(pub $t);
-        ms_rt::ffi::abi_handle!($name);
+        ms_rt::ffi::abi_handle!($name $(, $clone)?);
         impl std::ops::Deref for $name {
             type Target = $t;
             fn deref(&self) -> &$t {
@@ -55,6 +55,15 @@ macro_rules! handle_newtype {
             }
         }
     )*};
+}
+
+impl Clone for HeadersH {
+    /// An independent copy of the headers, not another handle on the same ones.
+    fn clone(&self) -> HeadersH {
+        HeadersH(std::rc::Rc::new(std::cell::RefCell::new(
+            self.0.borrow().clone(),
+        )))
+    }
 }
 
 handle_newtype! {
@@ -66,8 +75,8 @@ handle_newtype! {
     ListenerH(std::rc::Rc<crate::conn::Listener>);
     /// A `DatagramSocket` handle.
     DgramH(std::rc::Rc<crate::conn::Datagrams>);
-    /// An `HttpHeaders` handle.
-    HeadersH(crate::http::headers::Shared);
+    /// An `HttpHeaders` handle; `HttpHeaders.clone` copies the headers.
+    HeadersH(crate::http::headers::Shared): clone;
     /// The settings every connection of one `serve` call shares.
     ServingH(std::rc::Rc<crate::ffi::http_server::Serving>);
     /// An `HttpClient` handle.

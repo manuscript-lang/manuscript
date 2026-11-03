@@ -8,7 +8,7 @@
 
 use crate::desc::{msrt_desc_bool, msrt_desc_bytes, msrt_desc_string};
 use crate::fault::fault_fmt;
-use crate::obj::{new_obj, release, retain};
+use crate::obj::{clone_obj, drop_obj, new_obj};
 use crate::sys::{free, malloc};
 use crate::vec::{bytes_from, msrt_bytes_drop, push};
 use core::ffi::{c_char, c_void};
@@ -350,7 +350,7 @@ pub unsafe extern "C-unwind" fn ms_list_push_v1(l: *mut ListRef, v: *const Value
         }
         let mut slot = [0u64; 3];
         let at = slot.as_mut_ptr() as *mut u8;
-        store_value(v, elem, at);
+        store_value(v, elem, at, true);
         push(list, elem_desc(elem), at);
     }
 }
@@ -403,12 +403,13 @@ fn mismatch(v: &Value, elem: u64) -> Option<Mismatch> {
     }
 }
 
-/// Writes a new value of type `elem` made from `v`, which [`mismatch`] accepted, at `at`: a
-/// string or bytes copy, a retained object, or the number.
+/// Writes a value of type `elem` made from `v`, which [`mismatch`] accepted, at `at`: a string
+/// or bytes copy, the number, and an object cloned when the value is `owned` by its new holder
+/// (a list element) or the object itself when it is only lent (an argument of `ms_call`).
 ///
 /// # Safety
 /// `at` has room for the value (24 bytes suffice); `v`'s buffer is readable.
-unsafe fn store_value(v: &Value, elem: u64, at: *mut u8) {
+unsafe fn store_value(v: &Value, elem: u64, at: *mut u8, owned: bool) {
     // SAFETY: caller contract.
     unsafe {
         match elem {
@@ -419,8 +420,8 @@ unsafe fn store_value(v: &Value, elem: u64, at: *mut u8) {
                 .write_to(at as *mut StrVal),
             ELEM_BYTES => bytes_from(bytes(v.as_.buf.data, v.as_.buf.len), at as *mut VecVal),
             ELEM_OBJECT => {
-                retain(v.as_.ptr as *mut Obj);
-                *(at as *mut *mut u8) = v.as_.ptr;
+                let o = v.as_.ptr as *mut Obj;
+                *(at as *mut *mut Obj) = if owned { clone_obj(o) } else { o };
             }
             // Integers: the low bytes of the little-endian word.
             _ => *(at as *mut u64) = v.as_.u,
@@ -456,7 +457,7 @@ pub unsafe extern "C-unwind" fn ms_object_new_v1(
         .unwrap_or_else(|| fault_fmt(format_args!("ms_object_new size {size} is too large")));
     // SAFETY: a fresh block of `total` bytes, at least the header and the drop word.
     unsafe {
-        let o = new_obj(total, native_object_drop);
+        let o = new_obj(total, None, native_object_drop);
         let base = o as *mut u8;
         *(base.add(NATIVE_OBJECT_DROP_OFFSET) as *mut Option<PayloadDrop>) = drop;
         core::ptr::write_bytes(
@@ -478,25 +479,25 @@ pub unsafe extern "C-unwind" fn ms_payload_v1(o: *mut Obj) -> *mut c_void {
     unsafe { (o as *mut u8).add(NATIVE_OBJECT_PAYLOAD_OFFSET) as *mut c_void }
 }
 
-/// `ms_object *ms_retain(ms_object *o)`: adds a reference and returns `o`.
+/// `ms_object *ms_object_clone(ms_object *o)`: an independent copy of `o` through its clone
+/// entry; an extern type value has none, so copying one faults.
 ///
 /// # Safety
 /// `o` is null or a live object.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn ms_retain_v1(o: *mut Obj) -> *mut Obj {
+pub unsafe extern "C-unwind" fn ms_object_clone_v1(o: *mut Obj) -> *mut Obj {
     // SAFETY: caller contract.
-    unsafe { retain(o) };
-    o
+    unsafe { clone_obj(o) }
 }
 
-/// `void ms_release(ms_object *o)`: drops a reference.
+/// `void ms_object_drop(ms_object *o)`: drops an object the shim owns.
 ///
 /// # Safety
-/// `o` is null or a live object the shim owns a reference to.
+/// `o` is null or a live object the shim owns.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn ms_release_v1(o: *mut Obj) {
+pub unsafe extern "C-unwind" fn ms_object_drop_v1(o: *mut Obj) {
     // SAFETY: caller contract.
-    unsafe { release(o) }
+    unsafe { drop_obj(o) }
 }
 
 /// `void ms_fault(const char *text, size_t len)`: an unrecoverable error, reported and cleaned
@@ -511,30 +512,39 @@ pub unsafe extern "C-unwind" fn ms_fault_v1(text: *const c_char, len: usize) -> 
     crate::fault::fault(text)
 }
 
-/// The drop entry of an `ms_fn`: releases its closure, then frees.
+/// The drop entry of an `ms_fn`: drops its closure, then frees.
 unsafe extern "C" fn fn_drop(o: *mut Obj) {
-    // SAFETY: `o` was built by `msrt_fn_new` and its count reached zero.
+    // SAFETY: `o` was built by `msrt_fn_new` and its owner dropped it.
     unsafe {
         let base = o as *mut u8;
-        release(*(base.add(FN_CLOSURE_OFFSET) as *const *mut Obj));
+        drop_obj(*(base.add(FN_CLOSURE_OFFSET) as *const *mut Obj));
         crate::alloc::free(base);
     }
 }
 
-/// The `ms_fn` generated code passes for a function argument of a user extern: `closure`
-/// (retained) takes its arguments from 24-byte cells and puts its result in the cell after the
-/// last parameter; `sig` packs the parameter count in its low byte, then one byte per parameter
-/// and the result in the top byte, each `kind | width << 4`.
+/// The clone entry of an `ms_fn`: a new `ms_fn` over a clone of the closure.
+unsafe extern "C" fn fn_clone(o: *mut Obj) -> *mut Obj {
+    // SAFETY: `o` is a live `ms_fn`.
+    unsafe {
+        let base = o as *const u8;
+        let closure = clone_obj(*(base.add(FN_CLOSURE_OFFSET) as *const *mut Obj));
+        msrt_fn_new(closure, *(base.add(FN_SIG_OFFSET) as *const u64))
+    }
+}
+
+/// The `ms_fn` generated code passes for a function argument of a user extern: `closure`,
+/// which the `ms_fn` owns, takes its arguments from 24-byte cells and puts its result in the
+/// cell after the last parameter; `sig` packs the parameter count in its low byte, then one byte
+/// per parameter and the result in the top byte, each `kind | width << 4`.
 ///
 /// # Safety
-/// `closure` is a live closure of that shape.
+/// `closure` is a live closure of that shape, handed over.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_fn_new(closure: *mut Obj, sig: u64) -> *mut Obj {
     // SAFETY: a fresh block with room for the closure and the signature.
     unsafe {
-        let o = new_obj(FN_SIZE, fn_drop);
+        let o = new_obj(FN_SIZE, Some(fn_clone), fn_drop);
         let base = o as *mut u8;
-        retain(closure);
         *(base.add(FN_CLOSURE_OFFSET) as *mut *mut Obj) = closure;
         *(base.add(FN_SIG_OFFSET) as *mut u64) = sig;
         o
@@ -547,7 +557,9 @@ fn sig_elem(byte: u64) -> u64 {
 }
 
 /// `void ms_call(ms_fn *f, const ms_value *args, size_t count, ms_value *result)`: calls the
-/// function with copies of the arguments; `result` (may be NULL) receives its value like
+/// function with the arguments lent, as every function value is called: a string or bytes is
+/// copied in for the call and freed after it, an object is passed as it is and stays the
+/// shim's; `result` (may be NULL) receives its value like
 /// `ms_list_get` does, with a string or bytes as a `malloc` copy. A wrong count, kind or range
 /// faults before the call; a fault in the function is the program's fault.
 ///
@@ -589,11 +601,13 @@ pub unsafe extern "C-unwind" fn ms_call_v1(
         }
         let mut cells = [[0u64; 3]; CALL_MAX_PARAMS + 1];
         for (i, v) in args.iter().enumerate() {
-            store_value(v, elems[i], cells[i].as_mut_ptr() as *mut u8);
+            store_value(v, elems[i], cells[i].as_mut_ptr() as *mut u8, false);
         }
         let closure = *(base.add(FN_CLOSURE_OFFSET) as *const *mut u8);
         let code: unsafe extern "C-unwind" fn(*mut u8, *mut u8) =
             core::mem::transmute(*(closure.add(CLOSURE_CODE_OFFSET) as *const *const u8));
+        // The thunk takes the string and bytes copies out of their cells and drops them; an
+        // object stays the shim's (see `ms_lower::external::invoke_thunk`).
         code(closure, cells.as_mut_ptr() as *mut u8);
         let ret = sig >> 56;
         let at = cells[CALL_MAX_PARAMS].as_mut_ptr() as *mut u8;
@@ -621,25 +635,24 @@ pub unsafe extern "C-unwind" fn ms_call_v1(
     }
 }
 
-/// `ms_fn *ms_fn_retain(ms_fn *f)`: keeps `f` past the extern call.
+/// `ms_fn *ms_fn_clone(ms_fn *f)`: a copy of `f` the shim keeps past the extern call.
 ///
 /// # Safety
 /// `f` is a live `ms_fn`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn ms_fn_retain_v1(f: *mut Obj) -> *mut Obj {
+pub unsafe extern "C-unwind" fn ms_fn_clone_v1(f: *mut Obj) -> *mut Obj {
     // SAFETY: caller contract.
-    unsafe { retain(f) };
-    f
+    unsafe { clone_obj(f) }
 }
 
-/// `void ms_fn_release(ms_fn *f)`: drops a reference from `ms_fn_retain`.
+/// `void ms_fn_drop(ms_fn *f)`: drops a copy from `ms_fn_clone`.
 ///
 /// # Safety
-/// `f` is a live `ms_fn` the shim retained.
+/// `f` is a live `ms_fn` the shim owns.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn ms_fn_release_v1(f: *mut Obj) {
+pub unsafe extern "C-unwind" fn ms_fn_drop_v1(f: *mut Obj) {
     // SAFETY: caller contract.
-    unsafe { release(f) }
+    unsafe { drop_obj(f) }
 }
 
 /// The stop hooks `ms_on_stop` registered: a function word (0 for a free slot) and its

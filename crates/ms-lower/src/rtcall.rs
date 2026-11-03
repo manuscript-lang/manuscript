@@ -58,7 +58,7 @@ pub(crate) fn hands_over(sym: &str, i: usize) -> bool {
         && rt_sig(sym).is_some_and(|sig| {
             sig.params
                 .get(i)
-                .is_some_and(|p| p.ty == "*mut Closure" || p.name == "env")
+                .is_some_and(|p| p.ty == "*mut Closure" || p.name == "env" || p.name == "closure")
         })
 }
 

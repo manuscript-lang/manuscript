@@ -395,15 +395,9 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     // ---- ownership -------------------------------------------------------
 
-    /// `rc -= 1; if rc == 0 { drop_slow }` on a non-null object pointer.
-    fn release(&mut self, p: Value) {
-        let rc = self.b.ins().load(types::I64, flags(), p, 0);
-        let n = self.b.ins().iadd_imm_s(rc, -1);
-        self.b.ins().store(flags(), n, p, 0);
-        let zero = self.b.ins().icmp_imm_s(IntCC::Equal, n, 0);
-        self.if_then(zero, |s| {
-            s.rt_call("msrt_drop_slow", &[p]);
-        });
+    /// Drops the object `p` through its header's drop entry (the runtime ignores null).
+    fn drop_obj(&mut self, p: Value) {
+        self.rt_call("msrt_obj_drop", &[p]);
     }
 
     /// With `MS_COUNT_STR` set at compile time, reports each executed string drop (`kind` 0) or copy
@@ -417,10 +411,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.rt_call("msrt_str_count", &[kind, cap]);
     }
 
-    fn retain(&mut self, p: Value) {
-        let rc = self.b.ins().load(types::I64, flags(), p, 0);
-        let n = self.b.ins().iadd_imm_s(rc, 1);
-        self.b.ins().store(flags(), n, p, 0);
+    /// An independent copy of the object `p` through its header's clone entry (null stays null;
+    /// a value with one owner faults).
+    fn clone_obj(&mut self, p: Value) -> Value {
+        self.rt_call("msrt_obj_clone", &[p])[0]
     }
 
     /// Whether dropping a value of `ty` is a call to glue (rather than inline or nothing).
@@ -441,14 +435,12 @@ impl<'a, 'm> Lower<'a, 'm> {
                     s.rt_call("msrt_str_free", &[vs[0]]);
                 });
             }
-            TyKind::Fn(..) => self.release(vs[0]),
-            TyKind::Obj(n, _) if !n.is_map_or_set() => self.release(vs[0]),
+            TyKind::Fn(..) => self.drop_obj(vs[0]),
+            TyKind::Obj(n, _) if !n.is_map_or_set() => self.drop_obj(vs[0]),
             TyKind::Opt(inner)
                 if self.g.lay.opt_is_nullable(*inner) && !self.g.lay.opt_is_boxed(*inner) =>
             {
-                let p = vs[0];
-                let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, p, 0);
-                self.if_then(nn, |s| s.release(p));
+                self.drop_obj(vs[0]);
             }
             _ => {
                 let id = self.g.glue(Glue::Drop, ty);
@@ -489,14 +481,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.switch_to_block(join);
                 self.b.block_params(join).to_vec()
             }
-            TyKind::Fn(..) => {
-                self.retain(vs[0]);
-                vs.to_vec()
-            }
-            TyKind::Obj(n, _) if !n.is_map_or_set() => {
-                self.retain(vs[0]);
-                vs.to_vec()
-            }
+            TyKind::Fn(..) => vec![self.clone_obj(vs[0])],
+            TyKind::Obj(n, _) if !n.is_map_or_set() => vec![self.clone_obj(vs[0])],
             _ => {
                 let id = self.g.glue(Glue::Copy, ty);
                 self.call_id(id, vs)
@@ -548,6 +534,38 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
                 self.free(obj);
                 self.b.ins().return_(&[]);
+            }
+            Glue::ClosureClone(f) => {
+                // A new closure object with the same header and code over copies of the captures.
+                let src = params[0];
+                let caps = match &self.g.m.funcs[f as usize].kind {
+                    ms_mir::ir::FuncKind::Closure { captures } => captures.clone(),
+                    _ => Vec::new(),
+                };
+                let mut layouts = Vec::new();
+                let mut off = CLOSURE_CAPTURES as i64;
+                for cty in &caps {
+                    let leaves = self.g.lay.leaves(*cty);
+                    let lay = mem_layout(&leaves);
+                    off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
+                    layouts.push((off, leaves));
+                    off += lay.size as i64;
+                }
+                let total = (off + 7) / 8 * 8;
+                let mut copies = Vec::new();
+                for (cty, (off, leaves)) in caps.iter().zip(&layouts) {
+                    let vs = self.load_leaves(src, *off, leaves);
+                    copies.push(self.copy_value(*cty, &vs));
+                }
+                let obj = self.alloc(total);
+                for at in [0, 8, CLOSURE_CODE] {
+                    let word = self.b.ins().load(types::I64, flags(), src, at);
+                    self.b.ins().store(flags(), word, obj, at);
+                }
+                for ((off, leaves), vs) in layouts.iter().zip(&copies) {
+                    self.store_leaves(obj, *off, leaves, vs);
+                }
+                self.b.ins().return_(&[obj]);
             }
             Glue::BlockDrop => {
                 // Interface payload block holding a `ty` value.
@@ -1102,11 +1120,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Opt(_) if self.g.lay.is_str_like(ty) => self.copy_value(ty, vs),
             TyKind::Opt(inner) => {
                 if self.g.lay.opt_is_nullable(inner) {
-                    // Retain through copy_value on a non-null pointer.
-                    let p = vs[0];
-                    let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, p, 0);
-                    self.if_then(nn, |s| s.retain(p));
-                    vs.to_vec()
+                    // A `none` is null, which the clone entry call passes through.
+                    vec![self.clone_obj(vs[0])]
                 } else {
                     // Copy the payload only when present; otherwise the zero payload is returned.
                     let present = vs[0];
@@ -2909,8 +2924,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         let total = (off + 7) / 8 * 8;
         let obj = self.alloc(total);
-        let one = self.iconst(1);
-        self.b.ins().store(flags(), one, obj, 0);
+        let clone = self.g.glue(Glue::ClosureClone(c.0), Ty::UNIT);
+        let cr = self.fref(clone);
+        let ca = self.b.ins().func_addr(types::I64, cr);
+        self.b.ins().store(flags(), ca, obj, 0);
         let drop = self.g.glue(Glue::ClosureDrop(c.0), Ty::UNIT);
         let dr = self.fref(drop);
         let da = self.b.ins().func_addr(types::I64, dr);

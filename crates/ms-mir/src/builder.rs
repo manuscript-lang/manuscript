@@ -4,8 +4,8 @@
 //! opcode determines them. Mutable source variables can be modelled with
 //! [`Var`]s (`declare_var`, `def_var`, `use_var`, `seal_block`), which the
 //! builder turns into block parameters (Braun et al., *Simple and Efficient
-//! Construction of SSA Form*). The builder never inserts `retain`/`release`:
-//! reference counting is the caller's job, and the verifier checks it.
+//! Construction of SSA Form*). The builder never inserts clones or drops:
+//! ownership is the caller's job, and the verifier checks it.
 
 use crate::ir::*;
 use crate::types::*;
@@ -318,7 +318,7 @@ impl<'m> FuncBuilder<'m> {
         self.val(Op::AltNew, fields, Imm::Case(a, case), t)
     }
     /// `alt.view`: an alternative holding the borrowed `fields` themselves, which it neither
-    /// retains nor releases.
+    /// clones nor drops.
     pub fn alt_view(&mut self, a: AltId, case: u32, fields: &[Value]) -> Value {
         let t = self.m.types.alt(a);
         self.val(Op::AltView, fields, Imm::Case(a, case), t)
@@ -426,7 +426,7 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.opt(self.ty(v));
         self.val(Op::OptSome, &[v], Imm::None, t)
     }
-    /// `opt.view`: an optional holding the borrowed `v` itself, which is neither retained nor released.
+    /// `opt.view`: an optional holding the borrowed `v` itself, which is neither cloned nor dropped.
     pub fn opt_view(&mut self, v: Value) -> Value {
         let t = self.m.types.opt(self.ty(v));
         self.val(Op::OptView, &[v], Imm::None, t)

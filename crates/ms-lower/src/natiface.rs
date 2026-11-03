@@ -1,6 +1,6 @@
 //! Standard-library interfaces implemented by runtime handles: `stdin()`, `files()`, ...
 //!
-//! The interface value's data is a refcounted runtime handle (or nothing). Each interface
+//! The interface value's data is an owned runtime handle (or nothing). Each interface
 //! operation becomes a generated forwarder that calls the runtime symbol named by [`METHODS`]
 //! through the same marshalling as any native method, so statuses become `Result` values.
 

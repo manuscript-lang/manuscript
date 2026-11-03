@@ -34,12 +34,12 @@ extern "C" {
 #define ms_list_push ms_list_push_v1
 #define ms_object_new ms_object_new_v1
 #define ms_payload ms_payload_v1
-#define ms_retain ms_retain_v1
-#define ms_release ms_release_v1
+#define ms_object_clone ms_object_clone_v1
+#define ms_object_drop ms_object_drop_v1
 #define ms_fault ms_fault_v1
 #define ms_call ms_call_v1
-#define ms_fn_retain ms_fn_retain_v1
-#define ms_fn_release ms_fn_release_v1
+#define ms_fn_clone ms_fn_clone_v1
+#define ms_fn_drop ms_fn_drop_v1
 #define ms_on_stop ms_on_stop_v1
 #define ms_on_stop_remove ms_on_stop_remove_v1
 
@@ -103,17 +103,20 @@ size_t   ms_list_len(const ms_list *l);
 ms_kind  ms_list_kind(const ms_list *l);
 /* Strings and bytes come back as malloc'd copies (ms_value_free); objects are borrowed. */
 ms_value ms_list_get(const ms_list *l, size_t i);
-/* Appends a copy of `v`; an object is retained. */
+/* Appends a copy of `v`; an object is cloned (ms_object_clone). */
 void     ms_list_push(ms_list *out, const ms_value *v);
 
 /* ---- 6. Native objects (extern type) ------------------------------------------------- */
-/* An extern type value: `size` bytes of zeroed payload, 16-byte aligned, at a stable address.
-   `drop(payload)`, which may be NULL, runs once when the last reference goes; it may free C
-   memory, start a library's asynchronous close and call ms_release, nothing else. */
+/* An extern type value: `size` bytes of zeroed payload, 16-byte aligned, at a stable address,
+   with one owner. `drop(payload)`, which may be NULL, runs once when the owner drops it; it may
+   free C memory, start a library's asynchronous close and call ms_object_drop, nothing else. */
 ms_object *ms_object_new(size_t size, void (*drop)(void *payload));
 void      *ms_payload(ms_object *o);
-ms_object *ms_retain(ms_object *o);
-void       ms_release(ms_object *o);
+/* An independent copy of an object the shim keeps past the call; a value that cannot be copied
+   (an extern type value is one) faults. */
+ms_object *ms_object_clone(ms_object *o);
+/* Drops an object the shim owns: one it made and did not return, or cloned. */
+void       ms_object_drop(ms_object *o);
 
 /* ---- 7. Errors and faults ------------------------------------------------------------ */
 /* A fallible extern returns uint8_t: 0 is ok, n is the n-th case of its error type. If any case
@@ -129,15 +132,17 @@ MS_NORETURN void ms_fault(const char *text, size_t len);
    6) are sized numbers, Bool, String, Bytes or extern types; its result one of those
    but an extern type, or Unit. */
 typedef struct ms_fn ms_fn;
-/* Calls f on this thread with copies of `count` arguments. An integer must have the kind
-   (MS_INT or MS_UINT) and range of its parameter, a string must be UTF-8, an object is
-   retained; anything else faults before the call. `result` (may be NULL) receives the value
+/* Calls f on this thread with `count` arguments lent to it, as every function value is called:
+   a string or bytes is copied in for the call, an object is passed as it is and stays the
+   shim's. An integer must have the kind (MS_INT or MS_UINT) and range of its parameter and a
+   string must be UTF-8; anything else faults before the call. `result` (may be NULL) receives the value
    as ms_list_get gives it: strings and bytes are malloc'd copies (ms_value_free). A fault in f
    is a fault of the program; ms_call does not return from it. */
 void   ms_call(ms_fn *f, const ms_value *args, size_t count, ms_value *result);
-/* Keep f after the extern call returns, and drop it, on the thread that called the shim. */
-ms_fn *ms_fn_retain(ms_fn *f);
-void   ms_fn_release(ms_fn *f);
+/* A copy of f to keep after the extern call returns, and its drop, on the thread that called
+   the shim. */
+ms_fn *ms_fn_clone(ms_fn *f);
+void   ms_fn_drop(ms_fn *f);
 
 /* ---- 10. Stop requests --------------------------------------------------------------- */
 typedef struct ms_stop_hook ms_stop_hook;

@@ -18,32 +18,32 @@ extern crate std;
 pub mod record;
 
 /// Bump when any layout or symbol here changes incompatibly.
-pub const ABI_VERSION: u32 = 3;
+pub const ABI_VERSION: u32 = 4;
 
 // ---------------------------------------------------------------------------
-// Object header and reference counting
+// Object header
 // ---------------------------------------------------------------------------
 
-/// Reference count given to static and literal objects. Counts never reach zero
-/// in practice (2^62 decrements), so count updates on them are harmless and the
-/// generated code needs no immortality check.
-pub const STATIC_RC: usize = 1 << 62;
+/// Clone entry of an object header: returns a new object holding an independent copy of
+/// the value (a closure's captures deep-copied, a native's payload cloned). Null for a value
+/// with one owner, which a program cannot copy; a copy of one is a fault.
+pub type CloneFn = unsafe extern "C" fn(*mut Obj) -> *mut Obj;
 
-/// Drop entry of an object header. Called when the count reaches zero. The
-/// function releases the object's children and then frees its own memory with
-/// `msrt_free(obj)`.
+/// Drop entry of an object header. Called once, when the owner drops the object. The
+/// function drops the object's children and then frees its own memory with `msrt_free(obj)`.
 pub type DropFn = unsafe extern "C" fn(*mut Obj);
 
-/// The 16-byte header every heap object starts with.
+/// The 16-byte header every heap object starts with. An object has one owner: a copy of it
+/// goes through `clone`, and the owner's drop goes through `drop`.
 #[repr(C)]
 pub struct Obj {
-    /// Non-atomic reference count: every task runs on the one runtime thread.
-    pub rc: usize,
+    /// Clone protocol entry; null when the value cannot be copied.
+    pub clone: Option<CloneFn>,
     /// Drop protocol entry; never null for a live object.
     pub drop: Option<DropFn>,
 }
 
-pub const OBJ_RC_OFFSET: usize = 0;
+pub const OBJ_CLONE_OFFSET: usize = 0;
 pub const OBJ_DROP_OFFSET: usize = 8;
 pub const OBJ_HEADER_SIZE: usize = 16;
 
@@ -359,8 +359,8 @@ pub const KIND_BOOL: u32 = 2;
 pub const KIND_STRING: u32 = 3;
 /// Slot holds a `VecVal` of bytes (24 bytes). Copy duplicates the buffer.
 pub const KIND_BYTES: u32 = 4;
-/// Slot holds a nullable pointer to a reference-counted object with an `Obj`
-/// header (closures, handle objects...). Copy = retain, drop = release.
+/// Slot holds a nullable pointer to an object with an `Obj` header (closures, handle
+/// objects...). Copy calls the header's clone entry, drop its drop entry.
 /// `eq`/`hash` are called when present, else identity.
 pub const KIND_SHARED: u32 = 5;
 /// Plain bits without ownership (scalars, records of scalars, inline `Int?`).
@@ -377,8 +377,8 @@ pub const KIND_CUSTOM: u32 = 10;
 
 /// Drops the value stored in a slot (frees what it owns; the slot memory itself is the caller's).
 pub type SlotDropFn = unsafe extern "C" fn(slot: *mut u8);
-/// Duplicates the value in `src` into uninitialised `dst` (`.copy()`): owned
-/// parts are deep copied, reference-counted parts retained.
+/// Duplicates the value in `src` into uninitialised `dst` (`.clone()`): every part is deep
+/// copied, objects through their clone entry.
 pub type SlotCopyFn = unsafe extern "C" fn(src: *const u8, dst: *mut u8);
 /// Equality of two slots; returns 0 or 1.
 pub type SlotEqFn = unsafe extern "C" fn(a: *const u8, b: *const u8) -> u8;
@@ -462,8 +462,8 @@ pub const OPT_SCALAR_VALUE_OFFSET_8: usize = 8;
 pub const OPT_BOOL_VALUE_OFFSET: usize = 1;
 pub const OPT_INT_SIZE: usize = 16;
 
-/// Function value (heap object, reference counted): header, code pointer, then captured values chosen by the
-/// compiler. Calling convention of `code` is `extern "C" fn(closure: *mut Closure, args...)`.
+/// Function value (heap object with one owner): header, code pointer, then captured values chosen by the
+/// compiler. Its clone entry deep-copies the captures. Calling convention of `code` is `extern "C" fn(closure: *mut Closure, args...)`.
 #[repr(C)]
 pub struct Closure {
     pub hdr: Obj,
@@ -821,17 +821,20 @@ size_t   ms_list_len(const ms_list *l);
 ms_kind  ms_list_kind(const ms_list *l);
 /* Strings and bytes come back as malloc'd copies (ms_value_free); objects are borrowed. */
 ms_value ms_list_get(const ms_list *l, size_t i);
-/* Appends a copy of `v`; an object is retained. */
+/* Appends a copy of `v`; an object is cloned (ms_object_clone). */
 void     ms_list_push(ms_list *out, const ms_value *v);
 
 /* ---- 6. Native objects (extern type) ------------------------------------------------- */
-/* An extern type value: `size` bytes of zeroed payload, 16-byte aligned, at a stable address.
-   `drop(payload)`, which may be NULL, runs once when the last reference goes; it may free C
-   memory, start a library's asynchronous close and call ms_release, nothing else. */
+/* An extern type value: `size` bytes of zeroed payload, 16-byte aligned, at a stable address,
+   with one owner. `drop(payload)`, which may be NULL, runs once when the owner drops it; it may
+   free C memory, start a library's asynchronous close and call ms_object_drop, nothing else. */
 ms_object *ms_object_new(size_t size, void (*drop)(void *payload));
 void      *ms_payload(ms_object *o);
-ms_object *ms_retain(ms_object *o);
-void       ms_release(ms_object *o);
+/* An independent copy of an object the shim keeps past the call; a value that cannot be copied
+   (an extern type value is one) faults. */
+ms_object *ms_object_clone(ms_object *o);
+/* Drops an object the shim owns: one it made and did not return, or cloned. */
+void       ms_object_drop(ms_object *o);
 
 /* ---- 7. Errors and faults ------------------------------------------------------------ */
 /* A fallible extern returns uint8_t: 0 is ok, n is the n-th case of its error type. If any case
@@ -847,15 +850,17 @@ MS_NORETURN void ms_fault(const char *text, size_t len);
    {call_max}) are sized numbers, Bool, String, Bytes or extern types; its result one of those
    but an extern type, or Unit. */
 typedef struct ms_fn ms_fn;
-/* Calls f on this thread with copies of `count` arguments. An integer must have the kind
-   (MS_INT or MS_UINT) and range of its parameter, a string must be UTF-8, an object is
-   retained; anything else faults before the call. `result` (may be NULL) receives the value
+/* Calls f on this thread with `count` arguments lent to it, as every function value is called:
+   a string or bytes is copied in for the call, an object is passed as it is and stays the
+   shim's. An integer must have the kind (MS_INT or MS_UINT) and range of its parameter and a
+   string must be UTF-8; anything else faults before the call. `result` (may be NULL) receives the value
    as ms_list_get gives it: strings and bytes are malloc'd copies (ms_value_free). A fault in f
    is a fault of the program; ms_call does not return from it. */
 void   ms_call(ms_fn *f, const ms_value *args, size_t count, ms_value *result);
-/* Keep f after the extern call returns, and drop it, on the thread that called the shim. */
-ms_fn *ms_fn_retain(ms_fn *f);
-void   ms_fn_release(ms_fn *f);
+/* A copy of f to keep after the extern call returns, and its drop, on the thread that called
+   the shim. */
+ms_fn *ms_fn_clone(ms_fn *f);
+void   ms_fn_drop(ms_fn *f);
 
 /* ---- 10. Stop requests --------------------------------------------------------------- */
 typedef struct ms_stop_hook ms_stop_hook;
@@ -908,12 +913,12 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);
         "ms_list_push",
         "ms_object_new",
         "ms_payload",
-        "ms_retain",
-        "ms_release",
+        "ms_object_clone",
+        "ms_object_drop",
         "ms_fault",
         "ms_call",
-        "ms_fn_retain",
-        "ms_fn_release",
+        "ms_fn_clone",
+        "ms_fn_drop",
         "ms_on_stop",
         "ms_on_stop_remove",
     ];
@@ -958,7 +963,7 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);
     #[test]
     fn layouts_match_constants() {
         assert_eq!(size_of::<Obj>(), OBJ_HEADER_SIZE);
-        assert_eq!(offset_of!(Obj, rc), OBJ_RC_OFFSET);
+        assert_eq!(offset_of!(Obj, clone), OBJ_CLONE_OFFSET);
         assert_eq!(offset_of!(Obj, drop), OBJ_DROP_OFFSET);
         assert_eq!(offset_of!(StrVal, ptr_word), STR_PTR_OFFSET);
         assert_eq!(offset_of!(StrVal, tagged), STR_LEN_OFFSET);

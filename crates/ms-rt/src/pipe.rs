@@ -449,7 +449,7 @@ mod tests {
             // SAFETY: the promise owns the closure it is handed until its task has ended.
             unsafe {
                 let size = size_of::<Closure>() + 16;
-                let closure = crate::obj::new_obj(size, drop_closure).cast::<Closure>();
+                let closure = crate::obj::new_obj(size, None, drop_closure).cast::<Closure>();
                 (*closure).code = writer as *const u8;
                 let data = closure.add(1).cast::<i64>();
                 data.write(id);

@@ -39,8 +39,8 @@ use alloc::vec::Vec;
 use command::Subprocess;
 use ms_rt::ffi::ErrOut;
 use ms_rt::ffi::{
-    Bytes, IntList, ObjBox, ObjMut, ObjRef, ObjShare, Object, StatusCode, Str, StrMap, StringList,
-    Text, TextList, abi_handle, abi_record, argv, monotonic_nanos, native, start_nanos,
+    Bytes, IntList, ObjBox, ObjMut, ObjRef, Object, StatusCode, Str, StrMap, StringList, Text,
+    TextList, abi_handle, abi_record, argv, monotonic_nanos, native, start_nanos,
 };
 use ms_rt_abi::STATUS_INVALID_INPUT;
 use ms_std_fs::err::{Fail, Res};
@@ -418,16 +418,6 @@ native! {
             ObjBox::new(parent_end(&mut p.stderr, b"|0")),
         ];
         Ok(Object(Child { proc: p, streams, ids: [-2; 3] }))
-    }
-
-    /// The child's piped standard input; closed unless spawned with `Stdio.Pipe`.
-    fn msstd_process_subprocess_stdin(h: ObjRef<Child>) -> ObjShare<Stream> {
-        h.streams[0].share()
-    }
-
-    /// `which`: 0 stdin, 1 stdout, 2 stderr. Returns a new reference to the stream.
-    fn msstd_process_subprocess_stream(h: ObjRef<Child>, which: i64) -> ObjShare<Stream> {
-        h.streams[which.clamp(0, 2) as usize].share()
     }
 
     /// The runtime stream-table id of the child's pipe `which` (0 stdin, 1 stdout, 2 stderr): the

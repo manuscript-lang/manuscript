@@ -81,7 +81,7 @@ uint8_t lib_count(const ms_str *path, int64_t *out, int64_t *code_out, ms_str *m
 
 ## Extern types
 
-`extern type Name` declares an opaque handle that a native makes with `ms_object_new(size, drop)`: `size` zeroed payload bytes at a stable address (`ms_payload`), and a `drop` (or NULL) that runs once when the last reference goes. The program copies a handle by sharing it, and a native keeps one past a call with `ms_retain` and gives it back with `ms_release`. An extern type has no fields and cannot be generic. Pair it with private externs and an `impl` block so the public API is plain Manuscript.
+`extern type Name` declares an opaque handle that a native makes with `ms_object_new(size, drop)`: `size` zeroed payload bytes at a stable address (`ms_payload`), and a `drop` (or NULL) that runs once when its owner drops it. A handle has one owner and cannot be copied (`.clone()` is rejected and `ms_object_clone` of one faults); a native that made a handle and does not return it drops it with `ms_object_drop`. An extern type has no fields and cannot be generic. Pair it with private externs and an `impl` block so the public API is plain Manuscript.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -103,7 +103,7 @@ impl Closeable for Connection:
 
 A function argument reaches the native as an `ms_fn *`, which `ms_call(f, args, count, result)` calls on the same thread with an array of `ms_value`s. Each argument must have the kind and range of its parameter (`MS_INT` for a signed type, `MS_UINT` for an unsigned one), or `ms_call` faults before the call. `result`, which may be NULL, receives the value as `ms_list_get` gives it. A fault in the function ends the program like any fault; `ms_call` does not return from it. A function takes at most six parameters.
 
-A native that keeps a function past the call, for a library that calls back later, takes a reference with `ms_fn_retain` and gives it back with `ms_fn_release`. It calls the function only on the thread that called the native. Because a native may keep it, a closure passed to an extern owns what it captures.
+A native that keeps a function past the call, for a library that calls back later, takes its own copy with `ms_fn_clone` and drops it with `ms_fn_drop`. It calls the function only on the thread that called the native. Because a native may keep it, a closure passed to an extern owns what it captures.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript

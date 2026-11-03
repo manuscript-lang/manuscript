@@ -126,7 +126,7 @@ impl Drop for Serving {
     fn drop(&mut self) {
         self.listener.close();
         // SAFETY: the closure `serve` handed over, dropped once here.
-        unsafe { ms_rt::obj::msrt_release(self.handler) };
+        unsafe { ms_rt::obj::msrt_obj_drop(self.handler) };
     }
 }
 

@@ -84,7 +84,7 @@ unsafe fn slot_drop_owned(d: &TypeDesc, slot: *mut u8) {
         match d.kind {
             KIND_INT | KIND_FLOAT | KIND_BOOL | KIND_POD => {}
             KIND_STRING => string::release(&*(slot as *const StrVal)),
-            KIND_SHARED => obj::release(*(slot as *mut *mut Obj)),
+            KIND_SHARED => obj::drop_obj(*(slot as *mut *mut Obj)),
             KIND_BYTES => {
                 let v = &mut *(slot as *mut VecVal);
                 if !v.ptr.is_null() {
@@ -131,8 +131,7 @@ unsafe fn slot_copy_slow(d: &TypeDesc, src: *const u8, dst: *mut u8) {
             KIND_STRING => string::cloned(&*(src as *const StrVal)).write_to(dst as *mut StrVal),
             KIND_SHARED => {
                 let p = *(src as *const *mut Obj);
-                obj::retain(p);
-                *(dst as *mut *mut Obj) = p;
+                *(dst as *mut *mut Obj) = obj::clone_obj(p);
             }
             KIND_BYTES => crate::vec::copy_bytes(src as *const VecVal, dst as *mut VecVal),
             KIND_LIST => {

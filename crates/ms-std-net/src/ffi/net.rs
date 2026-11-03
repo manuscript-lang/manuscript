@@ -578,7 +578,7 @@ mod tests {
             msstd_net_connection_close(server);
             msstd_net_listener_close(listener);
             for h in [client.cast(), server.cast(), listener.cast(), net.cast()] {
-                ms_rt::obj::msrt_release(h);
+                ms_rt::obj::msrt_obj_drop(h);
             }
         }
     }
@@ -644,8 +644,8 @@ mod tests {
             assert_eq!(records.len, 1);
             let record = &*(records.ptr as *const DnsRecordWire);
             assert_eq!(take(record.value.as_ptr().read()), "127.0.0.1");
-            ms_rt::obj::msrt_release(child.cast());
-            ms_rt::obj::msrt_release(net.cast());
+            ms_rt::obj::msrt_obj_drop(child.cast());
+            ms_rt::obj::msrt_obj_drop(net.cast());
         }
     }
 }

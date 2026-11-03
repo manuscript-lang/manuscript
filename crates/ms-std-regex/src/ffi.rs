@@ -139,7 +139,7 @@ mod tests {
                 msstd_regex_compile(&bad, &mut none),
                 ms_rt::ffi::STATUS_INVALID_DATA
             );
-            ms_rt::obj::msrt_release(re.cast());
+            ms_rt::obj::msrt_obj_drop(re.cast());
             ms_rt::ffi::str_release(&pat);
             ms_rt::ffi::str_release(&hay);
             ms_rt::ffi::str_release(&bad);

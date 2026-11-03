@@ -11,7 +11,7 @@ use ms_rt_abi::{Obj, StrVal};
 use std::rc::Rc;
 
 use ms_rt::fault::msrt_guard_call;
-use ms_rt::obj::msrt_release;
+use ms_rt::obj::msrt_obj_drop;
 
 /// A string slot no one has written: the null string a thunk leaves when it reports no message.
 const NO_MESSAGE: StrVal = StrVal::literal(std::ptr::null_mut(), 0);
@@ -76,9 +76,9 @@ impl Dispatch for Program {
         // SAFETY: the thunk contract; the handle is live for the call.
         let call = || status = unsafe { thunk(self.env, handle, &mut message) };
         let stop = guarded(call);
-        // SAFETY: the handle created above is released once, after the thunk returned or its
-        // frames were abandoned; the frames' own references leak, but this one need not.
-        unsafe { msrt_release(handle) };
+        // SAFETY: the handle created above is dropped once, after the thunk returned or its
+        // frames were abandoned.
+        unsafe { msrt_obj_drop(handle) };
         if let Some(stop) = stop {
             return stop;
         }

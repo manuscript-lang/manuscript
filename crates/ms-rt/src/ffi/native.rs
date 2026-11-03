@@ -19,7 +19,7 @@ use std::vec::Vec;
 
 use crate::desc::{msrt_desc_int, msrt_desc_string};
 use crate::map::{msrt_map_add, msrt_map_new};
-use crate::obj::{msrt_alloc, msrt_free, msrt_release, msrt_retain};
+use crate::obj::{msrt_alloc, msrt_free, msrt_obj_clone, msrt_obj_drop};
 use crate::start::{msrt_argv, msrt_start_nanos};
 use crate::vec::{
     msrt_bytes_copy, msrt_bytes_drop, msrt_list_copy, msrt_list_drop, msrt_list_new, msrt_list_push,
@@ -499,8 +499,7 @@ unsafe impl<'a> FromAbi<'a> for Vec<&'a [u8]> {
     }
 }
 
-/// One reference to a runtime object held by Rust (a child's pipes, say), released on drop. The
-/// object may also be handed to Manuscript with [`ObjBox::share`].
+/// A runtime object owned by Rust (a child's pipes, say), dropped with the box.
 pub struct ObjBox<T: AbiHandle>(*mut ObjCell<T>);
 
 impl<T: AbiHandle> ObjBox<T> {
@@ -513,59 +512,12 @@ impl<T: AbiHandle> ObjBox<T> {
         // thread and no other borrow is active during a native call.
         unsafe { &mut (*self.0).value }
     }
-
-    /// Another reference to the object, for returning to Manuscript.
-    pub fn share(&self) -> ObjShare<T> {
-        ObjShare(self.0)
-    }
 }
 
 impl<T: AbiHandle> Drop for ObjBox<T> {
     fn drop(&mut self) {
-        // SAFETY: releases the one reference this box owns.
-        unsafe { msrt_release(self.0.cast()) }
-    }
-}
-
-/// An existing runtime object handed back to the caller as another reference (the same object,
-/// retained), as when one handle serves two interfaces.
-pub struct ObjShare<T: AbiHandle>(*mut ObjCell<T>);
-
-impl<T: AbiHandle> AbiType for ObjShare<T> {
-    type Raw = *mut ObjCell<T>;
-}
-// SAFETY: an object argument is a live runtime object that outlives the call.
-unsafe impl<T: AbiHandle> FromAbi<'_> for ObjShare<T> {
-    unsafe fn from_raw(raw: *mut ObjCell<T>) -> ObjShare<T> {
-        ObjShare(raw)
-    }
-}
-impl<T: AbiHandle> IntoAbi for ObjShare<T> {
-    type Raw = *mut ObjCell<T>;
-    fn into_raw(self) -> *mut ObjCell<T> {
-        // SAFETY: `self.0` is a live object; the caller receives its own reference.
-        unsafe { msrt_retain(self.0.cast()) };
-        self.0
-    }
-}
-
-/// A runtime object returned to Manuscript: a new one, or another reference to one that Rust
-/// keeps, as when a native hands out a cached handle.
-pub enum Handed<T: AbiHandle> {
-    New(Object<T>),
-    Shared(ObjShare<T>),
-}
-
-impl<T: AbiHandle> AbiType for Handed<T> {
-    type Raw = *mut ObjCell<T>;
-}
-impl<T: AbiHandle> IntoAbi for Handed<T> {
-    type Raw = *mut ObjCell<T>;
-    fn into_raw(self) -> *mut ObjCell<T> {
-        match self {
-            Handed::New(o) => o.into_raw(),
-            Handed::Shared(s) => s.into_raw(),
-        }
+        // SAFETY: drops the object this box owns.
+        unsafe { msrt_obj_drop(self.0.cast()) }
     }
 }
 
@@ -978,7 +930,7 @@ unsafe impl FromAbi<'_> for Handler {
     }
 }
 
-/// A runtime object stored inline in a record (one reference), for [`abi_record!`].
+/// A runtime object stored inline in a record, which owns it, for [`abi_record!`].
 #[repr(transparent)]
 pub struct ObjSlot<T: AbiHandle>(*mut ObjCell<T>);
 
@@ -990,13 +942,12 @@ impl<T: AbiHandle> ObjSlot<T> {
 
 impl<T: AbiHandle> AbiSlot for ObjSlot<T> {
     unsafe fn release(&mut self) {
-        // SAFETY: caller contract; the slot owns one reference.
-        unsafe { msrt_release(self.0.cast()) }
+        // SAFETY: caller contract; the slot owns the object.
+        unsafe { msrt_obj_drop(self.0.cast()) }
     }
     unsafe fn duplicate(&self) -> ObjSlot<T> {
-        // SAFETY: caller contract.
-        unsafe { msrt_retain(self.0.cast()) };
-        ObjSlot(self.0)
+        // SAFETY: caller contract; the object's clone entry makes an independent copy.
+        ObjSlot(unsafe { msrt_obj_clone(self.0.cast()) }.cast())
     }
 }
 
@@ -1080,9 +1031,20 @@ pub struct ObjCell<T> {
     value: T,
 }
 
+/// The clone entry of an `ObjCell<T>`: a new cell holding [`AbiHandle::clone_value`], or a
+/// fault for a handle that has one owner.
+unsafe extern "C" fn cell_clone<T: AbiHandle>(o: *mut ms_rt_abi::Obj) -> *mut ms_rt_abi::Obj {
+    let c = o.cast::<ObjCell<T>>();
+    // SAFETY: `o` is a live `ObjCell<T>` built by `Object::into_raw`.
+    let Some(value) = (unsafe { (*c).value.clone_value() }) else {
+        crate::fault::fatal(b"copy of a native value that has one owner");
+    };
+    Object(value).into_raw().cast()
+}
+
 unsafe extern "C" fn cell_drop<T>(o: *mut ms_rt_abi::Obj) {
     let c = o.cast::<ObjCell<T>>();
-    // SAFETY: `o` is an `ObjCell<T>` built by `Object::into_raw`; freed once, at count zero.
+    // SAFETY: `o` is an `ObjCell<T>` built by `Object::into_raw`; dropped once by its owner.
     unsafe {
         core::ptr::drop_in_place(&mut (*c).value);
         msrt_free(o.cast());
@@ -1114,7 +1076,7 @@ impl<T: AbiHandle> IntoAbi for Object<T> {
             let p = msrt_alloc(core::mem::size_of::<ObjCell<T>>()).cast::<ObjCell<T>>();
             p.write(ObjCell {
                 header: ms_rt_abi::Obj {
-                    rc: 1,
+                    clone: Some(cell_clone::<T>),
                     drop: Some(cell_drop::<T>),
                 },
                 value: self.0,
@@ -1221,7 +1183,13 @@ impl IntoAbi for Option<String> {
 ///
 /// # Safety
 /// Only [`abi_handle!`] implements it.
-pub unsafe trait AbiHandle: Sized {}
+pub unsafe trait AbiHandle: Sized {
+    /// An independent copy of the value, for a type whose Manuscript declaration has a
+    /// `clone()`; none for a handle with one owner, whose copy is a fault.
+    fn clone_value(&self) -> Option<Self> {
+        None
+    }
+}
 
 /// An owned handle: returned to Manuscript as a pointer, or received to be freed.
 pub struct Own<T: AbiHandle>(pub Box<T>);
@@ -1291,13 +1259,24 @@ impl<T: AbiHandle> IntoAbi for Own<T> {
     }
 }
 
-/// Declares a Rust type as a handle for [`native!`](crate::native).
+/// Declares a Rust type as a handle for [`native!`](crate::native). `abi_handle!(T, clone)`
+/// makes the handle copyable through `T: Clone`, for a type whose Manuscript declaration has a
+/// `clone()`.
 #[macro_export]
 macro_rules! abi_handle {
     ($t:ty) => {
         #[allow(unsafe_code)]
         // SAFETY: handles cross the ABI only through `Own`, `Ref` and `Mut`.
         unsafe impl $crate::ffi::AbiHandle for $t {}
+    };
+    ($t:ty, clone) => {
+        #[allow(unsafe_code)]
+        // SAFETY: handles cross the ABI only through `Own`, `Ref` and `Mut`.
+        unsafe impl $crate::ffi::AbiHandle for $t {
+            fn clone_value(&self) -> Option<Self> {
+                Some(Clone::clone(self))
+            }
+        }
     };
 }
 

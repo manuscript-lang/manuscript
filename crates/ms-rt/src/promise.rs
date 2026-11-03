@@ -305,7 +305,7 @@ fn apply(event: Event) {
             let closure = core::mem::take(&mut t.closure[i]);
             if closure != 0 {
                 // SAFETY: the closure handed over at start; the task is over, so this is its last use.
-                unsafe { crate::obj::release(closure as *mut ms_rt_abi::Obj) };
+                unsafe { crate::obj::drop_obj(closure as *mut ms_rt_abi::Obj) };
             }
             t.thread[i] = NOT_STARTED;
             if t.state[i] == State::Pending && t.flags[i] & HELD != 0 {
@@ -785,7 +785,7 @@ fn run_deferred(id: i64, deadline: Option<i64>) {
     // cleanup when a cancelled wait inside the work jumps out of it, which skips Rust destructors.
     let release = || {
         // SAFETY: the closure is ours, dropped once.
-        unsafe { crate::obj::release(closure.cast()) };
+        unsafe { crate::obj::drop_obj(closure.cast()) };
     };
     // SAFETY: the code is the closure's entry.
     fault::with_cleanup(&mut || release(), || unsafe {
@@ -828,7 +828,7 @@ pub unsafe fn start_native(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mu
     let id = msrt_promise_new();
     // SAFETY: a fresh object with no captures to drop, handed over to the promise for the task.
     unsafe {
-        let n = crate::obj::new_obj(size_of::<Native>(), native_drop).cast::<Native>();
+        let n = crate::obj::new_obj(size_of::<Native>(), None, native_drop).cast::<Native>();
         (*n).closure.code = native_code as *const u8;
         (*n).entry = entry;
         (*n).arg = arg;
@@ -1028,7 +1028,7 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
         t.flags[i] &= !DEFERRED;
         let closure = core::mem::take(&mut t.retry_state[i]);
         // SAFETY: the closure handed over to `msrt_promise_defer`, never used.
-        unsafe { crate::obj::release(closure as *mut ms_rt_abi::Obj) };
+        unsafe { crate::obj::drop_obj(closure as *mut ms_rt_abi::Obj) };
     }
     if t.state[i] == State::Pending
         && let Some(retry) = core::mem::take(&mut t.retry[i])
@@ -1078,7 +1078,8 @@ mod tests {
         // SAFETY: the capture-free closure is handed to the promise, which drops it when the task ends.
         unsafe {
             *ID.ptr() = id;
-            let closure = crate::obj::new_obj(size_of::<Closure>(), drop_closure).cast::<Closure>();
+            let closure =
+                crate::obj::new_obj(size_of::<Closure>(), None, drop_closure).cast::<Closure>();
             (*closure).code = code as *const u8;
             msrt_promise_start(id, closure);
         }
@@ -1301,7 +1302,7 @@ mod tests {
         // SAFETY: the closure is handed to the promise, which drops it when its task has ended.
         unsafe {
             let size = size_of::<Closure>() + 8;
-            let closure = crate::obj::new_obj(size, drop_closure).cast::<Closure>();
+            let closure = crate::obj::new_obj(size, None, drop_closure).cast::<Closure>();
             (*closure).code = code as *const u8;
             closure.add(1).cast::<i64>().write(id);
             msrt_promise_start(id, closure);

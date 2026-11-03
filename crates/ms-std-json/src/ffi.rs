@@ -1,6 +1,6 @@
 //! C ABI shims for `@std/data/json.ms` (`msstd_json_*`).
 //!
-//! `JsonValue` has no flat layout, so values cross the boundary as a refcounted document handle
+//! `JsonValue` has no flat layout, so values cross the boundary as an owned document handle
 //! ([`DocObj`]) plus `u32` node ids. A parse yields a document the generated decoders read with the
 //! accessors; an encoder starts a `builder_new` document, adds nodes bottom-up and serializes the
 //! root. Node ids are only valid for the document that issued them.
@@ -381,7 +381,7 @@ mod tests {
             assert_eq!(msstd_json_len(d, root), 2);
             let a = msstd_json_item(d, root, 0);
             assert_eq!(msstd_json_len(d, a), 3);
-            ms_rt::obj::msrt_release(d.cast());
+            ms_rt::obj::msrt_obj_drop(d.cast());
             ms_rt::ffi::str_release(&text);
         }
     }

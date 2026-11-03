@@ -59,7 +59,6 @@ msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize @leaf
 msrt_cleanup_run(handle: usize) @leaf
 msrt_cpu_level() -> i64
 msrt_ctx_switch(save: *mut usize, next: usize)
-msrt_drop_slow(o: *mut Obj) @leaf
 msrt_eq_enter(a: *const u8, b: *const u8) -> u8 @leaf
 msrt_eq_leave(a: *const u8, b: *const u8) @leaf
 msrt_fault(msg: *const u8, len: usize) -> !
@@ -187,7 +186,8 @@ msrt_map_values_view(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut VecVa
 msrt_numbers_error_message(status: u8, out: *mut StrVal) @leaf
 msrt_numbers_parse_float(text: *const StrVal, out: *mut f64) -> u8 @leaf
 msrt_numbers_parse_int(text: *const StrVal, radix: i64, out: *mut i64) -> u8 @leaf
-msrt_obj_share(o: *const Obj) -> *mut Obj
+msrt_obj_clone(o: *mut Obj) -> *mut Obj
+msrt_obj_drop(o: *mut Obj)
 msrt_pipe_add_writer(pipe: i64)
 msrt_pipe_buffered(pipe: i64) -> i64
 msrt_pipe_close_reader(pipe: i64)
@@ -212,8 +212,6 @@ msrt_promise_take(id: i64, d: ValueDesc, out: *mut u8) -> u8
 msrt_promise_wait(id: i64, timeout_ns: i64) -> i64
 msrt_promise_wait_any(ids: *const VecVal, timeout_ns: i64) -> i64
 msrt_realloc(p: *mut u8, size: usize) -> *mut u8
-msrt_release(o: *mut Obj)
-msrt_retain(o: *mut Obj)
 msrt_runtime_set_threads(n: i64)
 msrt_runtime_threads() -> i64
 msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, key: *const u8) @leaf
@@ -455,7 +453,6 @@ msstd_fs_file_read_at(h: *mut ObjCell<Stream>, offset: i64, has_max: u8, max: i6
 msstd_fs_file_read_file(h: *mut ObjCell<Stream>, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal) -> u8
 msstd_fs_file_read_lines(h: *mut ObjCell<Stream>, max_bytes: i64, max_lines: i64, out: *mut VecVal, err: *mut StrVal) -> u8
 msstd_fs_file_read_vectors(h: *mut ObjCell<Stream>, sizes: *const VecVal, offset: i64, out: *mut VecVal, err: *mut StrVal) -> u8
-msstd_fs_file_reader(h: *mut ObjCell<Stream>) -> *mut ObjCell<Stream>
 msstd_fs_file_seek(h: *mut ObjCell<Stream>, offset: i64, origin: i64, out: *mut i64, err: *mut StrVal) -> u8
 msstd_fs_file_set_times(h: *mut ObjCell<Stream>, accessed: *const Timestamp, modified: *const Timestamp, err: *mut StrVal) -> u8
 msstd_fs_file_stat(h: *mut ObjCell<Stream>, out: *mut InfoOut, err: *mut StrVal) -> u8
@@ -465,7 +462,6 @@ msstd_fs_file_try_lock(h: *mut ObjCell<Stream>, exclusive: u8, out: *mut i64, er
 msstd_fs_file_unlock(h: *mut ObjCell<Stream>, err: *mut StrVal) -> u8
 msstd_fs_file_write_at(h: *mut ObjCell<Stream>, offset: i64, data: *const VecVal, err: *mut StrVal) -> u8
 msstd_fs_file_write_vectors(h: *mut ObjCell<Stream>, buffers: *const VecVal, offset: i64, err: *mut StrVal) -> u8
-msstd_fs_file_writer(h: *mut ObjCell<Stream>) -> *mut ObjCell<Stream>
 msstd_fs_glob_entries(path: *const StrVal, patterns: *const VecVal, exclude: *const VecVal, follow_links: u8, has_max_entries: u8, max_entries: i64, has_max_results: u8, max_results: i64, filter: *mut Closure, out: *mut VecVal, err: *mut StrVal) -> u8
 msstd_fs_hard_link(source: *const StrVal, destination: *const StrVal, err: *mut StrVal) -> u8
 msstd_fs_list(path: *const StrVal, has_limit: u8, limit: i64, out: *mut VecVal, err: *mut StrVal) -> u8
@@ -739,8 +735,6 @@ msstd_process_signal_next(h: *mut ObjCell<Watcher>, out: *mut i64, err: *mut Str
 msstd_process_subprocess_close(h: *mut ObjCell<Child>)
 msstd_process_subprocess_kill(h: *mut ObjCell<Child>)
 msstd_process_subprocess_max_resident(h: *const ObjCell<Child>) -> i64
-msstd_process_subprocess_stdin(h: *const ObjCell<Child>) -> *mut ObjCell<Stream>
-msstd_process_subprocess_stream(h: *const ObjCell<Child>, which: i64) -> *mut ObjCell<Stream>
 msstd_process_subprocess_stream_id(h: *mut ObjCell<Child>, which: i64) -> i64
 msstd_process_subprocess_terminate(h: *mut ObjCell<Child>)
 msstd_process_subprocess_wait(h: *mut ObjCell<Child>, has_timeout: u8, timeout_ns: i64, out: *mut i64, err: *mut StrVal) -> u8

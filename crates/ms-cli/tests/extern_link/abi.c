@@ -173,15 +173,15 @@ void abi_describe(ms_fn *f, ms_str *out) {
     ms_value_free(&r);
 }
 
-/* A kept callback: abi_keep retains it, abi_fire calls it with an object, abi_forget drops it. */
+/* A kept callback: abi_keep clones it, abi_fire calls it with an object, abi_forget drops it. */
 static ms_fn *kept;
-void abi_keep(ms_fn *f) { kept = ms_fn_retain(f); }
+void abi_keep(ms_fn *f) { kept = ms_fn_clone(f); }
 void abi_fire(ms_object *counter) {
     ms_value arg = {MS_OBJECT, {.object = counter}};
     ms_call(kept, &arg, 1, NULL);
 }
 void abi_forget(void) {
-    ms_fn_release(kept);
+    ms_fn_drop(kept);
     kept = NULL;
 }
 

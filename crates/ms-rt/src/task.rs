@@ -1039,7 +1039,7 @@ extern "C" fn task_main() -> ! {
             }
         }
         if !(*t).owned.is_null() {
-            crate::obj::msrt_release(core::mem::replace(&mut (*t).owned, null_mut()));
+            crate::obj::drop_obj(core::mem::replace(&mut (*t).owned, null_mut()));
         }
         (*t).state = State::Done;
         s.zombie_stack = ((*t).stack as usize, (*t).stack_len);

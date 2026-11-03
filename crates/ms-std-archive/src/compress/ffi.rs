@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 use core::cell::RefCell;
 use ms_rt::ffi::{Fail, ObjRef, Object, Out, abi_handle, native};
 
-// A stream codec is a refcounted handle. The generated code owns the input `ReadStream` and the
+// A stream codec is a runtime handle with one owner. The generated code owns the input `ReadStream` and the
 // pull loop: on `POLL_NEED_INPUT` it reads a chunk and calls `feed` (or `finish_input` at the end
 // of the input), then polls again. Handles are shared, so the codec sits behind a `RefCell`.
 pub struct DecoderObj {
@@ -190,8 +190,8 @@ mod tests {
             );
             assert_eq!(bytes_ref(plain.as_ptr()), b"hello hello hello");
             assert_eq!(msstd_compress_decoder_end(dec, plain.as_mut_ptr()), 0);
-            ms_rt::obj::msrt_release(enc.cast());
-            ms_rt::obj::msrt_release(dec.cast());
+            ms_rt::obj::msrt_obj_drop(enc.cast());
+            ms_rt::obj::msrt_obj_drop(dec.cast());
         }
     }
 }

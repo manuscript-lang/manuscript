@@ -9,7 +9,8 @@
 #include <windows.h>
 #endif
 
-typedef struct Obj { uint64_t rc; void (*drop)(struct Obj *); } Obj;
+/* An object header: a clone entry (null for a value with one owner) and a drop entry. */
+typedef struct Obj { struct Obj *(*clone)(struct Obj *); void (*drop)(struct Obj *); } Obj;
 
 /* The isolate header block: word 0 is the stack limit, byte 8 the cancel flag. */
 static struct { uintptr_t limit; uint8_t cancel; } isolate_hdr;
@@ -59,7 +60,12 @@ uint8_t *msrt_realloc(uint8_t *p, size_t n) {
   if (!q) abort();
   return q;
 }
-void msrt_drop_slow(Obj *o) { if (o->drop) o->drop(o); }
+void msrt_obj_drop(Obj *o) { if (o && o->drop) o->drop(o); }
+Obj *msrt_obj_clone(Obj *o) {
+  if (!o) return o;
+  if (!o->clone) { fputs("copy of a value that has one owner\n", stderr); exit(101); }
+  return o->clone(o);
+}
 
 static void run_cleanups(void) {
   while (ncleanups > 0) {

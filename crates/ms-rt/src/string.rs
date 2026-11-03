@@ -1867,7 +1867,8 @@ pub unsafe extern "C-unwind" fn msrt_string_split_iter(
             }
             left = max as usize;
         }
-        let it = obj::new_obj(core::mem::size_of::<SplitIter>(), split_iter_drop) as *mut SplitIter;
+        let it = obj::new_obj(core::mem::size_of::<SplitIter>(), None, split_iter_drop)
+            as *mut SplitIter;
         // The loop keeps both strings alive until it ends, so the iterator only borrows them.
         (*it).src = (*s).alias();
         (*it).sep = (*sep).alias();

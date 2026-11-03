@@ -1444,7 +1444,7 @@ impl Module {
         }
     }
 
-    /// The ownership mode of the result of `inst` in `f`, if it is reference counted.
+    /// The ownership mode of the result of `inst` in `f`, if it is an owned value.
     pub fn result_mode(&self, f: &Func, inst: &Inst) -> Option<Mode> {
         let res = inst.res?;
         if !self.needs_drop(f.ty(res)) {

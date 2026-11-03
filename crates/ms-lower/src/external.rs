@@ -97,7 +97,7 @@ impl FnLower<'_> {
     ) -> Result<Value, Error> {
         let r = self.call_runtime(symbol, vals, ret)?;
         for f in fns {
-            self.call_runtime("msrt_release", &[*f], MTy::UNIT)?;
+            self.call_runtime("msrt_obj_drop", &[*f], MTy::UNIT)?;
         }
         Ok(r)
     }
@@ -342,12 +342,12 @@ impl FnLower<'_> {
             return Ok(());
         };
         if matches!(self.b.m.types.kind(t), TyKind::Obj(..)) {
-            // Usually still NULL, which the runtime's release ignores.
+            // Usually still NULL, which the runtime's drop ignores.
             let p = self
                 .b
                 .emit(Op::Load, &[slot], Imm::Ty(MTy::PTR), Some(MTy::PTR))
                 .expect("load");
-            self.call_runtime("msrt_release", &[p], MTy::UNIT)?;
+            self.call_runtime("msrt_obj_drop", &[p], MTy::UNIT)?;
         } else if self.needs_drop(t) {
             let v = self.move_out(slot, t);
             self.drop_value(v);
@@ -445,9 +445,8 @@ impl FnLower<'_> {
             .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(wty))
             .expect("closure");
         let sig = self.b.iconst(sig as i64);
-        let handle = self.call_runtime("msrt_fn_new", &[wrapper, sig], MTy::PTR)?;
-        self.drop_value(wrapper);
-        Ok(handle)
+        // The `ms_fn` owns the wrapper closure, which holds its own copy of `f`.
+        self.call_runtime("msrt_fn_new", &[wrapper, sig], MTy::PTR)
     }
 
     /// The closure body behind an `ms_fn` of type `fty`: takes its arguments out of the
@@ -458,7 +457,12 @@ impl FnLower<'_> {
         if let Some(t) = self.cx.helpers.get(&key) {
             return *t;
         }
-        let drops: Vec<bool> = ps.iter().map(|p| self.needs_drop(*p)).collect();
+        // The runtime fills the cells with string and bytes copies the thunk owns, and with
+        // objects the shim keeps: a lent object is loaded and never dropped.
+        let drops: Vec<bool> = ps
+            .iter()
+            .map(|p| self.needs_drop(*p) && !matches!(self.b.m.types.kind(*p), TyKind::Obj(..)))
+            .collect();
         let ret_drops = self.needs_drop(ret);
         let (_, cell) = self.b.m.add_record(
             "ms_fn_cell",

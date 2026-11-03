@@ -11,7 +11,6 @@ use ms_rt_abi::{STATUS_FAILED, StrVal};
 use std::vec::Vec;
 
 use crate::fault::{cancel_flag, msrt_cancelled, msrt_fault};
-use crate::obj::{msrt_release, msrt_retain};
 use crate::string::msrt_string_from_bytes;
 pub use ms_rt_abi::record::FaultKind;
 
@@ -24,7 +23,7 @@ pub unsafe fn str_bytes<'a>(s: *const StrVal) -> &'a [u8] {
     unsafe { core::slice::from_raw_parts((*s).data(), (*s).len()) }
 }
 
-/// A new owned string (refcount 1) holding `bytes`.
+/// A new owned string holding `bytes`.
 pub fn new_string(bytes: &[u8]) -> StrVal {
     let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
     // SAFETY: the slice is readable; the runtime copies it and writes `out`.
@@ -360,7 +359,7 @@ pub unsafe fn write_string_map<'a>(
     }
 }
 
-/// A refcounted runtime object (`Obj` header) wrapping a Rust value; used for handles such as open files.
+/// A runtime object (`Obj` header, one owner) wrapping a Rust value; used for handles such as open files.
 #[repr(C)]
 pub struct Handle<T> {
     pub hdr: ms_rt_abi::Obj,
@@ -384,7 +383,7 @@ pub fn new_handle<T>(value: T) -> *mut Handle<T> {
             ptr,
             Handle {
                 hdr: ms_rt_abi::Obj {
-                    rc: 1,
+                    clone: None,
                     drop: Some(drop_handle::<T>),
                 },
                 value,
@@ -440,24 +439,6 @@ pub fn stash_stdin_pending(bytes: Vec<u8>, head: usize) {
 pub fn take_stdin_pending() -> (Vec<u8>, usize) {
     // SAFETY: single-threaded runtime.
     unsafe { core::mem::take(&mut *STDIN_PENDING.ptr()) }
-}
-
-/// Adds a reference to a runtime object.
-///
-/// # Safety
-/// `o` must point to a live object.
-pub unsafe fn retain(o: *mut ms_rt_abi::Obj) {
-    // SAFETY: provided by `ms-rt`.
-    unsafe { msrt_retain(o) }
-}
-
-/// Drops a reference to a runtime object.
-///
-/// # Safety
-/// `o` must point to a live object the caller holds a reference to.
-pub unsafe fn release(o: *mut ms_rt_abi::Obj) {
-    // SAFETY: provided by `ms-rt`.
-    unsafe { msrt_release(o) }
 }
 
 /// The elements of a list of plain values (`Int`, `Float`, pointers).

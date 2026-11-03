@@ -98,6 +98,7 @@ const KEPT_CALLBACKS: &[&str] = &[
     "extern:msrt_promise_start",
     "extern:msrt_promise_defer",
     "extern:msstd_http_serving_new",
+    "extern:msrt_fn_new",
 ];
 
 /// Externs that take ownership of the generic value argument (it moves into the runtime). Like
