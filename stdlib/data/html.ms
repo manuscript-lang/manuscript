@@ -1,7 +1,16 @@
 import (
     msstd_html_escape,
     msstd_html_unescape,
-    msstd_html_parse
+    msstd_html_parse,
+    msstd_html_root,
+    msstd_html_kind,
+    msstd_html_data,
+    msstd_html_namespace,
+    msstd_html_doctype_id,
+    msstd_html_first_child,
+    msstd_html_next_sibling,
+    msstd_html_attr_count,
+    msstd_html_attr
 ) from "@std/internal/html.ms"
 
 // Optional bounds for HTML input bytes, tree depth, and node count.
@@ -65,14 +74,58 @@ export type HtmlNode:
 export fn escape(text: String) String:
     return msstd_html_escape(text)
 
-/*
-Decodes HTML5 named and numeric character references in text context, once.
-Recognized references can omit semicolons; unrecognized text remains literal.
-Does not parse markup or normalize text; invalid numeric scalars become U+FFFD.
-*/
+// Decodes HTML5 named and numeric character references in text context, once.
+// Recognized references can omit semicolons; unrecognized text remains literal.
+// Does not parse markup or normalize text; invalid numeric scalars become U+FFFD.
 export fn unescape(text: String) String:
     return msstd_html_unescape(text)
 
+// A parse tree owned by the runtime; node ids are valid only for the tree that issued them, and -1 is no node.
+export extern type HtmlTree
+
 // Parses HTML into a normalized tree and applies the supplied resource limits.
 export fn parse(text: String, limits: HtmlLimits?) HtmlNode!:
-    return msstd_html_parse(text, limits)
+    let tree = try msstd_html_parse(text, limits)
+    return ok(node(tree, msstd_html_root(tree)))
+
+// Copies the node `id` of `tree`, and everything under it, into an `HtmlNode`.
+fn node(tree: HtmlTree, id: Int) HtmlNode:
+    let kind = msstd_html_kind(tree, id)
+    if kind == 1:
+        return HtmlNode.Element(
+            msstd_html_data(tree, id), msstd_html_namespace(tree, id),
+            attributes(tree, id), children(tree, id)
+        )
+    if kind == 2:
+        return HtmlNode.Text(msstd_html_data(tree, id))
+    if kind == 3:
+        return HtmlNode.Comment(msstd_html_data(tree, id))
+    if kind == 4:
+        return HtmlNode.Doctype(
+            msstd_html_data(tree, id), msstd_html_doctype_id(tree, id, 0),
+            msstd_html_doctype_id(tree, id, 1)
+        )
+
+    return HtmlNode.Document(children(tree, id))
+
+fn children(tree: HtmlTree, id: Int) List[HtmlNode]:
+    var out: List[HtmlNode] = []
+    var at = msstd_html_first_child(tree, id)
+
+    while at >= 0:
+        out.append(node(tree, at))
+        at = msstd_html_next_sibling(tree, at)
+
+    return out
+
+fn attributes(tree: HtmlTree, id: Int) List[HtmlAttribute]:
+    var out: List[HtmlAttribute] = []
+    for i in 0..msstd_html_attr_count(tree, id):
+        out.append(
+            HtmlAttribute(
+                name: msstd_html_attr(tree, id, i, 0),
+                namespace: msstd_html_attr(tree, id, i, 1),
+                value: msstd_html_attr(tree, id, i, 2)
+            )
+        )
+    return out

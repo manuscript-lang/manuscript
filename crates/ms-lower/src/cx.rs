@@ -63,8 +63,6 @@ pub enum JobKind {
     FnAdapt(Rc<FnAdaptJob>),
     /// A JSON decoder or encoder of a type.
     Json(Rc<crate::json::JsonJob>),
-    /// A copy of an HTML parse tree into `HtmlNode`.
-    Html(Rc<crate::html::HtmlJob>),
     /// A forwarder of an interface operation to a runtime handle function.
     HandleMethod(Rc<crate::natiface::MethodJob>),
     /// An operation of a compression stream.

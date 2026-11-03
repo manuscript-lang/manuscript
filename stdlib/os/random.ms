@@ -15,12 +15,13 @@ import (
     sqrt
 ) from "@std/math/math.ms"
 import (
-    msstd_random_draw_int,
-    msstd_random_draw_uuid,
-    msstd_random_draw_float,
-    msstd_random_draw_shuffle,
-    msstd_random_draw_choice,
-    msstd_random_entropy
+    msstd_random_entropy,
+    draw_int,
+    draw_uuid,
+    draw_float,
+    draw_shuffle,
+    draw_choice,
+    invalid_input
 ) from "@std/internal/random.ms"
 
 // A source of cryptographically secure random bytes.
@@ -31,11 +32,13 @@ interface Entropy:
 
 // Returns a secure integer at least `min` and below `max_exclusive` when supplied, from the operating system's entropy.
 export fn secure_int(min: Int, max_exclusive: Int?) Int!:
-    return msstd_random_draw_int(msstd_random_entropy(), min, max_exclusive)
+    var source = msstd_random_entropy()
+    return draw_int(var source, min, max_exclusive)
 
 // Creates a version-4 UUID from the operating system's entropy.
 export fn uuid_v4() String!:
-    return msstd_random_draw_uuid(msstd_random_entropy())
+    var source = msstd_random_entropy()
+    return draw_uuid(var source)
 
 /*
 Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time in milliseconds and 80 random bits.
@@ -84,15 +87,18 @@ export fn token(size: Int = 32) String!:
 
 // Returns a secure Float at least 0.0 and below 1.0 with 53 random bits (JavaScript `Math.random`, but cryptographically secure).
 export fn float() Float!:
-    return msstd_random_draw_float(msstd_random_entropy())
+    var source = msstd_random_entropy()
+    return draw_float(var source)
 
 // Shuffles the list in place with an unbiased Fisher-Yates shuffle and returns it.
 export fn shuffle[T](values: List[T]) List[T]!:
-    return msstd_random_draw_shuffle(msstd_random_entropy(), values)
+    var source = msstd_random_entropy()
+    return draw_shuffle(var source, values)
 
 // Returns a uniformly chosen item, or none for an empty list.
 export fn choice[T](values: List[T]) T?!:
-    return msstd_random_draw_choice(msstd_random_entropy(), values)
+    var source = msstd_random_entropy()
+    return draw_choice(var source, values)
 
 // Returns `count` distinct positions' items chosen uniformly without replacement, in random order, as copies; the input is unchanged.
 // A `count` outside 0 through the list length returns InvalidInput.

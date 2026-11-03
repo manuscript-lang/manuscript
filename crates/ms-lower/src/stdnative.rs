@@ -47,7 +47,6 @@ const fn handle(
 }
 
 const HAND_LOWERED: &[HandLowered] = &[
-    plain("msstd_html_parse", "html/parse"),
     handle(
         "msstd_net_network",
         "net/network",
@@ -67,11 +66,6 @@ const HAND_LOWERED: &[HandLowered] = &[
     plain("msstd_io_stdout", "io/stdout"),
     handle("msstd_io_terminal", "io/terminal", "terminal", ""),
     handle("msstd_process_commands", "process/commands", "process", ""),
-    plain("msstd_random_draw_choice", "random/draw_choice"),
-    plain("msstd_random_draw_float", "random/draw_float"),
-    plain("msstd_random_draw_int", "random/draw_int"),
-    plain("msstd_random_draw_shuffle", "random/draw_shuffle"),
-    plain("msstd_random_draw_uuid", "random/draw_uuid"),
     handle("msstd_random_entropy", "random/host_entropy", "random", ""),
     handle("msstd_process_control", "process/control", "process", ""),
     handle("msstd_process_system", "process/system", "system", ""),

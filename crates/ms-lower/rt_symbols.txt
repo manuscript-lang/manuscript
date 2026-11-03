@@ -490,18 +490,17 @@ msstd_fs_watch_close(h: *mut ObjCell<Watcher>)
 msstd_fs_watch_native(path: *const StrVal, recursive: u8, has_max: HasRaw, max: i64, has_events: HasRaw, events: i64, overflow: *const StrVal, out: *mut *mut ObjCell<Watcher>, err: ErrSlot) -> u8
 msstd_fs_watch_next(h: *mut ObjCell<Watcher>, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_fs_write_file(path: *const StrVal, data: *const VecVal, replace: u8, err: ErrSlot) -> u8
-msstd_html_attr(t: *const ObjCell<Tree>, id: u32, i: i64, which: u8, out: *mut StrVal) @leaf
-msstd_html_attr_count(t: *const ObjCell<Tree>, id: u32) -> i64 @leaf
-msstd_html_child(t: *const ObjCell<Tree>, id: u32, i: i64) -> u32 @leaf
-msstd_html_child_count(t: *const ObjCell<Tree>, id: u32) -> i64 @leaf
-msstd_html_data(t: *const ObjCell<Tree>, id: u32, out: *mut StrVal) @leaf
-msstd_html_doctype_id(t: *const ObjCell<Tree>, id: u32, which: u8, out: *mut StrVal) @leaf
+msstd_html_attr(t: *const ObjCell<Tree>, id: i64, i: i64, which: i64, out: *mut StrVal) @leaf
+msstd_html_attr_count(t: *const ObjCell<Tree>, id: i64) -> i64 @leaf
+msstd_html_data(t: *const ObjCell<Tree>, id: i64, out: *mut StrVal) @leaf
+msstd_html_doctype_id(t: *const ObjCell<Tree>, id: i64, which: i64, out: *mut StrVal) @leaf
 msstd_html_escape(text: *const StrVal, out: *mut StrVal) @leaf
-msstd_html_first_child(t: *const ObjCell<Tree>, id: u32) -> u32 @leaf
-msstd_html_kind(t: *const ObjCell<Tree>, id: u32) -> u8 @leaf
-msstd_html_namespace(t: *const ObjCell<Tree>, id: u32, out: *mut StrVal) @leaf
-msstd_html_next_sibling(t: *const ObjCell<Tree>, id: u32) -> u32 @leaf
-msstd_html_parse(text: *const StrVal, has_limits: HasRaw, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth: HasRaw, max_depth: i64, has_max_nodes: HasRaw, max_nodes: i64, out: *mut *mut ObjCell<Tree>, root: *mut u32) -> u8 @leaf
+msstd_html_first_child(t: *const ObjCell<Tree>, id: i64) -> i64 @leaf
+msstd_html_kind(t: *const ObjCell<Tree>, id: i64) -> i64 @leaf
+msstd_html_namespace(t: *const ObjCell<Tree>, id: i64, out: *mut StrVal) @leaf
+msstd_html_next_sibling(t: *const ObjCell<Tree>, id: i64) -> i64 @leaf
+msstd_html_parse(text: *const StrVal, has_limits: HasRaw, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth: HasRaw, max_depth: i64, has_max_nodes: HasRaw, max_nodes: i64, out: *mut *mut ObjCell<Tree>) -> u8 @leaf
+msstd_html_root(t: *const ObjCell<Tree>) -> i64 @leaf
 msstd_html_unescape(text: *const StrVal, out: *mut StrVal) @leaf
 msstd_http_body_close(b: *const ObjCell<BodyH>)
 msstd_http_body_metadata(b: *const ObjCell<BodyH>, out: *mut MetadataWire)
@@ -762,15 +761,6 @@ msstd_process_umask(mask: i64, out: *mut i64, err: ErrSlot) -> u8
 msstd_process_uptime() -> i64
 msstd_process_watch_signals(signals: *const VecVal, has_capacity: HasRaw, capacity: i64, out: *mut *mut ObjCell<Watcher>, err: ErrSlot) -> u8
 msstd_process_working_directory(out: *mut StrVal, err: ErrSlot) -> u8
-msstd_random_draw_float(d: *const Draw) -> f64
-msstd_random_draw_free(d: *mut Draw)
-msstd_random_draw_int(d: *const Draw) -> i64
-msstd_random_draw_new(kind: i64, a: i64, has_b: HasRaw, b: i64) -> *mut Draw
-msstd_random_draw_push(d: *mut Draw, data: *const VecVal) -> u8
-msstd_random_draw_status(d: *const Draw, err: ErrSlot) -> u8
-msstd_random_draw_swap(d: *const Draw, which: i64) -> i64
-msstd_random_draw_text(d: *const Draw, out: *mut StrVal)
-msstd_random_draw_want(d: *const Draw) -> i64
 msstd_random_os_bytes(count: i64, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_regex_capture_all_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_matches: HasRaw, max_matches: i64, has_captures: HasRaw, max_captures: i64, out: *mut VecVal) -> u8 @leaf
 msstd_regex_capture_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf

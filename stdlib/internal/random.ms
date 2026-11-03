@@ -1,20 +1,109 @@
+import Bytes from "@std/bytes.ms"
 import Entropy from "@std/os/random.ms"
-
-export extern fn msstd_random_draw_int(
-    entropy: Entropy,
-    min: Int,
-    max_exclusive: Int?
-) Int!
-
-export extern fn msstd_random_draw_uuid(entropy: Entropy) String!
-
-export extern fn msstd_random_draw_float(entropy: Entropy) Float!
-
-export extern fn msstd_random_draw_shuffle[T](
-    entropy: Entropy,
-    values: List[T]
-) List[T]!
-
-export extern fn msstd_random_draw_choice[T](entropy: Entropy, values: List[T]) T?!
+import (
+    bit_and,
+    bit_or,
+    bit_xor,
+    shift_left,
+    shift_right_unsigned,
+    wrapping_add,
+    wrapping_subtract,
+    max_int,
+    min_int
+) from "@std/math/math.ms"
 
 export extern fn msstd_random_entropy() Entropy
+
+export fn invalid_input() Error:
+    return Error("random: invalid input", kind: ErrorCategory.InvalidInput)
+
+// Fetches exactly `count` bytes; a source that answers with another length has failed.
+fn fetch(var source: Entropy, count: Int) Bytes!:
+    let data = try source.bytes(count)
+    if data.length() != count:
+        return error(
+            Error(
+                "entropy source returned incorrect length", kind: ErrorCategory.Failed
+            )
+        )
+
+    return ok(data)
+
+// Returns an unbiased integer from `min` up to `min + width`, where `width` is the 64-bit pattern of a positive count.
+// Draws big-endian bytes masked to the width's bit length and redraws those at or past the width.
+fn draw_below(var source: Entropy, min: Int, width: Int) Int!:
+    var bits = 0
+    var rest = width
+
+    while rest != 0:
+        rest = shift_right_unsigned(rest, 1)
+        bits += 1
+
+    let count = (bits + 7) / 8
+    let mask = shift_right_unsigned(255, count * 8 - bits)
+
+    while true:
+        let data = try fetch(var source, count)
+        var n = 0
+
+        for i in 0..count:
+            var byte = data.get(i).to_int()
+            if i == 0:
+                byte = bit_and(byte, mask)
+            n = bit_or(shift_left(n, 8), byte)
+
+        // Unsigned comparison: flipping the sign bit orders the 64-bit patterns as signed Ints.
+        if bit_xor(n, min_int) < bit_xor(width, min_int):
+            return ok(wrapping_add(min, n))
+
+    return ok(min)
+
+// An integer at least `min` and below `max_exclusive` (below the largest Int when none).
+export fn draw_int(var source: Entropy, min: Int, max_exclusive: Int?) Int!:
+    let max = max_exclusive.get(max_int)
+    if min >= max:
+        return error(invalid_input())
+
+    return draw_below(var source, min, wrapping_subtract(max, min))
+
+// A version-4 UUID.
+export fn draw_uuid(var source: Entropy) String!:
+    let data = try fetch(var source, 16)
+    let digits = "0123456789abcdef".chars()
+    var out = ""
+
+    for i in 0..16:
+        var byte = data.get(i).to_int()
+        if i == 6:
+            byte = bit_or(bit_and(byte, 15), 64)
+        if i == 8:
+            byte = bit_or(bit_and(byte, 63), 128)
+        if i == 4 or i == 6 or i == 8 or i == 10:
+            out = "{out}-"
+        out = "{out}{digits[byte / 16]}{digits[byte % 16]}"
+
+    return ok(out)
+
+// A Float at least 0.0 and below 1.0 with 53 random bits.
+export fn draw_float(var source: Entropy) Float!:
+    let bits = try draw_below(var source, 0, shift_left(1, 53))
+    return ok(bits.to_float() / 9007199254740992.0)
+
+// `values` shuffled in place by a Fisher-Yates pass.
+export fn draw_shuffle[T](var source: Entropy, values: List[T]) List[T]!:
+    var out = values
+    var index = out.length() - 1
+
+    while index > 0:
+        out.swap(index, try draw_below(var source, 0, index + 1))
+        index -= 1
+
+    return ok(out)
+
+// A uniformly chosen item, or none for an empty list.
+export fn draw_choice[T](var source: Entropy, values: List[T]) T?!:
+    if values.is_empty():
+        return ok(none)
+
+    let at = try draw_below(var source, 0, values.length())
+    return ok(values.get(at))

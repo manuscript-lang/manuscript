@@ -1263,23 +1263,6 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
             fl.emit_return(Some(out));
             return Ok(());
         }
-        "html/parse" => {
-            fl.fill_native_defaults(job.sym.module, func, &job.params, &mut args)?;
-            let node = job.result.args.first().cloned();
-            let node = node.ok_or_else(|| Error::new("parse without a node type"))?;
-            let out = fl.html_parse(&node, ret, &args)?;
-            fl.emit_return(Some(out));
-            return Ok(());
-        }
-        "random/draw_int"
-        | "random/draw_uuid"
-        | "random/draw_float"
-        | "random/draw_shuffle"
-        | "random/draw_choice" => {
-            let out = fl.random_with(&job.native, &args, ret)?;
-            fl.emit_return(Some(out));
-            return Ok(());
-        }
         "io/stdout" | "io/stderr" => {
             let out = fl.std_stream(ret, job.native == "io/stderr")?;
             fl.emit_return(Some(out));
