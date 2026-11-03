@@ -16,7 +16,7 @@ pub mod llvm_ir;
 mod llvm_obj;
 pub use llvm_obj::available as llvm_available;
 mod options;
-pub use options::{BuildOptions, RtHot};
+pub use options::{BuildOptions, CopyProbe, RtHot};
 mod llvm_tables;
 mod lower;
 mod spill;

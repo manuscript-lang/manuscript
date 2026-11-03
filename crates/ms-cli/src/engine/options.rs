@@ -1,7 +1,7 @@
 //! Build settings read from the environment, once, when the engine is created. Everything below
 //! the command line receives them as a [`BuildOptions`] value.
 
-use ms_build::{BuildOptions, RtHot};
+use ms_build::{BuildOptions, CopyProbe, RtHot};
 use std::path::PathBuf;
 
 /// The settings the `MS_*` build variables select; unset variables keep the defaults.
@@ -25,5 +25,12 @@ pub fn from_env() -> BuildOptions {
         runtime: var("MS_RT_LIB").map(PathBuf::from),
         static_musl: false,
         timings: var("MS_TIMINGS").is_some_and(|v| v != "0"),
+        copy_probe: if var("MS_STRICT_COPIES").is_some_and(|v| v != "0") {
+            CopyProbe::Strict
+        } else if var("MS_COPY_PROBE").is_some_and(|v| v != "0") {
+            CopyProbe::Report
+        } else {
+            CopyProbe::Off
+        },
     }
 }

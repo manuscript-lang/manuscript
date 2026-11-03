@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime doctor verify verify-full check repo-check unit test build conform e2e leak-check count-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: runtime doctor verify verify-full check repo-check unit test build conform e2e leak-check count-check copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -69,6 +69,9 @@ count-check: build
 
 leak-check: build
 	$(MS) run tools/leak-check.ms
+
+copy-check: build
+	$(MS) run tools/copy-check.ms
 
 # The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
 licenses:
