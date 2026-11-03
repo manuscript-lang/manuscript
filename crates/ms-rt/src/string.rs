@@ -79,7 +79,20 @@ fn heap_copy(data: &[u8]) -> StrVal {
     let s = alloc_str(data.len());
     // SAFETY: `s` has room for `len` bytes.
     unsafe { core::ptr::copy_nonoverlapping(data.as_ptr(), s.ptr_word, data.len()) };
-    s
+    if data.is_ascii() { s.with_ascii() } else { s }
+}
+
+/// Whether every byte of `s` is ASCII, from its flag when it has one.
+///
+/// # Safety
+/// `s` is live.
+#[inline(always)]
+unsafe fn is_ascii(s: &StrVal) -> bool {
+    if s.is_inline() {
+        return s.inline_bits() & 0x8080_8080_8080_8080_8080_8080_8080_8080 == 0;
+    }
+    // SAFETY: caller contract.
+    s.flagged_ascii() || unsafe { bytes(s) }.is_ascii()
 }
 
 /// Frees the bytes of `s` when it is owned.
@@ -221,7 +234,8 @@ pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
 // Scalar shape and indexing
 // ---------------------------------------------------------------------------
 
-/// Scalar count, measured on each call (no remembered figures).
+/// Scalar count: the byte length for a string flagged ASCII (or inline ASCII), else counted on
+/// each call. Strings built by copy, concatenation and append carry the flag.
 ///
 /// # Safety
 /// `s` must be live.
@@ -229,11 +243,8 @@ pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
 pub unsafe fn scalar_count(s: *const StrVal) -> usize {
     // SAFETY: `s` live.
     unsafe {
-        if (*s).is_inline() {
-            // ASCII when no byte has its top bit (the bytes past the length are zero).
-            if (*s).inline_bits() & 0x8080_8080_8080_8080_8080_8080_8080_8080 == 0 {
-                return (*s).len();
-            }
+        if (*s).flagged_ascii() || ((*s).is_inline() && is_ascii(&*s)) {
+            return (*s).len();
         }
         utf8::count(bytes(s))
     }
@@ -586,6 +597,8 @@ pub unsafe extern "C-unwind" fn msrt_string_append(
         if la + lb > MAX_BYTES {
             fault::fault(b"string: limit exceeded");
         }
+        // Only a flagged `a` stays flagged: scanning an unflagged one on every append is quadratic.
+        let ascii = sa.flagged_ascii() && is_ascii(&*b);
         // Room left in the block is used as is; otherwise the string moves to a block with
         // slack, so a run of appends reallocates a logarithmic number of times.
         let need = la + lb + 1;
@@ -596,7 +609,8 @@ pub unsafe extern "C-unwind" fn msrt_string_append(
         };
         core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), p.add(la), lb);
         *p.add(la + lb) = 0;
-        StrVal::owned(p, la + lb).write_to(out)
+        let r = StrVal::owned(p, la + lb);
+        (if ascii { r.with_ascii() } else { r }).write_to(out)
     }
 }
 
@@ -617,7 +631,11 @@ unsafe fn msrt_string_concat_val(a: *const StrVal, b: *const StrVal) -> StrVal {
         let s = alloc_str(la + lb);
         core::ptr::copy_nonoverlapping(bytes(a).as_ptr(), s.ptr_word, la);
         core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), s.ptr_word.add(la), lb);
-        s
+        if is_ascii(&*a) && is_ascii(&*b) {
+            s.with_ascii()
+        } else {
+            s
+        }
     }
 }
 
@@ -2454,6 +2472,27 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn ascii_flag_follows_construction() {
+        let _g = crate::testutil::lock();
+        unsafe {
+            let long = "abcdefghijklmnopqrstuvwxyz";
+            let a = from_bytes(long.as_bytes());
+            assert!(a.flagged_ascii());
+            let u = from_bytes("abcdefghijklmnopqrstuvwxyé".as_bytes());
+            assert!(!u.flagged_ascii());
+            assert_eq!(scalar_count(&u), 26);
+            // concatenation keeps the flag only when both sides are ASCII
+            let c = msrt_string_concat_val(&a, &a);
+            assert!(c.flagged_ascii() && scalar_count(&c) == 52);
+            let d = msrt_string_concat_val(&a, &u);
+            assert!(!d.flagged_ascii() && scalar_count(&d) == 52);
+            // equal strings may differ in the flag
+            let lit = StrVal::literal(long.as_ptr().cast_mut(), long.len());
+            assert!(equal(&a, &lit));
         }
     }
 
