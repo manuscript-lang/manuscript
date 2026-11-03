@@ -2,26 +2,8 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use ms_mir::ir::{Imm, Mode, Module, Op, Param, Value};
+use ms_mir::ir::{Imm, Mode, Op, Param, Value};
 use ms_mir::types::{Native, RecId, Ty as MTy, TyKind};
-
-/// The handle type of a builder over the payload type `items`.
-pub(crate) fn handle_ty(m: &mut Module, name: &str, items: MTy) -> MTy {
-    let rec_name = format!("{name}#{}", items.0);
-    let rec = match m.records.iter().position(|r| r.name == rec_name) {
-        Some(i) => m.types.rec(RecId(i as u32)),
-        None => {
-            let fields = vec![
-                // The payload comes first: a field's address is read with the field's own layout,
-                // which matches its place in the record only when it starts the record.
-                ("items".to_string(), items),
-                ("sealed".to_string(), MTy::BOOL),
-            ];
-            m.add_record(&rec_name, fields).1
-        }
-    };
-    m.types.obj("Shared", vec![rec])
-}
 
 impl<'a> FnLower<'a> {
     pub(crate) fn builder_rec(&self, handle: MTy) -> Result<RecId, Error> {
