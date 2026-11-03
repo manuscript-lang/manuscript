@@ -275,15 +275,17 @@ export type HttpResponse:
     # The response body bytes, which must not exceed `max_response_bytes`; the server sets the content length.
     body: Bytes
 
-# The limits, TLS settings and admission count that every connection of one `serve` call shares.
+# The listener, handler, limits, TLS settings and admission count that every connection of one `serve` call shares.
 export extern type NativeServing
 
 # A running HTTP server. Close it, or drop it, to stop accepting and drain.
 export type HttpServer:
+    # The accept loop, which owns the connection promises. It is declared first so it ends before what it uses.
+    accepting: Promise[Unit]
+    # What the accept loop and the connections use, by the id they captured.
+    serving: NativeServing
     # The bound local address as `host:port`.
     bound: String
-    # The accept loop, which owns the connection promises.
-    accepting: Promise[Unit]
     # Whether `close` has been called, so `wait` reports a normal stop.
     stopped: Bool
 

@@ -1,10 +1,12 @@
 //! Natives for the server half of `@std/net/http.ms`: `Network.serve`, servers and exchanges.
 
 use super::handler::Program;
+use ms_rt_abi::Obj;
 use super::http_client::{chunk, limit};
 use super::tls::tls_options;
 use super::{ExchH, HeadersH, ServingH, opt, report};
 use crate::error::HttpErr;
+use crate::conn::Listener;
 use crate::http::server::{Limits, Options, Server};
 use crate::tls;
 use ms_rt::ffi::{
@@ -102,36 +104,101 @@ fn server_options(opts: &HttpServerOptionsWire) -> Result<Options, HttpErr> {
     })
 }
 
+/// What every connection of one `serve` call shares.
+pub struct Serving {
+    options: Options,
+    /// The handler closure, one reference held until the serving drops.
+    handler: *mut Obj,
+    listener: Rc<Listener>,
+}
+
+impl Serving {
+    fn new(options: Options, handler: *mut Obj, listener: Rc<Listener>) -> Serving {
+        // SAFETY: `handler` is a live closure object.
+        unsafe { ms_rt::obj::msrt_retain(handler) };
+        Serving {
+            options,
+            handler,
+            listener,
+        }
+    }
+
+    /// The serving whose identity (`msstd_http_serving_id`) is `id`.
+    ///
+    /// # Safety
+    /// The serving must be alive and stay so while the result is used.
+    unsafe fn get<'a>(id: i64) -> &'a Serving {
+        // SAFETY: caller contract.
+        unsafe { &*(id as *const Serving) }
+    }
+}
+
+impl Drop for Serving {
+    fn drop(&mut self) {
+        self.listener.close();
+        // SAFETY: the reference taken in `new`.
+        unsafe { ms_rt::obj::msrt_release(self.handler) };
+    }
+}
+
 native! {
     // -------------------------------------------------------------------- server
 
-    /// `serving(options)`: the limits, TLS settings and admission count that every connection of
-    /// one `serve` call shares.
+    /// `serving(address, options, handler)`: binds the plain TCP listener of one `serve` call and
+    /// holds what every connection of the call shares: the limits, TLS settings, admission count
+    /// and handler.
     fn msstd_http_serving_new(
+        address: &str,
         opts: &HttpServerOptionsWire,
+        env: Handler,
         out: Out<Object<ServingH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        out.write(Object(ServingH(report(server_options(opts), &err)?)));
+        let options = report(server_options(opts), &err)?;
+        let root = crate::net::root();
+        let listener = report(root.listen(address), &err)?;
+        out.write(Object(ServingH(Serving::new(options, env.as_ptr(), listener))));
         Ok(())
     }
 
-    /// `Serving.connect(handler, connection)`: serves the socket handle `Listener.accept_raw`
-    /// returned, on this thread, and returns when the connection has ended. The handler is only
-    /// borrowed: the promise that calls this keeps it alive.
-    fn msstd_http_serving_connect(
-        serving: ObjRef<ServingH>,
-        env: Handler,
-        connection: i64,
-    ) -> () {
-        let options = Options {
-            limits: serving.limits.clone(),
-            admitted: serving.admitted.clone(),
-            tls: serving.tls.clone(),
-        };
-        if let Ok(server) = Server::start_adopting(&crate::net::root(), Program::streaming(&env), options) {
+    /// The identity of a serving for the promises that use it: they cannot capture the object, but
+    /// can capture this number, and the `HttpServer` keeps the object alive until they ended.
+    fn msstd_http_serving_id(s: ObjRef<ServingH>) -> i64 {
+        std::ptr::from_ref::<Serving>(&s) as i64
+    }
+
+    /// The bound address of the listener of serving `id`.
+    fn msstd_http_serving_address(id: i64) -> String {
+        // SAFETY: `id` names a serving its owner keeps alive (see `msstd_http_serving_id`).
+        unsafe { Serving::get(id) }.listener.address().to_string()
+    }
+
+    /// Waits for the next connection of serving `id` and returns its socket handle.
+    fn msstd_http_serving_accept(id: i64, out: Out<i64>, err: ErrOut) -> Result<(), StatusCode> {
+        // SAFETY: as above.
+        let serving = unsafe { Serving::get(id) };
+        out.write(report(serving.listener.accept_raw(None), &err)?);
+        Ok(())
+    }
+
+    /// Serves the socket handle `accept` returned, on this thread, and returns when the connection
+    /// has ended. The handler is only borrowed from the serving.
+    fn msstd_http_serving_connect(id: i64, connection: i64) -> () {
+        // SAFETY: as above.
+        let serving = unsafe { Serving::get(id) };
+        // SAFETY: the serving keeps the handler alive until every connection promise ended.
+        let program = unsafe { Program::borrowed(serving.handler) };
+        if let Ok(server) = Server::start_adopting(&crate::net::root(), program, serving.options.clone())
+        {
             server.serve_connection(connection);
         }
+    }
+
+    /// Closes the connections of serving `id` that were accepted and never served.
+    fn msstd_http_serving_release(id: i64) -> () {
+        // SAFETY: as above.
+        let serving = unsafe { Serving::get(id) };
+        crate::conn::release_unadopted(serving.listener.owner_key());
     }
 
     // ------------------------------------------------------------------ exchange

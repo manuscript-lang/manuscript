@@ -45,13 +45,21 @@ export extern fn msstd_http_client_request_stream(
     timeout: Duration?
 ) ResponseBody!
 
-export extern fn msstd_http_serving_new(options: HttpServerOptions) NativeServing!
+export extern fn msstd_http_serving_new(
+    address: String,
+    options: HttpServerOptions,
+    handler: fn(HttpExchange) Unit!
+) NativeServing!
 
-export extern fn msstd_http_serving_connect(
-    serving: NativeServing,
-    handler: fn(HttpExchange) Unit!,
-    connection: Int
-) Unit
+export extern fn msstd_http_serving_id(serving: NativeServing) Int
+
+export extern fn msstd_http_serving_address(id: Int) String
+
+export extern fn msstd_http_serving_accept(id: Int) Int!
+
+export extern fn msstd_http_serving_connect(id: Int, connection: Int) Unit
+
+export extern fn msstd_http_serving_release(id: Int) Unit
 
 export extern fn msstd_http_body_close(handle: NativeResponseBody) Unit
 

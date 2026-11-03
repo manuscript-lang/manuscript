@@ -11,7 +11,6 @@ import HttpServer from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
 import Timestamp from "@std/os/time.ms"
 import Promise, promise from "@std/concurrency/promise.ms"
-import NativeServing from "@std/net/http.ms"
 import sleep from "@std/os/time.ms"
 import (
     msstd_url_encode_component,
@@ -58,7 +57,15 @@ import (
     msstd_websocket_send_bytes,
     msstd_websocket_subprotocol
 ) from "@std/internal/net.ms"
-import msstd_http_serving_new, msstd_http_serving_connect, msrt_runtime_set_threads from "@std/internal/http.ms"
+import (
+    msstd_http_serving_new,
+    msstd_http_serving_id,
+    msstd_http_serving_address,
+    msstd_http_serving_accept,
+    msstd_http_serving_connect,
+    msstd_http_serving_release,
+    msrt_runtime_set_threads
+) from "@std/internal/http.ms"
 
 # The runtime handle behind a `Connection`.
 export extern type NativeConnection
@@ -666,14 +673,15 @@ export fn serve(
         if cores < 1:
             return error(Error("network: invalid input", kind: InvalidInput))
 
-    let serving = try msstd_http_serving_new(options)
-    let listener = try host_network().listen(address)
-    let bound = listener.address()
+    let serving = try msstd_http_serving_new(address, options, handler)
+    let id = msstd_http_serving_id(serving)
+    let bound = msstd_http_serving_address(id)
     if let cores = options.cores:
         msrt_runtime_set_threads(cores)
 
-    let accepting = promise(fn: accept_loop(listener, serving, handler))
-    return ok(HttpServer(bound: bound, accepting: accepting, stopped: false))
+    # The accept loop captures only the serving's id, a number, so it owns everything it uses.
+    let accepting = promise(fn: accept_loop(id))
+    return ok(HttpServer(accepting: accepting, serving: serving, bound: bound, stopped: false))
 
 # The connections of `serve`'s accept loop. Its close, which runs when the loop returns, is cancelled or faults, cancels all connections first so they drain side by side, then joins them.
 type Accepting:
@@ -685,7 +693,7 @@ impl Closeable for Accepting:
         for connection in self.connections:
             let _ = connection.wait(timeout: 0.seconds)
         self.connections = []
-        msstd_net_release_unadopted(self.owner)
+        msstd_http_serving_release(self.owner)
         return ok(unit)
 
 impl Accepting:
@@ -699,11 +707,11 @@ impl Accepting:
             i -= 1
 
 # Accepts until the listener fails. An accept that fails for lack of descriptors or memory pauses briefly instead of ending the server.
-fn accept_loop(listener: Listener, serving: NativeServing, handler: fn(HttpExchange) Unit!) Unit!:
-    var accepting = Accepting(connections: [], owner: msstd_net_listener_raw_owner(listener.native))
+fn accept_loop(id: Int) Unit!:
+    var accepting = Accepting(connections: [], owner: id)
     var sweep_at = 64
     while true:
-        let accepted = listener.accept_raw(none)
+        let accepted = msstd_http_serving_accept(id)
         if accepted.is_error():
             if accepted.err().kind == ErrorCategory.Closed:
                 return ok(unit)
@@ -711,7 +719,7 @@ fn accept_loop(listener: Listener, serving: NativeServing, handler: fn(HttpExcha
             continue
 
         let raw = accepted.get()
-        accepting.connections.append(promise(fn: serve_connection(serving, handler, raw)))
+        accepting.connections.append(promise(fn: serve_connection(id, raw)))
         if accepting.connections.length() >= sweep_at:
             accepting.sweep()
             sweep_at = 64
@@ -721,8 +729,8 @@ fn accept_loop(listener: Listener, serving: NativeServing, handler: fn(HttpExcha
     return ok(unit)
 
 # Serves one accepted connection on the thread the runtime placed this promise on.
-fn serve_connection(serving: NativeServing, handler: fn(HttpExchange) Unit!, raw: Int) Unit!:
-    msstd_http_serving_connect(serving, handler, raw)
+fn serve_connection(id: Int, raw: Int) Unit!:
+    msstd_http_serving_connect(id, raw)
     return ok(unit)
 
 # Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.

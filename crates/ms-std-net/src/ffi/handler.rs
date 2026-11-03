@@ -6,7 +6,7 @@ use super::http_client::http_from_code;
 use crate::error::HttpErr;
 use crate::http::exchange::Exchange;
 use crate::http::server::{Dispatch, Outcome};
-use ms_rt::ffi::{Handler, IntoAbi, Object, str_ref, str_release};
+use ms_rt::ffi::{IntoAbi, Object, str_ref, str_release};
 use ms_rt_abi::{Obj, StrVal};
 use std::rc::Rc;
 
@@ -99,18 +99,16 @@ impl Dispatch for Program {
 }
 
 impl Program {
-    /// A program that hands each exchange to the streaming handler `env`. It only borrows `env`,
-    /// which must outlive the program: the promise that serves with it keeps the handler alive.
-    pub fn streaming(env: &Handler) -> Box<Program> {
-        let env = env.as_ptr();
-        // SAFETY: the compiler built `env` as a `fn(HttpExchange) Result[Unit, Error]`
-        // closure, whose code word is a `StreamThunk`; `env` is live for the call.
-        unsafe {
-            Box::new(Program {
-                env,
-                streaming: closure_code(env),
-            })
-        }
+    /// A program that hands each exchange to the streaming handler `env`. It only borrows `env`.
+    ///
+    /// # Safety
+    /// `env` is a live `fn(HttpExchange) Result[Unit, Error]` closure that outlives the program.
+    pub unsafe fn borrowed(env: *mut Obj) -> Box<Program> {
+        // SAFETY: the compiler built `env` as such a closure, whose code word is a `StreamThunk`.
+        Box::new(Program {
+            env,
+            streaming: unsafe { closure_code(env) },
+        })
     }
 }
 

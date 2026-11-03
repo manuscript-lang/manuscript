@@ -542,8 +542,12 @@ msstd_http_headers_names(h: *const ObjCell<HeadersH>, out: *mut VecVal)
 msstd_http_headers_new() -> *mut ObjCell<HeadersH>
 msstd_http_headers_remove(h: *const ObjCell<HeadersH>, name: *const StrVal) -> u8
 msstd_http_headers_values(h: *const ObjCell<HeadersH>, name: *const StrVal, out: *mut VecVal) -> u8
-msstd_http_serving_connect(serving: *const ObjCell<ServingH>, env: *mut Obj, connection: i64)
-msstd_http_serving_new(opts: *const HttpServerOptionsWire, out: *mut *mut ObjCell<ServingH>, err: *mut StrVal) -> u8
+msstd_http_serving_accept(id: i64, out: *mut i64, err: *mut StrVal) -> u8
+msstd_http_serving_address(id: i64, out: *mut StrVal)
+msstd_http_serving_connect(id: i64, connection: i64)
+msstd_http_serving_id(s: *const ObjCell<ServingH>) -> i64
+msstd_http_serving_new(address: *const StrVal, opts: *const HttpServerOptionsWire, env: *mut Obj, out: *mut *mut ObjCell<ServingH>, err: *mut StrVal) -> u8
+msstd_http_serving_release(id: i64)
 msstd_io_acc_finish_bytes(a: *mut Acc, out: *mut VecVal) -> u8
 msstd_io_acc_finish_count(a: *mut Acc, out: *mut i64) -> u8
 msstd_io_acc_finish_line(a: *mut Acc, out: *mut StrVal) -> u8
