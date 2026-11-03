@@ -1089,8 +1089,9 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
         let woke = park_on(id, remaining);
         if woke == task::WAIT_CANCELLED {
             // The promise may be a temporary that unwinding never drops (`read_file(p).wait()`):
-            // cancel its work now so it releases what it holds.
-            request_cancel(id);
+            // cancel its work and wait for it to end now, so what it holds (a listener, a file) is
+            // released before the unwinding task goes on.
+            msrt_promise_drop(id);
             fault::msrt_cancelled();
         }
         let t = table();
