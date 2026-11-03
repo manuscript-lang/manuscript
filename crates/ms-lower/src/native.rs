@@ -2381,6 +2381,18 @@ impl<'a> FnLower<'a> {
                     },
                 )
             }
+            "err" if !recv.own && self.needs_drop(out) => {
+                // A borrowed result lends its error; a consumer that keeps it must clone it.
+                let (bad, good) = (self.b.new_block(), self.b.new_block());
+                self.b.br_if(is_ok, bad, &[], good, &[]);
+                self.b.seal_block(good);
+                self.b.seal_block(bad);
+                self.b.switch_to(bad);
+                self.runtime_fault("msrt_fault_result_err");
+                self.b.switch_to(good);
+                let p = self.b.alt_get(alt, err, 0, r);
+                Ok(Val { v: p, own: false })
+            }
             "err" => self.two_ways(
                 is_ok,
                 out,
