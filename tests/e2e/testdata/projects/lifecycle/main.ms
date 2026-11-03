@@ -6,7 +6,7 @@ import Closeable from "@std/core.ms"
 
 type Resource:
     label: String
-    output: WriteStream
+    output: WriteStream[String]
     done: Bool = false
 
 // Idempotent, as the Closeable contract requires: the block that ends early closes by hand and
@@ -17,25 +17,25 @@ impl Closeable for Resource:
 
         self.done = true
 
-        let _ = self.output.write(data: "close {self.label}\n")
+        let _ = self.output.write(value: "close {self.label}\n")
         return ok(unit)
 
 type Pair:
     first: Int
     second: Int
 
-fn report(var output: WriteStream, label: String, value: Int) Int:
-    let _ = output.write(data: "{label}\n")
+fn report(var output: WriteStream[String], label: String, value: Int) Int:
+    let _ = output.write(value: "{label}\n")
     return value
 
 fn combine(first: Int, second: Int) Int:
     return first + second
 
-fn select(var output: WriteStream) fn(Int, Int) Int:
-    let _ = output.write(data: "callable\n")
+fn select(var output: WriteStream[String]) fn(Int, Int) Int:
+    let _ = output.write(value: "callable\n")
     return combine
 
-fn early(var output: WriteStream) Int:
+fn early(var output: WriteStream[String]) Int:
     let _outer = Resource(label: "outer", output: stdout())
     let _inner = Resource(label: "inner", output: stdout())
     return report(output: var output, label: "return value", value: 5)
@@ -43,13 +43,13 @@ fn early(var output: WriteStream) Int:
 fn failure() Int!Error:
     return error(Error("expected"))
 
-fn propagate(output: WriteStream) Int!Error:
+fn propagate(output: WriteStream[String]) Int!Error:
     let _resource = Resource(label: "propagation", output: output)
     let number = try failure()
     return ok(number)
 
-fn iterable(var output: WriteStream) List[Int]:
-    let _ = output.write(data: "iterable\n")
+fn iterable(var output: WriteStream[String]) List[Int]:
+    let _ = output.write(value: "iterable\n")
     return [1, 2]
 
 fn exercise() Int!:
@@ -76,7 +76,7 @@ fn exercise() Int!:
     let _completed = unit
     try _resource.close()
 
-    let _ = stdout().write(data: "after normal\n")
+    let _ = stdout().write(value: "after normal\n")
     var count = 0
 
     while count < 2:
@@ -99,7 +99,7 @@ fn exercise() Int!:
     var early_out = stdout()
     early(output: var early_out) | try expect_equal(5)
 
-    let _ = stdout().write(data: "finished\n")
+    let _ = stdout().write(value: "finished\n")
     return ok(0)
 
 export fn main() Int:

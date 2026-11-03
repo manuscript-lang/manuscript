@@ -1,33 +1,29 @@
 import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
-import headers, HttpMethod, buffered from "@std/net/http.ms"
+import headers, upgrade, HttpMethod, buffered from "@std/net/http.ms"
 import http_client, serve, web_socket from "@std/net/net.ms"
 import HttpExchange from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
 import HttpClientOptions from "@std/net/http.ms"
 import TlsOptions from "@std/net/net.ms"
-import WebSocketOptions from "@std/net/net.ms"
+import WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/net.ms"
 
 fn socket_result[T](result: T!) T!: result
 
 fn echo(exchange: HttpExchange) Unit!:
     if exchange.path() == "/ws":
-        var socket = try socket_result(
-            result: exchange.upgrade(
-                allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
-            )
+        var socket = try upgrade(
+            exchange, allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
         )
 
-        match try socket_result(result: socket.receive()):
+        match try socket.input.read().wait():
             message:
-                let _sent = try socket_result(
-                    result: socket.send_bytes(
-                        data: message.data, text: message.text
-                    )
+                try socket.output.write(
+                    WebSocketMessage(data: message.data, kind: message.kind)
                 )
             none:
                 return ok(unit)
 
-        socket.close().get(none)
+        let _ = socket.close()
         return ok(unit)
 
     var fields = headers()
@@ -57,16 +53,13 @@ fn exercise() Unit!:
         idle_timeout: 10.seconds, decompress: true, cookies: true, tls: tls.clone()
     )
     var client = try http_client(options: client_options)
-    let response = try client.request(
+    var response = try client.request(
         method: HttpMethod.Get, url: "http://{server.address()}/", headers: headers(),
         body: "", max_response_bytes: 1024, timeout: 2.seconds
     )
-    response.metadata().status | try expect_equal(200)
+    response.metadata.status | try expect_equal(200)
 
-    let part = match response.read(max_bytes: 1024):
-        ok(part): part
-        error(_):
-            return fail(message: "Unexpected case")
+    let part = try response.body.read().wait()
 
     match part:
         data:
@@ -83,19 +76,19 @@ fn exercise() Unit!:
     let websocket_options = WebSocketOptions(
         max_message_bytes: 1024, timeout: 2.seconds, tls: tls, compression: false
     )
-    let socket = try socket_result(
-        result: web_socket(
-            url: "ws://{server.address()}/ws", headers: headers(),
-            subprotocols: ["echo"], options: websocket_options
-        )
+    var socket = try web_socket(
+        url: "ws://{server.address()}/ws", headers: headers(),
+        subprotocols: ["echo"], options: websocket_options
     )
-    socket.subprotocol() | try expect_equal("echo")
+    socket.subprotocol | try expect_equal("echo")
 
-    let _sent = try socket_result(result: socket.send(data: "echo me"))
+    try socket.output.write(
+        WebSocketMessage(data: "echo me".to_bytes(), kind: WebSocketKind.Text)
+    )
 
-    match try socket_result(result: socket.receive()):
+    match try socket.input.read().wait():
         message:
-            (message.text) | try expect_true
+            (message.kind == WebSocketKind.Text) | try expect_true
             try expect_equal(message.data.decode_utf8(), "echo me")
         none:
             return fail(message: "Unexpected case")
