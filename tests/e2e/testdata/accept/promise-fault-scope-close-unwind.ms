@@ -37,7 +37,9 @@ fn run_wrapped(action: Int) Int!:
 
 test "consecutive promise faults in an interface read free each scope-closed wrapper once":
     var failed = 0
+
     for action in [2, 2, 2]:
         let p = promise(fn: run_wrapped(action))
         if not p.wait().is_ok(): failed += 1
+
     try expect_equal(failed, 3)
