@@ -2781,7 +2781,11 @@ impl Walker<'_> {
         // A promise returned inside a larger value (`Server(running: p)`, `[promise(..)]`) still
         // reads what it captured, so look at every part of the returned expression.
         let mut parts = Vec::new();
-        collect_parts(e, &mut parts);
+        collect_parts(
+            e,
+            &|c| matches!(self.cx.m.resolution(c), Resolution::Constructor { .. }),
+            &mut parts,
+        );
         let mut out: Vec<Name> = Vec::new();
         for part in parts {
             if self.entry_call(part) {
@@ -4347,23 +4351,20 @@ fn saved_perm(saved: &[(usize, Perm)], uid: usize) -> Option<Perm> {
     saved.iter().find(|(u, _)| *u == uid).map(|(_, p)| *p)
 }
 
-/// The expression and the value parts it builds (arguments, list and map elements, members), not
-/// the bodies of lambdas or the arms of a match.
-fn collect_parts<'e>(e: &'e Expr, out: &mut Vec<&'e Expr>) {
+/// The expression and the value parts it builds (constructor arguments, list and map elements),
+/// not the arguments of other calls (`wait_all([a, b])` consumes its promises), the bodies of
+/// lambdas or the arms of a match.
+fn collect_parts<'e>(e: &'e Expr, builds: &dyn Fn(&Expr) -> bool, out: &mut Vec<&'e Expr>) {
     out.push(e);
     match &e.kind {
-        ExprKind::Call { args, .. } => {
-            if !args
-                .iter()
-                .any(|a| matches!(a.value.kind, ExprKind::Lambda(_)))
-            {
-                args.iter().for_each(|a| collect_parts(&a.value, out));
-            }
+        ExprKind::Call { args, .. } if builds(e) => {
+            args.iter()
+                .for_each(|a| collect_parts(&a.value, builds, out));
         }
-        ExprKind::List(items) => items.iter().for_each(|x| collect_parts(x, out)),
+        ExprKind::List(items) => items.iter().for_each(|x| collect_parts(x, builds, out)),
         ExprKind::Map(entries) => entries.iter().for_each(|en| {
-            collect_parts(&en.key, out);
-            collect_parts(&en.value, out);
+            collect_parts(&en.key, builds, out);
+            collect_parts(&en.value, builds, out);
         }),
         _ => {}
     }
