@@ -5,40 +5,48 @@ use alloc::vec::Vec;
 use ms_rt::ffi::{Fail, native};
 
 native! {
+    // ms: leaf
     fn msstd_encoding_ascii85_encode(data: &[u8]) -> String {
         super::ascii85_encode(data)
     }
 
+    // ms: leaf
     fn msstd_encoding_ascii85_decode(
         text: &str, has_max: bool, max: i64,
     ) -> Result<Vec<u8>, Fail> {
         super::ascii85_decode(text, has_max.then_some(max))
     }
 
+    // ms: leaf
     fn msstd_encoding_base64_encode_unpadded(data: &[u8], url_safe: bool) -> String {
         super::base64_encode_unpadded(data, url_safe)
     }
 
+    // ms: leaf
     fn msstd_encoding_base64_decode_unpadded(
         text: &str, url_safe: bool, has_max: bool, max: i64,
     ) -> Result<Vec<u8>, Fail> {
         super::base64_decode_unpadded(text, url_safe, has_max.then_some(max))
     }
 
+    // ms: leaf
     fn msstd_encoding_base32_encode(data: &[u8], hex_alphabet: bool, padded: bool) -> String {
         super::base32_encode(data, hex_alphabet, padded)
     }
 
+    // ms: leaf
     fn msstd_encoding_base32_decode(
         text: &str, hex_alphabet: bool, padded: bool, has_max: bool, max: i64,
     ) -> Result<Vec<u8>, Fail> {
         super::base32_decode(text, hex_alphabet, padded, has_max.then_some(max))
     }
 
+    // ms: leaf
     fn msstd_encoding_base64_encode(data: &[u8], url_safe: bool) -> String {
         super::base64_encode(data, url_safe)
     }
 
+    // ms: leaf
     fn msstd_encoding_base64_decode(
         text: &str,
         url_safe: bool,

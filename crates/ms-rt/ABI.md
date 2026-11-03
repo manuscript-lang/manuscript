@@ -46,7 +46,7 @@ recorded here before it is committed.)_
 - **v2.4 (`ms-std-fs`, `ms-std-io`).** `msstd_fs_*` are the path-based `@std/fs` operations and `msstd_io_*` the host streams of `@std/io`.
   Paths are strings; fallible calls return `STATUS_*` (`NOT_FOUND`, `ALREADY_EXISTS`, `NOT_EMPTY`, `PERMISSION_DENIED`, `UNSUPPORTED`,
   `CLOSED`, `FAILED`, `UNAVAILABLE`, `NONE` join the status table) and write `out` only on success. `FAILED` carries Go's `*PathError`
-  text, read with `msstd_fs_failure_message` / `msstd_io_failure_message` until the next fallible call. Optional limits are a present
+  text, written to the trailing `err` out string (`io` still reads `msstd_io_failure_message` until the stream rewrite lands). Optional limits are a present
   flag plus an `i64`. `FileInfo` is flattened to `InfoOut`, filesystem status to `FsOut`; `list` returns names plus one flag byte per
   entry (bit 0 directory, bit 1 symlink). Streams are refcounted `Handle<Stream>` objects (`Obj` header, then the value); reads and writes
   poll in 50 ms slices so cancellation interrupts them. `STATUS_NONE` from `read`/`read_line` means end of stream. Generic `io.copy`,

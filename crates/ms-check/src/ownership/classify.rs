@@ -78,7 +78,7 @@ impl Classifier {
     fn class_in(&self, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
         match t.kind {
             Kind::Primitive if t.id.as_str() == "String" => Class::Move,
-            Kind::Primitive => Class::Copy,
+            Kind::Primitive | Kind::Invalid | Kind::Inferred => Class::Copy,
             Kind::Variable => {
                 if t.bounds().iter().any(|b| b.is_std("Closeable")) {
                     Class::Resource

@@ -34,6 +34,7 @@ impl Status for NotNumber {
 
 native! {
     /// Writes the document handle and the root node id through `out` and `root` on success.
+    // ms: leaf
     fn msstd_json_parse(
         text: &str,
         has_max_bytes: bool,
@@ -58,6 +59,7 @@ native! {
 
     /// Parses `text` straight into a value of the alternative described by `desc`, built by `ctor`
     /// (see `ms_rt::tree`), written to `out` on success.
+    // ms: leaf
     fn msstd_json_parse_tree(
         text: &str,
         has_max_bytes: bool,
@@ -81,6 +83,7 @@ native! {
         Ok(())
     }
 
+    // ms: leaf
     fn msstd_json_kind(d: ObjRef<Doc>, id: u32) -> u8 {
         match &d.nodes[id as usize] {
             Node::Null => KIND_NULL,
@@ -92,14 +95,17 @@ native! {
         }
     }
 
+    // ms: leaf
     fn msstd_json_bool(d: ObjRef<Doc>, id: u32) -> bool {
         matches!(d.nodes[id as usize], Node::Bool(true))
     }
 
+    // ms: leaf
     fn msstd_json_text(d: ObjRef<'_, Doc>, id: u32) -> &str {
         d.0.text_of(id)
     }
 
+    // ms: leaf
     fn msstd_json_len(d: ObjRef<Doc>, id: u32) -> i64 {
         match &d.nodes[id as usize] {
             Node::Arr { len, .. } | Node::Obj { len, .. } => i64::from(*len),
@@ -110,6 +116,7 @@ native! {
     }
 
     /// `i` is below `msstd_json_len`.
+    // ms: leaf
     fn msstd_json_item(d: ObjRef<Doc>, id: u32, i: i64) -> u32 {
         match &d.nodes[id as usize] {
             Node::Arr { .. } | Node::ArrB(_) => d.items(id)[i as usize],
@@ -118,6 +125,7 @@ native! {
         }
     }
 
+    // ms: leaf
     fn msstd_json_key(d: ObjRef<'_, Doc>, id: u32, i: i64) -> &str {
         match d.0.members(id).get(i as usize) {
             Some(m) => d.0.slice(m.key),
@@ -125,11 +133,13 @@ native! {
         }
     }
 
+    // ms: leaf
     fn msstd_json_dec_int(text: &str) -> Result<i64, NotNumber> {
         crate::parse_int(text).ok_or(NotNumber)
     }
 
     /// An integer in `lo..=hi`, for the sized signed and narrower unsigned types.
+    // ms: leaf
     fn msstd_json_dec_int_in(text: &str, lo: i64, hi: i64) -> Result<i64, NotNumber> {
         crate::parse_int(text)
             .filter(|v| (lo..=hi).contains(v))
@@ -137,20 +147,24 @@ native! {
     }
 
     /// A `UInt64` as its bit pattern.
+    // ms: leaf
     fn msstd_json_dec_uint(text: &str) -> Result<i64, NotNumber> {
         text.parse::<u64>().map(|v| v as i64).map_err(|_| NotNumber)
     }
 
     /// A `Float32` value as the `f64` holding it; a finite number too large for `f32` is not a number.
+    // ms: leaf
     fn msstd_json_dec_float32(text: &str) -> Result<f64, NotNumber> {
         let v: f32 = text.parse().map_err(|_| NotNumber)?;
         if v.is_finite() { Ok(f64::from(v)) } else { Err(NotNumber) }
     }
 
+    // ms: leaf
     fn msstd_json_dec_float(text: &str) -> Result<f64, NotNumber> {
         crate::parse_float(text).ok_or(NotNumber)
     }
 
+    // ms: leaf
     fn msstd_json_writer_new(
         has_max_bytes: bool,
         max_bytes: i64,
@@ -163,64 +177,79 @@ native! {
         ))
     }
 
+    // ms: leaf
     fn msstd_json_w_item(w: ObjMut<Writer>) -> () {
         w.0.item();
     }
 
+    // ms: leaf
     fn msstd_json_w_key(w: ObjMut<Writer>, key: &str) -> () {
         w.0.key(key);
     }
 
+    // ms: leaf
     fn msstd_json_w_key_quoted(w: ObjMut<Writer>, quoted_name: &str) -> () {
         w.0.key_quoted(quoted_name);
     }
 
+    // ms: leaf
     fn msstd_json_w_undo(w: ObjMut<Writer>) -> () {
         w.0.undo();
     }
 
+    // ms: leaf
     fn msstd_json_w_begin_array(w: ObjMut<Writer>) -> () {
         w.0.begin_array();
     }
 
+    // ms: leaf
     fn msstd_json_w_end_array(w: ObjMut<Writer>) -> () {
         w.0.end_array();
     }
 
+    // ms: leaf
     fn msstd_json_w_begin_object(w: ObjMut<Writer>) -> () {
         w.0.begin_object();
     }
 
+    // ms: leaf
     fn msstd_json_w_end_object(w: ObjMut<Writer>) -> () {
         w.0.end_object();
     }
 
+    // ms: leaf
     fn msstd_json_w_no_form(w: ObjMut<Writer>) -> () {
         w.0.lost = true;
     }
 
+    // ms: leaf
     fn msstd_json_w_lost(w: ObjRef<Writer>) -> bool {
         w.lost
     }
 
+    // ms: leaf
     fn msstd_json_w_null(w: ObjMut<Writer>) -> () {
         w.0.null();
     }
 
+    // ms: leaf
     fn msstd_json_w_bool(w: ObjMut<Writer>, v: bool) -> () {
         w.0.boolean(v);
     }
 
+    // ms: leaf
     fn msstd_json_w_int(w: ObjMut<Writer>, v: i64) -> () {
         w.0.int(v);
     }
 
     /// A `UInt64` given as its bit pattern.
+    // ms: leaf
     fn msstd_json_w_uint(w: ObjMut<Writer>, v: i64) -> () {
         w.0.number(&(v as u64).to_string());
     }
 
     /// A `Float32` held in an `f64`, written as the shortest decimal that reads back as that `f32`.
+    // ms: leaf
     fn msstd_json_w_float32(w: ObjMut<Writer>, v: f64) -> () {
         match (v as f32).to_string().parse::<f64>() {
             Ok(short) if v.is_finite() => w.0.float(short),
@@ -228,20 +257,24 @@ native! {
         }
     }
 
+    // ms: leaf
     fn msstd_json_w_float(w: ObjMut<Writer>, v: f64) -> () {
         w.0.float(v);
     }
 
+    // ms: leaf
     fn msstd_json_w_number(w: ObjMut<Writer>, text: &str) -> () {
         w.0.number(text);
     }
 
+    // ms: leaf
     fn msstd_json_w_string(w: ObjMut<Writer>, text: &str) -> () {
         w.0.string(text);
     }
 
     /// Writes the tree of the alternative described by `desc` that `root` holds, read through
     /// `view` (see `ms_rt::tree`), as the next value.
+    // ms: leaf
     fn msstd_json_w_tree(
         w: SinkObj<Writer>,
         desc: ValueDesc,
@@ -252,19 +285,23 @@ native! {
     }
 
     /// The view thunk's call for an array: opens it and queues its elements.
+    // ms: leaf
     fn msstd_json_tree_array(walk: WalkRef<Writer>, list: ListRef) -> () {
         walk.0.array(list.0);
     }
 
     /// The view thunk's call for an object: opens it and queues its members.
+    // ms: leaf
     fn msstd_json_tree_object(walk: WalkRef<Writer>, map: MapRef) -> () {
         walk.0.object(map.0);
     }
 
+    // ms: leaf
     fn msstd_json_w_finish(w: ObjMut<Writer>) -> Result<String, Fail> {
         w.0.finish()
     }
 
+    // ms: leaf
     fn msstd_json_find(d: ObjRef<Doc>, id: u32, key: &str) -> i64 {
         d.members(id)
             .iter()
@@ -272,6 +309,7 @@ native! {
             .map_or(-1, |i| i as i64)
     }
 
+    // ms: leaf
     fn msstd_json_has_unknown(d: ObjRef<Doc>, id: u32, names: Vec<&str>) -> bool {
         d.members(id)
             .iter()
@@ -280,6 +318,7 @@ native! {
 
     /// Index of the variant name in `names` (-1 when unknown); `payload` is the payload node
     /// (-1 for a bare name) and is written only for a string or single-key object.
+    // ms: leaf
     fn msstd_json_variant(d: ObjRef<Doc>, id: u32, names: Vec<&str>, payload: Out<i64>) -> i64 {
         let index = |name: &str| names.iter().position(|k| *k == name).map_or(-1, |i| i as i64);
         match (&d.nodes[id as usize], d.members(id)) {

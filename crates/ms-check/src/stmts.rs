@@ -357,7 +357,7 @@ impl Checker {
             }
         ) {
             let t = i.t();
-            if t.id != "Unit" && t.id != "<invalid>" {
+            if t.id != "Unit" && !t.is_invalid() {
                 self.type_error(
                     value.pos,
                     format!(
@@ -413,7 +413,7 @@ impl Checker {
         if (t.is_std("Optional") && t.args.len() == 1) || (t.is_std("Result") && t.args.len() == 2)
         {
             payload = t.args[0].clone();
-        } else if t.id != "<invalid>" {
+        } else if !t.is_invalid() {
             self.type_error(
                 cond.pos,
                 format!(
@@ -858,7 +858,7 @@ impl Checker {
     ) -> (bool, bool) {
         let info = self.expression(value, None);
         let t = info.t();
-        if arms.first().is_some_and(|a| a.chain) && t.id != "<invalid>" && !t.is_std("Optional") {
+        if arms.first().is_some_and(|a| a.chain) && !t.is_invalid() && !t.is_std("Optional") {
             self.type_error(
                 value.pos,
                 format!("`?.` needs an optional receiver, found {t}; write `.` to read a member of a value that is always present"),
@@ -868,7 +868,7 @@ impl Checker {
         if t.kind == Kind::Contract {
             return self.match_contract(pos, arms, &info, body);
         }
-        if t.id == "<invalid>" {
+        if t.is_invalid() {
             return (false, false);
         }
         if arms.first().is_some_and(|a| a.from_if) && t.id != "Bool" {
@@ -1447,7 +1447,7 @@ impl Checker {
     pub(crate) fn index(&mut self, e: &Expr, left: &Expr, right: &Expr) -> Info {
         let receiver = self.expression(left, None);
         let rt = receiver.t();
-        if rt.id == "<invalid>" && matches!(right.kind, ExprKind::Name(_)) {
+        if rt.is_invalid() && matches!(right.kind, ExprKind::Name(_)) {
             // An unresolved receiver was reported; its bracket argument is probably a type argument.
             return Info {
                 ty: Some(invalid()),
@@ -1472,7 +1472,7 @@ impl Checker {
             no_return: receiver.no_return || index.no_return,
             ..Info::default()
         };
-        if rt.id == "<invalid>" {
+        if rt.is_invalid() {
             return info;
         }
         if list {
@@ -1516,7 +1516,7 @@ impl Checker {
         });
         info.ty = match info.ty {
             Some(t) if entries => Some(standard("Optional", vec![t])),
-            Some(t) if t.id == "<invalid>" => Some(t),
+            Some(t) if t.is_invalid() => Some(t),
             _ => {
                 self.type_error(
                     e.pos,
@@ -1596,9 +1596,9 @@ impl Checker {
                         let before = self.p.diagnostics.len();
                         let info = self.arm_value(value, result.as_ref(), expected);
                         let t = info.t();
-                        invalid_arm = invalid_arm || t.id == "<invalid>";
+                        invalid_arm = invalid_arm || t.is_invalid();
                         if result.is_none()
-                            && t.id != "Never"
+                            && !t.is_never()
                             && crate::inference::inference_type_known(&t, &self.inference_variables)
                         {
                             let t = required_type(&t);

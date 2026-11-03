@@ -923,11 +923,7 @@ fn fit_result(fl: &mut FnLower<'_>, r: Val, ret: MTy) -> Result<Val, Error> {
 /// Whether the runtime function `sym` takes the receiver's handle first.
 fn takes_handle(sym: &str) -> bool {
     crate::rtcall::rt_sig(sym)
-        .and_then(|s| {
-            s.params
-                .first()
-                .map(|p| p.name == "h" || p.ty.starts_with("*const ObjCell<"))
-        })
+        .and_then(|s| s.params.first().map(|p| p.ty.contains("ObjCell<")))
         .unwrap_or(false)
 }
 
@@ -1239,7 +1235,10 @@ impl FnLower<'_> {
                 }
                 Ok(Val { v: list, own: true })
             }
-            TyKind::Rec(rid) if self.b.m.records[rid.index()].name == "Duration" => {
+            TyKind::Rec(rid)
+                if crate::nativerec::NativeRec::of(self.b.m, ty)
+                    == Some(crate::nativerec::NativeRec::Duration) =>
+            {
                 let nanos = self.getter_call(sym, MTy::INT, lead)?;
                 Ok(Val {
                     v: self.b.rec_new(rid, &[nanos]),

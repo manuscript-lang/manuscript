@@ -520,6 +520,7 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
             Some(1) if is_source_module(module) => return,
             Some(1) => {
                 diagnostics.push(Diagnostic {
+                    opener_line: 0,
                     file: Arc::from(module.file.as_str()),
                     pos: ms_syntax::Pos::new(0, 1, 1),
                     phase: Phase::Resolution,

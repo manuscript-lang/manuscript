@@ -15,12 +15,8 @@ mod dwarf;
 pub mod llvm_ir;
 mod llvm_obj;
 pub use llvm_obj::available as llvm_available;
-
-/// Whether LLVM builds vectorize loops (and build AVX2 copies of them). `MS_VECTORIZE=off` (or
-/// `0`) disables the loop and SLP vectorizers and the per-CPU copies; the default is on.
-pub fn vectorize() -> bool {
-    !std::env::var("MS_VECTORIZE").is_ok_and(|v| v == "off" || v == "0")
-}
+mod options;
+pub use options::{BuildOptions, RtHot};
 mod llvm_tables;
 mod lower;
 mod spill;
@@ -42,6 +38,8 @@ pub struct Options {
     /// Release builds: optimize functions with LLVM at this level (`"3"` or `"s"`) instead of
     /// compiling them with Cranelift. Profiles and fault traces carry no source lines.
     pub llvm: Option<&'static str>,
+    /// Environment-independent build settings.
+    pub build: BuildOptions,
 }
 
 impl Default for Options {
@@ -52,6 +50,7 @@ impl Default for Options {
             opt_level: "speed",
             dump_clif: false,
             llvm: None,
+            build: BuildOptions::default(),
         }
     }
 }

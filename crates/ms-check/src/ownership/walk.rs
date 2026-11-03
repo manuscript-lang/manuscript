@@ -1330,6 +1330,7 @@ impl Walker<'_> {
             return;
         }
         self.diags.push(Diagnostic {
+            opener_line: 0,
             file: Arc::from(self.cx.m.data.file.as_str()),
             pos,
             phase: Phase::Type,
@@ -3351,6 +3352,7 @@ impl Walker<'_> {
         let param_names: Vec<Name> =
             cx.m.info(e)
                 .arguments
+                .clone()
                 .unwrap_or_default()
                 .iter()
                 .map(|s| s.name)

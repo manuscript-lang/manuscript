@@ -93,7 +93,7 @@ impl<'a> FnLower<'a> {
             Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
             _ => return Err(Error::new("unsupported call target")),
         };
-        if !self.dead && self.ety(e).id == "Never" {
+        if !self.dead && self.ety(e).is_never() {
             self.b.unreachable();
             self.terminated();
         }
@@ -299,6 +299,7 @@ impl<'a> FnLower<'a> {
         }
         let saved_hir = self.hir.clone();
         let saved_subst = std::mem::replace(&mut self.subst, subst.clone());
+        let saved_variant = std::mem::take(&mut self.variant);
         let saved_file = self.file;
         self.hir = self.cx.module(callee.module.file)?;
         self.file = self.b.m.add_file(callee.module.file.as_str());
@@ -345,6 +346,7 @@ impl<'a> FnLower<'a> {
         self.stmt_pos = saved_stmt;
         self.hir = saved_hir;
         self.subst = saved_subst;
+        self.variant = saved_variant;
         self.file = saved_file;
         r
     }
@@ -1074,6 +1076,7 @@ impl<'a> FnLower<'a> {
         }
         let saved_hir = self.hir.clone();
         let saved_subst = std::mem::replace(&mut self.subst, ct::substitution(t));
+        let saved_variant = std::mem::take(&mut self.variant);
         let saved_file = self.file;
         self.hir = self.cx.module(sym.module)?;
         self.file = self.b.m.add_file(sym.module.as_str());
@@ -1084,6 +1087,7 @@ impl<'a> FnLower<'a> {
         self.stmt_pos = saved_stmt;
         self.hir = saved_hir;
         self.subst = saved_subst;
+        self.variant = saved_variant;
         self.file = saved_file;
         let x = r?;
         Ok(self.owned(x))

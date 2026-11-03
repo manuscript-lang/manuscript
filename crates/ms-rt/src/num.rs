@@ -380,6 +380,7 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
 
 /// `Numbers.parse_int(text, radix)`: status, with the value written to `out` only on success.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_numbers_parse_int(
     text: *const StrVal,
     radix: i64,
@@ -398,6 +399,7 @@ pub unsafe extern "C-unwind" fn msrt_numbers_parse_int(
 
 /// `Numbers.parse_float(text)`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_numbers_parse_float(text: *const StrVal, out: *mut f64) -> u8 {
     // SAFETY: the caller passes a live string and a writable out.
     match parse_float(unsafe { crate::string::bytes(text) }) {
@@ -412,6 +414,7 @@ pub unsafe extern "C-unwind" fn msrt_numbers_parse_float(text: *const StrVal, ou
 
 /// The error message for a number status code (`STATUS_INVALID_INPUT`, `_INVALID_DATA`, `_OUT_OF_RANGE`).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_numbers_error_message(status: u8, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { out.write(msrt_numbers_error_message_val(status)) }
@@ -445,6 +448,7 @@ unsafe fn precision_out(
 
 /// `Float.to_precision(digits)`: `digits` in `1..=100`, otherwise a fault.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_float_to_precision(v: f64, digits: i64, out: *mut StrVal) {
     // SAFETY: forwarded caller contract.
     unsafe { precision_out(v, b'g', digits, 1, "to_precision", out) }
@@ -452,6 +456,7 @@ pub unsafe extern "C-unwind" fn msrt_float_to_precision(v: f64, digits: i64, out
 
 /// `Float.to_exponential(digits)`: `digits` in `0..=100`, otherwise a fault.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_float_to_exponential(v: f64, digits: i64, out: *mut StrVal) {
     // SAFETY: forwarded caller contract.
     unsafe { precision_out(v, b'e', digits, 0, "to_exponential", out) }
@@ -459,6 +464,7 @@ pub unsafe extern "C-unwind" fn msrt_float_to_exponential(v: f64, digits: i64, o
 
 /// `Float.to_fixed(digits)`: `digits` in `0..=100`, otherwise a fault.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_float_to_fixed(v: f64, digits: i64, out: *mut StrVal) {
     // SAFETY: forwarded caller contract.
     unsafe { precision_out(v, b'f', digits, 0, "to_fixed", out) }
@@ -466,12 +472,14 @@ pub unsafe extern "C-unwind" fn msrt_float_to_fixed(v: f64, digits: i64, out: *m
 
 /// The `Float` with this IEEE 754 binary64 bit pattern.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_float_from_bits(bits: i64) -> f64 {
     f64::from_bits(bits as u64)
 }
 
 /// The IEEE 754 binary64 bit pattern of a `Float`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_float_to_bits(value: f64) -> i64 {
     value.to_bits() as i64
 }
@@ -504,18 +512,21 @@ pub extern "C-unwind" fn msrt_cpu_level() -> i64 {
 
 /// The binary32 with this bit pattern (the low 32 bits), widened exactly to the `f64` a `Float32` register holds.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_float32_from_bits(bits: i64) -> f64 {
     f64::from(f32::from_bits(bits as u32))
 }
 
 /// The binary32 bit pattern of a value a `Float32` register holds as an `f64`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_float32_to_bits(value: f64) -> i64 {
     i64::from((value as f32).to_bits())
 }
 
 /// `Float.truncate_to_int()`: present flag, value through `out` only when present.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8 {
     const LIMIT: f64 = 9_223_372_036_854_775_808.0;
     if !(-LIMIT..LIMIT).contains(&v) {
@@ -529,6 +540,7 @@ pub unsafe extern "C-unwind" fn msrt_float_truncate_to_int(v: f64, out: *mut i64
 /// `Float.to_float32()`: present flag, value through `out` only when present. A finite value
 /// too large for binary32 is absent (Float32 payloads are stored as 4 bytes); NaN and infinities convert unchanged.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_float_to_float32(v: f64, out: *mut f32) -> u8 {
     let narrowed = v as f32;
     if v.is_finite() && narrowed.is_infinite() {
@@ -541,6 +553,7 @@ pub unsafe extern "C-unwind" fn msrt_float_to_float32(v: f64, out: *mut f32) -> 
 
 /// `Float.compare`: a total order in which `-0.0 == 0.0` and NaN is equal to itself and sorts last.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_float_compare(a: f64, b: f64) -> i64 {
     if a.is_nan() || b.is_nan() {
         return a.is_nan() as i64 - b.is_nan() as i64;
@@ -550,6 +563,7 @@ pub extern "C-unwind" fn msrt_float_compare(a: f64, b: f64) -> i64 {
 
 /// `Int.compare`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_int_compare(a: i64, b: i64) -> i64 {
     (a > b) as i64 - (a < b) as i64
 }

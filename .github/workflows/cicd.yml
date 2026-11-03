@@ -6,9 +6,9 @@ name: CI/CD
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
 #                 every outside merge.
 #   merge queue   the same as a pull request, in case a queue is configured again.
-#   push to main  all six platforms, one job each running both parts (see .github/actions/rust-checks),
-#                 so main holds six runners; linux-arm64 also builds the book for Pages and the jobs save
-#                 the sccache caches. The running main run finishes; only the newest push waits. A failure is fixed or reverted.
+#   push to main  all six platforms, each split into `tests` and `conformance` (twelve jobs, see
+#                 .github/actions/rust-checks); linux-arm64 also builds the book for Pages and the tests
+#                 jobs save the sccache caches. The running main run finishes; only the newest push waits. A failure is fixed or reverted.
 #   manual run    the same as a push; its `os` input runs one platform.
 # Require `Platform checks`.
 
@@ -74,16 +74,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Pull requests split each leg into `tests` (a) and `conformance` (b) on two runners for wall time;
-        # main is not waited on, so each leg runs both parts in one job: six jobs, not twelve.
-        part: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group') && '["a", "b"]' || '["ab"]') }}
+        # Every leg is split into `tests` (a) and `conformance` (b) on two runners for wall time.
+        part: [a, b]
         leg: >-
           ${{ fromJSON(
-          (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b", "gates": false}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}]' ||
-          inputs.os == 'linux' && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "a"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}]' ||
+          (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}]' ||
+          inputs.os == 'linux' && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}]' ||
           inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": "a"}]' ||
-          inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": "a"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
-          '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "a"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}, {"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": "a"}, {"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": "a"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]'
+          inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
+          '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}, {"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": "a"}, {"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": "b"}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]'
           ) }}
     env:
       PR: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
@@ -109,7 +108,7 @@ jobs:
       - uses: ./.github/actions/book-checks
         if: matrix.leg.docs && matrix.part != 'a'
       - uses: actions/upload-pages-artifact@v5
-        if: matrix.leg.docs && env.PR != 'true'
+        if: matrix.leg.docs && matrix.part == 'b' && env.PR != 'true'
         with:
           path: .artifacts/book
       - uses: ./.github/actions/rust-checks
@@ -120,9 +119,10 @@ jobs:
           part: ${{ matrix.part }}
           lint: ${{ matrix.leg.lint || false }}
           cranelift: ${{ matrix.leg.cranelift || '' }}
-          gates: ${{ matrix.leg.gates != false }}
+          gates: ${{ matrix.leg.gates || 'true' }}
       - uses: ./.github/actions/sccache-save
-        if: ${{ !cancelled() }}
+        # Part a builds the whole workspace, a superset of part b, so one save per leg keeps the cache count at six.
+        if: ${{ !cancelled() && matrix.part == 'a' }}
         with:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}

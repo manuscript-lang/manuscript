@@ -907,6 +907,14 @@ impl ErrOut {
             unsafe { self.0.write(new_string(msg)) }
         }
     }
+
+    /// Like [`ErrOut::set`] for text that need not be UTF-8.
+    pub fn set_bytes(&self, msg: &[u8]) {
+        if !self.0.is_null() {
+            // SAFETY: a non-null `ErrOut` is a writable slot (`from_raw` contract).
+            unsafe { self.0.write(new_string_bytes(msg)) }
+        }
+    }
 }
 impl AbiType for ErrOut {
     type Raw = *mut StrVal;
@@ -914,6 +922,12 @@ impl AbiType for ErrOut {
 // SAFETY: the caller passes null or writable memory for one string.
 unsafe impl FromAbi<'_> for ErrOut {
     unsafe fn from_raw(raw: *mut StrVal) -> ErrOut {
+        if !raw.is_null() {
+            // The slot may be read for any failure status: start it as the empty string, which
+            // owns no allocation, so a status that sets no text leaves it valid.
+            // SAFETY: the caller passes writable memory for one string.
+            unsafe { raw.write(new_string_bytes(b"")) };
+        }
         ErrOut(raw)
     }
 }
@@ -1383,6 +1397,32 @@ macro_rules! abi_record {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! native_signature {
+    // Like the plain form, with a trailing `err` out string after the outputs.
+    (
+        @err $name:ident,
+        [$($p:ident: $t:ty),*],
+        [$($o:ident: $ot:ty),*],
+        $e:ident: $et:ty,
+        $ret:expr
+    ) => {
+        #[cfg(test)]
+        #[allow(unused_imports, non_snake_case)]
+        mod $name {
+            use super::*;
+            #[test]
+            fn ms_signature() {
+                $crate::ffi::record_signature(
+                    stringify!($name),
+                    &[
+                        $((stringify!($p), ::core::any::type_name::<<$t as $crate::ffi::AbiType>::Raw>()),)*
+                        $((stringify!($o), ::core::any::type_name::<*mut <$ot as $crate::ffi::IntoAbi>::Raw>()),)*
+                        (stringify!($e), ::core::any::type_name::<<$et as $crate::ffi::AbiType>::Raw>()),
+                    ],
+                    $ret,
+                );
+            }
+        }
+    };
     (
         $name:ident,
         [$($p:ident: $t:ty),*],
@@ -1429,15 +1469,102 @@ macro_rules! native {
     // `safe fn`: every parameter and the result are scalars, so the shim itself is safe to call.
     (
         $(#[$m:meta])*
-        safe fn $name:ident($($p:ident: $t:ty),* $(,)?) -> $($tail:tt)*
+        safe fn $name:ident($($params:tt)*) -> $($tail:tt)*
     ) => {
-        $crate::native! { @item [] $(#[$m])* fn $name($($p: $t),*) -> $($tail)* }
+        $crate::native! { @item [] $(#[$m])* fn $name($($params)*) -> $($tail)* }
     };
     (
         $(#[$m:meta])*
-        fn $name:ident($($p:ident: $t:ty),* $(,)?) -> $($tail:tt)*
+        fn $name:ident($($params:tt)*) -> $($tail:tt)*
     ) => {
-        $crate::native! { @item [unsafe] $(#[$m])* fn $name($($p: $t),*) -> $($tail)* }
+        $crate::native! { @item [unsafe] $(#[$m])* fn $name($($params)*) -> $($tail)* }
+    };
+    // A fallible shim whose parameters end with `; err: ErrOut` also takes the trailing `err`
+    // out string where a `Failed` status stores its text; it comes after `out`.
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* ; $e:ident: $et:ty $(,)?) -> Result<(), $err:ty> $body:block
+        $($rest:tt)*
+    ) => {
+        $(#[$m])*
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
+        #[unsafe(no_mangle)]
+        pub $($q)* extern "C-unwind" fn $name(
+            $($p: <$t as $crate::ffi::AbiType>::Raw,)*
+            $e: <$et as $crate::ffi::AbiType>::Raw,
+        ) -> u8 {
+            fn native_body($($p: $t,)* $e: $et) -> Result<(), $err> $body
+            // SAFETY: arguments are live values of their declared types (`FromAbi`).
+            match native_body($(unsafe { <$t as $crate::ffi::FromAbi>::from_raw($p) },)* unsafe { <$et as $crate::ffi::FromAbi>::from_raw($e) }) {
+                Ok(()) => $crate::ffi::STATUS_OK,
+                Err(e) => $crate::ffi::Status::status(e),
+            }
+        }
+        $crate::native_signature! { @err $name, [$($p: $t),*], [], $e: $et, Some("u8") }
+        $crate::native! { $($rest)* }
+    };
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* ; $e:ident: $et:ty $(,)?) -> Result<($a:ty, $b:ty), $err:ty> $body:block
+        $($rest:tt)*
+    ) => {
+        $(#[$m])*
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
+        #[unsafe(no_mangle)]
+        pub $($q)* extern "C-unwind" fn $name(
+            $($p: <$t as $crate::ffi::AbiType>::Raw,)*
+            out: *mut <$a as $crate::ffi::IntoAbi>::Raw,
+            out2: *mut <$b as $crate::ffi::IntoAbi>::Raw,
+            $e: <$et as $crate::ffi::AbiType>::Raw,
+        ) -> u8 {
+            fn native_body($($p: $t,)* $e: $et) -> Result<($a, $b), $err> $body
+            // SAFETY: arguments are live values of their declared types (`FromAbi`).
+            let r = native_body($(unsafe { <$t as $crate::ffi::FromAbi>::from_raw($p) },)* unsafe { <$et as $crate::ffi::FromAbi>::from_raw($e) });
+            match r {
+                Ok((x, y)) => {
+                    // SAFETY: `out` and `out2` are writable for one result slot each.
+                    unsafe {
+                        out.write($crate::ffi::IntoAbi::into_raw(x));
+                        out2.write($crate::ffi::IntoAbi::into_raw(y));
+                    }
+                    $crate::ffi::STATUS_OK
+                }
+                Err(e) => $crate::ffi::Status::status(e),
+            }
+        }
+        $crate::native_signature! { @err $name, [$($p: $t),*], [out: $a, out2: $b], $e: $et, Some("u8") }
+        $crate::native! { $($rest)* }
+    };
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* ; $e:ident: $et:ty $(,)?) -> Result<$ok:ty, $err:ty> $body:block
+        $($rest:tt)*
+    ) => {
+        $(#[$m])*
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
+        #[unsafe(no_mangle)]
+        pub $($q)* extern "C-unwind" fn $name(
+            $($p: <$t as $crate::ffi::AbiType>::Raw,)*
+            out: *mut <$ok as $crate::ffi::IntoAbi>::Raw,
+            $e: <$et as $crate::ffi::AbiType>::Raw,
+        ) -> u8 {
+            fn native_body($($p: $t,)* $e: $et) -> Result<$ok, $err> $body
+            // SAFETY: arguments are live values of their declared types (`FromAbi`).
+            let r = native_body($(unsafe { <$t as $crate::ffi::FromAbi>::from_raw($p) },)* unsafe { <$et as $crate::ffi::FromAbi>::from_raw($e) });
+            match r {
+                Ok(v) => {
+                    // SAFETY: `out` is writable for one result slot by the caller contract.
+                    unsafe { out.write($crate::ffi::IntoAbi::into_raw(v)) };
+                    $crate::ffi::STATUS_OK
+                }
+                Err(e) => $crate::ffi::Status::status(e),
+            }
+        }
+        $crate::native_signature! { @err $name, [$($p: $t),*], [out: $ok], $e: $et, Some("u8") }
+        $crate::native! { $($rest)* }
     };
     (
         @item [$($q:tt)*]

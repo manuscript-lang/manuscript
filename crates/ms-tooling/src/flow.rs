@@ -14,6 +14,8 @@ use std::collections::{HashMap, HashSet};
 pub struct Site {
     pub target: String,
     pub kind: String,
+    /// A `TaskGroup.spawn` call.
+    pub spawn: bool,
 }
 
 pub struct FlowBuilder<'a> {
@@ -243,7 +245,7 @@ impl FlowBuilder<'_> {
         out
     }
 
-    fn call(&self, e: &Expr) -> Option<Node> {
+    fn call(&self, e: &Expr) -> Option<(Node, bool)> {
         let site = self
             .sites
             .get(&format!("{}#call#{}", self.file, e.pos.offset))?;
@@ -251,18 +253,20 @@ impl FlowBuilder<'_> {
             return None;
         }
         if let Some(key) = self.keys.get(&site.target) {
-            return Some(Node {
+            let node = Node {
                 kind: "call".into(),
                 label: format!("call {}", key_name(key)),
                 reference: key.clone(),
                 ..Node::default()
-            });
+            };
+            return Some((node, site.spawn));
         }
-        Some(Node {
+        let node = Node {
             kind: "native".into(),
             label: format!("native {}", site.target),
             ..Node::default()
-        })
+        };
+        Some((node, site.spawn))
     }
 }
 
@@ -291,11 +295,11 @@ impl Visitor for Events<'_, '_> {
         if !constant && !matches!(x.kind, ExprKind::Call { .. }) {
             return;
         }
-        let Some(node) = self.builder.call(x) else {
+        let Some((node, spawn)) = self.builder.call(x) else {
             return;
         };
         let mut node = self.builder.at(node, x.pos);
-        if node.reference.ends_with("promise") || node.label == "call promise" {
+        if spawn {
             // The started work runs as its own task: its calls belong under the spawn.
             node.kind = "spawn".into();
             node.label = format!("spawn  {}", self.builder.source(x.pos));

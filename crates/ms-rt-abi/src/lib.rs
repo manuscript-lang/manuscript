@@ -10,8 +10,12 @@
 // `unsafe extern "C" fn` pointer types and `Sync` impls for the C-layout statics.
 #![allow(unsafe_code)]
 
+extern crate alloc;
+
 #[cfg(test)]
 extern crate std;
+
+pub mod record;
 
 /// Bump when any layout or symbol here changes incompatibly.
 pub const ABI_VERSION: u32 = 3;

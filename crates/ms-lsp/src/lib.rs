@@ -15,7 +15,6 @@ pub mod editor;
 pub mod features;
 pub mod index;
 pub mod json;
-pub mod lexical;
 pub mod lint;
 pub mod nav;
 pub mod query;

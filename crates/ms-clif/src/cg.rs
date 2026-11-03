@@ -6,6 +6,7 @@ use crate::lower::Lower;
 use crate::{Error, Options};
 use cranelift_codegen::Context;
 use cranelift_codegen::ir::{self, AbiParam, Signature, UserFuncName, types};
+use ms_mir::types::Native;
 
 /// A parameter or return of type `ty`. Bytes are zero-extended to a full register: the
 /// runtime is compiled by rustc, which assumes `u8` and `bool` arguments arrive extended.
@@ -221,6 +222,7 @@ struct ModuleSymbols<'a>(
     &'a ObjectModule,
     &'a [(u32, u32, u32)],
     &'a [ms_mir::ir::Scope],
+    &'a [ms_mir::ir::ExternDef],
 );
 
 impl ModuleSymbols<'_> {
@@ -241,6 +243,10 @@ impl crate::llvm_ir::Symbols for ModuleSymbols<'_> {
     fn scope(&self, idx: u32) -> Option<(String, u32, u32, u32)> {
         let sc = self.2.get((idx as usize).checked_sub(1)?)?;
         Some((sc.name.clone(), sc.file, sc.parent, sc.call_line))
+    }
+
+    fn reads_only(&self, symbol: &str) -> bool {
+        self.3.iter().any(|e| e.reads && e.name == symbol)
     }
 
     fn symbol(&self, namespace: u32, index: u32) -> String {
@@ -441,11 +447,11 @@ impl<'m> Gen<'m> {
                 inner[0] = Some(*e);
                 KIND_LIST
             }
-            TyKind::Obj(n, args) if n == "Map" => {
+            TyKind::Obj(Native::Map, args) => {
                 inner = [args.first().copied(), args.get(1).copied()];
                 KIND_MAP
             }
-            TyKind::Obj(n, args) if n == "Set" => {
+            TyKind::Obj(Native::Set, args) => {
                 inner[0] = args.first().copied();
                 KIND_SET
             }
@@ -647,7 +653,7 @@ fn compile_with_isa(
         funcs: Vec::new(),
         rt: HashMap::new(),
         rt_data: HashMap::new(),
-        count_str: std::env::var_os("MS_COUNT_STR").is_some(),
+        count_str: opts.build.count_str,
         ext: HashMap::new(),
         strs: HashMap::new(),
         list_consts: HashMap::new(),
@@ -675,7 +681,7 @@ fn compile_with_isa(
             let cwd = std::env::current_dir()
                 .map_or_else(|_| ".".into(), |d| d.to_string_lossy().into_owned());
             let mut llvm = crate::llvm_ir::LlvmModule::new(files, cwd);
-            llvm.set_per_cpu(x86_64 && crate::vectorize());
+            llvm.set_per_cpu(x86_64 && opts.build.vectorize);
             llvm
         }),
     };
@@ -814,12 +820,13 @@ fn compile_with_isa(
     let triple = llvm_triple(g.module.isa().triple());
     let mut llvm_object = None;
     if let Some(llvm) = g.llvm.take() {
-        let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
+        let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
         let pinned = g.pinned.iter().map(|id| syms.symbol_of(*id)).collect();
         let anchored = g.anchor.is_some();
         let obj = crate::llvm_obj::compile(
             &llvm.finish(&triple, &pinned, anchored),
             opts.llvm.unwrap_or("3"),
+            &opts.build,
         )?;
         let t = crate::llvm_tables::read(obj.path(), &g.llvm_funcs, &m.files, anchored)?;
         g.dbg = t.dbg;
@@ -1155,7 +1162,7 @@ fn prepare(g: &mut Gen, ctx: &mut Context, id: FuncId, name: &str, source: Optio
         eprintln!("; {name}\n{}", ctx.func.display());
     }
     if let Some(mut llvm) = g.llvm.take() {
-        let sym = ModuleSymbols(&g.module, &g.locs, &g.scopes).symbol_of(id);
+        let sym = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs).symbol_of(id);
         let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
             && !sym.contains('#')
             && !sym.starts_with("ms.glue.");
@@ -1169,7 +1176,7 @@ fn prepare(g: &mut Gen, ctx: &mut Context, id: FuncId, name: &str, source: Optio
             display,
             fn_loc,
             &ctx.func,
-            &ModuleSymbols(&g.module, &g.locs, &g.scopes),
+            &ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs),
             exported,
         );
         // Glue is listed too: a cleanup thunk can hold an inlined callee that a trace must name.

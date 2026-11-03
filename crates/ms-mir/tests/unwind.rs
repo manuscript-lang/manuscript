@@ -4,11 +4,11 @@ use ms_mir::print::print_module;
 use ms_mir::unwind;
 use ms_mir::verify::verify_module;
 
-const SPAWNER: &str = "extern @msrt_promise_start(int) -> int\n";
+const SPAWNER: &str = "extern @msrt_promise_start(int) -> int spawns_task\n";
 
 fn module(body: &str, spawner: bool) -> Module {
     let src = format!(
-        "module \"t\"\nentry @main\n{}extern @msrt_task_sleep(int) -> int\nextern @msrt_string_eq(str, str) -> bool\n{body}",
+        "module \"t\"\nentry @main\n{}extern @msrt_task_sleep(int) -> int\nextern @msrt_string_eq(str, str) -> bool string_eq\n{body}",
         if spawner { SPAWNER } else { "" }
     );
     let m = parse_module(&src).unwrap_or_else(|e| panic!("{e}"));

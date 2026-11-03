@@ -8,6 +8,7 @@ use crate::string;
 use crate::sys;
 use core::ffi::c_void;
 use core::sync::atomic::Ordering;
+use ms_rt_abi::record::{FaultKind, Record};
 use ms_rt_abi::{MAX_MAIN_EXIT, Tables, VecVal};
 
 /// Grace period after the first stop request before cleanup is abandoned.
@@ -36,10 +37,10 @@ fn stop_requested(sig: i32) {
     let prev = PENDING_SIGNAL.swap(sig as u8, Ordering::Relaxed);
     if prev != 0 {
         PENDING_SIGNAL.store(prev, Ordering::Relaxed);
-        sys::write_all(
-            sys::STDERR,
-            b"incomplete cleanup: a second stop request arrived before cleanup finished\n",
+        incomplete_cleanup(
+            b"incomplete cleanup: a second stop request arrived before cleanup finished",
         );
+
         // SAFETY: ends the process without cleanup.
         unsafe { sys::_exit(ms_rt_abi::EXIT_FAULT) }
     }
@@ -49,10 +50,16 @@ fn stop_requested(sig: i32) {
     crate::task::kick();
 }
 
+/// Reports a stop that cleanup did not survive, on standard error and in the fault record.
+fn incomplete_cleanup(message: &[u8]) {
+    sys::write_all(sys::STDERR, message);
+    sys::write_all(sys::STDERR, b"\n");
+    fault::write_record(&Record::new(FaultKind::IncompleteCleanup, message));
+}
+
 fn grace_expired() -> ! {
-    sys::write_all(
-        sys::STDERR,
-        b"incomplete cleanup: cleanup did not finish within 30s of the stop request\n",
+    incomplete_cleanup(
+        b"incomplete cleanup: cleanup did not finish within 30s of the stop request",
     );
     // SAFETY: ends the process without cleanup.
     unsafe { sys::_exit(ms_rt_abi::EXIT_FAULT) }
@@ -161,7 +168,10 @@ mod os {
                 .read_unaligned();
             let lo = *STACK_LO.ptr();
             if lo != 0 && addr < lo + 4096 && addr + OVERFLOW_REACH >= lo {
-                fault::fatal(b"stack overflow: recursion too deep or stack frames too large");
+                fault::fatal_kind(
+                    FaultKind::StackOverflow,
+                    b"stack overflow: recursion too deep or stack frames too large",
+                );
             }
             // Not ours: restore the default action and return so the access faults again.
             let dfl = sys::sigaction_t::new(0, 0);

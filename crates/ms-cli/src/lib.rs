@@ -122,7 +122,7 @@ fn run_source_command<L: Lower>(
         Ok(plan) => plan,
         Err(status) => return status,
     };
-    ms_build::set_static_libc(inv.static_libc);
+    engine.set_static_libc(inv.static_libc);
     let result = match inv.command.as_str() {
         "check" | "lint" => {
             let command = if inv.command == "check" {

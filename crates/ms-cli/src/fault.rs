@@ -1,15 +1,54 @@
-//! A runtime fault as structured data, parsed from the report the native runtime writes to
-//! standard error when it exits with `EXIT_FAULT`.
+//! A runtime fault or failed test as structured data, read from the record the native runtime
+//! writes to the file named by `MS_FAULT_RECORD` just before the program exits.
 //!
-//! The report is the message, then `  at file:line in function` frames (innermost first, with
-//! `... previous frame repeated N more times` and `... outer frames omitted` notes), then one
-//! `cleanup fault: <message>` per fault raised while cleanups ran. The runtime runs every
-//! registered cleanup before it writes the report, so a parsed fault always ran its cleanups.
+//! The runtime runs every registered cleanup before it writes the record, so a fault read from
+//! one always ran its cleanups. The human text on standard error is not parsed: when a program
+//! ends in a fault without a record (killed, or the runtime could not write the file), the
+//! text becomes the message with no trace.
 
 use crate::json::Json;
+use ms_rt_abi::record::{self, FaultKind, Record};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 /// The exit status of a program that ended in a runtime fault.
 pub use ms_rt_abi::EXIT_FAULT;
+
+/// The file a child process reports its fault or test failure in; removed when dropped.
+pub struct RecordFile {
+    path: PathBuf,
+}
+
+impl RecordFile {
+    pub fn create() -> RecordFile {
+        static NEXT: AtomicU32 = AtomicU32::new(0);
+        let name = format!(
+            "ms-fault-{}-{}.bin",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        );
+        RecordFile {
+            path: std::env::temp_dir().join(name),
+        }
+    }
+
+    /// Names the file in the environment of `command`.
+    pub fn attach(&self, command: &mut std::process::Command) {
+        command.env(record::RECORD_ENV, &self.path);
+    }
+
+    /// The record the child process `pid` wrote, if it wrote one.
+    pub fn read(&self, pid: u32) -> Option<Record> {
+        let record = Record::decode(&std::fs::read(&self.path).ok()?)?;
+        (record.pid == pid).then_some(record)
+    }
+}
+
+impl Drop for RecordFile {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.path);
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Frame {
@@ -30,43 +69,36 @@ pub struct Fault {
 }
 
 impl Fault {
-    /// Parses a fault report; `None` when `report` is empty.
-    pub fn parse(report: &str) -> Option<Fault> {
-        let report = report.trim_end_matches('\n');
-        if report.is_empty() {
-            return None;
+    /// The fault a record describes.
+    pub fn from_record(record: Record) -> Fault {
+        let text = |bytes: Vec<u8>| String::from_utf8_lossy(&bytes).into_owned();
+        Fault {
+            kind: record.kind.name(),
+            message: text(record.message),
+            trace: record
+                .frames
+                .into_iter()
+                .map(|frame| Frame {
+                    file: frame.file,
+                    line: frame.line as usize,
+                    function: frame.function,
+                    repeated: frame.repeated as usize,
+                })
+                .collect(),
+            trace_truncated: record.truncated,
+            cleanup_faults: record.cleanup_faults.into_iter().map(text).collect(),
         }
-        let (mut message, mut trace, mut truncated) = (Vec::new(), Vec::new(), false);
-        let mut cleanup_faults: Vec<String> = Vec::new();
-        for line in report.split('\n') {
-            if let Some(text) = line.strip_prefix("cleanup fault: ") {
-                cleanup_faults.push(text.to_string());
-            } else if let Some(frame) = line.strip_prefix("  at ").and_then(parse_frame) {
-                trace.push(frame);
-            } else if let Some(count) = line
-                .strip_prefix("  ... previous frame repeated ")
-                .and_then(|rest| rest.strip_suffix(" more times"))
-                .and_then(|n| n.parse().ok())
-            {
-                if let Some(last) = trace.last_mut() {
-                    last.repeated = count;
-                }
-            } else if line == "  ... outer frames omitted" {
-                truncated = true;
-            } else if let Some(last) = cleanup_faults.last_mut() {
-                last.push('\n');
-                last.push_str(line);
-            } else {
-                message.push(line);
-            }
-        }
-        let message = message.join("\n");
-        Some(Fault {
-            kind: kind_of(&message),
-            message,
-            trace,
-            trace_truncated: truncated,
-            cleanup_faults,
+    }
+
+    /// A fault with only the text the program printed, for an exit without a record.
+    pub fn from_text(text: &str) -> Option<Fault> {
+        let text = text.trim_end_matches('\n');
+        (!text.is_empty()).then(|| Fault {
+            kind: FaultKind::Fault.name(),
+            message: text.to_string(),
+            trace: Vec::new(),
+            trace_truncated: false,
+            cleanup_faults: Vec::new(),
         })
     }
 
@@ -104,48 +136,32 @@ impl Fault {
     }
 }
 
-/// `file:line in function`, split from the right because file names may hold colons.
-fn parse_frame(text: &str) -> Option<Frame> {
-    let (place, function) = text.split_once(" in ")?;
-    let (file, line) = place.rsplit_once(':')?;
-    Some(Frame {
-        file: file.to_string(),
-        line: line.parse().ok()?,
-        function: function.to_string(),
-        repeated: 0,
-    })
-}
-
-/// A stable name for the family of fault a message belongs to.
-fn kind_of(message: &str) -> &'static str {
-    let contains = |s: &str| message.contains(s);
-    if message.starts_with("incomplete cleanup") {
-        "incomplete_cleanup"
-    } else if message.starts_with("stack overflow") {
-        "stack_overflow"
-    } else if message.starts_with("deadlock") {
-        "deadlock"
-    } else if contains("division by zero") {
-        "division_by_zero"
-    } else if contains("overflow") {
-        "overflow"
-    } else if contains("out of range") || contains("index must be between") {
-        "index_out_of_range"
-    } else if message.starts_with("expected ") || message.starts_with("expect") {
-        "assertion"
-    } else {
-        "fault"
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ms_rt_abi::record::Frame as RecordFrame;
 
     #[test]
-    fn parses_message_trace_and_cleanup_faults() {
-        let report = "division by zero; right must be nonzero, found 0\n  at /w/main.ms:7 in divide\n  at /w/main.ms:3 in main\n  ... previous frame repeated 4 more times\n  ... outer frames omitted\ncleanup fault: close failed\ndetail";
-        let fault = Fault::parse(report).unwrap();
+    fn reads_message_trace_and_cleanup_faults() {
+        let mut record = Record::new(
+            FaultKind::DivisionByZero,
+            b"division by zero; right must be nonzero, found 0",
+        );
+        record.frames.push(RecordFrame {
+            file: "/w/main.ms".into(),
+            line: 7,
+            function: "divide".into(),
+            repeated: 0,
+        });
+        record.frames.push(RecordFrame {
+            file: "/w/main.ms".into(),
+            line: 3,
+            function: "main".into(),
+            repeated: 4,
+        });
+        record.truncated = true;
+        record.cleanup_faults.push(b"close failed\ndetail".to_vec());
+        let fault = Fault::from_record(record);
         assert_eq!(fault.kind, "division_by_zero");
         assert_eq!(
             fault.message,
@@ -160,7 +176,7 @@ mod tests {
     }
 
     #[test]
-    fn empty_report_is_no_fault() {
-        assert_eq!(Fault::parse("\n"), None);
+    fn empty_text_is_no_fault() {
+        assert_eq!(Fault::from_text("\n"), None);
     }
 }

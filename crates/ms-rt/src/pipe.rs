@@ -12,7 +12,7 @@
 //! * `flush` answers a promise that finishes when no more than `capacity` values are queued, or
 //!   the reader has gone.
 //!
-//! The pipe starts with one writer, the `Pipe` value itself; `msrt_pipes_close_writer` releases
+//! The pipe starts with one writer, the `Pipe` value itself; `msrt_pipe_close_writer` releases
 //! it, like any other writer.
 use crate::desc::slot_drop;
 use crate::{alloc, promise};
@@ -20,9 +20,9 @@ use ms_rt_abi::TypeDesc;
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
-/// Status of `msrt_pipes_write`: the value was taken.
+/// Status of `msrt_pipe_write`: the value was taken.
 pub const WRITTEN: i64 = 0;
-/// Status of `msrt_pipes_write`: the reader is gone, so the value was dropped.
+/// Status of `msrt_pipe_write`: the reader is gone, so the value was dropped.
 pub const CLOSED: i64 = 1;
 
 struct Item {
@@ -76,7 +76,7 @@ fn retire(p: &mut Pipe) {
 
 /// Creates a pipe whose writers' `flush` waits above `capacity` queued values.
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_pipes_new(capacity: i64) -> i64 {
+pub extern "C-unwind" fn msrt_pipe_new(capacity: i64) -> i64 {
     let mut table = pipes();
     let i = match table
         .iter()
@@ -110,7 +110,7 @@ pub extern "C-unwind" fn msrt_pipes_new(capacity: i64) -> i64 {
 
 /// Another writing end, like `dup` on a descriptor.
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_pipes_add_writer(pipe: i64) {
+pub extern "C-unwind" fn msrt_pipe_add_writer(pipe: i64) {
     if let Some(p) = slot(&mut pipes(), pipe) {
         p.writers += 1;
     }
@@ -122,7 +122,7 @@ pub extern "C-unwind" fn msrt_pipes_add_writer(pipe: i64) {
 /// # Safety
 /// `value` holds an owned value of `d`, which the callee takes.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_pipes_write(
+pub unsafe extern "C-unwind" fn msrt_pipe_write(
     pipe: i64,
     value: *mut u8,
     d: *const TypeDesc,
@@ -175,7 +175,7 @@ fn reader_cancelled(id: i64, pipe: usize, _bits: u32) -> bool {
 /// `msrt_promise_take`), or with none once every writer has closed and the queue is empty. A pipe
 /// has one reader, so a second read while one is pending faults.
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_pipes_read(pipe: i64) -> i64 {
+pub extern "C-unwind" fn msrt_pipe_read(pipe: i64) -> i64 {
     let id = promise::io_new();
     enum Next {
         Value(Item),
@@ -230,7 +230,7 @@ fn complete_flushes(ids: Vec<i64>) {
 /// Starts a flush: answers a promise that finishes when no more than `capacity` values are queued
 /// or the reader is gone.
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_pipes_flush(pipe: i64) -> i64 {
+pub extern "C-unwind" fn msrt_pipe_flush(pipe: i64) -> i64 {
     let id = promise::io_new();
     let waits = {
         let mut table = pipes();
@@ -260,13 +260,13 @@ fn flush_cancelled(id: i64, pipe: usize, _bits: u32) -> bool {
 
 /// How many values are queued and not yet read.
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_pipes_buffered(pipe: i64) -> i64 {
+pub extern "C-unwind" fn msrt_pipe_buffered(pipe: i64) -> i64 {
     slot(&mut pipes(), pipe).map_or(0, |p| p.queue.len() as i64)
 }
 
 /// Closes one writing end. When the last one closes, a waiting read finishes with none.
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_pipes_close_writer(pipe: i64) {
+pub extern "C-unwind" fn msrt_pipe_close_writer(pipe: i64) {
     let reader = {
         let mut table = pipes();
         let Some(p) = slot(&mut table, pipe) else {
@@ -289,7 +289,7 @@ pub extern "C-unwind" fn msrt_pipes_close_writer(pipe: i64) {
 /// Closes the reading end: queued values are dropped, waiting flushes finish, and later writes
 /// answer `CLOSED`.
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_pipes_close_reader(pipe: i64) {
+pub extern "C-unwind" fn msrt_pipe_close_reader(pipe: i64) {
     let flushes = {
         let mut table = pipes();
         let Some(p) = slot(&mut table, pipe) else {
@@ -335,7 +335,7 @@ mod tests {
 
     fn write_int(pipe: i64, mut v: i64) -> i64 {
         // SAFETY: `v` is an Int slot the call takes.
-        unsafe { msrt_pipes_write(pipe, (&raw mut v).cast(), &msrt_desc_int) }
+        unsafe { msrt_pipe_write(pipe, (&raw mut v).cast(), &msrt_desc_int) }
     }
 
     /// Waits for a read promise: the value, or `None` at the end.
@@ -352,25 +352,25 @@ mod tests {
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn values_come_out_whole_and_in_order_then_the_end() {
         let _g = lock();
-        let pipe = msrt_pipes_new(4);
+        let pipe = msrt_pipe_new(4);
         for v in [1, 2, 3] {
             assert_eq!(write_int(pipe, v), WRITTEN);
         }
-        assert_eq!(msrt_pipes_buffered(pipe), 3);
-        assert_eq!(finish(msrt_pipes_read(pipe)), Some(1));
+        assert_eq!(msrt_pipe_buffered(pipe), 3);
+        assert_eq!(finish(msrt_pipe_read(pipe)), Some(1));
         // A read that finds nothing waits for the write.
-        assert_eq!(finish(msrt_pipes_read(pipe)), Some(2));
-        assert_eq!(finish(msrt_pipes_read(pipe)), Some(3));
-        let waiting = msrt_pipes_read(pipe);
+        assert_eq!(finish(msrt_pipe_read(pipe)), Some(2));
+        assert_eq!(finish(msrt_pipe_read(pipe)), Some(3));
+        let waiting = msrt_pipe_read(pipe);
         assert_eq!(promise::msrt_promise_done(waiting), 0);
         assert_eq!(write_int(pipe, 4), WRITTEN);
         assert_eq!(finish(waiting), Some(4));
         // The end: every writer closed and the queue empty.
-        let end = msrt_pipes_read(pipe);
-        msrt_pipes_close_writer(pipe);
+        let end = msrt_pipe_read(pipe);
+        msrt_pipe_close_writer(pipe);
         assert_eq!(finish(end), None);
-        assert_eq!(finish(msrt_pipes_read(pipe)), None);
-        msrt_pipes_close_reader(pipe);
+        assert_eq!(finish(msrt_pipe_read(pipe)), None);
+        msrt_pipe_close_reader(pipe);
         crate::task::teardown();
     }
 
@@ -378,20 +378,20 @@ mod tests {
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn a_flush_waits_above_capacity_and_a_closed_reader_refuses_writes() {
         let _g = lock();
-        let pipe = msrt_pipes_new(1);
+        let pipe = msrt_pipe_new(1);
         write_int(pipe, 1);
-        let at_capacity = msrt_pipes_flush(pipe);
+        let at_capacity = msrt_pipe_flush(pipe);
         assert_eq!(finish_unit(at_capacity), promise::OK);
         write_int(pipe, 2);
         write_int(pipe, 3);
-        let waiting = msrt_pipes_flush(pipe);
+        let waiting = msrt_pipe_flush(pipe);
         assert_eq!(promise::msrt_promise_done(waiting), 0);
-        assert_eq!(finish(msrt_pipes_read(pipe)), Some(1));
-        assert_eq!(finish(msrt_pipes_read(pipe)), Some(2));
+        assert_eq!(finish(msrt_pipe_read(pipe)), Some(1));
+        assert_eq!(finish(msrt_pipe_read(pipe)), Some(2));
         assert_eq!(finish_unit(waiting), promise::OK);
-        msrt_pipes_close_reader(pipe);
+        msrt_pipe_close_reader(pipe);
         assert_eq!(write_int(pipe, 9), CLOSED);
-        msrt_pipes_close_writer(pipe);
+        msrt_pipe_close_writer(pipe);
         crate::task::teardown();
     }
 
@@ -405,15 +405,15 @@ mod tests {
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn a_dropped_read_leaves_the_queue_alone() {
         let _g = lock();
-        let pipe = msrt_pipes_new(4);
-        let read = msrt_pipes_read(pipe);
+        let pipe = msrt_pipe_new(4);
+        let read = msrt_pipe_read(pipe);
         msrt_promise_drop(read);
         // The next write queues the value instead of handing it to the dropped read.
         assert_eq!(write_int(pipe, 7), WRITTEN);
-        assert_eq!(msrt_pipes_buffered(pipe), 1);
-        assert_eq!(finish(msrt_pipes_read(pipe)), Some(7));
-        msrt_pipes_close_writer(pipe);
-        msrt_pipes_close_reader(pipe);
+        assert_eq!(msrt_pipe_buffered(pipe), 1);
+        assert_eq!(finish(msrt_pipe_read(pipe)), Some(7));
+        msrt_pipe_close_writer(pipe);
+        msrt_pipe_close_reader(pipe);
         crate::task::teardown();
     }
 
@@ -426,7 +426,7 @@ mod tests {
                 write_int(pipe, v);
                 crate::task::msrt_task_yield();
             }
-            msrt_pipes_close_writer(pipe);
+            msrt_pipe_close_writer(pipe);
             let mut done = 1i64;
             msrt_promise_put(id, (&raw mut done).cast(), &msrt_desc_int, 0);
         }
@@ -442,10 +442,10 @@ mod tests {
     fn writers_on_other_threads_feed_one_reader() {
         let _g = lock();
         sched::msrt_runtime_set_threads(4);
-        let pipe = msrt_pipes_new(8);
+        let pipe = msrt_pipe_new(8);
         let writers: Vec<i64> = (0..3).map(|_| promise::msrt_promise_new()).collect();
         for &id in &writers {
-            msrt_pipes_add_writer(pipe);
+            msrt_pipe_add_writer(pipe);
             // SAFETY: the promise keeps a reference to the closure until its task has ended.
             unsafe {
                 let size = size_of::<Closure>() + 16;
@@ -459,10 +459,10 @@ mod tests {
             }
         }
         // The Pipe value's own writer goes: the three writers keep the pipe open.
-        msrt_pipes_close_writer(pipe);
+        msrt_pipe_close_writer(pipe);
         let mut seen = vec![0usize; 50];
         let mut count = 0;
-        while let Some(v) = finish(msrt_pipes_read(pipe)) {
+        while let Some(v) = finish(msrt_pipe_read(pipe)) {
             seen[v as usize] += 1;
             count += 1;
         }
@@ -471,7 +471,7 @@ mod tests {
         for id in writers {
             msrt_promise_drop(id);
         }
-        msrt_pipes_close_reader(pipe);
+        msrt_pipe_close_reader(pipe);
         sched::shutdown();
         crate::task::teardown();
     }

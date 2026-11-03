@@ -69,7 +69,7 @@ handle_newtype! {
     /// An `HttpHeaders` handle.
     HeadersH(crate::http::headers::Shared);
     /// The settings every connection of one `serve` call shares.
-    ServingH(crate::ffi::http_server::Serving);
+    ServingH(std::rc::Rc<crate::ffi::http_server::Serving>);
     /// An `HttpClient` handle.
     ClientH(std::rc::Rc<crate::http::client::Client>);
     /// An `HttpResponseBody` handle.

@@ -33,7 +33,7 @@ fn main() {
     stage("verify", || ms_mir::verify::verify_module(&module).unwrap());
     stage("llvm_available", || {
         assert!(
-            ms_clif::llvm_available(),
+            ms_clif::llvm_available(&ms_clif::BuildOptions::default()),
             "LLVM is required; fallback is not a measurement"
         )
     });
@@ -60,8 +60,14 @@ fn main() {
         std::fs::write(&llvm_object, llvm).unwrap();
     });
     stage("link", || {
-        ms_clif::link::link_with(&object, &[&llvm_object, Path::new(&args[3])], output, false)
-            .unwrap()
+        ms_clif::link::link_with(
+            &object,
+            &[&llvm_object, Path::new(&args[3])],
+            output,
+            false,
+            &ms_clif::BuildOptions::default(),
+        )
+        .unwrap()
     });
     std::fs::remove_file(object).unwrap();
     std::fs::remove_file(llvm_object).unwrap();

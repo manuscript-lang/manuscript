@@ -29,7 +29,6 @@
 use ms_mir::ir::{Boxing, Module};
 use ms_mir::types::{AltId, Ty, TyKind};
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 /// A scalar machine value.
@@ -130,8 +129,10 @@ pub fn mem_layout(leaves: &[Leaf]) -> MemLayout {
 pub struct Layouts<'m> {
     /// The module whose types are described.
     pub m: &'m Module,
-    cache: RefCell<HashMap<Ty, Rc<Shape>>>,
-    alt_cache: RefCell<HashMap<AltId, Rc<AltFields>>>,
+    /// Shapes indexed by type, filled on first ask.
+    shapes: RefCell<Vec<Option<Rc<Shape>>>>,
+    /// Alternative fields indexed by alternative.
+    alt_fields: RefCell<Vec<Option<Rc<AltFields>>>>,
     boxing: RefCell<Boxing>,
 }
 
@@ -143,8 +144,8 @@ impl<'m> Layouts<'m> {
     pub fn new(m: &'m Module) -> Self {
         Layouts {
             m,
-            cache: RefCell::new(HashMap::new()),
-            alt_cache: RefCell::new(HashMap::new()),
+            shapes: RefCell::new(vec![None; m.types.len()]),
+            alt_fields: RefCell::new(vec![None; m.alts.len()]),
             boxing: RefCell::new(Boxing::default()),
         }
     }
@@ -165,29 +166,26 @@ impl<'m> Layouts<'m> {
     /// Shared: every instruction asks, and copying the leaves and case slots of a large
     /// alternative each time made lowering quadratic in its case count.
     pub fn shape(&self, ty: Ty) -> Rc<Shape> {
-        if let Some(s) = self.cache.borrow().get(&ty) {
+        if let Some(s) = &self.shapes.borrow()[ty.index()] {
             return s.clone();
         }
         if let TyKind::Alt(a) = self.m.types.kind(ty)
             && self.is_boxed(*a)
         {
             // A boxed alternative is one pointer; this also ends the recursion through its own fields.
-            self.cache.borrow_mut().insert(
-                ty,
-                Rc::new(Shape {
-                    leaves: vec![Leaf::I64],
-                    alt: None,
-                }),
-            );
+            self.shapes.borrow_mut()[ty.index()] = Some(Rc::new(Shape {
+                leaves: vec![Leaf::I64],
+                alt: None,
+            }));
         }
         let s = Rc::new(self.compute(ty));
-        self.cache.borrow_mut().insert(ty, s.clone());
+        self.shapes.borrow_mut()[ty.index()] = Some(s.clone());
         s
     }
 
     /// Per-case, per-field `(type, leaf indices into the alt's leaf/block list)`.
     pub fn alt_fields(&self, a: AltId) -> Rc<AltFields> {
-        if let Some(f) = self.alt_cache.borrow().get(&a) {
+        if let Some(f) = &self.alt_fields.borrow()[a.index()] {
             return f.clone();
         }
         let ty = self
@@ -219,7 +217,7 @@ impl<'m> Layouts<'m> {
             })
             .collect();
         let fields = Rc::new(fields);
-        self.alt_cache.borrow_mut().insert(a, fields.clone());
+        self.alt_fields.borrow_mut()[a.index()] = Some(fields.clone());
         fields
     }
 
@@ -242,7 +240,7 @@ impl<'m> Layouts<'m> {
     pub fn opt_is_nullable(&self, inner: Ty) -> bool {
         self.opt_is_boxed(inner)
             || matches!(self.m.types.kind(inner), TyKind::Fn(..))
-            || matches!(self.m.types.kind(inner), TyKind::Obj(n, _) if n != "Map" && n != "Set")
+            || matches!(self.m.types.kind(inner), TyKind::Obj(n, _) if !n.is_map_or_set())
     }
 
     /// Whether values of `ty` have the string layout and drop and copy like a string: `String`,
@@ -273,9 +271,7 @@ impl<'m> Layouts<'m> {
             TyKind::Float32 => plain(vec![F32]),
             TyKind::Str => plain(vec![I64, I64]),
             TyKind::Bytes | TyKind::List(_) => plain(vec![I64, I64, I64]),
-            TyKind::Obj(n, _) if n == "Map" || n == "Set" => {
-                plain(vec![I64; ms_rt_abi::MAP_SIZE / 8])
-            }
+            TyKind::Obj(n, _) if n.is_map_or_set() => plain(vec![I64; ms_rt_abi::MAP_SIZE / 8]),
             TyKind::Obj(..) => plain(vec![I64]),
             TyKind::Iface(_) => plain(vec![I64, I64]),
             TyKind::Rec(r) => plain(

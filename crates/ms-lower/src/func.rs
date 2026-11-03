@@ -1,6 +1,6 @@
 //! Function instances and the per-function lowering state.
 
-use crate::cx::{Cx, Job, JobKind};
+use crate::cx::{Cx, InstKey, Job, JobKind, Variant};
 use crate::{Error, Options};
 use ms_check::Program;
 use ms_check::hir::{Callable, CallableKind, ModuleHir};
@@ -56,6 +56,8 @@ pub(crate) struct FnLower<'a> {
     pub b: FuncBuilder<'a>,
     pub hir: Rc<ModuleHir>,
     pub subst: Subst,
+    /// Ownership and evidence the instance being lowered was requested with.
+    pub variant: Variant,
     pub file: u32,
     /// Logical source frame for defaults evaluated in their caller.
     pub source_scope: u32,
@@ -153,22 +155,18 @@ impl Cx {
     }
 }
 
-/// The reserved instance key of a callable under a substitution.
-fn instance_key(c: &Callable, subst: &Subst) -> String {
-    let mut vars: Vec<(&str, String)> = subst
-        .iter()
-        .map(|(k, v)| (k.as_str(), ct::type_key(v)))
-        .collect();
-    vars.sort();
-    let mut key = format!("{}#{}", c.module.file, c.id().0);
-    for (k, v) in vars {
-        key.push_str(&format!("|{k}={v}"));
+/// The instance key of a callable under a substitution and variant.
+fn instance_key(c: &Callable, subst: &Subst, variant: Variant) -> InstKey {
+    let mut vars: Vec<(ct::Name, String)> =
+        subst.iter().map(|(k, v)| (*k, ct::type_key(v))).collect();
+    vars.sort_by(|a, b| a.0.as_str().cmp(b.0.as_str()).then_with(|| a.1.cmp(&b.1)));
+    InstKey {
+        file: c.module.file,
+        node: c.id(),
+        subst: vars,
+        variant,
     }
-    key
 }
-
-/// The substitution entry marking an instance that takes its consumed parameters owned.
-pub(crate) const OWNED: &str = "$own";
 
 impl Cx {
     /// The parameters a direct call hands over owned: those the body consumes (moves, stores or
@@ -196,9 +194,7 @@ impl Cx {
         subst: &Subst,
         scope: ct::Name,
     ) -> Result<FuncId, Error> {
-        let mut owned = subst.clone();
-        owned.insert(ct::n(OWNED), ct::primitive("owned"));
-        self.function_in(m, c, &owned, scope)
+        self.function_in_as(m, c, subst, scope, true)
     }
 
     /// The checked result type of a callable (generic-open).
@@ -226,17 +222,25 @@ impl Cx {
         c: &Rc<Callable>,
         subst: &Subst,
     ) -> Result<FuncId, Error> {
-        let key = instance_key(c, subst);
+        self.function_variant(m, c, subst, Variant::default())
+    }
+
+    /// Reserves (and queues) the instance of `c` under `subst` and `variant`.
+    pub(crate) fn function_variant(
+        &mut self,
+        m: &mut Module,
+        c: &Rc<Callable>,
+        subst: &Subst,
+        variant: Variant,
+    ) -> Result<FuncId, Error> {
+        let key = instance_key(c, subst, variant);
         if let Some(id) = self.insts.get(&key) {
             return Ok(*id);
         }
         let mut params = Vec::new();
         let bindings: Vec<&BindingRef> = c.self_binding.iter().chain(c.parameters.iter()).collect();
         let vars = self.var_positions(c);
-        let owned_mask = subst
-            .contains_key(&ct::n(OWNED))
-            .then(|| self.owned_mask(c))
-            .flatten();
+        let owned_mask = variant.owned.then(|| self.owned_mask(c)).flatten();
         let takes_function = bindings.iter().any(|b| b.ty.kind == ct::Kind::Function);
         for (i, b) in bindings.into_iter().enumerate() {
             let t = ct::sub(&b.ty, subst);
@@ -280,6 +284,7 @@ impl Cx {
             kind: JobKind::Source {
                 callable: c.clone(),
                 subst: subst.clone(),
+                variant,
             },
         });
         Ok(id)
@@ -386,8 +391,12 @@ fn drain(cx: &mut Cx, m: &mut Module) -> Result<(), Error> {
 }
 
 fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
-    let (c, jsubst) = match &job.kind {
-        JobKind::Source { callable, subst } => (callable.clone(), subst.clone()),
+    let (c, jsubst, variant) = match &job.kind {
+        JobKind::Source {
+            callable,
+            subst,
+            variant,
+        } => (callable.clone(), subst.clone(), *variant),
         JobKind::Format(t, repr) => {
             return crate::text::build_format(cx, m, job.func, *t, *repr);
         }
@@ -414,6 +423,7 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     let proto = m.funcs[job.func.index()].clone();
     let b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     let mut fl = FnLower::new(cx, b, hir, jsubst, file, proto.ret);
+    fl.variant = variant;
     // A lending function returns references as they are; `emit_return` reads the flag.
     fl.b.func_mut().ret_borrowed = proto.ret_borrowed;
     fl.b.func_mut().ret_view = proto.ret_view;
@@ -447,6 +457,7 @@ impl<'a> FnLower<'a> {
             b,
             hir,
             subst,
+            variant: Variant::default(),
             file,
             locals: HashMap::new(),
             scopes: vec![Vec::new()],
@@ -1004,11 +1015,7 @@ impl<'a> FnLower<'a> {
             .cloned()
             .collect();
         let vars = self.cx.var_positions(c);
-        let owned_mask = self
-            .subst
-            .contains_key(&ct::n(OWNED))
-            .then(|| self.cx.owned_mask(c))
-            .flatten();
+        let owned_mask = self.variant.owned.then(|| self.cx.owned_mask(c)).flatten();
         if let ms_check::hir::Body::Block(stmts) = c.body() {
             self.slotted = crate::closure::slotted_in(self, stmts);
         }

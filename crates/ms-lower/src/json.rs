@@ -1616,6 +1616,9 @@ impl FnLower<'_> {
                 noreturn: false,
                 pure_: false,
                 fresh: crate::rtcall::fresh_result(sym),
+                role: crate::rtcall::extern_role(sym),
+                leaf: crate::rtcall::rt_flags(sym).leaf,
+                reads: crate::rtcall::rt_flags(sym).reads,
             });
             calls.push((ext, on_walk, payload_ty.is_some()));
         }
@@ -1680,7 +1683,7 @@ impl FnLower<'_> {
             v: text,
             own: false,
         });
-        let e = self.error_record(er, case, text)?;
+        let e = self.error_record(er, case, text, None)?;
         Ok(self.b.alt_new(ra, err as u32, &[e]))
     }
 

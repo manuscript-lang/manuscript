@@ -819,6 +819,19 @@ pub enum FuncKind {
     Method,
 }
 
+/// Whether a function is a comparator thunk of a runtime sort.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum SortThunk {
+    /// An ordinary function.
+    #[default]
+    None,
+    /// `fn(comparator, ptr, ptr) -> int`: calls the user's closure for each comparison.
+    Generic,
+    /// A generic thunk specialized to one closure by `inline`; parameter 0 is the raw
+    /// environment pointer. The sort pass reads its comparison.
+    Specialized,
+}
+
 /// A function.
 #[derive(Clone, Debug)]
 pub struct Func {
@@ -842,6 +855,8 @@ pub struct Func {
     pub kind: FuncKind,
     /// Inlining directive.
     pub inline: InlineHint,
+    /// Whether the function is a sort comparator thunk.
+    pub sort: SortThunk,
     /// Declaration position.
     pub loc: Loc,
     /// Type of every value, indexed by [`Value`].
@@ -880,6 +895,7 @@ impl Func {
             linkage: Linkage::Internal,
             kind: FuncKind::Normal,
             inline: InlineHint::Auto,
+            sort: SortThunk::None,
             loc: Loc::NONE,
             values: Vec::new(),
             blocks: vec![BlockData::new()],
@@ -1032,6 +1048,90 @@ pub struct ExternDef {
     /// Whether the result points into no borrowed argument (it is an owned allocation, an
     /// inline value or a static), so a borrowed argument may be dropped once the call returns.
     pub fresh: bool,
+    /// Whether the call never reaches a cancellation point (declared `leaf` on the runtime
+    /// function), so a task cannot be cancelled inside it.
+    pub leaf: bool,
+    /// Whether the call only reads memory, cannot fault and cannot run user code (declared `pure`
+    /// on the runtime function), so the backend may assume it does not clobber the caller's memory.
+    pub reads: bool,
+    /// What the optimizer and code generator know this runtime function by.
+    pub role: ExternRole,
+}
+
+/// A runtime function that a pass or the code generator treats specially. Lowering sets the
+/// role from the runtime ABI declaration; passes read it and never a symbol name.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum ExternRole {
+    /// No special treatment.
+    #[default]
+    None,
+    /// `strbuilder.append(builder, string)`.
+    StrBuilderAppend,
+    /// `strbuilder.append_int(builder, int)`.
+    StrBuilderAppendInt,
+    /// `string.concat(a, b)` (the fixed-arity and `fmt` joins share it).
+    StringConcat,
+    /// In-place `string.append(s, piece)`.
+    StringAppend,
+    /// `int.to_string(n)`.
+    IntToString,
+    /// `list.sorted(list, comparator)`.
+    ListSorted,
+    /// Integer-list sort with the natural order.
+    ListSortInts,
+    /// Sort by a difference comparator.
+    ListSortedByDifference,
+    /// `list.new()`.
+    ListNew,
+    /// `bytes.values(bytes)`.
+    BytesValues,
+    /// `string.eq(a, b)`.
+    StringEq,
+    /// Skips a cleanup registration; handle 0 means none.
+    CleanupDiscard,
+    /// `bytes.append(bytes, byte)`.
+    BytesAppend,
+    /// Starts a task that can be cancelled.
+    SpawnsTask,
+}
+
+impl ExternRole {
+    /// The attribute spelling in textual MIR; `None` has none.
+    pub const NAMES: &'static [(ExternRole, &'static str)] = &[
+        (ExternRole::StrBuilderAppend, "strbuilder_append"),
+        (ExternRole::StrBuilderAppendInt, "strbuilder_append_int"),
+        (ExternRole::StringConcat, "string_concat"),
+        (ExternRole::StringAppend, "string_append"),
+        (ExternRole::IntToString, "int_to_string"),
+        (ExternRole::ListSorted, "list_sorted"),
+        (ExternRole::ListSortInts, "list_sort_ints"),
+        (
+            ExternRole::ListSortedByDifference,
+            "list_sorted_by_difference",
+        ),
+        (ExternRole::ListNew, "list_new"),
+        (ExternRole::BytesValues, "bytes_values"),
+        (ExternRole::StringEq, "string_eq"),
+        (ExternRole::CleanupDiscard, "cleanup_discard"),
+        (ExternRole::BytesAppend, "bytes_append"),
+        (ExternRole::SpawnsTask, "spawns_task"),
+    ];
+
+    /// The textual attribute of this role.
+    pub fn name(self) -> Option<&'static str> {
+        Self::NAMES
+            .iter()
+            .find(|(r, _)| *r == self)
+            .map(|(_, n)| *n)
+    }
+
+    /// The role with this textual attribute.
+    pub fn from_name(name: &str) -> Option<ExternRole> {
+        Self::NAMES
+            .iter()
+            .find(|(_, n)| *n == name)
+            .map(|(r, _)| *r)
+    }
 }
 
 /// A module-level variable.
@@ -1080,8 +1180,11 @@ pub struct Module {
     pub list_consts: Vec<Vec<i64>>,
     /// Index of [`Module::strings`] by content; only [`Module::add_string`] writes both.
     string_ids: HashMap<String, StrId>,
-    /// Runtime functions called.
+    /// Runtime functions called. Grow it only through [`Module::add_extern`] or
+    /// [`Module::push_extern`], which keep [`Module::extern_ids`] in step.
     pub externs: Vec<ExternDef>,
+    /// Index of [`Module::externs`] by symbol, so a declaration never scans the list.
+    extern_ids: HashMap<String, Vec<ExtId>>,
     /// Module-level variables.
     pub globals: Vec<GlobalDef>,
     /// Functions.
@@ -1117,6 +1220,7 @@ impl Module {
             list_consts: Vec::new(),
             string_ids: HashMap::new(),
             externs: Vec::new(),
+            extern_ids: HashMap::new(),
             globals: Vec::new(),
             funcs: Vec::new(),
             entry: None,
@@ -1174,16 +1278,34 @@ impl Module {
     /// Declares a runtime function (or returns the existing one with this symbol and signature).
     pub fn add_extern(&mut self, def: ExternDef) -> ExtId {
         let same = |e: &ExternDef| {
-            e.name == def.name
-                && e.ret == def.ret
+            e.ret == def.ret
                 && e.params.len() == def.params.len()
                 && e.params.iter().zip(&def.params).all(|(a, b)| a.ty == b.ty)
         };
-        if let Some(i) = self.externs.iter().position(same) {
-            return ExtId(i as u32);
-        }
+        let found = self.extern_ids.get(&def.name).and_then(|ids| {
+            ids.iter()
+                .copied()
+                .find(|id| same(&self.externs[id.index()]))
+        });
+        found.unwrap_or_else(|| self.push_extern(def))
+    }
+
+    /// Appends a declaration without looking for an existing one.
+    pub fn push_extern(&mut self, def: ExternDef) -> ExtId {
+        let id = ExtId(self.externs.len() as u32);
+        self.extern_ids
+            .entry(def.name.clone())
+            .or_default()
+            .push(id);
         self.externs.push(def);
-        ExtId(self.externs.len() as u32 - 1)
+        id
+    }
+
+    /// The first runtime function declared with this symbol.
+    pub fn extern_by_name(&self, name: &str) -> Option<ExtId> {
+        self.extern_ids
+            .get(name)
+            .and_then(|ids| ids.first().copied())
     }
 
     /// Adds a function.

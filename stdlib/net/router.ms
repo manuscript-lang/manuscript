@@ -19,11 +19,11 @@ import (
     msrt_promise_drop,
     msrt_promise_take,
     msrt_promise_wait,
-    msrt_pipes_close_reader,
-    msrt_pipes_close_writer,
-    msrt_pipes_new,
-    msrt_pipes_read,
-    msrt_pipes_write
+    msrt_pipe_close_reader,
+    msrt_pipe_close_writer,
+    msrt_pipe_new,
+    msrt_pipe_read,
+    msrt_pipe_write
 ) from "@std/internal/promises.ms"
 
 // A value with one holder at a time, kept in a one-message in-memory pipe whose id is the slot: `take_slot` moves it out
@@ -31,24 +31,24 @@ import (
 // stopgap for the exchange state below, which `HttpExchange` methods update through `fn`; it goes when those methods
 // become `var fn` and the state is a plain field.
 fn new_slot[T](value: T) Int:
-    let pipe = msrt_pipes_new(1)
-    let _first = msrt_pipes_write(pipe, value)
+    let pipe = msrt_pipe_new(1)
+    let _first = msrt_pipe_write(pipe, value)
     return pipe
 
 fn take_slot[T](slot: Int) T:
-    let read = msrt_pipes_read(slot)
+    let read = msrt_pipe_read(slot)
     let _code = msrt_promise_wait(read, -1)
     let value = msrt_promise_take[T](read)
     msrt_promise_drop(read)
     return value.get()
 
 fn put_slot[T](slot: Int, value: T) Unit:
-    let _written = msrt_pipes_write(slot, value)
+    let _written = msrt_pipe_write(slot, value)
 
 // Ends the pipe of `slot`; call it once, when the last holder is done.
 fn release_slot(slot: Int) Unit:
-    msrt_pipes_close_writer(slot)
-    msrt_pipes_close_reader(slot)
+    msrt_pipe_close_writer(slot)
+    msrt_pipe_close_reader(slot)
 
 // The value of a slot while one holder works on it; it returns to the slot when the scope ends, however it ends.
 type Held[T]:
