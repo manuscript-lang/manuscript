@@ -45,7 +45,8 @@ pub const TOKEN_REMOTE: u32 = 1;
 pub const TOKEN_PEER: u32 = 2;
 
 /// Unix task stacks are slots of this size, aligned to it: the stack pointer's high bits name
-/// the slot, whose first page holds the task's `fault::Hdr` (see `stack::create`).
+/// the slot, whose last 16 bytes hold the task's `fault::Hdr`, in the stack's first page so a task
+/// that never grows costs one resident page (see `stack::create`).
 #[cfg(unix)]
 pub const STACK_SLOT: usize = ms_rt_abi::symbols::STACK_SLOT as usize;
 #[cfg(unix)]
@@ -67,7 +68,9 @@ const MIN_STACK: usize = 128 << 10;
 #[cfg(unix)]
 const GUARD: usize = 64 << 10;
 #[cfg(unix)]
-const HDR_PAGE: usize = 4096;
+const HDR_SIZE: usize = 16;
+#[cfg(unix)]
+const _: () = assert!(size_of::<fault::Hdr>() == HDR_SIZE);
 const STACK_POOL: usize = 1024;
 /// Most slots one address-space reservation holds (stack creation reserves in batches).
 #[cfg(unix)]
@@ -372,18 +375,18 @@ mod stack {
     }
 
     /// Reserves one `STACK_SLOT`-aligned slot whose top `len` bytes are the stack, with a guard
-    /// below them and the header page at the slot's base; null on failure. Address space only:
-    /// pages are committed as the stack grows.
+    /// below them and the header in the slot's last 16 bytes; null on failure. Address space
+    /// only: pages are committed as the stack grows.
     pub unsafe fn create(len: usize) -> *mut u8 {
         // SAFETY: single threaded scheduler; the slot is unused.
         let base = unsafe { take_slot() };
         if base.is_null() {
             return base;
         }
-        // SAFETY: guards the gap between the header page and the stack inside the slot.
+        // SAFETY: guards the gap below the stack inside the slot.
         unsafe {
             let len = len.min(DEFAULT_STACK);
-            sys::guard(base.add(HDR_PAGE), STACK_SLOT - len + GUARD - HDR_PAGE);
+            sys::guard(base, STACK_SLOT - len + GUARD);
         }
         base
     }
@@ -432,13 +435,14 @@ mod stack {
 
     /// Stack bounds, initial context and header of a stack from [`create`].
     pub unsafe fn prepare(base: *mut u8, len: usize) -> (usize, usize, usize, *mut fault::Hdr) {
-        let top = (base as usize + STACK_SLOT) & !15;
+        let end = base as usize + STACK_SLOT;
+        let top = end - HDR_SIZE;
         let len = len.min(DEFAULT_STACK);
-        let hdr = base.cast::<fault::Hdr>();
-        // SAFETY: the header page is writable; `top` ends a writable stack.
+        let hdr = top as *mut fault::Hdr;
+        // SAFETY: the last 16 bytes of the slot are writable; the stack ends just below them.
         unsafe {
             hdr.write(fault::Hdr::new(0));
-            (top - len + GUARD, top, initial_sp(top), hdr)
+            (end - len + GUARD, top, initial_sp(top), hdr)
         }
     }
 
