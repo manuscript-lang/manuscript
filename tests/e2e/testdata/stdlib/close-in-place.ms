@@ -90,6 +90,16 @@ fn fault_plain(log: String) Unit:
 
     let _ = one.id
 
+fn destructured_record(log: String) Int:
+    let holder = Holder(latch(log, 13), 3)
+    let {inner: part, tag: n} = holder
+    return part.id + n
+
+fn destructured_list(log: String) Int:
+    let xs = [latch(log.clone(), 14), latch(log, 15)]
+    let [first, _] = xs
+    return first.id
+
 fn reassigned(log: String, swap: Bool) Int:
     var one = latch(log.clone(), 11)
     if swap:
@@ -131,6 +141,18 @@ test "a closure's capture closes when the closure is dropped":
     let log = "{temporary.path()}/log"
     try expect_equal(closure_capture(log.clone()), 7)
     try expect_equal(closed(log), "7,")
+
+test "a part a record pattern binds closes at the scope end":
+    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
+    let log = "{temporary.path()}/log"
+    try expect_equal(destructured_record(log.clone()), 16)
+    try expect_equal(closed(log), "13,")
+
+test "a list pattern closes the elements it binds and the ones it drops":
+    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
+    let log = "{temporary.path()}/log"
+    try expect_equal(destructured_list(log.clone()), 14)
+    try expect_equal(closed(log), "15,14,")
 
 test "map values close in place":
     let temporary = temporary("manuscript-close-in-place-") | try expect_ok

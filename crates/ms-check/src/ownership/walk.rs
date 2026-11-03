@@ -1815,6 +1815,11 @@ impl Walker<'_> {
             let scrutinee = self.scrutinee(value);
             let role = if mutable { Role::Var } else { Role::Pattern };
             self.pattern_bindings(pattern, &scrutinee, role);
+            if scrutinee.owned {
+                // The pattern owns the parts it names: a resource among them closes at the
+                // scope end unless the scope moves it on, like any other owned binding.
+                self.pattern_resources(pattern, s);
+            }
             return;
         };
         let Some(b) = self.cx.m.pattern_binding(pattern) else {
@@ -2537,6 +2542,24 @@ impl Walker<'_> {
         self.meta
             .get(&b.uid)
             .is_some_and(|m| m.perm == Perm::Immutable && m.parameter.is_some())
+    }
+
+    /// Registers the resources an owning pattern binds for the scope-end close.
+    fn pattern_resources(&mut self, p: &Pattern, s: &Stmt) {
+        match &p.kind {
+            PatternKind::Name(_) => {
+                if let Some(b) = self.cx.m.pattern_binding(p)
+                    && self.may_close(&b.ty)
+                {
+                    let closable = self.closable(s, &b.ty);
+                    self.resources.push((b.uid, b.name, p.pos, closable));
+                }
+            }
+            PatternKind::List(items) => items.iter().for_each(|i| self.pattern_resources(i, s)),
+            PatternKind::Record(fields) => fields
+                .iter()
+                .for_each(|f| self.pattern_resources(&f.pattern, s)),
+        }
     }
 
     fn pattern_bindings(&mut self, p: &Pattern, source: &Scrutinee, role: Role) {

@@ -310,10 +310,15 @@ impl<'a> FnLower<'a> {
     fn bind_pattern(&mut self, pattern: &Pattern, x: Val) -> Result<(), Error> {
         match &pattern.kind {
             PatternKind::Name(_) => {
-                // `_` introduces no binding: an owned value handed to it is dropped.
+                // `_` introduces no binding: an owned value handed to it is closed and dropped.
+                // A name the checker registered for the scope-end close (a resource the pattern
+                // owns) binds like a plain `let` of a resource.
                 match self.hir.pattern_binding(pattern) {
+                    Some(b) if self.cx.implicit_closes.contains(&b.uid) => {
+                        return self.bind_closing(&b, x, None);
+                    }
                     Some(b) => self.bind_local(&b, x),
-                    None if x.own => self.drop_value(x.v),
+                    None if x.own => self.drop_temp(x.v),
                     None => {}
                 }
                 Ok(())
@@ -411,7 +416,7 @@ impl<'a> FnLower<'a> {
                         )
                         .expect("field address");
                     let fv = self.move_out(fp, *fty);
-                    self.drop_value(fv);
+                    self.drop_temp(fv);
                 }
                 Ok(())
             }

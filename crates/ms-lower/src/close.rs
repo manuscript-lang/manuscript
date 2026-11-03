@@ -760,9 +760,10 @@ impl FnLower<'_> {
         }
     }
 
-    /// How a binding of `ty` is closed: its own close operation, if it has one, and then the
-    /// resources it holds; `None` when this module sees no close operation for the type (its
-    /// `Closeable` implementation is local to another file).
+    /// How a binding of `ty` is closed: its own close operation (`cleanup`, or the type's
+    /// `Closeable` implementation when the statement names none, as a pattern binding's does
+    /// not), if it has one, and then the resources it holds; `None` when this module sees no
+    /// close operation for the type (its `Closeable` implementation is local to another file).
     pub(crate) fn closer_opt(
         &mut self,
         cleanup: Option<&ct::MethodRef>,
@@ -776,8 +777,8 @@ impl FnLower<'_> {
                 .map(Some)
                 .ok_or_else(|| Error::new("interface without close"));
         }
-        let own = match cleanup {
-            Some(c) => Some(self.own_closer(c, &ty)?),
+        let own = match cleanup.cloned().or_else(|| self.closeable_impl(&ty)) {
+            Some(c) => Some(self.own_closer(&c, &ty)?),
             None => None,
         };
         self.close_with_parts(&ty, own)
