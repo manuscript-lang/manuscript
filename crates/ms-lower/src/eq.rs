@@ -6,6 +6,7 @@ use crate::text::{runtime_fn, ty_name};
 use ms_check::types as ct;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncId, Imm, Mode, Module, Op, Param, Value};
+use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 
 impl Cx {
@@ -77,7 +78,7 @@ pub(crate) fn element_eq(
         return Ok(b.call_rt(ext, &[x, y]));
     }
     match b.m.types.kind(t) {
-        TyKind::Obj(n, _) if n == "BigInt" => {
+        TyKind::Obj(Native::BigInt, _) => {
             let ext = runtime_fn(b.m, "msstd_bigint_compare", &[t, t], MTy::INT);
             let c = b.call_rt(ext, &[x, y]);
             let zero = b.iconst(0);

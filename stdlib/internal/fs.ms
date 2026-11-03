@@ -1,5 +1,4 @@
 import Bytes from "@std/bytes.ms"
-import ReadStream, WriteStream from "@std/io/io.ms"
 import (
     DirectoryEntry,
     FileEvent,
@@ -50,10 +49,6 @@ export extern fn msstd_path_parse(path: String) PathParts
 export extern fn msstd_path_format(parts: PathParts) String
 
 export extern fn msstd_path_matches_glob(path: String, pattern: String) Bool!
-
-export extern fn msstd_fs_file_reader(file: NativeFile) ReadStream
-
-export extern fn msstd_fs_file_writer(file: NativeFile) WriteStream
 
 export extern fn msstd_io_close(file: NativeFile) Unit
 

@@ -119,7 +119,7 @@ pub fn limit_current_until(deadline: Option<std::time::Instant>) {
             .as_nanos()
             .min(i64::MAX as u128) as i64
     });
-    ms_rt::scope::limit_current(ns)
+    ms_rt::task::limit_current(ns)
 }
 
 /// Cancels task `handle` (a handle that no longer exists is ignored). The running task is not
@@ -133,54 +133,32 @@ pub fn cancel_task(handle: u64) {
 
 /// Forgets a cancel aimed at the running task, which caught it and goes on.
 pub fn acknowledge_cancel() {
-    ms_rt::scope::acknowledge_cancel()
+    ms_rt::fault::acknowledge_cancel()
 }
 
-/// A runtime scope that owns request tasks and contains their faults.
-pub struct Scope(i64);
-
-impl Scope {
-    pub fn new() -> Scope {
-        let id = ms_rt::scope::msrt_scope_new();
-        ms_rt::scope::msrt_scope_contain(id);
-        Scope(id)
-    }
-
-    /// Starts `entry(arg)` as a task of the scope, cancelled after `limit_ns` (negative: no
-    /// limit); the task frees itself when it ends. Returns its handle, or `None` when closed.
-    ///
-    /// # Safety
-    /// `arg` must be valid for `entry`, which owns it.
-    pub unsafe fn spawn(
-        &self,
-        entry: unsafe extern "C-unwind" fn(*mut u8),
-        arg: *mut u8,
-        limit_ns: i64,
-    ) -> Option<u64> {
-        // SAFETY: forwarded contract.
-        unsafe { ms_rt::scope::spawn_native(self.0, entry, arg, limit_ns) }
-    }
-
-    /// Whether the running task was started in this scope.
-    pub fn contains_current(&self) -> bool {
-        ms_rt::scope::current() == self.0
-    }
-
-    /// Cancels the tasks still running and waits for them.
-    pub fn close(&self) {
-        ms_rt::scope::msrt_scope_close(self.0)
-    }
+/// Starts `entry(arg)` as a promise task on this thread and returns its id. `entry` owns `arg`.
+/// A fault or cancellation in it ends only that promise; [`promise_drop`] releases it.
+///
+/// # Safety
+/// `arg` must be valid for `entry`, which owns it.
+pub unsafe fn promise_start(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> i64 {
+    // SAFETY: forwarded contract.
+    unsafe { ms_rt::promise::start_native(entry, arg) }
 }
 
-impl Default for Scope {
-    fn default() -> Scope {
-        Scope::new()
-    }
+/// Whether the work of promise `id` is over, without letting other tasks run.
+pub fn promise_over(id: i64) -> bool {
+    ms_rt::promise::work_over(id)
 }
 
-/// Whether the running task was started by any [`Scope::spawn`].
-pub fn in_scope_task() -> bool {
-    ms_rt::scope::current() != 0
+/// Asks the promise `id` to stop at its next wait.
+pub fn promise_cancel(id: i64) {
+    ms_rt::promise::cancel(id)
+}
+
+/// Cancels the promise `id` if unfinished, joins its task, and frees it.
+pub fn promise_drop(id: i64) {
+    ms_rt::promise::msrt_promise_drop(id)
 }
 
 /// A runtime park token (`msrt_token_*`) posted from the runtime thread; freed on drop.

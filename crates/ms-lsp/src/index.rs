@@ -3,7 +3,6 @@
 //! across files .
 
 use crate::analysis::Analysis;
-use crate::lexical::{self, Lexical};
 use ms_check::stdlib;
 use ms_check::syntax::{DeclRef, FuncRef, Info, ModRef};
 use ms_check::types::{BindingRef, Kind, Method, MethodRef, Name, SymRef, Ty, fields, n};
@@ -282,8 +281,8 @@ impl Builder {
             .unwrap_or_else(|| format!("binding:{}", b.id))
     }
 
-    fn header(&self, lexical: &Option<Rc<Lexical>>, file: Name, pos: usize, name: &str) -> usize {
-        lexical::header(lexical.as_deref(), &self.by_file[&file].source, pos, name).unwrap_or(pos)
+    fn header(&self, file: Name, pos: usize, name: &str) -> usize {
+        crate::text::header(&self.by_file[&file].source, pos, name).unwrap_or(pos)
     }
 }
 
@@ -304,10 +303,6 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
     // Checked facts exist only for modules this program contains; bundled
     // modules it never imports contribute declarations but no uses.
     let checked: HashSet<Name> = program.modules.iter().map(|m| m.file).collect();
-    let tokens: HashMap<Name, Option<Rc<Lexical>>> = modules
-        .iter()
-        .map(|m| (m.file, lexical::tokens(m)))
-        .collect();
 
     // Parameter bindings first: calls and records name them by key.
     for m in modules.iter().filter(|m| checked.contains(&m.file)) {
@@ -344,7 +339,6 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
     }
 
     for m in &modules {
-        let lexical = tokens.get(&m.file).cloned().flatten();
         let symbols = module_symbols(analysis, m);
         for d in &m.decls {
             if d.0.decl.synthetic && matches!(d.decl().kind, DeclKind::Interface(_)) {
@@ -353,12 +347,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
             if let Some(symbol) = symbols.get(&d.name())
                 && symbol.decl.as_ref().is_some_and(|sd| sd.same(d))
             {
-                let at = b.header(
-                    &lexical,
-                    m.file,
-                    d.pos().offset as usize,
-                    symbol.name.as_str(),
-                );
+                let at = b.header(m.file, d.pos().offset as usize, symbol.name.as_str());
                 b.add(
                     symbol_key(&b.root, Some(symbol)),
                     symbol.name.as_str(),
@@ -443,7 +432,6 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
                             native: if contract { n("contract") } else { n("") },
                         };
                         let at = b.header(
-                            &lexical,
                             m.file,
                             method.pos.offset as usize,
                             method.func.name.as_str(),
@@ -492,11 +480,9 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
 
     // Bindings: patterns, parameters, lambda parameters, loops and arms.
     for m in modules.iter().filter(|m| checked.contains(&m.file)) {
-        let lexical = tokens.get(&m.file).cloned().flatten();
         let mut walker = BindingWalker {
             b: &mut b,
             module: m,
-            lexical: &lexical,
         };
         for d in &m.decls {
             for func in callables(d) {
@@ -511,13 +497,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
         let Some(file) = b.files.of_decl(&decl.decl) else {
             continue;
         };
-        let lexical = tokens.get(&file).cloned().flatten();
-        let at = b.header(
-            &lexical,
-            file,
-            decl.pos().offset as usize,
-            decl.name().as_str(),
-        );
+        let at = b.header(file, decl.pos().offset as usize, decl.name().as_str());
         let key = method_key(&b.root, &b.files, method);
         b.add(
             key,
@@ -608,7 +588,6 @@ pub(crate) fn callables(d: &DeclRef) -> impl Iterator<Item = FuncRef> + '_ {
 struct BindingWalker<'a> {
     b: &'a mut Builder,
     module: &'a ModRef,
-    lexical: &'a Option<Rc<Lexical>>,
 }
 
 impl BindingWalker<'_> {
@@ -704,7 +683,6 @@ impl Visitor for BindingWalker<'_> {
                 });
                 if let Some(binding) = loop_binding.or(expanded) {
                     let at = self.b.header(
-                        self.lexical,
                         self.module.file,
                         s.pos.offset as usize,
                         binding.name.as_str(),
@@ -743,7 +721,6 @@ impl Visitor for BindingWalker<'_> {
                         .unwrap_or_default();
                     for binding in bindings.iter().flatten() {
                         let at = self.b.header(
-                            self.lexical,
                             self.module.file,
                             arm.pos.offset as usize,
                             binding.name.as_str(),

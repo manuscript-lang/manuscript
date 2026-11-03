@@ -147,7 +147,7 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
         let recovered_text;
         if let Some(err) = err {
             let rebased = |mut issue: Diagnostic| {
-                issue.message = shift_opened(&issue.message, line_offset);
+                shift_opened(&mut issue, line_offset);
                 issue.pos.offset += start as u32;
                 issue.pos.line += line_offset;
                 if let Some(e) = issue.end.as_mut() {
@@ -306,7 +306,7 @@ fn recover_statements(
         // is redirected: a delimiter left open by an earlier blanking is a
         // cascade, and the declaration is omitted rather than reported twice.
         let mut line = issue.pos.line as usize;
-        let opened = opened_line(&issue.message);
+        let opened = issue.opener_line as usize;
         if opened > 0 && attempt == 0 {
             line = opened;
         }
@@ -390,47 +390,16 @@ fn trim_dangling(file: &Arc<str>, lines: &[String], at: usize) -> Option<String>
     None
 }
 
-/// Splits an `unterminated delimiter ... opened at line N:` message into the
-/// byte range of `N` (`unterminated delimiter ... opened at line N:`).
-fn opened_range(message: &str) -> Option<(usize, usize)> {
-    const PREFIX: &str = "unterminated delimiter ";
-    const MARK: &str = " opened at line ";
-    if !message.starts_with(PREFIX) {
-        return None;
+/// Rewrites the chunk-relative opener position in an unterminated-delimiter
+/// diagnostic to the file-relative one.
+fn shift_opened(issue: &mut Diagnostic, lines: u32) {
+    if issue.opener_line == 0 {
+        return;
     }
-    let mut search_end = message.len();
-    while let Some(at) = message[..search_end].rfind(MARK) {
-        if at >= PREFIX.len() - 1 {
-            let digits = at + MARK.len();
-            let n = message[digits..]
-                .bytes()
-                .take_while(u8::is_ascii_digit)
-                .count();
-            if n > 0 && message[digits + n..].starts_with(':') {
-                return Some((digits, digits + n));
-            }
-        }
-        search_end = at;
-    }
-    None
-}
-
-fn opened_line(message: &str) -> usize {
-    opened_range(message)
-        .and_then(|(a, b)| message[a..b].parse().ok())
-        .unwrap_or(0)
-}
-
-/// Rewrites the chunk-relative opener line in an unterminated-delimiter
-/// message to the file-relative line.
-fn shift_opened(message: &str, lines: u32) -> String {
-    match opened_range(message) {
-        Some((a, b)) if lines != 0 => {
-            let line = opened_line(message) + lines as usize;
-            format!("{}{}{}", &message[..a], line, &message[b..])
-        }
-        _ => message.to_string(),
-    }
+    let old = format!("opened at line {}:", issue.opener_line);
+    issue.opener_line += lines;
+    let new = format!("opened at line {}:", issue.opener_line);
+    issue.message = issue.message.replacen(&old, &new, 1);
 }
 
 fn leading_space(line: &str) -> usize {

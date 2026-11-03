@@ -223,7 +223,7 @@ fn take_flushes(p: &mut Pipe) -> Vec<i64> {
 
 fn complete_flushes(ids: Vec<i64>) {
     for id in ids {
-        promise::io_done(id);
+        promise::io_done_unit(id);
     }
 }
 
@@ -245,7 +245,7 @@ pub extern "C-unwind" fn msrt_pipes_flush(pipe: i64) -> i64 {
     if waits {
         promise::on_drop(id, flush_cancelled, pipe as usize);
     } else {
-        promise::io_done(id);
+        promise::io_done_unit(id);
     }
     id
 }

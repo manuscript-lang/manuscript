@@ -35,6 +35,7 @@ mod mathops;
 mod mutation;
 mod natiface;
 mod native;
+mod nativerec;
 mod random;
 mod rtcall;
 mod runner;
@@ -88,7 +89,7 @@ pub fn lower_benches(program: &Program, options: &Options) -> Result<(Module, Ve
 }
 
 /// The marker a failed test writes to stderr ahead of its message.
-pub use runner::{FAILURE_MARKER, SKIP_MARKER};
+pub use runner::SKIP_MARKER;
 
 /// Lowers a checked program (no diagnostics) to a MIR module with `main` as the entry.
 pub fn lower_program(program: &Program, options: &Options) -> Result<Module, Error> {

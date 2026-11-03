@@ -78,6 +78,11 @@ pub fn fault(msg: &str) -> ! {
     unsafe { msrt_fault(msg.as_ptr(), msg.len()) }
 }
 
+/// Raises a runtime fault of a specific family with `msg`; never returns.
+pub fn fault_kind(kind: crate::glue::FaultKind, msg: &str) -> ! {
+    crate::fault::fault_kind(kind, msg.as_bytes())
+}
+
 /// Raises the integer-overflow runtime fault; never returns.
 pub fn int_overflow() -> ! {
     msrt_fault_int_overflow()

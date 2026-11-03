@@ -2,9 +2,11 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
+use crate::nativerec::NativeRec;
 use ms_check::hir::Resolution;
 use ms_check::types::{self as ct, Kind};
 use ms_mir::ir::{Cc, Op, Value};
+use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -34,7 +36,7 @@ impl<'a> FnLower<'a> {
     /// The type of the value an expression computes: while it is lowered ahead of a conversion
     /// to an interface, its own type rather than the interface.
     fn value_ty(&self, e: &Expr) -> ct::Ty {
-        match self.hir.info(e).interface_source {
+        match self.hir.info(e).interface_source.clone() {
             Some(src) if self.converting == Some(e as *const Expr) => src,
             _ => self.hir.ty(e),
         }
@@ -49,7 +51,8 @@ impl<'a> FnLower<'a> {
         let x = self.expr_value(e);
         self.converting = saved;
         let x = x?;
-        let x = match self.hir.info(e).interface_source {
+        let source = self.hir.info(e).interface_source.clone();
+        let x = match source {
             Some(src) if !self.dead => {
                 let want = self.emty(e)?;
                 // An owned resource converted to an interface without `close` is only read (the
@@ -78,7 +81,8 @@ impl<'a> FnLower<'a> {
             _ => x,
         };
         // The conversion to the interface comes first: `Shape?` takes a `Sq` as `some(Shape(sq))`.
-        let x = match self.hir.info(e).wrap_some {
+        let wrap = self.hir.info(e).wrap_some.clone();
+        let x = match wrap {
             // A reference wrapped on its way to a binding or a return stays one: `opt.view`.
             Some(_)
                 if !self.dead
@@ -818,35 +822,27 @@ impl<'a> FnLower<'a> {
 
     /// The runtime function ordering two values of a native record type (`-1`, `0` or `1`).
     pub(crate) fn ordering_symbol(&self, t: MTy) -> Option<&'static str> {
-        let TyKind::Rec(rid) = self.b.m.types.kind(t) else {
-            return None;
-        };
-        match self.b.m.records[rid.index()].name.as_str() {
-            "Timestamp" => Some("msstd_time_timestamp_compare"),
-            "Instant" => Some("msstd_time_instant_compare"),
-            "Decimal" => Some("msstd_decimal_compare"),
-            _ => None,
-        }
+        NativeRec::of(self.b.m, t)?.compare_symbol()
     }
 
     /// Whether `t` is the `Duration` record.
     pub(crate) fn is_duration(&self, t: MTy) -> bool {
-        matches!(self.b.m.types.kind(t), TyKind::Rec(rid) if self.b.m.records[rid.index()].name == "Duration")
+        NativeRec::of(self.b.m, t) == Some(NativeRec::Duration)
     }
 
     /// Whether `t` is the `Instant` record.
     fn is_instant(&self, t: MTy) -> bool {
-        matches!(self.b.m.types.kind(t), TyKind::Rec(rid) if self.b.m.records[rid.index()].name == "Instant")
+        NativeRec::of(self.b.m, t) == Some(NativeRec::Instant)
     }
 
     /// Whether `t` is the `BigInt` runtime object.
     pub(crate) fn is_bigint(&self, t: MTy) -> bool {
-        matches!(self.b.m.types.kind(t), TyKind::Obj(n, _) if n == "BigInt")
+        matches!(self.b.m.types.kind(t), TyKind::Obj(Native::BigInt, _))
     }
 
     /// Whether `t` is the `Decimal` record.
     pub(crate) fn is_decimal(&self, t: MTy) -> bool {
-        matches!(self.b.m.types.kind(t), TyKind::Rec(rid) if self.b.m.records[rid.index()].name == "Decimal")
+        NativeRec::of(self.b.m, t) == Some(NativeRec::Decimal)
     }
 
     /// Structural equality of two operands of the same type.
@@ -905,6 +901,9 @@ impl<'a> FnLower<'a> {
             noreturn: false,
             pure_: false,
             fresh: crate::rtcall::fresh_result(sym),
+            role: crate::rtcall::extern_role(sym),
+            leaf: crate::rtcall::rt_flags(sym).leaf,
+            reads: crate::rtcall::rt_flags(sym).reads,
         });
         Ok(self.b.call_rt(ext, args))
     }

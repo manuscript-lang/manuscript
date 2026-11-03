@@ -8,7 +8,7 @@ use ms_build::Lower;
 use super::{Engine, TempDir, compile};
 use crate::backend::{BackendResult, Io, RunRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
-use crate::fault::{EXIT_FAULT, Fault};
+use crate::fault::{EXIT_FAULT, Fault, RecordFile};
 use crate::json::Json;
 use crate::process::{Stops, exit_code, wait_supervised, wait_with_signals};
 use crate::util::emit_json;
@@ -133,7 +133,10 @@ fn run_structured(
     io: &mut Io,
 ) -> BackendResult {
     let stops = Stops::catch();
-    let spawned = Command::new(executable)
+    let record = RecordFile::create();
+    let mut command = Command::new(executable);
+    record.attach(&mut command);
+    let spawned = command
         .args(&request.arguments)
         .stdin(Stdio::inherit())
         .stdout(Stdio::piped())
@@ -169,6 +172,7 @@ fn run_structured(
     while let Ok(chunk) = stderr.recv_timeout(Duration::from_millis(100)) {
         err.extend_from_slice(&chunk);
     }
+    let pid = child.id();
     let status = match waited {
         Ok(waited) => exit_code(waited.status),
         Err(error) => {
@@ -187,7 +191,10 @@ fn run_structured(
     );
     let mut json = document(source_root, status, &out, &err);
     if status == EXIT_FAULT
-        && let Some(fault) = Fault::parse(&err)
+        && let Some(fault) = record
+            .read(pid)
+            .map(Fault::from_record)
+            .or_else(|| Fault::from_text(&err))
     {
         json = json.with("fault", fault.to_json());
     }

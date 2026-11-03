@@ -135,7 +135,7 @@ fn concat_chain(fresh: &str) -> String {
     format!(
         r#"module "t"
 file 0 "t.ms"
-extern @msrt_string_concat(str, str) -> str{fresh}
+extern @msrt_string_concat(str, str) -> str{fresh} string_concat
 
 fn @main() -> int export {{
 b0:
@@ -195,7 +195,7 @@ fn many_strings(n: usize) -> String {
     let mut s = String::from(
         r#"module "t"
 file 0 "t.ms"
-extern @msrt_string_concat(str, str) -> str fresh
+extern @msrt_string_concat(str, str) -> str fresh string_concat
 
 fn @main() -> int export {
 b0:

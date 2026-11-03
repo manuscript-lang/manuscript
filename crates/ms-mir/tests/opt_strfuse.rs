@@ -5,7 +5,7 @@ use ms_mir::verify::verify_module;
 
 const CHAIN: &str = r#"module "main"
 file 0 "a.ms"
-extern @msrt_string_concat(str, str) -> str
+extern @msrt_string_concat(str, str) -> str string_concat
 extern @msrt_string_empty() -> str
 entry @main
 
@@ -59,7 +59,7 @@ fn concat_chain_becomes_one_call() {
 
 const GROW: &str = r#"module "main"
 file 0 "a.ms"
-extern @msrt_string_concat(str, str) -> str
+extern @msrt_string_concat(str, str) -> str string_concat
 extern @msrt_string_empty() -> str
 entry @main
 
@@ -129,8 +129,8 @@ fn an_unoptimized_build_appends_in_place() {
 
 const INTERP: &str = r#"module "main"
 file 0 "a.ms"
-extern @msrt_string_concat(str, str) -> str
-extern @msrt_int_to_string(int) -> str
+extern @msrt_string_concat(str, str) -> str string_concat
+extern @msrt_int_to_string(int) -> str int_to_string
 extern @msrt_string_empty() -> str
 entry @main
 
@@ -205,8 +205,8 @@ fn integer_interpolations_format_into_the_joined_string() {
 
 const SIZED: &str = r#"module "main"
 file 0 "a.ms"
-extern @msrt_string_concat(str, str) -> str
-extern @msrt_int_to_string(int32) -> str
+extern @msrt_string_concat(str, str) -> str string_concat
+extern @msrt_int_to_string(int32) -> str int_to_string
 extern @msrt_string_empty() -> str
 entry @main
 
@@ -252,7 +252,7 @@ fn sized_integer_text_is_not_fused() {
 /// results are dropped at the end of the function.
 fn long_chain(n: usize) -> String {
     let mut src = String::from(
-        "module \"main\"\nfile 0 \"a.ms\"\nextern @msrt_string_concat(str, str) -> str\nentry @main\n\nfn @main() -> int export {\nb0:\n  %0: str = str \"p0\"\n",
+        "module \"main\"\nfile 0 \"a.ms\"\nextern @msrt_string_concat(str, str) -> str string_concat\nentry @main\n\nfn @main() -> int export {\nb0:\n  %0: str = str \"p0\"\n",
     );
     let mut next = 1;
     let mut acc = 0;
@@ -305,7 +305,7 @@ fn a_long_concat_chain_fuses_in_linear_rounds() {
 /// walk has seen all of its leaves: `((p0 + p1) + ((p2 + p3) + p4)) + (p5 + ((p6 + p7) + p8))`.
 const DEEP_TREE: &str = r#"module "main"
 file 0 "a.ms"
-extern @msrt_string_concat(str, str) -> str
+extern @msrt_string_concat(str, str) -> str string_concat
 entry @main
 
 fn @main() -> int export {
@@ -375,8 +375,8 @@ fn many_interpolations(n: usize) -> String {
     let mut s = String::from(
         r#"module "main"
 file 0 "a.ms"
-extern @msrt_int_to_string(int) -> str fresh
-extern @msrt_string_concat(str, str) -> str fresh
+extern @msrt_int_to_string(int) -> str fresh int_to_string
+extern @msrt_string_concat(str, str) -> str fresh string_concat
 entry @main
 
 fn @main() -> int export {

@@ -143,7 +143,7 @@ pub fn call_modes(
     args: &[Argument],
     summaries: &Summaries,
 ) -> CallModes {
-    let slots = m.info(call).arguments.unwrap_or_default();
+    let slots = m.info(call).arguments.clone().unwrap_or_default();
     let label = |i: usize| slots.get(i).map(|s| s.name);
     let borrow_all = |receiver: Option<ParamMode>| CallModes {
         receiver,

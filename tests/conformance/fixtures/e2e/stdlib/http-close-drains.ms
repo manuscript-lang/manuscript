@@ -1,7 +1,7 @@
 // conform: tags=stdlib-http,stdlib-net,tier-io
 // conform: phase=run
 // conform: timeout=30
-// Closing a server lets a response in progress finish, and returns as soon as it has.
+// Closing a server lets a response in progress finish; `wait` returns as soon as it has.
 import headers, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
 import stdout from "@std/io/io.ms"
 import connect, serve from "@std/net/net.ms"
@@ -24,6 +24,7 @@ export fn main() Int:
 
             let start = monotonic_time()
             server.close().get(none)
+            server.wait().get(none)
 
             let close_ms = (monotonic_time() - start) / 1000000
             var text = ""

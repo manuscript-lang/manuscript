@@ -12,7 +12,8 @@
 
 use crate::builder::FuncBuilder;
 use crate::ir::{
-    Cc, ExternDef, Func, FuncId, FuncKind, Imm, Inst, Mode, Module, Op, Param, Term, Value,
+    Cc, ExternDef, ExternRole, Func, FuncId, FuncKind, Imm, Inst, Mode, Module, Op, Param,
+    SortThunk, Term, Value,
 };
 use crate::types::{Ty, TyKind};
 use crate::vmap::ValueMap;
@@ -34,7 +35,7 @@ pub fn run(m: &mut Module) -> bool {
                     known.insert(r, g);
                 }
                 (Op::FuncAddr, Imm::Func(t), Some(r))
-                    if m.funcs[t.index()].name.starts_with("sort.cmp.") =>
+                    if m.funcs[t.index()].sort == SortThunk::Specialized =>
                 {
                     thunks.insert(r, t);
                 }
@@ -51,7 +52,7 @@ pub fn run(m: &mut Module) -> bool {
                     continue;
                 }
                 let Imm::Ext(e) = inst.imm else { continue };
-                if m.externs[e.index()].name != "msrt_list_sorted" {
+                if m.externs[e.index()].role != ExternRole::ListSorted {
                     continue;
                 }
                 let (Some(&t), Some(&g)) = (thunks.get(&inst.args[2]), known.get(&inst.args[3]))
@@ -85,6 +86,9 @@ pub fn run(m: &mut Module) -> bool {
                     noreturn: false,
                     pure_: false,
                     fresh: false,
+                    role: ExternRole::ListSortInts,
+                    leaf: true,
+                    reads: false,
                 });
                 rewrite_plain(&mut m.funcs[fi], bi, ii, ext, desc);
                 changed = true;
@@ -97,6 +101,7 @@ pub fn run(m: &mut Module) -> bool {
                 let Imm::Ext(e) = call.imm else { continue };
                 let mut def = m.externs[e.index()].clone();
                 def.name = "msrt_list_sorted_by_difference".to_string();
+                def.role = ExternRole::ListSortedByDifference;
                 def.params.push(Param {
                     ty: Ty::INT,
                     mode: Mode::Borrow,

@@ -57,9 +57,9 @@ fn write_ty(m: &Module, t: Ty, out: &mut String) {
         TyKind::Obj(n, args) => {
             if args.is_empty() {
                 out.push_str("obj ");
-                out.push_str(n);
+                out.push_str(n.name());
             } else {
-                out.push_str(n);
+                out.push_str(n.name());
                 out.push('<');
                 for (i, a) in args.iter().enumerate() {
                     if i > 0 {
@@ -182,6 +182,16 @@ pub fn print_module(m: &Module) -> String {
         if e.fresh {
             line.push_str(" fresh");
         }
+        if e.leaf {
+            line.push_str(" leaf");
+        }
+        if e.reads {
+            line.push_str(" reads");
+        }
+        if let Some(role) = e.role.name() {
+            line.push(' ');
+            line.push_str(role);
+        }
         o.push_str(&line);
         o.push('\n');
     }
@@ -270,6 +280,11 @@ pub fn print_func(m: &Module, f: &Func) -> String {
             let cs: Vec<String> = captures.iter().map(|t| ty_str(m, *t)).collect();
             let _ = write!(o, " closure({})", cs.join(", "));
         }
+    }
+    match f.sort {
+        SortThunk::None => {}
+        SortThunk::Generic => o.push_str(" sort_cmp"),
+        SortThunk::Specialized => o.push_str(" sort_cmp_for"),
     }
     if !f.loc.is_none() {
         let _ = write!(o, " !{}", f.loc);

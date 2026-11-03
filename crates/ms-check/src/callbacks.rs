@@ -76,7 +76,7 @@ impl Checker {
         self.scope = Scope::new(Some(old_scope.clone()));
         self.result = result.clone();
         if result.is_none() {
-            self.result = Some(primitive("<inferred>"));
+            self.result = Some(inferred());
             let mut frame = CallbackReturns::default();
             if let Some(c) = &context {
                 self.result = c.result.clone();
@@ -120,7 +120,7 @@ impl Checker {
                 }
             }
             Some(r) => {
-                if fall && r.id != "Unit" && r.id != "<invalid>" {
+                if fall && r.id != "Unit" && !r.is_invalid() {
                     self.type_error(
                         e.pos,
                         "reachable fallthrough in anonymous function; end every path with a 'return'",
@@ -147,7 +147,11 @@ impl Checker {
             (!defaults.is_empty()).then(|| std::rc::Rc::new(ParameterDefaults::new(defaults)));
         let mut info = Info::of(function_with(params, result, defaults));
         if let Some(frame) = &self.return_inference {
-            info.inference_deferred = frame.unresolved || frame.context_dependent;
+            if frame.unresolved || frame.context_dependent {
+                self.deferred_callbacks.insert(e.id);
+            } else {
+                self.deferred_callbacks.remove(&e.id);
+            }
         }
         let mut captured: Vec<BindingRef> = self
             .captures

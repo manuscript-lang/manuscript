@@ -13,6 +13,7 @@ use std::vec::Vec;
 use crate::fault::{cancel_flag, msrt_cancelled, msrt_fault};
 use crate::obj::{msrt_release, msrt_retain};
 use crate::string::msrt_string_from_bytes;
+pub use ms_rt_abi::record::FaultKind;
 
 /// The bytes of a live string.
 ///
@@ -55,13 +56,17 @@ impl Write for Stack {
 
 /// Raises a fault with a formatted message (truncated at 512 bytes); never returns.
 pub fn fault_fmt(args: fmt::Arguments<'_>) -> ! {
+    fault_fmt_kind(FaultKind::Fault, args)
+}
+
+/// [`fault_fmt`] for a fault of a specific family, which the structured record names.
+pub fn fault_fmt_kind(kind: FaultKind, args: fmt::Arguments<'_>) -> ! {
     let mut s = Stack {
         buf: [0; 512],
         len: 0,
     };
     let _ = s.write_fmt(args);
-    // SAFETY: the buffer prefix is readable; the runtime copies it.
-    unsafe { msrt_fault(s.buf.as_ptr(), s.len) }
+    crate::fault::fault_kind(kind, &s.buf[..s.len])
 }
 
 /// Whether a stop request (SIGINT or SIGTERM) is pending.
