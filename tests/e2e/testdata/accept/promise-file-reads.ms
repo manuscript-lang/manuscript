@@ -10,6 +10,11 @@ test "blocking file reads work from promises on any thread":
     let dir = temporary("manuscript-promise-") | try expect_ok
     let path = "{dir.path()}/data"
     try write_file(path, "0123456789")
-    let all = wait_all([promise(fn: size(path)), promise(fn: size(path)), promise(fn: size(path))])
+
+    let all = wait_all(
+        [
+            promise(fn: size(path)), promise(fn: size(path)), promise(fn: size(path))
+        ]
+    )
     for n in all.get([]):
         try expect_equal(n, 10)
