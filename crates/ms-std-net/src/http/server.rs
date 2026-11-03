@@ -295,8 +295,8 @@ impl Reactor {
             };
             let limit = -1;
             let job = Box::into_raw(Box::new(Job { conn }));
-            // SAFETY: `request_task` takes back the boxed job leaked here.
             server.st.borrow_mut().running += 1;
+            // SAFETY: `request_task` takes back the boxed job leaked above.
             let started = unsafe { server.scope.spawn(request_task, job.cast(), limit) };
             if started.is_none() {
                 server.st.borrow_mut().running -= 1;
@@ -676,7 +676,10 @@ impl Server {
             if token.park(-1) & 16 != 0 {
                 self.st.borrow_mut().idle_waiter = None;
                 rt::acknowledge_cancel();
+                // A stop request must not cut the drain short: this close is the cleanup.
+                rt::shield();
                 self.close_inner();
+                rt::unshield();
                 rt::cancelled();
             }
         }

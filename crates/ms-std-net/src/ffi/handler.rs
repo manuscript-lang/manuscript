@@ -107,6 +107,7 @@ impl Program {
         // SAFETY: the compiler built `env` as such a closure, whose code word is a `StreamThunk`.
         Box::new(Program {
             env,
+            // SAFETY: `env` is such a closure (contract above).
             streaming: unsafe { closure_code(env) },
         })
     }

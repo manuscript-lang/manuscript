@@ -120,7 +120,10 @@ fn make_handler(dir: String) fn(HttpExchange) Result[Unit, Error]:
 # Serves the benchmark endpoints on 127.0.0.1:<port> on `threads` scheduler threads until the server stops.
 fn serve_here(port: String, dir: String, threads: Int) Int:
     let options = HttpServerOptions(cores: threads)
-    if let acquired = serve(address: "127.0.0.1:{port}", handler: make_handler(dir), options: options):
+
+    if let acquired = serve(
+        address: "127.0.0.1:{port}", handler: make_handler(dir), options: options
+    ):
         let server = acquired
         let _ignored = server.wait()
         return 0
@@ -135,5 +138,4 @@ export fn main() Int:
     var threads = 1
     if args.length() == 3:
         threads = args.get(2).parse_int().get(1)
-
     return serve_here(args.get(0), args.get(1), max(threads, 1))

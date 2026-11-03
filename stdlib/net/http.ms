@@ -293,6 +293,7 @@ impl Closeable for HttpServer:
     # Stops accepting and asks every connection to finish: idle ones close at once, requests in flight finish within `grace`, then the rest are cancelled. It returns without waiting; `wait` or dropping the server joins. Safe to call repeatedly.
     var fn close() Unit!:
         self.stopped = true
+
         let _ = self.accepting.wait(timeout: 0.seconds)
         return ok(unit)
 

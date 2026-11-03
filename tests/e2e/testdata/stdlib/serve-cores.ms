@@ -38,9 +38,7 @@ fn get(address: String) String:
     return text
 
 test "serve answers many connections on several cores":
-    let server = serve(
-        "127.0.0.1:0", plain_handler(), HttpServerOptions(cores: 3)
-    ) | try expect_ok
+    let server = serve("127.0.0.1:0", plain_handler(), HttpServerOptions(cores: 3)) | try expect_ok
 
     for i in 0..9:
         let text = get(server.address())
@@ -73,7 +71,9 @@ test "TLS connections are served on several cores":
     let server = serve(
         "127.0.0.1:0",
         secure_handler,
-        HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: server_tls, cores: 3)
+        HttpServerOptions(
+            timeout: 3.seconds, grace: 0.seconds, tls: server_tls, cores: 3
+        )
     ) | try expect_ok
 
     for i in 0..9:
@@ -82,10 +82,13 @@ test "TLS connections are served on several cores":
             private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: false
         )
         let client = http_client(
-            HttpClientOptions(decompress: false, cookies: false, tls: client_tls)
+            HttpClientOptions(
+                decompress: false, cookies: false, tls: client_tls
+            )
         ) | try expect_ok
         let response = client.request(
             method: HttpMethod.Get, url: "https://{server.address()}/",
-            headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
+            headers: (try text_headers(Map[String, String]())), body: "",
+            timeout: 2.seconds
         ) | try expect_ok
         try expect_equal(response.metadata().status, 200)

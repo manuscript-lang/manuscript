@@ -549,7 +549,6 @@ export type WebSocketOptions:
     # When True, offers per-message compression during the handshake; it applies only if the peer agrees.
     compression: Bool
 
-
 # Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
 # A restricted network without listening permission, or an address outside its CIDRs, returns PermissionDenied.
 export fn bind_datagram(address: String) DatagramSocket!:
@@ -681,7 +680,11 @@ export fn serve(
 
     # The accept loop captures only the serving's id, a number, so it owns everything it uses.
     let accepting = promise(fn: accept_loop(id))
-    return ok(HttpServer(accepting: accepting, serving: serving, bound: bound, stopped: false))
+    return ok(
+        HttpServer(
+            accepting: accepting, serving: serving, bound: bound, stopped: false
+        )
+    )
 
 # The connections of `serve`'s accept loop. Its close, which runs when the loop returns, is cancelled or faults, cancels all connections first so they drain side by side, then joins them.
 type Accepting:
@@ -700,26 +703,33 @@ impl Accepting:
     # Drops the promises of connections that have ended.
     var fn sweep() Unit:
         var i = self.connections.length() - 1
+
         while i >= 0:
             if self.connections[i].done():
                 self.connections.swap(i, self.connections.length() - 1)
+
                 let _ = self.connections.pop()
+
             i -= 1
 
 # Accepts until the listener fails. An accept that fails for lack of descriptors or memory pauses briefly instead of ending the server.
 fn accept_loop(id: Int) Unit!:
     var accepting = Accepting(connections: [], owner: id)
     var sweep_at = 64
+
     while true:
         let accepted = msstd_http_serving_accept(id)
+
         if accepted.is_error():
             if accepted.err().kind == ErrorCategory.Closed:
                 return ok(unit)
+
             sleep(50.milliseconds)
             continue
 
         let raw = accepted.get()
         accepting.connections.append(promise(fn: serve_connection(id, raw)))
+
         if accepting.connections.length() >= sweep_at:
             accepting.sweep()
             sweep_at = 64
