@@ -4,11 +4,12 @@
 use ms_syntax::ast::{Decl, DeclKind, Module};
 
 /// Bundled source modules whose methods extend native standard types in every program.
-pub const EXTENSION_MODULES: [&str; 4] = [
+pub const EXTENSION_MODULES: [&str; 5] = [
     "@std/collections/collections.ms+source",
     "@std/bytes.ms+source",
     "@std/collections/ordering.ms",
     "@std/string.ms+source",
+    "@std/math/decimal.ms",
 ];
 
 /// Whether a declaration carries an implementation (a body, an `extern fn`, a constant or a test).
