@@ -829,19 +829,44 @@ fn compile_with_isa(
         define(&mut g, &mut ctx, id, "glue")?;
     }
     let triple = llvm_triple(g.module.isa().triple());
-    let mut llvm_object = None;
+    let mut llvm_objects = Vec::new();
     if let Some(llvm) = g.llvm.take() {
         let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
         let pinned = g.pinned.iter().map(|id| syms.symbol_of(*id)).collect();
-        let anchored = g.anchor.is_some();
-        let obj = crate::llvm_obj::compile(
-            &llvm.finish(&triple, &pinned, anchored),
-            opts.llvm.unwrap_or("3"),
-            &opts.build,
-        )?;
-        let t = crate::llvm_tables::read(obj.path(), &g.llvm_funcs, &m.files, anchored)?;
-        g.dbg = t.dbg;
-        g.scopes = t.scopes;
+        let units = llvm_units(opts.build.llvm_units, llvm.code_bytes());
+        // Separate objects have no common anchor: every function keeps a symbol.
+        let anchored = g.anchor.is_some() && units == 1;
+        if !anchored {
+            g.anchor = None;
+        }
+        let irs = llvm.finish_units(&triple, &pinned, anchored, units);
+        let objects = crate::llvm_obj::compile_all(&irs, opts.llvm.unwrap_or("3"), &opts.build)?;
+        drop(irs);
+        let mut dbg = Vec::new();
+        let mut scopes: Vec<ms_mir::ir::Scope> = Vec::new();
+        for obj in &objects {
+            let t = crate::llvm_tables::read(obj.path(), &g.llvm_funcs, &m.files, anchored)?;
+            // Scope ids count from one within an object.
+            let base = scopes.len() as u32;
+            for mut d in t.dbg {
+                if base != 0 {
+                    for r in &mut d.ranges {
+                        if r.3 != 0 {
+                            r.3 += base;
+                        }
+                    }
+                }
+                dbg.push(d);
+            }
+            scopes.extend(t.scopes.into_iter().map(|mut sc| {
+                if sc.parent != 0 {
+                    sc.parent += base;
+                }
+                sc
+            }));
+        }
+        g.dbg = dbg;
+        g.scopes = scopes;
         if !anchored {
             // The copies share their dispatcher's id; the tables name each by its own symbol.
             for i in 0..g.dbg.len() {
@@ -856,7 +881,7 @@ fn compile_with_isa(
                 g.dbg[i].reloc = Some(imported);
             }
         }
-        llvm_object = Some(obj);
+        llvm_objects = objects;
     }
     let tables = if g.m.entry.is_some() {
         Some(emit_tables(&mut g)?)
@@ -869,17 +894,34 @@ fn compile_with_isa(
     if let Some(t) = tables {
         relocate_tables(&mut product, &g.dbg, g.anchor, &t);
     }
-    if let Some(obj) = llvm_object {
+    if !llvm_objects.is_empty() {
         return Ok(crate::Parts {
             object: product.emit().map_err(|e| Error(e.to_string()))?,
-            llvm: Some(obj.bytes()?),
+            llvm: llvm_objects
+                .iter()
+                .map(crate::llvm_obj::LlvmObject::bytes)
+                .collect::<Result<_, _>>()?,
         });
     }
     crate::dwarf::emit(&mut product, m, &g.dbg, endian)?;
     Ok(crate::Parts {
         object: product.emit().map_err(|e| Error(e.to_string()))?,
-        llvm: None,
+        llvm: Vec::new(),
     })
+}
+
+/// Bytes of function text per LLVM unit below which splitting costs more than it saves: each
+/// unit parses the debug metadata and cannot inline functions of another.
+const UNIT_BYTES: usize = 2 << 20;
+
+/// How many objects LLVM compiles the program into: `requested`, else one per core up to the
+/// size that gives each [`UNIT_BYTES`] of code.
+fn llvm_units(requested: Option<usize>, bytes: usize) -> usize {
+    if let Some(n) = requested {
+        return n.max(1);
+    }
+    let cores = std::thread::available_parallelism().map_or(1, usize::from);
+    (bytes / UNIT_BYTES).clamp(1, cores)
 }
 
 /// The target triple of the LLVM IR. Windows executables link over the mingw-w64 CRT, so the code
@@ -1419,7 +1461,7 @@ mod target_tests {
                         "{} {target}",
                         path.display()
                     );
-                    assert!(parts.llvm.is_none());
+                    assert!(parts.llvm.is_empty());
                 }
             }
         }

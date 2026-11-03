@@ -38,10 +38,34 @@ impl Drop for LlvmObject {
     }
 }
 
-/// Optimizes and assembles `ir` at `-O<level>`.
-pub fn compile(ir: &str, level: &str, build: &BuildOptions) -> Result<LlvmObject, Error> {
+/// Optimizes and assembles each of `irs` at `-O<level>`, one thread per module.
+pub fn compile_all(
+    irs: &[String],
+    level: &str,
+    build: &BuildOptions,
+) -> Result<Vec<LlvmObject>, Error> {
+    if let [ir] = irs {
+        return Ok(vec![compile(ir, level, build, 0)?]);
+    }
+    std::thread::scope(|scope| {
+        let jobs: Vec<_> = irs
+            .iter()
+            .enumerate()
+            .map(|(k, ir)| scope.spawn(move || compile(ir, level, build, k)))
+            .collect();
+        jobs.into_iter()
+            .map(|job| {
+                job.join()
+                    .unwrap_or_else(|_| Err(Error("LLVM compile thread panicked".into())))
+            })
+            .collect()
+    })
+}
+
+/// Optimizes and assembles `ir`, unit number `unit` of the program, at `-O<level>`.
+fn compile(ir: &str, level: &str, build: &BuildOptions, unit: usize) -> Result<LlvmObject, Error> {
     let dir: PathBuf = std::env::temp_dir().join(format!(
-        "ms-llvm-{}-{}",
+        "ms-llvm-{}-{}-{unit}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -65,7 +89,14 @@ pub fn compile(ir: &str, level: &str, build: &BuildOptions) -> Result<LlvmObject
     };
     std::fs::write(&ll, ir).map_err(|e| Error(e.to_string()))?;
     if build.keep_ll {
-        let _ = std::fs::copy(&ll, "ms-keep.ll");
+        let _ = std::fs::copy(
+            &ll,
+            if unit == 0 {
+                "ms-keep.ll".to_string()
+            } else {
+                format!("ms-keep-{unit}.ll")
+            },
+        );
     }
     let tools = llvm_tools(build)?.ok_or_else(|| {
         Error(

@@ -239,6 +239,19 @@ impl DebugInfo {
 /// type list and the subroutine type; file `i` is `FIRST_FILE + i`.
 const FIRST_FILE: usize = 5;
 
+/// The symbol names `text` mentions as `@"name"`.
+fn referenced(text: &str) -> HashSet<String> {
+    let mut names = HashSet::new();
+    let mut rest = text;
+    while let Some(at) = rest.find("@\"") {
+        rest = &rest[at + 2..];
+        let Some(end) = rest.find('"') else { break };
+        names.insert(rest[..end].to_string());
+        rest = &rest[end..];
+    }
+    names
+}
+
 /// LLVM quoted byte strings use hexadecimal escapes. Keep each metadata node on one
 /// physical line, including names and paths that contain line breaks or line markers.
 fn metadata_string(text: &str) -> Cow<'_, str> {
@@ -1402,78 +1415,52 @@ impl LlvmModule {
     /// or named in `pinned` (symbols the Cranelift object refers to), which lets LLVM drop and
     /// specialize them; otherwise every function keeps a symbol.
     pub fn finish(&self, triple: &str, pinned: &HashSet<String>, anchored: bool) -> String {
-        let mut s = String::new();
-        let _ = writeln!(s, "target triple = \"{triple}\"");
-        if anchored {
-            let _ = writeln!(
-                s,
-                "define void @\"{TEXT_ANCHOR}\"() #0 {{\n  ret void\n}}\n"
-            );
-        }
+        self.finish_units(triple, pinned, anchored, 1)
+            .swap_remove(0)
+    }
+
+    /// Total bytes of function text, which decides how many units a module is worth.
+    pub fn code_bytes(&self) -> usize {
+        self.defs
+            .iter()
+            .map(|d| {
+                d.body.len()
+                    + d.avx2
+                        .as_ref()
+                        .map_or(0, |(h, b)| h.len() + b.len() + d.body.len())
+            })
+            .sum()
+    }
+
+    /// The module as `units` texts of about equal size, each a complete module: the functions
+    /// are cut into consecutive runs, and a function another unit defines is only declared. With
+    /// more than one unit every function keeps a symbol (`anchored` is ignored), because the
+    /// units are compiled to separate objects and link together.
+    pub fn finish_units(
+        &self,
+        triple: &str,
+        pinned: &HashSet<String>,
+        anchored: bool,
+        units: usize,
+    ) -> Vec<String> {
+        let units = units.clamp(1, self.defs.len().max(1));
+        let anchored = anchored && units == 1;
         let deep = self.deep_glue();
-        let mut uses_level = false;
-        for d in &self.defs {
-            let vis = if d.public {
-                ""
-            } else if !anchored || pinned.contains(&d.name) {
-                "hidden "
-            } else {
-                "internal "
-            };
-            if let Some((header, body)) = &d.avx2 {
-                uses_level = true;
-                // Where the tables address functions by symbol (COFF, Mach-O), the copies the
-                // tables list need visible symbols too, as the dispatcher has.
-                let copy_vis = if !anchored || pinned.contains(&d.name) {
-                    "hidden "
-                } else {
-                    "internal "
-                };
-                let (dh, db) = dispatcher(&d.name, &d.header);
-                let _ = write!(s, "define {vis}{dh}{db}");
-                let base = d.header.replacen(
-                    &format!("@\"{}\"(", d.name),
-                    &format!("@\"{}{BASE_SUFFIX}\"(", d.name),
-                    1,
-                );
-                // The copies stay out of line: inlined into the dispatcher, which has no debug
-                // subprogram, their line tables are dropped and a fault loses its frames.
-                let base = base.replacen(" #0 ", " #1 ", 1);
-                let _ = write!(s, "define {copy_vis}{base}{}", d.body);
-                let fast = header
-                    .replacen(" #0 ", " #3 ", 1)
-                    .replacen(" #2 ", " #3 ", 1);
-                let _ = write!(s, "define {copy_vis}{fast}{body}");
-                continue;
-            }
-            let header = if deep.contains(&d.name) {
-                d.header.replacen(" #0 ", " #1 ", 1)
-            } else if is_huge(&d.body) {
-                d.header.replacen(" #0 ", " #4 ", 1)
-            } else {
-                d.header.clone()
-            };
-            let _ = write!(s, "define {vis}{header}{}", d.body);
-        }
-        // References can precede definitions. Index their borrowed names once instead of
-        // scanning every definition for each call or function address in the module.
-        let defined: HashSet<&str> = if self.decls.is_empty() && self.data.is_empty() {
-            HashSet::new()
-        } else {
-            self.defs.iter().map(|d| d.name.as_str()).collect()
-        };
-        for (name, decl) in &self.decls {
-            if !defined.contains(name.as_str()) {
-                s.push_str(decl);
-                s.push('\n');
+        // Unit k holds defs[cuts[k]..cuts[k + 1]].
+        let mut cuts = vec![0usize];
+        if units > 1 {
+            let total = self.code_bytes();
+            let mut seen = 0usize;
+            for (i, d) in self.defs.iter().enumerate() {
+                if seen * units >= total * cuts.len() {
+                    cuts.push(i);
+                }
+                seen += d.body.len() * if d.avx2.is_some() { 3 } else { 1 };
             }
         }
-        for name in self.data.keys() {
-            if !defined.contains(name.as_str()) {
-                let _ = writeln!(s, "@\"{name}\" = external global i8");
-            }
-        }
-        s.push_str(
+        cuts.push(self.defs.len());
+        let mut tail = String::new();
+        tail.push_str(
             "declare void @llvm.trap() cold noreturn nounwind\n\
              declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)\n\
              declare void @llvm.memmove.p0.p0.i64(ptr, ptr, i64, i1)\n\
@@ -1500,34 +1487,31 @@ impl LlvmModule {
         for op in ["sadd", "ssub", "smul", "uadd", "usub", "umul"] {
             for t in ["i64", "i32", "i8"] {
                 let _ = writeln!(
-                    s,
+                    tail,
                     "declare {{ {t}, i1 }} @llvm.{op}.with.overflow.{t}({t}, {t})"
                 );
             }
         }
-        s.push_str("attributes #0 = { \"frame-pointer\"=\"all\" nounwind }\n");
-        s.push_str("attributes #1 = { \"frame-pointer\"=\"all\" nounwind noinline }\n");
-        s.push_str("attributes #4 = { \"frame-pointer\"=\"all\" nounwind noinline optnone }\n");
-        s.push_str("attributes #2 = { \"frame-pointer\"=\"all\" nounwind noimplicitfloat }\n");
-        s.push_str("attributes #3 = { \"frame-pointer\"=\"all\" nounwind noinline \"target-features\"=\"+avx,+avx2,+fma,+f16c,+bmi,+bmi2\" }\n");
-        if uses_level {
-            s.push_str("declare i64 @msrt_cpu_level() nounwind willreturn memory(none)\n");
-        }
+        tail.push_str("attributes #0 = { \"frame-pointer\"=\"all\" nounwind }\n");
+        tail.push_str("attributes #1 = { \"frame-pointer\"=\"all\" nounwind noinline }\n");
+        tail.push_str("attributes #4 = { \"frame-pointer\"=\"all\" nounwind noinline optnone }\n");
+        tail.push_str("attributes #2 = { \"frame-pointer\"=\"all\" nounwind noimplicitfloat }\n");
+        tail.push_str("attributes #3 = { \"frame-pointer\"=\"all\" nounwind noinline \"target-features\"=\"+avx,+avx2,+fma,+f16c,+bmi,+bmi2\" }\n");
         // Debug metadata: line tables only (no variables, types or inline frames).
         let first_file = self.di.files.iter().position(Option::is_some).unwrap_or(0);
-        s.push_str("!llvm.dbg.cu = !{!0}\n!llvm.module.flags = !{!1, !2}\n");
+        tail.push_str("!llvm.dbg.cu = !{!0}\n!llvm.module.flags = !{!1, !2}\n");
         let _ = writeln!(
-            s,
+            tail,
             "!0 = distinct !DICompileUnit(language: DW_LANG_C99, file: !{}, producer: \"Manuscript\", isOptimized: true, runtimeVersion: 0, emissionKind: LineTablesOnly)",
             FIRST_FILE + first_file
         );
-        s.push_str("!1 = !{i32 2, !\"Debug Info Version\", i32 3}\n");
-        s.push_str("!2 = !{i32 7, !\"Dwarf Version\", i32 4}\n");
-        s.push_str("!3 = !{}\n!4 = !DISubroutineType(types: !3)\n");
+        tail.push_str("!1 = !{i32 2, !\"Debug Info Version\", i32 3}\n");
+        tail.push_str("!2 = !{i32 7, !\"Dwarf Version\", i32 4}\n");
+        tail.push_str("!3 = !{}\n!4 = !DISubroutineType(types: !3)\n");
         for (i, f) in self.di.files.iter().enumerate() {
             let name = f.as_deref().unwrap_or("<unknown>");
             let _ = writeln!(
-                s,
+                tail,
                 "!{} = !DIFile(filename: \"{}\", directory: \"{}\")",
                 FIRST_FILE + i,
                 metadata_string(name),
@@ -1541,9 +1525,117 @@ impl LlvmModule {
             .enumerate()
             .skip(FIRST_FILE + self.di.files.len())
         {
-            let _ = writeln!(s, "!{i} = {n}");
+            let _ = writeln!(tail, "!{i} = {n}");
         }
-        s
+        let mut out = Vec::with_capacity(units);
+        for k in 0..cuts.len() - 1 {
+            let mut s = String::new();
+            let _ = writeln!(s, "target triple = \"{triple}\"");
+            if anchored {
+                let _ = writeln!(
+                    s,
+                    "define void @\"{TEXT_ANCHOR}\"() #0 {{\n  ret void\n}}\n"
+                );
+            }
+            let mut uses_level = false;
+            for d in &self.defs[cuts[k]..cuts[k + 1]] {
+                uses_level |= self.write_def(&mut s, d, &deep, anchored, pinned);
+            }
+            // References can precede definitions, and with several units point into another:
+            // declare what this unit calls and does not define, found in one scan of its text.
+            let local: HashSet<&str> = self.defs[cuts[k]..cuts[k + 1]]
+                .iter()
+                .map(|d| d.name.as_str())
+                .collect();
+            let used = referenced(&s);
+            if units > 1 {
+                for d in self
+                    .defs
+                    .iter()
+                    .filter(|d| !local.contains(d.name.as_str()))
+                {
+                    if used.contains(&d.name)
+                        && let Some(at) = d.header.find(" #")
+                    {
+                        let _ = writeln!(s, "declare {}", &d.header[..at]);
+                    }
+                }
+            }
+            let defined: HashSet<&str> = if units > 1 {
+                self.defs.iter().map(|d| d.name.as_str()).collect()
+            } else {
+                local
+            };
+            for (name, decl) in &self.decls {
+                if !defined.contains(name.as_str()) && (units == 1 || used.contains(name)) {
+                    s.push_str(decl);
+                    s.push('\n');
+                }
+            }
+            for name in self.data.keys() {
+                if !defined.contains(name.as_str()) && (units == 1 || used.contains(name)) {
+                    let _ = writeln!(s, "@\"{name}\" = external global i8");
+                }
+            }
+            if uses_level {
+                s.push_str("declare i64 @msrt_cpu_level() nounwind willreturn memory(none)\n");
+            }
+            s.push_str(&tail);
+            out.push(s);
+        }
+        out
+    }
+
+    /// Writes `d` as a definition and says whether it needs the CPU-level query.
+    fn write_def(
+        &self,
+        s: &mut String,
+        d: &Def,
+        deep: &HashSet<String>,
+        anchored: bool,
+        pinned: &HashSet<String>,
+    ) -> bool {
+        let vis = if d.public {
+            ""
+        } else if !anchored || pinned.contains(&d.name) {
+            "hidden "
+        } else {
+            "internal "
+        };
+        if let Some((header, body)) = &d.avx2 {
+            // Where the tables address functions by symbol (COFF, Mach-O), the copies the
+            // tables list need visible symbols too, as the dispatcher has.
+            let copy_vis = if !anchored || pinned.contains(&d.name) {
+                "hidden "
+            } else {
+                "internal "
+            };
+            let (dh, db) = dispatcher(&d.name, &d.header);
+            let _ = write!(s, "define {vis}{dh}{db}");
+            let base = d.header.replacen(
+                &format!("@\"{}\"(", d.name),
+                &format!("@\"{}{BASE_SUFFIX}\"(", d.name),
+                1,
+            );
+            // The copies stay out of line: inlined into the dispatcher, which has no debug
+            // subprogram, their line tables are dropped and a fault loses its frames.
+            let base = base.replacen(" #0 ", " #1 ", 1);
+            let _ = write!(s, "define {copy_vis}{base}{}", d.body);
+            let fast = header
+                .replacen(" #0 ", " #3 ", 1)
+                .replacen(" #2 ", " #3 ", 1);
+            let _ = write!(s, "define {copy_vis}{fast}{body}");
+            return true;
+        }
+        let header = if deep.contains(&d.name) {
+            d.header.replacen(" #0 ", " #1 ", 1)
+        } else if is_huge(&d.body) {
+            d.header.replacen(" #0 ", " #4 ", 1)
+        } else {
+            d.header.clone()
+        };
+        let _ = write!(s, "define {vis}{header}{}", d.body);
+        false
     }
 }
 
@@ -1680,7 +1772,13 @@ mod tests {
         m.add_function("metadata", display, (0, 1), &f, &Inlined, true);
         let triple = format!("{}-unknown-linux-gnu", std::env::consts::ARCH);
         let text = m.finish(&triple, &HashSet::new(), false);
-        let object = crate::llvm_obj::compile(&text, "3", &crate::BuildOptions::default()).unwrap();
+        let object = crate::llvm_obj::compile_all(
+            std::slice::from_ref(&text),
+            "3",
+            &crate::BuildOptions::default(),
+        )
+        .unwrap()
+        .remove(0);
         let funcs = [crate::cg::LlvmFn {
             id: cranelift_module::FuncId::from_u32(0),
             symbol: "metadata".into(),
