@@ -189,9 +189,11 @@ test "rename and copy failures name source and destination":
     let from = "{root}/missing"
     let to = "{root}/target"
     let expected = "filesystem: file or directory not found: {from} -> {to}"
+
     match rename(from, to):
         ok(_): return fail("rename of a missing file succeeded")
         error(cause): cause.message | try expect_equal(expected)
+
     match copy(from, to):
         ok(_): return fail("copy of a missing file succeeded")
         error(cause): cause.message | try expect_equal(expected)
