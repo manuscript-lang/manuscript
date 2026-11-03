@@ -444,6 +444,59 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
     }
 }
 
+/// Waits until one of the promises in `ids` (a list of ids) has finished or `timeout_ns` passes
+/// (negative: no limit). Answers the index of the first finished one, or -1 on a timeout. A
+/// finished promise keeps its result for `msrt_promise_wait` and `msrt_promise_take`; the others
+/// are left running, for the caller to drop.
+///
+/// # Safety
+/// `ids` points to a list of `Int` promise ids.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
+    ids: *const ms_rt_abi::VecVal,
+    timeout_ns: i64,
+) -> i64 {
+    // SAFETY: forwarded contract; the list is borrowed for the call and not mutated by it.
+    let list: Vec<i64> =
+        unsafe { core::slice::from_raw_parts((*ids).ptr.cast::<i64>(), (*ids).len) }.to_vec();
+    let first_done = |list: &[i64]| {
+        let t = table();
+        list.iter()
+            .position(|&id| index(t, id).is_none_or(|i| t.state[i] != State::Pending))
+    };
+    if let Some(at) = first_done(&list) {
+        return at as i64;
+    }
+    // SAFETY: single scheduler per isolate; the token is ours until freed.
+    unsafe {
+        let token = task::msrt_token_new(0);
+        let t = table();
+        for &id in &list {
+            if let Some(i) = index(t, id) {
+                if t.token[i] != 0 {
+                    fault::fault(b"promise: another task is already waiting on this promise");
+                }
+                t.token[i] = token;
+            }
+        }
+        let mut value = 0;
+        let woke = task::msrt_token_park(token, timeout_ns, &mut value);
+        let t = table();
+        for &id in &list {
+            if let Some(i) = index(t, id)
+                && t.token[i] == token
+            {
+                t.token[i] = 0;
+            }
+        }
+        task::msrt_token_free(token);
+        if woke == task::WAIT_CANCELLED {
+            fault::msrt_cancelled();
+        }
+        first_done(&list).map_or(-1, |at| at as i64)
+    }
+}
+
 /// The report of a fault that ended `id` (empty otherwise).
 ///
 /// # Safety
@@ -665,6 +718,35 @@ mod tests {
         msrt_promise_drop(late);
         let dropped = msrt_promise_ready(i64::from(fd), i64::from(task::WAIT_READ), -1);
         msrt_promise_drop(dropped);
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn wait_any_answers_the_first_to_finish() {
+        let _g = lock();
+        let slow = msrt_promise_sleep(3_600_000_000_000);
+        let fast = msrt_promise_sleep(5_000_000);
+        let mut ids = vec![slow, fast];
+        let list = ms_rt_abi::VecVal {
+            ptr: ids.as_mut_ptr().cast(),
+            len: ids.len(),
+            cap: ids.len(),
+        };
+        // SAFETY: `list` borrows `ids`, which outlives the calls.
+        unsafe {
+            assert_eq!(msrt_promise_wait_any(&list, -1), 1);
+            assert_eq!(msrt_promise_wait_any(&list, -1), 1);
+            msrt_promise_drop(fast);
+            // Only the slow one is left, and a short limit passes first.
+            let only = ms_rt_abi::VecVal {
+                ptr: ids.as_mut_ptr().cast(),
+                len: 1,
+                cap: 1,
+            };
+            assert_eq!(msrt_promise_wait_any(&only, 5_000_000), -1);
+        }
+        msrt_promise_drop(slow);
         task::teardown();
     }
 }

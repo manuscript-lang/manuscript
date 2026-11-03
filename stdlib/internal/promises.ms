@@ -25,3 +25,7 @@ export extern fn msrt_promise_sleep(ns: Int) Int
 # Int of the ready bits (8 for a timeout; `timeout_ns` negative means none). -1 when the
 # descriptor cannot be waited on.
 export extern fn msrt_promise_ready(fd: Int, events: Int, timeout_ns: Int) Int
+
+# Waits until one of the promises has finished or the timeout (nanoseconds, negative for none) passes.
+# Returns the index of the first finished promise, or -1 on a timeout. The others keep running.
+export extern fn msrt_promise_wait_any(ids: List[Int], timeout_ns: Int) Int
