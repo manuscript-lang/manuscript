@@ -6,6 +6,7 @@ use crate::ipc::{self, Link, Reader, Writer};
 use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
 use ms_rt::fault::with_cleanup;
+use ms_rt::ffi::ErrOut;
 use ms_rt::ffi::{
     Handler, ObjBox, ObjMut, ObjRef, ObjShare, Object, StatusCode, abi_handle, native,
 };
@@ -163,9 +164,8 @@ native! {
         runner: Handler,
         stdin: i64,
         stdout: i64,
-        stderr: i64,
-    ) -> Result<Object<Forked>, StatusCode> {
-        fs_status(start(runner, [stdin, stdout, stderr])).map(Object)
+        stderr: i64; err: ErrOut) -> Result<Object<Forked>, StatusCode> {
+        fs_status(start(runner, [stdin, stdout, stderr]), &err).map(Object)
     }
 
     /// The parent's end of the child's IPC pipe.
@@ -184,9 +184,9 @@ native! {
     }
 
     /// Waits for exit; a negative `timeout_ns` waits without limit. `Timeout` leaves the child running.
-    fn msstd_process_forked_wait(h: ObjMut<Forked>, timeout_ns: i64) -> Result<i64, StatusCode> {
+    fn msstd_process_forked_wait(h: ObjMut<Forked>, timeout_ns: i64; err: ErrOut) -> Result<i64, StatusCode> {
         let mut h = h;
-        fs_status(h.proc.wait((timeout_ns >= 0).then_some(timeout_ns)))
+        fs_status(h.proc.wait((timeout_ns >= 0).then_some(timeout_ns)), &err)
     }
 
     /// Signals the child's process group: SIGTERM, or SIGKILL with `force`.
