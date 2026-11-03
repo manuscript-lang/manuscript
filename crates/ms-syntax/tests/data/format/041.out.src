@@ -8,7 +8,7 @@ fn example() Unit:
     )
     consume(
         fn:
-            # Keep the explanation.
+            // Keep the explanation.
             return 7
     )
 

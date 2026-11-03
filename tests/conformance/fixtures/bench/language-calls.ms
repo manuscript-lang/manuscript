@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,modules,mutation,stdlib-collections,stdlib-faults,tier-stdlib
-# conform: phase=run
-# conform: origin=bench/language/calls.ms
+// conform: tags=control-flow,faults,modules,mutation,stdlib-collections,stdlib-faults,tier-stdlib
+// conform: phase=run
+// conform: origin=bench/language/calls.ms
 import panic from "@std/core.ms"
 
 fn add(a: Int, b: Int) Int: a + b

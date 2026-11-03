@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,formatter,modules,mutation,parser,stdlib-collections,stdlib-faults,tier-stdlib
-# conform: phase=parse
-# conform: origin=bench/language/numeric.ms
+// conform: tags=control-flow,faults,formatter,modules,mutation,parser,stdlib-collections,stdlib-faults,tier-stdlib
+// conform: phase=parse
+// conform: origin=bench/language/numeric.ms
 import panic from "@std/core.ms"
 
 export fn main() Int:

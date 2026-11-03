@@ -1,5 +1,5 @@
-# Backtracking regular-expression engine and line-based command driver.
-# Strings are handled as lists of byte values (0-255); output is always ASCII.
+// Backtracking regular-expression engine and line-based command driver.
+// Strings are handled as lists of byte values (0-255); output is always ASCII.
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
@@ -48,29 +48,29 @@ let C_x = 120
 let PRINTABLE = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
 let HEX = "0123456789abcdef"
 let COMMANDS = ["test", "match", "full", "find-all", "split", "replace"]
-# Instruction opcodes for the matcher.
-let OP_CLASS = 0  # a: class index; consume one byte in the class
-let OP_SPLIT = 1  # a: first choice, b: second choice (backtrack point)
-let OP_JMP = 2  # a: target
-let OP_OPEN = 3  # a: register; store the current position
-let OP_CLOSE = 4  # a: group number, b: register holding the group start
-let OP_CHECK = 5  # a: register; if no progress since OP_OPEN, jump to b
-let OP_ASSERT = 6  # a: assertion kind, b: multiline flag
-let OP_BREF = 7  # a: group number, b: case-insensitive flag
-let OP_LOOK = 8  # a: 1 for negative, b: continuation after the body
-let OP_LOOKEND = 9  # end of a lookahead body
-let OP_MATCH = 10  # overall success
-# AST node kinds.
+// Instruction opcodes for the matcher.
+let OP_CLASS = 0  // a: class index; consume one byte in the class
+let OP_SPLIT = 1  // a: first choice, b: second choice (backtrack point)
+let OP_JMP = 2  // a: target
+let OP_OPEN = 3  // a: register; store the current position
+let OP_CLOSE = 4  // a: group number, b: register holding the group start
+let OP_CHECK = 5  // a: register; if no progress since OP_OPEN, jump to b
+let OP_ASSERT = 6  // a: assertion kind, b: multiline flag
+let OP_BREF = 7  // a: group number, b: case-insensitive flag
+let OP_LOOK = 8  // a: 1 for negative, b: continuation after the body
+let OP_LOOKEND = 9  // end of a lookahead body
+let OP_MATCH = 10  // overall success
+// AST node kinds.
 let K_EMPTY = 0
-let K_CLASS = 1  # a: class index
-let K_SEQ = 2  # kids
-let K_ALT = 3  # kids
-let K_GROUP = 4  # a: group number (0 = non-capturing); kids[0]
-let K_REPEAT = 5  # a: min, b: max (-1 = unbounded), c: lazy flag; kids[0]
-let K_ASSERT = 6  # a: 0 ^, 1 $, 2 \b, 3 \B; b: multiline flag
-let K_BREF = 7  # a: group number, b: case-insensitive flag
-let K_NBREF = 8  # name: group name, resolved after parsing
-let K_LOOK = 9  # a: 1 for negative; kids[0]
+let K_CLASS = 1  // a: class index
+let K_SEQ = 2  // kids
+let K_ALT = 3  // kids
+let K_GROUP = 4  // a: group number (0 = non-capturing); kids[0]
+let K_REPEAT = 5  // a: min, b: max (-1 = unbounded), c: lazy flag; kids[0]
+let K_ASSERT = 6  // a: 0 ^, 1 $, 2 \b, 3 \B; b: multiline flag
+let K_BREF = 7  // a: group number, b: case-insensitive flag
+let K_NBREF = 8  // name: group name, resolved after parsing
+let K_LOOK = 9  // a: 1 for negative; kids[0]
 
 type PErr:
     msg: String
@@ -221,7 +221,7 @@ fn is_shorthand(c: Int) Bool:
 fn is_escape_char(c: Int) Bool:
     return c == C_n or c == C_t or c == C_r or c == C_x
 
-# Scans `{n}`, `{n,}` or `{n,m}` starting at the `{` at index `at_index`.
+// Scans `{n}`, `{n,}` or `{n,m}` starting at the `{` at index `at_index`.
 fn scan_brace(src: List[Int], at_index: Int) Brace:
     var i = at_index + 1
     var lo = 0
@@ -280,7 +280,7 @@ impl Parser:
         return self.class_node(bits)
 
     var fn read_flags() Unit:
-        # A leading `(?flags)` sets the global flags; anywhere else it is a bad group.
+        // A leading `(?flags)` sets the global flags; anywhere else it is a bad group.
         let src = self.src
         if at(src, 0) != C_LPAREN or at(src, 1) != C_QMARK:
             return
@@ -436,7 +436,7 @@ impl Parser:
         return ok(self.add(Node(kind: K_REPEAT, a: lo, b: hi, c: lazy, kids: [atom])))
 
     var fn parse_escape() Result[Int, PErr]:
-        # The backslash is at self.pos.
+        // The backslash is at self.pos.
         if self.pos + 1 >= self.src.length():
             return error(PErr(msg: "bad escape"))
 
@@ -489,7 +489,7 @@ impl Parser:
 
         return ok(self.literal(e))
 
-    # Reads one class member: a byte, or a shorthand set.
+    // Reads one class member: a byte, or a shorthand set.
     var fn class_member() Result[Member, PErr]:
         let c = self.peek()
 
@@ -627,7 +627,7 @@ impl Parser:
         self.pos += 1
         return ok(unit)
 
-    # Replaces named back-references by numbers and checks every reference.
+    // Replaces named back-references by numbers and checks every reference.
     var fn resolve_refs() Result[Unit, PErr]:
         let ngroups = self.names.length() - 1
 
@@ -706,8 +706,8 @@ impl Gen:
         for j in jumps:
             self.set_targets(j, end, 0)
 
-    # Each optional iteration is a SPLIT, then OPEN/body/CHECK; an iteration that
-    # consumed nothing ends the loop (CHECK jumps to the exit).
+    // Each optional iteration is a SPLIT, then OPEN/body/CHECK; an iteration that
+    // consumed nothing ends the loop (CHECK jumps to the exit).
     var fn gen_repeat(node: Node) Unit:
         let body = node.kids[0]
         let lazy = node.c == 1
@@ -816,8 +816,8 @@ fn backref_matches(subject: List[Int], start: Int, pos: Int, len: Int, icase: Bo
             return false
     return true
 
-# Runs the program from `start_pc` at `start_pos`. Returns the end position on success
-# (regs hold the captures), or -1 with regs restored to their entry state.
+// Runs the program from `start_pc` at `start_pos`. Returns the end position on success
+// (regs hold the captures), or -1 with regs restored to their entry state.
 fn exec(
     prog: Prog,
     subject: List[Int],
@@ -932,7 +932,7 @@ fn fresh_regs(count: Int) List[Int]:
         regs.append(-1)
     return regs
 
-# Leftmost match at or after `from`; `full` only tries start 0 and requires the end of the subject.
+// Leftmost match at or after `from`; `full` only tries start 0 and requires the end of the subject.
 fn search(prog: Prog, subject: List[Int], from: Int, full: Bool) Optional[List[Int]]:
     var start = from
 
@@ -1020,7 +1020,7 @@ fn append_range(var out: List[Int], subject: List[Int], from: Int, to: Int) Unit
     for i in from..to:
         out.append(subject[i])
 
-# Appends one group's text (empty when unset).
+// Appends one group's text (empty when unset).
 fn append_group(var out: List[Int], subject: List[Int], regs: List[Int], g: Int) Unit:
     let s = regs[2 * g]
     let e = regs[2 * g + 1]
@@ -1040,7 +1040,7 @@ fn name_of(repl: List[Int], from: Int, to: Int) String:
 
     return name
 
-# Expands the replacement template for one match. Returns false on a bad reference.
+// Expands the replacement template for one match. Returns false on a bad reference.
 fn expand_into(
     var out: List[Int], repl: List[Int], subject: List[Int], regs: List[Int],
     names: List[String]
@@ -1142,7 +1142,7 @@ fn to_ints(text: String) List[Int]:
         out.append(b.to_int())
     return out
 
-# Undoes the subject/replacement escapes; none on a malformed escape.
+// Undoes the subject/replacement escapes; none on a malformed escape.
 fn unescape(src: List[Int]) Optional[List[Int]]:
     var out = List[Int]()
     var i = 0

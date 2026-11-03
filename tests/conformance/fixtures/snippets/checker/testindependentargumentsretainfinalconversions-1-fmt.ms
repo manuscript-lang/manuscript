@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,generics,interfaces,optional,parser,records,strings,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/argument_reuse_test.go:12 TestIndependentArgumentsRetainFinalConversions
+// conform: tags=control-flow,formatter,generics,interfaces,optional,parser,records,strings,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/argument_reuse_test.go:12 TestIndependentArgumentsRetainFinalConversions
 fn identity[T](value: T) T: value
 
 fn consume[T](value: T, cause: Error, optional: T?) Unit: return

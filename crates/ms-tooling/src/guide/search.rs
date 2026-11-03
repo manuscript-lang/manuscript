@@ -344,7 +344,7 @@ pub fn format_matches(query: &str, matches: &[Match]) -> String {
             indent(m.signature.trim_end_matches('\n'), "  ")
         );
         if !m.doc.is_empty() {
-            b += &format!("  # {}\n", m.doc);
+            b += &format!("  // {}\n", m.doc);
         }
     }
     b += &format!(

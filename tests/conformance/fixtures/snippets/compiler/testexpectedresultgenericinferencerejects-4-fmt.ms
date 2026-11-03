@@ -1,6 +1,6 @@
-# conform: tags=closures,formatter,mutation,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/contextual_generics_test.go:93 TestExpectedResultGenericInferenceRejects
+// conform: tags=closures,formatter,mutation,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/contextual_generics_test.go:93 TestExpectedResultGenericInferenceRejects
 fn required(value: Int) Int: value
 
 fn first() Unit:

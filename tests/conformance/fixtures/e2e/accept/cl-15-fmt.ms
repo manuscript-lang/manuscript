@@ -1,6 +1,6 @@
-# conform: tags=closures,decimal,formatter,modules,optional,parser,records,stdlib-decimal,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/cl-15.ms
+// conform: tags=closures,decimal,formatter,modules,optional,parser,records,stdlib-decimal,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/cl-15.ms
 import expect_equal, expect_not_equal from "@std/test/test.ms"
 import Decimal from "@std/math/decimal.ms"
 

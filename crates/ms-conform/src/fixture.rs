@@ -2,7 +2,7 @@
 //!
 //! A single-file fixture is `name.ms` with a `name.expected.json` beside it; a
 //! project fixture is a directory holding `conform.meta` and `expected.json`.
-//! Metadata lives in `# conform: key=value` lines (at the top of a single
+//! Metadata lives in `// conform: key=value` lines (at the top of a single
 //! file, or in `conform.meta`) so the corpus needs no side database.
 
 use std::fs;
@@ -149,7 +149,7 @@ fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Parsed `# conform:` header lines.
+/// Parsed `// conform:` header lines.
 #[derive(Debug, Default, Clone)]
 pub struct Meta {
     pub tags: Vec<String>,
@@ -161,7 +161,7 @@ pub struct Meta {
     pub deterministic: bool,
 }
 
-const PREFIX: &str = "# conform:";
+const PREFIX: &str = "// conform:";
 
 /// Number of leading header lines in `source` (including none).
 pub fn header_len(source: &str) -> usize {
@@ -172,7 +172,7 @@ pub fn parse_meta(text: &str) -> Result<Meta, String> {
     let mut meta = Meta::default();
     for line in text.lines() {
         let Some(rest) = line.strip_prefix(PREFIX) else {
-            if line.trim().is_empty() || line.starts_with('#') {
+            if line.trim().is_empty() || line.starts_with('#') || line.starts_with("//") {
                 continue;
             }
             break;
@@ -372,7 +372,7 @@ mod tests {
 
     #[test]
     fn unknown_keys_fail() {
-        assert!(parse_meta("# conform: wat=1\n").is_err());
+        assert!(parse_meta("// conform: wat=1\n").is_err());
     }
 
     #[test]

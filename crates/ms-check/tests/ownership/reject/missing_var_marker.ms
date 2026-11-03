@@ -3,5 +3,5 @@ fn fill(var xs: List[Int]) Unit:
 
 fn f() Int:
     var xs = [0]
-    fill(xs)  # error: is declared var
+    fill(xs)  // error: is declared var
     return xs.length()

@@ -1,6 +1,6 @@
-# conform: tags=formatter,generics,lists,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/prelude_test.go:68 TestCollectionPreludeAndShadowing
+// conform: tags=formatter,generics,lists,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/prelude_test.go:68 TestCollectionPreludeAndShadowing
 type List[T]:
     value: T
 

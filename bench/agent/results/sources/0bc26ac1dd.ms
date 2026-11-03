@@ -4,7 +4,7 @@ import read_lines from "@std/streams.ms"
 let DIGITS = "0123456789"
 let OPERATORS = "+-*/()"
 
-# Splits a line into number, operator and parenthesis tokens; none on an unknown character.
+// Splits a line into number, operator and parenthesis tokens; none on an unknown character.
 fn tokenize(line: String) Optional[List[String]]:
     let cs = line.chars()
     var toks = List[String]()
@@ -75,7 +75,7 @@ impl Parser:
             if op == "*":
                 v = v * r
             else if r == 0:
-                # Keep parsing so a later syntax error still wins.
+                // Keep parsing so a later syntax error still wins.
                 self.div_zero = true
             else:
                 v = v / r

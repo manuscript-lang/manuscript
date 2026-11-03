@@ -1,6 +1,6 @@
-# conform: tags=formatter,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/lsp/query_test.go:45 TestSearchSymbolsRanksExactBeforePrefixBeforeSubstring
+// conform: tags=formatter,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/lsp/query_test.go:45 TestSearchSymbolsRanksExactBeforePrefixBeforeSubstring
 fn parse_all() Int:
     return 1
 

@@ -12,13 +12,13 @@
           "file": "foreign-callable.ms",
           "line": 4,
           "column": 17,
-          "offset": 129
+          "offset": 132
         },
         "end": {
           "file": "foreign-callable.ms",
           "line": 4,
           "column": 18,
-          "offset": 130
+          "offset": 133
         }
       }
     ],

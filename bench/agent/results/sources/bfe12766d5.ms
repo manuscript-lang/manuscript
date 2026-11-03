@@ -2,7 +2,7 @@ import stdin from "@std/io.ms"
 import stdout from "@std/io.ms"
 import read_all from "@std/io.ms"
 
-# One ledger account. Records are copied on assignment, so changes are written back with `add`.
+// One ledger account. Records are copied on assignment, so changes are written back with `add`.
 type Account:
     limit: Int
     balance: Int
@@ -14,7 +14,7 @@ type Ledger:
     accounts: Map[String, Account]
     fees: Int
 
-# Returns true when every scalar of `text` is an ASCII digit and there is at least one.
+// Returns true when every scalar of `text` is an ASCII digit and there is at least one.
 fn is_digits(text: String) Bool:
     if text.is_empty():
         return false
@@ -24,11 +24,11 @@ fn is_digits(text: String) Bool:
             return false
     return true
 
-# Returns true for a digit string whose value is greater than zero.
+// Returns true for a digit string whose value is greater than zero.
 fn is_positive(text: String) Bool:
     return is_digits(text) and text.parse_int().get(0) > 0
 
-# Splits a line into tokens separated by runs of spaces or tabs.
+// Splits a line into tokens separated by runs of spaces or tabs.
 fn split_tokens(line: String) List[String]:
     var tokens: List[String] = []
     var current = ""
@@ -51,7 +51,7 @@ fn yes_no(flag: Bool) String:
 
     return "no"
 
-# Overdraft fee charged when a debit takes a non-negative balance below zero.
+// Overdraft fee charged when a debit takes a non-negative balance below zero.
 fn fee_for(balance: Int, amount: Int) Int:
     if balance >= 0 and balance - amount < 0:
         return 5
@@ -59,7 +59,7 @@ fn fee_for(balance: Int, amount: Int) Int:
     return 0
 
 impl Ledger:
-    # Records one rejected command against the account named in its error.
+    // Records one rejected command against the account named in its error.
     var fn blame(id: String) Unit:
         var acct = self.accounts.get(id).get()
         acct.rejected += 1
@@ -201,7 +201,7 @@ impl Ledger:
 fn by_compare(left: String, right: String) Int:
     return left.compare(right)
 
-# Runs one tokenized command and returns the text of its output.
+// Runs one tokenized command and returns the text of its output.
 fn execute(var ledger: Ledger, tokens: List[String]) String:
     let command = tokens.get(0)
     let count = tokens.length()

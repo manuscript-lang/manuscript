@@ -14,7 +14,7 @@
           "file": "sized-int-literal-range.ms",
           "line": 5,
           "column": 25,
-          "offset": 161
+          "offset": 164
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "sized-int-literal-range.ms",
           "line": 6,
           "column": 28,
-          "offset": 192
+          "offset": 195
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "sized-int-literal-range.ms",
           "line": 7,
           "column": 23,
-          "offset": 218
+          "offset": 221
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "sized-int-literal-range.ms",
           "line": 8,
           "column": 24,
-          "offset": 252
+          "offset": 255
         }
       }
     ],

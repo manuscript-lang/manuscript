@@ -1,6 +1,6 @@
-# Builds checked native workloads (bench/language/*.ms) with two Manuscript CLIs and compares them, alternating the first runner.
-# Usage: ms run bench/tools/language_benchmark.ms -- --before MS --after MS --output DIR [--runs 3] [--cpu N]
-# --cpu pins every execution to one CPU through `taskset` (Linux).
+// Builds checked native workloads (bench/language/*.ms) with two Manuscript CLIs and compares them, alternating the first runner.
+// Usage: ms run bench/tools/language_benchmark.ms -- --before MS --after MS --output DIR [--runs 3] [--cpu N]
+// --cpu pins every execution to one CPU through `taskset` (Linux).
 import (
     absolute,
     capture,
@@ -74,7 +74,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
         samples.add("before", List[Float]())
         samples.add("after", List[Float]())
 
-        # One correctness/warm-up execution per binary, excluded from measurements.
+        // One correctness/warm-up execution per binary, excluded from measurements.
         for label in ["before", "after"]:
             try execute("{out}/{name}-{label}", cpu)
 

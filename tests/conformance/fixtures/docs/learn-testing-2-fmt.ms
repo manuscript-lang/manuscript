@@ -1,6 +1,6 @@
-# conform: tags=formatter,modules,optional,parser,stdlib-json,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=documentation/learn/testing.md:53
+// conform: tags=formatter,modules,optional,parser,stdlib-json,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=documentation/learn/testing.md:53
 import parse from "@std/data/json.ms"
 import expect_equal, expect_ok, expect_error, expect_some from "@std/test/test.ms"
 

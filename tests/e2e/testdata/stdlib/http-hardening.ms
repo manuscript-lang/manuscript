@@ -29,7 +29,7 @@ test "serve ends a connection that trickles its request head":
     let client = connect(server.address(), 2.seconds) | try expect_ok
     client.write("GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ", 2.seconds) | try expect_ok
 
-    # One byte every 100 ms never completes the head; the budget still runs out.
+    // One byte every 100 ms never completes the head; the budget still runs out.
     var sent = 0
 
     while sent < 30:
@@ -40,8 +40,8 @@ test "serve ends a connection that trickles its request head":
 
         sent += 1
 
-    # The server closes the connection, so a write fails before the trickle ends. The
-    # read may then see an error (a reset on macOS) instead of an end of stream.
+    // The server closes the connection, so a write fails before the trickle ends. The
+    // read may then see an error (a reset on macOS) instead of an end of stream.
     if sent == 30: return error(Error("trickled request head was never cut off"))
 
     if let reply = client.read(timeout: 3.seconds):
@@ -60,7 +60,7 @@ test "close cancels a handler that outlives the grace period":
     sleep(100.milliseconds)
     try server.close()
 
-    # An error here is the connection ending (a reset on macOS); only a served reply fails.
+    // An error here is the connection ending (a reset on macOS); only a served reply fails.
     if let reply = client.read(timeout: 5.seconds):
         let text = reply.get(Bytes([])).decode_utf8().get("")
         if text.starts_with("HTTP/1.1 200"): return error(

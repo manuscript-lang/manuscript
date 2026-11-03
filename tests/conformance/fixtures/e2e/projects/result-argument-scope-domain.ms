@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,generics,records,tier-core
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/result_argument_scope/domain.ms
+// conform: tags=diagnostics,generics,records,tier-core
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/result_argument_scope/domain.ms
 export type Cause[T]:
     value: T
 

@@ -62,7 +62,7 @@ fn fee_suffix(charged: Bool) String:
 
     return ""
 
-# Counts a failed command against `id` when that account exists, then returns the error text.
+// Counts a failed command against `id` when that account exists, then returns the error text.
 fn reject(var ledger: Ledger, id: String, message: String) String:
     if let account = ledger.accounts.get(id):
         var updated = account
@@ -71,7 +71,7 @@ fn reject(var ledger: Ledger, id: String, message: String) String:
 
     return message
 
-# Computes the balance after taking `amount` from `account`, charging the fee when it overdraws.
+// Computes the balance after taking `amount` from `account`, charging the fee when it overdraws.
 fn debit(account: Account, amount: Int) Debit:
     var balance = account.balance - amount
     var charged = false

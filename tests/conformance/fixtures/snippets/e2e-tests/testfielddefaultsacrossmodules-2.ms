@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,faults,modules,stdlib-testing,testing,tier-core
-# conform: phase=check
-# conform: origin=tests/e2e/e2e_test.go:547 TestFieldDefaultsAcrossModules
+// conform: tags=control-flow,diagnostics,faults,modules,stdlib-testing,testing,tier-core
+// conform: phase=check
+// conform: origin=tests/e2e/e2e_test.go:547 TestFieldDefaultsAcrossModules
 import Box from "./data.ms"
 import expect_true, fail from "@std/test/test.ms"
 

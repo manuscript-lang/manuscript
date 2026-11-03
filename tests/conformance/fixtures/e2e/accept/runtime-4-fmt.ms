@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,modules,optional,parser,records,stdlib-bytes,stdlib-io,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/runtime-4.ms
+// conform: tags=control-flow,formatter,interfaces,modules,optional,parser,records,stdlib-bytes,stdlib-io,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/runtime-4.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 import File from "@std/io/io.ms"

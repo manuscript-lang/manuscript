@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,modules,mutation,stdlib-testing,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/counter-steps-keep-overflow-faults.ms
+// conform: tags=closures,control-flow,modules,mutation,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/counter-steps-keep-overflow-faults.ms
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
 fn count_up(limit: Int) Int:

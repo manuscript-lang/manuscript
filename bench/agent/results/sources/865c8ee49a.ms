@@ -11,7 +11,7 @@ let SYMBOL_CODES = [61, 60, 62, 43, 45, 42, 47, 37, 40, 41, 44, 46]
 let HEX_DIGITS = "0123456789abcdef"
 let MAX_INT = 9223372036854775807
 
-# ---------------------------------------------------------------- errors and values
+// ---------------------------------------------------------------- errors and values
 
 type SqlErr:
     msg: String
@@ -98,7 +98,7 @@ fn hex_of(t: Bytes) String:
 
     return out
 
-# A key that is equal for two values exactly when they are equal (NULLs equal each other).
+// A key that is equal for two values exactly when they are equal (NULLs equal each other).
 fn value_key(v: Value) String:
     match v:
         VNull:
@@ -125,7 +125,7 @@ fn group_key(row: List[Value], idxs: List[Int]) String:
         out = out + value_key(row[k])
     return out
 
-# ---------------------------------------------------------------- bytes helpers
+// ---------------------------------------------------------------- bytes helpers
 
 fn byte_at(src: Bytes, i: Int) Int:
     if i < 0 or i >= src.length():
@@ -195,7 +195,7 @@ fn substr(t: Bytes, start: Int, len: Int) Bytes:
 
     return t.slice(lo - 1, hi).get()
 
-# LIKE with `%` (any run), `_` (one byte), other bytes literal.
+// LIKE with `%` (any run), `_` (one byte), other bytes literal.
 fn like_match(s: Bytes, p: Bytes) Bool:
     var si = 0
     var pi = 0
@@ -222,9 +222,9 @@ fn like_match(s: Bytes, p: Bytes) Bool:
         pi += 1
     return pi == np
 
-# ---------------------------------------------------------------- comparison
+// ---------------------------------------------------------------- comparison
 
-# Comparison of two non-NULL values of the same type.
+// Comparison of two non-NULL values of the same type.
 fn typed_cmp(a: Value, b: Value) Result[Int, SqlErr]:
     if let x = as_int(a):
         if let y = as_int(b):
@@ -245,7 +245,7 @@ fn rank(v: Value) Int:
         VText(_):
             return 3
 
-# Total order used by ORDER BY: NULL < BOOL < INT < TEXT.
+// Total order used by ORDER BY: NULL < BOOL < INT < TEXT.
 fn order_cmp(a: Value, b: Value) Int:
     let ra = rank(a)
     let rb = rank(b)
@@ -270,7 +270,7 @@ fn order_cmp(a: Value, b: Value) Int:
 
     return 0
 
-# Three-valued truth: 1 true, 0 false, -1 NULL. Only BOOL and NULL are allowed.
+// Three-valued truth: 1 true, 0 false, -1 NULL. Only BOOL and NULL are allowed.
 fn tri_of(v: Value) Result[Int, SqlErr]:
     match v:
         VNull:
@@ -313,7 +313,7 @@ fn not3(a: Int) Int:
 
     return 1 - a
 
-# ---------------------------------------------------------------- AST
+// ---------------------------------------------------------------- AST
 
 type ColDef:
     name: String
@@ -385,7 +385,7 @@ type Token:
 fn sym_token(text: String) Token:
     return Token(kind: "sym", text: text, num: 0, str: empty_bytes())
 
-# ---------------------------------------------------------------- lexer and splitter
+// ---------------------------------------------------------------- lexer and splitter
 
 fn is_letter(c: Int) Bool:
     return (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
@@ -478,7 +478,7 @@ fn lex(src: Bytes) Result[List[Token], SqlErr]:
     toks.append(Token(kind: "eof", text: "", num: 0, str: empty_bytes()))
     return ok(toks)
 
-# Splits the script at `;` outside string literals and comments.
+// Splits the script at `;` outside string literals and comments.
 fn split_statements(src: Bytes) List[Bytes]:
     var parts = List[Bytes]()
     let n = src.length()
@@ -515,7 +515,7 @@ fn split_statements(src: Bytes) List[Bytes]:
     parts.append(src.slice(start, n).get())
     return parts
 
-# ---------------------------------------------------------------- parser
+// ---------------------------------------------------------------- parser
 
 type Parser:
     toks: List[Token]
@@ -1009,7 +1009,7 @@ fn parse_statement_text(text: Bytes) Result[Stmt, SqlErr]:
 
     return ok(stmt)
 
-# ---------------------------------------------------------------- tables
+// ---------------------------------------------------------------- tables
 
 type Table:
     name: String
@@ -1069,7 +1069,7 @@ fn is_text_value(v: Value) Bool:
         _:
             return false
 
-# Checks NOT NULL and type constraints of one full row, in column order.
+// Checks NOT NULL and type constraints of one full row, in column order.
 fn check_row(t: Table, row: List[Value]) Result[Unit, SqlErr]:
     for c in 0..t.cols.length():
         let col = t.cols[c]
@@ -1107,7 +1107,7 @@ fn check_pk(t: Table, rows: List[List[Value]]) Result[Unit, SqlErr]:
 
     return ok(unit)
 
-# ---------------------------------------------------------------- name resolution
+// ---------------------------------------------------------------- name resolution
 
 fn qualified(t: String, n: String) String:
     if t == "":
@@ -1134,7 +1134,7 @@ fn lookup(scope: List[ScopeCol], t: String, n: String) Result[Int, SqlErr]:
 fn is_aggregate(name: String) Bool:
     return name == "COUNT" or name == "SUM" or name == "MIN" or name == "MAX"
 
-# -1 unknown function, -2 any number of arguments (at least one), otherwise the exact count.
+// -1 unknown function, -2 any number of arguments (at least one), otherwise the exact count.
 fn scalar_arity(name: String) Int:
     if name == "UPPER" or name == "LOWER" or name == "LENGTH" or name == "ABS":
         return 1
@@ -1148,8 +1148,8 @@ fn scalar_arity(name: String) Int:
 fn wrong_args(name: String) SqlErr:
     return sql_error("wrong number of arguments to {name}")
 
-# mode 0: row context, no aggregates. mode 1: grouped context, aggregates allowed and
-# bare columns must be GROUP BY columns. mode 2: inside an aggregate argument.
+// mode 0: row context, no aggregates. mode 1: grouped context, aggregates allowed and
+// bare columns must be GROUP BY columns. mode 2: inside an aggregate argument.
 fn resolve(
     e: Expr,
     scope: List[ScopeCol],
@@ -1316,7 +1316,7 @@ fn default_name(e: Expr) String:
         _:
             return "?column?"
 
-# ---------------------------------------------------------------- evaluation
+// ---------------------------------------------------------------- evaluation
 
 fn no_group() List[List[Value]]:
     return List[List[Value]]()
@@ -1537,7 +1537,7 @@ fn eval_scalar(
 
         return error(type_error())
 
-    # SUBSTR(text, start, len)
+    // SUBSTR(text, start, len)
     if let t = as_text(vals[0]):
         if let start = as_int(vals[1]):
             if let len = as_int(vals[2]):
@@ -1604,7 +1604,7 @@ fn eval_aggregate(
         _:
             return error(type_error())
 
-# ---------------------------------------------------------------- SELECT execution
+// ---------------------------------------------------------------- SELECT execution
 
 type OutItem:
     e: Expr
@@ -1666,7 +1666,7 @@ fn compare_rows(a: OutRow, b: OutRow) Int:
 
     return 0
 
-# True when the optional condition is absent or evaluates to TRUE.
+// True when the optional condition is absent or evaluates to TRUE.
 fn passes(cond: Optional[Expr], row: List[Value]) Result[Bool, SqlErr]:
     if let c = cond:
         let v = try eval(c, row, no_group())
@@ -1675,7 +1675,7 @@ fn passes(cond: Optional[Expr], row: List[Value]) Result[Bool, SqlErr]:
 
     return ok(true)
 
-# Source rows of FROM and JOINs, in the order described by the spec.
+// Source rows of FROM and JOINs, in the order described by the spec.
 fn build_rows(
     tables: List[Table],
     tids: List[Int],
@@ -1718,7 +1718,7 @@ fn build_rows(
     return ok(rows)
 
 fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
-    # Tables of FROM and JOINs: existence and aliases, left to right.
+    // Tables of FROM and JOINs: existence and aliases, left to right.
     var all = List[TableRef]()
     if let base = sel.from_ref:
         all.append(base.clone())
@@ -1736,7 +1736,7 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
         aliases.append(tr.alias.clone())
         tids.append(ti)
 
-    # JOIN conditions, each against the tables joined so far.
+    // JOIN conditions, each against the tables joined so far.
     var scope = List[ScopeCol]()
     var ons = List[Expr]()
     var offset = 0
@@ -1751,7 +1751,7 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
             let on = try resolve(sel.joins[k - 1].on.clone(), scope, 0, List[Int]())
             ons.append(on)
 
-    # Stars, expanded in FROM order.
+    // Stars, expanded in FROM order.
     var items = List[OutItem]()
 
     for it in sel.items:
@@ -1789,14 +1789,14 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
                     nm = alias.clone()
                 items.append(OutItem(e: e.clone(), name: nm))
 
-    # GROUP BY columns.
+    // GROUP BY columns.
     var group_idx = List[Int]()
 
     for g in sel.group_by:
         let r = try resolve(g.clone(), scope, 0, List[Int]())
         group_idx.append(col_idx(r))
 
-    # WHERE.
+    // WHERE.
     var where_r: Optional[Expr] = none
 
     if let w = sel.where_expr:
@@ -1815,7 +1815,7 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
     if aggregated:
         mode = 1
 
-    # Select list.
+    // Select list.
     var rexprs = List[Expr]()
     var onames = List[String]()
 
@@ -1824,14 +1824,14 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
         rexprs.append(r)
         onames.append(it.name.clone())
 
-    # HAVING.
+    // HAVING.
     var having_r: Optional[Expr] = none
 
     if let h = sel.having_expr:
         let r = try resolve(h.clone(), scope, 1, group_idx)
         having_r = some(r)
 
-    # ORDER BY.
+    // ORDER BY.
     var okeys = List[OrderKey]()
 
     for o in sel.order_by:
@@ -1848,7 +1848,7 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
 
     let descs = order_descs(okeys)
 
-    # Rows and filtering.
+    // Rows and filtering.
     let source = try build_rows(tables, tids, sel.joins, ons)
     var kept = List[List[Value]]()
 
@@ -1915,7 +1915,7 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
     if okeys.length() > 0:
         units.sort(fn(a: OutRow, b: OutRow) Int: compare_rows(a, b))
 
-    # OFFSET and LIMIT.
+    // OFFSET and LIMIT.
     let total = units.length()
     let offset_start = sel.offset
     var first = offset_start
@@ -1951,7 +1951,7 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
     sb.append_bytes("({last - first} rows)\n".to_bytes())
     return ok(sb.build())
 
-# ---------------------------------------------------------------- other statements
+// ---------------------------------------------------------------- other statements
 
 fn exec_create(var tables: List[Table], name: String, cols: List[ColDef]) Result[
     Bytes, SqlErr

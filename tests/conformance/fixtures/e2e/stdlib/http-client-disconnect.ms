@@ -1,8 +1,8 @@
-# conform: tags=stdlib-http,stdlib-net,tier-io
-# conform: phase=run
-# conform: timeout=30
-# A handler whose client went away is cancelled: its wait ends and its cleanup runs with
-# tasks.cancelled() true.
+// conform: tags=stdlib-http,stdlib-net,tier-io
+// conform: phase=run
+// conform: timeout=30
+// A handler whose client went away is cancelled: its wait ends and its cleanup runs with
+// tasks.cancelled() true.
 import Closeable from "@std/core.ms"
 import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
 import stdout from "@std/io/io.ms"
@@ -33,7 +33,7 @@ export fn main() Int:
         if var conn = connect(server.address()):
             let _sent = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
-            # Let the handler start, then leave without waiting for the response.
+            // Let the handler start, then leave without waiting for the response.
             sleep(nanoseconds(100000000))
             conn.close().get(none)
             sleep(nanoseconds(500000000))

@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,types,tier-core
-# conform: phase=check
-# conform: origin=bug bash: BigInt.from_int(...) reported an empty case list
+// conform: tags=diagnostics,types,tier-core
+// conform: phase=check
+// conform: origin=bug bash: BigInt.from_int(...) reported an empty case list
 import BigInt from "@std/math/math.ms"
 
 export fn main() Int:

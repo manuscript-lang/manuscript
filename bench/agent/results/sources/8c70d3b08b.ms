@@ -2,7 +2,7 @@ import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 import BigInt, from_int, floor, sqrt, pow from "@std/math.ms"
 
-# ---------- Values, expressions and cells ----------
+// ---------- Values, expressions and cells ----------
 
 type Value:
     case Empty
@@ -11,7 +11,7 @@ type Value:
     case Boolean(b: Bool)
     case Fault(code: String)
 
-# Rows are 1..999 and columns 0..25; an invalid reference has row -1.
+// Rows are 1..999 and columns 0..25; an invalid reference has row -1.
 type Expr:
     case Lit(v: Value)
     case Ref(r: Int, c: Int)
@@ -69,7 +69,7 @@ type Tarjan:
     counter: Int
     ep: Int
 
-# ---------- Small helpers ----------
+// ---------- Small helpers ----------
 
 fn is_ws(c: String) Bool:
     return c == " " or c == "\t" or c == "\r" or c == "\n"
@@ -205,9 +205,9 @@ fn type_tag(v: Value) Int:
 
     return 4
 
-# ---------- Numbers: grammar, parsing and display ----------
+// ---------- Numbers: grammar, parsing and display ----------
 
-# Returns the number grammar text normalized for parse_float, or "" when the text is not a number.
+// Returns the number grammar text normalized for parse_float, or "" when the text is not a number.
 fn normalize_number(s: String) String:
     let cs = s.chars()
     let n = cs.length()
@@ -272,7 +272,7 @@ fn normalize_number(s: String) String:
         fpart = "0"
     return sign + ipart + "." + fpart + ex
 
-# The finite number a text denotes under the number grammar, or none.
+// The finite number a text denotes under the number grammar, or none.
 fn number_text(s: String) Optional[Float]:
     let norm = normalize_number(s)
     if norm == "":
@@ -286,7 +286,7 @@ fn number_text(s: String) Optional[Float]:
 fn last_char(s: String) String:
     return s.slice(s.length() - 1, s.length()).get()
 
-# Display text of a finite number: 10 fractional digits, rounded half away from zero, trailing zeros dropped.
+// Display text of a finite number: 10 fractional digits, rounded half away from zero, trailing zeros dropped.
 fn fmt_num(x: Float) String:
     if x == 0.0:
         return "0"
@@ -303,7 +303,7 @@ fn fmt_num(x: Float) String:
         m = m * 2.0
         k -= 1
 
-    # x is exactly mant * 2^k with mant an integer in [2^52, 2^53).
+    // x is exactly mant * 2^k with mant an integer in [2^52, 2^53).
     let mant = m.truncate_to_int().get(0)
     let scaled = from_int(mant) * from_int(10000000000)
     var scaled_n = scaled
@@ -335,7 +335,7 @@ fn fmt_num(x: Float) String:
         out = "-" + out
     return out
 
-# Display text of any value (empty is the empty string, errors are their codes).
+// Display text of any value (empty is the empty string, errors are their codes).
 fn show(v: Value) String:
     match v:
         Empty:
@@ -354,7 +354,7 @@ fn show(v: Value) String:
 
     return ""
 
-# Number coercion for arithmetic and numeric arguments.
+// Number coercion for arithmetic and numeric arguments.
 fn to_num(v: Value) Value:
     match v:
         Number(_n):
@@ -400,7 +400,7 @@ fn to_bool(v: Value) Value:
 
     return v
 
-# ---------- Formula lexer and parser ----------
+// ---------- Formula lexer and parser ----------
 
 fn ref_end(cs: List[String], start: Int) Int:
     let n = cs.length()
@@ -425,7 +425,7 @@ fn ref_end(cs: List[String], start: Int) Int:
 
     return i
 
-# A reference word ending at `end` must not run on into more identifier text, a call or a `$`.
+// A reference word ending at `end` must not run on into more identifier text, a call or a `$`.
 fn ref_ok(cs: List[String], end: Int) Bool:
     if end >= cs.length():
         return true
@@ -794,7 +794,7 @@ fn parse_formula(src: String) Optional[Expr]:
 
     return none
 
-# ---------- Ranges and reference collection ----------
+// ---------- Ranges and reference collection ----------
 
 fn rect_keys(r1: Int, c1: Int, r2: Int, c2: Int) List[Int]:
     var out = List[Int]()
@@ -851,7 +851,7 @@ fn precedents_of(e: Expr) List[Int]:
     collect_refs(e, var s)
     return s.values().sorted()
 
-# ---------- Cell access ----------
+// ---------- Cell access ----------
 
 fn key_count() Int:
     return 26000
@@ -913,7 +913,7 @@ fn dependents_direct(sh: Sheet, key: Int) List[Int]:
 
     return []
 
-# ---------- Evaluation ----------
+// ---------- Evaluation ----------
 
 fn binary(sh: Sheet, op: String, l: Expr, r: Expr) Value:
     let a = ev(sh, l)
@@ -1080,7 +1080,7 @@ fn collect(sh: Sheet, args: List[Expr]) List[Item]:
 
     return items
 
-# The first error among the items, in item order; a direct item that cannot be a number is #VALUE!.
+// The first error among the items, in item order; a direct item that cannot be a number is #VALUE!.
 fn scan_fault(items: List[Item]) Value:
     for it in items:
         if it.ranged:
@@ -1229,7 +1229,7 @@ fn aggregate(sh: Sheet, name: String, args: List[Expr]) Value:
 
         return Number(acc.hi)
 
-    # MEDIAN
+    // MEDIAN
     if acc.count == 0:
         return Fault("#NUM!")
 
@@ -1698,7 +1698,7 @@ fn call(sh: Sheet, name: String, args: List[Expr]) Value:
 
     return Fault("#NAME?")
 
-# Value of a formula cell after evaluation: an empty result counts as 0.
+// Value of a formula cell after evaluation: an empty result counts as 0.
 fn eval_top(sh: Sheet, e: Expr) Value:
     let v = ev(sh, e)
     if is_empty_v(v):
@@ -1706,9 +1706,9 @@ fn eval_top(sh: Sheet, e: Expr) Value:
 
     return v
 
-# ---------- Assignment and recalculation ----------
+// ---------- Assignment and recalculation ----------
 
-# Classifies the trimmed VALUE of a set/import/copy into a constant value.
+// Classifies the trimmed VALUE of a set/import/copy into a constant value.
 fn classify(raw: String) Value:
     if raw.starts_with("'"):
         return Text(raw.slice(1, raw.length()).get())
@@ -1829,12 +1829,12 @@ fn recalc(var sh: Sheet, changed: List[Int]) Int:
     sh.evals += aff.length()
     return aff.length()
 
-# ---------- Commands ----------
+// ---------- Commands ----------
 
 fn say(s: String) Unit:
     stdout().write(s + "\n").get()
 
-# Splits a line into whitespace-separated fields; the last one (when `limit` is reached) keeps the rest of the line.
+// Splits a line into whitespace-separated fields; the last one (when `limit` is reached) keeps the rest of the line.
 fn fields(line: String, limit: Int) List[String]:
     let cs = line.chars()
     let n = cs.length()
@@ -1859,7 +1859,7 @@ fn fields(line: String, limit: Int) List[String]:
 
     return out
 
-# Cell key of a bare cell reference (no $), or -1.
+// Cell key of a bare cell reference (no $), or -1.
 fn cell_key(t: String) Int:
     if has_char(t, "$"):
         return -1
@@ -1870,7 +1870,7 @@ fn cell_key(t: String) Int:
 
     return p.row * 26 + p.col
 
-# [r1, c1, r2, c2] of a cell or range argument, or [] when it is not one.
+// [r1, c1, r2, c2] of a cell or range argument, or [] when it is not one.
 fn rect_of(t: String) List[Int]:
     let parts = t.split(":")
 
@@ -1912,7 +1912,7 @@ fn csv_field(s: String) String:
 
     return out + "\""
 
-# Bounding rectangle of the non-empty cells, or [] for an empty sheet.
+// Bounding rectangle of the non-empty cells, or [] for an empty sheet.
 fn used_rect(sh: Sheet) List[Int]:
     var found = false
     var maxr = 1

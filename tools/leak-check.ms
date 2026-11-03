@@ -1,17 +1,17 @@
-# Leak sweep (`make leak-check`): runs the programs of the conformance corpus that finish normally against a runtime
-# built with allocation counters (`ms-rt` feature `stats`), which prints the count of live heap blocks at exit. A
-# correct program frees everything it allocated, so any nonzero count is a leak. Faulting and rejected programs print
-# no count and are skipped. Arguments name the files to sweep instead.
-# MS names the ms that runs the programs (default target/release/ms).
-# Usage: ms run tools/leak-check.ms [-- files]
+// Leak sweep (`make leak-check`): runs the programs of the conformance corpus that finish normally against a runtime
+// built with allocation counters (`ms-rt` feature `stats`), which prints the count of live heap blocks at exit. A
+// correct program frees everything it allocated, so any nonzero count is a leak. Faulting and rejected programs print
+// no count and are skipped. Arguments name the files to sweep instead.
+// MS names the ms that runs the programs (default target/release/ms).
+// Usage: ms run tools/leak-check.ms [-- files]
 import tool_ms, use_stats_runtime from "./lib.ms"
 import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
 import arguments, change_directory, working_directory, run from "@std/os/process.ms"
 import seconds from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"
 
-# The live block counts the runtime printed on standard error; a program that starts child
-# processes prints one per process, and their sum is what leaked. Empty when none was printed.
+// The live block counts the runtime printed on standard error; a program that starts child
+// processes prints one per process, and their sum is what leaked. Empty when none was printed.
 fn live_blocks(text: String) List[Int]:
     var counts = List[Int]()
     for line in text.split("\n"):

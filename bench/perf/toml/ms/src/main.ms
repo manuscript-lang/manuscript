@@ -15,7 +15,7 @@ fn parse_ok(text: String) Int:
 
     return 0
 
-# Parses the document 200 times and prints the best run in microseconds.
+// Parses the document 200 times and prints the best run in microseconds.
 export fn main() Int:
     let text = document(2000)
     var best = 1000000000000

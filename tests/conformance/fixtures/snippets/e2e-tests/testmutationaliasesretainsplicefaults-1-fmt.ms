@@ -1,6 +1,6 @@
-# conform: tags=formatter,parser,testing,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/mutation_aliases_test.go:11 TestMutationAliasesRetainSpliceFaults
+// conform: tags=formatter,parser,testing,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/mutation_aliases_test.go:11 TestMutationAliasesRetainSpliceFaults
 test "new start":
     [1].splice(-1, 0, [])
 

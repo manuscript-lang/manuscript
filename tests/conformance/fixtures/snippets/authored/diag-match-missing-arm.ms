@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,match,alternatives,tier-core
-# conform: phase=check
-# conform: origin=ms-check/tests/messages.rs
+// conform: tags=diagnostics,match,alternatives,tier-core
+// conform: phase=check
+// conform: origin=ms-check/tests/messages.rs
 type S:
     case A
     case B(x: Int)

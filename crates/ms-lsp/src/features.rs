@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn folding_headers_allow_comments_and_hashes_in_strings() {
-        let source = "fn main() Int: # 😀 note\n    if \"a#b\" == \"a#b\": # note\n        return 1\n    return 0\n";
+        let source = "fn main() Int: // 😀 note\n    if \"a#b\" == \"a#b\": // note\n        return 1\n    return 0\n";
         let expected = Json::Arr(vec![
             obj([
                 ("startLine", 0usize.into()),
@@ -131,7 +131,7 @@ mod tests {
     fn folding_ignores_colons_in_comments_and_strings() {
         let d = Document::new(
             "file:///folding.ms",
-            "# heading:\n    # indented comment\nlet text = \"fake: # comment\"\n    let other = 1\n",
+            "// heading:\n    // indented comment\nlet text = \"fake: # comment\"\n    let other = 1\n",
         );
         assert_eq!(folding_ranges(&d), Json::Arr(Vec::new()));
     }

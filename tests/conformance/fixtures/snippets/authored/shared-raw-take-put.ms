@@ -1,5 +1,5 @@
-# conform: tags=diagnostics,stdlib-shared,tier-core
-# conform: phase=check
+// conform: tags=diagnostics,stdlib-shared,tier-core
+// conform: phase=check
 import Shared, share from "@std/concurrency/shared.ms"
 
 fn bump(box: Shared[List[Int]]) Unit:

@@ -1,6 +1,6 @@
-# conform: tags=interfaces,records,testing,tier-core
-# conform: phase=test
-# conform: origin=tests/e2e/inherent_methods_test.go:14 TestInherentImplFaultFrame
+// conform: tags=interfaces,records,testing,tier-core
+// conform: phase=test
+// conform: origin=tests/e2e/inherent_methods_test.go:14 TestInherentImplFaultFrame
 type Counter:
     value: Int
 

@@ -1,8 +1,8 @@
-# conform: tags=diagnostics,lists,modules,stdlib-collections,tier-stdlib
-# conform: phase=check
-# conform: origin=pkg/tooling/lsp/prelude_imports_test.go:46 TestRedundantPreludeImportEditorFix
+// conform: tags=diagnostics,lists,modules,stdlib-collections,tier-stdlib
+// conform: phase=check
+// conform: origin=pkg/tooling/lsp/prelude_imports_test.go:46 TestRedundantPreludeImportEditorFix
 import (
-    List,  # keep
+    List,  // keep
     ListEntry,
 ) from "@std/collections/collections.ms"
 

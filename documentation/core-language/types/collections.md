@@ -54,9 +54,9 @@ Applications are invariant: `List[Int]` is not a `List[Float]`, and no implicit 
 
 ```manuscript
 let nested: List[List[Int]] = [[], [1, 2]]
-# Rejected: incompatible Int and Float elements.
+// Rejected: incompatible Int and Float elements.
 let mixed = [1, 2.0]
-# Rejected: no element type can be inferred.
+// Rejected: no element type can be inferred.
 let unknown = []
 ```
 
@@ -104,7 +104,7 @@ List details:
 var values = [1, 2]
 let copy = values.clone()
 values.append(3)
-# values now contains [1, 2, 3]; copy still contains [1, 2].
+// values now contains [1, 2, 3]; copy still contains [1, 2].
 ```
 
 Clones copy nested values too. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra return independent owned results (Bytes `reversed()` too).

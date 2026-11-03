@@ -1,6 +1,6 @@
-# conform: tags=interpolation,modules,mutation,stdlib-testing,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=documentation/learn/tour.md:31
+// conform: tags=interpolation,modules,mutation,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=documentation/learn/tour.md:31
 import expect_equal from "@std/test/test.ms"
 
 test "unread message count":

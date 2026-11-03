@@ -14,7 +14,7 @@
           "file": "testboundedmatchnative-1.ms",
           "line": 22,
           "column": 15,
-          "offset": 529
+          "offset": 532
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testboundedmatchnative-1.ms",
           "line": 22,
           "column": 34,
-          "offset": 548
+          "offset": 551
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "testboundedmatchnative-1.ms",
           "line": 25,
           "column": 19,
-          "offset": 597
+          "offset": 600
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "testboundedmatchnative-1.ms",
           "line": 25,
           "column": 36,
-          "offset": 614
+          "offset": 617
         }
       },
       {
@@ -58,7 +58,7 @@
           "file": "testboundedmatchnative-1.ms",
           "line": 25,
           "column": 53,
-          "offset": 631
+          "offset": 634
         }
       },
       {
@@ -69,7 +69,7 @@
           "file": "testboundedmatchnative-1.ms",
           "line": 27,
           "column": 8,
-          "offset": 677
+          "offset": 680
         }
       },
       {
@@ -80,7 +80,7 @@
           "file": "testboundedmatchnative-1.ms",
           "line": 29,
           "column": 8,
-          "offset": 768
+          "offset": 771
         }
       },
       {
@@ -91,20 +91,20 @@
           "file": "testboundedmatchnative-1.ms",
           "line": 31,
           "column": 16,
-          "offset": 863
+          "offset": 866
         },
         "fix": {
           "position": {
             "file": "testboundedmatchnative-1.ms",
             "line": 31,
             "column": 16,
-            "offset": 863
+            "offset": 866
           },
           "end": {
             "file": "testboundedmatchnative-1.ms",
             "line": 31,
             "column": 21,
-            "offset": 868
+            "offset": 871
           },
           "replacement": "shapes"
         }
@@ -117,7 +117,7 @@
           "file": "testboundedmatchnative-1.ms",
           "line": 37,
           "column": 16,
-          "offset": 958
+          "offset": 961
         }
       }
     ],

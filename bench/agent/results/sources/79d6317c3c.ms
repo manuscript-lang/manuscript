@@ -2,8 +2,8 @@ import read_all, stdin, stdout from "@std/io.ms"
 import from_scalars from "@std/string.ms"
 import range from "@std/collections.ms"
 
-# Code points used by the scanners. The input is ASCII, so SENT (a private-use
-# character) can only come from the converter itself: it marks a two-space hard break.
+// Code points used by the scanners. The input is ASCII, so SENT (a private-use
+// character) can only come from the converter itself: it marks a two-space hard break.
 let SP = 32
 let NL = 10
 let BANG = 33
@@ -90,7 +90,7 @@ export fn main() Int:
     stdout().flush().get()
     return 0
 
-# ---------------------------------------------------------------- helpers
+// ---------------------------------------------------------------- helpers
 fn at(cs: List[Int], i: Int) Int:
     if i < 0 or i >= cs.length():
         return 0
@@ -182,7 +182,7 @@ fn has_hard_end(line: String) Bool:
     let n = cs.length()
     return at(cs, n - 1) == SP and at(cs, n - 2) == SP
 
-# ---------------------------------------------------------------- blocks
+// ---------------------------------------------------------------- blocks
 fn parse_blocks(lines: List[String]) Parsed:
     var blocks: List[Block] = []
     var loose = false
@@ -442,7 +442,7 @@ fn row_continues(line: String) Bool:
 
     return not hr_line(line) and not is_quote_line(line)
 
-# ---------------------------------------------------------------- lists
+// ---------------------------------------------------------------- lists
 fn list_marker(line: String) Optional[Marker]:
     let cs = line.scalar_values()
     let n = cs.length()
@@ -586,7 +586,7 @@ fn separate(body: String) String:
 
     return body.concat("\n")
 
-# ---------------------------------------------------------------- tables
+// ---------------------------------------------------------------- tables
 fn split_cells(line: String) List[String]:
     var cs = trim_sp(line).scalar_values()
     if at(cs, 0) == PIPE and cs.length() > 0:
@@ -706,7 +706,7 @@ fn table_at(lines: List[String], i: Int) Optional[Step]:
     html = html.concat("</table>\n")
     return some(Step(block: Html(text: html), next: j))
 
-# ---------------------------------------------------------------- inline
+// ---------------------------------------------------------------- inline
 fn inline(text: String) String:
     return render_nodes(scan(text))
 
@@ -1018,7 +1018,7 @@ fn skip_ws(cs: List[Int], p: Int) Int:
         k += 1
     return k
 
-# Emphasis resolution (rule set from the spec): pairs the closest opener for each closer.
+// Emphasis resolution (rule set from the spec): pairs the closest opener for each closer.
 fn delim_ch(node: Node) String:
     match node:
         Delim(ch, _, _, _, _):

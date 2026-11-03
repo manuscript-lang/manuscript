@@ -1,5 +1,5 @@
-# conform: tags=closures,scope-cleanup,stdlib-tasks,tier-io
-# conform: phase=run
+// conform: tags=closures,scope-cleanup,stdlib-tasks,tier-io
+// conform: phase=run
 import Closeable from "@std/core.ms"
 import stdout from "@std/io/io.ms"
 import TaskGroup, cancelled from "@std/concurrency/tasks.ms"
@@ -8,7 +8,7 @@ import nanoseconds, sleep from "@std/os/time.ms"
 fn say(text: String) Unit:
     let _ = stdout().write(text + "\n")
 
-# Reports, as its task unwinds, whether the task counts as cancelled.
+// Reports, as its task unwinds, whether the task counts as cancelled.
 type Reporter:
     name: String
 

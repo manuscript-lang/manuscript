@@ -145,7 +145,7 @@ test "HTML honors optional byte depth and node limits":
     )
 
 test "HTML depth limit stops deeply nested input without quadratic work":
-    # 60,000 open divs take tens of seconds when the parser only checks depth afterwards.
+    // 60,000 open divs take tens of seconds when the parser only checks depth afterwards.
     let nested = "<div>".repeat(60000).get()
     let started = monotonic()
     let limited: HtmlNode! = error(

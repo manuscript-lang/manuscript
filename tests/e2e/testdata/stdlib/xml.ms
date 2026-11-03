@@ -50,6 +50,6 @@ test "entity decoding is linear in the text":
     try expect_true(parse("<a>&amp</a>").is_error())
     try expect_true(parse("<a>&nope;</a>").is_error())
 
-    # A quadratic decoder would take minutes on this many entities.
+    // A quadratic decoder would take minutes on this many entities.
     let big = parse("<a>{"&amp;".repeat(100000).get()}</a>").get()
     try expect_equal(big.text().scalar_length(), 100000)

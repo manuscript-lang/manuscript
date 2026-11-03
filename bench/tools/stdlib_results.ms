@@ -1,4 +1,4 @@
-# Validates the shared `ms bench --json` result protocol before rendering comparisons (bench/perf/stdlib).
+// Validates the shared `ms bench --json` result protocol before rendering comparisons (bench/perf/stdlib).
 import invalid from "./lib.ms"
 import parse from "@std/data/json.ms"
 
@@ -33,7 +33,7 @@ fn valid_optional(value: Float?) Bool:
 
     return true
 
-# The passed cases of one `ms bench --json` document, in order.
+// The passed cases of one `ms bench --json` document, in order.
 export fn read_cases(output: String) List[Bench]!:
     let parsed = parse[Document](output)
     if parsed.is_error(): return invalid("invalid benchmark document")
@@ -80,7 +80,7 @@ export fn read_cases(output: String) List[Bench]!:
 
     return ok(doc.benches)
 
-# Display labels: the part after `::`, or the whole name when two cases would collide.
+// Display labels: the part after `::`, or the whole name when two cases would collide.
 export fn case_labels(names: List[String]) Map[String, String]:
     var counts = Map[String, Int]()
     var short = Map[String, String]()

@@ -1,8 +1,8 @@
 import read_all, stdin, stdout from "@std/io.ms"
 import from_scalars from "@std/string.ms"
 
-# Backtracking regular-expression engine and the line-oriented command driver from TASK.md.
-# Patterns and subjects are byte lists (values 0-255), so raw bytes are handled exactly.
+// Backtracking regular-expression engine and the line-oriented command driver from TASK.md.
+// Patterns and subjects are byte lists (values 0-255), so raw bytes are handled exactly.
 
 let NL = 10
 let TAB = 9
@@ -26,14 +26,14 @@ let CARET = 94
 let LBRACE = 123
 let BAR = 124
 let RBRACE = 125
-# Anchor kinds
+// Anchor kinds
 let BOL = 0
 let EOL = 1
 let WORDB = 2
 let NOTWORDB = 3
 let MBOL = 4
 let MEOL = 5
-# Class members at or above SHORT_BASE stand for the shorthand classes \d \D \w \W \s \S
+// Class members at or above SHORT_BASE stand for the shorthand classes \d \D \w \W \s \S
 let SHORT_BASE = 256
 
 fn ch(s: String) Int:
@@ -114,7 +114,7 @@ fn empty_bits() List[Bool]:
         bits.append(false)
     return bits
 
-# Index into \d \D \w \W \s \S, or -1 for any other escape letter
+// Index into \d \D \w \W \s \S, or -1 for any other escape letter
 fn shorthand_index(e: Int) Int:
     if e == ch("d"):
         return 0
@@ -210,7 +210,7 @@ impl Parser:
             bits[c] = self.dotall or c != NL
         return bits
 
-    # Length of a {n}, {n,} or {n,m} token at pos, or 0 when the brace does not form one
+    // Length of a {n}, {n,} or {n,m} token at pos, or 0 when the brace does not form one
     fn brace_length() Int:
         if self.cur() != LBRACE:
             return 0
@@ -238,7 +238,7 @@ impl Parser:
         let c = self.cur()
         return c == STAR or c == PLUS or c == QUESTION or self.brace_length() > 0
 
-    # Reads decimal digits, saturating so that any value above 1000 stays detectable
+    // Reads decimal digits, saturating so that any value above 1000 stays detectable
     var fn number() Int:
         var v = 0
 
@@ -286,7 +286,7 @@ impl Parser:
 
         return ok(Repeat(atom, low, high, lazy))
 
-    # Reads a group or backreference name followed by `>`; err is reported on any malformed name
+    // Reads a group or backreference name followed by `>`; err is reported on any malformed name
     var fn name(err: String) Result[List[Int], Problem]:
         if not (is_alpha(self.cur()) or self.cur() == 95):
             return error(Problem(err))
@@ -358,7 +358,7 @@ impl Parser:
         let c = try self.char_escape(e)
         return ok(Chars(self.single(c)))
 
-    # One class member: a byte, or SHORT_BASE + index for a shorthand class
+    // One class member: a byte, or SHORT_BASE + index for a shorthand class
     var fn class_member() Result[Int, Problem]:
         let c = self.cur()
         self.pos += 1
@@ -376,7 +376,7 @@ impl Parser:
 
         return self.char_escape(e)
 
-    # True when a range dash follows the current member (and is not the closing bracket's neighbour)
+    // True when a range dash follows the current member (and is not the closing bracket's neighbour)
     fn dash_follows() Bool:
         return (
             self.cur() == DASH
@@ -438,7 +438,7 @@ impl Parser:
                 bits[x] = not bits[x]
         return ok(Chars(bits))
 
-    # Parses the body of a group up to and including its closing parenthesis
+    // Parses the body of a group up to and including its closing parenthesis
     var fn group_body() Result[Node, Problem]:
         let body = try self.alt()
         if self.cur() != RPAREN:
@@ -597,7 +597,7 @@ fn group_of(names: List[List[Int]], nm: List[Int]) Int:
             return g
     return -1
 
-# ---- matching ----
+// ---- matching ----
 
 type Subject:
     text: List[Int]
@@ -627,8 +627,8 @@ fn same_byte(a: Int, b: Int, icase: Bool) Bool:
 
     return a == b
 
-# Continuation-passing backtracking: k receives the end position and the captures so far
-# and returns the final captures on overall success, or none to make the caller backtrack.
+// Continuation-passing backtracking: k receives the end position and the captures so far
+// and returns the final captures on overall success, or none to make the caller backtrack.
 fn run(
     n: Node,
     sub: Subject,
@@ -709,7 +709,7 @@ fn span_set(caps: List[Int], g: Int, start: Int, end: Int) List[Int]:
     out[2 * g + 1] = end
     return out
 
-# Repetition: `count` iterations are done and the next one would start at pos
+// Repetition: `count` iterations are done and the next one would start at pos
 fn step(
     body: Node,
     low: Int,
@@ -766,13 +766,13 @@ fn after_iteration(
     c: List[Int],
     k: fn(Int, List[Int]) Optional[List[Int]]
 ) Optional[List[Int]]:
-    # Once the minimum is reached, an iteration that consumed nothing ends the loop
+    // Once the minimum is reached, an iteration that consumed nothing ends the loop
     if count >= low and p == start:
         return k(p, c)
 
     return step(body, low, high, lazy, count, sub, p, c, k)
 
-# Tries one match starting exactly at start; full requires it to end at the end of the subject
+// Tries one match starting exactly at start; full requires it to end at the end of the subject
 fn try_at(re: Regex, text: List[Int], start: Int, full: Bool) Optional[List[Int]]:
     var caps = List[Int]()
     for _i in 0..2 * (re.groups + 1):
@@ -813,7 +813,7 @@ fn find_all(re: Regex, text: List[Int]) List[List[Int]]:
 
     return found
 
-# ---- output ----
+// ---- output ----
 
 fn quoted(data: List[Int]) String:
     var out = List[Int]()
@@ -884,7 +884,7 @@ fn split_lines(text: List[Int], matches: List[List[Int]]) List[String]:
     lines.append("({count} pieces)")
     return lines
 
-# Expands $0-$9, $$, ${name} against one match
+// Expands $0-$9, $$, ${name} against one match
 fn expand(
     repl: List[Int],
     re: Regex,
@@ -952,7 +952,7 @@ fn replace_all(re: Regex, text: List[Int], repl: List[Int]) Result[List[Int], Pr
         out.append(x)
     return ok(out)
 
-# ---- command driver ----
+// ---- command driver ----
 
 fn unescape(s: List[Int]) Result[List[Int], Problem]:
     var out = List[Int]()

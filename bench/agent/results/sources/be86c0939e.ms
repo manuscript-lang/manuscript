@@ -199,7 +199,7 @@ fn lcs_table(a: List[String], b: List[String]) List[Int]:
 
     return t
 
-# For each index of a, the index of its matching line in b, or -1.
+// For each index of a, the index of its matching line in b, or -1.
 fn match_pairs(a: List[String], b: List[String]) List[Int]:
     let t = lcs_table(a, b)
     let w = b.length() + 1
@@ -479,7 +479,7 @@ impl Repo:
 
         return self.untracked_error(target.keys())
 
-    # Deletes the old index's files, then writes the target tree.
+    // Deletes the old index's files, then writes the target tree.
     var fn switch_to(tree: Map[String, String]) Unit:
         for n in self.index.keys():
             self.wt.remove(n)
@@ -522,7 +522,7 @@ impl Repo:
 
         return ""
 
-    # ---- commands ----
+    // ---- commands ----
 
     var fn cmd_rm(names: List[String]) String:
         if names.length() == 0:

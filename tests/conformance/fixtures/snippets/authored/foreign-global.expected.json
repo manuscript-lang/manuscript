@@ -12,13 +12,13 @@
           "file": "foreign-global.ms",
           "line": 5,
           "column": 5,
-          "offset": 130
+          "offset": 133
         },
         "end": {
           "file": "foreign-global.ms",
           "line": 5,
           "column": 11,
-          "offset": 136
+          "offset": 139
         }
       }
     ],

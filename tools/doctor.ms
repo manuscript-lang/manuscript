@@ -1,5 +1,5 @@
-# Reports build prerequisites without downloading or changing the checkout (`make doctor`).
-# Usage: ms run tools/doctor.ms
+// Reports build prerequisites without downloading or changing the checkout (`make doctor`).
+// Usage: ms run tools/doctor.ms
 import env, host, works, capture from "./lib.ms"
 import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
@@ -10,7 +10,7 @@ fn say(ok: Bool, ok_text: String, missing_text: String) Bool:
 
     return ok
 
-# Whether `version` ("0.146.7") is at least 0.146.7.
+// Whether `version` ("0.146.7") is at least 0.146.7.
 fn hugo_new_enough(version: String) Bool:
     let parts = version.split("-")[0].split("+")[0].split(".")
     if parts.length() < 3: return false

@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,functions,tier-core
-# conform: phase=check
-# conform: origin=ms_abi.h signature table
+// conform: tags=diagnostics,functions,tier-core
+// conform: phase=check
+// conform: origin=ms_abi.h signature table
 extern type Handle
 
 type Wrong:

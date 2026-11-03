@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,tier-core
-# conform: phase=run
-# conform: origin=thread/type-checker-bug-bash
+// conform: tags=closures,control-flow,tier-core
+// conform: phase=run
+// conform: origin=thread/type-checker-bug-bash
 fn f(x: Int) Int:
     let y = if x > 1: x else: 0
     return y

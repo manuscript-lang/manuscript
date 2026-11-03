@@ -1,6 +1,6 @@
-# conform: tags=mutation,records,lists,tier-io
-# conform: phase=run
-# conform: origin=proposals/reference-ownership.md
+// conform: tags=mutation,records,lists,tier-io
+// conform: phase=run
+// conform: origin=proposals/reference-ownership.md
 import stdout from "@std/io/io.ms"
 
 type Person:
@@ -11,7 +11,7 @@ type Team:
     members: List[Person]
     label: String
 
-# Every path returns a part of an argument: the result is a reference into it.
+// Every path returns a part of an argument: the result is a reference into it.
 fn first_tag(p: Person) String:
     return p.tags[0]
 
@@ -51,12 +51,12 @@ export fn main() Int:
     var team = Team(members: [p, q], label: "team")
     stdout().write("{deep(team)} {members(team).length()}\n").get()
 
-    # A lend from a temporary is owned by the caller.
+    // A lend from a temporary is owned by the caller.
     let fresh = first_tag(Person(name: "tmp", tags: ["owned"]))
     let also = deep(make_team())
     stdout().write("{fresh} {also}\n").get()
 
-    # `var` of a lent part changes the origin.
+    // `var` of a lent part changes the origin.
     var ms = members(team)
     ms.append(Person(name: "dan", tags: []))
     (
@@ -65,7 +65,7 @@ export fn main() Int:
         ).get()
     )
 
-    # Keeping a lent value is an explicit copy.
+    // Keeping a lent value is an explicit copy.
     var names: List[String] = []
     names.append(first_tag(team.members[0]).clone())
     stdout().write("{names.length()} {names[0]}\n").get()

@@ -5,7 +5,7 @@ import range from "@std/collections.ms"
 
 let BAD = "error: bad command"
 
-# Returns the value of a 1 to 6 digit decimal token, or -1 when it is malformed.
+// Returns the value of a 1 to 6 digit decimal token, or -1 when it is malformed.
 fn number(text: String) Int:
     if text.byte_length() < 1 or text.byte_length() > 6: return -1
 

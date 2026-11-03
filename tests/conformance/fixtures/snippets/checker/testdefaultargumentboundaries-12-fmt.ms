@@ -1,6 +1,6 @@
-# conform: tags=closures,formatter,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/defaults_test.go:25 TestDefaultArgumentBoundaries
+// conform: tags=closures,formatter,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/defaults_test.go:25 TestDefaultArgumentBoundaries
 fn f(value: Int = 1) Int:
     return value
 

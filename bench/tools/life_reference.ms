@@ -1,4 +1,4 @@
-# Independent checksum oracle for bench/language/life.ms (not a performance comparator).
+// Independent checksum oracle for bench/language/life.ms (not a performance comparator).
 import stdout from "@std/io/io.ms"
 
 export fn main() Int:

@@ -1,6 +1,6 @@
-# Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-# expect-mir: "iface.new"
-# expect-mir: "call.method"
+// Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
+// expect-mir: "iface.new"
+// expect-mir: "call.method"
 
 import stdout from "@std/io/io.ms"
 

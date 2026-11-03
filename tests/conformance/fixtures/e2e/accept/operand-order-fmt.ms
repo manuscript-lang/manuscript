@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,match,modules,mutation,optional,parser,stdlib-testing,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/operand-order.ms
+// conform: tags=control-flow,formatter,match,modules,mutation,optional,parser,stdlib-testing,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/operand-order.ms
 import expect_equal from "@std/test/test.ms"
 
 export fn main() Int:

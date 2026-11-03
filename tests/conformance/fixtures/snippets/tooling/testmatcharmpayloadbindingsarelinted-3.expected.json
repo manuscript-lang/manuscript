@@ -14,7 +14,7 @@
           "file": "testmatcharmpayloadbindingsarelinted-3.ms",
           "line": 5,
           "column": 11,
-          "offset": 186
+          "offset": 189
         },
         "fix": {
           "position": {

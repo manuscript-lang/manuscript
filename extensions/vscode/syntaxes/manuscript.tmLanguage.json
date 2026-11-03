@@ -2,8 +2,13 @@
   "scopeName": "source.manuscript",
   "patterns": [
     {
-      "name": "comment.line.number-sign.manuscript",
-      "match": "#.*$"
+      "name": "comment.line.double-slash.manuscript",
+      "match": "//.*$"
+    },
+    {
+      "name": "comment.block.manuscript",
+      "begin": "/\\*",
+      "end": "\\*/"
     },
     {
       "include": "#raw-multiline-string"

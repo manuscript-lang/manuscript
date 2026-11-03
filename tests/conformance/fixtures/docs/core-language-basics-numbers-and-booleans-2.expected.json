@@ -14,7 +14,7 @@
           "file": "core-language-basics-numbers-and-booleans-2.ms",
           "line": 7,
           "column": 18,
-          "offset": 269
+          "offset": 272
         },
         "fix": {
           "position": {
@@ -40,20 +40,20 @@
           "file": "core-language-basics-numbers-and-booleans-2.ms",
           "line": 10,
           "column": 27,
-          "offset": 376
+          "offset": 380
         },
         "fix": {
           "position": {
             "file": "core-language-basics-numbers-and-booleans-2.ms",
             "line": 10,
             "column": 27,
-            "offset": 376
+            "offset": 380
           },
           "end": {
             "file": "core-language-basics-numbers-and-booleans-2.ms",
             "line": 10,
             "column": 28,
-            "offset": 377
+            "offset": 381
           },
           "replacement": "1.0"
         }

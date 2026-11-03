@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/compiler/prelude_test.go:49 TestCollectionPreludeAndShadowing
+// conform: tags=closures,diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/compiler/prelude_test.go:49 TestCollectionPreludeAndShadowing
 fn f() Int:
     let List = fn(value: Int) Int: value
     let Map = fn(value: Int) Int: value

@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,mutation,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/lsp/defaults_test.go:9 TestDefaultClosureAssignmentReferencesAndListHints
+// conform: tags=closures,diagnostics,mutation,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/lsp/defaults_test.go:9 TestDefaultClosureAssignmentReferencesAndListHints
 fn answer(
     value: Int = (
         fn() Int:

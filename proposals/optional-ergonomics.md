@@ -39,8 +39,8 @@ Stage 2: default `none`.
 
 ```ms
 fn find(name: String, limit: Int?) Int?: ...
-find("a")             # limit is none
-find("a", 3)          # a plain value wraps implicitly
+find("a")             // limit is none
+find("a", 3)          // a plain value wraps implicitly
 ```
 
 Stage 3: no `some`.

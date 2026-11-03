@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,formatter,interpolation,modules,parser,records,stdlib-io,stdlib-json,stdlib-log,stdlib-process,strings,tier-io,try-result,scope-cleanup
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/logging/main.ms
+// conform: tags=control-flow,faults,formatter,interpolation,modules,parser,records,stdlib-io,stdlib-json,stdlib-log,stdlib-process,strings,tier-io,try-result,scope-cleanup
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/logging/main.ms
 import (
     Logger,
     LogLevel,

@@ -21,7 +21,7 @@ fn encoded_length(value: JsonValue) Int:
 
     return 0
 
-# Reads three nested fields of one row in place, without copying any subtree.
+// Reads three nested fields of one row in place, without copying any subtree.
 fn row_weight(tree: JsonValue, index: Int) Int:
     if let row = tree.at(index):
         var weight = 0

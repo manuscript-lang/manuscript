@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,interfaces,modules,records,stdlib-io,stdlib-testing,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/test_fixture_test.go:257 TestCLITestWithoutFactoryDoesNotRunHooks
+// conform: tags=control-flow,faults,interfaces,modules,records,stdlib-io,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/test_fixture_test.go:257 TestCLITestWithoutFactoryDoesNotRunHooks
 import TestHooks, expect_equal from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 

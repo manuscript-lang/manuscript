@@ -1,5 +1,5 @@
-# conform: tags=stdlib-math,testing
-# conform: phase=test
+// conform: tags=stdlib-math,testing
+// conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
 test "UInt64 to_string agrees with interpolation above Int max":

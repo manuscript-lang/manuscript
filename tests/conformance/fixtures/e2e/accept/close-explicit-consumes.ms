@@ -1,5 +1,5 @@
-# conform: tags=scope-cleanup,testing,try-result,records,tier-stdlib,stdlib-testing
-# conform: phase=test
+// conform: tags=scope-cleanup,testing,try-result,records,tier-stdlib,stdlib-testing
+// conform: phase=test
 import expect_equal from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
 

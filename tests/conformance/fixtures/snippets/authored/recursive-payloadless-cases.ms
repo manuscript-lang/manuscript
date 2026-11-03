@@ -1,6 +1,6 @@
-# conform: tags=alternatives,match,testing,tier-stdlib
-# conform: phase=test
-# conform: origin=perf: payloadless cases of recursive alternatives share one block
+// conform: tags=alternatives,match,testing,tier-stdlib
+// conform: phase=test
+// conform: origin=perf: payloadless cases of recursive alternatives share one block
 import expect_equal from "@std/test/test.ms"
 
 type Tree:

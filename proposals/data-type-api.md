@@ -37,9 +37,9 @@ Verified with `ms check` on `bf26f78c`:
 var counts = Map[String, Int]()
 counts["a"] = 1
 counts["a"] += 1
-let n = counts["a"]           # 2; counts["zz"] faults
+let n = counts["a"]           // 2; counts["zz"] faults
 let data = "hi".to_bytes()
-let first = data[0]           # 104
+let first = data[0]           // 104
 ```
 
 ### List aggregates and natural order
@@ -69,10 +69,10 @@ In `stdlib/json.ms`, written in Manuscript:
 
 ```manuscript
 impl JsonValue:
-    fn get(key: String) Optional[JsonValue]      # ObjectValue member, else none
-    fn at(index: Int) Optional[JsonValue]        # ArrayValue element, else none
+    fn get(key: String) Optional[JsonValue]      // ObjectValue member, else none
+    fn at(index: Int) Optional[JsonValue]        // ArrayValue element, else none
     fn as_string() Optional[String]
-    fn as_int() Optional[Int]                    # NumberValue text that parses as Int
+    fn as_int() Optional[Int]                    // NumberValue text that parses as Int
     fn as_float() Optional[Float]
     fn as_bool() Optional[Bool]
     fn as_list() Optional[List[JsonValue]]

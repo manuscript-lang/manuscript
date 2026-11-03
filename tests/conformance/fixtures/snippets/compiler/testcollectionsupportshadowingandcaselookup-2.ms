@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,lists,modules,stdlib-bytes,stdlib-collections,stdlib-errors,strings,tier-stdlib
-# conform: phase=check
-# conform: origin=pkg/compiler/collection_prelude_imports_test.go:92 TestCollectionSupportShadowingAndCaseLookup
+// conform: tags=diagnostics,lists,modules,stdlib-bytes,stdlib-collections,stdlib-errors,strings,tier-stdlib
+// conform: phase=check
+// conform: origin=pkg/compiler/collection_prelude_imports_test.go:92 TestCollectionSupportShadowingAndCaseLookup
 import (
     ListEntry,
     MapEntry,

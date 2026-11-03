@@ -1,6 +1,6 @@
 import expect_equal from "@std/test/test.ms"
 
-# A function value is Clonable: its captures cannot change, so a copy shares them.
+// A function value is Clonable: its captures cannot change, so a copy shares them.
 fn twice[T: Clonable](value: T) List[T]:
     return [value.clone(), value]
 

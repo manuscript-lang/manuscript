@@ -11,7 +11,7 @@ impl Closeable for Res:
     var fn close() Unit!:
         return ok(unit)
 
-# Parts are closed at scope end; borrows of them used before then are fine.
+// Parts are closed at scope end; borrows of them used before then are fine.
 fn held() Int:
     let r = Res("c")
     let n = r.name

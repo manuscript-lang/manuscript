@@ -6,7 +6,7 @@ import create, file_transport from "@std/log.ms"
 fn block() Bytes:
     return "0123456789abcdef".repeat(4096).get("").to_bytes()
 
-# Writes the 200 files that the read, stat, and list cases use.
+// Writes the 200 files that the read, stat, and list cases use.
 fn populate(root: String) Unit:
     let data = block()
     for i in 0..200:

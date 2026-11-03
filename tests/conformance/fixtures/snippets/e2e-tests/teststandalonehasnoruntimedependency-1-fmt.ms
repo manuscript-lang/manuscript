@@ -1,6 +1,6 @@
-# conform: tags=formatter,modules,parser,stdlib-testing,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/e2e_test.go:30 TestStandaloneHasNoRuntimeDependency
+// conform: tags=formatter,modules,parser,stdlib-testing,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/e2e_test.go:30 TestStandaloneHasNoRuntimeDependency
 import expect_equal from "@std/test/test.ms"
 
 test "arithmetic":

@@ -1,6 +1,6 @@
 import read_all, stdin, stdout from "@std/io.ms"
 
-# A fatal error. `text` is the complete line to print; empty means print nothing.
+// A fatal error. `text` is the complete line to print; empty means print nothing.
 type Fatal:
     text: String
 
@@ -13,7 +13,7 @@ type Var:
     simple: Bool
     cmd: Bool
 
-# Simulator state shared by all requests: file table, clock, and output lines.
+// Simulator state shared by all requests: file table, clock, and output lines.
 type St:
     files: Map[String, Int]
     clock: Int
@@ -24,7 +24,7 @@ type Bind:
     name: String
     value: String
 
-# Expansion context: the current line and, inside recipes, the automatic variables.
+// Expansion context: the current line and, inside recipes, the automatic variables.
 type Scope:
     line: Int
     auto_on: Bool
@@ -52,7 +52,7 @@ type PatRule:
     order: List[String]
     recipe: List[Recipe]
 
-# The rule currently open for recipe lines.
+// The rule currently open for recipe lines.
 type Rule:
     targets: List[String]
     normal: List[String]
@@ -66,7 +66,7 @@ type Frame:
     in_else: Bool
     line: Int
 
-# A parsed Makefile, plus the build state for the request that uses it.
+// A parsed Makefile, plus the build state for the request that uses it.
 type Mk:
     rules: Map[String, Explicit]
     pats: List[PatRule]
@@ -134,7 +134,7 @@ fn split_words(text: String) List[String]:
         out.append(cur)
     return out
 
-# Joins words with single spaces, dropping empty items.
+// Joins words with single spaces, dropping empty items.
 fn join_words(ws: List[String]) String:
     var kept: List[String] = []
     for w in ws:
@@ -178,7 +178,7 @@ fn strip_quotes(w: String) String:
             out += c
     return out
 
-# Removes a comment; `\#` stands for a literal `#`.
+// Removes a comment; `\#` stands for a literal `#`.
 fn strip_comment(text: String) String:
     let cs = text.chars()
     let n = cs.length()
@@ -201,7 +201,7 @@ fn strip_comment(text: String) String:
 
     return out
 
-# Index of the first ':' outside references and before any ';', or -1.
+// Index of the first ':' outside references and before any ';', or -1.
 fn top_colon(cs: List[String]) Int:
     let n = cs.length()
     var depth = 0
@@ -278,11 +278,11 @@ fn auto_value(sc: Scope, name: String) String:
 
     return sc.stem
 
-# Index of the first '%' in a pattern, or -1.
+// Index of the first '%' in a pattern, or -1.
 fn pct_index(cs: List[String]) Int:
     return index_of(cs, "%")
 
-# The stem if `word` matches `pattern` (exact match when there is no '%').
+// The stem if `word` matches `pattern` (exact match when there is no '%').
 fn match_stem(pattern: String, word: String) Optional[String]:
     let pc = pattern.chars()
     let k = pct_index(pc)
@@ -393,7 +393,7 @@ fn glob_match(p: List[String], pi: Int, s: List[String], si: Int) Bool:
 
     return glob_match(p, pi + 1, s, si + 1)
 
-# Splits function arguments at commas outside brackets; each is trimmed.
+// Splits function arguments at commas outside brackets; each is trimmed.
 fn split_args(body: String) List[String]:
     var out: List[String] = []
     var cur = ""
@@ -420,7 +420,7 @@ fn raw_at(raw: List[String], i: Int) String:
 
     return ""
 
-# Expands argument `i` (missing arguments are empty).
+// Expands argument `i` (missing arguments are empty).
 fn arg(var st: St, sc: Scope, stack: List[String], raw: List[String], i: Int) Result[
     String, Fatal
 ]:
@@ -467,7 +467,7 @@ fn lookup(var st: St, sc: Scope, stack: List[String], name: String) Result[
 
     return ok("")
 
-# Index of the closing bracket matching an opener at `start - 1`, or -1.
+// Index of the closing bracket matching an opener at `start - 1`, or -1.
 fn match_close(cs: List[String], start: Int, open: String, close: String) Int:
     var depth = 1
     var k = start
@@ -653,7 +653,7 @@ fn call_func(var st: St, sc: Scope, stack: List[String], name: String, body: Str
         st.out.append(t)
         return ok("")
 
-    # error
+    // error
     let msg = try arg(var st, sc.clone(), stack, raw, 0)
     return error(fatal(sc.line, msg))
 
@@ -663,7 +663,7 @@ fn if_min(a: Int, b: Int) Int:
 
     return b
 
-# Resolves `inner` (the text between a reference's brackets).
+// Resolves `inner` (the text between a reference's brackets).
 fn reference(var st: St, sc: Scope, stack: List[String], inner: String) Result[
     String, Fatal
 ]:
@@ -722,7 +722,7 @@ fn index_of_space(cs: List[String]) Int:
 
     return -1
 
-# Index of a top-level ':' that has a later '=' (a substitution reference), or -1.
+// Index of a top-level ':' that has a later '=' (a substitution reference), or -1.
 fn subst_colon(cs: List[String]) Int:
     var depth = 0
     var k = 0
@@ -744,7 +744,7 @@ fn subst_colon(cs: List[String]) Int:
 
     return -1
 
-# Expands text: `$$`, `$(...)`, `${...}` and `$X` references.
+// Expands text: `$$`, `$(...)`, `${...}` and `$X` references.
 fn expand(var st: St, sc: Scope, stack: List[String], text: String) Result[
     String, Fatal
 ]:
@@ -791,7 +791,7 @@ fn expand(var st: St, sc: Scope, stack: List[String], text: String) Result[
 
     return ok(out)
 
-# ---------------------------------------------------------------- parsing
+// ---------------------------------------------------------------- parsing
 fn is_active(frames: List[Frame]) Bool:
     if frames.length() == 0:
         return true
@@ -809,7 +809,7 @@ fn is_defined(st: St, name: String) Bool:
 fn empty_rule() Rule:
     return Rule(targets: [], normal: [], order: [], recipe: [], line: 0)
 
-# Splits "(A,B)" into its two raw sides, or none if the syntax is wrong.
+// Splits "(A,B)" into its two raw sides, or none if the syntax is wrong.
 fn cond_args(rest: String) Optional[Pair]:
     let cs = rest.trim().chars()
     let n = cs.length()
@@ -911,7 +911,7 @@ fn directive(var st: St, var mk: Mk, num: Int, text: String, word: String) Resul
 
         return ok(unit)
 
-    # endif
+    // endif
     if mk.frames.length() == 0:
         return error(fatal(num, "extraneous 'endif'"))
 
@@ -1023,7 +1023,7 @@ fn statement(var st: St, var mk: Mk, num: Int, text: String) Result[Unit, Fatal]
 
     return error(fatal(num, "missing separator"))
 
-# Closes the open rule: stores its prerequisites and recipe.
+// Closes the open rule: stores its prerequisites and recipe.
 fn close_rule(var st: St, var mk: Mk) Result[Unit, Fatal]:
     if not mk.is_open:
         return ok(unit)
@@ -1134,14 +1134,14 @@ fn parse(var st: St, lines: List[String]) Result[Mk, Fatal]:
 
     return ok(mk)
 
-# ---------------------------------------------------------------- building
+// ---------------------------------------------------------------- building
 fn default_goal(mk: Mk) String:
     for k in mk.rules.keys():
         if not k.starts_with("."):
             return k
     return ""
 
-# Expanded-rule resolution (explicit recipe, then pattern rule, then explicit without recipe).
+// Expanded-rule resolution (explicit recipe, then pattern rule, then explicit without recipe).
 fn can_make(st: St, mk: Mk, name: String, depth: Int) Bool:
     if st.files.contains(name) or mk.rules.contains(name) or mk.phony.contains(name):
         return true
@@ -1159,7 +1159,7 @@ fn prereqs_ok(st: St, mk: Mk, p: PatRule, stem: String, depth: Int) Bool:
             return false
     return true
 
-# Index of the first pattern rule with a recipe that applies to `name`, or -1.
+// Index of the first pattern rule with a recipe that applies to `name`, or -1.
 fn find_pattern(st: St, mk: Mk, name: String, depth: Int) Int:
     var i = 0
 
@@ -1262,7 +1262,7 @@ fn simulate(var st: St, cmd: String) Int:
 fn is_phony(mk: Mk, name: String) Bool:
     return mk.phony.contains(name)
 
-# Runs (or, in a dry run, prints) the recipe of a rule for `name`.
+// Runs (or, in a dry run, prints) the recipe of a rule for `name`.
 fn run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[String]) Result[
     Unit, Fatal
 ]:
@@ -1330,14 +1330,14 @@ fn run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[Str
 
     return ok(unit)
 
-# Brings `name` up to date, discarding whether it changed.
+// Brings `name` up to date, discarding whether it changed.
 fn visit(var st: St, var mk: Mk, name: String, needed: String) Result[Unit, Fatal]:
     return update(var st, var mk, name, needed).map(fn(changed: Bool) Unit: return unit)
 
 fn parse_only(var st: St, lines: List[String]) Result[Unit, Fatal]:
     return parse(var st, lines).map(fn(mk: Mk) Unit: return unit)
 
-# Brings `name` up to date; returns whether it changed.
+// Brings `name` up to date; returns whether it changed.
 fn update(var st: St, var mk: Mk, name: String, needed: String) Result[Bool, Fatal]:
     if let m = mk.memo.get(name):
         return ok(m)
@@ -1488,7 +1488,7 @@ fn expand_req(var st: St, lines: List[String], text: String) Result[Unit, Fatal]
     st.out.append("[{v}]")
     return ok(unit)
 
-# Sets the command-line variables and returns the remaining (target) arguments.
+// Sets the command-line variables and returns the remaining (target) arguments.
 fn set_vars(var st: St, args: List[String]) List[String]:
     st.vars = Map[String, Var]()
 

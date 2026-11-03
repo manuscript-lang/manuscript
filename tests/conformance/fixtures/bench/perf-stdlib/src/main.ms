@@ -13,8 +13,8 @@ import bench_numbers from "./numbers.ms"
 import bench_host from "./hostbench.ms"
 import bench_fs from "./fsbench.ms"
 
-# Standard-library micro-benchmarks. Each case prints `name<TAB>ops<TAB>ns_per_op`.
-# Run with bench/tools/stdlib_bench.ms. Add a case with one `bench(...)` call in the matching module file.
+// Standard-library micro-benchmarks. Each case prints `name<TAB>ops<TAB>ns_per_op`.
+// Run with bench/tools/stdlib_bench.ms. Add a case with one `bench(...)` call in the matching module file.
 export fn main() Int:
     bench_string()
     bench_list()

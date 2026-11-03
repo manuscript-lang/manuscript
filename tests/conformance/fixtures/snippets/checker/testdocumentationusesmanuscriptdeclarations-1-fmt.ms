@@ -1,6 +1,6 @@
-# conform: tags=formatter,interfaces,optional,parser,strings,tier-core,try-result
-# conform: phase=parse
-# conform: origin=pkg/checker/documentation_test.go:87 TestDocumentationUsesManuscriptDeclarations
+// conform: tags=formatter,interfaces,optional,parser,strings,tier-core,try-result
+// conform: phase=parse
+// conform: origin=pkg/checker/documentation_test.go:87 TestDocumentationUsesManuscriptDeclarations
 interface DatagramSocket:
     fn address() String
     fn close() Unit

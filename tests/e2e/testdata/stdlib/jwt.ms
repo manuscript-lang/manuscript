@@ -88,7 +88,7 @@ test "verify rejects a wrong key, a tampered body and a different algorithm":
 test "verify rejects the none algorithm and malformed tokens":
     let secret = "secret".to_bytes()
 
-    # {"alg":"none"} . {"sub":"42","exp":1900000000,"iss":"me"} . (empty signature)
+    // {"alg":"none"} . {"sub":"42","exp":1900000000,"iss":"me"} . (empty signature)
     let unsigned = "eyJhbGciOiJub25lIn0.eyJzdWIiOiI0MiIsImV4cCI6MTkwMDAwMDAwMCwiaXNzIjoibWUifQ."
     (try failure(verify_token[Session](unsigned, secret))) | try expect_equal(
         Error("jwt: wrong algorithm", kind: ErrorCategory.InvalidData)

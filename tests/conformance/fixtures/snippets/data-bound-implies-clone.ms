@@ -1,6 +1,6 @@
-# conform: tags=generics,tier-io
-# conform: phase=check
-# conform: origin=thread/type-checker-bug-bash
+// conform: tags=generics,tier-io
+// conform: phase=check
+// conform: origin=thread/type-checker-bug-bash
 import Data from "@std/core.ms"
 
 fn a[T: Hashable](x: T) T: x.clone()

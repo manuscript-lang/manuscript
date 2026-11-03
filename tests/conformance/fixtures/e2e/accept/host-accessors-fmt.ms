@@ -1,6 +1,6 @@
-# conform: tags=formatter,match,modules,parser,stdlib-io,stdlib-net,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,testing,tier-io,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/host-accessors.ms
+// conform: tags=formatter,match,modules,parser,stdlib-io,stdlib-net,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,testing,tier-io,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/host-accessors.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 import arguments, environment from "@std/os/process.ms"
 import stdin, stdout, stderr from "@std/io/io.ms"

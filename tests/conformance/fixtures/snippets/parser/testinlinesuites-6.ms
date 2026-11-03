@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/parser/parser_test.go:203 TestInlineSuites
+// conform: tags=closures,diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/parser/parser_test.go:203 TestInlineSuites
 fn f() Unit:
     let g = fn(x: Int) Int: return x
     use(fn(x: Int) Int: return x, other: 1)

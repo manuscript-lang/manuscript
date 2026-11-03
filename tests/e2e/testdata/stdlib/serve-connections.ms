@@ -16,7 +16,7 @@ fn answer(id: Int) fn(HttpExchange) Unit!:
         )
     return buffered(handler)
 
-# A serving worker: adopts the socket handles its starter sends until the channel ends.
+// A serving worker: adopts the socket handles its starter sends until the channel ends.
 fn serves_handed() Unit:
     var ch = worker_channel[Int, Int]()
     let id = ch.receive().get(none).get(0)
@@ -43,7 +43,7 @@ test "an acceptor deals connections round robin to serving workers":
         try expect_ok(worker.channel.send(i))
         workers.append(worker)
 
-    # Clients connect and send their request first; the backlog holds them until accepted.
+    // Clients connect and send their request first; the backlog holds them until accepted.
     var clients: List[Connection] = []
 
     for i in 0..6:

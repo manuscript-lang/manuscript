@@ -1,6 +1,6 @@
-# conform: tags=closures,faults,formatter,generics,interfaces,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/defaults_test.go:67 TestDefaultCapturesShareFreely
+// conform: tags=closures,faults,formatter,generics,interfaces,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/defaults_test.go:67 TestDefaultCapturesShareFreely
 fn run[T](operation: fn() T) T:
     return operation()
 

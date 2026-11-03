@@ -4,7 +4,7 @@ let LOWER = "abcdefghijklmnopqrstuvwxyz"
 let UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 let DIGITS = "0123456789"
 
-# Index of an ASCII letter in the alphabet (case-insensitive), or -1.
+// Index of an ASCII letter in the alphabet (case-insensitive), or -1.
 fn letter_index(c: String) Int:
     if let i = LOWER.index_of(c):
         return i
@@ -13,7 +13,7 @@ fn letter_index(c: String) Int:
 
     return -1
 
-# Moves a letter forward by `by` positions (0 to 25); other characters are copied.
+// Moves a letter forward by `by` positions (0 to 25); other characters are copied.
 fn rotate(c: String, by: Int) String:
     if let i = LOWER.index_of(c):
         return LOWER.get((i + by) % 26)
@@ -25,7 +25,7 @@ fn rotate(c: String, by: Int) String:
 fn mod26(n: Int) Int:
     return ((n % 26) + 26) % 26
 
-# Parses an optional leading `-` and 1 to 7 decimal digits.
+// Parses an optional leading `-` and 1 to 7 decimal digits.
 fn caesar_key(key: String) Optional[Int]:
     let neg = key.starts_with("-")
 
@@ -50,7 +50,7 @@ fn is_blank(line: String) Bool:
             return false
     return true
 
-# Returns the output line for one non-blank command line.
+// Returns the output line for one non-blank command line.
 fn run(line: String) String:
     let parts = line.split(" ")
     if parts.length() < 4:

@@ -14,20 +14,20 @@
           "file": "testclosedlocalintmapisolatesgenericinstances-1.ms",
           "line": 6,
           "column": 16,
-          "offset": 289
+          "offset": 292
         },
         "fix": {
           "position": {
             "file": "testclosedlocalintmapisolatesgenericinstances-1.ms",
             "line": 6,
             "column": 19,
-            "offset": 292
+            "offset": 295
           },
           "end": {
             "file": "testclosedlocalintmapisolatesgenericinstances-1.ms",
             "line": 6,
             "column": 19,
-            "offset": 292
+            "offset": 295
           },
           "replacement": ".clone()"
         }

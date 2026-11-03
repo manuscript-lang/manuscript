@@ -16,25 +16,25 @@ import (
     msrt_cells_drop
 ) from "@std/internal/promises.ms"
 
-# A new stream: next may wait.
+// A new stream: next may wait.
 export interface Source[T]:
     var fn next() T?!
     # Releases what the source owns; the stream calls it once, when it closes.
     var fn close() Unit!
 
-# A stream of values over time. It owns its source, parked in a runtime cell so that a pending read carries only the
-# cell's id; dropping the stream drops the source and whatever it owns.
+// A stream of values over time. It owns its source, parked in a runtime cell so that a pending read carries only the
+// cell's id; dropping the stream drops the source and whatever it owns.
 export opaque type ReadStream[T]:
     cell: Int
 
-# Runs one `next` of `source`, which the caller took out of its cell, and puts it back.
+// Runs one `next` of `source`, which the caller took out of its cell, and puts it back.
 fn run[T](id: Int, cell: Int, source: Source[T]) Unit:
     var running = source
     let result = running.next()
     msrt_cells_put[Source[T]](cell, running)
     complete[T?](id, result)
 
-# Runs the read `id` in the task that waits and completes it with the source's answer.
+// Runs the read `id` in the task that waits and completes it with the source's answer.
 fn step[T](id: Int, cell: Int) Unit:
     match msrt_cells_take[Source[T]](cell):
         source:
@@ -87,12 +87,12 @@ impl Source[Bytes] for DescriptorSource:
 export fn stdin() ReadStream[Bytes]:
     return stream[Bytes](DescriptorSource(msrt_streams_open(0, 1)))
 
-# A changed stream: never waits; appends zero or more items per input, and what it held back at the end.
+// A changed stream: never waits; appends zero or more items per input, and what it held back at the end.
 export interface Transform[A, B]:
     var fn feed(value: A) List[B]!
     var fn finish() List[B]!
 
-# Items a transform produced and the reader has not taken yet, newest first so `pop` moves the next one out.
+// Items a transform produced and the reader has not taken yet, newest first so `pop` moves the next one out.
 type Through[A, B]:
     input: ReadStream[A]
     transform: Transform[A, B]
@@ -123,7 +123,7 @@ impl Source[B] for Through[A, B]:
 export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadStream[B]:
     return stream[B](Through[A, B](input, transform, [], false))
 
-# Lines of bytes, without their `\n` or `\r\n`, cut only at line ends; the unterminated last line comes at the end.
+// Lines of bytes, without their `\n` or `\r\n`, cut only at line ends; the unterminated last line comes at the end.
 type LineSplitter:
     tail: Bytes
 

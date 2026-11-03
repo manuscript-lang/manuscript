@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,diagnostics,interfaces,testing,tier-core
-# conform: phase=check
-# conform: origin=pkg/checker/test_fixture_test.go:23 TestFileFixtureContracts
+// conform: tags=closures,control-flow,diagnostics,interfaces,testing,tier-core
+// conform: phase=check
+// conform: origin=pkg/checker/test_fixture_test.go:23 TestFileFixtureContracts
 impl TestHooks for State:
     fn before_each() Unit:
         self.value = self.value + 1

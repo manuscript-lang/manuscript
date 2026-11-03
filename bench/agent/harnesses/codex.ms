@@ -1,7 +1,7 @@
 import JsonValue from "@std/data/json.ms"
 import Harness, Usage, events, int_at from "./harness.ms"
 
-# UNTESTED: written from the documented `codex exec --json` event stream.
+// UNTESTED: written from the documented `codex exec --json` event stream.
 export type Codex:
     placeholder: Bool = true
 
@@ -16,7 +16,7 @@ impl Harness for Codex:
         if let m = model: cmd = cmd.concat(["-m", m.clone()])
         return cmd.concat([prompt.clone()])
 
-    # Codex reports no cost; the runner estimates it from pricing.json.
+    // Codex reports no cost; the runner estimates it from pricing.json.
     fn parse(transcript: String) Usage:
         var u = Usage()
 

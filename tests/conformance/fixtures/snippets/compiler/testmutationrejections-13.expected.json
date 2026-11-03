@@ -14,7 +14,7 @@
           "file": "testmutationrejections-13.ms",
           "line": 5,
           "column": 5,
-          "offset": 161
+          "offset": 164
         },
         "fix": {
           "position": {

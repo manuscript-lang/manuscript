@@ -1,11 +1,11 @@
-# In-memory SQL engine. Reads a script on stdin, runs each statement in order against one
-# database, and prints each statement's result, or `error: MESSAGE`, on stdout.
+// In-memory SQL engine. Reads a script on stdin, runs each statement in order against one
+// database, and prints each statement's result, or `error: MESSAGE`, on stdout.
 
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 import from_scalars from "@std/string.ms"
 
-# ---------------------------------------------------------------- constants
+// ---------------------------------------------------------------- constants
 
 let MAX_INT = 9223372036854775807
 let T_IDENT = 0
@@ -46,7 +46,7 @@ let TWO_SYMBOLS = ["<>", "<=", ">=", "||"]
 let COMPARE_OPS = ["=", "<>", "<", "<=", ">", ">="]
 let AGGREGATES = ["COUNT", "SUM", "MIN", "MAX"]
 
-# ---------------------------------------------------------------- errors and values
+// ---------------------------------------------------------------- errors and values
 
 type SqlError:
     msg: String = ""
@@ -79,7 +79,7 @@ fn null_row(width: Int) List[Value]:
         row.append(null_value())
     return row
 
-# Text form of a value, as printed in SELECT output.
+// Text form of a value, as printed in SELECT output.
 fn show(v: Value) String:
     if v.kind == V_NULL:
         return "NULL"
@@ -94,7 +94,7 @@ fn show(v: Value) String:
 
     return v.text.clone()
 
-# Equality used by DISTINCT, GROUP BY and primary keys: NULL equals NULL.
+// Equality used by DISTINCT, GROUP BY and primary keys: NULL equals NULL.
 fn same_value(a: Value, b: Value) Bool:
     if a.kind != b.kind:
         return false
@@ -126,7 +126,7 @@ fn order_rank(v: Value) Int:
 
     return 3
 
-# Total order for ORDER BY: NULL < BOOL < INT < TEXT.
+// Total order for ORDER BY: NULL < BOOL < INT < TEXT.
 fn order_cmp(a: Value, b: Value) Int:
     let ra = order_rank(a)
     let rb = order_rank(b)
@@ -166,7 +166,7 @@ fn compare_keys(a: List[Value], b: List[Value], descs: List[Bool]) Int:
 
     return 0
 
-# ---------------------------------------------------------------- lexer
+// ---------------------------------------------------------------- lexer
 
 fn is_alpha(c: Int) Bool:
     return (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
@@ -185,8 +185,8 @@ type Token:
     text: String = ""
     num: Int = 0
 
-# Splits the whole script into tokens. `;` becomes a symbol token. Bad characters, bad literals
-# and unterminated strings become error tokens, which make only their own statement a syntax error.
+// Splits the whole script into tokens. `;` becomes a symbol token. Bad characters, bad literals
+// and unterminated strings become error tokens, which make only their own statement a syntax error.
 fn lex(text: String) List[Token]:
     let data = text.to_bytes()
     let n = data.length()
@@ -292,7 +292,7 @@ fn lex(text: String) List[Token]:
 
     return toks
 
-# Splits tokens at `;`. Each statement gets a trailing EOF token; statements with no tokens are dropped.
+// Splits tokens at `;`. Each statement gets a trailing EOF token; statements with no tokens are dropped.
 fn split_statements(toks: List[Token]) List[List[Token]]:
     var stmts: List[List[Token]] = []
     var cur: List[Token] = []
@@ -312,7 +312,7 @@ fn split_statements(toks: List[Token]) List[List[Token]]:
 
     return stmts
 
-# ---------------------------------------------------------------- AST
+// ---------------------------------------------------------------- AST
 
 type Expr:
     kind: Int = 0
@@ -388,7 +388,7 @@ type DeleteStmt:
     has_where: Bool = false
     where_expr: Expr = Expr()
 
-# ---------------------------------------------------------------- parser
+// ---------------------------------------------------------------- parser
 
 type Parser:
     toks: List[Token] = []
@@ -402,7 +402,7 @@ fn at_sym(p: Parser, sym: String) Bool:
     let t = p.toks[p.pos]
     return t.kind == T_SYMBOL and t.text == sym
 
-# NOT followed by LIKE, IN or BETWEEN.
+// NOT followed by LIKE, IN or BETWEEN.
 fn at_negated_predicate(p: Parser) Bool:
     if not at_kw(p, "NOT"):
         return false
@@ -485,7 +485,7 @@ fn parse_not(var p: Parser) Result[Expr, SqlError]:
 
     return parse_cmp(var p)
 
-# At most one comparison per cmp: a second one is left unparsed and fails at the statement end.
+// At most one comparison per cmp: a second one is left unparsed and fails at the statement end.
 fn parse_cmp(var p: Parser) Result[Expr, SqlError]:
     let left = try parse_add(var p)
     let t = p.toks[p.pos].clone()
@@ -596,7 +596,7 @@ fn parse_primary(var p: Parser) Result[Expr, SqlError]:
 
     return error(SqlError(msg: "syntax error"))
 
-# Called with the function name consumed and the next token being `(`.
+// Called with the function name consumed and the next token being `(`.
 fn parse_call(var p: Parser, name: String) Result[Expr, SqlError]:
     p.pos += 1
 
@@ -883,14 +883,14 @@ fn parse_drop(var p: Parser) Result[String, SqlError]:
     try expect_kw(var p, "TABLE")
     return expect_ident(var p)
 
-# The statement must end after its last clause.
+// The statement must end after its last clause.
 fn finish(p: Parser) Result[Unit, SqlError]:
     if p.toks[p.pos].kind != T_EOF:
         return error(SqlError(msg: "syntax error"))
 
     return ok(unit)
 
-# ---------------------------------------------------------------- tables and scopes
+// ---------------------------------------------------------------- tables and scopes
 
 type ScopeCol:
     table: String = ""
@@ -979,7 +979,7 @@ fn has_aggregate(e: Expr) Bool:
             return true
     return false
 
-# ---------------------------------------------------------------- name resolution
+// ---------------------------------------------------------------- name resolution
 
 fn scalar_arity(name: String) Int:
     if name == "UPPER" or name == "LOWER" or name == "LENGTH" or name == "ABS":
@@ -991,8 +991,8 @@ fn scalar_arity(name: String) Int:
 
     return -1
 
-# Name resolution for one expression, in the order the spec gives: unknown columns, unknown
-# functions, wrong argument counts, aggregate placement and GROUP BY membership.
+// Name resolution for one expression, in the order the spec gives: unknown columns, unknown
+// functions, wrong argument counts, aggregate placement and GROUP BY membership.
 fn check(e: Expr, ctx: Ctx, allow_agg: Bool, in_agg: Bool) Result[Unit, SqlError]:
     if e.kind == E_COL:
         let idx = try lookup(ctx.scope, e.table, e.op)
@@ -1045,7 +1045,7 @@ fn check_call(e: Expr, ctx: Ctx, allow_agg: Bool, in_agg: Bool) Result[Unit, Sql
         try check(a, ctx, allow_agg, in_agg)
     return ok(unit)
 
-# ---------------------------------------------------------------- expression evaluation
+// ---------------------------------------------------------------- expression evaluation
 
 fn type_error() SqlError:
     return SqlError(msg: "type error")
@@ -1058,7 +1058,7 @@ fn truth(v: Value) Result[Bool, SqlError]:
 
     return error(type_error())
 
-# NOT for values already known to be boolean or NULL.
+// NOT for values already known to be boolean or NULL.
 fn not3(v: Value) Value:
     if v.kind == V_BOOL:
         return bool_value(not v.flag)
@@ -1145,7 +1145,7 @@ fn byte_codes(s: String) List[Int]:
         out.append(b.to_int())
     return out
 
-# Whole-string LIKE: `%` matches any run of bytes, `_` exactly one byte.
+// Whole-string LIKE: `%` matches any run of bytes, `_` exactly one byte.
 fn like_match(t: List[Int], p: List[Int]) Bool:
     var i = 0
     var j = 0
@@ -1277,7 +1277,7 @@ fn eval_in(
         result = not3(result)
     return ok(result)
 
-# Scalar functions: every argument is evaluated, a NULL argument gives NULL, then types are checked.
+// Scalar functions: every argument is evaluated, a NULL argument gives NULL, then types are checked.
 fn scalar_call(name: String, vals: List[Value]) Result[Value, SqlError]:
     if name == "COALESCE":
         for v in vals:
@@ -1314,7 +1314,7 @@ fn scalar_call(name: String, vals: List[Value]) Result[Value, SqlError]:
 
     return ok(text_value(substring(vals[0].text, vals[1].num, vals[2].num)))
 
-# ASCII-only case mapping.
+// ASCII-only case mapping.
 fn change_case(s: String, to_upper: Bool) String:
     var out: List[Int] = []
 
@@ -1330,7 +1330,7 @@ fn change_case(s: String, to_upper: Bool) String:
 
     return from_scalars(out).get()
 
-# SUBSTR on bytes, 1-based; the result is the bytes at start .. start+len-1 clipped to the string.
+// SUBSTR on bytes, 1-based; the result is the bytes at start .. start+len-1 clipped to the string.
 fn substring(s: String, start: Int, len: Int) String:
     if len <= 0:
         return ""
@@ -1497,7 +1497,7 @@ fn eval(
         result = not3(result)
     return ok(result)
 
-# ---------------------------------------------------------------- constraints
+// ---------------------------------------------------------------- constraints
 
 fn check_row(cols: List[ColDef], row: List[Value]) Result[Unit, SqlError]:
     for c in 0..cols.length():
@@ -1517,7 +1517,7 @@ fn check_row(cols: List[ColDef], row: List[Value]) Result[Unit, SqlError]:
 
     return ok(unit)
 
-# Primary keys must be unique across `existing` and `fresh`.
+// Primary keys must be unique across `existing` and `fresh`.
 fn check_unique(
     existing: List[List[Value]],
     fresh: List[List[Value]],
@@ -1538,7 +1538,7 @@ fn check_unique(
 
     return ok(unit)
 
-# ---------------------------------------------------------------- SELECT
+// ---------------------------------------------------------------- SELECT
 
 fn output_name(it: Item) String:
     if it.has_alias:
@@ -1555,7 +1555,7 @@ fn output_index(outs: List[OutCol], name: String) Int:
     return -1
 
 fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
-    # Sources: FROM first, then each JOIN. Existence and alias checks come first.
+    // Sources: FROM first, then each JOIN. Existence and alias checks come first.
     var sources: List[TableRef] = []
 
     if sel.has_from:
@@ -1578,11 +1578,11 @@ fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
         append_scope(var scope, tr.alias, db[ti].cols)
         prefixes.append(Ctx(scope: scope.clone()))
 
-    # JOIN conditions.
+    // JOIN conditions.
     for j in 0..sel.joins.length():
         try check(sel.joins[j].on, prefixes[j + 1], false, false)
 
-    # Select list, with stars expanded into column references.
+    // Select list, with stars expanded into column references.
     var outs: List[OutCol] = []
 
     for it in sel.items:
@@ -1616,7 +1616,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
         else:
             outs.append(OutCol(expr: it.expr.clone(), name: output_name(it)))
 
-    # GROUP BY columns.
+    // GROUP BY columns.
     var keys: List[Int] = []
     for g in sel.group:
         keys.append(try lookup(scope, g.table, g.op))
@@ -1640,7 +1640,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
     if sel.has_having:
         try check(sel.having_expr, ctx, true, false)
 
-    # ORDER BY: an output position, an output column name, or an expression (-1).
+    // ORDER BY: an output position, an output column name, or an expression (-1).
     var order_col: List[Int] = []
     var descs: List[Bool] = []
 
@@ -1662,7 +1662,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
             try check(ob.expr, ctx, true, false)
             order_col.append(-1)
 
-    # Joins, in order.
+    // Joins, in order.
     var rows: List[List[Value]] = []
 
     if sel.has_from:
@@ -1701,7 +1701,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
 
         rows = next
 
-    # WHERE.
+    // WHERE.
     if sel.has_where:
         var kept: List[List[Value]] = []
 
@@ -1713,7 +1713,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
 
         rows = kept
 
-    # Units to project: one per row, or one per group (after HAVING).
+    // Units to project: one per row, or one per group (after HAVING).
     var reps: List[List[Value]] = []
     var mems: List[List[List[Value]]] = []
 
@@ -1757,7 +1757,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
             let no_members: List[List[Value]] = []
             mems.append(no_members)
 
-    # Select values.
+    // Select values.
     var outvals: List[List[Value]] = []
 
     for u in 0..reps.length():
@@ -1766,7 +1766,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
             vals.append(try eval(o.expr, ctx, reps[u], mems[u]))
         outvals.append(vals)
 
-    # ORDER BY keys.
+    // ORDER BY keys.
     var sortkeys: List[List[Value]] = []
 
     for u in 0..reps.length():
@@ -1780,7 +1780,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
 
         sortkeys.append(ks)
 
-    # DISTINCT keeps the first of each duplicate output row.
+    // DISTINCT keeps the first of each duplicate output row.
     var idx: List[Int] = []
 
     for u in 0..reps.length():
@@ -1802,7 +1802,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
             )
         )
 
-    # OFFSET and LIMIT.
+    // OFFSET and LIMIT.
     var start = 0
     if sel.has_limit:
         start = sel.offset
@@ -1829,7 +1829,7 @@ fn run_select(db: List[Table], sel: Select) Result[String, SqlError]:
     lines.append("({count} rows)")
     return ok(lines.join("\n"))
 
-# ---------------------------------------------------------------- other statements
+// ---------------------------------------------------------------- other statements
 
 fn exec_create(var db: List[Table], st: CreateStmt) Result[String, SqlError]:
     if table_index(db, st.name).is_some():
@@ -1976,7 +1976,7 @@ fn exec_delete(var db: List[Table], st: DeleteStmt) Result[String, SqlError]:
     db[ti].rows = kept
     return ok("deleted {count}")
 
-# Runs one statement. Parsing (including the whole syntax check) happens before anything executes.
+// Runs one statement. Parsing (including the whole syntax check) happens before anything executes.
 fn execute(var db: List[Table], toks: List[Token]) Result[String, SqlError]:
     var p = Parser(toks: toks.clone(), pos: 0)
 

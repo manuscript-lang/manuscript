@@ -12,13 +12,13 @@
           "file": "testcoreparityrejectsinvalidcontracts-4-fmt.ms",
           "line": 4,
           "column": 7,
-          "offset": 220
+          "offset": 223
         },
         "end": {
           "file": "testcoreparityrejectsinvalidcontracts-4-fmt.ms",
           "line": 4,
           "column": 8,
-          "offset": 221
+          "offset": 224
         }
       }
     ],

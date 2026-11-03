@@ -239,13 +239,13 @@ fn fix_removes_only_a_trailing_semicolon() {
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
         dir.join("a.ms"),
-        "export fn main() Int:\n    let a = 1;  # note\n    return a\n",
+        "export fn main() Int:\n    let a = 1;  // note\n    return a\n",
     )
     .unwrap();
     let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
     assert_eq!(status, Some(0), "{text}");
     let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
-    assert!(fixed.contains("let a = 1  # note\n"), "{fixed}");
+    assert!(fixed.contains("let a = 1  // note\n"), "{fixed}");
 
     // A mid-line semicolon has no fix: deleting it would fuse two statements.
     let source = "export fn main() Int:\n    let a = 1; let b = 2\n    return a\n";

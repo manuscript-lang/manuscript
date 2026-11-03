@@ -1,4 +1,4 @@
-# Unit tests for the runner's core. Run from the repository root: ms test bench/agent/core_test.ms
+// Unit tests for the runner's core. Run from the repository root: ms test bench/agent/core_test.ms
 import access, glob, GlobOptions from "@std/os/fs.ms"
 import JsonValue, parse from "@std/data/json.ms"
 import (
@@ -37,7 +37,7 @@ test "every challenge is complete":
         )
 
         if access("{ch.dir}/oracle", 0).is_ok():
-            # Large challenges: Go oracle only, no per-language references.
+            // Large challenges: Go oracle only, no per-language references.
             if glob("{ch.dir}/oracle", GlobOptions(patterns: ["*.ref"])).get(
                 []
             ).is_empty(): try fail("{ch.id}: empty oracle")

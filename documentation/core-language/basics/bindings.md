@@ -66,7 +66,7 @@ let {name, email: customer_email} = customer
 fn example() Unit:
     var remaining = 3
     remaining = 2
-    remaining = 2.0  # Rejected: Float cannot replace Int.
+    remaining = 2.0  // Rejected: Float cannot replace Int.
 ```
 
 `+=`, `-=`, `*=`, `/=`, and `%=` update a `var` or record field: `remaining -= 1` means `remaining = remaining - 1`. The right side is one operand (`total -= a - b` subtracts the difference), and `+=` also appends text. See the [statement grammar](grammar.md#statements-and-patterns).

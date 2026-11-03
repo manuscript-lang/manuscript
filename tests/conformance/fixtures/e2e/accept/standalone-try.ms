@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,interfaces,match,modules,records,stdlib-cleanup,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/standalone-try.ms
+// conform: tags=closures,control-flow,interfaces,match,modules,records,stdlib-cleanup,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/standalone-try.ms
 import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
 import read_file, temporary, write_file from "@std/os/fs.ms"
@@ -12,7 +12,7 @@ type State:
 type Failure:
     code: Int
 
-# Cleanup runs on a moved copy, so the marker file is the only way to observe it.
+// Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for State:
     var fn close() Unit!:
         let _written = write_file(self.marker, "closed", true)

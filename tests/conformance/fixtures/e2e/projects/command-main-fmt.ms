@@ -1,6 +1,6 @@
-# conform: tags=formatter,interpolation,match,modules,parser,stdlib-io,stdlib-process,stdlib-testing,tier-io,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/command/main.ms
+// conform: tags=formatter,interpolation,match,modules,parser,stdlib-io,stdlib-process,stdlib-testing,tier-io,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/command/main.ms
 import expect_equal from "@std/test/test.ms"
 import stderr from "@std/io/io.ms"
 import run from "@std/os/process.ms"

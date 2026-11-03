@@ -1,6 +1,6 @@
-# conform: tags=scope-cleanup,control-flow,records,tier-io
-# conform: phase=run
-# conform: origin=close-gap-probes
+// conform: tags=scope-cleanup,control-flow,records,tier-io
+// conform: phase=run
+// conform: origin=close-gap-probes
 import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 

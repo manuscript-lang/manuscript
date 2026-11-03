@@ -1,6 +1,6 @@
-# conform: tags=formatter,modules,parser,stdlib-testing,stdlib-url,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/library-url.ms
+// conform: tags=formatter,modules,parser,stdlib-testing,stdlib-url,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/library-url.ms
 import expect_equal from "@std/test/test.ms"
 import parse from "@std/net/net.ms"
 import format from "@std/net/net.ms"

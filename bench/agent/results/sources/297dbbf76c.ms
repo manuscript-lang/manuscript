@@ -1,7 +1,7 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# Marks a two-space hard break inside paragraph text; always directly followed by "\n".
+// Marks a two-space hard break inside paragraph text; always directly followed by "\n".
 let HARD = "\u{2}"
 
 type Block:
@@ -65,7 +65,7 @@ export fn main() Int:
     stdout().write(out).get()
     return 0
 
-# ---------- helpers ----------
+// ---------- helpers ----------
 
 fn at(s: String, k: Int) String:
     return s.get(k, "")
@@ -127,7 +127,7 @@ fn code_html(lines: List[String], lang: String) String:
         html += esc(l) + "\n"
     return html + "</code></pre>\n"
 
-# ---------- block structure ----------
+// ---------- block structure ----------
 
 fn parse_blocks(lines: List[String]) Parsed:
     var blocks = List[Block]()
@@ -238,7 +238,7 @@ fn try_fence(lines: List[String], i: Int) Optional[Taken]:
 
     return none
 
-# Returns the ATX heading level, or 0 when the line is not an ATX heading.
+// Returns the ATX heading level, or 0 when the line is not an ATX heading.
 fn atx_level(line: String) Int:
     let ind = indent_of(line)
     if ind > 3:
@@ -296,7 +296,7 @@ fn try_quote(lines: List[String], i: Int) Optional[Taken]:
     html += "</blockquote>\n"
     return Taken(block: Block(html: html, inner: "", para: false), next: j)
 
-# Parses a list marker; none when the line is not a list marker line.
+// Parses a list marker; none when the line is not a list marker line.
 fn marker_of(line: String) Optional[Marker]:
     let ind = indent_of(line)
     if ind > 3 or is_hr(line):
@@ -609,7 +609,7 @@ fn try_para(lines: List[String], i: Int) Taken:
         next: end
     )
 
-# ---------- inline structure ----------
+// ---------- inline structure ----------
 
 fn inline_html(text: String) String:
     return render(resolve(scan(text)))
@@ -753,7 +753,7 @@ fn parse_tail(cs: List[String], start: Int) Optional[Tail]:
 
     return none
 
-# Turns an unresolved delimiter or bracket marker into literal text.
+// Turns an unresolved delimiter or bracket marker into literal text.
 fn literal(node: Node) Node:
     match node:
         Delim(run):
@@ -932,7 +932,7 @@ fn close_bracket(nodes: List[Node], m: Int, t: Tail, is_image: Bool) List[Node]:
 
     return out
 
-# Returns the index of the opener matching the closer at index i, or -1.
+// Returns the index of the opener matching the closer at index i, or -1.
 fn find_opener(nodes: List[Node], i: Int, closer: Run) Int:
     var j = i - 1
 

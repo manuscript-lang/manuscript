@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,stdlib-testing,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/field-defaults.ms
+// conform: tags=closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/field-defaults.ms
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
 type Counter:

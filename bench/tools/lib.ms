@@ -1,5 +1,5 @@
-# Shared helpers for the benchmark drivers under bench/. Run a driver from the repository root with
-# `ms run bench/tools/<name>.ms [-- arguments]`.
+// Shared helpers for the benchmark drivers under bench/. Run a driver from the repository root with
+// `ms run bench/tools/<name>.ms [-- arguments]`.
 import (
     Stdio,
     os_type,
@@ -25,16 +25,16 @@ import JsonValue, stringify from "@std/data/json.ms"
 import hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto.ms"
 
-# Prints `message` and a newline to standard error.
+// Prints `message` and a newline to standard error.
 export fn note(message: String) Unit:
     stderr().write("{message}\n").get()
 
-# Reports `message` on standard error and returns the status a driver passes back from `main`.
+// Reports `message` on standard error and returns the status a driver passes back from `main`.
 export fn fail(message: String) Int:
     note(message)
     return 1
 
-# `linux`, `macos` or `windows`.
+// `linux`, `macos` or `windows`.
 export fn host() String:
     let os = os_type()
     if os == "Darwin": return "macos"
@@ -42,27 +42,27 @@ export fn host() String:
 
     return "linux"
 
-# The value of environment variable `name`, or `fallback`.
+// The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
     let all = environment().get(Map[String, String]())
     if let value = all.get(name): return value.clone()
 
     return fallback.clone()
 
-# Nanoseconds since an arbitrary fixed origin on the monotonic clock.
+// Nanoseconds since an arbitrary fixed origin on the monotonic clock.
 export fn now_ns() Int:
     return monotonic_time()
 
-# Output of a finished program; `ok` is false when it could not start.
+// Output of a finished program; `ok` is false when it could not start.
 export type Ran:
     ok: Bool
     code: Int
     stdout: String
     stderr: String
-    # The child's peak resident set in bytes, 0 when it did not start or the host cannot say.
+    // The child's peak resident set in bytes, 0 when it did not start or the host cannot say.
     max_resident_bytes: Int = 0
 
-# Runs `program` without a shell, optionally in directory `cwd`, and captures both streams as text.
+// Runs `program` without a shell, optionally in directory `cwd`, and captures both streams as text.
 export fn capture(
     program: String,
     arguments: List[String],
@@ -77,14 +77,14 @@ export fn capture(
 
     return Ran(false, 125, "", "cannot start {program}\n")
 
-# Runs `program` and returns its stdout, or fails the driver by returning an empty string when it does not exit zero.
+// Runs `program` and returns its stdout, or fails the driver by returning an empty string when it does not exit zero.
 export fn output_of(program: String, arguments: List[String]) String:
     let ran = capture(program, arguments)
     if ran.ok and ran.code == 0: return ran.stdout.clone()
 
     return ""
 
-# Median of a nonempty list of numbers; the mean of the middle pair for an even count.
+// Median of a nonempty list of numbers; the mean of the middle pair for an even count.
 export fn median(values: List[Float]) Float:
     let sorted = values.sorted()
     let n = sorted.length()
@@ -92,7 +92,7 @@ export fn median(values: List[Float]) Float:
 
     return (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
 
-# Median absolute deviation.
+// Median absolute deviation.
 export fn mad(values: List[Float]) Float:
     let m = median(values)
     return median(values.map(fn v: if v > m: v - m else: m - v))
@@ -103,7 +103,7 @@ export fn minimum(values: List[Float]) Float:
 export fn maximum(values: List[Float]) Float:
     return values.fold(values[0], fn(a: Float, v: Float) Float: if v > a: v else: a)
 
-# Rotates `items` left by `by` positions.
+// Rotates `items` left by `by` positions.
 export fn rotate[T: Clonable](items: List[T], by: Int) List[T]:
     let n = items.length()
     var out = List[T](reserve: n)
@@ -111,26 +111,26 @@ export fn rotate[T: Clonable](items: List[T], by: Int) List[T]:
         out.append(items[(i + by) % n].clone())
     return out
 
-# The SHA-256 of the file at `path` as lowercase hex.
+// The SHA-256 of the file at `path` as lowercase hex.
 export fn file_sha256(path: String) String:
     return hex_encode(sha256(read_file(path).get()))
 
-# Reads a UTF-8 text file.
+// Reads a UTF-8 text file.
 export fn read_text(path: String) String:
     return read_file(path).get().decode_utf8().get("")
 
-# Fails with `text`.
+// Fails with `text`.
 export fn invalid[T](text: String) T!:
     return error(Error(text))
 
-# `text` unless it is longer than `width`; padded on the left to `width` columns.
+// `text` unless it is longer than `width`; padded on the left to `width` columns.
 export fn right(text: String, width: Int) String:
     return text.pad_start(width, " ")
 
 export fn left(text: String, width: Int) String:
     return text.pad_end(width, " ")
 
-# `value` with a comma between each group of three digits.
+// `value` with a comma between each group of three digits.
 export fn grouped(value: Int) String:
     let digits = "{if value < 0: -value else: value}"
     var out = ""
@@ -142,7 +142,7 @@ export fn grouped(value: Int) String:
 
     return if value < 0: "-" + out else: out
 
-# `value` to `digits` decimal places, with grouped thousands.
+// `value` to `digits` decimal places, with grouped thousands.
 export fn fixed(value: Float, digits: Int) String:
     let text = value.to_fixed(digits)
     let parts = text.split(".")
@@ -152,40 +152,40 @@ export fn fixed(value: Float, digits: Int) String:
 
     return "{head}.{parts[1]}"
 
-# Parses a positive repeat count.
+// Parses a positive repeat count.
 export fn repeats(text: String) Int!:
     if let n = text.parse_int():
         if n > 0: return ok(n)
     return invalid("repeats must be a positive integer")
 
-# The absolute form of `path`, relative to the working directory.
+// The absolute form of `path`, relative to the working directory.
 export fn absolute(path: String) String:
     if is_absolute(path): return path.clone()
 
     return join([working_directory().get("."), path])
 
-# Runs `program` in directory `dir`; the caller's working directory is untouched, so tasks may run children in different directories.
+// Runs `program` in directory `dir`; the caller's working directory is untouched, so tasks may run children in different directories.
 export fn run_in(dir: String, program: String, arguments: List[String]) Ran:
     return capture(program, arguments, cwd: dir)
 
-# Fails with the program's stderr unless `ran` exited zero.
+// Fails with the program's stderr unless `ran` exited zero.
 export fn must(what: String, ran: Ran) String!:
     if ran.ok and ran.code == 0: return ok(ran.stdout.clone())
 
     return invalid("{what} failed ({ran.code}): {ran.stderr}")
 
-# The `ms` binary: $MS, else target/release/ms, as an absolute path.
+// The `ms` binary: $MS, else target/release/ms, as an absolute path.
 export fn ms_binary() String:
     return absolute(env("MS", "target/release/ms"))
 
-# Builds the Manuscript project in `dir` to `out` (a file name inside `dir`'s parent is fine; pass an absolute path).
+// Builds the Manuscript project in `dir` to `out` (a file name inside `dir`'s parent is fine; pass an absolute path).
 export fn build_ms(dir: String, out: String) Unit!:
     let _stale = remove("{dir}/ms.lock")
     let ran = run_in(dir, ms_binary(), ["build", "ms.toml", "-o", out])
     let _ = try must("ms build {dir}", ran)
     return ok(unit)
 
-# Builds the Go module in `dir` as a static binary.
+// Builds the Go module in `dir` as a static binary.
 export fn build_go(dir: String, out: String) Unit!:
     set_environment("CGO_ENABLED", "0").get()
 
@@ -201,7 +201,7 @@ export fn build_go(dir: String, out: String) Unit!:
     let _ = try must("go build {dir}", ran)
     return ok(unit)
 
-# Compiles one Rust source at the usual release settings plus `flags`.
+// Compiles one Rust source at the usual release settings plus `flags`.
 export fn build_rust(source: String, out: String, flags: List[String]) Unit!:
     var args = ["--edition", "2021", "-C", "opt-level=3", "-C", "codegen-units=1"]
     args = args.concat(flags)
@@ -210,11 +210,11 @@ export fn build_rust(source: String, out: String, flags: List[String]) Unit!:
     let _ = try must("rustc {source}", capture(env("RUSTC", "rustc"), args))
     return ok(unit)
 
-# Runs `exe` with `input` on standard input and returns its standard output.
+// Runs `exe` with `input` on standard input and returns its standard output.
 export fn sample(exe: String, arguments: List[String], input: String = "") String!:
     return must(exe, capture(exe, arguments, input))
 
-# Prints the text of `result` to standard output and returns 0, or reports its error and returns 1.
+// Prints the text of `result` to standard output and returns 0, or reports its error and returns 1.
 export fn finish(result: String!) Int:
     if let text = result:
         stdout().write(text + "\n").get()
@@ -222,7 +222,7 @@ export fn finish(result: String!) Int:
 
     return fail(result.err().message.clone())
 
-# Parses `--name value` pairs. A name outside `known` or a missing value is an error; `required` names must be present.
+// Parses `--name value` pairs. A name outside `known` or a missing value is an error; `required` names must be present.
 export fn options(
     args: List[String],
     known: List[String],
@@ -247,7 +247,7 @@ export fn options(
         if not found.contains(name): return invalid("--{name} is required")
     return ok(found)
 
-# Every ordering of `items`, in lexicographic order of position.
+// Every ordering of `items`, in lexicographic order of position.
 export fn permutations[T: Clonable](items: List[T]) List[List[T]]:
     if items.length() <= 1: return [items.clone()]
 
@@ -265,45 +265,45 @@ export fn permutations[T: Clonable](items: List[T]) List[List[T]]:
 
     return out
 
-# Creates `path` and its parents; an existing directory is fine.
+// Creates `path` and its parents; an existing directory is fine.
 export fn ensure_directory(path: String) Unit:
     create_directory(path, recursive: true).get()
 
-# Writes `text` to `path`.
+// Writes `text` to `path`.
 export fn write_text(path: String, text: String) Unit:
     write_file(path, text, replace: true).get()
 
-# Whether `path` exists.
+// Whether `path` exists.
 export fn exists(path: String) Bool:
     return access(path, 0).is_ok()
 
-# Reports a usage error and returns status 2.
+// Reports a usage error and returns status 2.
 export fn usage(message: String) Int:
     note(message)
     return 2
 
-# `.exe` on Windows, else empty.
+// `.exe` on Windows, else empty.
 export fn exe() String:
     if host() == "windows": return ".exe"
 
     return ""
 
-# A short platform description such as `linux-amd64`.
+// A short platform description such as `linux-amd64`.
 export fn platform() String:
     let info = system_info()
     return "{info.os}-{info.architecture}"
 
-# All of standard input as text.
+// All of standard input as text.
 export fn read_stdin() String:
     return read_all(stdin(), none).get().decode_utf8().get("")
 
-# Runs `ms bench` for the bench/perf/stdlib suite and returns its JSON document.
+// Runs `ms bench` for the bench/perf/stdlib suite and returns its JSON document.
 export fn stdlib_bench(ms: String, samples: Int, filter: String) String!:
     var args = ["bench", "ms.toml", "--json", "--samples", "{samples}"]
     if filter != "": args = args.concat(["--filter", filter.clone()])
     return must("ms bench", run_in("bench/perf/stdlib", ms, args))
 
-# Workaround for #2167 (Map fields in stringify). JSON construction helpers; a record holding a Map is not Data, so reports are built as JsonValue objects.
+// Workaround for #2167 (Map fields in stringify). JSON construction helpers; a record holding a Map is not Data, so reports are built as JsonValue objects.
 export fn jstr(text: String) JsonValue:
     return JsonValue.StringValue(text)
 
@@ -322,11 +322,11 @@ export fn jobject(members: Map[String, JsonValue]) JsonValue:
 export fn jlist(items: List[JsonValue]) JsonValue:
     return JsonValue.ArrayValue(items)
 
-# `value` as indented JSON followed by a newline.
+// `value` as indented JSON followed by a newline.
 export fn dump(value: JsonValue) String:
     return stringify(value, none, 2).get("") + "\n"
 
-# Runs `program` in `dir` with the parent's streams and returns its exit status (125 when it cannot start).
+// Runs `program` in `dir` with the parent's streams and returns its exit status (125 when it cannot start).
 export fn run_inherit(dir: String, program: String, arguments: List[String]) Int:
     var code = 125
 
@@ -341,12 +341,12 @@ export fn run_inherit(dir: String, program: String, arguments: List[String]) Int
 
     return code
 
-# The result of `peak_run`: the child's peak resident set in KiB and its captured output.
+// The result of `peak_run`: the child's peak resident set in KiB and its captured output.
 export type RssRun:
     kib: Int
     ran: Ran
 
-# Runs `program arguments` and returns the child's peak resident set in KiB. The child's output is captured in `ran`.
+// Runs `program arguments` and returns the child's peak resident set in KiB. The child's output is captured in `ran`.
 export fn peak_run(program: String, arguments: List[String], input: String = "") RssRun!:
     let ran = capture(program, arguments, input)
     if not ran.ok or ran.code != 0: return invalid(

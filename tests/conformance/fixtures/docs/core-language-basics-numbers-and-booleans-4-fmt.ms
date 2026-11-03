@@ -1,6 +1,6 @@
-# conform: tags=decimal,formatter,interpolation,modules,parser,stdlib-decimal,stdlib-numbers,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=documentation/core-language/basics/numbers-and-booleans.md:114
+// conform: tags=decimal,formatter,interpolation,modules,parser,stdlib-decimal,stdlib-numbers,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=documentation/core-language/basics/numbers-and-booleans.md:114
 import Decimal from "@std/math/decimal.ms"
 import expect_equal from "@std/test/test.ms"
 

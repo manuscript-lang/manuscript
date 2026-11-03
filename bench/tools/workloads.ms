@@ -1,8 +1,8 @@
-# Realistic-program benchmark: builds the reference solutions of the small agent challenges (bench/agent/challenges/*/solutions)
-# in Manuscript, Go and Rust, feeds each ~3 MB of its largest hidden stdin (repeated), checks that all three print identical
-# output, and reports the minimum wall time in ms. Needs go and rustc on PATH. Unlike the kernels suite, these are ordinary
-# parsing/string/map programs.
-# Usage: ms run bench/tools/workloads.ms [-- repeats]; MS picks the compiler; BENCH_OUTPUT keeps the evidence directory.
+// Realistic-program benchmark: builds the reference solutions of the small agent challenges (bench/agent/challenges/*/solutions)
+// in Manuscript, Go and Rust, feeds each ~3 MB of its largest hidden stdin (repeated), checks that all three print identical
+// output, and reports the minimum wall time in ms. Needs go and rustc on PATH. Unlike the kernels suite, these are ordinary
+// parsing/string/map programs.
+// Usage: ms run bench/tools/workloads.ms [-- repeats]; MS picks the compiler; BENCH_OUTPUT keeps the evidence directory.
 import (
     absolute,
     capture,
@@ -119,7 +119,7 @@ fn run(work: String, n: Int) Result[String, Error]:
         evidence(dir, name.clone(), n, input, measured)
         rows.append(row(name, measured.samples))
 
-    # The table appears only once every workload has passed.
+    // The table appears only once every workload has passed.
     write_text("{work}/table.txt", rows.join("\n") + "\n")
     return ok(rows.join("\n"))
 

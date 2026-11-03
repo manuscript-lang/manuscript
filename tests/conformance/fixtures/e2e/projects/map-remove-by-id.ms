@@ -1,6 +1,6 @@
-# conform: tags=aliasing,closures,control-flow,diagnostics,interfaces,maps,match,modules,tier-core
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/map_remove/by_id.ms
+// conform: tags=aliasing,closures,control-flow,diagnostics,interfaces,maps,match,modules,tier-core
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/map_remove/by_id.ms
 import Key from "./key.ms"
 import remove_generic from "./generic.ms"
 

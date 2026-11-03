@@ -20,9 +20,9 @@ A parameter or record field of type `T?` with no default is `none` when omitted,
 
 ```manuscript
 let explicit: String? = none
-# Rejected: no type determines the absent payload.
+// Rejected: no type determines the absent payload.
 let unknown = none
-# Wrapped: an annotated binding expects an Optional.
+// Wrapped: an annotated binding expects an Optional.
 let wrapped: String? = "Ada"
 ```
 

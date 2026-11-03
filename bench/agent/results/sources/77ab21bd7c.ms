@@ -61,7 +61,7 @@ fn days_in_month(year: Int, month: Int) Int:
 
     return 31
 
-# 1970-01-01 was a Thursday, so day 0 maps to 4; Sunday is 0.
+// 1970-01-01 was a Thursday, so day 0 maps to 4; Sunday is 0.
 fn weekday_of(year: Int, month: Int, day: Int) Int:
     var elapsed = 0
     for y in range(1970, year):
@@ -119,7 +119,7 @@ fn parse_count(text: String) Optional[Int]:
 
     return value
 
-# One cron item: `*`, `*/S`, `A`, `A-B`, or `A-B/S`.
+// One cron item: `*`, `*/S`, `A`, `A-B`, or `A-B/S`.
 fn parse_item(item: String, lo: Int, hi: Int) Optional[Span]:
     if item.is_empty():
         return none

@@ -14,7 +14,7 @@
           "file": "core-language-types-contracts-8.ms",
           "line": 4,
           "column": 14,
-          "offset": 152
+          "offset": 155
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "core-language-types-contracts-8.ms",
           "line": 7,
           "column": 21,
-          "offset": 244
+          "offset": 247
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "core-language-types-contracts-8.ms",
           "line": 8,
           "column": 17,
-          "offset": 275
+          "offset": 278
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "core-language-types-contracts-8.ms",
           "line": 5,
           "column": 12,
-          "offset": 193
+          "offset": 196
         }
       }
     ],

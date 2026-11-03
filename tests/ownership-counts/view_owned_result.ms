@@ -1,6 +1,6 @@
-# expect-debug: allocs=42 alloc_bytes=2964
-# expect-release: allocs=42 alloc_bytes=3004
-# Trimming through a function whose owned result is a trim of its parameter.
+// expect-debug: allocs=42 alloc_bytes=2964
+// expect-release: allocs=42 alloc_bytes=3004
+// Trimming through a function whose owned result is a trim of its parameter.
 type Line:
     text: String
 

@@ -1,6 +1,6 @@
-# conform: tags=formatter,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/member_cascade_test.go:18 TestUnknownMemberReportsOnce
+// conform: tags=formatter,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/member_cascade_test.go:18 TestUnknownMemberReportsOnce
 fn g(v: Int) Int:
     return v
 

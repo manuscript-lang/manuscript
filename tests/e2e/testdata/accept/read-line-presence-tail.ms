@@ -39,7 +39,7 @@ fn present(input: ReadStream, max: Int?) Bool:
 type LineTailCleanup:
     marker: String
 
-# Cleanup runs on a moved copy, so the marker file is the only way to observe it.
+// Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for LineTailCleanup:
     var fn close() Unit!:
         let _written = write_file(self.marker, "closed", true)

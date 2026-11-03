@@ -41,7 +41,7 @@ test "large affix cuts preserve text and reject missing affixes":
     text.cut_prefix("absent") | try expect_none
     text.cut_suffix("absent") | try expect_none
 
-# Independent scalar comparisons verify exact matching without normalization.
+// Independent scalar comparisons verify exact matching without normalization.
 fn check_affix(text: String, affix: String, prefix: Bool) Unit!:
     let actual = if prefix: text.cut_prefix(affix) else: text.cut_suffix(affix)
     if affix.length() > text.length(): return actual | expect_none

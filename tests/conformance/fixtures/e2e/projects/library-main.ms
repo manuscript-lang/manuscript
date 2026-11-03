@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,faults,generics,match,modules,stdlib-fs,stdlib-path,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,strings,tier-io,try-result,scope-cleanup
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/library/main.ms
+// conform: tags=control-flow,diagnostics,faults,generics,match,modules,stdlib-fs,stdlib-path,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,strings,tier-io,try-result,scope-cleanup
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/library/main.ms
 import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 import memory_usage, process_info from "@std/os/process.ms"
 import arguments from "@std/os/process.ms"

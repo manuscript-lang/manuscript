@@ -2,7 +2,7 @@ fn g() Int:
     let a = h(
         text
         | f
-        # keep λ😀 on the flow
+        // keep λ😀 on the flow
         .m(),
         h(text | f, y)
         .m(),

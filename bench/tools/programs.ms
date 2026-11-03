@@ -1,5 +1,5 @@
-# Compares Manuscript, Go and Rust on small whole programs (bench/perf/programs).
-# Usage: ms run bench/tools/programs.ms [-- repeats]; MS, GO, RUSTC pick tools; BENCH_OUTPUT keeps binaries, input and raw samples.
+// Compares Manuscript, Go and Rust on small whole programs (bench/perf/programs).
+// Usage: ms run bench/tools/programs.ms [-- repeats]; MS, GO, RUSTC pick tools; BENCH_OUTPUT keeps binaries, input and raw samples.
 import (
     absolute,
     build_go,

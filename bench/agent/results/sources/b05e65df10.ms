@@ -1,7 +1,7 @@
 import read_lines from "@std/streams.ms"
 import stdin, stdout from "@std/io.ms"
 
-# Parsed START: year is -1 when invalid.
+// Parsed START: year is -1 when invalid.
 type Start:
     year: Int
     month: Int
@@ -9,14 +9,14 @@ type Start:
     hour: Int
     minute: Int
 
-# One comma-separated item of a cron field: values start, start+step, ... <= stop.
-# start is -1 when the item is invalid.
+// One comma-separated item of a cron field: values start, start+step, ... <= stop.
+// start is -1 when the item is invalid.
 type Span:
     start: Int
     stop: Int
     step: Int
 
-# Allowed values per field. Each list is indexed by the value itself.
+// Allowed values per field. Each list is indexed by the value itself.
 type Spec:
     minutes: List[Bool]
     hours: List[Bool]
@@ -31,13 +31,13 @@ fn all_digits(s: String) Bool:
         if not "0123456789".contains(s.get(i)): return false
     return true
 
-# Exactly `width` ASCII digits; returns -1 otherwise.
+// Exactly `width` ASCII digits; returns -1 otherwise.
 fn fixed_num(s: String, width: Int) Int:
     if s.length() != width or not all_digits(s): return -1
 
     return s.parse_int().get(-1)
 
-# 1 or 2 ASCII digits with lo <= value <= hi; returns -1 otherwise.
+// 1 or 2 ASCII digits with lo <= value <= hi; returns -1 otherwise.
 fn num_in(s: String, lo: Int, hi: Int) Int:
     if s.length() < 1 or s.length() > 2 or not all_digits(s): return -1
 
@@ -59,7 +59,7 @@ fn days_in_month(y: Int, m: Int) Int:
 
     return 31
 
-# Days from 1970-01-01 (a Thursday).
+// Days from 1970-01-01 (a Thursday).
 fn epoch_days(y: Int, m: Int, d: Int) Int:
     var days = 0
 
@@ -71,7 +71,7 @@ fn epoch_days(y: Int, m: Int, d: Int) Int:
         days += days_in_month(y, mm)
     return days + d - 1
 
-# 0 = Sunday .. 6 = Saturday.
+// 0 = Sunday .. 6 = Saturday.
 fn weekday(y: Int, m: Int, d: Int) Int:
     return (epoch_days(y, m, d) + 4) % 7
 
@@ -97,7 +97,7 @@ fn parse_start(s: String) Start:
 
     return Start(year: y, month: mo, day: d, hour: h, minute: mi)
 
-# Parses one item: `*`, `*/S`, `A`, `A-B`, `A-B/S`.
+// Parses one item: `*`, `*/S`, `A`, `A-B`, `A-B/S`.
 fn parse_span(item: String, lo: Int, hi: Int) Span:
     let bad = Span(start: -1, stop: -1, step: 1)
     let parts = item.split("/")
@@ -130,7 +130,7 @@ fn parse_span(item: String, lo: Int, hi: Int) Span:
 
     return Span(start: a, stop: b, step: step)
 
-# Returns the allowed-values list for a whole field, or an empty list when invalid.
+// Returns the allowed-values list for a whole field, or an empty list when invalid.
 fn parse_field(text: String, lo: Int, hi: Int) List[Bool]:
     var allowed = List[Bool]()
     for _i in 0..hi + 1:
@@ -153,7 +153,7 @@ fn pad(n: Int) String:
 
     return "{n}"
 
-# Up to `count` matches strictly after `st`, searching days st..st+3000.
+// Up to `count` matches strictly after `st`, searching days st..st+3000.
 fn search(st: Start, count: Int, spec: Spec) List[String]:
     var out = List[String]()
     let sy = st.year

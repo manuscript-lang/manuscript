@@ -1,6 +1,6 @@
-# conform: tags=lists,maps,modules,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/imports.ms
+// conform: tags=lists,maps,modules,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/imports.ms
 import expect_equal from "@std/test/test.ms"
 
 test "grouped imports":

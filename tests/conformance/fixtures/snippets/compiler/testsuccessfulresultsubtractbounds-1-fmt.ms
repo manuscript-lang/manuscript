@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,mutation,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/result_bounds_test.go:148 TestSuccessfulResultSubtractBounds
+// conform: tags=control-flow,formatter,mutation,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/result_bounds_test.go:148 TestSuccessfulResultSubtractBounds
 fn probe() Int:
     var sum = 0
     var i = 0

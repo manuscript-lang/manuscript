@@ -1,5 +1,5 @@
-# conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-processes,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
+// conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-processes,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
 import Channel from "@std/io/channels.ms"
 import panic from "@std/core.ms"
 import read_line, stderr, stdin, stdout from "@std/io/io.ms"

@@ -15,7 +15,7 @@ type Shop:
     price: Map[String, Int]
     orders: Map[String, Order]
 
-# Returns the value of a 1-to-7 digit number, or -1 when the text is malformed.
+// Returns the value of a 1-to-7 digit number, or -1 when the text is malformed.
 fn number(text: String) Int:
     if text.is_empty() or text.length() > 7: return -1
     if not text.scalar_values().all(fn c: c >= 48 and c <= 57): return -1
@@ -54,7 +54,7 @@ fn money(cents: Int) String:
     let frac = "{cents % 100}"
     return "{cents / 100}.{frac.pad_start(2, "0")}"
 
-# Line cost in cents; quantities of 10 or more get a 10% discount, rounded half up.
+// Line cost in cents; quantities of 10 or more get a 10% discount, rounded half up.
 fn line_cost(qty: Int, base: Int) Int:
     let raw = qty * base
     if qty >= 10: return (raw * 90 + 50) / 100

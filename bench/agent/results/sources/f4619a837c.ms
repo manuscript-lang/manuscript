@@ -4,9 +4,9 @@ import read_all from "@std/io.ms"
 import range from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
 
-# Byte values of the grid characters. Validation works on bytes so that
-# columns are counted in characters: every byte before the first invalid
-# one is ASCII, so byte offsets and character offsets agree up to there.
+// Byte values of the grid characters. Validation works on bytes so that
+// columns are counted in characters: every byte before the first invalid
+// one is ASCII, so byte offsets and character offsets agree up to there.
 let NEWLINE = 10
 let WALL = 35
 let OPEN = 46

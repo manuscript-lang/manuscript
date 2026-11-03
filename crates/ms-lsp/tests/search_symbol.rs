@@ -21,7 +21,7 @@ fn fuzzy_search_keeps_private_function_uses_and_distinct_declarations() {
     }
     std::fs::write(
         root.join("unrelated.ms"),
-        "# read_file\nlet note = \"read_file\"\nfn main() Int:\n    return 0\n",
+        "// read_file\nlet note = \"read_file\"\nfn main() Int:\n    return 0\n",
     )
     .unwrap();
     for query in ["read file", "readFile", "raed_file", "rdf"] {

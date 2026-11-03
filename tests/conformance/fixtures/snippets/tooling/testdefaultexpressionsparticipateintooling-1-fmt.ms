@@ -1,6 +1,6 @@
-# conform: tags=closures,formatter,modules,parser,stdlib-queues,tier-stdlib
-# conform: phase=parse
-# conform: origin=pkg/tooling/defaults_test.go:14 TestDefaultExpressionsParticipateInTooling
+// conform: tags=closures,formatter,modules,parser,stdlib-queues,tier-stdlib
+// conform: phase=parse
+// conform: origin=pkg/tooling/defaults_test.go:14 TestDefaultExpressionsParticipateInTooling
 import Queue from "@std/collections/queue.ms"
 
 fn read(state: Queue[Int]) Int:

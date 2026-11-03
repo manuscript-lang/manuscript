@@ -1,6 +1,6 @@
-# conform: tags=alternatives,generics,optional,strings,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/result-error-values.ms
+// conform: tags=alternatives,generics,optional,strings,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/result-error-values.ms
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import assert_error, assert_ok from "@std/test/test.ms"
 import expect_contains, expect_true from "@std/test/test.ms"

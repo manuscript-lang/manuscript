@@ -15,8 +15,8 @@ test "bound and forwarded calls keep the equality of the collection creator":
         )
     )
 
-    # A collection keeps the equality of the module that created it, so
-    # bound operations from another module do not change how it matches.
+    // A collection keeps the equality of the module that created it, so
+    // bound operations from another module do not change how it matches.
     var items = Set[Key]()
     first_add(var items, Key(1, "original"))
     first_add(var items, Key(1, "duplicate"))

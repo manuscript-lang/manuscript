@@ -1,6 +1,6 @@
-# conform: tags=interpolation,match,modules,stdlib-path,stdlib-testing,testing,tier-io,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/stdlib/path.ms
+// conform: tags=interpolation,match,modules,stdlib-path,stdlib-testing,testing,tier-io,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/stdlib/path.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 import posix, win32, dirname, basename_without from "@std/os/fs.ms"
 

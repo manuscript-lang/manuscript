@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,modules,parser,records,stdlib-testing,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=documentation/learn/testing.md:96
+// conform: tags=control-flow,formatter,interfaces,modules,parser,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=documentation/learn/testing.md:96
 import TestHooks, expect_equal from "@std/test/test.ms"
 
 type Counter:

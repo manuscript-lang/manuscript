@@ -1,12 +1,12 @@
-# Export agent-bench challenges as Harbor tasks (one per challenge x language).
-#
-#     ms run bench/agent/export_harbor.ms -- --out /tmp/agent-bench-tasks [--challenges c01,c02] [--languages ms,go]
-#         [--ms-binary ./ms] [--agent-timeout 900]
-#
-# Run from the repository root. Each task directory: instruction.md, task.toml,
-# environment/{Dockerfile,workspace/,ms}, tests/{test.sh,grade.ms,cases.json,...}, solution/solve.sh. Hidden cases
-# live only in tests/, which Harbor uploads at verification time. The verifier runs `ms` inside the task, so every
-# image carries the binary given by --ms-binary. The output is generated; do not commit it.
+// Export agent-bench challenges as Harbor tasks (one per challenge x language).
+//
+//     ms run bench/agent/export_harbor.ms -- --out /tmp/agent-bench-tasks [--challenges c01,c02] [--languages ms,go]
+//         [--ms-binary ./ms] [--agent-timeout 900]
+//
+// Run from the repository root. Each task directory: instruction.md, task.toml,
+// environment/{Dockerfile,workspace/,ms}, tests/{test.sh,grade.ms,cases.json,...}, solution/solve.sh. Hidden cases
+// live only in tests/, which Harbor uploads at verification time. The verifier runs `ms` inside the task, so every
+// image carries the binary given by --ms-binary. The output is generated; do not commit it.
 import Flag, FlagKind, command from "@std/cli.ms"
 import chmod, copy, CopyOptions, create_directory, remove, stat from "@std/os/fs.ms"
 import JsonValue from "@std/data/json.ms"
@@ -81,7 +81,7 @@ fn export_one(
     else:
         put(ms_binary, "{d}/environment/ms")
 
-    # The verifier and the modules it imports keep their relative layout under /tests.
+    // The verifier and the modules it imports keep their relative layout under /tests.
     for file in ["grade.ms", "core/model.ms", "core/codetokens.ms", "lib/text.ms"]:
         put("{root()}/{file}", "{d}/tests/{file}")
     put("{ch.dir}/hidden/cases.json", "{d}/tests/cases.json")
@@ -99,7 +99,7 @@ fn export_one(
             "#!/bin/bash\nmkdir -p \"$(dirname /app/{lang.solution})\"\ncp \"$(dirname \"$0\")/reference\" /app/{lang.solution}\n"
         )
     else:
-        # Large challenges are oracle-validated in Go only; the oracle agent has nothing to apply.
+        // Large challenges are oracle-validated in Go only; the oracle agent has nothing to apply.
         write_text(
             "{d}/solution/solve.sh",
             "#!/bin/bash\necho 'no reference solution for this language' >&2\nexit 1\n"

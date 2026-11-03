@@ -1,6 +1,6 @@
-# conform: tags=modules,stdlib-io,stdlib-testing,testing,tier-core
-# conform: phase=test
-# conform: origin=tests/e2e/cli_json_test.go:70 TestCLITestJSONPreservesOutputsFailuresAndLocations
+// conform: tags=modules,stdlib-io,stdlib-testing,testing,tier-core
+// conform: phase=test
+// conform: origin=tests/e2e/cli_json_test.go:70 TestCLITestJSONPreservesOutputsFailuresAndLocations
 import stdout, stderr from "@std/io/io.ms"
 import fail from "@std/test/test.ms"
 

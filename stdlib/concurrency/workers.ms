@@ -1,19 +1,21 @@
-# Worker threads: code that runs on another OS thread, with its own memory, and talks to its starter
-# over a two-way channel.
-#
-# A worker is started from a named top-level `fn` that takes no arguments and returns `Unit`; it
-# gets its end of the channel from `worker_channel`. Nothing is shared between the two sides:
-# every value sent through the channel is encoded as JSON and decoded on the other side, so the
-# message types are the ones `@std/data/json.ms` can read and write.
-#
-# ```manuscript
-# fn double_all() Unit:
-#     let ch = worker_channel[Int, Int]()
-#     while true:
-#         let received = ch.receive().get(none)
-#         if received.is_none(): return
-#         let _ = ch.send(received.get() * 2)
-# ```
+/*
+Worker threads: code that runs on another OS thread, with its own memory, and talks to its starter
+over a two-way channel.
+
+A worker is started from a named top-level `fn` that takes no arguments and returns `Unit`; it
+gets its end of the channel from `worker_channel`. Nothing is shared between the two sides:
+every value sent through the channel is encoded as JSON and decoded on the other side, so the
+message types are the ones `@std/data/json.ms` can read and write.
+
+```manuscript
+fn double_all() Unit:
+    let ch = worker_channel[Int, Int]()
+    while true:
+        let received = ch.receive().get(none)
+        if received.is_none(): return
+        let _ = ch.send(received.get() * 2)
+```
+*/
 import Bytes from "@std/bytes.ms"
 import Channel, Transport from "@std/io/channels.ms"
 import Closeable, Data from "@std/core.ms"
@@ -34,26 +36,24 @@ import (
     msrt_pipe_receive_bytes
 ) from "@std/internal/workers.ms"
 
-# Why a read from the pipe gave no message. The native side numbers these cases from 1 (1 + declaration index).
+// Why a read from the pipe gave no message. The native side numbers these cases from 1 (1 + declaration index).
 type PipeEnd:
-    # This end is closed.
-    case Closed
-    # The other end closed and every message was read.
-    case Ended
+    case Closed  // This end is closed.
+    case Ended  // The other end closed and every message was read.
 
-# One end of the in-memory pipe between a group and a worker.
+// One end of the in-memory pipe between a group and a worker.
 type WorkerTransport[In: Data, Out: Data]:
-    # The pipe end this transport sends and receives on.
+    // The pipe end this transport sends and receives on.
     end: Int
 
-# What a failed read means for the channel: the other end finishing is the normal end of input.
+// What a failed read means for the channel: the other end finishing is the normal end of input.
 fn stopped[Out](why: PipeEnd) Out?!:
     match why:
         Ended: return ok(none)
         Closed: return error(Error("channel: closed", kind: ErrorCategory.Closed))
 
 impl WorkerTransport[In, Out]:
-    # Decodes a message, or says it could not be.
+    // Decodes a message, or says it could not be.
     fn decode(text: String) Out?!:
         match parse[Out](text):
             ok(value): return ok(value)
@@ -87,17 +87,17 @@ impl Transport[In, Out] for WorkerTransport[In, Out]:
     var fn close() Unit:
         msrt_pipe_close(self.end)
 
-# Returns the worker's end of its channel. The worker sends `Send` values and receives `Receive`
-# values, so a group of `WorkerGroup[Receive, Send]` started it. Call it on a worker's thread.
+// Returns the worker's end of its channel. The worker sends `Send` values and receives `Receive`
+// values, so a group of `WorkerGroup[Receive, Send]` started it. Call it on a worker's thread.
 export fn worker_channel[Send: Data, Receive: Data]() Channel[Send, Receive]:
     return Channel[Send, Receive](
         transport: WorkerTransport[Send, Receive](end: msrt_worker_end())
     )
 
-# One end of a worker's pipe carrying raw `Bytes`: each send is copied once into the other side's
-# memory, with no JSON encoding. It shares the pipe end with the JSON transport on the same side.
+// One end of a worker's pipe carrying raw `Bytes`: each send is copied once into the other side's
+// memory, with no JSON encoding. It shares the pipe end with the JSON transport on the same side.
 type WorkerBytesTransport:
-    # The pipe end this transport sends and receives on.
+    // The pipe end this transport sends and receives on.
     end: Int
 
 impl Transport[Bytes, Bytes] for WorkerBytesTransport:
@@ -115,38 +115,42 @@ impl Transport[Bytes, Bytes] for WorkerBytesTransport:
     var fn close() Unit:
         msrt_pipe_close(self.end)
 
-# A `Channel[Bytes, Bytes]` over the pipe end `end`, sending each message as raw bytes.
+// A `Channel[Bytes, Bytes]` over the pipe end `end`, sending each message as raw bytes.
 fn bytes_channel(end: Int) Channel[Bytes, Bytes]:
     return Channel[Bytes, Bytes](transport: WorkerBytesTransport(end: end))
 
-# Returns the worker's end of its pipe as a `Channel[Bytes, Bytes]`, for large payloads that
-# should not be encoded as JSON. It shares the pipe, and so the order and the 16-message room,
-# with the channel from `worker_channel`: read each message with the kind that was sent, and
-# closing either closes the shared end. Call it on a worker's thread.
+/*
+Returns the worker's end of its pipe as a `Channel[Bytes, Bytes]`, for large payloads that
+should not be encoded as JSON. It shares the pipe, and so the order and the 16-message room,
+with the channel from `worker_channel`: read each message with the kind that was sent, and
+closing either closes the shared end. Call it on a worker's thread.
+*/
 export fn worker_bytes() Channel[Bytes, Bytes]:
     return bytes_channel(msrt_worker_end())
 
-# A started worker, with the group's end of its channel.
+// A started worker, with the group's end of its channel.
 export type Worker[In: Data, Out: Data]:
-    # Internal state: the runtime handle of the worker.
+    // Internal state: the runtime handle of the worker.
     handle: Int
-    # The group's end of the worker's channel: sends `In` to the worker and receives the `Out` it sends.
+    // The group's end of the worker's channel: sends `In` to the worker and receives the `Out` it sends.
     channel: Channel[In, Out]
-    # Internal state: the group's pipe end, shared with `channel`.
+    // Internal state: the group's pipe end, shared with `channel`.
     end: Int
-    # Internal state: empty until the worker was collected, then how it ended.
+    // Internal state: empty until the worker was collected, then how it ended.
     ended: Shared[List[Unit!]]
 
 impl Worker[In, Out]:
-    # Closes the group's end of the channel, waits for the worker to end, and returns how it ended.
-    # A worker that is still reading ends once its input is closed; call `cancel` first to stop one that is not.
-    # Safe to call again: later calls return the same outcome.
+    /*
+    Closes the group's end of the channel, waits for the worker to end, and returns how it ended.
+    A worker that is still reading ends once its input is closed; call `cancel` first to stop one that is not.
+    Safe to call again: later calls return the same outcome.
+    */
     var fn wait() Unit!:
         var held = lock(self.ended)
         if held.value.length() > 0:
             return held.value[0].clone()
 
-        # A stop request unwinds the wait and the guard puts the payload back, so the cleanup joins again.
+        // A stop request unwinds the wait and the guard puts the payload back, so the cleanup joins again.
         self.channel.close()
 
         let report = msrt_worker_wait(self.handle)
@@ -154,16 +158,16 @@ impl Worker[In, Out]:
         held.value.append(outcome.clone())
         return outcome
 
-    # Returns the group's end of the pipe as a `Channel[Bytes, Bytes]`, to move large payloads
-    # without JSON. It shares the pipe with `channel`, as `worker_bytes` describes.
+    // Returns the group's end of the pipe as a `Channel[Bytes, Bytes]`, to move large payloads
+    // without JSON. It shares the pipe with `channel`, as `worker_bytes` describes.
     fn bytes() Channel[Bytes, Bytes]:
         return bytes_channel(self.end)
 
-    # Asks the worker to stop: its next wait or check for cancellation unwinds it.
+    // Asks the worker to stop: its next wait or check for cancellation unwinds it.
     fn cancel() Unit:
         msrt_worker_cancel(self.handle)
 
-# How a worker ended, from the status digit and report the runtime returns.
+// How a worker ended, from the status digit and report the runtime returns.
 fn outcome_of(report: String) Unit!:
     if report.starts_with("1"):
         let fault = report.slice(1, report.length()).get("").clone()
@@ -179,30 +183,34 @@ fn outcome_of(report: String) Unit!:
 
     return ok(unit)
 
-# A group of workers. Every worker's channel sends `In` to it and receives `Out` from it.
-# Bind a group to a local: when its scope ends it cancels workers that are still running and waits for them.
-# Manuscript faults caught by the worker runtime are reported through `wait` as `Faulted`.
-# Worker threads are not a process-crash isolation boundary.
+/*
+A group of workers. Every worker's channel sends `In` to it and receives `Out` from it.
+Bind a group to a local: when its scope ends it cancels workers that are still running and waits for them.
+Manuscript faults caught by the worker runtime are reported through `wait` as `Faulted`.
+Worker threads are not a process-crash isolation boundary.
+*/
 export type WorkerGroup[In: Data = Unit, Out: Data = Unit]:
-    # Internal state: the workers in start order, changed through the shared handle so the group closes when its scope ends.
+    // Internal state: the workers in start order, changed through the shared handle so the group closes when its scope ends.
     workers: Shared[List[Worker[In, Out]]] = share([])
 
 impl WorkerGroup[In, Out]:
-    # Starts `entry`, a named top-level `fn`, on a new thread and returns its handle. The handle's
-    # `channel` is this side of the worker's two-way channel; the worker takes the other from
-    # `worker_channel`.
+    /*
+    Starts `entry`, a named top-level `fn`, on a new thread and returns its handle. The handle's
+    `channel` is this side of the worker's two-way channel; the worker takes the other from
+    `worker_channel`.
+    */
     fn spawn(entry: fn() Unit) Worker[In, Out]!:
         return self.start(entry)
 
-    # Starts `count` workers on `entry`, a named top-level `fn`, and returns their handles in start
-    # order. If one cannot start, the ones already started stay in the group and the error is returned.
+    // Starts `count` workers on `entry`, a named top-level `fn`, and returns their handles in start
+    // order. If one cannot start, the ones already started stay in the group and the error is returned.
     fn spawn_many(entry: fn() Unit, count: Int) List[Worker[In, Out]]!:
         var started: List[Worker[In, Out]] = []
         for i in 0..count:
             started.append(try self.start(entry))
         return ok(started)
 
-    # Starts one worker on `entry`; `spawn` and `spawn_many` share it.
+    // Starts one worker on `entry`; `spawn` and `spawn_many` share it.
     fn start(entry: fn() Unit) Worker[In, Out]!:
         let near = msrt_pipe_new()
         if near == 0:
@@ -225,7 +233,7 @@ impl WorkerGroup[In, Out]:
         return ok(worker)
 
 impl Closeable for WorkerGroup[In, Out]:
-    # Cancels workers that have not ended, closes their channels, and waits for them. Safe to call again.
+    // Cancels workers that have not ended, closes their channels, and waits for them. Safe to call again.
     var fn close() Unit!:
         var started = lock(self.workers)
 

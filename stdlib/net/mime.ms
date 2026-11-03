@@ -1,54 +1,56 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 
-# MIME building blocks: media types, header blocks, and multipart bodies.
-# `parse_media_type` splits `text/html; charset=utf-8`; `parse_headers` reads an RFC 5322 style
-# header block (folded lines joined, names kept as written, lookup case-insensitive);
-# `parse_multipart` and `encode_multipart` read and write `multipart/form-data` and `multipart/mixed` bodies.
-#
-#     import parse_media_type, media_type_for_extension from "@std/net/mime.ms"
-#     media_type_for_extension(".json")                     # "application/json"
-#     parse_media_type("text/html; charset=utf-8").get().params["charset"]
+/*
+MIME building blocks: media types, header blocks, and multipart bodies.
+`parse_media_type` splits `text/html; charset=utf-8`; `parse_headers` reads an RFC 5322 style
+header block (folded lines joined, names kept as written, lookup case-insensitive);
+`parse_multipart` and `encode_multipart` read and write `multipart/form-data` and `multipart/mixed` bodies.
 
-# A parsed media type with lower-cased `essence` and parameters keyed by lower-cased name.
+    import parse_media_type, media_type_for_extension from "@std/net/mime.ms"
+    media_type_for_extension(".json")                     # "application/json"
+    parse_media_type("text/html; charset=utf-8").get().params["charset"]
+*/
+
+// A parsed media type with lower-cased `essence` and parameters keyed by lower-cased name.
 export type MediaType:
-    # Lower-cased `type/subtype`, such as `text/html`.
+    // Lower-cased `type/subtype`, such as `text/html`.
     essence: String
-    # Parameters such as `charset` or `boundary`; quoted values are unquoted.
+    // Parameters such as `charset` or `boundary`; quoted values are unquoted.
     params: Map[String, String] = Map[String, String]()
 
-# One header field. `name` keeps the sender's spelling; `value` has folding removed.
+// One header field. `name` keeps the sender's spelling; `value` has folding removed.
 export type HeaderField:
-    # Field name as written, without the colon.
+    // Field name as written, without the colon.
     name: String
-    # Field value with leading and trailing space trimmed and folded lines joined by one space.
+    // Field value with leading and trailing space trimmed and folded lines joined by one space.
     value: String
 
-# A parsed header block that can be looked up by name regardless of case.
+// A parsed header block that can be looked up by name regardless of case.
 export type Headers:
-    # Fields in the order they appeared; repeated names stay separate entries.
+    // Fields in the order they appeared; repeated names stay separate entries.
     fields: List[HeaderField] = List[HeaderField]()
 
-# One multipart part: its headers, the decoded `name` and `filename` from Content-Disposition, and body bytes.
+// One multipart part: its headers, the decoded `name` and `filename` from Content-Disposition, and body bytes.
 export type Part:
-    # Part header fields; `Content-Disposition` and `Content-Type` live here.
+    // Part header fields; `Content-Disposition` and `Content-Type` live here.
     headers: Headers = Headers()
-    # Form field name from `Content-Disposition`, or empty text.
+    // Form field name from `Content-Disposition`, or empty text.
     name: String = ""
-    # Uploaded file name from `Content-Disposition`, or empty text.
+    // Uploaded file name from `Content-Disposition`, or empty text.
     filename: String = ""
-    # Part body without the delimiter line breaks.
+    // Part body without the delimiter line breaks.
     data: Bytes
 
 impl Headers:
-    # Returns the first value for `name`, ignoring case, or none.
+    // Returns the first value for `name`, ignoring case, or none.
     fn get(name: String) String?:
         let wanted = name.lower()
         for field in self.fields:
             if field.name.lower() == wanted: return field.value.clone()
         return none
 
-    # Returns every value for `name`, ignoring case, in order.
+    // Returns every value for `name`, ignoring case, in order.
     fn get_all(name: String) List[String]:
         let wanted = name.lower()
         var values = List[String]()
@@ -56,14 +58,14 @@ impl Headers:
             if field.name.lower() == wanted: values.append(field.value.clone())
         return values
 
-    # Writes the block as `Name: value` lines with CRLF endings.
+    // Writes the block as `Name: value` lines with CRLF endings.
     fn to_text() String:
         var out = StringBuilder()
         for field in self.fields:
             out.append("{field.name}: {field.value}\r\n")
         return out.build()
 
-# Extension table behind `media_type_for_extension`.
+// Extension table behind `media_type_for_extension`.
 let TYPES = {
     "html": "text/html; charset=utf-8", "htm": "text/html; charset=utf-8",
     "css": "text/css; charset=utf-8", "js": "text/javascript; charset=utf-8",
@@ -79,20 +81,20 @@ let TYPES = {
     "woff2": "font/woff2", "ttf": "font/ttf"
 }
 
-# Returns the media type for a file extension with or without the leading dot (case-insensitive), or none when unknown.
+// Returns the media type for a file extension with or without the leading dot (case-insensitive), or none when unknown.
 export fn media_type_for_extension(extension: String) String?:
     let key = extension.lower().cut_prefix(".").get(extension.lower())
     return TYPES.get(key)
 
-# Returns the first extension, with its dot, registered for a media type (parameters ignored), or none.
+// Returns the first extension, with its dot, registered for a media type (parameters ignored), or none.
 export fn extension_for_media_type(media_type: String) String?:
     let wanted = media_type.split(";")[0].trim().lower()
     for entry in TYPES.entries():
         if entry.value.split(";")[0] == wanted: return ".{entry.key}"
     return none
 
-# Parses `type/subtype; name=value; name="quoted value"`. Names and the essence are lower-cased;
-# a missing slash, empty part, or unterminated quote is `InvalidMediaType`.
+// Parses `type/subtype; name=value; name="quoted value"`. Names and the essence are lower-cased;
+// a missing slash, empty part, or unterminated quote is `InvalidMediaType`.
 export fn parse_media_type(text: String) MediaType!:
     let pieces = split_params(text)
     let essence = pieces[0].trim().lower()
@@ -137,14 +139,14 @@ export fn parse_media_type(text: String) MediaType!:
 
     return ok(MediaType(essence: essence, params: params))
 
-# Formats a media type as `essence; name=value`, quoting values that are not simple tokens.
+// Formats a media type as `essence; name=value`, quoting values that are not simple tokens.
 export fn format_media_type(media_type: MediaType) String:
     var out = media_type.essence.clone()
     for entry in media_type.params.entries():
         out = "{out}; {entry.key}={quote_value(entry.value)}"
     return out
 
-# Splits on `;` outside double quotes.
+// Splits on `;` outside double quotes.
 fn split_params(text: String) List[String]:
     var pieces = List[String]()
     var current = StringBuilder()
@@ -169,7 +171,7 @@ fn split_params(text: String) List[String]:
     pieces.append(current.drain())
     return pieces
 
-# Returns the unquoted value, or none for an unterminated quote.
+// Returns the unquoted value, or none for an unterminated quote.
 fn unquote(raw: String) String?:
     if not raw.starts_with("\""): return raw.clone()
     if raw.length() < 2 or not raw.ends_with("\""): return none
@@ -199,8 +201,8 @@ fn quote_value(value: String) String:
     let escaped = value.replace("\\", "\\\\").replace("\"", "\\\"")
     return "\"{escaped}\""
 
-# Parses a header block (up to the first blank line). Continuation lines starting with space or tab
-# join the previous value with one space. A line without a colon, or a fold before any field, is `InvalidHeader`.
+// Parses a header block (up to the first blank line). Continuation lines starting with space or tab
+// join the previous value with one space. A line without a colon, or a fold before any field, is `InvalidHeader`.
 export fn parse_headers(text: String) Headers!:
     var fields = List[HeaderField]()
 
@@ -236,7 +238,7 @@ export fn parse_headers(text: String) Headers!:
 
     return ok(Headers(fields: fields))
 
-# Returns the boundary parameter of a `multipart/*` Content-Type value, or none.
+// Returns the boundary parameter of a `multipart/*` Content-Type value, or none.
 export fn multipart_boundary(content_type: String) String?:
     let parsed = parse_media_type(content_type)
     if not parsed.is_ok(): return none
@@ -246,9 +248,11 @@ export fn multipart_boundary(content_type: String) String?:
 
     return media.params.get("boundary")
 
-# Splits a multipart body into parts using `boundary`. Text before the first delimiter and after the
-# closing delimiter is ignored. Parts keep their body bytes exactly; headers are parsed as `Headers`.
-# A body without a closing delimiter is `InvalidMultipart`.
+/*
+Splits a multipart body into parts using `boundary`. Text before the first delimiter and after the
+closing delimiter is ignored. Parts keep their body bytes exactly; headers are parsed as `Headers`.
+A body without a closing delimiter is `InvalidMultipart`.
+*/
 export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
     if boundary.is_empty(): return error(
         Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData)
@@ -299,8 +303,8 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
 
     return error(Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData))
 
-# Encodes parts as a multipart body closed with the final delimiter. Each part's headers are
-# written as given, then a blank line and the data.
+// Encodes parts as a multipart body closed with the final delimiter. Each part's headers are
+// written as given, then a blank line and the data.
 export fn encode_multipart(parts: List[Part], boundary: String) Bytes:
     var out = BytesBuilder()
 
@@ -312,7 +316,7 @@ export fn encode_multipart(parts: List[Part], boundary: String) Bytes:
     out.append_bytes("--{boundary}--\r\n".to_bytes())
     return out.build()
 
-# Builds a form-data part for a field; pass `filename` to mark an upload.
+// Builds a form-data part for a field; pass `filename` to mark an upload.
 export fn form_part(
     name: String,
     data: Bytes,

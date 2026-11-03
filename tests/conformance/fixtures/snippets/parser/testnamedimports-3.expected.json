@@ -14,26 +14,26 @@
           "file": "testnamedimports-3.ms",
           "line": 4,
           "column": 8,
-          "offset": 162
+          "offset": 165
         },
         "end": {
           "file": "testnamedimports-3.ms",
           "line": 4,
           "column": 17,
-          "offset": 171
+          "offset": 174
         },
         "fix": {
           "position": {
             "file": "testnamedimports-3.ms",
             "line": 4,
             "column": 8,
-            "offset": 162
+            "offset": 165
           },
           "end": {
             "file": "testnamedimports-3.ms",
             "line": 4,
             "column": 19,
-            "offset": 173
+            "offset": 176
           },
           "replacement": ""
         }
@@ -46,26 +46,26 @@
           "file": "testnamedimports-3.ms",
           "line": 4,
           "column": 19,
-          "offset": 173
+          "offset": 176
         },
         "end": {
           "file": "testnamedimports-3.ms",
           "line": 4,
           "column": 27,
-          "offset": 181
+          "offset": 184
         },
         "fix": {
           "position": {
             "file": "testnamedimports-3.ms",
             "line": 4,
             "column": 17,
-            "offset": 171
+            "offset": 174
           },
           "end": {
             "file": "testnamedimports-3.ms",
             "line": 4,
             "column": 28,
-            "offset": 182
+            "offset": 185
           },
           "replacement": ""
         }

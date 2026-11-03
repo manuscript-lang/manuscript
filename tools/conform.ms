@@ -1,7 +1,7 @@
-# The frozen conformance corpus against the Rust ms on this host (`make conform`).
-# Known failures: tests/conformance/expect-fail.txt plus expect-fail.<os>.txt when present.
-# CONFORM_SHARD=i/n splits the run. Arguments after `--` go to `ms-conform run`.
-# Usage: ms run tools/conform.ms [-- extra ms-conform run arguments]
+// The frozen conformance corpus against the Rust ms on this host (`make conform`).
+// Known failures: tests/conformance/expect-fail.txt plus expect-fail.<os>.txt when present.
+// CONFORM_SHARD=i/n splits the run. Arguments after `--` go to `ms-conform run`.
+// Usage: ms run tools/conform.ms [-- extra ms-conform run arguments]
 import env, exe, host, run_program from "./lib.ms"
 import access, create_directory, read_file, write_file from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"
@@ -10,8 +10,8 @@ export fn main() Int:
     var code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 
-    # Only the runner is built here: this tool runs on `target/debug/ms`, and Windows cannot replace an
-    # executable that is running (`make conform` and CI build `ms-cli` before they start the tool).
+    // Only the runner is built here: this tool runs on `target/debug/ms`, and Windows cannot replace an
+    // executable that is running (`make conform` and CI build `ms-cli` before they start the tool).
     code = run_program(
         "cargo",
         [
@@ -42,8 +42,8 @@ export fn main() Int:
 
     let extra = arguments()
 
-    # Only `run` and `test` reach a code generator, so a second pass with `MS_BACKEND=cranelift` skips the
-    # check and parse phases: the LLVM pass already ran them, and their results do not depend on the backend.
+    // Only `run` and `test` reach a code generator, so a second pass with `MS_BACKEND=cranelift` skips the
+    // check and parse phases: the LLVM pass already ran them, and their results do not depend on the backend.
     let backend_only = env("MS_BACKEND", "") == "cranelift"
     let phases = if backend_only: "run,test" else: "run,check,test"
     let main_run = [
@@ -54,7 +54,7 @@ export fn main() Int:
     code = run_program(conform, main_run.concat(extra.clone()))
     if code != 0 or backend_only: return code
 
-    # Parsing and formatting do not depend on aliasing, so the parse phase replays every fixture.
+    // Parsing and formatting do not depend on aliasing, so the parse phase replays every fixture.
     let parse_run = [
         "run", "--ms", ms.clone(), "--phase", "parse", "--expect-fail", allow.clone(),
         "--strict", "--shard", shard.clone(), "--quiet", "--markdown",

@@ -9,7 +9,7 @@ type Parsed:
     next: Int
     zero_division: Bool
 
-# Splits one line into tokens; `none` means an unknown character was found.
+// Splits one line into tokens; `none` means an unknown character was found.
 fn tokenize(line: String) Optional[List[Token]]:
     var tokens = List[Token]()
     var value = 0
@@ -160,7 +160,7 @@ fn parse_sum(tokens: List[Token], pos: Int) Optional[Parsed]:
 
     return none
 
-# Returns the output line for one non-blank input line.
+// Returns the output line for one non-blank input line.
 fn evaluate(line: String) String:
     if let tokens = tokenize(line):
         if let parsed = parse_sum(tokens, 0):

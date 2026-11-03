@@ -6,4 +6,4 @@ fn total(xs: List[Int]) Int!:
 fn start() Promise[Int]:
     let xs = [1, 2, 3]
     let p = promise(fn: total(xs))
-    return p  # error: this promise reads `xs`, which ends with this function
+    return p  // error: this promise reads `xs`, which ends with this function

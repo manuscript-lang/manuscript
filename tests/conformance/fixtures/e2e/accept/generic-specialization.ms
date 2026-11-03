@@ -1,6 +1,6 @@
-# conform: tags=control-flow,generics,modules,mutation,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/generic-specialization.ms
+// conform: tags=control-flow,generics,modules,mutation,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/generic-specialization.ms
 import expect_equal from "@std/test/test.ms"
 
 fn ident[T](x: T) T:

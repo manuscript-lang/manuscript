@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,generics,modules,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-process,stdlib-time,tier-io
-# conform: phase=check
-# conform: origin=pkg/build/native_defaults_test.go:11 TestNativeDefaultCallableBoundaries
+// conform: tags=diagnostics,generics,modules,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-process,stdlib-time,tier-io
+// conform: phase=check
+// conform: origin=pkg/build/native_defaults_test.go:11 TestNativeDefaultCallableBoundaries
 import base64_encode, base64_decode from "@std/data/encoding.ms"
 import parse, CsvOptions from "@std/data/csv.ms"
 import Commands, CommandOutput from "@std/os/process.ms"

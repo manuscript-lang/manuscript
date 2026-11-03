@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/format/format_paragraphs_test.go:211 TestFormatParagraphs
+// conform: tags=closures,control-flow,diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/format/format_paragraphs_test.go:211 TestFormatParagraphs
 fn example() Int:
     let result = apply(
         value: 3,

@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,faults,formatter,lists,maps,modules,parser,stdlib-testing,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/closed-local-int-map.ms
+// conform: tags=closures,control-flow,faults,formatter,lists,maps,modules,parser,stdlib-testing,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/closed-local-int-map.ms
 import (
     expect_contains,
     expect_equal,

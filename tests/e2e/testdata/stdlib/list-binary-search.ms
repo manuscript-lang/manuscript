@@ -18,7 +18,7 @@ fn check_search[T: Comparable](values: List[T], target: T) Unit!:
     try expect_equal(actual.found, expected.found)
     return ok(unit)
 
-# Equality is by key, so equal keys can have different payloads.
+// Equality is by key, so equal keys can have different payloads.
 type Key:
     value: Int
     label: String
@@ -81,7 +81,7 @@ test "binary search uses Comparable equality and works through a generic bound":
     try expect_equal(values[result.index].label, "first")
     try check_search(values, Key(2, "missing"))
 
-# Lists are sorted before searching: search does not scan to validate this precondition.
+// Lists are sorted before searching: search does not scan to validate this precondition.
 test "binary search agrees with a linear oracle over sorted duplicate-heavy lists":
     for length in 0..65:
         for seed in 0..13:

@@ -237,6 +237,7 @@ impl Cx {
             .contains_key(&ct::n(OWNED))
             .then(|| self.owned_mask(c))
             .flatten();
+        let takes_function = bindings.iter().any(|b| b.ty.kind == ct::Kind::Function);
         for (i, b) in bindings.into_iter().enumerate() {
             let t = ct::sub(&b.ty, subst);
             let ty = self.lower_ty(m, &t)?;
@@ -269,6 +270,9 @@ impl Cx {
         // The checker found the result an interface view of the arguments: owned, dropped by
         // the caller, held as a borrow of the arguments while it lives.
         f.ret_view = self.view_lenders.contains(&(c.module.file, c.id()));
+        // A function that returns a promise from a closure it is given keeps that closure alive.
+        f.keeps_scoped =
+            result.is_source_type("@std/concurrency/promise.ms", "Promise") && takes_function;
         let id = m.add_func(f);
         self.insts.insert(key, id);
         self.queue.push(Job {
@@ -419,6 +423,7 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     func.noalias = proto.noalias;
     func.ret_borrowed = proto.ret_borrowed;
     func.ret_view = proto.ret_view;
+    func.keeps_scoped = proto.keeps_scoped;
     func.compact_blocks();
     m.funcs[job.func.index()] = func;
     Ok(())

@@ -4,7 +4,7 @@ import read_lines from "@std/streams.ms"
 let FEE = 5
 let BAD = "error: bad command\n"
 
-# Parses a non-empty run of ASCII digits; returns -1 when the text is not digits only.
+// Parses a non-empty run of ASCII digits; returns -1 when the text is not digits only.
 fn parse_digits(s: String) Int:
     if s.length() == 0: return -1
 
@@ -32,14 +32,14 @@ impl Ledger:
     var fn bump_ops(id: String) Unit:
         self.ops.add(id.clone(), self.ops.get(id).get(0) + 1)
 
-    # Fee charged by a debit of `amount` from `id` (independent of whether it succeeds).
+    // Fee charged by a debit of `amount` from `id` (independent of whether it succeeds).
     fn fee_for(id: String, amount: Int) Int:
         let bal = self.balance.get(id).get(0)
         if bal >= 0 and bal - amount < 0: return FEE
 
         return 0
 
-    # Empty string when the debit is allowed, otherwise the error line (without newline).
+    // Empty string when the debit is allowed, otherwise the error line (without newline).
     fn debit_error(id: String, amount: Int) String:
         let bal = self.balance.get(id).get(0)
         let fee = self.fee_for(id, amount)
