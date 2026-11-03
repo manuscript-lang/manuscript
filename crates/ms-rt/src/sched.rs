@@ -38,11 +38,15 @@ pub(crate) enum Event {
     Started { id: i64, thread: u8 },
     /// To the creator: the work produced a value (or the operation's own error). The result block
     /// is in the process heap and now belongs to the promise.
+    /// A null `ptr` completes without a value (the end of a pipe, a finished flush). `pipe` names
+    /// the pipe the value was read from, or 0: if the promise is gone by the time this arrives,
+    /// the value goes back to the front of that pipe, since a cancelled read takes no value.
     Done {
         id: i64,
         failed: bool,
         ptr: usize,
         desc: usize,
+        pipe: i64,
     },
     /// To the creator: the task is over, by return (0), fault (1, with the report) or
     /// cancellation (2). The creator may release the closure now.

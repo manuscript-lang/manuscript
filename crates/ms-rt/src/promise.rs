@@ -215,6 +215,7 @@ pub unsafe extern "C-unwind" fn msrt_promise_put(
                 failed: failed != 0,
                 ptr: ptr as usize,
                 desc: d as usize,
+                pipe: 0,
             },
         );
     }
@@ -261,17 +262,23 @@ fn apply(event: Event) {
             failed,
             ptr,
             desc,
+            pipe,
         } => {
             let t = table();
             match index(t, id) {
                 Some(i) if t.state[i] == State::Pending => {
-                    t.result[i] = Result {
-                        ptr: ptr as *mut u8,
-                        desc: desc as *const TypeDesc,
-                    };
+                    if ptr != 0 {
+                        t.result[i] = Result {
+                            ptr: ptr as *mut u8,
+                            desc: desc as *const TypeDesc,
+                        };
+                    }
                     t.state[i] = if failed { State::Error } else { State::Ok };
+                    t.retry[i] = None;
                     wake(t, i);
                 }
+                _ if ptr == 0 => {}
+                _ if pipe != 0 => crate::pipes::unread(pipe, ptr, desc),
                 _ => drop_block(ptr, desc),
             }
         }
@@ -494,9 +501,40 @@ pub unsafe fn io_put(id: i64, value: *mut u8, d: &'static TypeDesc, failed: bool
 /// Completes the promise `id` with no value (a finished write): `wait` answers 0 and there is
 /// nothing to take.
 pub fn io_done(id: i64) {
+    deliver(
+        id,
+        Event::Done {
+            id,
+            failed: false,
+            ptr: 0,
+            desc: 0,
+            pipe: 0,
+        },
+    );
+}
+
+/// Completes the promise `id` with the block `ptr` of `desc` (null: no value), from any thread.
+/// If the promise is gone, the value returns to `pipe` (0: it is dropped).
+pub(crate) fn io_done_block(id: i64, ptr: usize, desc: usize, pipe: i64) {
+    deliver(
+        id,
+        Event::Done {
+            id,
+            failed: false,
+            ptr,
+            desc,
+            pipe,
+        },
+    );
+}
+
+/// Records `cancel` as the continuation that runs when pending promise `id` is dropped, with
+/// `state`. A pipe read uses it to leave the pipe's list of waiting readers.
+pub(crate) fn on_drop(id: i64, cancel: Retry, state: usize) {
     let t = table();
     if let Some(i) = index(t, id) {
-        complete_unit(t, i);
+        t.retry[i] = Some(cancel);
+        t.retry_state[i] = state;
     }
 }
 
@@ -812,9 +850,11 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
         // SAFETY: single scheduler per isolate.
         unsafe { task::unwatch_fd_for_promise(t.fd[i], id) };
         t.fd[i] = -1;
-        if let Some(retry) = core::mem::take(&mut t.retry[i]) {
-            retry(id, t.retry_state[i], task::WAIT_CANCELLED);
-        }
+    }
+    if t.state[i] == State::Pending
+        && let Some(retry) = core::mem::take(&mut t.retry[i])
+    {
+        retry(id, t.retry_state[i], task::WAIT_CANCELLED);
     }
     if t.closure[i] != 0 {
         if t.state[i] == State::Pending {
