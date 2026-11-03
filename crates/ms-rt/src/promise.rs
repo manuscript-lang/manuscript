@@ -304,7 +304,7 @@ fn apply(event: Event) {
             let Some(i) = index(t, id) else { return };
             let closure = core::mem::take(&mut t.closure[i]);
             if closure != 0 {
-                // SAFETY: the reference taken at start; the task is over, so this is its last use.
+                // SAFETY: the closure handed over at start; the task is over, so this is its last use.
                 unsafe { crate::obj::release(closure as *mut ms_rt_abi::Obj) };
             }
             t.thread[i] = NOT_STARTED;
@@ -739,9 +739,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, here: bool) {
     if t.closure[i] != 0 || t.thread[i] != NOT_STARTED {
         fault::fault(b"promise: already started");
     }
-    // SAFETY: forwarded contract. The promise keeps a reference to the closure until the task has
-    // ended, so no other thread ever changes its count.
-    unsafe { crate::obj::msrt_retain(work.cast()) };
+    // The caller hands the closure over: the promise owns it until the task has ended.
     t.closure[i] = work as usize;
     let start = Start {
         id,
@@ -765,8 +763,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, here: bool) {
 pub unsafe extern "C-unwind" fn msrt_promise_defer(id: i64, work: *mut ms_rt_abi::Closure) {
     let i = find(id);
     let t = table();
-    // SAFETY: the promise holds a reference until the work runs or the promise is dropped.
-    unsafe { crate::obj::msrt_retain(work.cast()) };
+    // The caller hands the closure over: the promise owns it until the work runs or it is dropped.
     t.flags[i] |= DEFERRED;
     t.retry_state[i] = work as usize;
 }
@@ -784,10 +781,10 @@ fn run_deferred(id: i64, deadline: Option<i64>) {
     // its own waits can notice the limit.
     let earlier =
         task::set_defer_deadline(deadline.map_or(i64::MAX, |d| d.min(task::defer_deadline())));
-    // The reference is released when the work ends, and by the cleanup when a cancelled wait inside the
-    // work jumps out of it, which skips Rust destructors.
+    // The closure handed over to `msrt_promise_defer` is dropped when the work ends, and by the
+    // cleanup when a cancelled wait inside the work jumps out of it, which skips Rust destructors.
     let release = || {
-        // SAFETY: the reference taken in `msrt_promise_defer` is ours, released once.
+        // SAFETY: the closure is ours, dropped once.
         unsafe { crate::obj::release(closure.cast()) };
     };
     // SAFETY: the code is the closure's entry.
@@ -829,14 +826,13 @@ unsafe extern "C" fn native_drop(obj: *mut ms_rt_abi::Obj) {
 /// `arg` must be valid for `entry`, which owns it.
 pub unsafe fn start_native(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> i64 {
     let id = msrt_promise_new();
-    // SAFETY: a fresh object with no captures to drop; the promise retains it for the task.
+    // SAFETY: a fresh object with no captures to drop, handed over to the promise for the task.
     unsafe {
         let n = crate::obj::new_obj(size_of::<Native>(), native_drop).cast::<Native>();
         (*n).closure.code = native_code as *const u8;
         (*n).entry = entry;
         (*n).arg = arg;
         start_on(id, n.cast(), true);
-        crate::obj::release(n.cast());
     }
     id
 }
@@ -1031,7 +1027,7 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
     if t.flags[i] & DEFERRED != 0 {
         t.flags[i] &= !DEFERRED;
         let closure = core::mem::take(&mut t.retry_state[i]);
-        // SAFETY: the reference taken in `msrt_promise_defer`, never used.
+        // SAFETY: the closure handed over to `msrt_promise_defer`, never used.
         unsafe { crate::obj::release(closure as *mut ms_rt_abi::Obj) };
     }
     if t.state[i] == State::Pending

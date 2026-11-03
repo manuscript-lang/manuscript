@@ -446,7 +446,7 @@ mod tests {
         let writers: Vec<i64> = (0..3).map(|_| promise::msrt_promise_new()).collect();
         for &id in &writers {
             msrt_pipe_add_writer(pipe);
-            // SAFETY: the promise keeps a reference to the closure until its task has ended.
+            // SAFETY: the promise owns the closure it is handed until its task has ended.
             unsafe {
                 let size = size_of::<Closure>() + 16;
                 let closure = crate::obj::new_obj(size, drop_closure).cast::<Closure>();
@@ -455,7 +455,6 @@ mod tests {
                 data.write(id);
                 data.add(1).write(pipe);
                 msrt_promise_start(id, closure);
-                crate::obj::release(closure.cast());
             }
         }
         // The Pipe value's own writer goes: the three writers keep the pipe open.

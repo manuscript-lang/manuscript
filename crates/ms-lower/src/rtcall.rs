@@ -51,6 +51,17 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
     }
 }
 
+/// Whether the runtime function `sym` takes ownership of its parameter `i`: a function value an
+/// extern keeps after it returns (the checker consumes the argument; the runtime drops it once).
+pub(crate) fn hands_over(sym: &str, i: usize) -> bool {
+    ms_check::stdlib::keeps_callbacks(&format!("extern:{sym}"))
+        && rt_sig(sym).is_some_and(|sig| {
+            sig.params
+                .get(i)
+                .is_some_and(|p| p.ty == "*mut Closure" || p.name == "env")
+        })
+}
+
 /// One declared runtime parameter.
 pub(crate) struct RtParam {
     pub name: String,
@@ -516,6 +527,10 @@ impl FnLower<'_> {
                             self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);
                         }
                         vals.push(slot);
+                    } else if hands_over(sym, i) {
+                        // A function value the runtime keeps: handed over, dropped by the runtime.
+                        let v = self.owned(x);
+                        vals.push(v);
                     } else {
                         let v = self.borrow(x);
                         let v = match self.b.m.types.kind(self.ty_of(v)).clone() {
