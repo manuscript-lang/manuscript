@@ -4,8 +4,7 @@
 use ms_rt as _;
 use ms_rt::ffi::Fail;
 use ms_std_archive::compress::compress;
-use ms_std_archive::compress::stream::{Decoder, Encoder, Poll};
-use ms_std_archive::compress::{Format, crc32, decompress_bytes};
+use ms_std_archive::compress::{Decoder, Encoder, Format, crc32, decompress_bytes};
 use std::collections::HashMap;
 
 fn bytes(tok: &str) -> Vec<u8> {
@@ -16,30 +15,22 @@ fn bytes(tok: &str) -> Vec<u8> {
         .collect()
 }
 
-fn decode(
-    format: Format,
-    max: Option<i64>,
-    input: &[u8],
-    chunk: usize,
-    out_max: usize,
-) -> (Vec<u8>, String) {
+fn decode(format: Format, max: Option<i64>, input: &[u8], chunk: usize) -> (Vec<u8>, String) {
     let mut d = Decoder::new(format, max);
-    let mut rest = input;
     let mut out = Vec::new();
-    loop {
-        match d.poll(out_max) {
-            Ok(Poll::Output(b)) => out.extend_from_slice(&b),
-            Ok(Poll::Done) => return (out, "ok".into()),
-            Ok(Poll::NeedInput) if rest.is_empty() => d.finish_input(),
-            Ok(Poll::NeedInput) => {
-                let n = chunk.min(rest.len());
-                d.feed(&rest[..n]);
-                rest = &rest[n..];
-            }
+    for c in input.chunks(chunk) {
+        match d.push(c) {
+            Ok(b) => out.extend_from_slice(&b),
             Err(Fail::LimitExceeded) => return (out, "err LimitExceeded".into()),
             Err(_) => return (out, "err InvalidData".into()),
         }
     }
+    match d.end() {
+        Ok(b) => out.extend_from_slice(&b),
+        Err(Fail::LimitExceeded) => return (out, "err LimitExceeded".into()),
+        Err(_) => return (out, "err InvalidData".into()),
+    }
+    (out, "ok".into())
 }
 
 #[test]
@@ -55,15 +46,9 @@ fn decode_matches_oracle() {
         }
         let format = Format::from_name(f[1]).unwrap();
         let max = (f[3] != "-").then(|| f[3].parse().unwrap());
-        let (out, status) = decode(
-            format,
-            max,
-            &inputs[f[2]],
-            f[4].parse().unwrap(),
-            f[5].parse().unwrap(),
-        );
-        // Output delivered before an error depends on the decoder's internal chunking, so only
-        // the error and the limit are compared; complete outputs match exactly.
+        let (out, status) = decode(format, max, &inputs[f[2]], f[4].parse().unwrap());
+        // Output delivered before an error depends on the input chunking, so only the error and
+        // the limit are compared; complete outputs match exactly.
         if status == "ok" {
             let got = format!("{}\t{:x}\t{}", out.len(), crc32(0, &out), status);
             assert_eq!(got, f[7..].join("\t"), "{line}");
@@ -88,13 +73,9 @@ fn encoder_roundtrips() {
                     let mut e = Encoder::new(format, level).unwrap();
                     let mut packed = Vec::new();
                     for c in data.chunks(chunk) {
-                        e.feed(c);
-                        packed.extend(e.take(usize::MAX));
+                        packed.extend(e.push(c));
                     }
-                    e.finish();
-                    while e.has_output() {
-                        packed.extend(e.take(100));
-                    }
+                    packed.extend(e.end());
                     let name = match format {
                         Format::Gzip => "gzip",
                         Format::Zlib => "zlib",
@@ -114,71 +95,42 @@ fn encoder_roundtrips() {
 }
 
 #[test]
-fn tiny_output_reads_preserve_dictionary_wraps_and_gzip_members() {
+fn small_chunks_preserve_dictionary_wraps_and_gzip_members() {
     let data: Vec<u8> = (0..65_539u32).map(|i| (i * 7 % 253) as u8).collect();
     for name in ["gzip", "zlib", "deflate"] {
         let format = Format::from_name(name).unwrap();
         let packed = compress(&data, name, 6, None).unwrap();
         for chunk in [1, 32768] {
-            for width in [1, 7, 32768] {
-                let (out, status) = decode(format, None, &packed, chunk, width);
-                assert_eq!(status, "ok", "{name} {chunk} {width}");
-                assert_eq!(out, data, "{name} {chunk} {width}");
-            }
+            let (out, status) = decode(format, None, &packed, chunk);
+            assert_eq!(status, "ok", "{name} {chunk}");
+            assert_eq!(out, data, "{name} {chunk}");
         }
     }
     let mut members = compress(&data, "gzip", 6, None).unwrap();
     members.extend(compress(b"next member", "gzip", 6, None).unwrap());
-    let (mut out, status) = decode(Format::Gzip, None, &members, 31, 1);
+    let (mut out, status) = decode(Format::Gzip, None, &members, 31);
     assert_eq!(status, "ok");
     assert_eq!(out.split_off(data.len()), b"next member");
     assert_eq!(out, data);
 }
 
 #[test]
-fn tiny_output_limits_and_bad_trailers_remain_terminal() {
+fn limits_and_bad_trailers_remain_terminal() {
     let data: Vec<u8> = (0..65_539u32).map(|i| (i % 251) as u8).collect();
     for name in ["gzip", "zlib", "deflate"] {
         let format = Format::from_name(name).unwrap();
         let packed = compress(&data, name, 6, None).unwrap();
         for limit in [-1, 0, 1, 7, 32768, data.len() as i64 - 1] {
             let mut d = Decoder::new(format, Some(limit));
-            d.feed(&packed);
-            d.finish_input();
-            let mut out = Vec::new();
-            loop {
-                match d.poll(1) {
-                    Ok(Poll::Output(bytes)) => out.extend(bytes),
-                    Err(e) => {
-                        assert_eq!(e, Fail::LimitExceeded, "{name} {limit}");
-                        break;
-                    }
-                    other => panic!("unexpected {other:?} for {name} {limit}"),
-                }
-            }
-            assert_eq!(out, data[..limit.max(0) as usize], "{name} {limit}");
-            for width in [1, 7, 32768] {
-                assert_eq!(d.poll(width), Err(Fail::LimitExceeded));
-            }
+            assert_eq!(d.push(&packed), Err(Fail::LimitExceeded), "{name} {limit}");
+            assert_eq!(d.push(b""), Err(Fail::LimitExceeded));
+            assert_eq!(d.end(), Err(Fail::LimitExceeded));
         }
     }
     let mut packed = compress(&data, "gzip", 6, None).unwrap();
     let trailer = packed.len() - 8;
     packed[trailer] ^= 1;
     let mut d = Decoder::new(Format::Gzip, None);
-    d.feed(&packed);
-    d.finish_input();
-    let mut out = Vec::new();
-    loop {
-        match d.poll(1) {
-            Ok(Poll::Output(bytes)) => out.extend(bytes),
-            Err(e) => {
-                assert_eq!(e, Fail::InvalidData);
-                break;
-            }
-            other => panic!("unexpected {other:?} before a bad gzip trailer"),
-        }
-    }
-    assert_eq!(out, data);
-    assert_eq!(d.poll(32768), Err(Fail::InvalidData));
+    assert_eq!(d.push(&packed), Err(Fail::InvalidData));
+    assert_eq!(d.end(), Err(Fail::InvalidData));
 }
