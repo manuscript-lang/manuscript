@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,records,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/effects_test.go:73 TestEffectsIncludeRecordDefaults
+// conform: tags=diagnostics,records,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/effects_test.go:73 TestEffectsIncludeRecordDefaults
 type State:
     count: Int
 

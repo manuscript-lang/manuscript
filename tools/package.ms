@@ -1,7 +1,7 @@
-# Builds the Rust ms for a target: one binary with the native runtime embedded, archived as
-# dist/manuscript-rust-<os>-<arch>.{tar.gz,zip} with a .sha256 beside it. The release runner for
-# each target builds it natively.
-# Usage: ms run tools/package.ms [-- OS ARCH]
+// Builds the Rust ms for a target: one binary with the native runtime embedded, archived as
+// dist/manuscript-rust-<os>-<arch>.{tar.gz,zip} with a .sha256 beside it. The release runner for
+// each target builds it natively.
+// Usage: ms run tools/package.ms [-- OS ARCH]
 import capture, dist_arch, dist_os, file_sha256, note, run_program from "./lib.ms"
 import chmod, copy, create_directory, remove, temporary, write_file from "@std/os/fs.ms"
 import (
@@ -38,13 +38,13 @@ export fn main() Int:
     var executable = "ms"
     if target_os == "windows": executable = "ms.exe"
 
-    # ms-native is built in release mode first; `ms-cli`'s build script embeds the archive.
+    // ms-native is built in release mode first; `ms-cli`'s build script embeds the archive.
     var code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 
-    # Debug sections are dropped from the shipped binary (symbol names stay for fault traces and
-    # the profiler). The host triple is explicit so CARGO_BUILD_TARGET or `build.target` cannot move
-    # the output away from where the copy below reads it.
+    // Debug sections are dropped from the shipped binary (symbol names stay for fault traces and
+    // the profiler). The host triple is explicit so CARGO_BUILD_TARGET or `build.target` cannot move
+    // the output away from where the copy below reads it.
     var triple = ""
     for line in capture("rustc", ["-vV"]).split("\n"):
         if line.starts_with("host: "): triple = line.slice(
@@ -71,7 +71,7 @@ export fn main() Int:
     copy("examples/hello/test.ms", "{bundle}/examples/hello/test.ms").get()
     copy("examples/hello/src/main.ms", "{bundle}/examples/hello/src/main.ms").get()
 
-    # `copy` writes private modes; the archive carries the usual ones.
+    // `copy` writes private modes; the archive carries the usual ones.
     for dir in ["", "/examples", "/examples/hello", "/examples/hello/src"]:
         chmod("{bundle}{dir}", 493).get()
     chmod("{bundle}/{executable}", 493).get()
@@ -95,7 +95,7 @@ export fn main() Int:
             ]
         )
 
-        # The checksum below reads the archive by its repository-relative path.
+        // The checksum below reads the archive by its repository-relative path.
         change_directory(root).get()
     else:
         code = run_program(

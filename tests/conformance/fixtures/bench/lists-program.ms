@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,faults,lists,modules,mutation,records,stdlib-collections,tier-stdlib
-# conform: phase=run
-# conform: origin=bench/lists/program.ms
+// conform: tags=closures,control-flow,faults,lists,modules,mutation,records,stdlib-collections,tier-stdlib
+// conform: phase=run
+// conform: origin=bench/lists/program.ms
 
 fn build(count: Int) List[Int]:
     var values: List[Int] = []

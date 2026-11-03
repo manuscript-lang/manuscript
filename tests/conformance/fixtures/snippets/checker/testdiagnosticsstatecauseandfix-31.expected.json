@@ -14,7 +14,7 @@
           "file": "testdiagnosticsstatecauseandfix-31.ms",
           "line": 7,
           "column": 13,
-          "offset": 252
+          "offset": 255
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testdiagnosticsstatecauseandfix-31.ms",
           "line": 8,
           "column": 9,
-          "offset": 275
+          "offset": 278
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "testdiagnosticsstatecauseandfix-31.ms",
           "line": 8,
           "column": 27,
-          "offset": 293
+          "offset": 296
         },
         "fix": {
           "position": {
@@ -62,7 +62,7 @@
           "file": "testdiagnosticsstatecauseandfix-31.ms",
           "line": 8,
           "column": 46,
-          "offset": 312
+          "offset": 315
         },
         "fix": {
           "position": {

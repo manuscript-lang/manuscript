@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/hints_test.go:27 TestDiagnosticsStateCauseAndFix
+// conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/hints_test.go:27 TestDiagnosticsStateCauseAndFix
 interface I:
     fn m() Int
 

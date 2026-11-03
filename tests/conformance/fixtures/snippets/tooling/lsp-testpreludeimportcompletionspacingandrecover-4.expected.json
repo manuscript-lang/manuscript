@@ -14,13 +14,13 @@
           "file": "lsp-testpreludeimportcompletionspacingandrecover-4.ms",
           "line": 4,
           "column": 8,
-          "offset": 193
+          "offset": 196
         },
         "end": {
           "file": "lsp-testpreludeimportcompletionspacingandrecover-4.ms",
           "line": 4,
           "column": 12,
-          "offset": 197
+          "offset": 200
         }
       }
     ],

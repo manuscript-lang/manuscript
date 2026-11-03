@@ -6,11 +6,11 @@ type Record:
     category: String
     amount: String
 
-# True for one ASCII digit.
+// True for one ASCII digit.
 fn is_digit(c: String) Bool:
     return c.length() == 1 and "0123456789".contains(c)
 
-# Amount grammar: digits, optionally `.` followed by one or two digits.
+// Amount grammar: digits, optionally `.` followed by one or two digits.
 fn valid_amount(s: String) Bool:
     let n = s.length()
     var i = 0
@@ -32,7 +32,7 @@ fn valid_amount(s: String) Bool:
             return false
     return true
 
-# Splits one line into category and amount; none when the line is invalid.
+// Splits one line into category and amount; none when the line is invalid.
 fn parse_line(line: String) Record?:
     var category = ""
     var amount = ""
@@ -62,7 +62,7 @@ fn parse_line(line: String) Record?:
 
     return Record(category: category, amount: amount)
 
-# Converts a valid amount to a digit string of whole cents, without leading zeros.
+// Converts a valid amount to a digit string of whole cents, without leading zeros.
 fn to_cents(amount: String) String:
     var whole = amount.clone()
     var frac = "00"
@@ -76,7 +76,7 @@ fn to_cents(amount: String) String:
         digits = digits.drop(1)
     return digits
 
-# Exact addition of two non-negative digit strings.
+// Exact addition of two non-negative digit strings.
 fn add_digits(a: String, b: String) String:
     var i = a.length() - 1
     var j = b.length() - 1
@@ -99,7 +99,7 @@ fn add_digits(a: String, b: String) String:
 
     return out
 
-# Renders a cents digit string as `whole.cc`.
+// Renders a cents digit string as `whole.cc`.
 fn format_cents(cents: String) String:
     let s = cents.pad_start(3, "0")
     let cut = s.length() - 2

@@ -1,6 +1,6 @@
-# conform: tags=maps,tier-core
-# conform: phase=run
-# conform: origin=tests/e2e/fault_locations_test.go:80 TestFaultSourceLocations
+// conform: tags=maps,tier-core
+// conform: phase=run
+// conform: origin=tests/e2e/fault_locations_test.go:80 TestFaultSourceLocations
 fn crash() Int:
     return 1 / "".byte_length()
 

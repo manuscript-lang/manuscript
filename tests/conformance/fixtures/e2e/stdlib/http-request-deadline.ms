@@ -1,8 +1,8 @@
-# conform: tags=stdlib-http,stdlib-net,tier-io
-# conform: phase=run
-# conform: timeout=30
-# A handler that is still waiting when the server's request timeout passes is cancelled and the
-# request is answered 504, with or without a grace period; the server keeps serving afterwards.
+// conform: tags=stdlib-http,stdlib-net,tier-io
+// conform: phase=run
+// conform: timeout=30
+// A handler that is still waiting when the server's request timeout passes is cancelled and the
+// request is answered 504, with or without a grace period; the server keeps serving afterwards.
 import (
     buffered,
     headers,

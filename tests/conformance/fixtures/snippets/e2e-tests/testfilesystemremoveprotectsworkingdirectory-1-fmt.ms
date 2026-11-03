@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,modules,parser,stdlib-fs,tier-io,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/fs_remove_test.go:17 TestFileSystemRemoveProtectsWorkingDirectory
+// conform: tags=control-flow,formatter,modules,parser,stdlib-fs,tier-io,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/fs_remove_test.go:17 TestFileSystemRemoveProtectsWorkingDirectory
 import canonicalize, remove, rename from "@std/os/fs.ms"
 
 export fn main() Int:

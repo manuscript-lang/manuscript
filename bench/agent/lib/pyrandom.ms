@@ -1,5 +1,5 @@
-# Python's `random.Random` (Mersenne Twister) for integer seeds, so the generators reproduce the cases
-# CPython's `random` module produced. Covers `randint`, `randrange`, `choice`, `random` and `sample`.
+// Python's `random.Random` (Mersenne Twister) for integer seeds, so the generators reproduce the cases
+// CPython's `random` module produced. Covers `randint`, `randrange`, `choice`, `random` and `sample`.
 import panic from "@std/core.ms"
 import bit_and, bit_xor, shift_left, shift_right from "@std/math/math.ms"
 
@@ -22,7 +22,7 @@ fn init_genrand(seed: Int) List[Int]:
 
     return mt
 
-# Seeds like `random.Random(seed)` for a non-negative `seed` below 2**32.
+// Seeds like `random.Random(seed)` for a non-negative `seed` below 2**32.
 export fn seeded(seed: Int) Random:
     var mt = init_genrand(19650218)
     var i = 1
@@ -87,7 +87,7 @@ impl Random:
         let y3 = bit_xor(y2, bit_and(shift_left(y2, 15), 0xEFC60000))
         return bit_xor(y3, shift_right(y3, 18))
 
-    # A uniform integer in `0..n` by rejection, as CPython's `_randbelow`.
+    // A uniform integer in `0..n` by rejection, as CPython's `_randbelow`.
     var fn below(n: Int) Int:
         if n <= 0: return 0
 
@@ -102,26 +102,26 @@ impl Random:
         while r >= n: r = shift_right(self.next_u32(), 32 - bits)
         return r
 
-    # A uniform integer in `low..=high`.
+    // A uniform integer in `low..=high`.
     var fn randint(low: Int, high: Int) Int: low + self.below(high - low + 1)
 
-    # A uniform integer in `low..high`.
+    // A uniform integer in `low..high`.
     var fn randrange(low: Int, high: Int) Int: low + self.below(high - low)
 
-    # A uniform float in `0.0..1.0` from 53 random bits.
+    // A uniform float in `0.0..1.0` from 53 random bits.
     var fn random() Float:
         let a = shift_right(self.next_u32(), 5)
         let b = shift_right(self.next_u32(), 6)
         return (a.to_float() * 67108864.0 + b.to_float()) / 9007199254740992.0
 
-    # A uniformly chosen item, as `random.choice`. The index is bound before the element is cloned because
-    # `items[f()].clone()` evaluates `f()` twice (https://github.com/manuscript-lang/manuscript/issues/2161).
+    // A uniformly chosen item, as `random.choice`. The index is bound before the element is cloned because
+    // `items[f()].clone()` evaluates `f()` twice (https://github.com/manuscript-lang/manuscript/issues/2161).
     var fn choice(items: List[String]) String:
         let at = self.below(items.length())
         return items[at].clone()
 
-    # `k` distinct items in random order, as `random.sample` picks them from a population of at most 21 items
-    # (CPython's pool method; larger populations use a different algorithm that is not implemented here).
+    // `k` distinct items in random order, as `random.sample` picks them from a population of at most 21 items
+    // (CPython's pool method; larger populations use a different algorithm that is not implemented here).
     var fn sample(items: List[String], k: Int) List[String]:
         let n = items.length()
         if n > 21: panic("sample: only the pool method is implemented")

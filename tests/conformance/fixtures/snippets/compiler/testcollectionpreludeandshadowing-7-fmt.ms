@@ -1,6 +1,6 @@
-# conform: tags=formatter,maps,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/prelude_test.go:69 TestCollectionPreludeAndShadowing
+// conform: tags=formatter,maps,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/prelude_test.go:69 TestCollectionPreludeAndShadowing
 type Map[K, V]:
     value: V
 

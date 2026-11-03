@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,strings,tier-core
-# conform: phase=check
-# conform: origin=pkg/checker/documentation_test.go:128 TestModuleDocumentationRetainsDefaults
+// conform: tags=closures,diagnostics,strings,tier-core
+// conform: phase=check
+// conform: origin=pkg/checker/documentation_test.go:128 TestModuleDocumentationRetainsDefaults
 fn helper(left: Int, right: Int) Int:
     return left + right
 

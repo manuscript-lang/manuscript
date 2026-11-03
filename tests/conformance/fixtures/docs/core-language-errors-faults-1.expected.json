@@ -14,7 +14,7 @@
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
           "column": 30,
-          "offset": 242
+          "offset": 245
         },
         "fix": {
           "position": {
@@ -40,7 +40,7 @@
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
           "column": 48,
-          "offset": 260
+          "offset": 263
         },
         "fix": {
           "position": {
@@ -66,7 +66,7 @@
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
           "column": 57,
-          "offset": 269
+          "offset": 272
         },
         "fix": {
           "position": {

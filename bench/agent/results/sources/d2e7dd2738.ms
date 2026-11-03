@@ -144,7 +144,7 @@ fn tokenize(line: String) List[String]:
         toks.append(cur.clone())
     return toks
 
-# Matching pairs of a against b (LCS walk). Result[i] = matched index in b, or -1.
+// Matching pairs of a against b (LCS walk). Result[i] = matched index in b, or -1.
 fn match_map(a: List[String], b: List[String]) List[Int]:
     let n = a.length()
     let m = b.length()
@@ -250,7 +250,7 @@ fn merge_lines(
         clean = false
     return Merged(text: text, clean: clean)
 
-# Prints a whole-file line diff of a (left) against b (right).
+// Prints a whole-file line diff of a (left) against b (right).
 fn print_line_diff(a: List[String], b: List[String]) Unit:
     let mm = match_map(a, b)
     var pi = 0
@@ -358,7 +358,7 @@ impl Repo:
         self.ids.add(id, s)
         return s
 
-    # Returns the commit seq for REF, or 0 after printing an error.
+    // Returns the commit seq for REF, or 0 after printing an error.
     fn resolve(refname: String) Int:
         var base = refname.clone()
         var steps = 0
@@ -434,7 +434,7 @@ impl Repo:
 
         return false
 
-    # Prints the error and returns true when an untracked working file would be overwritten.
+    // Prints the error and returns true when an untracked working file would be overwritten.
     fn untracked(names: List[String]) Bool:
         for name in names.sorted():
             if self.files.contains(name) and not self.index.contains(name):
@@ -443,7 +443,7 @@ impl Repo:
 
         return false
 
-    # Sets index and working files to the target tree, as checkout does.
+    // Sets index and working files to the target tree, as checkout does.
     var fn apply_tree(target: Map[String, String]) Unit:
         for name in self.index.keys():
             self.files.remove(name)

@@ -1,6 +1,6 @@
-# conform: tags=alternatives,formatter,match,optional,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/pattern_lint_test.go:31 TestPatternBindingAdvisory
+// conform: tags=alternatives,formatter,match,optional,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/pattern_lint_test.go:31 TestPatternBindingAdvisory
 type Flag:
     case Ready
 

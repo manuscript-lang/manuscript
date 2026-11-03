@@ -5,7 +5,7 @@ weight = 2
 
 # Language tour
 
-Short examples in order, after [your first program](getting-started.md). Indentation defines blocks; `#` starts a comment. Examples without imports or test blocks are fragments; put their local statements inside a function or test.
+Short examples in order, after [your first program](getting-started.md). Indentation defines blocks; `//` starts a comment. Examples without imports or test blocks are fragments; put their local statements inside a function or test.
 
 ## Print your first line
 
@@ -119,7 +119,7 @@ fn line_total(price: Int, quantity: Int) Int:
     return price * quantity
 
 let welcome = greeting("Sam")
-let default_welcome = greeting()  # "Hello, world!"
+let default_welcome = greeting()  // "Hello, world!"
 let subtotal = line_total(12, 3)
 ```
 
@@ -132,7 +132,7 @@ Functions are values:
 let prices = [12, 8, 25]
 let discounted = prices.map(fn value: value - 2)
 let affordable = discounted.filter(fn value: value <= 10)
-# affordable contains [10, 6]; prices is unchanged.
+// affordable contains [10, 6]; prices is unchanged.
 ```
 
 ## Types for application data
@@ -335,9 +335,9 @@ These are intentionally rejected:
 
 ```manuscript
 let count = 2
-count = 3                 # Use var for reassignment.
-let mixed = [1, "two"]    # List elements need a common type.
-line_total(12)            # Supply the required quantity.
+count = 3                 // Use var for reassignment.
+let mixed = [1, "two"]    // List elements need a common type.
+line_total(12)            // Supply the required quantity.
 ```
 
 Next: [testing](testing.md), [task recipes](common-tasks.md), the [language reference](../core-language/_index.md), and the [API reference](../standard-library/reference/_index.md).

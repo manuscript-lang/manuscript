@@ -1,6 +1,6 @@
-# conform: tags=formatter,modules,parser,stdlib-fs,tier-io,try-result,scope-cleanup
-# conform: phase=parse
-# conform: origin=documentation/learn/tour.md:312
+// conform: tags=formatter,modules,parser,stdlib-fs,tier-io,try-result,scope-cleanup
+// conform: phase=parse
+// conform: origin=documentation/learn/tour.md:312
 import open, write_file_bytes from "@std/os/fs.ms"
 
 fn copy_notes() Result[Unit, Error]:

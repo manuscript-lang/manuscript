@@ -1,6 +1,6 @@
-# conform: tags=control-flow,lists,maps,modules,mutation,records,stdlib-testing,testing,tier-core
-# conform: phase=test
-# conform: origin=bug bash: lowering and codegen
+// conform: tags=control-flow,lists,maps,modules,mutation,records,stdlib-testing,testing,tier-core
+// conform: phase=test
+// conform: origin=bug bash: lowering and codegen
 import expect_equal from "@std/test/test.ms"
 
 type Pt:

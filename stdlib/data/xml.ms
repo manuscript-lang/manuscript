@@ -1,54 +1,56 @@
 import StringBuilder, from_scalars from "@std/string.ms"
 import parse_int_radix from "@std/text.ms"
 
-# XML documents as a tree of elements, text and comments, parsed and written in Manuscript.
-# `parse` accepts well-formed XML 1.0 without DTD processing (a DOCTYPE is skipped, entities beyond
-# the five predefined and numeric references are rejected). Names keep their prefix as written
-# (`svg:rect`); namespaces are not resolved. `stringify` writes a tree back with escaping.
-#
-#     import parse, stringify, XmlNode from "@std/data/xml.ms"
-#     let doc = parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>").get()
-#     let item = doc.find("item").get()
-#     item.attribute("id")           # "1"
-#     item.text()                    # "Hi & bye"
+/*
+XML documents as a tree of elements, text and comments, parsed and written in Manuscript.
+`parse` accepts well-formed XML 1.0 without DTD processing (a DOCTYPE is skipped, entities beyond
+the five predefined and numeric references are rejected). Names keep their prefix as written
+(`svg:rect`); namespaces are not resolved. `stringify` writes a tree back with escaping.
 
-# An XML attribute with its decoded value.
+    import parse, stringify, XmlNode from "@std/data/xml.ms"
+    let doc = parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>").get()
+    let item = doc.find("item").get()
+    item.attribute("id")           # "1"
+    item.text()                    # "Hi & bye"
+*/
+
+// An XML attribute with its decoded value.
 export type XmlAttribute:
-    # Attribute name as written, including any prefix.
+    // Attribute name as written, including any prefix.
     name: String
-    # Attribute value with references decoded.
+    // Attribute value with references decoded.
     value: String
 
-# A node of a parsed XML tree.
+// A node of a parsed XML tree.
 export type XmlNode:
-    # An element with its attributes in source order and its child nodes.
+    // An element with its attributes in source order and its child nodes.
     case XmlElement(
-        # Tag name as written, including any prefix.
+        // Tag name as written, including any prefix.
         name: String,
-        # Attributes in source order.
+        // Attributes in source order.
         attributes: List[XmlAttribute],
-        # Child elements, text and comments in document order.
+        // Child elements, text and comments in document order.
         children: List[XmlNode]
     )
-    # Character data with references decoded; CDATA sections become text.
+    // Character data with references decoded; CDATA sections become text.
     case XmlText(
-        # Text with entity and character references decoded.
+        // Text with entity and character references decoded.
         text: String
     )
-    # A comment, without the delimiters.
+    // A comment, without the delimiters.
     case XmlComment(
-        # Comment contents exactly as written between the delimiters.
+        // Comment contents exactly as written between the delimiters.
         text: String
     )
 
 impl XmlNode:
-    # The tag name of an element, or empty text for text and comments.
+    // The tag name of an element, or empty text for text and comments.
     fn tag() String:
         match self:
             XmlElement(name, _, _): return name.clone()
             _: return ""
 
-    # Returns the value of an attribute of an element, or none.
+    // Returns the value of an attribute of an element, or none.
     fn attribute(name: String) String?:
         match self:
             XmlElement(_, attributes, _):
@@ -57,19 +59,19 @@ impl XmlNode:
                 return none
             _: return none
 
-    # Returns the child nodes of an element, or an empty list. The result is an owned copy.
+    // Returns the child nodes of an element, or an empty list. The result is an owned copy.
     fn children() List[XmlNode]:
         match self:
             XmlElement(_, _, children): return children.clone()
             _: return List[XmlNode]()
 
-    # Returns all descendant text joined in document order, without comments.
+    // Returns all descendant text joined in document order, without comments.
     fn text() String:
         var out = StringBuilder()
         collect_text(self, var out)
         return out.build()
 
-    # Returns the first direct child element named `name`, or none. The result is an owned copy.
+    // Returns the first direct child element named `name`, or none. The result is an owned copy.
     fn find(name: String) XmlNode?:
         match self:
             XmlElement(_, _, children):
@@ -78,7 +80,7 @@ impl XmlNode:
                 return none
             _: return none
 
-    # Returns every direct child element named `name`, in order.
+    // Returns every direct child element named `name`, in order.
     fn find_all(name: String) List[XmlNode]:
         var found = List[XmlNode]()
 
@@ -98,7 +100,7 @@ fn collect_text(node: XmlNode, var out: StringBuilder) Unit:
                 collect_text(child, var out)
         _: return
 
-# A cursor over the document's scalars.
+// A cursor over the document's scalars.
 type Reader:
     chars: List[String]
     at: Int
@@ -121,7 +123,7 @@ impl Reader:
         while not self.done() and is_space(self.peek()):
             self.at += 1
 
-    # Consumes `literal` or fails.
+    // Consumes `literal` or fails.
     var fn expect(literal: String) Unit!:
         if not self.looking_at(literal): return error(
             Error("XML: invalid data", kind: ErrorCategory.InvalidData)
@@ -130,7 +132,7 @@ impl Reader:
         self.at += literal.chars().length()
         return ok(unit)
 
-    # Returns the text up to `stop` and consumes it, or fails when `stop` never appears.
+    // Returns the text up to `stop` and consumes it, or fails when `stop` never appears.
     var fn take_until(stop: String) String!:
         var out = StringBuilder()
 
@@ -162,7 +164,7 @@ impl Reader:
 
         return ok(out.build())
 
-    # Skips the XML declaration, comments, processing instructions and DOCTYPE before and after the root.
+    // Skips the XML declaration, comments, processing instructions and DOCTYPE before and after the root.
     var fn skip_misc() Unit!:
         while true:
             self.skip_space()
@@ -297,13 +299,13 @@ fn is_name_char(c: String, first: Bool) Bool:
 
     return true
 
-# Decodes the five predefined entities and numeric references; any other `&name;` is invalid.
+// Decodes the five predefined entities and numeric references; any other `&name;` is invalid.
 fn decode(text: String) String!:
     if not text.contains("&"): return ok(text.clone())
 
     var out = StringBuilder()
 
-    # Every piece after the first starts right after an `&`, so each is scanned once.
+    // Every piece after the first starts right after an `&`, so each is scanned once.
     let pieces = text.split("&")
     out.append(pieces[0])
 
@@ -348,9 +350,11 @@ fn scalar(value: Int?) String!:
 
     return ok(text.get())
 
-# Parses a document with a single root element and returns that element.
-# `max_depth` bounds element nesting (default 1000); deeper input is `LimitExceeded`.
-# A document with several roots, text outside the root, or any syntax error is `InvalidData`.
+/*
+Parses a document with a single root element and returns that element.
+`max_depth` bounds element nesting (default 1000); deeper input is `LimitExceeded`.
+A document with several roots, text outside the root, or any syntax error is `InvalidData`.
+*/
 export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
     if max_depth <= 0: return error(
         Error("XML: invalid input", kind: ErrorCategory.InvalidInput)
@@ -368,18 +372,18 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 
     return ok(root)
 
-# Escapes `&`, `<` and `>` for text content.
+// Escapes `&`, `<` and `>` for text content.
 export fn escape_text(text: String) String:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-# Escapes text for a double-quoted attribute value.
+// Escapes text for a double-quoted attribute value.
 export fn escape_attribute(text: String) String:
     return escape_text(text).replace("\"", "&quot;").replace("\n", "&#10;").replace(
         "\t", "&#9;"
     )
 
-# Writes a node as XML. A non-empty `indent` (such as two spaces) puts each element on its own
-# line, except elements holding text, which stay on one line. An element with no children is self-closing.
+// Writes a node as XML. A non-empty `indent` (such as two spaces) puts each element on its own
+// line, except elements holding text, which stay on one line. An element with no children is self-closing.
 export fn stringify(node: XmlNode, indent: String = "") String:
     var out = StringBuilder()
     write(node, indent, 0, var out)

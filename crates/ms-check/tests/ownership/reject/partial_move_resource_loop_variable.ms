@@ -19,5 +19,5 @@ fn keep(d: Door) List[Door]:
 fn each(rooms: List[Room]) Int:
     var n = 0
     for r in rooms:
-        n += keep(r.door).length()  # error: cannot move the resource
+        n += keep(r.door).length()  // error: cannot move the resource
     return n

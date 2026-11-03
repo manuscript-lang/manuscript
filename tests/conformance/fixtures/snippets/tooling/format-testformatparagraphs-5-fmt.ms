@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,match,parser,strings,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/format/format_paragraphs_test.go:54 TestFormatParagraphs
+// conform: tags=control-flow,formatter,match,parser,strings,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/format/format_paragraphs_test.go:54 TestFormatParagraphs
 fn process(input: String) Int:
     let records = parse(input)
     if records.length() == 0: return 0

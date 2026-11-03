@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,interfaces,lists,modules,records,stdlib-cleanup,stdlib-string,strings,tier-stdlib
-# conform: phase=check
-# conform: origin=tests/e2e/builder_range_test.go:16 TestBuilderAndRangeQueryStates
+// conform: tags=control-flow,diagnostics,interfaces,lists,modules,records,stdlib-cleanup,stdlib-string,strings,tier-stdlib
+// conform: phase=check
+// conform: origin=tests/e2e/builder_range_test.go:16 TestBuilderAndRangeQueryStates
 import StringBuilder from "@std/string.ms"
 import Closeable from "@std/core.ms"
 

@@ -14,7 +14,7 @@
           "file": "testexpectedresultgenericinferencerejects-3.ms",
           "line": 5,
           "column": 33,
-          "offset": 223
+          "offset": 226
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testexpectedresultgenericinferencerejects-3.ms",
           "line": 6,
           "column": 5,
-          "offset": 272
+          "offset": 275
         }
       }
     ],

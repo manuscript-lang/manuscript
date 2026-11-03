@@ -1,6 +1,6 @@
-# conform: tags=formatter,match,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/format/format_layout_test.go:469 TestFormatExpressionLayouts
+// conform: tags=formatter,match,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/format/format_layout_test.go:469 TestFormatExpressionLayouts
 fn choose(value: Choice) Int:
     match value:
         long_variant(

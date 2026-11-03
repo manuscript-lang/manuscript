@@ -4,7 +4,7 @@ import append_file, read_file, temporary from "@std/os/fs.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
 
-# Close appends the id to a log file, so the log is the order in which the closes ran.
+// Close appends the id to a log file, so the log is the order in which the closes ran.
 type Tracked:
     log: String
     id: Int

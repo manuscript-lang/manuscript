@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,interpolation,strings,tier-core
-# conform: phase=check
-# conform: origin=pkg/compiler/builtin_parity_test.go:9 TestNativeMethodConstraints
+// conform: tags=diagnostics,interpolation,strings,tier-core
+// conform: phase=check
+// conform: origin=pkg/compiler/builtin_parity_test.go:9 TestNativeMethodConstraints
 fn stringify(value: Int) String:
     return "{value}"
 

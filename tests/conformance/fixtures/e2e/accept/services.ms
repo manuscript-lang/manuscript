@@ -1,6 +1,6 @@
-# conform: tags=faults,modules,optional,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/services.ms
+// conform: tags=faults,modules,optional,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/services.ms
 import expect_equal from "@std/test/test.ms"
 import BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"

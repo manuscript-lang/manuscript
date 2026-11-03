@@ -2,7 +2,7 @@ import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 
-# Regex AST. Every single-byte matcher is a 256-entry membership table.
+// Regex AST. Every single-byte matcher is a 256-entry membership table.
 type Node:
     case Chars(bits: List[Bool])
     case Seq(items: List[Node])
@@ -88,7 +88,7 @@ fn hex_val(c: Int) Int:
 
     return -1
 
-# Value of the two hex digits starting at `at`, or -1.
+// Value of the two hex digits starting at `at`, or -1.
 fn hex2(pat: Bytes, at: Int) Int:
     let hi = hex_val(byte_at(pat, at))
     let lo = hex_val(byte_at(pat, at + 1))
@@ -189,7 +189,7 @@ fn digits_value(pat: Bytes, from: Int, to: Int) Int:
 
     return v
 
-# Length of a well-formed `{n}`, `{n,}` or `{n,m}` at the parser position, or 0.
+// Length of a well-formed `{n}`, `{n,}` or `{n,m}` at the parser position, or 0.
 fn brace_len(ps: Parser) Int:
     let d1 = digits_end(ps.pat, ps.at + 1)
     if d1 == ps.at + 1:
@@ -215,7 +215,7 @@ fn finish_group(var ps: Parser, node: Node) Result[Node, PErr]:
     ps.at += 1
     return ok(node)
 
-# Reads `<name>` where ps.at points at the `<`.
+// Reads `<name>` where ps.at points at the `<`.
 fn read_name(var ps: Parser) Optional[String]:
     let start = ps.at + 1
     var i = start
@@ -288,7 +288,7 @@ fn parse_alt(var ps: Parser) Result[Node, PErr]:
 fn parse_seq(var ps: Parser) Result[Node, PErr]:
     var items = List[Node]()
 
-    # 0: start of sequence, 1: quantifiable atom, 2: anchor-like, 3: already quantified
+    // 0: start of sequence, 1: quantifiable atom, 2: anchor-like, 3: already quantified
     var last = 0
 
     while ps.at < ps.pat.length():
@@ -474,7 +474,7 @@ fn parse_escape(var ps: Parser) Result[Node, PErr]:
 
     return error(PErr(msg: "bad escape"))
 
-# One class member: a byte value, or 256 + letter for a shorthand class.
+// One class member: a byte value, or 256 + letter for a shorthand class.
 fn class_atom(var ps: Parser) Result[Int, PErr]:
     if peek(ps) != ch("\\"):
         let c = peek(ps)
@@ -506,7 +506,7 @@ fn class_atom(var ps: Parser) Result[Int, PErr]:
 
     return error(PErr(msg: "bad escape"))
 
-# True when the parser is at a `-` that forms a range with the previous member.
+// True when the parser is at a `-` that forms a range with the previous member.
 fn at_range_dash(ps: Parser) Bool:
     if peek(ps) != ch("-"):
         return false
@@ -563,9 +563,9 @@ fn parse_class(var ps: Parser) Result[Node, PErr]:
             bits[v] = not bits[v]
     return ok(Node.Chars(bits: bits))
 
-# Compiled form of a pattern: a flat instruction list run by a backtracking VM.
-# Slots hold, in order: capture start/end pairs for groups 0..groups, the open-group
-# start positions (-1 when closed), then one progress mark per repeat.
+// Compiled form of a pattern: a flat instruction list run by a backtracking VM.
+// Slots hold, in order: capture start/end pairs for groups 0..groups, the open-group
+// start positions (-1 when closed), then one progress mark per repeat.
 type Inst:
     case CharSet(set: Int)
     case Split(first: Int, second: Int)
@@ -654,7 +654,7 @@ fn compile_alt(var cs: Compiler, alts: List[Node]) Unit:
     for j in ends:
         cs.code[j] = Inst.Jump(target: cs.code.length())
 
-# Every iteration after `low` gets a progress check: an iteration that consumed nothing ends the loop.
+// Every iteration after `low` gets a progress check: an iteration that consumed nothing ends the loop.
 fn compile_rep(var cs: Compiler, body: Node, low: Int, high: Int, lazy: Bool) Unit:
     for _i in 0..low:
         compile(var cs, body)
@@ -719,7 +719,7 @@ fn restore_slots(var slots: List[Int], snap: List[Int]) Unit:
     for i in 0..snap.length():
         slots[i] = snap[i]
 
-# Writes a slot and logs the old value so backtracking can undo it.
+// Writes a slot and logs the old value so backtracking can undo it.
 fn set_slot(var stack: List[Int], var slots: List[Int], idx: Int, value: Int) Unit:
     stack.append(slots[idx])
     stack.append(idx)
@@ -744,8 +744,8 @@ fn same_text(subj: Bytes, s: Int, e: Int, pos: Int, icase: Bool) Bool:
 
     return true
 
-# Runs from start_pc at start_pos. Stack entries are triples (kind, a, b):
-# kind 0 is a branch to a at position b, kind 1 restores slot a to b, kind 2 restores snapshot a.
+// Runs from start_pc at start_pos. Stack entries are triples (kind, a, b):
+// kind 0 is a branch to a at position b, kind 1 restores slot a to b, kind 2 restores snapshot a.
 fn run(
     p: Prog,
     subj: Bytes,
@@ -873,7 +873,7 @@ fn run(
                 else:
                     restore_slots(var slots, snaps[a])
 
-# Leftmost match starting at or after `from`; on success slots holds the match.
+// Leftmost match starting at or after `from`; on success slots holds the match.
 fn search(p: Prog, subj: Bytes, var slots: List[Int], from: Int, full: Bool) Bool:
     var s = from
 
@@ -895,7 +895,7 @@ fn snapshot(slots: List[Int], count: Int) List[Int]:
         out.append(slots[i])
     return out
 
-# Successive matches as capture snapshots, following the find-all rules.
+// Successive matches as capture snapshots, following the find-all rules.
 fn find_all(p: Prog, subj: Bytes, var slots: List[Int]) List[List[Int]]:
     var out = List[List[Int]]()
     var pos = 0
@@ -972,7 +972,7 @@ fn emit_group(
     else:
         emit_text(var out, "unset\n")
 
-# Expands a replacement template for one match.
+// Expands a replacement template for one match.
 fn expand(
     tmpl: Bytes,
     subject: Bytes,
@@ -1087,7 +1087,7 @@ fn run_command(
     emit_text(var out, "\n")
     return ok(unit)
 
-# Decodes \n \t \\ \xHH in a subject or replacement field.
+// Decodes \n \t \\ \xHH in a subject or replacement field.
 fn unescape(raw: Bytes) Optional[Bytes]:
     var out = BytesBuilder()
     var i = 0

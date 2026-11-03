@@ -11,7 +11,7 @@ let DEFAULT_BUDGET = 100000
 let K_REG = 0
 let K_IMM = 1
 let K_MEM = 2
-# Opcode numbers are the indexes into MNEMONICS; jz and jnz are aliases of je and jne.
+// Opcode numbers are the indexes into MNEMONICS; jz and jnz are aliases of je and jne.
 let MNEMONICS = [
     "mov", "add", "sub", "mul", "div", "mod", "and", "or", "xor", "shl", "shr", "sar",
     "cmp", "neg", "not", "inc", "dec", "lea", "push", "pop", "jmp", "je", "jne", "jl",
@@ -107,7 +107,7 @@ fn bool_int(b: Bool) Int:
 
     return 0
 
-# Register indexes: r0..r7 are 0..7, sp is 8, bp is 9. Returns -1 for any other text.
+// Register indexes: r0..r7 are 0..7, sp is 8, bp is 9. Returns -1 for any other text.
 fn reg_index(name: String) Int:
     if name == "sp":
         return 8
@@ -128,7 +128,7 @@ fn strip_cr(s: String) String:
 
     return s
 
-# Removes a ';' comment that is not inside a string or character literal.
+// Removes a ';' comment that is not inside a string or character literal.
 fn strip_comment(line: String) String:
     let n = line.length()
     var i = 0
@@ -153,7 +153,7 @@ fn strip_comment(line: String) String:
 
     return line
 
-# Index just past the character literal that starts at i, or i + 1 if it is not terminated.
+// Index just past the character literal that starts at i, or i + 1 if it is not terminated.
 fn char_end(s: String, i: Int) Int:
     let n = s.length()
     var j = i + 1
@@ -168,14 +168,14 @@ fn char_end(s: String, i: Int) Int:
 
     return i + 1
 
-# Index of the first space or tab at or after 0, or the length of s.
+// Index of the first space or tab at or after 0, or the length of s.
 fn word_end(s: String) Int:
     var i = 0
     while i < s.length() and ch(s, i) != 32 and ch(s, i) != 9:
         i += 1
     return i
 
-# Length of the label name if s starts with "name:", otherwise 0.
+// Length of the label name if s starts with "name:", otherwise 0.
 fn label_len(s: String) Int:
     let n = s.length()
     if n == 0 or not is_ident_start(ch(s, 0)):
@@ -189,7 +189,7 @@ fn label_len(s: String) Int:
 
     return 0
 
-# Splits an operand list at commas outside brackets and character literals.
+// Splits an operand list at commas outside brackets and character literals.
 fn split_args(s: String) List[String]:
     var out = List[String]()
     let n = s.length()
@@ -221,7 +221,7 @@ fn split_args(s: String) List[String]:
     out.append(sub(s, start, n).trim())
     return out
 
-# Splits an expression into signed terms such as "+a" and "-1". Each term keeps its sign as the first character.
+// Splits an expression into signed terms such as "+a" and "-1". Each term keeps its sign as the first character.
 fn split_terms(text: String) List[String]:
     var terms = List[String]()
     let n = text.length()
@@ -427,7 +427,7 @@ fn is_int_token(t: String) Bool:
             return false
     return true
 
-# Value of a token accepted by is_int_token, wrapped to 32 bits.
+// Value of a token accepted by is_int_token, wrapped to 32 bits.
 fn int_value(t: String) Int:
     var neg = false
     var start = 0
@@ -496,7 +496,7 @@ fn arity(opc: Int) Int:
 
     return 1
 
-# Operand classes allowed for an instruction, checked after the operand count.
+// Operand classes allowed for an instruction, checked after the operand count.
 fn shape_ok(opc: Int, ops: List[Operand]) Bool:
     if arity(opc) == 0:
         return true
@@ -698,7 +698,7 @@ fn line_pass1(var a: Asm, ln: Int, raw: String) Result[Int, AsmError]:
 
     return instruction(var a, ln, word, rest)
 
-# Value of an operand's expression: the immediate, or the memory displacement.
+// Value of an operand's expression: the immediate, or the memory displacement.
 fn operand_value(var a: Asm, o: Operand) Result[Int, AsmError]:
     if o.kind == K_MEM and o.text.length() == 0:
         return ok(0)
@@ -708,7 +708,7 @@ fn operand_value(var a: Asm, o: Operand) Result[Int, AsmError]:
 fn is_jump(opc: Int) Bool:
     return opc >= 20 and opc <= 27
 
-# Pass 2 for one item. Instructions append 8 slots to code: op, line, then (kind, reg, value) for two operands.
+// Pass 2 for one item. Instructions append 8 slots to code: op, line, then (kind, reg, value) for two operands.
 fn item_pass2(var a: Asm, var code: List[Int], var mem: List[Int], item: Item) Result[
     Int, AsmError
 ]:
@@ -796,7 +796,7 @@ fn mem_write(var vm: Machine, addr: Int, value: Int) Result[Int, AsmError]:
     vm.mem.set(addr, value)
     return ok(0)
 
-# Effective address of operand slot s in the instruction at base.
+// Effective address of operand slot s in the instruction at base.
 fn ea(var vm: Machine, base: Int, s: Int) Int:
     let r = vm.code.get(base + 3 + 3 * s)
     var addr = vm.code.get(base + 4 + 3 * s)
@@ -840,7 +840,7 @@ fn jump_taken(opc: Int, z: Int, l: Int) Bool:
 
     return l == 0
 
-# Executes one instruction. Ok(1) means halt; an error is a trap message.
+// Executes one instruction. Ok(1) means halt; an error is a trap message.
 fn step(var vm: Machine) Result[Int, AsmError]:
     let base = vm.pc * 8
     let opc = vm.code.get(base)
@@ -948,7 +948,7 @@ fn trap_text(vm: Machine, msg: String) String:
         line = "{vm.code.get(vm.pc * 8 + 1)}"
     return "-- trap: {msg} (pc={vm.pc} line={line}) after {vm.steps} steps"
 
-# Runs until halt or trap and returns the first summary line.
+// Runs until halt or trap and returns the first summary line.
 fn run(var vm: Machine) String:
     while true:
         if vm.steps == vm.budget:
@@ -964,7 +964,7 @@ fn run(var vm: Machine) String:
 
     return ""
 
-# Records every .equ name and expression before pass 1, so .space counts can use constants defined further down.
+// Records every .equ name and expression before pass 1, so .space counts can use constants defined further down.
 fn prescan_equ(var a: Asm, raw: String) Int:
     var body = raw.trim()
     var k = label_len(body)

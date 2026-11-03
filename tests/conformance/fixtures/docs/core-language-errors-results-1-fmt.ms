@@ -1,6 +1,6 @@
-# conform: tags=alternatives,control-flow,decimal,formatter,interfaces,match,parser,records,strings,tier-core,try-result
-# conform: phase=parse
-# conform: origin=documentation/core-language/errors/results.md:14
+// conform: tags=alternatives,control-flow,decimal,formatter,interfaces,match,parser,records,strings,tier-core,try-result
+// conform: phase=parse
+// conform: origin=documentation/core-language/errors/results.md:14
 import Decimal from "@std/math/decimal.ms"
 
 type DiscountError:

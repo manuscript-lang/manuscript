@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/defaults_test.go:27 TestDefaultArgumentBoundaries
+// conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/defaults_test.go:27 TestDefaultArgumentBoundaries
 interface Add:
     fn add(value: Int) Int
 

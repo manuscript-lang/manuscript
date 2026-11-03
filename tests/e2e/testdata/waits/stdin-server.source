@@ -1,5 +1,5 @@
-# Serves /line, whose handler reads one line of standard input, and /health. A handler waiting
-# for input must not stop the server answering other requests.
+// Serves /line, whose handler reads one line of standard input, and /health. A handler waiting
+// for input must not stop the server answering other requests.
 import headers, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
 import read_line, stdin, stdout from "@std/io/io.ms"
 import serve from "@std/net/net.ms"

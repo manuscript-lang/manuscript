@@ -215,7 +215,7 @@ fn is_candidate_line(line: &str) -> bool {
     let trimmed = line.trim();
     first.is_some_and(|b| b != b' ' && b != b'\t')
         && !trimmed.is_empty()
-        && !trimmed.starts_with('#')
+        && !trimmed.starts_with("//")
 }
 
 fn is_declaration_line(line: &str) -> bool {
@@ -358,7 +358,7 @@ fn trim_dangling(file: &Arc<str>, lines: &[String], at: usize) -> Option<String>
     let line = &lines[at];
     let newline = &line[line.trim_end_matches(['\n', '\r']).len()..];
     let mut code = line.trim_end_matches(['\n', '\r']).trim_end().to_string();
-    if code.contains('#') || code.contains('"') {
+    if code.contains("//") || code.contains('"') {
         return None;
     }
     for _ in 0..3 {
@@ -454,7 +454,7 @@ fn blank(line: &str) -> String {
 fn declared_name(chunk: &str) -> Option<String> {
     for line in chunk.split('\n') {
         let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('#') {
+        if trimmed.is_empty() || trimmed.starts_with("//") {
             continue;
         }
         let rest = trimmed.strip_prefix("export ").unwrap_or(trimmed);

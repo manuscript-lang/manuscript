@@ -1,6 +1,6 @@
-# conform: tags=decimal,faults,formatter,match,modules,mutation,optional,parser,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/sibling-operand-order.ms
+// conform: tags=decimal,faults,formatter,match,modules,mutation,optional,parser,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/sibling-operand-order.ms
 import expect_equal from "@std/test/test.ms"
 import Decimal from "@std/math/decimal.ms"
 

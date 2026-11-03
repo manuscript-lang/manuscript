@@ -135,7 +135,7 @@ type App:
     views: Map[String, String]
     out: List[String]
 
-# ---------- character and value helpers ----------
+// ---------- character and value helpers ----------
 
 fn is_ws(c: String) Bool:
     return c == " " or c == "\t" or c == "\r"
@@ -256,7 +256,7 @@ fn cmp_str(x: String, y: String) Int:
 
     return 0
 
-# absent is the empty string; absent sorts after present values
+// absent is the empty string; absent sorts after present values
 fn absent_cmp(x: String, y: String) Int:
     if x == "" and y == "":
         return 0
@@ -329,7 +329,7 @@ fn unmet(iss: Issue, g: String) Bool:
 
     return iss.labels.length() == 0
 
-# ---------- word and token splitting ----------
+// ---------- word and token splitting ----------
 
 fn words(s: String) List[String]:
     var out = List[String]()
@@ -353,7 +353,7 @@ fn join_cs(cs: List[String], a: Int, b: Int) String:
         s = s + cs[k]
     return s
 
-# text after skipping k whitespace-separated words, leading blanks removed
+// text after skipping k whitespace-separated words, leading blanks removed
 fn rest_after(s: String, k: Int) String:
     let cs = s.chars()
     let n = cs.length()
@@ -371,7 +371,7 @@ fn rest_after(s: String, k: Int) String:
         i += 1
     return s.slice(i, n).get()
 
-# token style: whitespace separates tokens, quotes group, \" and \\ escape inside quotes
+// token style: whitespace separates tokens, quotes group, \" and \\ escape inside quotes
 fn tokens(s: String) Toks:
     let cs = s.chars()
     let n = cs.length()
@@ -424,9 +424,9 @@ fn tokens(s: String) Toks:
 fn rest_items(it: List[String]) List[String]:
     return it.slice(1, it.length()).get()
 
-# ---------- query text splitting ----------
+// ---------- query text splitting ----------
 
-# trailing "limit N" clause
+// trailing "limit N" clause
 fn split_limit(s: String) Split:
     let t = s.trim()
     let cs = t.chars()
@@ -466,7 +466,7 @@ fn split_limit(s: String) Split:
 
     return Split(text: rest, has: true, limit: arg.parse_int().get(0), err: "")
 
-# the first " sort " word starts the sort clause running to the end
+// the first " sort " word starts the sort clause running to the end
 fn split_sort(s: String) SplitSort:
     let cs = s.chars()
     let n = cs.length()
@@ -509,7 +509,7 @@ fn parse_sort(s: String) Keys:
 
     return Keys(keys: keys, err: "")
 
-# filter part of a stored view query (limit and sort removed)
+// filter part of a stored view query (limit and sort removed)
 fn filter_part(text: String) String:
     let l = split_limit(text)
     let s = split_sort(l.text)
@@ -546,7 +546,7 @@ fn split_where(s: String) Pair:
 
     return Pair(a: "", b: "", found: false)
 
-# ---------- query compiler ----------
+// ---------- query compiler ----------
 
 fn op_allowed(field: String, op: String) Bool:
     if (
@@ -920,7 +920,7 @@ fn compile_query(text: String, views: List[String], states: List[String]) QP:
         p.err = "query: unexpected token ')'"
     return p
 
-# ---------- workflow definition parsing ----------
+// ---------- workflow definition parsing ----------
 
 fn parse_arrow(ln: String) Arrow:
     let p = ln.index_of("->").get(0)
@@ -1068,7 +1068,7 @@ fn parse_wf(body: List[String]) WfParse:
         err: ""
     )
 
-# ---------- issue field updates ----------
+// ---------- issue field updates ----------
 
 fn set_field(var iss: Issue, key: String, val: String) String:
     if key == "title":
@@ -1162,7 +1162,7 @@ fn apply_token(var iss: Issue, tok: String) String:
 
     return set_field(var iss, key, val)
 
-# log detail lines for every field that differs between a and b
+// log detail lines for every field that differs between a and b
 fn diff(a: Issue, b: Issue) List[String]:
     var out = List[String]()
     if a.title != b.title:
@@ -1216,7 +1216,7 @@ fn label_before(a: Int, b: Int, names: List[String], counts: List[Int]) Bool:
 
     return names[a].lower() < names[b].lower()
 
-# ---------- application state ----------
+// ---------- application state ----------
 
 impl App:
     var fn emit(line: String) Unit:
@@ -1251,7 +1251,7 @@ impl App:
 
         return out
 
-    # live issue id from an argument, or an error
+    // live issue id from an argument, or an error
     fn resolve(arg: String) Ref:
         let v = parse_id_arg(arg)
         if v < 0:
@@ -1448,7 +1448,7 @@ impl App:
 
         return self.qmatch(q.nodes, q.root, iss)
 
-    # does any of refs (transitively through views) reach target
+    // does any of refs (transitively through views) reach target
     fn reaches(refs: List[String], target: String) Bool:
         for r in refs:
             if r == target:
@@ -1506,7 +1506,7 @@ impl App:
 
         return cmp_int(a.id, b.id)
 
-    # runs a filtered, sorted, limited listing and emits it; returns an error or ""
+    // runs a filtered, sorted, limited listing and emits it; returns an error or ""
     var fn run_list(
         filter: String,
         sort_text: String,
@@ -1713,7 +1713,7 @@ impl App:
 
         return self.core_edit(id, rest_items(it))
 
-    # ---------- commands ----------
+    // ---------- commands ----------
 
     var fn cmd_workflow(body: List[String]) Unit:
         if self.next_id > 1:

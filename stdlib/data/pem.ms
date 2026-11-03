@@ -2,30 +2,32 @@ import Bytes from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 import base64_decode, base64_encode from "@std/data/encoding.ms"
 
-# PEM (RFC 7468) text armor: `-----BEGIN LABEL-----`, base64 body, `-----END LABEL-----`.
-# Certificates, keys and CSRs travel as PEM blocks; `parse` finds every block in a text and
-# `encode_all` writes blocks back with 64-column lines.
-#
-#     import parse, encode_all, PemBlock from "@std/data/pem.ms"
-#     let blocks = parse(text).get()
-#     blocks[0].label                # "CERTIFICATE"
-#     blocks[0].data                 # the decoded DER bytes
-#     encode_all([PemBlock(label: "NOTE", data: "hi".to_bytes())])
+/*
+PEM (RFC 7468) text armor: `-----BEGIN LABEL-----`, base64 body, `-----END LABEL-----`.
+Certificates, keys and CSRs travel as PEM blocks; `parse` finds every block in a text and
+`encode_all` writes blocks back with 64-column lines.
 
-# One PEM block: its label, optional RFC 1421 style headers, and decoded body bytes.
+    import parse, encode_all, PemBlock from "@std/data/pem.ms"
+    let blocks = parse(text).get()
+    blocks[0].label                # "CERTIFICATE"
+    blocks[0].data                 # the decoded DER bytes
+    encode_all([PemBlock(label: "NOTE", data: "hi".to_bytes())])
+*/
+
+// One PEM block: its label, optional RFC 1421 style headers, and decoded body bytes.
 export type PemBlock:
-    # Text between `BEGIN ` and the closing dashes, such as `CERTIFICATE`.
+    // Text between `BEGIN ` and the closing dashes, such as `CERTIFICATE`.
     label: String
-    # Header fields written before the body, in order; empty for modern PEM.
+    // Header fields written before the body, in order; empty for modern PEM.
     headers: Map[String, String] = Map[String, String]()
-    # Decoded body bytes; empty for a block with no body lines.
+    // Decoded body bytes; empty for a block with no body lines.
     data: Bytes
 
 let BEGIN = "-----BEGIN "
 let END = "-----END "
 let DASHES = "-----"
 
-# Parses every PEM block in `text`; text outside blocks is ignored, and a text without blocks gives an empty list.
+// Parses every PEM block in `text`; text outside blocks is ignored, and a text without blocks gives an empty list.
 export fn parse(text: String) List[PemBlock]!:
     var blocks = List[PemBlock]()
     var label = ""
@@ -92,7 +94,7 @@ export fn parse(text: String) List[PemBlock]!:
 
     return ok(blocks)
 
-# Encodes one block with headers first, then the body in 64-character base64 lines, ending with a newline.
+// Encodes one block with headers first, then the body in 64-character base64 lines, ending with a newline.
 export fn encode_block(block: PemBlock) String:
     var out = StringBuilder()
     out.append("{BEGIN}{block.label}{DASHES}\n")
@@ -114,7 +116,7 @@ export fn encode_block(block: PemBlock) String:
     out.append("{END}{block.label}{DASHES}\n")
     return out.build()
 
-# Encodes blocks in order into one PEM text; the result parses back to equal blocks.
+// Encodes blocks in order into one PEM text; the result parses back to equal blocks.
 export fn encode_all(blocks: List[PemBlock]) String:
     var out = StringBuilder()
     for block in blocks:

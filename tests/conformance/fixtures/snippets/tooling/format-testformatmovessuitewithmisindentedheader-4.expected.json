@@ -14,7 +14,7 @@
           "file": "format-testformatmovessuitewithmisindentedheader-4.ms",
           "line": 5,
           "column": 11,
-          "offset": 211
+          "offset": 214
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "format-testformatmovessuitewithmisindentedheader-4.ms",
           "line": 6,
           "column": 12,
-          "offset": 230
+          "offset": 233
         }
       }
     ],

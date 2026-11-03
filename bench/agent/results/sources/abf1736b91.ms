@@ -135,7 +135,7 @@ type Tracker:
     log: List[LogEntry]
     views: Map[String, String]
 
-# ---------- output and scalar helpers ----------
+// ---------- output and scalar helpers ----------
 
 fn emit(line: String) Unit:
     stdout().write(line + "\n").get()
@@ -161,7 +161,7 @@ fn all_digits(s: String) Bool:
             return false
     return true
 
-# Saturates well above the 1000000 limit so huge values stay comparable.
+// Saturates well above the 1000000 limit so huge values stay comparable.
 fn to_num(s: String) Int:
     var n = 0
 
@@ -172,7 +172,7 @@ fn to_num(s: String) Int:
 
     return n
 
-# Integer rule: decimal digits, no sign, no leading zeros, at most 1000000.
+// Integer rule: decimal digits, no sign, no leading zeros, at most 1000000.
 fn int_rule(s: String) Bool:
     if not all_digits(s):
         return false
@@ -282,7 +282,7 @@ fn words(s: String) List[String]:
 
     return res
 
-# Skips n whitespace-separated words and returns the rest, leading blanks removed.
+// Skips n whitespace-separated words and returns the rest, leading blanks removed.
 fn after_words(s: String, n: Int) String:
     let len = s.scalar_length()
     var i = 0
@@ -324,7 +324,7 @@ fn field_of(tok: String) String:
 fn value_of(tok: String) String:
     return sub(tok, first_eq(tok) + 1, tok.scalar_length())
 
-# Splits on whitespace where a double quote opens a quoted section inside a token.
+// Splits on whitespace where a double quote opens a quoted section inside a token.
 fn split_tokens(s: String) Toks:
     var items = List[String]()
     var cur = ""
@@ -372,7 +372,7 @@ fn split_tokens(s: String) Toks:
         items.append(cur)
     return Toks(items: items, ok: true)
 
-# Finds the standalone word `where` outside quotes; returns its start or -1.
+// Finds the standalone word `where` outside quotes; returns its start or -1.
 fn find_where(s: String) Int:
     let n = s.scalar_length()
     var i = 0
@@ -412,7 +412,7 @@ fn find_where(s: String) Int:
 
     return -1
 
-# Reads a quoted section starting at the opening quote index `start`.
+// Reads a quoted section starting at the opening quote index `start`.
 fn read_quoted(s: String, start: Int) Quoted:
     let n = s.scalar_length()
     var i = start + 1
@@ -436,7 +436,7 @@ fn read_quoted(s: String, start: Int) Quoted:
 
     return Quoted(value: out, next: n, ok: false)
 
-# ---------- field validation and values ----------
+// ---------- field validation and values ----------
 
 fn is_known_field(f: String) Bool:
     return (
@@ -625,7 +625,7 @@ fn unmet_guards(iss: Issue, guards: List[String]) List[String]:
 
     return res
 
-# ---------- workflow definition ----------
+// ---------- workflow definition ----------
 
 fn add_state(var states: List[String], name: String) Unit:
     if not states.contains(name):
@@ -675,7 +675,7 @@ fn parse_workflow(block: List[String]) WfParse:
         )
     )
 
-# Applies one non-blank, non-comment workflow line; returns an error message or "".
+// Applies one non-blank, non-comment workflow line; returns an error message or "".
 fn wf_line(
     line: String,
     var states: List[String],
@@ -751,7 +751,7 @@ fn empty_workflow() Workflow:
         transitions: List[Transition]()
     )
 
-# ---------- query language ----------
+// ---------- query language ----------
 
 fn ident_end(s: String, i: Int) Int:
     var j = i
@@ -870,7 +870,7 @@ fn lex_filter(s: String) QLex:
 
     return QLex(toks: toks, err: "")
 
-# Names of the views a stored query references through `view:` terms.
+// Names of the views a stored query references through `view:` terms.
 fn collect_refs(text: String) List[String]:
     var res = List[String]()
     let lx = lex_filter(split_query(text).filter)
@@ -1108,7 +1108,7 @@ fn last_space(s: String) Int:
 
     return -1
 
-# Splits a query into filter, sort clause and limit clause (textual, as the spec says).
+// Splits a query into filter, sort clause and limit clause (textual, as the spec says).
 fn split_query(raw: String) Parts:
     let text = raw.trim()
     var filter = text.clone()
@@ -1466,7 +1466,7 @@ fn period_line(state: String, from: Int, to: Int) String:
         + ")"
     )
 
-# ---------- the tracker ----------
+// ---------- the tracker ----------
 
 impl Tracker:
     fn index_of(id: Int) Int:

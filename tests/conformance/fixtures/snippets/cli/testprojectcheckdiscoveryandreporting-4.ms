@@ -1,6 +1,6 @@
-# conform: tags=faults,modules,stdlib-faults,testing,tier-stdlib
-# conform: phase=test
-# conform: origin=internal/cli/project_check_test.go:53 TestProjectCheckDiscoveryAndReporting
+// conform: tags=faults,modules,stdlib-faults,testing,tier-stdlib
+// conform: phase=test
+// conform: origin=internal/cli/project_check_test.go:53 TestProjectCheckDiscoveryAndReporting
 import panic from "@std/core.ms"
 
 test "never execute":

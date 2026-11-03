@@ -1,6 +1,6 @@
-# conform: tags=formatter,modules,parser,stdlib-testing,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/scalar-members-match-dynamic-calls.ms
+// conform: tags=formatter,modules,parser,stdlib-testing,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/scalar-members-match-dynamic-calls.ms
 import expect_true from "@std/test/test.ms"
 
 test "string and float members":

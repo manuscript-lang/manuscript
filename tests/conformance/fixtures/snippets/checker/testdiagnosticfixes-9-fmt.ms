@@ -1,6 +1,6 @@
-# conform: tags=formatter,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/diagnostic_fixes_test.go:29 TestDiagnosticFixes
+// conform: tags=formatter,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/diagnostic_fixes_test.go:29 TestDiagnosticFixes
 type Point:
     x: Int
 

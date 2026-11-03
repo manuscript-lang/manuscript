@@ -1,6 +1,6 @@
-# conform: tags=numbers,types,tier-core
-# conform: phase=run
-# conform: origin=sized numeric types stage 2
+// conform: tags=numbers,types,tier-core
+// conform: phase=run
+// conform: origin=sized numeric types stage 2
 import stdout from "@std/io/io.ms"
 
 export fn main() Int:

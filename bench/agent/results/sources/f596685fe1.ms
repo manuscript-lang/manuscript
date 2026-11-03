@@ -2,7 +2,7 @@ import stdout, stdin from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 import parse_float, floor, pow, sqrt from "@std/math.ms"
 
-# Cell ids are row * 100 + column, so numeric order is row-major (row, then column).
+// Cell ids are row * 100 + column, so numeric order is row-major (row, then column).
 let LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 let LOWERS = "abcdefghijklmnopqrstuvwxyz"
 
@@ -16,7 +16,7 @@ type Value:
 type Node:
     case Lit(v: Value)
     case Ref(valid: Bool, col: Int, row: Int)
-    # Corners are kept as written; ranges act on their normalized rectangle.
+    // Corners are kept as written; ranges act on their normalized rectangle.
     case Span(valid: Bool, c1: Int, r1: Int, c2: Int, r2: Int)
     case Neg(negate: Bool, x: Node)
     case Bin(op: String, l: Node, r: Node)
@@ -89,7 +89,7 @@ type Sheet:
     deps: Map[Int, Set[Int]]
     evals: Int
 
-# ---------- small helpers ----------
+// ---------- small helpers ----------
 
 fn cid(row: Int, col: Int) Int:
     return row * 100 + col
@@ -156,7 +156,7 @@ fn list_of(id: Int) List[Int]:
 fn bad_area() Area:
     return Area(false, 0, 0, 0, 0)
 
-# Splits on spaces and tabs, the command-word separators.
+// Splits on spaces and tabs, the command-word separators.
 fn split_words(s: String) List[String]:
     var out = List[String]()
     var cur = ""
@@ -176,7 +176,7 @@ fn split_words(s: String) List[String]:
         out.append(cur)
     return out
 
-# The text after the first `count` whitespace-separated words, trimmed.
+// The text after the first `count` whitespace-separated words, trimmed.
 fn skip_words(s: String, count: Int) String:
     let cs = s.chars()
     let n = cs.length()
@@ -192,9 +192,9 @@ fn skip_words(s: String, count: Int) String:
 
     return join_range(cs, i, n).trim()
 
-# ---------- numbers and text ----------
+// ---------- numbers and text ----------
 
-# Digits of a positive integral Float >= 2^53, computed exactly by halving and doubling decimal digits.
+// Digits of a positive integral Float >= 2^53, computed exactly by halving and doubling decimal digits.
 fn exact_integer(a: Float) String:
     var m = a
     var e = 0
@@ -251,7 +251,7 @@ fn format_num(x: Float) String:
 
     return s
 
-# Number grammar: [+-]?(digits[.digits]|.digits)([eE][+-]?digits)? ; finite results only.
+// Number grammar: [+-]?(digits[.digits]|.digits)([eE][+-]?digits)? ; finite results only.
 fn number_text(s: String) Optional[Float]:
     let cs = s.chars()
     let n = cs.length()
@@ -322,7 +322,7 @@ fn number_text(s: String) Optional[Float]:
 
     return none
 
-# The VALUE of a set/import field, after trimming, when it is not text.
+// The VALUE of a set/import field, after trimming, when it is not text.
 fn constant_value(raw: String) Value:
     if raw.starts_with("'"):
         return Value.Txt(raw.slice_scalars(1, raw.scalar_length()).get())
@@ -372,7 +372,7 @@ fn trim_collapse(s: String) String:
 
     return out
 
-# ---------- values ----------
+// ---------- values ----------
 
 fn is_err(v: Value) Bool:
     match v:
@@ -429,7 +429,7 @@ fn finite(x: Float) Value:
 
     return Value.Fail("#NUM!")
 
-# Number coercion: Num or the error that decides the result.
+// Number coercion: Num or the error that decides the result.
 fn to_num(v: Value) Value:
     match v:
         Blank:
@@ -449,7 +449,7 @@ fn to_num(v: Value) Value:
         Fail(code):
             return Value.Fail(code.clone())
 
-# Boolean coercion: Flag or an error.
+// Boolean coercion: Flag or an error.
 fn truth(v: Value) Value:
     match v:
         Blank:
@@ -496,7 +496,7 @@ fn zero_like(v: Value) Value:
         _:
             return Value.Blank
 
-# Type order for comparison: number < text < boolean.
+// Type order for comparison: number < text < boolean.
 fn rank(v: Value) Int:
     match v:
         Num(_):
@@ -506,7 +506,7 @@ fn rank(v: Value) Int:
         _:
             return 2
 
-# Type identity used by COUNTIF's comparability test.
+// Type identity used by COUNTIF's comparability test.
 fn kind_of(v: Value) Int:
     match v:
         Blank:
@@ -542,7 +542,7 @@ fn flag_num(b: Bool) Float:
 
     return 0.0
 
-# Comparison of two non-error values; an empty side takes the zero value of the other.
+// Comparison of two non-error values; an empty side takes the zero value of the other.
 fn compare_values(a: Value, b: Value) Int:
     var x = a.clone()
     var y = b.clone()
@@ -626,10 +626,10 @@ fn binary(op: String, a: Value, b: Value) Value:
 
     return finite(pow(p, q))
 
-# ---------- lexer ----------
+// ---------- lexer ----------
 
-# Length of a reference shape starting at `start` (optional $, letters, optional $, digits),
-# or -1 when there is none or it runs into an identifier character, `(` or `$`.
+// Length of a reference shape starting at `start` (optional $, letters, optional $, digits),
+// or -1 when there is none or it runs into an identifier character, `(` or `$`.
 fn ref_end(cs: List[String], start: Int) Int:
     let n = cs.length()
     var i = start
@@ -791,7 +791,7 @@ fn tok_text(t: Tok) String:
         TBad(s):
             return s.clone()
 
-# A reference token: optional $, one or more letters, optional $, digits. Valid only when it names a real cell.
+// A reference token: optional $, one or more letters, optional $, digits. Valid only when it names a real cell.
 fn parse_corner(t: String) Corner:
     let cs = t.chars()
     let n = cs.length()
@@ -844,7 +844,7 @@ fn parse_corner(t: String) Corner:
     )
     return Corner(ok, col, row, ac, ar)
 
-# ---------- parser ----------
+// ---------- parser ----------
 
 fn parse_formula(src: String) Node:
     var toks = List[Tok]()
@@ -1036,7 +1036,7 @@ impl Parser:
 
         return Node.Call(name.clone(), args)
 
-# ---------- precedents ----------
+// ---------- precedents ----------
 
 fn collect(n: Node, var acc: Set[Int]) Unit:
     match n:
@@ -1068,9 +1068,9 @@ fn precs_of(tree: Node) Set[Int]:
     collect(tree, var acc)
     return acc
 
-# ---------- evaluation ----------
+// ---------- evaluation ----------
 
-# A rectangle of cells named by a range argument, or a flag that the argument is not a range.
+// A rectangle of cells named by a range argument, or a flag that the argument is not a range.
 type Rect:
     is_span: Bool
     valid: Bool
@@ -1090,7 +1090,7 @@ fn rect_of(n: Node) Rect:
         _:
             return Rect(false, false, 0, 0, 0, 0, 0, 0)
 
-# Items of the aggregate arguments: range cells in row-major order, or single values.
+// Items of the aggregate arguments: range cells in row-major order, or single values.
 fn items_of(vals: Map[Int, Value], args: List[Node]) List[Item]:
     var out = List[Item]()
 
@@ -1733,7 +1733,7 @@ fn eval(vals: Map[Int, Value], n: Node) Value:
         Call(name, args):
             return call_fn(vals, name, args)
 
-# ---------- formula text shifting (copy) ----------
+// ---------- formula text shifting (copy) ----------
 
 fn shift_corner(t: String, dc: Int, dr: Int) Optional[String]:
     var c = parse_corner(t)
@@ -1787,9 +1787,9 @@ fn shift_formula(src: String, dc: Int, dr: Int) String:
 
     return out
 
-# ---------- CSV ----------
+// ---------- CSV ----------
 
-# Records of an import block: quoted sections span lines, blank records are skipped.
+// Records of an import block: quoted sections span lines, blank records are skipped.
 fn csv_records(block: List[String]) List[List[String]]:
     var recs = List[List[String]]()
     var fields = List[String]()
@@ -1862,7 +1862,7 @@ fn csv_field(s: String) String:
 
     return s
 
-# ---------- ranges given on the command line ----------
+// ---------- ranges given on the command line ----------
 
 fn cell_arg(s: String) Int:
     if s.contains("$"):
@@ -1911,7 +1911,7 @@ fn names_line(ids: List[Int]) String:
 
     return s
 
-# ---------- the sheet ----------
+// ---------- the sheet ----------
 
 impl Sheet:
     fn is_formula(id: Int) Bool:
@@ -1943,7 +1943,7 @@ impl Sheet:
         if var s = self.deps.get(p):
             s.add(id)
 
-    # Stores the content of a cell from its raw text (empty clears it).
+    // Stores the content of a cell from its raw text (empty clears it).
     var fn assign(id: Int, raw: String) Unit:
         self.detach(id)
         self.cells.remove(id)
@@ -1962,7 +1962,7 @@ impl Sheet:
         self.cells.add(id, Cell(raw.clone(), false, Node.Lit(Value.Blank), Set[Int]()))
         self.vals.add(id, constant_value(raw))
 
-    # Recalculates the changed cells and everything that depends on them. Returns the affected count.
+    // Recalculates the changed cells and everything that depends on them. Returns the affected count.
     var fn recalc(changed: List[Int]) Int:
         var reach = Set[Int]()
         var queue = List[Int]()

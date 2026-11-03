@@ -1,6 +1,6 @@
-# conform: tags=alternatives,faults,formatter,generics,optional,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/optional_test.go:71 TestOptionalMethodsRejectInvalidContracts
+// conform: tags=alternatives,faults,formatter,generics,optional,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/optional_test.go:71 TestOptionalMethodsRejectInvalidContracts
 type Optional[T]:
     case T
     case none

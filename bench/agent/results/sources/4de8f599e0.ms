@@ -4,7 +4,7 @@ import range from "@std/collections.ms"
 
 fn is_cell(ch: String) Bool: ch == "#" or ch == "." or ch == "S" or ch == "E"
 
-# Returns the first validation error, or "" when the grid is well formed.
+// Returns the first validation error, or "" when the grid is well formed.
 fn validate(grid: List[List[String]]) String:
     for r in range(0, grid.length()):
         for c in range(0, grid[r].length()):

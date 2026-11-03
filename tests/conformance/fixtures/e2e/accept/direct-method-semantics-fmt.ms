@@ -1,6 +1,6 @@
-# conform: tags=alternatives,control-flow,formatter,interfaces,lists,match,modules,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/direct-method-semantics.ms
+// conform: tags=alternatives,control-flow,formatter,interfaces,lists,match,modules,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/direct-method-semantics.ms
 import expect_true, fail from "@std/test/test.ms"
 
 interface Shape:

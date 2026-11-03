@@ -1,6 +1,6 @@
-# conform: tags=formatter,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/diagnostic_fixes_test.go:28 TestDiagnosticFixes
+// conform: tags=formatter,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/diagnostic_fixes_test.go:28 TestDiagnosticFixes
 fn helper() Int:
     return 1
 

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,match,modules,parser,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/result_argument_scope/conformance_test.ms
+// conform: tags=control-flow,formatter,match,modules,parser,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/result_argument_scope/conformance_test.ms
 import first, first_generic from "./first.ms"
 import second, second_generic from "./second.ms"
 import Cause from "./domain.ms"

@@ -7,4 +7,4 @@ fn f(var t: Tree) Tree:
         Node(l, v):
             return l
         Leaf:
-            return Leaf  # error: returns a reference into its arguments
+            return Leaf  // error: returns a reference into its arguments

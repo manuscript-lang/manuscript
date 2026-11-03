@@ -1,7 +1,7 @@
 import JsonValue from "@std/data/json.ms"
 import Harness, Usage, events, int_at from "./harness.ms"
 
-# UNTESTED: pi's JSON event schema is assumed; sums `usage` blocks on assistant messages.
+// UNTESTED: pi's JSON event schema is assumed; sums `usage` blocks on assistant messages.
 export type Pi:
     placeholder: Bool = true
 

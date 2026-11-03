@@ -1,6 +1,6 @@
-# conform: tags=control-flow,lists,tier-core
-# conform: phase=run
-# conform: origin=range operator a..b
+// conform: tags=control-flow,lists,tier-core
+// conform: phase=run
+// conform: origin=range operator a..b
 import stdout from "@std/io/io.ms"
 
 fn total(n: Int) Int:

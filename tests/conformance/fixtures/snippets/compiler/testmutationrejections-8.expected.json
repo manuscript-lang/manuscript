@@ -14,20 +14,20 @@
           "file": "testmutationrejections-8.ms",
           "line": 6,
           "column": 5,
-          "offset": 170
+          "offset": 173
         },
         "fix": {
           "position": {
             "file": "testmutationrejections-8.ms",
             "line": 5,
             "column": 5,
-            "offset": 152
+            "offset": 155
           },
           "end": {
             "file": "testmutationrejections-8.ms",
             "line": 5,
             "column": 8,
-            "offset": 155
+            "offset": 158
           },
           "replacement": "var"
         }

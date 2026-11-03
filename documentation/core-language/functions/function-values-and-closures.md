@@ -30,7 +30,7 @@ fn subtract_one(amount: Int) Int:
 
 fn adapt() Unit:
     let ok: fn(Int) Int = subtract_one
-    # Rejected: the result type differs.
+    // Rejected: the result type differs.
     let invalid: fn(Int) String = subtract_one
     let result = apply(value: 3, transform: ok)
 ```
@@ -59,7 +59,7 @@ fn tag_count() Int:
     let count = fn:
         return tags.length()
     return count()
-# tag_count() returns 2.
+// tag_count() returns 2.
 ```
 
 A closure that only the function that made it calls (including a callback such as `for_each`) may change what it captures. It shares the captured variable, so the change lands in the original, and the variable cannot be used elsewhere while the closure is still used:

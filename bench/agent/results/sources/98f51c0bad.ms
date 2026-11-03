@@ -7,7 +7,7 @@ fn report(msg: String) Unit:
 export fn main() Int:
     let lines = read_lines(stdin()).get()
 
-    # Trailing empty lines are ignored; interior empty lines are rows of width 0.
+    // Trailing empty lines are ignored; interior empty lines are rows of width 0.
     var n = lines.length()
     while n > 0 and lines[n - 1].length() == 0:
         n -= 1
@@ -16,7 +16,7 @@ export fn main() Int:
     for r in 0..n:
         grid.append(lines[r].chars())
 
-    # 1. Bad characters, in reading order.
+    // 1. Bad characters, in reading order.
     for r in 0..n:
         for c in 0..grid[r].length():
             let ch = grid[r][c]
@@ -25,7 +25,7 @@ export fn main() Int:
                 report("error: bad character at {r + 1},{c + 1}")
                 return 0
 
-    # 2. Ragged rows.
+    // 2. Ragged rows.
     var width = 0
     if n > 0:
         width = grid[0].length()
@@ -35,7 +35,7 @@ export fn main() Int:
             report("error: ragged grid")
             return 0
 
-    # 3 and 4. Start and end cells.
+    // 3 and 4. Start and end cells.
     var starts = 0
     var ends = 0
     var sIdx = 0
@@ -68,7 +68,7 @@ export fn main() Int:
         report("error: multiple ends")
         return 0
 
-    # Breadth-first search over a flat index r * width + c.
+    // Breadth-first search over a flat index r * width + c.
     let total = n * width
     var passable = List[Bool]()
     for r in 0..n:

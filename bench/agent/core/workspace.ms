@@ -1,11 +1,11 @@
-# Build an agent workspace and score a finished one against hidden tests.
+// Build an agent workspace and score a finished one against hidden tests.
 import chmod, copy, CopyOptions, create_directory from "@std/os/fs.ms"
 import parse from "@std/data/json.ms"
 import Challenge, Lang, root, repo from "./model.ms"
 import count_workspace from "./codetokens.ms"
 import bash, norm, read_text, write_text from "../lib/text.ms"
 
-# The benchmark's verdict on one finished workspace.
+// The benchmark's verdict on one finished workspace.
 export type Grade:
     built: Bool
     passed: Int
@@ -16,7 +16,7 @@ export type Grade:
     code_tokens: Int
     llm_tokens: Int?
 
-# Build counts the agent's own `./check.sh` runs left in `.bench/log.jsonl`.
+// Build counts the agent's own `./check.sh` runs left in `.bench/log.jsonl`.
 export type BuildLog:
     builds: Int
     first_build_ok: Bool
@@ -27,7 +27,7 @@ type LogRow:
     phase: String
     ok: Bool
 
-# Creates `dest` with the language template, spec, examples and `check.sh`. Returns the agent prompt.
+// Creates `dest` with the language template, spec, examples and `check.sh`. Returns the agent prompt.
 export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
     create_directory(dest, recursive: true).get()
     copy(
@@ -65,7 +65,7 @@ export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
         + "{lang.notes} Work autonomously and stop when the program is correct."
     )
 
-# Reads the build and check counts the workspace's `./check.sh` logged.
+// Reads the build and check counts the workspace's `./check.sh` logged.
 export fn read_log(ws: String) BuildLog:
     var rows = List[LogRow]()
 
@@ -83,7 +83,7 @@ export fn read_log(ws: String) BuildLog:
     if let last = checks.last(): last_ok = last.ok
     return BuildLog(builds.length(), first_ok, checks.length(), last_ok)
 
-# Builds the workspace's solution and runs the hidden cases.
+// Builds the workspace's solution and runs the hidden cases.
 export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
     let cases = ch.cases("hidden")
     let tokens = count_workspace(ws, lang.suffix())

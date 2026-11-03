@@ -49,7 +49,7 @@ fn twice[T: Clonable](xs: List[T]) List[T]:
     return xs.concat(xs)
 
 fn first_two[T](xs: List[T]) List[T]:
-    return xs.take(2)  # error: `take` copies elements of `List[T]`; declare `T: Clonable`
+    return xs.take(2)  // error: `take` copies elements of `List[T]`; declare `T: Clonable`
 ```
 
 - Bound checking then does what the inference did:

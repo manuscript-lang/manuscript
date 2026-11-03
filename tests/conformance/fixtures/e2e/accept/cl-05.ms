@@ -1,6 +1,6 @@
-# conform: tags=closures,modules,stdlib-testing,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/cl-05.ms
+// conform: tags=closures,modules,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/cl-05.ms
 import expect_equal from "@std/test/test.ms"
 
 fn increase(value: Int) Int:

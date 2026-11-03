@@ -1,9 +1,9 @@
-# Generator for c58-mini-vcs. The expected outputs come from the Go oracle in oracle/*.ref (built with the
-# local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c58
+// Generator for c58-mini-vcs. The expected outputs come from the Go oracle in oracle/*.ref (built with the
+// local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c58
 import Cases, build_oracle, write_cases, solve_with from "../../lib/gen.ms"
 import compile from "@std/string.ms"
 
-# The `{cN}` placeholders stand for the short id of the N-th commit; a dry run with a dummy id finds them.
+// The `{cN}` placeholders stand for the short id of the N-th commit; a dry run with a dummy id finds them.
 fn resolve_hashes(oracle: String, script: String) String:
     if not script.contains("\{c"):
         return script.clone()
@@ -399,7 +399,7 @@ export fn gen_c58() Unit:
         "# comment line\n\n   \nfrobnicate\nwrite a\nx\n.\nadd a\ncommit c\nstatus extra\nls extra\ncat a b\nwrite b\nunterminated\nstill content\n"
     )
 
-    # TODO(port) write_cases(examples, hidden)
+    // TODO(port) write_cases(examples, hidden)
     let examples = [
         cs.make(
             "ex-linear",

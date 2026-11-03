@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/checker/hints_test.go:61 TestDiagnosticsStateCauseAndFix
+// conform: tags=diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/checker/hints_test.go:61 TestDiagnosticsStateCauseAndFix
 fn positive(n: Int) Bool:
     return n > 0
 

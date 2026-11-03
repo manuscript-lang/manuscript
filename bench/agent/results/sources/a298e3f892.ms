@@ -15,7 +15,7 @@ fn is_digits(text: String) Bool:
             return false
     return true
 
-# Returns the amount in cents, so "12.5" becomes 1250 and "0.07" becomes 7.
+// Returns the amount in cents, so "12.5" becomes 1250 and "0.07" becomes 7.
 fn parse_amount(text: String) Optional[BigInt]:
     let parts = text.split(".")
     if parts.length() > 2:
@@ -39,7 +39,7 @@ fn parse_amount(text: String) Optional[BigInt]:
 
     return some(parse(whole + fraction, 10).get())
 
-# A quoted category may contain commas but no quotes, so splitting on quotes isolates it.
+// A quoted category may contain commas but no quotes, so splitting on quotes isolates it.
 fn parse_line(line: String) Optional[Entry]:
     var category = ""
     var amount = ""

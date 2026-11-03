@@ -10,7 +10,7 @@ test "each paragraph develops one case":
     copy.enqueue(9)
     try expect_equal(copy.dequeue(), 9)
 
-    # An absent value stays absent.
+    // An absent value stays absent.
     let missing: Int? = none
     try expect_equal(queue.dequeue(), missing)
 
@@ -31,11 +31,11 @@ fn guarded(value: Int) Int:
 fn sections() Unit:
     let first = 1
 
-    # Explain the next stage.
+    // Explain the next stage.
     let second = first + 1
     record(second)
 
-    # Report its result.
+    // Report its result.
     record(first + second)
 
 fn callbacks() Unit:

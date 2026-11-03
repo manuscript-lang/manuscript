@@ -14,26 +14,26 @@
           "file": "testpreludeimportpolicyusesresolvedidentity-2.ms",
           "line": 4,
           "column": 8,
-          "offset": 227
+          "offset": 230
         },
         "end": {
           "file": "testpreludeimportpolicyusesresolvedidentity-2.ms",
           "line": 4,
           "column": 12,
-          "offset": 231
+          "offset": 234
         },
         "fix": {
           "position": {
             "file": "testpreludeimportpolicyusesresolvedidentity-2.ms",
             "line": 4,
             "column": 8,
-            "offset": 227
+            "offset": 230
           },
           "end": {
             "file": "testpreludeimportpolicyusesresolvedidentity-2.ms",
             "line": 4,
             "column": 14,
-            "offset": 233
+            "offset": 236
           },
           "replacement": ""
         }
@@ -46,26 +46,26 @@
           "file": "testpreludeimportpolicyusesresolvedidentity-2.ms",
           "line": 4,
           "column": 14,
-          "offset": 233
+          "offset": 236
         },
         "end": {
           "file": "testpreludeimportpolicyusesresolvedidentity-2.ms",
           "line": 4,
           "column": 17,
-          "offset": 236
+          "offset": 239
         },
         "fix": {
           "position": {
             "file": "testpreludeimportpolicyusesresolvedidentity-2.ms",
             "line": 4,
             "column": 14,
-            "offset": 233
+            "offset": 236
           },
           "end": {
             "file": "testpreludeimportpolicyusesresolvedidentity-2.ms",
             "line": 4,
             "column": 19,
-            "offset": 238
+            "offset": 241
           },
           "replacement": ""
         }
@@ -78,26 +78,26 @@
           "file": "testpreludeimportpolicyusesresolvedidentity-2.ms",
           "line": 4,
           "column": 19,
-          "offset": 238
+          "offset": 241
         },
         "end": {
           "file": "testpreludeimportpolicyusesresolvedidentity-2.ms",
           "line": 4,
           "column": 22,
-          "offset": 241
+          "offset": 244
         },
         "fix": {
           "position": {
             "file": "testpreludeimportpolicyusesresolvedidentity-2.ms",
             "line": 4,
             "column": 17,
-            "offset": 236
+            "offset": 239
           },
           "end": {
             "file": "testpreludeimportpolicyusesresolvedidentity-2.ms",
             "line": 4,
             "column": 23,
-            "offset": 242
+            "offset": 245
           },
           "replacement": ""
         }

@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,interfaces,mutation,tier-core
-# conform: phase=check
-# conform: origin=ms-check/tests/messages.rs
+// conform: tags=diagnostics,interfaces,mutation,tier-core
+// conform: phase=check
+// conform: origin=ms-check/tests/messages.rs
 interface Sink:
     fn put(x: Int) Unit
 

@@ -26,7 +26,7 @@ Cost is not measured yet. For `PriorityQueue[String]` each sift level allocates 
 ## Design
 
 ```manuscript
-# Prelude, from @std/core.ms
+// Prelude, from @std/core.ms
 fn replace[T](var place: T, value: T) T: ...
 fn swap[T](var a: T, var b: T) Unit: ...
 

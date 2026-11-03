@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,formatter,mutation,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/lower/list_items_test.go:38 TestListItemsCacheKeepsDebugAndLocalsOrdinary
+// conform: tags=control-flow,faults,formatter,mutation,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/lower/list_items_test.go:38 TestListItemsCacheKeepsDebugAndLocalsOrdinary
 fn work() Int:
     let values = [1, 2]
     var i = 0

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,generics,interfaces,mutation,records,strings,tier-core
-# conform: phase=check
-# conform: origin=pkg/compiler/record_bounds_test.go:80 TestClosedRecordGenericReceiverFallback
+// conform: tags=control-flow,diagnostics,generics,interfaces,mutation,records,strings,tier-core
+// conform: phase=check
+// conform: origin=pkg/compiler/record_bounds_test.go:80 TestClosedRecordGenericReceiverFallback
 interface Counter:
     var fn bump(by: Int) Int
 

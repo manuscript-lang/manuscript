@@ -2,14 +2,14 @@ import stdout from "@std/io/io.ms"
 import StringBuilder from "@std/string.ms"
 import monotonic from "@std/os/time.ms"
 
-# Builds a about 1 MB string from pieces of each size and prints the best of 40 runs per size in microseconds.
+// Builds a about 1 MB string from pieces of each size and prints the best of 40 runs per size in microseconds.
 fn run(piece: String, count: Int) Int:
     var sb = StringBuilder()
     for i in 0..count:
         sb.append(piece)
     return sb.build().byte_length()
 
-# Builds a list of `count` Ints with append in a `while` loop, so growth is by doubling, the path every list shares with the builder.
+// Builds a list of `count` Ints with append in a `while` loop, so growth is by doubling, the path every list shares with the builder.
 fn fill(count: Int) Int:
     var items: List[Int] = []
     var i = 0

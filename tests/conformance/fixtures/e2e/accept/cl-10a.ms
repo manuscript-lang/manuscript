@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,generics,interfaces,modules,records,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/cl-10a.ms
+// conform: tags=control-flow,faults,generics,interfaces,modules,records,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/cl-10a.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
 interface ReadValue[T]:

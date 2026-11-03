@@ -7,7 +7,7 @@ type Failure[T]:
     impl Error for Failure[T]:
     fn message() String: "Failure"
 
-# An advisory preserves the semantics of this fresh, capitalized binding.
+// An advisory preserves the semantics of this fresh, capitalized binding.
 fn captured[T](result: Result[Int, Failure[T]]) Int:
     match result:
         error(NotFound): return 1

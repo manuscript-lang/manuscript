@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,generics,interfaces,records,tier-core
-# conform: phase=check
-# conform: origin=documentation/core-language/types/contracts.md:83
+// conform: tags=control-flow,diagnostics,generics,interfaces,records,tier-core
+// conform: phase=check
+// conform: origin=documentation/core-language/types/contracts.md:83
 interface ReadValue[T]:
     fn get() T
 

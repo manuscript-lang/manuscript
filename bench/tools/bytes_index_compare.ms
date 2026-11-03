@@ -1,7 +1,7 @@
-# Validates and compares already-built byte-search programs in balanced order (bench/perf/bytes-index).
-# Usage: ms run bench/tools/bytes_index_compare.ms -- BEFORE AFTER RUST OUTPUT_DIR [--cpu N]
-# Programs print the string-lines CSV (see string_lines_compare.ms). Expected checksums come from a straightforward search of a
-# buffer of `a` bytes holding one 0xFF byte, an oracle independent of the programs. --cpu pins every run with `taskset`.
+// Validates and compares already-built byte-search programs in balanced order (bench/perf/bytes-index).
+// Usage: ms run bench/tools/bytes_index_compare.ms -- BEFORE AFTER RUST OUTPUT_DIR [--cpu N]
+// Programs print the string-lines CSV (see string_lines_compare.ms). Expected checksums come from a straightforward search of a
+// buffer of `a` bytes holding one 0xFF byte, an oracle independent of the programs. --cpu pins every run with `taskset`.
 import Identity, run_rows from "./string_lines_compare.ms"
 import (
     absolute,
@@ -32,7 +32,7 @@ fn kinds() List[String]:
         "near23", "near24", "near25", "near31", "near32", "near33"
     ]
 
-# The expected (size, iterations, checksum) of every case.
+// The expected (size, iterations, checksum) of every case.
 fn identities() Map[String, Identity]:
     var rows = Map[String, Identity]()
 
@@ -55,7 +55,7 @@ fn identities() Map[String, Identity]:
 
             let from = if start > 0: start else: 0
 
-            # The first 0xFF at or after `from`, or -1.
+            // The first 0xFF at or after `from`, or -1.
             let found = if position >= 0 and position < size and position >= from: position else: -1
             let expected = if found == -1: size else: found
             var work = size

@@ -1,6 +1,6 @@
-# conform: tags=generics,interfaces,tier-core
-# conform: phase=run
-# conform: origin=type-checker bug bash
+// conform: tags=generics,interfaces,tier-core
+// conform: phase=run
+// conform: origin=type-checker bug bash
 interface Scorer[T]:
     fn score(x: T) Int
 

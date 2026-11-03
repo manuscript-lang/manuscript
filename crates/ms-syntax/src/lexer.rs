@@ -16,6 +16,8 @@ pub struct Lexed<'a> {
     pub source: Cow<'a, str>,
     /// Tokens, ending with `Eof`.
     pub tokens: Vec<Token>,
+    /// Byte ranges of block comments (`/*` through `*/`) in `source`.
+    pub block_comments: Vec<(usize, usize)>,
     pub(crate) boundaries: ScanBoundaries,
 }
 
@@ -24,6 +26,7 @@ pub struct Lexed<'a> {
 pub(crate) struct ScanBoundaries {
     strings: Vec<(usize, usize)>,
     interpolations: Vec<(usize, usize)>,
+    blocks: Vec<(usize, usize)>,
     /// CR bytes removed before each line, retained for text interpolation positions.
     line_offsets: Vec<u32>,
     base_line: u32,
@@ -132,6 +135,7 @@ pub(crate) fn lex_at<'a>(
     Ok(Lexed {
         source: normalized,
         tokens,
+        block_comments: std::mem::take(&mut boundaries.blocks),
         boundaries,
     })
 }
@@ -289,7 +293,7 @@ impl Scanner<'_> {
         });
         Err(d)
     }
-    /// Whether only whitespace or a `#` comment follows the cursor on its line.
+    /// Whether only whitespace or a `//` comment follows the cursor on its line.
     fn trailing_semicolon(&self) -> bool {
         let rest = &self.text[self.offset + 1..];
         let line = rest
@@ -297,7 +301,7 @@ impl Scanner<'_> {
             .next()
             .unwrap_or("")
             .trim_start_matches([' ', '\t']);
-        line.is_empty() || line.starts_with('#') || line == "\r"
+        line.is_empty() || line.starts_with("//") || line == "\r"
     }
     /// Fails on the source range `[start, cursor)`.
     fn fail_range<T>(&self, start: Pos, message: String) -> PResult<T> {
@@ -375,8 +379,15 @@ impl Scanner<'_> {
                     "tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)",
                 );
             }
-            if self.src[self.offset] == b'#' {
+            if self.at_line_comment() {
                 self.skip_comment()?;
+                if self.offset < n {
+                    self.advance();
+                }
+                continue;
+            }
+            if self.at_block_comment() {
+                self.skip_block_comment()?;
                 if self.offset < n {
                     self.advance();
                 }
@@ -489,9 +500,12 @@ impl Scanner<'_> {
                     self.advance();
                     continue;
                 }
-                if b == b'#' {
+                if self.at_line_comment() {
                     self.skip_comment()?;
                     break;
+                }
+                if self.at_block_comment() {
+                    return self.fail("a block comment must start its own line; write a trailing comment with '//'");
                 }
                 if b == b'\t' || b == b'\r' {
                     return self.fail(
@@ -593,7 +607,7 @@ impl Scanner<'_> {
                         if b >= 0x80 {
                             let c = self.text[self.offset..].chars().next().unwrap();
                             return self.fail(format!(
-                                "unexpected source character {}; non-ASCII characters are only allowed inside text and '#' comments, and identifiers are ASCII",
+                                "unexpected source character {}; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCII",
                                 quote_rune(c)
                             ));
                         }
@@ -760,7 +774,17 @@ impl Scanner<'_> {
             }
             match self.src[j] {
                 b'\n' => i = j + 1,
-                b'#' => {
+                b'/' if self.src.get(j + 1) == Some(&b'/') => {
+                    while j < n && self.src[j] != b'\n' {
+                        j += 1;
+                    }
+                    i = j + 1;
+                }
+                b'/' if self.src.get(j + 1) == Some(&b'*') => {
+                    let Some(close) = self.src[j + 2..].windows(2).position(|w| w == b"*/") else {
+                        return false;
+                    };
+                    j += 2 + close + 2;
                     while j < n && self.src[j] != b'\n' {
                         j += 1;
                     }
@@ -781,6 +805,55 @@ impl Scanner<'_> {
             self.src.get(at..at + 3),
             Some([0xE2, 0x80, 0xAA..=0xAE] | [0xE2, 0x81, 0xA6..=0xA9])
         )
+    }
+
+    fn at_line_comment(&self) -> bool {
+        self.src[self.offset] == b'/' && self.src.get(self.offset + 1) == Some(&b'/')
+    }
+    fn at_block_comment(&self) -> bool {
+        self.src[self.offset] == b'/' && self.src.get(self.offset + 1) == Some(&b'*')
+    }
+    /// Consumes a block comment, which does not nest, and the blanks and optional `//` comment
+    /// after its `*/`; the cursor ends at the line's newline.
+    fn skip_block_comment(&mut self) -> PResult<()> {
+        let n = self.src.len();
+        let open = self.pos();
+        let start = self.offset;
+        self.advance();
+        self.advance();
+        loop {
+            if self.offset >= n {
+                return self.fail_at(open, "unterminated block comment; close it with '*/'");
+            }
+            let b = self.src[self.offset];
+            if b == b'*' && self.src.get(self.offset + 1) == Some(&b'/') {
+                self.advance();
+                self.advance();
+                self.boundaries.blocks.push((start, self.offset));
+                break;
+            }
+            if b == b'/' && self.src.get(self.offset + 1) == Some(&b'*') {
+                return self.fail("block comments do not nest; remove the inner '/*'");
+            }
+            if b == b'\r' {
+                return self.fail("lone carriage returns are not allowed in comments; use line endings of LF or CRLF");
+            }
+            if self.bidi_control_at(self.offset) {
+                return self.fail(BIDI_COMMENT);
+            }
+            self.advance();
+        }
+        while self.offset < n && self.src[self.offset] == b' ' {
+            self.advance();
+        }
+        if self.offset < n && self.at_line_comment() {
+            return self.skip_comment();
+        }
+        if self.offset < n && self.src[self.offset] != b'\n' {
+            return self
+                .fail("code cannot follow a block comment on the same line; start a new line");
+        }
+        Ok(())
     }
 
     /// Consumes a comment through the end of its physical line.
@@ -1103,7 +1176,7 @@ impl Scanner<'_> {
         let start = self.offset;
         while self.offset < n {
             let b = self.src[self.offset];
-            if b == b'\n' || b == b'\r' || b == b'#' {
+            if b == b'\n' || b == b'\r' || self.at_line_comment() || self.at_block_comment() {
                 return self.fail_at(open, format!("newlines and comments are not allowed inside interpolation; keep the expression on one line, or bind it to a name first and interpolate the name ({})", BRACE_HINT));
             }
             if b == b'\\' {
@@ -1224,6 +1297,7 @@ fn character_hint(b: u8) -> &'static str {
         b'\'' => "; text uses double quotes, e.g. \"text\"",
         b'!' => "; write 'not x' for negation and '!=' for inequality",
         b'`' => "; text uses double quotes with {expression} interpolation",
+        b'#' => "; comments start with '//' (or '/* */' for a block)",
         b'$' | b'@' | b'\\' | b'^' | b'~' => {
             "; this character is not part of Manuscript's syntax outside text"
         }

@@ -1,8 +1,8 @@
-# Pairs existing generated executables (bench/perf/codecs, bench/perf/codecs/json-failure); only their internal timer is measured.
-# Usage: ms run bench/tools/codecs_compare.ms -- <decode|json-failure> BEFORE AFTER OUTPUT_DIR [--pairs 9]
-# `decode` harness: `size count rounds` -> `size count rounds checksum elapsed_ns`.
-# `json-failure` harness: `size rounds shape` -> `size rounds shape rounds_checksum wall_ns cpu_ns`.
-# Pair -1 is an untimed warm-up and is excluded from the printed summary.
+// Pairs existing generated executables (bench/perf/codecs, bench/perf/codecs/json-failure); only their internal timer is measured.
+// Usage: ms run bench/tools/codecs_compare.ms -- <decode|json-failure> BEFORE AFTER OUTPUT_DIR [--pairs 9]
+// `decode` harness: `size count rounds` -> `size count rounds checksum elapsed_ns`.
+// `json-failure` harness: `size rounds shape` -> `size rounds shape rounds_checksum wall_ns cpu_ns`.
+// Pair -1 is an untimed warm-up and is excluded from the printed summary.
 import (
     absolute,
     fail,

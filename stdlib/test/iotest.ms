@@ -2,9 +2,11 @@ import Bytes from "@std/bytes.ms"
 import ReadStream, WriteStream, read_all from "@std/io/io.ms"
 import fail from "@std/test/test.ms"
 
-# Misbehaving streams for testing code that reads and writes. Each wrapper takes its input first, like the
-# helpers in `@std/io/streams.ms`, so `from_bytes(data) | one_byte` is a reader that trickles.
-# `check_reader` is the conformance check for a `ReadStream` you wrote.
+/*
+Misbehaving streams for testing code that reads and writes. Each wrapper takes its input first, like the
+helpers in `@std/io/streams.ms`, so `from_bytes(data) | one_byte` is a reader that trickles.
+`check_reader` is the conformance check for a `ReadStream` you wrote.
+*/
 type OneByte:
     input: ReadStream
 
@@ -21,7 +23,7 @@ impl ReadStream for OneByte:
             )
         return self.input.read(1)
 
-# Returns `input` limited to one byte per read, which exposes code that assumes a read fills its buffer.
+// Returns `input` limited to one byte per read, which exposes code that assumes a read fills its buffer.
 export fn one_byte(input: ReadStream) ReadStream:
     return OneByte(input)
 
@@ -53,8 +55,8 @@ impl ReadStream for FailAfter:
             self.remaining -= bytes.length()
         return ok(chunk)
 
-# Returns `input` that delivers `after` bytes and then fails every read with `cause`, even if `input` has ended.
-# Use it to check that a parser reports a truncated or broken source instead of treating it as clean end of input.
+// Returns `input` that delivers `after` bytes and then fails every read with `cause`, even if `input` has ended.
+// Use it to check that a parser reports a truncated or broken source instead of treating it as clean end of input.
 export fn fail_after(input: ReadStream, after: Int, cause: Error) ReadStream:
     return FailAfter(input, after, cause)
 
@@ -80,20 +82,20 @@ impl WriteStream for FailingWriter:
             self.remaining -= size
             return self.output.write_bytes(data)
 
-        # Like a full disk: the prefix that fits is written, then the write fails.
+        // Like a full disk: the prefix that fits is written, then the write fails.
         let prefix = self.remaining
         self.remaining = 0
         if prefix > 0:
             try self.output.write_bytes(data.slice(0, prefix).get())
         return error(self.cause.clone())
 
-# Returns a writer that passes `after` bytes through to `output`, writes the prefix of the write that crosses the limit,
-# and then fails that write and every later one with `cause`. Use it to check error handling on a full disk or closed pipe.
+// Returns a writer that passes `after` bytes through to `output`, writes the prefix of the write that crosses the limit,
+// and then fails that write and every later one with `cause`. Use it to check error handling on a full disk or closed pipe.
 export fn fail_writer_after(output: WriteStream, after: Int, cause: Error) WriteStream:
     return FailingWriter(output, after, cause)
 
-# Checks that `make` builds a well-behaved `ReadStream` over exactly `expected`: whole reads, one-byte reads, a chunk size
-# that is respected, and an end of input that stays ended. `make` is called once per check so each starts from the beginning.
+// Checks that `make` builds a well-behaved `ReadStream` over exactly `expected`: whole reads, one-byte reads, a chunk size
+// that is respected, and an end of input that stays ended. `make` is called once per check so each starts from the beginning.
 export fn check_reader(make: fn() ReadStream, expected: Bytes) Unit!:
     var whole = make()
     let all = read_all(whole, none)

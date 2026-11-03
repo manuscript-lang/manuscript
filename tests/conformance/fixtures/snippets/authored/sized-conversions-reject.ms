@@ -1,6 +1,6 @@
-# conform: tags=numbers,types,diagnostics,tier-core
-# conform: phase=check
-# conform: origin=sized numeric types stage 2
+// conform: tags=numbers,types,diagnostics,tier-core
+// conform: phase=check
+// conform: origin=sized numeric types stage 2
 fn main() Unit:
     let a: Int8 = 1
     let b: Int32 = a

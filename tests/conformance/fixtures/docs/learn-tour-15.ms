@@ -1,6 +1,6 @@
-# conform: tags=interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=documentation/learn/tour.md:292
+// conform: tags=interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=documentation/learn/tour.md:292
 import expect_equal from "@std/test/test.ms"
 
 type Counter:

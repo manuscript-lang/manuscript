@@ -5,7 +5,7 @@ type Parser:
     pos: Int
     div_zero: Bool
 
-# Skips blanks and returns the next character code, or 0 at the end of the line.
+// Skips blanks and returns the next character code, or 0 at the end of the line.
 fn peek(var p: Parser) Int:
     while p.pos < p.chars.length():
         let c = p.chars.get(p.pos)

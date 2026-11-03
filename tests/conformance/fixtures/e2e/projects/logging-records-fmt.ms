@@ -1,6 +1,6 @@
-# conform: tags=formatter,lists,modules,optional,parser,records,stdlib-log,strings,tier-io,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/logging/records.ms
+// conform: tags=formatter,lists,modules,optional,parser,records,stdlib-log,strings,tier-io,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/logging/records.ms
 import Logger, LogLevel, record from "@std/log.ms"
 
 type Request:

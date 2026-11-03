@@ -66,23 +66,23 @@
 Before and after for an unannotated program:
 
 ```manuscript
-let big = 3_000_000_000      # accepted before; compile error after: Int is Int32
+let big = 3_000_000_000      // accepted before; compile error after: Int is Int32
 let ok: Int64 = 3_000_000_000
 let samples: List[Int8] = [1, 2, 3]
 let total: Int32 = 0
 for s in samples:
-    total = total + s.to_int32()   # no implicit widening
+    total = total + s.to_int32()   // no implicit widening
 ```
 
 Rejected, with the intended diagnostic:
 
 ```manuscript
 let a: Int8 = 200
-# error: literal 200 is out of range for Int8 (-128 to 127)
+// error: literal 200 is out of range for Int8 (-128 to 127)
 let b: Int32 = 1
 let c: Int64 = 2
 let d = b + c
-# error: operands must have the same type: Int32 and Int64; convert with to_int64()
+// error: operands must have the same type: Int32 and Int64; convert with to_int64()
 ```
 
 ## Components touched

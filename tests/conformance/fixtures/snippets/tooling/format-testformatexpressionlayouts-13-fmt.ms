@@ -1,6 +1,6 @@
-# conform: tags=closures,formatter,generics,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/format/format_layout_test.go:130 TestFormatExpressionLayouts
+// conform: tags=closures,formatter,generics,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/format/format_layout_test.go:130 TestFormatExpressionLayouts
 fn map_box[T, U_wwwwwwwwwwww](
     b_wwwwwwwwwwwwwwwwwwwwwwww: Box_wwwwwwwwwwwwwwwwwww[T],
     f_wwwwwwwwwww: fn(T) U_wwwwwwwwwwww

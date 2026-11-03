@@ -12,13 +12,13 @@
           "file": "testpreludenamescannotberedeclared-7-fmt.ms",
           "line": 4,
           "column": 8,
-          "offset": 168
+          "offset": 171
         },
         "end": {
           "file": "testpreludenamescannotberedeclared-7-fmt.ms",
           "line": 4,
           "column": 11,
-          "offset": 171
+          "offset": 174
         }
       }
     ],

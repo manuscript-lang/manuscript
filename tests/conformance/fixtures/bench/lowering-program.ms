@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,faults,lists,modules,mutation,stdlib-collections,tier-stdlib
-# conform: phase=check
-# conform: origin=bench/lowering/program.ms
+// conform: tags=control-flow,diagnostics,faults,lists,modules,mutation,stdlib-collections,tier-stdlib
+// conform: phase=check
+// conform: origin=bench/lowering/program.ms
 
 fn scalar(limit: Int) Int:
     var total = 0

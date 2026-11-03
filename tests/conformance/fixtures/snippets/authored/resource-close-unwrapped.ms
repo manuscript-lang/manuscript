@@ -1,6 +1,6 @@
-# conform: tags=scope-cleanup,tier-core
-# conform: phase=run
-# conform: origin=a resource unwrapped or passed through a call closes at scope end
+// conform: tags=scope-cleanup,tier-core
+// conform: phase=run
+// conform: origin=a resource unwrapped or passed through a call closes at scope end
 import Closeable from "@std/core.ms"
 import stdout from "@std/io/io.ms"
 

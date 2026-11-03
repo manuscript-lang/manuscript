@@ -35,7 +35,7 @@ test "probable primes":
     try expect_true(mersenne.is_probable_prime())
     try expect_false((mersenne - from_int(2)).is_probable_prime())
 
-    # Above 3.3e24 the rounds also use random bases, and counts above 25 are honoured.
+    // Above 3.3e24 the rounds also use random bases, and counts above 25 are honoured.
     try expect_true(mersenne.is_probable_prime(40))
 
     let other = (try from_int(2).pow(89)) - from_int(1)
@@ -43,7 +43,7 @@ test "probable primes":
 
     let pseudoprime = try parse("3825123056546413051", 10)
 
-    # A strong pseudoprime to the first nine prime bases: nine rounds are fooled, the default thirteen are not.
+    // A strong pseudoprime to the first nine prime bases: nine rounds are fooled, the default thirteen are not.
     try expect_true(pseudoprime.is_probable_prime(9))
     try expect_false(pseudoprime.is_probable_prime())
 

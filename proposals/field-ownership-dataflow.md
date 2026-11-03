@@ -122,16 +122,16 @@ type Big:
     name: String
     items: List[Int]
 
-fn take(b: Big) List[Int]:      # accepted: moves b.items; b.name is dropped at return
+fn take(b: Big) List[Int]:      // accepted: moves b.items; b.name is dropped at return
     return b.items
 
 fn both(b: Big) Int:
-    let xs = b.items            # moves items
-    return xs.length() + b.name.length()   # accepted: name is still init
+    let xs = b.items            // moves items
+    return xs.length() + b.name.length()   // accepted: name is still init
 
 fn bad(b: Big) Int:
     let xs = b.items
-    return b.items.length()     # rejected: use of moved field `b.items`
+    return b.items.length()     // rejected: use of moved field `b.items`
 ```
 
 Branches: `if c: let xs = b.items` leaves `b.items` **maybe**; any later read of `b.items` or of `b` is rejected, and scope exit drops `items` under a flag.

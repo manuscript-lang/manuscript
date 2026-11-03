@@ -1,6 +1,6 @@
-# conform: tags=closures,diagnostics,faults,generics,lists,optional,tier-core
-# conform: phase=check
-# conform: origin=pkg/checker/hints_test.go:55 TestDiagnosticsStateCauseAndFix
+// conform: tags=closures,diagnostics,faults,generics,lists,optional,tier-core
+// conform: phase=check
+// conform: origin=pkg/checker/hints_test.go:55 TestDiagnosticsStateCauseAndFix
 fn pick[T](items: List[T], keep: fn(T) Bool) T?:
     return none
 

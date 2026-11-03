@@ -1,6 +1,6 @@
-# conform: tags=lists,tier-stdlib
-# conform: phase=run
-# conform: origin=perf: sorting with a named comparator is compiled with the program; results must match the runtime sort, including for inconsistent comparators
+// conform: tags=lists,tier-stdlib
+// conform: phase=run
+// conform: origin=perf: sorting with a named comparator is compiled with the program; results must match the runtime sort, including for inconsistent comparators
 import stdout from "@std/io/io.ms"
 
 fn up(left: Int, right: Int) Int:

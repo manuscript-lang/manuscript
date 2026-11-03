@@ -14,7 +14,7 @@
           "file": "testprojectcheckfindsunimportederrors-2.ms",
           "line": 5,
           "column": 12,
-          "offset": 191
+          "offset": 194
         }
       },
       {
@@ -25,20 +25,20 @@
           "file": "testprojectcheckfindsunimportederrors-2.ms",
           "line": 8,
           "column": 12,
-          "offset": 229
+          "offset": 232
         },
         "fix": {
           "position": {
             "file": "testprojectcheckfindsunimportederrors-2.ms",
             "line": 8,
             "column": 12,
-            "offset": 229
+            "offset": 232
           },
           "end": {
             "file": "testprojectcheckfindsunimportederrors-2.ms",
             "line": 8,
             "column": 13,
-            "offset": 230
+            "offset": 233
           },
           "replacement": "\"{1}\""
         }

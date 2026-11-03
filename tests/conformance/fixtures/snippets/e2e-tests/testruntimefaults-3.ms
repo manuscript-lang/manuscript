@@ -1,6 +1,6 @@
-# conform: tags=testing,tier-core
-# conform: phase=test
-# conform: origin=tests/e2e/e2e_test.go:69 TestRuntimeFaults
+// conform: tags=testing,tier-core
+// conform: phase=test
+// conform: origin=tests/e2e/e2e_test.go:69 TestRuntimeFaults
 fn sum(value: Int) Int:
     return value + 1
 

@@ -24,4 +24,4 @@ fn keep(d: Door) List[Door]:
     return xs
 
 fn closing(g: Guard) List[Door]:
-    return keep(g.door)  # error: cannot move the resource
+    return keep(g.door)  // error: cannot move the resource

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,decimal,diagnostics,interpolation,strings,tier-core
-# conform: phase=check
-# conform: origin=documentation/core-language/errors/results.md:40
+// conform: tags=control-flow,decimal,diagnostics,interpolation,strings,tier-core
+// conform: phase=check
+// conform: origin=documentation/core-language/errors/results.md:40
 fn discount_message(price: Decimal, percent: Decimal) String:
     if let value = discount(price, percent):
         return "Discounted price: {value}"

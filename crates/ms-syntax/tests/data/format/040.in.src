@@ -3,7 +3,7 @@ fn checked(value: Int) Int:
     let second = first + 1
     if second < 0: return 0
     consume(second)
-    # Prepare the next case.
+    // Prepare the next case.
     let third = second + 1
     let fourth = third + 1
     consume(fourth)

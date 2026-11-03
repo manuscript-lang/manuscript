@@ -14,26 +14,26 @@
           "file": "testsemanticlintusesreadsandcontrolflow-1.ms",
           "line": 4,
           "column": 8,
-          "offset": 200
+          "offset": 203
         },
         "end": {
           "file": "testsemanticlintusesreadsandcontrolflow-1.ms",
           "line": 4,
           "column": 17,
-          "offset": 209
+          "offset": 212
         },
         "fix": {
           "position": {
             "file": "testsemanticlintusesreadsandcontrolflow-1.ms",
             "line": 4,
             "column": 1,
-            "offset": 193
+            "offset": 196
           },
           "end": {
             "file": "testsemanticlintusesreadsandcontrolflow-1.ms",
             "line": 5,
             "column": 1,
-            "offset": 249
+            "offset": 252
           },
           "replacement": ""
         }

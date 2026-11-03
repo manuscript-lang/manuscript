@@ -1,6 +1,6 @@
-# conform: tags=formatter,generics,parser,records,tier-core,try-result
-# conform: phase=parse
-# conform: origin=pkg/compiler/result_argument_inference_test.go:73 TestResultArgumentInference
+// conform: tags=formatter,generics,parser,records,tier-core,try-result
+// conform: phase=parse
+// conform: origin=pkg/compiler/result_argument_inference_test.go:73 TestResultArgumentInference
 type Holder[T]:
     r: T!
 

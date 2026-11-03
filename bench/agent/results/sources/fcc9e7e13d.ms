@@ -222,8 +222,8 @@ fn split_operands(s: String) List[String]:
     res.append(cur.trim())
     return res
 
-# Splits an expression into signed terms, each encoded as sign char + trimmed body.
-# Returns an empty list when the text is malformed.
+// Splits an expression into signed terms, each encoded as sign char + trimmed body.
+// Returns an empty list when the text is malformed.
 fn split_terms(cs: List[String]) List[String]:
     var res = List[String]()
     let n = cs.length()

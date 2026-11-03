@@ -1,6 +1,6 @@
-# Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-# expect-mir: "switch"
-# expect-mir: "closure.new"
+// Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
+// expect-mir: "switch"
+// expect-mir: "closure.new"
 
 type Shape:
     case Circle(radius: Int)

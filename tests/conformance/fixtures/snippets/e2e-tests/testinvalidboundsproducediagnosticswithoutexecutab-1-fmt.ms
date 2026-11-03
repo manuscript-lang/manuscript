@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,records,strings,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/bound_recovery_test.go:11 TestInvalidBoundsProduceDiagnosticsWithoutExecutable
+// conform: tags=control-flow,formatter,interfaces,parser,records,strings,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/bound_recovery_test.go:11 TestInvalidBoundsProduceDiagnosticsWithoutExecutable
 interface Named:
     fn name() String
 

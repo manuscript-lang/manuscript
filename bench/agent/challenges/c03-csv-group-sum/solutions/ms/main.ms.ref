@@ -1,6 +1,6 @@
 import stdin, stdout, read_line from "@std/io/io.ms"
 
-# True when s is a non-empty run of ASCII digits.
+// True when s is a non-empty run of ASCII digits.
 fn all_digits(s: String) Bool:
     if s.is_empty():
         return false
@@ -10,7 +10,7 @@ fn all_digits(s: String) Bool:
             return false
     return true
 
-# Parses digits with an optional one- or two-digit fraction into cents.
+// Parses digits with an optional one- or two-digit fraction into cents.
 fn parse_amount(s: String) Int?:
     let parts = s.split(".")
     if parts.length() > 2:

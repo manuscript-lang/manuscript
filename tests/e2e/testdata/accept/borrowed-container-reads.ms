@@ -1,9 +1,9 @@
 import expect_equal from "@std/test/test.ms"
 
-# `let x = m.get(k)`, `if let x = m.get(k)`, `xs.first()`, `xs.last()`, `m[k]` and
-# `m.get_or(k, d)` read the entry in place (a borrow the checker already enforces) instead of
-# copying it out of the container. Every shape must still read the same values, and the
-# container must be changeable again after the borrow's last use.
+// `let x = m.get(k)`, `if let x = m.get(k)`, `xs.first()`, `xs.last()`, `m[k]` and
+// `m.get_or(k, d)` read the entry in place (a borrow the checker already enforces) instead of
+// copying it out of the container. Every shape must still read the same values, and the
+// container must be changeable again after the borrow's last use.
 type Item:
     sku: String
     qty: Int

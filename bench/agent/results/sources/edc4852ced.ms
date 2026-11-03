@@ -3,9 +3,9 @@ import read_lines from "@std/streams.ms"
 
 type Record:
     category: String
-    cents: List[Int]  # big-endian digits of the amount in hundredths
+    cents: List[Int]  // big-endian digits of the amount in hundredths
 
-# Returns the amount as big-endian hundredths digits, or none unless it is `digits[.digits{0,2}]`.
+// Returns the amount as big-endian hundredths digits, or none unless it is `digits[.digits{0,2}]`.
 fn parse_amount(amount: String) Optional[List[Int]]:
     let parts = amount.split(".")
     if parts.length() > 2: return none
@@ -30,7 +30,7 @@ fn parse_amount(amount: String) Optional[List[Int]]:
 
     return cents
 
-# Splits one line into `category,amount`; a quoted category may contain commas.
+// Splits one line into `category,amount`; a quoted category may contain commas.
 fn parse_record(line: String) Optional[Record]:
     let parts = line.split("\"")
     var category = ""
@@ -57,7 +57,7 @@ fn parse_record(line: String) Optional[Record]:
 
     return none
 
-# Adds two big-endian digit lists.
+// Adds two big-endian digit lists.
 fn add(a: List[Int], b: List[Int]) List[Int]:
     var i = a.length() - 1
     var j = b.length() - 1
@@ -81,7 +81,7 @@ fn add(a: List[Int], b: List[Int]) List[Int]:
     out.reverse()
     return out
 
-# Formats hundredths digits as `whole.frac` with exactly two fractional digits.
+// Formats hundredths digits as `whole.frac` with exactly two fractional digits.
 fn format_cents(cents: List[Int]) String:
     let n = if cents.length() < 3: 3 else: cents.length()
 

@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,modules,stdlib-compress,tier-stdlib
-# conform: phase=check
-# conform: origin=pkg/compiler/compression_defaults_test.go:36 TestCompressionExplicitLevelsKeepDirectDispatch
+// conform: tags=diagnostics,modules,stdlib-compress,tier-stdlib
+// conform: phase=check
+// conform: origin=pkg/compiler/compression_defaults_test.go:36 TestCompressionExplicitLevelsKeepDirectDispatch
 import compress, CompressionFormat from "@std/io/archive.ms"
 
 fn explicit() Unit:

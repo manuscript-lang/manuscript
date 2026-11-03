@@ -1,7 +1,7 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# kind 0 is an unchanged line, 1 a deletion from A, 2 an insertion from B
+// kind 0 is an unchanged line, 1 a deletion from A, 2 an insertion from B
 type Edit:
     kind: Int
     text: String
@@ -17,7 +17,7 @@ fn edit_script(a: List[String], b: List[String]) List[Edit]:
     let m = b.length()
     let w = m + 1
 
-    # lcs[i * w + j] is the LCS length of a[i..] and b[j..]
+    // lcs[i * w + j] is the LCS length of a[i..] and b[j..]
     var lcs = List[Int]()
     for _k in 0..(n + 1) * w:
         lcs.append(0)
@@ -77,7 +77,7 @@ export fn main() Int:
     let edits = edit_script(a, b)
     let total = edits.length()
 
-    # script positions of every deletion and insertion
+    // script positions of every deletion and insertion
     var changes = List[Int]()
     for e in 0..total:
         if edits[e].kind != 0:
@@ -85,7 +85,7 @@ export fn main() Int:
     if changes.length() == 0:
         return 0
 
-    # a_before[e] and b_before[e] count the lines of A and B consumed before edit e
+    // a_before[e] and b_before[e] count the lines of A and B consumed before edit e
     var a_before = List[Int]()
     var b_before = List[Int]()
     var ca = 0

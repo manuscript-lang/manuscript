@@ -4,8 +4,8 @@ import ReadStream, WriteStream, read_line from "@std/io/io.ms"
 import Channel from "@std/io/channels.ms"
 import FileHandle from "@std/os/fs.ms"
 
-# Transform and composition helpers for byte streams. Each helper takes its input first, so
-# flows read left to right: `source | map(upper) | take(1024) | copy(sink)`.
+// Transform and composition helpers for byte streams. Each helper takes its input first, so
+// flows read left to right: `source | map(upper) | take(1024) | copy(sink)`.
 type BytesSource:
     data: Bytes
     offset: Int
@@ -34,8 +34,8 @@ impl ReadStream for BytesSource:
         self.offset += size
         return ok(piece)
 
-# Streams the bytes in `data` in chunks of at most `chunk_bytes` (default 64 KiB).
-# A non-positive chunk size makes reads fail with InvalidInput.
+// Streams the bytes in `data` in chunks of at most `chunk_bytes` (default 64 KiB).
+// A non-positive chunk size makes reads fail with InvalidInput.
 export fn from_bytes(data: Bytes, chunk_bytes: Int = 65536) ReadStream:
     return BytesSource(data, 0, chunk_bytes)
 
@@ -59,9 +59,11 @@ impl ReadStream for MappedStream:
 
         return ok(none)
 
-# Applies `transform` to each chunk read from `input`. Chunks that transform to empty bytes are skipped.
-# The result is only as stateless as `transform`: it sees chunk boundaries as `input` produces them.
-# Closing the result closes `input`.
+/*
+Applies `transform` to each chunk read from `input`. Chunks that transform to empty bytes are skipped.
+The result is only as stateless as `transform`: it sees chunk boundaries as `input` produces them.
+Closing the result closes `input`.
+*/
 export fn map(input: ReadStream, transform: fn(Bytes) Bytes) ReadStream:
     return MappedStream(input, transform)
 
@@ -92,8 +94,8 @@ impl ReadStream for LimitedStream:
 
         return ok(none)
 
-# Ends the stream after `max_bytes` bytes without reading further from `input`.
-# A negative limit makes reads fail with InvalidInput. Closing the result closes `input`.
+// Ends the stream after `max_bytes` bytes without reading further from `input`.
+// A negative limit makes reads fail with InvalidInput. Closing the result closes `input`.
 export fn take(input: ReadStream, max_bytes: Int) ReadStream:
     return LimitedStream(input, max_bytes)
 
@@ -115,7 +117,7 @@ impl ReadStream for ConcatStream:
 
     var fn read(max_bytes: Int? = none) Bytes?!:
         while self.index < self.inputs.length():
-            # Read the stored stream in place: a stream is a value, so a local copy would lose its position.
+            // Read the stored stream in place: a stream is a value, so a local copy would lose its position.
             let chunk = try self.inputs[self.index].read(max_bytes)
             if let bytes = chunk: return ok(bytes)
 
@@ -124,7 +126,7 @@ impl ReadStream for ConcatStream:
 
         return ok(none)
 
-# Reads each input to its end in order. Each input is closed when it ends or when the result is closed.
+// Reads each input to its end in order. Each input is closed when it ends or when the result is closed.
 export fn concat(inputs: List[ReadStream]) ReadStream:
     return ConcatStream(inputs, 0)
 
@@ -145,8 +147,8 @@ impl ReadStream for TeeStream:
 
         return ok(none)
 
-# Copies every chunk read from `input` to `sink` as it passes through. A sink failure fails the read.
-# Closing the result closes `input` only; the caller owns `sink`.
+// Copies every chunk read from `input` to `sink` as it passes through. A sink failure fails the read.
+// Closing the result closes `input` only; the caller owns `sink`.
 export fn tee(input: ReadStream, sink: WriteStream) ReadStream:
     return TeeStream(input, sink)
 
@@ -170,12 +172,12 @@ impl WriteStream for MappedWriter:
 
         return self.output.write_bytes(mapped)
 
-# Applies `transform` to each written chunk before writing to `output`. Empty results write nothing.
-# Flush and close pass through to `output`.
+// Applies `transform` to each written chunk before writing to `output`. Empty results write nothing.
+// Flush and close pass through to `output`.
 export fn map_writer(output: WriteStream, transform: fn(Bytes) Bytes) WriteStream:
     return MappedWriter(output, transform)
 
-# Reads `input` to its end and returns its digest, hashing chunk by chunk so memory stays bounded.
+// Reads `input` to its end and returns its digest, hashing chunk by chunk so memory stays bounded.
 export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Bytes!:
     let hasher = algorithm.hasher()
 
@@ -189,7 +191,7 @@ export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Bytes!:
 
     return ok(hasher.finish())
 
-# Reads every remaining line from `input`, omitting line endings. `max_bytes` bounds each line, as in `read_line`.
+// Reads every remaining line from `input`, omitting line endings. `max_bytes` bounds each line, as in `read_line`.
 export fn read_lines(input: ReadStream, max_bytes: Int?) List[String]!:
     var lines = List[String]()
 
@@ -223,8 +225,8 @@ impl WriteStream for FanOutWriter:
             try self.outputs[i].write_bytes(data.clone())
         return ok(unit)
 
-# Writes every chunk to each of `outputs` in order. The first failing output fails the write, leaving the later outputs without it.
-# Flush and close pass through to every output.
+// Writes every chunk to each of `outputs` in order. The first failing output fails the write, leaving the later outputs without it.
+// Flush and close pass through to every output.
 export fn multi_writer(outputs: List[WriteStream]) WriteStream:
     return FanOutWriter(outputs)
 
@@ -265,10 +267,12 @@ impl ReadStream for SectionStream:
         self.remaining -= bytes.length()
         return ok(bytes)
 
-# Streams `length` bytes of `file` starting at byte `offset`, without moving the file's own position, so several sections
-# of one file can be read independently. Fewer bytes arrive when the file ends first. The section reads through its own
-# duplicate of the descriptor and closes it when closed; the caller still owns `file`.
-# A negative offset or length, or a closed file, fails with the `Error` of the duplication.
+/*
+Streams `length` bytes of `file` starting at byte `offset`, without moving the file's own position, so several sections
+of one file can be read independently. Fewer bytes arrive when the file ends first. The section reads through its own
+duplicate of the descriptor and closes it when closed; the caller still owns `file`.
+A negative offset or length, or a closed file, fails with the `Error` of the duplication.
+*/
 export fn section(file: FileHandle, offset: Int, length: Int) ReadStream!:
     if offset < 0 or length < 0: return error(
         Error("file system: invalid input", kind: ErrorCategory.InvalidInput)
@@ -309,8 +313,8 @@ impl ReadStream for ChannelSource[In]:
         self.offset += size
         return ok(piece)
 
-# Reads the byte chunks that the other end of a task channel sends: an in-memory pipe between tasks.
-# The stream ends when the sender closes its end and every chunk was read. Closing it closes this end of the channel.
+// Reads the byte chunks that the other end of a task channel sends: an in-memory pipe between tasks.
+// The stream ends when the sender closes its end and every chunk was read. Closing it closes this end of the channel.
 export fn channel_reader[In](channel: Channel[In, Bytes]) ReadStream:
     return ChannelSource(channel, "".to_bytes(), 0)
 
@@ -336,8 +340,10 @@ impl WriteStream for ChannelSink[Out]:
 
         return ok(unit)
 
-# Sends each write as one chunk over a task channel, so the other end reads it with `channel_reader`.
-# A write waits while the reader has many unread chunks; once the reader closes, writes return an `Error` of kind `Closed`.
-# Closing the writer closes this end of the channel, which ends the reader's stream.
+/*
+Sends each write as one chunk over a task channel, so the other end reads it with `channel_reader`.
+A write waits while the reader has many unread chunks; once the reader closes, writes return an `Error` of kind `Closed`.
+Closing the writer closes this end of the channel, which ends the reader's stream.
+*/
 export fn channel_writer[Out](channel: Channel[Bytes, Out]) WriteStream:
     return ChannelSink(channel)

@@ -18,4 +18,4 @@ fn keep(d: Door) List[Door]:
 
 fn changing() List[Door]:
     var r = Room(Door(1), "t")
-    return keep(r.door)  # error: cannot move the resource
+    return keep(r.door)  // error: cannot move the resource

@@ -1,6 +1,6 @@
-# conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,interpolation,maps,match,modules,optional,parser,sets,strings,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/core_parity/first.ms
+// conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,interpolation,maps,match,modules,optional,parser,sets,strings,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/core_parity/first.ms
 import Key, Cause from "./domain.ms"
 import (
     transform_set,

@@ -1,6 +1,6 @@
-# conform: tags=closures,formatter,mutation,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/lsp/defaults_test.go:9 TestDefaultClosureAssignmentReferencesAndListHints
+// conform: tags=closures,formatter,mutation,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/tooling/lsp/defaults_test.go:9 TestDefaultClosureAssignmentReferencesAndListHints
 fn answer(
     value: Int = (
         fn() Int:

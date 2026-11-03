@@ -2,7 +2,7 @@ import stdin, stdout, read_all from "@std/io.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import range from "@std/collections.ms"
 
-# ---------------------------------------------------------------- errors
+// ---------------------------------------------------------------- errors
 type SqlError:
     msg: String
 
@@ -22,7 +22,7 @@ fn type_error() SqlError:
 fn wrong_args(name: String) SqlError:
     return SqlError(msg: "wrong number of arguments to {name}")
 
-# ---------------------------------------------------------------- values
+// ---------------------------------------------------------------- values
 type Value:
     case VNull
     case VInt(n: Int)
@@ -114,7 +114,7 @@ fn min_int(a: Int, b: Int) Int:
 
     return b
 
-# Total order used for sorting, DISTINCT and key equality: NULL < BOOL < INT < TEXT.
+// Total order used for sorting, DISTINCT and key equality: NULL < BOOL < INT < TEXT.
 fn value_order(a: Value, b: Value) Int:
     let ra = value_rank(a)
     let rb = value_rank(b)
@@ -163,14 +163,14 @@ fn value_text(v: Value) String:
         VText(s):
             return s
 
-# Text is kept as UTF-8 strings; byte-level operations go through Bytes and fall back to '?' on invalid UTF-8.
+// Text is kept as UTF-8 strings; byte-level operations go through Bytes and fall back to '?' on invalid UTF-8.
 fn bytes_to_string(b: Bytes) String:
     if let s = b.decode_utf8():
         return s
 
     return "?"
 
-# ---------------------------------------------------------------- operators on values
+// ---------------------------------------------------------------- operators on values
 fn negate(v: Value) Result[Value, SqlError]:
     if is_null(v):
         return ok(VNull)
@@ -235,7 +235,7 @@ fn arith(op: String, a: Value, b: Value) Result[Value, SqlError]:
 
     return error(type_error())
 
-# Ordering for SQL comparisons: only INT with INT and TEXT with TEXT.
+// Ordering for SQL comparisons: only INT with INT and TEXT with TEXT.
 fn ordering(a: Value, b: Value) Result[Int, SqlError]:
     if let x = int_of(a):
         if let y = int_of(b):
@@ -322,7 +322,7 @@ fn substring(s: String, start: Int, len: Int) String:
         out.append(src.get(k - 1))
     return bytes_to_string(out.build())
 
-# ---------------------------------------------------------------- functions
+// ---------------------------------------------------------------- functions
 fn is_aggregate(name: String) Bool:
     return name == "COUNT" or name == "SUM" or name == "MIN" or name == "MAX"
 
@@ -336,7 +336,7 @@ fn is_scalar(name: String) Bool:
         or name == "COALESCE"
     )
 
-# -1 means variadic (at least one argument).
+// -1 means variadic (at least one argument).
 fn scalar_arity(name: String) Int:
     if name == "SUBSTR":
         return 3
@@ -383,7 +383,7 @@ fn distinct_values(vals: List[Value]) List[Value]:
             out.append(vals[i])
     return out
 
-# ---------------------------------------------------------------- names
+// ---------------------------------------------------------------- names
 fn display_name(qual: String, name: String) String:
     if qual == "":
         return name
@@ -407,7 +407,7 @@ fn resolve_col(scope: List[ScopeCol], qual: String, name: String) Result[Int, Sq
 
     return ok(found)
 
-# ---------------------------------------------------------------- expressions
+// ---------------------------------------------------------------- expressions
 type Expr:
     case Lit(v: Value)
     case Col(qual: String, name: String)
@@ -423,8 +423,8 @@ type Expr:
     case Between(e: Expr, lo: Expr, hi: Expr, neg: Bool)
     case Call(name: String, args: List[Expr], distinct: Bool, star: Bool)
 
-# What an expression is evaluated against: the scope names, the current joined row,
-# and the rows of the current aggregation group (empty outside aggregation).
+// What an expression is evaluated against: the scope names, the current joined row,
+// and the rows of the current aggregation group (empty outside aggregation).
 type Ctx:
     scope: List[ScopeCol]
     row: List[Value]
@@ -612,7 +612,7 @@ fn contains_agg(e: Expr) Bool:
         _:
             return false
 
-# Static checks, in the order the spec names them. `in_agg` is true inside an aggregate's arguments.
+// Static checks, in the order the spec names them. `in_agg` is true inside an aggregate's arguments.
 type Check:
     scope: List[ScopeCol]
     allow_agg: Bool
@@ -717,7 +717,7 @@ fn alias_used(scope: List[ScopeCol], alias: String) Bool:
             return true
     return false
 
-# ---------------------------------------------------------------- statements: data model
+// ---------------------------------------------------------------- statements: data model
 type ScopeCol:
     alias: String
     name: String
@@ -780,7 +780,7 @@ type Stmt:
     case Delete(table: String, cond: Optional[Expr])
     case Query(sel: Select)
 
-# ---------------------------------------------------------------- lexer
+// ---------------------------------------------------------------- lexer
 type Token:
     kind: String
     text: String
@@ -791,7 +791,7 @@ type Span:
     start: Int
     stop: Int
 
-# A Unit value for Result[Unit, SqlError] successes.
+// A Unit value for Result[Unit, SqlError] successes.
 fn unit_value() Unit:
     var scratch: List[Int] = []
     return scratch.append(0)
@@ -816,7 +816,7 @@ fn is_keyword(word: String) Bool:
         "CREATE", "TABLE", "DROP", "PRIMARY", "KEY", "DISTINCT", "ASC", "DESC"
     ].contains(word)
 
-# Splits the script at semicolons that are outside string literals and comments.
+// Splits the script at semicolons that are outside string literals and comments.
 fn split_statements(src: List[Int]) List[Span]:
     var spans: List[Span] = []
     let n = src.length()
@@ -971,7 +971,7 @@ fn lex(src: List[Int], start: Int, stop: Int) Result[List[Token], SqlError]:
 
     return ok(toks)
 
-# ---------------------------------------------------------------- parser
+// ---------------------------------------------------------------- parser
 type Parser:
     toks: List[Token]
     pos: Int
@@ -1561,7 +1561,7 @@ fn parse_statement(var p: Parser) Result[Stmt, SqlError]:
 
     return error(syntax_error())
 
-# ---------------------------------------------------------------- SELECT execution
+// ---------------------------------------------------------------- SELECT execution
 type Group:
     key: List[Value]
     rows: List[List[Value]]
@@ -1607,7 +1607,7 @@ fn plain_name(e: Expr) Optional[String]:
         _:
             return none
 
-# Returns the output column an ORDER BY item names, or -1 when it is an expression.
+// Returns the output column an ORDER BY item names, or -1 when it is an expression.
 fn order_target(outs: List[OutCol], e: Expr) Result[Int, SqlError]:
     if let pos = lit_int(e.clone()):
         if pos < 1 or pos > outs.length():
@@ -1676,7 +1676,7 @@ fn compare_ids(a: Int, b: Int, keys: List[List[Value]], descs: List[Bool]) Int:
 
     return a.compare(b)
 
-# Stable merge sort of row ids by their ORDER BY keys.
+// Stable merge sort of row ids by their ORDER BY keys.
 fn sort_ids(ids: List[Int], keys: List[List[Value]], descs: List[Bool]) List[Int]:
     if ids.length() < 2:
         return ids
@@ -1729,7 +1729,7 @@ fn run_select(
     for j in range(0, s.joins.length()):
         refs.append(s.joins[j].tref.clone())
 
-    # Tables and scope, in FROM/JOIN order.
+    // Tables and scope, in FROM/JOIN order.
     var scope: List[ScopeCol] = []
     var ref_tables: List[Int] = []
     var prefixes: List[List[ScopeCol]] = []
@@ -1745,7 +1745,7 @@ fn run_select(
         ref_tables.append(ti)
         prefixes.append(scope.clone())
 
-    # JOIN conditions see the tables joined up to them.
+    // JOIN conditions see the tables joined up to them.
     for j in range(0, s.joins.length()):
         let jc = Check(
             scope: prefixes[j + 1].clone(), allow_agg: false, aggregated: false,
@@ -1753,7 +1753,7 @@ fn run_select(
         )
         try check_expr(s.joins[j].on.clone(), jc, false)
 
-    # Stars, then GROUP BY, WHERE, select items, HAVING, ORDER BY.
+    // Stars, then GROUP BY, WHERE, select items, HAVING, ORDER BY.
     var outs: List[OutCol] = []
 
     for i in range(0, s.items.length()):
@@ -1821,7 +1821,7 @@ fn run_select(
 
         order_out.append(target)
 
-    # Rows: FROM, then each JOIN.
+    // Rows: FROM, then each JOIN.
     var rows: List[List[Value]] = []
 
     if refs.length() == 0:
@@ -1849,7 +1849,7 @@ fn run_select(
         if keep:
             kept.append(rows[i].clone())
 
-    # Groups: one per GROUP BY key, one for the whole input, or one per row.
+    // Groups: one per GROUP BY key, one for the whole input, or one per row.
     var groups: List[Group] = []
 
     if not aggregated:
@@ -1946,7 +1946,7 @@ fn run_select(
     emit(var out, "({end_id - first_id} rows)")
     return ok(end_id - first_id)
 
-# ---------------------------------------------------------------- DDL and DML
+// ---------------------------------------------------------------- DDL and DML
 fn exec_create(
     name: String,
     cols: List[ColDef],
@@ -1993,7 +1993,7 @@ fn check_row(row: List[Value], cols: List[ColDef]) Result[Unit, SqlError]:
 
     return ok(unit_value())
 
-# Duplicate primary keys among rows, reported in row order.
+// Duplicate primary keys among rows, reported in row order.
 fn check_primary(rows: List[List[Value]], pk: Int) Result[Unit, SqlError]:
     if pk < 0:
         return ok(unit_value())
@@ -2207,7 +2207,7 @@ fn execute(
         Query(sel):
             return run_select(sel.clone(), tables.clone(), var out)
 
-# ---------------------------------------------------------------- driver
+// ---------------------------------------------------------------- driver
 fn run_span(
     src: List[Int],
     span: Span,

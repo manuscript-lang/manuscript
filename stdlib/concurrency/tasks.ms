@@ -22,24 +22,26 @@ import (
     msrt_channel_group_close
 ) from "@std/internal/tasks.ms"
 
-# Internal lifetime tracker for the group's channels; it never owns its channel leases.
+// Internal lifetime tracker for the group's channels; it never owns its channel leases.
 export extern type TaskChannels
 
-# Internal reference-counted lease; its final holder removes it from the group's tracker.
+// Internal reference-counted lease; its final holder removes it from the group's tracker.
 export extern type TaskChannelLease
 
 impl TaskChannelLease:
-    # Another holder of the same lease: the channel closes when the last holder is released.
+    // Another holder of the same lease: the channel closes when the last holder is released.
     fn clone() TaskChannelLease:
         return msrt_obj_share(self)
 
-# Whether the running task was cancelled: its group was closed, its timeout passed, or the program was asked to stop.
-# A plain query: it neither waits nor unwinds, so a task can poll it between steps and finish early.
-# It stays true inside cleanups (scope-end closes), where a cancelled task should do minimal work.
+/*
+Whether the running task was cancelled: its group was closed, its timeout passed, or the program was asked to stop.
+A plain query: it neither waits nor unwinds, so a task can poll it between steps and finish early.
+It stays true inside cleanups (scope-end closes), where a cancelled task should do minimal work.
+*/
 export fn cancelled() Bool:
     return msrt_task_cancel_requested() != 0
 
-# Maps a runtime outcome (0 returned, 1 timed out, 2 cancelled, 3 closed or collected, 4 faulted) to a result.
+// Maps a runtime outcome (0 returned, 1 timed out, 2 cancelled, 3 closed or collected, 4 faulted) to a result.
 fn outcome(code: Int) Unit!:
     if code == 1:
         return error(Error("task: timed out", kind: ErrorCategory.Timeout))
@@ -59,14 +61,14 @@ fn outcome(code: Int) Unit!:
 
     return ok(unit)
 
-# A new runtime scope, one that contains task faults when `contain` is set.
+// A new runtime scope, one that contains task faults when `contain` is set.
 fn new_scope(contain: Bool) Int:
     let scope = msrt_scope_new()
     if contain:
         msrt_scope_contain(scope)
     return scope
 
-# A limit in nanoseconds, or -1 for none.
+// A limit in nanoseconds, or -1 for none.
 fn nanos(limit: Duration?) Int:
     if let own = limit:
         if own.to_nanoseconds() < 0:
@@ -75,29 +77,29 @@ fn nanos(limit: Duration?) Int:
 
     return -1
 
-# How many unread values one direction of a task channel holds before a send waits.
+// How many unread values one direction of a task channel holds before a send waits.
 fn room() Int:
     return 16
 
-# One direction of a task channel: the values sent and not yet received, and who waits on them.
+// One direction of a task channel: the values sent and not yet received, and who waits on them.
 export type Lane[T]:
-    # Values to receive next, newest first.
+    // Values to receive next, newest first.
     front: List[T] = []
-    # Values sent after `front` was filled, oldest first.
+    // Values sent after `front` was filled, oldest first.
     back: List[T] = []
-    # The sending end closed: the receiver reads what is left, then none.
+    // The sending end closed: the receiver reads what is left, then none.
     sender_closed: Bool = false
-    # The receiving end closed: sends fail.
+    // The receiving end closed: sends fail.
     receiver_closed: Bool = false
-    # Tokens of tasks waiting on this lane, for a value or for room. A cloned end can have several.
+    // Tokens of tasks waiting on this lane, for a value or for room. A cloned end can have several.
     waiting: List[Int] = []
 
 impl Lane[T]:
-    # How many values wait to be received.
+    // How many values wait to be received.
     fn length() Int:
         return self.front.length() + self.back.length()
 
-    # Takes the oldest value.
+    // Takes the oldest value.
     var fn pop() T?:
         if self.front.is_empty():
             let count = self.back.length()
@@ -107,18 +109,18 @@ impl Lane[T]:
 
         return self.front.pop()
 
-    # Drops every unread value.
+    // Drops every unread value.
     var fn clear() Unit:
         self.front = List[T]()
         self.back = List[T]()
 
-    # Wakes every task waiting on this lane; each looks again at what it waits for.
+    // Wakes every task waiting on this lane; each looks again at what it waits for.
     var fn wake() Unit:
         for token in self.waiting:
             msrt_channel_post(token)
         self.waiting = List[Int]()
 
-# Closes the end that sends on `outgoing` and receives on `incoming`, waking whoever waits on either.
+// Closes the end that sends on `outgoing` and receives on `incoming`, waking whoever waits on either.
 fn close_end[A, B](outgoing: Shared[Lane[A]], incoming: Shared[Lane[B]]) Unit:
     var sending = lock(outgoing)
     sending.value.sender_closed = true
@@ -130,15 +132,15 @@ fn close_end[A, B](outgoing: Shared[Lane[A]], incoming: Shared[Lane[B]]) Unit:
     receiving.value.clear()
     receiving.value.wake()
 
-# Removes this wait's token on every exit without disturbing other tasks on the lane.
+// Removes this wait's token on every exit without disturbing other tasks on the lane.
 type WaitTicket[T]:
-    # The lane holding this wait's token.
+    // The lane holding this wait's token.
     lane: Shared[Lane[T]]
-    # The token that this wait registered.
+    // The token that this wait registered.
     token: Int
 
 impl Closeable for WaitTicket[T]:
-    # A normal wake already cleared the entry. Cancellation must remove it here instead.
+    // A normal wake already cleared the entry. Cancellation must remove it here instead.
     var fn close() Unit!:
         var lane = lock(self.lane)
 
@@ -151,20 +153,22 @@ impl Closeable for WaitTicket[T]:
             lane.value.waiting = List[Int]()
         return ok(unit)
 
-# One end of a two-way channel between tasks on the runtime thread: sends `In`, receives `Out`. Values move
-# from one end to the other, so they may be resources; a task that must wait parks until the other end posts
-# its token. An end is a handle on shared state: `.clone()` shares it, and every holder closes explicitly.
+/*
+One end of a two-way channel between tasks on the runtime thread: sends `In`, receives `Out`. Values move
+from one end to the other, so they may be resources; a task that must wait parks until the other end posts
+its token. An end is a handle on shared state: `.clone()` shares it, and every holder closes explicitly.
+*/
 export type TaskChannel[In, Out]:
-    # Values this end sends.
+    // Values this end sends.
     outgoing: Shared[Lane[In]]
-    # Values this end receives.
+    // Values this end receives.
     incoming: Shared[Lane[Out]]
-    # Only group ends hold a lease; copies share its lifetime without the group retaining them.
+    // Only group ends hold a lease; copies share its lifetime without the group retaining them.
     lifetime: TaskChannelLease?
 
-# A task channel end seen through the `Transport` interface, which only lends its values, so `In` is copied.
+// A task channel end seen through the `Transport` interface, which only lends its values, so `In` is copied.
 type TaskTransport[In: Clonable, Out: Clonable]:
-    # The end this transport sends and receives on.
+    // The end this transport sends and receives on.
     end: TaskChannel[In, Out]
 
 impl Transport[In, Out] for TaskTransport[In, Out]:
@@ -177,20 +181,20 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
     var fn close() Unit:
         self.end.close()
 
-# Views a task channel end as a `Channel`, for APIs such as `channel_reader` and `channel_writer` that take
-# one. The view shares the end and copies each value it sends, so both payloads must be `Clonable`.
+// Views a task channel end as a `Channel`, for APIs such as `channel_reader` and `channel_writer` that take
+// one. The view shares the end and copies each value it sends, so both payloads must be `Clonable`.
 export fn as_channel[In: Clonable, Out: Clonable](
     end: TaskChannel[In, Out]
 ) Channel[In, Out]:
     return Channel[In, Out](transport: TaskTransport[In, Out](end.clone()))
 
-# What one look at `outgoing` found: room to send, a closed lane, or the token to park on.
+// What one look at `outgoing` found: room to send, a closed lane, or the token to park on.
 type Reserved:
     case Ready
     case Shut
     case Wait(token: Int)
 
-# Looks for room in `lane`, or registers a wait. The guard lives and dies in this function.
+// Looks for room in `lane`, or registers a wait. The guard lives and dies in this function.
 fn claim_room[T](lane: Shared[Lane[T]]) Reserved:
     var guard = lock(lane)
     if guard.value.sender_closed or guard.value.receiver_closed:
@@ -203,7 +207,7 @@ fn claim_room[T](lane: Shared[Lane[T]]) Reserved:
     return Reserved.Wait(token)
 
 impl TaskChannel[In, Out]:
-    # Waits until `outgoing` has room. Nothing runs between this returning and the caller's send.
+    // Waits until `outgoing` has room. Nothing runs between this returning and the caller's send.
     fn wait_for_room() Unit!:
         while true:
             match claim_room(self.outgoing):
@@ -218,8 +222,8 @@ impl TaskChannel[In, Out]:
         return ok(unit)
 
 impl TaskChannel[In, Out]:
-    # Sends `value` to the other end, waiting while it has many unread values. The value moves into the
-    # channel, so `In` may be a resource. Gives `Closed` once either end is closed.
+    // Sends `value` to the other end, waiting while it has many unread values. The value moves into the
+    // channel, so `In` may be a resource. Gives `Closed` once either end is closed.
     fn send(value: In) Unit!:
         try self.wait_for_room()
 
@@ -229,8 +233,8 @@ impl TaskChannel[In, Out]:
         lane.close().get(none)
         return ok(unit)
 
-    # Waits for the next value from the other end. Gives `ok(none)` once the other end closed and every
-    # value it sent was read, and `Closed` once this end is closed.
+    // Waits for the next value from the other end. Gives `ok(none)` once the other end closed and every
+    // value it sent was read, and `Closed` once this end is closed.
     fn receive() Out?!:
         while true:
             var lane = lock(self.incoming)
@@ -253,25 +257,25 @@ impl TaskChannel[In, Out]:
 
         return ok(none)
 
-    # Closes this end: the other end reads what is left, then `ok(none)`. Safe to call again.
+    // Closes this end: the other end reads what is left, then `ok(none)`. Safe to call again.
     var fn close() Unit:
         close_end(self.outgoing, self.incoming)
 
-# Closes the task's end of its channel when the task ends, however it ends.
+// Closes the task's end of its channel when the task ends, however it ends.
 type EndGuard[In, Out]:
-    # Values the end sends.
+    // Values the end sends.
     outgoing: Shared[Lane[In]]
-    # Values the end receives.
+    // Values the end receives.
     incoming: Shared[Lane[Out]]
 
 impl Closeable for EndGuard[In, Out]:
-    # Closes the end. Safe to call again.
+    // Closes the end. Safe to call again.
     var fn close() Unit!:
         close_end(self.outgoing, self.incoming)
         return ok(unit)
 
-# The body of a task: runs `entry` on the task's end of its channel and stores its one result in
-# `slot`. The end closes when the task ends, however it ends.
+// The body of a task: runs `entry` on the task's end of its channel and stores its one result in
+// `slot`. The end closes when the task ends, however it ends.
 fn run[T, In, Out](
     entry: fn(TaskChannel[Out, In]) T,
     up: Shared[Lane[Out]],
@@ -285,7 +289,7 @@ fn run[T, In, Out](
     var held = lock(slot)
     held.value.append(value)
 
-# The group's end of a task channel.
+// The group's end of a task channel.
 fn group_end[In, Out](
     down: Shared[Lane[In]],
     up: Shared[Lane[Out]],
@@ -293,22 +297,22 @@ fn group_end[In, Out](
 ) TaskChannel[In, Out]:
     return TaskChannel[In, Out](outgoing: down, incoming: up, lifetime: lifetime)
 
-# What a group keeps of a task until it is collected: enough to wait for it and close its channel.
+// What a group keeps of a task until it is collected: enough to wait for it and close its channel.
 export type Entry[T, In, Out]:
-    # Internal state: the runtime handle of the task.
+    // Internal state: the runtime handle of the task.
     handle: Int
-    # Internal state: empty until the task returns, then its one result.
+    // Internal state: empty until the task returns, then its one result.
     values: Shared[List[T]]
-    # Internal state: the group's end of the task's channel.
+    // Internal state: the group's end of the task's channel.
     channel: TaskChannel[In, Out]
 
-# Drops the entry of the collected task `handle`, so the group holds nothing for it.
+// Drops the entry of the collected task `handle`, so the group holds nothing for it.
 fn forget[T, In, Out](registry: Shared[Map[Int, Entry[T, In, Out]]], handle: Int) Unit:
     var entries = lock(registry)
     entries.value.remove(handle)
 
-# Waits for the task `handle` of `scope` and takes its result from `values`. The task is collected
-# even when it has no result, so the runtime and the group let go of it.
+// Waits for the task `handle` of `scope` and takes its result from `values`. The task is collected
+// even when it has no result, so the runtime and the group let go of it.
 fn collect[T](scope: Int, handle: Int, values: Shared[List[T]]) T!:
     try outcome(msrt_scope_join(scope, handle, 0))
 
@@ -319,54 +323,58 @@ fn collect[T](scope: Int, handle: Int, values: Shared[List[T]]) T!:
     finished.close().get(none)
     panic("Task: the result was already taken")
 
-# A started task that returns a `T`, with the group's end of its channel.
+// A started task that returns a `T`, with the group's end of its channel.
 export type Task[T, In = Unit, Out = Unit]:
-    # Internal state: the runtime scope of the task.
+    // Internal state: the runtime scope of the task.
     scope: Int
-    # Internal state: the runtime handle of the task.
+    // Internal state: the runtime handle of the task.
     handle: Int
-    # Internal state: the group's uncollected tasks by handle, in start order.
+    // Internal state: the group's uncollected tasks by handle, in start order.
     registry: Shared[Map[Int, Entry[T, In, Out]]]
-    # Internal state: empty until the task returns, then its one result.
+    // Internal state: empty until the task returns, then its one result.
     values: Shared[List[T]]
-    # The group's end of the task's channel: sends `In` to the task and receives the `Out` it sends.
+    // The group's end of the task's channel: sends `In` to the task and receives the `Out` it sends.
     channel: TaskChannel[In, Out]
 
 impl Task[T, In, Out]:
-    # Waits for the task and returns its result, or why it has none. Takes the result, so call it once.
+    // Waits for the task and returns its result, or why it has none. Takes the result, so call it once.
     fn result() T!:
         let collected = collect(self.scope, self.handle, self.values)
         forget(self.registry, self.handle)
         return collected
 
-# A scope that owns the tasks started in it. Every task returns a `T` (use `Unit` for effect-only work).
-# Each task has a two-way channel to the group: it sends `Out` values and receives `In` values, both `Unit` unless given.
-# Bind a group to a local: when its scope ends it cancels tasks that are still running and waits for all of them.
-# Call `results`, `wait` or a task's `result` before the block ends to keep the work.
-# Collecting a task (`result`, or `results`) makes the group forget it, so a long-lived group holds only
-# tasks that are running or uncollected.
-# Retained channels may drain buffered values after collection; group close closes them too and drops unread values.
-# `timeout` limits the whole group, counted from its creation; `spawn` can set a shorter limit for one task.
-# A task that passes its limit is cancelled and has the result `TimedOut`. There is no limit unless one is given. A cancelled task releases the values its functions own.
-# Tasks run on the one runtime thread and switch only when one waits (`result`, `wait`, a channel, sleeping, I/O).
-# A fault in a task ends the program, unless `contain_faults` is set: then the task ends with the result `Faulted(report)`, its siblings keep running, and values its frames owned are not released. A task owns the values its closure captures; return results instead of sharing them.
+/*
+A scope that owns the tasks started in it. Every task returns a `T` (use `Unit` for effect-only work).
+Each task has a two-way channel to the group: it sends `Out` values and receives `In` values, both `Unit` unless given.
+Bind a group to a local: when its scope ends it cancels tasks that are still running and waits for all of them.
+Call `results`, `wait` or a task's `result` before the block ends to keep the work.
+Collecting a task (`result`, or `results`) makes the group forget it, so a long-lived group holds only
+tasks that are running or uncollected.
+Retained channels may drain buffered values after collection; group close closes them too and drops unread values.
+`timeout` limits the whole group, counted from its creation; `spawn` can set a shorter limit for one task.
+A task that passes its limit is cancelled and has the result `TimedOut`. There is no limit unless one is given. A cancelled task releases the values its functions own.
+Tasks run on the one runtime thread and switch only when one waits (`result`, `wait`, a channel, sleeping, I/O).
+A fault in a task ends the program, unless `contain_faults` is set: then the task ends with the result `Faulted(report)`, its siblings keep running, and values its frames owned are not released. A task owns the values its closure captures; return results instead of sharing them.
+*/
 export type TaskGroup[T, In = Unit, Out = Unit]:
-    # Limit for every task started in the group, counted from the group's creation; none for no limit.
+    // Limit for every task started in the group, counted from the group's creation; none for no limit.
     timeout: Duration?
-    # Whether a fault in a task ends only that task (`Faulted`) instead of the program. A fault never collected is dropped by `close`.
+    // Whether a fault in a task ends only that task (`Faulted`) instead of the program. A fault never collected is dropped by `close`.
     contain_faults: Bool = false
-    # Internal state: the runtime scope that owns the tasks, set to contain faults when asked.
+    // Internal state: the runtime scope that owns the tasks, set to contain faults when asked.
     scope: Int = new_scope(contain_faults)
-    # Internal state: the uncollected tasks in start order, changed through the shared handle so the group closes when its scope ends.
+    // Internal state: the uncollected tasks in start order, changed through the shared handle so the group closes when its scope ends.
     tasks: Shared[Map[Int, Entry[T, In, Out]]] = share(Map[Int, Entry[T, In, Out]]())
-    # Internal state: weak tracking of handed-out channels, including collected tasks.
+    // Internal state: weak tracking of handed-out channels, including collected tasks.
     channels: TaskChannels = msrt_channel_group_new()
 
 impl TaskGroup[T, In, Out]:
-    # Starts `entry` as a task and returns its handle. The task gets its end of a new channel, and the
-    # handle's `channel` is the group's end. The task's end closes when `entry` returns.
-    # The task first runs when the caller waits.
-    # `timeout` limits this task; the group's own limit still applies if it ends sooner.
+    /*
+    Starts `entry` as a task and returns its handle. The task gets its end of a new channel, and the
+    handle's `channel` is the group's end. The task's end closes when `entry` returns.
+    The task first runs when the caller waits.
+    `timeout` limits this task; the group's own limit still applies if it ends sooner.
+    */
     fn spawn(entry: fn(TaskChannel[Out, In]) T, timeout: Duration?) Task[T, In, Out]:
         let down: Shared[Lane[In]] = share(Lane[In]())
         let up: Shared[Lane[Out]] = share(Lane[Out]())
@@ -380,7 +388,7 @@ impl TaskGroup[T, In, Out]:
         )
 
         if handle < 0:
-            # The group is closed, so the task never runs.
+            // The group is closed, so the task never runs.
             close_end(down, up)
             close_end(up, down)
 
@@ -390,7 +398,7 @@ impl TaskGroup[T, In, Out]:
             self.channels, fn: close_end(close_down, close_up)
         )
 
-        # The group keeps a second handle on its end, so closing the group closes it.
+        // The group keeps a second handle on its end, so closing the group closes it.
         var started = lock(self.tasks)
         started.value[handle] = Entry(
             handle, values, group_end(down, up, lifetime.clone())
@@ -400,8 +408,8 @@ impl TaskGroup[T, In, Out]:
             self.scope, handle, self.tasks, values, group_end(down, up, lifetime)
         )
 
-    # Waits for every uncollected task and returns their results in start order, or the first task's error.
-    # Tasks already collected with `result` are not included; the ones returned are collected.
+    // Waits for every uncollected task and returns their results in start order, or the first task's error.
+    // Tasks already collected with `result` are not included; the ones returned are collected.
     fn results() List[T]!:
         if msrt_scope_wait(self.scope) == 3:
             return error(Error("task: closed", kind: ErrorCategory.Closed))
@@ -416,12 +424,12 @@ impl TaskGroup[T, In, Out]:
 
         return ok(values)
 
-    # Waits for every started task to end. Returns `TimedOut`, `Cancelled`, `Closed` or `Faulted` if any task ended without a result.
+    // Waits for every started task to end. Returns `TimedOut`, `Cancelled`, `Closed` or `Faulted` if any task ended without a result.
     fn wait() Unit!:
         return outcome(msrt_scope_wait(self.scope))
 
 impl Closeable for TaskGroup[T, In, Out]:
-    # Cancels tasks that have not ended, waits for them, and closes every channel. Safe to call again.
+    // Cancels tasks that have not ended, waits for them, and closes every channel. Safe to call again.
     var fn close() Unit!:
         msrt_scope_close(self.scope)
         msrt_channel_group_close(self.channels)

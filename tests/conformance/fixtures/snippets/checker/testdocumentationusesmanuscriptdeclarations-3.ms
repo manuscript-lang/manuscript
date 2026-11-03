@@ -1,6 +1,6 @@
-# conform: tags=alternatives,closures,diagnostics,generics,interfaces,optional,records,tier-core,try-result
-# conform: phase=check
-# conform: origin=pkg/checker/documentation_test.go:89 TestDocumentationUsesManuscriptDeclarations
+// conform: tags=alternatives,closures,diagnostics,generics,interfaces,optional,records,tier-core,try-result
+// conform: phase=check
+// conform: origin=pkg/checker/documentation_test.go:89 TestDocumentationUsesManuscriptDeclarations
 type Optional[T]:
     case T
     case none

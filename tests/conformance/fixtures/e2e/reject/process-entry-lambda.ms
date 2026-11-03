@@ -1,5 +1,5 @@
-# conform: tags=closures,diagnostics,stdlib-processes,tier-stdlib
-# conform: phase=check
+// conform: tags=closures,diagnostics,stdlib-processes,tier-stdlib
+// conform: phase=check
 import ProcessGroup from "@std/os/processes.ms"
 
 export fn main() Int:

@@ -1,5 +1,5 @@
-# conform: tags=closures,scope-cleanup,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
+// conform: tags=closures,scope-cleanup,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
 import share, Shared from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"

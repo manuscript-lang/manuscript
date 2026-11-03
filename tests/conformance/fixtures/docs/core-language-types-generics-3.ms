@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,generics,records,tier-core
-# conform: phase=check
-# conform: origin=documentation/core-language/types/generics.md:49
+// conform: tags=diagnostics,generics,records,tier-core
+// conform: phase=check
+// conform: origin=documentation/core-language/types/generics.md:49
 type Box[T]:
     value: T
 

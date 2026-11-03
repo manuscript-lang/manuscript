@@ -2,7 +2,7 @@ import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
 import open, read_file, temporary from "@std/os/fs.ms"
 import connect, listen from "@std/net/net.ms"
 
-# `clone` copies a resource: each copy owns its own descriptor and closes on its own.
+// `clone` copies a resource: each copy owns its own descriptor and closes on its own.
 
 test "a cloned file handle writes through its own descriptor after the original closes":
     let temporary = temporary("manuscript-dup-") | try expect_ok

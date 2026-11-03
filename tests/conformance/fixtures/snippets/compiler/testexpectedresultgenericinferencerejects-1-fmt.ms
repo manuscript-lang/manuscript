@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/contextual_generics_test.go:80 TestExpectedResultGenericInferenceRejects
+// conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/contextual_generics_test.go:80 TestExpectedResultGenericInferenceRejects
 interface Read:
     fn get() Int
 
