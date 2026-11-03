@@ -85,7 +85,6 @@ test "cancel ends unfinished work and wait reports Cancelled":
     try expect_equal(reason.message, "promise: cancelled")
 
 test "one Cancel switch cancels every promise made with its signal":
-    // Waits one by one instead of looping over [a, b]: that loop hits the codegen bug in #2524; restore it once fixed.
     let stop = cancel_switch()
     let options = PromiseOptions(cancel: stop.signal())
     let a = promise(fn: ok(forever()), options: options.clone())
@@ -93,11 +92,9 @@ test "one Cancel switch cancels every promise made with its signal":
     let slept = sleep(milliseconds(5000)).with(options: options.clone())
     stop.cancel()
 
-    let first = a.wait() | try expect_error
-    try expect_equal(first.message, "promise: cancelled")
-
-    let second = b.wait() | try expect_error
-    try expect_equal(second.message, "promise: cancelled")
+    for p in [a, b]:
+        let reason = p.wait() | try expect_error
+        try expect_equal(reason.message, "promise: cancelled")
 
     let reason = slept.wait() | try expect_error
     try expect_equal(reason.message, "promise: cancelled")
