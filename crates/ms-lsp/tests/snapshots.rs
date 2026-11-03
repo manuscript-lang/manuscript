@@ -659,6 +659,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         ("io/io.ms", 9),
         ("internal/random.ms", 1),
         ("main.ms", 1),
+        ("math/decimal.ms", 1),
         ("math/math.ms", 3),
         ("os/random.ms", 3),
         ("string.ms", 7),

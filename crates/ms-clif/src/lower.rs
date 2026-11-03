@@ -627,7 +627,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         };
         let def = &m.records[r.index()];
         let names: Vec<&str> = def.fields.iter().map(|f| f.0.as_str()).collect();
-        if !def.name.starts_with("SharedGuard[") || names != ["box", "value", "held"] {
+        if !def.shared_guard || names != ["box", "value", "held"] {
             return None;
         }
         let fields = self.fields_of(ty);

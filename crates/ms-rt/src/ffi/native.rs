@@ -29,6 +29,9 @@ use crate::vec::{
 /// It does not depend on the borrow lifetime of the Rust type.
 pub trait AbiType {
     type Raw;
+    /// Whether the value is a runtime handle object (`*mut ObjCell<T>`), which lowering treats as
+    /// a method receiver or an interface result, not a plain value.
+    const HANDLE: bool = false;
 }
 
 /// A value read from its C representation.
@@ -46,6 +49,8 @@ pub unsafe trait FromAbi<'a>: AbiType {
 pub trait IntoAbi {
     /// The C representation; pointers are owned by the caller (+1).
     type Raw;
+    /// Whether the result is a runtime handle object; see [`AbiType::HANDLE`].
+    const HANDLE: bool = false;
     fn into_raw(self) -> Self::Raw;
 }
 
@@ -1063,12 +1068,15 @@ impl<T: AbiHandle> Deref for ObjRef<'_, T> {
     }
 }
 impl<T: AbiHandle> AbiType for Object<T> {
+    const HANDLE: bool = true;
     type Raw = *mut ObjCell<T>;
 }
 impl<T: AbiHandle> AbiType for ObjRef<'_, T> {
+    const HANDLE: bool = true;
     type Raw = *const ObjCell<T>;
 }
 impl<T: AbiHandle> IntoAbi for Object<T> {
+    const HANDLE: bool = true;
     type Raw = *mut ObjCell<T>;
     fn into_raw(self) -> *mut ObjCell<T> {
         // SAFETY: a fresh runtime allocation, initialized before it escapes.
@@ -1109,6 +1117,7 @@ impl<T: AbiHandle> DerefMut for ObjMut<'_, T> {
     }
 }
 impl<T: AbiHandle> AbiType for ObjMut<'_, T> {
+    const HANDLE: bool = true;
     type Raw = *mut ObjCell<T>;
 }
 // SAFETY: an object argument is a live runtime object that outlives the call and is not aliased.
@@ -1393,7 +1402,7 @@ macro_rules! native_signature {
                 $crate::ffi::record_signature(
                     stringify!($name),
                     &[
-                        $((stringify!($p), ::core::any::type_name::<<$t as $crate::ffi::AbiType>::Raw>()),)*
+                        $(($crate::ffi::role_name(<$t as $crate::ffi::AbiType>::HANDLE, stringify!($p)), ::core::any::type_name::<<$t as $crate::ffi::AbiType>::Raw>()),)*
                         $((stringify!($o), ::core::any::type_name::<*mut <$ot as $crate::ffi::IntoAbi>::Raw>()),)*
                         (stringify!($e), ::core::any::type_name::<<$et as $crate::ffi::AbiType>::Raw>()),
                     ],
@@ -1417,7 +1426,7 @@ macro_rules! native_signature {
                 $crate::ffi::record_signature(
                     stringify!($name),
                     &[
-                        $((stringify!($p), ::core::any::type_name::<<$t as $crate::ffi::AbiType>::Raw>()),)*
+                        $(($crate::ffi::role_name(<$t as $crate::ffi::AbiType>::HANDLE, stringify!($p)), ::core::any::type_name::<<$t as $crate::ffi::AbiType>::Raw>()),)*
                         $((stringify!($e), ::core::any::type_name::<*mut <$et as $crate::ffi::IntoAbi>::Raw>()),)*
                     ],
                     $ret,
@@ -1740,7 +1749,7 @@ macro_rules! native {
             $name,
             [$($p: $t),*],
             [],
-            Some(::core::any::type_name::<<$ret as $crate::ffi::IntoAbi>::Raw>())
+            Some($crate::ffi::role_ret(<$ret as $crate::ffi::IntoAbi>::HANDLE, ::core::any::type_name::<<$ret as $crate::ffi::IntoAbi>::Raw>()))
         }
         $crate::native! { $($rest)* }
     };

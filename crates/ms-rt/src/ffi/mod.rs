@@ -278,6 +278,28 @@ pub fn desc_bytes() -> *const TypeDesc {
     &raw const msrt_desc_bytes
 }
 
+/// A parameter name marked with the `handle` role when `handle` is set (an `ObjCell` receiver).
+#[doc(hidden)]
+pub fn role_name(handle: bool, name: &'static str) -> &'static str {
+    if handle {
+        std::boxed::Box::leak(
+            std::format!("handle {}", name.trim_start_matches('_')).into_boxed_str(),
+        )
+    } else {
+        name
+    }
+}
+
+/// A result type marked with the `handle` role when `handle` is set.
+#[doc(hidden)]
+pub fn role_ret(handle: bool, ty: &'static str) -> &'static str {
+    if handle {
+        std::boxed::Box::leak(std::format!("handle {ty}").into_boxed_str())
+    } else {
+        ty
+    }
+}
+
 /// Appends one native's C signature to the file named by `MS_SIG_OUT`, as a line of
 /// `name(param: type, ..) -> ret` with module paths stripped from the types. `cargo xtask symbols`
 /// runs the tests the `native!` macro generates to collect them.
@@ -291,10 +313,17 @@ pub fn record_signature(name: &str, params: &[(&str, &str)], ret: Option<&str>) 
         .iter()
         .map(|(p, t)| std::format!("{}: {}", p.trim_start_matches('_'), strip_paths(t)))
         .collect();
-    let ret = ret
-        .filter(|r| *r != "()")
-        .map(|r| std::format!(" -> {}", strip_paths(r)))
-        .unwrap_or_default();
+    // A handle result trails `@handle`: ` -> *mut ObjCell<T> @handle`.
+    let (ret, handle_ret) =
+        match ret.map(|r| r.strip_prefix("handle ").map_or((r, false), |t| (t, true))) {
+            Some((r, h)) if r != "()" => (std::format!(" -> {}", strip_paths(r)), h),
+            _ => (String::new(), false),
+        };
+    let ret = if handle_ret {
+        std::format!("{ret} @handle")
+    } else {
+        ret
+    };
     let line = std::format!("{name}({}){ret}\n", params.join(", "));
     let mut file = std::fs::OpenOptions::new()
         .create(true)

@@ -37,11 +37,6 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
     })
 }
 
-/// The runtime formatter of a native record type whose text is not its fields.
-fn native_record_text(b: &FuncBuilder<'_>, t: MTy) -> Option<&'static str> {
-    crate::nativerec::text_symbol(crate::nativerec::native_rec(b.m, t)?)
-}
-
 /// Calls a leaf formatter for scalar/string types; `None` for compound types.
 /// The quoted form (`repr`) wraps strings in quotes.
 pub(crate) fn scalar_text(
@@ -70,7 +65,7 @@ pub(crate) fn scalar_text(
         let s = b.str_lit("unit");
         return Some((s, false));
     } else {
-        native_record_text(b, t)?
+        return None;
     };
     let ext = runtime_fn(b.m, sym, &[t], MTy::STR);
     Some((b.call_rt(ext, &[v]), true))
@@ -269,7 +264,19 @@ pub(crate) fn build_format(
     let mut b = FuncBuilder::new(m, "format", format_params(t), MTy::STR);
     let x = b.params()[0];
     let depth = b.params()[1];
+    let declared_text = match crate::nativerec::native_rec(b.m, t) {
+        Some(r) if crate::nativerec::has_declared_text(r) => {
+            cx.native_method(b.m, r, crate::nativerec::NativeOp::ToString)?
+        }
+        _ => None,
+    };
     match b.m.types.kind(t).clone() {
+        TyKind::Rec(_) if declared_text.is_some() => {
+            // The record's own `to_string`, declared in its `.ms` file.
+            let f = declared_text.expect("checked");
+            let text = b.call(f, &[x]);
+            b.ret(Some(text));
+        }
         TyKind::Rec(_) | TyKind::Alt(_) if cx.opaque_tys.contains(&t) => {
             // An opaque value shows its type name only, never its hidden fields.
             let name = match b.m.types.kind(t).clone() {
@@ -543,17 +550,6 @@ impl<'a> FnLower<'a> {
         let t = self.ty_of(x.v);
         if t == MTy::STR {
             return Ok(x);
-        }
-        if crate::nativerec::native_rec(self.b.m, t) == Some(ms_mir::types::NativeRec::Timestamp) {
-            // RFC 3339 text from the runtime, which takes the two words by address.
-            let slot = self
-                .b
-                .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
-                .expect("slot");
-            let a = self.borrow(x);
-            self.b.emit(Op::Store, &[slot, a], Imm::None, None);
-            let v = self.call_runtime("msstd_time_timestamp_to_string", &[slot], MTy::STR)?;
-            return Ok(Val { v, own: true });
         }
         let v = match scalar_text(&mut self.b, t, x.v, false) {
             Some((v, owned)) => return Ok(Val { v, own: owned }),

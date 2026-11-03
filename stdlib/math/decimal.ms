@@ -1,6 +1,7 @@
 import Copy, Data, panic from "@std/core.ms"
 import (
     msstd_decimal_compare,
+    msstd_decimal_to_string,
     msstd_decimal_to_float,
     msstd_decimal_truncate_to_int,
     msstd_decimal_round,
@@ -26,6 +27,10 @@ impl Decimal:
     // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`; trailing zeros do not matter.
     fn compare(other: Decimal) Int:
         return msstd_decimal_compare(self, other)
+
+    // Returns the text of this value: its coefficient and exponent as a plain decimal number.
+    fn to_string() String:
+        return msstd_decimal_to_string(self)
 
     // Returns the lesser of this value and `other`, or this value when they compare equal.
     fn min(other: Decimal) Decimal:

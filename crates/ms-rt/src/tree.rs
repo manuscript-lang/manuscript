@@ -197,6 +197,7 @@ impl<T: AbiHandle + TreeSink> SinkObj<'_, T> {
 }
 
 impl<T: AbiHandle + TreeSink> AbiType for SinkObj<'_, T> {
+    const HANDLE: bool = true;
     type Raw = *mut ObjCell<T>;
 }
 // SAFETY: an object argument is a live runtime object that outlives the call and is not aliased.
