@@ -2674,6 +2674,10 @@ impl Walker<'_> {
     fn entry_places(&self, e: &Expr) -> Vec<Place> {
         let mut out = Vec::new();
         for b in self.entry_captures(e) {
+            // A resource is moved into the promise, which owns and closes it.
+            if self.cx.classes.class(&b.ty) == Class::Resource {
+                continue;
+            }
             for p in self.with_held(self.resolve(&Place::local(b.uid))) {
                 if !out.contains(&p) {
                     out.push(p);
@@ -2690,7 +2694,7 @@ impl Walker<'_> {
             return self
                 .entry_captures(e)
                 .into_iter()
-                .filter(|b| self.cx.classes.class(&b.ty) != Class::Copy)
+                .filter(|b| self.cx.classes.class(&b.ty) == Class::Move)
                 .map(|b| b.name)
                 .collect();
         }
@@ -3848,10 +3852,16 @@ impl Walker<'_> {
             .iter()
             .filter_map(|b| self.meta.get(&b.uid).map(|m| (b.uid, m.perm)))
             .collect();
-        if escaping {
-            // The closure holds its own snapshot: read-only inside.
+        // The entry of a promise takes over the resources it captures: they are the promise's own,
+        // closed when it ends, and read-only inside like an escaping closure's captures.
+        let owned_by_entry = |w: &Self, uid: usize| {
+            concurrent && w.meta.get(&uid).is_some_and(|m| m.class == Class::Resource)
+        };
+        if escaping || concurrent {
             for (uid, _) in &saved_meta {
-                if let Some(m) = self.meta.get_mut(uid) {
+                if (escaping || owned_by_entry(self, *uid))
+                    && let Some(m) = self.meta.get_mut(uid)
+                {
                     m.perm = Perm::Captured;
                 }
             }
@@ -3913,6 +3923,19 @@ impl Walker<'_> {
                     self.capture_move(e, b, &resolved);
                     facts.push((b.uid, CaptureMode::Move));
                 }
+            } else if concurrent && class == Class::Resource {
+                if changed {
+                    self.error(
+                        e.pos,
+                        format!(
+                            "this promise owns `{0}` and cannot change it; build a new value inside the promise instead",
+                            b.name
+                        ),
+                    );
+                }
+                let resolved = self.resolve(&Place::local(b.uid));
+                self.capture_move(e, b, &resolved);
+                facts.push((b.uid, CaptureMode::Move));
             } else {
                 let place = Place::local(b.uid);
                 let resolved = self.resolve(&place);
