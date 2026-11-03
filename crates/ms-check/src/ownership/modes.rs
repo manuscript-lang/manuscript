@@ -187,6 +187,12 @@ pub fn call_modes(
                                     Some(_) if s.native.as_str() == "shared/share" => {
                                         ParamMode::Consume
                                     }
+                                    Some(p)
+                                        if p.name.as_str() == "value"
+                                            && crate::stdlib::owns_value(s.native.as_str()) =>
+                                    {
+                                        ParamMode::Consume
+                                    }
                                     Some(p) if p.ty.kind == Kind::Function && !runs_now => {
                                         ParamMode::Consume
                                     }

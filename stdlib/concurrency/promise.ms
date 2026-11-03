@@ -6,6 +6,7 @@ import (
     msrt_promise_take,
     msrt_promise_done,
     msrt_promise_start,
+    msrt_promise_defer,
     msrt_promise_wait,
     msrt_promise_wait_any,
     msrt_promise_fault_report,
@@ -95,7 +96,7 @@ impl Closeable for Promise[T]:
         return ok(unit)
 
 // Stores how `entry` ended in the promise `id`.
-fn complete[U](id: Int, result: U!) Unit:
+export fn complete[U](id: Int, result: U!) Unit:
     match result:
         ok(value):
             msrt_promise_put(id, value, 0)
@@ -132,3 +133,15 @@ export fn wait_first[T](promises: List[Promise[T]]) T!:
 
     let which = msrt_promise_wait_any(ids, -1)
     return pending[which].wait()
+
+// A promise whose work runs in the task that first waits on it, on that task's stack, with no task of its own.
+// The work may wait itself. `make` receives the new promise's id and returns the work; it ends with `complete(id, ...)`.
+// For stream implementations: dropping the promise first discards the work unrun.
+export fn deferred[U](work: fn(Int) Unit) Promise[U]:
+    let id = msrt_promise_new()
+    msrt_promise_defer(id, fn: work(id))
+    return Promise[U](id: id)
+
+// A promise over the runtime promise `id` that a native operation completes (a stream read or flush).
+export fn adopt[U](id: Int) Promise[U]:
+    return Promise[U](id: id)

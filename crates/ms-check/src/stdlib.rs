@@ -99,7 +99,22 @@ const KEPT_CALLBACKS: &[&str] = &[
     "extern:msrt_channel_group_add",
     "extern:msrt_scope_spawn",
     "extern:msrt_promise_start",
+    "extern:msrt_promise_defer",
 ];
+
+/// Externs that take ownership of the generic value argument (it moves into the runtime). Like
+/// `KEPT_CALLBACKS`, a parameter-level marker would replace this list.
+const OWNING_VALUES: &[&str] = &[
+    "extern:msrt_cells_new",
+    "extern:msrt_cells_put",
+    "extern:msrt_pipes_write",
+    "extern:msrt_promise_put",
+];
+
+/// Whether a native function (`extern:name`) moves its `value` argument into the runtime.
+pub fn owns_value(native: &str) -> bool {
+    OWNING_VALUES.contains(&native)
+}
 
 /// Whether a native function (`module/name`, or `extern:name`) keeps the function values it is given.
 pub fn keeps_callbacks(native: &str) -> bool {

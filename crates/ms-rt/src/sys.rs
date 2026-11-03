@@ -21,6 +21,12 @@ pub const MAP_ANONYMOUS: c_int = 0x20;
 #[cfg(not(target_os = "macos"))]
 pub const MAP_NORESERVE: c_int = 0x4000;
 
+pub const EINTR: c_int = 4;
+#[cfg(target_os = "macos")]
+pub const EAGAIN: c_int = 35;
+#[cfg(not(target_os = "macos"))]
+pub const EAGAIN: c_int = 11;
+
 pub const SIGINT: c_int = 2;
 pub const SIGPIPE: c_int = 13;
 /// `SIG_IGN` as a `sigaction` handler value.

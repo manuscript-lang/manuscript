@@ -59,6 +59,8 @@ const NOT_STARTED: u8 = 255;
 const WANT_CANCEL: u8 = 1;
 /// Another thread completes this promise (a pipe peer), so a waiter's token must be remote.
 const REMOTE_WAKE: u8 = 2;
+/// The promise has no task: its work runs in the first task that waits on it.
+const DEFERRED: u8 = 4;
 
 const NO_RESULT: Result = Result {
     ptr: core::ptr::null_mut(),
@@ -488,6 +490,23 @@ fn put_int(t: &mut Table, i: usize, value: i64) {
     wake(t, i);
 }
 
+/// Completes `id` with a unit result: a block `wait` can take as `Unit` (an empty result reads as
+/// closed, so a flush or write promise ends this way).
+pub fn io_done_unit(id: i64) {
+    let ptr = alloc::alloc(8);
+    // SAFETY: `ptr` is a fresh 8-byte block.
+    unsafe { ptr.cast::<i64>().write(0) };
+    io_done_block(id, ptr as usize, &crate::desc::msrt_desc_int as *const _ as usize, 0);
+}
+
+/// A promise that is already finished with no value: the answer of a flush with nothing to drain.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_promise_finished() -> i64 {
+    let id = msrt_promise_new();
+    io_done_unit(id);
+    id
+}
+
 /// A new pending promise for a native operation to complete.
 pub fn io_new() -> i64 {
     msrt_promise_new()
@@ -706,6 +725,41 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, here: bool) {
     }
 }
 
+/// Makes the new promise `id` one whose work `work` runs in the task that first waits on it (or polls it), on that
+/// task's stack and with no task of its own. The work may itself wait. Dropping the promise first
+/// discards the work without running it. A stream `read` is one: its source's `next` runs where
+/// the reader waits.
+///
+/// # Safety
+/// `work` is a live closure object.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_promise_defer(id: i64, work: *mut ms_rt_abi::Closure) {
+    let i = find(id);
+    let t = table();
+    // SAFETY: the promise holds a reference until the work runs or the promise is dropped.
+    unsafe { crate::obj::msrt_retain(work.cast()) };
+    t.flags[i] |= DEFERRED;
+    t.retry_state[i] = work as usize;
+}
+
+/// Runs the deferred work of `id` if it has not run: the caller is the waiter.
+fn run_deferred(id: i64) {
+    let t = table();
+    let Some(i) = index(t, id) else { return };
+    if t.flags[i] & DEFERRED == 0 {
+        return;
+    }
+    t.flags[i] &= !DEFERRED;
+    let closure = core::mem::take(&mut t.retry_state[i]) as *mut ms_rt_abi::Closure;
+    // SAFETY: the reference taken in `msrt_promise_defer` is ours; the code is the closure's entry.
+    unsafe {
+        let code: unsafe extern "C-unwind" fn(*mut ms_rt_abi::Closure) =
+            core::mem::transmute((*closure).code);
+        code(closure);
+        crate::obj::release(closure.cast());
+    }
+}
+
 /// A closure that calls a native entry with the argument it owns.
 #[repr(C)]
 struct Native {
@@ -806,6 +860,7 @@ fn park_on(id: i64, timeout_ns: i64) -> u32 {
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
     let deadline = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
+    run_deferred(id);
     loop {
         let t = table();
         let i = find(id);
@@ -852,6 +907,12 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
             .position(|&id| index(t, id).is_none_or(|i| t.state[i] != State::Pending))
     };
     let deadline = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
+    for &id in &list {
+        run_deferred(id);
+        if first_done(&list).is_some() {
+            break;
+        }
+    }
     loop {
         if let Some(at) = first_done(&list) {
             return at as i64;
@@ -919,6 +980,12 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
         // SAFETY: single scheduler per isolate.
         unsafe { task::unwatch_fd_for_promise(t.fd[i], id) };
         t.fd[i] = -1;
+    }
+    if t.flags[i] & DEFERRED != 0 {
+        t.flags[i] &= !DEFERRED;
+        let closure = core::mem::take(&mut t.retry_state[i]);
+        // SAFETY: the reference taken in `msrt_promise_defer`, never used.
+        unsafe { crate::obj::release(closure as *mut ms_rt_abi::Obj) };
     }
     if t.state[i] == State::Pending
         && let Some(retry) = core::mem::take(&mut t.retry[i])
