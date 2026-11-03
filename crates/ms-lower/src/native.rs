@@ -259,6 +259,8 @@ impl<'a> FnLower<'a> {
                     noreturn: true,
                     pure_: false,
                     fresh: false,
+                    leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
+                    reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
                 });
                 self.at(e.pos);
                 self.b.call_rt(ext, &[m]);
@@ -600,6 +602,8 @@ impl<'a> FnLower<'a> {
                     noreturn: true,
                     pure_: false,
                     fresh: false,
+                    leaf: crate::rtcall::rt_flags(&format!("msrt_bits_{name}")).leaf,
+                    reads: crate::rtcall::rt_flags(&format!("msrt_bits_{name}")).reads,
                 });
                 self.b.call_rt(ext, &[left, count]);
                 self.b.unreachable();
@@ -2138,6 +2142,8 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            leaf: crate::rtcall::rt_flags("msrt_list_index_fault").leaf,
+            reads: crate::rtcall::rt_flags("msrt_list_index_fault").reads,
         });
         self.b.call_rt(ext, &[opv, original, len]);
         self.b.unreachable();
@@ -2178,6 +2184,8 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
+            reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
         });
         self.b.call_rt(ext, &[msg]);
         self.b.unreachable();
@@ -2197,6 +2205,8 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            leaf: crate::rtcall::rt_flags(sym).leaf,
+            reads: crate::rtcall::rt_flags(sym).reads,
         });
         self.b.call_rt(ext, &[]);
         self.b.unreachable();

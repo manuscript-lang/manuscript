@@ -22,7 +22,33 @@ type RtEntry = (
     &'static str,
     &'static [(&'static str, &'static str)],
     &'static str,
+    u8,
 );
+
+/// The ABI facts a runtime function declares with a `// ms:` comment in its source
+/// (`cargo xtask symbols` records them in `rt_symbols.txt`).
+#[derive(Clone, Copy, Default)]
+pub(crate) struct RtFlags {
+    /// Never reaches a cancellation point.
+    pub leaf: bool,
+    /// Only reads memory and cannot fault or run user code.
+    pub reads: bool,
+    /// The result borrows none of the arguments.
+    pub fresh: bool,
+}
+
+/// The declared flags of the runtime function `sym` (none for an unknown symbol).
+pub(crate) fn rt_flags(sym: &str) -> RtFlags {
+    let Ok(at) = SYMBOLS.binary_search_by_key(&sym, |s| s.0) else {
+        return RtFlags::default();
+    };
+    let bits = SYMBOLS[at].3;
+    RtFlags {
+        leaf: bits & 1 != 0,
+        reads: bits & 2 != 0,
+        fresh: bits & 4 != 0,
+    }
+}
 
 /// One declared runtime parameter.
 pub(crate) struct RtParam {
@@ -47,7 +73,7 @@ pub(crate) fn function_symbol(native: &str) -> Option<String> {
 
 pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
     let at = SYMBOLS.binary_search_by_key(&sym, |s| s.0).ok()?;
-    let (_, params, ret) = SYMBOLS[at];
+    let (_, params, ret, _) = SYMBOLS[at];
     Some(RtSig {
         params: params
             .iter()
@@ -62,16 +88,10 @@ pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
 
 /// Whether a runtime function's result points into none of its borrowed arguments, so the
 /// `lastuse` pass may drop an argument right after the call instead of keeping it alive as long
-/// as the result. These string constructors return an owned buffer, an inline value or a
-/// static (`ms-rt/src/string.rs`: `msrt_string_concat_val`, `concat_parts`, `msrt_string_append`,
-/// `cloned`), never a view. Every other result is assumed to possibly borrow from an argument.
+/// as the result. The runtime function declares it (`// ms: fresh`); every other result is
+/// assumed to possibly borrow from an argument.
 pub(crate) fn fresh_result(sym: &str) -> bool {
-    matches!(
-        sym,
-        "msrt_string_concat" | "msrt_string_append" | "msrt_string_clone"
-    ) || sym
-        .strip_prefix("msrt_string_concat")
-        .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+    rt_flags(sym).fresh
 }
 
 /// A language-level argument of the call being marshalled.

@@ -182,6 +182,12 @@ pub fn print_module(m: &Module) -> String {
         if e.fresh {
             line.push_str(" fresh");
         }
+        if e.leaf {
+            line.push_str(" leaf");
+        }
+        if e.reads {
+            line.push_str(" reads");
+        }
         o.push_str(&line);
         o.push('\n');
     }

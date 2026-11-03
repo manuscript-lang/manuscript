@@ -85,6 +85,8 @@ pub fn run(m: &mut Module) -> bool {
                     noreturn: false,
                     pure_: false,
                     fresh: false,
+                    leaf: true,
+                    reads: false,
                 });
                 rewrite_plain(&mut m.funcs[fi], bi, ii, ext, desc);
                 changed = true;

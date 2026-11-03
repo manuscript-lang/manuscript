@@ -224,6 +224,7 @@ struct ModuleSymbols<'a>(
     &'a ObjectModule,
     &'a [(u32, u32, u32)],
     &'a [ms_mir::ir::Scope],
+    &'a [ms_mir::ir::ExternDef],
 );
 
 impl ModuleSymbols<'_> {
@@ -244,6 +245,10 @@ impl crate::llvm_ir::Symbols for ModuleSymbols<'_> {
     fn scope(&self, idx: u32) -> Option<(String, u32, u32, u32)> {
         let sc = self.2.get((idx as usize).checked_sub(1)?)?;
         Some((sc.name.clone(), sc.file, sc.parent, sc.call_line))
+    }
+
+    fn reads_only(&self, symbol: &str) -> bool {
+        self.3.iter().any(|e| e.reads && e.name == symbol)
     }
 
     fn symbol(&self, namespace: u32, index: u32) -> String {
@@ -820,7 +825,7 @@ fn compile_with_isa(
     let triple = llvm_triple(g.module.isa().triple());
     let mut llvm_object = None;
     if let Some(llvm) = g.llvm.take() {
-        let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
+        let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs);
         let pinned = g.pinned.iter().map(|id| syms.symbol_of(*id)).collect();
         let anchored = g.anchor.is_some();
         let obj = crate::llvm_obj::compile(
@@ -1161,7 +1166,7 @@ fn prepare(g: &mut Gen, ctx: &mut Context, id: FuncId, name: &str, source: Optio
         eprintln!("; {name}\n{}", ctx.func.display());
     }
     if let Some(mut llvm) = g.llvm.take() {
-        let sym = ModuleSymbols(&g.module, &g.locs, &g.scopes).symbol_of(id);
+        let sym = ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs).symbol_of(id);
         let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
             && !sym.contains('#')
             && !sym.starts_with("ms.glue.");
@@ -1175,7 +1180,7 @@ fn prepare(g: &mut Gen, ctx: &mut Context, id: FuncId, name: &str, source: Optio
             display,
             fn_loc,
             &ctx.func,
-            &ModuleSymbols(&g.module, &g.locs, &g.scopes),
+            &ModuleSymbols(&g.module, &g.locs, &g.scopes, &g.m.externs),
             exported,
         );
         // Glue is listed too: a cleanup thunk can hold an inlined callee that a trace must name.

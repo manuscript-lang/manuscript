@@ -116,20 +116,24 @@ fn n<'a>(a: &'a ObjRef<Big>) -> &'a BigInt {
 }
 
 native! {
+    // ms: leaf
     fn msstd_bigint_from_int(value: i64) -> Object<Big> {
         make(BigInt::from(value))
     }
 
     /// The unsigned integer with the bits of `value`.
+    // ms: leaf
     fn msstd_bigint_from_u64(value: i64) -> Object<Big> {
         make(BigInt::from(value as u64))
     }
 
     /// Nanoseconds since the Unix epoch for a seconds-and-nanoseconds pair.
+    // ms: leaf
     fn msstd_bigint_from_seconds_nanos(seconds: i64, nanoseconds: i64) -> Object<Big> {
         make(BigInt::from(seconds) * BigInt::from(1_000_000_000_i64) + BigInt::from(nanoseconds))
     }
 
+    // ms: leaf
     fn msstd_bigint_parse(
         text: &str,
         radix: i64,
@@ -141,28 +145,34 @@ native! {
             .map_err(Code)
     }
 
+    // ms: leaf
     fn msstd_bigint_add(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         make(n(&a) + n(&other))
     }
 
+    // ms: leaf
     fn msstd_bigint_subtract(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         make(n(&a) - n(&other))
     }
 
+    // ms: leaf
     fn msstd_bigint_multiply(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         make(n(&a) * n(&other))
     }
 
+    // ms: leaf
     fn msstd_bigint_gcd(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         poll_cancel();
         make(gcd(n(&a), n(&other)))
     }
 
+    // ms: leaf
     fn msstd_bigint_lcm(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         poll_cancel();
         make(lcm(n(&a), n(&other)))
     }
 
+    // ms: leaf
     fn msstd_bigint_sqrt(a: ObjRef<Big>) -> Result<Object<Big>, Code> {
         if n(&a).is_negative() {
             return Err(Code(STATUS_INVALID_INPUT));
@@ -171,6 +181,7 @@ native! {
         Ok(make(n(&a).sqrt()))
     }
 
+    // ms: leaf
     fn msstd_bigint_pow_mod(
         a: ObjRef<Big>,
         exponent: ObjRef<Big>,
@@ -183,6 +194,7 @@ native! {
         Ok(make(n(&a).modpow(n(&exponent), n(&modulus))))
     }
 
+    // ms: leaf
     fn msstd_bigint_inverse_mod(a: ObjRef<Big>, modulus: ObjRef<Big>, out: Out<Object<Big>>) -> bool {
         if !n(&modulus).is_positive() {
             return false;
@@ -201,19 +213,23 @@ native! {
         }
     }
 
+    // ms: leaf
     fn msstd_bigint_bit_and(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         make(n(&a) & n(&other))
     }
 
+    // ms: leaf
     fn msstd_bigint_bit_or(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         make(n(&a) | n(&other))
     }
 
+    // ms: leaf
     fn msstd_bigint_bit_xor(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         make(n(&a) ^ n(&other))
     }
 
     /// Truncates toward zero.
+    // ms: leaf
     fn msstd_bigint_divide(a: ObjRef<Big>, other: ObjRef<Big>) -> Result<Object<Big>, Code> {
         if n(&other).is_zero() {
             return Err(Code(STATUS_INVALID_INPUT));
@@ -222,6 +238,7 @@ native! {
     }
 
     /// Takes the sign of the dividend.
+    // ms: leaf
     fn msstd_bigint_remainder(a: ObjRef<Big>, other: ObjRef<Big>) -> Result<Object<Big>, Code> {
         if n(&other).is_zero() {
             return Err(Code(STATUS_INVALID_INPUT));
@@ -230,6 +247,7 @@ native! {
     }
 
     /// The `/` operator: truncates toward zero; a zero divisor is a fault.
+    // ms: leaf
     fn msstd_bigint_quotient(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         if n(&other).is_zero() {
             fault_fmt(format_args!("BigInt./: division by zero; right must be nonzero, found 0"));
@@ -238,6 +256,7 @@ native! {
     }
 
     /// The `%` operator: the sign follows the dividend; a zero divisor is a fault.
+    // ms: leaf
     fn msstd_bigint_modulo(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         if n(&other).is_zero() {
             fault_fmt(format_args!("BigInt.%: division by zero; right must be nonzero, found 0"));
@@ -245,22 +264,27 @@ native! {
         make(n(&a) % n(&other))
     }
 
+    // ms: leaf
     fn msstd_bigint_compare(a: ObjRef<Big>, other: ObjRef<Big>) -> i64 {
         n(&a).cmp(n(&other)) as i64
     }
 
+    // ms: leaf
     fn msstd_bigint_bit_not(a: ObjRef<Big>) -> Object<Big> {
         make(!n(&a).clone())
     }
 
+    // ms: leaf
     fn msstd_bigint_negate(a: ObjRef<Big>) -> Object<Big> {
         make(-n(&a).clone())
     }
 
+    // ms: leaf
     fn msstd_bigint_abs(a: ObjRef<Big>) -> Object<Big> {
         make(n(&a).abs())
     }
 
+    // ms: leaf
     fn msstd_bigint_sign(a: ObjRef<Big>) -> i64 {
         match n(&a).sign() {
             Sign::Minus => -1,
@@ -269,6 +293,7 @@ native! {
         }
     }
 
+    // ms: leaf
     fn msstd_bigint_pow(a: ObjRef<Big>, exponent: i64) -> Result<Object<Big>, Code> {
         if exponent < 0 {
             return Err(Code(STATUS_INVALID_INPUT));
@@ -288,6 +313,7 @@ native! {
         Ok(make(result))
     }
 
+    // ms: leaf
     fn msstd_bigint_shift_left(a: ObjRef<Big>, count: i64) -> Result<Object<Big>, Code> {
         if count < 0 {
             return Err(Code(STATUS_INVALID_INPUT));
@@ -302,6 +328,7 @@ native! {
         Ok(make(n(&a) << count as usize))
     }
 
+    // ms: leaf
     fn msstd_bigint_shift_right(a: ObjRef<Big>, count: i64) -> Result<Object<Big>, Code> {
         if count < 0 {
             return Err(Code(STATUS_INVALID_INPUT));
@@ -312,6 +339,7 @@ native! {
         Ok(make(n(&a) >> count))
     }
 
+    // ms: leaf
     fn msstd_bigint_to_float(a: ObjRef<Big>) -> f64 {
         // Out of range: infinity of the same sign.
         n(&a).to_f64().unwrap_or(if n(&a).is_negative() {
@@ -322,6 +350,7 @@ native! {
     }
 
     /// Writes `out` and returns true when the value fits an `Int`.
+    // ms: leaf
     fn msstd_bigint_to_int(a: ObjRef<Big>, out: Out<i64>) -> bool {
         match n(&a).to_i64() {
             Some(v) => {
@@ -332,6 +361,7 @@ native! {
         }
     }
 
+    // ms: leaf
     fn msstd_bigint_to_string_radix(a: ObjRef<Big>, radix: i64) -> String {
         if !(2..=36).contains(&radix) {
             fault_fmt(format_args!(
@@ -342,6 +372,7 @@ native! {
     }
 
     /// Whether two values hold the same integer.
+    // ms: leaf
     fn msstd_bigint_equal(a: ObjRef<Big>, other: ObjRef<Big>) -> bool {
         n(&a) == n(&other)
     }

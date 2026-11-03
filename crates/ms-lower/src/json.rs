@@ -1616,6 +1616,8 @@ impl FnLower<'_> {
                 noreturn: false,
                 pure_: false,
                 fresh: crate::rtcall::fresh_result(sym),
+                leaf: crate::rtcall::rt_flags(sym).leaf,
+                reads: crate::rtcall::rt_flags(sym).reads,
             });
             calls.push((ext, on_walk, payload_ty.is_some()));
         }

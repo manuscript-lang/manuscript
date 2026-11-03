@@ -918,6 +918,7 @@ fn run_shielded(f: CleanupFn, arg: *mut u8) {
 /// Shields the running task from stop requests until the matching `msrt_shield_exit`, for
 /// work that must drain after SIGINT/SIGTERM (a server finishing in-flight requests).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C" fn msrt_shield_enter() {
     SHIELD.set(SHIELD.get() + 1);
     cancel_flag().store(0, Ordering::Relaxed);
@@ -925,6 +926,7 @@ pub extern "C" fn msrt_shield_enter() {
 
 /// Ends one `msrt_shield_enter`; a stop request that arrived meanwhile applies again.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C" fn msrt_shield_exit() {
     SHIELD.set(SHIELD.get().saturating_sub(1));
     if SHIELD.get() == 0 {
@@ -1130,12 +1132,14 @@ pub unsafe extern "C-unwind" fn msrt_fault(msg: *const u8, len: usize) -> ! {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_fault_string(s: *const ms_rt_abi::StrVal) -> ! {
     // SAFETY: caller passes a live string.
     fault(unsafe { crate::string::bytes(s) })
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_depth() -> ! {
     // SAFETY: single threaded limit change so cleanups can run calls in the reserve.
     unsafe {
@@ -1152,6 +1156,7 @@ pub extern "C-unwind" fn msrt_fault_depth() -> ! {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_index_fault(index: i64, length: i64) -> ! {
     fault_fmt(format_args!(
         "index {index} out of range for length {length}; pass a default: get(index:, default: ...)"
@@ -1161,6 +1166,7 @@ pub extern "C-unwind" fn msrt_index_fault(index: i64, length: i64) -> ! {
 /// Faults for an invalid index of a list mutator over `len` elements; `operation` is 0 for
 /// `insert` (which also accepts `len`), 1 for `remove` and 2 for `set`.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_list_index_fault(operation: i64, index: i64, len: i64) -> ! {
     let (name, hi) = match operation {
         0 => ("List.insert", len),
@@ -1180,6 +1186,7 @@ pub extern "C-unwind" fn msrt_list_index_fault(operation: i64, index: i64, len: 
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_unwrap_none() -> ! {
     fault(
         b"called Optional.get() on none; check is_some first, or pass a default: get(default: ...)",
@@ -1187,36 +1194,43 @@ pub extern "C-unwind" fn msrt_fault_unwrap_none() -> ! {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_result_get() -> ! {
     fault(b"called Result.get() on error; check is_ok first, or pass a default: get(default: ...)")
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_result_err() -> ! {
     fault(b"called Result.err() on ok; check is_error first")
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_int_overflow() -> ! {
     fault(b"Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_int_range() -> ! {
     fault(b"Int overflow; the result does not fit the sized integer type's range, so bound the operands or use a wider type")
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_div_zero() -> ! {
     fault(b"division by zero; right must be nonzero, found 0")
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_rem_zero() -> ! {
     fault(b"remainder by zero; right must be nonzero, found 0")
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_fault_div_overflow(a: i64, b: i64) -> ! {
     fault_fmt(format_args!(
         "division overflow; found left {a} and right {b}; result must be between {} and {}",
@@ -1226,6 +1240,7 @@ pub extern "C-unwind" fn msrt_fault_div_overflow(a: i64, b: i64) -> ! {
 }
 
 #[unsafe(no_mangle)]
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize {
     // SAFETY: single threaded access to the cleanup stack.
     unsafe {
@@ -1244,6 +1259,7 @@ pub(crate) fn has_cleanups() -> bool {
 
 /// Runs the action behind `handle` (and newer pending ones first).
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_cleanup_run(handle: usize) {
     // SAFETY: single threaded access to the cleanup stack.
     while unsafe { (*CLEANUPS.ptr()).len() } >= handle && handle > 0 {
@@ -1255,6 +1271,7 @@ pub extern "C-unwind" fn msrt_cleanup_run(handle: usize) {
 
 /// Drops the action behind `handle` (and newer pending ones) without running them.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
     // SAFETY: single threaded access to the cleanup stack.
     unsafe {
@@ -1281,6 +1298,7 @@ unsafe extern "C-unwind" fn cleanup_nothing(_: *mut u8) {}
 /// Turns the action behind `handle` into one that does nothing, leaving newer actions in place.
 /// The entry stays on the stack until a `msrt_cleanup_discard` of it or of an older one pops it.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C-unwind" fn msrt_cleanup_cancel(handle: usize) {
     // SAFETY: single threaded access to the cleanup stack.
     unsafe {
@@ -1297,6 +1315,7 @@ pub extern "C-unwind" fn msrt_cleanup_cancel(handle: usize) {
 /// Generated drop cleanups act only then: an unguarded fault ends the process and process exit
 /// needs no frees.
 #[unsafe(no_mangle)]
+// ms: leaf
 pub extern "C" fn msrt_unwind_drops() -> u8 {
     // SAFETY: single threaded access.
     u8::from(unsafe { *UNWIND_DROPS.ptr() })

@@ -33,45 +33,6 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 /// Runtime symbols whose presence means the program starts tasks that can be cancelled.
 const SPAWNERS: &[&str] = &["msrt_scope_spawn", "msrt_worker_start"];
 
-/// Runtime functions that never reach a cancellation point.
-const LEAF_PREFIXES: &[&str] = &[
-    "msrt_string_",
-    "msrt_str_",
-    "msrt_strbuf_",
-    "msrt_strbuilder_",
-    "msrt_list_",
-    "msrt_map_",
-    "msrt_set_",
-    "msrt_bytes_",
-    "msrt_bits_",
-    "msrt_float",
-    "msrt_int_",
-    "msrt_bool_",
-    "msrt_desc_",
-    "msrt_slot_",
-    "msrt_eq_",
-    "msrt_hash_",
-    "msrt_split_",
-    "msrt_ascii_",
-    "msrt_fault_",
-    "msrt_index_",
-    "msrt_drop_",
-    "msrt_alloc",
-    "msrt_cleanup_",
-    "msrt_shield_",
-    "msrt_unwind_",
-    "msstd_json_",
-    "msstd_path_",
-    "msstd_url_",
-    "msstd_html_",
-    "msstd_encoding_",
-    "msstd_regex_",
-    "msrt_numbers_",
-    "msstd_math_",
-    "msstd_bigint_",
-    "msstd_decimal_",
-];
-
 /// Rewrites `m` so cancellation releases owned locals; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
     if !starts_tasks(m) {
@@ -90,6 +51,8 @@ pub fn run(m: &mut Module) -> bool {
         noreturn: false,
         pure_: false,
         fresh: false,
+        leaf: true,
+        reads: false,
     });
     let mut cx = Cx {
         parks,
@@ -134,7 +97,7 @@ fn starts_tasks(m: &Module) -> bool {
 
 fn leaf_extern(m: &Module, e: ExtId) -> bool {
     let d = &m.externs[e.index()];
-    d.noreturn || LEAF_PREFIXES.iter().any(|p| d.name.starts_with(p))
+    d.noreturn || d.leaf
 }
 
 /// Which functions can reach a cancellation point: a poll, an indirect call or a runtime call
@@ -233,6 +196,8 @@ fn closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
         noreturn: false,
         pure_: false,
         fresh: false,
+        leaf: true,
+        reads: false,
     });
     let mut b = FuncBuilder::new(
         m,
@@ -285,6 +250,8 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
         noreturn: false,
         pure_: false,
         fresh: false,
+        leaf: true,
+        reads: false,
     });
     let mut b = FuncBuilder::new(
         m,
@@ -340,6 +307,8 @@ fn slot_with_closer(m: &mut Module, cx: &mut Cx, close: FuncId, ty: Ty) -> Optio
         noreturn: false,
         pure_: false,
         fresh: false,
+        leaf: true,
+        reads: false,
     });
     let mut b = FuncBuilder::new(
         m,

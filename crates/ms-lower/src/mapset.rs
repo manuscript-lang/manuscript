@@ -436,6 +436,8 @@ impl<'a> FnLower<'a> {
             noreturn: true,
             pure_: false,
             fresh: false,
+            leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
+            reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
         });
         self.b.call_rt(fault, &[msg]);
         self.b.unreachable();

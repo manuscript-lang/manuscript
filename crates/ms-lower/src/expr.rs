@@ -905,6 +905,8 @@ impl<'a> FnLower<'a> {
             noreturn: false,
             pure_: false,
             fresh: crate::rtcall::fresh_result(sym),
+            leaf: crate::rtcall::rt_flags(sym).leaf,
+            reads: crate::rtcall::rt_flags(sym).reads,
         });
         Ok(self.b.call_rt(ext, args))
     }

@@ -931,11 +931,7 @@ fn fit_result(fl: &mut FnLower<'_>, r: Val, ret: MTy) -> Result<Val, Error> {
 /// Whether the runtime function `sym` takes the receiver's handle first.
 fn takes_handle(sym: &str) -> bool {
     crate::rtcall::rt_sig(sym)
-        .and_then(|s| {
-            s.params
-                .first()
-                .map(|p| p.name == "h" || p.ty.starts_with("*const ObjCell<"))
-        })
+        .and_then(|s| s.params.first().map(|p| p.ty.contains("ObjCell<")))
         .unwrap_or(false)
 }
 

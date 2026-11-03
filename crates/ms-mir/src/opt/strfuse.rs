@@ -218,6 +218,8 @@ fn apply(m: &mut Module, fi: usize, bi: usize, ii: usize, plan: Plan) {
         noreturn: false,
         pure_: false,
         fresh: false,
+        leaf: true,
+        reads: false,
     });
     let f = &mut m.funcs[fi];
     let last = plan.pieces.len() - 1;
@@ -423,6 +425,8 @@ fn apply_concats(m: &mut Module, fi: usize, fusions: Vec<Fusion>) {
             noreturn: false,
             pure_: false,
             fresh: true,
+            leaf: true,
+            reads: false,
         });
         let f = &mut m.funcs[fi];
         let mut mask = 0i64;
@@ -554,6 +558,8 @@ fn append_in_place(m: &mut Module, fi: usize) -> bool {
         noreturn: false,
         pure_: false,
         fresh: true,
+        leaf: true,
+        reads: false,
     });
     let f = &mut m.funcs[fi];
     let remove: HashSet<(usize, usize)> = sites.iter().map(|s| s.1).collect();
