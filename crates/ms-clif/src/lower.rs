@@ -442,7 +442,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 });
             }
             TyKind::Fn(..) => self.release(vs[0]),
-            TyKind::Obj(n, _) if n != "Map" && n != "Set" => self.release(vs[0]),
+            TyKind::Obj(n, _) if !n.is_map_or_set() => self.release(vs[0]),
             TyKind::Opt(inner)
                 if self.g.lay.opt_is_nullable(*inner) && !self.g.lay.opt_is_boxed(*inner) =>
             {
@@ -493,7 +493,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.retain(vs[0]);
                 vs.to_vec()
             }
-            TyKind::Obj(n, _) if n != "Map" && n != "Set" => {
+            TyKind::Obj(n, _) if !n.is_map_or_set() => {
                 self.retain(vs[0]);
                 vs.to_vec()
             }
@@ -1335,7 +1335,7 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     fn is_wide(&self, ty: Ty) -> bool {
         matches!(self.g.m.types.kind(ty), TyKind::Str)
-            || matches!(self.g.m.types.kind(ty), TyKind::Obj(n, _) if n == "Map" || n == "Set")
+            || matches!(self.g.m.types.kind(ty), TyKind::Obj(n, _) if n.is_map_or_set())
     }
 
     fn new_slot(&mut self, size: u32) -> ir::StackSlot {
@@ -3460,7 +3460,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | TyKind::Ptr
             | TyKind::Fn(..)
             | TyKind::Iface(_) => true,
-            TyKind::Obj(n, _) => n != "Map" && n != "Set",
+            TyKind::Obj(n, _) => !n.is_map_or_set(),
             TyKind::Opt(inner) => lay.opt_is_nullable(*inner) || lay.m.types.is_scalar(*inner),
             _ => false,
         }

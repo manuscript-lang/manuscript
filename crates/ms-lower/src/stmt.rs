@@ -3,6 +3,7 @@
 use crate::Error;
 use crate::func::{FnLower, LoopCtx, Val};
 use ms_mir::ir::{Cc, Imm, Op, Value};
+use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -1254,7 +1255,7 @@ impl<'a> FnLower<'a> {
                         .then(|| {
                             let is_map = matches!(
                                 self.b.m.types.kind(self.ty_of(it.v)),
-                                TyKind::Obj(n, _) if n == "Map"
+                                TyKind::Obj(Native::Map, _)
                             );
                             if is_map { Walk::Entries } else { Walk::Keys }
                         })
@@ -1264,7 +1265,7 @@ impl<'a> FnLower<'a> {
                 }
                 let mut it = it;
                 let mut ity = self.ty_of(it.v);
-                if matches!(self.b.m.types.kind(ity), TyKind::Obj(n, _) if n == "SplitIter") {
+                if matches!(self.b.m.types.kind(ity), TyKind::Obj(Native::SplitIter, _)) {
                     return self.split_loop(&loop_var, it, body);
                 }
                 if ity == MTy::STR {
@@ -1276,9 +1277,7 @@ impl<'a> FnLower<'a> {
                     let elem = self.mty(&loop_var.ty)?;
                     let list = self.b.m.types.list(elem);
                     it = match self.b.m.types.kind(ity).clone() {
-                        TyKind::Obj(n, _) if n == "Map" => {
-                            self.map_entries(Some(iter), it, list)?
-                        }
+                        TyKind::Obj(Native::Map, _) => self.map_entries(Some(iter), it, list)?,
                         _ => {
                             let sym = crate::rtcall::method_symbol(self.b.m, ity, "values")
                                 .ok_or_else(|| Error::new("no values for a set"))?;

@@ -36,6 +36,7 @@ mod mathops;
 mod mutation;
 mod natiface;
 mod native;
+mod nativerec;
 mod random;
 mod rtcall;
 mod runner;

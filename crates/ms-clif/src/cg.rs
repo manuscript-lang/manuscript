@@ -6,6 +6,7 @@ use crate::lower::Lower;
 use crate::{Error, Options};
 use cranelift_codegen::Context;
 use cranelift_codegen::ir::{self, AbiParam, Signature, UserFuncName, types};
+use ms_mir::types::Native;
 
 /// A parameter or return of type `ty`. Bytes are zero-extended to a full register: the
 /// runtime is compiled by rustc, which assumes `u8` and `bool` arguments arrive extended.
@@ -452,11 +453,11 @@ impl<'m> Gen<'m> {
                 inner[0] = Some(*e);
                 KIND_LIST
             }
-            TyKind::Obj(n, args) if n == "Map" => {
+            TyKind::Obj(Native::Map, args) => {
                 inner = [args.first().copied(), args.get(1).copied()];
                 KIND_MAP
             }
-            TyKind::Obj(n, args) if n == "Set" => {
+            TyKind::Obj(Native::Set, args) => {
                 inner[0] = args.first().copied();
                 KIND_SET
             }

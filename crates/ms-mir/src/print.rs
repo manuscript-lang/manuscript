@@ -57,9 +57,9 @@ fn write_ty(m: &Module, t: Ty, out: &mut String) {
         TyKind::Obj(n, args) => {
             if args.is_empty() {
                 out.push_str("obj ");
-                out.push_str(n);
+                out.push_str(n.name());
             } else {
-                out.push_str(n);
+                out.push_str(n.name());
                 out.push('<');
                 for (i, a) in args.iter().enumerate() {
                     if i > 0 {

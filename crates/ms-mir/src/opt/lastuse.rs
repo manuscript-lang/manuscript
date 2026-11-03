@@ -57,9 +57,7 @@ fn plain(m: &Module, t: crate::types::Ty, seen: &mut Vec<crate::types::Ty>) -> b
         | TyKind::Bytes => true,
         TyKind::Ptr | TyKind::Fn(..) | TyKind::Iface(_) => false,
         TyKind::List(e) | TyKind::Opt(e) => plain(m, *e, seen),
-        TyKind::Obj(n, args) => {
-            (n == "Map" || n == "Set") && args.iter().all(|a| plain(m, *a, seen))
-        }
+        TyKind::Obj(n, args) => n.is_map_or_set() && args.iter().all(|a| plain(m, *a, seen)),
         TyKind::Rec(r) => {
             if seen.contains(&t) {
                 return true;
