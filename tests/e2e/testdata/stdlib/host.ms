@@ -50,15 +50,11 @@ test "subprocess validation returns expected domain errors":
     )
     try expect_equal(run("", [], "".to_bytes()).wait(), invalid)
 
-    let unavailable: CommandOutput! = error(
-        Error("process: service unavailable", kind: ErrorCategory.Unavailable)
-    )
-    try expect_false(
-        (
-            run(
-                "manuscript-nonexistent-command-stdlib", [], "".to_bytes()
-            ).wait() != unavailable
-        )
+    let missing = run("manuscript-nonexistent-command-stdlib", [], "".to_bytes()).wait()
+    try expect_equal(missing.err().kind, ErrorCategory.Unavailable)
+    try expect_equal(
+        missing.err().message,
+        "process: service unavailable: manuscript-nonexistent-command-stdlib"
     )
 
 test "subprocess streams that are not piped are closed":

@@ -54,7 +54,9 @@ test "bad cwd and variable names are rejected":
     )
     try expect_equal(run(shell(), print_cwd(), env: {"A=B": "x"}).wait(), invalid)
 
-    let missing: CommandOutput! = error(
-        Error("process: service unavailable", kind: ErrorCategory.Unavailable)
+    let missing = run(shell(), print_cwd(), cwd: "/definitely/not/here").wait().err()
+    try expect_equal(missing.kind, ErrorCategory.Unavailable)
+    try expect_equal(
+        missing.message,
+        "process: service unavailable: working directory /definitely/not/here"
     )
-    try expect_equal(run(shell(), print_cwd(), cwd: "/definitely/not/here").wait(), missing)

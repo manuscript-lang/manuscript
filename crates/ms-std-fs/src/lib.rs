@@ -43,6 +43,19 @@ pub fn fs_status<T>(r: Res<T>, err: &ErrOut) -> Result<T, StatusCode> {
     })
 }
 
+/// Like [`fs_status`], naming `path` for every failure but `STATUS_FAILED`, which has its own text:
+/// the message reads `filesystem: <failure>: <path>`.
+pub fn fs_status_at<T>(path: &[u8], r: Res<T>, err: &ErrOut) -> Result<T, StatusCode> {
+    r.map_err(|Fail { status, message }| {
+        if status == STATUS_FAILED {
+            err.set_bytes(&message.unwrap_or_default());
+        } else {
+            err.set_bytes(path);
+        }
+        StatusCode(status)
+    })
+}
+
 /// A decoded optional size limit.
 fn lim(has: bool, v: i64) -> Res<i64> {
     ops::limit(has, v)
@@ -167,21 +180,21 @@ abi_record! {
 native! {
     /// Reads a whole file as bytes.
     fn msstd_fs_read_file(path: &str, has_max: Has, max: i64; err: ErrOut) -> Result<Vec<u8>, StatusCode> {
-        fs_status(lim(*has_max, max).and_then(|m| ops::read_file(path.as_bytes(), m)), &err)
+        fs_status_at(path.as_bytes(), lim(*has_max, max).and_then(|m| ops::read_file(path.as_bytes(), m)), &err)
     }
 
     /// Writes bytes to a file (`replace` truncates, otherwise the file must not exist).
     fn msstd_fs_write_file(path: &str, data: &[u8], replace: bool; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(ops::write_file(path.as_bytes(), data, replace), &err)
+        fs_status_at(path.as_bytes(), ops::write_file(path.as_bytes(), data, replace), &err)
     }
 
     fn msstd_fs_append_file(path: &str, data: &[u8]; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(ops::append_file(path.as_bytes(), data), &err)
+        fs_status_at(path.as_bytes(), ops::append_file(path.as_bytes(), data), &err)
     }
 
     /// `follow` resolves a final symlink (`stat`), otherwise it reports the link (`lstat`).
     fn msstd_fs_stat(path: &str, follow: bool; err: ErrOut) -> Result<InfoOut, StatusCode> {
-        fs_status(ops::stat(path.as_bytes(), follow), &err).map(info_out)
+        fs_status_at(path.as_bytes(), ops::stat(path.as_bytes(), follow), &err).map(info_out)
     }
 
     /// Lists a directory sorted by name into a `List[DirectoryEntry]`.
@@ -189,16 +202,16 @@ native! {
         path: &str,
         has_limit: Has,
         limit: i64; err: ErrOut) -> Result<RecList<EntryOut>, StatusCode> {
-        let entries = fs_status(lim(*has_limit, limit).and_then(|m| ops::list(path.as_bytes(), m)), &err)?;
+        let entries = fs_status_at(path.as_bytes(), lim(*has_limit, limit).and_then(|m| ops::list(path.as_bytes(), m)), &err)?;
         Ok(RecList::new(entries.iter().map(|e| entry_out(&e.name, e.directory, e.symlink))))
     }
 
     fn msstd_fs_create_directory(path: &str, recursive: bool; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(ops::create_directory(path.as_bytes(), recursive), &err)
+        fs_status_at(path.as_bytes(), ops::create_directory(path.as_bytes(), recursive), &err)
     }
 
     fn msstd_fs_remove(path: &str, recursive: bool; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(ops::remove(path.as_bytes(), recursive), &err)
+        fs_status_at(path.as_bytes(), ops::remove(path.as_bytes(), recursive), &err)
     }
 
     fn msstd_fs_rename(source: &str, destination: &str; err: ErrOut) -> Result<(), StatusCode> {
@@ -206,11 +219,11 @@ native! {
     }
 
     fn msstd_fs_read_link(path: &str; err: ErrOut) -> Result<Text, StatusCode> {
-        fs_status(ops::read_link(path.as_bytes()), &err).map(Text)
+        fs_status_at(path.as_bytes(), ops::read_link(path.as_bytes()), &err).map(Text)
     }
 
     fn msstd_fs_create_link(path: &str, target: &str; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(ops::create_link(path.as_bytes(), target.as_bytes()), &err)
+        fs_status_at(path.as_bytes(), ops::create_link(path.as_bytes(), target.as_bytes()), &err)
     }
 
     fn msstd_fs_hard_link(source: &str, destination: &str; err: ErrOut) -> Result<(), StatusCode> {
@@ -218,7 +231,7 @@ native! {
     }
 
     fn msstd_fs_canonicalize(path: &str; err: ErrOut) -> Result<Text, StatusCode> {
-        fs_status(ops::canonicalize(path.as_bytes()), &err).map(Text)
+        fs_status_at(path.as_bytes(), ops::canonicalize(path.as_bytes()), &err).map(Text)
     }
 
     safe fn msstd_fs_temporary_root() -> Text {
@@ -230,7 +243,7 @@ native! {
     }
 
     fn msstd_fs_stat_filesystem(path: &str; err: ErrOut) -> Result<FsOut, StatusCode> {
-        fs_status(ops::stat_filesystem(path.as_bytes()), &err).map(|s| FsOut {
+        fs_status_at(path.as_bytes(), ops::stat_filesystem(path.as_bytes()), &err).map(|s| FsOut {
             kind: s.kind,
             block_size: s.block_size,
             blocks: s.blocks,
@@ -243,19 +256,19 @@ native! {
 
     fn msstd_fs_chmod(path: &str, mode: i64, follow: bool; err: ErrOut) -> Result<(), StatusCode> {
         let p = path.as_bytes();
-        fs_status(if follow { ops::chmod(p, mode) } else { ops::chmod_link(p, mode) }, &err)
+        fs_status_at(path.as_bytes(), if follow { ops::chmod(p, mode) } else { ops::chmod_link(p, mode) }, &err)
     }
 
     fn msstd_fs_access(path: &str, mode: i64; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(ops::access(path.as_bytes(), mode), &err)
+        fs_status_at(path.as_bytes(), ops::access(path.as_bytes(), mode), &err)
     }
 
     fn msstd_fs_chown(path: &str, uid: i64, gid: i64, follow: bool; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(ops::chown(path.as_bytes(), uid, gid, follow), &err)
+        fs_status_at(path.as_bytes(), ops::chown(path.as_bytes(), uid, gid, follow), &err)
     }
 
     fn msstd_fs_truncate(path: &str, size: i64; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(ops::truncate(path.as_bytes(), size), &err)
+        fs_status_at(path.as_bytes(), ops::truncate(path.as_bytes(), size), &err)
     }
 
     fn msstd_fs_set_times(
@@ -263,7 +276,7 @@ native! {
         accessed: &Timestamp,
         modified: &Timestamp,
         follow: bool; err: ErrOut) -> Result<(), StatusCode> {
-        fs_status(ops::set_times(
+        fs_status_at(path.as_bytes(), ops::set_times(
             path.as_bytes(),
             (accessed.seconds, accessed.nanos),
             (modified.seconds, modified.nanos),
@@ -279,7 +292,7 @@ native! {
         let opened = file::flags_of_mode(flags.as_bytes())
             .ok_or_else(Fail::invalid)
             .and_then(|f| file::open(path.as_bytes(), i64::from(f), mode));
-        fs_status(opened, &err).map(Object)
+        fs_status_at(path.as_bytes(), opened, &err).map(Object)
     }
 
     /// `FileHandle.clone`: a second handle over a duplicate of the descriptor.
@@ -404,7 +417,7 @@ native! {
     }
 
     fn msstd_fs_directory_open(path: &str; err: ErrOut) -> Result<Object<dir::Directory>, StatusCode> {
-        fs_status(dir::Directory::open(path.as_bytes()), &err).map(Object)
+        fs_status_at(path.as_bytes(), dir::Directory::open(path.as_bytes()), &err).map(Object)
     }
 
     /// The next entry in native order; `STATUS_NONE` at the end.
@@ -483,7 +496,7 @@ native! {
         has_max_results: Has,
         max_results: i64,
         filter: Option<EntryFilter>; err: ErrOut) -> Result<RecList<PathEntryOut>, StatusCode> {
-        let (max_entries, max_results) = fs_status(lim(*has_max_entries, max_entries)
+        let (max_entries, max_results) = fs_status_at(path.as_bytes(), lim(*has_max_entries, max_entries)
             .and_then(|e| Ok((e, lim(*has_max_results, max_results)?))), &err)?;
         let patterns: Vec<&[u8]> = patterns.iter().map(|p| p.as_bytes()).collect();
         let exclude: Vec<&[u8]> = exclude.iter().map(|p| p.as_bytes()).collect();
@@ -501,7 +514,7 @@ native! {
         };
         let cb: Option<&mut dyn FnMut(&walk::PathEntry) -> bool> =
             if filter.is_some() { Some(&mut call) } else { None };
-        let items = fs_status(walk::glob_entries(path.as_bytes(), &options, cb), &err)?;
+        let items = fs_status_at(path.as_bytes(), walk::glob_entries(path.as_bytes(), &options, cb), &err)?;
         Ok(RecList::new(items.iter().map(|e| PathEntryOut {
             path: Str::from_bytes(&e.path),
             name: Str::from_bytes(&e.name),
@@ -519,7 +532,7 @@ native! {
         max: i64; err: ErrOut) -> Result<Object<watch::Watcher>, StatusCode> {
         let poll = lim(*has_max, max)
             .and_then(|m| watch::Poll::new(path.as_bytes(), recursive, interval_ns, m));
-        fs_status(poll, &err).map(|p| Object(watch::Watcher::poll(p)))
+        fs_status_at(path.as_bytes(), poll, &err).map(|p| Object(watch::Watcher::poll(p)))
     }
 
     /// A native (inotify) watcher; `overflow` is `error` or `ignore`.
@@ -541,7 +554,7 @@ native! {
                 overflow.as_bytes(),
             )
         });
-        fs_status(native, &err).map(|n| Object(watch::Watcher::native(n)))
+        fs_status_at(path.as_bytes(), native, &err).map(|n| Object(watch::Watcher::native(n)))
     }
 
     /// Waits for activity and returns the `List[FileEvent]`. `STATUS_CLOSED` after close,

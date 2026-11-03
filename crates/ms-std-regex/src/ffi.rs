@@ -6,14 +6,18 @@ use alloc::string::String;
 use alloc::vec::Vec;
 #[cfg(test)]
 use ms_rt::ffi::HasRaw;
-use ms_rt::ffi::{Fail, Has, IntList, ObjRef, Object, Out, StrMap, abi_handle, native};
+use ms_rt::ffi::{
+    ErrOut, Fail, Has, IntList, ObjRef, Object, Out, StatusCode, StrMap, abi_handle, native,
+};
 
 abi_handle!(Regex);
 
 native! {
-    // ms: leaf
-    fn msstd_regex_compile(pattern: &str) -> Result<Object<Regex>, Fail> {
-        crate::compile(pattern).map(Object)
+    fn msstd_regex_compile(pattern: &str; err: ErrOut) -> Result<Object<Regex>, StatusCode> {
+        crate::compile_explained(pattern).map(Object).map_err(|why| {
+            err.set(&why);
+            StatusCode(ms_rt::ffi::STATUS_INVALID_DATA)
+        })
     }
 
     // ms: leaf
@@ -130,7 +134,10 @@ mod tests {
         let mut re = core::ptr::null_mut();
         // SAFETY: strings and handle are live for each call; released through the runtime.
         unsafe {
-            assert_eq!(msstd_regex_compile(&pat, &mut re), 0);
+            assert_eq!(
+                msstd_regex_compile(&pat, &mut re, ms_rt_abi::ErrSlot(core::ptr::null_mut())),
+                0
+            );
             assert_eq!(msstd_regex_matches(re, &hay), 1);
             let mut out = core::mem::MaybeUninit::<VecVal>::uninit();
             assert_eq!(
@@ -141,7 +148,7 @@ mod tests {
             let bad = new_string("(");
             let mut none = core::ptr::null_mut();
             assert_eq!(
-                msstd_regex_compile(&bad, &mut none),
+                msstd_regex_compile(&bad, &mut none, ms_rt_abi::ErrSlot(core::ptr::null_mut())),
                 ms_rt::ffi::STATUS_INVALID_DATA
             );
             ms_rt::obj::msrt_obj_drop(re.cast());
