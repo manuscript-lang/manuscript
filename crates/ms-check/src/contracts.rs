@@ -649,8 +649,10 @@ impl Checker {
             if contract.is_std("TestHooks") {
                 // This standard lifecycle contract has no-op defaults; retain ordinary
                 // checked methods so interface calls and generic bounds use normal dispatch.
+                let decl_id = self.m().facts_mut().fresh_id();
+                let result_id = self.m().facts_mut().fresh_id();
                 let decl = DeclRef::new(Decl {
-                    id: self.m().facts_mut().fresh_id(),
+                    id: decl_id,
                     pos: d.pos(),
                     export: false,
                     synthetic: true,
@@ -659,7 +661,7 @@ impl Checker {
                         type_params: Vec::new(),
                         params: Vec::new(),
                         result: TypeRef {
-                            id: self.m().facts_mut().fresh_id(),
+                            id: result_id,
                             pos: d.pos(),
                             kind: TypeKind::Named {
                                 name: n("Unit"),
