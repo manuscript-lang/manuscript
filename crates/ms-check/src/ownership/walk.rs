@@ -153,6 +153,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         meta: HashMap::new(),
         active: Vec::new(),
         pending: Vec::new(),
+        carried: Vec::new(),
         declared: Vec::new(),
         consumed: HashSet::new(),
         callees: HashSet::new(),
@@ -243,6 +244,9 @@ struct Walker<'a> {
     active: Vec<Borrow>,
     /// Holders whose last use ran in this statement: released at its end.
     pending: Vec<usize>,
+    /// Promise borrows of a promise just moved on: its new holder (a binding, a local container)
+    /// takes them over, so the borrow outlives the name that started the promise.
+    carried: Vec<Borrow>,
     /// Bindings in scope, innermost last.
     declared: Vec<usize>,
     /// Parameters and the receiver that were moved from.
@@ -1390,9 +1394,13 @@ impl Walker<'_> {
             self.pending.push(b.uid);
         }
         if last && access == Access::Move {
-            // A promise handed on (`wait_all([p, q])`) ends where its new owner does.
-            self.active
-                .retain(|a| !(a.holder == b.uid && a.why == PROMISE_WHY));
+            // A promise handed on (`wait_all([p, q])`) ends where its new owner does: a binding or
+            // local container that receives it takes the borrow over (`take_carried`).
+            let (moved, kept): (Vec<_>, Vec<_>) = std::mem::take(&mut self.active)
+                .into_iter()
+                .partition(|a| a.holder == b.uid && a.why == PROMISE_WHY);
+            self.active = kept;
+            self.carried.extend(moved);
         }
     }
 
@@ -1630,7 +1638,22 @@ impl Walker<'_> {
         }
     }
 
+    /// Hands the borrows of promises moved since the statement began to `holder`, keeping the
+    /// places that are still in scope.
+    fn take_carried(&mut self, holder: usize, holder_name: Name) {
+        for mut a in std::mem::take(&mut self.carried) {
+            a.origins.retain(|(p, _)| self.declared.contains(&p.root));
+            if a.origins.is_empty() || a.holder == holder {
+                continue;
+            }
+            a.holder = holder;
+            a.holder_name = holder_name;
+            self.active.push(a);
+        }
+    }
+
     fn stmt(&mut self, s: &Stmt) {
+        self.carried.clear();
         match &s.kind {
             StmtKind::Bind {
                 mutable,
@@ -1998,6 +2021,9 @@ impl Walker<'_> {
         if self.may_close(&b.ty) {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, pattern.pos, closable));
+        }
+        if ty_holds_promise(&b.ty) {
+            self.take_carried(b.uid, b.name);
         }
         if self.entry_call(value) || self.holds_lambda_promises(value) {
             // The promise reads what its entry captures until it is dropped with its scope.
@@ -3630,6 +3656,7 @@ impl Walker<'_> {
             && let ExprKind::Name(_) = &r.kind
             && let Resolution::Local(holder) = self.cx.m.resolution(r)
         {
+            self.take_carried(holder.uid, holder.name);
             for a in args {
                 if !self.entry_call(&a.value) {
                     continue;
