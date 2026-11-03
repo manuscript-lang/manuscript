@@ -2280,9 +2280,13 @@ impl<'a> FnLower<'a> {
             some,
             out,
             &mut |s| {
-                let p = s.b.opt_get(r);
-                let o = s.owned(Val { v: p, own: false });
-                s.finish(recv);
+                // An owned optional hands its payload over; a borrowed `Clonable` one is cloned.
+                let o = if recv.own {
+                    s.b.opt_unbox(r)
+                } else {
+                    let p = s.b.opt_get(r);
+                    s.clone_value(p)
+                };
                 if let Some(c) = cause {
                     s.finish(c.val);
                 }
