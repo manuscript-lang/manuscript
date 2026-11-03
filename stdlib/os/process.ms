@@ -19,7 +19,8 @@ import (
     msstd_system_dev_null,
     msstd_system_os_type,
     msstd_system_constants,
-    msstd_process_commands,
+    msstd_process_command_run,
+    msstd_process_command_spawn,
     msstd_process_subprocess_stream_id,
     msstd_process_subprocess_wait,
     msstd_process_subprocess_max_resident,
@@ -282,10 +283,6 @@ impl Source[Int] for SignalSource:
         msstd_process_signal_close(self.signals)
         return ok(unit)
 
-// The child-process operations of the current host.
-fn host_commands() Commands:
-    return msstd_process_commands()
-
 // Returns the host-supplied startup arguments, excluding the executable path.
 // Each call returns an owned list; mutations do not change later calls or native argv.
 export fn arguments() List[String]:
@@ -385,6 +382,20 @@ export fn os_type() String:
 export fn constants() Map[String, Int]:
     return msstd_system_constants()
 
+// The names of an environment map, in the order of its values.
+fn environment_names(environment: Map[String, String]) List[String]:
+    var names: List[String] = []
+    for entry in environment.entries():
+        names.append(entry.key.clone())
+    return names
+
+// The values of an environment map, in the order of its names.
+fn environment_values(environment: Map[String, String]) List[String]:
+    var values: List[String] = []
+    for entry in environment.entries():
+        values.append(entry.value.clone())
+    return values
+
 type RunArgs:
     program: String
     arguments: List[String]
@@ -414,8 +425,9 @@ export fn run(
             input: input.clone(), max_output_bytes: max_output_bytes, timeout: timeout,
             cwd: cwd.clone(), env: env.clone()
         ),
-        fn a: host_commands().run(
-            a.program, a.arguments, a.input, a.max_output_bytes, a.timeout, a.cwd, a.env
+        fn a: msstd_process_command_run(
+            a.program, a.arguments, a.input, a.max_output_bytes, a.timeout, a.cwd,
+            environment_names(a.env), environment_values(a.env)
         )
     )
 
@@ -430,7 +442,10 @@ export fn spawn(
     cwd: String?,
     env: Map[String, String] = Map[String, String]()
 ) Subprocess!:
-    return host_commands().spawn(program, arguments, stdin, stdout, stderr, cwd, env)
+    return msstd_process_command_spawn(
+        program, arguments, stdin, stdout, stderr, cwd, environment_names(env),
+        environment_values(env)
+    )
 
 // Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
 // This is not Unix time or a Clock Instant; prefer monotonic().difference(start) for timing.
