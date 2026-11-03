@@ -147,20 +147,15 @@ export fn collect[T](input: ReadStream[T], max_items: Int?) List[T]!:
     var source = input
     var items: List[T] = []
 
-    while true:
-        let step = try source.read().wait()
-
-        if let item = step:
-            items.append(item)
-            if let limit = max_items:
-                if items.length() > limit:
-                    return error(
-                        Error(
-                            "I/O: limit exceeded", kind: ErrorCategory.LimitExceeded
-                        )
+    for item in source.wait():
+        items.append(try item)
+        if let limit = max_items:
+            if items.length() > limit:
+                return error(
+                    Error(
+                        "I/O: limit exceeded", kind: ErrorCategory.LimitExceeded
                     )
-        else:
-            break
+                )
 
     return ok(items)
 
@@ -170,21 +165,17 @@ export fn read_all(input: ReadStream[Bytes], max_bytes: Int?) Bytes!:
     var all = BytesBuilder()
     var total = 0
 
-    while true:
-        let step = try source.read().wait()
-
-        if let chunk = step:
-            all.append_bytes(chunk)
-            total += chunk.length()
-            if let limit = max_bytes:
-                if total > limit:
-                    return error(
-                        Error(
-                            "I/O: limit exceeded", kind: ErrorCategory.LimitExceeded
-                        )
+    for chunk in source.wait():
+        let piece = try chunk
+        all.append_bytes(piece)
+        total += piece.length()
+        if let limit = max_bytes:
+            if total > limit:
+                return error(
+                    Error(
+                        "I/O: limit exceeded", kind: ErrorCategory.LimitExceeded
                     )
-        else:
-            break
+                )
 
     return ok(all.build())
 
@@ -194,14 +185,9 @@ export fn copy[T](input: ReadStream[T], output: WriteStream[T]) Int!:
     var sink = output
     var count = 0
 
-    while true:
-        let step = try source.read().wait()
-
-        if let item = step:
-            try sink.write(item)
-            count += 1
-        else:
-            break
+    for item in source.wait():
+        try sink.write(try item)
+        count += 1
 
     try sink.flush().wait()
     return ok(count)

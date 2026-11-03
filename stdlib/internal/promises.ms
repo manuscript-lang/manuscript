@@ -91,6 +91,9 @@ export extern fn msrt_cells_drop(id: Int) Unit
 // Whether the cell holds a value now.
 export extern fn msrt_cells_full(id: Int) Bool
 
+// Whether the cell is live with its value out, so a holder can put it back; false once it is dropped.
+export extern fn msrt_cells_out(id: Int) Bool
+
 // Moves the value out; Closed when the cell is empty or gone. A plain `try` binds it without a copy.
 export extern fn msrt_cells_take_result[T](id: Int) T!
 

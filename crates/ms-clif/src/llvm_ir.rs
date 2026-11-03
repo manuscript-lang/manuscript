@@ -49,6 +49,9 @@ pub struct LlvmModule {
     decls: BTreeMap<String, String>,
     /// External data symbols referenced.
     data: BTreeMap<String, ()>,
+    /// The function symbols in each vtable, by its data symbol. The Cranelift object defines the
+    /// vtable; each unit gets an `available_externally` copy so LLVM can read its slots.
+    vtables: HashMap<String, Vec<String>>,
     /// Internal functions' parameters that are exclusive pointers, by symbol. They are passed as
     /// `ptr noalias`, so LLVM knows nothing else the function reaches overlaps them.
     exclusive: HashMap<String, Vec<usize>>,
@@ -294,6 +297,7 @@ impl LlvmModule {
             defs: Vec::new(),
             decls: BTreeMap::new(),
             data: BTreeMap::new(),
+            vtables: HashMap::new(),
             exclusive: HashMap::new(),
         };
         // Placeholder slots for the fixed ids and one `DIFile` per file.
@@ -1419,6 +1423,11 @@ impl LlvmModule {
             .swap_remove(0)
     }
 
+    /// Records the function symbols in the vtable `name`, slot by slot.
+    pub fn set_vtable(&mut self, name: String, slots: Vec<String>) {
+        self.vtables.insert(name, slots);
+    }
+
     /// Total bytes of function text, which decides how many units a module is worth.
     pub fn code_bytes(&self) -> usize {
         self.defs
@@ -1547,7 +1556,25 @@ impl LlvmModule {
                 .iter()
                 .map(|d| d.name.as_str())
                 .collect();
-            let used = referenced(&s);
+            let mut used = referenced(&s);
+            // A vtable this unit names is written with its slots; the functions they name are
+            // then referenced too, so the scan below declares the ones another unit defines.
+            let mut tables = String::new();
+            for name in self.data.keys() {
+                if let Some(slots) = self.vtables.get(name)
+                    && (units == 1 || used.contains(name))
+                {
+                    let list: Vec<String> = slots.iter().map(|f| format!("ptr @\"{f}\"")).collect();
+                    let _ = writeln!(
+                        tables,
+                        "@\"{name}\" = available_externally constant [{} x ptr] [{}], align 8",
+                        slots.len(),
+                        list.join(", ")
+                    );
+                }
+            }
+            s.push_str(&tables);
+            used.extend(referenced(&tables));
             if units > 1 {
                 for d in self
                     .defs
@@ -1573,7 +1600,10 @@ impl LlvmModule {
                 }
             }
             for name in self.data.keys() {
-                if !defined.contains(name.as_str()) && (units == 1 || used.contains(name)) {
+                if !defined.contains(name.as_str())
+                    && !self.vtables.contains_key(name)
+                    && (units == 1 || used.contains(name))
+                {
                     let _ = writeln!(s, "@\"{name}\" = external global i8");
                 }
             }
