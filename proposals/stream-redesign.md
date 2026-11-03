@@ -72,7 +72,6 @@ export fn text(input: ReadStream[Bytes]) ReadStream[String]                     
 export fn text_writer(output: WriteStream[Bytes]) WriteStream[String]
 export fn lines(input: ReadStream[Bytes], max_bytes: Int? = none) ReadStream[String]
 export fn split(input: ReadStream[Bytes], delimiter: UInt8, max_bytes: Int? = none) ReadStream[Bytes]
-export fn concurrent[T](input: ReadStream[T], capacity: Int) ReadStream[T]      # upstream runs in its own promise, through a pipe
 export fn collect[T](input: ReadStream[T], max_items: Int?) List[T]!
 export fn read_all(input: ReadStream[Bytes], max_bytes: Int?) Bytes!
 export fn copy[T](input: ReadStream[T], output: WriteStream[T]) Int!           # flushes past 64 KiB or 1024 items, and at the end
@@ -86,7 +85,7 @@ Format modules add their own steps, each a `Transform` inside: `json_reader[T]`/
 - **A reusable pipeline is a function.** Name the flow and it becomes a step in other flows.
 - **A transform is a state machine that never waits.** One interface covers 1-to-1 (`map`), 1-to-many (`lines` over a chunk), many-to-1 (JSON over chunks) and filtering, on the read side (`through`) and the write side (`through_writer`).
 - **Stages fuse.** `through` over a stream that is itself a `through` appends to that stream's flat list of stages instead of wrapping it. A five-stage pipeline is one source calling `feed` five times per item, with one reused `out` list per stage and no promise between stages. Only the head `read` waits.
-- **Concurrency is one explicit stage.** Pipelines are pulled lazily in the reader's task. `| concurrent(capacity: 64)` is `promise(fn: copy(upstream, p.writer()))` returning `p.reader()` for a `pipe(64)`, so the stages before it run in their own promise, possibly on another core.
+- **Pipelines run in the reader's task.** Stages are pulled lazily; to run a stage elsewhere, start a `promise` that `copy`s into a `pipe` and read the pipe.
 - **Pipelines end in a consumer:** `copy`, `collect`, `read_all`, or a `for … in s.wait()` loop.
 
 ## Example
@@ -102,7 +101,7 @@ fn log_entries(input: ReadStream[Bytes]) ReadStream[LogEntry!]:
 
 fn tail_errors(path: String, out: WriteStream[String]) Int!:
     let file = try open(path).wait()
-    let entries = file.reader() | concurrent(capacity: 64) | log_entries
+    let entries = file.reader() | log_entries
     var count = 0
     for entry in entries.wait():
         let e = try entry
@@ -137,7 +136,7 @@ fn proxy(var client: Connection, var upstream: Connection) Unit!:
 ## Closing
 
 - **Both stream types are `Closeable`, and nothing else is.** Scope end closes them, as for any `Closeable`. `close` never waits and is idempotent.
-- **`Source` and `Transform` don't close.** A stream owns its source or stages and drops them when it closes; whatever they own (an inner stream, a file) is closed by that drop. A source holding some other resource implements `Closeable` itself. So closing a pipeline closes everything upstream with no prose rules, and `concurrent` closing cancels its promise.
+- **`Source` and `Transform` don't close.** A stream owns its source or stages and drops them when it closes; whatever they own (an inner stream, a file) is closed by that drop. A source holding some other resource implements `Closeable` itself. So closing a pipeline closes everything upstream with no prose rules.
 - **A read can't race a close.** A pending `read()` promise holds a `var` borrow of the stream, so the checker rejects `close` while it lives; dropping the promise cancels the read first.
 - **Closing a writer doesn't drop data.** Buffered bytes go to the runtime, which drains them in the background and before exit (concurrency decision 6). A drain error after close is lost, so call `flush().wait()` first when delivery matters. `close` returns `ok(unit)` for every stream.
 - **Ends close separately.** Closing a `Connection.output` is `shutdown_write`, and dropping the record closes both. Closing a pipe's reader makes writers fail with `Closed`. Closing every writer ends the reader after it has read what was sent.
@@ -251,8 +250,7 @@ The public surface goes from about 45 stream names across 15 shapes to 24. Delet
 1. `ReadStream`/`WriteStream` are opaque, implemented through `Source` and `Transform`; this replaces the interfaces in the concurrency API.
 2. `stdout()`/`stderr()` are `WriteStream[String]`; `stdout_bytes()` shares their buffer.
 3. `FetchResponse.body` stays buffered `Bytes`; streaming goes through `ClientResponse.body`.
-4. `concurrent` keeps its name unless review finds a better one.
-5. Build it now, in parallel threads, after the concurrency runtime pieces it needs (`Promise`, I/O promises, `pipe`).
+4. Build it now, in parallel threads, after the concurrency runtime pieces it needs (`Promise`, I/O promises, `pipe`).
 
 ## Work split
 
