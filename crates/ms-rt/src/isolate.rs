@@ -1,6 +1,6 @@
 //! Isolate identity and cross-thread wake-ups.
 //!
-//! Each isolate (one OS thread with its own arena and scheduler) has an [`Inbox`] in a
+//! Each isolate (one OS thread with its own heap and scheduler) has an [`Inbox`] in a
 //! process-wide registry. A park token's id carries the owning isolate's registry slot, so a
 //! post from any thread reaches the right scheduler and kicks only that isolate's poller.
 use crate::fault::{Hdr, PublishedHdr};
@@ -55,8 +55,7 @@ crate::isolate_static! {
 }
 
 /// Marks the calling isolate as a worker: the runtime's process-wide services (standard input
-/// and output buffers, terminal state, exit hooks) belong to the main isolate, and the standard
-/// allocator for Rust code leaves its arena alone.
+/// and output buffers, terminal state, exit hooks) belong to the main isolate.
 pub fn mark_worker() {
     // SAFETY: this isolate's state.
     unsafe { *WORKER.ptr() = true };

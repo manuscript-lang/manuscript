@@ -14,10 +14,7 @@ pub use ms_std_fs::stream;
 mod accumulate;
 
 use alloc::vec::Vec;
-use core::cell::RefCell;
-use ms_rt::ffi::{
-    Global, Handed, IntoAbi, ObjBox, ObjMut, ObjRef, Object, StatusCode, Text, native,
-};
+use ms_rt::ffi::{IntoAbi, ObjMut, ObjRef, Object, StatusCode, Text, native};
 use ms_rt::glue::{fault, record_failure};
 use ms_rt_abi::{STATUS_NONE, StrVal};
 use stream::{IoFail, IoRes, Stream};
@@ -51,38 +48,6 @@ impl IntoAbi for Line {
     }
 }
 
-/// The standard-input handle `stdin()` returns while nothing else holds it. Programs call
-/// `stdin()` once per read, so reusing the handle makes a call a retain instead of an allocation.
-static STDIN: Global<RefCell<Option<ObjBox<Stream>>>> = Global::new(RefCell::new(None));
-
-/// A standard-input handle. The shared one is reused only while this slot is its sole holder,
-/// so no caller can tell it from the new handle each call used to get: a kept handle or a
-/// reader parked mid-read makes the next call get a handle of its own.
-fn standard_input() -> Handed<Stream> {
-    let mut slot = STDIN.get().borrow_mut();
-    if let Some(h) = slot.as_mut() {
-        if !h.is_unique() {
-            return Handed::New(Object(Stream::standard(0)));
-        }
-        let stream = h.get_mut();
-        if !stream.is_closed() {
-            stream.take_stashed();
-            return Handed::Shared(h.share());
-        }
-    }
-    // Dropping a closed handle stashes its read-ahead for the new one.
-    if slot.take().is_none() {
-        ms_rt::glue::on_exit(release_standard_input);
-    }
-    Handed::Shared(slot.insert(ObjBox::new(Stream::standard(0))).share())
-}
-
-/// Releases the shared standard-input handle when the program ends, so it is not counted as
-/// a leak.
-extern "C" fn release_standard_input() {
-    drop(STDIN.get().borrow_mut().take());
-}
-
 fn optional(has: bool, v: i64) -> Option<i64> {
     has.then_some(v)
 }
@@ -94,11 +59,8 @@ native! {
     }
 
     /// `which`: 0 standard input, 1 standard output, 2 standard error. The descriptor stays open.
-    safe fn msstd_io_standard(which: i64) -> Handed<Stream> {
-        if which == 0 {
-            return standard_input();
-        }
-        Handed::New(Object(Stream::standard(which)))
+    safe fn msstd_io_standard(which: i64) -> Object<Stream> {
+        Object(Stream::standard(which))
     }
 
     /// Points this process's standard stream `which` (0 input, 1 output, 2 error) at the null device. Pending buffered output is written first.

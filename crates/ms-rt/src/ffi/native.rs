@@ -514,12 +514,6 @@ impl<T: AbiHandle> ObjBox<T> {
         unsafe { &mut (*self.0).value }
     }
 
-    /// Whether this box holds the only reference to the object.
-    pub fn is_unique(&self) -> bool {
-        // SAFETY: `self` holds a reference, so the object is live.
-        unsafe { (*self.0).header.rc == 1 }
-    }
-
     /// Another reference to the object, for returning to Manuscript.
     pub fn share(&self) -> ObjShare<T> {
         ObjShare(self.0)
