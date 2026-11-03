@@ -413,6 +413,22 @@ pub struct RecordDef {
     /// Whether this is the `{items, sealed}` box of a `Shared[T]` handle
     /// (see [`crate::ir::Module::shared_handle`]). Not part of the text format.
     pub shared_box: bool,
+    /// Which plain-data native record this is, when the runtime implements its operations.
+    /// Set where the record is lowered from its declaration; not part of the text format.
+    pub native: Option<NativeRec>,
+}
+
+/// A native record type known by identity: the runtime implements its ordering and text.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum NativeRec {
+    /// `Timestamp` of `@std/os/time.ms`.
+    Timestamp,
+    /// `Instant` of `@std/os/time.ms`.
+    Instant,
+    /// `Decimal` of `@std/math/decimal.ms`.
+    Decimal,
+    /// `Duration` of `@std/os/time.ms`.
+    Duration,
 }
 
 /// One case of an alternative.

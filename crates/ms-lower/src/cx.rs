@@ -6,6 +6,7 @@ use ms_check::hir::{Callable, ModuleHir};
 use ms_check::ownership::BorrowKind;
 use ms_check::types::{self as ct, Kind, Name, Subst};
 use ms_mir::ir::{FuncId, Module};
+use ms_mir::types::NativeRec;
 use ms_mir::types::{CaseDef, IfaceDef, MethodSig, Ty as MTy};
 use ms_syntax::NodeId;
 use std::collections::HashMap;
@@ -393,6 +394,15 @@ impl Cx {
             }
             Kind::Record => {
                 let (id, ty) = m.add_record(&t.to_string(), Vec::new());
+                m.records[id.index()].native = if t.is_time("Timestamp") {
+                    Some(NativeRec::Timestamp)
+                } else if t.is_time("Instant") {
+                    Some(NativeRec::Instant)
+                } else if t.is_time("Duration") {
+                    Some(NativeRec::Duration)
+                } else {
+                    None
+                };
                 self.tycache.insert(key.to_string(), ty);
                 if t.opaque_module().is_some() {
                     self.opaque_tys.insert(ty);
@@ -514,6 +524,7 @@ impl Cx {
         for (name, fields) in pod {
             if t.is_std(name) {
                 let (id, ty) = m.add_record(name, Vec::new());
+                m.records[id.index()].native = Some(NativeRec::Decimal);
                 m.records[id.index()].fields =
                     fields.iter().map(|f| (f.to_string(), MTy::INT)).collect();
                 return Ok(ty);

@@ -2,11 +2,12 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use crate::nativerec::NativeRec;
+use crate::nativerec::native_rec;
 use ms_check::hir::Resolution;
 use ms_check::types::{self as ct, Kind};
 use ms_mir::ir::{Cc, Op, Value};
 use ms_mir::types::Native;
+use ms_mir::types::NativeRec;
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -822,17 +823,17 @@ impl<'a> FnLower<'a> {
 
     /// The runtime function ordering two values of a native record type (`-1`, `0` or `1`).
     pub(crate) fn ordering_symbol(&self, t: MTy) -> Option<&'static str> {
-        NativeRec::of(self.b.m, t)?.compare_symbol()
+        crate::nativerec::compare_symbol(crate::nativerec::native_rec(self.b.m, t)?)
     }
 
     /// Whether `t` is the `Duration` record.
     pub(crate) fn is_duration(&self, t: MTy) -> bool {
-        NativeRec::of(self.b.m, t) == Some(NativeRec::Duration)
+        native_rec(self.b.m, t) == Some(NativeRec::Duration)
     }
 
     /// Whether `t` is the `Instant` record.
     fn is_instant(&self, t: MTy) -> bool {
-        NativeRec::of(self.b.m, t) == Some(NativeRec::Instant)
+        native_rec(self.b.m, t) == Some(NativeRec::Instant)
     }
 
     /// Whether `t` is the `BigInt` runtime object.
@@ -842,7 +843,7 @@ impl<'a> FnLower<'a> {
 
     /// Whether `t` is the `Decimal` record.
     pub(crate) fn is_decimal(&self, t: MTy) -> bool {
-        NativeRec::of(self.b.m, t) == Some(NativeRec::Decimal)
+        native_rec(self.b.m, t) == Some(NativeRec::Decimal)
     }
 
     /// Structural equality of two operands of the same type.

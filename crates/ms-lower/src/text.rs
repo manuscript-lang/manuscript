@@ -39,7 +39,7 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
 
 /// The runtime formatter of a native record type whose text is not its fields.
 fn native_record_text(b: &FuncBuilder<'_>, t: MTy) -> Option<&'static str> {
-    crate::nativerec::NativeRec::of(b.m, t)?.text_symbol()
+    crate::nativerec::text_symbol(crate::nativerec::native_rec(b.m, t)?)
 }
 
 /// Calls a leaf formatter for scalar/string types; `None` for compound types.
@@ -544,9 +544,7 @@ impl<'a> FnLower<'a> {
         if t == MTy::STR {
             return Ok(x);
         }
-        if crate::nativerec::NativeRec::of(self.b.m, t)
-            == Some(crate::nativerec::NativeRec::Timestamp)
-        {
+        if crate::nativerec::native_rec(self.b.m, t) == Some(ms_mir::types::NativeRec::Timestamp) {
             // RFC 3339 text from the runtime, which takes the two words by address.
             let slot = self
                 .b

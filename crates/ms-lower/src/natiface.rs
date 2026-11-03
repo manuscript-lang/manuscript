@@ -1594,8 +1594,8 @@ impl FnLower<'_> {
                 Ok(Val { v: list, own: true })
             }
             TyKind::Rec(rid)
-                if crate::nativerec::NativeRec::of(self.b.m, ty)
-                    == Some(crate::nativerec::NativeRec::Duration) =>
+                if crate::nativerec::native_rec(self.b.m, ty)
+                    == Some(ms_mir::types::NativeRec::Duration) =>
             {
                 let nanos = self.getter_call(sym, MTy::INT, lead)?;
                 Ok(Val {
