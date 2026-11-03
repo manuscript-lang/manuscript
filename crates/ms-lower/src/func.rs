@@ -597,6 +597,9 @@ impl<'a> FnLower<'a> {
             return x.v;
         }
         let t = self.ty_of(x.v);
+        if std::env::var_os("MS_COPY_TRACE").is_some() {
+            eprintln!("IMPLICIT_COPY {:?} {}", self.b.defining_op(x.v), std::backtrace::Backtrace::force_capture().to_string().lines().filter(|l| l.contains("ms_lower::")).nth(1).unwrap_or("?").trim());
+        }
         self.b
             .emit(Op::Copy, &[x.v], ms_mir::ir::Imm::None, Some(t))
             .expect("copy result")
