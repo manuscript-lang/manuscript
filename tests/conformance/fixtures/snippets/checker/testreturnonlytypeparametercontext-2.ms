@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,generics,modules,stdlib-errors,strings,tier-stdlib,try-result
-# conform: phase=check
-# conform: origin=pkg/checker/inference_hints_test.go:29 TestReturnOnlyTypeParameterContext
+// conform: tags=diagnostics,generics,modules,stdlib-errors,strings,tier-stdlib,try-result
+// conform: phase=check
+// conform: origin=pkg/checker/inference_hints_test.go:29 TestReturnOnlyTypeParameterContext
 
 fn fail[T](message: String) T!Error: error(Error(message))
 

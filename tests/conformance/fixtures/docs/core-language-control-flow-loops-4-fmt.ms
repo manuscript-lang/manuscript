@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,modules,mutation,parser,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=documentation/core-language/control-flow/loops.md:63
+// conform: tags=control-flow,formatter,modules,mutation,parser,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=documentation/core-language/control-flow/loops.md:63
 import range_by from "@std/collections/collections.ms"
 import expect_equal from "@std/test/test.ms"
 

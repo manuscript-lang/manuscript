@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interpolation,lists,modules,mutation,numbers,parser,sets,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/primitive-list-append-and-range-keep-semantics.ms
+// conform: tags=control-flow,formatter,interpolation,lists,modules,mutation,numbers,parser,sets,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/primitive-list-append-and-range-keep-semantics.ms
 import expect_true from "@std/test/test.ms"
 
 test "primitive list loops":

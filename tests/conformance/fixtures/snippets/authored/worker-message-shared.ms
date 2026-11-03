@@ -1,5 +1,5 @@
-# conform: tags=diagnostics,stdlib-workers,tier-core
-# conform: phase=check
+// conform: tags=diagnostics,stdlib-workers,tier-core
+// conform: phase=check
 import Shared, share from "@std/concurrency/shared.ms"
 import WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 

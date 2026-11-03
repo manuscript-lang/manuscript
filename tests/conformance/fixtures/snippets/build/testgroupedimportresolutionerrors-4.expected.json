@@ -14,13 +14,13 @@
           "file": "testgroupedimportresolutionerrors-4.ms",
           "line": 4,
           "column": 8,
-          "offset": 180
+          "offset": 183
         },
         "end": {
           "file": "testgroupedimportresolutionerrors-4.ms",
           "line": 4,
           "column": 15,
-          "offset": 187
+          "offset": 190
         }
       }
     ],

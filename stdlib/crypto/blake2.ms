@@ -10,7 +10,7 @@ import (
     wrapping_add
 ) from "@std/math/math.ms"
 
-# Message word schedule shared by BLAKE2b (12 rounds, rows 0-9 then 0-1 again) and BLAKE2s (10 rounds).
+// Message word schedule shared by BLAKE2b (12 rounds, rows 0-9 then 0-1 again) and BLAKE2s (10 rounds).
 fn sigma() List[List[Int]]:
     return [
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -25,7 +25,7 @@ fn sigma() List[List[Int]]:
         [10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0]
     ]
 
-# Reads a little-endian word of `width` bytes at `at`, zero padding past the end of `data`.
+// Reads a little-endian word of `width` bytes at `at`, zero padding past the end of `data`.
 fn word(data: Bytes, at: Int, width: Int) Int:
     var value = 0
 
@@ -36,7 +36,7 @@ fn word(data: Bytes, at: Int, width: Int) Int:
 
     return value
 
-# The padded input: the key block (if any) followed by the data, zero filled to a whole number of blocks (at least one).
+// The padded input: the key block (if any) followed by the data, zero filled to a whole number of blocks (at least one).
 fn padded(key: Bytes, data: Bytes, block: Int) Bytes:
     var out = BytesBuilder()
 
@@ -64,9 +64,9 @@ fn check(length: Int, key: Bytes, max: Int) Unit:
     if key.length() > max:
         panic("blake2: key must be at most {max} bytes")
 
-# Returns the BLAKE2b digest (RFC 7693) of `data`, optionally keyed, of `length` bytes.
-# `length` is 1 through 64 and `key` at most 64 bytes; a violation faults. An empty key is unkeyed.
-# `blake2b("abc".to_bytes())` begins with the bytes ba80a53f981c4d0d.
+// Returns the BLAKE2b digest (RFC 7693) of `data`, optionally keyed, of `length` bytes.
+// `length` is 1 through 64 and `key` at most 64 bytes; a violation faults. An empty key is unkeyed.
+// `blake2b("abc".to_bytes())` begins with the bytes ba80a53f981c4d0d.
 export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
     check(length, key, 64)
 
@@ -159,7 +159,7 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
 
     return out.build()
 
-# Rotates a 32-bit word toward the low end.
+// Rotates a 32-bit word toward the low end.
 fn rotr32(value: Int, count: Int) Int:
     return bit_and(
         bit_or(
@@ -168,9 +168,9 @@ fn rotr32(value: Int, count: Int) Int:
         4294967295
     )
 
-# Returns the BLAKE2s digest (RFC 7693) of `data`, optionally keyed, of `length` bytes.
-# `length` is 1 through 32 and `key` at most 32 bytes; a violation faults. An empty key is unkeyed.
-# `blake2s("abc".to_bytes())` begins with the bytes 508c5e8c327c14e2.
+// Returns the BLAKE2s digest (RFC 7693) of `data`, optionally keyed, of `length` bytes.
+// `length` is 1 through 32 and `key` at most 32 bytes; a violation faults. An empty key is unkeyed.
+// `blake2s("abc".to_bytes())` begins with the bytes 508c5e8c327c14e2.
 export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
     check(length, key, 32)
 

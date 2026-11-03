@@ -14,7 +14,7 @@
           "file": "testexpectedresultgenericinference-3.ms",
           "line": 4,
           "column": 18,
-          "offset": 195
+          "offset": 198
         }
       },
       {
@@ -25,20 +25,20 @@
           "file": "testexpectedresultgenericinference-3.ms",
           "line": 4,
           "column": 33,
-          "offset": 210
+          "offset": 213
         },
         "fix": {
           "position": {
             "file": "testexpectedresultgenericinference-3.ms",
             "line": 4,
             "column": 33,
-            "offset": 210
+            "offset": 213
           },
           "end": {
             "file": "testexpectedresultgenericinference-3.ms",
             "line": 4,
             "column": 40,
-            "offset": 217
+            "offset": 220
           },
           "replacement": "failed"
         }
@@ -51,7 +51,7 @@
           "file": "testexpectedresultgenericinference-3.ms",
           "line": 6,
           "column": 18,
-          "offset": 246
+          "offset": 249
         }
       }
     ],

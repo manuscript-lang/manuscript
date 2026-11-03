@@ -184,7 +184,7 @@ fn completion_in_unfinished_code() {
             "fn area(shape: Shape) Int:\n    match shape:\n        Ci",
         ),
         ("string", "fn main() String:\n    return \"abc"),
-        ("comment", "fn main() Int:\n    # note"),
+        ("comment", "fn main() Int:\n    // note"),
     ];
     let prelude = "type Point:\n    x: Int\n    y: Int = 0\n\ntype Shape:\n    case Circle(radius: Int)\n    case Empty\n\nfn add(a: Int, b: Int) Int:\n    return a + b\n\n";
     for (index, (name, tail)) in cases.iter().enumerate() {

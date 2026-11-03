@@ -14,7 +14,7 @@
           "file": "testmutationrejections-7.ms",
           "line": 4,
           "column": 13,
-          "offset": 147
+          "offset": 150
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testmutationrejections-7.ms",
           "line": 5,
           "column": 5,
-          "offset": 162
+          "offset": 165
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "testmutationrejections-7.ms",
           "line": 5,
           "column": 13,
-          "offset": 170
+          "offset": 173
         }
       }
     ],

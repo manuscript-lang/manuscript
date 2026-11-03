@@ -12,13 +12,13 @@
           "file": "foreign-ternary.ms",
           "line": 5,
           "column": 14,
-          "offset": 144
+          "offset": 147
         },
         "end": {
           "file": "foreign-ternary.ms",
           "line": 5,
           "column": 16,
-          "offset": 146
+          "offset": 149
         }
       }
     ],

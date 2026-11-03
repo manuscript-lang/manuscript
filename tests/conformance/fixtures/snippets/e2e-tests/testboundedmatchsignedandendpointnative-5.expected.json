@@ -14,7 +14,7 @@
           "file": "testboundedmatchsignedandendpointnative-5.ms",
           "line": 5,
           "column": 19,
-          "offset": 201
+          "offset": 204
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testboundedmatchsignedandendpointnative-5.ms",
           "line": 6,
           "column": 12,
-          "offset": 238
+          "offset": 241
         }
       }
     ],

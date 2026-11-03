@@ -1,6 +1,6 @@
-# conform: tags=modules,stdlib-bigint,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/library-bigint.ms
+// conform: tags=modules,stdlib-bigint,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/library-bigint.ms
 import expect_false from "@std/test/test.ms"
 import parse from "@std/math/math.ms"
 import BigInt from "@std/math/math.ms"

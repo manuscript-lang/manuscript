@@ -1,6 +1,6 @@
-# conform: tags=formatter,lists,match,mutation,optional,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/diagnostic_fixes_test.go:76 TestStatementMatchDiscardsArmValues
+// conform: tags=formatter,lists,match,mutation,optional,parser,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/diagnostic_fixes_test.go:76 TestStatementMatchDiscardsArmValues
 fn f(var xs: List[Int], o: Int?) Unit:
     var n = 0
 

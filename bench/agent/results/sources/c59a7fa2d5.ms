@@ -4,7 +4,7 @@ import max, min from "@std/math.ms"
 
 let BAD = "error: bad command"
 
-# Value of a 1-to-6 digit unsigned decimal token, or -1 when the token is malformed.
+// Value of a 1-to-6 digit unsigned decimal token, or -1 when the token is malformed.
 fn num(t: String) Int:
     if t.length() == 0 or t.length() > 6: return -1
     if not "0123456789".contains(t.get(0)): return -1

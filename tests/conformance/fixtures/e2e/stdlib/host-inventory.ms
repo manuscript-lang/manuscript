@@ -1,5 +1,5 @@
-# conform: tags=control-flow,stdlib-system,stdlib-testing,testing,tier-io,try-result
-# conform: phase=test
+// conform: tags=control-flow,stdlib-system,stdlib-testing,testing,tier-io,try-result
+// conform: phase=test
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import cpus, metrics, network_interfaces from "@std/os/process.ms"
 import IpFamily from "@std/net/net.ms"

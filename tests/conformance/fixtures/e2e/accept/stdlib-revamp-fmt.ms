@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,formatter,interfaces,maps,match,modules,optional,parser,records,stdlib-bytes,stdlib-io,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/stdlib-revamp.ms
+// conform: tags=control-flow,faults,formatter,interfaces,maps,match,modules,optional,parser,records,stdlib-bytes,stdlib-io,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/stdlib-revamp.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 import ReadStream, read_line from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"

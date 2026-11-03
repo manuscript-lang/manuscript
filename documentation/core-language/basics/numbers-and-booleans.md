@@ -44,7 +44,7 @@ fn literals() Unit:
     let mask: Int = 0xFF_00
     let flags: Int = 0b1010_0101
     let precise: Decimal = 1e3d
-    # Rejected: an Int token does not become Float from context.
+    // Rejected: an Int token does not become Float from context.
     let mismatch: Float = 1
 ```
 
@@ -57,9 +57,9 @@ fn sized() Unit:
     let a: Int8 = 100
     let wide: Int32 = 2000000000
     let ratio: Float32 = 0.1
-    # Faults: 200 does not fit Int8.
+    // Faults: 200 does not fit Int8.
     let b = a + a
-    # Rejected: operand types differ.
+    // Rejected: operand types differ.
     let c = a + wide
 ```
 

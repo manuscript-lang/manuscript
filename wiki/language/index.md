@@ -44,3 +44,4 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [Syntax improvements need examples across their boundaries](syntax-improvements-need-examples-across-their-boundaries.md): support grouped symbol imports and brace Map literals.
 - [Multi-line text is one token that line-based passes must mask](multi-line-text-is-a-token-the-line-passes-must-mask.md): `"""` and `r"""` literals and the formatter placeholder.
 - [`T!` and `T?` are type suffixes; there is no `some`](t-and-t-are-type-suffixes-there-is-no-some.md): `T!` is `Result[T, Error]` and `T!E` is `Result[T, E]` (no space before `E`), mirroring `T?` for optionals.
+- [Comments are `//` and `/* */`, and blocks are whole-line](comments-are-slash-slash-and-block-comments-are-whole-line.md): `#` is rejected; `//` for lines, non-nesting whole-line `/* */` blocks, one shared doc extractor, and the fixture-header and offset migration traps.

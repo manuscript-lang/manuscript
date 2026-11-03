@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,faults,interfaces,lists,modules,optional,records,stdlib-bytes,stdlib-collections,stdlib-random,stdlib-testing,strings,testing,tier-io,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/stdlib/random.ms
+// conform: tags=closures,control-flow,faults,interfaces,lists,modules,optional,records,stdlib-bytes,stdlib-collections,stdlib-random,stdlib-testing,strings,testing,tier-io,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/stdlib/random.ms
 import expect_equal from "@std/test/test.ms"
 import (
     secure_int,

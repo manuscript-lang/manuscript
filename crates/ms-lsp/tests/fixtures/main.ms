@@ -2,7 +2,7 @@ import Iterator from "@std/core.ms"
 import stdout from "@std/io/io.ms"
 import expect_equal from "@std/test/test.ms"
 
-# A point in the plane.
+// A point in the plane.
 type Point:
     x: Int
     y: Int = 0

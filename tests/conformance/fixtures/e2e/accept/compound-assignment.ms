@@ -1,6 +1,6 @@
-# conform: tags=control-flow,lists,modules,mutation,records,stdlib-testing,strings,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/compound-assignment.ms
+// conform: tags=control-flow,lists,modules,mutation,records,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/compound-assignment.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
 type Counter:

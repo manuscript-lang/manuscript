@@ -1,197 +1,197 @@
-# An expected failure as a plain value: a message, a portable kind callers can branch on, and string details.
-# Build one like any record: `Error("no such file", kind: NotFound, details: {"path": path})`. `T!` is `Result[T, Error]`.
+// An expected failure as a plain value: a message, a portable kind callers can branch on, and string details.
+// Build one like any record: `Error("no such file", kind: NotFound, details: {"path": path})`. `T!` is `Result[T, Error]`.
 export type Error:
-    # Human-readable description of the failure.
+    // Human-readable description of the failure.
     message: String
-    # What went wrong, in portable terms; `Other` when no category fits.
+    // What went wrong, in portable terms; `Other` when no category fits.
     kind: ErrorCategory = ErrorCategory.Other
-    # Extra facts about the failure, such as the path or operation, keyed by name.
+    // Extra facts about the failure, such as the path or operation, keyed by name.
     details: Map[String, String] = Map[String, String]()
 
-# Portable kinds of failure. Callers branch on `error.kind`; the message carries the specifics.
+// Portable kinds of failure. Callers branch on `error.kind`; the message carries the specifics.
 export type ErrorCategory:
-    # Caller input is invalid.
+    // Caller input is invalid.
     case InvalidInput
-    # Input data is malformed.
+    // Input data is malformed.
     case InvalidData
-    # An operation budget or implementation limit was exceeded.
+    // An operation budget or implementation limit was exceeded.
     case LimitExceeded
-    # A requested resource was not found.
+    // A requested resource was not found.
     case NotFound
-    # A requested exclusive resource already exists.
+    // A requested exclusive resource already exists.
     case AlreadyExists
-    # Host authority denied the operation.
+    // Host authority denied the operation.
     case PermissionDenied
-    # The requested operation is unsupported.
+    // The requested operation is unsupported.
     case Unsupported
-    # The resource has been closed.
+    // The resource has been closed.
     case Closed
-    # A local operation or group deadline expired.
+    // A local operation or group deadline expired.
     case Timeout
-    # The service/resource is unavailable; this does not imply NotFound or PermissionDenied.
+    // The service/resource is unavailable; this does not imply NotFound or PermissionDenied.
     case Unavailable
-    # A value or index is outside its range.
+    // A value or index is outside its range.
     case OutOfRange
-    # A task, process or peer ended abnormally.
+    // A task, process or peer ended abnormally.
     case Failed
-    # No other kind fits.
+    // No other kind fits.
     case Other
 
-# Raises a programming fault with the supplied message and stops the current operation.
+// Raises a programming fault with the supplied message and stops the current operation.
 export fn panic(message: String) Never: ...
 
-# A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
-# The implicit close behaves like `try value.close()`: a failed close becomes the function's error, after the
-# other bindings of the scopes it leaves have closed. Where the function cannot return an `Error`, or the
-# close happens inside a holder (a record, list or temporary), a failed close is a fault. If the scope is
-# already returning an error, that error is kept and the close error is dropped. Call `close()` yourself to
-# handle the failure; the binding is then consumed.
+// A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
+// The implicit close behaves like `try value.close()`: a failed close becomes the function's error, after the
+// other bindings of the scopes it leaves have closed. Where the function cannot return an `Error`, or the
+// close happens inside a holder (a record, list or temporary), a failed close is a fault. If the scope is
+// already returning an error, that error is kept and the close error is dropped. Call `close()` yourself to
+// handle the failure; the binding is then consumed.
 export interface Closeable:
-    # Releases the implementation's resource state; with calls this on every scope exit.
-    # Cleanup runs during return, expected errors, faults, and cancellation too. A type whose release cannot
-    # fail returns `ok(unit)`.
+    // Releases the implementation's resource state; with calls this on every scope exit.
+    // Cleanup runs during return, expected errors, faults, and cancellation too. A type whose release cannot
+    // fail returns `ok(unit)`.
     var fn close() Unit!
 
-# A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
-# `for item in source:` calls `next` until `none`; a variable or field path advances in place and
-# keeps its final state, while any other expression is held by the loop alone. `next` should keep
-# returning `none` after the end. The item is a borrow: it stays valid, and the iterator
-# unchanged, until the loop body ends; clone it to keep it.
+// A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
+// `for item in source:` calls `next` until `none`; a variable or field path advances in place and
+// keeps its final state, while any other expression is held by the loop alone. `next` should keep
+// returning `none` after the end. The item is a borrow: it stays valid, and the iterator
+// unchanged, until the loop body ends; clone it to keep it.
 export interface Iterator[T]:
-    # Returns the next item, or none when no items remain. The item borrows from the iterator
-    # (an iterator over a container borrows from the container instead).
+    // Returns the next item, or none when no items remain. The item borrows from the iterator
+    // (an iterator over a container borrows from the container instead).
     var fn next() T?
 
-# Represents a value that may be absent: a `T` or `none`; a plain `T` converts where a `T?` is expected.
+// Represents a value that may be absent: a `T` or `none`; a plain `T` converts where a `T?` is expected.
 export type Optional[T]:
-    # A present payload, retained by reference when T is mutable.
+    // A present payload, retained by reference when T is mutable.
     case some(
-        # The contained value; unwrap and matching return this original payload.
+        // The contained value; unwrap and matching return this original payload.
         value: T
     )
-    # An absent value with no payload; no T needs to be constructed.
+    // An absent value with no payload; no T needs to be constructed.
     case none
 
 impl T?:
-    # Returns True when a value is present, and False for none.
+    // Returns True when a value is present, and False for none.
     fn is_some() Bool: ...
 
-    # Reports whether this value is absent.
+    // Reports whether this value is absent.
     fn is_none() Bool: ...
 
-    # Returns the payload, or `default` when this is `none`; pass a default or unwrap with `if let value = optional:` unless absence is a bug.
-    # Without a default, `none` raises a fault.
+    // Returns the payload, or `default` when this is `none`; pass a default or unwrap with `if let value = optional:` unless absence is a bug.
+    // Without a default, `none` raises a fault.
     fn get(default: T?) T: ...
 
-    # Transforms a present payload; none remains absent.
+    // Transforms a present payload; none remains absent.
     fn map[U](transform: fn(T) U) U?: ...
 
-    # Calls transform only when present, returning its Optional unchanged.
+    // Calls transform only when present, returning its Optional unchanged.
     fn and_then[U](transform: fn(T) U?) U?: ...
 
-    # Returns the payload, or calls create once and returns its value only when absent.
+    // Returns the payload, or calls create once and returns its value only when absent.
     fn get_or_else(create: fn() T) T: ...
 
-    # Calls create once only when absent, returning its Optional unchanged.
+    // Calls create once only when absent, returning its Optional unchanged.
     fn or_else(create: fn() T?) T?: ...
 
-    # Returns ok with the original payload, or error with the eager cause.
-    # Without a cause, E is Error (kind NotFound) and the message names the calling source file and line.
+    // Returns ok with the original payload, or error with the eager cause.
+    // Without a cause, E is Error (kind NotFound) and the message names the calling source file and line.
     fn ok_or[E = Error](cause: E?) T!E: ...
 
-    # Constructs an error once only for none; present payloads remain unchanged.
+    // Constructs an error once only for none; present payloads remain unchanged.
     fn ok_or_else[E](create: fn() E) T!E: ...
 
-# Holds either a successful value (`ok`) or an expected failure (`error`).
+// Holds either a successful value (`ok`) or an expected failure (`error`).
 export type Result[T, E]:
-    # A successful result, retaining its payload without a deep copy.
+    // A successful result, retaining its payload without a deep copy.
     case ok(
-        # The successful value returned by unwrap, matching, or propagation.
+        // The successful value returned by unwrap, matching, or propagation.
         value: T
     )
-    # An expected failure value; it is distinct from faults and cancellation.
+    // An expected failure value; it is distinct from faults and cancellation.
     case error(
-        # The original domain error, retained through compatible Result propagation.
+        // The original domain error, retained through compatible Result propagation.
         cause: E
     )
 
 impl T!E:
-    # Reports whether this result contains a successful value.
+    // Reports whether this result contains a successful value.
     fn is_ok() Bool: ...
 
-    # Reports whether this result contains an expected error.
+    // Reports whether this result contains an expected error.
     fn is_error() Bool: ...
 
-    # Returns the successful payload, or `default` when this is an error; pass a default or propagate with `try` unless failure is a bug.
-    # Without a default, an error raises a fault.
+    // Returns the successful payload, or `default` when this is an error; pass a default or propagate with `try` unless failure is a bug.
+    // Without a default, an error raises a fault.
     fn get(default: T?) T: ...
 
-    # Returns the error payload; check `is_error()` first, because a successful result raises a fault.
+    // Returns the error payload; check `is_error()` first, because a successful result raises a fault.
     fn err() E: ...
 
-    # Returns the successful payload, or calls create once with the original error and returns its value.
+    // Returns the successful payload, or calls create once with the original error and returns its value.
     fn get_or_else(create: fn(E) T) T: ...
 
-    # Calls create once with the original error only when this is an error, returning its Result.
+    // Calls create once with the original error only when this is an error, returning its Result.
     fn or_else(create: fn(E) T!E) T!E: ...
 
-    # Transforms only an error, preserving a successful payload unchanged.
+    // Transforms only an error, preserving a successful payload unchanged.
     fn map_error[F](transform: fn(E) F) T!F: ...
 
-    # Transforms only a successful payload, preserving an error unchanged.
+    // Transforms only a successful payload, preserving an error unchanged.
     fn map[U](transform: fn(T) U) U!E: ...
 
-    # Calls transform only on success. Its result keeps the same error type.
+    // Calls transform only on success. Its result keeps the same error type.
     fn and_then[U](transform: fn(T) U!E) U!E: ...
 
-    # Returns some with the original success payload, or none for an error.
+    // Returns some with the original success payload, or none for an error.
     fn to_optional() T?: ...
 
-# Equality and hashing are ordinary operation interfaces. Built-in data retains
-# its value semantics; an explicit implementation selects domain identity.
+// Equality and hashing are ordinary operation interfaces. Built-in data retains
+// its value semantics; an explicit implementation selects domain identity.
 export interface Equal:
-    # Compares this value with another value of the same type.
+    // Compares this value with another value of the same type.
     fn equals(other: Self) Bool
 
-# A type with a total order; `compare` agrees with `equals` when both are implemented.
+// A type with a total order; `compare` agrees with `equals` when both are implemented.
 export interface Comparable:
-    # Orders this value against another of the same type: negative when it sorts before, zero when neither sorts first, positive when it sorts after.
+    // Orders this value against another of the same type: negative when it sorts before, zero when neither sorts first, positive when it sorts after.
     fn compare(other: Self) Int
 
-# A type whose values can be duplicated. Plain data is Clonable; functions, interface values and resource handles are not.
-# There is nothing to implement: the bound `T: Clonable` makes `value.clone()` available on a type parameter.
+// A type whose values can be duplicated. Plain data is Clonable; functions, interface values and resource handles are not.
+// There is nothing to implement: the bound `T: Clonable` makes `value.clone()` available on a type parameter.
 export interface Clonable:
-    # Returns an independent deep copy of this value.
+    // Returns an independent deep copy of this value.
     fn clone() Self
 
-# A type whose values are plain data: no resource, function, interface value, or runtime handle
-# anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify`, and the
-# message types of processes, workers, tasks and channels require `T: Data`.
-# There is nothing to implement. Records and alternatives are `Data` when every field is; among the collections
-# only `List` is, when its element is, and a `Map[String, T]` is, when `T` is (it is a JSON object). A `Set` or a `Map` with another key type is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
-# is `Data` by declaration, so a dynamic JSON object travels as a `JsonValue`.
+// A type whose values are plain data: no resource, function, interface value, or runtime handle
+// anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify`, and the
+// message types of processes, workers, tasks and channels require `T: Data`.
+// There is nothing to implement. Records and alternatives are `Data` when every field is; among the collections
+// only `List` is, when its element is, and a `Map[String, T]` is, when `T` is (it is a JSON object). A `Set` or a `Map` with another key type is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
+// is `Data` by declaration, so a dynamic JSON object travels as a `JsonValue`.
 export interface Data: ...
 
-# A type whose values are plain words in the runtime, so passing one duplicates it with a bit copy and
-# the original stays usable. Only an extern type in the standard library declares it, with `impl Copy for T:`;
-# records and alternatives are copied when every field is, and every other native moves.
+// A type whose values are plain words in the runtime, so passing one duplicates it with a bit copy and
+// the original stays usable. Only an extern type in the standard library declares it, with `impl Copy for T:`;
+// records and alternatives are copied when every field is, and every other native moves.
 export interface Copy: ...
 
-# A type with a stable hash consistent with its `Equal` implementation.
+// A type with a stable hash consistent with its `Equal` implementation.
 export interface Hashable:
-    # Returns a stable hash consistent with `equals` for the same value.
+    // Returns a stable hash consistent with `equals` for the same value.
     fn hash() Int
 
-# Returns a copy of `cause` with `context` in front of its message: `try read(path)` becomes
-# `error(wrap_error("read config", cause))`. The kind and details are kept, and the original message is
-# in `details["cause"]`.
+// Returns a copy of `cause` with `context` in front of its message: `try read(path)` becomes
+// `error(wrap_error("read config", cause))`. The kind and details are kept, and the original message is
+// in `details["cause"]`.
 export fn wrap_error(context: String, cause: Error) Error:
     var details = cause.details.clone()
     details.add("cause", cause.message.clone())
     return Error(context + ": " + cause.message, cause.kind, details)
 
-# Combines `errors` into one error whose message holds theirs, one per line, and whose `count` detail is
-# how many there were. Returns none when the list is empty.
+// Combines `errors` into one error whose message holds theirs, one per line, and whose `count` detail is
+// how many there were. Returns none when the list is empty.
 export fn join_errors(errors: List[Error]) Error?:
     if errors.length() == 0:
         return none

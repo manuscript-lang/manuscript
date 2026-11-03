@@ -1,6 +1,6 @@
-# conform: tags=alternatives,control-flow,faults,interpolation,lists,modules,optional,stdlib-testing,stdlib-url,strings,testing,tier-stdlib,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/stdlib/url.ms
+// conform: tags=alternatives,control-flow,faults,interpolation,lists,modules,optional,stdlib-testing,stdlib-url,strings,testing,tier-stdlib,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/stdlib/url.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 import (
     parse,

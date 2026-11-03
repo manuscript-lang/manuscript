@@ -14,20 +14,20 @@
           "file": "diag-idiom-includes.ms",
           "line": 5,
           "column": 17,
-          "offset": 150
+          "offset": 153
         },
         "fix": {
           "position": {
             "file": "diag-idiom-includes.ms",
             "line": 5,
             "column": 17,
-            "offset": 150
+            "offset": 153
           },
           "end": {
             "file": "diag-idiom-includes.ms",
             "line": 5,
             "column": 25,
-            "offset": 158
+            "offset": 161
           },
           "replacement": "contains"
         }

@@ -1,24 +1,24 @@
-# A shape with two cases.
+// A shape with two cases.
 export type Shape:
-    # A circle.
+    // A circle.
     case Circle(radius: Float)
-    # A square.
+    // A square.
     case Square(side: Float)
     case Empty
 
-# Anything that can be measured.
+// Anything that can be measured.
 export interface Measured:
-    # The measured size.
+    // The measured size.
     fn size() Int
 
-# A box of things.
+// A box of things.
 export type Box[T]:
-    # The contents.
+    // The contents.
     value: T
     count: Int = 1
 
 impl Measured for Box[Int]:
-    # Reports the count.
+    // Reports the count.
     fn size() Int:
         return self.count
 
@@ -27,5 +27,5 @@ impl Equal for Shape:
         return true
 
 export let LIMIT = 10
-# The default name.
+// The default name.
 export let NAME: String = "x"

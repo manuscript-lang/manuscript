@@ -1,6 +1,6 @@
-# conform: tags=modules,stdlib-testing,stdlib-time,testing,tier-io,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/time-methods.ms
+// conform: tags=modules,stdlib-testing,stdlib-time,testing,tier-io,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/time-methods.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 import nanoseconds, timestamp, parse_timestamp, monotonic, now from "@std/os/time.ms"
 

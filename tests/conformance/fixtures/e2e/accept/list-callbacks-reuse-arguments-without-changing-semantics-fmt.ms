@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,faults,formatter,lists,modules,mutation,parser,stdlib-testing,testing,tier-core,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/list-callbacks-reuse-arguments-without-changing-semantics.ms
+// conform: tags=closures,control-flow,faults,formatter,lists,modules,mutation,parser,stdlib-testing,testing,tier-core,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/list-callbacks-reuse-arguments-without-changing-semantics.ms
 import expect_true from "@std/test/test.ms"
 
 fn keep(var list: List[fn() Int], value: Int) Unit:

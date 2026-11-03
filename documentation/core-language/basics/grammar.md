@@ -27,7 +27,7 @@ unit var while
 - Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Unit) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `none`, `unit`, `try expr`, and so on).
 - `fixture` names the file fixture inside test blocks when a local `make_fixture` factory returns a concrete `TestHooks` implementer. `fixture` and `self` (the implementation receiver) cannot be declared as parameters or bindings.
 - Built-in type names and alternative constructors are not keywords.
-- `#` starts a comment through the end of the line.
+- `//` starts a comment through the end of the line. `/* ... */` is a block comment: it starts its own line (after indentation), ends at the first `*/`, and only blanks or a `//` comment may follow the `*/`. Block comments do not nest (a `/*` inside one is an error), an unterminated block is an error at its opening `/*`, and the block counts as comment-only lines for layout, so its contents are free-form. `#` is not syntax.
 - Tabs in code are rejected (allowed in comments). Control characters in text are rejected; use [text escapes](text-and-bytes.md#string-literals). Semicolons and backslash continuation are rejected.
 
 Numeric tokens:
@@ -232,11 +232,11 @@ fn positive(value: Int) Bool:
 ## Rejected forms
 
 ```manuscript
-let count = 3                       # Not a complete module item.
+let count = 3                       // Not a complete module item.
 fn wrong() Int:
-  return 1                          # A suite requires four spaces.
+  return 1                          // A suite requires four spaces.
 fn wrong() Int:
-    let (first, second) = pair       # Parentheses are not a binding pattern.
+    let (first, second) = pair       // Parentheses are not a binding pattern.
 ```
 
 Each example is an independent rejected form.

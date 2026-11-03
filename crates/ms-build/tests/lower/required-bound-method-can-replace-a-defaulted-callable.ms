@@ -1,4 +1,4 @@
-# Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
+// Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
 type Offset:
     base: Int
 

@@ -279,11 +279,27 @@ pub fn editor_tokens(source: &str) -> Vec<EditorToken<'_>> {
             at += 1;
             continue;
         }
-        if b == b'#' {
+        if b == b'/' && bytes.get(at + 1) == Some(&b'/') {
             while at < bytes.len() && bytes[at] != b'\n' {
                 at += 1;
             }
             result.push(token(source, EditorKind::Comment, start, at));
+            continue;
+        }
+        if b == b'/' && bytes.get(at + 1) == Some(&b'*') {
+            // One token per line, so clients that do not take multi-line tokens still color it.
+            let close = source[at + 2..]
+                .find("*/")
+                .map_or(bytes.len(), |c| at + 2 + c + 2);
+            let mut line = at;
+            while line < close {
+                let end = source[line..close].find('\n').map_or(close, |n| line + n);
+                if end > line {
+                    result.push(token(source, EditorKind::Comment, line, end));
+                }
+                line = end + 1;
+            }
+            at = close;
             continue;
         }
         if b == b'"' {
@@ -461,12 +477,12 @@ mod tests {
 
     #[test]
     fn utf16_columns() {
-        let s = "# 😀é\r\nfn";
+        let s = "// 😀é\r\nfn";
         assert_eq!(
-            position(s, "# 😀é".len()),
+            position(s, "// 😀é".len()),
             Position {
                 line: 0,
-                character: 5
+                character: 6
             }
         );
         assert_eq!(
@@ -501,10 +517,10 @@ mod tests {
 
     #[test]
     fn scanner_survives_unfinished_strings() {
-        let tokens = editor_tokens("let x = \"abc\n# note");
+        let tokens = editor_tokens("let x = \"abc\n// note");
         // An unterminated string runs to the end of the source, as in the Go scanner.
         assert_eq!(tokens.len(), 4);
         assert_eq!(tokens[3].kind, EditorKind::Str);
-        assert_eq!(tokens[3].end, "let x = \"abc\n# note".len());
+        assert_eq!(tokens[3].end, "let x = \"abc\n// note".len());
     }
 }

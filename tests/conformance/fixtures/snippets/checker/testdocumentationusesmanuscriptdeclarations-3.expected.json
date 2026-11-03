@@ -14,7 +14,7 @@
           "file": "testdocumentationusesmanuscriptdeclarations-3.ms",
           "line": 4,
           "column": 1,
-          "offset": 230
+          "offset": 233
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testdocumentationusesmanuscriptdeclarations-3.ms",
           "line": 8,
           "column": 1,
-          "offset": 274
+          "offset": 277
         }
       }
     ],

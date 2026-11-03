@@ -1,5 +1,5 @@
-# conform: tags=closures,generics,lists,stdlib-property,stdlib-testing,testing,tier-io,try-result
-# conform: phase=test
+// conform: tags=closures,generics,lists,stdlib-property,stdlib-testing,testing,tier-io,try-result
+// conform: phase=test
 import (
     check,
     ints,

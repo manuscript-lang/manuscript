@@ -31,7 +31,7 @@ fn all_digits(s: String) Bool:
         if not "0123456789".contains(c): return false
     return true
 
-# One or two ASCII digits.
+// One or two ASCII digits.
 fn parse_num(s: String) Optional[Int]:
     if s.length() < 1 or s.length() > 2 or not all_digits(s): return none
 
@@ -61,7 +61,7 @@ fn weekday(st: Stamp) Int:
         days += days_in_month(st.year, m)
         m += 1
 
-    # 1970-01-01 was a Thursday, which is 4 with Sunday as 0.
+    // 1970-01-01 was a Thursday, which is 4 with Sunday as 0.
     return (days + st.day - 1 + 4) % 7
 
 fn parse_start(s: String) Optional[Stamp]:
@@ -99,7 +99,7 @@ fn parse_start(s: String) Optional[Stamp]:
         )
     )
 
-# Values selected by one cron item: `*`, `*/S`, `A`, `A-B`, or `A-B/S`.
+// Values selected by one cron item: `*`, `*/S`, `A`, `A-B`, or `A-B/S`.
 fn item_values(item: String, lo: Int, hi: Int) Optional[List[Int]]:
     let parts = item.split("/")
     if parts.length() > 2: return none
@@ -161,7 +161,7 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[Set[Int]]:
 fn pad_stamp(st: Stamp) String:
     return "{st.year}-{pad2(st.month)}-{pad2(st.day)} {pad2(st.hour)}:{pad2(st.minute)}"
 
-# Finds up to `count` matching minutes strictly after `st`, searching 3000 days past its date.
+// Finds up to `count` matching minutes strictly after `st`, searching 3000 days past its date.
 fn next_runs(
     st: Stamp,
     count: Int,

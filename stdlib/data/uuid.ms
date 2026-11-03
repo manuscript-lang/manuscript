@@ -5,19 +5,19 @@ import bit_and, bit_or, shift_right_unsigned from "@std/math/math.ms"
 import random_bytes from "@std/os/random.ms"
 import now from "@std/os/time.ms"
 
-# The namespace for fully qualified domain names, for `uuid_v5`.
+// The namespace for fully qualified domain names, for `uuid_v5`.
 export let namespace_dns = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
-# The namespace for URLs, for `uuid_v5`.
+// The namespace for URLs, for `uuid_v5`.
 export let namespace_url = "6ba7b811-9dad-11d1-80b4-00c04fd430c8"
-# The namespace for ISO object identifiers, for `uuid_v5`.
+// The namespace for ISO object identifiers, for `uuid_v5`.
 export let namespace_oid = "6ba7b812-9dad-11d1-80b4-00c04fd430c8"
-# The namespace for X.500 distinguished names, for `uuid_v5`.
+// The namespace for X.500 distinguished names, for `uuid_v5`.
 export let namespace_x500 = "6ba7b814-9dad-11d1-80b4-00c04fd430c8"
 
-# Creates the version-5 (SHA-1, name-based) UUID of `name` within `namespace`.
-# The same namespace and name always give the same lowercase UUID, so it makes a stable id for a URL, a path or a key.
-# `namespace` is any UUID text, such as `namespace_url` or an application's own UUID; malformed text returns InvalidData.
-# Example: `uuid_v5(namespace_dns, "python.org")` is `"886313e1-3b8a-5372-9b90-0c9aee199e5d"`.
+// Creates the version-5 (SHA-1, name-based) UUID of `name` within `namespace`.
+// The same namespace and name always give the same lowercase UUID, so it makes a stable id for a URL, a path or a key.
+// `namespace` is any UUID text, such as `namespace_url` or an application's own UUID; malformed text returns InvalidData.
+// Example: `uuid_v5(namespace_dns, "python.org")` is `"886313e1-3b8a-5372-9b90-0c9aee199e5d"`.
 export fn uuid_v5(namespace: String, name: String) String!:
     let space = try uuid_to_bytes(namespace)
     var input = BytesBuilder()
@@ -27,9 +27,9 @@ export fn uuid_v5(namespace: String, name: String) String!:
     let digest = HashAlgorithm.Sha1.digest(input.build())
     return ok(format_uuid(digest, 5))
 
-# Creates a version-7 UUID: the current Unix time in milliseconds followed by random bits, in lowercase text.
-# Ids made later sort after ids made earlier as strings, which keeps database indexes and logs in creation order.
-# Two ids made in the same millisecond are ordered randomly. Entropy failures return an `Error`.
+// Creates a version-7 UUID: the current Unix time in milliseconds followed by random bits, in lowercase text.
+// Ids made later sort after ids made earlier as strings, which keeps database indexes and logs in creation order.
+// Two ids made in the same millisecond are ordered randomly. Entropy failures return an `Error`.
 export fn uuid_v7() String!:
     let moment = now()
     let millis = moment.seconds * 1000 + moment.nanos / 1000000
@@ -44,8 +44,8 @@ export fn uuid_v7() String!:
     raw.append_bytes(noise)
     return ok(format_uuid(raw.build(), 7))
 
-# Returns the version digit (1 through 8) of an RFC 9562 UUID text, or none when `text` is not a UUID of that variant.
-# Case does not matter. Example: `uuid_version("886313e1-3b8a-5372-9b90-0c9aee199e5d")` is `5`.
+// Returns the version digit (1 through 8) of an RFC 9562 UUID text, or none when `text` is not a UUID of that variant.
+// Case does not matter. Example: `uuid_version("886313e1-3b8a-5372-9b90-0c9aee199e5d")` is `5`.
 export fn uuid_version(text: String) Int?:
     let raw = uuid_to_bytes(text)
 
@@ -56,7 +56,7 @@ export fn uuid_version(text: String) Int?:
 
     return none
 
-# Parses the 16 bytes of a UUID text of any version.
+// Parses the 16 bytes of a UUID text of any version.
 fn uuid_to_bytes(text: String) Bytes!:
     if text.length() != 36: return error(
         Error("uuid: invalid data", kind: ErrorCategory.InvalidData)
@@ -77,7 +77,7 @@ fn uuid_to_bytes(text: String) Bytes!:
 
     return error(Error("uuid: invalid data", kind: ErrorCategory.InvalidData))
 
-# Stamps the version and RFC 9562 variant onto the first 16 bytes and renders them as lowercase `8-4-4-4-12` text.
+// Stamps the version and RFC 9562 variant onto the first 16 bytes and renders them as lowercase `8-4-4-4-12` text.
 fn format_uuid(source: Bytes, version: Int) String:
     var raw = BytesBuilder()
 

@@ -1,9 +1,9 @@
-# Generator for c05-calculator. Deterministic; run: ms run bench/agent/gen.ms -- c05
+// Generator for c05-calculator. Deterministic; run: ms run bench/agent/gen.ms -- c05
 import GenCase, make_case, write_cases from "../../lib/gen.ms"
 import seeded from "../../lib/pyrandom.ms"
 import Random from "../../lib/pyrandom.ms"
 
-# A token: `n` with a value, or `o` with the operator character.
+// A token: `n` with a value, or `o` with the operator character.
 type Tok:
     kind: String
     text: String
@@ -33,8 +33,8 @@ fn tokens(line: String) List[Tok]:
 
     return out
 
-# A recursive-descent evaluator. `bad` records a syntax error (which wins over a division by zero); once set
-# the parser sees no more tokens, so every loop ends.
+// A recursive-descent evaluator. `bad` records a syntax error (which wins over a division by zero); once set
+// the parser sees no more tokens, so every loop ends.
 type Parser:
     toks: List[Tok]
     pos: Int = 0

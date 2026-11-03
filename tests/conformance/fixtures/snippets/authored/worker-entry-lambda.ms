@@ -1,5 +1,5 @@
-# conform: tags=diagnostics,closures,stdlib-workers,tier-core
-# conform: phase=check
+// conform: tags=diagnostics,closures,stdlib-workers,tier-core
+// conform: phase=check
 import WorkerGroup from "@std/concurrency/workers.ms"
 
 fn work(count: Int) Unit:

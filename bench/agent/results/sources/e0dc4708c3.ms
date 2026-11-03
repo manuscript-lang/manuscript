@@ -2,7 +2,7 @@ import read_line, stdin, stdout from "@std/io.ms"
 import range from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
 
-# Returns the value of a 1 to 6 digit decimal, or -1 when the text is not one.
+// Returns the value of a 1 to 6 digit decimal, or -1 when the text is not one.
 fn parse_num(text: String) Int:
     let digits = text.to_bytes()
     if digits.length() == 0 or digits.length() > 6:
@@ -92,7 +92,7 @@ fn edit_distance(a: Bytes, b: Bytes) Int:
 
     return prev.get(n)
 
-# An item is a `w:v` token with a weight of at least 1 and a value of at least 0.
+// An item is a `w:v` token with a weight of at least 1 and a value of at least 0.
 fn item_valid(token: String) Bool:
     let parts = token.split(":")
     if parts.length() != 2:

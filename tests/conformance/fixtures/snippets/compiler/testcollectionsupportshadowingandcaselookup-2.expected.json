@@ -14,26 +14,26 @@
           "file": "testcollectionsupportshadowingandcaselookup-2.ms",
           "line": 5,
           "column": 5,
-          "offset": 257
+          "offset": 260
         },
         "end": {
           "file": "testcollectionsupportshadowingandcaselookup-2.ms",
           "line": 5,
           "column": 14,
-          "offset": 266
+          "offset": 269
         },
         "fix": {
           "position": {
             "file": "testcollectionsupportshadowingandcaselookup-2.ms",
             "line": 5,
             "column": 5,
-            "offset": 257
+            "offset": 260
           },
           "end": {
             "file": "testcollectionsupportshadowingandcaselookup-2.ms",
             "line": 5,
             "column": 15,
-            "offset": 267
+            "offset": 270
           },
           "replacement": ""
         }
@@ -46,26 +46,26 @@
           "file": "testcollectionsupportshadowingandcaselookup-2.ms",
           "line": 6,
           "column": 5,
-          "offset": 272
+          "offset": 275
         },
         "end": {
           "file": "testcollectionsupportshadowingandcaselookup-2.ms",
           "line": 6,
           "column": 13,
-          "offset": 280
+          "offset": 283
         },
         "fix": {
           "position": {
             "file": "testcollectionsupportshadowingandcaselookup-2.ms",
             "line": 6,
             "column": 5,
-            "offset": 272
+            "offset": 275
           },
           "end": {
             "file": "testcollectionsupportshadowingandcaselookup-2.ms",
             "line": 6,
             "column": 14,
-            "offset": 281
+            "offset": 284
           },
           "replacement": ""
         }
@@ -78,26 +78,26 @@
           "file": "testcollectionsupportshadowingandcaselookup-2.ms",
           "line": 11,
           "column": 8,
-          "offset": 378
+          "offset": 381
         },
         "end": {
           "file": "testcollectionsupportshadowingandcaselookup-2.ms",
           "line": 11,
           "column": 21,
-          "offset": 391
+          "offset": 394
         },
         "fix": {
           "position": {
             "file": "testcollectionsupportshadowingandcaselookup-2.ms",
             "line": 11,
             "column": 8,
-            "offset": 378
+            "offset": 381
           },
           "end": {
             "file": "testcollectionsupportshadowingandcaselookup-2.ms",
             "line": 11,
             "column": 23,
-            "offset": 393
+            "offset": 396
           },
           "replacement": ""
         }
@@ -110,13 +110,13 @@
           "file": "testcollectionsupportshadowingandcaselookup-2.ms",
           "line": 11,
           "column": 23,
-          "offset": 393
+          "offset": 396
         },
         "end": {
           "file": "testcollectionsupportshadowingandcaselookup-2.ms",
           "line": 11,
           "column": 31,
-          "offset": 401
+          "offset": 404
         }
       }
     ],

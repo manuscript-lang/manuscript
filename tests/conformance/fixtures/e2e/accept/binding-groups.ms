@@ -1,6 +1,6 @@
-# conform: tags=closures,destructuring,interpolation,modules,mutation,stdlib-testing,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/binding-groups.ms
+// conform: tags=closures,destructuring,interpolation,modules,mutation,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/binding-groups.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
 let (

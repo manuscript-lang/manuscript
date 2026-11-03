@@ -9,24 +9,24 @@ import (
     msstd_encoding_base32_decode
 ) from "@std/internal/encoding.ms"
 
-# Encodes unframed ASCII85; complete groups of four zero bytes become `z`.
-# No Adobe `<~`/`~>` delimiters are added. Example: `ascii85_encode("hello".to_bytes())` is `"BOu!rDZ"`.
+// Encodes unframed ASCII85; complete groups of four zero bytes become `z`.
+// No Adobe `<~`/`~>` delimiters are added. Example: `ascii85_encode("hello".to_bytes())` is `"BOu!rDZ"`.
 export fn ascii85_encode(data: Bytes) String:
     return msstd_encoding_ascii85_encode(data)
 
-# Decodes unframed ASCII85, ignoring ASCII bytes 0 through 32; `z` is valid only between groups.
-# Rejects Adobe delimiters, one-digit tails, invalid characters and overflowing complete or partial 32-bit groups.
-# Negative `max_bytes` returns InvalidInput; decoded output above it returns LimitExceeded before allocating output.
+// Decodes unframed ASCII85, ignoring ASCII bytes 0 through 32; `z` is valid only between groups.
+// Rejects Adobe delimiters, one-digit tails, invalid characters and overflowing complete or partial 32-bit groups.
+// Negative `max_bytes` returns InvalidInput; decoded output above it returns LimitExceeded before allocating output.
 export fn ascii85_decode(text: String, max_bytes: Int?) Bytes!:
     return msstd_encoding_ascii85_decode(text, max_bytes)
 
-# Encodes standard Base64 without `=`; `url_safe` selects the URL-safe alphabet.
-# Example: `base64_encode_unpadded("f".to_bytes())` returns `"Zg"`.
+// Encodes standard Base64 without `=`; `url_safe` selects the URL-safe alphabet.
+// Example: `base64_encode_unpadded("f".to_bytes())` returns `"Zg"`.
 export fn base64_encode_unpadded(data: Bytes, url_safe: Bool = false) String:
     return msstd_encoding_base64_encode_unpadded(data, url_safe)
 
-# Decodes unpadded standard Base64; `url_safe` selects the URL-safe alphabet.
-# Rejects `=`, whitespace and nonzero unused bits. Negative `max_bytes` returns InvalidInput; output exceeding it returns LimitExceeded.
+// Decodes unpadded standard Base64; `url_safe` selects the URL-safe alphabet.
+// Rejects `=`, whitespace and nonzero unused bits. Negative `max_bytes` returns InvalidInput; output exceeding it returns LimitExceeded.
 export fn base64_decode_unpadded(
     text: String,
     url_safe: Bool = false,
@@ -34,8 +34,8 @@ export fn base64_decode_unpadded(
 ) Bytes!:
     return msstd_encoding_base64_decode_unpadded(text, url_safe, max_bytes)
 
-# Encodes uppercase RFC 4648 Base32. `hex_alphabet` selects 0-9/A-V; `padded: false` omits `=`.
-# Example: `base32_encode("f".to_bytes())` returns `"MY======"`.
+// Encodes uppercase RFC 4648 Base32. `hex_alphabet` selects 0-9/A-V; `padded: false` omits `=`.
+// Example: `base32_encode("f".to_bytes())` returns `"MY======"`.
 export fn base32_encode(
     data: Bytes,
     hex_alphabet: Bool = false,
@@ -43,9 +43,9 @@ export fn base32_encode(
 ) String:
     return msstd_encoding_base32_encode(data, hex_alphabet, padded)
 
-# Decodes uppercase RFC 4648 Base32, or 0-9/A-V when `hex_alphabet` is true.
-# Padding must be exact and only at the end; `padded: false` forbids `=`. Whitespace and nonzero unused bits return InvalidData.
-# Negative `max_bytes` returns InvalidInput; output exceeding it returns LimitExceeded.
+// Decodes uppercase RFC 4648 Base32, or 0-9/A-V when `hex_alphabet` is true.
+// Padding must be exact and only at the end; `padded: false` forbids `=`. Whitespace and nonzero unused bits return InvalidData.
+// Negative `max_bytes` returns InvalidInput; output exceeding it returns LimitExceeded.
 export fn base32_decode(
     text: String,
     hex_alphabet: Bool = false,
@@ -54,7 +54,7 @@ export fn base32_decode(
 ) Bytes!:
     return msstd_encoding_base32_decode(text, hex_alphabet, padded, max_bytes)
 
-# Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
+// Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
 export fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Int?) Bytes!:
     let limit = budget(max_bytes)
     if limit < 0: return error(Error("encoding: invalid input", kind: InvalidInput))
@@ -121,7 +121,7 @@ export fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Int?) B
 
     return ok(out.build())
 
-# Value of a Base64 digit in the chosen alphabet, or -1.
+// Value of a Base64 digit in the chosen alphabet, or -1.
 fn base64_digit(byte: Int, url_safe: Bool) Int:
     if byte >= 65 and byte <= 90: return byte - 65
     if byte >= 97 and byte <= 122: return byte - 71
@@ -138,7 +138,7 @@ fn base64_digit(byte: Int, url_safe: Bool) Int:
 
     return -1
 
-# ASCII bytes of the selected Base64 alphabet.
+// ASCII bytes of the selected Base64 alphabet.
 fn base64_table(url_safe: Bool) List[UInt8]:
     if url_safe: return (
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
@@ -152,13 +152,13 @@ fn base64_table(url_safe: Bool) List[UInt8]:
         .values()
     )
 
-# The budget as a count, with no budget as a very large one and a negative budget as -1.
+// The budget as a count, with no budget as a very large one and a negative budget as -1.
 fn budget(max_bytes: Int?) Int:
     if let limit = max_bytes: return limit
 
     return 9223372036854775807
 
-# Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
+// Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
 export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
     var out = StringBuilder()
     var batch = BytesBuilder()
@@ -167,7 +167,7 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
     let length = bytes.length()
     var index = 0
 
-    # Batch at most 16 KiB of ASCII before converting it to text.
+    // Batch at most 16 KiB of ASCII before converting it to text.
     while index < length:
         let end = if length - index > 12288: index + 12288 else: length
 
@@ -194,7 +194,7 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
 
     return out.build()
 
-# Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
+// Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
 export fn hex_decode(text: String, max_bytes: Int?) Bytes!:
     let limit = budget(max_bytes)
     if limit < 0: return error(Error("encoding: invalid input", kind: InvalidInput))
@@ -219,7 +219,7 @@ export fn hex_decode(text: String, max_bytes: Int?) Bytes!:
 
     return ok(out.build())
 
-# Value of a hexadecimal digit of either case, or -1.
+// Value of a hexadecimal digit of either case, or -1.
 fn hex_digit(byte: Int) Int:
     if byte >= 48 and byte <= 57: return byte - 48
     if byte >= 97 and byte <= 102: return byte - 87
@@ -227,7 +227,7 @@ fn hex_digit(byte: Int) Int:
 
     return -1
 
-# Encodes each byte as two lowercase hexadecimal digits.
+// Encodes each byte as two lowercase hexadecimal digits.
 export fn hex_encode(data: Bytes) String:
     var out = StringBuilder()
     let digits = "0123456789abcdef".chars()
@@ -239,8 +239,8 @@ export fn hex_encode(data: Bytes) String:
 
     return out.build()
 
-# Encodes text as UTF-16 code units, little-endian unless `little_endian` is false (Node `utf16le`).
-# No byte order mark is written.
+// Encodes text as UTF-16 code units, little-endian unless `little_endian` is false (Node `utf16le`).
+// No byte order mark is written.
 export fn utf16_encode(text: String, little_endian: Bool = true) Bytes:
     var out = BytesBuilder()
 
@@ -262,7 +262,7 @@ fn append_unit(var out: BytesBuilder, code: Int, little_endian: Bool) Unit:
         out.append(byte_of(code / 256))
         out.append(byte_of(code % 256))
 
-# UTF-8 byte length of one scalar.
+// UTF-8 byte length of one scalar.
 fn utf8_length(scalar: Int) Int:
     if scalar < 128: return 1
     if scalar < 2048: return 2
@@ -270,7 +270,7 @@ fn utf8_length(scalar: Int) Int:
 
     return 4
 
-# A byte from a count already known to be 0 through 255.
+// A byte from a count already known to be 0 through 255.
 fn byte_of(n: Int) UInt8:
     return n.to_uint8().get(0)
 
@@ -279,8 +279,8 @@ fn text_of(scalars: List[Int]) String:
 
     return ""
 
-# Decodes UTF-16 bytes, little-endian unless `little_endian` is false.
-# An odd length or an unpaired surrogate returns InvalidData; a negative `max_bytes` returns InvalidInput, and decoded text longer than `max_bytes` UTF-8 bytes returns LimitExceeded.
+// Decodes UTF-16 bytes, little-endian unless `little_endian` is false.
+// An odd length or an unpaired surrogate returns InvalidData; a negative `max_bytes` returns InvalidInput, and decoded text longer than `max_bytes` UTF-8 bytes returns LimitExceeded.
 export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?) String!:
     let limit = budget(max_bytes)
     if limit < 0: return error(Error("encoding: invalid input", kind: InvalidInput))
@@ -333,7 +333,7 @@ export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?)
 
     return ok(text_of(scalars))
 
-# Encodes text as ISO-8859-1, one byte per scalar. A scalar above U+00FF returns InvalidData.
+// Encodes text as ISO-8859-1, one byte per scalar. A scalar above U+00FF returns InvalidData.
 export fn latin1_encode(text: String) Bytes!:
     return narrow(text, 255)
 
@@ -349,15 +349,15 @@ fn narrow(text: String, maximum: Int) Bytes!:
 
     return ok(out.build())
 
-# Decodes ISO-8859-1 bytes, mapping every byte to the scalar of the same value.
+// Decodes ISO-8859-1 bytes, mapping every byte to the scalar of the same value.
 export fn latin1_decode(data: Bytes) String:
     return text_of(data.values().map(fn b: b.to_int()))
 
-# Encodes text as 7-bit ASCII. A scalar above U+007F returns InvalidData.
+// Encodes text as 7-bit ASCII. A scalar above U+007F returns InvalidData.
 export fn ascii_encode(text: String) Bytes!:
     return narrow(text, 127)
 
-# Decodes 7-bit ASCII bytes. A byte above 0x7F returns InvalidData.
+// Decodes 7-bit ASCII bytes. A byte above 0x7F returns InvalidData.
 export fn ascii_decode(data: Bytes) String!:
     let bytes = data.values()
     for byte in bytes:

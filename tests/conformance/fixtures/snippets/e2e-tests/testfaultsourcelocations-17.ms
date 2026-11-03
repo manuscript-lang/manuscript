@@ -1,6 +1,6 @@
-# conform: tags=control-flow,faults,modules,stdlib-faults,testing,tier-stdlib
-# conform: phase=test
-# conform: origin=tests/e2e/fault_locations_test.go:141 TestFaultSourceLocations
+// conform: tags=control-flow,faults,modules,stdlib-faults,testing,tier-stdlib
+// conform: phase=test
+// conform: origin=tests/e2e/fault_locations_test.go:141 TestFaultSourceLocations
 import panic from "@std/core.ms"
 
 test "several checks":

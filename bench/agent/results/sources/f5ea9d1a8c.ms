@@ -3,7 +3,7 @@ import stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 import range from "@std/collections.ms"
 
-# Formats a hunk range: `start`, `start,length`, or `start,0`.
+// Formats a hunk range: `start`, `start,length`, or `start,0`.
 fn span(start: Int, length: Int) String:
     if length == 1: return "{start}"
 
@@ -18,7 +18,7 @@ export fn main() Int:
     let n = header[3].parse_int().get(0)
     let m = header[4].parse_int().get(0)
 
-    # Line i of A is lines[1 + i]; line j of B is lines[1 + n + j].
+    // Line i of A is lines[1 + i]; line j of B is lines[1 + n + j].
     let cols = m + 1
     var table = List[Int]()
     for k in range(0, (n + 1) * cols):
@@ -41,7 +41,7 @@ export fn main() Int:
                 else:
                     table[i * cols + j] = right
 
-    # Walk the edit script. Kind 0 is unchanged, 1 a deletion from A, 2 an insertion from B.
+    // Walk the edit script. Kind 0 is unchanged, 1 a deletion from A, 2 an insertion from B.
     var kinds = List[Int]()
     var texts = List[String]()
     var x = 0
@@ -79,7 +79,7 @@ export fn main() Int:
     if changes.length() == 0:
         return 0
 
-    # Number of A and B lines consumed before each script position.
+    // Number of A and B lines consumed before each script position.
     var a_before = List[Int]()
     var b_before = List[Int]()
     a_before.append(0)

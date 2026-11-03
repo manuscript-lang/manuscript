@@ -7,7 +7,7 @@ fn is_upper(c: Int) Bool:
 fn is_lower(c: Int) Bool:
     return c >= 97 and c <= 122
 
-# Shifts letters by keys[position % keys.length()] * sign; position counts letters only.
+// Shifts letters by keys[position % keys.length()] * sign; position counts letters only.
 fn transform(text: String, keys: List[Int], sign: Int) String:
     var out = List[Int]()
     var i = 0

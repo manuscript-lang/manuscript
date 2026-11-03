@@ -64,7 +64,7 @@ type Closure:
     body: Value
     env: Int
 
-# One evaluation step: either a finished value, or an expression to continue with in the same loop.
+// One evaluation step: either a finished value, or an expression to continue with in the same loop.
 type Step:
     done: Bool
     value: Value
@@ -227,7 +227,7 @@ impl Machine:
             self.emit("\n")
         self.emit("error: " + msg + "\n")
 
-    # ---- heap: pairs, closures, frames -------------------------------------------------
+    // ---- heap: pairs, closures, frames -------------------------------------------------
 
     var fn cons(a: Value, d: Value) Value:
         self.cars.append(a)
@@ -438,7 +438,7 @@ impl Machine:
 
         return ok(frame)
 
-    # ---- printing ----------------------------------------------------------------------
+    // ---- printing ----------------------------------------------------------------------
 
     var fn write_string(s: String) String:
         var out = "\""
@@ -507,7 +507,7 @@ impl Machine:
                 out += " . " + self.render(rest, write)
             return out + ")"
 
-    # ---- reader ------------------------------------------------------------------------
+    // ---- reader ------------------------------------------------------------------------
 
     var fn peek() String:
         if self.pos < self.chars.length():
@@ -669,10 +669,10 @@ impl Machine:
             let form = try self.read_datum()
             let _v = try self.run(form, 0, 0, false)
 
-    # ---- evaluator ---------------------------------------------------------------------
+    // ---- evaluator ---------------------------------------------------------------------
 
-    # Evaluates `expr`. `tail` says whether this loop is a procedure body (a call here
-    # replaces the frame, so depth stays) or a sub-expression (a call here goes one deeper).
+    // Evaluates `expr`. `tail` says whether this loop is a procedure body (a call here
+    // replaces the frame, so depth stays) or a sub-expression (a call here goes one deeper).
     var fn run(expr: Value, env: Int, depth: Int, tail: Bool) Result[Value, Fail]:
         var form = expr
         var frame = env
@@ -761,7 +761,7 @@ impl Machine:
 
         return error(runtime_error("not a procedure: " + self.render(callee, true)))
 
-    # Calls a procedure from inside a builtin; `d` is the depth of the callee's body.
+    // Calls a procedure from inside a builtin; `d` is the depth of the callee's body.
     var fn call_proc(callee: Value, args: List[Value], d: Int) Result[Value, Fail]:
         let pid = self.proc_id(callee.clone())
 
@@ -780,7 +780,7 @@ impl Machine:
         let last = try self.run_init(body, frame, d)
         return self.run(last, frame, d, true)
 
-    # Evaluates all forms of a body but the last, and returns the last one unevaluated.
+    // Evaluates all forms of a body but the last, and returns the last one unevaluated.
     var fn run_init(forms: Value, env: Int, depth: Int) Result[Value, Fail]:
         var cur = forms.clone()
 
@@ -1116,7 +1116,7 @@ impl Machine:
             out.append(Value.Sym(id))
         return self.from_list(out)
 
-    # ---- argument helpers for builtins -------------------------------------------------
+    // ---- argument helpers for builtins -------------------------------------------------
 
     var fn type_error(name: String, kind: String, v: Value) Fail:
         return runtime_error("{name}: expected {kind}, got {self.render(v, true)}")
@@ -1295,7 +1295,7 @@ impl Machine:
 
         return ok(out)
 
-    # ---- builtins ----------------------------------------------------------------------
+    // ---- builtins ----------------------------------------------------------------------
 
     var fn call_prim(name: String, args: List[Value], d: Int) Result[Value, Fail]:
         let numbers_result = try self.prim_numbers(name, args, d)

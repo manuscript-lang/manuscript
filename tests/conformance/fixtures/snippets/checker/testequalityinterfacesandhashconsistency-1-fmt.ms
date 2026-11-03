@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,maps,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/stdlib_revamp_test.go:15 TestEqualityInterfacesAndHashConsistency
+// conform: tags=control-flow,formatter,interfaces,maps,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/stdlib_revamp_test.go:15 TestEqualityInterfacesAndHashConsistency
 type Key:
     id: Int
 

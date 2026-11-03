@@ -1,4 +1,4 @@
-# Generator for c14-dp-suite. Deterministic; run: ms run bench/agent/gen.ms -- c14
+// Generator for c14-dp-suite. Deterministic; run: ms run bench/agent/gen.ms -- c14
 import GenCase, make_case, write_cases from "../../lib/gen.ms"
 import seeded from "../../lib/pyrandom.ms"
 import Random from "../../lib/pyrandom.ms"

@@ -1,12 +1,12 @@
-# conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-tasks,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
+// conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-tasks,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
 import Task, TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_true from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
-# Edge behaviour found by probing the concurrency runtime: misuse and limits answer with errors, never a
-# fault or a hang, and every wait here ends on its own.
+// Edge behaviour found by probing the concurrency runtime: misuse and limits answer with errors, never a
+// fault or a hang, and every wait here ends on its own.
 
 fn quick() Int:
     return 7
@@ -68,7 +68,7 @@ test "many tasks echo through their channels without losing a value":
         counts += r.get(0)
     try group.close()
 
-    # Each task echoes 0..199 plus one: 20 tasks, sum 19900 + 200 per task.
+    // Each task echoes 0..199 plus one: 20 tasks, sum 19900 + 200 per task.
     try expect_equal(total, 20 * (19900 + 200))
     try expect_equal(counts, 20 * 200)
 

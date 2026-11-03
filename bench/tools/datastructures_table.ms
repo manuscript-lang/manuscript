@@ -1,6 +1,6 @@
-# Validates complete data-structure trials before comparing minimum ns/op (bench/perf/datastructures).
-# Samples are `<version> <operation> <count> <nanoseconds>`. The runner appends `<version> # end` only after a successful
-# producer. Producers do not emit checksums.
+// Validates complete data-structure trials before comparing minimum ns/op (bench/perf/datastructures).
+// Samples are `<version> <operation> <count> <nanoseconds>`. The runner appends `<version> # end` only after a successful
+// producer. Producers do not emit checksums.
 import invalid, left, right from "./lib.ms"
 
 export type Operation:
@@ -21,7 +21,7 @@ export fn operations() List[Operation]:
 export fn versions() List[String]:
     return ["ms", "go", "rs"]
 
-# Go has no sorted-map producer; all other rows are required in every version.
+// Go has no sorted-map producer; all other rows are required in every version.
 fn required(version: String) List[String]:
     let names = operations().map(fn o: o.name.clone())
     if version == "go": return names.filter(fn n: n != "sorted_map_add_contains")

@@ -1,6 +1,6 @@
-# conform: tags=strings,numbers,lists,interpolation,tier-stdlib
-# conform: phase=run
-# conform: origin=perf fast paths: builder append fusion, chars, parse_int, sort
+// conform: tags=strings,numbers,lists,interpolation,tier-stdlib
+// conform: phase=run
+// conform: origin=perf fast paths: builder append fusion, chars, parse_int, sort
 import stdout from "@std/io/io.ms"
 import StringBuilder from "@std/string.ms"
 import parse_int from "@std/math/math.ms"

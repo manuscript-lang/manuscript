@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,interfaces,lists,match,modules,mutation,optional,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/successful-result-int-bounds.ms
+// conform: tags=closures,control-flow,interfaces,lists,match,modules,mutation,optional,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/successful-result-int-bounds.ms
 import Closeable from "@std/core.ms"
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 

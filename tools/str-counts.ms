@@ -1,8 +1,8 @@
-# Dynamic String copy and drop counts: builds each program with MS_COUNT_STR=1 against the counting runtime (`ms-rt` feature
-# `stats`, as in tools/leak-check.ms) and prints the totals the program reports at exit, split into static strings (no count to
-# change) and owned ones. Owned copies are the allocations unique ownership would add; `bench/tools/copy_report.ms` counts the static
-# sites.
-# Usage: ms run tools/str-counts.ms -- <ms.toml|file.ms>...
+// Dynamic String copy and drop counts: builds each program with MS_COUNT_STR=1 against the counting runtime (`ms-rt` feature
+// `stats`, as in tools/leak-check.ms) and prints the totals the program reports at exit, split into static strings (no count to
+// change) and owned ones. Owned copies are the allocations unique ownership would add; `bench/tools/copy_report.ms` counts the static
+// sites.
+// Usage: ms run tools/str-counts.ms -- <ms.toml|file.ms>...
 import exe, note, run_program, use_stats_runtime, works from "./lib.ms"
 import canonicalize, temporary from "@std/os/fs.ms"
 import arguments, set_environment, run from "@std/os/process.ms"

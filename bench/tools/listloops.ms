@@ -1,7 +1,7 @@
-# Plain element-wise list loops in GFLOPS (higher is better), best of N (bench/perf/listloops).
-# ms is the Manuscript loops (`for i in 0..n: out[i] = ...`) built with `ms build`; c-sse2 and c-avx2 are the same loops in C at
-# -O3 with strict IEEE semantics (no -ffast-math, no FMA contraction), so neither side may reorder floating-point reductions.
-# Usage: ms run bench/tools/listloops.ms [-- repeats]; MS and CC pick the tools.
+// Plain element-wise list loops in GFLOPS (higher is better), best of N (bench/perf/listloops).
+// ms is the Manuscript loops (`for i in 0..n: out[i] = ...`) built with `ms build`; c-sse2 and c-avx2 are the same loops in C at
+// -O3 with strict IEEE semantics (no -ffast-math, no FMA contraction), so neither side may reorder floating-point reductions.
+// Usage: ms run bench/tools/listloops.ms [-- repeats]; MS and CC pick the tools.
 import build_ms, capture, env, finish, must, repeats, sample, usage from "./lib.ms"
 import copy, CopyOptions, temporary from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"

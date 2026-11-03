@@ -14,13 +14,13 @@
           "file": "testpreludenamescannotberedeclared-7.ms",
           "line": 4,
           "column": 8,
-          "offset": 163
+          "offset": 166
         },
         "end": {
           "file": "testpreludenamescannotberedeclared-7.ms",
           "line": 4,
           "column": 11,
-          "offset": 166
+          "offset": 169
         }
       }
     ],

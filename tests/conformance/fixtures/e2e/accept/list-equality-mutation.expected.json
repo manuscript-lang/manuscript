@@ -29,20 +29,20 @@
             "file": "list-equality-mutation.ms",
             "line": 26,
             "column": 17,
-            "offset": 707
+            "offset": 710
           },
           "fix": {
             "position": {
               "file": "list-equality-mutation.ms",
               "line": 58,
               "column": 5,
-              "offset": 1557
+              "offset": 1560
             },
             "end": {
               "file": "list-equality-mutation.ms",
               "line": 58,
               "column": 5,
-              "offset": 1557
+              "offset": 1560
             },
             "replacement": ".clone()"
           }
@@ -55,20 +55,20 @@
             "file": "list-equality-mutation.ms",
             "line": 26,
             "column": 17,
-            "offset": 707
+            "offset": 710
           },
           "fix": {
             "position": {
               "file": "list-equality-mutation.ms",
               "line": 58,
               "column": 5,
-              "offset": 1557
+              "offset": 1560
             },
             "end": {
               "file": "list-equality-mutation.ms",
               "line": 58,
               "column": 5,
-              "offset": 1557
+              "offset": 1560
             },
             "replacement": ".clone()"
           }
@@ -81,20 +81,20 @@
             "file": "list-equality-mutation.ms",
             "line": 26,
             "column": 17,
-            "offset": 707
+            "offset": 710
           },
           "fix": {
             "position": {
               "file": "list-equality-mutation.ms",
               "line": 58,
               "column": 5,
-              "offset": 1557
+              "offset": 1560
             },
             "end": {
               "file": "list-equality-mutation.ms",
               "line": 58,
               "column": 5,
-              "offset": 1557
+              "offset": 1560
             },
             "replacement": ".clone()"
           }
@@ -107,20 +107,20 @@
             "file": "list-equality-mutation.ms",
             "line": 26,
             "column": 17,
-            "offset": 707
+            "offset": 710
           },
           "fix": {
             "position": {
               "file": "list-equality-mutation.ms",
               "line": 58,
               "column": 5,
-              "offset": 1557
+              "offset": 1560
             },
             "end": {
               "file": "list-equality-mutation.ms",
               "line": 58,
               "column": 5,
-              "offset": 1557
+              "offset": 1560
             },
             "replacement": ".clone()"
           }
@@ -133,7 +133,7 @@
             "file": "list-equality-mutation.ms",
             "line": 26,
             "column": 17,
-            "offset": 707
+            "offset": 710
           }
         },
         {
@@ -144,20 +144,20 @@
             "file": "list-equality-mutation.ms",
             "line": 26,
             "column": 17,
-            "offset": 707
+            "offset": 710
           },
           "fix": {
             "position": {
               "file": "list-equality-mutation.ms",
               "line": 58,
               "column": 5,
-              "offset": 1557
+              "offset": 1560
             },
             "end": {
               "file": "list-equality-mutation.ms",
               "line": 58,
               "column": 5,
-              "offset": 1557
+              "offset": 1560
             },
             "replacement": ".clone()"
           }
@@ -170,20 +170,20 @@
             "file": "list-equality-mutation.ms",
             "line": 31,
             "column": 22,
-            "offset": 819
+            "offset": 822
           },
           "fix": {
             "position": {
               "file": "list-equality-mutation.ms",
               "line": 31,
               "column": 26,
-              "offset": 823
+              "offset": 826
             },
             "end": {
               "file": "list-equality-mutation.ms",
               "line": 31,
               "column": 26,
-              "offset": 823
+              "offset": 826
             },
             "replacement": ".clone()"
           }
@@ -196,20 +196,20 @@
             "file": "list-equality-mutation.ms",
             "line": 33,
             "column": 22,
-            "offset": 873
+            "offset": 876
           },
           "fix": {
             "position": {
               "file": "list-equality-mutation.ms",
               "line": 33,
               "column": 27,
-              "offset": 878
+              "offset": 881
             },
             "end": {
               "file": "list-equality-mutation.ms",
               "line": 33,
               "column": 27,
-              "offset": 878
+              "offset": 881
             },
             "replacement": ".clone()"
           }
@@ -222,7 +222,7 @@
             "file": "list-equality-mutation.ms",
             "line": 59,
             "column": 33,
-            "offset": 1610
+            "offset": 1613
           }
         },
         {
@@ -233,7 +233,7 @@
             "file": "list-equality-mutation.ms",
             "line": 60,
             "column": 34,
-            "offset": 1651
+            "offset": 1654
           }
         },
         {
@@ -244,20 +244,20 @@
             "file": "list-equality-mutation.ms",
             "line": 87,
             "column": 33,
-            "offset": 2504
+            "offset": 2507
           },
           "fix": {
             "position": {
               "file": "list-equality-mutation.ms",
               "line": 87,
               "column": 37,
-              "offset": 2508
+              "offset": 2511
             },
             "end": {
               "file": "list-equality-mutation.ms",
               "line": 87,
               "column": 37,
-              "offset": 2508
+              "offset": 2511
             },
             "replacement": ".clone()"
           }

@@ -7,7 +7,7 @@ type Package:
     title: String
     count: Int
 
-# A real entry point: records, generics, a local queue, and a native workload.
+// A real entry point: records, generics, a local queue, and a native workload.
 export fn main() Int:
     let package = Package("Manuscript", 42)
     let values = [10, 20, 30]

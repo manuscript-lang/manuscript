@@ -3,7 +3,7 @@ import read_lines from "@std/streams.ms"
 import bit_and, bit_not, bit_or, bit_xor, shift_left, shift_right from "@std/math.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 
-# Values are signed 32-bit words held in Int; every result is wrapped back into range.
+// Values are signed 32-bit words held in Int; every result is wrapped back into range.
 let WORD = 4294967296
 let HALF_WORD = 2147483648
 let MAX_LITERAL = 4294967295
@@ -24,7 +24,7 @@ let REGISTER_NAMES = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "bp"
 let ARG_REG = 0
 let ARG_IMM = 1
 let ARG_MEM = 2
-# Opcodes; the index of each name in MNEMONICS is its opcode.
+// Opcodes; the index of each name in MNEMONICS is its opcode.
 let MNEMONICS = [
     "mov", "add", "sub", "mul", "div", "mod", "and", "or", "xor", "shl", "shr", "sar",
     "cmp", "neg", "not", "inc", "dec", "lea", "push", "pop", "jmp", "je", "jne", "jl",
@@ -72,14 +72,14 @@ impl Error for Fault:
     fn message() String:
         return self.text.clone()
 
-# `equs` holds every .equ from the start so that lookups see constants defined further down;
-# `defined_equs` records the ones already reached, which decides duplicate symbols in source order.
+// `equs` holds every .equ from the start so that lookups see constants defined further down;
+// `defined_equs` records the ones already reached, which decides duplicate symbols in source order.
 type Symbols:
     labels: Map[String, Int]
     equs: Map[String, String]
     defined_equs: Map[String, Bool]
 
-# One source line split into its parts; comments are already gone.
+// One source line split into its parts; comments are already gone.
 type Line:
     number: Int
     labels: List[String]
@@ -90,13 +90,13 @@ type Term:
     negative: Bool
     text: String
 
-# An operand as written, before its expressions are evaluated.
+// An operand as written, before its expressions are evaluated.
 type Source:
     kind: Int
     reg: Int
     text: String
 
-# An instruction (code >= 0) or a data directive's words (code == -1), in source order.
+// An instruction (code >= 0) or a data directive's words (code == -1), in source order.
 type Item:
     line: Int
     code: Int
@@ -178,7 +178,7 @@ fn reg_index(name: String) Int:
 fn digit_value(c: String) Int:
     return HEX_DIGITS.index_of(c.lower()).get(-1)
 
-# Index just past the quoted literal starting at `i`, or -1 when there is none.
+// Index just past the quoted literal starting at `i`, or -1 when there is none.
 fn literal_end(cs: List[String], i: Int) Int:
     let n = cs.length()
 
@@ -247,7 +247,7 @@ fn split_line(number: Int, raw: String) Line:
         rest: span(code, end, n).trim()
     )
 
-# Splits at commas outside brackets and character literals.
+// Splits at commas outside brackets and character literals.
 fn split_operands(text: String) List[String]:
     var parts = List[String]()
     if text == "":
@@ -281,7 +281,7 @@ fn split_operands(text: String) List[String]:
     parts.append(span(cs, start, cs.length()).trim())
     return parts
 
-# Splits an expression into signed terms. None when an operator has no term after it.
+// Splits an expression into signed terms. None when an operator has no term after it.
 fn split_terms(text: String) Optional[List[Term]]:
     let cs = text.chars()
     let n = cs.length()
@@ -367,7 +367,7 @@ fn escape_value(c: String) Int:
 
     return -1
 
-# Value of a character literal such as 'a' or '\n'; -1 when malformed.
+// Value of a character literal such as 'a' or '\n'; -1 when malformed.
 fn char_value(cs: List[String]) Int:
     let n = cs.length()
 
@@ -789,7 +789,7 @@ fn build_item(
     program.append(Instr(code: item.code, line: item.line, args: args))
     return ok(unit)
 
-# Runtime
+// Runtime
 
 fn initial_registers() List[Int]:
     var regs = List[Int]()
@@ -916,7 +916,7 @@ fn emit_byte(var m: Machine, v: Int) Unit:
         m.out.append(b)
     m.last_char = v
 
-# Runs one instruction and returns the next pc. Faults leave the machine at the same pc.
+// Runs one instruction and returns the next pc. Faults leave the machine at the same pc.
 fn execute(var m: Machine, ins: Instr) Result[Int, Fault]:
     let code = ins.code
     let args = ins.args
@@ -1077,7 +1077,7 @@ fn run(
     m.out.append_bytes(register_summary(m).to_bytes())
     return m.out.build()
 
-# Input section
+// Input section
 
 fn split_words(line: String) List[String]:
     var words = List[String]()
@@ -1095,7 +1095,7 @@ fn split_words(line: String) List[String]:
         words.append(word)
     return words
 
-# Wrapped value of a whitespace-free token, or none if it is not a decimal integer.
+// Wrapped value of a whitespace-free token, or none if it is not a decimal integer.
 fn input_value(token: String) Optional[Int]:
     let cs = token.chars()
     var start = 0

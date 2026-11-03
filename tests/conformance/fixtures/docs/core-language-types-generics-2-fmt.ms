@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=documentation/core-language/types/generics.md:32
+// conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=documentation/core-language/types/generics.md:32
 type Key:
     id: Int
 

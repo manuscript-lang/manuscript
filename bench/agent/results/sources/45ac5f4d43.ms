@@ -18,14 +18,14 @@ fn is_lower(c: Int) Bool:
 fn is_letter(c: Int) Bool:
     return is_upper(c) or is_lower(c)
 
-# Shift a letter by a normalized amount in 0..25; other scalars pass through.
+// Shift a letter by a normalized amount in 0..25; other scalars pass through.
 fn shift_letter(c: Int, shift: Int) Int:
     if is_upper(c): return 65 + (c - 65 + shift) % 26
     if is_lower(c): return 97 + (c - 97 + shift) % 26
 
     return c
 
-# Caesar key: optional '-', then 1 to 7 decimal digits. Returns none if invalid.
+// Caesar key: optional '-', then 1 to 7 decimal digits. Returns none if invalid.
 fn caesar_key(key: String) Int?:
     let vs = key.scalar_values()
     var i = 0
@@ -51,7 +51,7 @@ fn caesar_key(key: String) Int?:
 
     return v
 
-# Vigenere key letters as shifts 0..25. Returns an empty list if invalid.
+// Vigenere key letters as shifts 0..25. Returns an empty list if invalid.
 fn vigenere_key(key: String) List[Int]:
     var out = List[Int]()
 

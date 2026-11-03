@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,faults,interfaces,modules,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/lsp/completion_test.go:17 TestLocalExtensionCompletionAndNavigation
+// conform: tags=control-flow,diagnostics,faults,interfaces,modules,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/lsp/completion_test.go:17 TestLocalExtensionCompletionAndNavigation
 import Box from "./domain.ms"
 
 interface Read:

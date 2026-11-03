@@ -300,7 +300,7 @@ pub fn declaration(analysis: &Analysis, info: &OccInfo) -> Option<(Name, Pos)> {
     None
 }
 
-/// The `#` comment block directly above a declaration. The source remains the
+/// The comment block directly above a declaration, or its trailing `//` comment. The source remains the
 /// single documentation authority for project modules and the immutable
 /// standard-library documents alike.
 pub fn declaration_documentation(analysis: &Analysis, file: Name, pos: Pos) -> String {
@@ -311,30 +311,21 @@ pub fn declaration_documentation(analysis: &Analysis, file: Name, pos: Pos) -> S
     else {
         return String::new();
     };
-    let source = module.source.as_bytes();
+    let source = module.source.as_ref();
     let offset = pos.offset as usize;
-    if pos.line <= 1 || offset > source.len() {
+    if pos.line <= 1 || offset > source.len() || !source.is_char_boundary(offset) {
         return String::new();
     }
     // Offsets are in the original source, including CRLF and recovered
-    // declarations. Only inspect the immediately preceding line spans.
-    let mut notes: Vec<String> = Vec::new();
-    let mut end = source[..offset].iter().rposition(|&b| b == b'\n');
-    while let Some(line_end) = end {
-        let start = source[..line_end]
-            .iter()
-            .rposition(|&b| b == b'\n')
-            .map_or(0, |at| at + 1);
-        let line = String::from_utf8_lossy(&source[start..line_end]);
-        let line = line.trim();
-        let Some(note) = line.strip_prefix('#') else {
-            break;
-        };
-        notes.push(note.trim().to_string());
-        end = start.checked_sub(1);
-    }
-    notes.reverse();
-    notes.join("\n").trim().to_string()
+    // declarations. Only the immediately preceding line spans are inspected.
+    let line_start = source[..offset].rfind('\n').map_or(0, |at| at + 1);
+    let above = ms_syntax::doc::comments_above(source, line_start, None);
+    let docs = if above.is_empty() {
+        ms_syntax::doc::trailing_comment(source, offset)
+    } else {
+        above
+    };
+    docs.trim().to_string()
 }
 
 fn documentation_of(analysis: &Analysis, info: &OccInfo) -> String {

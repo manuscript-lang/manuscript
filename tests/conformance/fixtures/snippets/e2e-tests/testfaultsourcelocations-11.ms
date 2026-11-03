@@ -1,6 +1,6 @@
-# conform: tags=faults,modules,stdlib-errors,tier-stdlib,try-result
-# conform: phase=run
-# conform: origin=tests/e2e/fault_locations_test.go:104 TestFaultSourceLocations
+// conform: tags=faults,modules,stdlib-errors,tier-stdlib,try-result
+// conform: phase=run
+// conform: origin=tests/e2e/fault_locations_test.go:104 TestFaultSourceLocations
 
 fn crash(value: Int) Int:
     return 1 / value

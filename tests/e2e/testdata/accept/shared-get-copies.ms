@@ -2,8 +2,8 @@ import share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
 import expect_equal from "@std/test/test.ms"
 
-# A `Shared[T]` handle is `Copy`: another copy of it can replace the value while a reader
-# holds what `get()` returned, so a kept result is a copy, never a view of the cell.
+// A `Shared[T]` handle is `Copy`: another copy of it can replace the value while a reader
+// holds what `get()` returned, so a kept result is a copy, never a view of the cell.
 type State:
     case Idle
     case Running(name: String)

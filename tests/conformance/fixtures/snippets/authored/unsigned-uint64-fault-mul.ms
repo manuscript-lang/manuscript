@@ -1,6 +1,6 @@
-# conform: tags=numbers,faults,tier-core
-# conform: phase=run
-# conform: origin=unsigned integer types UInt64 inline checks
+// conform: tags=numbers,faults,tier-core
+// conform: phase=run
+// conform: origin=unsigned integer types UInt64 inline checks
 
 import stdout from "@std/io/io.ms"
 

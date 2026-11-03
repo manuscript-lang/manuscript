@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/lsp/navigation_test.go:205 TestDefaultCallNavigation
+// conform: tags=diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/lsp/navigation_test.go:205 TestDefaultCallNavigation
 fn read() Int:
     return 1
 

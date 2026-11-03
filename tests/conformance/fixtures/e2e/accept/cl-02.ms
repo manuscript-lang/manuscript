@@ -1,6 +1,6 @@
-# conform: tags=modules,stdlib-testing,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/cl-02.ms
+// conform: tags=modules,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/cl-02.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
 fn invalid_division(zero: Int) Bool:

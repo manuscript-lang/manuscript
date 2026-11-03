@@ -1,69 +1,69 @@
-# Server-Sent Events decoder implemented in Manuscript.
+// Server-Sent Events decoder implemented in Manuscript.
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import ReadStream from "@std/io/io.ms"
 import ResponseBody from "@std/net/http.ms"
 import Closeable from "@std/core.ms"
 
-# One dispatched event, with the `message` type used when no `event:` field was sent.
+// One dispatched event, with the `message` type used when no `event:` field was sent.
 export type SseEvent:
-    # The event type from the last `event:` field, or `message`.
+    // The event type from the last `event:` field, or `message`.
     event: String
-    # Every `data:` line of the event joined with LF; a bare `data:` line gives an empty line.
+    // Every `data:` line of the event joined with LF; a bare `data:` line gives an empty line.
     data: String
-    # The last event ID in effect when the event was dispatched, or none if the stream never set one.
+    // The last event ID in effect when the event was dispatched, or none if the stream never set one.
     id: String?
 
-# Optional byte budgets for one line and for one event.
+// Optional byte budgets for one line and for one event.
 export type SseLimits:
-    # Largest line in bytes, excluding its line ending; none adds no budget.
+    // Largest line in bytes, excluding its line ending; none adds no budget.
     max_line_bytes: Int?
-    # Largest total of all field lines in one event, excluding line endings and comments; none adds no budget.
+    // Largest total of all field lines in one event, excluding line endings and comments; none adds no budget.
     max_event_bytes: Int?
 
-# Decodes a Server-Sent Events stream from byte chunks of any size.
-#
-# Chunks may split any line, line ending or UTF-8 scalar. The decoder never reads,
-# closes, or owns a stream.
+// Decodes a Server-Sent Events stream from byte chunks of any size.
+//
+// Chunks may split any line, line ending or UTF-8 scalar. The decoder never reads,
+// closes, or owns a stream.
 export interface SseDecoder:
-    # Decodes one chunk and returns the events it completed, in order.
-    # An error is final for the decoder, which returns it again on later calls.
+    // Decodes one chunk and returns the events it completed, in order.
+    // An error is final for the decoder, which returns it again on later calls.
     var fn feed(chunk: Bytes) List[SseEvent]!
-    # Ends the stream. A stream with no partial line and no unfinished event ends cleanly;
-    # otherwise the result is Truncated and the unfinished event is never dispatched.
+    // Ends the stream. A stream with no partial line and no unfinished event ends cleanly;
+    // otherwise the result is Truncated and the unfinished event is never dispatched.
     var fn finish() Unit!
-    # Returns the latest valid `retry:` value in milliseconds, or none if the stream sent none.
+    // Returns the latest valid `retry:` value in milliseconds, or none if the stream sent none.
     fn retry() Int?
 
-# Internal decoder state behind `SseDecoder`.
+// Internal decoder state behind `SseDecoder`.
 type Decoder:
-    # Limits fixed when the decoder was created.
+    // Limits fixed when the decoder was created.
     limits: SseLimits
-    # The latest valid `retry:` value in milliseconds, or none if the stream sent none.
+    // The latest valid `retry:` value in milliseconds, or none if the stream sent none.
     retry_ms: Int?
-    # Internal: the last event ID, which persists across events.
+    // Internal: the last event ID, which persists across events.
     last_id: String?
-    # Internal: bytes of the line being assembled.
+    // Internal: bytes of the line being assembled.
     line: BytesBuilder
-    # Internal: length of the line being assembled.
+    // Internal: length of the line being assembled.
     line_bytes: Int
-    # Internal: bytes counted against the event budget.
+    // Internal: bytes counted against the event budget.
     event_bytes: Int
-    # Internal: True when the previous byte was CR, so an immediately following LF is part of the same ending.
+    // Internal: True when the previous byte was CR, so an immediately following LF is part of the same ending.
     carriage: Bool
-    # Internal: True once the first line has been assembled and the byte order mark has been considered.
+    // Internal: True once the first line has been assembled and the byte order mark has been considered.
     started: Bool
-    # Internal: True while field lines have arrived since the last blank line.
+    // Internal: True while field lines have arrived since the last blank line.
     open_block: Bool
-    # Internal: the pending `event:` value, empty when unset.
+    // Internal: the pending `event:` value, empty when unset.
     event_type: String
-    # Internal: the pending `data:` lines.
+    // Internal: the pending `data:` lines.
     data: List[String]
-    # Internal: the first failure, repeated by later calls.
+    // Internal: the first failure, repeated by later calls.
     failure: Error?
-    # Internal: True after `finish`.
+    // Internal: True after `finish`.
     closed: Bool
 
-# Creates a decoder. Supplied limits must be positive.
+// Creates a decoder. Supplied limits must be positive.
 export fn decoder(limits: SseLimits = SseLimits()) SseDecoder!:
     if not positive(limits.max_line_bytes): return error(
         Error("SSE invalid input", kind: InvalidInput)
@@ -154,7 +154,7 @@ impl SseDecoder for Decoder:
         return self.retry_ms
 
 impl Decoder:
-    # Buffers the unterminated tail of a chunk as part of the line being assembled.
+    // Buffers the unterminated tail of a chunk as part of the line being assembled.
     var fn hold(segment: Bytes) Unit!:
         self.line_bytes += segment.length()
         if exceeds(self.line_bytes, self.limits.max_line_bytes): return error(
@@ -175,7 +175,7 @@ impl Decoder:
             self.reconnect(value_after(line, 6, line.starts_with("retry: ")))
         else: self.apply_other(line)
 
-    # Lines without a colon name a field with an empty value; other names are ignored.
+    // Lines without a colon name a field with an empty value; other names are ignored.
     var fn apply_other(line: String) Unit:
         if line.index_of(":").is_some(): return unit
 
@@ -184,20 +184,20 @@ impl Decoder:
         else if line == "id": self.identify("")
         else if line == "retry": self.reconnect("")
 
-    # An ID containing NUL is ignored, so it neither replaces nor clears the last ID.
+    // An ID containing NUL is ignored, so it neither replaces nor clears the last ID.
     var fn identify(value: String) Unit:
         if value.to_bytes().contains("\u{0}".to_bytes()): return unit
 
         self.last_id = value
 
-    # Only ASCII digits form a retry time; overflow and signs are ignored.
+    // Only ASCII digits form a retry time; overflow and signs are ignored.
     var fn reconnect(value: String) Unit:
         if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return unit
 
         let milliseconds = value.parse_int()
         if milliseconds.is_some(): self.retry_ms = milliseconds
 
-# Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any bytes held from earlier chunks.
+// Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any bytes held from earlier chunks.
 fn complete(
     var decoder: Decoder, chunk: Bytes, start: Int, end: Int, var events: List[SseEvent]
 ) Unit!:
@@ -241,7 +241,7 @@ fn end_line(
     decoder.apply(line)
     return ok(unit)
 
-# The value after the colon, skipping one leading space when `spaced`.
+// The value after the colon, skipping one leading space when `spaced`.
 fn value_after(line: String, colon_end: Int, spaced: Bool) String:
     if spaced: return line.slice(colon_end + 1, line.length()).get()
 
@@ -268,27 +268,27 @@ impl ReadStream for OwnedBody:
     var fn read(max_bytes: Int? = none) Bytes?!:
         return self.body.read(max_bytes)
 
-# Turns an HTTP response body into a ReadStream that owns it. Closing the stream closes the body.
+// Turns an HTTP response body into a ReadStream that owns it. Closing the stream closes the body.
 export fn body_stream(body: ResponseBody) ReadStream:
     return OwnedBody(body)
 
-# Pulls events from a ReadStream it owns. Closing the reader closes the stream, and closing it
-# makes a blocked read fail with ReadFailed.
+// Pulls events from a ReadStream it owns. Closing the reader closes the stream, and closing it
+// makes a blocked read fail with ReadFailed.
 export type SseReader:
-    # The stream, such as an HTTP response body made by `body_stream`.
+    // The stream, such as an HTTP response body made by `body_stream`.
     input: ReadStream
-    # The decoder, whose `retry()` is readable between events.
+    // The decoder, whose `retry()` is readable between events.
     decoder: SseDecoder
-    # Internal: events decoded but not yet returned.
+    // Internal: events decoded but not yet returned.
     ready: List[SseEvent]
-    # Internal: index of the next ready event.
+    // Internal: index of the next ready event.
     next: Int
-    # Internal: requested read size, none for the stream default.
+    // Internal: requested read size, none for the stream default.
     chunk_bytes: Int?
-    # Internal: True after a clean end of stream.
+    // Internal: True after a clean end of stream.
     finished: Bool
 
-# Takes a stream and wraps it in an event reader. Supplied limits and chunk size must be positive.
+// Takes a stream and wraps it in an event reader. Supplied limits and chunk size must be positive.
 export fn reader(
     input: ReadStream,
     limits: SseLimits = SseLimits(),
@@ -307,13 +307,13 @@ export fn reader(
     )
 
 impl Closeable for SseReader:
-    # Closes the stream the reader owns; reads after a close fail with ReadFailed.
+    // Closes the stream the reader owns; reads after a close fail with ReadFailed.
     var fn close() Unit!:
         self.input.close()
         return ok(unit)
 
-# Returns the next event, or none after a clean end of stream.
-# A read failure, malformed line, exceeded limit or truncated event is an error.
+// Returns the next event, or none after a clean end of stream.
+// A read failure, malformed line, exceeded limit or truncated event is an error.
 export fn next_event(var reader: SseReader) SseEvent?!:
     while true:
         if reader.next < reader.ready.length():

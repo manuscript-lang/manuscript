@@ -1,7 +1,7 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# A calendar time to the minute; `year` is 0 when a parsed START was invalid.
+// A calendar time to the minute; `year` is 0 when a parsed START was invalid.
 type Stamp:
     year: Int
     month: Int
@@ -9,7 +9,7 @@ type Stamp:
     hour: Int
     minute: Int
 
-# Each field holds one flag per value, indexed by the value itself.
+// Each field holds one flag per value, indexed by the value itself.
 type Cron:
     minutes: List[Bool]
     hours: List[Bool]
@@ -28,7 +28,7 @@ fn days_in_month(year: Int, month: Int) Int:
 
     return 31
 
-# Day of the week of a date, 0 for Sunday; 1970-01-01 was a Thursday.
+// Day of the week of a date, 0 for Sunday; 1970-01-01 was a Thursday.
 fn weekday_of(year: Int, month: Int, day: Int) Int:
     var days = 0
     for y in 1970..year:
@@ -38,7 +38,7 @@ fn weekday_of(year: Int, month: Int, day: Int) Int:
     days += day - 1
     return (days + 4) % 7
 
-# Returns the value of unsigned ASCII digits, or -1 for empty text or any other character.
+// Returns the value of unsigned ASCII digits, or -1 for empty text or any other character.
 fn digits_value(text: String) Int:
     if text.length() == 0: return -1
 
@@ -46,7 +46,7 @@ fn digits_value(text: String) Int:
         if not "0123456789".contains(text.get(i)): return -1
     return text.parse_int().get(-1)
 
-# Returns the value of a 1 or 2 digit number, or -1 otherwise.
+// Returns the value of a 1 or 2 digit number, or -1 otherwise.
 fn parse_num(text: String) Int:
     if text.length() > 2: return -1
 
@@ -55,7 +55,7 @@ fn parse_num(text: String) Int:
 fn part(text: String, start: Int, end: Int) String:
     return text.slice(start, end).get("")
 
-# Parses YYYY-MM-DDTHH:MM; the result has year 0 when the time is not valid.
+// Parses YYYY-MM-DDTHH:MM; the result has year 0 when the time is not valid.
 fn parse_start(text: String) Stamp:
     let bad = Stamp(year: 0, month: 0, day: 0, hour: 0, minute: 0)
     if text.length() != 16: return bad
@@ -78,14 +78,14 @@ fn parse_start(text: String) Stamp:
 
     return Stamp(year: year, month: month, day: day, hour: hour, minute: minute)
 
-# Returns the COUNT value, or 0 when it is not in 1 through 20.
+// Returns the COUNT value, or 0 when it is not in 1 through 20.
 fn parse_count(text: String) Int:
     let n = parse_num(text)
     if n < 1 or n > 20: return 0
 
     return n
 
-# Returns the values one cron item selects, or an empty list when the item is invalid.
+// Returns the values one cron item selects, or an empty list when the item is invalid.
 fn parse_item(item: String, lo: Int, hi: Int) List[Int]:
     let parts = item.split("/")
     if parts.length() > 2: return List[Int]()
@@ -118,7 +118,7 @@ fn parse_item(item: String, lo: Int, hi: Int) List[Int]:
         if (v - first) % step == 0: values.append(v)
     return values
 
-# Returns the flags a cron field selects, or an empty list when the field is invalid.
+// Returns the flags a cron field selects, or an empty list when the field is invalid.
 fn parse_field(text: String, lo: Int, hi: Int) List[Bool]:
     var chosen = List[Bool]()
     for v in 0..(hi + 1):
@@ -134,7 +134,7 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Bool]:
     return chosen
 
 impl Cron:
-    # The first `count` matching minutes strictly after `start`, searching 3000 days past its date.
+    // The first `count` matching minutes strictly after `start`, searching 3000 days past its date.
     fn runs(start: Stamp, count: Int) List[Stamp]:
         var found = List[Stamp]()
         var at = start.clone()
@@ -194,7 +194,7 @@ fn is_blank(line: String) Bool:
         if line.get(i) != " ": return false
     return true
 
-# The output for one non-blank input line, without its final newline.
+// The output for one non-blank input line, without its final newline.
 fn solve(n: Int, raw: String) String:
     let head = "line {n}: "
     let tok = raw.split(" ")

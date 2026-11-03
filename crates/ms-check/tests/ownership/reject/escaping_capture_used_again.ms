@@ -5,6 +5,6 @@ fn keep(r: fn(Int) Int) List[fn(Int) Int]:
 
 fn f() Int:
     var a = [1, 2, 3]
-    let b = keep(fn x: x + a.length())  # error: capture `a.clone()` to keep the original
+    let b = keep(fn x: x + a.length())  // error: capture `a.clone()` to keep the original
     a.append(4)
     return b.length() + a.length()

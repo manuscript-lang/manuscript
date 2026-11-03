@@ -1,6 +1,6 @@
-# Runs on the oldest glibc that Linux programs support (2.28). CI builds it on a current host and runs it
-# in an AlmaLinux 8 container: threads, the resolver pool, file metadata, child processes, entropy and libm
-# all reach glibc through the versions the link-time stubs bind.
+// Runs on the oldest glibc that Linux programs support (2.28). CI builds it on a current host and runs it
+// in an AlmaLinux 8 container: threads, the resolver pool, file metadata, child processes, entropy and libm
+// all reach glibc through the versions the link-time stubs bind.
 import stdout from "@std/io/io.ms"
 import stat from "@std/os/fs.ms"
 import run from "@std/os/process.ms"

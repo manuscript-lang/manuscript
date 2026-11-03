@@ -75,7 +75,7 @@ type Token:
     case Atom(text: String)
     case Str(text: String)
 
-# ---------- errors and small helpers ----------
+// ---------- errors and small helpers ----------
 
 fn rt_fault(text: String) Fault:
     return Fault(text: text, syntax: false)
@@ -154,7 +154,7 @@ fn is_nil(v: Value) Bool:
 fn is_procedure(v: Value) Bool:
     return tag(v) == T_BUILTIN or tag(v) == T_CLOSURE
 
-# Text of atoms that have no payload to quote: numbers, booleans, symbols, ().
+// Text of atoms that have no payload to quote: numbers, booleans, symbols, ().
 fn atom_text(v: Value) String:
     match v:
         Number(n): return "{n}"
@@ -208,7 +208,7 @@ fn show_pair(m: Machine, id: Int, quoted: Bool) String:
         tail = " . " + show(m, rest, quoted)
     return "(" + parts.join(" ") + tail + ")"
 
-# ---------- heap, lists, and output ----------
+// ---------- heap, lists, and output ----------
 
 fn cons(var m: Machine, head: Value, rest: Value) Value:
     m.cars.append(head)
@@ -285,7 +285,7 @@ fn report(var m: Machine, f: Fault) Unit:
         emit(var m, "\n")
     emit(var m, "error: " + f.text + "\n")
 
-# Drops frames created above `mark` unless a closure may still refer to one.
+// Drops frames created above `mark` unless a closure may still refer to one.
 fn release(var m: Machine, mark: Int) Unit:
     if m.escape >= mark:
         return
@@ -308,7 +308,7 @@ fn lookup(m: Machine, env: Int, name: String) Optional[Value]:
 
     return none
 
-# ---------- reader ----------
+// ---------- reader ----------
 
 fn is_delim(c: String) Bool:
     return (
@@ -459,7 +459,7 @@ fn datum_from(var m: Machine, tok: Token) Result[Value, Fault]:
             let datum = try datum_from(var m, next)
             return ok(build_quote(var m, datum))
 
-# Reads the datum after a dot, then requires the closing paren.
+// Reads the datum after a dot, then requires the closing paren.
 fn read_tail(var m: Machine) Result[Value, Fault]:
     let tok = try next_token(var m)
     if is_close(tok):
@@ -494,7 +494,7 @@ fn read_list(var m: Machine) Result[Value, Fault]:
         let datum = try datum_from(var m, tok)
         items.append(datum)
 
-# ---------- procedures and argument binding ----------
+// ---------- procedures and argument binding ----------
 
 fn parse_params(m: Machine, spec: Value, form: String) Result[Params, Fault]:
     var names = List[String]()
@@ -554,7 +554,7 @@ fn make_closure(
     )
     return Value.Closure(m.procs.length() - 1)
 
-# The expressions parts[start..], as a body for a procedure.
+// The expressions parts[start..], as a body for a procedure.
 fn body_from(parts: List[Value], start: Int) List[Value]:
     var body = List[Value]()
     for i in start..parts.length():
@@ -600,7 +600,7 @@ fn bind_args(var m: Machine, id: Int, args: List[Value]) Result[Int, Fault]:
     m.frames.append(Frame(vars: vars, parent: m.procs[id].env))
     return ok(m.frames.length() - 1)
 
-# Evaluates all but the last expression of a procedure body in its new frame.
+// Evaluates all but the last expression of a procedure body in its new frame.
 fn run_prefix(var m: Machine, id: Int, frame: Int, depth: Int) Result[Unit, Fault]:
     let last = m.procs[id].body.length() - 1
     for i in 0..last:
@@ -609,7 +609,7 @@ fn run_prefix(var m: Machine, id: Int, frame: Int, depth: Int) Result[Unit, Faul
         )
     return ok(unit)
 
-# Applies f in a non-tail position of a frame at depth `cur`.
+// Applies f in a non-tail position of a frame at depth `cur`.
 fn apply_proc(var m: Machine, f: Value, args: List[Value], cur: Int) Result[
     Value, Fault
 ]:
@@ -633,8 +633,8 @@ fn apply_proc(var m: Machine, f: Value, args: List[Value], cur: Int) Result[
         _:
             return error(rt_fault("not a procedure: " + show(m, f, true)))
 
-# Applies f in the position of the current step. `pending` says the step is
-# not a tail position of its frame, so entering a body adds one to the depth.
+// Applies f in the position of the current step. `pending` says the step is
+// not a tail position of its frame, so entering a body adds one to the depth.
 fn apply_tail(
     var m: Machine, f: Value, args: List[Value], var cur: Int, var pending: Bool,
     mark: Int
@@ -662,11 +662,11 @@ fn apply_tail(
         _:
             return error(rt_fault("not a procedure: " + show(m, f, true)))
 
-# ---------- evaluator ----------
+// ---------- evaluator ----------
 
-# Evaluates expr in env. `depth` is the depth of the frame that contains expr.
-# `pending` is true when expr is not a tail position, so that closure calls
-# made directly by it enter a body one level deeper.
+// Evaluates expr in env. `depth` is the depth of the frame that contains expr.
+// `pending` is true when expr is not a tail position, so that closure calls
+// made directly by it enter a body one level deeper.
 fn eval_expr(var m: Machine, expr: Value, env: Int, depth: Int, pending: Bool) Result[
     Value, Fault
 ]:
@@ -770,7 +770,7 @@ fn eval_all(var m: Machine, exprs: List[Value], env: Int, cur: Int) Result[
 
     return ok(out)
 
-# Evaluates items[start..] with the last one in tail position.
+// Evaluates items[start..] with the last one in tail position.
 fn eval_seq(var m: Machine, items: List[Value], start: Int, env: Int, cur: Int) Result[
     Step, Fault
 ]:
@@ -1049,7 +1049,7 @@ fn special_try(var m: Machine, items: List[Value], env: Int, cur: Int) Result[
     let v = try apply_proc(var m, handler, [message], cur)
     return ok(Step.Done(v))
 
-# ---------- equality and arithmetic ----------
+// ---------- equality and arithmetic ----------
 
 fn eq_values(a: Value, b: Value) Bool:
     let ta = tag(a)
@@ -1173,7 +1173,7 @@ fn cxr(m: Machine, name: String, v: Value, ops: String) Result[Value, Fault]:
 
     return ok(cur)
 
-# ---------- builtins ----------
+// ---------- builtins ----------
 
 fn numeric_builtin(m: Machine, name: String, args: List[Value]) Result[Value, Fault]:
     let ns = try ints_of(m, name, args)
@@ -1653,7 +1653,7 @@ fn call_builtin(var m: Machine, name: String, args: List[Value], cur: Int) Resul
 
     return error(rt_fault("unknown builtin: " + name))
 
-# Stable merge sort; less is called as (less later earlier).
+// Stable merge sort; less is called as (less later earlier).
 fn merge_sort(var m: Machine, items: List[Value], less: Value, cur: Int) Result[
     List[Value], Fault
 ]:
@@ -1777,7 +1777,7 @@ fn install_builtins(var m: Machine) Unit:
     install(var m, "void", 0, 0)
     install(var m, "error", 1, -1)
 
-# ---------- driver ----------
+// ---------- driver ----------
 
 fn run_form(var m: Machine) Result[Unit, Fault]:
     let tok = try next_token(var m)

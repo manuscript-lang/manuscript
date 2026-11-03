@@ -14,26 +14,26 @@
           "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
           "line": 5,
           "column": 8,
-          "offset": 208
+          "offset": 212
         },
         "end": {
           "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
           "line": 5,
           "column": 17,
-          "offset": 217
+          "offset": 221
         },
         "fix": {
           "position": {
             "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
             "line": 5,
             "column": 8,
-            "offset": 208
+            "offset": 212
           },
           "end": {
             "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
             "line": 5,
             "column": 19,
-            "offset": 219
+            "offset": 223
           },
           "replacement": ""
         }
@@ -46,26 +46,26 @@
           "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
           "line": 5,
           "column": 19,
-          "offset": 219
+          "offset": 223
         },
         "end": {
           "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
           "line": 5,
           "column": 23,
-          "offset": 223
+          "offset": 227
         },
         "fix": {
           "position": {
             "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
             "line": 5,
             "column": 17,
-            "offset": 217
+            "offset": 221
           },
           "end": {
             "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
             "line": 5,
             "column": 24,
-            "offset": 224
+            "offset": 228
           },
           "replacement": ""
         }

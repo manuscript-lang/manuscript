@@ -1,4 +1,4 @@
-# Generator for c18-cron-next-runs. Deterministic; run: ms run bench/agent/gen.ms -- c18
+// Generator for c18-cron-next-runs. Deterministic; run: ms run bench/agent/gen.ms -- c18
 import GenCase, make_case, write_cases from "../../lib/gen.ms"
 import seeded from "../../lib/pyrandom.ms"
 import Random from "../../lib/pyrandom.ms"
@@ -17,7 +17,7 @@ fn ranges() List[Range]:
         Range("month", 1, 12), Range("day-of-week", 0, 6)
     ]
 
-# Days since 1970-01-01 of a proleptic Gregorian date.
+// Days since 1970-01-01 of a proleptic Gregorian date.
 fn days_from_civil(year: Int, month: Int, day: Int) Int:
     let y = if month <= 2: year - 1 else: year
     let era = (if y >= 0: y else: y - 399) / 400
@@ -26,7 +26,7 @@ fn days_from_civil(year: Int, month: Int, day: Int) Int:
     let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
     return era * 146097 + doe - 719468
 
-# The year, month and day of a count of days since 1970-01-01.
+// The year, month and day of a count of days since 1970-01-01.
 fn civil_from_days(days: Int) List[Int]:
     let z = days + 719468
     let era = (if z >= 0: z else: z - 146096) / 146097
@@ -46,14 +46,14 @@ fn days_in_month(year: Int, month: Int) Int:
 
 fn pad(n: Int, width: Int) String: "{n}".pad_start(width, "0")
 
-# `YYYY-MM-DD HH:MM` for a count of minutes since the epoch, with `sep` between date and time.
+// `YYYY-MM-DD HH:MM` for a count of minutes since the epoch, with `sep` between date and time.
 fn stamp(minutes: Int, sep: String) String:
     let days = minutes / 1440
     let c = civil_from_days(days)
     let rest = minutes - days * 1440
     return "{pad(c[0], 4)}-{pad(c[1], 2)}-{pad(c[2], 2)}{sep}{pad(rest / 60, 2)}:{pad(rest % 60, 2)}"
 
-# The values a field selects, or none when it is malformed or out of range.
+// The values a field selects, or none when it is malformed or out of range.
 fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
     var vals = Set[Int]()
 

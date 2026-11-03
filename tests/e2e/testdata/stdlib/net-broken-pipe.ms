@@ -2,8 +2,8 @@ import expect_ok from "@std/test/test.ms"
 import connect, listen from "@std/net/net.ms"
 import sleep from "@std/os/time.ms"
 
-# A write to a peer that has gone away must return an error. Without SIGPIPE ignored the
-# whole process dies with the signal instead.
+// A write to a peer that has gone away must return an error. Without SIGPIPE ignored the
+// whole process dies with the signal instead.
 test "writing to a closed connection returns an error":
     let listener = listen("127.0.0.1:0") | try expect_ok
     var client = connect(listener.address(), 2.seconds) | try expect_ok

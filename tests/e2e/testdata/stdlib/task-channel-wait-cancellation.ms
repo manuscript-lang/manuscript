@@ -47,7 +47,7 @@ fn cancel_receive(target: TaskChannel[Int, Int]) Unit!:
     var task = group.spawn(fn ready: receive_value(ready, end))
     task.channel.receive() | try expect_ok | try expect_equal(unit)
 
-    # The acknowledging task parks on the target before this receive resumes us.
+    // The acknowledging task parks on the target before this receive resumes us.
     try group.close()
     task.result() | try expect_error | try expect_equal(
         Error("task: closed", kind: ErrorCategory.Closed)
@@ -81,7 +81,7 @@ fn wake_sender(target: TaskChannel[Int, Int]) Unit!:
         end.send(value) | try expect_ok
     return ok(unit)
 
-# Both batches cancel identical tasks; waking only the control isolates waiter storage.
+// Both batches cancel identical tasks; waking only the control isolates waiter storage.
 test "cancelled receives retain no more storage than the woken control":
     let owner = TaskGroup[Unit, Int, Int]()
     let task = owner.spawn(hold_receive)

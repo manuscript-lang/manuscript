@@ -1,5 +1,5 @@
-# conform: tags=maps,records,stdlib-json,stdlib-bigint,stdlib-testing,testing
-# conform: phase=test
+// conform: tags=maps,records,stdlib-json,stdlib-bigint,stdlib-testing,testing
+// conform: phase=test
 import expect_equal from "@std/test/test.ms"
 import stringify, parse from "@std/data/json.ms"
 import from_int from "@std/math/math.ms"

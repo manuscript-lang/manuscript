@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,faults,interpolation,lists,match,modules,mutation,records,stdlib-fs,stdlib-io,stdlib-json,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
-# conform: phase=run
-# conform: origin=scripts/conformance.ms
+// conform: tags=closures,control-flow,faults,interpolation,lists,match,modules,mutation,records,stdlib-fs,stdlib-io,stdlib-json,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
+// conform: phase=run
+// conform: origin=scripts/conformance.ms
 import (
     expect_equal,
     expect_false,
@@ -14,8 +14,8 @@ import glob, GlobOptions from "@std/os/fs.ms"
 import run from "@std/os/process.ms"
 import parse from "@std/data/json.ms"
 
-# Run from the repository root: ms run scripts/conformance.ms -- /absolute/path/to/ms all 0 1.
-# Each source file keeps its own compiler graph, process, host roots and test report.
+// Run from the repository root: ms run scripts/conformance.ms -- /absolute/path/to/ms all 0 1.
+// Each source file keeps its own compiler graph, process, host roots and test report.
 type Summary:
     available: Int
     selected: Int

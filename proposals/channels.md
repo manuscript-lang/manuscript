@@ -32,30 +32,30 @@
 ## API
 
 ```manuscript
-# @std/io/channels.ms
+// @std/io/channels.ms
 interface Transport[In, Out]:
     var fn send(value: In) Result[Unit, ChannelError]
-    var fn receive() Result[Optional[Out], ChannelError]   # ok(none): closed and drained
+    var fn receive() Result[Optional[Out], ChannelError]   // ok(none): closed and drained
     var fn close() Unit
 
 type Channel[In, Out]:
     transport: Transport[In, Out]
 
-impl Channel[In, Out]:                           # thin delegation, same names
+impl Channel[In, Out]:                           // thin delegation, same names
     var fn send(value: In) Result[Unit, ChannelError]: self.transport.send(value)
     var fn receive() Result[Optional[Out], ChannelError]: self.transport.receive()
     var fn close() Unit: self.transport.close()
 
 type ChannelError:
-    case Closed                                  # send after the other end closed
-    case Broken(reason: String)                  # peer died, malformed or oversize frame, decode failure
+    case Closed                                  // send after the other end closed
+    case Broken(reason: String)                  // peer died, malformed or oversize frame, decode failure
 ```
 
 Groups (one form for all three): the group carries the channel types, like it carries `T`, with `Unit` defaults.
 
 ```manuscript
-type TaskGroup[T, In = Unit, Out = Unit]          # WorkerGroup / ProcessGroup likewise
-fn spawn(entry: fn(Channel[Out, In]) T) Task[T, In, Out]   # handle.channel: Channel[In, Out]
+type TaskGroup[T, In = Unit, Out = Unit]          // WorkerGroup / ProcessGroup likewise
+fn spawn(entry: fn(Channel[Out, In]) T) Task[T, In, Out]   // handle.channel: Channel[In, Out]
 ```
 
 - Source methods cannot declare their own type parameters (`crates/ms-check/src/passes.rs:131`; inherent methods become a synthetic contract and contracts have no per-operation generics), so `In`/`Out` live on the group. Every child of one group then has the same channel types, as it has the same `T`.
@@ -63,7 +63,7 @@ fn spawn(entry: fn(Channel[Out, In]) T) Task[T, In, Out]   # handle.channel: Cha
 
 ```manuscript
 fn square_all(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
-    var c = ch                       # issue #1191: a var parameter cannot be a Callable today
+    var c = ch                       // issue #1191: a var parameter cannot be a Callable today
     var open = true
     while open:
         if let n = try c.receive():
@@ -73,19 +73,19 @@ fn square_all(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     return ok(unit)
 
 fn fetch_all(urls: List[String]) Result[List[Int], TaskError]:
-    with let group = TaskGroup[Int]():                 # no messages: Channel[Unit, Unit]
+    with let group = TaskGroup[Int]():                 // no messages: Channel[Unit, Unit]
         for url in urls:
             group.spawn(fn ch: fetch_size(url.clone()))
         return group.results()
 
 fn main() Int:
-    with let group = WorkerGroup[Result[Unit, ChannelError], Int, Int]():   # or TaskGroup / ProcessGroup
+    with let group = WorkerGroup[Result[Unit, ChannelError], Int, Int]():   // or TaskGroup / ProcessGroup
         var worker = group.spawn(square_all)
         if worker.channel.send(3).is_error():
             return 1
         if let reply = worker.channel.receive():
             ...
-        worker.channel.close()       # child's receive() returns ok(none), child returns
+        worker.channel.close()       // child's receive() returns ok(none), child returns
     return 0
 ```
 

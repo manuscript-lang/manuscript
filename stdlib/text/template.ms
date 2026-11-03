@@ -3,112 +3,112 @@ import StringBuilder from "@std/string.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
 import escape from "@std/data/html.ms"
 
-# Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
-#
-#     import compile, render, to_data from "@std/text/template.ms"
-#     let page = compile("Hello {{ name | title }}! {{ for t in tags }}#{{ t }} {{ end }}").get()
-#     page.render(to_data(user).get()).get()
-#
-# Actions sit between `{{` and `}}`:
-#
-# - `{{ user.name }}` prints a value; a path walks object members and list positions (`items.0`).
-#   Names resolve to loop variables first, then to members of the root object. A missing path is an
-#   error unless `strict: false`, or the value goes through `default`.
-# - `{{ name | upper | default("anonymous") }}` pipes a value through filters. Filters bind tighter than
-#   operators: `{{ if name | length > 3 }}`. Filters: `upper lower trim title length join(sep) json
-#   default(value) escape raw first last reverse keys contains(x) replace(old, new) truncate(n)`.
-# - `{{ if cond }}…{{ else if cond }}…{{ else }}…{{ end }}` with `== != < <= > >= and or not` and
-#   parentheses. Empty text, zero, null, false, and empty lists and objects are false; a missing path
-#   in a condition is false.
-# - `{{ for item in items }}…{{ else }}…{{ end }}` loops a list (the `else` branch runs when it is empty).
-#   `for i, item in items` adds the position; for an object, `for key, value in object`; a single name over
-#   an object binds `{key, value}`. Inside a loop `loop.index`, `loop.first`, `loop.last` and `loop.length` exist.
-# - `{{ include "name" }}` renders a partial from the `partials` map passed to `render`, in the current scope.
-# - `{{# comment }}` prints nothing. `{{-` and `-}}` trim adjacent white space. `{{ "{{" }}` prints braces.
-#
-# `compile(source, html: true)` escapes every printed value for HTML text and quoted attributes; end an
-# action with `| raw` to print trusted markup unchanged. Values come from data only: templates cannot
-# call functions or run code, and `max_output` bounds the result.
+// Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
+//
+//     import compile, render, to_data from "@std/text/template.ms"
+//     let page = compile("Hello {{ name | title }}! {{ for t in tags }}#{{ t }} {{ end }}").get()
+//     page.render(to_data(user).get()).get()
+//
+// Actions sit between `{{` and `}}`:
+//
+// - `{{ user.name }}` prints a value; a path walks object members and list positions (`items.0`).
+//   Names resolve to loop variables first, then to members of the root object. A missing path is an
+//   error unless `strict: false`, or the value goes through `default`.
+// - `{{ name | upper | default("anonymous") }}` pipes a value through filters. Filters bind tighter than
+//   operators: `{{ if name | length > 3 }}`. Filters: `upper lower trim title length join(sep) json
+//   default(value) escape raw first last reverse keys contains(x) replace(old, new) truncate(n)`.
+// - `{{ if cond }}…{{ else if cond }}…{{ else }}…{{ end }}` with `== != < <= > >= and or not` and
+//   parentheses. Empty text, zero, null, false, and empty lists and objects are false; a missing path
+//   in a condition is false.
+// - `{{ for item in items }}…{{ else }}…{{ end }}` loops a list (the `else` branch runs when it is empty).
+//   `for i, item in items` adds the position; for an object, `for key, value in object`; a single name over
+//   an object binds `{key, value}`. Inside a loop `loop.index`, `loop.first`, `loop.last` and `loop.length` exist.
+// - `{{ include "name" }}` renders a partial from the `partials` map passed to `render`, in the current scope.
+// - `{{# comment }}` prints nothing. `{{-` and `-}}` trim adjacent white space. `{{ "{{" }}` prints braces.
+//
+// `compile(source, html: true)` escapes every printed value for HTML text and quoted attributes; end an
+// action with `| raw` to print trusted markup unchanged. Values come from data only: templates cannot
+// call functions or run code, and `max_output` bounds the result.
 
-# A parsed template expression: a literal, a path, a filter call or an operator. Internal to the engine; hidden from callers.
+// A parsed template expression: a literal, a path, a filter call or an operator. Internal to the engine; hidden from callers.
 export opaque type TemplateExpr:
-    # A literal string, number, boolean or null written in the template.
+    // A literal string, number, boolean or null written in the template.
     case Literal(
-        # The literal as a JSON value.
+        // The literal as a JSON value.
         value: JsonValue
     )
-    # A dotted path whose first name is a loop variable or a root member.
+    // A dotted path whose first name is a loop variable or a root member.
     case Path(
-        # The names between the dots, in order.
+        // The names between the dots, in order.
         parts: List[String]
     )
-    # A filter applied to its first argument; later arguments are the filter's own.
+    // A filter applied to its first argument; later arguments are the filter's own.
     case Call(
-        # The filter name, one of the documented filters.
+        // The filter name, one of the documented filters.
         name: String,
-        # The filtered value followed by the filter arguments.
+        // The filtered value followed by the filter arguments.
         args: List[TemplateExpr]
     )
-    # A comparison or logical operator over one or two operands.
+    // A comparison or logical operator over one or two operands.
     case Op(
-        # One of `and or not == != < <= > >=`.
+        // One of `and or not == != < <= > >=`.
         op: String,
-        # The operands, in source order.
+        // The operands, in source order.
         args: List[TemplateExpr]
     )
 
-# One `if` or `else if` arm of a conditional node. Internal to the engine.
+// One `if` or `else if` arm of a conditional node. Internal to the engine.
 export opaque type TemplateBranch:
-    # Condition that selects this arm when true.
+    // Condition that selects this arm when true.
     cond: TemplateExpr
-    # Nodes rendered when the condition holds.
+    // Nodes rendered when the condition holds.
     body: List[TemplateNode]
 
-# A parsed template node: text, a printed value, a conditional, a loop or an include. Internal to the engine.
+// A parsed template node: text, a printed value, a conditional, a loop or an include. Internal to the engine.
 export opaque type TemplateNode:
-    # Literal text copied to the output.
+    // Literal text copied to the output.
     case Text(
-        # The text between actions, after trim markers.
+        // The text between actions, after trim markers.
         text: String
     )
-    # A value printed to the output.
+    // A value printed to the output.
     case Emit(
-        # The expression whose value is printed.
+        // The expression whose value is printed.
         expr: TemplateExpr,
-        # True when the printed text is HTML-escaped.
+        // True when the printed text is HTML-escaped.
         escape: Bool
     )
-    # A conditional with its arms and optional final branch.
+    // A conditional with its arms and optional final branch.
     case If(
-        # Arms tried in order; the first true condition renders.
+        // Arms tried in order; the first true condition renders.
         branches: List[TemplateBranch],
-        # Nodes rendered when no arm holds.
+        // Nodes rendered when no arm holds.
         otherwise: List[TemplateNode]
     )
-    # A loop over a list or object.
+    // A loop over a list or object.
     case Each(
-        # First loop name: the item, or the position or key when `second` is set.
+        // First loop name: the item, or the position or key when `second` is set.
         first: String,
-        # Second loop name, or empty text for a single-name loop.
+        // Second loop name, or empty text for a single-name loop.
         second: String,
-        # Expression that yields the list or object being walked.
+        // Expression that yields the list or object being walked.
         source: TemplateExpr,
-        # Nodes rendered once per element.
+        // Nodes rendered once per element.
         body: List[TemplateNode],
-        # Nodes rendered when the collection is empty.
+        // Nodes rendered when the collection is empty.
         otherwise: List[TemplateNode]
     )
-    # Renders a named partial in the current scope.
+    // Renders a named partial in the current scope.
     case Include(
-        # Expression that yields the partial's name.
+        // Expression that yields the partial's name.
         name: TemplateExpr
     )
 
-# A compiled template; render it any number of times.
+// A compiled template; render it any number of times.
 export opaque type Template:
-    # The parsed nodes in source order.
+    // The parsed nodes in source order.
     nodes: List[TemplateNode]
-    # True when printed values are HTML-escaped by default.
+    // True when printed values are HTML-escaped by default.
     html: Bool
 
 type Token:
@@ -126,7 +126,7 @@ let FILTERS = [
 ]
 let MAX_DEPTH = 64
 
-# Builds a template error. Each message names the line, path, filter or partial but never echoes values.
+// Builds a template error. Each message names the line, path, filter or partial but never echoes values.
 fn syntax_error(line: Int, reason: String) Error:
     return Error(
         "template: line {line}: {reason}", kind: ErrorCategory.InvalidData,
@@ -151,7 +151,7 @@ fn unknown_partial_error(name: String) Error:
         details: {"partial": name}
     )
 
-# Compiles template source. With `html: true`, printed values are HTML-escaped unless they end in `| raw`.
+// Compiles template source. With `html: true`, printed values are HTML-escaped unless they end in `| raw`.
 export fn compile(source: String, html: Bool = false) Template!Error:
     let tokens = try tokenize(source)
     var builder = Builder(tokens: tokens, at: 0, html: html)
@@ -162,12 +162,12 @@ export fn compile(source: String, html: Bool = false) Template!Error:
 
     return ok(Template(nodes: done.nodes, html: html))
 
-# Compiles and renders in one call; use `compile` when rendering more than once.
+// Compiles and renders in one call; use `compile` when rendering more than once.
 export fn render(source: String, data: JsonValue, html: Bool = false) String!Error:
     let template = try compile(source, html: html)
     return template.render(data)
 
-# Converts any `Data` value (records, lists, scalars) to the `JsonValue` a template reads.
+// Converts any `Data` value (records, lists, scalars) to the `JsonValue` a template reads.
 export fn to_data[T: Data](value: T) JsonValue!Error:
     let text = stringify(value: value)
     if text.is_error(): return error(
@@ -182,8 +182,8 @@ export fn to_data[T: Data](value: T) JsonValue!Error:
     return ok(parsed.get())
 
 impl Template:
-    # Renders with `data` (an object supplies the root names). `partials` feeds `include`. A strict render
-    # fails on a missing printed path; `max_output` bounds the text length (default 16 MiB).
+    // Renders with `data` (an object supplies the root names). `partials` feeds `include`. A strict render
+    // fails on a missing printed path; `max_output` bounds the text length (default 16 MiB).
     fn render(
         data: JsonValue,
         partials: Map[String, Template] = Map[String, Template](),
@@ -206,7 +206,7 @@ fn root_names(data: JsonValue) Map[String, JsonValue]:
 
     return Map[String, JsonValue]()
 
-# ---- lexing -------------------------------------------------------------------------------
+// ---- lexing -------------------------------------------------------------------------------
 
 fn count_lines(text: String) Int:
     return text.count("\n")
@@ -214,7 +214,7 @@ fn count_lines(text: String) Int:
 fn tokenize(source: String) List[Token]!Error:
     var tokens = List[Token]()
 
-    # Splitting once keeps lexing linear: each piece starts right after an opening delimiter.
+    // Splitting once keeps lexing linear: each piece starts right after an opening delimiter.
     let pieces = source.split("\{\{")
     var literal = pieces[0].clone()
     var index = 1
@@ -225,7 +225,7 @@ fn tokenize(source: String) List[Token]!Error:
         var text = literal.clone()
         if trim_next: text = text.trim_start()
 
-        # An action ends at the first closing delimiter, even when its body holds a literal opener.
+        // An action ends at the first closing delimiter, even when its body holds a literal opener.
         var chunks = List[String]()
         var tail = ""
         var closed = false
@@ -373,7 +373,7 @@ fn lex(text: String, line: Int) List[Tok]!Error:
 
     return ok(toks)
 
-# ---- expression parsing --------------------------------------------------------------------
+// ---- expression parsing --------------------------------------------------------------------
 
 type ExprParser:
     toks: List[Tok]
@@ -511,11 +511,11 @@ fn parse_expr(text: String, line: Int) TemplateExpr!Error:
 
     return ok(expr)
 
-# ---- block parsing -------------------------------------------------------------------------
+// ---- block parsing -------------------------------------------------------------------------
 
 type BlockEnd:
     nodes: List[TemplateNode]
-    # "" at end of input, otherwise "end", "else" or "else if".
+    // "" at end of input, otherwise "end", "else" or "else if".
     end: String
     cond: String
     line: Int
@@ -674,7 +674,7 @@ fn strip_filter(expr: TemplateExpr) TemplateExpr:
         Call(_, args): return args[0].clone()
         _: return expr.clone()
 
-# ---- rendering -----------------------------------------------------------------------------
+// ---- rendering -----------------------------------------------------------------------------
 
 type Run:
     out: StringBuilder
@@ -837,7 +837,7 @@ impl Run:
             depth + 1
         )
 
-# ---- values --------------------------------------------------------------------------------
+// ---- values --------------------------------------------------------------------------------
 
 fn member(value: JsonValue, key: String) JsonValue?:
     if let found = value.get(key): return found
@@ -854,7 +854,7 @@ fn loop_info(index: Int, length: Int) JsonValue:
     fields.add("length", JsonValue.NumberValue("{length}"))
     return JsonValue.ObjectValue(fields)
 
-# One variable frame per iteration: the list item, or an object's key and value.
+// One variable frame per iteration: the list item, or an object's key and value.
 fn rows_of(
     collection: JsonValue,
     first: String,
@@ -921,7 +921,7 @@ fn equal(left: JsonValue, right: JsonValue) Bool:
 
     return to_text(left) == to_text(right) and left.is_null() == right.is_null()
 
-# -1, 0, 1 for numbers or strings of the same kind; 2 when the values cannot be ordered.
+// -1, 0, 1 for numbers or strings of the same kind; 2 when the values cannot be ordered.
 fn compare_values(left: JsonValue, right: JsonValue) Int:
     if let a = left.as_float():
         if let b = right.as_float(): return if a < b: -1 else if a > b: 1 else: 0
@@ -980,7 +980,7 @@ fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue
         let n = limit.get(0)
         return ok(text_value(if text.length() > n: "{text.take(n)}..." else: text))
 
-    # `raw` and any other registered name pass through; unknown names fail at compile time.
+    // `raw` and any other registered name pass through; unknown names fail at compile time.
     return ok(input.clone())
 
 fn length_of(value: JsonValue) Int:

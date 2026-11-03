@@ -31,7 +31,7 @@ test "views and functions retain local implementations across modules":
     let events = share(List[Int]())
     let resource = Resource(events)
 
-    # Each `Closeable` closes through its own module's implementation when its scope ends.
+    // Each `Closeable` closes through its own module's implementation when its scope ends.
     close_first(Resource(events))
     close_second(resource)
 

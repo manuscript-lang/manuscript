@@ -1,10 +1,10 @@
-# Child processes that run a function of this program and talk to it over a channel.
-#
-# `ProcessGroup.spawn(entry)` starts this executable again in a new process, at `entry` instead
-# of `main`. The entry gets its end of a two-way channel, a `Channel[Out, In]`; the returned
-# `Process` holds the other end in its `channel` field. Values cross as JSON, so they are copied,
-# and the entry's return value comes back through `Process.result`. Each process is isolated: a
-# fault in the child ends only the child, and the parent sees its exit status.
+// Child processes that run a function of this program and talk to it over a channel.
+//
+// `ProcessGroup.spawn(entry)` starts this executable again in a new process, at `entry` instead
+// of `main`. The entry gets its end of a two-way channel, a `Channel[Out, In]`; the returned
+// `Process` holds the other end in its `channel` field. Values cross as JSON, so they are copied,
+// and the entry's return value comes back through `Process.result`. Each process is isolated: a
+// fault in the child ends only the child, and the parent sees its exit status.
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import Channel, Transport from "@std/io/channels.ms"
 import Closeable, Data from "@std/core.ms"
@@ -30,67 +30,67 @@ import (
     msstd_process_ipc_close
 ) from "@std/internal/processes.ms"
 
-# A running child, owned by its `Process`.
+// A running child, owned by its `Process`.
 export extern type NativeProcess
 
 impl NativeProcess:
-    # Another holder of the same child handle.
+    // Another holder of the same child handle.
     fn clone() NativeProcess:
         return msrt_obj_share(self)
 
-# One end of a process's IPC pipe.
+// One end of a process's IPC pipe.
 export extern type NativeLink
 
 impl NativeLink:
-    # Another holder of the same pipe end; the pipe closes with `msstd_process_ipc_close`.
+    // Another holder of the same pipe end; the pipe closes with `msstd_process_ipc_close`.
     fn clone() NativeLink:
         return msrt_obj_share(self)
 
-# Frame kinds: a message, the end of the sender's messages, and the entry's result.
+// Frame kinds: a message, the end of the sender's messages, and the entry's result.
 let MESSAGE = 0
 let CLOSE = 1
 let RESULT = 2
-# Not a wire kind: `next_frame` waited for another task's read, so the caller re-checks the inbox.
+// Not a wire kind: `next_frame` waited for another task's read, so the caller re-checks the inbox.
 let RETRY = -2
-# The largest frame body, 16 MiB; a larger frame breaks the channel.
+// The largest frame body, 16 MiB; a larger frame breaks the channel.
 let FRAME_LIMIT = 16777216
 
-# Wraps a start failure as the group's error.
+// Wraps a start failure as the group's error.
 fn not_started(cause: Error) Error:
     return Error(
         "process: not started: " + cause.message, kind: Unavailable,
         details: {"cause": cause.message}
     )
 
-# A broken channel between processes, with the reason as the message.
+// A broken channel between processes, with the reason as the message.
 fn channel_broken(reason: String) Error:
     return Error("channel: " + reason, kind: InvalidData)
 
-# The error for a process that ended with a non-zero status.
+// The error for a process that ended with a non-zero status.
 fn exited(code: Int) Error:
     return Error(
         "process: exited with status " + code.to_string(), kind: Failed,
         details: {"status": code.to_string()}
     )
 
-# A value inside a frame body, so values with no JSON form of their own, such as `Unit`, cross too.
+// A value inside a frame body, so values with no JSON form of their own, such as `Unit`, cross too.
 type Envelope[T: Data]:
     value: T
 
-# One frame read from the pipe.
+// One frame read from the pipe.
 type Frame:
     kind: Int
     body: String
 
-# Internal state of one end of a process channel: what it has read and seen, shared by its handles.
+// Internal state of one end of a process channel: what it has read and seen, shared by its handles.
 export type Inbox:
-    # Bytes read from the pipe and not yet framed.
+    // Bytes read from the pipe and not yet framed.
     pending: Bytes = "".to_bytes()
-    # The other end sent `close` or its result: no more messages come.
+    // The other end sent `close` or its result: no more messages come.
     finished: Bool = false
-    # The body of the result frame, once read.
+    // The body of the result frame, once read.
     result: String?
-    # This end sent `close`.
+    // This end sent `close`.
     closed: Bool = false
 
 fn frame(kind: Int, body: String) Bytes:
@@ -113,9 +113,9 @@ fn decode[T: Data](body: String) T!:
             return ok(value)
         error(e): return error(channel_broken("cannot decode the value: " + e.message))
 
-# The next whole frame, waiting for more bytes as needed; `none` once the other process closed
-# the pipe or is gone. One task reads the pipe at a time: another waits, then returns a `RETRY`
-# frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
+// The next whole frame, waiting for more bytes as needed; `none` once the other process closed
+// the pipe or is gone. One task reads the pipe at a time: another waits, then returns a `RETRY`
+// frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
 fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Frame?!:
     while true:
         var state = lock(inbox)
@@ -150,15 +150,15 @@ fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Frame?!:
 
     return ok(none)
 
-# Marks that the other end sent no more messages, keeping the result body if this was it.
+// Marks that the other end sent no more messages, keeping the result body if this was it.
 fn finish(inbox: Shared[Inbox], result: String?) Unit:
     var state = lock(inbox)
     state.value.finished = true
     if result.is_some():
         state.value.result = result
 
-# Marks this end closed and sends `close` once unless `notify` is False (a parent about to kill
-# the child: the write could wait forever on a full pipe the child never reads).
+// Marks this end closed and sends `close` once unless `notify` is False (a parent about to kill
+// the child: the write could wait forever on a full pipe the child never reads).
 fn close_end(link: NativeLink, inbox: Shared[Inbox], notify: Bool = true) Unit:
     var first = false
     var state = lock(inbox)
@@ -168,7 +168,7 @@ fn close_end(link: NativeLink, inbox: Shared[Inbox], notify: Bool = true) Unit:
     if first and notify:
         msstd_process_ipc_write(link, frame(CLOSE, ""))
 
-# One end of a process channel: JSON frames over the IPC pipe.
+// One end of a process channel: JSON frames over the IPC pipe.
 type ProcessTransport[In: Data, Out: Data]:
     link: NativeLink
     inbox: Shared[Inbox]
@@ -223,8 +223,8 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
     var fn close() Unit:
         close_end(self.link, self.inbox)
 
-# The child's side: runs `entry` on the child's end of the channel, then sends `close` (if the
-# entry did not) and the result, and closes the pipe.
+// The child's side: runs `entry` on the child's end of the channel, then sends `close` (if the
+// entry did not) and the result, and closes the pipe.
 fn serve[T: Data, In: Data, Out: Data](entry: fn(Channel[Out, In]) T) Unit:
     let link = msstd_process_ipc_child()
     let inbox: Shared[Inbox] = share(Inbox())
@@ -249,7 +249,7 @@ fn nanos(limit: Duration?) Int:
 
     return -1
 
-# Waits for the entry to return and gives its result, or `Exited` with the status of a child that ended first.
+// Waits for the entry to return and gives its result, or `Exited` with the status of a child that ended first.
 fn wait_result[T: Data](
     native: NativeProcess,
     link: NativeLink,
@@ -282,75 +282,75 @@ fn wait_result[T: Data](
 
     return error(exited(-1))
 
-# What a group keeps of a process until it is closed: enough to close its channel and stop the child.
+// What a group keeps of a process until it is closed: enough to close its channel and stop the child.
 export type Open:
-    # Internal state: the process's number in its group.
+    // Internal state: the process's number in its group.
     id: Int
-    # Internal state: the running child.
+    // Internal state: the running child.
     native: NativeProcess
-    # Internal state: the parent's end of the IPC pipe.
+    // Internal state: the parent's end of the IPC pipe.
     link: NativeLink
-    # Internal state: what the parent's end has read.
+    // Internal state: what the parent's end has read.
     inbox: Shared[Inbox]
 
-# Closes the channel, then stops and joins the child.
+// Closes the channel, then stops and joins the child.
 fn stop_child(link: NativeLink, inbox: Shared[Inbox], native: NativeProcess) Unit:
     close_end(link, inbox, false)
     msstd_process_forked_close(native)
 
-# A child process started by `ProcessGroup.spawn` at an entry returning `T`, with the parent's
-# end of its channel.
+// A child process started by `ProcessGroup.spawn` at an entry returning `T`, with the parent's
+// end of its channel.
 export type Process[T: Data, In: Data = Unit, Out: Data = Unit]:
-    # Internal state: the running child.
+    // Internal state: the running child.
     native: NativeProcess
-    # Internal state: the parent's end of the IPC pipe.
+    // Internal state: the parent's end of the IPC pipe.
     link: NativeLink
-    # Internal state: what the parent's end has read.
+    // Internal state: what the parent's end has read.
     inbox: Shared[Inbox]
-    # The parent's end of the channel: sends `In` to the child and receives the `Out` it sends.
+    // The parent's end of the channel: sends `In` to the child and receives the `Out` it sends.
     channel: Channel[In, Out]
-    # Internal state: the process's number in its group.
+    // Internal state: the process's number in its group.
     id: Int
-    # Internal state: the group's list of open processes, which `close` leaves.
+    // Internal state: the group's list of open processes, which `close` leaves.
     registry: Shared[List[Open]]
 
 impl Process[T, In, Out]:
-    # Waits for the entry to return and gives its result, or `Exited` with the status of a child
-    # that ended first. Another task may receive from the channel meanwhile; one task reads the
-    # pipe at a time and the other waits. Messages the child sent and the parent has not received are dropped.
+    // Waits for the entry to return and gives its result, or `Exited` with the status of a child
+    // that ended first. Another task may receive from the channel meanwhile; one task reads the
+    // pipe at a time and the other waits. Messages the child sent and the parent has not received are dropped.
     fn result() T!:
         return wait_result[T](self.native, self.link, self.inbox)
 
-    # The child's standard input, when spawned with `stdin: Stdio.Pipe`; otherwise already closed,
-    # so writes return `Closed`. Closing it delivers end of input to the child.
+    // The child's standard input, when spawned with `stdin: Stdio.Pipe`; otherwise already closed,
+    // so writes return `Closed`. Closing it delivers end of input to the child.
     fn stdin() WriteStream:
         return msstd_process_forked_stdin(self.native)
 
-    # The child's standard output, when spawned with `stdout: Stdio.Pipe`; otherwise already
-    # closed. Read it while the child runs: a child whose pipe is full waits until it is read.
+    // The child's standard output, when spawned with `stdout: Stdio.Pipe`; otherwise already
+    // closed. Read it while the child runs: a child whose pipe is full waits until it is read.
     fn stdout() ReadStream:
         return msstd_process_forked_output(self.native, 1)
 
-    # The child's standard error, when spawned with `stderr: Stdio.Pipe`; otherwise already
-    # closed. Read it like `stdout`.
+    // The child's standard error, when spawned with `stderr: Stdio.Pipe`; otherwise already
+    // closed. Read it like `stdout`.
     fn stderr() ReadStream:
         return msstd_process_forked_output(self.native, 2)
 
-    # Waits for the child to exit and returns its exit status. Returns `Timeout` if `timeout`
-    # elapses first, leaving the child running.
+    // Waits for the child to exit and returns its exit status. Returns `Timeout` if `timeout`
+    // elapses first, leaving the child running.
     fn wait(timeout: Duration?) Int!:
         return msstd_process_forked_wait(self.native, nanos(timeout))
 
-    # Asks the child to stop (SIGTERM on Unix; Windows ends the whole tree). Does not wait.
+    // Asks the child to stop (SIGTERM on Unix; Windows ends the whole tree). Does not wait.
     fn terminate() Unit:
         msstd_process_forked_signal(self.native, false)
 
-    # Kills the child and the processes it started. Does not wait.
+    // Kills the child and the processes it started. Does not wait.
     fn kill() Unit:
         msstd_process_forked_signal(self.native, true)
 
 impl Closeable for Process[T, In, Out]:
-    # Closes the channel, then stops and joins the child. Call `result` first to keep it. Safe to call again.
+    // Closes the channel, then stops and joins the child. Call `result` first to keep it. Safe to call again.
     var fn close() Unit!:
         stop_child(self.link, self.inbox, self.native)
 
@@ -363,24 +363,24 @@ impl Closeable for Process[T, In, Out]:
 
         return ok(unit)
 
-# A scope that owns the child processes started in it. Each runs an entry returning `T` and has a
-# two-way channel to the group: the child sends `Out` values and receives `In` values, both
-# `Unit` unless given. Bind a group to a local: when its scope ends it stops every child still running.
-# `In`, `Out` and `T` cross as JSON, so use plain data: records, alternatives, lists, maps,
-# strings and numbers.
+// A scope that owns the child processes started in it. Each runs an entry returning `T` and has a
+// two-way channel to the group: the child sends `Out` values and receives `In` values, both
+// `Unit` unless given. Bind a group to a local: when its scope ends it stops every child still running.
+// `In`, `Out` and `T` cross as JSON, so use plain data: records, alternatives, lists, maps,
+// strings and numbers.
 export type ProcessGroup[T: Data, In: Data = Unit, Out: Data = Unit]:
-    # Internal state: the open processes in start order, changed through the shared handle so the
-    # group closes when its scope ends.
+    // Internal state: the open processes in start order, changed through the shared handle so the
+    // group closes when its scope ends.
     processes: Shared[List[Open]] = share([])
-    # Internal state: the number of the next process.
+    // Internal state: the number of the next process.
     started: Shared[Int] = share(0)
 
 impl ProcessGroup[T, In, Out]:
-    # Starts this executable again in a new process at `entry`, a top-level `fn`, and returns the
-    # process. The child gets its end of a new channel, and the process's `channel` is the
-    # group's end. `stdin`, `stdout` and `stderr` each choose the parent's own stream (the
-    # default), the null device, or a pipe the process's `stdin()`, `stdout()` or `stderr()`
-    # reaches. Closing the process makes the group forget it.
+    // Starts this executable again in a new process at `entry`, a top-level `fn`, and returns the
+    // process. The child gets its end of a new channel, and the process's `channel` is the
+    // group's end. `stdin`, `stdout` and `stderr` each choose the parent's own stream (the
+    // default), the null device, or a pipe the process's `stdin()`, `stdout()` or `stderr()`
+    // reaches. Closing the process makes the group forget it.
     fn spawn(
         entry: fn(Channel[Out, In]) T,
         stdin: Stdio = Stdio.Inherit,
@@ -417,8 +417,8 @@ impl ProcessGroup[T, In, Out]:
             )
         )
 
-    # Waits for every open process's result in start order, or returns the first error.
-    # Closed processes are not included.
+    // Waits for every open process's result in start order, or returns the first error.
+    // Closed processes are not included.
     fn results() List[T]!:
         let count = self.processes.get().length()
         var values = List[T]()
@@ -430,7 +430,7 @@ impl ProcessGroup[T, In, Out]:
         return ok(values)
 
 impl Closeable for ProcessGroup[T, In, Out]:
-    # Closes every open process: its channel, then the child, which is stopped and joined. Safe to call again.
+    // Closes every open process: its channel, then the child, which is stopped and joined. Safe to call again.
     var fn close() Unit!:
         var all = lock(self.processes)
         for index in 0..all.value.length():

@@ -148,7 +148,7 @@ test "indexing and slicing long mixed-width text matches scalar positions":
     let text = try block.repeat(600)
     try expect_equal(text.length(), 2400)
 
-    # Forward, backward and jumping reads of the same long text.
+    // Forward, backward and jumping reads of the same long text.
     var forward = 0
     for step in 0..2400:
         forward += text.scalar_at(step)

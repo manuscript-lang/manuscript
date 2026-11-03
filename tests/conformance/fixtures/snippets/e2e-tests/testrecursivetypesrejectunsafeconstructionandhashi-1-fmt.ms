@@ -1,6 +1,6 @@
-# conform: tags=formatter,optional,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/recursive_types_test.go:12 TestRecursiveTypesRejectUnsafeConstructionAndHashing
+// conform: tags=formatter,optional,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/recursive_types_test.go:12 TestRecursiveTypesRejectUnsafeConstructionAndHashing
 type Node:
     next: Node?
 

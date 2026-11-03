@@ -35,7 +35,7 @@ fn valid_sku(text: String) Bool:
 fn valid_id(text: String) Bool:
     return text.length() > 0 and all_in(text, ID_CHARS)
 
-# A number is 1 to 7 ASCII digits.
+// A number is 1 to 7 ASCII digits.
 fn number(text: String) Optional[Int]:
     if text.length() == 0 or text.length() > 7 or not all_in(text, DIGITS):
         return none

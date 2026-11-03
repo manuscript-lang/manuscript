@@ -14,7 +14,7 @@
           "file": "diag-generic-callback-arity.ms",
           "line": 8,
           "column": 26,
-          "offset": 270
+          "offset": 273
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "diag-generic-callback-arity.ms",
           "line": 8,
           "column": 26,
-          "offset": 270
+          "offset": 273
         }
       }
     ],

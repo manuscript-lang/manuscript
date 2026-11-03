@@ -1,6 +1,6 @@
-# conform: tags=aliasing,faults,formatter,generics,maps,parser,strings,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/local_int_map_test.go:79 TestClosedLocalIntMapIsolatesGenericInstances
+// conform: tags=aliasing,faults,formatter,generics,maps,parser,strings,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/local_int_map_test.go:79 TestClosedLocalIntMapIsolatesGenericInstances
 fn lookup[T: Hashable](key: T, value: T) T:
     var values = Map[T, T]()
     values.add(key, value)

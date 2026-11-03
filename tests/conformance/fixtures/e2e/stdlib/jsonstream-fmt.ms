@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interpolation,lists,modules,mutation,parser,stdlib-bytes,stdlib-collections,stdlib-json,stdlib-jsonstream,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/stdlib/jsonstream.ms
+// conform: tags=control-flow,formatter,interpolation,lists,modules,mutation,parser,stdlib-bytes,stdlib-collections,stdlib-json,stdlib-jsonstream,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/stdlib/jsonstream.ms
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
 import decoder from "@std/data/jsonstream.ms"
 import stringify, JsonValue, JsonLimits from "@std/data/json.ms"
@@ -12,7 +12,7 @@ fn texts(values: List[JsonValue]) List[String]!:
         result.append(try stringify(item))
     return ok(result)
 
-# Feeds the input in chunks of `size` bytes and returns every decoded value as text.
+// Feeds the input in chunks of `size` bytes and returns every decoded value as text.
 fn decode(input: Bytes, size: Int) List[String]!:
     var reader = try decoder()
     var result: List[String] = []

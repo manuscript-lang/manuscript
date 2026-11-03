@@ -1,6 +1,6 @@
-# conform: tags=aliasing,control-flow,formatter,interfaces,maps,match,modules,parser,tier-core
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/projects/map_remove/by_label.ms
+// conform: tags=aliasing,control-flow,formatter,interfaces,maps,match,modules,parser,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/projects/map_remove/by_label.ms
 import Key from "./key.ms"
 import remove_generic from "./generic.ms"
 

@@ -14,20 +14,20 @@
           "file": "foreign-null.ms",
           "line": 5,
           "column": 13,
-          "offset": 138
+          "offset": 141
         },
         "fix": {
           "position": {
             "file": "foreign-null.ms",
             "line": 5,
             "column": 13,
-            "offset": 138
+            "offset": 141
           },
           "end": {
             "file": "foreign-null.ms",
             "line": 5,
             "column": 17,
-            "offset": 142
+            "offset": 145
           },
           "replacement": "none"
         }

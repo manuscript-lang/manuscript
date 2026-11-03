@@ -1,6 +1,6 @@
-# conform: tags=formatter,maps,modules,parser,strings,tier-core
-# conform: phase=parse
-# conform: origin=pkg/compiler/collection_prelude_imports_test.go:131 TestPreludeImportPolicyUsesResolvedIdentity
+// conform: tags=formatter,maps,modules,parser,strings,tier-core
+// conform: phase=parse
+// conform: origin=pkg/compiler/collection_prelude_imports_test.go:131 TestPreludeImportPolicyUsesResolvedIdentity
 import List, Set, ListEntry from "@types"
 import Map, MapEntry from "@domain/types.ms"
 

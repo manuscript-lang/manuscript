@@ -1,6 +1,6 @@
-# conform: tags=control-flow,interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=documentation/learn/tour.md:265
+// conform: tags=control-flow,interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=documentation/learn/tour.md:265
 import expect_equal from "@std/test/test.ms"
 
 interface Increment:

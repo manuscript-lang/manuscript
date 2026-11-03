@@ -14,7 +14,7 @@
           "file": "format-testformatparagraphs-1.ms",
           "line": 7,
           "column": 9,
-          "offset": 245
+          "offset": 248
         },
         "fix": {
           "position": {
@@ -40,7 +40,7 @@
           "file": "format-testformatparagraphs-1.ms",
           "line": 9,
           "column": 9,
-          "offset": 288
+          "offset": 291
         },
         "fix": {
           "position": {
@@ -66,7 +66,7 @@
           "file": "format-testformatparagraphs-1.ms",
           "line": 11,
           "column": 20,
-          "offset": 318
+          "offset": 321
         }
       },
       {
@@ -77,7 +77,7 @@
           "file": "format-testformatparagraphs-1.ms",
           "line": 12,
           "column": 5,
-          "offset": 332
+          "offset": 335
         },
         "fix": {
           "position": {

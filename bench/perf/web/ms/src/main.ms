@@ -1,4 +1,4 @@
-# Benchmark server: main <port> <data-dir> [threads]. With threads above 1 the main thread accepts and hands each connection, round robin, to one of that many serving workers. The Go server in ../go answers the same requests.
+// Benchmark server: main <port> <data-dir> [threads]. With threads above 1 the main thread accepts and hands each connection, round robin, to one of that many serving workers. The Go server in ../go answers the same requests.
 import Bytes from "@std/bytes.ms"
 import read_file, write_file_bytes from "@std/os/fs.ms"
 import (
@@ -17,7 +17,7 @@ fn score(id: Int) Int:
 fn reply(status: Int, text: String) HttpResponse:
     return HttpResponse(status, headers(), text.to_bytes())
 
-# Next entry after (prev_id, prev_score) in score-descending, id-ascending order.
+// Next entry after (prev_id, prev_score) in score-descending, id-ascending order.
 fn pick_after(prev_id: Int, prev_score: Int) Int:
     var best = -1
     var best_score = -1
@@ -74,7 +74,7 @@ fn user_reply(path: String) HttpResponse:
             )
     return reply(404, "not found\n")
 
-# Resolve localhost, write 1 MiB to the connection's own file, read it back.
+// Resolve localhost, write 1 MiB to the connection's own file, read it back.
 fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
     if let addresses = lookup("localhost"):
         let path = "{dir}/m{slot}.bin"
@@ -89,7 +89,7 @@ fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
     try write_file_bytes(path, payload, replace: true)
     return ok(try read_file(path))
 
-# The benchmark endpoints.
+// The benchmark endpoints.
 fn make_handler(dir: String) fn(HttpExchange) Result[Unit, Error]:
     var text = "0123456789abcdef"
     var i = 0
@@ -115,7 +115,7 @@ fn make_handler(dir: String) fn(HttpExchange) Result[Unit, Error]:
 
     return buffered(handler)
 
-# Serves the benchmark endpoints on 127.0.0.1:<port> until the server stops.
+// Serves the benchmark endpoints on 127.0.0.1:<port> until the server stops.
 fn serve_here(port: String, dir: String) Int:
     if let acquired = serve(address: "127.0.0.1:{port}", handler: make_handler(dir)):
         let server = acquired
@@ -124,12 +124,12 @@ fn serve_here(port: String, dir: String) Int:
 
     return 1
 
-# One serving thread of a multi-threaded run: serves the connections its starter sends.
+// One serving thread of a multi-threaded run: serves the connections its starter sends.
 fn serve_worker() Unit:
     let args = arguments()
     let _ = serve_core(make_handler(args.get(1)))
 
-# Accepts on the main thread and deals the connections to `threads` workers.
+// Accepts on the main thread and deals the connections to `threads` workers.
 fn serve_threads(port: String, threads: Int) Int:
     if let bound = listen("127.0.0.1:{port}"):
         let _ = serve_cores(bound, serve_worker, threads)

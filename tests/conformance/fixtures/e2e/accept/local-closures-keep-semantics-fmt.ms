@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,faults,formatter,interpolation,lists,match,modules,mutation,optional,parser,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/accept/local-closures-keep-semantics.ms
+// conform: tags=closures,control-flow,faults,formatter,interpolation,lists,match,modules,mutation,optional,parser,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/local-closures-keep-semantics.ms
 import expect_true from "@std/test/test.ms"
 
 fn bump(factor: Int) Int:

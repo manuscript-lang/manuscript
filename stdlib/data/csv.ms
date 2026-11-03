@@ -1,15 +1,15 @@
 import StringBuilder from "@std/string.ms"
 import Bytes from "@std/bytes.ms"
 
-# Delimiter and line ending used when parsing or writing CSV; defaults are comma and LF.
+// Delimiter and line ending used when parsing or writing CSV; defaults are comma and LF.
 export type CsvOptions:
-    # One non-NUL ASCII delimiter other than quote, CR or LF; defaults to comma.
+    // One non-NUL ASCII delimiter other than quote, CR or LF; defaults to comma.
     delimiter: String = ","
-    # Row terminator for encoding, either LF or CRLF; defaults to LF.
+    // Row terminator for encoding, either LF or CRLF; defaults to LF.
     line_ending: String = "\n"
 
-# Parses CSV into rows of cells, using fresh default options when omitted.
-# Optional row and cell limits bound large inputs.
+// Parses CSV into rows of cells, using fresh default options when omitted.
+// Optional row and cell limits bound large inputs.
 export fn parse(
     text: String,
     options: CsvOptions = CsvOptions(),
@@ -53,13 +53,13 @@ export fn parse(
 
     return ok(rows)
 
-# The budget as a count, with no budget as a very large one and a negative budget as -1.
+// The budget as a count, with no budget as a very large one and a negative budget as -1.
 fn budget(limit: Int?) Int:
     if let value = limit: return value
 
     return 9223372036854775807
 
-# Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
+// Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
 fn check_options(options: CsvOptions) Unit!:
     let scalars = options.delimiter.scalar_values()
     if scalars.length() != 1: return error(
@@ -80,8 +80,8 @@ fn check_options(options: CsvOptions) Unit!:
 
     return ok(unit)
 
-# The input as bytes with a cursor. The cached offsets are the next quote, delimiter and LF at or
-# after the cursor, or total when there is none; they are searched again only once passed.
+// The input as bytes with a cursor. The cached offsets are the next quote, delimiter and LF at or
+// after the cursor, or total when there is none; they are searched again only once passed.
 type Reader:
     bytes: Bytes
     total: Int
@@ -116,7 +116,7 @@ impl Reader:
 
         return ""
 
-    # The offset just past the line ending at the cursor, or the cursor when the cursor is not at one.
+    // The offset just past the line ending at the cursor, or the cursor when the cursor is not at one.
     fn line_end_after(at: Int) Int:
         if at >= self.total: return at
 
@@ -127,7 +127,7 @@ impl Reader:
 
         return at
 
-    # Reads the next record, skipping empty lines; none at end of input.
+    // Reads the next record, skipping empty lines; none at end of input.
     var fn read_record() List[String]?!:
         while true:
             let skipped = self.line_end_after(self.at)
@@ -137,7 +137,7 @@ impl Reader:
 
         if self.at >= self.total: return ok(none)
 
-        # A line without quotes is one record whose cells are the delimiter-separated pieces.
+        // A line without quotes is one record whose cells are the delimiter-separated pieces.
         let line = self.next_line(self.at)
 
         if self.next_quote(self.at) > line:
@@ -202,7 +202,7 @@ impl Reader:
             )
 
             if end < stop or stop >= self.total:
-                # The cell closes the record; drop the CR of a CRLF ending.
+                // The cell closes the record; drop the CR of a CRLF ending.
                 var last = end
                 if last > at and self.bytes[last - 1] == 13: last -= 1
                 row.append(self.text_between(at, last))
@@ -213,8 +213,8 @@ impl Reader:
             row.append(self.text_between(at, end))
             self.at = end + 1
 
-# Encodes rows as CSV with comma delimiters and LF endings by default.
-# Quotes cells when required by the delimiter or line ending.
+// Encodes rows as CSV with comma delimiters and LF endings by default.
+// Quotes cells when required by the delimiter or line ending.
 export fn stringify(
     rows: List[List[String]],
     options: CsvOptions = CsvOptions(),

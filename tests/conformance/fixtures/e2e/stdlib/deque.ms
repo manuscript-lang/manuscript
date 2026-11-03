@@ -1,5 +1,5 @@
-# conform: tags=optional,stdlib-deque,stdlib-testing,testing,tier-stdlib
-# conform: phase=test
+// conform: tags=optional,stdlib-deque,stdlib-testing,testing,tier-stdlib
+// conform: phase=test
 import expect_equal, expect_true from "@std/test/test.ms"
 import Deque from "@std/collections/deque.ms"
 

@@ -12,18 +12,18 @@ import WebSocket from "@std/net/net.ms"
 import WebSocketError from "@std/net/net.ms"
 import WebSocketOptions from "@std/net/net.ms"
 
-# Errors returned for invalid requests, transport failures, timeouts, and limits.
+// Errors returned for invalid requests, transport failures, timeouts, and limits.
 export type HttpError:
-    # The URL is not an `http` or `https` URL with a host, valid port, and no user info; a method, header name, or value is malformed or host-managed; or a limit or timeout is negative.
+    // The URL is not an `http` or `https` URL with a host, valid port, and no user info; a method, header name, or value is malformed or host-managed; or a limit or timeout is negative.
     case InvalidInput
-    # The response headers are not valid UTF-8, so they cannot become Strings.
+    // The response headers are not valid UTF-8, so they cannot become Strings.
     case InvalidData
-    # A buffered response body is larger than `max_response_bytes`.
+    // A buffered response body is larger than `max_response_bytes`.
     case LimitExceeded
-    # The network's restrictions disallow the host, a resolved address, or a redirect destination.
+    // The network's restrictions disallow the host, a resolved address, or a redirect destination.
     case PermissionDenied
-    # The client or network was closed before or during the request.
+    // The client or network was closed before or during the request.
     case Closed
-    # The request timeout elapsed before the response completed.
+    // The request timeout elapsed before the response completed.
     case Timeout
-    # Transport, TLS, 
+    // Transport, TLS, 

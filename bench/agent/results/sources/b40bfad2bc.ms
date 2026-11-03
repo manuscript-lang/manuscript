@@ -12,7 +12,7 @@ fn is_blank(line: String) Bool:
 fn is_digit(c: String) Bool:
     return c >= "0" and c <= "9"
 
-# Returns the decimal value of a 1-6 digit token, or none.
+// Returns the decimal value of a 1-6 digit token, or none.
 fn number(text: String) Optional[Int]:
     if text.length() < 1 or text.length() > 6: return none
 
@@ -20,7 +20,7 @@ fn number(text: String) Optional[Int]:
         if not is_digit(text.get(i)): return none
     return text.parse_int()
 
-# Like `number`, but -1 marks a malformed token (valid values are never negative).
+// Like `number`, but -1 marks a malformed token (valid values are never negative).
 fn value(text: String) Int:
     return number(text).get(-1)
 
@@ -63,7 +63,7 @@ fn edit(a: Bytes, b: Bytes) Int:
 
     return prev[m]
 
-# 0/1 knapsack; only capacities up to the total weight matter, so the table is capped there.
+// 0/1 knapsack; only capacities up to the total weight matter, so the table is capped there.
 fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
     var total = 0
     for w in ws: total += w
@@ -84,7 +84,7 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
 
     return best[limit]
 
-# Minimum coin count, or -1 when the amount cannot be made.
+// Minimum coin count, or -1 when the amount cannot be made.
 fn coins(amount: Int, cs: List[Int]) Int:
     let inf = amount + 1
     var best = List[Int]()

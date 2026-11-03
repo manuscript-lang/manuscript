@@ -3,7 +3,7 @@ import Bytes, BytesBuilder from "@std/bytes.ms"
 import bit_xor, shift_right_unsigned from "@std/math/math.ms"
 import expect_equal from "@std/test/test.ms"
 
-# A bit-at-a-time oracle deliberately independent of the production byte table.
+// A bit-at-a-time oracle deliberately independent of the production byte table.
 fn reference(data: Bytes) UInt32:
     var crc = 4294967295
 
@@ -60,7 +60,7 @@ test "IEEE CRC32 matches bit oracle across byte and length boundaries":
         let prefix = try data.slice(0, length)
         try expect_equal(crc32(prefix), reference(prefix))
 
-    # Repeated calls do not retain state or depend on a previous input.
+    // Repeated calls do not retain state or depend on a previous input.
     try expect_equal(crc32(data), crc32(data))
     try expect_equal(crc32("123456789".to_bytes()).to_int(), 3421780262)
 
@@ -79,7 +79,7 @@ test "IEEE CRC32 large binary vector":
     let data = builder.build()
     try expect_equal(crc32(data).to_int(), 9350483)
 
-    # Short views use the same IEEE convention.
+    // Short views use the same IEEE convention.
     try expect_equal(crc32(try data.slice(0, 31)).to_int(), 2164364862)
     try expect_equal(crc32(try data.slice(0, 32)).to_int(), 48494828)
     try expect_equal(crc32(try data.slice(0, 33)).to_int(), 1203717879)

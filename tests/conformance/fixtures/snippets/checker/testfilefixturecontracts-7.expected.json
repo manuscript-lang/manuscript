@@ -14,7 +14,7 @@
           "file": "testfilefixturecontracts-7.ms",
           "line": 6,
           "column": 19,
-          "offset": 217
+          "offset": 220
         },
         "fix": {
           "position": {
@@ -40,7 +40,7 @@
           "file": "testfilefixturecontracts-7.ms",
           "line": 4,
           "column": 20,
-          "offset": 191
+          "offset": 194
         }
       },
       {
@@ -51,7 +51,7 @@
           "file": "testfilefixturecontracts-7.ms",
           "line": 6,
           "column": 1,
-          "offset": 199
+          "offset": 202
         }
       },
       {
@@ -62,7 +62,7 @@
           "file": "testfilefixturecontracts-7.ms",
           "line": 7,
           "column": 12,
-          "offset": 239
+          "offset": 242
         }
       }
     ],

@@ -1,6 +1,6 @@
-# conform: tags=generics,alternatives,tier-io
-# conform: phase=run
-# conform: origin=thread/type-checker-bug-bash
+// conform: tags=generics,alternatives,tier-io
+// conform: phase=run
+// conform: origin=thread/type-checker-bug-bash
 import stdout from "@std/io/io.ms"
 
 type Shape:

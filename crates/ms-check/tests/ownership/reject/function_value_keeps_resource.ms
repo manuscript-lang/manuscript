@@ -14,4 +14,4 @@ fn apply(f: fn(Door) Door?) Int:
     return f(Door(1)).get().n
 
 fn g() Int:
-    return apply(wrap)  # error: `wrap` keeps its parameter `d`
+    return apply(wrap)  // error: `wrap` keeps its parameter `d`

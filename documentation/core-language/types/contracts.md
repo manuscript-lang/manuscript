@@ -35,7 +35,7 @@ impl Increment for Offset:
 After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility). An operation that changes its receiver is `var fn` in the interface and in every impl; a mismatch in either direction is a compile error. A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. An operation may declare [type parameters of its own](#generic-operations); the implementation repeats them with the same bounds.
 
 ```manuscript
-# Rejected: amount does not match the contract's value label.
+// Rejected: amount does not match the contract's value label.
 impl Increment for Offset:
     fn apply(amount: Int) Int:
         return amount + self.delta
@@ -111,7 +111,7 @@ A `Box[T]` without `T: Equal` cannot use this implementation.
 Two blocks overlap if their receiver and contract applications can match the same pair, found by structural unification with distinct variables per block; bounds are ignored. Overlap among implementations visible in a module is rejected at declaration, used or not. There is no most-specific selection.
 
 ```manuscript
-# Rejected alongside the generic block above: both apply to Box[Int].
+// Rejected alongside the generic block above: both apply to Box[Int].
 impl ReadValue[Int] for Box[Int]:
     fn get() Int:
         return self.value

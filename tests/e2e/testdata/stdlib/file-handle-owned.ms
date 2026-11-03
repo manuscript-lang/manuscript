@@ -2,7 +2,7 @@ import FileHandle, open, temporary, write_file from "@std/os/fs.ms"
 import ReadStream from "@std/io/io.ms"
 import expect_true, expect_ok from "@std/test/test.ms"
 
-# `FileHandle` is a nominal type with `impl Closeable`, so a binding of one owns the file.
+// `FileHandle` is a nominal type with `impl Closeable`, so a binding of one owns the file.
 fn view_of(path: String) ReadStream!:
     let file = try open(path, "r", 0)
     return ok(file.reader())

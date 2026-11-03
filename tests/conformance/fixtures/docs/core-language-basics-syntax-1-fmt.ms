@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interpolation,parser,records,strings,tier-core
-# conform: phase=parse
-# conform: origin=documentation/core-language/basics/syntax.md:12
+// conform: tags=control-flow,formatter,interpolation,parser,records,strings,tier-core
+// conform: phase=parse
+// conform: origin=documentation/core-language/basics/syntax.md:12
 export type Customer:
     name: String
     active: Bool

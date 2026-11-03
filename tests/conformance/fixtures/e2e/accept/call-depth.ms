@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/call-depth.ms
+// conform: tags=closures,control-flow,interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/call-depth.ms
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
 type Walker:

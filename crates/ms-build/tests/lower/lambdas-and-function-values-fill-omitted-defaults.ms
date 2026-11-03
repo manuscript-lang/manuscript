@@ -1,5 +1,5 @@
-# Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-# expect-mir: "opt.is_some"
+// Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
+// expect-mir: "opt.is_some"
 
 import stdout from "@std/io/io.ms"
 

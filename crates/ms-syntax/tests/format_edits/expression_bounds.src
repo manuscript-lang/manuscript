@@ -14,7 +14,7 @@ fn run(flag: Bool, a_very_long_identifier_that_will_make_the_line_exceed_its_ava
     return value + other
 
 fn choose(flag: Bool, other: Bool, a_very_long_identifier_that_will_make_the_line_exceed_its_available_width: Int) Int:
-    return a_very_long_identifier_that_will_make_the_line_exceed_its_available_width + if flag: 1 else if other: 2 else: 3  # keep the complete conditional
+    return a_very_long_identifier_that_will_make_the_line_exceed_its_available_width + if flag: 1 else if other: 2 else: 3  // keep the complete conditional
 
 fn match_value(flag: Bool, a_very_long_identifier_that_will_make_the_line_exceed_its_available_width: Int) Int:
     return a_very_long_identifier_that_will_make_the_line_exceed_its_available_width + match flag:

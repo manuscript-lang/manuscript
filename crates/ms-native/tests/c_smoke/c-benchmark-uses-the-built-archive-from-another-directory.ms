@@ -1,4 +1,4 @@
-#!/bin/sh
+//!/bin/sh
 set -eu
 out=
 for arg do
@@ -6,5 +6,5 @@ for arg do
     if [ "${next-}" = out ]; then out=$arg; next=; fi
     case "$arg" in */libms_native.a) test "$(cat "$arg")" = fresh ;; esac
 done
-printf '#!/bin/sh\nexit 0\n' > "$out"
+printf '//!/bin/sh\nexit 0\n' > "$out"
 chmod +x "$out"

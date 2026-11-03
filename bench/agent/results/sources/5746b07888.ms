@@ -43,7 +43,7 @@ fn all_digits(text: String) Bool:
         if c < 48 or c > 57: return false
     return true
 
-# A one- or two-digit number inside `low` through `high`.
+// A one- or two-digit number inside `low` through `high`.
 fn small_number(text: String, low: Int, high: Int) Optional[Int]:
     if not all_digits(text) or text.length() > 2: return none
 
@@ -93,7 +93,7 @@ fn parse_count(text: String) Result[Int, Bad]:
 
     return error(Bad(text: "bad count"))
 
-# The values one cron item selects, or none when the item is malformed.
+// The values one cron item selects, or none when the item is malformed.
 fn item_values(item: String, low: Int, high: Int) Optional[List[Int]]:
     let parts = item.split("/")
     if parts.length() == 0 or parts.length() > 2: return none
@@ -175,7 +175,7 @@ fn parse_job(tokens: List[String]) Result[Job, Bad]:
     let cron = try parse_cron(tokens)
     return ok(Job(start: start, count: count, cron: cron))
 
-# Day of week of a date, with 0 meaning Sunday; 1970-01-01 was a Thursday.
+// Day of week of a date, with 0 meaning Sunday; 1970-01-01 was a Thursday.
 fn weekday(s: Stamp) Int:
     var days = 0
     for y in 1970..s.year:

@@ -1,6 +1,6 @@
-# conform: tags=lists,faults,perf,tier-core
-# conform: phase=run
-# conform: origin=range pass: relational bounds proofs
+// conform: tags=lists,faults,perf,tier-core
+// conform: phase=run
+// conform: origin=range pass: relational bounds proofs
 import stdout from "@std/io/io.ms"
 
 fn stride(a: List[Int]) Int:

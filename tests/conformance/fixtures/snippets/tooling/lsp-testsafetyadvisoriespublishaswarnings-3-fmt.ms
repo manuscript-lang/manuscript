@@ -1,7 +1,7 @@
-# conform: tags=formatter,match,modules,parser,stdlib-fs,strings,tier-io
-# conform: phase=parse
-# conform: origin=pkg/tooling/lsp/advisory_lint_test.go:20 TestSafetyAdvisoriesPublishAsWarnings
-# café 🦀
+// conform: tags=formatter,match,modules,parser,stdlib-fs,strings,tier-io
+// conform: phase=parse
+// conform: origin=pkg/tooling/lsp/advisory_lint_test.go:20 TestSafetyAdvisoriesPublishAsWarnings
+// café 🦀
 import stat from "@std/os/fs.ms"
 
 fn use(path: String) Int:

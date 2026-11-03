@@ -1,7 +1,7 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# Kinds of script entries.
+// Kinds of script entries.
 let SAME = 0
 let DEL = 1
 let INS = 2
@@ -12,7 +12,7 @@ fn range_str(start: Int, len: Int) String:
 
     return "{start},{len}"
 
-# Appends the hunk covering script entries [start, end] to `out`.
+// Appends the hunk covering script entries [start, end] to `out`.
 fn emit_hunk(
     kinds: List[Int],
     texts: List[String],
@@ -57,7 +57,7 @@ export fn main() Int:
     let n = hdr[3].parse_int().get(0)
     let m = hdr[4].parse_int().get(0)
 
-    # A line i is lines[1 + i]; B line j is lines[1 + n + j].
+    // A line i is lines[1 + i]; B line j is lines[1 + n + j].
     let w = m + 1
     var table = List[Int](reserve: (n + 1) * w)
     for k in 0..(n + 1) * w:
@@ -80,7 +80,7 @@ export fn main() Int:
 
         i -= 1
 
-    # Walk the edit script.
+    // Walk the edit script.
     var kinds = List[Int]()
     var texts = List[String]()
     i = 0
@@ -104,7 +104,7 @@ export fn main() Int:
 
     let total = kinds.length()
 
-    # ia[p]: A lines before script entry p; jb[p]: B lines before entry p.
+    // ia[p]: A lines before script entry p; jb[p]: B lines before entry p.
     var ia = List[Int]()
     var jb = List[Int]()
     ia.append(0)

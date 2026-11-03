@@ -14,7 +14,7 @@
           "file": "testmutationrejections-6.ms",
           "line": 5,
           "column": 17,
-          "offset": 164
+          "offset": 167
         }
       },
       {
@@ -25,20 +25,20 @@
           "file": "testmutationrejections-6.ms",
           "line": 6,
           "column": 5,
-          "offset": 180
+          "offset": 183
         },
         "fix": {
           "position": {
             "file": "testmutationrejections-6.ms",
             "line": 5,
             "column": 5,
-            "offset": 152
+            "offset": 155
           },
           "end": {
             "file": "testmutationrejections-6.ms",
             "line": 5,
             "column": 8,
-            "offset": 155
+            "offset": 158
           },
           "replacement": "var"
         }
@@ -51,7 +51,7 @@
           "file": "testmutationrejections-6.ms",
           "line": 6,
           "column": 13,
-          "offset": 188
+          "offset": 191
         }
       }
     ],

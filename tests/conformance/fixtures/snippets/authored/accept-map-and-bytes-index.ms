@@ -1,6 +1,6 @@
-# conform: tags=maps,types,tier-core
-# conform: phase=check
-# conform: origin=ms-check/tests/messages.rs
+// conform: tags=maps,types,tier-core
+// conform: phase=check
+// conform: origin=ms-check/tests/messages.rs
 export fn main() Int:
     var m = Map[String, Int]()
     m["a"] = 1

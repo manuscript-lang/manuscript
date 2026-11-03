@@ -26,10 +26,10 @@ Measured (`23477392`, the 70 `.clone()` lines #2199 added removed, debug `ms che
 
 ```manuscript
 fn named(r: Row) String!Missing:
-    return ok(r.name)               # moved `r.name`; callers wrote ok(r.name.clone())
+    return ok(r.name)               // moved `r.name`; callers wrote ok(r.name.clone())
 
 fn tail(result: Row!Bad) String!Bad:
-    let row = try relay(result)     # `relay` lends; the try's error path moved it
+    let row = try relay(result)     // `relay` lends; the try's error path moved it
     return ok(row.name)
 ```
 

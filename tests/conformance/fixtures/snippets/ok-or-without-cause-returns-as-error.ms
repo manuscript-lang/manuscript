@@ -1,6 +1,6 @@
-# conform: tags=optional,try-result,tier-io
-# conform: phase=run
-# conform: origin=thread/type-checker-bug-bash
+// conform: tags=optional,try-result,tier-io
+// conform: phase=run
+// conform: origin=thread/type-checker-bug-bash
 import stdout from "@std/io/io.ms"
 
 fn a(s: String) Int!:

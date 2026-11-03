@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,faults,generics,interfaces,tier-core
-# conform: phase=check
-# conform: origin=tests/e2e/testdata/projects/local_extensions/contracts.ms
+// conform: tags=diagnostics,faults,generics,interfaces,tier-core
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/local_extensions/contracts.ms
 export interface Read[T]:
     fn get() T
 

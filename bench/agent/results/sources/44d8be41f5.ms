@@ -9,7 +9,7 @@ export fn main() Int:
     let rows = read_lines(stdin()).get()
     var n = rows.length()
 
-    # Trailing empty lines are not part of the grid.
+    // Trailing empty lines are not part of the grid.
     while n > 0 and rows[n - 1].length() == 0:
         n -= 1
     if n == 0:
@@ -55,7 +55,7 @@ export fn main() Int:
     if ends > 1:
         return say("error: multiple ends")
 
-    # Breadth-first search over the flattened grid; -1 means not yet reached.
+    // Breadth-first search over the flattened grid; -1 means not yet reached.
     var dist = List[Int]()
     for i in 0..n * width:
         dist.append(-1)

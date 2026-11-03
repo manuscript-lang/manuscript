@@ -1,7 +1,7 @@
-# Compares StringBuilder.append against Rust's String::push_str for pieces of 4 B to 8 KiB (microseconds to build about
-# 1 MB) and List[Int].append against Vec::push for 10K to 1M items, min of N runs (bench/perf/strappend).
-# Usage: ms run bench/tools/strappend.ms [-- repeats]; MS, RUSTC pick tools; RUSTC_LINKER names the linker when PATH has the
-# wrong one (Git's `link` shadows MSVC's on Windows runners).
+// Compares StringBuilder.append against Rust's String::push_str for pieces of 4 B to 8 KiB (microseconds to build about
+// 1 MB) and List[Int].append against Vec::push for 10K to 1M items, min of N runs (bench/perf/strappend).
+// Usage: ms run bench/tools/strappend.ms [-- repeats]; MS, RUSTC pick tools; RUSTC_LINKER names the linker when PATH has the
+// wrong one (Git's `link` shadows MSVC's on Windows runners).
 import build_ms, build_rust, env, exe, finish, repeats, sample, usage from "./lib.ms"
 import summarize from "./strappend_table.ms"
 import copy, CopyOptions, temporary from "@std/os/fs.ms"

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,interfaces,parser,strings,tier-core
-# conform: phase=parse
-# conform: origin=pkg/checker/diagnostic_fixes_test.go:21 TestDiagnosticFixes
+// conform: tags=control-flow,formatter,interfaces,parser,strings,tier-core
+// conform: phase=parse
+// conform: origin=pkg/checker/diagnostic_fixes_test.go:21 TestDiagnosticFixes
 interface Named:
     fn name() String
 

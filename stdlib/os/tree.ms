@@ -2,28 +2,28 @@ import Bytes from "@std/bytes.ms"
 import DirectoryEntry, list, read_file from "@std/os/fs.ms"
 import base64_decode from "@std/data/encoding.ms"
 
-# Read-only file trees you can swap: code that takes a `FileTree` reads the host disk (`host_tree`) or an in-memory
-# tree (`MemoryTree`) the same way, so tests need no temporary directories. `walk` visits every entry under a root.
-#
-# Paths in a tree are `/`-separated and relative to the tree's root. `.` and empty parts are ignored and `..` steps
-# up; a path that would leave the root is `InvalidInput`.
-#
-# ```manuscript
-# import FileTree, walk from "@std/os/tree.ms"
-#
-# fn names(tree: FileTree) List[String]:
-#     let found = walk(tree).get(List())
-#     return found.map(fn e: e.path.clone())
-# ```
+// Read-only file trees you can swap: code that takes a `FileTree` reads the host disk (`host_tree`) or an in-memory
+// tree (`MemoryTree`) the same way, so tests need no temporary directories. `walk` visits every entry under a root.
+//
+// Paths in a tree are `/`-separated and relative to the tree's root. `.` and empty parts are ignored and `..` steps
+// up; a path that would leave the root is `InvalidInput`.
+//
+// ```manuscript
+// import FileTree, walk from "@std/os/tree.ms"
+//
+// fn names(tree: FileTree) List[String]:
+//     let found = walk(tree).get(List())
+//     return found.map(fn e: e.path.clone())
+// ```
 
-# A directory tree whose files can be read and whose directories can be listed.
+// A directory tree whose files can be read and whose directories can be listed.
 export interface FileTree:
-    # Reads a whole file; more than `max_bytes` bytes returns `LimitExceeded`. A missing path is `NotFound`.
+    // Reads a whole file; more than `max_bytes` bytes returns `LimitExceeded`. A missing path is `NotFound`.
     fn read(path: String, max_bytes: Int?) Bytes!
-    # Lists a directory's children, sorted by name. A missing path is `NotFound`, a file is `InvalidInput`.
+    // Lists a directory's children, sorted by name. A missing path is `NotFound`, a file is `InvalidInput`.
     fn children(path: String, max_entries: Int?) List[DirectoryEntry]!
 
-# Resolves `path` to its parts under the root. Returns the clean path joined by `/`; the root is the empty string.
+// Resolves `path` to its parts under the root. Returns the clean path joined by `/`; the root is the empty string.
 fn clean(path: String) String!:
     if path.contains("\u{0}"): return error(
         Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
@@ -74,44 +74,44 @@ fn limited(entries: List[DirectoryEntry], max_entries: Int?) List[DirectoryEntry
 
     return ok(entries)
 
-# The host filesystem below `root`, read through the `FileTree` interface. Paths cannot climb out of `root`.
+// The host filesystem below `root`, read through the `FileTree` interface. Paths cannot climb out of `root`.
 export type HostTree:
-    # Directory that is the tree's root, in the host's spelling.
+    // Directory that is the tree's root, in the host's spelling.
     root: String
 
-# Returns a tree over the directory `root` of the host filesystem.
+// Returns a tree over the directory `root` of the host filesystem.
 export fn host_tree(root: String) HostTree:
     return HostTree(root)
 
 impl FileTree for HostTree:
-    # Reads a file below the root from the host disk; failures are the host's `Error`.
+    // Reads a file below the root from the host disk; failures are the host's `Error`.
     fn read(path: String, max_bytes: Int?) Bytes!:
         let inside = try clean(path)
         return read_file(child_path(self.root, inside), max_bytes)
 
-    # Lists a directory below the root from the host disk, sorted by name.
+    // Lists a directory below the root from the host disk, sorted by name.
     fn children(path: String, max_entries: Int?) List[DirectoryEntry]!:
         let inside = try clean(path)
         let entries = try list(child_path(self.root, inside), max_entries)
         return ok(entries.sorted(by_name))
 
-# A file tree held in memory: build it with `write_file` and `create_directory`, read it through `FileTree`.
+// A file tree held in memory: build it with `write_file` and `create_directory`, read it through `FileTree`.
 export type MemoryTree:
-    # File contents by clean path.
+    // File contents by clean path.
     files: Map[String, Bytes]
-    # Clean paths of directories; the root is the empty string and always present.
+    // Clean paths of directories; the root is the empty string and always present.
     directories: Set[String]
-    # Internal state: clean paths of the entries directly under each directory, so listing is not a scan of the tree.
+    // Internal state: clean paths of the entries directly under each directory, so listing is not a scan of the tree.
     kids: Map[String, Set[String]] = Map[String, Set[String]]()
 
-# Returns an empty in-memory tree holding only its root directory.
+// Returns an empty in-memory tree holding only its root directory.
 export fn memory_tree() MemoryTree:
     var directories = Set[String]()
     directories.add("")
     return MemoryTree(Map[String, Bytes](), directories)
 
 impl MemoryTree:
-    # Records `path` as a child of its parent directory.
+    // Records `path` as a child of its parent directory.
     var fn link(path: String) Unit:
         let parent = parent_of(path)
 
@@ -124,13 +124,13 @@ impl MemoryTree:
         self.kids[parent] = fresh
         return unit
 
-    # Forgets `path` as a child of its parent directory.
+    // Forgets `path` as a child of its parent directory.
     var fn unlink(path: String) Unit:
         if var set = self.kids[parent_of(path)]?:
             set.remove(path)
         return unit
 
-    # True when `path` names a file or directory.
+    // True when `path` names a file or directory.
     fn exists(path: String) Bool:
         let inside = clean(path)
         if inside.is_error(): return false
@@ -138,7 +138,7 @@ impl MemoryTree:
         let key = inside.get()
         return self.files.contains(key) or self.directories.contains(key)
 
-    # Creates `path` and any missing parent directories. An existing directory is fine; an existing file is `AlreadyExists`.
+    // Creates `path` and any missing parent directories. An existing directory is fine; an existing file is `AlreadyExists`.
     var fn create_directory(path: String) Unit!:
         let inside = try clean(path)
         if self.files.contains(inside): return error(
@@ -156,8 +156,8 @@ impl MemoryTree:
 
         return ok(unit)
 
-    # Writes a file, replacing any earlier content and creating missing parent directories.
-    # A path that is a directory, or whose parent is a file, is `InvalidInput`; the root cannot be written.
+    // Writes a file, replacing any earlier content and creating missing parent directories.
+    // A path that is a directory, or whose parent is a file, is `InvalidInput`; the root cannot be written.
     var fn write_file(path: String, data: Bytes) Unit!:
         let inside = try clean(path)
         if inside == "" or self.directories.contains(inside): return error(
@@ -178,8 +178,8 @@ impl MemoryTree:
         self.link(inside.clone())
         return ok(unit)
 
-    # Removes a file or an empty directory; `recursive` removes a directory with everything under it.
-    # A missing path is `NotFound`, a non-empty directory without `recursive` is `NotEmpty`, and the root cannot be removed.
+    // Removes a file or an empty directory; `recursive` removes a directory with everything under it.
+    // A missing path is `NotFound`, a non-empty directory without `recursive` is `NotEmpty`, and the root cannot be removed.
     var fn remove(path: String, recursive: Bool = false) Unit!:
         let inside = try clean(path)
         if inside == "": return error(
@@ -221,7 +221,7 @@ impl MemoryTree:
         return ok(unit)
 
 impl FileTree for MemoryTree:
-    # Reads a file held in this tree.
+    // Reads a file held in this tree.
     fn read(path: String, max_bytes: Int?) Bytes!:
         let inside = try clean(path)
         if self.directories.contains(inside): return error(
@@ -244,7 +244,7 @@ impl FileTree for MemoryTree:
 
         return ok(found.get().clone())
 
-    # Lists the files and directories directly under `path`, sorted by name.
+    // Lists the files and directories directly under `path`, sorted by name.
     fn children(path: String, max_entries: Int?) List[DirectoryEntry]!:
         let inside = try clean(path)
         if self.files.contains(inside): return error(
@@ -268,19 +268,19 @@ impl FileTree for MemoryTree:
                 )
         return limited(entries.sorted(by_name), max_entries)
 
-# A read-only tree whose files stay Base64 text until they are read. Generated modules for `[embed]` in
-# `ms.toml` build one with `embedded_tree`: making it costs one map entry per file and one index entry per path,
-# and `read` decodes only the file asked for.
+// A read-only tree whose files stay Base64 text until they are read. Generated modules for `[embed]` in
+// `ms.toml` build one with `embedded_tree`: making it costs one map entry per file and one index entry per path,
+// and `read` decodes only the file asked for.
 export type EmbeddedTree:
-    # Base64 text of each file, by clean path.
+    // Base64 text of each file, by clean path.
     encoded: Map[String, String]
-    # Clean paths of every directory, including the root (the empty string).
+    // Clean paths of every directory, including the root (the empty string).
     directories: Set[String]
-    # Internal state: clean paths directly under each directory, so listing is not a scan of the tree.
+    // Internal state: clean paths directly under each directory, so listing is not a scan of the tree.
     kids: Map[String, List[String]]
 
-# Returns a read-only tree over Base64 file text by clean path and the clean paths of every directory (the root,
-# the empty string, included).
+// Returns a read-only tree over Base64 file text by clean path and the clean paths of every directory (the root,
+// the empty string, included).
 export fn embedded_tree(
     encoded: Map[String, String],
     directories: Set[String]
@@ -303,7 +303,7 @@ fn index_child(var kids: Map[String, List[String]], path: String) Unit:
     return unit
 
 impl FileTree for EmbeddedTree:
-    # Decodes and returns one file; the other files are not touched.
+    // Decodes and returns one file; the other files are not touched.
     fn read(path: String, max_bytes: Int?) Bytes!:
         let inside = try clean(path)
         if self.directories.contains(inside): return error(
@@ -333,7 +333,7 @@ impl FileTree for EmbeddedTree:
 
         return ok(decoded.get().clone())
 
-    # Lists the files and directories directly under `path`, sorted by name.
+    // Lists the files and directories directly under `path`, sorted by name.
     fn children(path: String, max_entries: Int?) List[DirectoryEntry]!:
         let inside = try clean(path)
         if self.encoded.contains(inside): return error(
@@ -357,16 +357,16 @@ impl FileTree for EmbeddedTree:
                 )
         return limited(entries.sorted(by_name), max_entries)
 
-# One file or directory found by `walk`.
+// One file or directory found by `walk`.
 export type WalkEntry:
-    # Path below the walked root, `/`-separated, starting with the walked root's own children.
+    // Path below the walked root, `/`-separated, starting with the walked root's own children.
     path: String
-    # True when the entry is a directory (its children follow it).
+    // True when the entry is a directory (its children follow it).
     directory: Bool
 
-# Lists everything below `root` depth first, a directory before its children and siblings sorted by name.
-# Symbolic links on a host tree appear as non-directory entries and are not followed. `max_entries` bounds the
-# number of entries found, returning `LimitExceeded` rather than a partial list.
+// Lists everything below `root` depth first, a directory before its children and siblings sorted by name.
+// Symbolic links on a host tree appear as non-directory entries and are not followed. `max_entries` bounds the
+// number of entries found, returning `LimitExceeded` rather than a partial list.
 export fn walk(
     tree: FileTree,
     root: String = "",
@@ -392,7 +392,7 @@ export fn walk(
 
     return ok(found)
 
-# Lists `directory` and pushes its children onto `pending` in reverse, so popping yields them in name order.
+// Lists `directory` and pushes its children onto `pending` in reverse, so popping yields them in name order.
 fn push_children(tree: FileTree, directory: String, var pending: List[WalkEntry]) Unit!:
     let children = try tree.children(directory, none)
     var i = children.length()

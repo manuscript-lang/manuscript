@@ -1,6 +1,6 @@
 import stdout from "@std/io/io.ms"
 
-# Returns the numbers in ascending order, keeping duplicates.
+// Returns the numbers in ascending order, keeping duplicates.
 export fn insertion_sort(numbers: List[Int]) List[Int]:
     var sorted: List[Int] = []
 

@@ -422,7 +422,7 @@ pub fn retag_tiers(corpus: &Path) -> usize {
                 header
                     + &t[t
                         .lines()
-                        .take_while(|l| l.starts_with("# conform:"))
+                        .take_while(|l| l.starts_with("// conform:"))
                         .map(|l| l.len() + 1)
                         .sum::<usize>()..]
             }
@@ -580,7 +580,7 @@ fn header(origin: &str, phase: Phase, text: &str, extra: &[&str]) -> Meta {
 
 fn strip_headers(source: &str) -> &str {
     let mut rest = source;
-    while rest.starts_with("# conform:") {
+    while rest.starts_with("// conform:") {
         rest = rest.split_once('\n').map_or("", |(_, r)| r);
     }
     rest
@@ -798,7 +798,7 @@ mod tests {
     #[test]
     fn header_stripping() {
         assert_eq!(
-            strip_headers("# conform: tags=x\n# conform: phase=run\nfn f"),
+            strip_headers("// conform: tags=x\n// conform: phase=run\nfn f"),
             "fn f"
         );
     }

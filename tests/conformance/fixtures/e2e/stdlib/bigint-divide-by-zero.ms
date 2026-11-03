@@ -1,5 +1,5 @@
-# conform: tags=stdlib-bigint,faults,tier-stdlib,numbers
-# conform: phase=run
+// conform: tags=stdlib-bigint,faults,tier-stdlib,numbers
+// conform: phase=run
 import stdout from "@std/io/io.ms"
 import from_int from "@std/math/math.ms"
 

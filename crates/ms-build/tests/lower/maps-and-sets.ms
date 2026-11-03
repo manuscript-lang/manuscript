@@ -1,7 +1,7 @@
-# Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-# expect-mir: "msrt_map_add"
-# expect-mir: "msrt_list_to_set"
-# expect-mir: "put "
+// Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
+// expect-mir: "msrt_map_add"
+// expect-mir: "msrt_list_to_set"
+// expect-mir: "put "
 
 export fn main() Int:
     var m = {"a": 1}

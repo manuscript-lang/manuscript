@@ -14,7 +14,7 @@
           "file": "testbytessplitrejectsinvalidcontracts-1.ms",
           "line": 4,
           "column": 16,
-          "offset": 174
+          "offset": 177
         },
         "fix": {
           "position": {
@@ -40,7 +40,7 @@
           "file": "testbytessplitrejectsinvalidcontracts-1.ms",
           "line": 4,
           "column": 28,
-          "offset": 186
+          "offset": 189
         },
         "fix": {
           "position": {

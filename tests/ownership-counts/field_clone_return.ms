@@ -1,6 +1,6 @@
-# expect-debug: allocs=4 alloc_bytes=672
-# expect-release: allocs=3 alloc_bytes=648
-# Today a field of an owned record leaves only by a deep copy. The partial-move stage should lower both counts.
+// expect-debug: allocs=4 alloc_bytes=672
+// expect-release: allocs=3 alloc_bytes=648
+// Today a field of an owned record leaves only by a deep copy. The partial-move stage should lower both counts.
 type Big:
     name: String
     items: List[Int]

@@ -1,5 +1,5 @@
-# conform: tags=interfaces,optional,stdlib-io,stdlib-streams,tier-stdlib,try-result
-# conform: phase=run
+// conform: tags=interfaces,optional,stdlib-io,stdlib-streams,tier-stdlib,try-result
+// conform: phase=run
 import from_bytes, concat, digest from "@std/io/streams.ms"
 import read_all, stdout from "@std/io/io.ms"
 import HashAlgorithm from "@std/crypto.ms"
@@ -7,7 +7,7 @@ import HashAlgorithm from "@std/crypto.ms"
 fn say(text: String) Unit:
     stdout().write(text).get()
 
-# A stream is a value: concat must read its inputs in place so each keeps its position across chunks.
+// A stream is a value: concat must read its inputs in place so each keeps its position across chunks.
 export fn main() Int:
     let data = "hello world".to_bytes()
     let joined = concat([from_bytes(data.clone(), 4), from_bytes(data.clone(), 4)])

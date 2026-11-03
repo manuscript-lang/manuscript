@@ -1,18 +1,18 @@
 import Iterator, panic from "@std/core.ms"
 import Iterable from "@std/collections/iterable.ms"
 
-# A mutable first-in, first-out queue. A queue is an owned value: a copy is an independent queue, like Deque and List.
-# Omitted or none capacity grows as needed and adds no fixed queue limit.
+// A mutable first-in, first-out queue. A queue is an owned value: a copy is an independent queue, like Deque and List.
+// Omitted or none capacity grows as needed and adds no fixed queue limit.
 export type Queue[T]:
-    # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
+    // Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Int?
-    # Pending values from `head`; `none` marks consumed slots. Internal state: use the operations, not this field.
+    // Pending values from `head`; `none` marks consumed slots. Internal state: use the operations, not this field.
     items: List[T?] = []
-    # Index in `items` of the oldest value. Internal state.
+    // Index in `items` of the oldest value. Internal state.
     head: Int = 0
 
 impl Queue[T]:
-    # Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
+    // Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
     var fn enqueue(value: T) Bool:
         if let limit = self.capacity:
             if limit <= 0:
@@ -34,7 +34,7 @@ impl Queue[T]:
         self.items.append(value)
         return true
 
-    # Removes and returns the oldest value, or `none` when empty.
+    // Removes and returns the oldest value, or `none` when empty.
     var fn dequeue() T?:
         if self.head >= self.items.length():
             return none
@@ -48,57 +48,57 @@ impl Queue[T]:
 
         return value
 
-    # Returns the oldest value without removing it, or none when the queue is empty.
+    // Returns the oldest value without removing it, or none when the queue is empty.
     fn peek() T?:
         if self.head >= self.items.length():
             return none
 
         return self.items.get(self.head)
 
-    # Reports whether dequeue and peek would return none.
+    // Reports whether dequeue and peek would return none.
     fn is_empty() Bool:
         return self.head >= self.items.length()
 
 impl Iterable[T] for Queue[T]:
-    # Returns the number of values currently waiting in the queue.
+    // Returns the number of values currently waiting in the queue.
     fn length() Int:
         return self.items.length() - self.head
 
-    # Returns the value `index` places after the oldest, or none when out of range; negative indexes are out of range.
+    // Returns the value `index` places after the oldest, or none when out of range; negative indexes are out of range.
     fn at(index: Int) T?:
         if index < 0 or index >= self.length():
             return none
 
         return self.items.get(self.head + index)
 
-# Orders two values: negative when `left` dequeues first, zero when equal, positive when `right` dequeues first.
+// Orders two values: negative when `left` dequeues first, zero when equal, positive when `right` dequeues first.
 fn order[T: Comparable](left: T, right: T) Int:
     return left.compare(right)
 
-# Values dequeue in their `Comparable` order, smallest first; equal priorities remain FIFO. Wrap a value in a record with `impl Comparable` to order by anything else.
-# A priority queue is an owned value: a copy is an independent queue.
+// Values dequeue in their `Comparable` order, smallest first; equal priorities remain FIFO. Wrap a value in a record with `impl Comparable` to order by anything else.
+// A priority queue is an owned value: a copy is an independent queue.
 export type PriorityQueue[T: Comparable]:
-    # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
+    // Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Int?
-    # Binary heap of waiting values. Internal state: use the operations, not this field.
+    // Binary heap of waiting values. Internal state: use the operations, not this field.
     heap: List[T] = []
-    # Enqueue sequence number of each heap value, in step with `heap`; the smaller breaks ties between equal priorities. Internal state.
+    // Enqueue sequence number of each heap value, in step with `heap`; the smaller breaks ties between equal priorities. Internal state.
     orders: List[Int] = []
-    # Next enqueue sequence number. Internal state.
+    // Next enqueue sequence number. Internal state.
     next_order: Int = 0
 
 impl PriorityQueue[T]:
-    # Reports whether the entry at `a` dequeues before the entry at `b`.
+    // Reports whether the entry at `a` dequeues before the entry at `b`.
     fn before(a: Int, b: Int) Bool:
         let order = order(self.heap.get(a), self.heap.get(b))
         return order < 0 or (order == 0 and self.orders.get(a) < self.orders.get(b))
 
-    # Exchanges the heap entries at `a` and `b`.
+    // Exchanges the heap entries at `a` and `b`.
     var fn swap_entries(a: Int, b: Int) Unit:
         self.heap.swap(a, b)
         self.orders.swap(a, b)
 
-    # Moves the entry at `start` up, but no higher than `floor`, while it dequeues before its parent.
+    // Moves the entry at `start` up, but no higher than `floor`, while it dequeues before its parent.
     var fn sift_up(start: Int, floor: Int) Unit:
         var at = start
 
@@ -110,9 +110,9 @@ impl PriorityQueue[T]:
             self.swap_entries(at, parent)
             at = parent
 
-    # Moves the entry at `start` down the path of earlier children to the bottom, then back up to where it belongs:
-    # one comparison per level on the way down instead of two, since a displaced last entry usually belongs near the bottom.
-    # The loop runs while the entry has a left child, and the guards on `at` let the compiler prove every index in range.
+    // Moves the entry at `start` down the path of earlier children to the bottom, then back up to where it belongs:
+    // one comparison per level on the way down instead of two, since a displaced last entry usually belongs near the bottom.
+    // The loop runs while the entry has a left child, and the guards on `at` let the compiler prove every index in range.
     var fn sift_down(start: Int) Unit:
         let size = self.heap.length()
         let parents = size / 2
@@ -131,7 +131,7 @@ impl PriorityQueue[T]:
 
         self.sift_up(at, start)
 
-    # Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
+    // Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
     var fn enqueue(value: T) Bool:
         if let limit = self.capacity:
             if limit <= 0:
@@ -147,7 +147,7 @@ impl PriorityQueue[T]:
         self.sift_up(self.heap.length() - 1, 0)
         return true
 
-    # Removes and returns the next value by priority, or `none` when empty.
+    // Removes and returns the next value by priority, or `none` when empty.
     var fn dequeue() T?:
         let count = self.heap.length()
         if count == 0:
@@ -160,24 +160,24 @@ impl PriorityQueue[T]:
         self.sift_down(0)
         return top
 
-    # Returns the next value by priority without removing it, or none when empty.
+    // Returns the next value by priority without removing it, or none when empty.
     fn peek() T?:
         if self.heap.length() == 0:
             return none
 
         return self.heap.get(0)
 
-    # Reports whether the queue has no values to peek or dequeue.
+    // Reports whether the queue has no values to peek or dequeue.
     fn is_empty() Bool:
         return self.heap.length() == 0
 
 impl Iterable[T] for PriorityQueue[T]:
-    # Returns the number of enqueued values, independent of their priorities.
+    // Returns the number of enqueued values, independent of their priorities.
     fn length() Int:
         return self.heap.length()
 
-    # Returns the value at `index` in heap order, or none when out of range; only index 0 is known to be the next to dequeue.
-    # Negative indexes are out of range.
+    // Returns the value at `index` in heap order, or none when out of range; only index 0 is known to be the next to dequeue.
+    // Negative indexes are out of range.
     fn at(index: Int) T?:
         if index < 0 or index >= self.heap.length():
             return none

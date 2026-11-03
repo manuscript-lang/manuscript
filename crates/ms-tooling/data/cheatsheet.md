@@ -1,6 +1,6 @@
 # Manuscript cheat sheet
 
-Statically typed; native code. Four-space indentation, `#` comments. No `print`: write text via `@std/io/io.ms`.
+Statically typed; native code. Four-space indent, `//` and `/* */` comments. No `print`: write text via `@std/io/io.ms`.
 
 <!-- complete -->
 ```manuscript
@@ -15,17 +15,17 @@ impl Doc:
         var best = 0
         for i in 0..self.lines.length():
             if self.lines[i].length() > self.lines[best].length(): best = i
-        return self.lines[best] # lends
+        return self.lines[best] // lends
 
 fn load(path: String) Result[Doc, Error]:
     let f = try open(path, flags: "r", mode: 0)
-    let lines = try f.read_lines(max_lines: 1000) # Int passes as Int?
-    return ok(Doc(lines)) # moves lines
+    let lines = try f.read_lines(max_lines: 1000) // Int passes as Int?
+    return ok(Doc(lines)) // moves lines
 
 export fn main() Int:
     if let doc = load("notes.txt"):
-        let top = doc.longest() # borrows doc
-        let keep = top.clone() # owned copy
+        let top = doc.longest() // borrows doc
+        let keep = top.clone() // copy
         let long = doc.lines.filter(fn l: l.length() > 3)
         stdout().write("{keep} {long.length()}\n").get()
     return 0

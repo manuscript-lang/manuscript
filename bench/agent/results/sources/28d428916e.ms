@@ -1,13 +1,13 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-# One lexical token: `kind` is "num", "op" (`+ - * /`), "lp", "rp", or "bad".
+// One lexical token: `kind` is "num", "op" (`+ - * /`), "lp", "rp", or "bad".
 type Tok:
     kind: String
     text: String
 
-# Result of parsing a sub-expression starting at a token index.
-# `ok` is False on a syntax error; `div0` records a division by zero that was evaluated.
+// Result of parsing a sub-expression starting at a token index.
+// `ok` is False on a syntax error; `div0` records a division by zero that was evaluated.
 type Res:
     ok: Bool
     value: Int

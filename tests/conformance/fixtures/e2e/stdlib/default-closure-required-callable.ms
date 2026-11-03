@@ -1,5 +1,5 @@
-# conform: tags=tier-core
-# conform: phase=test
+// conform: tags=tier-core
+// conform: phase=test
 import expect_true from "@std/test/test.ms"
 
 test "defaulted closure converts to a required callable":

@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
-# conform: phase=test
-# conform: origin=tests/e2e/testdata/accept/contextual-callbacks.ms
+// conform: tags=closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/contextual-callbacks.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
 fn apply[T, U](value: T, transform: fn(T) U) U: transform(value)

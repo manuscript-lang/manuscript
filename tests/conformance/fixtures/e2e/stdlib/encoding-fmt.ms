@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,modules,parser,stdlib-bytes,stdlib-encoding,stdlib-testing,strings,testing,tier-stdlib,try-result
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/stdlib/encoding.ms
+// conform: tags=control-flow,formatter,modules,parser,stdlib-bytes,stdlib-encoding,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/stdlib/encoding.ms
 import expect_equal from "@std/test/test.ms"
 import (
     base64_encode,

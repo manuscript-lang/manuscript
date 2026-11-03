@@ -1,5 +1,5 @@
-# conform: tags=diagnostics,stdlib-workers,tier-core
-# conform: phase=check
+// conform: tags=diagnostics,stdlib-workers,tier-core
+// conform: phase=check
 import ReadStream from "@std/io/io.ms"
 import worker_channel from "@std/concurrency/workers.ms"
 

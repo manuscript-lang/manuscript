@@ -1,6 +1,6 @@
-# conform: tags=control-flow,formatter,generics,interfaces,lists,modules,parser,records,stdlib-cleanup,tier-stdlib
-# conform: phase=parse
-# conform: origin=tests/e2e/counter_aggregate_test.go:16 TestCounterAggregateQueryStates
+// conform: tags=control-flow,formatter,generics,interfaces,lists,modules,parser,records,stdlib-cleanup,tier-stdlib
+// conform: phase=parse
+// conform: origin=tests/e2e/counter_aggregate_test.go:16 TestCounterAggregateQueryStates
 import Closeable from "@std/core.ms"
 
 type AggregateResource:

@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,interfaces,records,tier-core
-# conform: phase=check
-# conform: origin=pkg/compiler/contextual_generics_test.go:80 TestExpectedResultGenericInferenceRejects
+// conform: tags=control-flow,diagnostics,interfaces,records,tier-core
+// conform: phase=check
+// conform: origin=pkg/compiler/contextual_generics_test.go:80 TestExpectedResultGenericInferenceRejects
 interface Read:
     fn get() Int
 

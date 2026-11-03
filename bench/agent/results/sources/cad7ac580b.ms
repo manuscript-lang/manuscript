@@ -14,7 +14,7 @@ fn is_ascii_digit(value: Int) Bool:
 fn is_ascii_letter(value: Int) Bool:
     return (value >= 65 and value <= 90) or (value >= 97 and value <= 122)
 
-# Base code point of the alphabet that a letter belongs to.
+// Base code point of the alphabet that a letter belongs to.
 fn letter_base(value: Int) Int:
     if value >= 97:
         return 97
@@ -46,7 +46,7 @@ fn valid_vigenere_key(key: String) Bool:
             return false
     return true
 
-# Caesar shift for encryption, normalized to 0..25.
+// Caesar shift for encryption, normalized to 0..25.
 fn caesar_shift(key: String) Int:
     let value = key.parse_int().get()
     return ((value % 26) + 26) % 26

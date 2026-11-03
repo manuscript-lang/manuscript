@@ -48,7 +48,7 @@ fn fmt_rejects_invalid_utf8_without_rewriting() {
     let dir = std::env::temp_dir().join(format!("ms-cli-fmt-utf8-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = b"# caf\xe9   \nfn main() Unit:\n    let x = 1   \n";
+    let source = b"// caf\xe9   \nfn main() Unit:\n    let x = 1   \n";
     std::fs::write(dir.join("a.ms"), source).unwrap();
     for args in [&["fmt", "--check", "a.ms"][..], &["fmt", "a.ms"][..]] {
         let (status, _, stderr) = ms(&dir, args);

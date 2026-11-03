@@ -1,6 +1,6 @@
-# conform: tags=closures,control-flow,faults,formatter,interfaces,interpolation,lists,modules,mutation,optional,parser,records,stdlib-bytes,stdlib-collections,stdlib-io,stdlib-sse,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
-# conform: phase=parse
-# conform: origin=tests/e2e/testdata/stdlib/sse.ms
+// conform: tags=closures,control-flow,faults,formatter,interfaces,interpolation,lists,modules,mutation,optional,parser,records,stdlib-bytes,stdlib-collections,stdlib-io,stdlib-sse,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/stdlib/sse.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 import decoder, reader, next_event, SseEvent, SseLimits from "@std/net/sse.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
@@ -29,7 +29,7 @@ impl ReadStream for Chunks:
 fn stream(parts: List[Bytes], failure: Error?) Chunks:
     return Chunks(parts, 0, closed: false, failure)
 
-# Splits at every byte boundary, one boundary at a time, plus one byte per chunk.
+// Splits at every byte boundary, one boundary at a time, plus one byte per chunk.
 fn splits(source: Bytes) List[List[Bytes]]:
     var all = List[List[Bytes]]()
     let size = source.length()

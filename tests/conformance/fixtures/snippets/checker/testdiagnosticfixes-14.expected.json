@@ -14,7 +14,7 @@
           "file": "testdiagnosticfixes-14.ms",
           "line": 7,
           "column": 13,
-          "offset": 209
+          "offset": 212
         },
         "fix": {
           "position": {
@@ -40,7 +40,7 @@
           "file": "testdiagnosticfixes-14.ms",
           "line": 8,
           "column": 13,
-          "offset": 234
+          "offset": 237
         },
         "fix": {
           "position": {

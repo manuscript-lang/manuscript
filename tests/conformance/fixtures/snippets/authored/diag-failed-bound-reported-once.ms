@@ -1,6 +1,6 @@
-# conform: tags=diagnostics,generics,try-result,tier-core
-# conform: phase=check
-# conform: origin=ms-check/tests/messages.rs
+// conform: tags=diagnostics,generics,try-result,tier-core
+// conform: phase=check
+// conform: origin=ms-check/tests/messages.rs
 interface Named:
     fn name() String
 

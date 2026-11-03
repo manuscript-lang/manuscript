@@ -1,6 +1,6 @@
-# conform: tags=control-flow,diagnostics,generics,lists,mutation,tier-core
-# conform: phase=check
-# conform: origin=pkg/compiler/list_bounds_test.go:64 TestClosedIntListGenericAndLambdaIsolation
+// conform: tags=control-flow,diagnostics,generics,lists,mutation,tier-core
+// conform: phase=check
+// conform: origin=pkg/compiler/list_bounds_test.go:64 TestClosedIntListGenericAndLambdaIsolation
 fn count[T](values: List[T]) Int: return values.length()
 
 fn probe() Int:

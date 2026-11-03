@@ -14,7 +14,7 @@
           "file": "testinterfacehintcorrectionsandreceiverscope-3.ms",
           "line": 4,
           "column": 12,
-          "offset": 174
+          "offset": 177
         }
       },
       {
@@ -25,20 +25,20 @@
           "file": "testinterfacehintcorrectionsandreceiverscope-3.ms",
           "line": 4,
           "column": 19,
-          "offset": 181
+          "offset": 184
         },
         "fix": {
           "position": {
             "file": "testinterfacehintcorrectionsandreceiverscope-3.ms",
             "line": 4,
             "column": 19,
-            "offset": 181
+            "offset": 184
           },
           "end": {
             "file": "testinterfacehintcorrectionsandreceiverscope-3.ms",
             "line": 4,
             "column": 24,
-            "offset": 186
+            "offset": 189
           },
           "replacement": "shape"
         }
