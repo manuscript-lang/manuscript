@@ -2370,8 +2370,9 @@ impl<'a> FnLower<'a> {
                             s.b.alt_release(alt, ok, 1, r);
                             p
                         } else {
+                            // A `Clonable` payload is copied by `get(default)`; the bound is the declaration.
                             let p = s.b.alt_get(alt, ok, 0, r);
-                            s.owned(Val { v: p, own: false })
+                            s.clone_value(p)
                         };
                         if let Some(d) = default {
                             // The default goes unused: an owned resource there closes now.
@@ -2432,8 +2433,8 @@ impl<'a> FnLower<'a> {
                     is_ok,
                     out,
                     &mut |s| {
-                        let o = s.owned(Val { v: r, own: false });
-                        s.finish(recv);
+                        // An owned result passes through whole; a borrowed `Clonable` one is cloned.
+                        let o = if recv.own { r } else { s.clone_value(r) };
                         s.finish(f.val);
                         Ok(Some(o))
                     },
