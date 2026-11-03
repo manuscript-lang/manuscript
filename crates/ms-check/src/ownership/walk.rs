@@ -48,6 +48,8 @@ pub struct Outcome {
 /// A call operand whose description is written only if a diagnostic needs it.
 enum Operand<'e> {
     Receiver(&'e Expr),
+    /// A function value a local holds, called: read in place while the arguments run.
+    Callee(&'e Expr),
     Argument(&'e Expr),
     /// An operand of an operator, index, literal or interpolation.
     Part(&'e Expr),
@@ -3433,6 +3435,12 @@ impl Walker<'_> {
         } else {
             self.callees.insert(callee.id);
             self.expr(callee, Demand::Read);
+            if let Resolution::Local(_) = cx.m.resolution(callee) {
+                // The call reads the function value where the local holds it, so an argument
+                // that changes or moves that local would leave the call a dangling callee.
+                let held = self.held(callee, ParamMode::Borrow);
+                operands.push((Operand::Callee(callee), held, Vec::new()));
+            }
         }
         let starts_promise = self.entry_call(e);
         for (i, a) in args.iter().enumerate() {
@@ -3474,7 +3482,10 @@ impl Walker<'_> {
         if self.diags.len() == reported && operands.iter().any(|(_, held, _)| !held.is_empty()) {
             for (operand, _, passing) in &mut operands {
                 let x = match operand {
-                    Operand::Receiver(x) | Operand::Argument(x) | Operand::Part(x) => *x,
+                    Operand::Receiver(x)
+                    | Operand::Callee(x)
+                    | Operand::Argument(x)
+                    | Operand::Part(x) => *x,
                 };
                 *passing = self.nested_writes(x);
             }
@@ -3638,7 +3649,75 @@ impl Walker<'_> {
                 }
             }
         }
+        if let ExprKind::Match { arms, .. } = &e.kind {
+            // An arm's statements run inside the operand too: an assignment there changes a
+            // place the call may be holding.
+            for arm in arms {
+                for p in self.block_writes(&arm.body) {
+                    if !out.contains(&p) {
+                        out.push(p);
+                    }
+                }
+            }
+        }
         self.nested_cache.insert(e.id, out.clone());
+        out
+    }
+
+    /// The places the statements of a block assign, change or move.
+    fn block_writes(&mut self, body: &[Stmt]) -> Vec<Place> {
+        let mut out: Vec<Place> = Vec::new();
+        let add = |out: &mut Vec<Place>, places: Vec<Place>| {
+            for p in places {
+                if !out.contains(&p) {
+                    out.push(p);
+                }
+            }
+        };
+        for s in body {
+            match &s.kind {
+                StmtKind::Assign { target, value, .. } => {
+                    let written = match target {
+                        AssignTarget::Name(_) => self
+                            .cx
+                            .m
+                            .assigned(value)
+                            .map(|b| vec![Place::local(b.uid)])
+                            .unwrap_or_default(),
+                        AssignTarget::Member(t) => self.pure_places(t).unwrap_or_default(),
+                    };
+                    add(&mut out, written);
+                    add(&mut out, self.nested_writes(value));
+                }
+                StmtKind::Bind { value, .. } | StmtKind::Call(value) => {
+                    add(&mut out, self.nested_writes(value));
+                }
+                StmtKind::Return(value) => {
+                    if let Some(v) = value {
+                        add(&mut out, self.nested_writes(v));
+                    }
+                }
+                StmtKind::If {
+                    cond,
+                    body,
+                    else_body,
+                    ..
+                } => {
+                    add(&mut out, self.nested_writes(cond));
+                    add(&mut out, self.block_writes(body));
+                    add(&mut out, self.block_writes(else_body));
+                }
+                StmtKind::While { cond, body } => {
+                    add(&mut out, self.nested_writes(cond));
+                    add(&mut out, self.block_writes(body));
+                }
+                StmtKind::For { iter, body, .. } => {
+                    add(&mut out, self.nested_writes(iter));
+                    add(&mut out, self.block_writes(body));
+                }
+                StmtKind::Break | StmtKind::Continue => {}
+            }
+        }
         out
     }
 
@@ -3781,6 +3860,7 @@ impl Walker<'_> {
     fn operand_text(&self, o: &Operand) -> String {
         match o {
             Operand::Receiver(e) => format!("the receiver `{}`", self.expr_text(e)),
+            Operand::Callee(e) => format!("the called value `{}`", self.expr_text(e)),
             Operand::Argument(e) if matches!(e.kind, ExprKind::Lambda(_)) => {
                 format!("the closure at {}", self.at(e.id))
             }

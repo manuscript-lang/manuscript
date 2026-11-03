@@ -977,17 +977,8 @@ impl FnLower<'_> {
         if self.dead {
             return Ok(f);
         }
-        // The callee is fixed before the arguments run, which may reassign its variable.
-        let f = if !f.own
-            && matches!(
-                self.hir.resolution(callee),
-                ms_check::hir::Resolution::Local(_)
-            ) {
-            let v = self.owned(f);
-            Val { v, own: true }
-        } else {
-            f
-        };
+        // A function value a local holds is called in place: the checker rejects an argument
+        // that changes or moves that local while the call runs.
         let fv = self.borrow(f);
         let checked = self.ety(callee);
         let declared = &checked.params;
