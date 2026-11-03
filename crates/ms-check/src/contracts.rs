@@ -845,11 +845,22 @@ impl Checker {
     /// Whether the native `t` declares an infallible `clone` of its own, as an operation of its
     /// definition or as an implemented method.
     fn declares_clone(&self, t: &Ty) -> bool {
-        native_declares_clone(t)
-            || self
-                .implemented_methods(t, n("clone"))
-                .iter()
-                .any(|m| m.ty.result_ty().id == t.id)
+        if native_declares_clone(t) {
+            return true;
+        }
+        // The bounds of a generic `clone` ask again whether `t`'s element is clonable; a cycle
+        // through a recursive type is assumed clonable, as `property_in` does for `active`.
+        let key = type_key(t);
+        if self.clone_probes.borrow().contains(&key) {
+            return true;
+        }
+        self.clone_probes.borrow_mut().push(key);
+        let found = self
+            .implemented_methods(t, n("clone"))
+            .iter()
+            .any(|m| m.ty.result_ty().id == t.id);
+        self.clone_probes.borrow_mut().pop();
+        found
     }
 
     /// Whether `t` is, or holds, a `Closeable` value. Such a value is an identity to close once,
