@@ -191,6 +191,10 @@ pub struct Job {
 
 /// Whole-program lowering context.
 pub struct Cx {
+    /// `MS_STRICT_COPIES=1`: an owning position that receives a borrowed place is an error.
+    pub strict_copies: bool,
+    /// Lowering sites that copied a borrow into an owning position, with the producer op.
+    pub copy_gaps: Vec<String>,
     /// Module queries by file.
     pub mods: HashMap<Name, Rc<ModuleHir>>,
     /// Callables by (module file, declaration or method node id).
@@ -277,6 +281,21 @@ pub struct Cx {
 }
 
 impl Cx {
+    /// Fails when strict mode recorded an implicit copy of a borrow.
+    pub fn check_strict_copies(&self) -> Result<(), crate::Error> {
+        if self.copy_gaps.is_empty() {
+            return Ok(());
+        }
+        let mut sites = self.copy_gaps.clone();
+        sites.sort();
+        let total = sites.len();
+        sites.dedup();
+        Err(crate::Error::new(format!(
+            "internal: {total} implicit copies of a borrow at {}",
+            sites.join(", ")
+        )))
+    }
+
     /// The binding is a `var` borrow: it lowers as a path into its origin.
     pub fn exclusive(&self, uid: usize) -> bool {
         self.borrows.get(&uid) == Some(&BorrowKind::Exclusive)
@@ -306,6 +325,8 @@ impl Cx {
             .map(|m| m.receiver.id)
             .collect();
         Cx {
+            strict_copies: std::env::var_os("MS_STRICT_COPIES").is_some(),
+            copy_gaps: Vec::new(),
             extended,
             scope_names: Vec::new(),
             mods,
