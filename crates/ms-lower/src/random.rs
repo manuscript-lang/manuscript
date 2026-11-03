@@ -8,9 +8,9 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
-use crate::streamloop::{case, method};
 use ms_check::hir::CallView;
-use ms_mir::ir::{Cc, Mode, Value};
+use ms_mir::ir::{Block, Cc, Mode, Value};
+use ms_mir::types::{AltId, IfaceId};
 use ms_mir::types::{Ty as MTy, TyKind};
 
 /// Which `msstd_random_draw_new` kind a native function starts.
@@ -256,3 +256,59 @@ impl FnLower<'_> {
         Ok(picked.v)
     }
 }
+
+impl FnLower<'_> {
+    /// Returns `failed` (a `Result` whose error case is `err`) as the error of this operation.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn fail_with(
+        &mut self,
+        failed: Value,
+        src: AltId,
+        err: usize,
+        dst: AltId,
+        derr: usize,
+        res: ms_mir::builder::Var,
+        join: Block,
+    ) -> Result<(), Error> {
+        let payload = self.b.alt_get(src, err as u32, 0, failed);
+        let copy = self.owned(Val {
+            v: payload,
+            own: false,
+        });
+        let out = self.b.alt_new(dst, derr as u32, &[copy]);
+        self.drop_value(failed);
+        self.b.def_var(res, out);
+        self.b.br(join, &[]);
+        Ok(())
+    }
+
+    pub(crate) fn alt_of(&mut self, v: Value) -> Result<AltId, Error> {
+        match self.b.m.types.kind(self.ty_of(v)).clone() {
+            TyKind::Alt(a) => Ok(a),
+            _ => Err(Error::new("an entropy method must return a Result")),
+        }
+    }
+}
+
+pub(crate) fn case(s: &FnLower<'_>, a: AltId, name: &str) -> Result<usize, Error> {
+    s.b.m.alts[a.index()]
+        .cases
+        .iter()
+        .position(|c| c.name == name)
+        .ok_or_else(|| Error::new(format!("not a Result: no {name} case")))
+}
+
+/// The interface of `v` and the index of its method `name`.
+pub(crate) fn method(s: &FnLower<'_>, v: Value, name: &str) -> Result<(IfaceId, u32), Error> {
+    let TyKind::Iface(i) = s.b.m.types.kind(s.ty_of(v)).clone() else {
+        return Err(Error::new("an entropy operand must be an interface"));
+    };
+    let k = s.b.m.ifaces[i.index()]
+        .methods
+        .iter()
+        .position(|m| m.name == name)
+        .ok_or_else(|| Error::new(format!("no entropy method {name}")))?;
+    Ok((i, k as u32))
+}
+
+

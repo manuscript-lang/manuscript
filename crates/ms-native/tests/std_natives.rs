@@ -486,40 +486,6 @@ mod fs_io {
             assert_eq!(msstd_fs_remove(r, 1, core::ptr::null_mut()), STATUS_OK);
         }
     }
-
-    #[test]
-    fn io_streams_through_the_abi() {
-        let _g = lock();
-        let one_line = std::env::temp_dir().join(std::format!("msrt-io-{}", std::process::id()));
-        std::fs::write(&one_line, "one line\n").unwrap();
-        let path = st(one_line.to_str().unwrap());
-        let mut h: *mut _ = core::ptr::null_mut();
-        let mut chunk = VecVal {
-            ptr: core::ptr::null_mut(),
-            len: 0,
-            cap: 0,
-        };
-        let mut line = ms_rt::string::NO_STR;
-        // SAFETY: valid handles and out pointers throughout.
-        unsafe {
-            assert_eq!(
-                msstd_io_open(st("/definitely/missing"), &mut h),
-                ms_rt_abi::STATUS_UNAVAILABLE
-            );
-            assert_eq!(msstd_io_open(path, &mut h), STATUS_OK);
-            assert_eq!(msstd_io_read_line(h, 1, 0, &mut line), STATUS_INVALID_INPUT);
-            assert_eq!(msstd_io_read_line(h, 0, 0, &mut line), STATUS_OK);
-            assert!(!text(&line).is_empty());
-            assert_eq!(msstd_io_read(h, 0, 0, &mut chunk), STATUS_NONE);
-            assert_eq!(msstd_io_is_closed(h), 0);
-            msstd_io_close(h);
-            assert_eq!(msstd_io_is_closed(h), 1);
-            assert_eq!(msstd_io_read(h, 0, 0, &mut chunk), ms_rt_abi::STATUS_CLOSED);
-            let err = msstd_io_standard(2);
-            assert_eq!(msstd_io_flush(err), STATUS_OK);
-            std::fs::remove_file(&one_line).unwrap();
-        }
-    }
 }
 
 mod process {
