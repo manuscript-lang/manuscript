@@ -116,7 +116,6 @@ impl ReadStream[T]:
         var held: List[Source[T]] = []
         if let source = msrt_cells_take[Source[T]](self.cell):
             held.append(source)
-
         return Waiting[T](self.cell, held, false)
 
 // The items of a stream, one read at a time; `for item in stream.wait()` waits for each.
@@ -162,7 +161,6 @@ impl Closeable for Waiting[T]:
         if let source = self.held.pop():
             if msrt_cells_out(self.cell):
                 msrt_cells_put[Source[T]](self.cell, source)
-
         return ok(unit)
 
 // A stream's source, moved out so a stage pulls it with a plain call. When a read already holds the source, the

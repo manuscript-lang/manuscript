@@ -21,6 +21,7 @@ impl Source[Int] for ListSource:
     var fn next() Int?!:
         if self.at >= self.items.length():
             return ok(none)
+
         let v = self.items[self.at]
         self.at += 1
         return ok(v)
@@ -38,6 +39,7 @@ impl Source[Int] for MapSource:
         let step = try self.up.next()
         if let v = step:
             return ok(self.f(v))
+
         return ok(none)
 
     var fn close() Unit!:
@@ -52,12 +54,15 @@ fn plain(xs: List[Int]) Int:
 fn drain(source: Source[Int]) Int!:
     var s = source
     var total = 0
+
     while true:
         let step = try s.next()
+
         if let v = step:
             total += v
         else:
             break
+
     return ok(total)
 
 fn stdlib_map(xs: List[Int]) Int!:
@@ -79,8 +84,10 @@ fn stdlib_collect(xs: List[Int]) Int!:
 fn hand_lines(data: Bytes) Int!:
     var count = 0
     var at = 0
+
     while true:
         let end = data.index_of_byte(10, at)
+
         if let stop = end:
             let line = try data.slice(at, stop)
             if let text = line.decode_utf8():
@@ -88,6 +95,7 @@ fn hand_lines(data: Bytes) Int!:
             at = stop + 1
         else:
             break
+
     return ok(count)
 
 fn stdlib_lines(data: Bytes) Int!:
@@ -129,8 +137,8 @@ export fn main() Int:
     let rows = 1000000
     for i in 0..rows:
         builder.append_bytes("line number {i} of the log\n".to_bytes())
-    let data = builder.build()
 
+    let data = builder.build()
     t = monotonic()
     report("hand-lines", rows, t, hand_lines(data).get(-1))
 

@@ -14,8 +14,10 @@ impl Source[Int] for Counter:
         if self.at == self.fail_at:
             self.at += 1
             return error(Error("boom", kind: ErrorCategory.Failed))
+
         if self.at >= self.stop:
             return ok(none)
+
         self.at += 1
         return ok(self.at)
 
@@ -27,10 +29,12 @@ test "a loop that breaks hands the source back to its stream":
     var closes = pipe[Int](capacity: 8)
     var s = stream[Int](Counter(0, 5, -1, closes.writer()))
     var seen: List[Int] = []
+
     for x in s.wait():
         seen.append(try x)
         if seen.length() == 2:
             break
+
     let next = try s.read().wait()
     try expect_equal(next.get(-1), 3)
     for x in s.wait():
@@ -47,6 +51,7 @@ test "an error ends the loop and the stream reads on":
         if x.is_error():
             failures += 1
     try expect_equal(failures, 1)
+
     let next = try s.read().wait()
     try expect_equal(next.get(-1), 3)
 
@@ -61,6 +66,7 @@ test "closing the stream inside its loop still closes the source once":
 test "stages pull directly and keep their results":
     let doubled = try collect(from_list([1, 2, 3]) | map(fn v: v * 2), none)
     try expect_equal(doubled, [2, 4, 6])
+
     let limited = collect(from_list([1, 2, 3]), 2)
     try expect_equal(limited.err().kind, ErrorCategory.LimitExceeded)
 
