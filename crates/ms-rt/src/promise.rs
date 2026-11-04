@@ -876,6 +876,7 @@ pub(crate) fn has_timers() -> bool {
 ///
 /// # Safety
 /// `work` is a live closure object.
+// ms: keeps:work
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi::Closure) {
     // SAFETY: forwarded contract.
@@ -888,6 +889,7 @@ pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi
 ///
 /// # Safety
 /// `work` is a live closure object.
+// ms: keeps:work
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_start_here(id: i64, work: *mut ms_rt_abi::Closure) {
     // SAFETY: forwarded contract.
@@ -925,6 +927,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, here: bool) {
 ///
 /// # Safety
 /// `work` is a live closure object.
+// ms: keeps:work
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_defer(id: i64, work: *mut ms_rt_abi::Closure) {
     let i = find(id);

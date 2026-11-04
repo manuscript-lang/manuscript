@@ -137,6 +137,7 @@ native! {
     /// `serving(address, options, handler)`: binds the plain TCP listener of one `serve` call and
     /// holds what every connection of the call shares: the limits, TLS settings, admission count
     /// and handler.
+    // ms: keeps:env
     fn msstd_http_serving_new(
         address: &str,
         opts: &HttpServerOptionsWire,

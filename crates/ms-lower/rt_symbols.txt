@@ -91,7 +91,7 @@ msrt_float_to_float32(v: f64, out: *mut f32) -> u8 @leaf
 msrt_float_to_precision(v: f64, digits: i64, out: *mut StrVal) @leaf
 msrt_float_to_string(v: f64, out: *mut StrVal) @leaf
 msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8 @leaf
-msrt_fn_new(closure: *mut Obj, sig: u64) -> *mut Obj
+msrt_fn_new(closure: *mut Obj, sig: u64) -> *mut Obj @keeps:closure
 msrt_free(p: *mut u8)
 msrt_guard_call(code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8, msg_out: *mut StrVal) -> u8
 msrt_guard_enter(jmp: *mut usize, code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8) -> usize
@@ -205,7 +205,7 @@ msrt_pipe_write(pipe: i64, value: *mut u8, d: ValueDesc) -> i64
 msrt_process_exit(code: i64) -> !
 msrt_process_on_exit(hook: extern "C" fn())
 msrt_promise_cancel(id: i64)
-msrt_promise_defer(id: i64, work: *mut Closure)
+msrt_promise_defer(id: i64, work: *mut Closure) @keeps:work
 msrt_promise_done(id: i64) -> u8
 msrt_promise_drop(id: i64)
 msrt_promise_fault_report(id: i64, out: *mut StrVal)
@@ -216,8 +216,8 @@ msrt_promise_on_cancel(id: i64, cancel: i64)
 msrt_promise_put(id: i64, value: *mut u8, d: ValueDesc, failed: i64)
 msrt_promise_ready(fd: i64, events: i64, timeout_ns: i64) -> i64
 msrt_promise_sleep(ns: i64) -> i64
-msrt_promise_start(id: i64, work: *mut Closure)
-msrt_promise_start_here(id: i64, work: *mut Closure)
+msrt_promise_start(id: i64, work: *mut Closure) @keeps:work
+msrt_promise_start_here(id: i64, work: *mut Closure) @keeps:work
 msrt_promise_take(id: i64, d: ValueDesc, out: *mut u8) -> u8
 msrt_promise_wait(id: i64, timeout_ns: i64) -> i64
 msrt_promise_wait_any(ids: *const VecVal, timeout_ns: i64) -> i64
@@ -538,7 +538,7 @@ msstd_http_headers_remove(handle h: *const ObjCell<HeadersH>, name: *const StrVa
 msstd_http_headers_values(handle h: *const ObjCell<HeadersH>, name: *const StrVal, out: *mut VecVal) -> u8
 msstd_http_serving_accept(handle s: *const ObjCell<ServingH>, out: *mut i64, err: ErrSlot) -> u8
 msstd_http_serving_address(handle s: *const ObjCell<ServingH>, out: *mut StrVal)
-msstd_http_serving_new(address: *const StrVal, opts: *const HttpServerOptionsWire, env: *mut Obj, out: *mut *mut ObjCell<ServingH>, err: ErrSlot) -> u8
+msstd_http_serving_new(address: *const StrVal, opts: *const HttpServerOptionsWire, env: *mut Obj, out: *mut *mut ObjCell<ServingH>, err: ErrSlot) -> u8 @keeps:env
 msstd_http_serving_release(handle s: *const ObjCell<ServingH>)
 msstd_http_serving_share(handle s: *const ObjCell<ServingH>) -> *mut ObjCell<ServingH> @handle
 msstd_http_serving_worker(handle s: *const ObjCell<ServingH>, out: *mut *mut ObjCell<WorkerH>, err: ErrSlot) -> u8

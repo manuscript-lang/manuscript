@@ -6,7 +6,7 @@ use std::fmt::Write as _;
 use std::path::PathBuf;
 
 /// A listed function: name, parameters (name and type) and return type.
-type Entry = (String, Vec<(String, String)>, String, u8);
+type Entry = (String, Vec<(String, String)>, String, u8, Vec<String>);
 
 /// Splits `list` at its top-level commas (a function-pointer type holds commas).
 fn split_params(list: &str) -> Vec<&str> {
@@ -45,6 +45,11 @@ fn main() {
             None => (line, Vec::new()),
         };
         let bit = |f: &str| -> u8 { u8::from(flags.contains(&f)) };
+        // `@keeps:name` marks the parameter `name` as a function value the runtime keeps.
+        let kept: Vec<&str> = flags
+            .iter()
+            .filter_map(|f| f.strip_prefix("keeps:"))
+            .collect();
         let flags = bit("leaf") | bit("pure") << 1 | bit("fresh") << 2 | bit("handle") << 3;
         let Some((name, rest)) = line.split_once('(') else {
             panic!("rt_symbols.txt:{}: not a function entry: {line}", n + 1);
@@ -64,17 +69,18 @@ fn main() {
             .filter_map(|p| p.split_once(':'))
             .map(|(name, ty)| (name.trim().to_string(), ty.trim().to_string()))
             .collect();
+        let kept = kept.into_iter().map(str::to_string).collect();
         let ret = rest[close + 1..]
             .trim()
             .strip_prefix("->")
             .map(|r| r.trim().to_string())
             .unwrap_or_default();
-        table.push((name.trim().to_string(), params, ret, flags));
+        table.push((name.trim().to_string(), params, ret, flags, kept));
     }
     table.sort_by(|a, b| a.0.cmp(&b.0));
     table.dedup_by(|later, first| later.0 == first.0);
     let mut out = String::from("&[\n");
-    for (name, params, ret, flags) in &table {
+    for (name, params, ret, flags, kept) in &table {
         let params: Vec<String> = params
             .iter()
             .map(|(n, t)| {
@@ -83,7 +89,8 @@ fn main() {
                     Some(n) => (n.trim(), true),
                     None => (n.as_str(), false),
                 };
-                format!("({n:?}, {t:?}, {handle})")
+                let closure = kept.iter().any(|k| k == n);
+                format!("({n:?}, {t:?}, {handle}, {closure})")
             })
             .collect();
         writeln!(

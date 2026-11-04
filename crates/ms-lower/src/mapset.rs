@@ -666,9 +666,7 @@ impl<'a> FnLower<'a> {
             return self.add_default_from(old, decl, args, copy_result);
         }
         let set = matches!(self.b.m.types.kind(mt), TyKind::Obj(Native::Set, _));
-        let text = decl
-            .first()
-            .is_some_and(|p| p.ty.display(self.syms).to_string() == "String");
+        let text = decl.first().is_some_and(|p| p.ty.is_string(self.syms));
         let sym = match (set, name) {
             (true, "add") => "msrt_set_add_copy".to_string(),
             (_, "insert") if matches!(self.b.m.types.kind(mt), TyKind::List(_)) => {
