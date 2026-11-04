@@ -520,14 +520,24 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
         ));
     }
     if command == "diagram"
+        && inv.format == "html"
+        && (!inv.view.is_empty() || !inv.entity.is_empty() || !inv.diff.is_empty())
+    {
+        return Err(usage_error(
+            io,
+            "--format html covers every view in one page; drop --view, --entity, and --diff",
+        ));
+    }
+    if command == "diagram"
         && !inv.format.is_empty()
         && inv.format != "ascii"
         && inv.format != "mermaid"
+        && inv.format != "html"
     {
         return Err(usage_error(
             io,
             format!(
-                "unknown --format {} for ms diagram; use ascii or mermaid",
+                "unknown --format {} for ms diagram; use ascii, mermaid, or html",
                 quote(&inv.format)
             ),
         ));

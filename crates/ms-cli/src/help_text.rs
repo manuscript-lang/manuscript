@@ -264,7 +264,7 @@ Examples:
   ms inspect ms.toml -o inspection.json
 "#;
 
-pub const HELP_DIAGRAM: &str = r#"Usage: ms diagram <file.ms|ms.toml> [--view overview|calls|effects|errors|modules|flow|scope|tasks|types|ownership] [--entity name] [--depth n] [--diff <file|->] [--format ascii|mermaid] [-o output] [--json]
+pub const HELP_DIAGRAM: &str = r#"Usage: ms diagram <file.ms|ms.toml> [--view overview|calls|effects|errors|modules|flow|scope|tasks|types|ownership] [--entity name] [--depth n] [--diff <file|->] [--format ascii|mermaid|html] [-o output] [--json]
 
 Emit the checked static call graph of project declarations; standard calls are boundary leaves.
 The default ascii outline is plain text with a fixed order;
@@ -280,7 +280,7 @@ Options:
   --entity <name>      Root the view at one declaration or module
   --depth <n>          Expansion depth for a view (default 3)
   --diff <path|->      Mark what a unified diff changed in the view (tree is the after state)
-  --format <name>      ascii (default) or mermaid
+  --format <name>      ascii (default), mermaid, or html (one interactive page for the whole program)
   -o, --output <path>  Write output to a file (default: stdout)
   --json               Emit a versioned diagram tree with source IDs and locations (default: calls view)
   -h, --help  Show this help without executing the command
@@ -290,6 +290,7 @@ Examples:
   ms diagram ms.toml --format mermaid -o calls.mmd
   ms diagram ms.toml --view effects --entity save
   ms diagram ms.toml --view errors
+  ms diagram ms.toml --format html -o map.html
   ms diagram ms.toml --view overview
   ms diagram ms.toml --view types
   ms diagram ms.toml --view ownership --entity save

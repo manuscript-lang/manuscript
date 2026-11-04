@@ -346,3 +346,35 @@ fn overview_shows_modules_effects_and_cross_module_calls() {
         "{mermaid}"
     );
 }
+
+#[test]
+fn html_page_embeds_the_program_and_escapes_script_text() {
+    let dir = scratch("html");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("diagram_overview/main.ms"),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("util.ms"),
+        include_str!("diagram_overview/util.ms"),
+    )
+    .unwrap();
+    let out = ms(&dir, &["diagram", "main.ms", "--format", "html"]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let page = String::from_utf8(out.stdout).unwrap();
+    assert!(
+        page.starts_with("<!doctype html>") && page.contains("\"name\":\"double\""),
+        "{page}"
+    );
+    assert!(!page.contains("__DATA__"));
+    let bad = ms(
+        &dir,
+        &["diagram", "main.ms", "--format", "html", "--view", "calls"],
+    );
+    assert!(!bad.status.success());
+}

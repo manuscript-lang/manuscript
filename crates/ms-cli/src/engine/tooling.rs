@@ -537,7 +537,11 @@ pub fn diagram(syms: ms_syntax::Names, request: &DiagramRequest, io: &mut Io) ->
         Ok(checked) => checked,
         Err(done) => return done,
     };
-    if request.json || !request.view.is_empty() || !request.entity.is_empty() {
+    if request.json
+        || !request.view.is_empty()
+        || !request.entity.is_empty()
+        || request.format == "html"
+    {
         return Ok(view(syms, request, &checked, io));
     }
     let program = checked.program.as_ref().expect("accepted program");
@@ -563,6 +567,10 @@ fn view(syms: ms_syntax::Names, request: &DiagramRequest, head: &Checked, io: &m
         &request.view
     };
     let facts = facts_of(syms, head);
+    if request.format == "html" {
+        let page = ms_tooling::html::html_page(&facts);
+        return write_output(io, &request.output, page.as_bytes());
+    }
     let mut tree = match build_view(&facts, name, &request.entity, request.depth as i64) {
         Ok(tree) => tree,
         Err(message) => {

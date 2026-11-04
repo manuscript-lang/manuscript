@@ -7,6 +7,7 @@ pub mod diff;
 pub mod facts;
 pub mod flow;
 pub mod guide;
+pub mod html;
 pub mod inspect;
 pub mod json;
 pub mod labels;
