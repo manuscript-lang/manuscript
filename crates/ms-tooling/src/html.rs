@@ -80,6 +80,11 @@ fn entity_json(facts: &Facts, ix: &Index, f: &Fact) -> Json {
         flow_json(ix, flow),
         Json::from(f.first),
         Json::from(f.last),
+        Json::str(if f.label.is_empty() {
+            &f.name
+        } else {
+            &f.label
+        }),
     ])
 }
 

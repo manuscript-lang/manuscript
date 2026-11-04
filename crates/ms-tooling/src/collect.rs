@@ -209,6 +209,10 @@ fn collect_bodies(syms: ms_syntax::Names, facts: &mut Facts, module: &ModRef, fl
                 &format!("{name}.{}", syms.str(method.func.name)),
             );
             if let Some(fact) = facts.entities.get_mut(&key) {
+                if let DeclKind::Impl(i) = &decl.decl().kind {
+                    fact.label =
+                        format!("{}.{}", i.receiver.name(syms), syms.str(method.func.name));
+                }
                 fact.first = method.pos.line as usize;
                 fact.last = end;
                 (fact.tries, fact.scopes) = count_method(flow.scoped, method);

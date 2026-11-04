@@ -75,7 +75,7 @@ const D={modules:R.m.map(m=>({file:R.f[m[0]],imports:m[1]})),entities:[]};
 const keyOf=a=>R.f[a[0]]+'#'+a[1]+'#'+a[2];
 const KEYS=R.e.map(keyOf);
 const fl=ns=>ns.map(n=>({kind:n[0],label:n[1],reference:n[2]<0?'':KEYS[n[2]],children:fl(n[3])}));
-D.entities=R.e.map((a,i)=>({key:KEYS[i],file:R.f[a[0]],kind:a[1],name:a[2],line:a[3],exported:!!a[4],effects:a[5],error:a[6],scopes:a[7],
+D.entities=R.e.map((a,i)=>({key:KEYS[i],file:R.f[a[0]],kind:a[1],name:a[15],line:a[3],exported:!!a[4],effects:a[5],error:a[6],scopes:a[7],
   calls:a[8].map(j=>KEYS[j]),external:a[9],slots:a[10].map(s=>({name:s[0],ty:s[1],var:!!s[2],refs:s[3].map(j=>KEYS[j])})),
   result:a[11]?{ty:a[11][0],refs:a[11][1].map(j=>KEYS[j])}:null,_flow:a[12],fi:a[0],first:a[13],last:a[14]}));
 const E=Object.fromEntries(D.entities.map(e=>[e.key,e]));
@@ -118,7 +118,7 @@ const firstN=(l,n)=>l.slice(0,n);
 const LAND={
   'Entry':firstN(fns.filter(e=>e.name==="main"),5).concat(firstN(fns.filter(e=>e.exported&&e.name!=='main'),3)),
   'Hubs':firstN(fns.filter(e=>(callers[e.key]||[]).length>1).sort((a,b)=>callers[b.key].length-callers[a.key].length),6),
-  'Effects':firstN(fns.filter(e=>fx(e).length&&!e.calls.length),6)
+  'Writes data':firstN(fns.filter(e=>e.effects.includes('write')).sort((a,b)=>(callers[b.key]||[]).length-(callers[a.key]||[]).length),6)
 };
 function setTabs(){$('onlywrap').hidden=!HAS;$('tabs').innerHTML=TABS.map(t=>'<button class="'+(t===S.tab?'on':'')+'" data-tab="'+t+'">'+t+'</button>').join('')}
 function scopeKids(scope){
@@ -127,6 +127,22 @@ function scopeKids(scope){
   return {dirs:[...dirs],mods};
 }
 function normScope(){let k=scopeKids(S.scope);while(!k.mods.length&&k.dirs.length===1){S.scope=k.dirs[0];k=scopeKids(S.scope)}return k}
+const TREE={dirs:{},files:[]};
+for(const m of D.modules){let n=TREE,p='';const parts=m.file.split('/');
+  for(let i=0;i<parts.length-1;i++){p+=parts[i]+'/';n=n.dirs[parts[i]]||(n.dirs[parts[i]]={name:parts[i],path:p,dirs:{},files:[]})}
+  n.files.push(m.file)}
+const OPEN=new Set(),CAP=150;let revealed=null;
+for(const d of Object.values(TREE.dirs))OPEN.add(d.path);
+function treeHTML(n,depth){
+  const pad='style="padding-left:'+(depth*12)+'px"';let h='';
+  const ds=Object.values(n.dirs).sort((a,b)=>a.name<b.name?-1:1);
+  for(const d of ds.slice(0,CAP)){const o=OPEN.has(d.path);
+    h+='<div class="file" '+pad+' data-tg="'+esc(d.path)+'">'+(o?'▾ ':'▸ ')+esc(d.name)+'/</div>'+(o?treeHTML(d,depth+1):'')}
+  for(const f of n.files.slice(0,CAP)){const o=OPEN.has(f);
+    h+='<div class="file'+(f===S.mod?' cur':'')+'" '+pad+'><span data-tg="'+esc(f)+'">'+(o?'▾ ':'▸ ')+'</span><span data-mod="'+esc(f)+'">'+esc(base(f))+'</span></div>';
+    if(o)for(const e of (byFile[f]||[]).filter(e=>isFn(e)||isType(e)).slice(0,100))h+='<div class="item'+(S.sel===e.key?' sel':'')+'" style="padding-left:'+(depth*12+14)+'px" data-key="'+esc(e.key)+'"><span class="k">'+(KI[e.kind]||'·')+'</span>'+esc(e.name)+'</div>'}
+  if(ds.length>CAP||n.files.length>CAP)h+='<div class="hint" '+pad+'>more - search</div>';
+  return h}
 function setList(){
   const q=$('q').value.toLowerCase();let h='';
   if(q){
@@ -139,15 +155,9 @@ function setList(){
   }
   if(HAS){const ks=Object.keys(CH);h+='<h4>Changed ('+(ks.length+GONE.length)+')</h4><div class="chips">'+ks.slice(0,40).map(k=>'<span class="chip chg" data-key="'+esc(k)+'" title="'+esc(CH[k].tier)+'">'+esc(CH[k].name)+'</span>').join('')+GONE.slice(0,10).map(g=>'<span class="chip gone" title="removed">'+esc(g.name)+'</span>').join('')+(ks.length>40?'<span class="hint">+'+(ks.length-40)+'</span>':'')+'</div>'}
   for(const [t,l] of Object.entries(LAND))if(l.length)h+='<h4>'+t+'</h4><div class="chips">'+l.map(e=>'<span class="chip" data-key="'+esc(e.key)+'" title="'+esc(e.file)+'">'+esc(e.name)+'</span>').join('')+'</div>';
-  const k=normScope();
-  h+='<h4>'+esc(S.scope||'/')+'</h4>';
-  h+=k.dirs.slice(0,60).map(d=>'<div class="file" data-scope="'+esc(d)+'">▸ '+esc(d.slice(S.scope.length))+'</div>').join('');
-  const openMod=S.mod||(S.sel&&E[S.sel]&&E[S.sel].file);
-  for(const f of k.mods.slice(0,80)){
-    h+='<div class="file" data-mod="'+esc(f)+'">'+(f===openMod?'▾ ':'▸ ')+esc(base(f))+'</div>';
-    if(f===openMod)for(const e of (byFile[f]||[]).filter(e=>isFn(e)||isType(e)).slice(0,100))h+='<div class="item'+(S.sel===e.key?' sel':'')+'" data-key="'+esc(e.key)+'"><span class="k">'+(KI[e.kind]||'·')+'</span>'+esc(e.name)+'</div>';
-  }
-  const more=k.mods.length-80;if(more>0)h+='<div class="hint">+'+more+' more — search</div>';
+  const cur=S.mod||(S.sel&&E[S.sel]&&E[S.sel].file)||'';
+  if(cur!==revealed){revealed=cur;if(cur){OPEN.add(cur);for(let i=cur.indexOf('/');i>=0;i=cur.indexOf('/',i+1))OPEN.add(cur.slice(0,i+1))}}
+  h+='<h4>Files</h4>'+treeHTML(TREE,0);
   $('list').innerHTML=h;
 }
 function crumbs(){
@@ -343,7 +353,8 @@ $('theme').addEventListener('click',()=>{theme=THEMES[(THEMES.indexOf(theme)+1)%
 applyTheme();
 let timer=null;
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-copy],[data-close],[data-tab],[data-key],[data-mod],[data-scope],[data-id],[data-expand],[data-routefrom]');if(!t)return;ev.preventDefault();
+  const t=ev.target.closest('[data-tg],[data-copy],[data-close],[data-tab],[data-key],[data-mod],[data-scope],[data-id],[data-expand],[data-routefrom]');if(!t)return;ev.preventDefault();
+  if(t.dataset.tg!==undefined){const k=t.dataset.tg;if(OPEN.has(k))OPEN.delete(k);else OPEN.add(k);setList();return}
   if(t.dataset.close){S.sel=null;render();return}
   if(t.dataset.copy){try{navigator.clipboard.writeText(document.querySelector('pre.code').innerText.replace(/^\d+/gm,''))}catch(_){}return}
   if(t.dataset.tab)S.tab=t.dataset.tab;

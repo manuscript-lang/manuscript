@@ -13,6 +13,8 @@ pub struct Fact {
     pub file: String,
     pub kind: String,
     pub name: String,
+    /// Display name when it differs from `name`: an impl method reads `Receiver.method`.
+    pub label: String,
     pub ty: String,
     pub exported: bool,
     pub line: usize,
