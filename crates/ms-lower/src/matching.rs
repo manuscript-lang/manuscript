@@ -233,7 +233,7 @@ impl FnLower<'_> {
             // A borrowed case of a borrowing variant stays in the scrutinee: its payload is
             // bound as a borrow, and the scrutinee drops only the cases it owns.
             let borrowed_case = matches!((&kind, case), (TyKind::Alt(a), Some(k))
-                if self.b.m.alts[a.index()].borrowed >> *k & 1 == 1);
+                if self.b.m.alts[a.index()].borrows(*k));
             let takes = owned_uid.is_some()
                 && !by_type
                 && !borrowed_case
@@ -496,8 +496,8 @@ impl FnLower<'_> {
 
         // The operand lends its error (`try g(v)` of a function with a borrowing result): the
         // error is not ours to take.
-        let borrowed_err = self.b.m.alts[a.index()].borrowed >> err & 1 == 1;
-        let ra_borrows_err = self.b.m.alts[ra.index()].borrowed >> ret_err & 1 == 1;
+        let borrowed_err = self.b.m.alts[a.index()].borrows(err);
+        let ra_borrows_err = self.b.m.alts[ra.index()].borrows(ret_err);
         self.enter(errb);
         let cur = self.b.use_var(rv);
         let payload = self.b.alt_get(a, err as u32, 0, cur);
@@ -547,7 +547,7 @@ impl FnLower<'_> {
         self.enter(okb);
         let cur = self.b.use_var(rv);
         let payload = self.b.alt_get(a, ok as u32, 0, cur);
-        if hidden && self.b.m.alts[a.index()].borrowed >> ok & 1 == 1 {
+        if hidden && self.b.m.alts[a.index()].borrows(ok) {
             // The operand's `ok` payload is a borrow of the arguments it was called with: it
             // stays where it is, and the operand (which owns nothing else here) is dropped with
             // the statement.

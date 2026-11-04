@@ -2415,7 +2415,7 @@ impl<'a> FnLower<'a> {
                     out,
                     &mut |s| {
                         // An owned result hands its payload over; a borrowed one is copied.
-                        let o = if recv.own && s.b.m.alts[alt.index()].borrowed >> ok & 1 == 0 {
+                        let o = if recv.own && !s.b.m.alts[alt.index()].borrows(ok as usize) {
                             let p = s.b.alt_take(alt, ok, 0, r);
                             s.b.alt_release(alt, ok, 1, r);
                             p

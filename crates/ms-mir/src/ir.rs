@@ -1474,12 +1474,12 @@ impl Module {
                     return true;
                 }
                 seen.push(ty);
-                let borrowed = self.alts[a.index()].borrowed;
-                let out = self.alts[a.index()]
+                let def = &self.alts[a.index()];
+                let out = def
                     .cases
                     .iter()
                     .enumerate()
-                    .filter(|(i, _)| borrowed >> i & 1 == 0)
+                    .filter(|(i, _)| !def.borrows(*i))
                     .any(|(_, c)| c.fields.iter().any(|f| self.needs_drop_in(f.1, seen)));
                 seen.pop();
                 out

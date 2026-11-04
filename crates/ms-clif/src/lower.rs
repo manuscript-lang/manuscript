@@ -804,9 +804,10 @@ impl<'a, 'm> Lower<'a, 'm> {
             None => vs[0],
         };
         let done = self.b.create_block();
-        let borrowed = self.g.m.alts[a.index()].borrowed;
         for (c, case) in fields.iter().enumerate() {
-            if borrowed >> c & 1 == 1 || !case.iter().any(|(t, _)| self.g.m.needs_drop(*t)) {
+            if self.g.m.alts[a.index()].borrows(c)
+                || !case.iter().any(|(t, _)| self.g.m.needs_drop(*t))
+            {
                 continue;
             }
             let this = self.b.create_block();

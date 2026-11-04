@@ -851,7 +851,7 @@ impl Verifier<'_> {
                 let borrowed = m.alts[a.index()].borrowed;
                 if borrowed != 0 {
                     want(
-                        (borrowed >> c & 1 == 1) == (inst.op == Op::AltView),
+                        m.alts[a.index()].borrows(c as usize) == (inst.op == Op::AltView),
                         "a borrowing variant is filled by alt.view in its borrowed cases and alt.new in the others",
                     )?;
                 }
@@ -909,7 +909,7 @@ impl Verifier<'_> {
                     .and_then(|x| x.cases.get(c as usize))
                     .ok_or("bad case")?;
                 want(
-                    m.alts[a.index()].borrowed >> c & 1 == 0,
+                    !m.alts[a.index()].borrows(c as usize),
                     "alt.release of a borrowed case would free a payload another value owns",
                 )?;
                 want(
@@ -932,7 +932,7 @@ impl Verifier<'_> {
                 let fty = case.fields.get(i as usize).ok_or("bad field index")?.1;
                 want(
                     inst.op != Op::AltTake && inst.op != Op::AltUnbox
-                        || m.alts[a.index()].borrowed >> c & 1 == 0,
+                        || !m.alts[a.index()].borrows(c as usize),
                     "a borrowed case cannot be taken: its payload belongs to another value",
                 )?;
                 want(

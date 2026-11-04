@@ -719,7 +719,7 @@ impl<'a> FnLower<'a> {
         let alt = self.alt_of(obj.v, alt);
         let ty = self.b.m.alts[alt.index()].cases[case as usize].fields[field as usize].1;
         // A borrowed case stays in its owner: its payload is copied out, as from any borrow.
-        let borrowed = self.b.m.alts[alt.index()].borrowed >> case & 1 == 1;
+        let borrowed = self.b.m.alts[alt.index()].borrows(case as usize);
         if obj.own && self.needs_drop(ty) && !borrowed {
             let p = self.b.alt_take(alt, case, field, obj.v);
             self.b.alt_release(alt, case, 1 << field, obj.v);
