@@ -34,8 +34,11 @@ unsafe extern "C" {
     /// Saves the registers and returns 0; returns again with 1 once the operation ends or faults.
     /// Defined by the assembly below; the caller's frame must stay live until then.
     pub fn msrt_trap_begin() -> u8;
-    /// Resumes after `msrt_trap_begin` with its second return (the value 1).
-    fn msrt_trap_restore(buf: *mut usize, status: usize) -> !;
+    /// Resumes after `msrt_trap_begin` with its second return (the value 1). A non-null `teb`
+    /// holds the three thread environment block stack fields of the stack `buf` was saved on,
+    /// installed once the stack pointer is back there (a fault on a grown segment leaves from
+    /// another stack).
+    fn msrt_trap_restore(buf: *mut usize, status: usize, teb: *const usize) -> !;
 }
 
 // Windows x64: arguments in rcx and rdx, 32 bytes of shadow space at calls, rdi, rsi and
@@ -94,6 +97,15 @@ core::arch::global_asm!(
     "movups xmm14, [rcx + 208]",
     "movups xmm15, [rcx + 224]",
     "mov rsp, [rcx + 64]",
+    "test r8, r8",
+    "jz 2f",
+    "mov rax, [r8]",
+    "mov gs:[0x08], rax",
+    "mov rax, [r8 + 8]",
+    "mov gs:[0x10], rax",
+    "mov rax, [r8 + 16]",
+    "mov gs:[0x1478], rax",
+    "2:",
     "mov rax, rdx",
     "jmp [rcx + 72]",
     prepare = sym prepare,
@@ -126,19 +138,27 @@ core::arch::global_asm!(
     "ret",
     concat!(".globl ", sym!("msrt_trap_restore")),
     concat!(sym!("msrt_trap_restore"), ":"),
-    "mov x2, x0",
-    "ldp x19, x20, [x2, #0]",
-    "ldp x21, x22, [x2, #16]",
-    "ldp x23, x24, [x2, #32]",
-    "ldp x25, x26, [x2, #48]",
-    "ldp x27, x28, [x2, #64]",
-    "ldp x29, x30, [x2, #80]",
-    "ldp d8, d9, [x2, #104]",
-    "ldp d10, d11, [x2, #120]",
-    "ldp d12, d13, [x2, #136]",
-    "ldp d14, d15, [x2, #152]",
-    "ldr x3, [x2, #96]",
+    "mov x4, x0",
+    "ldp x19, x20, [x4, #0]",
+    "ldp x21, x22, [x4, #16]",
+    "ldp x23, x24, [x4, #32]",
+    "ldp x25, x26, [x4, #48]",
+    "ldp x27, x28, [x4, #64]",
+    "ldp x29, x30, [x4, #80]",
+    "ldp d8, d9, [x4, #104]",
+    "ldp d10, d11, [x4, #120]",
+    "ldp d12, d13, [x4, #136]",
+    "ldp d14, d15, [x4, #152]",
+    "ldr x3, [x4, #96]",
     "mov sp, x3",
+    "cbz x2, 2f",
+    "ldr x3, [x2]",
+    "str x3, [x18, #0x08]",
+    "ldr x3, [x2, #8]",
+    "str x3, [x18, #0x10]",
+    "ldr x3, [x2, #16]",
+    "str x3, [x18, #0x1478]",
+    "2:",
     "mov x0, x1",
     "ret",
     prepare = sym prepare,
@@ -149,7 +169,12 @@ core::arch::global_asm!(
 ///
 /// # Safety
 /// `buf` is the buffer `msrt_trap_begin` filled, whose caller frame is still live.
-pub(crate) unsafe fn leave(buf: *mut usize, faulted: bool, message: Vec<u8>) -> ! {
+pub(crate) unsafe fn leave(
+    buf: *mut usize,
+    faulted: bool,
+    message: Vec<u8>,
+    teb: *const usize,
+) -> ! {
     // SAFETY: single threaded runtime state.
     unsafe {
         *FAULTED.ptr() = faulted;
@@ -157,7 +182,7 @@ pub(crate) unsafe fn leave(buf: *mut usize, faulted: bool, message: Vec<u8>) -> 
             (*REPORT.ptr()).extend_from_slice(&message);
         }
         drop(message);
-        msrt_trap_restore(buf, 1)
+        msrt_trap_restore(buf, 1, teb)
     }
 }
 
@@ -170,7 +195,7 @@ pub extern "C" fn msrt_trap_end() -> ! {
     unsafe {
         fault::pop_trap_guard();
         *FAULTED.ptr() = false;
-        msrt_trap_restore((*BUF.ptr()).as_mut_ptr(), 1)
+        msrt_trap_restore((*BUF.ptr()).as_mut_ptr(), 1, core::ptr::null())
     }
 }
 

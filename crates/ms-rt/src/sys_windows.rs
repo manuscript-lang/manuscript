@@ -373,12 +373,34 @@ pub fn teb_stack() -> [usize; 3] {
     [base, limit, dealloc]
 }
 
-/// Commits `len` bytes at `p` as a guard page (the kernel commits the page below it when the
+/// Commits the page at `p` as a guard page (the kernel commits the page below it when the
 /// page is touched and moves the guard down). `p` is page aligned.
+///
+/// Committing a guard page makes the kernel set the calling thread's `StackLimit` to the page
+/// above it, whichever stack the page belongs to. The guard goes under another task's stack
+/// while the caller runs on its own, so the limit is put back: left at the other stack's
+/// value, a later stack probe (`__chkstk`, for a frame over a page) would walk from there into
+/// the other stack's guard page, which the kernel reports as an unhandled guard-page violation
+/// (exit 0x80000001) because the address lies outside the thread's recorded stack.
 pub fn commit_guard(p: *mut u8) -> bool {
     const PAGE_GUARD: DWORD = 0x100;
+    let limit = teb_stack()[1];
     // SAFETY: the range lies inside a reservation of this process.
-    !unsafe { VirtualAlloc(p.cast(), 4096, MEM_COMMIT, PAGE_READWRITE | PAGE_GUARD) }.is_null()
+    let ok =
+        !unsafe { VirtualAlloc(p.cast(), 4096, MEM_COMMIT, PAGE_READWRITE | PAGE_GUARD) }.is_null();
+    set_stack_limit(limit);
+    ok
+}
+
+/// Writes the thread environment block's `StackLimit` field.
+fn set_stack_limit(limit: usize) {
+    // SAFETY: a write of the current thread's TEB.
+    unsafe {
+        #[cfg(target_arch = "x86_64")]
+        core::arch::asm!("mov gs:[0x10], {0}", in(reg) limit, options(nostack, preserves_flags));
+        #[cfg(target_arch = "aarch64")]
+        core::arch::asm!("str {0}, [x18, #0x10]", in(reg) limit, options(nostack, preserves_flags));
+    }
 }
 
 /// Commits `len` bytes at `p` (inside a [`map_anon`] reservation) as zeroed read-write memory.
@@ -739,70 +761,4 @@ pub unsafe fn register_repeating_wait(
         )
     };
     if ok == 0 { core::ptr::null_mut() } else { wait }
-}
-
-// ---- temporary diagnostic: report guard-page violations before the process dies ----
-
-#[repr(C)]
-struct ExceptionRecord {
-    code: u32,
-    flags: u32,
-    record: *mut c_void,
-    address: *mut c_void,
-    nparams: u32,
-    info: [usize; 15],
-}
-
-#[repr(C)]
-struct ExceptionPointers {
-    record: *mut ExceptionRecord,
-    context: *mut u8,
-}
-
-unsafe extern "system" {
-    fn AddVectoredExceptionHandler(
-        first: u32,
-        handler: unsafe extern "system" fn(*mut ExceptionPointers) -> i32,
-    ) -> *mut c_void;
-    fn GetCurrentThreadId() -> u32;
-}
-
-unsafe extern "system" fn guard_diag(p: *mut ExceptionPointers) -> i32 {
-    // SAFETY: the system passes live records.
-    unsafe {
-        let r = &*(*p).record;
-        if r.code != 0x8000_0001 && r.code != 0xC000_00FD && r.code != 0xC000_0005 {
-            return 0;
-        }
-        let ctx = (*p).context;
-        #[cfg(target_arch = "x86_64")]
-        let sp = *(ctx.add(0x98) as *const usize);
-        #[cfg(target_arch = "aarch64")]
-        let sp = *(ctx.add(0x100) as *const usize);
-        let teb = teb_stack();
-        eprintln!(
-            "GUARD DIAG: thread {} code {:#x} pc {:p} addr {:#x} write {} sp {:#x} teb base {:#x} limit {:#x} dealloc {:#x}; {}",
-            GetCurrentThreadId(),
-            r.code,
-            r.address,
-            r.info[1],
-            r.info[0],
-            sp,
-            teb[0],
-            teb[1],
-            teb[2],
-            crate::task::diag_describe(r.info[1], sp)
-        );
-    }
-    0
-}
-
-/// Installs the diagnostic once per process.
-pub fn install_guard_diag() {
-    static ONCE: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
-    if ONCE.swap(true, core::sync::atomic::Ordering::Relaxed) {
-        return;
-    }
-    // SAFETY: a plain registration.
-    unsafe { AddVectoredExceptionHandler(1, guard_diag) };
 }

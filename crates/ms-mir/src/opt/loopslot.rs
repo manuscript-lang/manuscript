@@ -185,8 +185,9 @@ fn apply(f: &mut Func, l: Block, k: usize, pairs: &[Pair]) {
         }
     }
     f.blocks[l.index()].params.remove(k);
+    let at = super::inline::entry_insert_at(f);
     f.blocks[0].insts.insert(
-        0,
+        at,
         Inst {
             op: Op::Slot,
             args: Vec::new(),

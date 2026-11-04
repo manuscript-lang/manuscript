@@ -750,11 +750,17 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         let end_loc = old.last().map(|i| i.loc);
         for (k, inst) in old.into_iter().enumerate() {
             let loc = inst.loc;
+            // The recursion check stays first in its block: a registration before it would
+            // repeat when the check re-invokes the function on a new stack segment.
+            let mut inst = Some(inst);
+            if inst.as_ref().is_some_and(|i| i.op == Op::DepthEnter) {
+                out.extend(inst.take());
+            }
             if let Some(w) = next.next_if(|w| w.first == k) {
                 let first = push_all(m, cx, f, &mut out, &w.values, loc);
                 open_window = Some((w.last, first, Some(loc)));
             }
-            out.push(inst);
+            out.extend(inst);
             if let Some((last, first, loc)) = open_window
                 && last == k
             {

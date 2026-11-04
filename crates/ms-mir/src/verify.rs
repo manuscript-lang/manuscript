@@ -452,6 +452,14 @@ impl Verifier<'_> {
             if self.opts.require_locs && inst.loc.is_none() {
                 self.err(Some(bi), format!("{name}: missing source location"));
             }
+            // The lowering re-invokes the function from the check on a new stack segment with
+            // the entry block's parameters, so nothing may run before it.
+            if inst.op == Op::DepthEnter && (bi != 0 || ii != 0) {
+                self.err(
+                    Some(bi),
+                    format!("{name}: must be the first instruction of the entry block"),
+                );
+            }
             let mut ok = true;
             for a in &inst.args {
                 ok &= self.use_ok(*a, (bi, ii as i64), def, idom, name);

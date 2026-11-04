@@ -181,6 +181,53 @@ pub static TABLES: Process<*const Tables> = Process::new(core::ptr::null());
 /// threads (see `proposals/worker-threads.md`).
 pub static STACK_LO: Process<usize> = Process::new(0);
 pub static STACK_HI: Process<usize> = Process::new(0);
+/// The chain cell of the running task's stack segment: the address of `[lo, hi, chain, 0]`
+/// describing the segment below it, or 0 on a task's home segment. A task that recursed past
+/// its slot runs on further segments (`task::msrt_task_grow`), and a frame walker that leaves
+/// the bounds follows the chain. The cell lives at the top of the segment, written before any
+/// frame exists there, so a signal handler can read it.
+pub static STACK_CHAIN: Process<usize> = Process::new(0);
+
+/// The running segment's bounds and chain cell.
+pub(crate) fn segment_state() -> (usize, usize, usize) {
+    // SAFETY: reads of the per-task globals on the runtime thread.
+    unsafe { (*STACK_LO.ptr(), *STACK_HI.ptr(), *STACK_CHAIN.ptr()) }
+}
+
+/// Makes `(lo, hi, chain)` the running segment (`task::msrt_task_grow`, `task::restore_segment`).
+pub(crate) unsafe fn set_segment_state((lo, hi, chain): (usize, usize, usize)) {
+    // SAFETY: single threaded writes of the per-task globals.
+    unsafe {
+        *STACK_LO.ptr() = lo;
+        *STACK_HI.ptr() = hi;
+        *STACK_CHAIN.ptr() = chain;
+    }
+}
+
+/// Bounds of the segment the frame `fp` is on, following the chain from the current segment's
+/// `(lo, hi, chain)` when `fp` is outside it; `None` when no segment holds it. Bounds of 0 mean
+/// unknown, which accepts any frame as today.
+///
+/// # Safety
+/// `chain` is 0 or the chain cell of a live segment of the running task.
+pub(crate) unsafe fn segment_of(
+    fp: usize,
+    (lo, hi, chain): (usize, usize, usize),
+) -> Option<(usize, usize, usize)> {
+    let (mut lo, mut hi, mut chain) = (lo, hi, chain);
+    loop {
+        if hi == 0 || (fp >= lo && fp.checked_add(16).is_some_and(|end| end <= hi)) {
+            return Some((lo, hi, chain));
+        }
+        if chain == 0 {
+            return None;
+        }
+        // SAFETY: a chain cell is written before frames exist on its segment and stays until
+        // the segment is given back, after the frames above it are gone.
+        let cell = unsafe { *(chain as *const [usize; 4]) };
+        (lo, hi, chain) = (cell[0], cell[1], cell[2]);
+    }
+}
 
 /// Stack kept free below the limit for fault reporting and cleanups.
 const STACK_RESERVE_MAX: usize = 1 << 20;
@@ -306,6 +353,7 @@ pub(crate) struct Ctx {
     cancel: u8,
     stack_lo: usize,
     stack_hi: usize,
+    stack_chain: usize,
 }
 
 impl Ctx {
@@ -322,6 +370,7 @@ impl Ctx {
             cancel: 0,
             stack_lo,
             stack_hi,
+            stack_chain: 0,
         }
     }
 
@@ -349,12 +398,6 @@ impl Ctx {
         };
         // SAFETY: the block lives as long as its stack.
         unsafe { (*hdr).stop_shield.load(Ordering::Relaxed) > 0 }
-    }
-
-    /// The task's block (null for the root task before it ever ran).
-    #[cfg(windows)]
-    pub(crate) fn hdr_ptr(&self) -> *mut Hdr {
-        self.hdr
     }
 
     /// Binds the task to its block and gives it the recursion limit of its stack.
@@ -407,6 +450,7 @@ pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
         core::ptr::swap(TASK_CANCEL.ptr(), &mut c.cancel);
         core::ptr::swap(STACK_LO.ptr(), &mut c.stack_lo);
         core::ptr::swap(STACK_HI.ptr(), &mut c.stack_hi);
+        core::ptr::swap(STACK_CHAIN.ptr(), &mut c.stack_chain);
         cancel_flag().store(
             if SHIELD.get() == 0 {
                 unshielded_cancel_flag()
@@ -471,20 +515,22 @@ fn frame_pointer() -> usize {
 /// # Safety
 /// `fp` must be null or point into a live frame-pointer chain of this thread.
 pub unsafe fn walk_frames(mut fp: usize, mut f: impl FnMut(usize) -> bool) {
-    // SAFETY: reading the global stack bounds, set once at start.
-    let (lo, hi) = unsafe { (*STACK_LO.ptr(), *STACK_HI.ptr()) };
+    let mut seg = segment_state();
     let mut steps = 0usize;
     while fp != 0 && fp.is_multiple_of(8) && steps < MAX_STACK_WALK_FRAMES {
-        if hi != 0 && (fp < lo || fp.checked_add(16).is_none_or(|end| end > hi)) {
+        // SAFETY: the chain belongs to the running task.
+        let Some(bounds) = (unsafe { segment_of(fp, seg) }) else {
             break;
-        }
+        };
+        seg = bounds;
         // SAFETY: `fp` is inside the stack bounds (or bounds are unknown and the
         // caller promised a valid chain).
         let (next, ret) = unsafe { (*(fp as *const usize), *((fp + 8) as *const usize)) };
         if ret == 0 || !f(ret) {
             break;
         }
-        if next <= fp {
+        // Frames go up within a segment; the segment below may lie anywhere.
+        if next <= fp && (seg.1 == 0 || next >= seg.0) {
             break;
         }
         fp = next;
@@ -1510,6 +1556,8 @@ struct GuardFrame {
     jmp: usize,
     cleanups: usize,
     limit: usize,
+    /// The stack segment the guard was opened on (`task::current_segment`).
+    seg: usize,
     shield: u32,
     eq_pairs: usize,
     /// `jmp` is the register buffer of `expect_fault` (Windows) rather than a guard slot.
@@ -1577,6 +1625,9 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
         *FAULTING.ptr() = false;
         *UNWIND_DROPS.ptr() = false;
         (*cur_hdr()).limit = f.limit;
+        #[cfg(windows)]
+        let teb = crate::task::segment_teb(f.seg);
+        crate::task::restore_segment(f.seg);
         SHIELD.set(f.shield);
         cancel_flag().store(
             if f.shield == 0 {
@@ -1589,7 +1640,12 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
         crate::desc::eq_truncate(f.eq_pairs);
         #[cfg(windows)]
         if f.trap {
-            crate::trap::leave(f.jmp as *mut usize, status == GUARD_FAULT, message)
+            crate::trap::leave(
+                f.jmp as *mut usize,
+                status == GUARD_FAULT,
+                message,
+                teb.as_ptr(),
+            )
         }
         GUARD_MESSAGE = if status == GUARD_FAULT {
             crate::string::from_bytes(&message)
@@ -1597,6 +1653,9 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
             crate::string::NO_STR
         };
         drop(message);
+        #[cfg(windows)]
+        guard_jump(f.jmp as *mut usize, status as usize, teb.as_ptr());
+        #[cfg(not(windows))]
         guard_jump(f.jmp as *mut usize, status as usize)
     }
 }
@@ -1613,6 +1672,7 @@ pub(crate) unsafe fn push_trap_guard(buf: *mut usize) {
             jmp: buf as usize,
             cleanups: (*CLEANUPS.ptr()).len(),
             limit: (*cur_hdr()).limit,
+            seg: crate::task::current_segment(),
             shield: SHIELD.get(),
             eq_pairs: crate::desc::eq_len(),
             trap: true,
@@ -1644,8 +1704,14 @@ unsafe extern "C" {
         code: unsafe extern "C-unwind" fn(*mut u8),
         data: *mut u8,
     ) -> usize;
+    #[cfg(not(windows))]
     #[link_name = "msrt_guard_jump"]
     fn guard_jump(jmp: *mut usize, status: usize) -> !;
+    /// As above; `teb` holds the three thread environment block stack fields of the stack the
+    /// guard frame is on, installed once the stack pointer is there (`task::segment_teb`).
+    #[cfg(windows)]
+    #[link_name = "msrt_guard_jump"]
+    fn guard_jump(jmp: *mut usize, status: usize, teb: *const usize) -> !;
 }
 
 // Windows x64 passes arguments in rcx, rdx and r8, expects 32 bytes of shadow space at calls
@@ -1705,6 +1771,12 @@ core::arch::global_asm!(
     "ret",
     concat!(sym!("msrt_guard_jump"), ":"),
     "mov rsp, [rcx]",
+    "mov rax, [r8]",
+    "mov gs:[0x08], rax",
+    "mov rax, [r8 + 8]",
+    "mov gs:[0x10], rax",
+    "mov rax, [r8 + 16]",
+    "mov gs:[0x1478], rax",
     "mov rax, rdx",
     "jmp 1b",
 );
@@ -1742,7 +1814,10 @@ core::arch::global_asm!(
     "jmp 1b",
 );
 
+// AArch64; Windows installs the thread environment block fields from `x2` after the jump.
 #[cfg(all(not(test), target_arch = "aarch64"))]
+macro_rules! aarch64_guard {
+    ($($install:literal),*) => {
 core::arch::global_asm!(
     ".text",
     concat!(".globl ", sym!("msrt_guard_enter")),
@@ -1780,8 +1855,22 @@ core::arch::global_asm!(
     concat!(sym!("msrt_guard_jump"), ":"),
     "ldr x3, [x0]",
     "mov sp, x3",
+    $($install,)*
     "mov x0, x1",
     "b 1b",
+);
+    };
+}
+#[cfg(all(not(test), target_arch = "aarch64", not(windows)))]
+aarch64_guard!();
+#[cfg(all(not(test), target_arch = "aarch64", windows))]
+aarch64_guard!(
+    "ldr x3, [x2]",
+    "str x3, [x18, #0x08]",
+    "ldr x3, [x2, #8]",
+    "str x3, [x18, #0x10]",
+    "ldr x3, [x2, #16]",
+    "str x3, [x18, #0x1478]"
 );
 
 /// Runs `code(data)` as an isolated request. A fault (or stop request) inside it runs the
@@ -1803,6 +1892,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
             jmp: core::ptr::addr_of_mut!(slot) as usize,
             cleanups: (*CLEANUPS.ptr()).len(),
             limit: (*cur_hdr()).limit,
+            seg: crate::task::current_segment(),
             shield: SHIELD.get(),
             eq_pairs: crate::desc::eq_len(),
             trap: false,
@@ -1826,6 +1916,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
         #[cfg(test)]
         {
             let limit = (*cur_hdr()).limit;
+            let seg = crate::task::current_segment();
             let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| code(data)));
             guards_pop();
             match r {
@@ -1836,6 +1927,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
                     };
                     *FAULTING.ptr() = false;
                     (*cur_hdr()).limit = limit;
+                    crate::task::restore_segment(seg);
                     if p.0.starts_with("cancelled ") {
                         return GUARD_CANCELLED;
                     }
@@ -2123,6 +2215,7 @@ mod tests {
                 jmp: 0,
                 cleanups: 1,
                 limit: 200,
+                seg: 0,
                 shield: 2,
                 eq_pairs: 1,
                 trap: false,
@@ -2182,6 +2275,7 @@ mod tests {
                 jmp: 0,
                 cleanups: (*CLEANUPS.ptr()).len(),
                 limit: (*cur_hdr()).limit,
+                seg: 0,
                 shield: SHIELD.get(),
                 eq_pairs: crate::desc::eq_len(),
                 trap: true,
