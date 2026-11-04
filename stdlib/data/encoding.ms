@@ -199,13 +199,13 @@ export fn hex_decode(text: String, max_bytes: Int?) Bytes!:
     let limit = budget(max_bytes)
     if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
 
-    let digits = text.to_bytes().values()
-    let length = digits.length()
+    let length = text.byte_length()
     if length / 2 > limit: return error(
         Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
     if length % 2 != 0: return error(Error("encoding: invalid data", kind: "EBADMSG"))
 
+    let digits = text.to_bytes().values()
     var out = BytesBuilder()
 
     for pair in 0..(length / 2):
