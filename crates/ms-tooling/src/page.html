@@ -109,6 +109,7 @@ const dirOf=f=>f.slice(0,f.lastIndexOf('/')+1);
 const fx=e=>e.effects.filter(x=>x!=='unknown');
 const byFile={};for(const e of D.entities)(byFile[e.file]=byFile[e.file]||[]).push(e);
 function sigOf(e){
+  if(!isFn(e)){const kw=e.kind==='interface'?'interface':e.kind==='record'||e.kind==='alternative'?'type':e.kind;return '<code><span class="tk-kw">'+esc(kw)+'</span> '+esc(e.name)+'</code>'}
   const ps=e.slots.map(s=>(s.var?'<span class="var">var </span>':'')+esc(s.name)+': <span class="'+(s.var?'var':'brw')+'">'+esc(s.ty)+'</span>').join(', ');
   return '<code>'+esc(e.name)+'('+ps+') '+(e.result?'<span class="own">'+esc(e.result.ty)+'</span>':'')+'</code>';
 }
@@ -175,7 +176,7 @@ function panzoom(box){
   const svg=box.querySelector('svg');if(!svg)return;
   const w=+svg.dataset.w,h=+svg.dataset.h;let vb={x:0,y:0,w:Math.max(w,300),h:Math.max(h,200)};
   const apply=()=>svg.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h);
-  const fit=()=>{const r=svg.getBoundingClientRect();const k=Math.max(w/r.width,h/r.height,0.2);vb={x:0,y:0,w:r.width*k,h:r.height*k};apply()};
+  const fit=()=>{const r=svg.getBoundingClientRect();const k=Math.max(w/r.width,h/r.height,1);vb={x:0,y:0,w:r.width*k,h:r.height*k};apply()};
   const zoom=(f,cx,cy)=>{cx=cx??vb.x+vb.w/2;cy=cy??vb.y+vb.h/2;vb={x:cx-(cx-vb.x)*f,y:cy-(cy-vb.y)*f,w:vb.w*f,h:vb.h*f};apply()};
   svg.addEventListener('wheel',ev=>{ev.preventDefault();const r=svg.getBoundingClientRect();zoom(ev.deltaY>0?1.15:1/1.15,vb.x+(ev.clientX-r.left)/r.width*vb.w,vb.y+(ev.clientY-r.top)/r.height*vb.h)},{passive:false});
   let drag=null;
@@ -264,11 +265,11 @@ function calls(){
 }
 function types(){
   const nodes={},edges=[];let n=0;const roots=S.sel&&E[S.sel]?[E[S.sel]]:D.entities.filter(e=>isType(e)&&(!S.mod||e.file===S.mod)).slice(0,30);
-  const add=x=>{if(nodes[x.key]||n>=40)return;n++;nodes[x.key]={id:x.key,title:(x.kind==='record'?'':'«'+x.kind+'» ')+x.name,cls:'cls',kind:'type',
-    lines:x.slots.map(s=>x.kind==='record'?s.name+': '+s.ty:s.name+s.ty).slice(0,8)};
+  const add=x=>{if(nodes[x.key]||n>=40)return;n++;nodes[x.key]={id:x.key,title:(x.kind==='interface'?'interface ':x.kind==='record'||x.kind==='alternative'?'type ':'')+x.name,cls:'cls',kind:'type',
+    lines:x.slots.map(s=>x.kind==='record'?s.name+': '+s.ty:x.kind==='alternative'?'case '+s.name+s.ty:s.name+s.ty).slice(0,8)};
     x.slots.forEach(s=>s.refs.forEach(r=>{const t=E[r];if(t){add(t);if(nodes[r])edges.push({from:x.key,to:r,label:s.name})}}));
     if(x.result)x.result.refs.forEach(r=>{const t=E[r];if(t){add(t);if(nodes[r])edges.push({from:x.key,to:r,label:'returns'})}})};
-  roots.forEach(r=>{if(isFn(r)){nodes[r.key]={id:r.key,title:r.name+'()',cls:'cls',lines:r.slots.map(s=>(s.var?'var ':'')+s.name+': '+s.ty)}}add(r)});
+  roots.forEach(r=>{if(isFn(r)){nodes[r.key]={id:r.key,title:'fn '+r.name,cls:'cls',lines:r.slots.map(s=>(s.var?'var ':'')+s.name+': '+s.ty)}}add(r)});
   const list=Object.values(nodes);if(!list.length)return '<p class="hint">no types</p>';
   return graph(list,edges);
 }
@@ -328,7 +329,9 @@ function route(){
 const VIEWS={Overview:overview,Calls:calls,Sequence:sequence,Types:types,Behavior:behavior,Route:route};
 function save(){try{history.replaceState(null,'','#'+encodeURIComponent(JSON.stringify({t:S.tab,s:S.sel,m:S.mod,c:S.scope,f:S.from,o:S.to})))}catch(_){}}
 function pickFn(text){const t=text.trim().toLowerCase();const exact=fns.filter(f=>f.name.toLowerCase()===t);return (exact[0]||fns.find(f=>f.name.toLowerCase().includes(t))||{}).key||null}
-function render(){setTabs();setList();setInfo();srcPanel();$('view').innerHTML=VIEWS[S.tab]();
+const FNTABS=['Calls','Sequence','Behavior'];
+function fitTab(){const e=S.sel&&E[S.sel];if(e&&!isFn(e)&&FNTABS.includes(S.tab)){S.tab='Types';return true}return false}
+function render(){fitTab();setTabs();setList();setInfo();srcPanel();$('view').innerHTML=VIEWS[S.tab]();
   const d=$('dir');if(d){d.value=S.dir;d.onchange=()=>{S.dir=d.value;render()}}
   const rf=$('rf');if(rf){const dl=$('fl');dl.innerHTML=fns.slice(0,2000).map(f=>'<option value="'+esc(f.name)+'">').join('');
     rf.onchange=()=>{S.from=pickFn(rf.value);render()};$('rt').onchange=()=>{S.to=pickFn($('rt').value);render()}}
@@ -352,7 +355,7 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.mod){S.mod=t.dataset.mod;S.scope=dirOf(S.mod);S.sel=null;S.tab='Overview'}
   else if(t.dataset.id){const id=t.dataset.id,k=t.dataset.kind;
     if(k==='more'){S.cap+=40;render();return}
-    if(k==='mod'){S.mod=id;S.sel=null}else if(E[id]){S.sel=id;S.mod=null}
+    if(k==='mod'){S.mod=id;S.sel=null}else if(E[id]){S.sel=id;S.mod=null;if(fitTab()){render();return}}
     document.querySelectorAll('.node.sel').forEach(n=>n.classList.remove('sel'));t.closest('.node').classList.add('sel');setList();setInfo();srcPanel();save();return}
   render()});
 document.addEventListener('dblclick',ev=>{const n=ev.target.closest('.node');if(!n)return;const id=n.dataset.id,k=n.dataset.kind;
