@@ -44,7 +44,7 @@ ms test ms.toml --json
 - Tests run from the manifest's directory (or the file's, for a single file), so relative fixture paths are stable; see [build and test](getting-started.md#build-and-test).
 - Import app code with a relative path, e.g. `import add from "./src/math.ms"` ([modules](../core-language/modules/declarations.md)).
 - `--filter` matches `module::name` substrings; `--timeout` bounds each test (default 60s, `0` disables).
-- A bare `expect_equal(...)` statement is a check error, because a discarded `Result` checks nothing: write `try expect_equal(...)`, or `let ignored = try ...` to drop a returned value.
+- A bare `expect_equal(...)` statement is a check error, because a discarded `Result` checks nothing: write `try expect_equal(...)`, or `let _ = try ...` to drop a returned value.
 - `--json` emits versioned per-test results, counts, diagnostics, and stdout; it cannot combine with `--watch` ([JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests)).
 
 `try expect_ok` checks success and keeps the payload:
@@ -76,7 +76,7 @@ ms test ms.toml --repeat 10 --shuffle 42
 - Copy exact `module::name` identities from `--list`; repeat `--test` to select several.
 - `--filter`, `--match`, and `--exclude` narrow the selection; regexes match any part of the identity. Empty selections fail.
 - `--list` builds but never runs test bodies.
-- Each repetition starts a fresh root execution; globals and external fixtures stay shared. `--shuffle` takes a seed.
+- Each selected test and repetition runs in a fresh process. In-memory state is isolated; external files and services remain shared unless the test resets them. `--shuffle` takes a seed.
 - `--fail-fast` leaves remaining tests `not_run` in JSON.
 
 ## Property tests and fuzzing
@@ -155,10 +155,10 @@ ms bench ms.toml --filter "sum" --json
 
 - A project loads `bench.ms` and `*_bench.ms` files; a bench may also sit in any module the command loads. Benches take the same selection options as tests (`--filter`, `--match`, `--exclude`, `--bench`, `--list`, `--repeat`, `--fail-fast`, `--timeout`).
 - `--time` sets the target length of one sample, `--samples` the number of timed samples, and `--iterations` fixes the iteration count and skips calibration.
-- `bench "name" per 1000:` declares that one iteration performs 1000 operations (a loop over 1000 items, say); every statistic is then per operation. `keep(value)` from `@std/test/bench.ms` moving_params a computed `Int` so the work stays observable.
+- `bench "name" per 1000:` declares that one iteration performs 1000 operations (a loop over 1000 items, say); every statistic is then per operation. `keep(value)` from `@std/test/bench.ms` checks a computed `Int` so the work stays observable.
 - To keep setup out of the timing, build the data first and time only the work: `try measure(1000, fn: keep(data.sorted().length()))` from `@std/test/bench.ms` runs the work repeatedly and reports per operation, here for 1000 operations per run. Everything before `measure` runs once, untimed.
 - Each bench runs in its own process. A body that returns an error, faults, or exceeds `--timeout` (default 10 minutes) fails that bench and the exit status is 1. Standard output written by a bench is discarded.
-- `--json` adds `stats` to each entry of `benches`: `iterations`, `samples`, and `min_ns`, `median_ns`, `mean_ns`, `max_ns`, `stddev_ns` in nanoseconds per iteration.
+- `--json` adds `stats` to each entry of `benches`: `iterations`, `operations`, `samples`, and `min_ns`, `median_ns`, `mean_ns`, `max_ns`, `stddev_ns` in nanoseconds per operation (per iteration when `operations` is 1).
 - Keep the measured work in the body and the setup outside it: a bench has no `fixture` and no hooks. Check a result with `try` so the compiler cannot discard the work; benchmark the default `Release` build.
 
 ## Profile application work
@@ -197,9 +197,9 @@ test "starts fresh":
     try expect_equal(fixture.count, 0)
 ```
 
-`make_fixture` runs once per file. `before_each` resets the shared `Counter` before every test, so the second test sees `0` even though the first changed it.
+`ms test` starts a separate process for each selected test. Each process creates its own fixture and runs its hooks, so the second test starts from a fresh `Counter`. The same isolation applies to repetitions.
 
-- One instance per file, created only when the file has selected tests and shared across repetitions.
+- One instance for the selected test in its process; the factory and `before_all` run again for the next test or repetition.
 - Optional hooks (use `self`, no arguments, return `Unit`): `before_all`, `before_each`, `after_each`, `after_all`.
 - Build in `make_fixture`, reset in `before_each`, release in `after_all`.
 

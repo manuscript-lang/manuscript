@@ -10,9 +10,12 @@ The compiler lowers scope-end cleanup in `ms-lower` (`close.rs`): after a resour
 The backend implements [scope-exit order](../../../core-language/cleanup/exit-order.md) and [fault selection](../../../core-language/cleanup/cleanup-faults.md):
 
 1. Normal exits (fall-through, `return`, `break`, `continue`, `try`) call the registered closes in reverse order.
-2. Each registration is also an entry on a runtime cleanup stack. A fault aborts the process after the runtime runs the remaining entries in reverse order; generated code does no frame unwinding.
-3. Faults call `msrt_fault`, which never returns.
+2. Runtime cleanup entries cover faults and cancellation. Guards let a promise or `expect_fault` contain a fault after cleanup; an unhandled root fault ends the program.
+3. Faulting operations report through the runtime's nonreturning fault path. Generated drop and close entries release values when guarded work unwinds.
 
-- Values and captures are never recursively disposed by a scope-end close; ordinary values are dropped deterministically at scope end by the ownership rules.
-- Out-of-memory and stack exhaustion have no cleanup guarantee.
-- Returning a reference does not cancel a scope-end registration.
+- Records, alternatives and collections close the resource parts they own. Escaping closures own their captures; borrowed captures add no cleanup duty.
+- Moving a resource out transfers its cleanup duty. A partial move leaves cleanup for the resource parts still owned by the original binding.
+- Reassignment closes the replaced resource before the new owned value takes its place.
+- Checked stack exhaustion reports a fault and runs cleanup; out-of-memory termination has no cleanup guarantee. See [programming faults](../../../core-language/errors/faults.md#runaway-recursion).
+
+The close helpers in `ms-lower/src/close.rs` and guarded unwind entries in `ms-mir` implement these paths; validate them with the resource and ownership tests, not just successful compilation.

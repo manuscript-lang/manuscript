@@ -17,7 +17,7 @@ The same `ms` command checks, formats, tests and builds your project. Debug buil
 
 Diagnostics read `cause; fix`. When an agent writes `len(xs)`, `.unwrap()`, `name.toUpperCase()`, `def`, `async` or `except`, the message names the Manuscript spelling instead of reporting a bare syntax error. When the repair is mechanical, the JSON diagnostic carries a byte-exact `fix` and `ms check --fix` applies it. A runtime fault from `ms run --json` or `ms test --json` is a document with a kind, a message that includes the remedy, a position and a trace, so the agent reads data rather than scraping stderr.
 
-`ms guide` prints a compact language cheat sheet, `ms search_symbol <words>` finds project and standard-library APIs with bounded output, and `ms verify` folds check, format, lint and test into one exit status. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents) and [diagnostics](../developer-tooling/source/diagnostics.md).
+`ms guide` prints a compact language cheat sheet, `ms search_symbol <words>` finds project and standard-library APIs with bounded output, and `ms verify` folds type checking, formatting checks, lint and tests into one exit status. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents) and [diagnostics](../developer-tooling/source/diagnostics.md).
 
 ## Concurrency without `async`
 
@@ -29,7 +29,7 @@ Cancellation happens only at a `wait`, and a fault ends only the promise it happ
 
 Records, lists, maps, strings and alternatives are values with one owner. The compiler moves them at their last use, borrows them for reads and drops them deterministically, with no tracing collector and no reference counting on ordinary data. `var` marks mutation at the declaration and at the call, `.clone()` marks a copy, borrows are lexical with no lifetimes in source, and a scope closes the external resources bound in it. Functions can return borrowed parts of arguments, including through `Optional` or `Result`; `try` preserves the active case's ownership instead of copying its payload. The owner must remain available while the returned borrow is used.
 
-See [references and borrowing](../core-language/types/references.md) for the exact rules, including how long a returned borrow remains valid. Use an explicit [resource scope](../core-language/cleanup/scopes.md) to close files and connections on exit, and flush fallible writes before closing to observe errors.
+See [references and borrowing](../core-language/types/references.md) for the exact rules, including how long a returned borrow remains valid. Bind files and connections in the [scope that needs them](../core-language/cleanup/scopes.md) so they close on exit, and flush fallible writes before closing to observe errors.
 
 ## A growing standard library
 

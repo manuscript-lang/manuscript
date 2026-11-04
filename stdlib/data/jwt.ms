@@ -31,7 +31,7 @@ export type JwtAlgorithm:
 
 // What `verify_token` requires of a token beyond its signature.
 export type JwtCheck:
-    // The only algorithm accepted; a token whose header names another returns WrongAlgorithm.
+    // The only algorithm accepted; a token whose header names another returns an Error with kind `EBADMSG`.
     algorithm: JwtAlgorithm = JwtAlgorithm.Hs256
     // When set, the `iss` claim must equal it.
     issuer: String? = none
@@ -41,7 +41,7 @@ export type JwtCheck:
     leeway: Int = 0
     // The Unix time in seconds to judge `exp` and `nbf` against; none uses the current time.
     at: Int? = none
-    // The largest token in bytes accepted before any decoding; larger tokens return Malformed.
+    // The largest token in bytes accepted before any decoding; larger tokens return an Error with kind `EBADMSG`.
     max_bytes: Int = 16384
 
 type JwtHeader:
@@ -52,15 +52,15 @@ type JwtHeader:
 Creates a signed token from `claims`, a record or `JsonValue` object such as `Session(sub: "42", exp: 1900000000)`.
 The result is the compact `header.claims.signature` form, ready for an `Authorization: Bearer` header or a cookie.
 `key` is the secret for the HMAC algorithms and the private key for the others, in the form `JwtAlgorithm` describes.
-Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library does not add any. A key that does not suit the algorithm returns InvalidKey.
+Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library does not add any. A key that does not suit the algorithm returns an Error with kind `EINVAL`.
 
 ```manuscript
 type Session:
     sub: String
     exp: Int
 
-let token = sign_token(Session(sub: "42", exp: 1900000000), secret).get_or_fault()
-let session = verify_token[Session](token, secret).get_or_fault()
+let token = try sign_token(Session(sub: "42", exp: 1900000000), secret)
+let session = try verify_token[Session](token, secret)
 ```
 */
 export fn sign_token[T: Data](

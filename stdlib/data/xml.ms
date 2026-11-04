@@ -7,11 +7,11 @@ XML documents as a tree of elements, text and comments, parsed and written in Ma
 the five predefined and numeric references are rejected). Names keep their prefix as written
 (`svg:rect`); namespaces are not resolved. `stringify` writes a tree back with escaping.
 
-    import parse, stringify, XmlNode from "@std/data/xml.ms"
-    let doc = parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>").get()
+    import parse from "@std/data/xml.ms"
+    let doc = try parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>")
     let item = doc.find("item").get()
-    item.attribute("id")           # "1"
-    item.text()                    # "Hi & bye"
+    print(item.attribute("id").get("")) // "1"
+    print(item.text())                  // "Hi & bye"
 */
 
 // An XML attribute with its decoded value.

@@ -39,11 +39,10 @@ Product       = Prefix, { ("*" | "/" | "%"), Prefix } ;
 Prefix        = ("+" | "-" | "try"), Prefix | Postfix ;
 Postfix       = Primary, { ".", Name | TypeArguments | "[", Expression, "]" | CallArguments } ;
 CallArguments = "(", [ Argument, { ",", Argument }, [ "," ] ], ")" ;
-Argument      = [ Name, ":" ], Expression ;
+Argument      = [ Name, ":" ], [ "var" ], Expression ;
 Primary       = IntLiteral | FloatLiteral | DecimalLiteral | StringLiteral
               | "true" | "false" | "unit" | "self" | Name
-              | "(", Expression, ")" | SharedViewConstruction | ListLiteral | MapLiteral | FunctionExpression | MatchExpression | IfExpression ;
-SharedViewConstruction = "(", SharedContractType, ")", CallArguments ;
+              | "(", Expression, ")" | ListLiteral | MapLiteral | FunctionExpression | MatchExpression | IfExpression ;
 ListLiteral   = "[", [ Expression, { ",", Expression }, [ "," ] ], "]" ;
 MapLiteral    = "{", [ MapEntry, { ",", MapEntry }, [ "," ] ], "}" ;
 MapEntry      = Expression, ":", Expression ;
@@ -158,4 +157,4 @@ fn invalid(value: Int, ratio: Float) Bool:
     return 0 < value < 10               // Syntax error: comparison chain.
 ```
 
-Not expressions: assignment (a [statement](grammar.md#statements-and-patterns)), bitwise operators, exponentiation, tuples, and general expression-valued blocks. Conditional expressions use `a if condition else b`.
+Not expressions: assignment (a [statement](grammar.md#statements-and-patterns)), bitwise operators, exponentiation, tuples, and general expression-valued blocks. Conditional expressions use `if condition: a else: b`; see [conditionals](../control-flow/conditionals.md#if-as-an-expression).

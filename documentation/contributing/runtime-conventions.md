@@ -15,7 +15,7 @@ weight = 22
 
 - Runtime functions are `extern "C"` and named `msrt_<module>_<name>`; standard-library natives live in `ms-std-<module>` crates and are named `msstd_<module>_<name>`.
 - Fallible natives return a status and write their result to an out-pointer only on success; faults call `msrt_fault`, which never returns. Use a fault only for documented programming faults.
-- Reference-count rules at the boundary: arguments are borrowed unless the signature is documented as consuming; returned objects are owned.
+- Ownership at the boundary: arguments are borrowed unless the signature is documented as consuming; returned objects are owned.
 - Native functions, record constructors, and contracts take plain parameters; callers evaluate defaults.
 - Long-running operations check the cancellation flag; blocking calls wait in short slices so a pending stop request interrupts them.
 - Generics are monomorphized. Runtime functions that cannot be monomorphized take an element descriptor `{ size, align, drop, eq, hash, clone }`.
@@ -46,4 +46,4 @@ The CLI exits 67, labeled incomplete cleanup. The native runtime (`crates/ms-rt/
 ## Verifying
 
 - `cargo clippy -p ms-rt -p ms-rt-abi --all-targets -- -D warnings` and `cargo nextest run -p ms-rt`.
-- `make ()` runs every crate's tests, and `make conform` runs programs end to end.
+- `make unit` runs every crate's tests, and `make conform` runs programs end to end.

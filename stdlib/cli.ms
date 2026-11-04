@@ -274,7 +274,7 @@ type its kind names:
 | any other `Arg` | `String` |
 
 A flag with neither a default nor `required`, and an optional `Arg`, needs an `...?` field, which is `none`
-when absent. A field with no matching value, or of the wrong type, fails the run with an `InvalidSchema` error. The
+when absent. A field with no matching value, or of the wrong type, fails the run with an `Error` with kind `"EINVAL"`. The
 handler returns the exit status.
 */
 export fn command[T: Data](

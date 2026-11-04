@@ -10,10 +10,10 @@ Internet mail messages (RFC 5322): addresses, address lists, and message parsing
 message into `Headers` and body and decodes RFC 2047 encoded words on request.
 
     import parse_address, parse_message from "@std/net/mail.ms"
-    let from = parse_address("Ada Lovelace <ada@example.com>").get()
-    from.name                      # "Ada Lovelace"
-    let mail = parse_message(raw).get()
-    mail.headers.get("Subject")
+    let sender = try parse_address("Ada Lovelace <ada@example.com>")
+    print(sender.name)              // "Ada Lovelace"
+    let mail = try parse_message(raw)
+    print(mail.headers.get("Subject").get(""))
 */
 
 // A mailbox: optional display name and the `local@domain` address.

@@ -14,12 +14,12 @@ Every diagnostic reads `cause; fix`, and a habit from another language is answer
 count.ms:2:12: resolution: unknown binding len; there is no len() function: call the length member, e.g. xs.length()
 ```
 
-When the repair is mechanical, `ms check --fix` applies it. A runtime fault comes back from `ms test --json` as data with kind, values, position and trace. The agent does not need the manual in its context: `ms guide` gives a compact language cheat sheet, `ms search_symbol` answers one API question in bounded output, and `ms verify` is check, format, lint and test in one exit code. [Commands for agents](documentation/developer-tooling/implementation.md#commands-for-agents)
+When the repair is mechanical, `ms check --fix` applies it. A runtime fault comes back from `ms test --json` as data with kind, values, position and trace. The agent does not need the manual in its context: `ms guide` gives a compact language cheat sheet, `ms search_symbol` answers one API question in bounded output, and `ms verify` is type checking, formatting checks, lint and tests in one exit code. [Commands for agents](documentation/developer-tooling/implementation.md#commands-for-agents)
 
 ## Agent mistakes the toolchain catches
 
 - **Memory:** one owner per value, moved at its last use, dropped deterministically, with borrows inferred. No collector, no lifetime annotations. Every `var` and `.clone()` is visible in the source. [References](documentation/core-language/types/references.md)
-- **Compile errors:** a dropped `Result`, a `match` missing a case, an unclosed `Closeable`, literal overflow.
+- **Compile errors:** a dropped `Result`, a `match` missing a case, a borrow that outlives its owner, literal overflow.
 - **Runtime faults:** overflow, bounds, deadlock and skipped cleanup stop with a source trace. [Faults](documentation/core-language/errors/faults.md)
 - **Concurrency:** any function can wait. `Promise` represents running work, streams carry successive values, and a `pipe` transfers them between owners. Dropping a promise cancels it and waits for completion; cancellation is cooperative at waits. [Concurrency](documentation/core-language/concurrency/_index.md)
 - **Tests:** property tests draw inputs the agent did not think of and shrink failures; `ms test --fuzz 30s` turns them into a fuzzer. [Testing](documentation/learn/testing.md)
@@ -36,7 +36,7 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 - **Deterministic memory:** one owner per value, moves at last use, and deterministic drops, with borrows inferred. No collector, no lifetime annotations. [References](documentation/core-language/types/references.md)
 - **Static types, native code:** checked ahead of time and compiled to a native executable, with a fast debug loop and optimized release builds.
 - **Batteries-included standard library:** HTTP, JSON, TOML, YAML, CSV, crypto, processes and more, with Manuscript APIs and native primitives. Nothing to install for common work. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
-- **Explicit resource lifetimes:** bind a file or connection in a `scope` to close it on exit, including early returns, faults and cancellation. Flush fallible writes explicitly to observe errors. [Cleanup](documentation/core-language/cleanup/scopes.md)
+- **Explicit resource lifetimes:** bind a file or connection locally to close it when its owning scope exits, including early returns, faults and cancellation. Flush fallible writes explicitly to observe errors. [Cleanup](documentation/core-language/cleanup/scopes.md)
 - **Explicit error handling:** `Result` and `Optional` instead of null and exceptions. `try` propagates an error, `if let` and `match` handle one, and a dropped `Result` is a compile error. [Errors](documentation/core-language/errors/propagation.md)
 - **Exact numbers:** sized integers, `Float32`, and `Decimal` literals like `12.50d`; conversions are explicit. [Numbers](documentation/core-language/basics/numbers-and-booleans.md)
 

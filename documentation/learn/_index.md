@@ -43,4 +43,4 @@ Search includes project symbols and the bundled standard library. A module query
 
 ## Working with a coding agent?
 
-Point it at `ms guide` and `ms search_symbol <name or words>`. Use `ms verify` for check, formatting, lint, and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).
+Point it at `ms guide` and `ms search_symbol <name or words>`. Use `ms verify` for type checking, formatting checks, lint, and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).

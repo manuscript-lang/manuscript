@@ -120,23 +120,23 @@ Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | Function
 ConstantDeclaration = "let", ( ConstantBinding | "(", NEWLINE, INDENT, ConstantBinding, { ConstantBinding }, DEDENT, ")", NEWLINE ) ;
 ConstantBinding = Name, [ ":", Type ], "=", Expression, NEWLINE ;
 
-TypeDeclaration = [ "opaque" ], "type", Name, [ TypeParameters ], ":", NEWLINE,
-                  INDENT, (RecordBody | AlternativeBody), DEDENT ;
+TypeDeclaration = [ "opaque" ], "type", Name, [ TypeParameters ], ":",
+                  ("...", NEWLINE | NEWLINE, INDENT, (RecordBody | AlternativeBody), DEDENT) ;
 RecordBody    = { Field } ;
 Field         = Name, ":", Type, [ "=", Expression ], NEWLINE ;
 AlternativeBody = CaseDeclaration, { CaseDeclaration } ;
 CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
-InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":", NEWLINE,
-                       INDENT, ContractBody, DEDENT ;
+InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":",
+                       ("...", NEWLINE | NEWLINE, INDENT, ContractBody, DEDENT) ;
 ContractBody  = OperationSignature, { OperationSignature } ;
-OperationSignature = "fn", Name, "(", [ FunctionParameters ], ")", ResultType, NEWLINE ;
+OperationSignature = [ "var" ], "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")", ResultType, NEWLINE ;
 FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
                       ResultType, FunctionSuite ;
 ResultType    = Type ;
 Implementation = "impl", NamedType, [ "for", NamedType ], ":", NEWLINE,
                  [ INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ] ;
 (* With "for", the first NamedType is the interface and the second the type. Without it, the only NamedType is the type and the block declares its own methods. *)
-MethodDeclaration = [ "var" ], "fn", Name, "(", [ FunctionParameters ], ")", ResultType, FunctionSuite ;
+MethodDeclaration = [ "var" ], "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")", ResultType, FunctionSuite ;
 ExternDeclaration = "extern", "fn", Name, "(", [ FunctionParameters ], ")", ResultType, NEWLINE
                   | "extern", "type", Name, [ TypeParameters ], NEWLINE ;
 FunctionSuite = ":", ("...", NEWLINE | Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
@@ -148,9 +148,9 @@ BenchDeclaration = "bench", PlainStringLiteral, [ "per", PositiveInteger ], Suit
 Parameters    = Parameter, { ",", Parameter }, [ "," ] ;
 Parameter     = Name, ":", Type ;
 FunctionParameters = FunctionParameter, { ",", FunctionParameter }, [ "," ] ;
-FunctionParameter = Parameter, [ "=", Expression ] ;
+FunctionParameter = [ "var" ], Parameter, [ "=", Expression ] ;
 CallbackParameters = CallbackParameter, { ",", CallbackParameter }, [ "," ] ;
-CallbackParameter = Name, [ ":", Type ], [ "=", Expression ] ;
+CallbackParameter = [ "var" ], Name, [ ":", Type ], [ "=", Expression ] ;
 TypeParameters = "[", TypeParameter, { ",", TypeParameter }, [ "," ], "]" ;
 TypeParameter = Name, [ ":", Bounds ], [ "=", Type ] ;
 Bounds        = NamedType, { "&", NamedType } ;
@@ -166,11 +166,11 @@ FunctionType  = "fn", "(", [ [ "var" ], Type, { ",", [ "var" ], Type } ], ")", T
 - A `type` declares record fields or alternative cases, never both; its methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A nullary case is `case Ready`, without `()`. Names are unique per scope.
 - A result type follows the parameter list with no arrow (`fn double(value: Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value: Int) Int: value * 2`).
 - Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
-- Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and alternative payloads have none. Parameter names in a `Callable` type do not exist: two function types are the same when their parameter types, `var` markers and result type match, and calls through function values are positional. No variadics or parameter patterns.
-- A named function or method body may be `...` (`fn read_bytes(count: Int) Bytes: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. Interface, implementation, test, bench, and control-flow suites are nonempty.
+- Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and alternative payloads have none. Parameter names in a function type do not exist: two function types are the same when their parameter types, `var` markers and result type match, and calls through function values are positional. No variadics or parameter patterns.
+- A named function or method body may be `...` (`fn read_bytes(count: Int) Bytes: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. A property interface uses `interface Name: ...`; an empty implementation may supply a marker interface. Test, bench, and control-flow suites are nonempty.
 - Imports and declarations may interleave; order does not affect resolution. Import paths, test names, and bench names are plain literals (escapes allowed, no interpolation).
-- `export` applies to types, interfaces, and named functions, not tests, benches, or `impl` blocks.
-- `impl` blocks declare no type parameters, and `impl Type:` is accepted only in the module that declares `Type`: in `impl Contract[T] for Data[T]:`, `T` comes from the receiver type and bounds from the declarations. Every parameter in the signatures must occur in the receiver application, and operations and source methods cannot declare their own. Overlap follows [contracts](../types/contracts.md#generic-implementations).
+- `export` applies to types, interfaces, named functions, constants and extern declarations, not tests, benches, or `impl` blocks.
+- `impl` blocks declare no type parameters, and `impl Type:` is accepted only in the module that declares `Type`: in `impl Contract[T] for Data[T]:`, `T` comes from the receiver type and bounds from the declarations. Receiver parameters must occur in the receiver application. Operations and source methods may also declare their own [type parameters](../types/contracts.md#generic-operations). Overlap follows [contracts](../types/contracts.md#generic-implementations).
 - `&` only combines generic bounds, as in `T: Read & Closeable`; order is irrelevant. There is no intersection or refinement syntax for value types.
 - No module-level statements or `var`; a top-level `let` is a [constant](../modules/declarations.md#constants). Snippets of local bindings are body fragments. Type paths add no wildcard imports; see [module rules](../modules/declarations.md).
 
@@ -185,12 +185,13 @@ SimpleStatement = Binding | Assignment | CompoundAssignment | ReturnStatement | 
 Binding       = ("let" | "var"), ( BindingEntry
               | "(", NEWLINE, { BindingEntry, NEWLINE }, ")" ) ;
 BindingEntry  = (Name, [ ":", Type ] | PositionalPattern | RecordPattern), "=", Expression ;
-Assignment    = (Name | Expression, ".", Name), "=", Expression ;
-CompoundAssignment = Name, { ".", Name }, ( "+=" | "-=" | "*=" | "/=" | "%=" ), Expression ;
+Assignment    = AssignmentTarget, "=", Expression ;
+AssignmentTarget = Name, { ".", Name | "[", Expression, "]" } ;
+CompoundAssignment = AssignmentTarget, ( "+=" | "-=" | "*=" | "/=" | "%=" ), Expression ;
 ReturnStatement = "return", [ Expression ] ;
 CallStatement = Expression ;
-IfStatement   = "if", [ "let", Name, "=" ], Expression, Suite,
-                { "else", "if", [ "let", Name, "=" ], Expression, Suite },
+IfStatement   = "if", [ ("let" | "var"), Name, "=" ], Expression, Suite,
+                { "else", "if", [ ("let" | "var"), Name, "=" ], Expression, Suite },
                 [ "else", Suite ] ;
 WhileStatement = "while", Expression, Suite ;
 ForStatement  = "for", Name, "in", Expression, Suite ;
@@ -211,8 +212,8 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 ```
 
 - `CallStatement` accepts a call or match and discards the result, or `try call()` when the success type is `Unit` ([propagation](../errors/propagation.md)). Bare names and arithmetic are not statements.
-- Assignment replaces a `var` or record field. `target op= value` means `target = target op (value)`; write the operator and `=` adjacent. The target is a name or field path (`box.inner.count += 1`) with no call or index in the receiver. `+=` appends text; `-=` on text is an error.
-- Only a simple name takes a type annotation. Positional patterns may be empty; empty record patterns are rejected. `_` is a wildcard and match payload placeholder only.
+- Assignment replaces a `var` or record field. `target op= value` means `target = target op (value)`; write the operator and `=` adjacent. The target is mutable storage: a name, field path (`box.inner.count += 1`), or list index (`values[i] += 1`). Calls cannot be assignment targets. `+=` appends text; `-=` on text is an error.
+- Only a simple name takes a type annotation. Positional patterns may be empty; empty record patterns are rejected. `_` discards a binding or match payload and is the wildcard match arm; it cannot be read as a value.
 - Inline suites (functions, methods, tests, branches, loops) hold one simple statement, no nested compound statements. Functions and methods alone may hold one expression, which is returned:
 
 ```manuscript

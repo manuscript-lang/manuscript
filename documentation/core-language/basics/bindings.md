@@ -79,4 +79,4 @@ A `let` record or collection cannot be mutated. Primitives copy implicitly. A st
 
 `var n = r.n` of a primitive copies the number: `n += 1` leaves `r.n` as it was. A call that returns a part of its argument returns a borrow of it, so `var xs = b.list()` changes `b`'s list and `var xs = f()` of a function building a new value owns it.
 
-Assignment does not close the previous resource or invalidate aliases. A resource bound with `let` or `var` is closed when its scope ends. See [mutation and references](../types/references.md).
+Reassigning an owning `var` drops the previous value and closes resources it held. A live borrow prevents that reassignment. The replacement closes when its owning scope ends unless it moves to another owner. See [mutation and references](../types/references.md).

@@ -5,11 +5,11 @@ weight = 2
 
 # Lowering
 
-Lowering translates checked Manuscript into MIR, which `ms-mir` optimizes and verifies and `ms-clif` turns into native code through Cranelift or, for Linux and macOS release builds, LLVM. It preserves evaluation order, closure captures, and block-level cleanup.
+Lowering translates checked Manuscript into MIR, which `ms-mir` optimizes and verifies and `ms-clif` turns into native code through Cranelift or pinned LLVM tools for optimized builds. It preserves evaluation order, closure captures, and block-level cleanup.
 
 ## Typed values
 
-Every Manuscript type has one word-level representation: `Int` is `i64`, `Float` is `f64`, `Bool` is `i8`, records flatten their fields, alternatives use a tag and payload (boxed when recursive), and `List[T]` is an owned `{ ptr, len, cap }` value with inline elements. There is no universal value type or boxing; generics are monomorphized. The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md#value-representation-word-level-64-bit-targets) states the layouts, and the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) state when a value moves, borrows, or copies.
+Every Manuscript type has one word-level representation: `Int` is `i64`, `Float` is `f64`, `Bool` is `i8`, ordinary records flatten their fields, `Error` uses a pointer to its fields, and alternatives use a tag and payload (boxed when recursive), and `List[T]` is an owned `{ ptr, len, cap }` value with inline elements. There is no universal boxed value type; generics are monomorphized. The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md#value-representation-word-level-64-bit-targets) states the layouts, and the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) state when a value moves, borrows, or copies.
 
 - `ms-lower` consumes the checked HIR and ownership facts and builds MIR; native standard calls use the `msrt_` and `msstd_` symbols in `crates/ms-rt/ABI.md`.
 - `ms-mir` verifies every module it produces and has a text format and interpreter for tests.
@@ -31,7 +31,7 @@ Types whose machine equality is Manuscript equality (scalars, strings, `Duration
 
 ## Implementation scope
 
-Implementations are visible only in their declaring module. A generic instantiated from another module resolves its type variables' contract operations against the instantiating module first, then its own.
+Implementations in a type's defining module are available wherever that type is used; extensions for imported types stay local to their declaring module. A generic instantiated from another module resolves its type variables' contract operations against the instantiating module first, then its own.
 
 - [Function lowering](function-calls.md)
 - [Source guarantees and representations](value-representations.md)

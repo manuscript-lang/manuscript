@@ -87,7 +87,7 @@ fn horizontal(position: Position) Int:
 - An unqualified case resolves within the scrutinee's type; a qualified case must belong to that exact type (`Other.Point(...)` never matches `Position`). Constructors resolve per [alternative construction](../types/alternatives.md).
 - Payload names always bind fresh. `error(NotFound)` matches every error and does not test for `NotFound`; bind `error(cause)` and pass `cause` to a helper that matches the cases.
 
-`ms lint` reports **MSL106** (a warning in the editor; `ms check` accepts it) when a capitalized payload name coincides with a known case or type name. Use a name like `cause` or `_cause`.
+`ms lint` reports **MSL106** (a lint error; `ms check` accepts it) when a capitalized payload name coincides with a known case or type name. Use a name like `cause` or `_cause`.
 
 ## Exhaustiveness
 
@@ -137,4 +137,4 @@ fn describe(shape: Shape) String:
 
 ## Matching resource references
 
-Matching binds payload values and references without consuming them or registering cleanup. [Destructuring](../types/destructuring.md) uses brackets or braces; match cases use `Case(payload)`. See [references](../types/references.md).
+Matching a borrowed value borrows its payloads. Matching an owned value at its last use can move its payloads, transferring responsibility for their cleanup. Unmoved resource parts still close; see [ownership](../types/references.md). [Destructuring](../types/destructuring.md) uses brackets or braces; match cases use `Case(payload)`. See [references](../types/references.md).

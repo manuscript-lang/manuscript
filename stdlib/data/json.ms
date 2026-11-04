@@ -18,9 +18,9 @@ export type JsonLimits:
 A JSON value. Number text is retained to avoid losing precision during parsing.
 
 `get` and `at` read one level and `as_*` read a scalar or container, each returning `none` on a
-mismatch. `get`, `at`, `as_string`, `as_list` and `as_map` return an owned copy of the part they
-find, so the result stays valid when the document changes, and nested reads bind each level
-with `if let`:
+mismatch. `get` and `at` borrow the selected part; keep the document available and unchanged
+while using it. `as_string`, `as_list` and `as_map` explicitly clone their payloads. Nested reads
+bind each level with `if let`:
 
 ```manuscript
 if let user = doc.get("user"):
@@ -63,7 +63,7 @@ export type JsonValue:
 impl Data for JsonValue:
 
 impl JsonValue:
-    // Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The result is an owned copy.
+    // Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The result borrows from the receiver.
     fn get(key: String) JsonValue?:
         match self:
             ObjectValue(values): return values.get(key)
@@ -78,7 +78,7 @@ impl JsonValue:
         return member_path(self, keys, 0)
 
     // Returns the array element at `index`, counting a negative index from the end. An index out of
-    // range, or a value that is not an array, returns `none`. The result is an owned copy.
+    // range, or a value that is not an array, returns `none`. The result borrows from the receiver.
     fn at(index: Int) JsonValue?:
         match self:
             ArrayValue(values):

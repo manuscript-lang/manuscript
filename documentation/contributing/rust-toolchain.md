@@ -30,7 +30,7 @@ cargo nextest run --workspace
 cargo test --workspace --doc
 ```
 
-CI runs these in one **Rust** job per platform; linux-amd64 runs fmt, clippy, nextest, doc tests, and the corpus. Pull requests that only change documentation, the website, blog, proposals, skills, extensions, or Markdown skip them.
+CI splits each platform into tests and conformance jobs. Pull requests run the Linux legs; scheduled and manual runs cover the full platform matrix. Documentation-only changes skip Rust steps. See [continuous integration](development.md#continuous-integration) for the current jobs and gates.
 
 The conformance corpus in `tests/conformance/` holds programs with frozen expected output. `make conform` replays it against the Rust binary (CI runs it on linux-amd64, darwin-arm64, and windows-amd64). See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
 
@@ -78,6 +78,6 @@ Behavior to know about:
 - **Math.** `@std/math` calls the host libm; results can differ between hosts in the last bit (for example `sin(2.0)`). `round` (ties toward positive infinity), `sign`, and `is_integer` are defined by the language.
 - **`ms test --shuffle`** uses its own random generator, so orders differ from other shuffles; fixtures run once per test, not once per module.
 - **Standard library.** Matching Rust std output is acceptable where Rust std covers the concept, so error texts and edge-case output can differ where the corpus does not pin them.
-- **Windows.** The standard crates use Windows-specific behavior (synthetic errnos, emulated `pread`/`pwrite`, subset of `FileConstants`, `SendSignal` terminating the child); Windows and macOS builds gate CI like Linux.
+- **Windows.** The standard crates use Windows-specific behavior (synthetic errnos, emulated `pread`/`pwrite`, subset of `FileConstants`, `SendSignal` terminating the child); Windows and macOS run in the full scheduled/manual matrix; pull requests run Linux. See [continuous integration](development.md#continuous-integration).
 
 Do not add code solely to reproduce older output where Rust std covers the concept.
