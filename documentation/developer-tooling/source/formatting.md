@@ -35,7 +35,3 @@ Formatting preserves meaning and comments, uses four-space indentation and LF en
 - Keep comment text, drop trailing whitespace, round comment-only indentation down to a multiple of four.
 
 See the [complete layout rules](../implementation.md#linting-and-formatting). Rewrites are atomic renames in the same directory.
-
-## Generated explanations
-
-Compilation never invokes AI implicitly. Model output enters only through an explicit capability call and validation, and cannot change compilation or replace a source edit. See [source layout](../../core-language/basics/syntax.md).

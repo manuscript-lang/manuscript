@@ -19,7 +19,7 @@ Property-based testing for `test` blocks. A property is a function that must hol
 Generators draw integers from a `Source` that records them, so a failing input shrinks by editing the recorded
 draws (deleting spans, lowering values) and replaying the generator. Every generator, including your own
 composed with `map`, `flat_map`, `lists`, and the rest, therefore shrinks without a shrinker of its own.
-Example: `try check("reverse twice", lists(ints(-100, 100)), lambda xs: expect_equal(xs.reversed().reversed(), xs))`.
+Example: `try check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))`.
 `ms test --runs N`, `--seed N`, and `--fuzz DURATION` set the case count, the starting seed, and a time budget.
 */
 
@@ -121,7 +121,7 @@ fn ints_draw(s: Source, low: Int, high: Int) Drawn[Int]:
     let {value, source} = draw(middle, 0 - low)
     return Drawn(0 - value, source)
 
-// Generates `True` and `False`, shrinking toward `False`.
+// Generates `true` and `false`, shrinking toward `false`.
 export fn bools() Gen[Bool]:
     return Gen[Bool](fn s: bool_draw(s))
 

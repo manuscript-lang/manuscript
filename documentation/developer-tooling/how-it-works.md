@@ -21,7 +21,7 @@ weight = 0
 
 ## Runtime cache
 
-The embedded runtime archive is extracted once and reused by later links. Executables are rebuilt each time; see [build caches](builds/incremental-compilation.md) for locations and overrides.
+The embedded runtime archive is extracted once and reused by later links. `ms build` can also reuse an unchanged executable; `run`, `test` and `profile` rebuild. See [build caches](builds/incremental-compilation.md) for locations and overrides.
 
 ## Where to go next
 

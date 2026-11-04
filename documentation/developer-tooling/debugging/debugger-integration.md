@@ -12,7 +12,7 @@ The Rust `ms` has no embedded debugger: `ms debug`, `ms dap`, and the VS Code de
 - Native builds keep frame pointers and emit DWARF line tables for file and line lookup, including optimized code. They do not describe variables, types, or inline call frames.
 - `--build-type Debug` disables optimization for a build.
 - Faults report source frames from the line tables, and `perf record` works on any `ms build` output because the compiler also emits a perf map.
-- On macOS, `ms build` writes `<output>.dSYM` beside the executable; keep that bundle with the executable for source lookup.
+- On macOS, `ms build` writes `<output>.dSYM` when `dsymutil` is available; keep that bundle with the executable for source lookup. Without that tool the executable still runs, but lacks source line information.
 
 ## Profiling with `ms profile`
 

@@ -121,9 +121,8 @@ For an import in `src/main.ms`, the first path resolves to `src/domain/customers
 
 Paths are normalized and symlinks resolved to one canonical file identity per build, so importing a file by relative path, file alias, or directory alias yields one module and cycle checks cannot be bypassed. Build metadata records paths relative to the project root.
 
-- Application paths, source directories, aliases, and interface modules must resolve inside the project root after symlink resolution; escapes are compile errors.
+- Application paths, source directories, and aliases must resolve inside the project root after symlink resolution; escapes are compile errors.
 - `@std/...` resolves only inside the pinned standard library, which cannot import application modules.
-- Interfaces may use intrinsic types and import standard declarations or other interfaces, never application modules.
 - Changes to source roots, entry, aliases, or the standard-library distribution change the module graph and build cache identity.
 
 See [module exports and imports](../../core-language/modules/declarations.md), [the compilation pipeline](../../contributing/compiler/frontend/pipeline.md), and [incremental compilation](incremental-compilation.md).

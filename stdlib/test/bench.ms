@@ -12,7 +12,7 @@ with `measure`.
 Settings come from environment variables that `ms bench` fills from its flags: MS_BENCH_TIME_MS (target time per sample,
 default 100), MS_BENCH_SAMPLES (default 10), and MS_BENCH_ITERATIONS (a fixed iteration count; 0 calibrates).
 A block written `bench "name" per N:` performs N operations per iteration, and every statistic is per operation.
-The result is one line on standard output: `MSBENCH ` followed by a JSON object of nanoseconds per iteration.
+The result is one line on standard output: `MSBENCH ` followed by a JSON object of nanoseconds per operation (one operation per iteration by default).
 Run settings.
 */
 type Settings:

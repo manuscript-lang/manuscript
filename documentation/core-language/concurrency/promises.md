@@ -5,7 +5,7 @@ weight = 1
 
 # Promises
 
-A `Promise[T]` is work that has started; its result arrives later. Calls such as `read_file(path)`, `write_file(path, ...)`, `fetch`, `connect`, `sleep`, `exec` and `Listener.accept` return one, and so does `promise(fn: ...)` for your own function.
+A `Promise[T]` represents an operation whose result is taken once with `wait()`. Calls such as `read_file(path)`, `write_file(path, ...)`, `fetch`, `connect`, `sleep`, `exec` and `Listener.accept` return one, and so does `promise(fn: ...)` for your own function.
 
 Save this complete program as `read-config.ms` and run `ms run read-config.ms` in a directory containing `config.json`:
 
@@ -25,6 +25,8 @@ export fn main() Int:
     print(contents.get().length())
     return 0
 ```
+
+`promise(fn: ...)` starts work eagerly. Streams are pulled lazily: `ReadStream.read()` returns a promise that defers its read until a wait. A function may also wait internally and return a value directly, as `collect` does.
 
 ## Waiting
 

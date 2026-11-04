@@ -65,4 +65,4 @@ There are no implicit unions or nullable references. Declare an alternative, or 
 
 ## Resource payloads
 
-Matching a payload does not invalidate the original, register cleanup, or extend a resource's lifetime. See [references inside other values](references.md).
+A payload borrowed by a match keeps its owner available while it is used. A match on an owned value at its last use can move a payload to a new owner, transferring its cleanup duty. See [references inside other values](references.md).

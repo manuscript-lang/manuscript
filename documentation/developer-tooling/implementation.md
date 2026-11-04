@@ -239,6 +239,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL111 | error | `while true` loop in a module that imports `@std/concurrency/promise.ms` whose body neither waits nor exits; other promises cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
 | MSL112 | error | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
 | MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. `close` cannot report a failure, so call `try x.flush()` before the scope ends. See [scopes](../core-language/cleanup/scopes.md) |
+| MSL115 | warning | A promise dropped as soon as it is made, which cancels its work. Bind it and call `wait()`, or pass it to `wait_all` |
 
 Implicit imports (such as `List` for list literals) count as uses. Unused-import and whitespace fixes are editor actions; initializers with possible effects are never silently removed.
 

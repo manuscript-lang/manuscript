@@ -47,3 +47,9 @@ See the [testing guide](testing.md) for more.
 
 - A file or connection stays open until the end of the scope that owns it; cleanup runs on early returns and errors. Acquire resources inside the operation that needs them. See [managing resources](../core-language/cleanup/_index.md).
 - Parameters can borrow values; consuming a value moves it at its last use. `.clone()` makes an explicit copy. Mutate through `var` bindings and `var` parameters. See [values and references](../core-language/types/references.md) for the exact rules.
+
+## Bound concurrent work when you start it
+
+Use `PromiseOptions` when creating work that needs a deadline or a shared cancellation signal. `wait()` takes the result and accepts no timeout. Streams are pulled lazily. Dropping a promise cancels it and waits for it to finish. Cancellation is delivered at waits, so a CPU loop must wait or check its cancel signal to respond.
+
+Give mutable state one owner and send updates over a `pipe`. See [promises](../core-language/concurrency/promises.md) for deadlines and cancellation, and [streams and pipes](../core-language/concurrency/streams.md) for transferring values.

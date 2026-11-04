@@ -16,6 +16,6 @@ One `ms` toolchain takes you from source check to standalone executable.
 | Test a program | [Test your code](../learn/testing.md) |
 | Inspect code with an agent | [Commands for agents](implementation.md#commands-for-agents) |
 | Build an executable or choose an optimization level | [Build levels](builds/build-levels.md) |
-| Step through a running program | [Debugging](debugging/_index.md) |
+| Investigate a fault or profile a running program | [Debugging](debugging/_index.md) |
 | Understand a build cache | [Build caches](builds/incremental-compilation.md) |
 

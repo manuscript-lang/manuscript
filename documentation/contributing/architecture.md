@@ -47,7 +47,7 @@ weight = 1
 
 - One syntax visitor owns traversal; passes pick callbacks.
 - Semantic lint uses the checker's resolved identities, never re-lexing source.
-- `ms-driver`'s `project` module owns import path identity; graph loading moving_params it.
+- `ms-driver`'s `project` module owns import path identity; graph loading uses that shared implementation.
 - The CLI classifies commands once and shares one build path.
 
 ## Keep source and generated output distinct

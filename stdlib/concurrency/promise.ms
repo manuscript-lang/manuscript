@@ -21,11 +21,11 @@ import (
     msrt_promise_drop
 ) from "@std/internal/promises.ms"
 
-// Promises: work that has started, with its result arriving later.
+// Promises: operations whose results are taken once with `wait()`.
 //
-// A call that can wait starts its work at once and returns a `Promise[T]`; `wait()` gives the result, and a task pauses
-// only where the word `wait` appears. `promise(fn: ...)` runs your own function the same way, on a thread the runtime
-// picks. Dropping a promise that has not finished cancels it and waits for it to end, so work you start never outlives
+// `promise(fn: ...)` starts work eagerly on a thread the runtime picks; `wait()` takes its result. Stream reads may
+// defer work until the wait. Any function can wait internally, even if it returns a value directly.
+// Dropping a promise that has not finished cancels it and waits for it to end, so work you start never outlives
 // the values it uses. A promise only reads what it captures: concurrent code never changes a shared value (to change
 // shared state, give it one owner and send it values over a `pipe`).
 //
@@ -38,7 +38,7 @@ import (
 // let total = try words.wait()
 // ```
 
-// Work that has started; its result arrives later. Each `wait` takes the result once.
+// An operation with one result. `wait` takes it once; a stream read may defer work until the wait.
 // Dropping an unfinished promise cancels it and waits for it to end; an unused promise is a warning.
 export opaque type Promise[T]:
     // The runtime slot of this promise: a generation and an index, never reused while this id is live.
