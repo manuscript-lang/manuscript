@@ -15,5 +15,7 @@ Verified: a Unix task stack is a 256 MB slot whose last 16 bytes are the `fault:
 Apply when: changing `promise.rs`, `sched.rs`, `pipes.rs`, the poller, or adding a native that completes a promise.
 Thread-local tables have no destructor, so every one must be released in `task::teardown` (`promise::teardown` frees the promise table). The `stats` leak count and `make leak-check` cannot see it (the table's `Vec`s are plain std allocations); a plain `valgrind --leak-check=full` on any program that starts a promise or reads stdin can (#2472: 14 lost blocks, frames unwindable only with `--trace-malloc` plus the unfreed-address diff, since valgrind cannot unwind task stacks).
 
+A promise has one cancel-signal registration. Applying a replacement must unregister the previous switch before registering the new one, including when the replacement is already fired or freed. Drop and teardown only know the current registration; leaving an older membership behind both retains stale ids and lets an old switch cancel rebound work. The cancel tests assert membership counts after repeated rebind/drop and teardown, as well as which switch actually cancels the promise.
+
 Evidence: `crates/ms-rt/src/promise.rs` tests (spread, steal, remote cancel, remote fault, pool jobs from scheduler threads); `tools/leak-check.ms` on cancel and fault programs.
 Verify: `cargo test -p ms-rt --lib` repeated; leak-check clean after a dropped running promise.

@@ -811,17 +811,19 @@ pub extern "C-unwind" fn msrt_promise_cancel(id: i64) {
 }
 
 /// Makes promise `id` listen to the cancel switch `cancel` (`cancel.rs`): when it fires the promise is
-/// cancelled, as by `msrt_promise_cancel`. A switch that already fired cancels it now. Call it after the work
-/// has started.
+/// cancelled, as by `msrt_promise_cancel`. This replaces any earlier switch. A switch that already fired
+/// cancels it now. Call it after the work has started.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_on_cancel(id: i64, cancel: i64) {
     let t = table();
     let Some(i) = index(t, id) else { return };
+    let previous = core::mem::replace(&mut t.cancel[i], cancel);
+    if previous != 0 {
+        crate::cancel::unregister(previous, id);
+    }
     if crate::cancel::register(cancel, id) {
         stop(id);
-        return;
     }
-    t.cancel[i] = cancel;
 }
 
 /// Stops promise `id` from the thread that fired its switch: on the promise's own thread.

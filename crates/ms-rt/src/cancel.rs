@@ -122,6 +122,111 @@ mod tests {
     use super::*;
 
     #[test]
+    fn rebinding_a_promise_releases_its_previous_signal_registration() {
+        let _g = crate::testutil::lock();
+        let first = msrt_cancel_new();
+        let second = msrt_cancel_new();
+        for _ in 0..32 {
+            let id = promise::msrt_promise_new();
+            promise::msrt_promise_on_cancel(id, first);
+            promise::msrt_promise_on_cancel(id, second);
+            promise::msrt_promise_drop(id);
+        }
+        let counts = {
+            let mut t = table();
+            [first, second].map(|id| slot(&mut t, id).unwrap().members.len())
+        };
+        msrt_cancel_free(first);
+        msrt_cancel_free(second);
+        crate::task::teardown();
+        assert_eq!(counts, [0, 0]);
+    }
+
+    #[test]
+    fn only_the_replacement_signal_cancels_a_promise() {
+        let _g = crate::testutil::lock();
+        let first = msrt_cancel_new();
+        let second = msrt_cancel_new();
+        let id = promise::msrt_promise_new();
+        promise::msrt_promise_on_cancel(id, first);
+        promise::msrt_promise_on_cancel(id, second);
+        msrt_cancel_fire(first);
+        let after_first = promise::msrt_promise_done(id);
+        msrt_cancel_fire(second);
+        let result = promise::msrt_promise_wait(id, -1);
+        promise::msrt_promise_drop(id);
+        msrt_cancel_free(first);
+        msrt_cancel_free(second);
+        crate::task::teardown();
+        assert_eq!(after_first, 0);
+        assert_eq!(result, promise::CANCELLED);
+    }
+
+    #[test]
+    fn same_signal_and_fired_replacements_cancel_and_detach() {
+        let _g = crate::testutil::lock();
+        for same in [true, false] {
+            let first = msrt_cancel_new();
+            let second = if same { first } else { msrt_cancel_new() };
+            if !same {
+                msrt_cancel_fire(second);
+            }
+            let id = promise::msrt_promise_new();
+            promise::msrt_promise_on_cancel(id, first);
+            promise::msrt_promise_on_cancel(id, second);
+            msrt_cancel_fire(second);
+            let result = promise::msrt_promise_wait(id, -1);
+            promise::msrt_promise_drop(id);
+            let counts = {
+                let mut t = table();
+                [first, second].map(|id| slot(&mut t, id).unwrap().members.len())
+            };
+            msrt_cancel_free(first);
+            if !same {
+                msrt_cancel_free(second);
+            }
+            crate::task::teardown();
+            assert_eq!(result, promise::CANCELLED);
+            assert_eq!(counts, [0, 0]);
+        }
+    }
+
+    #[test]
+    fn a_freed_replacement_detaches_the_previous_signal() {
+        let _g = crate::testutil::lock();
+        let first = msrt_cancel_new();
+        let second = msrt_cancel_new();
+        msrt_cancel_free(second);
+        let id = promise::msrt_promise_new();
+        promise::msrt_promise_on_cancel(id, first);
+        promise::msrt_promise_on_cancel(id, second);
+        msrt_cancel_fire(first);
+        let done = promise::msrt_promise_done(id);
+        promise::msrt_promise_drop(id);
+        msrt_cancel_free(first);
+        crate::task::teardown();
+        assert_eq!(done, 0);
+    }
+
+    #[test]
+    fn teardown_detaches_rebound_promises() {
+        let _g = crate::testutil::lock();
+        let first = msrt_cancel_new();
+        let second = msrt_cancel_new();
+        let id = promise::msrt_promise_new();
+        promise::msrt_promise_on_cancel(id, first);
+        promise::msrt_promise_on_cancel(id, second);
+        crate::task::teardown();
+        let counts = {
+            let mut t = table();
+            [first, second].map(|id| slot(&mut t, id).unwrap().members.len())
+        };
+        msrt_cancel_free(first);
+        msrt_cancel_free(second);
+        assert_eq!(counts, [0, 0]);
+    }
+
+    #[test]
     fn a_switch_fires_once_and_a_freed_one_reads_as_not_fired() {
         let id = msrt_cancel_new();
         assert_eq!(msrt_cancel_fired(id), 0);
