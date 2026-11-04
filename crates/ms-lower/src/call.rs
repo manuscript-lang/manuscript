@@ -954,7 +954,7 @@ impl<'a> FnLower<'a> {
             }
             let x = match &a.wrap_optional {
                 Some(_) => {
-                    let o = self.owned_wrap(x);
+                    let o = self.owned(x);
                     let v = self.b.opt_some(o);
                     Val { v, own: true }
                 }
@@ -1170,7 +1170,7 @@ impl<'a> FnLower<'a> {
                 .any(|l| crate::mutation::has_try(l.expr));
             let x = match &a.wrap_optional {
                 Some(_) => {
-                    let o = self.owned_wrap(x);
+                    let o = self.owned(x);
                     let v = self.b.opt_some(o);
                     Val { v, own: true }
                 }
@@ -1180,11 +1180,7 @@ impl<'a> FnLower<'a> {
             let x = if later_try {
                 self.hold_temp(x)
             } else {
-                let v = if t.is(Builtin::Result) {
-                    self.owned_wrap(x)
-                } else {
-                    self.owned(x)
-                };
+                let v = self.owned(x);
                 Val {
                     v,
                     own: self.holds(self.ty_of(v)),
