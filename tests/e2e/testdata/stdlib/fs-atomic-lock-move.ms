@@ -34,6 +34,13 @@ test "write_atomic replaces contents, keeps mode, and leaves no temporary file":
     try write_atomic("{root}/mode.txt", "y")
     try expect_equal((try stat("{root}/mode.txt", true)).permissions, before)
     try expect_equal(try text_of("{root}/mode.txt"), "y")
+    try chmod("{root}/mode.txt", 438)
+
+    let writable = (try stat("{root}/mode.txt", true)).permissions
+    try expect_equal(writable, 438)
+    try write_atomic("{root}/mode.txt", "z")
+    try expect_equal((try stat("{root}/mode.txt", true)).permissions, writable)
+    try expect_equal(try text_of("{root}/mode.txt"), "z")
     try write_atomic_bytes(path, "two".to_bytes())
     try expect_equal(try text_of(path), "two")
 
