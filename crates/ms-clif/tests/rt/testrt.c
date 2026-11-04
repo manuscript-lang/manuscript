@@ -226,6 +226,8 @@ void msrt_index_fault(int64_t i, int64_t n) {
   die(buf, (size_t)k);
 }
 void msrt_fault_unwrap_none(void) { die("unwrap of none", 14); }
+/* The limit is never set here, so growth is never asked for; the shim runs where it is. */
+void msrt_task_grow(void (*shim)(uint8_t *), uint8_t *block) { shim(block); }
 void msrt_fault_depth(void) { die("stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead", 153); }
 void msrt_cancelled(void) { fflush(stdout); run_cleanups(); exit(130); }
 

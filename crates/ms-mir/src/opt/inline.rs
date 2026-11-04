@@ -393,9 +393,12 @@ fn inline_at(f: &mut Func, bi: usize, ii: usize, callee: &Func, ret_own: bool) -
                 mode: p.mode,
             })
             .collect();
+        // An inlined body has no frame of its own: its recursion check belongs to the
+        // out-of-line entry (the lowering re-invokes the function from it).
         let mut insts: Vec<Inst> = cb
             .insts
             .iter()
+            .filter(|i| !matches!(i.op, Op::DepthEnter | Op::DepthLeave))
             .map(|i| Inst {
                 op: i.op,
                 args: i.args.iter().map(|a| mv(*a)).collect(),
@@ -934,8 +937,9 @@ fn specialized_callee(m: &Module, callee: FuncId, g: FuncId, i: usize) -> Func {
             });
         }
     }
+    let at = entry_insert_at(&f);
     f.blocks[0].insts.insert(
-        0,
+        at,
         Inst {
             op: Op::ClosureNew,
             args: cap_values,
@@ -1072,4 +1076,15 @@ fn remove_dead(m: &mut Module) -> bool {
     }
     m.entry = m.entry.map(|e| FuncId(map[e.index()]));
     true
+}
+
+/// Where a pass inserts at the start of the entry block: after the recursion check, which
+/// stays first (`verify`).
+pub(crate) fn entry_insert_at(f: &Func) -> usize {
+    usize::from(
+        f.blocks[0]
+            .insts
+            .first()
+            .is_some_and(|i| i.op == Op::DepthEnter),
+    )
 }

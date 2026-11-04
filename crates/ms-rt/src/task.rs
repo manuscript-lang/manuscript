@@ -59,6 +59,12 @@ const ROOT_STACK: usize = REGION;
 const GUARD: usize = 64 << 10;
 /// Tasks parked for at least this many scheduler idle rounds give their stack pages back.
 const HIBERNATE_ROUNDS: u32 = 2;
+/// Segments a task may add to its home slot (`msrt_task_grow`): 256 MiB of stack in all, the
+/// main task's region.
+const MAX_SEGMENTS: usize = REGION / SLOT - 1;
+/// Bytes at the top of a grown segment holding the bounds and chain cell of the segment below
+/// it, which frame walkers follow (`fault::STACK_CHAIN`).
+const CHAIN_CELL: usize = 32;
 /// Task slots hibernation freezes between looks for new work, so a wake-up waits for at most
 /// this many copies.
 const HIBERNATE_SCAN: usize = 4096;
@@ -124,6 +130,16 @@ struct Task {
     /// The thread environment block's stack fields while the task is switched out.
     #[cfg(windows)]
     teb: [usize; 3],
+    /// Stack segments the task grew into (`msrt_task_grow`), slot bases in order; kept until
+    /// the task ends, so a loop at a segment boundary allocates nothing.
+    segs: Vec<usize>,
+    /// The segment the task runs on: 0 is the home slot, `k` is `segs[k - 1]`.
+    seg: usize,
+    /// For each segment below the current one, the stack pointer it was left at.
+    left: Vec<usize>,
+    /// The thread environment block's stack fields of each segment below the current one.
+    #[cfg(windows)]
+    seg_teb: Vec<[usize; 3]>,
 }
 
 #[derive(Clone, Copy)]
@@ -285,6 +301,27 @@ mod stack {
         #[cfg(windows)]
         fn msrt_ctx_switch(save: *mut usize, next: usize, teb: *const usize);
         fn msrt_task_tramp();
+        /// Stores the stack pointer in `*save`, runs `f(arg)` on the stack ending at `top`
+        /// (16-byte aligned) and comes back; the frame it leaves keeps the frame-pointer chain
+        /// continuous across the two stacks.
+        #[cfg(not(windows))]
+        pub fn msrt_call_on_stack(
+            top: usize,
+            f: unsafe extern "C-unwind" fn(*mut u8),
+            arg: *mut u8,
+            save: *mut usize,
+        );
+        /// As above; `teb` holds six thread environment block stack fields: the new stack's
+        /// three, installed once the stack pointer is on it, then the caller's three, put back
+        /// once the stack pointer is back (see `msrt_ctx_switch`).
+        #[cfg(windows)]
+        pub fn msrt_call_on_stack(
+            top: usize,
+            f: unsafe extern "C-unwind" fn(*mut u8),
+            arg: *mut u8,
+            save: *mut usize,
+            teb: *const usize,
+        );
     }
 
     #[cfg(all(target_arch = "x86_64", not(windows)))]
@@ -312,6 +349,24 @@ mod stack {
         "xor ebp, ebp",
         "call {main}",
         "ud2",
+        concat!(".globl ", sym!("msrt_call_on_stack")),
+        concat!(sym!("msrt_call_on_stack"), ":"),
+        // Frame-pointer based unwind info, so a Rust panic in a test crosses the switch.
+        ".cfi_startproc",
+        "push rbp",
+        ".cfi_def_cfa_offset 16",
+        ".cfi_offset rbp, -16",
+        "mov rbp, rsp",
+        ".cfi_def_cfa_register rbp",
+        "mov [rcx], rsp",
+        "mov rsp, rdi",
+        "mov rdi, rdx",
+        "call rsi",
+        "mov rsp, rbp",
+        "pop rbp",
+        ".cfi_def_cfa rsp, 8",
+        "ret",
+        ".cfi_endproc",
         main = sym super::task_main,
     );
 
@@ -375,14 +430,43 @@ mod stack {
         "sub rsp, 32",
         "call {main}",
         "ud2",
+        // The fifth argument (`teb`) is the first stack argument: above the return address and
+        // the 32 bytes of shadow space, so at [rbp + 48] once rbp is pushed.
+        concat!(".globl ", sym!("msrt_call_on_stack")),
+        concat!(sym!("msrt_call_on_stack"), ":"),
+        "push rbp",
+        "mov rbp, rsp",
+        "mov [r9], rsp",
+        "mov rsp, rcx",
+        "mov rax, [rbp + 48]",
+        "mov r10, [rax]",
+        "mov gs:[0x08], r10",
+        "mov r10, [rax + 8]",
+        "mov gs:[0x10], r10",
+        "mov r10, [rax + 16]",
+        "mov gs:[0x1478], r10",
+        "sub rsp, 32",
+        "mov rcx, r8",
+        "call rdx",
+        "mov rsp, rbp",
+        "mov rax, [rbp + 48]",
+        "mov r10, [rax + 24]",
+        "mov gs:[0x08], r10",
+        "mov r10, [rax + 32]",
+        "mov gs:[0x10], r10",
+        "mov r10, [rax + 40]",
+        "mov gs:[0x1478], r10",
+        "pop rbp",
+        "ret",
         main = sym super::task_main,
     );
 
     // AArch64 (Linux, macOS and Windows share the callee-saved set: x19-x28, x29, x30, d8-d15).
-    // Windows installs the thread environment block fields from `x2` after the switch.
+    // Windows installs the thread environment block fields from `x2` after the switch, and in
+    // `msrt_call_on_stack` from `x4` (kept in the frame) after each move of the stack pointer.
     #[cfg(target_arch = "aarch64")]
     macro_rules! aarch64_switch {
-        ($($install:literal),*) => {
+        ($($install:literal),*; $($enter:literal),*; $($leave:literal),*) => {
     core::arch::global_asm!(
         ".text",
         concat!(".globl ", sym!("msrt_ctx_switch")),
@@ -419,12 +503,34 @@ mod stack {
         "mov x29, #0",
         "bl {main}",
         "brk #0",
+        concat!(".globl ", sym!("msrt_call_on_stack")),
+        concat!(sym!("msrt_call_on_stack"), ":"),
+        ".cfi_startproc",
+        "stp x29, x30, [sp, #-32]!",
+        ".cfi_def_cfa_offset 32",
+        ".cfi_offset x29, -32",
+        ".cfi_offset x30, -24",
+        "str x4, [sp, #16]",
+        "mov x29, sp",
+        ".cfi_def_cfa_register x29",
+        "mov x9, sp",
+        "str x9, [x3]",
+        "mov sp, x0",
+        $($enter,)*
+        "mov x0, x2",
+        "blr x1",
+        "mov sp, x29",
+        $($leave,)*
+        "ldp x29, x30, [sp], #32",
+        ".cfi_def_cfa sp, 0",
+        "ret",
+        ".cfi_endproc",
         main = sym super::task_main,
     );
         };
     }
     #[cfg(all(target_arch = "aarch64", not(windows)))]
-    aarch64_switch!();
+    aarch64_switch!(;;);
     #[cfg(all(target_arch = "aarch64", windows))]
     aarch64_switch!(
         "ldr x3, [x2]",
@@ -432,7 +538,20 @@ mod stack {
         "ldr x3, [x2, #8]",
         "str x3, [x18, #0x10]",
         "ldr x3, [x2, #16]",
-        "str x3, [x18, #0x1478]"
+        "str x3, [x18, #0x1478]";
+        "ldr x9, [x4]",
+        "str x9, [x18, #0x08]",
+        "ldr x9, [x4, #8]",
+        "str x9, [x18, #0x10]",
+        "ldr x9, [x4, #16]",
+        "str x9, [x18, #0x1478]";
+        "ldr x9, [sp, #16]",
+        "ldr x10, [x9, #24]",
+        "str x10, [x18, #0x08]",
+        "ldr x10, [x9, #32]",
+        "str x10, [x18, #0x10]",
+        "ldr x10, [x9, #40]",
+        "str x10, [x18, #0x1478]"
     );
 
     /// Builds the first frame of a new stack so that switching to it enters `msrt_task_tramp`.
@@ -594,6 +713,133 @@ unsafe fn publish_region(t: *mut Task) {
             return;
         }
         region_cell((*t).stack as usize).write(&mut (*t).hdr);
+        // Returning into a lower segment runs code there too.
+        for k in 0..(*t).seg {
+            region_cell(*(*t).segs.as_ptr().add(k)).write(&mut (*t).hdr);
+        }
+    }
+}
+
+/// Bounds of segment `k` of `t`: lowest usable address, one past the highest, and the chain cell
+/// generated code's frame walkers follow to the segment below (0 on the home slot).
+unsafe fn segment_bounds(t: *mut Task, k: usize) -> (usize, usize, usize) {
+    // SAFETY: `t` is live and `k` is one of its segments.
+    unsafe {
+        if k == 0 {
+            let base = (*t).stack as usize;
+            return (base + GUARD, stack_top(base, (*t).stack_len), 0);
+        }
+        let base = *(*t).segs.as_ptr().add(k - 1);
+        let top = base + SLOT - CHAIN_CELL;
+        (base + GUARD, top, top)
+    }
+}
+
+/// Runs `shim(block)` on the task's next stack segment: the recursion check of a cyclic function
+/// found the stack pointer below the limit of the current one, so the function runs again
+/// there with the parameters stored at `block` (`ms_clif::lower::depth_enter`). The segment is
+/// a guarded slot like the home one, kept by the task until it ends; after 511 of them, or when
+/// no slot is left, the task faults with the stack overflow report.
+///
+/// # Safety
+/// Called by generated code on the runtime thread; `block` is a heap block the caller frees afterwards.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_task_grow(
+    shim: unsafe extern "C-unwind" fn(*mut u8),
+    block: *mut u8,
+) {
+    // SAFETY: single threaded scheduler; the current task is on its stack.
+    unsafe {
+        let cur = ensure_init();
+        let k = (*cur).seg + 1;
+        // A main task already has a whole region, the cap; the thread's own flow has no slot.
+        if (*cur).stack.is_null() || (*cur).stack_len == REGION || k > MAX_SEGMENTS {
+            fault::msrt_fault_depth();
+        }
+        if (*cur).segs.len() < k {
+            let base = try_alloc_stack(SLOT);
+            if base.is_null() {
+                fault::msrt_fault_depth();
+            }
+            (*cur).segs.push(base as usize);
+        }
+        let base = *(*cur).segs.as_ptr().add(k - 1);
+        // Commits the top pages where commits are explicit; the frame it writes is overwritten.
+        stack::prepare(base as *mut u8, SLOT);
+        let (lo, top, chain) = segment_bounds(cur, k);
+        let prev = fault::segment_state();
+        (chain as *mut [usize; 4]).write([prev.0, prev.1, prev.2, 0]);
+        region_cell(base).write(&mut (*cur).hdr);
+        let limit = (*cur).hdr.limit;
+        (*cur).hdr.limit = fault::stack_limit(lo, top);
+        fault::set_segment_state((lo, top, chain));
+        (*cur).seg = k;
+        (*cur).left.push(0);
+        let save: *mut usize = (*cur).left.last_mut().expect("pushed");
+        #[cfg(windows)]
+        {
+            // The segment's thread environment block fields, then this stack's own for the
+            // way back; the assembly installs each once the stack pointer has moved.
+            let old = sys::teb_stack();
+            (*cur).seg_teb.push(old);
+            let teb = [
+                base + SLOT,
+                base + SLOT - stack::INITIAL_COMMIT,
+                base,
+                old[0],
+                old[1],
+                old[2],
+            ];
+            stack::msrt_call_on_stack(top, shim, block, save, teb.as_ptr());
+            (*cur).seg_teb.pop();
+        }
+        #[cfg(not(windows))]
+        stack::msrt_call_on_stack(top, shim, block, save);
+        (*cur).seg = k - 1;
+        (*cur).left.pop();
+        (*cur).hdr.limit = limit;
+        fault::set_segment_state(prev);
+    }
+}
+
+/// The segment the running task is on, recorded by a guard when it opens.
+pub(crate) fn current_segment() -> usize {
+    // SAFETY: single threaded scheduler.
+    unsafe { (*ensure_init()).seg }
+}
+
+/// Puts the running task back on segment `seg` after a guard exit skipped the returns of the
+/// grows above it: the segment's bounds and chain. The guard restores the recursion limit
+/// itself, and on Windows installs the fields of [`segment_teb`] once its jump has moved the
+/// stack pointer.
+pub(crate) unsafe fn restore_segment(seg: usize) {
+    // SAFETY: single threaded scheduler; the guard was opened on segment `seg` of this task.
+    unsafe {
+        let cur = ensure_init();
+        if (*cur).seg == seg {
+            return;
+        }
+        (*cur).seg = seg;
+        (*cur).left.truncate(seg);
+        fault::set_segment_state(segment_bounds(cur, seg));
+        #[cfg(windows)]
+        (*cur).seg_teb.truncate(seg);
+    }
+}
+
+/// The thread environment block's stack fields of segment `seg` of the running task, as they
+/// were when the task last left it; the current ones when it is on `seg`. Read before
+/// [`restore_segment`].
+#[cfg(windows)]
+pub(crate) unsafe fn segment_teb(seg: usize) -> [usize; 3] {
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        let cur = ensure_init();
+        if (*cur).seg == seg {
+            sys::teb_stack()
+        } else {
+            *(*cur).seg_teb.as_ptr().add(seg)
+        }
     }
 }
 
@@ -664,6 +910,11 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             pinned: 0,
             #[cfg(windows)]
             teb: sys::teb_stack(),
+            segs: Vec::new(),
+            seg: 0,
+            left: Vec::new(),
+            #[cfg(windows)]
+            seg_teb: Vec::new(),
         });
     }
     s.live += 1;
@@ -763,22 +1014,27 @@ pub(crate) fn diag_describe(addr: usize, sp: usize) -> String {
 // ---- stacks ----
 
 unsafe fn alloc_stack(len: usize) -> *mut u8 {
+    // SAFETY: forwarded.
+    let p = unsafe { try_alloc_stack(len) };
+    if p.is_null() {
+        fault::fault(
+            b"cannot allocate a task stack: too many tasks at once (the process is out of address space or, on a Linux kernel before 6.13, out of memory mappings: raise vm.max_map_count)",
+        );
+    }
+    p
+}
+
+/// A pooled or fresh stack of `len` bytes; null when none is left.
+unsafe fn try_alloc_stack(len: usize) -> *mut u8 {
     let mut s = sched();
     if let Some(at) = s.pool.iter().rposition(|&(_, pooled)| pooled == len) {
         // The entry that moves into `at` may still hold pages.
         s.pool_clean = s.pool_clean.min(at);
         return s.pool.swap_remove(at).0 as *mut u8;
     }
+    let _ = s;
     // SAFETY: the lowest pages of the fresh mapping become the guard.
-    unsafe {
-        let p = stack::create(len);
-        if p.is_null() {
-            fault::fault(
-                b"cannot allocate a task stack: too many tasks at once (the process is out of address space or, on a Linux kernel before 6.13, out of memory mappings: raise vm.max_map_count)",
-            );
-        }
-        p
-    }
+    unsafe { stack::create(len) }
 }
 
 /// A finished task's stack goes to the pool. Slots are never unmapped one at a time: that would
@@ -846,6 +1102,7 @@ unsafe fn hibernate_idle() {
                 if t.is_null()
                     || t == cur
                     || (*t).state != State::Waiting
+                    || (*t).seg != 0
                     || (*t).pinned != 0
                     || !(*t).frozen.is_null()
                     || (*t).stack.is_null()
@@ -916,9 +1173,13 @@ unsafe fn freeze(t: *mut Task) {
         core::ptr::copy_nonoverlapping(sp as *const u8, copy, len);
         (*t).frozen = copy;
         (*t).frozen_len = len;
-        // The whole stack: pages below `sp` that deeper calls touched and left behind go too.
+        // The whole stack: pages below `sp` that deeper calls touched and left behind go too,
+        // and the segments a deep recursion grew into, all unused on the home segment.
         let low = (*t).stack as usize + GUARD;
         sys::release(low as *mut u8, top - low);
+        for &base in &(*t).segs {
+            sys::release((base + GUARD) as *mut u8, SLOT - GUARD);
+        }
     }
 }
 
@@ -1369,6 +1630,10 @@ extern "C" fn task_main() -> ! {
         (*t).state = State::Done;
         s.zombie_stack = ((*t).stack as usize, (*t).stack_len);
         (*t).stack = null_mut();
+        // A task ends on its home segment; the ones it grew into are free now.
+        for base in core::mem::take(&mut (*t).segs) {
+            s.pool.push((base, SLOT));
+        }
         if (*t).promise != 0 {
             // A promise's task is never joined: the promise learns of its end by event.
             crate::string::release_opt(&core::mem::replace(&mut (*t).msg, crate::string::NO_STR));
@@ -2547,6 +2812,71 @@ mod tests {
             pin_current(true);
             msrt_token_park(token, -1, &mut value);
             pin_current(false);
+        }
+    }
+
+    /// Grows onto a segment twice over (the shim grows once more), checks each run is inside the
+    /// segment's bounds with the segment's limit, and that the home segment is back afterwards.
+    unsafe extern "C-unwind" fn grow_twice(arg: *mut u8) {
+        // SAFETY: called on a live task.
+        unsafe {
+            let cur = ensure_init();
+            let home = fault::segment_state();
+            let mut probe = [0usize; 2];
+            msrt_task_grow(on_segment, probe.as_mut_ptr().cast());
+            assert_eq!((*cur).seg, 0);
+            assert_eq!(fault::segment_state(), home);
+            assert_eq!(probe[0], 2, "the shim ran on two segments");
+            assert!(
+                probe[1] < home.0 || probe[1] >= home.1,
+                "the shim ran outside the home slot"
+            );
+            assert_eq!((*cur).segs.len(), 2);
+            // The segments stay with the task: growing again allocates nothing.
+            probe = [0; 2];
+            msrt_task_grow(on_segment, probe.as_mut_ptr().cast());
+            assert_eq!((*cur).segs.len(), 2);
+            // A guard exit from a segment is the e2e fixture `task-stack-growth`'s to check:
+            // the test build's guard unwinds a Rust panic, which cannot cross stacks on Windows.
+            *(arg as *mut usize) = 1;
+        }
+    }
+
+    unsafe extern "C-unwind" fn on_segment(block: *mut u8) {
+        // SAFETY: `block` is the probe of `grow_twice`.
+        unsafe {
+            let cur = ensure_init();
+            let p = block as *mut usize;
+            let local = 0usize;
+            let sp = core::ptr::addr_of!(local) as usize;
+            let (lo, hi, chain) = fault::segment_state();
+            assert!(
+                sp >= lo && sp < hi,
+                "the shim runs within the segment's bounds"
+            );
+            assert_ne!(chain, 0, "a grown segment chains to the one below");
+            assert_eq!((*cur).hdr.limit, fault::stack_limit(lo, hi));
+            *p.add(1) = sp;
+            *p += 1;
+            if *p < 2 {
+                msrt_task_grow(on_segment, block);
+            }
+        }
+    }
+
+    #[test]
+    fn a_task_grows_onto_segments_and_comes_back() {
+        let _g = lock();
+        teardown();
+        // SAFETY: the test joins the task.
+        unsafe {
+            let mut done = 0usize;
+            let h = msrt_task_spawn(grow_twice, core::ptr::addr_of_mut!(done).cast(), 0, 0);
+            assert_eq!(msrt_task_join(h, null_mut()), 0);
+            assert_eq!(done, 1);
+            // The task's segments went back to the pool with its slot.
+            assert_eq!(sched().pool.len(), 3);
+            teardown();
         }
     }
 

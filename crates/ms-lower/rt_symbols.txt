@@ -326,6 +326,7 @@ msrt_task_cancel(handle: u64)
 msrt_task_count() -> usize
 msrt_task_current() -> u64
 msrt_task_forget_fd(fd: i32)
+msrt_task_grow(shim: unsafe extern "C-unwind" fn(*mut u8), block: *mut u8)
 msrt_task_join(handle: u64, msg_out: *mut StrVal) -> u8
 msrt_task_sleep(ns: i64) -> u32
 msrt_task_spawn(entry: Entry, arg: *mut u8, flags: u32, stack_bytes: usize) -> u64

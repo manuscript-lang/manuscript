@@ -723,9 +723,13 @@ pub mod symbols {
     /// region whose last 16 bytes hold a pointer to the running task's block, which the scheduler
     /// writes before it switches to the task. Code finds the block as
     /// `*((sp & !(STACK_REGION - 1)) + STACK_REGION - 16)`.
-    /// Word 0 (`usize`) of the block is the lowest stack address recursive calls may reach
-    /// (0 = no limit): on entry to a recursive function compare the stack pointer against it and
-    /// call `msrt_fault_depth` when below.
+    /// Word 0 (`usize`) of the block is the lowest stack address recursive calls may reach on
+    /// the task's current stack segment (0 = no limit): on entry to a recursive function compare
+    /// the stack pointer against it and, when below, call `msrt_task_grow(shim, block)` with the
+    /// function's parameters stored at `block` (one 8-byte cell each, then room for its results)
+    /// and return the results it leaves there. The runtime runs `shim(block)` on the task's next
+    /// segment, a guarded slot that keeps the frame-pointer chain continuous, and faults with the
+    /// stack overflow report when the task holds a region's worth of segments.
     pub const ISOLATE_HDR: &str = "msrt_isolate_hdr";
     /// Size and alignment of a stack region: 512 KiB task slots are carved from a region, and
     /// the main task's stack is a region of its own.
