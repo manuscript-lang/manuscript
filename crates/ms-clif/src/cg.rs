@@ -823,6 +823,7 @@ fn compile_with_isa(
     // on the other cores, so no stage waits for a whole batch of the others.
     std::thread::scope(|scope| -> Result<(), Error> {
         let mut pipe = Pipeline::start(scope, &worker_isa);
+        let mut temps;
         for (i, f) in m.funcs.iter().enumerate() {
             ctx.clear();
             ctx.func.signature = g.func_sig(f);
@@ -833,8 +834,9 @@ fn compile_with_isa(
                 if let Some(u) = l.unsupported.clone() {
                     return Err(Error(format!("{}: unsupported: {u}", f.name)));
                 }
-                l.finish();
+                temps = l.finish();
             }
+            crate::slotshare::share(&mut ctx.func, &temps);
             let fid = g.funcs[i];
             if prepare(&mut g, &mut ctx, fid, &f.name, Some(f)) {
                 continue;
@@ -844,6 +846,7 @@ fn compile_with_isa(
         pipe.finish(&mut g)
     })?;
     while let Some((kind, ty)) = g.queue.pop() {
+        let temps;
         let id = g.glue[&(kind, ty)];
         ctx.clear();
         let leaves = g.lay.leaves(ty);
@@ -858,8 +861,9 @@ fn compile_with_isa(
         {
             let mut l = Lower::new(&mut g, &mut ctx.func, &mut fctx);
             l.lower_glue(kind, ty);
-            l.finish();
+            temps = l.finish();
         }
+        crate::slotshare::share(&mut ctx.func, &temps);
         define(&mut g, &mut ctx, id, "glue")?;
     }
     let triple = llvm_triple(g.module.isa().triple());
@@ -1430,11 +1434,13 @@ fn emit_main(
     ctx.clear();
     ctx.func.signature = sig;
     ctx.func.name = UserFuncName::user(0, id.as_u32());
+    let temps;
     {
         let mut l = Lower::new(g, &mut ctx.func, fctx);
         l.lower_main(entry.index());
-        l.finish();
+        temps = l.finish();
     }
+    crate::slotshare::share(&mut ctx.func, &temps);
     let llvm = g.llvm.take();
     let r = define(g, ctx, id, "main");
     g.llvm = llvm;

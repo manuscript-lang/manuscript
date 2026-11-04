@@ -62,6 +62,8 @@ pub struct Lower<'a, 'm> {
     blocks: Vec<Option<ir::Block>>,
     /// First unsupported construct met, reported by the driver.
     pub unsupported: Option<String>,
+    /// Slots of statement-scoped temporaries, merged between blocks by `slotshare`.
+    temps: Vec<ir::StackSlot>,
 }
 
 fn bargs(vs: &[Value]) -> Vec<BlockArg> {
@@ -91,13 +93,24 @@ impl<'a, 'm> Lower<'a, 'm> {
             overflow_result: None,
             blocks: Vec::new(),
             unsupported: None,
+            temps: Vec::new(),
         }
     }
 
-    pub fn finish(mut self) {
+    /// Finishes the function and returns the slots of its temporaries for `slotshare::share`.
+    pub fn finish(mut self) -> Vec<ir::StackSlot> {
         self.b.seal_all_blocks();
         let config = self.g.module.target_config();
+        let temps = std::mem::take(&mut self.temps);
         self.b.finalize(config);
+        temps
+    }
+
+    /// A new slot for a temporary that lives within one statement.
+    fn temp_slot(&mut self, size: u32) -> ir::StackSlot {
+        let slot = self.new_slot(size);
+        self.temps.push(slot);
+        slot
     }
 
     // ---- small helpers ---------------------------------------------------
@@ -471,11 +484,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let same = [vs[0], vs[1]].map(BlockArg::Value);
                 self.b.ins().brif(shared, join, &same, dup, &[]);
                 self.b.switch_to_block(dup);
-                let slot = self.b.create_sized_stack_slot(StackSlotData::new(
-                    StackSlotKind::ExplicitSlot,
-                    16,
-                    3,
-                ));
+                let slot = self.temp_slot(16);
                 let out = self.b.ins().stack_addr(types::I64, slot, 0);
                 self.rt_call("msrt_str_copy", &[vs[0], vs[1], out]);
                 let c = self.load_leaves(out, 0, &[Leaf::I64; 2]);
@@ -714,7 +723,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Obj(..) => {
                 // Map and Set are owned `MapVal`s the runtime knows how to drop.
                 let leaves = self.g.lay.leaves(ty);
-                let slot = self.spill(vs, &leaves);
+                let slot = self.spill_temp(vs, &leaves);
                 let d = self.typedesc_addr(ty);
                 self.rt_call("msrt_slot_drop", &[d, slot]);
             }
@@ -1136,8 +1145,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Alt(_) => self.alt_copy(ty, vs),
             TyKind::Obj(..) => {
                 let leaves = self.g.lay.leaves(ty);
-                let src = self.spill(vs, &leaves);
-                let dst = self.spill(vs, &leaves);
+                let src = self.spill_temp(vs, &leaves);
+                let dst = self.spill_temp(vs, &leaves);
                 let d = self.typedesc_addr(ty);
                 self.rt_call("msrt_slot_copy", &[d, src, dst]);
                 self.load_leaves(dst, 0, &leaves)
@@ -1291,14 +1300,26 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.data_addr(d)
     }
 
-    /// Spills `vs` into a fresh stack slot laid out per `leaves` and returns its address.
+    /// Spills `vs` into a fresh stack slot laid out per `leaves` and returns its address. The slot
+    /// stays valid for the whole function: use it where the runtime keeps the address (a cleanup
+    /// entry).
     fn spill(&mut self, vs: &[Value], leaves: &[Leaf]) -> Value {
+        self.spill_in(vs, leaves, false)
+    }
+
+    /// Like [`Self::spill`] for a value only read during one call; the slot may be shared with
+    /// the temporaries of other blocks.
+    fn spill_temp(&mut self, vs: &[Value], leaves: &[Leaf]) -> Value {
+        self.spill_in(vs, leaves, true)
+    }
+
+    fn spill_in(&mut self, vs: &[Value], leaves: &[Leaf], temp: bool) -> Value {
         let lay = mem_layout(leaves);
-        let slot = self.b.create_sized_stack_slot(StackSlotData::new(
-            StackSlotKind::ExplicitSlot,
-            lay.size.max(8),
-            3,
-        ));
+        let slot = if temp {
+            self.temp_slot(lay.size)
+        } else {
+            self.new_slot(lay.size)
+        };
         let addr = self.b.ins().stack_addr(types::I64, slot, 0);
         self.store_leaves(addr, 0, leaves, vs);
         addr
@@ -2380,7 +2401,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let s = self.a(inst, 0);
                 let at = match self.home_of(inst.args[0]) {
                     Some(h) => h.addr,
-                    None => self.spill(&s, &[Leaf::I64; 2]),
+                    None => self.spill_temp(&s, &[Leaf::I64; 2]),
                 };
                 vec![self.rt_call("msrt_string_length", &[at])[0]]
             }
@@ -3247,7 +3268,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 args.push(h.addr);
             } else {
                 let leaves = self.g.lay.leaves(p.ty);
-                args.push(self.spill(&v, &leaves));
+                args.push(self.spill_temp(&v, &leaves));
             }
         }
         let ret_ty = def.ret;
@@ -3278,11 +3299,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         } else {
             let leaves = self.g.lay.leaves(ret_ty);
             let lay = mem_layout(&leaves);
-            let slot = self.b.create_sized_stack_slot(StackSlotData::new(
-                StackSlotKind::ExplicitSlot,
-                lay.size.max(8),
-                3,
-            ));
+            let slot = self.temp_slot(lay.size);
             let out = self.b.ins().stack_addr(types::I64, slot, 0);
             args.push(out);
             self.call_id(id, &args);
