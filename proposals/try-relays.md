@@ -35,5 +35,5 @@ A `match` on a local bound from a borrowing result binds each arm's payload in p
 
 ## Open questions
 
-- `Optional` (`return x?` beside an owned path, `m.get(k)` wrappers, `opt.view`): same per-case rule, but its nullable-pointer layout needs its own variant; the interim `owned_wrap` copy (#2540) stays there until it lands.
+- `Optional` has one payload case (`none` has none), so per-case ownership has nothing to split: a function whose paths return a borrowed `x?` and a new value copies the borrowed one, as before. When every path borrows, `opt.view` already lends. `owned_wrap` is deleted (#2540): its sites call `owned`, which the strict gate reports like any other store of a borrowed part. `try` of a named local the function owns moves its error out on the exit path (no copy).
 - Generic functions get one variant per instance; `ms check` passes for `wrap[T](value: T!String)`, but only `Result[String, Error]` and `Result[Int, Error]` instances ran.

@@ -456,6 +456,30 @@ impl FnLower<'_> {
         Ok(())
     }
 
+    /// The uid of the plain local `operand` names when this function owns it outright (no
+    /// closer, flag, or other scope bookkeeping): its value can be moved out on a path that
+    /// returns.
+    fn exiting_owned_local(&self, operand: &Expr, hidden: bool) -> Option<usize> {
+        let (ExprKind::Name(_), Resolution::Local(b)) =
+            (&operand.kind, self.hir.resolution(operand))
+        else {
+            return None;
+        };
+        let uid = b.uid;
+        let plain = !hidden
+            && self.locals.contains_key(&uid)
+            && self.scopes.iter().any(|s| s.contains(&uid))
+            && !self.slotted.contains(&uid)
+            && !self.aliases.contains_key(&uid)
+            && !self.must_move.contains(&uid)
+            && !self.closers.contains_key(&uid)
+            && !self.rest_closers.contains_key(&uid)
+            && !self.hidden_closers.contains_key(&uid)
+            && !self.held.contains_key(&uid)
+            && !self.list_iters.contains_key(&uid);
+        plain.then_some(uid)
+    }
+
     /// `try x`: the `ok` payload, or an early return of the `error` payload.
     pub fn try_expr(&mut self, e: &Expr, operand: &Expr) -> Result<Val, Error> {
         let Some((rv, hidden)) = self.hold(operand)? else {
@@ -537,8 +561,22 @@ impl FnLower<'_> {
             self.b.alt_release(a, err as u32, 1, cur);
             let out = self.b.alt_new(ra, ret_err as u32, &[po]);
             self.emit_return(Some(Val { v: out, own: true }));
+        } else if let Some(uid) = self.exiting_owned_local(operand, hidden)
+            && !borrowed_err
+            && self.ty_of(payload) == want
+        {
+            // A named local the function owns: this path leaves the function, so the local is
+            // never read again here. Its error moves into the result, the rest is released and
+            // the return skips the local's drop.
+            let po = self.b.alt_take(a, err as u32, 0, cur);
+            self.b.alt_release(a, err as u32, 1, cur);
+            let out = self.b.alt_new(ra, ret_err as u32, &[po]);
+            let before = self.closed_on_path.clone();
+            self.closed_on_path.insert(uid);
+            self.emit_return(Some(Val { v: out, own: true }));
+            self.closed_on_path = before;
         } else {
-            let po = self.owned_wrap(x);
+            let po = self.owned(x);
             let out = self.b.alt_new(ra, ret_err as u32, &[po]);
             if hidden {
                 self.drop_value(cur);
