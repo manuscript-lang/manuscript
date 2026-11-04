@@ -5,8 +5,16 @@ use crate::tree::Node;
 use std::collections::HashSet;
 
 /// Names the diagram views, in help order.
-pub const VIEWS: [&str; 7] = [
-    "calls", "effects", "errors", "modules", "flow", "scope", "tasks",
+pub const VIEWS: [&str; 9] = [
+    "calls",
+    "effects",
+    "errors",
+    "modules",
+    "flow",
+    "scope",
+    "tasks",
+    "types",
+    "ownership",
 ];
 
 /// Bounds one view so a large project stays readable and the output size predictable.
@@ -28,7 +36,7 @@ pub fn or_none(text: &str) -> &str {
 /// roots are chosen by the view; otherwise the entity is the single root.
 pub fn build_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Result<Node, String> {
     let depth = if depth <= 0 {
-        if view == "flow" || view == "scope" || view == "tasks" {
+        if matches!(view, "flow" | "scope" | "tasks" | "ownership") {
             1
         } else {
             3
@@ -38,6 +46,12 @@ pub fn build_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Result
     };
     if view == "modules" {
         return modules_view(facts, entity);
+    }
+    if view == "types" {
+        return types_view(facts, entity, depth);
+    }
+    if view == "ownership" {
+        return ownership_view(facts, entity, depth);
     }
     if view == "flow" || view == "scope" || view == "tasks" {
         return flow_view(facts, view, entity, depth);
@@ -444,4 +458,200 @@ fn prune_tasks(nodes: &[Node]) -> Vec<Node> {
         }
     }
     out
+}
+
+fn head_label(f: &Fact) -> String {
+    format!("{}  [{}] {}:{}", f.name, f.kind, f.file, f.line)
+}
+
+fn head_node(f: &Fact) -> Node {
+    Node {
+        label: head_label(f),
+        reference: f.key.clone(),
+        kind: f.kind.clone(),
+        file: f.file.clone(),
+        line: f.line,
+        ..Node::default()
+    }
+}
+
+fn capped(root: &mut Node, skipped: usize) {
+    if skipped > 0 {
+        root.omitted = skipped;
+        root.children.push(Node::new(format!(
+            "+{skipped} more (output capped at {NODE_CAP} nodes)"
+        )));
+    }
+}
+
+/// How a callable's parameters and result move ownership, per the memory model:
+/// a plain parameter is a shared borrow, `var` an exclusive borrow, a result is owned.
+fn ownership_view(facts: &Facts, entity: &str, depth: i64) -> Result<Node, String> {
+    let roots: Vec<&Fact> = if entity.is_empty() {
+        facts
+            .entities
+            .values()
+            .filter(|f| {
+                matches!(f.kind.as_str(), "fn" | "method")
+                    && (f.scopes > 0 || f.slots.iter().any(|s| s.var))
+            })
+            .collect()
+    } else {
+        vec![find_entity(facts, entity)?]
+    };
+    let mut root = Node::new("OWNERSHIP VIEW");
+    let (mut count, mut skipped) = (0, 0);
+    for f in &roots {
+        if count >= NODE_CAP {
+            skipped += 1;
+            continue;
+        }
+        let node = ownership_node(facts, f, 0, depth, &mut HashSet::new(), &mut count);
+        root.children.push(node);
+    }
+    if roots.is_empty() {
+        root.children.push(Node::new("none"));
+    }
+    capped(&mut root, skipped);
+    Ok(root)
+}
+
+fn ownership_node(
+    facts: &Facts,
+    f: &Fact,
+    level: i64,
+    depth: i64,
+    path: &mut HashSet<String>,
+    count: &mut usize,
+) -> Node {
+    let mut node = head_node(f);
+    *count += 1;
+    for s in &f.slots {
+        let mode = if s.var {
+            "var (exclusive borrow)"
+        } else {
+            "borrow"
+        };
+        node.children
+            .push(Node::new(format!("{}: {}  {mode}", s.name, s.ty)));
+    }
+    if let Some(r) = &f.result {
+        node.children
+            .push(Node::new(format!("returns {}  owned", r.ty)));
+    }
+    if f.scopes > 0 {
+        node.children
+            .push(Node::new(format!("closes {} resource scope(s)", f.scopes)));
+    }
+    if level >= depth {
+        return node;
+    }
+    path.insert(f.key.clone());
+    for key in &f.calls {
+        let Some(callee) = facts.entities.get(key) else {
+            continue;
+        };
+        if path.contains(key) || *count >= NODE_CAP {
+            continue;
+        }
+        let child = ownership_node(facts, callee, level + 1, depth, path, count);
+        node.children.push(child);
+    }
+    path.remove(&f.key);
+    node
+}
+
+/// The composition tree of data: each type's fields and cases expand to the
+/// project types they hold; a callable expands its parameters and result the same way.
+fn types_view(facts: &Facts, entity: &str, depth: i64) -> Result<Node, String> {
+    let roots: Vec<&Fact> = if entity.is_empty() {
+        let held: HashSet<&str> = facts
+            .entities
+            .values()
+            .filter(|f| matches!(f.kind.as_str(), "record" | "alternative"))
+            .flat_map(|f| {
+                f.slots
+                    .iter()
+                    .flat_map(|s| s.refs.iter().map(String::as_str))
+            })
+            .collect();
+        let all: Vec<&Fact> = facts
+            .entities
+            .values()
+            .filter(|f| matches!(f.kind.as_str(), "record" | "alternative" | "interface"))
+            .collect();
+        let tops: Vec<&Fact> = all
+            .iter()
+            .copied()
+            .filter(|f| !held.contains(f.key.as_str()))
+            .collect();
+        if tops.is_empty() { all } else { tops }
+    } else {
+        vec![find_entity(facts, entity)?]
+    };
+    let mut root = Node::new("TYPES VIEW");
+    let (mut count, mut skipped) = (0, 0);
+    for f in &roots {
+        if count >= NODE_CAP {
+            skipped += 1;
+            continue;
+        }
+        let node = type_node(facts, f, 0, depth, &mut HashSet::new(), &mut count);
+        root.children.push(node);
+    }
+    if roots.is_empty() {
+        root.children.push(Node::new("none"));
+    }
+    capped(&mut root, skipped);
+    Ok(root)
+}
+
+fn type_node(
+    facts: &Facts,
+    f: &Fact,
+    level: i64,
+    depth: i64,
+    path: &mut HashSet<String>,
+    count: &mut usize,
+) -> Node {
+    let mut node = head_node(f);
+    *count += 1;
+    if level >= depth {
+        return node;
+    }
+    path.insert(f.key.clone());
+    let slots = f.slots.iter().chain(f.result.iter());
+    for s in slots {
+        if *count >= NODE_CAP {
+            break;
+        }
+        let label = match (s.name.is_empty(), f.kind.as_str()) {
+            (true, _) => format!("returns {}", s.ty),
+            (false, "alternative") if s.ty.starts_with('(') || s.ty.is_empty() => {
+                format!("case {}{}", s.name, s.ty)
+            }
+            _ => format!("{}: {}", s.name, s.ty),
+        };
+        *count += 1;
+        let mut child = Node::new(label);
+        for key in &s.refs {
+            let Some(target) = facts.entities.get(key) else {
+                continue;
+            };
+            if path.contains(key) {
+                child.children.push(Node {
+                    label: format!("{}  (cycle)", target.name),
+                    kind: "cycle".into(),
+                    reference: key.clone(),
+                    ..Node::default()
+                });
+            } else if *count < NODE_CAP {
+                let sub = type_node(facts, target, level + 1, depth, path, count);
+                child.children.push(sub);
+            }
+        }
+        node.children.push(child);
+    }
+    path.remove(&f.key);
+    node
 }

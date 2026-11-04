@@ -267,3 +267,49 @@ fn project_review_counts_discovered_test_files() {
     let text = String::from_utf8_lossy(&output.stdout);
     assert!(text.contains("tests                 1"), "{text}");
 }
+
+#[test]
+fn types_and_ownership_views_render_in_ascii_and_mermaid() {
+    let dir = scratch("types");
+    std::fs::write(
+        dir.join("main.ms"),
+        "type Item:\n    name: String\n\ntype Order:\n    items: List[Item]\n\nfn add(var o: Order, i: Item) Order:\n    return o\n",
+    )
+    .unwrap();
+    let text = |args: &[&str]| {
+        let out = ms(&dir, args);
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8(out.stdout).unwrap()
+    };
+    let types = text(&["diagram", "main.ms", "--view", "class"]);
+    assert!(
+        types.contains("Order  [record] main.ms:4\n   `- items: List[Item]\n      `- Item"),
+        "{types}"
+    );
+    assert!(
+        text(&[
+            "diagram", "main.ms", "--view", "types", "--format", "mermaid"
+        ])
+        .starts_with("flowchart TD")
+    );
+    let own = text(&["diagram", "main.ms", "--view", "mutability"]);
+    assert!(
+        own.contains("o: Order  var (exclusive borrow)") && own.contains("i: Item  borrow"),
+        "{own}"
+    );
+    assert!(
+        text(&[
+            "diagram",
+            "main.ms",
+            "--view",
+            "ownership",
+            "--format",
+            "mermaid"
+        ])
+        .starts_with("flowchart TD")
+    );
+}

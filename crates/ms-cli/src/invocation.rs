@@ -486,6 +486,11 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             format!("--top is valid only for ms profile, not ms {command}; {help_hint}"),
         ));
     }
+    match inv.view.as_str() {
+        "class" => inv.view = "types".into(),
+        "mutability" => inv.view = "ownership".into(),
+        _ => {}
+    }
     if !inv.view.is_empty() && !VIEWS.contains(&inv.view.as_str()) {
         return Err(usage_error(
             io,

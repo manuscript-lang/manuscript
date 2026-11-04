@@ -24,9 +24,24 @@ pub struct Fact {
     /// Keys of project entities called.
     pub calls: Vec<String>,
     pub external: Vec<String>,
+    /// Record fields, case payloads, or parameters, in declaration order.
+    pub slots: Vec<Slot>,
+    /// The declared result of a callable.
+    pub result: Option<Slot>,
     /// The entity's head-side line range, for mapping a diff.
     pub first: usize,
     pub last: usize,
+}
+
+/// One typed position: a field, a case payload, a parameter, or a result.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Slot {
+    pub name: String,
+    pub ty: String,
+    /// A `var` parameter: the callee may change the argument.
+    pub var: bool,
+    /// Keys of the project types the written type names (resolved after collection).
+    pub refs: Vec<String>,
 }
 
 /// The fact model of one checked program.

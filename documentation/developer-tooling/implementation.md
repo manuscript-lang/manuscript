@@ -60,6 +60,8 @@ ms diagram ms.toml --view effects --entity save
 ms diagram ms.toml --view errors
 ms diagram ms.toml --view tasks --entity load
 ms diagram ms.toml --view modules
+ms diagram ms.toml --view types
+ms diagram ms.toml --view ownership --entity save
 ms diagram ms.toml --view flow --entity main --depth 2
 ms diagram ms.toml --view scope --entity save
 ms diagram ms.toml --view flow --entity save --diff change.patch
@@ -74,9 +76,11 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 | `flow` | One function's ordered steps: calls, `try`, branches, loops, `match` arms, resource scopes, exits (needs `--entity`) |
 | `scope` | `flow` pruned to resource scopes and the exits inside them (needs `--entity`) |
 | `tasks` | `flow` pruned to resource scopes that start tasks: each `promise(fn: ...)` with the calls its work makes (needs `--entity`) |
+| `types` (alias `class`) | Records, alternatives and interfaces, each field or case expanding to the project types it holds; a function as `--entity` expands its parameters and result the same way |
+| `ownership` (alias `mutability`) | Per function: each parameter as `borrow` or `var (exclusive borrow)`, the result as `owned`, closed resource scopes; callees expand to `--depth`. Without `--entity`, functions with `var` parameters or resource scopes |
 
 - `--entity name`, `file::name`, or a full entity ID roots the tree at one declaration (a project-relative path for `modules`). A missing or ambiguous name fails. Without it, roots are entities nothing relevant calls, plus roots for otherwise unreachable recursive groups. Tests are entry points too.
-- `--depth n` bounds expansion (default 3; 1 for `flow`, `scope` and `tasks`). Repeats print `(cycle)`. A view stops at 200 nodes and counts the rest.
+- `--depth n` bounds expansion (default 3; 1 for `flow`, `scope`, `tasks` and `ownership`). Repeats print `(cycle)`. A view stops at 200 nodes and counts the rest.
 - `--diff <file|->` reads a unified diff like `ms review` and marks changed entities with `<- TIER #n` or `<- INTERNAL`, and changed flow lines with `<- changed`. It needs `--view` or `--entity`.
 - `--json` emits a versioned document with `view`, `entity`, and `tree` (defaults to the `calls` view). Each tree node has `label`, `kind`, `reference` (a stable entity ID or external call target when available), `file`, `line`, `omitted`, and `children`. Source positions are one-based; line zero means no precise source position. The root's `omitted` counts direct nodes skipped by the output cap. Use `--format mermaid` to render a view for people; `--json` and `--format` cannot be combined.
 
