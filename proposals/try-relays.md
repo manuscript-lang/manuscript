@@ -24,7 +24,7 @@ Implemented 2026-11-04, checked against `a494979b`. Direction (Chinmay): "allow 
 | `make conform`, `make e2e`, `make leak-check`, `make count-check`, `make copy-check`, crate tests | pass |
 | `xs.append(g(v))` | rejected with the existing borrow diagnostic (`tests/ownership/reject/borrowing_result_stored.ms`) |
 
-Known remaining copy: a `match` on a local bound from a borrowing result copies the payload of each arm (`by_binding` in the e2e fixture): the checker marks the binding owned while lowering reads it in place. Not a leak; follow-up. A function that returns a borrowed `ok` and a new error (`expect_ok`) changed callers: `tests/e2e/testdata/stdlib/yaml.ms` now clones the child it reassigns into `root`, which the old copy hid.
+A `match` on a local bound from a borrowing result binds each arm's payload in place (no copy; `scrutinee_lives` in lowering). A function that returns a borrowed `ok` and a new error (`expect_ok`) changed callers: `tests/e2e/testdata/stdlib/yaml.ms` now clones the child it reassigns into `root`, which the old copy hid.
 
 ## Alternatives
 

@@ -291,6 +291,7 @@ impl FnLower<'_> {
                     (TyKind::Opt(_), Some(_)) => self.b.opt_get(cur),
                     _ => return Err(Error::new("payload binding on a wildcard arm")),
                 };
+                self.scrutinee_lives = owned_uid.is_none();
                 self.bind_local(
                     b,
                     Val {
@@ -298,6 +299,7 @@ impl FnLower<'_> {
                         own: false,
                     },
                 );
+                self.scrutinee_lives = false;
             }
             self.stmts(&arm.body)?;
             let mark = self.temps.len();
