@@ -48,7 +48,7 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 
 ## Fast code from the straightforward loop
 
-Debug builds use Cranelift for a quick edit-check-run loop; release builds use LLVM when available, including vectorization where applicable, and otherwise fall back to Cranelift. `build.cranelift_only` keeps builds on Cranelift. The [performance suites](bench/perf/README.md) record revision-specific results, tradeoffs and reproduction commands for kernels, JSON, HTTP and other workloads.
+Debug builds use Cranelift for a quick edit-check-run loop; release builds use LLVM when available, including vectorization where applicable, and otherwise fall back to Cranelift. Set `MS_BACKEND=cranelift` to keep builds on Cranelift. The [performance suites](bench/perf/README.md) record revision-specific results, tradeoffs and reproduction commands for kernels, JSON, HTTP and other workloads.
 
 Typed JSON reads a known shape directly into a record: field defaults handle omitted settings, and a wrong type returns an error. Native typed decoding avoids constructing a public `JsonValue` tree first. Use `JsonValue` when the shape is unknown. [JSON recipes](documentation/learn/common-tasks.md)
 
