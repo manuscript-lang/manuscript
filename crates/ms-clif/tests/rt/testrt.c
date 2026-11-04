@@ -45,6 +45,8 @@ static int64_t run_on_slot(int64_t (*f)(void)) {
 /* Windows threads cannot be given a stack address, so `main` runs on a reserved region after a
    stack switch; the top 8 MiB are committed (the stub installs no guard page growth). */
 #define STACK_COMMIT ((uintptr_t)8 << 20)
+/* The bounds of the stack `main` runs on; the thread's own limits do not describe it. */
+static uintptr_t slot_lo, slot_hi;
 static int64_t call_on_stack(void *top, int64_t (*f)(void)) {
   int64_t r;
 #if defined(__x86_64__)
@@ -84,6 +86,8 @@ static int64_t run_on_slot(int64_t (*f)(void)) {
   uintptr_t top = base + STACK_REGION - CELL_PAGE;
   if (!VirtualAlloc((void *)(top - STACK_COMMIT), STACK_COMMIT + CELL_PAGE, MEM_COMMIT, PAGE_READWRITE)) abort();
   *(void **)(base + STACK_REGION - 16) = &isolate_hdr;
+  slot_lo = top - STACK_COMMIT;
+  slot_hi = top;
   return call_on_stack((void *)top, f);
 }
 #endif
@@ -147,8 +151,13 @@ static void trace(void) {
 #ifdef _WIN32
   CONTEXT context;
   RtlCaptureContext(&context);
-  ULONG_PTR lo, hi;
-  GetCurrentThreadStackLimits(&lo, &hi);
+  uintptr_t lo = slot_lo, hi = slot_hi;
+  if (!hi) {
+    ULONG_PTR tlo, thi;
+    GetCurrentThreadStackLimits(&tlo, &thi);
+    lo = tlo;
+    hi = thi;
+  }
 #if defined(_M_ARM64) || defined(__aarch64__)
 #define CTX_PC Pc
 #define CTX_SP Sp
