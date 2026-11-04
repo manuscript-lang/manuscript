@@ -23,6 +23,14 @@ impl Lower for Fixed {
     }
 }
 
+struct Counted(std::cell::Cell<usize>);
+impl Lower for Counted {
+    fn lower(&self, program: &ms_check::Program, entry: &str) -> Result<Module, String> {
+        self.0.set(self.0.get() + 1);
+        Fixed(EXIT_SEVEN).lower(program, entry)
+    }
+}
+
 const EXIT_SEVEN: &str =
     "module \"t\"\nentry @main\nfn @main() -> int {\nb0:\n  %c: int = iconst 7\n  ret %c\n}\n";
 
@@ -178,17 +186,18 @@ fn build_fails_when_its_metadata_cannot_be_written() {
 fn metadata_link_preserves_source(
     cached: bool,
     kind: &str,
+    source_link: bool,
     link: impl Fn(&Path, &Path) -> std::io::Result<()>,
 ) {
-    struct Counted(std::cell::Cell<usize>);
-    impl Lower for Counted {
-        fn lower(&self, program: &ms_check::Program, entry: &str) -> Result<Module, String> {
-            self.0.set(self.0.get() + 1);
-            Fixed(EXIT_SEVEN).lower(program, entry)
-        }
-    }
-    let dir = scratch(&format!("metadata-{kind}-{cached}"));
-    let source = write(&dir, "main.ms", MAIN);
+    let dir = scratch(&format!("metadata-{kind}-{cached}-{source_link}"));
+    let target = write(&dir, "main.ms", MAIN);
+    let source = if source_link {
+        let source = dir.join("entry.ms");
+        common::symlink_file(Path::new(&target), &source).unwrap();
+        source.to_string_lossy().into_owned()
+    } else {
+        target.clone()
+    };
     let output = dir.join("program");
     let metadata = dir.join("program.ms-build.json");
     let backend = Engine::new(Counted(std::cell::Cell::new(0)));
@@ -207,6 +216,15 @@ fn metadata_link_preserves_source(
     let (status, stdout, stderr) = build();
     assert_eq!(status, 0, "{stdout}{stderr}");
     assert_eq!(std::fs::read_to_string(&source).unwrap(), MAIN);
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), MAIN);
+    assert_eq!(
+        std::fs::symlink_metadata(&source)
+            .unwrap()
+            .file_type()
+            .is_symlink(),
+        source_link
+    );
+
     assert_eq!(backend.lowering.0.get(), 1, "warm build must use its cache");
     let document = ms_json::parse(std::fs::read_to_string(&metadata).unwrap()).unwrap();
     assert_eq!(document.get("format").unwrap().as_i64(), Some(1));
@@ -224,16 +242,113 @@ fn metadata_link_preserves_source(
 #[test]
 fn build_metadata_replaces_hard_links_without_changing_their_targets() {
     for cached in [false, true] {
-        metadata_link_preserves_source(cached, "hard-link", |from, to| {
-            std::fs::hard_link(from, to)
-        });
+        for source_link in [false, true] {
+            metadata_link_preserves_source(cached, "hard-link", source_link, |from, to| {
+                std::fs::hard_link(from, to)
+            });
+        }
     }
 }
 
 #[test]
 fn build_metadata_replaces_symlinks_without_changing_their_targets() {
     for cached in [false, true] {
-        metadata_link_preserves_source(cached, "symlink", common::symlink_file);
+        for source_link in [false, true] {
+            metadata_link_preserves_source(cached, "symlink", source_link, common::symlink_file);
+        }
+    }
+}
+
+#[test]
+fn build_metadata_preserves_case_variant_source_links_on_cold_and_warm_paths() {
+    for cached in [false, true] {
+        let dir = scratch(&format!("metadata-case-link-{cached}"));
+        let inputs = dir.join("inputs");
+        let safe = dir.join("safe");
+        std::fs::create_dir(&inputs).unwrap();
+        std::fs::create_dir(&safe).unwrap();
+        let target = write(&inputs, "main.ms", MAIN);
+        let source = inputs.join("Program.ms-build.json");
+        common::symlink_file(Path::new(&target), &source).unwrap();
+        let metadata = inputs.join("program.ms-build.json");
+        let aliases = std::fs::symlink_metadata(&metadata).is_ok();
+        let alias = dir.join("out-alias");
+        common::symlink_dir(&safe, &alias).unwrap();
+        let output = alias.join("program");
+        let backend = Engine::new(Counted(std::cell::Cell::new(0)));
+        let build = || {
+            ms(
+                &backend,
+                &[
+                    "build",
+                    source.to_str().unwrap(),
+                    "-o",
+                    output.to_str().unwrap(),
+                    "--json",
+                ],
+            )
+        };
+        if cached {
+            for _ in 0..2 {
+                let (status, stdout, stderr) = build();
+                assert_eq!(status, 0, "{stdout}{stderr}");
+            }
+            assert_eq!(backend.lowering.0.get(), 1, "control must hit the cache");
+        }
+        #[cfg(unix)]
+        std::fs::remove_file(&alias).unwrap();
+        #[cfg(windows)]
+        std::fs::remove_dir(&alias).unwrap();
+        common::symlink_dir(&inputs, &alias).unwrap();
+        std::fs::write(inputs.join("program"), b"previous executable").unwrap();
+        let (status, stdout, stderr) = build();
+        let document = ms_json::parse(&stdout).unwrap();
+        if aliases {
+            assert_eq!(status, 1, "{stdout}{stderr}");
+            assert!(
+                stderr.contains("cannot distinguish build metadata from source link"),
+                "{stderr}"
+            );
+            assert_eq!(document.get("completed").unwrap().as_bool(), Some(false));
+            assert_eq!(
+                document.get("reason").unwrap().as_str(),
+                Some("build_error")
+            );
+            assert_eq!(
+                std::fs::read(inputs.join("program")).unwrap(),
+                b"previous executable"
+            );
+            assert!(
+                std::fs::symlink_metadata(&metadata)
+                    .unwrap()
+                    .file_type()
+                    .is_symlink()
+            );
+        } else {
+            assert_eq!(status, 0, "{stdout}{stderr}");
+            assert_eq!(document.get("completed").unwrap().as_bool(), Some(true));
+            assert_eq!(
+                backend.lowering.0.get(),
+                1,
+                "distinct destination must retain cache hits"
+            );
+            assert_eq!(Command::new(&output).status().unwrap().code(), Some(7));
+            // Where both spellings name distinct entries, same-target links remain safe too.
+            std::fs::remove_file(&metadata).unwrap();
+            common::symlink_file(Path::new(&target), &metadata).unwrap();
+            let (status, stdout, stderr) = build();
+            assert_eq!(status, 0, "{stdout}{stderr}");
+            assert_eq!(backend.lowering.0.get(), 1);
+            assert_eq!(Command::new(&output).status().unwrap().code(), Some(7));
+        }
+        assert!(
+            std::fs::symlink_metadata(&source)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+        assert_eq!(std::fs::read_to_string(&source).unwrap(), MAIN);
+        assert_eq!(std::fs::read_to_string(target).unwrap(), MAIN);
     }
 }
 
@@ -322,6 +437,210 @@ fn build_refuses_to_overwrite_source_and_directories() {
     let (status, _, err) = ms(&backend, &["build", &source, "-o", dir.to_str().unwrap()]);
     assert_eq!(status, 2);
     assert!(err.contains("is a directory"), "{err}");
+}
+
+#[test]
+fn build_metadata_must_not_replace_its_entry_source() {
+    for structured in [false, true] {
+        let dir = scratch(&format!("metadata-is-source-{structured}"));
+        let source = write(&dir, "program.ms-build.json", MAIN);
+        let output = dir.join("program");
+        std::fs::write(&output, b"previous executable").unwrap();
+        let backend = Engine::new(Fixed(EXIT_SEVEN));
+        let mut args = vec!["build", source.as_str(), "-o", output.to_str().unwrap()];
+        if structured {
+            args.push("--json");
+        }
+        let (status, stdout, stderr) = ms(&backend, &args);
+        assert_eq!(status, 1, "{stdout}{stderr}");
+        assert!(
+            stderr.contains("build metadata would overwrite"),
+            "{stderr}"
+        );
+        assert_eq!(std::fs::read_to_string(&source).unwrap(), MAIN);
+        assert_eq!(std::fs::read(&output).unwrap(), b"previous executable");
+        if structured {
+            let document = ms_json::parse(&stdout).unwrap();
+            assert_eq!(document.get("completed").unwrap().as_bool(), Some(false));
+            assert_eq!(
+                document.get("reason").unwrap().as_str(),
+                Some("build_error")
+            );
+        }
+    }
+}
+
+#[test]
+fn build_metadata_must_not_replace_an_imports_canonical_source() {
+    let dir = scratch("metadata-is-import");
+    let dependency = include_str!("engine/metadata-dependency.ms");
+    let source = write(&dir, "main.ms", include_str!("engine/metadata-import.ms"));
+    let target = write(&dir, "program.ms-build.json", dependency);
+    common::symlink_file(Path::new(&target), &dir.join("dep.ms")).unwrap();
+    let output = dir.join("program");
+    std::fs::write(&output, b"previous executable").unwrap();
+    let (status, stdout, stderr) = ms(
+        &Engine::new(Fixed(EXIT_SEVEN)),
+        &["build", &source, "-o", output.to_str().unwrap(), "--json"],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert!(
+        stderr.contains("build metadata would overwrite"),
+        "{stderr}"
+    );
+    assert_eq!(std::fs::read_to_string(target).unwrap(), dependency);
+    assert_eq!(std::fs::read(output).unwrap(), b"previous executable");
+}
+
+#[test]
+fn build_metadata_must_not_replace_the_requested_source_symlink() {
+    let dir = scratch("metadata-is-requested-symlink");
+    let source = write(&dir, "main.ms", MAIN);
+    let requested = dir.join("program.ms-build.json");
+    common::symlink_file(Path::new(&source), &requested).unwrap();
+    let output = dir.join("program");
+    let (status, stdout, stderr) = ms(
+        &Engine::new(Fixed(EXIT_SEVEN)),
+        &[
+            "build",
+            requested.to_str().unwrap(),
+            "-o",
+            output.to_str().unwrap(),
+            "--json",
+        ],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert!(
+        std::fs::symlink_metadata(&requested)
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
+    assert_eq!(std::fs::read_to_string(&source).unwrap(), MAIN);
+    assert!(!output.exists());
+}
+
+#[test]
+fn cached_artifact_collision_preserves_inputs_and_output_before_restore() {
+    for artifact in ["program", "program.ms-build.json"] {
+        let dir = scratch(&format!("cached-artifact-is-import-{artifact}"));
+        let safe = dir.join("safe");
+        let inputs = dir.join("inputs");
+        std::fs::create_dir(&safe).unwrap();
+        std::fs::create_dir(&inputs).unwrap();
+        let source = write(&dir, "main.ms", include_str!("engine/metadata-import.ms"));
+        let dependency = include_str!("engine/metadata-dependency.ms");
+        let target = write(&inputs, artifact, dependency);
+        common::symlink_file(Path::new(&target), &dir.join("dep.ms")).unwrap();
+        let alias = dir.join("out-alias");
+        common::symlink_dir(&safe, &alias).unwrap();
+        let output = alias.join("program");
+        let backend = Engine::new(Counted(std::cell::Cell::new(0)));
+        let build = || {
+            ms(
+                &backend,
+                &["build", &source, "-o", output.to_str().unwrap(), "--json"],
+            )
+        };
+        for _ in 0..2 {
+            let (status, stdout, stderr) = build();
+            assert_eq!(status, 0, "{stdout}{stderr}");
+        }
+        assert_eq!(backend.lowering.0.get(), 1, "control must hit the cache");
+        #[cfg(unix)]
+        std::fs::remove_file(&alias).unwrap();
+        #[cfg(windows)]
+        std::fs::remove_dir(&alias).unwrap();
+        common::symlink_dir(&inputs, &alias).unwrap();
+        if artifact != "program" {
+            std::fs::write(inputs.join("program"), b"previous executable").unwrap();
+        }
+        let (status, stdout, stderr) = build();
+        assert_eq!(status, 1, "{stdout}{stderr}");
+        assert!(stderr.contains("would overwrite"), "{stderr}");
+        assert_eq!(std::fs::read_to_string(target).unwrap(), dependency);
+        assert_eq!(
+            std::fs::read(inputs.join("program")).unwrap(),
+            if artifact == "program" {
+                dependency.as_bytes()
+            } else {
+                b"previous executable"
+            }
+        );
+        assert_eq!(
+            Command::new(safe.join("program")).status().unwrap().code(),
+            Some(7)
+        );
+    }
+}
+
+#[test]
+fn build_metadata_must_not_replace_embedded_inputs() {
+    let dir = scratch("metadata-is-embedded-input");
+    let assets = dir.join("assets");
+    std::fs::create_dir(&assets).unwrap();
+    let source = write(&dir, "main.ms", include_str!("engine/metadata-embedded.ms"));
+    write(
+        &dir,
+        "ms.toml",
+        "[project]\nname = \"p\"\nsource = \".\"\n[embed]\n\"@assets\" = \"assets\"\n",
+    );
+    let asset = write(&assets, "program.ms-build.json", "embedded contents");
+    let output = assets.join("program");
+    let (status, stdout, stderr) = ms(
+        &Engine::new(Fixed(EXIT_SEVEN)),
+        &["build", &source, "-o", output.to_str().unwrap(), "--json"],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert!(
+        stderr.contains("build metadata would overwrite"),
+        "{stderr}"
+    );
+    assert_eq!(std::fs::read_to_string(asset).unwrap(), "embedded contents");
+    assert!(!output.exists());
+}
+
+#[test]
+fn build_executable_must_not_replace_an_imports_canonical_source() {
+    let dir = scratch("executable-is-import");
+    let dependency = include_str!("engine/metadata-dependency.ms");
+    let source = write(&dir, "main.ms", include_str!("engine/metadata-import.ms"));
+    let target = write(&dir, "program", dependency);
+    common::symlink_file(Path::new(&target), &dir.join("dep.ms")).unwrap();
+    let metadata = write(&dir, "program.ms-build.json", "previous metadata");
+    let (status, stdout, stderr) = ms(
+        &Engine::new(Fixed(EXIT_SEVEN)),
+        &["build", &source, "-o", &target, "--json"],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert!(stderr.contains("executable would overwrite"), "{stderr}");
+    assert_eq!(std::fs::read_to_string(target).unwrap(), dependency);
+    assert_eq!(
+        std::fs::read_to_string(metadata).unwrap(),
+        "previous metadata"
+    );
+}
+
+#[test]
+fn build_metadata_must_not_replace_an_enclosing_manifest_target() {
+    let dir = scratch("metadata-is-manifest");
+    let source = write(&dir, "main.ms", MAIN);
+    let contents = "[project]\nname = \"p\"\nsource = \".\"\n";
+    let target = write(&dir, "program.ms-build.json", contents);
+    common::symlink_file(Path::new(&target), &dir.join("ms.toml")).unwrap();
+    let output = dir.join("program");
+    std::fs::write(&output, b"previous executable").unwrap();
+    let (status, stdout, stderr) = ms(
+        &Engine::new(Fixed(EXIT_SEVEN)),
+        &["build", &source, "-o", output.to_str().unwrap(), "--json"],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert!(
+        stderr.contains("build metadata would overwrite"),
+        "{stderr}"
+    );
+    assert_eq!(std::fs::read_to_string(target).unwrap(), contents);
+    assert_eq!(std::fs::read(output).unwrap(), b"previous executable");
 }
 
 #[test]
@@ -1080,13 +1399,6 @@ fn cached_file_build_searches_manifests_through_directory_symlinks() {
 
 #[test]
 fn cached_file_build_skips_manifest_directories_without_disabling_cache() {
-    struct Counted(std::cell::Cell<usize>);
-    impl Lower for Counted {
-        fn lower(&self, program: &ms_check::Program, entry: &str) -> Result<Module, String> {
-            self.0.set(self.0.get() + 1);
-            Fixed(EXIT_SEVEN).lower(program, entry)
-        }
-    }
     for parent_manifest in [false, true] {
         let dir = scratch(&format!("cache-manifest-directory-{parent_manifest}"));
         let src = dir.join("src");

@@ -16,7 +16,7 @@ use ms_check::editor::{MemberKind, members, prelude_type_names, standard_export_
 use ms_check::syntax::{DeclRef, FuncRef};
 use ms_check::types::{Kind, Name, SymKind, SymRef, Ty, cases, constructor_signature, n};
 use ms_driver::project::pathops;
-use ms_syntax::ast::{DeclKind, Expr, ExprKind, Param};
+use ms_syntax::ast::DeclKind;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -52,6 +52,14 @@ impl Item {
         if !self.additional.is_empty() {
             item.set("additionalTextEdits", Json::Arr(self.additional.clone()));
         }
+        if self
+            .edit
+            .get("newText")
+            .and_then(Json::as_str)
+            .is_some_and(|text| text.starts_with(&format!("{}: ", self.label)))
+        {
+            item.set("labelDetails", obj([("detail", ":".into())]));
+        }
         item
     }
 }
@@ -66,7 +74,6 @@ pub fn callable_text(
     name: &str,
     t: Option<&Ty>,
     variables: &[Ty],
-    parameters: &[Param],
     snippets: bool,
 ) -> String {
     let Some(t) = t.filter(|t| snippets && t.kind == Kind::Function) else {
@@ -97,10 +104,7 @@ pub fn callable_text(
         if t.params.len() != 1 {
             out.push_str(&format!("{}: ", syms.str(p.name)));
         }
-        if parameters
-            .iter()
-            .any(|decl| decl.name == p.name && decl.mutable)
-        {
+        if p.mutable {
             out.push_str("var ");
         }
         out.push_str(&format!("${{{at}:{}}}", syms.str(p.name)));
@@ -232,7 +236,6 @@ impl Completer<'_> {
             syms.str(s.name),
             ty.as_ref(),
             &s.variables(),
-            s.decl.as_ref().map_or(&[], |d| d.fn_params()),
             self.snippets,
         );
         if s.is_constant() {
@@ -293,7 +296,6 @@ impl Completer<'_> {
                         syms.str(case.name),
                         Some(&signature),
                         &[],
-                        &[],
                         self.snippets,
                     )
                 };
@@ -333,7 +335,6 @@ impl Completer<'_> {
                         syms.str(member.name),
                         Some(&member.ty),
                         &[],
-                        &[],
                         self.snippets,
                     ),
                 ),
@@ -356,11 +357,6 @@ impl Completer<'_> {
         let Some((call, signature)) = query_call(syms, &self.a) else {
             return;
         };
-        let declaration = call_declaration(syms, &self.a, &call);
-        let parameters = declaration
-            .as_ref()
-            .and_then(FuncRef::func)
-            .map_or(&[][..], |f| &f.params);
         let used: HashSet<String> = call_arguments(syms, &self.a, &call)
             .into_iter()
             .map(|(name, _)| name)
@@ -370,11 +366,14 @@ impl Completer<'_> {
             if used.contains(syms.str(param.name)) {
                 continue;
             }
-            let mut insert = format!("{}: ", syms.str(param.name));
-            if parameters.iter().any(|p| p.name == param.name && p.mutable) {
+            let mut insert = syms.str(param.name).to_string();
+            if !self.c.argument_label {
+                insert.push_str(": ");
+            }
+            if !self.c.argument_label && param.mutable {
                 insert.push_str("var ");
             }
-            if self.snippets {
+            if !self.c.argument_label && self.snippets {
                 insert.push_str(&format!("${{1:{}}}", syms.str(param.name)));
             }
             self.add(
@@ -386,6 +385,10 @@ impl Completer<'_> {
                 &insert,
                 Json::Null,
             );
+            // A label does not shadow a lexical value of the same name.
+            if !self.c.argument_label {
+                self.seen.remove(syms.str(param.name));
+            }
         }
     }
 
@@ -411,8 +414,7 @@ impl Completer<'_> {
         let scope = self.a.scope.clone();
         if !c.type_context {
             for (name, b) in &scope.bindings {
-                let insert =
-                    callable_text(syms, syms.str(name), Some(&b.ty), &[], &[], self.snippets);
+                let insert = callable_text(syms, syms.str(name), Some(&b.ty), &[], self.snippets);
                 self.add(syms, syms.str(name), 6, Some(&b.ty), 0, &insert, Json::Null);
             }
         }
@@ -430,40 +432,43 @@ impl Completer<'_> {
         let symbols = self.visible_symbols(syms);
         let module_file = self.a.result.module(syms, &self.a.document).map(|m| m.file);
         if c.type_context && self.a.expression.is_none() {
-            // Signature markers are type syntax rather than captured expressions.
-            // Use the checked variables of the enclosing callable before offering
-            // module symbols, so a type parameter retains its own identity and arity.
-            let text = self.a.document.text.clone();
+            // Type markers have no expression scope. Keep the checked variables
+            // of this declaration, including record fields and case payloads.
+            let method_variables = self
+                .a
+                .result
+                .program
+                .as_ref()
+                .and_then(|program| {
+                    program
+                        .methods
+                        .iter()
+                        .filter(|method| {
+                            Some(method.module) == module_file
+                                && method.decl.as_ref().is_some_and(|decl| {
+                                    let start = decl.pos().offset as usize;
+                                    start >= c.declaration && start <= c.start
+                                })
+                        })
+                        .max_by_key(|method| method.decl.as_ref().unwrap().pos().offset)
+                        .map(|method| method.variables.clone())
+                })
+                .unwrap_or_default();
+            for variable in method_variables.iter().rev() {
+                self.add(
+                    syms,
+                    syms.str(variable.name),
+                    25,
+                    Some(variable),
+                    1,
+                    syms.str(variable.name),
+                    Json::Null,
+                );
+            }
             for symbol in symbols.values() {
                 let Some(decl) = &symbol.decl else { continue };
-                if Some(symbol.module) != module_file || decl.pos().offset as usize > c.start {
-                    continue;
-                }
                 let start = decl.pos().offset as usize;
-                let mut header_end = text.len();
-                let first = match &decl.decl().kind {
-                    DeclKind::Fn(f) => f.body.first().map(|s| s.pos.offset as usize),
-                    _ => None,
-                };
-                if let Some(first) = first {
-                    header_end = first;
-                } else if start <= text.len() {
-                    let mut depth = 0i32;
-                    for token in text::editor_tokens(&text[start..]) {
-                        match token.kind {
-                            EditorKind::Char(b'(' | b'[' | b'{') => depth += 1,
-                            EditorKind::Char(b')' | b']' | b'}') => depth -= 1,
-                            EditorKind::Char(b':') if depth == 0 => {
-                                header_end = start + token.start;
-                            }
-                            _ => {}
-                        }
-                        if header_end != text.len() {
-                            break;
-                        }
-                    }
-                }
-                if c.end > header_end {
+                if Some(symbol.module) != module_file || start < c.declaration || start > c.start {
                     continue;
                 }
                 for variable in symbol.variables() {
@@ -490,7 +495,6 @@ impl Completer<'_> {
                 syms.str(name),
                 Some(&ty),
                 &s.variables(),
-                s.decl.as_ref().map_or(&[], |d| d.fn_params()),
                 self.snippets,
             );
             if s.kind == SymKind::Type {
@@ -516,7 +520,6 @@ impl Completer<'_> {
                         syms.str(name),
                         Some(&signature),
                         &s.variables(),
-                        &[],
                         self.snippets,
                     );
                 }
@@ -537,7 +540,6 @@ impl Completer<'_> {
                             syms,
                             syms.str(case.name),
                             Some(&signature),
-                            &[],
                             &[],
                             self.snippets,
                         )
@@ -757,7 +759,10 @@ pub fn completion_at(
     if c.literal {
         return Ok(Vec::new());
     }
-    let a = query_editor(syms, d, docs, &c);
+    // Keep arguments already written after the identifier. Adding another call
+    // or generic application would turn a valid use into `f(...)(...)`.
+    let snippets = snippets && !c.applied;
+    let a = query_editor(syms, session, d, docs, &c);
     let files = DeclFiles::new(&a.result.source_modules(syms));
     let mut k = Completer {
         d,
@@ -771,9 +776,13 @@ pub fn completion_at(
     };
     if c.member {
         k.member_items(syms);
-    } else if c.argument {
+    } else if c.argument_label {
         k.argument_items(syms);
     } else {
+        if c.argument {
+            k.argument_items(syms);
+        }
+        // A bare identifier can be a positional value as well as a label.
         k.scope_items(syms);
         k.keyword_items(syms);
         if !c.prefix.is_empty() {
@@ -1038,31 +1047,10 @@ fn import_completion(
     Some(items)
 }
 
-/// Source declaration of the checked callee. Mutation is a declaration contract,
-/// not part of an ordinary function type.
-fn call_declaration(syms: ms_syntax::Names, a: &EditorAnalysis, call: &Expr) -> Option<FuncRef> {
-    let ExprKind::Call { callee, .. } = &call.kind else {
-        return None;
-    };
-    let module = a
-        .module
-        .clone()
-        .or_else(|| a.result.module(syms, &a.document))?;
-    let facts = module.facts();
-    let info = facts.info(callee.id)?;
-    info.method
-        .as_ref()
-        .and_then(|m| m.decl.clone())
-        .or_else(|| {
-            let decl = info.symbol.as_ref()?.decl.as_ref()?;
-            decl.func()?;
-            Some(FuncRef::of_decl(decl.clone()))
-        })
-}
-
 /// Signature help for the call around the cursor.
 pub fn signature_help(
     syms: ms_syntax::Names,
+    session: &Rc<Session>,
     d: &Document,
     docs: &Documents,
     p: Position,
@@ -1072,24 +1060,15 @@ pub fn signature_help(
         return Ok(Json::Null);
     }
     let arguments = signature_arguments(d, &mut c);
-    let a = query_editor(syms, d, docs, &c);
+    let a = query_editor(syms, session, d, docs, &c);
     let Some((call, t)) = query_call(syms, &a) else {
         return Ok(Json::Null);
     };
     let name = signature_name(&a.document.text, &call);
-    let declaration = call_declaration(syms, &a, &call);
-    let declared = declaration
-        .as_ref()
-        .and_then(FuncRef::func)
-        .map_or(&[][..], |f| &f.params);
     let mut parameters = Vec::new();
     let mut labels = Vec::new();
     for param in &t.params {
-        let mutable = if declared.iter().any(|p| p.name == param.name && p.mutable) {
-            "var "
-        } else {
-            ""
-        };
+        let mutable = if param.mutable { "var " } else { "" };
         let mut label = format!(
             "{mutable}{}: {}",
             syms.str(param.name),

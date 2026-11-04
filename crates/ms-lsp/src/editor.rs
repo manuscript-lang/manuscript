@@ -25,6 +25,8 @@ pub struct CursorContext {
     pub start: usize,
     /// End of that identifier.
     pub end: usize,
+    /// Start of the independent declaration containing the cursor.
+    pub declaration: usize,
     /// Text of the identifier before the cursor.
     pub prefix: String,
     /// The identifier follows a `.`.
@@ -33,6 +35,10 @@ pub struct CursorContext {
     pub call_open: Option<usize>,
     /// The cursor is at the start of an argument (a label position).
     pub argument: bool,
+    /// The argument label already has its `:` and value after the identifier.
+    pub argument_label: bool,
+    /// Call or type arguments already follow the identifier in this expression.
+    pub applied: bool,
     /// The cursor is in type syntax.
     pub type_context: bool,
     /// Inside a string literal.
@@ -49,10 +55,13 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
         offset,
         start: offset,
         end: offset,
+        declaration: 0,
         prefix: String::new(),
         member: false,
         call_open: None,
         argument: false,
+        argument_label: false,
+        applied: false,
         type_context: false,
         literal: false,
         comment: false,
@@ -132,12 +141,19 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
                 segment = v.end;
             }
         }
-        // `var` already starts a positional operand; complete its binding,
-        // rather than replacing it with another argument label.
-        c.argument = !text_between(&d.text, segment, c.start).contains(':')
-            && !before[at + 1..]
+        // Labels are possible only at the start of this argument. Once an
+        // operand, operator or `var` is written, complete the expression.
+        c.argument = !before[at + 1..].iter().any(|t| {
+            t.start >= segment && !matches!(t.kind, EditorKind::Comment | EditorKind::Char(b'\n'))
+        });
+        c.argument_label = c.argument
+            && tokens
                 .iter()
-                .any(|t| t.start >= segment && t.is_name("var"));
+                .find(|t| {
+                    t.start >= c.end
+                        && !matches!(t.kind, EditorKind::Comment | EditorKind::Char(b'\n'))
+                })
+                .is_some_and(|t| t.is(b':'));
         break;
     }
     let line_start = bytes[..c.start]
@@ -146,38 +162,46 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
         .map_or(0, |at| at + 1);
     let line: Vec<&EditorToken> = before.iter().filter(|t| t.start >= line_start).collect();
     let has = |c: u8| line.iter().any(|t| t.is(c));
-    let function_header = match line.as_slice() {
-        [first, ..] if first.is_name("fn") => true,
-        [first, second, ..] => first.is_name("export") && second.is_name("fn"),
-        _ => false,
-    };
     let binding = line
         .first()
         .is_some_and(|t| t.is_name("let") || t.is_name("var"));
-    c.type_context = (function_header && line.last().is_some_and(|t| t.is(b')')))
-        || (binding && has(b':') && !has(b'='))
-        || (function_header && has(b':'));
+    c.declaration = declaration_start(&d.text, line_start);
+    c.type_context = (binding && has(b':') && !has(b'='))
+        || function_result_at(&before)
+        || type_field_at(&before, c.declaration);
     // A default is an expression inside a function header. Track only separators
     // at that parameter list's depth so nested calls and types keep their context.
+    let declaration = c.declaration;
+    if let Some(next) = tokens.iter().find(|t| {
+        t.start >= c.end && !matches!(t.kind, EditorKind::Comment | EditorKind::Char(b'\n'))
+    }) {
+        c.applied = (next.is(b'(') || next.is(b'['))
+            && (!d.text[c.end..next.start].contains('\n')
+                || stack.iter().any(|&at| before[at].start >= declaration));
+    }
     for &at in stack.iter().rev() {
-        if !before[at].is(b'(') || !function_parameters_at(&before, at) {
+        if before[at].start < declaration
+            || !before[at].is(b'(')
+            || !function_parameters_at(&before, at)
+        {
             continue;
         }
-        let (mut depth, mut default_value) = (0, false);
+        let (mut depth, mut annotation, mut default_value) = (0, false, false);
         for token in &before[at + 1..] {
             if token.is(b'(') || token.is(b'[') || token.is(b'{') {
                 depth += 1;
             } else if token.is(b')') || token.is(b']') || token.is(b'}') {
                 depth -= 1;
+            } else if token.is(b':') && depth == 0 {
+                annotation = true;
             } else if token.is(b'=') && depth == 0 {
                 default_value = true;
             } else if token.is(b',') && depth == 0 {
+                annotation = false;
                 default_value = false;
             }
         }
-        if default_value {
-            c.type_context = false;
-        }
+        c.type_context = annotation && !default_value;
         break;
     }
     Ok(c)
@@ -235,13 +259,6 @@ pub(crate) fn interpolation_start(source: &str, offset: usize) -> Option<usize> 
     (state == State::Expr).then_some(from)
 }
 
-fn text_between(source: &str, from: usize, to: usize) -> String {
-    if from >= to {
-        return String::new();
-    }
-    String::from_utf8_lossy(&source.as_bytes()[from..to]).into_owned()
-}
-
 fn function_parameters_at(tokens: &[EditorToken], at: usize) -> bool {
     if at > 0 && tokens[at - 1].text == "fn" {
         return true;
@@ -263,6 +280,69 @@ fn function_parameters_at(tokens: &[EditorToken], at: usize) -> bool {
     previous > 0
         && tokens[previous as usize].kind == EditorKind::Name
         && tokens[previous as usize - 1].text == "fn"
+}
+
+/// A result type follows the parameter list and ends at the suite's colon,
+/// regardless of where the header or an inline body wraps.
+fn function_result_at(tokens: &[EditorToken]) -> bool {
+    let mut stack: Vec<usize> = Vec::new();
+    let mut result_depth = None;
+    for (at, token) in tokens.iter().enumerate() {
+        if token.is(b'(') || token.is(b'[') || token.is(b'{') {
+            stack.push(at);
+        } else if token.is(b')') || token.is(b']') || token.is(b'}') {
+            let opener = stack.pop();
+            if token.is(b')') && opener.is_some_and(|at| function_parameters_at(tokens, at)) {
+                result_depth = Some(stack.len());
+            } else if result_depth.is_some_and(|depth| depth > stack.len()) {
+                result_depth = None;
+            }
+        } else if (token.is(b'\n') && stack.is_empty())
+            || (result_depth == Some(stack.len())
+                && (token.is(b':') || token.is(b'=') || token.is(b',')))
+        {
+            result_depth = None;
+        }
+    }
+    result_depth.is_some()
+}
+
+fn type_field_at(tokens: &[EditorToken], declaration: usize) -> bool {
+    let header: Vec<_> = tokens
+        .iter()
+        .skip_while(|t| t.start < declaration)
+        .take_while(|t| !t.is(b'\n'))
+        .collect();
+    if !header.iter().take(3).any(|t| t.is_name("type")) {
+        return false;
+    }
+    let (mut depth, mut body, mut annotation, mut default) = (0, false, None, None);
+    for token in tokens.iter().filter(|t| t.start >= declaration) {
+        if token.is(b'(') || token.is(b'[') || token.is(b'{') {
+            depth += 1;
+        } else if token.is(b')') || token.is(b']') || token.is(b'}') {
+            depth -= 1;
+            if annotation.is_some_and(|at| at > depth) {
+                annotation = None;
+            }
+            if default.is_some_and(|at| at > depth) {
+                default = None;
+            }
+        } else if token.is(b':') && !body && depth == 0 {
+            body = true;
+        } else if token.is(b':') && body && default.is_none() {
+            annotation = Some(depth);
+        } else if token.is(b'=') && body {
+            annotation = None;
+            default = Some(depth);
+        } else if (token.is(b'\n') && depth == 0)
+            || (token.is(b',') && (annotation == Some(depth) || default == Some(depth)))
+        {
+            annotation = None;
+            default = None;
+        }
+    }
+    annotation.is_some()
 }
 
 /// Closes the delimiters still open at the end of the cursor's line, for a
@@ -306,17 +386,12 @@ pub fn close_delimiters(source: &str, line: usize) -> String {
 }
 
 /// The start of the top-level declaration containing byte `at`: the nearest
-/// line at or before it that begins in column zero with something other than a
-/// comment or a closing delimiter.
+/// line at or before it recognized by the parser's recovery boundary rules.
 fn declaration_start(source: &str, at: usize) -> usize {
     let mut start = at;
     loop {
         let line = &source[start..];
-        if line
-            .bytes()
-            .next()
-            .is_some_and(|b| !matches!(b, b' ' | b'\t' | b'\r' | b'\n' | b'/' | b')' | b']' | b'}'))
-        {
+        if ms_syntax::is_declaration_line(line.lines().next().unwrap_or_default()) {
             return start;
         }
         if start == 0 {
@@ -392,6 +467,7 @@ fn captured(result: &Analysis) -> bool {
 /// private snapshot a bounded number of times until the marker is captured.
 pub fn query_editor(
     syms: ms_syntax::Names,
+    session: &Rc<ms_check::Session>,
     d: &Document,
     docs: &Documents,
     c: &CursorContext,
@@ -401,7 +477,7 @@ pub fn query_editor(
         marker.push('_');
     }
     let mut replacement = marker.clone();
-    if c.argument && !c.member {
+    if c.argument && !c.argument_label && !c.member {
         replacement.push_str(&format!(": {marker}"));
     }
     let mut modified = d.clone();
@@ -444,10 +520,11 @@ pub fn query_editor(
             Options {
                 recover: true,
                 scope_marker: Some(marker.clone()),
+                session: Some(session.clone()),
                 ..Options::default()
             },
         );
-        if result.program.is_some() && (captured(&result) || c.type_context) {
+        if result.program.is_some() && (captured(&result) || c.type_context || c.argument_label) {
             break;
         }
         let Some(issue) = result.diagnostics.first() else {

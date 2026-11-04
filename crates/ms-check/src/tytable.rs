@@ -5,8 +5,9 @@
 //! a few integers instead of rendering the tree. The table is append-only: lowering substitutes
 //! new types as it goes, so ids are handed out on demand and never change.
 
-use crate::types::{Kind, Name, Ty};
+use crate::types::{Kind, Name, Ty, Type};
 use std::hash::{Hash, Hasher};
+use std::{collections::HashMap, hash::BuildHasherDefault, rc::Rc};
 
 /// The identity of an interned type: an index into a [`TyTable`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -42,6 +43,16 @@ pub struct TyTable {
     /// The checker type that first produced each row.
     tys: Vec<Ty>,
     scratch: Vec<u32>,
+    // Empty between queries; retain capacity, never answers or input lifetimes.
+    memo: Memo,
+}
+
+// Every key is kept alive by the input graph until the query completes.
+type Memo = HashMap<*const Type, TyId, BuildHasherDefault<Fx>>;
+
+struct Query {
+    remaining: u8,
+    completed: Option<Memo>,
 }
 
 #[derive(Default)]
@@ -55,6 +66,10 @@ impl Hasher for Fx {
         for &b in bytes {
             self.write_u64(b as u64);
         }
+    }
+    // Pointer keys need one integer mix rather than the byte-wise fallback.
+    fn write_usize(&mut self, n: usize) {
+        self.write_u64(n as u64);
     }
     fn write_u32(&mut self, n: u32) {
         self.write_u64(n as u64);
@@ -91,20 +106,80 @@ impl TyTable {
 
     /// The identity of `t`, including which function parameters are represented as optionals.
     pub fn intern(&mut self, t: &Ty) -> TyId {
-        self.walk(t, true)
+        self.query(t, true)
     }
 
     /// The identity of `t`'s structure alone, ignoring which parameters may be omitted.
     pub fn shape(&mut self, t: &Ty) -> TyId {
-        self.walk(t, false)
+        self.query(t, false)
     }
 
-    fn walk(&mut self, t: &Ty, lifted: bool) -> TyId {
+    fn query(&mut self, t: &Ty, lifted: bool) -> TyId {
+        if t.kind != Kind::Function && t.args.is_empty() {
+            return self.find_or_add(t, self.scratch.len(), 0, 0);
+        }
+        let mut query = Query {
+            remaining: 64,
+            completed: None,
+        };
+        let id = self.walk(t, lifted, &mut query);
+        if let Some(mut memo) = query.completed {
+            // Avoid scanning an oversized retained allocation after a smaller query.
+            if memo.capacity() <= 256 || memo.capacity() <= memo.len().saturating_mul(4) {
+                memo.clear();
+                self.memo = memo;
+            }
+        }
+        id
+    }
+
+    #[inline]
+    fn child(&mut self, t: &Ty, lifted: bool, query: &mut Query) -> TyId {
+        if t.kind != Kind::Function && t.args.is_empty() {
+            self.find_or_add(t, self.scratch.len(), 0, 0)
+        } else {
+            self.walk(t, lifted, query)
+        }
+    }
+
+    // Skipped rows have at most eight leaf edges: constant work per incoming edge.
+    // Cache larger rows too, so shallow shared fanout cannot become quadratic.
+    fn cache_worthy(t: &Ty) -> bool {
+        let arity = t.args.len()
+            + if t.kind == Kind::Function {
+                t.params.len() + usize::from(t.result.is_some())
+            } else {
+                0
+            };
+        if arity > 8 {
+            return true;
+        }
+        let nonleaf = |t: &Ty| t.kind == Kind::Function || !t.args.is_empty();
+        (t.kind == Kind::Function
+            && (t.params.iter().any(|p| nonleaf(&p.ty)) || t.result.as_ref().is_some_and(nonleaf)))
+            || t.args.iter().any(nonleaf)
+    }
+
+    fn walk(&mut self, t: &Ty, lifted: bool, query: &mut Query) -> TyId {
+        // Only completed subtrees are reusable; argument order and first rows stay intact.
+        let worthy = Self::cache_worthy(t);
+        if worthy {
+            if query.remaining != 0 {
+                query.remaining -= 1;
+            } else {
+                let memo = query
+                    .completed
+                    .get_or_insert_with(|| std::mem::take(&mut self.memo));
+                if let Some(id) = memo.get(&Rc::as_ptr(t)) {
+                    return *id;
+                }
+            }
+        }
         let mark = self.scratch.len();
         let mut np = 0u32;
         if t.kind == Kind::Function {
             for p in &t.params {
-                let child = self.walk(&p.ty, lifted).0;
+                let child = self.child(&p.ty, lifted, query).0;
                 let mut e = child;
                 if p.mutable {
                     e |= VAR;
@@ -116,19 +191,22 @@ impl TyTable {
                 np += 1;
             }
             let r = match &t.result {
-                Some(r) => self.walk(r, lifted).0,
+                Some(r) => self.child(r, lifted, query).0,
                 None => NO_RESULT,
             };
             self.scratch.push(r);
         }
         let mut na = 0u32;
         for a in &t.args {
-            let child = self.walk(a, lifted).0;
+            let child = self.child(a, lifted, query).0;
             self.scratch.push(child);
             na += 1;
         }
         let id = self.find_or_add(t, mark, np, na);
         self.scratch.truncate(mark);
+        if worthy && let Some(memo) = &mut query.completed {
+            memo.insert(Rc::as_ptr(t), id);
+        }
         id
     }
 

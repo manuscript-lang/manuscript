@@ -59,15 +59,14 @@ pub(crate) fn inference_type_resolved(t: &Ty, variables: &VarSet, allow_invalid:
     if (!allow_invalid && t.is_invalid()) || variables.contains(&t.id) {
         return false;
     }
-    t.args
-        .iter()
-        .all(|a| inference_type_resolved(a, variables, allow_invalid))
-        && t.params
-            .iter()
-            .all(|p| inference_type_resolved(&p.ty, variables, allow_invalid))
-        && t.result
-            .as_ref()
-            .is_none_or(|r| inference_type_resolved(r, variables, allow_invalid))
+    let resolved = |child: &Ty| {
+        !type_any::<true>(child, |t| {
+            (!allow_invalid && t.is_invalid()) || variables.contains(&t.id)
+        })
+    };
+    t.args.iter().all(resolved)
+        && t.params.iter().all(|p| resolved(&p.ty))
+        && t.result.as_ref().is_none_or(resolved)
 }
 
 /// Keeps valid evidence and mismatches when another part of an argument is

@@ -7,7 +7,7 @@
 
 use crate::ast::*;
 use crate::diag::Diagnostic;
-use crate::lexer::{lex, unterminated_prefixes};
+use crate::lexer::{lex, recovery_continuations, unterminated_prefixes};
 use crate::parser::{parse, parse_chunk};
 use crate::pos::Span;
 use std::collections::HashMap;
@@ -32,6 +32,8 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
     let (mut attempted_start, mut continuation_end) = (usize::MAX, 0usize);
     let mut offset = 0usize;
     let lines: Vec<&str> = source.split_inclusive('\n').collect();
+    let roots: Vec<bool> = lines.iter().map(|line| is_declaration_line(line)).collect();
+    let continuations = recovery_continuations(file, source, &roots);
     let mut boundaries: Option<(Vec<usize>, Vec<usize>)> = None;
     let mut last_start_index = 0usize;
     // A lexer pass records the continuation answer for the current root's
@@ -39,7 +41,7 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
     // next declaration bounds the pass even when a delimiter stays open.
     let mut prefix_index: Option<(usize, Vec<bool>)> = None;
     for (index, line) in lines.iter().enumerate() {
-        if offset < continuation_end {
+        if offset < continuation_end || continuations[index] {
             offset += line.len();
             continue;
         }
@@ -69,8 +71,8 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
                         // are continuations. Failed probes keep the original splitter.
                         if partial_root_start(&source[start..]) {
                             let mut end = offset;
-                            for next in &lines[index..] {
-                                if partial_root_start(next) {
+                            for (next_index, next) in lines.iter().enumerate().skip(index) {
+                                if !continuations[next_index] && partial_root_start(next) {
                                     break;
                                 }
                                 end += next.len();
@@ -98,14 +100,17 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
                             .as_ref()
                             .is_none_or(|(cached_start, _)| *cached_start != last)
                     {
-                        let (line_offsets, next_declaration) =
-                            boundaries.get_or_insert_with(|| line_boundaries(&lines));
+                        let (line_offsets, next_declaration) = boundaries
+                            .get_or_insert_with(|| line_boundaries(&lines, &continuations));
                         let end_index = next_declaration[index + 1];
                         let stop_at: Vec<bool> = lines[last_start_index..end_index]
                             .iter()
                             .enumerate()
                             .map(|(i, line)| {
-                                i > 0 && is_candidate_line(line) && !is_declaration_line(line)
+                                i > 0
+                                    && !continuations[last_start_index + i]
+                                    && is_candidate_line(line)
+                                    && !is_declaration_line(line)
                             })
                             .collect();
                         let prefixes = unterminated_prefixes(
@@ -193,7 +198,7 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
     (module, diagnostics)
 }
 
-fn line_boundaries(lines: &[&str]) -> (Vec<usize>, Vec<usize>) {
+fn line_boundaries(lines: &[&str], continuations: &[bool]) -> (Vec<usize>, Vec<usize>) {
     let mut offsets = Vec::with_capacity(lines.len() + 1);
     offsets.push(0);
     for line in lines {
@@ -201,7 +206,7 @@ fn line_boundaries(lines: &[&str]) -> (Vec<usize>, Vec<usize>) {
     }
     let mut next_declaration = vec![lines.len(); lines.len() + 1];
     for index in (0..lines.len()).rev() {
-        next_declaration[index] = if is_declaration_line(lines[index]) {
+        next_declaration[index] = if !continuations[index] && is_declaration_line(lines[index]) {
             index
         } else {
             next_declaration[index + 1]
@@ -218,7 +223,8 @@ fn is_candidate_line(line: &str) -> bool {
         && !trimmed.starts_with("//")
 }
 
-fn is_declaration_line(line: &str) -> bool {
+/// Whether a column-zero line starts an independent recovery declaration.
+pub fn is_declaration_line(line: &str) -> bool {
     is_candidate_line(line) && partial_root_start(line.trim())
 }
 
@@ -408,15 +414,14 @@ fn leading_space(line: &str) -> usize {
 
 /// Replaces every byte but line breaks with a space, keeping offsets.
 fn blank(line: &str) -> String {
-    line.chars()
-        .flat_map(|c| {
-            if c == '\r' || c == '\n' {
-                vec![c]
-            } else {
-                vec![' '; c.len_utf8()]
-            }
+    let bytes = line
+        .bytes()
+        .map(|byte| match byte {
+            b'\r' | b'\n' => byte,
+            _ => b' ',
         })
-        .collect()
+        .collect();
+    String::from_utf8(bytes).expect("blanked source is ASCII")
 }
 
 /// The name a declaration chunk introduces, for chunks that failed to parse.
@@ -442,6 +447,13 @@ fn declared_name(chunk: &str) -> Option<String> {
 #[cfg(test)]
 mod continuation_tests {
     use super::*;
+
+    #[test]
+    fn blanking_preserves_byte_width_and_physical_line_breaks() {
+        assert_eq!(blank(""), "");
+        assert_eq!(blank("aé中🦀\t\0\r\nlast\r"), "            \r\n    \r");
+        assert_eq!(blank("\n\r\n"), "\n\r\n");
+    }
 
     #[test]
     fn indexed_prefixes_match_lexing_each_candidate_prefix() {

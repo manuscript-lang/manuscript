@@ -411,8 +411,8 @@ impl<'a> FnLower<'a> {
                     let fv = self.move_out(fp, decl[idx].1);
                     self.bind_pattern(&f.pattern, Val { v: fv, own: true })?;
                 }
-                for (idx, (_, fty)) in decl.iter().enumerate() {
-                    if named[idx] || !self.needs_drop(*fty) {
+                for (idx, (_, fty)) in decl.iter().enumerate().rev() {
+                    if named[idx] || !self.holds(*fty) {
                         continue;
                     }
                     let fp = self

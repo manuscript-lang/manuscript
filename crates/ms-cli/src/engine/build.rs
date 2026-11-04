@@ -97,6 +97,7 @@ pub(super) fn build<L: Lower>(
         && let Some(cache) = &cache
         && cache.mode == ms_build::cache::Mode::On
         && let Some(entry) = cache.lookup()
+        && artifact_source_collision(&output, &request.filename, entry.inputs()).is_none()
         && entry.restore_to(&output).is_ok()
         && write_metadata(Path::new(&output), request.build_type).is_ok()
     {
@@ -118,6 +119,10 @@ pub(super) fn build<L: Lower>(
     if let Some(error) = path_error {
         return Ok(fail(io, &compiled.source_root, "build", &error));
     }
+    let sources = match build_inputs(&compiled) {
+        Ok(sources) => sources,
+        Err(message) => return Ok(fail(io, &compiled.source_root, "build", &message)),
+    };
     if std::fs::metadata(&output).is_ok_and(|m| m.is_dir()) {
         let _ = writeln!(
             io.stderr,
@@ -132,6 +137,22 @@ pub(super) fn build<L: Lower>(
             "-o {display} would overwrite {protected}; choose a different executable path"
         );
         return Ok(2);
+    }
+    if let Some(collision) = artifact_source_collision(
+        &output,
+        &request.filename,
+        sources.iter().map(std::path::PathBuf::as_path),
+    ) {
+        let artifact = collision.artifact;
+        let source = collision.source.display();
+        let message = if collision.ambiguous {
+            format!(
+                "cannot distinguish {artifact} from source link {source}; use exact existing filename spellings or choose a different executable path"
+            )
+        } else {
+            format!("{artifact} would overwrite {source}; choose a different executable path")
+        };
+        return Ok(fail(io, &compiled.source_root, "build", &message));
     }
     if let Some(parent) = Path::new(&output).parent()
         && let Err(error) = std::fs::create_dir_all(parent)
@@ -148,7 +169,7 @@ pub(super) fn build<L: Lower>(
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
     if let Some(cache) = &cache
-        && let Err(message) = cache.record(&compiled, &output)
+        && let Err(message) = cache.record(&compiled, &sources, &output)
     {
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
@@ -161,6 +182,131 @@ pub(super) fn build<L: Lower>(
     }
     let _ = writeln!(io.stdout, "Built {display}");
     Ok(0)
+}
+
+/// Inventory inputs before publication, and retain the same list for the next cache hit.
+fn build_inputs(compiled: &super::Compiled) -> Result<Vec<std::path::PathBuf>, String> {
+    let mut sources = compiled.sources.clone();
+    // A single-file build reads the enclosing manifest even though `project_root` is empty.
+    let manifest = Path::new(&compiled.source_root).join("ms.toml");
+    if manifest.is_file() {
+        let project = ms_driver::project::read_project(&manifest.to_string_lossy())
+            .map_err(|error| error.to_string())?;
+        for directory in project.embed.values() {
+            sources.extend(
+                ms_driver::project::embed::inputs(directory).map_err(|error| error.to_string())?,
+            );
+        }
+        sources.push(manifest);
+    }
+    if !compiled.project_root.is_empty() {
+        sources.push(Path::new(&compiled.project_root).join("ms.toml"));
+    }
+    Ok(sources)
+}
+
+struct ArtifactCollision {
+    artifact: &'static str,
+    source: std::path::PathBuf,
+    ambiguous: bool,
+}
+
+fn artifact_source_collision<'a>(
+    output: &str,
+    input: &'a str,
+    sources: impl Iterator<Item = &'a Path>,
+) -> Option<ArtifactCollision> {
+    let executable = publication_entry(Path::new(output));
+    let metadata = publication_entry(Path::new(&format!("{output}.ms-build.json")));
+    if executable.is_none() && metadata.is_none() {
+        return None;
+    }
+    std::iter::once(Path::new(input))
+        .chain(sources)
+        .find_map(|source| {
+            let canonical = std::fs::canonicalize(source).ok();
+            // A regular source's canonical path is already its publication entry. Only the
+            // requested final symlink needs its own entry checked as well as its target.
+            let entry = std::fs::symlink_metadata(source)
+                .is_ok_and(|metadata| metadata.file_type().is_symlink())
+                .then(|| publication_entry(source))
+                .flatten();
+            [
+                ("executable", executable.as_ref()),
+                ("build metadata", metadata.as_ref()),
+            ]
+            .into_iter()
+            .find_map(|(artifact, target)| {
+                let target = target?;
+                let exact = entry.as_ref() == Some(target) || canonical.as_ref() == Some(target);
+                let ambiguous = !exact
+                    && entry.as_deref().zip(canonical.as_deref()).is_some_and(
+                        |(entry, resolved)| ambiguous_symlink_alias(entry, target, resolved),
+                    );
+                (exact || ambiguous).then(|| ArtifactCollision {
+                    artifact,
+                    source: source.to_path_buf(),
+                    ambiguous,
+                })
+            })
+        })
+}
+
+// Following the last link loses its identity. If two such paths have the same parent and
+// target, require evidence of two distinct entries rather than guessing filesystem case rules.
+fn ambiguous_symlink_alias(source: &Path, artifact: &Path, resolved: &Path) -> bool {
+    if source.parent() != artifact.parent()
+        || !std::fs::symlink_metadata(artifact).is_ok_and(|m| m.file_type().is_symlink())
+        || std::fs::canonicalize(artifact).ok().as_deref() != Some(resolved)
+    {
+        return false;
+    }
+    let (Some(parent), Some(source_name), Some(artifact_name)) =
+        (source.parent(), source.file_name(), artifact.file_name())
+    else {
+        return true;
+    };
+    let distinct = std::fs::read_dir(parent).and_then(|entries| {
+        distinct_names(
+            entries.map(|entry| entry.map(|entry| entry.file_name())),
+            source_name,
+            artifact_name,
+        )
+    });
+    !distinct.unwrap_or(false)
+}
+
+fn distinct_names(
+    names: impl IntoIterator<Item = std::io::Result<std::ffi::OsString>>,
+    first: &std::ffi::OsStr,
+    second: &std::ffi::OsStr,
+) -> std::io::Result<bool> {
+    if first == second {
+        return Ok(false);
+    }
+    let (mut found_first, mut found_second) = (false, false);
+    for name in names {
+        let name = name?;
+        found_first |= name == first;
+        found_second |= name == second;
+        if found_first && found_second {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+// Publication replaces the final directory entry, so do not follow its last symlink or compare
+// inode identities: a distinct metadata hard link/symlink to source is safe to replace (#2271).
+fn publication_entry(path: &Path) -> Option<std::path::PathBuf> {
+    if std::fs::symlink_metadata(path).is_ok_and(|m| !m.file_type().is_symlink()) {
+        return std::fs::canonicalize(path).ok();
+    }
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    Some(std::fs::canonicalize(parent).ok()?.join(path.file_name()?))
 }
 
 /// Builds the `--json` document from `(source_root, completed, status, reason, diagnostics)`.
@@ -279,7 +425,12 @@ impl BuildCache {
 
     /// Stores the finished build at `output` for the next one (or, under `MS_CACHE=verify`,
     /// compares it with the stored build).
-    fn record(&self, compiled: &super::Compiled, output: &str) -> Result<(), String> {
+    fn record(
+        &self,
+        compiled: &super::Compiled,
+        sources: &[std::path::PathBuf],
+        output: &str,
+    ) -> Result<(), String> {
         let output = Path::new(output);
         if self.mode == ms_build::cache::Mode::Verify {
             let Some(hit) = self.lookup() else {
@@ -290,28 +441,12 @@ impl BuildCache {
             }
             return Err("MS_CACHE=verify: the rebuilt executable differs from the cached one (this is a Manuscript bug)".into());
         }
-        let mut sources = compiled.sources.clone();
-        // A single-file build still reads the nearest enclosing manifest (import root and
-        // aliases), which lives in the source root even though `project_root` is empty.
-        let manifest = Path::new(&compiled.source_root).join("ms.toml");
-        if manifest.is_file() {
-            // Embedded directories and files are inputs too: the generated module has no file.
-            if let Ok(project) = ms_driver::project::read_project(&manifest.to_string_lossy()) {
-                for directory in project.embed.values() {
-                    match ms_driver::project::embed::inputs(directory) {
-                        Ok(inputs) => sources.extend(inputs),
-                        Err(_) => return Ok(()),
-                    }
-                }
-            }
-            sources.push(manifest);
-        }
         let companion = ms_clif_companion(output);
         ms_build::cache::store(
             &self.directory,
             &self.key,
             &compiled.source_root,
-            &sources,
+            sources,
             output,
             companion.as_deref(),
         );
@@ -358,6 +493,66 @@ fn ms_clif_companion(executable: &Path) -> Option<std::path::PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn distinct_alias_names_require_two_exact_directory_entries() {
+        use std::ffi::{OsStr, OsString};
+        let first = OsStr::new("Program.ms-build.json");
+        let second = OsStr::new("program.ms-build.json");
+        for (names, expected) in [
+            (vec!["Program.ms-build.json"], false),
+            (vec!["program.ms-build.json"], false),
+            (vec!["PROGRAM.ms-build.json"], false),
+            (
+                vec!["Program.ms-build.json", "Program.ms-build.json"],
+                false,
+            ),
+            (
+                vec![
+                    "unrelated",
+                    "program.ms-build.json",
+                    "Program.ms-build.json",
+                ],
+                true,
+            ),
+        ] {
+            assert_eq!(
+                distinct_names(
+                    names.into_iter().map(|name| Ok(OsString::from(name))),
+                    first,
+                    second
+                )
+                .unwrap(),
+                expected
+            );
+        }
+        assert!(!distinct_names([Ok(first.to_owned())], first, first).unwrap());
+        assert!(
+            distinct_names(
+                [Ok(OsString::from("É.ms")), Ok(OsString::from("é.ms"))],
+                OsStr::new("É.ms"),
+                OsStr::new("é.ms")
+            )
+            .unwrap()
+        );
+    }
+
+    #[test]
+    fn failed_directory_enumeration_cannot_prove_distinct_aliases() {
+        use std::ffi::{OsStr, OsString};
+        let names = [
+            Ok(OsString::from("source.ms")),
+            Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied)),
+            Ok(OsString::from("program.ms-build.json")),
+        ];
+        let distinct = distinct_names(
+            names,
+            OsStr::new("source.ms"),
+            OsStr::new("program.ms-build.json"),
+        );
+        assert!(distinct.is_err());
+        assert!(!distinct.unwrap_or(false));
+    }
 
     fn hit(directory: &Path, key: &str, payload: &[u8]) -> Hit {
         let source = directory.join(format!("{key}.source"));

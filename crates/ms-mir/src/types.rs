@@ -414,6 +414,9 @@ pub struct RecordDef {
     /// Which plain-data native record this is, when the runtime implements its operations.
     /// Set where the record is lowered from its declaration; not part of the text format.
     pub native: Option<NativeRec>,
+    /// Whether a value is one pointer to a heap block of the fields (a layout choice for large,
+    /// rarely built records such as `Error`); set where the record is lowered, not in the text format.
+    pub indirect: bool,
 }
 
 /// A native record type known by identity: the runtime implements its ordering and text.
@@ -497,6 +500,20 @@ pub struct AltDef {
     pub std: Std,
     /// Cases in tag order.
     pub cases: Vec<CaseDef>,
+    /// Bit `c` set: the payload of case `c` is borrowed from another value and never dropped by
+    /// this alternative (a borrowing variant: same layout and cases as the ordinary alternative, no ownership of
+    /// those cases). Zero for every ordinary alternative.
+    pub borrowed: u64,
+}
+
+impl AltDef {
+    /// Whether case `c` is borrowed (cases past bit 63 never are: only `Result`-shaped alternatives borrow).
+    pub fn borrows(&self, c: usize) -> bool {
+        u32::try_from(c)
+            .ok()
+            .and_then(|c| self.borrowed.checked_shr(c))
+            .is_some_and(|b| b & 1 == 1)
+    }
 }
 
 /// An interface method signature. The receiver is implicit; arguments are borrowed.

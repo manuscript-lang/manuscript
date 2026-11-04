@@ -175,6 +175,94 @@ pub(crate) fn unterminated_prefixes(file: &Arc<str>, source: &str, stop_at: &[bo
     prefixes
 }
 
+/// Physical lines inside text or block comments cannot start recovery chunks.
+/// Ignore unrelated invalid tokens and layout here; the real parse retains their
+/// diagnostics. Keep token interiors opaque even when their contents are invalid.
+pub(crate) fn recovery_continuations(file: &Arc<str>, source: &str, roots: &[bool]) -> Vec<bool> {
+    let (normalized, offsets) = normalize_source(source);
+    let mut scanner = Scanner::new(file, &normalized, 0, 0, offsets);
+    let mut lines = vec![false; source.bytes().filter(|b| *b == b'\n').count() + 1];
+    let mut depth = 0usize;
+    let mut invalid_text_header = false;
+    let (mut leading_line, mut first_token) = (0u32, 0usize);
+    while scanner.offset < scanner.src.len() {
+        let first = scanner.line as usize - 1;
+        if scanner.column == 1 && roots.get(first) == Some(&true) {
+            depth = 0;
+        }
+        if scanner.at_line_comment() {
+            while scanner.offset < scanner.src.len() && scanner.src[scanner.offset] != b'\n' {
+                scanner.advance();
+            }
+        } else if scanner.at_block_comment() {
+            scanner.advance();
+            scanner.advance();
+            // Comments do not nest. Even a malformed comment remains opaque up
+            // to its first closer (or EOF); strict lexing reports the error.
+            while scanner.offset < scanner.src.len() {
+                if scanner.src[scanner.offset..].starts_with(b"*/") {
+                    scanner.advance();
+                    scanner.advance();
+                    break;
+                }
+                scanner.advance();
+            }
+        } else if scanner.src[scanner.offset..].starts_with(b"r\"\"\"")
+            || scanner.src[scanner.offset..].starts_with(b"\"\"\"")
+        {
+            let raw = scanner.src[scanner.offset] == b'r';
+            if leading_line != scanner.line {
+                leading_line = scanner.line;
+                let line_start = scanner.offset - (scanner.column as usize - 1);
+                first_token = line_start
+                    + scanner.src[line_start..]
+                        .iter()
+                        .take_while(|byte| **byte == b' ' || **byte == b'\t')
+                        .count();
+            }
+            let standalone = scanner.offset == first_token;
+            for _ in 0..if raw { 4 } else { 3 } {
+                scanner.advance();
+            }
+            // A malformed header's standalone closer must not become a fresh
+            // opener. A literal in a new expression (including a standalone
+            // delimiter continuation) supersedes that malformed header.
+            let body = scanner.at(scanner.offset) == Some(b'\n');
+            let closing_invalid = invalid_text_header && standalone && !raw && depth == 0;
+            invalid_text_header = !body;
+            if body && !closing_invalid {
+                while scanner.offset < scanner.src.len() {
+                    if scanner.src[scanner.offset..].starts_with(b"\"\"\"") {
+                        for _ in 0..3 {
+                            scanner.advance();
+                        }
+                        break;
+                    }
+                    let byte = scanner.advance();
+                    if !raw && byte == b'\\' && scanner.offset < scanner.src.len() {
+                        scanner.advance();
+                    }
+                }
+            }
+        } else if scanner.src[scanner.offset] == b'"' {
+            let _ = scanner.scan_string();
+        } else {
+            match scanner.advance() {
+                b'(' | b'[' | b'{' => depth += 1,
+                b')' | b']' | b'}' => depth = depth.saturating_sub(1),
+                _ => {}
+            }
+        }
+        // An invalid single-line string may consume its newline before failing;
+        // the following line still starts independently.
+        let last = scanner.line as usize - 1 - usize::from(scanner.column == 1);
+        if last > first {
+            lines[first + 1..=last].fill(true);
+        }
+    }
+    lines
+}
+
 impl<'a> Scanner<'a> {
     fn new(
         file: &'a Arc<str>,
