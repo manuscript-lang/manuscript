@@ -1054,6 +1054,27 @@ impl<'a> FnLower<'a> {
 
     // --------------------------------------------------------- constructors
 
+    /// The alternative a constructor in return position builds: the borrowing variant this function
+    /// returns when the checker marked the node (`Fact::RetCtor`), else `a`.
+    fn ret_variant(&self, e: &Expr, a: ms_mir::types::AltId) -> ms_mir::types::AltId {
+        if !self.cx.fact(
+            self.hir.data.file,
+            e.id,
+            ms_check::ownership::Fact::RetCtor,
+        ) {
+            return a;
+        }
+        match self.b.m.types.kind(self.ret_ty) {
+            TyKind::Alt(v)
+                if self.b.m.alts[v.index()].borrowed != 0
+                    && self.b.m.alts[v.index()].name == self.b.m.alts[a.index()].name =>
+            {
+                *v
+            }
+            _ => a,
+        }
+    }
+
     fn construct(
         &mut self,
         e: &Expr,
@@ -1089,9 +1110,14 @@ impl<'a> FnLower<'a> {
                 .iter()
                 .position(|x| x.name == self.syms.str(c))
                 .ok_or_else(|| Error::new("unknown case"))?;
+            let variant = self.ret_variant(e, a);
             if !x.own && arg.wrap_optional.is_none() {
-                let v = self.b.alt_view(a, idx as u32, &[x.v]);
-                return Ok(Val { v, own: false });
+                let v = self.b.alt_view(variant, idx as u32, &[x.v]);
+                // In a borrowing variant the borrowed case is part of an owned result.
+                return Ok(Val {
+                    v,
+                    own: variant != a,
+                });
             }
             let o = self.owned(x);
             let v = self.b.alt_new(a, idx as u32, &[o]);
@@ -1168,6 +1194,7 @@ impl<'a> FnLower<'a> {
                     .iter()
                     .position(|x| x.name == self.syms.str(c))
                     .ok_or_else(|| Error::new("unknown case"))?;
+                let a = self.ret_variant(e, a);
                 self.b.alt_new(a, idx as u32, &vals)
             }
             _ => {

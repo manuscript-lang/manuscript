@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 /// A boolean ownership fact about a node.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[repr(u8)]
+#[repr(u16)]
 pub enum Fact {
     /// A callable whose result is a reference into its arguments.
     ReturnsBorrow = 1,
@@ -23,15 +23,18 @@ pub enum Fact {
     BorrowedMatch = 1 << 5,
     /// A callable whose `Result` result lends its `ok` payload from the arguments (the other
     /// cases are owned): the caller drops only the owned cases.
-    LentOk = 1 << 6,
+    BorrowedOk = 1 << 6,
     /// The same for the `error` payload.
-    LentError = 1 << 7,
+    BorrowedError = 1 << 7,
+    /// An `ok(..)` or `error(..)` constructor in return position of a function whose result is a
+    /// borrowing variant: lowering builds it in the variant.
+    RetCtor = 1 << 8,
 }
 
 /// Fact flags by module file, then by node id.
 #[derive(Default, Debug)]
 pub struct NodeFacts {
-    files: HashMap<Name, Vec<u8>>,
+    files: HashMap<Name, Vec<u16>>,
 }
 
 impl NodeFacts {
@@ -41,7 +44,7 @@ impl NodeFacts {
         if flags.len() <= id.index() {
             flags.resize(id.index() + 1, 0);
         }
-        flags[id.index()] |= fact as u8;
+        flags[id.index()] |= fact as u16;
     }
 
     /// Whether `fact` holds for `id` of module `file`.
@@ -49,7 +52,7 @@ impl NodeFacts {
         self.files
             .get(&file)
             .and_then(|f| f.get(id.index()))
-            .is_some_and(|b| b & fact as u8 != 0)
+            .is_some_and(|b| b & fact as u16 != 0)
     }
 }
 

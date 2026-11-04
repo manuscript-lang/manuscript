@@ -847,12 +847,12 @@ impl Verifier<'_> {
                         .unwrap_or(false),
                     "alt.new yields the alternative type",
                 )?;
-                // A lent variant lends exactly its lent cases: `alt.view` fills one, `alt.new` the others.
-                let lent = m.alts[a.index()].lent;
-                if lent != 0 {
+                // A borrowing variant lends exactly its borrowed cases: `alt.view` fills one, `alt.new` the others.
+                let borrowed = m.alts[a.index()].borrowed;
+                if borrowed != 0 {
                     want(
-                        (lent >> c & 1 == 1) == (inst.op == Op::AltView),
-                        "a lent variant is filled by alt.view in its lent cases and alt.new in the others",
+                        (borrowed >> c & 1 == 1) == (inst.op == Op::AltView),
+                        "a borrowing variant is filled by alt.view in its borrowed cases and alt.new in the others",
                     )?;
                 }
                 // A boxed alternative holds its payload in a heap block, which a borrow cannot own.
@@ -864,15 +864,15 @@ impl Verifier<'_> {
             Op::AltPlain => {
                 arity(1)?;
                 let (TyKind::Alt(x), Some(r)) = (m.types.kind(t(0)), res) else {
-                    return Err("alt.plain takes a lent variant".into());
+                    return Err("alt.plain takes a borrowing variant".into());
                 };
                 let TyKind::Alt(y) = m.types.kind(r) else {
                     return Err("alt.plain yields an alternative".into());
                 };
                 let (dx, dy) = (&m.alts[x.index()], &m.alts[y.index()]);
                 want(
-                    dx.lent != 0 && dy.lent == 0 && dx.name == dy.name && dx.cases == dy.cases,
-                    "alt.plain reads a lent variant as its ordinary alternative",
+                    dx.borrowed != 0 && dy.borrowed == 0 && dx.name == dy.name && dx.cases == dy.cases,
+                    "alt.plain reads a borrowing variant as its ordinary alternative",
                 )
             }
             Op::AltTag => {

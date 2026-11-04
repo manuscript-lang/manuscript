@@ -1291,27 +1291,27 @@ impl Module {
             name: name.to_string(),
             std: Default::default(),
             cases,
-            lent: 0,
+            borrowed: 0,
         });
         let id = AltId(self.alts.len() as u32 - 1);
         (id, self.types.alt(id))
     }
 
-    /// The lent variant of `base` whose cases in `mask` are borrowed from another value: the
+    /// The borrowing variant of `base` whose cases in `mask` are borrowed from another value: the
     /// same layout and cases, but dropping it leaves those cases alone. Memoized per mask.
-    pub fn lent_alt(&mut self, base: AltId, mask: u64) -> (AltId, Ty) {
+    pub fn borrowing_alt(&mut self, base: AltId, mask: u64) -> (AltId, Ty) {
         let def = self.alts[base.index()].clone();
-        let mask = mask | def.lent;
-        if mask == def.lent {
+        let mask = mask | def.borrowed;
+        if mask == def.borrowed {
             return (base, self.types.alt(base));
         }
         let found = self.alts.iter().position(|a| {
-            a.name == def.name && a.cases == def.cases && a.lent == mask
+            a.name == def.name && a.cases == def.cases && a.borrowed == mask
         });
         let id = match found {
             Some(i) => AltId(i as u32),
             None => {
-                self.alts.push(AltDef { lent: mask, ..def });
+                self.alts.push(AltDef { borrowed: mask, ..def });
                 AltId(self.alts.len() as u32 - 1)
             }
         };
@@ -1469,12 +1469,12 @@ impl Module {
                     return true;
                 }
                 seen.push(ty);
-                let lent = self.alts[a.index()].lent;
+                let borrowed = self.alts[a.index()].borrowed;
                 let out = self.alts[a.index()]
                     .cases
                     .iter()
                     .enumerate()
-                    .filter(|(i, _)| lent >> i & 1 == 0)
+                    .filter(|(i, _)| borrowed >> i & 1 == 0)
                     .any(|(_, c)| c.fields.iter().any(|f| self.needs_drop_in(f.1, seen)));
                 seen.pop();
                 out
@@ -1505,10 +1505,10 @@ impl Module {
             | Op::OptView
             | Op::AltPlain
             | Op::OptNone => Mode::Borrow,
-            // A lent variant is owned and drops only the cases it owns: `alt.view` fills a
-            // lent case and is a borrow in an ordinary alternative.
+            // A borrowing variant is owned and drops only the cases it owns: `alt.view` fills a
+            // borrowed case and is a borrow in an ordinary alternative.
             Op::AltView => match self.types.kind(f.ty(res)) {
-                TyKind::Alt(a) if self.alts[a.index()].lent != 0 => Mode::Move,
+                TyKind::Alt(a) if self.alts[a.index()].borrowed != 0 => Mode::Move,
                 _ => Mode::Borrow,
             },
             // A borrow-returning function hands back a reference into its arguments.

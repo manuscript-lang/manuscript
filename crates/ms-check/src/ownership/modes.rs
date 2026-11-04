@@ -36,16 +36,16 @@ pub struct ResultBorrow {
     /// binding of the call is an exclusive borrow of that place. The source is a parameter by
     /// label, or the receiver.
     pub path: Option<(Option<Name>, Vec<Name>)>,
-    /// A `Result` whose cases in this mask (`LENT_OK`, `LENT_ERROR`) lend their payload from
+    /// A `Result` whose cases in this mask (`BORROWED_OK`, `BORROWED_ERROR`) lend their payload from
     /// the sources while the other cases are owned. With `returns_borrow` and `view`: the
     /// caller holds the sources and drops only the owned cases.
-    pub lent_cases: u8,
+    pub borrowed_cases: u8,
 }
 
-/// The `ok` case of a `Result` in `ResultBorrow::lent_cases`.
-pub const LENT_OK: u8 = 1;
-/// The `error` case of a `Result` in `ResultBorrow::lent_cases`.
-pub const LENT_ERROR: u8 = 2;
+/// The `ok` case of a `Result` in `ResultBorrow::borrowed_cases`.
+pub const BORROWED_OK: u8 = 1;
+/// The `error` case of a `Result` in `ResultBorrow::borrowed_cases`.
+pub const BORROWED_ERROR: u8 = 2;
 
 impl ResultBorrow {
     /// The optimistic start of the fixpoint: a body not yet walked may borrow from everything.
@@ -57,7 +57,7 @@ impl ResultBorrow {
             receiver: true,
             params: params.iter().map(|p| p.name).collect(),
             path: None,
-            lent_cases: 0,
+            borrowed_cases: 0,
         }
     }
 }

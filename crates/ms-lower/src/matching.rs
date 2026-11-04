@@ -492,7 +492,7 @@ impl FnLower<'_> {
         };
         if !hidden
             && !x.own
-            && self.b.func_mut().ret_borrowed
+            && (self.b.func_mut().ret_borrowed || self.ret_borrowing())
             && self.cx.fact(
                 self.hir.data.file,
                 e.id,
@@ -501,7 +501,9 @@ impl FnLower<'_> {
         {
             // The operand returns a borrow of its error from this function's arguments: hand the reference on.
             let out = self.b.alt_view(ra, ret_err as u32, &[x.v]);
-            self.emit_return(Some(Val { v: out, own: false }));
+            // In a borrowing variant the borrowed error is part of an owned result.
+            let own = self.ret_borrowing();
+            self.emit_return(Some(Val { v: out, own }));
         } else if hidden && !x.own && self.ty_of(payload) == want {
             // The operand is ours: its error moves into the result and the rest is released.
             let po = self.b.alt_take(a, err as u32, 0, cur);

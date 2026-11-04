@@ -333,8 +333,8 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.alt(a);
         self.val(Op::AltView, fields, Imm::Case(a, case), t)
     }
-    /// `alt.plain`: the lent variant `v` read as its ordinary alternative `plain`, a borrow
-    /// of every case (the lent cases and the owned ones alike).
+    /// `alt.plain`: the borrowing variant `v` read as its ordinary alternative `plain`, a borrow
+    /// of every case (the borrowed cases and the owned ones alike).
     pub fn alt_plain(&mut self, v: Value, plain: Ty) -> Value {
         self.val(Op::AltPlain, &[v], Imm::None, plain)
     }

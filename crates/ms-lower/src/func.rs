@@ -240,6 +240,28 @@ impl Cx {
         }
     }
 
+    /// The result type of `c`: the borrowing variant of its `Result` when the checker found some
+    /// cases borrowed from the arguments and the others owned (`Fact::BorrowedOk`, `Fact::BorrowedError`).
+    fn borrowing_result_ty(&self, m: &mut Module, c: &Callable, ret: MTy) -> MTy {
+        use ms_check::ownership::Fact;
+        let (file, id) = (c.module.file, c.id());
+        let TyKind::Alt(a) = m.types.kind(ret).clone() else {
+            return ret;
+        };
+        let mut mask = 0u64;
+        for (fact, name) in [(Fact::BorrowedOk, "ok"), (Fact::BorrowedError, "error")] {
+            if self.fact(file, id, fact)
+                && let Some(i) = m.alts[a.index()].cases.iter().position(|k| k.name == name)
+            {
+                mask |= 1 << i;
+            }
+        }
+        if mask == 0 {
+            return ret;
+        }
+        m.borrowing_alt(a, mask).1
+    }
+
     /// Reserves (and queues) the instance of `c` under `subst`.
     pub(crate) fn function_for(
         &mut self,
@@ -281,6 +303,7 @@ impl Cx {
         }
         let result = ct::sub(&self.callable_result(c)?, subst);
         let ret = self.lower_ty(m, &result)?;
+        let ret = self.borrowing_result_ty(m, c, ret);
         let name = if let ms_syntax::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
             format!("{} {}", if t.bench { "bench" } else { "test" }, t.name)
         } else if self.syms.str(c.name).is_empty() {
@@ -622,6 +645,13 @@ impl<'a> FnLower<'a> {
     }
 
     /// The declared result type (without the `var` parameters a function hands back).
+    /// Whether this function returns a borrowing variant: some cases of its `Result` lend from the
+    /// arguments and the others are owned.
+    pub fn ret_borrowing(&self) -> bool {
+        matches!(self.b.m.types.kind(self.ret_ty),
+            TyKind::Alt(a) if self.b.m.alts[a.index()].borrowed != 0)
+    }
+
     pub fn result_ty(&self) -> MTy {
         self.ret_ty
     }

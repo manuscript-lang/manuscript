@@ -182,8 +182,10 @@ pub struct CallableOwnership {
     /// With `returns_borrow`: the result is an owned interface view of the arguments (a converted borrowed
     /// value, `iface.borrow`): the caller drops it and holds the arguments while it lives.
     pub view: bool,
-    /// With `view`: the cases of a `Result` result that lend (`modes::LENT_OK`, `LENT_ERROR`).
-    pub lent_cases: u8,
+    /// With `view`: the cases of a `Result` result that lend (`modes::BORROWED_OK`, `BORROWED_ERROR`).
+    pub borrowed_cases: u8,
+    /// With `borrowed_cases`: the `ok(..)` / `error(..)` constructors in return position.
+    pub ret_ctors: HashSet<NodeId>,
     /// Wrappers of a borrowed value (`x` as `x?`, `ok(x)`, `error(x)`) that stay references:
     /// lowering builds them with `opt.view` / `alt.view` instead of copying the payload.
     pub view_wraps: HashSet<NodeId>,
@@ -335,11 +337,14 @@ impl Hir<'_> {
             } else if out.facts.returns_borrow {
                 node_facts.set(c.module.file, c.id(), Fact::ReturnsBorrow);
             }
-            if out.facts.lent_cases & modes::LENT_OK != 0 {
-                node_facts.set(c.module.file, c.id(), Fact::LentOk);
+            if out.facts.borrowed_cases & modes::BORROWED_OK != 0 {
+                node_facts.set(c.module.file, c.id(), Fact::BorrowedOk);
             }
-            if out.facts.lent_cases & modes::LENT_ERROR != 0 {
-                node_facts.set(c.module.file, c.id(), Fact::LentError);
+            if out.facts.borrowed_cases & modes::BORROWED_ERROR != 0 {
+                node_facts.set(c.module.file, c.id(), Fact::BorrowedError);
+            }
+            for n in &out.facts.ret_ctors {
+                node_facts.set(file, *n, Fact::RetCtor);
             }
             for n in &out.facts.view_wraps {
                 node_facts.set(file, *n, Fact::ViewWrap);

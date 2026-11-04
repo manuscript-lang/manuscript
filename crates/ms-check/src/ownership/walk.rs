@@ -4,7 +4,7 @@
 use super::classify::{Class, Classifier, declares_close};
 use super::live::Liveness;
 use super::modes::{
-    CallModes, LENT_ERROR, LENT_OK, ParamMode, ResultBorrow, Summaries, Summary, call_modes, receiver_mode,
+    CallModes, BORROWED_ERROR, BORROWED_OK, ParamMode, ResultBorrow, Summaries, Summary, call_modes, receiver_mode,
     result_borrow,
 };
 use super::places::{Place, Step};
@@ -179,9 +179,10 @@ pub fn analyze(cx: &Context) -> Outcome {
         borrowed_return: None,
         wrap_returns: Vec::new(),
         plain_borrowed: false,
-        lent_cases: 0,
+        borrowed_cases: 0,
         owned_cases: 0,
-        lent_mask: 0,
+        ret_ctors: Vec::new(),
+        borrowed_mask: 0,
         view_return: false,
         view_locals: HashSet::new(),
         view_calls: HashSet::new(),
@@ -219,9 +220,9 @@ pub fn analyze(cx: &Context) -> Outcome {
             // A view returner returns owned values on every path, so a new value beside a view
             // is no mix.
             returns_borrow: w.borrowed_return.is_some()
-                && (w.owned_return.is_none() || w.view_return || w.lent_mask != 0),
-            view: w.view_return || w.lent_mask != 0,
-            lent_cases: w.lent_mask,
+                && (w.owned_return.is_none() || w.view_return || w.borrowed_mask != 0),
+            view: w.view_return || w.borrowed_mask != 0,
+            borrowed_cases: w.borrowed_mask,
             receiver: w.borrow_receiver,
             params: w.borrow_params.clone(),
             path: if w.view_return {
@@ -233,7 +234,10 @@ pub fn analyze(cx: &Context) -> Outcome {
     };
     w.facts.returns_borrow = summary.result.returns_borrow;
     w.facts.view = summary.result.view;
-    w.facts.lent_cases = summary.result.lent_cases;
+    w.facts.borrowed_cases = summary.result.borrowed_cases;
+    if summary.result.borrowed_cases != 0 {
+        w.facts.ret_ctors = std::mem::take(&mut w.ret_ctors).into_iter().collect();
+    }
     w.facts.parameters = summary.params.iter().map(|(_, m)| *m).collect();
     w.facts.receiver = cx.c.self_binding.as_ref().map(|_| summary.receiver);
     Outcome {
@@ -299,12 +303,13 @@ struct Walker<'a> {
     wrap_returns: Vec<NodeId>,
     /// Some returned reference is the part itself, not a wrapper of it.
     plain_borrowed: bool,
-    /// `Result` cases (`LENT_OK`, `LENT_ERROR`, or 4 for another shape) the returned wrappers lend,
+    /// `Result` cases (`BORROWED_OK`, `BORROWED_ERROR`, or 4 for another shape) the returned wrappers lend,
     /// and the cases the owned returns build (7 when unknown).
-    lent_cases: u8,
+    borrowed_cases: u8,
     owned_cases: u8,
-    /// The wrappers stay references beside owned paths: the lent cases never overlap the owned ones.
-    lent_mask: u8,
+    ret_ctors: Vec<NodeId>,
+    /// The wrappers stay references beside owned paths: the borrowed cases never overlap the owned ones.
+    borrowed_mask: u8,
     /// Some returned value is an interface view of the arguments (a borrowed value converted to an
     /// interface, a view returner's result, a local holding one): the function is a view returner.
     view_return: bool,
@@ -566,7 +571,10 @@ impl Walker<'_> {
                 if wrapped {
                     self.facts.view_wraps.insert(e.id);
                     self.wrap_returns.push(e.id);
-                    self.lent_cases |= self.wrap_case(e);
+                    self.borrowed_cases |= self.wrap_case(e);
+                    if self.result_case(e).is_some() {
+                        self.ret_ctors.push(e.id);
+                    }
                 } else if !self.list_get(e) {
                     // `xs.get(i)` beside a new value is withdrawn like a wrapper, and the
                     // element is copied out; any other reference has no owned form.
@@ -590,6 +598,9 @@ impl Walker<'_> {
             if !matches!(&e.kind, ExprKind::Name(n) if self.syms.str(n) == "none") {
                 self.owned_return.get_or_insert(e.pos);
                 self.owned_cases |= self.owned_case(e);
+                if self.result_case(e).is_some() {
+                    self.ret_ctors.push(e.id);
+                }
             }
         }
         // A reference converted on the way out (a borrow-returning call widened to another error type or
@@ -833,14 +844,14 @@ impl Walker<'_> {
         // A wrapper of a part is a reference only when every path returns a borrow; beside a new value it
         // is built as a new value of its own (its payload copied), as before.
         if !self.plain_borrowed {
-            // The lent cases of a `Result` stay references when no owned path builds the same
+            // The borrowed cases of a `Result` stay references when no owned path builds the same
             // case: the caller drops only the cases the function owns.
-            if self.lent_cases & 4 == 0
-                && self.lent_cases != 0
-                && self.lent_cases & self.owned_cases == 0
+            if self.borrowed_cases & 4 == 0
+                && self.borrowed_cases != 0
+                && self.borrowed_cases & self.owned_cases == 0
                 && self.result_is_result()
             {
-                self.lent_mask = self.lent_cases;
+                self.borrowed_mask = self.borrowed_cases;
                 return;
             }
             self.borrowed_return = None;
@@ -984,8 +995,8 @@ impl Walker<'_> {
             return None;
         };
         match self.syms.str(c) {
-            "ok" => Some(LENT_OK),
-            "error" => Some(LENT_ERROR),
+            "ok" => Some(BORROWED_OK),
+            "error" => Some(BORROWED_ERROR),
             _ => None,
         }
     }
@@ -1018,7 +1029,7 @@ impl Walker<'_> {
             } else {
                 self.facts.view_wraps.insert(e.id);
                 self.wrap_returns.push(e.id);
-                self.lent_cases |= LENT_ERROR;
+                self.borrowed_cases |= BORROWED_ERROR;
             }
             self.borrow_receiver |= src.receiver;
             for p in src.params {
@@ -1031,7 +1042,7 @@ impl Walker<'_> {
             return;
         }
         self.owned_return.get_or_insert(e.pos);
-        self.owned_cases |= LENT_ERROR;
+        self.owned_cases |= BORROWED_ERROR;
     }
 
     /// The payload expression of an `ok(x)` or `error(x)` constructor call.

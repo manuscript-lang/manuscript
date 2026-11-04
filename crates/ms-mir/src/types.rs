@@ -497,10 +497,10 @@ pub struct AltDef {
     pub std: Std,
     /// Cases in tag order.
     pub cases: Vec<CaseDef>,
-    /// Bit `c` set: the payload of case `c` is lent from another value and never dropped by
-    /// this alternative (a lent variant: same layout and cases as `lent_of`, no ownership of
+    /// Bit `c` set: the payload of case `c` is borrowed from another value and never dropped by
+    /// this alternative (a borrowing variant: same layout and cases as the ordinary alternative, no ownership of
     /// those cases). Zero for every ordinary alternative.
-    pub lent: u64,
+    pub borrowed: u64,
 }
 
 /// An interface method signature. The receiver is implicit; arguments are borrowed.
