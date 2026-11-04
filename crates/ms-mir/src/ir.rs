@@ -1522,10 +1522,18 @@ impl Module {
     /// Whether `inst`'s owned result points into its operands: an interface view (`iface.borrow`,
     /// `iface.view`) or a call to a view returner. Passes that move drops or elide copies treat
     /// the result as a borrow of the operands and never move it into an owning position.
-    pub fn result_views(&self, inst: &Inst) -> bool {
+    pub fn result_views(&self, f: &Func, inst: &Inst) -> bool {
         match inst.op {
             Op::IfaceBorrow | Op::IfaceView => true,
-            Op::Call => matches!(inst.imm, Imm::Func(g) if self.funcs[g.index()].ret_view),
+            Op::Call if matches!(inst.imm, Imm::Func(g) if self.funcs[g.index()].ret_view) => true,
+            // A borrowing variant (a `Result` that borrows some cases from its arguments and
+            // owns the others) points into the arguments the borrowed cases came from.
+            Op::AltView | Op::Call | Op::CallInd | Op::CallMethod => {
+                inst.res.is_some_and(|r| {
+                    matches!(self.types.kind(f.ty(r)),
+                        TyKind::Alt(a) if self.alts[a.index()].borrowed != 0)
+                })
+            }
             _ => false,
         }
     }

@@ -906,6 +906,10 @@ impl Verifier<'_> {
                     .and_then(|x| x.cases.get(c as usize))
                     .ok_or("bad case")?;
                 want(
+                    m.alts[a.index()].borrowed >> c & 1 == 0,
+                    "alt.release of a borrowed case would free a payload another value owns",
+                )?;
+                want(
                     case.fields.len() <= 32
                         && matches!(m.types.kind(t(0)), TyKind::Alt(x) if *x == a)
                         && res.is_none(),
@@ -923,6 +927,11 @@ impl Verifier<'_> {
                     .and_then(|x| x.cases.get(c as usize))
                     .ok_or("bad case")?;
                 let fty = case.fields.get(i as usize).ok_or("bad field index")?.1;
+                want(
+                    inst.op != Op::AltTake && inst.op != Op::AltUnbox
+                        || m.alts[a.index()].borrowed >> c & 1 == 0,
+                    "a borrowed case cannot be taken: its payload belongs to another value",
+                )?;
                 want(
                     matches!(m.types.kind(t(0)), TyKind::Alt(x) if *x == a) && res == Some(fty),
                     "alt.get yields the payload field type",

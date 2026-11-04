@@ -153,7 +153,7 @@ fn borrows_of(m: &Module, fi: usize) -> Vec<Vec<Value>> {
     for b in &f.blocks {
         for inst in &b.insts {
             let Some(r) = inst.res else { continue };
-            if !matches!(m.result_mode(f, inst), Some(Mode::Move) | None) || m.result_views(inst) {
+            if !matches!(m.result_mode(f, inst), Some(Mode::Move) | None) || m.result_views(f, inst) {
                 inst.args.iter().for_each(|a| borrows_of[a.index()].push(r));
             }
         }
@@ -176,7 +176,7 @@ fn view_tainted(m: &Module, fi: usize) -> Vec<bool> {
                 if tainted[r.index()] {
                     continue;
                 }
-                let hit = m.result_views(inst)
+                let hit = m.result_views(f, inst)
                     || (!matches!(inst.op, Op::Clone)
                         && !inst.op.is_call()
                         && inst.args.iter().any(|a| tainted[a.index()]));
@@ -225,7 +225,7 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
             let Some(r) = inst.res else { continue };
             home[r.index()] = bi;
             match m.result_mode(f, inst) {
-                Some(Mode::Move) if m.result_views(inst) => {
+                Some(Mode::Move) if m.result_views(f, inst) => {
                     owned[r.index()] = true;
                     inst.args.iter().for_each(|a| borrows_of[a.index()].push(r));
                 }
