@@ -21,4 +21,4 @@ pub use diag::{Diagnostic, DiagnosticFix, Phase};
 pub use format::format;
 pub use partial::parse_partial;
 pub use pos::{Pos, Span};
-pub use symbol::Symbol;
+pub use symbol::{Interner, Sym, Symbol};
