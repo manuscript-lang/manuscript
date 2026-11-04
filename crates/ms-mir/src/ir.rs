@@ -1094,6 +1094,8 @@ pub enum ExternRole {
     ListSortedByDifference,
     /// `list.new()`.
     ListNew,
+    /// An empty `Map` or `Set`: all words zero, so code generation needs no call.
+    MapNew,
     /// `bytes.values(bytes)`.
     BytesValues,
     /// `string.eq(a, b)`.
@@ -1121,6 +1123,7 @@ impl ExternRole {
             "list_sorted_by_difference",
         ),
         (ExternRole::ListNew, "list_new"),
+        (ExternRole::MapNew, "map_new"),
         (ExternRole::BytesValues, "bytes_values"),
         (ExternRole::StringEq, "string_eq"),
         (ExternRole::CleanupDiscard, "cleanup_discard"),

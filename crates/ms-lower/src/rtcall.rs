@@ -137,6 +137,7 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_int_to_string" => R::IntToString,
         "msrt_list_sorted" => R::ListSorted,
         "msrt_list_new" => R::ListNew,
+        "msrt_map_new" => R::MapNew,
         "msrt_bytes_values" => R::BytesValues,
         "msrt_string_eq" => R::StringEq,
         "msrt_cleanup_discard" => R::CleanupDiscard,
