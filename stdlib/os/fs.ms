@@ -789,8 +789,9 @@ export fn write_atomic(path: String, data: String) Unit!:
 
 // Replaces the file at `path` with raw bytes, with the same all-or-nothing rules as `write_atomic`.
 export fn write_atomic_bytes(path: String, data: Bytes) Unit!:
+    let existing = stat(path, true)
     var mode = 420
-    if let existing = stat(path, true): mode = existing.permissions
+    if let info = existing: mode = info.permissions
 
     let stamp = now()
     var attempt = 0
@@ -801,17 +802,28 @@ export fn write_atomic_bytes(path: String, data: Bytes) Unit!:
 
         match open(temporary, "wx", mode):
             ok(file):
-                return finish_atomic(file, temporary, path, data)
+                return finish_atomic(
+                    file, temporary, path, data, if existing.is_ok(): mode else: none
+                )
             error(cause):
                 if cause.kind != "EEXIST": return error(cause)
 
     return error(Error("filesystem: already exists", kind: "EEXIST"))
 
 // Writes, syncs, closes and renames the temporary file, removing it when any step fails.
-fn finish_atomic(file: FileHandle, temporary: String, path: String, data: Bytes) Unit!:
+fn finish_atomic(
+    file: FileHandle,
+    temporary: String,
+    path: String,
+    data: Bytes,
+    mode: Int?
+) Unit!:
     var out = file
-    let written = out.write_bytes(data)
-    let synced = if written.is_error(): written else: out.sync()
+    var prepared = out.write_bytes(data)
+    if prepared.is_ok():
+        if let permissions = mode: prepared = out.chmod(permissions)
+
+    let synced = if prepared.is_error(): prepared else: out.sync()
     let _closed = out.close()
 
     if synced.is_error():
