@@ -50,19 +50,27 @@ fn dump(rows: List[String], out: WriteStream[String]) Unit!:
 
 Each step in `@std/io/streams.ms` takes its input first and by move, so a pipeline is the `|` operator and a reusable pipeline is an ordinary function:
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-fn log_entries(input: ReadStream[Bytes]) ReadStream[LogEntry!]:
-    return input
-        | lines
-        | filter(fn line: line.contains("ERROR"))
-        | map(parse_entry)
+import Bytes from "@std/bytes.ms"
+import ReadStream from "@std/io/io.ms"
+import from_bytes, lines, map, collect from "@std/io/streams.ms"
+import expect_equal from "@std/test/test.ms"
+
+fn line_lengths(input: ReadStream[Bytes]) ReadStream[Int]:
+    return input | lines | map(fn line: line.length())
+
+test "measure lines":
+    let input = from_bytes("first\nok\n".to_bytes())
+    let lengths = try collect(line_lengths(input), max_items: 10)
+    try expect_equal(lengths, [5, 2])
 ```
 
 | Step | Result |
 | --- | --- |
 | `from_list(items)`, `from_bytes(data)` | A stream over a list, or over bytes in chunks. |
 | `lines(input)` | UTF-8 lines, cut only at line breaks. |
-| `map(input, f)`, `filter(input, keep)` | One item changed or dropped at a time. |
+| `map(input, f)` | Transform each item. |
 | `collect(input, max_items)`, `read_all(input, max_bytes)` | Consume a stream into a list or `Bytes`. |
 | `copy(input, output)` | Move everything across and return the count. |
 
