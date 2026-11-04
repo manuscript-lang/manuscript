@@ -50,7 +50,7 @@ pub const TOKEN_PEER: u32 = 2;
 #[cfg(unix)]
 pub const STACK_SLOT: usize = ms_rt_abi::symbols::STACK_SLOT as usize;
 #[cfg(unix)]
-const DEFAULT_STACK: usize = STACK_SLOT - (64 << 10);
+const DEFAULT_STACK: usize = STACK_SLOT - GUARD;
 #[cfg(not(unix))]
 const DEFAULT_STACK: usize = 256 << 20;
 /// Address space reserved for an isolate's main task (committed lazily). Unix slots are already
@@ -64,9 +64,9 @@ const ROOT_STACK: usize = 1 << 30;
 const MAX_STACK: usize = DEFAULT_STACK;
 #[cfg(not(unix))]
 const MAX_STACK: usize = usize::MAX;
-const MIN_STACK: usize = 128 << 10;
+const MIN_STACK: usize = 16 << 10;
 #[cfg(unix)]
-const GUARD: usize = 64 << 10;
+const GUARD: usize = 8 << 10;
 #[cfg(unix)]
 const HDR_SIZE: usize = 16;
 #[cfg(unix)]
@@ -74,7 +74,7 @@ const _: () = assert!(size_of::<fault::Hdr>() == HDR_SIZE);
 const STACK_POOL: usize = 1 << 16;
 /// Most slots one address-space reservation holds (stack creation reserves in batches).
 #[cfg(unix)]
-const CARVE_MAX: usize = 16;
+const CARVE_MAX: usize = 1024;
 /// Address space reserved for a task a group starts (committed lazily).
 const TASK_GROUP_STACK: usize = 16 << 20;
 const NO_DEADLINE: i64 = i64::MAX;
@@ -388,13 +388,8 @@ mod stack {
         }
         // SAFETY: guards the gap below the stack inside the slot.
         unsafe {
-            let len = len.min(DEFAULT_STACK);
-            if !sys::guard(base, STACK_SLOT - len + GUARD) {
-                // No mapping left for the guard: running unguarded would let an overflow corrupt
-                // the neighboring stack, so give the slot back and report failure.
-                sys::unmap(base, STACK_SLOT);
-                return core::ptr::null_mut();
-            }
+            // Prototype: a kernel guard region (no mapping split) where the kernel offers one.
+            sys::guard_region(base, 4096);
         }
         base
     }

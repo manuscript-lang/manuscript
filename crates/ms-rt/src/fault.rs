@@ -184,7 +184,7 @@ pub static STACK_HI: Process<usize> = Process::new(0);
 
 /// Stack kept free below the limit for fault reporting and cleanups.
 const STACK_RESERVE_MAX: usize = 1 << 20;
-const STACK_RESERVE_MIN: usize = 64 << 10;
+const STACK_RESERVE_MIN: usize = 32 << 10;
 /// Stack left to cleanups that run after a depth fault.
 const STACK_CLEANUP_RESERVE: usize = 16 << 10;
 

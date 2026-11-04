@@ -726,7 +726,7 @@ pub mod symbols {
     /// `msrt_fault_depth` when below.
     pub const ISOLATE_HDR: &str = "msrt_isolate_hdr";
     /// Size and alignment of a task stack slot (targets with slot-aligned stacks).
-    pub const STACK_SLOT: i64 = 256 << 20;
+    pub const STACK_SLOT: i64 = 128 << 10;
     /// `u8` at this offset of the block: non-zero when a stop request (SIGINT, SIGTERM) is
     /// pending and not shielded.
     pub const ISOLATE_HDR_CANCEL: i64 = 8;

@@ -335,6 +335,24 @@ pub unsafe fn guard(p: *mut u8, len: usize) -> bool {
     unsafe { mprotect(p.cast(), len, 0) == 0 }
 }
 
+/// Installs a guard region (Linux 6.13+ `MADV_GUARD_INSTALL`) on `len` bytes at `p` without
+/// splitting the mapping; a kernel without it leaves the range plain.
+///
+/// # Safety
+/// The range lies inside a live mapping that nothing is using.
+pub unsafe fn guard_region(p: *mut u8, len: usize) -> bool {
+    unsafe extern "C" {
+        fn madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
+    }
+    #[cfg(target_os = "linux")]
+    const MADV_GUARD_INSTALL: c_int = 102;
+    #[cfg(not(target_os = "linux"))]
+    return false;
+    #[cfg(target_os = "linux")]
+    // SAFETY: forwarded; the caller guarantees the range.
+    unsafe { madvise(p.cast(), len, MADV_GUARD_INSTALL) == 0 }
+}
+
 /// Returns a [`map_anon`] mapping to the system.
 ///
 /// # Safety
