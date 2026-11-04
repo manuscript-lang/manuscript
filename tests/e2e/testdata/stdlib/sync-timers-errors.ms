@@ -3,10 +3,10 @@ import wrap_error, join_errors from "@std/core.ms"
 import sleep, deadline_after, ticker, monotonic from "@std/os/time.ms"
 
 test "wrap_error adds context and keeps the kind":
-    let gone = Error("gone", kind: ErrorCategory.NotFound, details: {"path": "a.txt"})
+    let gone = Error("gone", kind: "ENOENT", details: {"path": "a.txt"})
     let outer = wrap_error("load", wrap_error("read", gone))
     try expect_equal(outer.message, "load: read: gone")
-    try expect_equal(outer.kind, ErrorCategory.NotFound)
+    try expect_equal(outer.kind, "ENOENT")
     try expect_equal(outer.details["path"], "a.txt")
     try expect_equal(outer.details["cause"], "read: gone")
 

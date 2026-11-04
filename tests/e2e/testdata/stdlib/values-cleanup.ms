@@ -52,18 +52,16 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
     try expect_false(not nested.is_some() or not nested.get().is_none())
 
 test "Result propagation and Error views preserve concrete causes":
-    let failed: Int! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
-    )
+    let failed: Int! = error(Error("JSON: invalid data", kind: "EBADMSG"))
     try expect_equal(propagate(failed), failed)
 
     let success: Int! = ok(3)
     let expected: Int! = ok(4)
     try expect_equal(propagate(success), expected)
 
-    let view: Error = Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
+    let view: Error = Error("JSON: invalid data", kind: "EBADMSG")
     try expect_not_equal(view.message.byte_length(), 0)
-    try expect_equal(view.kind, ErrorCategory.InvalidData)
+    try expect_equal(view.kind, "EBADMSG")
 
 test "custom equality and hashing define map key identity":
     let first = Key(1, "first")

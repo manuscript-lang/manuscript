@@ -5,7 +5,7 @@ import canonicalize, remove, rename from "@std/os/fs.ms"
 
 // The failure names the path after the status words, so only its kind is compared.
 fn refused(outcome: Unit!) Bool:
-    return outcome.is_error() and outcome.err().kind == ErrorCategory.InvalidInput
+    return outcome.is_error() and outcome.err().kind == "EINVAL"
 
 export fn main() Int:
     if not refused(remove(path: "", recursive: true)): return 1

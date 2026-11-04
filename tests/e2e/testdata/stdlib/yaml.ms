@@ -171,9 +171,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         )
     )
 
-    let limited: YamlValue! = error(
-        Error("YAML limit exceeded", kind: ErrorCategory.LimitExceeded)
-    )
+    let limited: YamlValue! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
     try expect_false(
         (
             parse(
@@ -201,7 +199,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
             ok(_): return fail("malformed multiline scalar accepted: {malformed}")
             error(cause): cause
 
-        cause.kind | try expect_equal(ErrorCategory.InvalidData)
+        cause.kind | try expect_equal("EBADMSG")
         (
             (
                 cause.details["line"].parse_int().get() < 1
@@ -214,7 +212,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         error(cause): cause
         ok(_): return fail("indented mapping accepted as plain continuation")
 
-    cause.kind | try expect_equal(ErrorCategory.InvalidData)
+    cause.kind | try expect_equal("EBADMSG")
     (
         (
             cause.details["line"] != "3"
@@ -382,7 +380,7 @@ test "YAML plain scalars cannot start with an indicator":
 
     let _ = try expect_ok(parse(text: "a: -1\nb: -a\nc: ?x\nd: [-1, ?y, :z]\n"))
     let explicit = parse(text: "\{? a : 1\}\n") | try expect_error
-    explicit.kind | try expect_equal(ErrorCategory.Unsupported)
+    explicit.kind | try expect_equal("ENOTSUP")
     explicit.details["line"] | try expect_equal("1")
     explicit.details["reason"] | try expect_equal(
         "explicit mapping keys are unsupported"
@@ -399,7 +397,7 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
             ok(_): return fail("invalid YAML accepted: {text}")
             error(cause): cause
 
-        cause.kind | try expect_equal(ErrorCategory.InvalidData)
+        cause.kind | try expect_equal("EBADMSG")
         (
             (
                 cause.details["line"].parse_int().get() < 1
@@ -416,15 +414,11 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
             ok(_): return fail("unsupported YAML accepted")
             error(cause): cause
 
-        cause.kind | try expect_equal(ErrorCategory.Unsupported)
+        cause.kind | try expect_equal("ENOTSUP")
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
-    let limited: YamlValue! = error(
-        Error("YAML limit exceeded", kind: ErrorCategory.LimitExceeded)
-    )
-    let invalid: YamlValue! = error(
-        Error("invalid YAML input", kind: ErrorCategory.InvalidInput)
-    )
+    let limited: YamlValue! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
+    let invalid: YamlValue! = error(Error("invalid YAML input", kind: "EINVAL"))
     try expect_false(
         (
             parse(
@@ -513,9 +507,7 @@ test "YAML merge and block header errors name their own line":
     )
 
 test "YAML limits fields default to none":
-    let limited: YamlValue! = error(
-        Error("YAML limit exceeded", kind: ErrorCategory.LimitExceeded)
-    )
+    let limited: YamlValue! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
     parse(text: "a: 1", limits: YamlLimits(max_bytes: 2)) | try expect_equal(limited)
     parse(text: "a: 1", limits: YamlLimits()) | try expect_equal(parse(text: "a: 1"))
 
@@ -529,12 +521,8 @@ test "YAML stringify round trips scalars sequences and mappings":
     )
 
 test "YAML stringify validates numbers and honors max_bytes":
-    let invalid: String! = error(
-        Error("invalid YAML input", kind: ErrorCategory.InvalidInput)
-    )
-    let limited: String! = error(
-        Error("YAML limit exceeded", kind: ErrorCategory.LimitExceeded)
-    )
+    let invalid: String! = error(Error("invalid YAML input", kind: "EINVAL"))
+    let limited: String! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
     stringify(value: YamlValue.NumberValue("not a number")) | try expect_equal(invalid)
 
     let root = (parse(text: "a: 1") | try expect_ok)

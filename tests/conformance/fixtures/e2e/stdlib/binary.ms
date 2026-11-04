@@ -64,10 +64,10 @@ test "append_bytes appends many and append one":
 
 test "reads past the end or before the start are out of range":
     let range_error8: UInt8! = error(
-        Error("binary: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("binary: value out of range", kind: "ERANGE")
     )
     let range_error32: UInt32! = error(
-        Error("binary: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("binary: value out of range", kind: "ERANGE")
     )
     try expect_equal(Bytes([0]).uint8(-1), range_error8)
     try expect_equal(Bytes([0]).uint8(1), range_error8)

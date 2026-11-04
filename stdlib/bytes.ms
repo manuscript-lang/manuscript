@@ -34,7 +34,7 @@ impl Bytes:
 
     /*
     Selects [start, end) in bytes; negative bounds are relative to the end.
-    Bounds outside 0 <= start <= end <= length() return an `Error` of kind `OutOfRange`.
+    Bounds outside 0 <= start <= end <= length() return an `Error` of kind `ERANGE`.
     The result is a new copy; `view` borrows instead.
     */
     fn slice(start: Int, end: Int) Bytes!: ...
@@ -152,7 +152,7 @@ fn unsigned_word(raw: Int) UInt64:
 // Reads two unsigned halves so the top bit never passes through a signed conversion.
 fn read_uint64(data: Bytes, at: Int, little: Bool) UInt64!:
     if at < 0 or at > data.length() - 8:
-        return error(Error("binary: out of range", kind: OutOfRange))
+        return error(Error("binary: out of range", kind: "ERANGE"))
 
     let first = try msrt_bytes_read_word(data, at, 4, little)
     let second = try msrt_bytes_read_word(data, at + 4, 4, little)
@@ -196,7 +196,7 @@ interface BytesCodecs:
     fn float64_be(at: Int) Float!
 
 impl BytesCodecs for Bytes:
-    // Reads one signed byte at `at`; a missing byte returns an `Error` of kind `OutOfRange`. Offsets are absolute, so a negative `at` is out of range.
+    // Reads one signed byte at `at`; a missing byte returns an `Error` of kind `ERANGE`. Offsets are absolute, so a negative `at` is out of range.
     fn int8(at: Int) Int8!:
         let raw = try msrt_bytes_read_word(self, at, 1, true)
         return ok(signed(raw, 128).to_int8().get(0))
@@ -206,63 +206,63 @@ impl BytesCodecs for Bytes:
         let raw = try msrt_bytes_read_word(self, at, 1, true)
         return ok(raw.to_uint8().get(0))
 
-    // Reads a signed 16-bit little-endian integer from two bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads a signed 16-bit little-endian integer from two bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn int16_le(at: Int) Int16!:
         let raw = try msrt_bytes_read_word(self, at, 2, true)
         return ok(signed(raw, 32768).to_int16().get(0))
 
-    // Reads an unsigned 16-bit little-endian integer from two bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads an unsigned 16-bit little-endian integer from two bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn uint16_le(at: Int) UInt16!:
         let raw = try msrt_bytes_read_word(self, at, 2, true)
         return ok(raw.to_uint16().get(0))
 
-    // Reads a signed 16-bit big-endian integer from two bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads a signed 16-bit big-endian integer from two bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn int16_be(at: Int) Int16!:
         let raw = try msrt_bytes_read_word(self, at, 2, false)
         return ok(signed(raw, 32768).to_int16().get(0))
 
-    // Reads an unsigned 16-bit big-endian integer from two bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads an unsigned 16-bit big-endian integer from two bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn uint16_be(at: Int) UInt16!:
         let raw = try msrt_bytes_read_word(self, at, 2, false)
         return ok(raw.to_uint16().get(0))
 
-    // Reads a signed 32-bit little-endian integer from four bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads a signed 32-bit little-endian integer from four bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn int32_le(at: Int) Int32!:
         let raw = try msrt_bytes_read_word(self, at, 4, true)
         return ok(signed(raw, 2147483648).to_int32().get(0))
 
-    // Reads an unsigned 32-bit little-endian integer from four bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads an unsigned 32-bit little-endian integer from four bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn uint32_le(at: Int) UInt32!:
         let raw = try msrt_bytes_read_word(self, at, 4, true)
         return ok(raw.to_uint32().get(0))
 
-    // Reads a signed 32-bit big-endian integer from four bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads a signed 32-bit big-endian integer from four bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn int32_be(at: Int) Int32!:
         let raw = try msrt_bytes_read_word(self, at, 4, false)
         return ok(signed(raw, 2147483648).to_int32().get(0))
 
-    // Reads an unsigned 32-bit big-endian integer from four bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads an unsigned 32-bit big-endian integer from four bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn uint32_be(at: Int) UInt32!:
         let raw = try msrt_bytes_read_word(self, at, 4, false)
         return ok(raw.to_uint32().get(0))
 
-    // Reads a signed 64-bit little-endian integer from eight bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads a signed 64-bit little-endian integer from eight bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn int64_le(at: Int) Int!:
         let raw = try msrt_bytes_read_word(self, at, 8, true)
         return ok(raw)
 
-    // Reads a signed 64-bit big-endian integer from eight bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads a signed 64-bit big-endian integer from eight bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn int64_be(at: Int) Int!:
         let raw = try msrt_bytes_read_word(self, at, 8, false)
         return ok(raw)
 
     // Reads an unsigned 64-bit little-endian integer from eight bytes at `at`, including the full UInt64 range.
-    // Negative offsets or missing bytes return an `Error` of kind `OutOfRange`.
+    // Negative offsets or missing bytes return an `Error` of kind `ERANGE`.
     fn uint64_le(at: Int) UInt64!:
         return read_uint64(self, at, true)
 
     // Reads an unsigned 64-bit big-endian integer from eight bytes at `at`, including the full UInt64 range.
-    // Negative offsets or missing bytes return an `Error` of kind `OutOfRange`.
+    // Negative offsets or missing bytes return an `Error` of kind `ERANGE`.
     fn uint64_be(at: Int) UInt64!:
         return read_uint64(self, at, false)
 
@@ -273,22 +273,18 @@ impl BytesCodecs for Bytes:
     */
     fn uvarint(at: Int) VarintRead[UInt64]!:
         if at < 0 or at > self.length():
-            return error(Error("binary: invalid varint offset", kind: OutOfRange))
+            return error(Error("binary: invalid varint offset", kind: "ERANGE"))
 
         let remaining = self.length() - at
         var word = 0
 
         for i in 0..10:
             if i >= remaining:
-                return error(Error("binary: incomplete varint", kind: InvalidData))
+                return error(Error("binary: incomplete varint", kind: "EBADMSG"))
 
             let byte = self.get(at + i).to_int()
             if i == 9 and byte > 1:
-                return error(
-                    Error(
-                        "binary: varint overflows 64 bits", kind: OutOfRange
-                    )
-                )
+                return error(Error("binary: varint overflows 64 bits", kind: "ERANGE"))
 
             word = msrt_bits_bit_or(
                 word,
@@ -299,7 +295,7 @@ impl BytesCodecs for Bytes:
             if byte < 128:
                 return ok(VarintRead(unsigned_word(word), at + i + 1))
 
-        return error(Error("binary: varint overflows 64 bits", kind: OutOfRange))
+        return error(Error("binary: varint overflows 64 bits", kind: "ERANGE"))
 
     // Reads a signed 64-bit zigzag integer (0, -1, 1, -2 become 0, 1, 2, 3).
     // Shares uvarint's offsets, ten-byte bound, nonminimal acceptance, and error cases.
@@ -311,22 +307,22 @@ impl BytesCodecs for Bytes:
 
         return ok(VarintRead(half, raw.next_offset))
 
-    // Reads an IEEE 754 binary32 little-endian float from four bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads an IEEE 754 binary32 little-endian float from four bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn float32_le(at: Int) Float32!:
         let raw = try msrt_bytes_read_word(self, at, 4, true)
         return ok(msrt_float32_from_bits(raw).to_float32().get(0.0))
 
-    // Reads an IEEE 754 binary32 big-endian float from four bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads an IEEE 754 binary32 big-endian float from four bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn float32_be(at: Int) Float32!:
         let raw = try msrt_bytes_read_word(self, at, 4, false)
         return ok(msrt_float32_from_bits(raw).to_float32().get(0.0))
 
-    // Reads an IEEE 754 binary64 little-endian float from eight bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads an IEEE 754 binary64 little-endian float from eight bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn float64_le(at: Int) Float!:
         let raw = try msrt_bytes_read_word(self, at, 8, true)
         return ok(msrt_float_from_bits(raw))
 
-    // Reads an IEEE 754 binary64 big-endian float from eight bytes at `at`; missing bytes return an `Error` of kind `OutOfRange`.
+    // Reads an IEEE 754 binary64 big-endian float from eight bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
     fn float64_be(at: Int) Float!:
         let raw = try msrt_bytes_read_word(self, at, 8, false)
         return ok(msrt_float_from_bits(raw))

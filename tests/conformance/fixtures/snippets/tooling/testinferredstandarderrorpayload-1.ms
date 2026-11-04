@@ -5,5 +5,5 @@ import stat from "@std/os/fs.ms"
 
 fn classify(path: String) String:
     match stat(path: path, follow_links: true):
-        error(NotFound): return "missing"
+        error(_): return "missing"
         ok(_): return "exists"

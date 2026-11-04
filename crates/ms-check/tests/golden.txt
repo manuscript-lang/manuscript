@@ -2020,7 +2020,7 @@ resolution	5	23	257	unknown binding ListBuilder; declare it with 'let ListBuilde
 resolution	6	43	327	unknown binding TextError; did you mean 'text_error'?type Other:
     case OutOfRange
 fn get() Other: OutOfRange
-resolution	3	17	48	ambiguous alternative case OutOfRange; qualify it with its type, e.g. Type.OutOfRangetype ListEntry[T]:
+type ListEntry[T]:
     payload: T
 fn get() List[ListEntry[Int]]: [1].entries()
 resolution	1	1	0	declaration ListEntry reuses a prelude name; rename it, because ListEntry always refers to the standard declarationtype CollectionError:

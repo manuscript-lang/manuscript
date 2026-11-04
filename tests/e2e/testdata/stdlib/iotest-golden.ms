@@ -29,7 +29,7 @@ test "one_byte returns single bytes":
 
 test "fail_after delivers a prefix and then fails":
     var input = fail_after(
-        source(), 4, Error("I/O: service unavailable", kind: ErrorCategory.Unavailable)
+        source(), 4, Error("I/O: service unavailable", kind: "EAGAIN")
     )
     let all = read_all(input, none)
     try expect_true(all.is_error())
@@ -40,7 +40,7 @@ test "fail_writer_after writes the prefix that fits and then fails":
     let file = try expect_ok(open(path, "w", 420))
     var out = fail_writer_after(
         try expect_ok(file.writer()), 3,
-        Error("I/O: service unavailable", kind: ErrorCategory.Unavailable)
+        Error("I/O: service unavailable", kind: "EAGAIN")
     )
     try expect_ok(out.write("ab".to_bytes()))
     try expect_true(out.write("cdef".to_bytes()).is_error())

@@ -30,20 +30,14 @@ test "library results compose with failure values without a reporting implementa
     try expect_equal(number, 300)
     try expect_equal(
         (try expect_error(read_number(Bytes([128])))),
-        InputFailure.Binary(
-            Error(
-                "binary: incomplete varint", kind: ErrorCategory.InvalidData
-            )
-        )
+        InputFailure.Binary(Error("binary: incomplete varint", kind: "EBADMSG"))
     )
 
     let duration = try expect_ok(read_duration("1.5us"))
     try expect_equal(duration.to_nanoseconds(), 1500)
     try expect_equal(
         (try expect_error(read_duration("invalid"))),
-        InputFailure.Time(
-            Error("time: invalid data", kind: ErrorCategory.InvalidData)
-        )
+        InputFailure.Time(Error("time: invalid data", kind: "EBADMSG"))
     )
 
 test "absence adapters and sorted lookup retain an explicit failure type":

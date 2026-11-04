@@ -1126,7 +1126,7 @@ impl FnLower<'_> {
             .split_first()
             .ok_or_else(|| Error::new("no error kind for a runtime status"))?;
         let build = |s: &mut Self| -> Result<Value, Error> {
-            let text = if kind == "Failed" {
+            let text = if kind == "EIO" {
                 match s.err_slot {
                     Some(slot) => {
                         s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
@@ -1187,7 +1187,7 @@ impl FnLower<'_> {
         Ok(r.v)
     }
 
-    /// An `Error` record: the owned `message`, the `ErrorCategory` case named `kind`, and the
+    /// An `Error` record: the owned `message`, the error code `kind` (such as `ENOENT`), and the
     /// details `{"site": site}` when a failed test expectation passes its source `site`.
     pub(crate) fn error_record(
         &mut self,
@@ -1197,16 +1197,12 @@ impl FnLower<'_> {
         site: Option<Value>,
     ) -> Result<Value, Error> {
         let fields = self.b.m.records[er.index()].fields.clone();
-        let kind_ty = fields[1].1;
-        let TyKind::Alt(ka) = self.b.m.types.kind(kind_ty).clone() else {
-            return Err(Error::new("Error.kind is an ErrorCategory"));
-        };
-        let idx = self.b.m.alts[ka.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == kind)
-            .ok_or_else(|| Error::new(format!("ErrorCategory lacks {kind}")))?;
-        let kind_value = self.b.alt_new(ka, idx as u32, &[]);
+        let code = self.b.str_lit(kind);
+        let code = self.owned(Val {
+            v: code,
+            own: false,
+        });
+        let kind_value = self.b.opt_some(code);
         let mut details = self.map_new(fields[2].1)?;
         if let Some(site) = site {
             let key = self.b.str_lit("site");
@@ -1317,7 +1313,7 @@ impl FnLower<'_> {
     }
 }
 
-/// The `ErrorCategory` case and message words of each runtime status of `sym`'s module, as
+/// The error code and message words of each runtime status of `sym`'s module, as
 /// `(status, kind, words)`. Every runtime crate uses the shared `ms-rt-abi` `STATUS_*` numbers;
 /// only the `NotFound` words name the module.
 pub(crate) fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> {
@@ -1327,23 +1323,23 @@ pub(crate) fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> 
         "not found"
     };
     vec![
-        (1, "InvalidInput", "invalid input"),
-        (2, "OutOfRange", "value out of range"),
-        (3, "LimitExceeded", "limit exceeded"),
-        (4, "InvalidData", "invalid data"),
-        (5, "NotFound", not_found),
-        (6, "AlreadyExists", "already exists"),
-        (7, "Other", "directory not empty"),
-        (8, "PermissionDenied", "permission denied"),
-        (9, "Unsupported", "operation not supported"),
-        (10, "Closed", "resource is closed"),
-        (11, "Failed", ""),
-        (12, "Unavailable", "service unavailable"),
-        (13, "Timeout", "operation timed out"),
-        (14, "LimitExceeded", "output limit exceeded"),
-        (15, "Unsupported", "not a terminal"),
-        (17, "Unavailable", "terminal is busy"),
-        (18, "Other", "authentication failed"),
+        (1, "EINVAL", "invalid input"),
+        (2, "ERANGE", "value out of range"),
+        (3, "EOVERFLOW", "limit exceeded"),
+        (4, "EBADMSG", "invalid data"),
+        (5, "ENOENT", not_found),
+        (6, "EEXIST", "already exists"),
+        (7, "ENOTEMPTY", "directory not empty"),
+        (8, "EACCES", "permission denied"),
+        (9, "ENOTSUP", "operation not supported"),
+        (10, "EBADF", "resource is closed"),
+        (11, "EIO", ""),
+        (12, "EAGAIN", "service unavailable"),
+        (13, "ETIMEDOUT", "operation timed out"),
+        (14, "EOVERFLOW", "output limit exceeded"),
+        (15, "ENOTTY", "not a terminal"),
+        (17, "EBUSY", "terminal is busy"),
+        (18, "EAUTH", "authentication failed"),
     ]
 }
 

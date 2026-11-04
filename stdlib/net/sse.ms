@@ -53,9 +53,9 @@ type Decoder:
 Decodes a Server-Sent Events byte stream into events, in order.
 
 Chunks may split any line, line ending or UTF-8 scalar. A stream with no partial line and no unfinished
-event ends cleanly; otherwise the final read fails with `InvalidData` and the unfinished event is never
+event ends cleanly; otherwise the final read fails with `EBADMSG` and the unfinished event is never
 dispatched. A malformed line or an exceeded limit fails the read, and the failure is final. Supplied limits
-must be positive, otherwise the first read fails with `InvalidInput`. Closing the result closes `input`.
+must be positive, otherwise the first read fails with `EINVAL`. Closing the result closes `input`.
 */
 export fn sse_events(
     input: ReadStream[Bytes],
@@ -63,7 +63,7 @@ export fn sse_events(
 ) ReadStream[SseEvent]:
     var failure: Error? = none
     if not positive(limits.max_line_bytes) or not positive(limits.max_event_bytes):
-        failure = Error("SSE invalid input", kind: InvalidInput)
+        failure = Error("SSE invalid input", kind: "EINVAL")
     return through[Bytes, SseEvent](
         input,
         Decoder(
@@ -90,7 +90,7 @@ impl Transform[Bytes, SseEvent] for Decoder:
     var fn step(value: Bytes, var out: WriteStream[SseEvent]) Unit!:
         var events = List[SseEvent]()
         if let failure = self.failure: return error(failure.clone())
-        if self.closed: return error(Error("SSE invalid input", kind: InvalidInput))
+        if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
 
         let chunk = value
         let total = chunk.length()
@@ -135,13 +135,13 @@ impl Transform[Bytes, SseEvent] for Decoder:
 
     var fn finish(var out: WriteStream[SseEvent]) Unit!:
         if let failure = self.failure: return error(failure.clone())
-        if self.closed: return error(Error("SSE invalid input", kind: InvalidInput))
+        if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
 
         self.closed = true
 
         if self.line_bytes > 0 or self.open_block:
-            self.failure = Error("SSE stream ended inside an event", kind: InvalidData)
-            return error(Error("SSE stream ended inside an event", kind: InvalidData))
+            self.failure = Error("SSE stream ended inside an event", kind: "EBADMSG")
+            return error(Error("SSE stream ended inside an event", kind: "EBADMSG"))
 
         return ok(unit)
 
@@ -150,7 +150,7 @@ impl Decoder:
     var fn hold(segment: Bytes) Unit!:
         self.line_bytes += segment.length()
         if exceeds(self.line_bytes, self.limits.max_line_bytes): return error(
-            Error("SSE limit exceeded", kind: LimitExceeded)
+            Error("SSE limit exceeded", kind: "EOVERFLOW")
         )
 
         self.line.append_bytes(segment)
@@ -195,7 +195,7 @@ fn complete(
 ) Unit!:
     if decoder.line_bytes == 0:
         if exceeds(end - start, decoder.limits.max_line_bytes): return error(
-            Error("SSE limit exceeded", kind: LimitExceeded)
+            Error("SSE limit exceeded", kind: "EOVERFLOW")
         )
 
         return end_line(var decoder, chunk, start, end, var events)
@@ -221,12 +221,12 @@ fn end_line(
 
     let line = try bytes.decode_utf8_range(
         from, end
-    ).ok_or(Error("SSE line is not valid UTF-8", kind: InvalidData))
+    ).ok_or(Error("SSE line is not valid UTF-8", kind: "EBADMSG"))
     if line.starts_with(":"): return ok(unit)
 
     decoder.event_bytes += end - from
     if exceeds(decoder.event_bytes, decoder.limits.max_event_bytes): return error(
-        Error("SSE limit exceeded", kind: LimitExceeded)
+        Error("SSE limit exceeded", kind: "EOVERFLOW")
     )
 
     decoder.open_block = true

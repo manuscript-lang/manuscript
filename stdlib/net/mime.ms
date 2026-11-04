@@ -106,7 +106,7 @@ export fn parse_media_type(text: String) MediaType!:
         or parts[1].is_empty()
         or essence.contains(" ")
     ):
-        return error(Error("MIME: invalid media type", kind: ErrorCategory.InvalidData))
+        return error(Error("MIME: invalid media type", kind: "EBADMSG"))
 
     var params = Map[String, String]()
 
@@ -116,24 +116,18 @@ export fn parse_media_type(text: String) MediaType!:
 
         let at = piece.index_of("=")
         if not at.is_some(): return error(
-            Error(
-                "MIME: invalid media type", kind: ErrorCategory.InvalidData
-            )
+            Error("MIME: invalid media type", kind: "EBADMSG")
         )
 
         let name = piece.take(at.get(0)).trim().lower()
         let raw = piece.drop(at.get(0) + 1).trim()
         if name.is_empty(): return error(
-            Error(
-                "MIME: invalid media type", kind: ErrorCategory.InvalidData
-            )
+            Error("MIME: invalid media type", kind: "EBADMSG")
         )
 
         let value = unquote(raw)
         if not value.is_some(): return error(
-            Error(
-                "MIME: invalid media type", kind: ErrorCategory.InvalidData
-            )
+            Error("MIME: invalid media type", kind: "EBADMSG")
         )
 
         params.add(name, value.get(""))
@@ -213,9 +207,7 @@ export fn parse_headers(text: String) Headers!:
 
         if line.starts_with(" ") or line.starts_with("\t"):
             if fields.is_empty(): return error(
-                Error(
-                    "MIME: invalid header", kind: ErrorCategory.InvalidData
-                )
+                Error("MIME: invalid header", kind: "EBADMSG")
             )
 
             let last = fields.length() - 1
@@ -227,7 +219,7 @@ export fn parse_headers(text: String) Headers!:
 
         let at = line.index_of(":")
         if not at.is_some() or at.get(0) == 0: return error(
-            Error("MIME: invalid header", kind: ErrorCategory.InvalidData)
+            Error("MIME: invalid header", kind: "EBADMSG")
         )
 
         fields.append(
@@ -253,7 +245,7 @@ export fn multipart_boundary(content_type: String) String?:
 fn make_part(section: Bytes) Part!:
     let crlf = "\r\n".to_bytes()
     if not section.starts_with(crlf): return error(
-        Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData)
+        Error("MIME: invalid multipart body", kind: "EBADMSG")
     )
 
     let inner = section.slice(2, section.length()).get("".to_bytes())
@@ -261,7 +253,7 @@ fn make_part(section: Bytes) Part!:
         "\r\n\r\n".to_bytes()
     ).get(-1)
     if blank < 0 and not inner.starts_with(crlf): return error(
-        Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData)
+        Error("MIME: invalid multipart body", kind: "EBADMSG")
     )
 
     let skip = if blank == 0: 2 else: 4
@@ -289,7 +281,7 @@ A body without a closing delimiter is `InvalidMultipart`.
 */
 export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
     if boundary.is_empty(): return error(
-        Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData)
+        Error("MIME: invalid multipart body", kind: "EBADMSG")
     )
 
     let crlf = "\r\n".to_bytes()
@@ -303,7 +295,7 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
         let part = try make_part(section)
         parts.append(part)
 
-    return error(Error("MIME: invalid multipart body", kind: ErrorCategory.InvalidData))
+    return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
 
 // Cuts a byte stream at its delimiter lines and builds each part with `make_part`, buffering one part at a time.
 // `in_part` is false until the first delimiter has passed; `done` after the closing delimiter.
@@ -337,12 +329,7 @@ impl Transform[Bytes, Part] for MultipartParts:
             if at.is_none():
                 if let limit = self.max_part_bytes:
                     if self.buffer.length() > limit + self.delimiter.length():
-                        return error(
-                            Error(
-                                "MIME: limit exceeded",
-                                kind: ErrorCategory.LimitExceeded
-                            )
-                        )
+                        return error(Error("MIME: limit exceeded", kind: "EOVERFLOW"))
                 break
 
             let end = at.get()
@@ -351,7 +338,7 @@ impl Transform[Bytes, Part] for MultipartParts:
                 if let limit = self.max_part_bytes:
                     if end > limit: return error(
                         Error(
-                            "MIME: limit exceeded", kind: ErrorCategory.LimitExceeded
+                            "MIME: limit exceeded", kind: "EOVERFLOW"
                         )
                     )
                 try out.write(try make_part(try self.buffer.slice(0, end)))
@@ -366,17 +353,13 @@ impl Transform[Bytes, Part] for MultipartParts:
     var fn finish(var out: WriteStream[Part]) Unit!:
         if self.done: return ok(unit)
 
-        return error(
-            Error(
-                "MIME: invalid multipart body", kind: ErrorCategory.InvalidData
-            )
-        )
+        return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
 
 /*
 Reads the parts of a multipart body from a byte stream, one at a time, for uploads too big to hold in memory.
 Parts are built as `parse_multipart` builds them, and only the part being read is buffered. `max_part_bytes`
-bounds one part's headers and body and fails the read with `LimitExceeded`. A body that ends without its closing
-delimiter fails with `InvalidData`. Closing the result closes `body`.
+bounds one part's headers and body and fails the read with `EOVERFLOW`. A body that ends without its closing
+delimiter fails with `EBADMSG`. Closing the result closes `body`.
 */
 export fn multipart_parts(
     body: ReadStream[Bytes],

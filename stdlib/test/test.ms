@@ -27,7 +27,7 @@ export fn caller_site() String:
 fn failure(message: String, site: String) Error:
     var details = Map[String, String]()
     details.add("site", site)
-    return Error(message, kind: ErrorCategory.Failed, details: details)
+    return Error(message, kind: "EIO", details: details)
 
 // The debug text of a value, with strings quoted and records and collections spelled out.
 export fn repr[T](value: T) String:

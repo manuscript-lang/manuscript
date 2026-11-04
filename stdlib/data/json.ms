@@ -136,13 +136,13 @@ Parses one JSON value and applies the supplied input, depth, and value limits.
 With the default `T = JsonValue` the result is the parsed tree. Any other `T` is read from the
 document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `let result: Request! = parse(text)`
 return a decoded `Request` in a `Result` (`try` passes no expected type, so write `try parse[Request](text)`). A value whose shape does not match `T` returns
-`InvalidData`; nothing is rejected at compile time, as with `stringify`. Input, depth and value limits
+`EBADMSG`; nothing is rejected at compile time, as with `stringify`. Input, depth and value limits
 apply to the document before decoding.
 
 - A record is an object. Members may appear in any order. An absent member takes the field's default,
-  else `none` for an `Optional` field; an absent required field returns `InvalidData`, so a field
+  else `none` for an `Optional` field; an absent required field returns `EBADMSG`, so a field
   with no JSON form (a function, say) needs a default to be readable. A member that is not a field
-  is ignored, unless `ignore_unknown_fields` is `False`, which makes it return `InvalidData`.
+  is ignored, unless `ignore_unknown_fields` is `False`, which makes it return `EBADMSG`.
 - An alternative case without payload is its name as a string; one with payload is externally tagged,
   `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
   as `Result` and the error types follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
@@ -150,7 +150,7 @@ apply to the document before decoding.
 - A sized integer accepts integer digits within its own range, and `Float32` any finite number that fits it.
 - `Int` accepts integer digits that fit in the platform's Int, `Float` any finite number, `BigInt` and `Decimal`
   the exact number text. A `null` Float, which `stringify` writes for `NaN` and infinities, returns
-  `InvalidData`.
+  `EBADMSG`.
 - `Timestamp` reads an RFC 3339 string, `Duration` integer nanoseconds, `Bytes` a standard base64
   string, and `Url`, `IpAddress` and `Cidr` their string forms.
 - `JsonValue` keeps its subtree as parsed.
@@ -207,7 +207,7 @@ Encodes a `Data` value as JSON text; a type that is not `Data` is rejected at co
   holding a value with no JSON form (`Unit`).
 - `none` elsewhere (a list element, the root) is `null`, as is a no-form list element.
   `T??` is allowed: a present `none` is `null` and an absent value is omitted.
-- A root value with no JSON form returns `InvalidData`.
+- A root value with no JSON form returns `EBADMSG`.
 - An alternative case without payload is its name as a string, `"Dot"`. A case with payload is
   externally tagged: `{"Circle":{"radius":2}}`, an object keyed by the case name whose value holds
   the labeled fields under the record rules. Payload labels never collide with a discriminator.
@@ -223,16 +223,16 @@ Encodes a `Data` value as JSON text; a type that is not `Data` is rejected at co
 - A type that implements `JsonEncode` is written as the `JsonValue` its `to_json` returns, instead of any rule above.
 - Strings are UTF-8 JSON strings; only quotes, backslashes and control characters are escaped, so `<`, `>` and `&` stay as written.
 - Values are read when `stringify` runs, so later mutation does not change the text. A value reachable
-  from itself returns `InvalidData`; shared but acyclic values are written each time they appear.
+  from itself returns `EBADMSG`; shared but acyclic values are written each time they appear.
 
-`strict` makes any value without a JSON form, anywhere in the document, return `InvalidData` instead
+`strict` makes any value without a JSON form, anywhere in the document, return `EBADMSG` instead
 of being omitted or written as `null`, so a function, resource, interface value or `Unit` is never
 dropped silently. A field holding `none` is still omitted: that is a value, not a loss.
 
 `indent` pretty-prints with that many spaces per level, at most 10; none or 0 is compact. Empty
 containers stay `{}` and `[]`, and a space follows each colon. `max_bytes` bounds the output,
-indentation included; exceeding it returns `LimitExceeded`. A negative bound or indent returns
-`InvalidInput`.
+indentation included; exceeding it returns `EOVERFLOW`. A negative bound or indent returns
+`EINVAL`.
 
 ```manuscript
 type Request:
@@ -311,14 +311,14 @@ impl JsonReading[T]:
         if let text = bytes.decode_utf8():
             return parse[T](text, self.limits)
 
-        return error(Error("JSON: invalid data", kind: InvalidData))
+        return error(Error("JSON: invalid data", kind: "EBADMSG"))
 
     // Consumes one byte and reports whether it finished a value.
     var fn scan(byte: UInt8) Bool!:
         if self.mode == 0:
             if is_space(byte): return ok(false)
             if not starts_value(byte): return error(
-                Error("JSON: invalid data", kind: InvalidData)
+                Error("JSON: invalid data", kind: "EBADMSG")
             )
 
             self.mode = 3
@@ -333,7 +333,7 @@ impl JsonReading[T]:
 
         self.size += 1
         if limit >= 0 and self.size > limit: return error(
-            Error("JSON: limit exceeded", kind: LimitExceeded)
+            Error("JSON: limit exceeded", kind: "EOVERFLOW")
         )
 
         self.pending.append(byte)
@@ -356,7 +356,7 @@ impl JsonReading[T]:
         if byte == 123 or byte == 91:
             self.depth += 1
             if self.depth > self.limits.max_depth.get(self.depth): return error(
-                Error("JSON: limit exceeded", kind: LimitExceeded)
+                Error("JSON: limit exceeded", kind: "EOVERFLOW")
             )
 
             return ok(false)
@@ -377,7 +377,7 @@ impl JsonReading[T]:
 
 impl Transform[Bytes, T] for JsonReading[T]:
     var fn step(value: Bytes, var out: WriteStream[T]) Unit!:
-        if self.finished: return error(Error("JSON: invalid input", kind: InvalidInput))
+        if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
         if let failure = self.failure: return error(failure.clone())
 
         for byte in value.values():
@@ -389,13 +389,13 @@ impl Transform[Bytes, T] for JsonReading[T]:
         return ok(unit)
 
     var fn finish(var out: WriteStream[T]) Unit!:
-        if self.finished: return error(Error("JSON: invalid input", kind: InvalidInput))
+        if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
         if let failure = self.failure: return error(failure.clone())
 
         self.finished = true
         if self.mode == 0: return ok(unit)
         if self.mode != 3: return self.fail(
-            Error("JSON: invalid data", kind: InvalidData)
+            Error("JSON: invalid data", kind: "EBADMSG")
         )
 
         let completed = self.complete()
@@ -412,9 +412,9 @@ Top-level numbers, `true`, `false`, and `null` end at whitespace or at the end o
 boundaries may fall anywhere, including inside a token, an escape, or a UTF-8 scalar, and only the value
 being read is buffered. `T` decodes as in `parse`; the default `JsonValue` keeps each value as a document.
 `limits` applies to each value separately: `max_bytes` counts its UTF-8 bytes, `max_depth` its nesting, and
-`max_values` its parsed values; an exceeded limit fails the read with `LimitExceeded`. Omit limits only for
+`max_values` its parsed values; an exceeded limit fails the read with `EOVERFLOW`. Omit limits only for
 trusted input, because an unterminated value is otherwise buffered without bound. Malformed or truncated
-input fails the read with `InvalidData`, and negative limits with `InvalidInput`. Closing the result closes
+input fails the read with `EBADMSG`, and negative limits with `EINVAL`. Closing the result closes
 `input`.
 */
 export fn json_reader[T: Data = JsonValue](
@@ -452,7 +452,7 @@ impl Sink[T] for JsonLines[T]:
 /*
 Writes values of type `T` to a byte stream as JSON Lines: each value is encoded as `stringify` does, on a
 single line, and ends with a line feed. `max_bytes` bounds one encoded value and fails the write with
-`LimitExceeded`. Writes never wait; `flush` waits for `output` to drain. Closing the result closes `output`.
+`EOVERFLOW`. Writes never wait; `flush` waits for `output` to drain. Closing the result closes `output`.
 */
 export fn json_writer[T: Data](
     output: WriteStream[Bytes],

@@ -81,9 +81,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     ((body.body.read().wait() | try expect_ok).is_none()) | try expect_true
     try client.close()
 
-    let _limited: Unit! = error(
-        Error("HTTP: limit exceeded", kind: ErrorCategory.LimitExceeded)
-    )
+    let _limited: Unit! = error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
 
     match request(
         method: HttpMethod.Get, url: url,
@@ -92,12 +90,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     ):
         ok(_): return fail("HTTP output budget ignored")
         error(cause):
-            try expect_equal(
-                cause,
-                Error(
-                    "network: limit exceeded", kind: ErrorCategory.LimitExceeded
-                )
-            )
+            try expect_equal(cause, Error("network: limit exceeded", kind: "EOVERFLOW"))
 
 test "WebSocket negotiates a protocol and echoes a text frame":
     let options = HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
@@ -174,9 +167,4 @@ test "HTTP requests reject an empty method":
     ):
         ok(_): return fail("empty method accepted")
         error(cause):
-            try expect_equal(
-                cause,
-                Error(
-                    "network: invalid input", kind: ErrorCategory.InvalidInput
-                )
-            )
+            try expect_equal(cause, Error("network: invalid input", kind: "EINVAL"))

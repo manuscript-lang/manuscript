@@ -47,23 +47,23 @@ test "limits, invalid levels, and closed transports are errors":
     try logger.info("x")
 
     let limited: Unit! = error(
-        Error("logging: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("logging: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(logger.info("xx"), limited)
 
     let invalid: Unit! = error(
-        Error("logging: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("logging: invalid input", kind: "EINVAL")
     )
     try expect_equal(logger.log(LogLevel.Silent, "bad"), invalid)
     try expect_equal(
         try expect_error(create(try file_transport(path), max_bytes: -1)),
-        Error("logging: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("logging: invalid input", kind: "EINVAL")
     )
     try logger.close()
     try logger.close()
 
     let closed: Unit! = error(
-        Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        Error("logging: resource is closed", kind: "EBADF")
     )
     try expect_equal(logger.info("x"), closed)
     try expect_equal(logger.flush(), closed)
@@ -74,7 +74,7 @@ test "a missing directory is a filesystem error":
     let missing = try expect_error(
         file_transport("{directory.path()}/missing/events.ndjson")
     )
-    try expect_equal(missing.kind, ErrorCategory.NotFound)
+    try expect_equal(missing.kind, "ENOENT")
     try expect_equal(
         missing.message,
         "filesystem: file or directory not found: {directory.path()}/missing/events.ndjson"

@@ -14,21 +14,19 @@ test "ASCII normalization is identical under every form and byte budget":
                 try expect_equal(
                     text.normalize(form, length - 1).err(),
                     Error(
-                        "string: limit exceeded", kind: ErrorCategory.LimitExceeded
+                        "string: limit exceeded", kind: "EOVERFLOW"
                     )
                 )
                 try expect_equal(
                     text.normalize(form, 0).err(),
                     Error(
-                        "string: limit exceeded", kind: ErrorCategory.LimitExceeded
+                        "string: limit exceeded", kind: "EOVERFLOW"
                     )
                 )
 
             try expect_equal(
                 text.normalize(form, -1).err(),
-                Error(
-                    "string: invalid input", kind: ErrorCategory.InvalidInput
-                )
+                Error("string: invalid input", kind: "EINVAL")
             )
 
 test "normalization falls back for Unicode before and after long ASCII prefixes":

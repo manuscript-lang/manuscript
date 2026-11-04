@@ -130,7 +130,7 @@ impl Transform[Bytes, Bytes] for Compressing:
         return ok(unit)
 
 // Compresses a byte stream into `format`, chunk by chunk, holding only the codec's window. `level` defaults to 6
-// and must be 0..9, otherwise reads fail with `InvalidInput`. Closing the result closes `input`.
+// and must be 0..9, otherwise reads fail with `EINVAL`. Closing the result closes `input`.
 export fn compressed(
     input: ReadStream[Bytes],
     format: CompressionFormat,
@@ -171,7 +171,7 @@ impl Transform[Bytes, Bytes] for Decompressing:
         return ok(unit)
 
 // Decompresses a byte stream from `format`, chunk by chunk. Malformed or truncated data fails the read with
-// `InvalidData`; `max_bytes` bounds the total output and exceeding it fails with `LimitExceeded`. Closing the
+// `EBADMSG`; `max_bytes` bounds the total output and exceeding it fails with `EOVERFLOW`. Closing the
 // result closes `input`.
 export fn decompressed(
     input: ReadStream[Bytes],
@@ -285,13 +285,13 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
             if let most = self.limits.max_entries:
                 if self.count > most: return error(
                     Error(
-                        "archive: limit exceeded", kind: LimitExceeded
+                        "archive: limit exceeded", kind: "EOVERFLOW"
                     )
                 )
             if let most = self.limits.max_total_bytes:
                 if self.total > most: return error(
                     Error(
-                        "archive: limit exceeded", kind: LimitExceeded
+                        "archive: limit exceeded", kind: "EOVERFLOW"
                     )
                 )
 
@@ -300,11 +300,11 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
     var fn finish(var out: WriteStream[ArchiveEntry]) Unit!:
         if self.done or self.buffer.is_empty(): return ok(unit)
 
-        return error(Error("archive: truncated tar", kind: InvalidData))
+        return error(Error("archive: truncated tar", kind: "EBADMSG"))
 
 // Reads the entries of a tar byte stream one at a time, for archives too big to hold in memory. Each entry is
 // validated as `unpack` does; `max_entry_bytes` bounds one entry and `max_entries` and `max_total_bytes` the
-// whole archive, failing the read with `LimitExceeded`. A truncated archive fails with `InvalidData`. Closing
+// whole archive, failing the read with `EOVERFLOW`. A truncated archive fails with `EBADMSG`. Closing
 // the result closes `input`.
 export fn tar_entries(
     input: ReadStream[Bytes],

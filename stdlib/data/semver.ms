@@ -54,7 +54,7 @@ export fn parse(text: String) Version!:
     let core_and_pre = split_first(build_parts[0].clone(), "-")
     let numbers = core_and_pre[0].split(".")
     if numbers.length() != 3: return error(
-        Error("semver: invalid data", kind: InvalidData)
+        Error("semver: invalid data", kind: "EBADMSG")
     )
 
     var values = List[Int]()
@@ -63,7 +63,7 @@ export fn parse(text: String) Version!:
     for part in numbers:
         let scalars = part.scalar_values()
         if not all_digits(scalars.clone()) or has_leading_zero(scalars): return error(
-            Error("semver: invalid data", kind: InvalidData)
+            Error("semver: invalid data", kind: "EBADMSG")
         )
 
         if let value = part.parse_int(): values.append(value)
@@ -77,10 +77,10 @@ export fn parse(text: String) Version!:
         for identifier in core_and_pre[1].split("."):
             let scalars = identifier.scalar_values()
             if not valid_identifier(scalars.clone()): return error(
-                Error("semver: invalid data", kind: InvalidData)
+                Error("semver: invalid data", kind: "EBADMSG")
             )
             if all_digits(scalars.clone()) and has_leading_zero(scalars): return error(
-                Error("semver: invalid data", kind: InvalidData)
+                Error("semver: invalid data", kind: "EBADMSG")
             )
 
             prerelease.append(identifier)
@@ -90,12 +90,12 @@ export fn parse(text: String) Version!:
     if build_parts.length() == 2:
         for identifier in build_parts[1].split("."):
             if not valid_identifier(identifier.scalar_values()): return error(
-                Error("semver: invalid data", kind: InvalidData)
+                Error("semver: invalid data", kind: "EBADMSG")
             )
 
             build.append(identifier)
 
-    if out_of_range: return error(Error("semver: value out of range", kind: OutOfRange))
+    if out_of_range: return error(Error("semver: value out of range", kind: "ERANGE"))
 
     return ok(
         Version(

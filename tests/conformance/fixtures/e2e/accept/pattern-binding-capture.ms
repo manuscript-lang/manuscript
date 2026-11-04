@@ -10,7 +10,7 @@ type Failure[T]:
 // An advisory preserves the semantics of this fresh, capitalized binding.
 fn captured[T](result: Result[Int, Failure[T]]) Int:
     match result:
-        error(NotFound): return 1
+        error(_): return 1
         ok(value): return value
 
 fn failure_code[T](cause: Failure[T]) Int:

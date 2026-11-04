@@ -479,6 +479,6 @@ fn report[T](
     return error(
         Error(
             "property '{name}' failed after {executed} cases (case seed {seed}; rerun with --seed {seed})\ncounterexample: {shown}\n{reason.message}",
-            kind: Failed, details: reason.details
+            kind: "EIO", details: reason.details
         )
     )

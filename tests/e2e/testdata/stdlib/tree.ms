@@ -48,37 +48,37 @@ test "memory tree reports precise errors":
     var tree = sample()
     if (
         tree.read("nope", none).err() != Error(
-            "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+            "filesystem: file or directory not found", kind: "ENOENT"
         )
     ): return panic("missing")
     if (
         tree.read("docs", none).err() != Error(
-            "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+            "filesystem: invalid input", kind: "EINVAL"
         )
     ): return panic("read directory")
     if (
         tree.children("main.ms", none).err() != Error(
-            "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+            "filesystem: invalid input", kind: "EINVAL"
         )
     ): return panic("list file")
     if (
         tree.read("../x", none).err() != Error(
-            "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+            "filesystem: invalid input", kind: "EINVAL"
         )
     ): return panic("escape")
     if (
         tree.read("main.ms", 2).err() != Error(
-            "filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded
+            "filesystem: limit exceeded", kind: "EOVERFLOW"
         )
     ): return panic("limit")
     if (
         tree.write_file("main.ms/inner", "x".to_bytes()).err() != Error(
-            "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+            "filesystem: invalid input", kind: "EINVAL"
         )
     ): return panic("parent is file")
     if (
         tree.remove("docs").err() != Error(
-            "filesystem: directory not empty", kind: ErrorCategory.Other
+            "filesystem: directory not empty", kind: "ENOTEMPTY"
         )
     ): return panic("not empty")
 
@@ -102,7 +102,7 @@ test "walk is depth first and sorted":
     if paths(docs) != ["api/", "api/index.md", "guide.md"]: return panic("sub root")
     if (
         walk(tree, max_entries: 2).err() != Error(
-            "filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded
+            "filesystem: limit exceeded", kind: "EOVERFLOW"
         )
     ): return panic("limit")
 
@@ -121,7 +121,7 @@ test "host tree walks the same way":
     )
     if (
         tree.read("../etc", none).err() != Error(
-            "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+            "filesystem: invalid input", kind: "EINVAL"
         )
     ): return panic("host escape")
 

@@ -193,7 +193,7 @@ test "middleware may answer without calling the rest":
     try expect_equal(response.status, 401)
 
 fn fail(var exchange: HttpExchange, params: RouteParams) Unit!:
-    return error(Error("boom", kind: Failed))
+    return error(Error("boom", kind: "EIO"))
 
 test "a handler error comes back from call":
     var r = Router()
@@ -213,10 +213,10 @@ fn whole_response(var exchange: HttpExchange, params: RouteParams) Unit!:
     for extra in ["extra", ""]:
         let written = exchange.write(extra)
         if written.is_ok(): return error(
-            Error("write after send succeeded", kind: Failed)
+            Error("write after send succeeded", kind: "EIO")
         )
-        if written.err().kind != ErrorCategory.InvalidInput: return error(
-            Error("wrong write error", kind: Failed)
+        if written.err().kind != "EINVAL": return error(
+            Error("wrong write error", kind: "EIO")
         )
 
     return ok(unit)
@@ -283,9 +283,9 @@ test "in-process reads report EOF immediately for an empty body":
 fn invalid_reads(var exchange: HttpExchange, params: RouteParams) Unit!:
     for limit in [0, -1]:
         let read = exchange.read(limit)
-        if read.is_ok(): return error(Error("invalid read size accepted", kind: Failed))
-        if read.err().kind != ErrorCategory.InvalidInput: return error(
-            Error("wrong read error", kind: Failed)
+        if read.is_ok(): return error(Error("invalid read size accepted", kind: "EIO"))
+        if read.err().kind != "EINVAL": return error(
+            Error("wrong read error", kind: "EIO")
         )
 
     return small_reads(var exchange, params)

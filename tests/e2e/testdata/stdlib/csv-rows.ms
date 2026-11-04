@@ -62,15 +62,15 @@ test "options apply":
 
 test "an unterminated quote is InvalidData at the end":
     let outcome = read_rows("a,\"open\nmore", 4)
-    try expect_equal(outcome.err().kind, ErrorCategory.InvalidData)
+    try expect_equal(outcome.err().kind, "EBADMSG")
 
 test "a quote inside an unquoted cell is InvalidData":
     let outcome = read_rows("a,b\"c\n", 4)
-    try expect_equal(outcome.err().kind, ErrorCategory.InvalidData)
+    try expect_equal(outcome.err().kind, "EBADMSG")
 
 test "the record budget reports LimitExceeded":
     let outcome = read_rows("a,\"never closed", 3, CsvOptions(), 8)
-    try expect_equal(outcome.err().kind, ErrorCategory.LimitExceeded)
+    try expect_equal(outcome.err().kind, "EOVERFLOW")
     try expect_equal(
         try read_rows("ab,cd\nef,gh\n", 3, CsvOptions(), 8),
         [["ab", "cd"], ["ef", "gh"]]

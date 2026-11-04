@@ -37,7 +37,7 @@ fn ordered[T](
     return first
 
 test "infer success and error types from Result arguments":
-    let r: Int! = error(Error("eleven", kind: ErrorCategory.InvalidData))
+    let r: Int! = error(Error("eleven", kind: "EBADMSG"))
     let inferred = erase(r)
     let explicit = erase[Int, Error](r)
     let wrapped = optional(r)
@@ -49,7 +49,7 @@ test "infer success and error types from Result arguments":
     ]:
         try expect_false(not value.is_error())
         try expect_equal(value.err().message, "eleven")
-        try expect_equal(value.err().kind, ErrorCategory.InvalidData)
+        try expect_equal(value.err().kind, "EBADMSG")
 
     let generic: Result[Int, Failure] = error(Failure(31))
     let failed = erase(generic)

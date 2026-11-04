@@ -40,7 +40,7 @@ test "public collection support types retain their standard runtime identities":
 
     let invalid: List[Int]! = values.slice(0, 9)
     let cause: Error = invalid.err()
-    try expect_equal(cause.kind, ErrorCategory.OutOfRange)
+    try expect_equal(cause.kind, "ERANGE")
     try expect_false(explain(cause).is_empty())
 
     let grouped: Map[Int, List[Int]] = group(values, fn(value: Int) Int: (value % 2))
@@ -50,6 +50,6 @@ test "public collection support types retain their standard runtime identities":
 
     let absent: Int! = first([])
     let missing: Error = absent.err()
-    try expect_equal(missing.kind, ErrorCategory.NotFound)
+    try expect_equal(missing.kind, "ENOENT")
     try expect_false(not missing.message.contains("collection-prelude-support.ms:"))
     try expect_equal(first(values).get(), 3)

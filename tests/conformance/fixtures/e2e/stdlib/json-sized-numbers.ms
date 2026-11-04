@@ -38,11 +38,11 @@ test "JSON rejects sized numbers outside their range":
     let head = "\{\"signed\":0,\"wide\":0,\"single\":0,\"items\":[]"
     try expect_equal(
         (try expect_error(parse[Sized](head + ",\"small\":256\}"))).kind,
-        ErrorCategory.InvalidData
+        "EBADMSG"
     )
     try expect_equal(
         (try expect_error(parse[Sized](head + ",\"small\":-1\}"))).kind,
-        ErrorCategory.InvalidData
+        "EBADMSG"
     )
     try expect_equal(
         (
@@ -52,7 +52,7 @@ test "JSON rejects sized numbers outside their range":
                 )
             )
         ).kind,
-        ErrorCategory.InvalidData
+        "EBADMSG"
     )
     try expect_equal(
         (
@@ -62,7 +62,7 @@ test "JSON rejects sized numbers outside their range":
                 )
             )
         ).kind,
-        ErrorCategory.InvalidData
+        "EBADMSG"
     )
     try expect_equal(
         (
@@ -72,7 +72,7 @@ test "JSON rejects sized numbers outside their range":
                 )
             )
         ).kind,
-        ErrorCategory.InvalidData
+        "EBADMSG"
     )
     try expect_equal(
         (
@@ -82,7 +82,7 @@ test "JSON rejects sized numbers outside their range":
                 )
             )
         ).kind,
-        ErrorCategory.InvalidData
+        "EBADMSG"
     )
     try expect_equal(
         (
@@ -92,5 +92,5 @@ test "JSON rejects sized numbers outside their range":
                 )
             )
         ).kind,
-        ErrorCategory.InvalidData
+        "EBADMSG"
     )

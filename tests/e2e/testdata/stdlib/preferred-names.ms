@@ -167,14 +167,10 @@ test "regex replace_all preserves literal text and exact output budgets":
     try expect_equal((try pattern.replace_all("aa", "é", 4)), "éé")
 
     let limited: String! = error(
-        Error(
-            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
-        )
+        Error("regular expression: limit exceeded", kind: "EOVERFLOW")
     )
     let invalid: String! = error(
-        Error(
-            "regular expression: invalid input", kind: ErrorCategory.InvalidInput
-        )
+        Error("regular expression: invalid input", kind: "EINVAL")
     )
     try expect_equal(pattern.replace_all("aa", "é", 3), limited)
     try expect_equal(all("a", "", -1), invalid)

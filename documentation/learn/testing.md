@@ -58,7 +58,7 @@ test "typed JSON and Optional payloads":
     let number = try expect_ok(parse[Int]("3"))
     try expect_equal(number, 3)
     let cause = try expect_error(parse[Int]("true"))
-    try expect_equal(cause.kind, ErrorCategory.InvalidData)
+    try expect_equal(cause.kind, "EBADMSG")
     try expect_some([number].first()) | try expect_equal(3)
 ```
 

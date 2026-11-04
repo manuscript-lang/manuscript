@@ -90,7 +90,7 @@ impl FetchResponse:
         if let text = self.body.decode_utf8():
             return ok(text)
 
-        return error(Error("fetch: body is not valid UTF-8", kind: InvalidData))
+        return error(Error("fetch: body is not valid UTF-8", kind: "EBADMSG"))
 
     // Decodes the body as JSON into `T`, as in `try response.json[User]()`; use `JsonValue` for untyped data.
     fn json[T: Data](ignore_unknown_fields: Bool = true) T!:
@@ -103,7 +103,7 @@ impl FetchResponse:
 
         return error(
             Error(
-                "fetch: unexpected status {self.head.status}", kind: Failed,
+                "fetch: unexpected status {self.head.status}", kind: "EIO",
                 details: {"status": self.head.status.to_string()}
             )
         )
@@ -149,14 +149,14 @@ fn drain(body: RawResponse, options: FetchOptions, started: Instant) FetchRespon
         .map_error(fn cause: read_failure(cause, options, started))
     )
     if limit_exceeded(options.max_response_bytes, whole.length()):
-        return error(Error("HTTP: limit exceeded", kind: LimitExceeded))
+        return error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
 
     return ok(FetchResponse(head: metadata, body: whole))
 
 // Maps a body read failure to a fetch error, reporting Timeout once the deadline has passed.
 fn read_failure(cause: Error, options: FetchOptions, started: Instant) Error:
     if expired(options.timeout, started):
-        return Error("HTTP: operation timed out", kind: Timeout)
+        return Error("HTTP: operation timed out", kind: "ETIMEDOUT")
 
     return cause.clone()
 

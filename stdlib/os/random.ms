@@ -93,7 +93,7 @@ export fn choice[T](values: List[T]) T?!:
 // A `count` outside 0 through the list length returns InvalidInput.
 export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
     if count < 0 or count > values.length():
-        return error(Error("random: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("random: invalid input", kind: "EINVAL"))
 
     var order = positions(values.length())
     var out: List[T] = []
@@ -111,7 +111,7 @@ export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?
     if values.is_empty() and weights.is_empty():
         return ok(none)
     if not valid_weights(values.length(), weights):
-        return error(Error("random: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("random: invalid input", kind: "EINVAL"))
 
     let point = try float() * weight_total(weights)
     return ok(values[weighted_position(weights, point)].clone())

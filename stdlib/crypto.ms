@@ -63,7 +63,7 @@ export fn constant_time_less_or_equal(left: Int, right: Int) Int:
 // Returns the byte-wise exclusive OR of two equal-length byte strings, or InvalidInput when the lengths differ.
 export fn xor_bytes(left: Bytes, right: Bytes) Bytes!:
     if left.length() != right.length():
-        return error(Error("crypto: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("crypto: invalid input", kind: "EINVAL"))
 
     var out = BytesBuilder()
     for index in 0..left.length():

@@ -163,7 +163,7 @@ impl ConnectionInfo:
         if let info = self.tls:
             return ok(info.clone())
 
-        return error(Error("network: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("network: invalid input", kind: "EINVAL"))
 
 /*
 A connected stream socket, optionally protected by TLS: `input` reads chunks until the peer's end of stream, and
@@ -220,7 +220,7 @@ type DatagramSource:
     raw: RawDatagramSocket
 
 impl Source[Datagram] for DatagramSource:
-    // Waits for one datagram, at most 65535 bytes; a larger one is an error of kind `LimitExceeded` and is discarded.
+    // Waits for one datagram, at most 65535 bytes; a larger one is an error of kind `EOVERFLOW` and is discarded.
     var fn next() Datagram?!:
         return ok(try msstd_net_datagram_receive(self.raw.native, none, none))
 
@@ -695,7 +695,7 @@ type WebSocketSource:
 
 impl Source[WebSocketMessage] for WebSocketSource:
     // Waits for the next complete message; none once the peer closes normally.
-    // A larger message is `LimitExceeded` and a malformed text message `InvalidData`; after any failure the connection is closed.
+    // A larger message is `EOVERFLOW` and a malformed text message `EBADMSG`; after any failure the connection is closed.
     var fn next() WebSocketMessage?!:
         let raw = try msstd_websocket_receive(self.raw.native)
 
@@ -946,7 +946,7 @@ export fn serve(
 ) HttpServer!:
     if let cores = options.cores:
         if cores < 1:
-            return error(Error("network: invalid input", kind: InvalidInput))
+            return error(Error("network: invalid input", kind: "EINVAL"))
 
     let serving = try msstd_http_serving_new(address, options, handler)
     let bound = msstd_http_serving_address(serving)
@@ -1021,7 +1021,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
         let accepted = msstd_http_serving_accept(listening.serving)
 
         if accepted.is_error():
-            if accepted.err().kind == ErrorCategory.Closed:
+            if accepted.err().kind == "EBADF":
                 return ok(unit)
 
             sleep(50.milliseconds()).wait().get(unit)

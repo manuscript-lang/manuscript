@@ -24,7 +24,7 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
     let column = before.length() + 1
     return Error(
         "CSV {line}:{column}: {reason}",
-        kind: InvalidData,
+        kind: "EBADMSG",
         details: {
             "line": line.to_string(), "column": column.to_string(),
             "reason": reason.clone()
@@ -42,7 +42,7 @@ export fn parse(
     let rows_budget = budget(max_rows)
     let cells_budget = budget(max_cells)
     if rows_budget < 0 or cells_budget < 0: return error(
-        Error("CSV: invalid input", kind: InvalidInput)
+        Error("CSV: invalid input", kind: "EINVAL")
     )
 
     let valid = check_options(options)
@@ -68,7 +68,7 @@ export fn parse(
 
         let row = found.get()
         if rows.length() >= rows_budget or row.length() > cells_budget - cells: return error(
-            Error("CSV: limit exceeded", kind: LimitExceeded)
+            Error("CSV: limit exceeded", kind: "EOVERFLOW")
         )
 
         cells += row.length()
@@ -85,9 +85,7 @@ fn budget(limit: Int?) Int:
 // Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
 fn check_options(options: CsvOptions) Unit!:
     let scalars = options.delimiter.scalar_values()
-    if scalars.length() != 1: return error(
-        Error("CSV: invalid input", kind: InvalidInput)
-    )
+    if scalars.length() != 1: return error(Error("CSV: invalid input", kind: "EINVAL"))
 
     let delimiter = scalars[0]
     if (
@@ -96,9 +94,9 @@ fn check_options(options: CsvOptions) Unit!:
         or delimiter == 34
         or delimiter == 13
         or delimiter == 10
-    ): return error(Error("CSV: invalid input", kind: InvalidInput))
+    ): return error(Error("CSV: invalid input", kind: "EINVAL"))
     if options.line_ending != "\n" and options.line_ending != "\r\n": return error(
-        Error("CSV: invalid input", kind: InvalidInput)
+        Error("CSV: invalid input", kind: "EINVAL")
     )
 
     return ok(unit)
@@ -290,7 +288,7 @@ impl CsvRows:
     fn check_size(size: Int) Unit!:
         if let limit = self.max_record_bytes:
             if size > limit: return error(
-                Error("CSV: limit exceeded", kind: LimitExceeded)
+                Error("CSV: limit exceeded", kind: "EOVERFLOW")
             )
         return ok(unit)
 
@@ -323,8 +321,8 @@ fn write_rows(rows: List[List[String]], var out: WriteStream[List[String]]) Unit
 Reads CSV rows from a byte stream, one `List[String]` per record, with the cells `parse` returns.
 
 Chunks may end anywhere, including inside a quoted cell, a CRLF or a UTF-8 scalar; only the unfinished
-record is buffered. `max_record_bytes` bounds that record and fails the read with `LimitExceeded`. A
-malformed record fails the read with `InvalidData`, and invalid `options` with `InvalidInput`. Closing the
+record is buffered. `max_record_bytes` bounds that record and fails the read with `EOVERFLOW`. A
+malformed record fails the read with `EBADMSG`, and invalid `options` with `EINVAL`. Closing the
 result closes `input`.
 */
 export fn csv_rows(
@@ -348,7 +346,7 @@ export fn stringify(
     max_bytes: Int?
 ) String!:
     let limit = budget(max_bytes)
-    if limit < 0: return error(Error("CSV: invalid input", kind: InvalidInput))
+    if limit < 0: return error(Error("CSV: invalid input", kind: "EINVAL"))
 
     let valid = check_options(options)
     if valid.is_error(): return error(valid.err())
@@ -373,7 +371,7 @@ export fn stringify(
 
         let size = line.byte_length()
         if size > limit - used: return error(
-            Error("CSV: limit exceeded", kind: LimitExceeded)
+            Error("CSV: limit exceeded", kind: "EOVERFLOW")
         )
 
         used += size
@@ -424,7 +422,7 @@ impl Sink[List[String]] for CsvRowsSink:
 
 /*
 Writes rows to a byte stream, each as `stringify` encodes it (quoting cells that need it, ending with the
-options' line ending). Invalid `options` fail the first write with `InvalidInput`. Writes never wait; `flush`
+options' line ending). Invalid `options` fail the first write with `EINVAL`. Writes never wait; `flush`
 waits for `output` to drain. Closing the result closes `output`.
 */
 export fn csv_writer(

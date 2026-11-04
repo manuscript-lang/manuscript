@@ -1498,7 +1498,7 @@ impl FnLower<'_> {
                         let why =
                             s.call_runtime("msstd_json_mismatch_text", &[doc, root], MTy::STR)?;
                         s.drop_value(doc);
-                        let e = s.json_error(ra, err, "InvalidData", Some(why))?;
+                        let e = s.json_error(ra, err, "EBADMSG", Some(why))?;
                         Ok(Some(e))
                     },
                 )?;
@@ -1684,7 +1684,7 @@ impl FnLower<'_> {
         Ok(id)
     }
 
-    /// `error(Error(..))` with the matching `ErrorCategory`.
+    /// `error(Error(..))` with the matching error code.
     fn json_error(
         &mut self,
         ra: ms_mir::types::AltId,
@@ -1696,7 +1696,7 @@ impl FnLower<'_> {
         let TyKind::Rec(er) = self.b.m.types.kind(et).clone() else {
             return Err(Error::new("a JSON failure is an Error"));
         };
-        let words = if case == "InvalidData" {
+        let words = if case == "EBADMSG" {
             "invalid data"
         } else {
             "invalid input"
@@ -1831,7 +1831,7 @@ impl FnLower<'_> {
                     .v,
                 ))
             },
-            &mut |s| Ok(Some(s.json_error(ra, err, "InvalidData", None)?)),
+            &mut |s| Ok(Some(s.json_error(ra, err, "EBADMSG", None)?)),
         )?;
         let writer = self.b.use_var(wvar);
         self.drop_value(writer);

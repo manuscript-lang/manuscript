@@ -159,7 +159,7 @@ interface FileSystem:
         filter: (fn(String, String) Bool)?
     ) Unit!
     // Watches native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows); overflow is exactly `error` or `ignore` (case-sensitive).
-    // Other policies return InvalidInput. `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts and failing with LimitExceeded, the same on every platform; `max_events` bounds queued events.
+    // Other policies return EINVAL. `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts and failing with LimitExceeded, the same on every platform; `max_events` bounds queued events.
     fn watch_native(
         path: String,
         recursive: Bool,
@@ -460,7 +460,7 @@ type WatchSource:
     pending: List[FileEvent]
 
 impl Source[FileEvent] for WatchSource:
-    // Waits for the next change. A closed watcher is `Closed`; a native watcher that overflowed with policy `error` is `LimitExceeded`.
+    // Waits for the next change. A closed watcher is `EBADF`; a native watcher that overflowed with policy `error` is `EOVERFLOW`.
     var fn next() FileEvent?!:
         while true:
             if let event = self.pending.pop():
@@ -550,7 +550,7 @@ export type CopyOptions:
 /*
 How `watch` observes a path: with native OS events by default, or by polling snapshots when `interval` is set.
 Every field has a default, so `WatchOptions()` watches natively with no limits and `WatchOptions(interval: seconds(1))` polls.
-`max_events` and `overflow` apply only to native watching; combining them with `interval` returns `InvalidInput`.
+`max_events` and `overflow` apply only to native watching; combining them with `interval` returns `EINVAL`.
 */
 export type WatchOptions:
     // Polling period, which must be positive. none watches with native OS events.
@@ -803,9 +803,9 @@ export fn write_atomic_bytes(path: String, data: Bytes) Unit!:
             ok(file):
                 return finish_atomic(file, temporary, path, data)
             error(cause):
-                if cause.kind != ErrorCategory.AlreadyExists: return error(cause)
+                if cause.kind != "EEXIST": return error(cause)
 
-    return error(Error("filesystem: already exists", kind: ErrorCategory.AlreadyExists))
+    return error(Error("filesystem: already exists", kind: "EEXIST"))
 
 // Writes, syncs, closes and renames the temporary file, removing it when any step fails.
 fn finish_atomic(file: FileHandle, temporary: String, path: String, data: Bytes) Unit!:
@@ -830,9 +830,7 @@ export fn move(source: String, destination: String) Unit!:
     if renamed.is_ok(): return renamed
 
     let cause = renamed.err()
-    if cause.kind == ErrorCategory.Failed: return move_by_copy(
-        source, destination, cause
-    )
+    if cause.kind == "EIO": return move_by_copy(source, destination, cause)
 
     return error(cause)
 
@@ -840,7 +838,7 @@ fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
     let info = stat(source, false)
     if info.is_error(): return error(cause)
     if stat(destination, false).is_ok(): return error(
-        Error("filesystem: already exists", kind: ErrorCategory.AlreadyExists)
+        Error("filesystem: already exists", kind: "EEXIST")
     )
 
     let copied = copy(source, destination, CopyOptions(recursive: info.get().directory))
@@ -870,9 +868,7 @@ export fn watch(
 ) ReadStream[FileEvent]!:
     if let interval = options.interval:
         if options.max_events.is_some() or options.overflow.is_some(): return error(
-            Error(
-                "filesystem: invalid input", kind: ErrorCategory.InvalidInput
-            )
+            Error("filesystem: invalid input", kind: "EINVAL")
         )
 
         return ok(

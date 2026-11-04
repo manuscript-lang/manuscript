@@ -40,7 +40,7 @@ test "dotenv rejects malformed lines with their line number":
         error(
             Error(
                 "config: line 3: unexpected text after quoted value",
-                details: {"line": "3"}, kind: ErrorCategory.InvalidData
+                details: {"line": "3"}, kind: "EBADMSG"
             )
         )
     )
@@ -71,7 +71,7 @@ test "ini rejects malformed lines":
         error(
             Error(
                 "config: line 2: expected key = value", details: {"line": "2"},
-                kind: ErrorCategory.InvalidData
+                kind: "EBADMSG"
             )
         )
     )

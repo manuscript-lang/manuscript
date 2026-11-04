@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: a failure is a domain type (44 in `stdlib/`, each with cases, payloads and `impl Error`) that callers import, narrow with `match`, and convert at `Error` boundaries by interface dispatch.
-- Change: one fixed prelude record `Error` with `message`, a `kind` from `ErrorCategory`, and `details`. Built like any record: `Error("file not found", kind: NotFound)`, Go's `errors.New`.
+- Change: one fixed prelude record `Error` with `message`, a `kind` from `ErrorCategory`, and `details`. Built like any record: `Error("file not found", kind: "ENOENT")`, Go's `errors.New`.
 - Shipped in one PR with no bridge: the domain types, the `Error` interface, `TextError`, `MissingValue`, `category()`, narrowing and the checker and lowering boundary machinery are deleted together.
 
 ## Status
@@ -33,7 +33,7 @@ export type Error:
     details: Map[String, String] = Map[String, String]()
 ```
 
-- `Error("bad port")`, `Error("no such file", kind: NotFound, details: {"path": path})`. No new syntax, static method or namespace.
+- `Error("bad port")`, `Error("no such file", kind: "ENOENT", details: {"path": path})`. No new syntax, static method or namespace.
 - `T!` stays `Result[T, Error]`. `try` needs the identical error type, so there is no implicit widening; a custom `E` converts with an ordinary function or `map_error`. Custom `E` stays legal.
 - `ErrorCategory` is a prelude alternative with 13 cases, including `Other` (the default) and `Failed`. `category()` becomes the field.
 - `details` is `Map[String, String]`: printable, comparable and owned by the error. Structured payloads are out of scope.

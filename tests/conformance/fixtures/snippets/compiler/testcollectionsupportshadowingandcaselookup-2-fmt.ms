@@ -8,7 +8,7 @@ import (
     filled,
     map_from_entries
 ) from "@std/collections/collections.ms"
-import ErrorCategory, category from "@std/core.ms"
+import Error, category from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 
 fn bytes() Bytes: Bytes([1])

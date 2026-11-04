@@ -22,13 +22,13 @@ test "semver rejects malformed text":
     for text in bad:
         if (
             (try failure(parse(text: text))) != Error(
-                "semver: invalid data", kind: ErrorCategory.InvalidData
+                "semver: invalid data", kind: "EBADMSG"
             )
         ): return fail("category {text}")
 
 test "semver reports numbers beyond Int":
     (try failure(parse(text: "99999999999999999999.0.0"))) | try expect_equal(
-        Error("semver: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("semver: value out of range", kind: "ERANGE")
     )
 
 test "semver orders by precedence":
@@ -68,7 +68,7 @@ test "semver ignores build metadata and compares huge numeric identifiers":
     let small = (parse(text: "1.0.0-99999999999999999999") | try expect_ok)
     let large = (parse(text: "1.0.0-100000000000000000000") | try expect_ok)
     compare(left: small, right: large) | try expect_equal(-1)
-    Error("semver: value out of range", kind: ErrorCategory.OutOfRange).message | try expect_equal(
+    Error("semver: value out of range", kind: "ERANGE").message | try expect_equal(
         "semver: value out of range"
     )
 
@@ -76,5 +76,5 @@ test "semver keeps hyphens in pre-release and rejects extra plus signs":
     let version = (parse(text: "1.2.3-alpha-1") | try expect_ok)
     format(version: version) | try expect_equal("1.2.3-alpha-1")
     (try failure(parse(text: "1.2.3+a+b"))) | try expect_equal(
-        Error("semver: invalid data", kind: ErrorCategory.InvalidData)
+        Error("semver: invalid data", kind: "EBADMSG")
     )

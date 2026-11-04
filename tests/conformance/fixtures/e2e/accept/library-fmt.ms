@@ -168,14 +168,14 @@ test "expanded packages run through compiler":
 
 test "malformed and bounded inputs return errors":
     let failure1: Bytes! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     base64_decode(text: "Zh==", url_safe: false, max_bytes: 10) | try expect_equal(
         failure1
     )
 
     let failure2: Bytes! = error(
-        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
     hex_decode(text: "abcd", max_bytes: 1) | try expect_equal(failure2)
 
@@ -188,6 +188,6 @@ test "malformed and bounded inputs return errors":
     )
 
     let failure4: JsonValue! = error(
-        Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("JSON: limit exceeded", kind: "EOVERFLOW")
     )
     parse(text: "[[[]]]", limits: limits) | try expect_equal(failure4)
