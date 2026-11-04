@@ -10,7 +10,9 @@ fn fallback_hover_preserves_literal_operator_and_empty_ranges() {
     let syms = ms_syntax::Names::global();
     let fixture = include_str!("hover/fallback.ms");
     for source in [fixture.to_string(), fixture.replace('\n', "\r\n")] {
-        let file = "/tmp/hover-fallback.ms";
+        // An unsaved file in a directory that does not exist, so its identity is its path on
+        // every platform (macOS resolves the parent of a new file, and `/tmp` is a link there).
+        let file = "/hover-fallback-unsaved/fallback.ms";
         let document = Document::new(uri::file_uri(file), &source);
         let analysis = compile_source(syms, file, &source, &Options::default());
         assert!(analysis.success(), "{:?}", analysis.diagnostics);
@@ -65,7 +67,9 @@ fn fallback_hover_preserves_literal_operator_and_empty_ranges() {
 fn fallback_hover_keeps_clamped_and_invalid_snapshot_positions() {
     let syms = ms_syntax::Names::global();
     let source = include_str!("hover/fallback.ms");
-    let file = "/tmp/hover-fallback.ms";
+    // An unsaved file in a directory that does not exist, so its identity is its path on
+    // every platform (macOS resolves the parent of a new file, and `/tmp` is a link there).
+    let file = "/hover-fallback-unsaved/fallback.ms";
     let analysis = compile_source(syms, file, source, &Options::default());
     assert!(analysis.success(), "{:?}", analysis.diagnostics);
     let index = analysis.occurrence_index(syms);

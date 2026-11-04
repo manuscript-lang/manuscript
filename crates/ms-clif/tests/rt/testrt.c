@@ -26,6 +26,7 @@ static int64_t slot_result;
 #ifndef _WIN32
 #include <pthread.h>
 #include <sys/mman.h>
+#include <unistd.h>
 static void *slot_thread(void *arg) { (void)arg; slot_result = slot_main(); return 0; }
 static int64_t run_on_slot(int64_t (*f)(void)) {
   char *raw = mmap(0, 2 * STACK_REGION, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
@@ -35,7 +36,11 @@ static int64_t run_on_slot(int64_t (*f)(void)) {
   slot_main = f;
   pthread_attr_t attr;
   pthread_attr_init(&attr);
-  pthread_attr_setstack(&attr, (void *)(base + STACK_GUARD), STACK_REGION - STACK_GUARD - CELL_PAGE);
+  /* macOS refuses a stack whose size is not a multiple of its page (16 KiB on arm64), so the
+     stack ends at the page boundary below the cell page. */
+  uintptr_t page = (uintptr_t)sysconf(_SC_PAGESIZE);
+  uintptr_t size = (STACK_REGION - STACK_GUARD - CELL_PAGE) & ~(page - 1);
+  if (pthread_attr_setstack(&attr, (void *)(base + STACK_GUARD), size) != 0) abort();
   pthread_t th;
   if (pthread_create(&th, &attr, slot_thread, 0) != 0) abort();
   pthread_join(th, 0);
