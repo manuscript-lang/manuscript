@@ -509,7 +509,7 @@ impl FnLower<'_> {
             let out = self.b.alt_new(ra, ret_err as u32, &[po]);
             self.emit_return(Some(Val { v: out, own: true }));
         } else {
-            let po = self.owned(x);
+            let po = self.owned_wrap(x);
             let out = self.b.alt_new(ra, ret_err as u32, &[po]);
             if hidden {
                 self.drop_value(cur);
