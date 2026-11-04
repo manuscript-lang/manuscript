@@ -50,6 +50,7 @@ export type PromiseOptions:
     // How long the work may run, counted from construction; none means no limit.
     timeout: Duration? = none
     // When this signal's `Cancel` fires, the work is cancelled and `wait` reports `Cancelled`.
+    // Applying a signal to an existing promise replaces its previous signal; none leaves it unchanged.
     cancel: Signal? = none
 
 // One switch that cancels every promise made with its `signal()`. `cancel()` never waits; the work stops at its next wait
@@ -120,7 +121,7 @@ fn limit(id: Int, options: PromiseOptions) Unit:
         msrt_promise_on_cancel(id, signal.id)
 
 // Applies `options` to a promise in place, for an owner that keeps the promise (a server's accept loop). The timeout counts
-// from now; `with` is the chaining form.
+// from now; a provided cancel signal replaces the previous signal. `with` is the chaining form.
 export fn set_options[T](target: Promise[T], options: PromiseOptions) Unit:
     limit(target.id, options)
 
@@ -153,6 +154,7 @@ impl Promise[T]:
 
     // Applies `options` to a promise made elsewhere (`read`, `fetch`, `sleep`, `exec`) and returns it, so
     // `read(path).with(options: PromiseOptions(timeout: seconds(5))).wait()` bounds the read. The timeout counts from now.
+    // A provided cancel signal replaces the previous signal.
     fn with(options: PromiseOptions) Promise[T]:
         limit(self.id, options)
         return self
