@@ -18,18 +18,20 @@ kbd{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;padding:0 5px;border:1
 .ib:hover:not(:disabled){background:var(--sel);color:var(--fg)}.ib:disabled{opacity:.35;cursor:default}.ib.on{color:var(--acc)}
 header{grid-column:1/-1;display:flex;gap:12px;align-items:center;padding:0 10px 0 14px;border-bottom:1px solid var(--line);background:var(--bg)}
 .brand{font-weight:700;letter-spacing:.02em;white-space:nowrap}.brand i{font-style:normal;color:var(--acc);margin-right:6px}
-nav{display:flex;gap:2px;height:100%;align-items:stretch}
+nav{display:flex;gap:2px;height:100%;align-items:stretch;min-width:0;overflow-x:auto;scrollbar-width:none}nav::-webkit-scrollbar{display:none}nav button{flex:none}
+.brand,header>div:nth-of-type(2){flex:none}#navbtn{display:none}
 nav button{border:0;border-bottom:2px solid transparent;background:none;color:var(--mut);padding:0 10px;cursor:pointer}
 nav button:hover{color:var(--fg)}nav button.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:600}
-.search{margin-left:auto;display:flex;gap:10px;align-items:center;min-width:220px;padding:4px 10px;border:1px solid var(--line);border-radius:7px;background:var(--pan);color:var(--mut);cursor:pointer}
+.search{margin-left:auto;display:flex;gap:10px;align-items:center;flex:0 1 260px;min-width:36px;overflow:hidden;white-space:nowrap;padding:4px 10px;border:1px solid var(--line);border-radius:7px;background:var(--pan);color:var(--mut);cursor:pointer}
 .search:hover{border-color:var(--acc)}.search span{flex:1;text-align:left}
-.opts{display:flex;gap:10px;align-items:center;color:var(--mut)}.opts label{display:flex;gap:5px;align-items:center;white-space:nowrap}
-.opts input[type=range]{width:70px;accent-color:var(--acc)}
+.opts{display:flex;gap:2px;align-items:center;color:var(--mut);position:relative;flex:none}
+.pop{position:absolute;top:34px;right:0;z-index:8;width:260px;padding:10px 12px;display:grid;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,.25);color:var(--fg)}
+.pop[hidden]{display:none}.pop label{display:flex;gap:8px;align-items:center}.pop input[type=range]{flex:1;accent-color:var(--acc)}
 aside{grid-row:2;grid-column:1;display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--bg)}
 .tbar{display:flex;gap:2px;align-items:center;padding:6px 8px 2px}.tbar input{flex:1;min-width:0;padding:5px 9px;border:1px solid var(--line);border-radius:7px;background:var(--pan);color:var(--fg);font:inherit}
 .tbar input:focus{outline:2px solid var(--acc);outline-offset:-1px;background:var(--bg)}
-.kinds{display:flex;gap:4px;padding:2px 8px 6px;border-bottom:1px solid var(--line)}
-.kinds button{border:1px solid var(--line);background:none;color:var(--mut);padding:0 8px;border-radius:10px;cursor:pointer;font-size:11px;line-height:18px}
+.kinds{display:flex;flex-wrap:wrap;gap:4px;padding:2px 8px 6px;border-bottom:1px solid var(--line)}
+.kinds button{white-space:nowrap;border:1px solid var(--line);background:none;color:var(--mut);padding:0 8px;border-radius:10px;cursor:pointer;font-size:11px;line-height:18px}
 .kinds button.on{background:var(--sel);color:var(--acc);border-color:var(--acc)}
 #list{flex:1;overflow:auto;padding:4px 6px 12px}
 #list h4{margin:12px 6px 3px;font-size:10.5px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
@@ -64,7 +66,7 @@ svg .life{stroke:var(--line);stroke-dasharray:4}svg .note rect{fill:var(--eff);s
 .tools button,.tools select{border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:2px 9px;border-radius:6px;cursor:pointer}
 .tools button:hover{border-color:var(--acc);color:var(--acc)}
 .stage{border:1px solid var(--line);border-radius:10px;overflow:hidden;background-color:var(--bg);background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:18px 18px}
-.stage svg{display:block;width:100%;height:calc(100vh - 215px);min-height:300px;cursor:grab}
+.stage svg{touch-action:none;display:block;width:100%;height:calc(100vh - 215px);min-height:300px;cursor:grab}
 .flow ul{list-style:none;margin:0;padding-left:18px;border-left:1px solid var(--line)}.flow>ul{border:0;padding:0}
 .flow li{margin:3px 0}.flow summary{cursor:pointer;list-style:none}.flow summary::-webkit-details-marker{display:none}
 .flow summary::before{content:'▾';display:inline-block;width:14px;color:var(--mut)}.flow details:not([open])>summary::before{content:'▸'}
@@ -91,17 +93,30 @@ footer{grid-column:1/-1;display:flex;gap:16px;align-items:center;padding:0 12px;
 .ov .foot{padding:6px 12px;border-top:1px solid var(--line);color:var(--mut);font-size:11.5px;display:flex;gap:12px}
 #help .box{padding:18px 22px;max-height:80vh;overflow:auto}#help h3{margin:0 0 8px}#help table{border-collapse:collapse;margin-bottom:12px}#help td{padding:3px 14px 3px 0;vertical-align:top}
 #help .sw{display:inline-block;width:12px;height:12px;border-radius:3px;border:2px solid;margin-right:8px;vertical-align:-2px}
+@media (max-width:1100px){.search span,.search kbd{display:none}.search{flex:none;min-width:0;margin-left:auto}.search::before{content:'⌕'}}
+@media (max-width:900px){.brand{font-size:0}.brand i{font-size:15px;margin:0}body{--w1:200px}
+  #sp2{display:none!important}#src{position:fixed;right:0;top:var(--hh,40px);bottom:24px;width:min(94vw,520px);z-index:6;box-shadow:-12px 0 36px rgba(0,0,0,.25)}}
+@media (max-width:640px){#navbtn{display:inline-grid}
+  body{grid-template-columns:0 0 minmax(0,1fr) 0 0;grid-template-rows:auto minmax(0,1fr) 24px;--hh:78px}
+  header{flex-wrap:wrap;gap:0 4px;padding:0 6px}header nav{order:9;flex:1 0 100%;height:38px;border-top:1px solid var(--line)}
+  nav button{padding:0 14px}.ib{width:36px;height:36px}.search{margin-left:auto}
+  aside{position:fixed;left:0;top:var(--hh);bottom:24px;width:min(86vw,320px);z-index:6;box-shadow:12px 0 36px rgba(0,0,0,.25);transform:translateX(-102%);transition:transform .15s}
+  body.nav-open aside{transform:none}#sp1{display:none}.item,.file{padding-top:7px;padding-bottom:7px}
+  #info{padding:6px 10px 4px}#view{padding:6px 10px 8px}.stage svg{height:calc(100vh - 290px)}.pop{right:-80px}
+  #palq{font-size:16px}.ov{padding-top:8vh}}
+#scrim{display:none;position:fixed;inset:0;top:var(--hh,40px);background:rgba(0,0,0,.4);z-index:5}body.nav-open #scrim{display:block}
 body.focus{grid-template-columns:0 0 minmax(0,1fr) 0 0}body.focus aside,body.focus .split,body.focus #src{display:none}
 </style>
 </head>
 <body>
 <header>
-<div class="brand"><i>◈</i>Program map</div>
+<button class="ib" id="navbtn" title="Explorer">☰</button><div class="brand"><i>◈</i>Program map</div>
 <div><button class="ib" id="back" title="Back (Alt+←)">‹</button><button class="ib" id="fwd" title="Forward (Alt+→)">›</button></div>
 <nav id="tabs"></nav>
 <button class="search" id="palbtn"><span>Go to symbol or file</span><kbd>Ctrl K</kbd></button>
-<div class="opts"><label title="Show calls into the standard library"><input type="checkbox" id="all"> stdlib</label><label id="onlywrap" hidden><input type="checkbox" id="only"> changed only</label>
-<label title="How many call levels to show">depth <input type="range" id="depth" min="1" max="4" value="1"></label>
+<div class="opts"><button class="ib" id="optbtn" title="View options">⚙</button>
+<div class="pop" id="optpop" hidden><label title="Show calls into the standard library"><input type="checkbox" id="all"> Include standard library calls</label><label id="onlywrap" hidden><input type="checkbox" id="only"> Show changed items only</label>
+<label title="How many call levels to show">Call depth <input type="range" id="depth" min="1" max="4" value="1"></label></div>
 <button class="ib" id="focusbtn" title="Focus the map (F)">⛶</button><button class="ib" id="theme" title="Theme: auto, dark, light">◐</button><button class="ib" id="helpbtn" title="Shortcuts and legend (?)">?</button></div>
 </header>
 <aside id="side"><div class="tbar"><input id="q" placeholder="Filter files and symbols"><button class="ib" id="collapse" title="Collapse all">⊟</button><button class="ib" id="expand" title="Expand all">⊞</button><button class="ib" id="locate" title="Reveal current item">◎</button></div>
@@ -110,7 +125,7 @@ body.focus{grid-template-columns:0 0 minmax(0,1fr) 0 0}body.focus aside,body.foc
 <main><div id="info"></div><div id="view"></div></main>
 <div class="split" id="sp2" hidden></div><section id="src" hidden></section>
 <footer id="status"></footer>
-<div id="pal" class="ov"><div class="box"><input id="palq" placeholder="Go to function, type, test or file" autocomplete="off"><div class="res" id="palres"></div><div class="foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div></div></div>
+<div id="scrim"></div><div id="pal" class="ov"><div class="box"><input id="palq" placeholder="Go to function, type, test or file" autocomplete="off"><div class="res" id="palres"></div><div class="foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div></div></div>
 <div id="help" class="pal-like" style="display:none"></div>
 <script id="data" type="application/json">__DATA__</script>
 <script>
@@ -173,7 +188,7 @@ function tabsFor(){const e=S.sel&&E[S.sel];
   if(isFn(e))return ['Overview','Calls','Sequence','Behavior','Types','Route'];
   if(isType(e))return ['Overview','Types'];
   return ['Overview']}
-function setTabs(){$('onlywrap').hidden=!HAS;$('tabs').innerHTML=tabsFor().map(t=>'<button class="'+(t===S.tab?'on':'')+'" data-tab="'+t+'">'+t+'</button>').join('')}
+function setTabs(){$('onlywrap').hidden=!HAS;$('tabs').innerHTML=tabsFor().map(t=>'<button class="'+(t===S.tab?'on':'')+'" data-tab="'+t+'">'+t+'</button>').join('');const on=$('tabs').querySelector('.on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest'})}
 function scopeKids(scope){
   const dirs=new Set(),mods=[];
   for(const m of D.modules)if(m.file.startsWith(scope)){const rest=m.file.slice(scope.length),i=rest.indexOf('/');if(i<0)mods.push(m.file);else dirs.add(scope+rest.slice(0,i+1))}
@@ -250,7 +265,7 @@ function setInfo(){
   const e=S.sel&&E[S.sel];let h=crumbs();
   if(e){
     const starred=STAR.has(e.key);
-    h+='<div class="ttl">'+sigOf(e)+'<span class="sp"></span><button class="ib'+(starred?' on':'')+'" data-star="1" title="'+(starred?'Unstar':'Star')+' (S)">'+(starred?'★':'☆')+'</button><button class="ib" data-link="1" title="Copy link to this view">⧉</button></div><div class="meta"><span>'+esc(e.kind)+' · line '+e.line+'</span>';
+    h+='<div class="ttl">'+sigOf(e)+'<span class="sp"></span><button class="ib'+(starred?' on':'')+'" data-star="1" title="'+(starred?'Unstar':'Star')+' (S)">'+(starred?'★':'☆')+'</button><button class="ib'+(srcOpen?' on':'')+'" data-src="1" title="Show or hide source">&lt;/&gt;</button><button class="ib" data-link="1" title="Copy link to this view">⧉</button></div><div class="meta"><span>'+esc(e.kind)+' · line '+e.line+'</span>';
     h+=fx(e).map(x=>'<span class="badge '+esc(x)+'">'+esc(x)+'</span>').join('')+(e.error?'<span class="badge err">err '+esc(e.error)+'</span>':'')+(e.scopes?'<span class="badge">closes '+e.scopes+'</span>':'');
     if(CH[e.key])h+='<span class="badge err">'+esc(CH[e.key].tier)+'</span><span>'+CH[e.key].changes.map(esc).join('; ')+'</span>';
     const cs=callers[e.key]||[];
@@ -273,10 +288,18 @@ function panzoom(box){
   const fit=()=>{const r=svg.getBoundingClientRect();const k=Math.max(w/r.width,h/r.height,1);vb={x:0,y:0,w:r.width*k,h:r.height*k};apply()};
   const zoom=(f,cx,cy)=>{cx=cx??vb.x+vb.w/2;cy=cy??vb.y+vb.h/2;vb={x:cx-(cx-vb.x)*f,y:cy-(cy-vb.y)*f,w:vb.w*f,h:vb.h*f};apply()};
   svg.addEventListener('wheel',ev=>{ev.preventDefault();const r=svg.getBoundingClientRect();zoom(ev.deltaY>0?1.15:1/1.15,vb.x+(ev.clientX-r.left)/r.width*vb.w,vb.y+(ev.clientY-r.top)/r.height*vb.h)},{passive:false});
-  let drag=null;
-  svg.addEventListener('pointerdown',ev=>{if(ev.target.closest('.node'))return;drag={x:ev.clientX,y:ev.clientY,vx:vb.x,vy:vb.y};svg.style.cursor='grabbing'});
-  addEventListener('pointerup',()=>{drag=null;svg.style.cursor=''});
-  addEventListener('pointermove',ev=>{if(!drag)return;const r=svg.getBoundingClientRect();vb.x=drag.vx-(ev.clientX-drag.x)/r.width*vb.w;vb.y=drag.vy-(ev.clientY-drag.y)/r.height*vb.h;apply()});
+  const ptr=new Map();let drag=null,pinch=null;
+  svg.addEventListener('pointerdown',ev=>{if(ev.target.closest('.node'))return;svg.setPointerCapture(ev.pointerId);ptr.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+    if(ptr.size===1)drag={x:ev.clientX,y:ev.clientY,vx:vb.x,vy:vb.y};
+    else if(ptr.size===2){drag=null;const [a,b]=[...ptr.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y)||1,vb:{...vb}}}
+    svg.style.cursor='grabbing'});
+  svg.addEventListener('pointermove',ev=>{if(!ptr.has(ev.pointerId))return;ptr.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});const r=svg.getBoundingClientRect();
+    if(pinch&&ptr.size>=2){const [a,b]=[...ptr.values()],f=pinch.d/(Math.hypot(a.x-b.x,a.y-b.y)||1),mx=((a.x+b.x)/2-r.left)/r.width,my=((a.y+b.y)/2-r.top)/r.height,nw=pinch.vb.w*f,nh=pinch.vb.h*f;
+      vb={x:pinch.vb.x+(pinch.vb.w-nw)*mx,y:pinch.vb.y+(pinch.vb.h-nh)*my,w:nw,h:nh};apply();return}
+    if(drag){vb.x=drag.vx-(ev.clientX-drag.x)/r.width*vb.w;vb.y=drag.vy-(ev.clientY-drag.y)/r.height*vb.h;apply()}});
+  const end=ev=>{ptr.delete(ev.pointerId);if(ptr.size<2)pinch=null;
+    if(ptr.size===0){drag=null;svg.style.cursor=''}else if(ptr.size===1){const [q]=[...ptr.values()];drag={x:q.x,y:q.y,vx:vb.x,vy:vb.y}}};
+  svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
   box.querySelector('[data-zoom="in"]').onclick=()=>zoom(1/1.3);box.querySelector('[data-zoom="out"]').onclick=()=>zoom(1.3);box.querySelector('[data-zoom="fit"]').onclick=fit;
   const r=svg.getBoundingClientRect();if(w<=r.width*1.5&&h<=r.height*1.5)fit();else{vb={x:0,y:0,w:r.width,h:r.height};apply()}
 }
@@ -402,11 +425,11 @@ function behavior(){
   const e=S.sel&&E[S.sel];if(!e||!isFn(e))return empty('Pick a function','Choose one in the explorer, or press Ctrl K.');
   return '<div class="tools"><button data-flow="collapse">Collapse all</button><button data-flow="expand">Expand all</button></div><div class="flow">'+(e.flow.length?flowHTML(e.flow,0):'<span class="hint">no steps</span>')+'</div>';
 }
-let wrap=store.get('wrap',false);
+let wrap=store.get('wrap',false),srcOpen=store.get('srcOpen',innerWidth>900);
 function srcPanel(){
   const box=$('src'),e=S.sel&&E[S.sel];
   const src=e?R.s[e.fi]||'':'';
-  if(!e||!src||!e.first){box.hidden=true;$('sp2').hidden=true;return}
+  if(!srcOpen||!e||!src||!e.first){box.hidden=true;$('sp2').hidden=true;return}
   let ls=src.split('\n').slice(e.first-1,e.last);while(ls.length&&!ls[ls.length-1].trim())ls.pop();
   const cm={};for(const k of e.calls){const c=E[k];if(c)cm[c.name]=k}
   box.hidden=false;$('sp2').hidden=false;
@@ -504,16 +527,17 @@ splitter('sp1','--w1',1,180,520,'w1','side');splitter('sp2','--w2',-1,300,900,'w
 /* clicks */
 let timer=null;
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-tg],[data-copy],[data-close],[data-tab],[data-key],[data-mod],[data-scope],[data-id],[data-expand],[data-routefrom],[data-star],[data-link],[data-wrap],[data-export],[data-flow],[data-kf]');if(!t)return;ev.preventDefault();
+  const t=ev.target.closest('[data-tg],[data-copy],[data-close],[data-src],[data-tab],[data-key],[data-mod],[data-scope],[data-id],[data-expand],[data-routefrom],[data-star],[data-link],[data-wrap],[data-export],[data-flow],[data-kf]');if(!t)return;ev.preventDefault();
   if(t.dataset.tg!==undefined){const k=t.dataset.tg;if(OPEN.has(k))OPEN.delete(k);else OPEN.add(k);setList();return}
   if(t.dataset.kf){KF[t.dataset.kf]=!KF[t.dataset.kf];setKinds();setList();return}
-  if(t.dataset.close){S.sel=null;render();return}
+  if(t.dataset.close||t.dataset.src){srcOpen=t.dataset.src?!srcOpen:false;store.set('srcOpen',srcOpen);srcPanel();return}
   if(t.dataset.star){const e=S.sel&&E[S.sel];if(!e)return;if(STAR.has(e.key))STAR.delete(e.key);else STAR.add(e.key);store.set('stars',[...STAR]);setInfo();setList();return}
   if(t.dataset.link){try{navigator.clipboard.writeText(location.href)}catch(_){}t.textContent='✓';setTimeout(()=>{t.textContent='⧉'},900);return}
   if(t.dataset.wrap){wrap=!wrap;store.set('wrap',wrap);srcPanel();return}
   if(t.dataset.export){exportSvg();return}
   if(t.dataset.flow){document.querySelectorAll('.flow details').forEach(d=>{d.open=t.dataset.flow==='expand'});return}
   if(t.dataset.copy){try{navigator.clipboard.writeText(document.querySelector('pre.code').innerText.replace(/^\d+/gm,''))}catch(_){}return}
+  if(t.closest('#list'))document.body.classList.remove('nav-open');
   if(t.dataset.tab)S.tab=t.dataset.tab;
   else if(t.dataset.expand){const li=t.closest('li');const e=E[t.dataset.expand];const slot=li.querySelector(':scope > .callee');
     if(slot.innerHTML){slot.innerHTML='';t.textContent='expand ▸'}else{slot.innerHTML=flowHTML(e.flow,1);t.textContent='collapse ▾'}return}
@@ -535,7 +559,10 @@ $('q').addEventListener('keydown',ev=>{if(ev.key==='Escape'){$('q').value='';set
 $('all').addEventListener('change',render);$('only').addEventListener('change',render);$('depth').addEventListener('input',render);
 $('back').addEventListener('click',()=>go(-1));$('fwd').addEventListener('click',()=>go(1));
 $('collapse').addEventListener('click',collapseAll);$('expand').addEventListener('click',expandAll);$('locate').addEventListener('click',locate);
-$('palbtn').addEventListener('click',openPal);$('helpbtn').addEventListener('click',()=>help.classList.toggle('on'));
+$('palbtn').addEventListener('click',openPal);$('navbtn').addEventListener('click',()=>document.body.classList.toggle('nav-open'));$('scrim').addEventListener('click',()=>document.body.classList.remove('nav-open'));
+$('optbtn').addEventListener('click',ev=>{ev.stopPropagation();$('optpop').hidden=!$('optpop').hidden});
+document.addEventListener('click',ev=>{if(!ev.target.closest('#optpop,#optbtn'))$('optpop').hidden=true});
+$('helpbtn').addEventListener('click',()=>help.classList.toggle('on'));
 const toggleFocus=()=>{document.body.classList.toggle('focus');$('focusbtn').classList.toggle('on')};$('focusbtn').addEventListener('click',toggleFocus);
 /* keyboard */
 $('list').addEventListener('keydown',ev=>{
