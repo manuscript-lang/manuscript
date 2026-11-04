@@ -30,8 +30,14 @@ fn check(expression: &str, expected_name: &str, expected: usize, valid: bool) {
             );
             assert!(checked.program.is_some());
         }
-        let help = signature_help(syms, &d, &Documents::new(), text::position(&source, cursor))
-            .expect("signature help");
+        let help = signature_help(
+            syms,
+            &ms_check::Session::new(),
+            &d,
+            &Documents::new(),
+            text::position(&source, cursor),
+        )
+        .expect("signature help");
         assert_eq!(
             help.get("activeParameter").and_then(|j| j.as_i64()),
             Some(expected as i64),
@@ -250,9 +256,15 @@ fn signature_help_stays_suppressed_outside_calls_and_in_literals_or_comments() {
         let cursor = source.rfind(&expression).unwrap() + offset;
         let d = Document::new(ws.uri("signature.ms"), source.clone());
         assert!(
-            signature_help(syms, &d, &Documents::new(), text::position(&source, cursor))
-                .unwrap()
-                .is_null()
+            signature_help(
+                syms,
+                &ms_check::Session::new(),
+                &d,
+                &Documents::new(),
+                text::position(&source, cursor)
+            )
+            .unwrap()
+            .is_null()
         );
     }
 }

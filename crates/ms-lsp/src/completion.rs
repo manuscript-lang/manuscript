@@ -757,7 +757,7 @@ pub fn completion_at(
     if c.literal {
         return Ok(Vec::new());
     }
-    let a = query_editor(syms, d, docs, &c);
+    let a = query_editor(syms, session, d, docs, &c);
     let files = DeclFiles::new(&a.result.source_modules(syms));
     let mut k = Completer {
         d,
@@ -1063,6 +1063,7 @@ fn call_declaration(syms: ms_syntax::Names, a: &EditorAnalysis, call: &Expr) -> 
 /// Signature help for the call around the cursor.
 pub fn signature_help(
     syms: ms_syntax::Names,
+    session: &Rc<Session>,
     d: &Document,
     docs: &Documents,
     p: Position,
@@ -1072,7 +1073,7 @@ pub fn signature_help(
         return Ok(Json::Null);
     }
     let arguments = signature_arguments(d, &mut c);
-    let a = query_editor(syms, d, docs, &c);
+    let a = query_editor(syms, session, d, docs, &c);
     let Some((call, t)) = query_call(syms, &a) else {
         return Ok(Json::Null);
     };

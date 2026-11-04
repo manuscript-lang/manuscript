@@ -703,6 +703,7 @@ fn argument_completion_and_signature_help_preserve_mutation() {
         let offset = fixture.find("return update(").unwrap() + "return update(".len();
         let help = signature_help(
             syms,
+            &ms_check::Session::new(),
             &document,
             &Documents::new(),
             ms_lsp::text::position(&fixture, offset),

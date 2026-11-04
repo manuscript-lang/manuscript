@@ -392,6 +392,7 @@ fn captured(result: &Analysis) -> bool {
 /// private snapshot a bounded number of times until the marker is captured.
 pub fn query_editor(
     syms: ms_syntax::Names,
+    session: &Rc<ms_check::Session>,
     d: &Document,
     docs: &Documents,
     c: &CursorContext,
@@ -444,6 +445,7 @@ pub fn query_editor(
             Options {
                 recover: true,
                 scope_marker: Some(marker.clone()),
+                session: Some(session.clone()),
                 ..Options::default()
             },
         );
