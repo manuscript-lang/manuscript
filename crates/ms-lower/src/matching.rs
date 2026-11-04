@@ -525,6 +525,9 @@ impl FnLower<'_> {
             // borrows its error the same way: hand the reference on. The operand owns nothing
             // else on this path.
             let out = self.b.alt_view(ra, ret_err as u32, &[x.v]);
+            if hidden {
+                self.drop_value(cur);
+            }
             self.emit_return(Some(Val { v: out, own: true }));
         } else if hidden && !x.own && !borrowed_err && self.ty_of(payload) == want {
             // The operand is ours: its error moves into the result and the rest is released.

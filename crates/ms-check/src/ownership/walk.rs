@@ -132,6 +132,9 @@ struct BorrowSource {
     /// The value is an owned interface view of the sources (a view returner's result, or a local
     /// holding one): it is returned as an owned value, never as a plain reference.
     view: bool,
+    /// The `Result` cases (`BORROWED_OK`, `BORROWED_ERROR`) the value borrows from the sources
+    /// while its other cases are owned: a call of a function with a borrowing result.
+    cases: u8,
 }
 
 /// A place expression resolved to its root.
@@ -564,7 +567,7 @@ impl Walker<'_> {
             && !self.implements_contract()
             && !self.moves_withdrawn_borrow(e)
         {
-            if let Some(src) = self.borrow_source(e) {
+            if let Some(src) = self.borrow_source(e).filter(|s| s.cases == 0) {
                 // A part of an argument comes back as a reference into it: nothing moves. A
                 // wrapper around it (`x?`, `ok(x)`) adds no storage and stays a reference too.
                 self.borrowed_return.get_or_insert(e.pos);
@@ -1020,6 +1023,7 @@ impl Walker<'_> {
         }
         if self.class_of(operand) == Class::Move
             && let Some(src) = self.borrow_source(operand)
+            && (src.cases == 0 || src.cases & BORROWED_ERROR != 0)
         {
             self.borrowed_return.get_or_insert(e.pos);
             if src.view {
@@ -1104,6 +1108,7 @@ impl Walker<'_> {
                     params: Vec::new(),
                     path: None,
                     view: self.view_locals.contains(&b.uid),
+                    cases: 0,
                 };
                 let places = self.pure_places(e)?;
                 for place in places {
@@ -1127,6 +1132,7 @@ impl Walker<'_> {
                     params: Vec::new(),
                     path: path.map(|f| (None, f)),
                     view: false,
+                    cases: 0,
                 }),
                 (Role::Parameter, Some(i)) => {
                     let label = self.parameter_label(i)?;
@@ -1135,6 +1141,7 @@ impl Walker<'_> {
                         params: vec![label],
                         path: path.map(|f| (Some(label), f)),
                         view: false,
+                        cases: 0,
                     })
                 }
                 _ => None,
@@ -1166,7 +1173,8 @@ impl Walker<'_> {
                 receiver: false,
                 params: Vec::new(),
                 path: None,
-                view: ret_borrow.view,
+                view: ret_borrow.view && ret_borrow.borrowed_cases == 0,
+                cases: ret_borrow.borrowed_cases,
             };
             let mut paths: Vec<Option<(Option<Name>, Vec<Name>)>> = Vec::new();
             for (k, operand) in operands.iter().enumerate() {
@@ -2868,6 +2876,14 @@ impl Walker<'_> {
             operand,
         } = &e.kind
         {
+            // A function that borrows only its error leaves the `ok` payload an owned value.
+            if matches!(operand.kind, ExprKind::Call { .. }) {
+                let cases =
+                    result_borrow(self.syms, self.cx.m, operand, self.cx.summaries).borrowed_cases;
+                if cases != 0 && cases & BORROWED_OK == 0 {
+                    return None;
+                }
+            }
             return if self.is_place(operand) {
                 self.pure_places(operand)
             } else {
@@ -3182,7 +3198,14 @@ impl Walker<'_> {
                 }
                 // `try` hands its payload on with the position's demand; a copied payload only
                 // reads the result it comes out of.
-                let inner = if *op == UnaryOp::Try && self.class_of(e) != Class::Copy {
+                // A function that borrows only its error leaves the payload an owned value the
+                // `try` takes out of the temporary result; the borrowed error is relayed.
+                let owns_ok = matches!(operand.kind, ExprKind::Call { .. }) && {
+                    let cases = result_borrow(self.syms, self.cx.m, operand, self.cx.summaries)
+                        .borrowed_cases;
+                    cases != 0 && cases & BORROWED_OK == 0
+                };
+                let inner = if *op == UnaryOp::Try && self.class_of(e) != Class::Copy && !owns_ok {
                     d
                 } else {
                     Demand::Read
