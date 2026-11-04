@@ -950,8 +950,11 @@ fn run_deferred(id: i64, deadline: Option<i64>) {
     let closure = core::mem::take(&mut t.retry_state[i]) as *mut ms_rt_abi::Closure;
     // Waits inside the work stop at the waiter's deadline: the work runs on this stack, so only
     // its own waits can notice the limit.
-    let earlier =
-        task::set_defer_deadline(deadline.map_or(i64::MAX, |d| d.min(task::defer_deadline())));
+    let deadline = deadline
+        .unwrap_or(i64::MAX)
+        .min(t.limit[i])
+        .min(task::defer_deadline());
+    let earlier = task::set_defer_deadline(deadline);
     // The closure handed over to `msrt_promise_defer` is dropped when the work ends, and by the
     // cleanup when a cancelled wait inside the work jumps out of it, which skips Rust destructors.
     let release = || {
@@ -1135,10 +1138,10 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
     };
     let deadline = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
     for &id in &list {
-        run_deferred(id, deadline);
         if first_done(&list).is_some() {
             break;
         }
+        run_deferred(id, deadline);
     }
     loop {
         if let Some(at) = first_done(&list) {
@@ -1528,6 +1531,119 @@ mod tests {
         }
         msrt_promise_drop(slow);
         task::teardown();
+    }
+
+    static DEFERRED_CALLS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    static DEFERRED_DROPS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    static DEFERRED_DEADLINE: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+
+    unsafe extern "C" fn drop_deferred_probe(obj: *mut ms_rt_abi::Obj) {
+        DEFERRED_DROPS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        // SAFETY: the test closure owns its allocation.
+        unsafe { drop_closure(obj) };
+    }
+
+    fn deferred_probe() -> i64 {
+        let id = msrt_promise_new();
+        // SAFETY: the closure owns its captured id and is handed to the deferred promise.
+        unsafe {
+            let closure = crate::obj::new_obj(size_of::<Closure>() + 8, None, drop_deferred_probe)
+                .cast::<Closure>();
+            (*closure).code = probe_deferred as *const u8;
+            closure.add(1).cast::<i64>().write(id);
+            msrt_promise_defer(id, closure);
+        }
+        id
+    }
+
+    unsafe extern "C-unwind" fn probe_deferred(closure: *mut Closure) {
+        use std::sync::atomic::Ordering::SeqCst;
+        DEFERRED_CALLS.fetch_add(1, SeqCst);
+        DEFERRED_DEADLINE.store(task::defer_deadline(), SeqCst);
+        // SAFETY: `deferred_probe` stored the id after the header; the value is a live Int slot.
+        unsafe {
+            let mut value = 42i64;
+            msrt_promise_put(id_of(closure), (&raw mut value).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    fn wait_any_probe(ids: &mut [i64], timeout_ns: i64) -> i64 {
+        let list = ms_rt_abi::VecVal {
+            ptr: ids.as_mut_ptr().cast(),
+            len: ids.len(),
+            cap: ids.len(),
+        };
+        // SAFETY: `list` borrows `ids`, which outlives the call.
+        unsafe { msrt_promise_wait_any(&list, timeout_ns) }
+    }
+
+    #[test]
+    fn wait_any_does_not_run_deferred_work_when_an_input_is_done() {
+        let _g = lock();
+        use std::sync::atomic::Ordering::SeqCst;
+        DEFERRED_CALLS.store(0, SeqCst);
+        DEFERRED_DROPS.store(0, SeqCst);
+        let pending = deferred_probe();
+        let ready = msrt_promise_finished();
+        let winner = wait_any_probe(&mut [pending, ready], -1);
+        let calls = DEFERRED_CALLS.load(SeqCst);
+        msrt_promise_drop(pending);
+        msrt_promise_drop(ready);
+        task::teardown();
+        assert_eq!(winner, 1);
+        assert_eq!(calls, 0);
+        assert_eq!(DEFERRED_DROPS.load(SeqCst), 1);
+    }
+
+    #[test]
+    fn wait_any_deferred_work_observes_the_earlier_promise_and_inherited_limit() {
+        let _g = lock();
+        use std::sync::atomic::Ordering::SeqCst;
+        let hour = 3_600_000_000_000;
+        for (own, inherited) in [
+            (Some(hour), None),
+            (None, Some(hour / 2)),
+            (Some(hour), Some(hour / 2)),
+            (Some(hour / 2), Some(hour)),
+        ] {
+            let id = deferred_probe();
+            if let Some(duration) = own {
+                msrt_promise_limit(id, duration);
+            }
+            let outer = inherited.map_or(i64::MAX, |d| crate::sys::monotonic_ns() + d);
+            let expected = table().limit[find(id)].min(outer);
+            let previous = task::set_defer_deadline(outer);
+            let winner = wait_any_probe(&mut [id], -1);
+            let observed = DEFERRED_DEADLINE.load(SeqCst);
+            let restored = task::defer_deadline();
+            task::set_defer_deadline(previous);
+            msrt_promise_drop(id);
+            task::teardown();
+            assert_eq!(winner, 0);
+            assert_eq!(observed, expected);
+            assert_eq!(restored, outer);
+        }
+    }
+
+    #[test]
+    fn wait_any_deferred_work_observes_an_earlier_explicit_wait_limit() {
+        let _g = lock();
+        use std::sync::atomic::Ordering::SeqCst;
+        let id = deferred_probe();
+        msrt_promise_limit(id, 3_600_000_000_000);
+        let outer = crate::sys::monotonic_ns() + 1_800_000_000_000;
+        let previous = task::set_defer_deadline(outer);
+        let before = crate::sys::monotonic_ns();
+        let winner = wait_any_probe(&mut [id], 1_000_000_000);
+        let after = crate::sys::monotonic_ns();
+        let observed = DEFERRED_DEADLINE.load(SeqCst);
+        let restored = task::defer_deadline();
+        task::set_defer_deadline(previous);
+        msrt_promise_drop(id);
+        task::teardown();
+        assert_eq!(winner, 0);
+        assert!((before + 1_000_000_000..=after + 1_000_000_000).contains(&observed));
+        assert_eq!(restored, outer);
     }
 
     // Closures that carry the id of their promise after the header.
