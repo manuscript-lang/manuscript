@@ -40,3 +40,22 @@ wait path are the next lever.
 Before this change (256 MiB slots, `mprotect` guards, two mappings per task) the process hit
 `vm.max_map_count` near 32k tasks (#2483), so there is no same-machine 1M baseline to compare
 with; at 100k the old layout would not start.
+
+## 2026-11-04: stack growth (`growth.ms`, release LLVM, x86-64 sandbox, 4 cores)
+
+A task starts on one 512 KiB slot and grows by guarded segments. `growth.ms` times a loop of
+20,000 calls of `depth(3400)`, each of which crosses the first slot's boundary and comes back,
+against the same loop with `depth(3000)` (no crossing) and both on the main task (256 MiB, never
+grows), then a 900,000-frame recursion.
+
+| run | task 3000 × 20k | task 3400 × 20k | main 3000 × 20k | main 3400 × 20k | task 900k | main 900k |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 525 ms | 654 ms | 589 ms | 536 ms | 23 ms | 22 ms |
+| 2 | 497 ms | 563 ms | 516 ms | 656 ms | | |
+| 3 | 570 ms | 648 ms | 612 ms | 668 ms | | |
+
+The loop that crosses the boundary on every call runs as fast as the same loop on the main task;
+run-to-run noise (about 10%) is larger than any crossing cost, so one crossing is well under a
+microsecond: the task keeps its second segment, and a crossing is a few stores, the segment's
+bookkeeping and the stack switch. The 900k-frame recursion (about 125 MB of frames over 240
+segments) costs the same in a task as on the main task.

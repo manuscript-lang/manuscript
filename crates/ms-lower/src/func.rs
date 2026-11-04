@@ -1322,6 +1322,12 @@ impl<'a> FnLower<'a> {
         // when every surviving instruction originates in another module.
         self.b.func_mut().loc = self.loc(c.func.decl.decl().pos);
         let params = self.b.params();
+        // The recursion check comes before the parameters are bound: a check that finds the
+        // stack short re-invokes the function on a new segment with the caller's values, so
+        // nothing the prologue owns (a cloned parameter, a closer) may precede it.
+        self.counts_depth = true;
+        self.b
+            .emit(Op::DepthEnter, &[], ms_mir::ir::Imm::None, None);
         let bindings: Vec<BindingRef> = c
             .self_binding
             .iter()
@@ -1384,9 +1390,6 @@ impl<'a> FnLower<'a> {
                 }
             }
         }
-        self.counts_depth = true;
-        self.b
-            .emit(Op::DepthEnter, &[], ms_mir::ir::Imm::None, None);
         if let Some(f) = &c.fixture {
             self.begin_fixture(c, f)?;
         }
