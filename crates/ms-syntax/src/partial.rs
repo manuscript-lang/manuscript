@@ -7,7 +7,7 @@
 
 use crate::ast::*;
 use crate::diag::Diagnostic;
-use crate::lexer::{lex, unterminated_prefixes};
+use crate::lexer::{lex, recovery_continuations, unterminated_prefixes};
 use crate::parser::{parse, parse_chunk};
 use crate::pos::Span;
 use std::collections::HashMap;
@@ -32,6 +32,8 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
     let (mut attempted_start, mut continuation_end) = (usize::MAX, 0usize);
     let mut offset = 0usize;
     let lines: Vec<&str> = source.split_inclusive('\n').collect();
+    let roots: Vec<bool> = lines.iter().map(|line| is_declaration_line(line)).collect();
+    let continuations = recovery_continuations(file, source, &roots);
     let mut boundaries: Option<(Vec<usize>, Vec<usize>)> = None;
     let mut last_start_index = 0usize;
     // A lexer pass records the continuation answer for the current root's
@@ -39,7 +41,7 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
     // next declaration bounds the pass even when a delimiter stays open.
     let mut prefix_index: Option<(usize, Vec<bool>)> = None;
     for (index, line) in lines.iter().enumerate() {
-        if offset < continuation_end {
+        if offset < continuation_end || continuations[index] {
             offset += line.len();
             continue;
         }
@@ -69,8 +71,8 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
                         // are continuations. Failed probes keep the original splitter.
                         if partial_root_start(&source[start..]) {
                             let mut end = offset;
-                            for next in &lines[index..] {
-                                if partial_root_start(next) {
+                            for (next_index, next) in lines.iter().enumerate().skip(index) {
+                                if !continuations[next_index] && partial_root_start(next) {
                                     break;
                                 }
                                 end += next.len();
@@ -98,14 +100,17 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
                             .as_ref()
                             .is_none_or(|(cached_start, _)| *cached_start != last)
                     {
-                        let (line_offsets, next_declaration) =
-                            boundaries.get_or_insert_with(|| line_boundaries(&lines));
+                        let (line_offsets, next_declaration) = boundaries
+                            .get_or_insert_with(|| line_boundaries(&lines, &continuations));
                         let end_index = next_declaration[index + 1];
                         let stop_at: Vec<bool> = lines[last_start_index..end_index]
                             .iter()
                             .enumerate()
                             .map(|(i, line)| {
-                                i > 0 && is_candidate_line(line) && !is_declaration_line(line)
+                                i > 0
+                                    && !continuations[last_start_index + i]
+                                    && is_candidate_line(line)
+                                    && !is_declaration_line(line)
                             })
                             .collect();
                         let prefixes = unterminated_prefixes(
@@ -193,7 +198,7 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
     (module, diagnostics)
 }
 
-fn line_boundaries(lines: &[&str]) -> (Vec<usize>, Vec<usize>) {
+fn line_boundaries(lines: &[&str], continuations: &[bool]) -> (Vec<usize>, Vec<usize>) {
     let mut offsets = Vec::with_capacity(lines.len() + 1);
     offsets.push(0);
     for line in lines {
@@ -201,7 +206,7 @@ fn line_boundaries(lines: &[&str]) -> (Vec<usize>, Vec<usize>) {
     }
     let mut next_declaration = vec![lines.len(); lines.len() + 1];
     for index in (0..lines.len()).rev() {
-        next_declaration[index] = if is_declaration_line(lines[index]) {
+        next_declaration[index] = if !continuations[index] && is_declaration_line(lines[index]) {
             index
         } else {
             next_declaration[index + 1]
