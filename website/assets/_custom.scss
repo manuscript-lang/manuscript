@@ -187,6 +187,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .markdown .home-example-intro p { margin: .5rem 0 0; font-size: .78rem; line-height: 1.6; color: var(--docs-muted); }
 .home-example .docs-code { margin: 0; border: 0; border-radius: 0; }
 .home-example .docs-code-heading { border-radius: 0; }
+.home-code-hint { display: none; }
 .home-inputs { border-top: 1px solid var(--gray-200); padding: 1rem 1.5rem; font: .75rem/1.6 var(--docs-mono); }
 .home-inputs summary { cursor: pointer; color: var(--docs-prose-link); }
 .markdown .home-inputs p { margin: 1rem 0 .4rem; }
@@ -225,6 +226,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
   .home-example::before { right: 0; top: -1.5rem; }
   .home-example .docs-code pre { font-size: .75rem; padding: 1rem; }
   .home-inputs { padding: 1rem; }
+  .markdown .home-code-hint { display: block; margin: 0; padding: 0 1rem .75rem; color: var(--docs-muted); font: .7rem var(--docs-mono); }
   .home-example-intro { padding: 1rem; }
   .home-output { padding: 1rem; font-size: .72rem; }
   .home-benefits { padding-top: 2.5rem; }

@@ -47,13 +47,13 @@ test('the published browser bundle highlights the landing example and current sy
     assert.equal(output[index].map(node => node.textContent).join(''), source, 'Copy must retain the original source');
   }
   const [rendered, syntax] = output;
-  for (const name of ['read_file', 'wait_all', 'filter', 'join', 'print']) {
+  for (const name of ['read_file', 'reader', 'filter', 'join', 'print']) {
     assert.ok(rendered.some(node => node.textContent === name), `Highlight the real homepage call ${name}`);
   }
   assert.ok(rendered.some(node => node.className === 's' && node.textContent === '"changes.txt"'),
     'The input filename must receive string styling');
-  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 2,
-    'Both exit paths retain keyword styling');
+  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 3,
+    'Helper and entrypoint returns retain keyword styling');
   for (const kind of ['k', 'kc', 'nc', 'nf', 'mi', 'o', 'p', 's', 'se', 'si', 'c1']) {
     assert.ok(syntax.some(node => node.className === kind), `Missing current-syntax scope ${kind}`);
   }
