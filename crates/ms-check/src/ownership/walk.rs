@@ -4,8 +4,8 @@
 use super::classify::{Class, Classifier, declares_close};
 use super::live::Liveness;
 use super::modes::{
-    CallModes, BORROWED_ERROR, BORROWED_OK, ParamMode, ResultBorrow, Summaries, Summary, call_modes, receiver_mode,
-    result_borrow,
+    BORROWED_ERROR, BORROWED_OK, CallModes, ParamMode, ResultBorrow, Summaries, Summary,
+    call_modes, receiver_mode, result_borrow,
 };
 use super::places::{Place, Step};
 use super::*;

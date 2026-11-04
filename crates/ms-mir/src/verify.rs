@@ -871,7 +871,10 @@ impl Verifier<'_> {
                 };
                 let (dx, dy) = (&m.alts[x.index()], &m.alts[y.index()]);
                 want(
-                    dx.borrowed != 0 && dy.borrowed == 0 && dx.name == dy.name && dx.cases == dy.cases,
+                    dx.borrowed != 0
+                        && dy.borrowed == 0
+                        && dx.name == dy.name
+                        && dx.cases == dy.cases,
                     "alt.plain reads a borrowing variant as its ordinary alternative",
                 )
             }
@@ -1274,7 +1277,10 @@ impl Verifier<'_> {
                 };
                 let (dx, dy) = (&m.alts[x.index()], &m.alts[y.index()]);
                 want(
-                    dx.borrowed != 0 && dy.borrowed == 0 && dx.name == dy.name && dx.cases == dy.cases
+                    dx.borrowed != 0
+                        && dy.borrowed == 0
+                        && dx.name == dy.name
+                        && dx.cases == dy.cases
                         && self.needs_drop(r),
                     "alt.own copies a borrowing variant into its ordinary alternative",
                 )

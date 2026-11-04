@@ -1306,13 +1306,17 @@ impl Module {
         if mask == def.borrowed {
             return (base, self.types.alt(base));
         }
-        let found = self.alts.iter().position(|a| {
-            a.name == def.name && a.cases == def.cases && a.borrowed == mask
-        });
+        let found = self
+            .alts
+            .iter()
+            .position(|a| a.name == def.name && a.cases == def.cases && a.borrowed == mask);
         let id = match found {
             Some(i) => AltId(i as u32),
             None => {
-                self.alts.push(AltDef { borrowed: mask, ..def });
+                self.alts.push(AltDef {
+                    borrowed: mask,
+                    ..def
+                });
                 AltId(self.alts.len() as u32 - 1)
             }
         };
@@ -1529,12 +1533,10 @@ impl Module {
             Op::Call if matches!(inst.imm, Imm::Func(g) if self.funcs[g.index()].ret_view) => true,
             // A borrowing variant (a `Result` that borrows some cases from its arguments and
             // owns the others) points into the arguments the borrowed cases came from.
-            Op::AltView | Op::Call | Op::CallInd | Op::CallMethod => {
-                inst.res.is_some_and(|r| {
-                    matches!(self.types.kind(f.ty(r)),
+            Op::AltView | Op::Call | Op::CallInd | Op::CallMethod => inst.res.is_some_and(|r| {
+                matches!(self.types.kind(f.ty(r)),
                         TyKind::Alt(a) if self.alts[a.index()].borrowed != 0)
-                })
-            }
+            }),
             _ => false,
         }
     }

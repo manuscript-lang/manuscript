@@ -517,7 +517,10 @@ impl<'a> FnLower<'a> {
         // A function that borrows some cases of its `Result` over a temporary source: the
         // borrowed cases would end with the temporary, so the caller owns a copy of the whole
         // result (the part of the temporary is copied out before it is dropped).
-        if self.cx.owned_borrows.contains_key(&(self.hir.data.file, e.id))
+        if self
+            .cx
+            .owned_borrows
+            .contains_key(&(self.hir.data.file, e.id))
             && let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(v)).clone()
             && self.b.m.alts[a.index()].borrowed != 0
         {
@@ -1084,11 +1087,10 @@ impl<'a> FnLower<'a> {
     /// The alternative a constructor in return position builds: the borrowing variant this function
     /// returns when the checker marked the node (`Fact::RetCtor`), else `a`.
     fn ret_variant(&self, e: &Expr, a: ms_mir::types::AltId) -> ms_mir::types::AltId {
-        if !self.cx.fact(
-            self.hir.data.file,
-            e.id,
-            ms_check::ownership::Fact::RetCtor,
-        ) {
+        if !self
+            .cx
+            .fact(self.hir.data.file, e.id, ms_check::ownership::Fact::RetCtor)
+        {
             return a;
         }
         match self.b.m.types.kind(self.ret_ty) {

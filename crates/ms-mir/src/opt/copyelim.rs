@@ -153,7 +153,8 @@ fn borrows_of(m: &Module, fi: usize) -> Vec<Vec<Value>> {
     for b in &f.blocks {
         for inst in &b.insts {
             let Some(r) = inst.res else { continue };
-            if !matches!(m.result_mode(f, inst), Some(Mode::Move) | None) || m.result_views(f, inst) {
+            if !matches!(m.result_mode(f, inst), Some(Mode::Move) | None) || m.result_views(f, inst)
+            {
                 inst.args.iter().for_each(|a| borrows_of[a.index()].push(r));
             }
         }

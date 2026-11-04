@@ -762,6 +762,7 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
     for level in 1..depth:
         let inner = (try items(root))
         inner.length() | try expect_equal(1)
+
         let next = inner.first().get().clone()
         root = next
 
