@@ -561,7 +561,26 @@ mod stack {
         unsafe {
             #[cfg(windows)]
             {
-                (*cur).teb = sys::teb_stack();
+                let live = sys::teb_stack();
+                let rec = (*cur).teb;
+                if live[0] != rec[0] || live[2] != rec[2] || live[1] > live[0] || live[1] < live[2]
+                {
+                    eprintln!(
+                        "TEB MIX at switch: cur {:#x} stack {:#x}+{:#x} sp-now {:#x} live {:x?} record {:x?}; next {:#x} stack {:#x}+{:#x} teb {:x?} frozen {}",
+                        (*cur).handle,
+                        (*cur).stack as usize,
+                        (*cur).stack_len,
+                        core::ptr::addr_of!(live) as usize,
+                        live,
+                        rec,
+                        (*next).handle,
+                        (*next).stack as usize,
+                        (*next).stack_len,
+                        (*next).teb,
+                        !(*next).frozen.is_null()
+                    );
+                }
+                (*cur).teb = live;
                 msrt_ctx_switch(&mut (*cur).sp, (*next).sp, (*next).teb.as_ptr())
             }
             #[cfg(not(windows))]
@@ -936,6 +955,18 @@ unsafe fn thaw(t: *mut Task) {
         }
         #[cfg(windows)]
         {
+            let base = (*t).stack as usize;
+            if page < base || page >= base + (*t).stack_len {
+                eprintln!(
+                    "TEB MIX at thaw: task {:#x} stack {:#x}+{:#x} sp {:#x} len {:#x} teb {:x?}",
+                    (*t).handle,
+                    base,
+                    (*t).stack_len,
+                    sp,
+                    len,
+                    (*t).teb
+                );
+            }
             (*t).teb[1] = page;
         }
         core::ptr::copy_nonoverlapping((*t).frozen, sp as *mut u8, len);
