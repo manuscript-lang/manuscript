@@ -32,7 +32,7 @@ fn failed_type_speculation_preserves_nested_index_trees_and_positions() {
                 let ExprKind::Name(name) = &left.kind else {
                     panic!("expected receiver")
                 };
-                assert_eq!(name.as_str(), "data");
+                assert_eq!(ms_syntax::Names::global().str(name), "data");
                 assert!(ids.insert(left.id));
                 assert_eq!(left.pos.offset as usize, start + 5 * level);
                 assert_eq!(left.pos.line, 2);
@@ -42,7 +42,7 @@ fn failed_type_speculation_preserves_nested_index_trees_and_positions() {
             let ExprKind::Number(number) = &value.kind else {
                 panic!("expected numeric index")
             };
-            assert_eq!(number.as_str(), "0");
+            assert_eq!(ms_syntax::Names::global().str(number), "0");
             assert!(ids.insert(value.id));
             assert!(ids.into_iter().all(|id| id.0 < module.node_count));
         }

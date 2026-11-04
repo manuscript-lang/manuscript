@@ -808,7 +808,7 @@ impl<'a> Parser<'a> {
             && self.names.str(full) == "Callable"
         {
             let t = self.peek();
-            return self.fail(t, format!("there is no {full}[...] type; a function type is written fn(Int) Int: parameter types in parentheses, then the result type"));
+            return self.fail(t, format!("there is no {full_t}[...] type; a function type is written fn(Int) Int: parameter types in parentheses, then the result type", full_t = self.names.str(full)));
         }
         if self.kind() == Tok::LBracket
             && self.speculative == 0
@@ -832,7 +832,7 @@ impl<'a> Parser<'a> {
             && lt.pos.offset == self.previous().end.offset
             && args.is_empty()
         {
-            return self.fail(lt, format!("type arguments use square brackets, not angle brackets; write {full}[T] instead of {full}<T>"));
+            return self.fail(lt, format!("type arguments use square brackets, not angle brackets; write {full_t}[T] instead of {full_t}<T>", full_t = self.names.str(full)));
         }
         let id = self.id();
         Ok(TypeRef {
@@ -1446,7 +1446,7 @@ impl<'a> Parser<'a> {
                 if token.kind == Tok::Type {
                     let t = self.previous();
                     let names = type_param_names(self.names, &type_params);
-                    return self.fail(t, format!("a type declares only fields or cases; write its methods in an 'impl {name}{names}:' block, or implement an interface with 'impl <Interface> for {name}{names}:'"));
+                    return self.fail(t, format!("a type declares only fields or cases; write its methods in an 'impl {name_t}{names}:' block, or implement an interface with 'impl <Interface> for {name_t}{names}:'", name_t = self.names.str(name)));
                 }
                 let mname = self.need(Tok::Name)?;
                 let m = self.method_signature(mname, true, false, mutating)?;
@@ -1820,23 +1820,23 @@ impl<'a> Parser<'a> {
                     match self.names.str(*n) {
                         "pass" => return self.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm"),
                         "const" | "val" | "final" => {
-                            return self.fail(t, format!("'{n}' is not a keyword; write 'let name = ...' for a binding that is not reassigned, or 'var name = ...' when it changes"));
+                            return self.fail(t, format!("'{n_t}' is not a keyword; write 'let name = ...' for a binding that is not reassigned, or 'var name = ...' when it changes", n_t = self.names.str(n)));
                         }
                         "throw" | "raise" | "catch" => {
-                            return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'"));
+                            return self.fail(t, format!("'{n_t}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'", n_t = self.names.str(n)));
                         }
                         "elseif" => return self.fail(t, "'elseif' is not a keyword; write 'else if <condition>:' for a further branch"),
                         "elif" => return self.fail(t, "there is no 'elif': write 'else if <condition>:' for a further branch"),
                         "def" => return self.fail(t, "there is no 'def': declare a function with 'fn name(a: Int) Int:'"),
                         "switch" => return self.fail(t, "'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == a:' with 'else if' for plain values"),
-                        "except" | "finally" => return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'")),
+                        "except" | "finally" => return self.fail(t, format!("'{n_t}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'", n_t = self.names.str(n))),
                         "loop" => return self.fail(t, "'loop' is not a keyword; write 'while true:' and leave it with 'break'"),
                         "foreach" => return self.fail(t, "'foreach' is not a keyword; write 'for item in items:'"),
                         "class" => return self.fail(t, "'class' is not a keyword inside a fn; declare a record with 'type Name:' at module level"),
                         "del" => return self.fail(t, "'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"),
-                        "global" | "nonlocal" => return self.fail(t, format!("'{n}' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly")),
+                        "global" | "nonlocal" => return self.fail(t, format!("'{n_t}' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly", n_t = self.names.str(n))),
                         "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
-                        "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly, or start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\"")),
+                        "async" | "await" => return self.fail(t, format!("'{n_t}' is not a keyword; call the function directly, or start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\"", n_t = self.names.str(n))),
                         "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\": let result = promise(fn: work()), then result.wait()"),
                         _ => {}
                     }
@@ -2203,7 +2203,10 @@ impl<'a> Parser<'a> {
                 let o = op.kind.as_str();
                 return self.fail(
                     op,
-                    format!("Manuscript has no '{o}{o}' operator; write '{n} {o}= 1'"),
+                    format!(
+                        "Manuscript has no '{o}{o}' operator; write '{n_t} {o}= 1'",
+                        n_t = self.names.str(n)
+                    ),
                 );
             }
             if level == 4 && compared {
@@ -2658,7 +2661,7 @@ impl<'a> Parser<'a> {
                     && self.kind() == Tok::Arrow
                 {
                     let a = self.peek();
-                    return self.fail(a, format!("arrow closures are not supported; write 'fn {n}: {n} + 1', or 'fn({n}: Int) Int: {n} + 1' with explicit types"));
+                    return self.fail(a, format!("arrow closures are not supported; write 'fn {n_t}: {n_t} + 1', or 'fn({n_t}: Int) Int: {n_t} + 1' with explicit types", n_t = self.names.str(n)));
                 }
                 args.push(Argument {
                     pos,
