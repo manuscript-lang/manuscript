@@ -372,6 +372,10 @@ fn html_page_embeds_the_program_and_escapes_script_text() {
         "{page}"
     );
     assert!(!page.contains("__DATA__"));
+    assert!(
+        page.contains("export fn double(n: Int) Int:"),
+        "source is embedded"
+    );
     std::fs::write(
         dir.join("change.patch"),
         include_str!("diagram_overview/change.patch"),

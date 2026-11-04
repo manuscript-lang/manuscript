@@ -52,6 +52,8 @@ pub struct Facts {
     pub imports: BTreeMap<String, Vec<String>>,
     /// Each callable's ordered significant steps, for the flow and scope views.
     pub flows: BTreeMap<String, Vec<Node>>,
+    /// Project file to its source text, for views that show code.
+    pub sources: BTreeMap<String, String>,
 }
 
 pub fn fact_key(file: &str, kind: &str, name: &str) -> String {

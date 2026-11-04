@@ -120,6 +120,9 @@ pub fn collect_facts(
             );
         }
         let source: &str = &module.source;
+        facts
+            .sources
+            .insert(syms.str(module.file).to_string(), source.to_string());
         let module_facts = module.facts();
         let scoped: HashSet<NodeId> = module_facts
             .patterns

@@ -78,6 +78,8 @@ fn entity_json(facts: &Facts, ix: &Index, f: &Fact) -> Json {
             Json::Arr(vec![Json::str(&r.ty), indices(ix, &r.refs)])
         }),
         flow_json(ix, flow),
+        Json::from(f.first),
+        Json::from(f.last),
     ])
 }
 
@@ -124,6 +126,15 @@ pub fn html_page(facts: &Facts, changes: Option<&[Finding]>) -> String {
         .with(
             "f",
             Json::strings(&ix.files.iter().map(|f| f.to_string()).collect::<Vec<_>>()),
+        )
+        .with(
+            "s",
+            Json::Arr(
+                ix.files
+                    .iter()
+                    .map(|f| Json::str(facts.sources.get(*f).map_or("", String::as_str)))
+                    .collect(),
+            ),
         )
         .with("m", Json::Arr(modules))
         .with("e", Json::Arr(entities));
