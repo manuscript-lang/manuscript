@@ -33,7 +33,7 @@ svg .node{cursor:pointer} svg .node rect{stroke-width:1.5}
 svg .pure rect{fill:var(--pure);stroke:var(--pures)} svg .effect rect{fill:var(--eff);stroke:var(--effs)}
 svg .entry rect{fill:var(--ent);stroke:var(--acc);stroke-width:3} svg .ext rect{fill:var(--bg);stroke:var(--mut);stroke-dasharray:4}
 svg .cls rect{fill:var(--pan);stroke:var(--mut)} svg .sel rect{stroke:var(--acc);stroke-width:3}
-svg path.edge{fill:none;stroke:var(--mut);stroke-width:1.4} svg .elabel{fill:var(--mut);font-size:11px}
+svg path.edge{fill:none;stroke:var(--mut);stroke-width:1.4} svg text.code{font:12px ui-monospace,monospace}svg .elabel{fill:var(--mut);font-size:11px}
 .flow ul{list-style:none;margin:0;padding-left:18px;border-left:1px dashed var(--line)}
 .flow>ul{border:0;padding:0}
 .flow li{margin:2px 0}
@@ -198,7 +198,7 @@ function graph(nodes,edges){
       else{for(const v of out[u])if(st[v]===2)layer[u]=Math.max(layer[u],layer[v]+1);st[u]=2;stack.pop()}}}
   const max=Math.max(0,...layer),cols=[];
   nodes.forEach((n,i)=>{const c=max-layer[i];(cols[c]=cols[c]||[]).push(i)});
-  const W=210,GX=90,GY=24,pos=[];let H=0;
+  const W=260,GX=80,GY=24,pos=[];let H=0;
   if(max>5&&nodes.length>12){cols.length=0;nodes.forEach((_,i)=>{const c=Math.floor(i/8);(cols[c]=cols[c]||[]).push(i)})}
   const wrapped=[];cols.forEach(c=>{if(!c)return;for(let i=0;i<c.length;i+=10)wrapped.push(c.slice(i,i+10))});cols.length=0;wrapped.forEach(c=>cols.push(c));
   cols.forEach((c,ci)=>{if(!c)return;let y=10;c.forEach(i=>{const h=Math.max(40,18+14*(nodes[i].lines||[]).length+14);pos[i]={x:10+ci*(W+GX),y,h};y+=h+GY});H=Math.max(H,y)});
@@ -211,8 +211,8 @@ function graph(nodes,edges){
     parts.push('<path class="edge" d="'+d+'" marker-end="url(#a)"/>');
     if(e.label)parts.push('<text class="elabel" x="'+((x1+x2)/2)+'" y="'+((y1+y2)/2-4)+'" text-anchor="middle">'+esc(e.label)+'</text>')}
   nodes.forEach((n,i)=>{const p=pos[i];if(!p)return;
-    parts.push('<g class="node '+(n.cls||'')+(chgOf(n)?' chg':'')+(n.id===S.sel||n.id===S.mod?' sel':'')+'" data-id="'+esc(n.id)+'" data-kind="'+(n.kind||'')+'"><title>'+esc(n.tip||n.title)+'</title><rect x="'+p.x+'" y="'+p.y+'" width="'+W+'" height="'+p.h+'" rx="7"/><text x="'+(p.x+W/2)+'" y="'+(p.y+18)+'" text-anchor="middle" font-weight="600">'+esc(n.title.slice(0,26))+'</text>');
-    (n.lines||[]).forEach((l,j)=>parts.push('<text x="'+(p.x+10)+'" y="'+(p.y+36+14*j)+'">'+esc(l)+'</text>'));
+    parts.push('<g class="node '+(n.cls||'')+(chgOf(n)?' chg':'')+(n.id===S.sel||n.id===S.mod?' sel':'')+'" data-id="'+esc(n.id)+'" data-kind="'+(n.kind||'')+'"><title>'+esc(n.tip||n.title)+'</title><rect x="'+p.x+'" y="'+p.y+'" width="'+W+'" height="'+p.h+'" rx="7"/>'+(n.code?'<text class="code" x="'+(p.x+10)+'" y="'+(p.y+18)+'" font-weight="600">'+esc(n.title.slice(0,30))+':</text>':'<text x="'+(p.x+W/2)+'" y="'+(p.y+18)+'" text-anchor="middle" font-weight="600">'+esc(n.title.slice(0,26))+'</text>'));
+    (n.lines||[]).forEach((l,j)=>parts.push('<text'+(n.code?' class="code" x="'+(p.x+36):' x="'+(p.x+10))+'" y="'+(p.y+36+14*j)+'">'+esc(l)+'</text>'));
     if(n.sub)parts.push('<text x="'+(p.x+W/2)+'" y="'+(p.y+p.h-8)+'" text-anchor="middle" class="elabel">'+esc(n.sub.slice(0,30))+'</text>');
     parts.push('</g>')});
   return stage(parts.join('')+'</svg>');
@@ -265,11 +265,11 @@ function calls(){
 }
 function types(){
   const nodes={},edges=[];let n=0;const roots=S.sel&&E[S.sel]?[E[S.sel]]:D.entities.filter(e=>isType(e)&&(!S.mod||e.file===S.mod)).slice(0,30);
-  const add=x=>{if(nodes[x.key]||n>=40)return;n++;nodes[x.key]={id:x.key,title:(x.kind==='interface'?'interface ':x.kind==='record'||x.kind==='alternative'?'type ':'')+x.name,cls:'cls',kind:'type',
-    lines:x.slots.map(s=>x.kind==='record'?s.name+': '+s.ty:x.kind==='alternative'?'case '+s.name+s.ty:s.name+s.ty).slice(0,8)};
+  const add=x=>{if(nodes[x.key]||n>=40)return;n++;nodes[x.key]={code:1,id:x.key,title:(x.kind==='interface'?'interface ':x.kind==='record'||x.kind==='alternative'?'type ':'')+x.name,cls:'cls',kind:'type',
+    lines:x.slots.map(s=>x.kind==='record'?s.name+': '+s.ty:x.kind==='alternative'?'case '+s.name+s.ty:'fn '+s.name+s.ty).slice(0,8)};
     x.slots.forEach(s=>s.refs.forEach(r=>{const t=E[r];if(t){add(t);if(nodes[r])edges.push({from:x.key,to:r,label:s.name})}}));
     if(x.result)x.result.refs.forEach(r=>{const t=E[r];if(t){add(t);if(nodes[r])edges.push({from:x.key,to:r,label:'returns'})}})};
-  roots.forEach(r=>{if(isFn(r)){nodes[r.key]={id:r.key,title:'fn '+r.name,cls:'cls',lines:r.slots.map(s=>(s.var?'var ':'')+s.name+': '+s.ty)}}add(r)});
+  roots.forEach(r=>{if(isFn(r)){nodes[r.key]={code:1,id:r.key,title:'fn '+r.name,cls:'cls',lines:r.slots.map(s=>(s.var?'var ':'')+s.name+': '+s.ty)}}add(r)});
   const list=Object.values(nodes);if(!list.length)return '<p class="hint">no types</p>';
   return graph(list,edges);
 }
