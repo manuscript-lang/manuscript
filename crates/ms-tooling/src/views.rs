@@ -3,6 +3,7 @@
 use crate::facts::{Fact, Facts};
 use crate::tree::Node;
 use std::collections::HashSet;
+use std::fmt::Write;
 
 /// Names the diagram views, in help order.
 pub const VIEWS: [&str; 9] = [
@@ -529,6 +530,8 @@ fn ownership_node(
     for s in &f.slots {
         let mode = if s.var {
             "var (exclusive borrow)"
+        } else if matches!(s.ty.as_str(), "Int" | "Float" | "Bool" | "Unit" | "Instant") {
+            "copy"
         } else {
             "borrow"
         };
@@ -654,4 +657,168 @@ fn type_node(
     }
     path.remove(&f.key);
     node
+}
+
+/// Mermaid output with its own diagram type: a class diagram for `types`, a
+/// color-coded flow for `ownership`. Other views, and a callable as `--entity`
+/// of `types`, use the generic tree rendering (None).
+pub fn mermaid_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Option<String> {
+    match view {
+        "types" => class_diagram(facts, entity, if depth <= 0 { 3 } else { depth }),
+        "ownership" => Some(ownership_flow(
+            facts,
+            entity,
+            if depth <= 0 { 1 } else { depth },
+        )),
+        _ => None,
+    }
+}
+
+fn is_data_type(f: &Fact) -> bool {
+    matches!(f.kind.as_str(), "record" | "alternative" | "interface")
+}
+
+/// Mermaid class members cannot contain `[` or `]`; generics use `~`.
+fn mermaid_text(text: &str) -> String {
+    text.replace(['[', ']'], "~")
+}
+
+fn class_id(f: &Fact) -> String {
+    f.name
+        .replace(|c: char| !c.is_alphanumeric() && c != '_', "_")
+}
+
+fn class_diagram(facts: &Facts, entity: &str, depth: i64) -> Option<String> {
+    let chosen: Vec<&Fact> = if entity.is_empty() {
+        facts
+            .entities
+            .values()
+            .filter(|f| is_data_type(f))
+            .collect()
+    } else {
+        let start = find_entity(facts, entity).ok()?;
+        if !is_data_type(start) {
+            return None;
+        }
+        let mut seen = vec![start];
+        let mut frontier = vec![start];
+        for _ in 0..depth {
+            let mut next = Vec::new();
+            for f in &frontier {
+                for key in f.slots.iter().flat_map(|s| s.refs.iter()) {
+                    if let Some(t) = facts.entities.get(key)
+                        && !seen.iter().any(|s| s.key == t.key)
+                    {
+                        seen.push(t);
+                        next.push(t);
+                    }
+                }
+            }
+            frontier = next;
+        }
+        seen
+    };
+    let mut out = String::from("classDiagram\n");
+    for f in chosen.iter().take(NODE_CAP) {
+        let _ = writeln!(out, "    class {} {{", class_id(f));
+        if f.kind != "record" {
+            let _ = writeln!(out, "        <<{}>>", f.kind);
+        }
+        for s in &f.slots {
+            if f.kind == "record" {
+                let _ = writeln!(out, "        +{} {}", mermaid_text(&s.ty), s.name);
+            } else {
+                let _ = writeln!(out, "        {}{}", s.name, mermaid_text(&s.ty));
+            }
+        }
+        out.push_str("    }\n");
+    }
+    for f in chosen.iter().take(NODE_CAP) {
+        for s in &f.slots {
+            for key in &s.refs {
+                let Some(t) = facts.entities.get(key) else {
+                    continue;
+                };
+                if chosen.iter().take(NODE_CAP).any(|c| c.key == t.key) {
+                    let _ = writeln!(out, "    {} *-- {} : {}", class_id(f), class_id(t), s.name);
+                }
+            }
+        }
+    }
+    Some(out)
+}
+
+/// Types flow into a function as borrows, copies, or `var` borrows; the result flows out owned.
+fn ownership_flow(facts: &Facts, entity: &str, depth: i64) -> String {
+    let roots: Vec<&Fact> = match find_entity(facts, entity) {
+        Ok(f) if !entity.is_empty() => vec![f],
+        _ => facts
+            .entities
+            .values()
+            .filter(|f| {
+                matches!(f.kind.as_str(), "fn" | "method")
+                    && (f.scopes > 0 || f.slots.iter().any(|s| s.var))
+            })
+            .collect(),
+    };
+    let mut out = String::from("flowchart LR\n");
+    let mut styles: Vec<&str> = Vec::new();
+    let mut declared: Vec<String> = Vec::new();
+    let mut frontier: Vec<&Fact> = roots.iter().copied().take(NODE_CAP).collect();
+    let mut done: Vec<&str> = Vec::new();
+    for level in 0..=depth {
+        let mut next: Vec<&Fact> = Vec::new();
+        for f in frontier {
+            if done.contains(&f.key.as_str()) {
+                continue;
+            }
+            done.push(&f.key);
+            let fid = format!("f{}", done.len());
+            let closes = if f.scopes > 0 {
+                format!("<br/>closes {}", f.scopes)
+            } else {
+                String::new()
+            };
+            let _ = writeln!(
+                out,
+                "    {fid}[\"{}(){closes}\"]:::fn",
+                f.name.replace('"', "'")
+            );
+            for s in &f.slots {
+                let (mode, style) = if s.var {
+                    ("var", "stroke:#d33,stroke-width:3px")
+                } else if matches!(s.ty.as_str(), "Int" | "Float" | "Bool" | "Unit" | "Instant") {
+                    ("copy", "stroke:#999,stroke-dasharray:4")
+                } else {
+                    ("borrow", "stroke:#37b")
+                };
+                let tid = flow_type_node(&mut out, &mut declared, &s.ty);
+                let _ = writeln!(out, "    {tid} -->|\"{} {mode}\"| {fid}", s.name);
+                styles.push(style);
+            }
+            if let Some(r) = &f.result {
+                let tid = flow_type_node(&mut out, &mut declared, &r.ty);
+                let _ = writeln!(out, "    {fid} -->|owned| {tid}");
+                styles.push("stroke:#2a2,stroke-width:3px");
+            }
+            if level < depth {
+                next.extend(f.calls.iter().filter_map(|k| facts.entities.get(k)));
+            }
+        }
+        frontier = next;
+    }
+    out.push_str("    classDef fn fill:#fff3cd,stroke:#b8860b\n");
+    for (i, style) in styles.iter().enumerate() {
+        let _ = writeln!(out, "    linkStyle {i} {style}");
+    }
+    out
+}
+
+fn flow_type_node(out: &mut String, declared: &mut Vec<String>, ty: &str) -> String {
+    let id = format!("t_{}", ty.replace(|c: char| !c.is_alphanumeric(), "_"));
+    if !declared.contains(&id) {
+        let _ = writeln!(out, "    {id}([\"{}\"])", ty.replace('"', "'"));
+        declared.push(id.clone());
+    }
+    id
 }

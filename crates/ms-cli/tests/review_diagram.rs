@@ -294,7 +294,7 @@ fn types_and_ownership_views_render_in_ascii_and_mermaid() {
         text(&[
             "diagram", "main.ms", "--view", "types", "--format", "mermaid"
         ])
-        .starts_with("flowchart TD")
+        .starts_with("classDiagram\n")
     );
     let own = text(&["diagram", "main.ms", "--view", "mutability"]);
     assert!(
@@ -310,6 +310,6 @@ fn types_and_ownership_views_render_in_ascii_and_mermaid() {
             "--format",
             "mermaid"
         ])
-        .starts_with("flowchart TD")
+        .starts_with("flowchart LR\n")
     );
 }
