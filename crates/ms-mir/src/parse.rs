@@ -317,6 +317,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     name,
                     std: Default::default(),
                     cases: Vec::new(),
+                    lent: 0,
                 });
             }
             "iface" => {

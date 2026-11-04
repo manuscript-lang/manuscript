@@ -741,6 +741,10 @@ impl<'m> Interp<'m> {
                 let fields: Vec<Val> = a.iter().map(|x| arg(f, regs, *x, false, m)).collect();
                 set!(Val::Alt(c, Rc::new(fields)));
             }
+            Op::AltPlain => {
+                let v = regs[a[0].index()].clone();
+                set!(v);
+            }
             Op::AltTag => {
                 let Val::Alt(t, _) = &regs[a[0].index()] else {
                     return Err(Raw::internal("alt.tag on a non-alternative"));

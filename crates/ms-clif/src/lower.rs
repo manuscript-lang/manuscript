@@ -804,8 +804,9 @@ impl<'a, 'm> Lower<'a, 'm> {
             None => vs[0],
         };
         let done = self.b.create_block();
+        let lent = self.g.m.alts[a.index()].lent;
         for (c, case) in fields.iter().enumerate() {
-            if !case.iter().any(|(t, _)| self.g.m.needs_drop(*t)) {
+            if lent >> c & 1 == 1 || !case.iter().any(|(t, _)| self.g.m.needs_drop(*t)) {
                 continue;
             }
             let this = self.b.create_block();
@@ -2026,6 +2027,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 obj
             }
             Op::AltNew | Op::AltView => self.alt_new(inst, res_ty.expect("alt.new result")),
+            Op::AltPlain => self.a(inst, 0),
             Op::AltTag => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);

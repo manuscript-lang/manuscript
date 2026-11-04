@@ -333,6 +333,11 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.alt(a);
         self.val(Op::AltView, fields, Imm::Case(a, case), t)
     }
+    /// `alt.plain`: the lent variant `v` read as its ordinary alternative `plain`, a borrow
+    /// of every case (the lent cases and the owned ones alike).
+    pub fn alt_plain(&mut self, v: Value, plain: Ty) -> Value {
+        self.val(Op::AltPlain, &[v], Imm::None, plain)
+    }
     /// `iface.borrow`: an interface value whose box holds a bitwise copy of the borrowed `data`
     /// leaves (vtable word tagged 1): dropping it frees the box and leaves the payload alone.
     pub fn iface_borrow(&mut self, vt: VtableId, data: Value, t: Ty) -> Value {

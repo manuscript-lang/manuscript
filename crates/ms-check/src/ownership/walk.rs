@@ -4,7 +4,7 @@
 use super::classify::{Class, Classifier, declares_close};
 use super::live::Liveness;
 use super::modes::{
-    CallModes, ParamMode, ResultBorrow, Summaries, Summary, call_modes, receiver_mode,
+    CallModes, LENT_ERROR, LENT_OK, ParamMode, ResultBorrow, Summaries, Summary, call_modes, receiver_mode,
     result_borrow,
 };
 use super::places::{Place, Step};
@@ -179,6 +179,9 @@ pub fn analyze(cx: &Context) -> Outcome {
         borrowed_return: None,
         wrap_returns: Vec::new(),
         plain_borrowed: false,
+        lent_cases: 0,
+        owned_cases: 0,
+        lent_mask: 0,
         view_return: false,
         view_locals: HashSet::new(),
         view_calls: HashSet::new(),
@@ -216,8 +219,9 @@ pub fn analyze(cx: &Context) -> Outcome {
             // A view returner returns owned values on every path, so a new value beside a view
             // is no mix.
             returns_borrow: w.borrowed_return.is_some()
-                && (w.owned_return.is_none() || w.view_return),
-            view: w.view_return,
+                && (w.owned_return.is_none() || w.view_return || w.lent_mask != 0),
+            view: w.view_return || w.lent_mask != 0,
+            lent_cases: w.lent_mask,
             receiver: w.borrow_receiver,
             params: w.borrow_params.clone(),
             path: if w.view_return {
@@ -229,6 +233,7 @@ pub fn analyze(cx: &Context) -> Outcome {
     };
     w.facts.returns_borrow = summary.result.returns_borrow;
     w.facts.view = summary.result.view;
+    w.facts.lent_cases = summary.result.lent_cases;
     w.facts.parameters = summary.params.iter().map(|(_, m)| *m).collect();
     w.facts.receiver = cx.c.self_binding.as_ref().map(|_| summary.receiver);
     Outcome {
@@ -294,6 +299,12 @@ struct Walker<'a> {
     wrap_returns: Vec<NodeId>,
     /// Some returned reference is the part itself, not a wrapper of it.
     plain_borrowed: bool,
+    /// `Result` cases (`LENT_OK`, `LENT_ERROR`, or 4 for another shape) the returned wrappers lend,
+    /// and the cases the owned returns build (7 when unknown).
+    lent_cases: u8,
+    owned_cases: u8,
+    /// The wrappers stay references beside owned paths: the lent cases never overlap the owned ones.
+    lent_mask: u8,
     /// Some returned value is an interface view of the arguments (a borrowed value converted to an
     /// interface, a view returner's result, a local holding one): the function is a view returner.
     view_return: bool,
@@ -555,6 +566,7 @@ impl Walker<'_> {
                 if wrapped {
                     self.facts.view_wraps.insert(e.id);
                     self.wrap_returns.push(e.id);
+                    self.lent_cases |= self.wrap_case(e);
                 } else if !self.list_get(e) {
                     // `xs.get(i)` beside a new value is withdrawn like a wrapper, and the
                     // element is copied out; any other reference has no owned form.
@@ -577,6 +589,7 @@ impl Walker<'_> {
             // A bare `none` owns nothing, so a borrow-returning function can hand it back beside its references.
             if !matches!(&e.kind, ExprKind::Name(n) if self.syms.str(n) == "none") {
                 self.owned_return.get_or_insert(e.pos);
+                self.owned_cases |= self.owned_case(e);
             }
         }
         // A reference converted on the way out (a borrow-returning call widened to another error type or
@@ -751,6 +764,19 @@ impl Walker<'_> {
     }
 
     /// Whether the declared result type is an interface.
+    fn result_is_result(&self) -> bool {
+        let c = self.cx.c;
+        let result = match (c.func.method(), c.func.func()) {
+            (Some(m), _) => m.func.result.id,
+            (None, Some(f)) => f.result.id,
+            (None, None) => return false,
+        };
+        self.cx
+            .m
+            .type_ref(result)
+            .is_some_and(|t| t.is(Builtin::Result))
+    }
+
     fn result_is_interface(&self) -> bool {
         let c = self.cx.c;
         let result = match (c.func.method(), c.func.func()) {
@@ -807,6 +833,16 @@ impl Walker<'_> {
         // A wrapper of a part is a reference only when every path returns a borrow; beside a new value it
         // is built as a new value of its own (its payload copied), as before.
         if !self.plain_borrowed {
+            // The lent cases of a `Result` stay references when no owned path builds the same
+            // case: the caller drops only the cases the function owns.
+            if self.lent_cases & 4 == 0
+                && self.lent_cases != 0
+                && self.lent_cases & self.owned_cases == 0
+                && self.result_is_result()
+            {
+                self.lent_mask = self.lent_cases;
+                return;
+            }
             self.borrowed_return = None;
             for n in std::mem::take(&mut self.wrap_returns) {
                 self.facts.view_wraps.remove(&n);
@@ -930,6 +966,30 @@ impl Walker<'_> {
             .then_some(inner)
     }
 
+    /// The case of a `Result` a returned wrapper lends: `ok(x)` or `error(x)`; 4 for any other
+    /// wrapper (`x?`), which keeps the copy.
+    fn wrap_case(&self, e: &Expr) -> u8 {
+        self.result_case(e).unwrap_or(4)
+    }
+
+    /// The cases of a `Result` an owned returned expression can build.
+    fn owned_case(&self, e: &Expr) -> u8 {
+        self.result_case(e).unwrap_or(7)
+    }
+
+    /// The case an `ok(..)` or `error(..)` constructor call builds.
+    fn result_case(&self, e: &Expr) -> Option<u8> {
+        self.result_payload(e)?;
+        let Resolution::Constructor { case: Some(c), .. } = self.cx.m.resolution(e) else {
+            return None;
+        };
+        match self.syms.str(c) {
+            "ok" => Some(LENT_OK),
+            "error" => Some(LENT_ERROR),
+            _ => None,
+        }
+    }
+
     /// The error path of `try operand` returns the operand's error: a reference when the operand
     /// returns a borrow of it from the arguments as it is, otherwise a new value, like any `return`.
     fn try_return(&mut self, e: &Expr, operand: &Expr) {
@@ -958,6 +1018,7 @@ impl Walker<'_> {
             } else {
                 self.facts.view_wraps.insert(e.id);
                 self.wrap_returns.push(e.id);
+                self.lent_cases |= LENT_ERROR;
             }
             self.borrow_receiver |= src.receiver;
             for p in src.params {
@@ -970,6 +1031,7 @@ impl Walker<'_> {
             return;
         }
         self.owned_return.get_or_insert(e.pos);
+        self.owned_cases |= LENT_ERROR;
     }
 
     /// The payload expression of an `ok(x)` or `error(x)` constructor call.

@@ -280,7 +280,7 @@ pub enum Op {
     // Float arithmetic and conversions.
     FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, FFloor, FCeil, FTrunc, I2F, F2IOpt, B2I, Select,
     // Records and alternatives.
-    RecNew, RecGet, RecSet, RecFill, AltNew, AltView, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
+    RecNew, RecGet, RecSet, RecFill, AltNew, AltView, AltPlain, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
     // Lists.
     ListNew, ListLit, ListConst, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
     // Optionals.
@@ -400,7 +400,7 @@ impl Op {
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Ushr, Op::Rotl, Op::Rotr, Op::Clz, Op::Ctz, Op::Popcnt, Op::Not,
         Op::ICmp, Op::UICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
-        Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltView, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
+        Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltView, Op::AltPlain, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
         Op::ListNew, Op::ListLit, Op::ListConst, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU, Op::ListTake,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast, Op::ListRelease,
         Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
@@ -481,6 +481,7 @@ impl Op {
             Op::RecFill => ("rec.fill", K::Field, true, effects!()),
             Op::AltNew => ("alt.new", K::Case, true, effects!(alloc)),
             Op::AltView => ("alt.view", K::Case, true, effects!()),
+            Op::AltPlain => ("alt.plain", K::None, true, effects!()),
             Op::AltTag => ("alt.tag", K::None, true, effects!(reads)),
             Op::AltGet => ("alt.get", K::AltField, true, effects!(reads)),
             Op::AltUnbox => ("alt.unbox", K::AltField, true, effects!(writes, ownership)),
@@ -1290,8 +1291,30 @@ impl Module {
             name: name.to_string(),
             std: Default::default(),
             cases,
+            lent: 0,
         });
         let id = AltId(self.alts.len() as u32 - 1);
+        (id, self.types.alt(id))
+    }
+
+    /// The lent variant of `base` whose cases in `mask` are borrowed from another value: the
+    /// same layout and cases, but dropping it leaves those cases alone. Memoized per mask.
+    pub fn lent_alt(&mut self, base: AltId, mask: u64) -> (AltId, Ty) {
+        let def = self.alts[base.index()].clone();
+        let mask = mask | def.lent;
+        if mask == def.lent {
+            return (base, self.types.alt(base));
+        }
+        let found = self.alts.iter().position(|a| {
+            a.name == def.name && a.cases == def.cases && a.lent == mask
+        });
+        let id = match found {
+            Some(i) => AltId(i as u32),
+            None => {
+                self.alts.push(AltDef { lent: mask, ..def });
+                AltId(self.alts.len() as u32 - 1)
+            }
+        };
         (id, self.types.alt(id))
     }
 
@@ -1446,10 +1469,13 @@ impl Module {
                     return true;
                 }
                 seen.push(ty);
+                let lent = self.alts[a.index()].lent;
                 let out = self.alts[a.index()]
                     .cases
                     .iter()
-                    .any(|c| c.fields.iter().any(|f| self.needs_drop_in(f.1, seen)));
+                    .enumerate()
+                    .filter(|(i, _)| lent >> i & 1 == 0)
+                    .any(|(_, c)| c.fields.iter().any(|f| self.needs_drop_in(f.1, seen)));
                 seen.pop();
                 out
             }
@@ -1477,8 +1503,14 @@ impl Module {
             | Op::BytesLit
             | Op::StrAscii
             | Op::OptView
-            | Op::AltView
+            | Op::AltPlain
             | Op::OptNone => Mode::Borrow,
+            // A lent variant is owned and drops only the cases it owns: `alt.view` fills a
+            // lent case and is a borrow in an ordinary alternative.
+            Op::AltView => match self.types.kind(f.ty(res)) {
+                TyKind::Alt(a) if self.alts[a.index()].lent != 0 => Mode::Move,
+                _ => Mode::Borrow,
+            },
             // A borrow-returning function hands back a reference into its arguments.
             Op::Call if matches!(inst.imm, Imm::Func(g) if self.funcs[g.index()].ret_borrowed) => {
                 Mode::Borrow

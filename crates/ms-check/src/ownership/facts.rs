@@ -21,6 +21,11 @@ pub enum Fact {
     ViewMove = 1 << 4,
     /// A conditional or match expression whose value is a reference.
     BorrowedMatch = 1 << 5,
+    /// A callable whose `Result` result lends its `ok` payload from the arguments (the other
+    /// cases are owned): the caller drops only the owned cases.
+    LentOk = 1 << 6,
+    /// The same for the `error` payload.
+    LentError = 1 << 7,
 }
 
 /// Fact flags by module file, then by node id.
