@@ -11,7 +11,7 @@ Manuscript is designed for agents to write and people to understand. Its small l
 
 Static types catch mismatched data and calls before execution. `Result` makes expected failures visible, exhaustive `match` checks every alternative, and ownership tells you where a value can change or move. In review, `var` marks mutation and `.clone()` marks an explicit copy.
 
-The same `ms` command checks, formats, tests and builds your project. Debug builds use Cranelift for the edit-run loop; release builds use LLVM for optimization. The executable runs without Manuscript installed. On Linux it needs glibc 2.28 or newer; `--static` produces a musl executable. See [build levels](../developer-tooling/builds/build-levels.md).
+The same `ms` command checks, formats, tests and builds your project. Debug builds use Cranelift for the edit-run loop; release builds use LLVM when available and otherwise fall back to Cranelift. `build.cranelift_only` keeps builds on Cranelift. The executable runs without Manuscript installed. On Linux it needs glibc 2.28 or newer; `--static` produces a musl executable. See [build levels](../developer-tooling/builds/build-levels.md).
 
 ## Feedback an agent can act on
 

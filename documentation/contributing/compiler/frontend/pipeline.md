@@ -5,7 +5,7 @@ weight = 88
 
 # Compilation pipeline
 
-The compiler turns Manuscript source into native code through Cranelift, or pinned LLVM tools for optimized builds. It checks Manuscript's own rules first.
+The compiler turns Manuscript source into native code through Cranelift, or pinned LLVM tools for optimized builds when available and `build.cranelift_only` is off; otherwise it uses Cranelift. It checks Manuscript's own rules first.
 
 1. **Load the project.** Read `ms.toml`, find the entry `.ms` file, follow imports, and map paths and aliases to canonical file identities.
 2. **Parse.** Read declarations, expressions, and indented blocks. Each file is a module and needs no `module` declaration.

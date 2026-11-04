@@ -5,7 +5,7 @@ weight = 2
 
 # Lowering
 
-Lowering translates checked Manuscript into MIR, which `ms-mir` optimizes and verifies and `ms-clif` turns into native code through Cranelift or pinned LLVM tools for optimized builds. It preserves evaluation order, closure captures, and block-level cleanup.
+Lowering translates checked Manuscript into MIR, which `ms-mir` optimizes and verifies and `ms-clif` turns into native code through Cranelift or pinned LLVM tools. Optimized builds use LLVM when available and `build.cranelift_only` is off, and otherwise use Cranelift. It preserves evaluation order, closure captures, and block-level cleanup.
 
 ## Typed values
 
