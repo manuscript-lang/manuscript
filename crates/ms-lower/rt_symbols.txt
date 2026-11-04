@@ -64,7 +64,6 @@ msrt_cleanup_discard(handle: usize) @leaf
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize @leaf
 msrt_cleanup_run(handle: usize) @leaf
 msrt_cpu_level() -> i64
-msrt_ctx_switch(save: *mut usize, next: usize)
 msrt_eq_enter(a: *const u8, b: *const u8) -> u8 @leaf
 msrt_eq_leave(a: *const u8, b: *const u8) @leaf
 msrt_fault(msg: *const u8, len: usize) -> !
