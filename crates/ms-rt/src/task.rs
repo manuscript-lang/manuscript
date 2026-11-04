@@ -118,6 +118,9 @@ struct Task {
     frozen_len: usize,
     /// The scheduler idle round in which the task parked (see `hibernate_idle`).
     parked_round: u32,
+    /// Lends of the task's stack to other threads in progress (`pin_current`): while one is
+    /// out, the stack keeps its pages.
+    pinned: u32,
     /// The thread environment block's stack fields while the task is switched out.
     #[cfg(windows)]
     teb: [usize; 3],
@@ -626,6 +629,7 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             frozen: null_mut(),
             frozen_len: 0,
             parked_round: 0,
+            pinned: 0,
             #[cfg(windows)]
             teb: sys::teb_stack(),
         });
@@ -720,7 +724,8 @@ unsafe fn trim_idle_stacks() {
 /// used stack copied to the heap and its pages given back, so an idle task costs its records
 /// and not a page (a Java virtual thread's freeze). `thaw` copies the bytes back to the same
 /// addresses before the task runs again, so every pointer into the stack stays valid. Nothing
-/// writes to a parked task's stack: pool jobs and other threads only reach heap state.
+/// writes to a parked task's stack; a pool job that borrows a slice of its caller's frame pins the
+/// task (`pin_current`) so it is skipped until the job is done.
 ///
 /// One call walks every slot once, `HIBERNATE_SCAN` at a time, and stops early when work has
 /// arrived, so a wake-up never waits for a million slots; the next idle round resumes where it
@@ -751,6 +756,7 @@ unsafe fn hibernate_idle() {
                 if t.is_null()
                     || t == cur
                     || (*t).state != State::Waiting
+                    || (*t).pinned != 0
                     || !(*t).frozen.is_null()
                     || (*t).stack.is_null()
                     || round.wrapping_sub((*t).parked_round) < HIBERNATE_ROUNDS
@@ -765,6 +771,21 @@ unsafe fn hibernate_idle() {
         }
     }
     s.scan = at;
+}
+
+/// Marks the running task's stack as lent to another thread (`lend` true) or returned
+/// (`lend` false): a pool job that borrows a slice of the caller's frame reads it while the
+/// task is parked, so the task must not hibernate until the job is done.
+pub(crate) unsafe fn pin_current(lend: bool) {
+    // SAFETY: called on the runtime thread by the running task.
+    unsafe {
+        let cur = ensure_init();
+        if lend {
+            (*cur).pinned += 1;
+        } else {
+            (*cur).pinned -= 1;
+        }
+    }
 }
 
 /// Copies the used part of `t`'s stack to the heap and gives all its pages back.
@@ -2218,18 +2239,20 @@ mod tests {
     /// value slot, so a hibernation that lost or moved the stack shows.
     unsafe extern "C-unwind" fn park_on_token(arg: *mut u8) {
         let token = arg as usize as u64;
-        let marker = [0x5a5a_u16; 512];
+        let marker = std::hint::black_box([0x5a5a_u16; 512]);
         let mut value = 0;
         // SAFETY: called on a live task; the test posts the token.
         unsafe {
             msrt_token_park(token, -1, &mut value);
-            let sum: u64 = marker.iter().map(|&m| m as u64).sum();
+            let sum: u64 = std::hint::black_box(&marker)
+                .iter()
+                .map(|&m| m as u64)
+                .sum();
             assert_eq!(sum, 0x5a5a * 512, "stack contents survived hibernation");
         }
     }
 
     #[test]
-    #[cfg(unix)]
     fn parked_tasks_hibernate_and_resume_on_the_same_stack() {
         let _g = lock();
         teardown();
@@ -2251,16 +2274,55 @@ mod tests {
             );
             let top = stack_top((*t).stack as usize, (*t).stack_len);
             assert_eq!((*t).frozen_len, top - (*t).sp);
-            let mut resident = 0u8;
-            let page = (*t).sp & !4095;
-            assert_eq!(
-                libc::mincore(page as *mut core::ffi::c_void, 4096, &mut resident),
-                0
+            // The copy holds the parked frames: the marker array `park_on_token` keeps live.
+            let copy = core::slice::from_raw_parts((*t).frozen, (*t).frozen_len);
+            let markers = copy
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .filter(|w| w == &&[0x5a, 0x5a])
+                .count();
+            assert!(
+                markers >= 512,
+                "the frozen copy holds the stack ({markers} marker words)"
             );
-            assert_eq!(resident & 1, 0, "the stack page went back to the system");
             msrt_token_post(token, 7);
             assert_eq!(msrt_task_join(h, null_mut()), 0);
             assert!(sched().pool.iter().any(|&(base, _)| base == top - SLOT));
+            msrt_token_free(token);
+            teardown();
+        }
+    }
+
+    /// Parks on the token in `arg` with its stack lent out, as a pool job's borrow does.
+    unsafe extern "C-unwind" fn park_pinned(arg: *mut u8) {
+        let token = arg as usize as u64;
+        let mut value = 0;
+        // SAFETY: called on a live task; the test posts the token.
+        unsafe {
+            pin_current(true);
+            msrt_token_park(token, -1, &mut value);
+            pin_current(false);
+        }
+    }
+
+    #[test]
+    fn a_task_whose_stack_is_lent_out_does_not_hibernate() {
+        let _g = lock();
+        teardown();
+        // SAFETY: the test owns the token and joins the task.
+        unsafe {
+            let token = msrt_token_new(0);
+            let h = msrt_task_spawn(park_pinned, token as usize as *mut u8, 0, 0);
+            msrt_task_yield();
+            let t = lookup(h);
+            assert!((*t).state == State::Waiting);
+            hibernate_idle();
+            hibernate_idle();
+            hibernate_idle();
+            assert!((*t).frozen.is_null(), "a lent stack keeps its pages");
+            msrt_token_post(token, 1);
+            assert_eq!(msrt_task_join(h, null_mut()), 0);
             msrt_token_free(token);
             teardown();
         }
