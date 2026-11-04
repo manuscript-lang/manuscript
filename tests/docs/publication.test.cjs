@@ -198,13 +198,22 @@ test('landing and documentation pages share one favicon and a loadable brand mar
       .filter(tag => attribute(tag, 'rel') === 'icon');
     assert.equal(favicons.length, 1, `${route}: avoid competing theme and project favicons`);
     icons.push(attribute(favicons[0], 'href'));
+    assert.equal(attribute(favicons[0], 'type'), 'image/svg+xml', 'Keep the favicon scalable');
     const brand = [...html.matchAll(/<img\b[^>]*>/g)].map(match => match[0])
       .find(tag => (attribute(tag, 'class') || '').split(' ').includes('brand-mark'));
     assert.ok(brand, `${route}: include the brand mark`);
+    assert.equal(attribute(brand, 'src'), icons.at(-1), 'Header and favicon use the same vector mark');
     for (const url of [icons.at(-1), attribute(brand, 'src')]) {
       assert.ok(url.startsWith(prefix), `${route}: branding must respect the site prefix`);
       assert.ok(fs.statSync(path.join(book, url.slice(prefix.length))).size > 0, `${route}: branding asset missing`);
     }
   }
   assert.equal(icons[0], icons[1], 'Use a consistent favicon across the site');
+  const manifest = JSON.parse(fs.readFileSync(path.join(book, 'manifest.json'), 'utf8'));
+  assert.equal(manifest.start_url, prefix);
+  assert.equal(manifest.scope, prefix);
+  assert.deepEqual(manifest.icons, [{ src: icons[0], sizes: 'any', type: 'image/svg+xml', purpose: 'any' }]);
+  const svg = fs.readFileSync(path.join(book, icons[0].slice(prefix.length)), 'utf8');
+  assert.match(svg, /viewBox="0 0 32 32"/);
+  assert.ok(!/<(?:image|text|script)\b/.test(svg), 'Brand mark stays self-contained vector geometry');
 });

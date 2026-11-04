@@ -1,47 +1,47 @@
 @font-face { font-family: "Geist"; src: url("fonts/geist-latin-wght-normal.woff2") format("woff2"); font-style: normal; font-weight: 100 900; font-display: swap; }
 // Site-owned overrides keep the vendored Hugo Book theme upgradeable.
 @mixin docs-light {
-  --body-background: #f6f7f2;
-  --body-font-color: #292e29;
-  --color-link: #346225;
-  --color-visited-link: #346225;
-  --docs-prose-link: #346225;
-  --docs-button-bg: #d3fa55;
-  --docs-button-hover: #bce831;
-  --docs-button-fg: #182018;
-  --gray-100: #eef0e8;
-  --gray-200: #d9ddd2;
-  --gray-500: #62695e;
-  --docs-heading: #171d17;
-  --docs-muted: #62695e;
-  --docs-rail: #f1f3eb;
-  --docs-accent-bg: #e5f4c7;
-  --docs-code-bg: #fbfcf7;
-  --docs-code-keyword: #7853a3;
-  --docs-code-string: #346225;
-  --docs-code-function: #a54a22;
+  --body-background: #fcf7f0;
+  --body-font-color: #38271f;
+  --color-link: #a33d14;
+  --color-visited-link: #a33d14;
+  --docs-prose-link: #a33d14;
+  --docs-button-bg: #ff873e;
+  --docs-button-hover: #ff9e62;
+  --docs-button-fg: #2b160a;
+  --gray-100: #f5eadf;
+  --gray-200: #e3d2c2;
+  --gray-500: #776252;
+  --docs-heading: #2b1a11;
+  --docs-muted: #776252;
+  --docs-rail: #f8efe5;
+  --docs-accent-bg: #ffe1c7;
+  --docs-code-bg: #fffbf6;
+  --docs-code-keyword: #925326;
+  --docs-code-string: #a33d14;
+  --docs-code-function: #a33d14;
   --icon-filter: none;
 }
 @mixin docs-dark {
-  --body-background: #111710;
-  --body-font-color: #dde5d5;
-  --color-link: #d3fa55;
-  --color-visited-link: #d3fa55;
-  --docs-prose-link: #d3fa55;
-  --docs-button-bg: #d3fa55;
-  --docs-button-hover: #e0ff84;
-  --docs-button-fg: #182018;
-  --gray-100: #1b2318;
-  --gray-200: #35402f;
-  --gray-500: #a7b19e;
-  --docs-heading: #f3f7ed;
-  --docs-muted: #a7b19e;
-  --docs-rail: #111710;
-  --docs-accent-bg: #29391b;
-  --docs-code-bg: #182015;
-  --docs-code-keyword: #ccb1ef;
-  --docs-code-string: #d3fa55;
-  --docs-code-function: #ffb38a;
+  --body-background: #1b120e;
+  --body-font-color: #ebdbce;
+  --color-link: #ffab72;
+  --color-visited-link: #ffab72;
+  --docs-prose-link: #ffab72;
+  --docs-button-bg: #ff873e;
+  --docs-button-hover: #ffb17a;
+  --docs-button-fg: #2b160a;
+  --gray-100: #281b14;
+  --gray-200: #493326;
+  --gray-500: #c0aa99;
+  --docs-heading: #fff2e6;
+  --docs-muted: #c0aa99;
+  --docs-rail: #1b120e;
+  --docs-accent-bg: #472719;
+  --docs-code-bg: #241810;
+  --docs-code-keyword: #f2bc8d;
+  --docs-code-string: #ff873e;
+  --docs-code-function: #ffab72;
   --icon-filter: brightness(0) invert(1);
 }
 html:root { @include docs-light; --border-radius: 6px; --docs-header-height: 72px; --docs-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
@@ -59,8 +59,8 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .skip-link:focus { top: .5rem; }
 .docs-topbar { position: sticky; top: 0; z-index: 5; height: var(--docs-header-height); background: var(--body-background); border-bottom: 1px solid var(--gray-200); }
 .topbar-inner { max-width: 90rem; height: 100%; margin: auto; padding: 0 2rem; display: flex; align-items: center; gap: 2.5rem; }
-.docs-brand { display: flex; align-items: center; gap: .75rem; flex: none; color: var(--docs-heading) !important; font-size: 1.1rem; font-weight: 700; letter-spacing: -.035em; }
-.brand-mark { display: block; flex: none; width: 46px; height: 23px; object-fit: contain; }
+.docs-brand { display: flex; align-items: center; gap: .75rem; flex: none; color: var(--docs-heading) !important; font-family: var(--docs-mono); font-size: 1.1rem; font-weight: 700; letter-spacing: -.065em; }
+.brand-mark { display: block; flex: none; width: 32px; height: 32px; object-fit: contain; }
 .brand-subtitle { display: block; font-size: .7rem; font-weight: 500; letter-spacing: .02em; color: var(--docs-muted); margin-top: 2px; }
 .docs-versions { position: relative; flex: none; margin-left: -1.5rem; font-size: .75rem; }
 .docs-versions summary { display: flex; align-items: center; gap: .6rem; padding: .4rem .6rem; border: 1px solid var(--gray-200); border-radius: 6px; color: var(--docs-muted); cursor: pointer; list-style: none; }
@@ -251,7 +251,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
   .version-menu { left: auto; right: 0; }
   .brand-subtitle { display: none; }
   .docs-brand { font-size: .875rem; gap: .35rem; }
-  .brand-mark { width: 28px; height: 18px; }
+  .brand-mark { width: 28px; height: 28px; }
   .theme-toggle { width: 40px; height: 40px; }
   .docs-versions summary { min-height: 36px; }
   .book-page, .docs-home-layout .book-page { padding: 1.1rem 1.25rem; }

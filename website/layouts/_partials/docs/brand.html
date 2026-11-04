@@ -1,5 +1,5 @@
 <a class="docs-brand" href="{{ .Site.Home.RelPermalink }}" aria-label="Manuscript home">
-  {{ $logo := (resources.Get "brand/manuscript-mark.png").Resize "112x webp" }}
-  <img class="brand-mark" src="{{ $logo.RelPermalink }}" width="{{ $logo.Width }}" height="{{ $logo.Height }}" alt="" />
+  {{ $logo := resources.Get "brand/manuscript-mark.svg" }}
+  <img class="brand-mark" src="{{ $logo.RelPermalink }}" width="32" height="32" alt="" />
   <span>Manuscript {{ if not .IsHome }}<span class="brand-subtitle">Documentation</span>{{ end }}</span>
 </a>
