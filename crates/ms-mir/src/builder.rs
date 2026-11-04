@@ -338,6 +338,11 @@ impl<'m> FuncBuilder<'m> {
     pub fn alt_plain(&mut self, v: Value, plain: Ty) -> Value {
         self.val(Op::AltPlain, &[v], Imm::None, plain)
     }
+    /// `alt.own`: a copy of the borrowing variant `v` as its ordinary alternative `plain`, every
+    /// case owned (the borrowed cases are copied out of the value they borrow from).
+    pub fn alt_own(&mut self, v: Value, plain: Ty) -> Value {
+        self.val(Op::AltOwn, &[v], Imm::None, plain)
+    }
     /// `iface.borrow`: an interface value whose box holds a bitwise copy of the borrowed `data`
     /// leaves (vtable word tagged 1): dropping it frees the box and leaves the payload alone.
     pub fn iface_borrow(&mut self, vt: VtableId, data: Value, t: Ty) -> Value {

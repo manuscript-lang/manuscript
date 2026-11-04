@@ -523,10 +523,7 @@ impl<'a> FnLower<'a> {
         {
             let (base, plain) = self.plain_of(a);
             let _ = base;
-            let copy = self
-                .b
-                .emit(Op::Clone, &[v], ms_mir::ir::Imm::Int(1), Some(plain))
-                .expect("copy result");
+            let copy = self.b.alt_own(v, plain);
             self.drop_value(v);
             return Ok(self.val(copy, true));
         }
@@ -534,7 +531,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// The ordinary alternative a borrowing variant `a` is a variant of.
-    fn plain_of(&mut self, a: ms_mir::types::AltId) -> (ms_mir::types::AltId, MTy) {
+    pub(crate) fn plain_of(&mut self, a: ms_mir::types::AltId) -> (ms_mir::types::AltId, MTy) {
         let def = self.b.m.alts[a.index()].clone();
         let id = self
             .b

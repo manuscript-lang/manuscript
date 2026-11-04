@@ -735,6 +735,13 @@ impl<'a> FnLower<'a> {
     /// object value a program may write, which the copy sweep leaves out.
     pub fn clone_value(&mut self, v: Value) -> Value {
         let t = self.ty_of(v);
+        // A copy of a borrowing variant owns every case: it is an ordinary alternative.
+        if let TyKind::Alt(a) = self.b.m.types.kind(t).clone()
+            && self.b.m.alts[a.index()].borrowed != 0
+        {
+            let plain = self.plain_of(a).1;
+            return self.b.alt_own(v, plain);
+        }
         if !self.needs_drop(t) {
             return v;
         }

@@ -280,7 +280,7 @@ pub enum Op {
     // Float arithmetic and conversions.
     FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, FFloor, FCeil, FTrunc, I2F, F2IOpt, B2I, Select,
     // Records and alternatives.
-    RecNew, RecGet, RecSet, RecFill, AltNew, AltView, AltPlain, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
+    RecNew, RecGet, RecSet, RecFill, AltNew, AltView, AltPlain, AltOwn, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
     // Lists.
     ListNew, ListLit, ListConst, ListLen, ListGet, ListGetNn, ListGetU, ListTake, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast, ListRelease,
     // Optionals.
@@ -400,7 +400,7 @@ impl Op {
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Ushr, Op::Rotl, Op::Rotr, Op::Clz, Op::Ctz, Op::Popcnt, Op::Not,
         Op::ICmp, Op::UICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
-        Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltView, Op::AltPlain, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
+        Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltView, Op::AltPlain, Op::AltOwn, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
         Op::ListNew, Op::ListLit, Op::ListConst, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU, Op::ListTake,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast, Op::ListRelease,
         Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
@@ -482,6 +482,7 @@ impl Op {
             Op::AltNew => ("alt.new", K::Case, true, effects!(alloc)),
             Op::AltView => ("alt.view", K::Case, true, effects!()),
             Op::AltPlain => ("alt.plain", K::None, true, effects!()),
+            Op::AltOwn => ("alt.own", K::None, true, effects!(alloc)),
             Op::AltTag => ("alt.tag", K::None, true, effects!(reads)),
             Op::AltGet => ("alt.get", K::AltField, true, effects!(reads)),
             Op::AltUnbox => ("alt.unbox", K::AltField, true, effects!(writes, ownership)),

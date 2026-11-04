@@ -2028,6 +2028,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::AltNew | Op::AltView => self.alt_new(inst, res_ty.expect("alt.new result")),
             Op::AltPlain => self.a(inst, 0),
+            Op::AltOwn => {
+                // Every case copied: the result is the ordinary alternative.
+                let ty = res_ty.expect("alt.own result");
+                let v = self.a(inst, 0);
+                self.clone_value(ty, &v)
+            }
             Op::AltTag => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
@@ -2390,9 +2396,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::MoveOut => self.a(inst, 0),
             Op::Clone => {
-                // The result type decides the copy: a borrowing variant copies into its
-                // ordinary alternative, every case owned.
-                let ty = res_ty.unwrap_or_else(|| f.ty(inst.args[0]));
+                let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
                 self.clone_value(ty, &v)
             }

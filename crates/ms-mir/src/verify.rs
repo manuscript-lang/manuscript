@@ -1256,17 +1256,27 @@ impl Verifier<'_> {
             }
             Op::Clone => {
                 arity(1)?;
-                // A borrowing variant copies into its ordinary alternative: every case owned.
-                let plain = res.is_some_and(|r| {
-                    matches!((m.types.kind(t(0)), m.types.kind(r)), (TyKind::Alt(h), TyKind::Alt(w))
-                        if m.alts[h.index()].borrowed != 0 && m.alts[w.index()].borrowed == 0
-                            && m.alts[h.index()].name == m.alts[w.index()].name
-                            && m.alts[h.index()].cases == m.alts[w.index()].cases)
-                });
+                // Copying a borrowing variant into itself would own what it must not drop: use alt.own.
                 want(
-                    (res == Some(t(0)) && self.needs_drop(t(0)))
-                        || (plain && res.is_some_and(|r| self.needs_drop(r))),
+                    res == Some(t(0))
+                        && self.needs_drop(t(0))
+                        && !matches!(m.types.kind(t(0)), TyKind::Alt(a) if m.alts[a.index()].borrowed != 0),
                     "copy duplicates a droppable value",
+                )
+            }
+            Op::AltOwn => {
+                arity(1)?;
+                let (TyKind::Alt(x), Some(r)) = (m.types.kind(t(0)), res) else {
+                    return Err("alt.own takes a borrowing variant".into());
+                };
+                let TyKind::Alt(y) = m.types.kind(r) else {
+                    return Err("alt.own yields an alternative".into());
+                };
+                let (dx, dy) = (&m.alts[x.index()], &m.alts[y.index()]);
+                want(
+                    dx.borrowed != 0 && dy.borrowed == 0 && dx.name == dy.name && dx.cases == dy.cases
+                        && self.needs_drop(r),
+                    "alt.own copies a borrowing variant into its ordinary alternative",
                 )
             }
             Op::MoveOut => {

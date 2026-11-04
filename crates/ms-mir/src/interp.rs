@@ -741,6 +741,10 @@ impl<'m> Interp<'m> {
                 let fields: Vec<Val> = a.iter().map(|x| arg(f, regs, *x, false, m)).collect();
                 set!(Val::Alt(c, Rc::new(fields)));
             }
+            Op::AltOwn => {
+                let v = regs[a[0].index()].clone();
+                set!(v);
+            }
             Op::AltPlain => {
                 let v = regs[a[0].index()].clone();
                 set!(v);
