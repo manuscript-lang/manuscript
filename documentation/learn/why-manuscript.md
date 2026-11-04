@@ -5,15 +5,13 @@ weight = 6
 
 # Why Manuscript
 
-Manuscript is a ground-up attempt to build the right language for a world where agents write most of the code and people have to understand, review and run it. That changes what a language optimizes for. The context an agent needs to make a change, how reliably its first draft compiles, how well the compiler's feedback steers the repair, how readable the result is to a reviewer, and how fast and small the program runs all matter together.
+Manuscript is designed for agents to write and people to understand. Its small language, compiler feedback and native toolchain support one workflow: write a program, catch mistakes, review the important decisions, and build an executable.
 
-This page is the short version of the case. Every number has a script in the repository that reproduces it; links go to the result pages.
+## Read the code, ship the executable {#familiar-to-read-native-to-run}
 
-## Familiar to read, native to run
+Static types catch mismatched data and calls before execution. `Result` makes expected failures visible, exhaustive `match` checks every alternative, and ownership tells you where a value can change or move. In review, `var` marks mutation and `.clone()` marks an explicit copy.
 
-The surface is four-space blocks, `fn`, `for i in 0..n`, interpolated `"{name}"` strings and `true`/`false`. It is deliberately not Python: an agent that writes `def`, `lambda`, `True` or `elif` out of habit gets a diagnostic naming the Manuscript spelling instead of code that merely looks right. Manuscript adds static types inferred where they are clear, `Optional` and `Result` with `try`, nominal records and alternatives with exhaustive `match`, and ownership checked by the compiler. It compiles ahead of time, through Cranelift for fast debug builds and LLVM for release, into one executable with no runtime to install (on Linux it needs only glibc 2.28 or newer; `--static` links musl for a fully static one).
-
-In the recorded seven-kernel run, Manuscript took less time than Go on all seven and was within 6% of or faster than overflow-checked Rust on five. The slowest ratio against checked Rust was n-body at 1.23x. In the ten-workload run, eight cases were faster than Go and six were within 1% of or faster than Rust. These are measurements of particular revisions and machines; see the [kernel](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/kernels/README.md) and [workload](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/workloads/results.md) results and reproduction commands.
+The same `ms` command checks, formats, tests and builds your project. Debug builds use Cranelift for the edit-run loop; release builds use LLVM for optimization. The executable runs without Manuscript installed. On Linux it needs glibc 2.28 or newer; `--static` produces a musl executable. See [build levels](../developer-tooling/builds/build-levels.md).
 
 ## Feedback an agent can act on
 
@@ -23,27 +21,27 @@ Diagnostics read `cause; fix`. When an agent writes `len(xs)`, `.unwrap()`, `nam
 
 ## Concurrency without `async`
 
-Any function can wait, so there is no `async`, no `await` and no function coloring. A call that can wait returns a `Promise[T]` already running, `promise(fn: ...)` starts your own work the same way, and `wait()` gives the result. A promise only reads what it captures, dropping one cancels it, and values move between owners over a `pipe` instead of being shared.
+Any function can wait, so there is no `async`, no `await` and no function coloring. A call that can wait returns a `Promise[T]` already running, `promise(fn: ...)` starts your own work the same way, and `wait()` gives the result. Promises can read borrowed captures; mutable state stays with one owner and updates travel over a `pipe`. A resource moved into a promise belongs to that work. Dropping an unfinished promise cancels it and waits for it to end.
 
 Cancellation happens only at a `wait`, and a fault ends only the promise it happened in; read [concurrency](../core-language/concurrency/_index.md) before relying on them.
 
 ## Ownership you can follow
 
-Records, lists, maps, strings and alternatives are values with one owner. The compiler moves them at their last use, borrows them for reads and drops them deterministically, with no tracing collector and no reference counting on ordinary data. `var` marks mutation at the declaration and at the call, `.clone()` marks a copy, borrows are lexical with no lifetimes in source, and a scope closes the external resources bound in it. Returning a part of an argument, wrapping it in `Optional` or `Result`, or converting it to an interface hands back a reference, so ordinary code rarely needs `.clone()`.
+Records, lists, maps, strings and alternatives are values with one owner. The compiler moves them at their last use, borrows them for reads and drops them deterministically, with no tracing collector and no reference counting on ordinary data. `var` marks mutation at the declaration and at the call, `.clone()` marks a copy, borrows are lexical with no lifetimes in source, and a scope closes the external resources bound in it. Functions can return borrowed parts of arguments, including through `Optional` or `Result`; `try` preserves the active case's ownership instead of copying its payload. The owner must remain available while the returned borrow is used.
 
-The web benchmark records both benefits and costs. The October 25 run at `6003f16b` used 93 MB for 10,000 idle connections versus Go's 197 MB, but memory after load was higher (70 MB versus 15 MB) and `/io` throughput was lower. See the dated [web results](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/web/results.md#2026-10-25) and later experiments. The language's exact rules are in [references and borrowing](../core-language/types/references.md).
+See [references and borrowing](../core-language/types/references.md) for the exact rules, including how long a returned borrow remains valid. Use an explicit [resource scope](../core-language/cleanup/scopes.md) to close files and connections on exit, and flush fallible writes before closing to observe errors.
 
 ## A growing standard library
 
 A batteries-included environment is the goal. The standard library already includes files, streams, processes, HTTP client and server, TCP, JSON and other data formats, time, crypto, regex, logging, command-line parsing and a test runner. Discover what's available with `ms search_symbol <words>` or browse the [API reference](../standard-library/reference/_index.md). Most library code is written in Manuscript; native primitives are implemented in Rust.
 
-The [JSON benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/json/results.md) measures `JsonValue` parsing and encoding, from a small RPC message to `twitter.json`. The recorded range across machines is about 0.9x to 3.5x V8's throughput. Typed record parsing uses a separate path.
+For a known JSON shape, `parse[Config](text)` decodes directly into your record. Defaults handle omitted fields; shape mismatches return a `Result` error. This avoids building and walking a public JSON tree just to read configuration. Use `JsonValue` for unknown shapes. Start with the [JSON recipes](common-tasks.md) and [typed configuration example](best-practices.md#let-types-describe-your-data).
 
 ## Measured against agents
 
-The claim that matters most is also the one that is hardest to assume: that agents do better in Manuscript. The [agent benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md) gives the same twenty challenges (ten small programs, ten applications of three to five thousand lines) to a coding agent in Manuscript, TypeScript, Go and Rust, with hidden tests, and records pass rate, first-build success, turns, tokens and cost over passing runs only.
+The [agent benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md) measures correctness, repair rounds, tokens and cost on programs with hidden tests. Its dated runs show both successful tasks and remaining first-build and source-size gaps; they do not establish a universal advantage for every agent or application.
 
-The recorded [October 21](https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/results/summary-2026-10-21.md) Claude Haiku run passed 9 of 10 small challenges in Manuscript, 10 of 10 in TypeScript, and 8 of 10 large applications in Manuscript. The [October 22](https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/results/summary-2026-10-22.md) compact-guide run reached 10 of 10 small challenges in Manuscript; the terse-guide rerun reached 9 of 10. There was one trial per cell. Manuscript needed several compile-fix rounds (first build succeeded on 1 or 2 of 10) and about 20-30% more source tokens on the compared small challenges. First-build success and source size remain targets for improvement.
+The [performance suites](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/README.md) cover kernels, data formats, HTTP and concurrent work. Each result belongs to a particular revision, workload and machine. Use those reproduction commands to assess your workload.
 
 ## Where this is going
 

@@ -15,6 +15,7 @@ Run a program, learn the language, then build something useful. Start with the c
 2. **[Take the language tour](tour.md).** Bindings, collections, functions, types, errors, modules.
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
 4. **[Write idiomatic Manuscript](best-practices.md).** Control flow, errors, ownership, resources.
+5. **[Build a small tool](common-tasks.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
 
 Read in order with **Next**. Local statements in examples belong inside a function or test.
 
@@ -27,6 +28,18 @@ Read in order with **Next**. Local statements in examples belong inside a functi
 - [Language reference](../core-language/_index.md): syntax and semantics
 - [API reference](../standard-library/reference/_index.md): signatures and behavior
 - [Glossary](../glossary.md): unfamiliar terms
+
+## Find an API without leaving the terminal
+
+Run these from your project directory:
+
+```sh
+ms search_symbol read file
+ms search_symbol json
+ms search_symbol PromiseOptions
+```
+
+Search includes project symbols and the bundled standard library. A module query such as `json` shows its API page; a specific name narrows the output. Use the [API reference](../standard-library/reference/_index.md) for browsing, and the [language reference](../core-language/_index.md) for rules such as borrowing and cleanup.
 
 ## Working with a coding agent?
 

@@ -21,24 +21,26 @@ Unfamiliar term? Follow its link for exact rules.
 | [Bound](core-language/types/generics.md) | A requirement on a type parameter, such as supporting comparison or supplying a particular operation. |
 | [Equal](core-language/types/equality-and-hashing.md) | A standard interface for comparing values with `==`, `!=`, or `equals`. |
 | [Hashable](core-language/types/equality-and-hashing.md) | A standard interface for computing lookup hashes. Map keys and set elements must also implement Equal. |
-| Intrinsic / prelude | Types and interfaces available without imports, including Optional, Result, Error, and the standard equality interfaces. |
+| Prelude | Names available without imports, including `Optional`, `Result`, `Error`, `print`, and the standard equality interfaces. |
 | [Result](core-language/errors/results.md) | Either a success value or an expected error value. Callers can handle or forward the error. |
 | [Optional](core-language/types/optionals.md) | Either a present value or `none`. Absence does not carry an error explanation. |
 | [Fault](core-language/errors/faults.md) | A programming failure, such as a violated invariant. It ends the current operation after cleanup. |
 | [Closure](core-language/functions/function-values-and-closures.md) | A function value that keeps the surrounding values it uses. |
-| [Own](core-language/types/references.md) | One binding, field, or collection slot holds a value and frees it when that holder ends. |
+| [Own](core-language/types/references.md) | The binding, field, or collection slot responsible for dropping a value. A move transfers that responsibility; replacing an owned value drops the old one. |
 | [Borrow](core-language/types/references.md#borrowing) | Access to a value another holder owns, without taking it: shared (`let`, plain argument) or exclusive (`var`). It ends at its last use. |
 | [Move](core-language/types/references.md) | Ownership transfers to a new holder at the value's last use. The old name is dead until reassigned. |
 | [Clone](core-language/types/records.md#mutation-and-cloning) | `.clone()`: the only explicit, deep duplicate of an owned value. Numbers and other plain values copy implicitly. |
-| [Capture](core-language/functions/function-values-and-closures.md) | A closure holds a binding: it borrows it while the closure stays local and owns it (moved in) once the closure escapes. |
+| [Capture](core-language/functions/function-values-and-closures.md) | A binding used from a surrounding function. Non-escaping closures borrow captures; escaping closures take ownership when created, following the move rules. |
 | [Alias](core-language/types/references.md) | Another borrow of the same object. Closing a resource affects every alias. |
 | [Resource lifetime](core-language/cleanup/_index.md) | How long a file, connection, or other external resource remains open and usable. |
-| Sharing | Values may be passed between operations. |
+| [Promise](core-language/concurrency/promises.md) | Work already started, with one result taken through `wait()`. Dropping it cancels and waits for completion. |
+| [Stream](core-language/concurrency/streams.md) | `ReadStream[T]` produces values over time; `WriteStream[T]` accepts them. Reads and writes can wait. |
+| [Pipe](core-language/concurrency/streams.md) | An in-memory reader and writer for transferring values between promises. |
 | Capability / authority | A service object that permits external operations, obtained through a host accessor or passed to a helper. |
 | [Effect](developer-tooling/source/effects.md) | External behavior reachable from an operation, such as reading, writing, or calling a service. |
 | Join | Wait until every started operation has finished, including its cleanup. |
-| Execution context | Runtime state carrying an operation's cancellation signal and deadline. |
-| Cancellation checkpoint | A point where work checks whether it should stop and unwind. |
+| [Cancel signal](core-language/concurrency/promises.md#waiting) | A signal attached through `PromiseOptions` so a `Cancel` can request that several promises stop. |
+| [Cancellation checkpoint](core-language/concurrency/promises.md#cancellation) | A wait where cancellation can stop work and run cleanup. A loop that never waits must check a cancel signal itself. |
 | [Unwind](core-language/cleanup/exit-order.md) | Leave active scopes and run their registered cleanup. |
 | [Shielded cleanup](core-language/cleanup/cleanup-faults.md) | Cleanup that can run despite the cancellation or deadline that ended ordinary work. |
 | [Host](contributing/runtime-conventions.md#host-escalation) | The runtime entry point that runs a CLI application or handles HTTP requests. |

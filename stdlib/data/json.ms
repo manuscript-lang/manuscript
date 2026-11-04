@@ -124,7 +124,7 @@ impl JsonValue:
             ObjectValue(values): return values.clone()
             _: return none
 
-    // Returns True only for the Null case; a missing key or any other value returns False.
+    // Returns true only for the Null case; any other value returns false.
     fn is_null() Bool:
         match self:
             Null: return true
@@ -136,16 +136,16 @@ Parses one JSON value and applies the supplied input, depth, and value limits.
 With the default `T = JsonValue` the result is the parsed tree. Any other `T` is read from the
 document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `let result: Request! = parse(text)`
 return a decoded `Request` in a `Result` (`try` passes no expected type, so write `try parse[Request](text)`). A value whose shape does not match `T` returns
-`EBADMSG`; nothing is rejected at compile time, as with `stringify`. Input, depth and value limits
+`EBADMSG`; a type that is not `Data` is rejected at compile time. Input, depth and value limits
 apply to the document before decoding.
 
 - A record is an object. Members may appear in any order. An absent member takes the field's default,
   else `none` for an `Optional` field; an absent required field returns `EBADMSG`, so a field
-  with no JSON form (a function, say) needs a default to be readable. A member that is not a field
-  is ignored, unless `ignore_unknown_fields` is `False`, which makes it return `EBADMSG`.
+  with no JSON form (`Unit`, for example) needs a default to be readable. A member that is not a field
+  is ignored, unless `ignore_unknown_fields` is `false`, which makes it return `EBADMSG`.
 - An alternative case without payload is its name as a string; one with payload is externally tagged,
   `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
-  as `Result` and the error types follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
+  as `Result` follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
 - `T?` reads `null` as `none`, so a present `none` (an `Int??` holding `none`), written as `null`, reads back as `none`. `List` reads an array.
 - A sized integer accepts integer digits within its own range, and `Float32` any finite number that fits it.
 - `Int` accepts integer digits that fit in the platform's Int, `Float` any finite number, `BigInt` and `Decimal`
