@@ -347,8 +347,8 @@ pub unsafe fn guard(_p: *mut u8, _len: usize) -> bool {
 }
 
 /// The thread environment block's stack fields: `(StackBase, StackLimit, DeallocationStack)`.
-/// They describe the stack the thread runs on, so a context switch moves them with it: the
-/// kernel's guard-page growth and the stack walkers read them.
+/// They describe the stack the thread runs on, so a context switch moves them with it (the
+/// switch assembly writes them): the kernel's guard-page growth and the stack walkers read them.
 pub fn teb_stack() -> [usize; 3] {
     let (base, limit, dealloc): (usize, usize, usize);
     // SAFETY: reads of the current thread's TEB.
@@ -371,32 +371,6 @@ pub fn teb_stack() -> [usize; 3] {
         );
     }
     [base, limit, dealloc]
-}
-
-/// Sets the fields [`teb_stack`] reads.
-///
-/// # Safety
-/// The fields describe the stack the thread is about to run on.
-pub unsafe fn set_teb_stack(fields: [usize; 3]) {
-    // SAFETY: writes to the current thread's TEB.
-    unsafe {
-        #[cfg(target_arch = "x86_64")]
-        core::arch::asm!(
-            "mov gs:[0x08], {0}",
-            "mov gs:[0x10], {1}",
-            "mov gs:[0x1478], {2}",
-            in(reg) fields[0], in(reg) fields[1], in(reg) fields[2],
-            options(nostack, preserves_flags)
-        );
-        #[cfg(target_arch = "aarch64")]
-        core::arch::asm!(
-            "str {0}, [x18, #0x08]",
-            "str {1}, [x18, #0x10]",
-            "str {2}, [x18, #0x1478]",
-            in(reg) fields[0], in(reg) fields[1], in(reg) fields[2],
-            options(nostack, preserves_flags)
-        );
-    }
 }
 
 /// Commits `len` bytes at `p` as a guard page (the kernel commits the page below it when the

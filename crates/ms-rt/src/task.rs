@@ -275,7 +275,15 @@ mod stack {
     unsafe extern "C" {
         /// Saves callee-saved registers on the current stack, stores its pointer in `*save`,
         /// then resumes the stack `next` was saved from.
+        #[cfg(not(windows))]
         fn msrt_ctx_switch(save: *mut usize, next: usize);
+        /// As above; `teb` holds the three thread environment block stack fields of `next`,
+        /// installed once the stack pointer is on `next`. Installing them earlier would let the
+        /// saves on the current stack touch its guard page while the block describes another
+        /// stack, which the kernel reports as a guard-page violation instead of growing the
+        /// stack.
+        #[cfg(windows)]
+        fn msrt_ctx_switch(save: *mut usize, next: usize, teb: *const usize);
         fn msrt_task_tramp();
     }
 
@@ -336,6 +344,12 @@ mod stack {
         "movups [rsp + 144], xmm15",
         "mov [rcx], rsp",
         "mov rsp, rdx",
+        "mov rax, [r8]",
+        "mov gs:[0x08], rax",
+        "mov rax, [r8 + 8]",
+        "mov gs:[0x10], rax",
+        "mov rax, [r8 + 16]",
+        "mov gs:[0x1478], rax",
         "movups xmm6, [rsp]",
         "movups xmm7, [rsp + 16]",
         "movups xmm8, [rsp + 32]",
@@ -365,7 +379,10 @@ mod stack {
     );
 
     // AArch64 (Linux, macOS and Windows share the callee-saved set: x19-x28, x29, x30, d8-d15).
+    // Windows installs the thread environment block fields from `x2` after the switch.
     #[cfg(target_arch = "aarch64")]
+    macro_rules! aarch64_switch {
+        ($($install:literal),*) => {
     core::arch::global_asm!(
         ".text",
         concat!(".globl ", sym!("msrt_ctx_switch")),
@@ -385,6 +402,7 @@ mod stack {
         "mov x3, sp",
         "str x3, [x0]",
         "mov sp, x1",
+        $($install,)*
         "ldp x29, x30, [sp, #0]",
         "ldp x19, x20, [sp, #16]",
         "ldp x21, x22, [sp, #32]",
@@ -402,6 +420,19 @@ mod stack {
         "bl {main}",
         "brk #0",
         main = sym super::task_main,
+    );
+        };
+    }
+    #[cfg(all(target_arch = "aarch64", not(windows)))]
+    aarch64_switch!();
+    #[cfg(all(target_arch = "aarch64", windows))]
+    aarch64_switch!(
+        "ldr x3, [x2]",
+        "str x3, [x18, #0x08]",
+        "ldr x3, [x2, #8]",
+        "str x3, [x18, #0x10]",
+        "ldr x3, [x2, #16]",
+        "str x3, [x18, #0x1478]"
     );
 
     /// Builds the first frame of a new stack so that switching to it enters `msrt_task_tramp`.
@@ -531,8 +562,9 @@ mod stack {
             #[cfg(windows)]
             {
                 (*cur).teb = sys::teb_stack();
-                sys::set_teb_stack((*next).teb);
+                msrt_ctx_switch(&mut (*cur).sp, (*next).sp, (*next).teb.as_ptr())
             }
+            #[cfg(not(windows))]
             msrt_ctx_switch(&mut (*cur).sp, (*next).sp)
         }
     }
