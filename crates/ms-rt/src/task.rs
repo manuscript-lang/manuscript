@@ -44,39 +44,24 @@ pub const TOKEN_REMOTE: u32 = 1;
 /// tokens, nothing can wake any of them, which is a deadlock.
 pub const TOKEN_PEER: u32 = 2;
 
-/// Unix task stacks are slots of this size, aligned to it: the stack pointer's high bits name
-/// the slot, whose last 16 bytes hold the task's `fault::Hdr`, in the stack's first page so a task
-/// that never grows costs one resident page (see `stack::create`).
-#[cfg(unix)]
-pub const STACK_SLOT: usize = ms_rt_abi::symbols::STACK_SLOT as usize;
-#[cfg(unix)]
-const DEFAULT_STACK: usize = STACK_SLOT - (64 << 10);
-#[cfg(not(unix))]
-const DEFAULT_STACK: usize = 256 << 20;
-/// Address space reserved for an isolate's main task (committed lazily). Unix slots are already
-/// the most a stack can be; a fiber asks for the 1 GiB the main thread used to have.
-#[cfg(unix)]
-const ROOT_STACK: usize = 0;
-#[cfg(not(unix))]
-const ROOT_STACK: usize = 1 << 30;
-/// Largest stack a task can ask for.
-#[cfg(unix)]
-const MAX_STACK: usize = DEFAULT_STACK;
-#[cfg(not(unix))]
-const MAX_STACK: usize = usize::MAX;
-const MIN_STACK: usize = 128 << 10;
-#[cfg(unix)]
+/// Stacks live in regions of this size, aligned to it: the stack pointer's high bits name the
+/// region, whose last 16 bytes point at the running task's `fault::Hdr` (see `publish_region`).
+pub const REGION: usize = ms_rt_abi::symbols::STACK_REGION as usize;
+/// A task's stack: `SLOT` bytes of address space in a region, the bottom `GUARD` of them a
+/// guard, committed as the stack grows, so an idle task costs one page.
+pub const SLOT: usize = 512 << 10;
+/// Slots per region; the region's last page holds its cell, so the top slot is left out.
+const SLOTS_PER_REGION: usize = (REGION - 4096) / SLOT;
+const _: () = assert!(SLOTS_PER_REGION * SLOT + 4096 <= REGION);
+/// `msrt_task_spawn` stack request that gives the task a region of its own (the main task).
+const ROOT_STACK: usize = REGION;
+/// Address space below a stack's lowest usable page that faults when touched.
 const GUARD: usize = 64 << 10;
-#[cfg(unix)]
-const HDR_SIZE: usize = 16;
-#[cfg(unix)]
-const _: () = assert!(size_of::<fault::Hdr>() == HDR_SIZE);
-const STACK_POOL: usize = 1 << 16;
-/// Most slots one address-space reservation holds (stack creation reserves in batches).
-#[cfg(unix)]
-const CARVE_MAX: usize = 16;
-/// Address space reserved for a task a group starts (committed lazily).
-const TASK_GROUP_STACK: usize = 16 << 20;
+/// Tasks parked for at least this many scheduler idle rounds give their stack pages back.
+const HIBERNATE_ROUNDS: u32 = 2;
+/// Task slots hibernation freezes between looks for new work, so a wake-up waits for at most
+/// this many copies.
+const HIBERNATE_SCAN: usize = 4096;
 const NO_DEADLINE: i64 = i64::MAX;
 const MIN_TIMER_LIMIT: usize = 1024;
 
@@ -126,6 +111,16 @@ struct Task {
     defer_deadline: i64,
     /// The promise this task runs (`promise::msrt_promise_start`), or 0; told when the task ends.
     promise: i64,
+    /// The task's block, which generated code reaches through its region's cell.
+    hdr: fault::Hdr,
+    /// While hibernating: the copy of the stack from `sp` to its top, and its length.
+    frozen: *mut u8,
+    frozen_len: usize,
+    /// The scheduler idle round in which the task parked (see `hibernate_idle`).
+    parked_round: u32,
+    /// The thread environment block's stack fields while the task is switched out.
+    #[cfg(windows)]
+    teb: [usize; 3],
 }
 
 #[derive(Clone, Copy)]
@@ -165,16 +160,18 @@ struct Sched {
     fd_waiters: Vec<Vec<u64>>,
     fd_waiting: usize,
     epfd: i32,
-    /// Idle stacks (base, length) kept for reuse; a stack is reused only for the same length, whose guard it has.
+    /// Idle stacks (base, length) kept for reuse; a stack is reused only for the same length.
     pool: Vec<(usize, usize)>,
     /// `pool[..pool_clean]` have given their pages back (see `trim_idle_stacks`).
     pool_clean: usize,
-    /// Unused aligned stack slots of the last reservation: next slot address and the end.
-    #[cfg(unix)]
+    /// Unused slots of the current region: next slot address and the end.
     carve: (usize, usize),
-    /// How many slots the next reservation holds; doubles up to `CARVE_MAX`.
-    #[cfg(unix)]
-    carve_batch: usize,
+    /// Every region reserved, released at teardown.
+    regions: Vec<usize>,
+    /// Idle rounds so far (`reactor_wait` blocking); parks are stamped with it.
+    round: u32,
+    /// Where the next idle round's hibernation scan starts.
+    scan: usize,
     zombie_stack: (usize, usize),
     zombie_task: *mut Task,
     live: usize,
@@ -224,10 +221,10 @@ crate::isolate_static! {
     epfd: -1,
     pool: Vec::new(),
     pool_clean: 0,
-    #[cfg(unix)]
     carve: (0, 0),
-    #[cfg(unix)]
-    carve_batch: 1,
+    regions: Vec::new(),
+    round: 0,
+    scan: 0,
     zombie_stack: (0, 0),
     zombie_task: null_mut(),
     live: 0,
@@ -266,13 +263,11 @@ fn sched() -> SchedRef {
 
 // ---- context switch ----
 
-/// How stacks are created and switched. Unix switches raw stacks with assembly; Windows uses
-/// fibers so the thread environment block follows the stack (guard-page growth, stack bounds).
-#[cfg(not(windows))]
+/// How stacks are created and switched: raw stacks switched with assembly on every platform.
+/// On Windows the switch also moves the thread environment block's stack bounds with the stack,
+/// so the kernel's guard-page growth and stack walks keep working.
 mod stack {
     use super::*;
-
-    pub const POOLED: bool = true;
 
     unsafe extern "C" {
         /// Saves callee-saved registers on the current stack, stores its pointer in `*save`,
@@ -281,7 +276,7 @@ mod stack {
         fn msrt_task_tramp();
     }
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", not(windows)))]
     core::arch::global_asm!(
         ".text",
         concat!(".globl ", sym!("msrt_ctx_switch")),
@@ -309,6 +304,64 @@ mod stack {
         main = sym super::task_main,
     );
 
+    // Windows x64: arguments in rcx and rdx; rdi, rsi and xmm6-xmm15 are callee-saved too, and
+    // a call needs 32 bytes of shadow space.
+    #[cfg(all(target_arch = "x86_64", windows))]
+    core::arch::global_asm!(
+        ".text",
+        concat!(".globl ", sym!("msrt_ctx_switch")),
+        concat!(".globl ", sym!("msrt_task_tramp")),
+        concat!(sym!("msrt_ctx_switch"), ":"),
+        "push rbp",
+        "push rbx",
+        "push rdi",
+        "push rsi",
+        "push r12",
+        "push r13",
+        "push r14",
+        "push r15",
+        "sub rsp, 160",
+        "movups [rsp], xmm6",
+        "movups [rsp + 16], xmm7",
+        "movups [rsp + 32], xmm8",
+        "movups [rsp + 48], xmm9",
+        "movups [rsp + 64], xmm10",
+        "movups [rsp + 80], xmm11",
+        "movups [rsp + 96], xmm12",
+        "movups [rsp + 112], xmm13",
+        "movups [rsp + 128], xmm14",
+        "movups [rsp + 144], xmm15",
+        "mov [rcx], rsp",
+        "mov rsp, rdx",
+        "movups xmm6, [rsp]",
+        "movups xmm7, [rsp + 16]",
+        "movups xmm8, [rsp + 32]",
+        "movups xmm9, [rsp + 48]",
+        "movups xmm10, [rsp + 64]",
+        "movups xmm11, [rsp + 80]",
+        "movups xmm12, [rsp + 96]",
+        "movups xmm13, [rsp + 112]",
+        "movups xmm14, [rsp + 128]",
+        "movups xmm15, [rsp + 144]",
+        "add rsp, 160",
+        "pop r15",
+        "pop r14",
+        "pop r13",
+        "pop r12",
+        "pop rsi",
+        "pop rdi",
+        "pop rbx",
+        "pop rbp",
+        "ret",
+        concat!(sym!("msrt_task_tramp"), ":"),
+        "xor ebp, ebp",
+        "sub rsp, 32",
+        "call {main}",
+        "ud2",
+        main = sym super::task_main,
+    );
+
+    // AArch64 (Linux, macOS and Windows share the callee-saved set: x19-x28, x29, x30, d8-d15).
     #[cfg(target_arch = "aarch64")]
     core::arch::global_asm!(
         ".text",
@@ -352,7 +405,7 @@ mod stack {
     unsafe fn initial_sp(top: usize) -> usize {
         // SAFETY: `top` is the 16-byte aligned end of a writable stack with room for the frame.
         unsafe {
-            #[cfg(target_arch = "x86_64")]
+            #[cfg(all(target_arch = "x86_64", not(windows)))]
             {
                 // Six saved registers, then the return address; after `ret` the stack pointer is
                 // `top`, so the trampoline's `call` sees the ABI alignment.
@@ -362,6 +415,17 @@ mod stack {
                     *words.add(i) = 0;
                 }
                 *words.add(6) = msrt_task_tramp as *const () as usize;
+                sp
+            }
+            #[cfg(all(target_arch = "x86_64", windows))]
+            {
+                // Ten vector registers (160 bytes), eight saved registers, the return address.
+                let sp = top - 160 - 9 * 8;
+                let words = sp as *mut usize;
+                for i in 0..28 {
+                    *words.add(i) = 0;
+                }
+                *words.add(28) = msrt_task_tramp as *const () as usize;
                 sp
             }
             #[cfg(target_arch = "aarch64")]
@@ -377,81 +441,80 @@ mod stack {
         }
     }
 
-    /// Reserves one `STACK_SLOT`-aligned slot whose top `len` bytes are the stack, with a guard
-    /// below them and the header in the slot's last 16 bytes; null on failure. Address space
-    /// only: pages are committed as the stack grows.
-    pub unsafe fn create(len: usize) -> *mut u8 {
-        // SAFETY: single threaded scheduler; the slot is unused.
-        let base = unsafe { take_slot() };
+    /// Bytes of a fresh stack committed up front where commits are explicit (Windows); the
+    /// kernel commits the rest as the stack grows past the guard page below them.
+    pub const INITIAL_COMMIT: usize = 8192;
+
+    /// A `REGION`-aligned reservation with its cell page usable, recorded for teardown; null
+    /// when address space runs out.
+    unsafe fn map_region() -> *mut u8 {
+        let base = sys::map_region(REGION);
         if base.is_null() {
             return base;
         }
-        // SAFETY: guards the gap below the stack inside the slot.
-        unsafe {
-            let len = len.min(DEFAULT_STACK);
-            if !sys::guard(base, STACK_SLOT - len + GUARD) {
-                // No mapping left for the guard: running unguarded would let an overflow corrupt
-                // the neighboring stack, so give the slot back and report failure.
-                sys::unmap(base, STACK_SLOT);
-                return core::ptr::null_mut();
+        if !sys::commit((base as usize + REGION - 4096) as *mut u8, 4096) {
+            // SAFETY: the fresh reservation is unused.
+            unsafe { sys::unmap(base, REGION) };
+            return core::ptr::null_mut();
+        }
+        sched().regions.push(base as usize);
+        base
+    }
+
+    /// Reserves a stack of `len` bytes (`SLOT` for a task, `REGION` for a main task): address
+    /// space with a guard below its lowest usable page, committed as the stack grows. Null when
+    /// nothing is left.
+    pub unsafe fn create(len: usize) -> *mut u8 {
+        // SAFETY: single threaded scheduler.
+        let base = unsafe {
+            if len == REGION {
+                map_region()
+            } else {
+                take_slot()
             }
+        };
+        if base.is_null() {
+            return base;
+        }
+        // SAFETY: the guard range is the unused bottom of the fresh stack.
+        if !unsafe { sys::guard(base, GUARD) } {
+            // Running unguarded would let an overflow corrupt the neighboring stack: refuse
+            // the stack instead. Address space stays reserved for the region's other slots.
+            return core::ptr::null_mut();
         }
         base
     }
 
-    /// The next aligned slot. Address space is reserved in batches that double up to
-    /// `CARVE_MAX`, so most stacks cost no `mmap` or trimming `munmap` of their own.
+    /// The next slot: a free one, else the next unused one of the current region, else the
+    /// first of a fresh region.
     unsafe fn take_slot() -> *mut u8 {
         let mut s = sched();
         if s.carve.0 == s.carve.1 {
-            let mut count = s.carve_batch;
-            let mut raw = sys::map_anon((count + 1) * STACK_SLOT);
-            if raw.is_null() && count > 1 {
-                count = 1;
-                raw = sys::map_anon(2 * STACK_SLOT);
+            // SAFETY: single threaded scheduler.
+            let base = unsafe { map_region() } as usize;
+            if base == 0 {
+                return core::ptr::null_mut();
             }
-            if raw.is_null() {
-                return raw;
-            }
-            let start = raw as usize;
-            let base = start.next_multiple_of(STACK_SLOT);
-            let end = start + (count + 1) * STACK_SLOT;
-            // SAFETY: trims the unaligned head and tail of the fresh reservation.
-            unsafe {
-                if base > start {
-                    sys::unmap(start as *mut u8, base - start);
-                }
-                if end > base + count * STACK_SLOT {
-                    sys::unmap(
-                        (base + count * STACK_SLOT) as *mut u8,
-                        end - base - count * STACK_SLOT,
-                    );
-                }
-            }
-            s.carve = (base, base + count * STACK_SLOT);
-            s.carve_batch = (s.carve_batch * 2).min(CARVE_MAX);
+            s.carve = (base, base + SLOTS_PER_REGION * SLOT);
         }
         let slot = s.carve.0;
-        s.carve.0 += STACK_SLOT;
+        s.carve.0 += SLOT;
         slot as *mut u8
     }
 
-    pub unsafe fn destroy(base: *mut u8, _len: usize) {
-        // SAFETY: the caller guarantees the slot is unused.
-        unsafe { sys::unmap(base, STACK_SLOT) };
-    }
-
-    /// Stack bounds, initial context and header of a stack from [`create`].
-    pub unsafe fn prepare(base: *mut u8, len: usize) -> (usize, usize, usize, *mut fault::Hdr) {
-        let end = base as usize + STACK_SLOT;
-        let top = end - HDR_SIZE;
-        let len = len.min(DEFAULT_STACK);
-        let hdr = top as *mut fault::Hdr;
-        // SAFETY: the last 16 bytes of the slot are writable; the stack ends just below them.
-        unsafe {
-            hdr.write(fault::Hdr::new(0));
-            (end - len + GUARD, top, initial_sp(top), hdr)
+    /// Stack bounds and initial context of a stack from [`create`]: `(lowest usable address,
+    /// one past the highest, initial stack pointer)`.
+    pub unsafe fn prepare(base: *mut u8, len: usize) -> (usize, usize, usize) {
+        let top = stack_top(base as usize, len);
+        // The top of the stack is reserved address space: Unix commits pages on first touch,
+        // Windows needs the first pages committed and a guard page below them.
+        if !sys::commit((top - INITIAL_COMMIT) as *mut u8, INITIAL_COMMIT)
+            || !sys::commit_guard((top - INITIAL_COMMIT - 4096) as *mut u8)
+        {
+            fault::fatal(b"cannot commit a task stack");
         }
+        // SAFETY: the first pages are usable.
+        unsafe { (base as usize + GUARD, top, initial_sp(top)) }
     }
 
     /// The first task record of the thread needs no stack of its own.
@@ -461,49 +524,41 @@ mod stack {
 
     pub unsafe fn switch(cur: *mut Task, next: *mut Task) {
         // SAFETY: both records are live; `next` was prepared or saved by a previous switch.
-        unsafe { msrt_ctx_switch(&mut (*cur).sp, (*next).sp) };
+        unsafe {
+            #[cfg(windows)]
+            {
+                (*cur).teb = sys::teb_stack();
+                sys::set_teb_stack((*next).teb);
+            }
+            msrt_ctx_switch(&mut (*cur).sp, (*next).sp)
+        }
     }
 }
 
-#[cfg(windows)]
-mod stack {
-    use super::*;
-    use core::ffi::c_void;
-
-    pub const POOLED: bool = false;
-
-    unsafe extern "system" fn entry(_: *mut c_void) {
-        task_main()
+/// One past the highest stack address of a stack at `base` with `len` bytes: a main task's
+/// region keeps its last page for the region cell; a slot ends where the next begins.
+fn stack_top(base: usize, len: usize) -> usize {
+    if len == REGION {
+        base + REGION - 4096
+    } else {
+        base + len
     }
+}
 
-    /// A fiber with `len` bytes of reserved stack, committed as it grows.
-    pub unsafe fn create(len: usize) -> *mut u8 {
-        // SAFETY: plain Win32 call.
-        unsafe { sys::fiber_create(len, entry) }
-    }
+/// The cell of the region holding `sp`, which generated code reads to find the running task's
+/// block (see `ms_rt_abi::symbols::ISOLATE_HDR`).
+fn region_cell(sp: usize) -> *mut *mut fault::Hdr {
+    ((sp & !(REGION - 1)) + REGION - 16) as *mut *mut fault::Hdr
+}
 
-    pub unsafe fn destroy(base: *mut u8, _len: usize) {
-        // SAFETY: the fiber is not running (the caller runs on another one).
-        unsafe { sys::fiber_delete(base) };
-    }
-
-    /// Fibers carry their own bounds, which `task_main` records when it starts.
-    pub unsafe fn prepare(base: *mut u8, _len: usize) -> (usize, usize, usize, *mut fault::Hdr) {
-        // The system heap, not the runtime allocator: Unix keeps the header in the stack slot, so
-        // counting it here would make Windows report one more allocation per task.
-        let hdr = Box::into_raw(Box::new(fault::Hdr::new(0)));
-        (0, 0, base as usize, hdr)
-    }
-
-    /// Turns the calling thread into a fiber so it can be switched away from.
-    pub unsafe fn adopt_thread() -> usize {
-        // SAFETY: called once on the runtime thread.
-        unsafe { sys::fiber_adopt() as usize }
-    }
-
-    pub unsafe fn switch(_cur: *mut Task, next: *mut Task) {
-        // SAFETY: `sp` holds the fiber handle of a live task.
-        unsafe { sys::fiber_switch((*next).sp as *mut u8) };
+/// Points the region of `t`'s stack at `t`'s block, so code running on it finds its block.
+unsafe fn publish_region(t: *mut Task) {
+    // SAFETY: `t` is live and has a stack; the cell page is committed on first use.
+    unsafe {
+        if (*t).stack.is_null() {
+            return;
+        }
+        region_cell((*t).stack as usize).write(&mut (*t).hdr);
     }
 }
 
@@ -567,6 +622,12 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             timed_out: false,
             defer_deadline: i64::MAX,
             promise: 0,
+            hdr: fault::Hdr::new(0),
+            frozen: null_mut(),
+            frozen_len: 0,
+            parked_round: 0,
+            #[cfg(windows)]
+            teb: sys::teb_stack(),
         });
     }
     s.live += 1;
@@ -580,12 +641,8 @@ unsafe fn free_task(t: *mut Task) {
         let idx = ((*t).handle & 0xffff_ffff) as usize - 1;
         s.slots[idx].task = null_mut();
         s.free_slots.push(idx);
-        #[cfg(windows)]
-        {
-            let hdr = (*t).ctx.hdr_ptr();
-            if !hdr.is_null() {
-                drop(Box::from_raw(hdr));
-            }
+        if !(*t).frozen.is_null() {
+            sys::free((*t).frozen.cast());
         }
         core::ptr::drop_in_place(t);
         alloc::free(t as *mut u8);
@@ -623,21 +680,18 @@ unsafe fn alloc_stack(len: usize) -> *mut u8 {
         let p = stack::create(len);
         if p.is_null() {
             fault::fault(
-                b"cannot allocate a task stack: too many tasks at once (the process is out of memory mappings; see vm.max_map_count)",
+                b"cannot allocate a task stack: too many tasks at once (the process is out of address space or, on a Linux kernel before 6.13, out of memory mappings: raise vm.max_map_count)",
             );
         }
         p
     }
 }
 
+/// A finished task's stack goes to the pool. Slots are never unmapped one at a time: that would
+/// split their region's mapping, and `vm.max_map_count` bounds how many mappings a process may
+/// have (about 32k tasks, #2483). Regions go back at teardown.
 unsafe fn release_stack(base: usize, len: usize) {
-    let mut s = sched();
-    if stack::POOLED && s.pool.len() < STACK_POOL {
-        s.pool.push((base, len));
-        return;
-    }
-    // SAFETY: the stack came from `alloc_stack` and no task runs on it.
-    unsafe { stack::destroy(base as *mut u8, len) };
+    sched().pool.push((base, len));
 }
 
 /// Stacks the pool keeps with their pages when the scheduler idles; the rest give the pages back.
@@ -646,20 +700,117 @@ const STACK_POOL_WARM: usize = 256;
 /// Called before the scheduler blocks: after a burst of tasks the pool holds many stacks, and
 /// each keeps the pages its task touched. The oldest give them back (one call per stack, once),
 /// so a quiet server returns to its working set; the newest stay warm for the next request.
-#[cfg(unix)]
 unsafe fn trim_idle_stacks() {
     let mut s = sched();
     let end = s.pool.len().saturating_sub(STACK_POOL_WARM);
     for at in s.pool_clean..end {
-        let (base, _) = s.pool[at];
-        // SAFETY: a pooled slot is unused; its guard stays protected and the stack stays mapped.
-        unsafe { sys::release(base as *mut u8, STACK_SLOT) };
+        let (base, len) = s.pool[at];
+        // SAFETY: a pooled stack is unused; its guard stays and the stack stays mapped.
+        unsafe {
+            sys::release(
+                (base + GUARD) as *mut u8,
+                stack_top(base, len) - base - GUARD,
+            )
+        };
     }
     s.pool_clean = s.pool_clean.max(end);
 }
 
-#[cfg(not(unix))]
-unsafe fn trim_idle_stacks() {}
+/// Called before the scheduler blocks: a task parked for `HIBERNATE_ROUNDS` idle rounds has its
+/// used stack copied to the heap and its pages given back, so an idle task costs its records
+/// and not a page (a Java virtual thread's freeze). `thaw` copies the bytes back to the same
+/// addresses before the task runs again, so every pointer into the stack stays valid. Nothing
+/// writes to a parked task's stack: pool jobs and other threads only reach heap state.
+///
+/// One call walks every slot once, `HIBERNATE_SCAN` at a time, and stops early when work has
+/// arrived, so a wake-up never waits for a million slots; the next idle round resumes where it
+/// stopped.
+unsafe fn hibernate_idle() {
+    let mut s = sched();
+    s.round = s.round.wrapping_add(1);
+    let round = s.round;
+    let n = s.slots.len();
+    if n == 0 {
+        return;
+    }
+    // The blocking task is still on its stack with a stale saved pointer: never freeze it.
+    let cur = s.cur;
+    let mut at = s.scan.min(n);
+    let mut left = n;
+    while left > 0 {
+        let chunk = HIBERNATE_SCAN.min(left);
+        left -= chunk;
+        for _ in 0..chunk {
+            if at == n {
+                at = 0;
+            }
+            let t = s.slots[at].task;
+            at += 1;
+            // SAFETY: slots hold live records or null.
+            unsafe {
+                if t.is_null()
+                    || t == cur
+                    || (*t).state != State::Waiting
+                    || !(*t).frozen.is_null()
+                    || (*t).stack.is_null()
+                    || round.wrapping_sub((*t).parked_round) < HIBERNATE_ROUNDS
+                {
+                    continue;
+                }
+                freeze(t);
+            }
+        }
+        if crate::sched::work_available() || crate::sched::signalled() {
+            break;
+        }
+    }
+    s.scan = at;
+}
+
+/// Copies the used part of `t`'s stack to the heap and gives all its pages back.
+unsafe fn freeze(t: *mut Task) {
+    // SAFETY: `t` is parked, so nothing runs on its stack; `sp` is its saved stack pointer.
+    unsafe {
+        let top = stack_top((*t).stack as usize, (*t).stack_len);
+        let sp = (*t).sp;
+        let len = top - sp;
+        // The system allocator sizes the copy exactly; the runtime's large classes round a
+        // 3 KiB stack up to a 4 KiB block, which would give back nothing.
+        let copy = sys::malloc(len.max(1)) as *mut u8;
+        if copy.is_null() {
+            fault::fatal(b"out of memory");
+        }
+        core::ptr::copy_nonoverlapping(sp as *const u8, copy, len);
+        (*t).frozen = copy;
+        (*t).frozen_len = len;
+        // The whole stack: pages below `sp` that deeper calls touched and left behind go too.
+        let low = (*t).stack as usize + GUARD;
+        sys::release(low as *mut u8, top - low);
+    }
+}
+
+/// Copies a hibernating task's stack back before it runs.
+unsafe fn thaw(t: *mut Task) {
+    // SAFETY: `t` is about to run; its stack range is reserved and nothing else uses it.
+    unsafe {
+        let sp = (*t).sp;
+        let len = (*t).frozen_len;
+        let page = sp & !4095;
+        if !sys::commit(page as *mut u8, sp + len - page)
+            || !sys::commit_guard((page - 4096) as *mut u8)
+        {
+            fault::fatal(b"cannot commit a task stack");
+        }
+        #[cfg(windows)]
+        {
+            (*t).teb[1] = page;
+        }
+        core::ptr::copy_nonoverlapping((*t).frozen, sp as *mut u8, len);
+        sys::free((*t).frozen.cast());
+        (*t).frozen = null_mut();
+        (*t).frozen_len = 0;
+    }
+}
 
 /// Frees what finished tasks left behind; runs on the stack of a task that is still alive.
 unsafe fn reap() {
@@ -968,6 +1119,7 @@ unsafe fn reactor_wait() {
                 continue;
             }
             trim_idle_stacks();
+            hibernate_idle();
             poll_ready(timeout_ns);
             crate::sched::set_idle(false);
             if parked && crate::isolate::leave_idle() {
@@ -1018,6 +1170,13 @@ unsafe fn switch_away() {
                 }
                 (*next).state = State::Running;
                 crate::sched::publish_busy(s.ready.len() + 1);
+                if (*cur).state == State::Waiting {
+                    (*cur).parked_round = s.round;
+                }
+                if !(*next).frozen.is_null() {
+                    thaw(next);
+                }
+                publish_region(next);
                 fault::swap_ctx(&mut (*cur).ctx);
                 fault::swap_ctx(&mut (*next).ctx);
                 fault::publish_current_hdr();
@@ -1041,11 +1200,6 @@ unsafe fn switch_away() {
 extern "C" fn task_main() -> ! {
     // SAFETY: the scheduler set `cur` to this task before switching to it.
     unsafe {
-        #[cfg(windows)]
-        {
-            let (lo, hi) = sys::stack_limits();
-            fault::set_stack_bounds(lo, hi);
-        }
         after_switch();
         let mut s = sched();
         let t = s.cur;
@@ -1102,9 +1256,10 @@ extern "C" fn task_main() -> ! {
 // ---- exported API ----
 
 /// Starts `entry(arg)` as a new task and returns its handle. The task first runs when the
-/// caller parks or yields. `stack_bytes` of 0 selects the default (256 MiB of address space,
-/// committed lazily). With `SPAWN_DETACHED` nobody joins the task and a fault in it ends the
-/// process (exit 67); otherwise the fault is returned by `msrt_task_join`.
+/// caller parks or yields. Every task gets a `SLOT` of address space, committed lazily; the
+/// runtime's own `ROOT_STACK` request gives a main task a region (256 MiB). With
+/// `SPAWN_DETACHED` nobody joins the task and a fault in it ends the process (exit 67);
+/// otherwise the fault is returned by `msrt_task_join`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_spawn(
     entry: Entry,
@@ -1115,21 +1270,22 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
     // SAFETY: single threaded scheduler.
     unsafe {
         ensure_init();
-        let len = if stack_bytes == 0 {
-            DEFAULT_STACK
+        let len = if stack_bytes == ROOT_STACK {
+            REGION
         } else {
-            stack_bytes
-                .max(MIN_STACK)
-                .next_multiple_of(4096)
-                .min(MAX_STACK)
+            SLOT
         };
         let base = alloc_stack(len);
-        let (lo, hi, sp, hdr) = stack::prepare(base, len);
-        let mut ctx = Ctx::new(lo, hi);
-        ctx.set_hdr(hdr);
-        let t = new_task(ctx);
+        let (lo, hi, sp) = stack::prepare(base, len);
+        let t = new_task(Ctx::new(lo, hi));
         (*t).stack = base;
         (*t).stack_len = len;
+        let hdr: *mut fault::Hdr = &mut (*t).hdr;
+        (*t).ctx.set_hdr(hdr);
+        #[cfg(windows)]
+        {
+            (*t).teb = [hi, hi - stack::INITIAL_COMMIT, base as usize];
+        }
         (*t).entry = Some(entry);
         (*t).arg = arg;
         (*t).detached = flags & SPAWN_DETACHED != 0;
@@ -1540,7 +1696,7 @@ unsafe fn arm_kill(h: u64, limit_ns: i64) {
 pub(crate) unsafe fn spawn_promise_task(closure: *mut ms_rt_abi::Closure, promise: i64) -> u64 {
     // SAFETY: single threaded scheduler; forwarded contract.
     unsafe {
-        let h = msrt_task_spawn(closure_entry, closure.cast(), 0, TASK_GROUP_STACK);
+        let h = msrt_task_spawn(closure_entry, closure.cast(), 0, 0);
         let t = lookup(h);
         (*t).promise = promise;
         (*t).started_by = fault::capture_frames();
@@ -1568,22 +1724,6 @@ pub(crate) unsafe fn pump() {
     }
     // SAFETY: forwards to the yield path.
     unsafe { msrt_task_yield() };
-}
-
-/// Cancels the task of promise `promise`, if it runs on this thread; answers whether it does.
-pub(crate) fn cancel_promise_task(promise: i64) -> bool {
-    let s = sched();
-    // SAFETY: slots hold live records or null.
-    unsafe {
-        for slot in &s.slots {
-            let t = slot.task;
-            if !t.is_null() && (*t).promise == promise && (*t).state != State::Done {
-                msrt_task_cancel((*t).handle);
-                return true;
-            }
-        }
-    }
-    false
 }
 
 // ---- tokens ----
@@ -1830,19 +1970,14 @@ pub fn teardown() {
         }
         // The isolate's pool owns mappings too. Its thread-local state has no destructor,
         // so a worker that exits must release the cached stacks as well as active ones.
-        for (base, len) in core::mem::take(&mut s.pool) {
-            stack::destroy(base as *mut u8, len);
+        s.pool = Vec::new();
+        s.pool_clean = 0;
+        s.carve = (0, 0);
+        for base in core::mem::take(&mut s.regions) {
+            sys::unmap(base as *mut u8, REGION);
         }
-        #[cfg(unix)]
-        {
-            // Slots reserved in a batch and never handed out.
-            let (mut next, end) = core::mem::take(&mut s.carve);
-            while next < end {
-                stack::destroy(next as *mut u8, DEFAULT_STACK);
-                next += STACK_SLOT;
-            }
-            s.carve_batch = 1;
-        }
+        s.round = 0;
+        s.scan = 0;
         s.cur = null_mut();
         s.main = null_mut();
         s.ready = VecDeque::new();
@@ -2000,14 +2135,12 @@ mod tests {
         // SAFETY: a fabricated pool entry is a mapped slot that no task uses.
         unsafe {
             let n = STACK_POOL_WARM + 3;
-            let slots: Vec<usize> = (0..n)
-                .map(|_| stack::create(DEFAULT_STACK) as usize)
-                .collect();
+            let slots: Vec<usize> = (0..n).map(|_| stack::create(SLOT) as usize).collect();
             for &base in &slots {
                 assert!(base != 0);
-                // Touch the page below the header, where a stack's first frames live.
-                *((base + STACK_SLOT - 4096) as *mut u8) = 1;
-                release_stack(base, DEFAULT_STACK);
+                // Touch the top page, where a stack's first frames live.
+                *((base + SLOT - 4096) as *mut u8) = 1;
+                release_stack(base, SLOT);
             }
             trim_idle_stacks();
             assert_eq!(sched().pool_clean, 3);
@@ -2015,7 +2148,7 @@ mod tests {
             // system, but macOS frees them lazily, so what they read as is unspecified; they
             // must stay writable.
             for (at, &base) in slots.iter().enumerate() {
-                let page = (base + STACK_SLOT - 4096) as *mut u8;
+                let page = (base + SLOT - 4096) as *mut u8;
                 if at >= 3 {
                     assert_eq!(*page, 1, "warm stack {at}");
                 }
@@ -2023,7 +2156,7 @@ mod tests {
                 assert_eq!(*page, 2, "stack {at} stays usable");
             }
             // Taking a stack back lowers the clean mark only when an older entry moves.
-            let _ = alloc_stack(DEFAULT_STACK);
+            let _ = alloc_stack(SLOT);
             assert_eq!(sched().pool_clean, 3);
             teardown();
         }
@@ -2062,7 +2195,7 @@ mod tests {
             for base in pooled {
                 // Darwin mincore reports residency even for holes. msync checks mappings:
                 // an unmapped page must fail with ENOMEM on both Darwin and Linux.
-                for offset in (0..STACK_SLOT).step_by(page_size) {
+                for offset in (0..SLOT).step_by(page_size) {
                     assert_eq!(
                         libc::msync(
                             (base + offset) as *mut core::ffi::c_void,
@@ -2078,6 +2211,58 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    /// Parks on the token in `arg`, then writes what it found on its stack into the token's
+    /// value slot, so a hibernation that lost or moved the stack shows.
+    unsafe extern "C-unwind" fn park_on_token(arg: *mut u8) {
+        let token = arg as usize as u64;
+        let marker = [0x5a5a_u16; 512];
+        let mut value = 0;
+        // SAFETY: called on a live task; the test posts the token.
+        unsafe {
+            msrt_token_park(token, -1, &mut value);
+            let sum: u64 = marker.iter().map(|&m| m as u64).sum();
+            assert_eq!(sum, 0x5a5a * 512, "stack contents survived hibernation");
+        }
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn parked_tasks_hibernate_and_resume_on_the_same_stack() {
+        let _g = lock();
+        teardown();
+        // SAFETY: the test owns the token and joins the task.
+        unsafe {
+            let token = msrt_token_new(0);
+            let h = msrt_task_spawn(park_on_token, token as usize as *mut u8, 0, 0);
+            msrt_task_yield();
+            let t = lookup(h);
+            assert!((*t).state == State::Waiting);
+            assert!((*t).frozen.is_null());
+            // Two idle rounds after the park: the task gives its pages back.
+            hibernate_idle();
+            hibernate_idle();
+            hibernate_idle();
+            assert!(
+                !(*t).frozen.is_null(),
+                "a task parked for two rounds hibernates"
+            );
+            let top = stack_top((*t).stack as usize, (*t).stack_len);
+            assert_eq!((*t).frozen_len, top - (*t).sp);
+            let mut resident = 0u8;
+            let page = (*t).sp & !4095;
+            assert_eq!(
+                libc::mincore(page as *mut core::ffi::c_void, 4096, &mut resident),
+                0
+            );
+            assert_eq!(resident & 1, 0, "the stack page went back to the system");
+            msrt_token_post(token, 7);
+            assert_eq!(msrt_task_join(h, null_mut()), 0);
+            assert!(sched().pool.iter().any(|&(base, _)| base == top - SLOT));
+            msrt_token_free(token);
+            teardown();
         }
     }
 

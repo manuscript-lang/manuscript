@@ -11,7 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_SLOT};
+use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_REGION};
 use ms_rt_abi::{
     ASCII_CHAR_STRIDE, STR_ASCII, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
@@ -304,14 +304,11 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     /// The running task's header block (see `ms_rt_abi::symbols::ISOLATE_HDR`).
     fn task_hdr(&mut self) -> Value {
-        let os = self.g.module.isa().triple().operating_system;
-        if os == target_lexicon::OperatingSystem::Windows {
-            return self.rt_call("msrt_isolate_hdr", &[])[0];
-        }
-        // The block is the last 16 bytes of the stack's slot.
+        // The last 16 bytes of the stack's region point at the running task's block.
         let sp = self.b.ins().get_stack_pointer(types::I64);
-        let base = self.b.ins().band_imm_s(sp, !(STACK_SLOT - 1));
-        self.b.ins().iadd_imm_s(base, STACK_SLOT - 16)
+        let base = self.b.ins().band_imm_s(sp, !(STACK_REGION - 1));
+        let cell = self.b.ins().iadd_imm_s(base, STACK_REGION - 16);
+        self.b.ins().load(types::I64, flags(), cell, 0)
     }
 
     fn add_imm(&mut self, p: Value, off: i64) -> Value {

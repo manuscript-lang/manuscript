@@ -93,6 +93,8 @@ struct Table {
     closure: Vec<usize>,
     /// The scheduler thread the work runs on once it has started, else `NOT_STARTED`.
     thread: Vec<u8>,
+    /// The handle of the task running the work on that thread, else 0.
+    task: Vec<u64>,
     /// `WANT_CANCEL`: cancel the work as soon as it has started.
     flags: Vec<u8>,
     /// The report of the fault that ended the promise.
@@ -126,6 +128,7 @@ impl Table {
             result: Vec::new(),
             closure: Vec::new(),
             thread: Vec::new(),
+            task: Vec::new(),
             flags: Vec::new(),
             report: Vec::new(),
             deadline: Vec::new(),
@@ -217,6 +220,7 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
             t.result.push(NO_RESULT);
             t.closure.push(0);
             t.thread.push(NOT_STARTED);
+            t.task.push(0);
             t.flags.push(0);
             t.report.push(Vec::new());
             t.deadline.push(i64::MAX);
@@ -238,6 +242,7 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
     t.result[i] = NO_RESULT;
     t.closure[i] = 0;
     t.thread[i] = NOT_STARTED;
+    t.task[i] = 0;
     t.flags[i] = 0;
     t.report[i] = Vec::new();
     t.deadline[i] = i64::MAX;
@@ -307,10 +312,11 @@ fn drop_block(ptr: usize, desc: usize) {
 
 fn apply(event: Event) {
     match event {
-        Event::Started { id, thread } => {
+        Event::Started { id, thread, task } => {
             let t = table();
             let Some(i) = index(t, id) else { return };
             t.thread[i] = thread;
+            t.task[i] = task;
             if t.flags[i] & WANT_CANCEL != 0 {
                 request_cancel(id);
             }
@@ -378,8 +384,9 @@ fn apply(event: Event) {
             }
             wake(t, i);
         }
-        Event::Cancel { id } => {
-            task::cancel_promise_task(id);
+        Event::Cancel { task } => {
+            // SAFETY: a stale or finished handle is a no-op.
+            unsafe { task::msrt_task_cancel(task) };
         }
         Event::Stop { id } => stop(id),
     }
@@ -396,10 +403,11 @@ fn request_cancel(id: i64) {
     }
     if t.thread[i] != NOT_STARTED {
         let thread = t.thread[i] as usize;
+        let task = t.task[i];
         if thread == sched::current() {
-            apply(Event::Cancel { id });
+            apply(Event::Cancel { task });
         } else {
-            sched::post(thread, Event::Cancel { id });
+            sched::post(thread, Event::Cancel { task });
         }
         return;
     }
@@ -420,12 +428,14 @@ fn request_cancel(id: i64) {
 pub(crate) fn execute(start: Start) {
     sched::live_add(1);
     // SAFETY: the creator holds a reference to the closure until it is told the task ended.
-    unsafe { task::spawn_promise_task(start.closure as *mut ms_rt_abi::Closure, start.id) };
+    let task =
+        unsafe { task::spawn_promise_task(start.closure as *mut ms_rt_abi::Closure, start.id) };
     deliver(
         start.id,
         Event::Started {
             id: start.id,
             thread: sched::current() as u8,
+            task,
         },
     );
 }
