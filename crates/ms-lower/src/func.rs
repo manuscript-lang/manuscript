@@ -137,6 +137,9 @@ pub(crate) struct FnLower<'a> {
     pub aliases: HashMap<usize, crate::alias::Alias>,
     /// Locals a closure of this body changes: they live in memory so the closure shares them.
     pub slotted: HashSet<usize>,
+    /// Set while a match arm binds the payload of a scrutinee that stays in its own local for the
+    /// whole arm (no hidden temporary): the payload then outlives the binding.
+    pub scrutinee_lives: bool,
     /// Immutable bindings whose local is stored to again (a closing binding is replaced by what its
     /// close leaves behind), so they cannot be single-definition builder variables.
     pub redefined: HashSet<usize>,
@@ -575,6 +578,7 @@ impl<'a> FnLower<'a> {
             scope_done: Vec::new(),
             var_slots: Vec::new(),
             slotted: HashSet::new(),
+            scrutinee_lives: false,
             redefined: HashSet::new(),
             views: HashSet::new(),
             borrowed_params: HashSet::new(),
@@ -686,18 +690,6 @@ impl<'a> FnLower<'a> {
         self.clone_value(x.v)
     }
 
-    /// An owned value for the payload of a `Result` or `Optional` built from a borrowed part
-    /// (`ok(p.name)` beside a new value, `try` on a borrowed `Result`). Wrapping a borrowed
-    /// payload copies it by the language's rule for these two types, so the copy is declared
-    /// here and the strict gate does not report it. Interim workaround: delete it once these
-    /// positions lend instead of copying (#2540).
-    pub fn owned_wrap(&mut self, x: Val) -> Value {
-        if x.own {
-            return x.v;
-        }
-        self.clone_value(x.v)
-    }
-
     /// The alternative `v` is a value of: the borrowing variant when it is one, else `plain`.
     fn alt_of(&self, v: Value, plain: ms_mir::types::AltId) -> ms_mir::types::AltId {
         match self.b.m.types.kind(self.ty_of(v)) {
@@ -726,7 +718,7 @@ impl<'a> FnLower<'a> {
             return p;
         }
         let p = self.b.alt_get(alt, case, field, obj.v);
-        let o = self.owned_wrap(Val { v: p, own: false });
+        let o = self.owned(Val { v: p, own: false });
         self.finish(obj);
         o
     }
@@ -905,7 +897,10 @@ impl<'a> FnLower<'a> {
                 && self
                     .b
                     .defining_operand(x.v)
-                    .is_some_and(|parent| self.b.is_borrowed(parent) && self.holder_borrowed(x.v, parent)));
+                    .is_some_and(|parent| {
+                        (self.scrutinee_lives || self.b.is_borrowed(parent))
+                            && self.holder_borrowed(x.v, parent)
+                    }));
         // A `let` of a borrow-returning call's result the checker holds as a borrow of the arguments.
         let borrowed = borrowed
             || (self.cx.shared(binding.uid)
