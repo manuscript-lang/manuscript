@@ -693,15 +693,23 @@ unsafe fn ensure_init() -> *mut Task {
     let mut s = sched();
     if s.cur.is_null() {
         // SAFETY: first use; the live globals belong to this flow, so its saved context starts empty.
-        unsafe {
-            let t = new_task(Ctx::new(0, 0));
-            (*t).sp = stack::adopt_thread();
-            (*t).state = State::Running;
-            s.cur = t;
-            s.main = t;
-        }
+        unsafe { init_current(&mut s) }
     }
     s.cur
+}
+
+/// First use on a thread, kept out of line so its locals are not part of every parking frame.
+#[cold]
+#[inline(never)]
+unsafe fn init_current(s: &mut Sched) {
+    // SAFETY: the caller checked that the thread has no record yet.
+    unsafe {
+        let t = new_task(Ctx::new(0, 0));
+        (*t).sp = stack::adopt_thread();
+        (*t).state = State::Running;
+        s.cur = t;
+        s.main = t;
+    }
 }
 
 /// Temporary diagnostic: where `addr` and `sp` lie among this thread's task stacks.
@@ -1037,6 +1045,7 @@ unsafe fn expire_kills(now: i64) {
 }
 
 /// Wakes timers that have expired.
+#[inline(never)]
 unsafe fn expire_timers(now: i64) {
     // SAFETY: forwarded contract.
     unsafe { expire_kills(now) };
@@ -1082,6 +1091,7 @@ unsafe fn shielded(t: *mut Task) -> bool {
 
 /// Wakes every waiting task that is not shielded with `WAIT_CANCELLED`, the main task first.
 /// Returns whether any task woke.
+#[inline(never)]
 unsafe fn cancel_all_waiters() -> bool {
     let s = sched();
     let mut woke = false;
@@ -1108,6 +1118,7 @@ unsafe fn cancel_all_waiters() -> bool {
 
 /// Delivers descriptor readiness, waiting at most `timeout_ns` nanoseconds (0 never blocks, -1
 /// waits for an event).
+#[inline(never)]
 unsafe fn poll_ready(timeout_ns: i64) {
     let mut s = sched();
     let mut ready = [crate::poller::Ready { fd: 0, bits: 0 }; 64];
@@ -1185,6 +1196,7 @@ unsafe fn abandon_wait() {
 const CROSS_ISOLATE_DEADLOCK: &[u8] = b"deadlock: every isolate is waiting on another (a worker channel or worker result) and nothing can wake them";
 
 /// Blocks until at least one task is runnable.
+#[inline(never)]
 unsafe fn reactor_wait() {
     let mut s = sched();
     // SAFETY: syscalls with valid buffers; task records are live.
@@ -1617,6 +1629,7 @@ unsafe fn rearm(fd: i32) {
 }
 
 /// Arms the timer of a park that times out after `timeout_ns` (negative: never).
+#[inline(never)]
 unsafe fn set_deadline(cur: *mut Task, timeout_ns: i64) {
     let mut s = sched();
     // SAFETY: `cur` is the running task; slots hold live records or null.
@@ -1901,6 +1914,7 @@ unsafe fn post(id: u64, value: u64, remote: bool) {
 }
 
 /// Delivers the posts other threads made since the last call.
+#[inline(never)]
 unsafe fn deliver_remote_posts() {
     for (id, value) in isolate::take_posts() {
         // SAFETY: runs on the runtime thread.

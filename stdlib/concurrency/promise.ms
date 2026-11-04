@@ -139,6 +139,15 @@ fn taken_error(id: Int) Error:
 
     return outcome(id, 4)
 
+// The error of a `wait` whose runtime outcome `code` is not success: the operation's own error for code 1, else the
+// outcome's. One function for every failure keeps the error construction out of `wait`, whose frame stays on the stack
+// while a task parks.
+fn failure(id: Int, code: Int) Error:
+    if code == 1:
+        return taken_error(id)
+
+    return outcome(id, code)
+
 impl Promise[T]:
     // Waits for the result and moves it out. Errors: the operation's own error; `Failed` (a fault inside, with its
 // report in `details`); `Cancelled`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's
@@ -147,10 +156,8 @@ impl Promise[T]:
         let code = msrt_promise_wait(self.id, -1)
         if code == 0:
             return taken_result[T](self.id)
-        if code == 1:
-            return error(taken_error(self.id))
 
-        return error(outcome(self.id, code))
+        return error(failure(self.id, code))
 
     // Applies `options` to a promise made elsewhere (`read`, `fetch`, `sleep`, `exec`) and returns it, so
     // `read(path).with(options: PromiseOptions(timeout: seconds(5))).wait()` bounds the read. The timeout counts from now.

@@ -12,3 +12,9 @@ Evidence: [proposal](../../proposals/boxed-error-record.md).
 ## Temporary slots are shared between blocks
 
 `crates/ms-clif/src/slotshare.rs` gives the k-th block-confined temporary of every block one slot (call out-parameters, string copies, spilled call arguments; `Lower::temp_slot` / `spill_temp`). A slot whose address is stored, returned, branched with or used in a second block keeps its own. Do not use `spill_temp` where the runtime keeps the address: `msrt_cleanup_push` holds its slot until the scope ends, and sharing it crashed the HTTP e2e fixtures with SIGSEGV. After: the error-reachable `walk` is 240 B Cranelift debug and 208 B LLVM release; the remaining release cost is the inlined `Error` construction (a 56 B map copy) plus the saved registers.
+
+## Empty maps and the park path
+
+`msrt_map_new` has `ExternRole::MapNew`: code generation emits seven zero words (`ms_rt::map::empty()` is all zero, a unit test pins it), so building an `Error` needs no call or 56 B slot. After that the error-reachable `walk` is 128 B in release, equal to its non-fallible version.
+
+Frames that stay on the stack while a task parks (`switch_away`, `msrt_token_park`, `msrt_promise_wait`, `Promise.wait`) were 208, 320, 256 and 784 B; they are now 96, 96, 112 and 96 B. The Rust ones shrank by marking cold or heavy helpers `#[inline(never)]` (`set_deadline`, `expire_timers`, `poll_ready`, `reactor_wait`, `deliver_remote_posts`, `cancel_all_waiters`, `init_current`): LLVM sizes a frame for the largest inlined path, so any inlined cold path is paid by every parked task. `Promise.wait` builds its errors in one `failure` function for the same reason. Cleanup-entry slots (`msrt_cleanup_push`) are still one per owned temporary and are not shared.

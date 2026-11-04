@@ -1642,6 +1642,15 @@ mod tests {
     use core::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
+    fn an_empty_map_is_all_zero_words() {
+        // Generated code builds `ExternRole::MapNew` as zero words instead of calling the runtime.
+        let m = empty();
+        // SAFETY: `MapVal` is `repr(C)` plain words.
+        let words: [usize; MAP_SIZE / 8] = unsafe { core::mem::transmute(m) };
+        assert!(words.iter().all(|w| *w == 0));
+    }
+
+    #[test]
     fn empty_set_relations_do_not_hash_members() {
         let _g = testutil::lock();
         // SAFETY: all set slots hold live i64 values of the static descriptor.

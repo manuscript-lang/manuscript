@@ -3188,6 +3188,11 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             return self.string_eq_inline(f, inst);
         }
+        if self.g.m.externs[e.index()].role == ExternRole::MapNew {
+            // `ms_rt::map::empty()` is all zero words (a unit test pins it).
+            let zero = self.iconst(0);
+            return vec![zero; ms_rt_abi::MAP_SIZE / 8];
+        }
         if self.g.m.externs[e.index()].role == ExternRole::CleanupDiscard {
             // Handle 0 is a registration skipped for lack of a guard.
             let h = self.a(inst, 0)[0];
