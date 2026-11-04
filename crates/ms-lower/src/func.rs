@@ -698,6 +698,14 @@ impl<'a> FnLower<'a> {
         self.clone_value(x.v)
     }
 
+    /// The alternative `v` is a value of: the borrowing variant when it is one, else `plain`.
+    fn alt_of(&self, v: Value, plain: ms_mir::types::AltId) -> ms_mir::types::AltId {
+        match self.b.m.types.kind(self.ty_of(v)) {
+            TyKind::Alt(a) => *a,
+            _ => plain,
+        }
+    }
+
     /// The payload `field` of the active `case` of the alternative `obj`, owned by the caller,
     /// which moving_params `obj`: an owned temporary hands the payload over and releases the rest; a
     /// borrowed one is a gap in the checker's facts (`owned` records it in strict mode).
@@ -708,8 +716,11 @@ impl<'a> FnLower<'a> {
         field: u32,
         obj: Val,
     ) -> Value {
+        let alt = self.alt_of(obj.v, alt);
         let ty = self.b.m.alts[alt.index()].cases[case as usize].fields[field as usize].1;
-        if obj.own && self.needs_drop(ty) {
+        // A borrowed case stays in its owner: its payload is copied out, as from any borrow.
+        let borrowed = self.b.m.alts[alt.index()].borrowed >> case & 1 == 1;
+        if obj.own && self.needs_drop(ty) && !borrowed {
             let p = self.b.alt_take(alt, case, field, obj.v);
             self.b.alt_release(alt, case, 1 << field, obj.v);
             return p;
