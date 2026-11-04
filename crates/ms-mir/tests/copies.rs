@@ -17,11 +17,11 @@ fn @main() -> int {
 b0:
   %k: int = iconst 1
   %f: fn(int) -> int = closure.new @add %k !0:3:5
-  %g: fn(int) -> int = copy %f !0:4:5
+  %g: fn(int) -> int = clone %f !0:4:5
   %s: str = str "ab"
-  %t: str = copy %s
+  %t: str = clone %s
   %n: opt<fn(int) -> int> = opt.none
-  %m: opt<fn(int) -> int> = copy %n
+  %m: opt<fn(int) -> int> = clone %n
   drop %m
   drop %t
   drop %g

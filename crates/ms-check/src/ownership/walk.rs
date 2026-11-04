@@ -4,7 +4,8 @@
 use super::classify::{Class, Classifier, declares_close};
 use super::live::Liveness;
 use super::modes::{
-    CallModes, Lend, ParamMode, Summaries, Summary, call_lend, call_modes, receiver_mode,
+    CallModes, ParamMode, ResultBorrow, Summaries, Summary, call_modes, receiver_mode,
+    result_borrow,
 };
 use super::places::{Place, Step};
 use super::*;
@@ -24,7 +25,7 @@ impl visit::Visitor for Positions {
 }
 
 /// The spelling of the explicit duplicate in diagnostics.
-const COPY: &str = "clone";
+const CLONE: &str = "clone";
 
 pub struct Context<'a> {
     pub m: &'a ModuleHir,
@@ -62,8 +63,8 @@ type Logged<'e> = (Operand<'e>, Vec<(Place, bool)>, Vec<Place>);
 /// What an expression's value is used for.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum Demand {
-    /// Ownership is taken: a binding, return, stored element, consuming argument.
-    Consume,
+    /// Ownership is taken: a binding, return, stored element, moving argument.
+    Move,
     /// Read in place.
     Read,
     /// The value is unused.
@@ -83,7 +84,7 @@ enum Perm {
     /// A variable inside an escaping closure's body: the closure owns a
     /// snapshot, so it is read-only there. A change is reported once, where
     /// the closure is made.
-    Captured,
+    ClosureOwned,
 }
 
 struct Meta {
@@ -123,12 +124,12 @@ struct Borrow {
 }
 
 /// What a returned expression is a part of.
-struct LendSource {
+struct BorrowSource {
     receiver: bool,
     params: Vec<Name>,
     /// The field chain from one source, when the expression is a plain chain of fields.
     path: Option<(Option<Name>, Vec<Name>)>,
-    /// The value is an owned interface view of the sources (a view lender's result, or a local
+    /// The value is an owned interface view of the sources (a view returner's result, or a local
     /// holding one): it is returned as an owned value, never as a plain reference.
     view: bool,
 }
@@ -170,13 +171,13 @@ pub fn analyze(cx: &Context) -> Outcome {
         chain_places: HashMap::new(),
         keep_scrutinee: false,
         closed: HashSet::new(),
-        lend_receiver: false,
-        lend_params: Vec::new(),
-        lend_path: None,
+        borrow_receiver: false,
+        borrow_params: Vec::new(),
+        borrow_path: None,
         owned_return: None,
-        lent_return: None,
+        borrowed_return: None,
         wrap_returns: Vec::new(),
-        plain_lent: false,
+        plain_borrowed: false,
         view_return: false,
         view_locals: HashSet::new(),
         view_calls: HashSet::new(),
@@ -192,7 +193,7 @@ pub fn analyze(cx: &Context) -> Outcome {
     let declared = Summary::declared(&cx.c.func);
     let summary = Summary {
         receiver: match (declared.receiver, w.receiver_consumed()) {
-            (ParamMode::Borrow, true) => ParamMode::Consume,
+            (ParamMode::Borrow, true) => ParamMode::Move,
             (mode, _) => mode,
         },
         params: declared
@@ -205,26 +206,27 @@ pub fn analyze(cx: &Context) -> Outcome {
                         .get(i)
                         .is_some_and(|b| w.consumed.contains(&b.uid));
                 match (mode, consumed) {
-                    (ParamMode::Borrow, true) => (*name, ParamMode::Consume),
+                    (ParamMode::Borrow, true) => (*name, ParamMode::Move),
                     (mode, _) => (*name, *mode),
                 }
             })
             .collect(),
-        result: Lend {
-            // A view lender returns owned values on every path, so a new value beside a view
+        result: ResultBorrow {
+            // A view returner returns owned values on every path, so a new value beside a view
             // is no mix.
-            lends: w.lent_return.is_some() && (w.owned_return.is_none() || w.view_return),
+            returns_borrow: w.borrowed_return.is_some()
+                && (w.owned_return.is_none() || w.view_return),
             view: w.view_return,
-            receiver: w.lend_receiver,
-            params: w.lend_params.clone(),
+            receiver: w.borrow_receiver,
+            params: w.borrow_params.clone(),
             path: if w.view_return {
                 None
             } else {
-                w.lend_path.clone().flatten()
+                w.borrow_path.clone().flatten()
             },
         },
     };
-    w.facts.lends = summary.result.lends;
+    w.facts.returns_borrow = summary.result.returns_borrow;
     w.facts.view = summary.result.view;
     w.facts.parameters = summary.params.iter().map(|(_, m)| *m).collect();
     w.facts.receiver = cx.c.self_binding.as_ref().map(|_| summary.receiver);
@@ -279,22 +281,22 @@ struct Walker<'a> {
     closed: HashSet<usize>,
     /// Sources of the returned references so far: the receiver, parameters by label, and the
     /// one field chain every path returns (`Some(None)` once two paths differ).
-    lend_receiver: bool,
-    lend_params: Vec<Name>,
-    lend_path: Option<Option<(Option<Name>, Vec<Name>)>>,
+    borrow_receiver: bool,
+    borrow_params: Vec<Name>,
+    borrow_path: Option<Option<(Option<Name>, Vec<Name>)>>,
     /// The first `return` of an owned value and of a reference, for the mixed-path error.
     owned_return: Option<Pos>,
-    lent_return: Option<Pos>,
+    borrowed_return: Option<Pos>,
     /// Returned references that are wrappers (`x?`, `ok(x)`, the error of a `try`): beside an
     /// owned path they become new values again instead of an error.
     wrap_returns: Vec<NodeId>,
     /// Some returned reference is the part itself, not a wrapper of it.
-    plain_lent: bool,
-    /// Some returned value is an interface view of the arguments (a lent value converted to an
-    /// interface, a view lender's result, a local holding one): the function is a view lender.
+    plain_borrowed: bool,
+    /// Some returned value is an interface view of the arguments (a borrowed value converted to an
+    /// interface, a view returner's result, a local holding one): the function is a view returner.
     view_return: bool,
     /// Locals that hold an interface view: they own the view's box and borrow its payload's
-    /// origins, so they are returned as owned values, never lent as plain references.
+    /// origins, so they are returned as owned values, never borrowed as plain references.
     view_locals: HashSet<usize>,
     /// `ok(x)` / `error(x)` returned as views: their payload is read, not consumed.
     view_calls: HashSet<NodeId>,
@@ -332,7 +334,7 @@ fn clone_blocker(t: &Ty) -> Option<&'static str> {
 }
 
 fn copy_after(e: &Expr) -> Option<DiagnosticFix> {
-    (e.end.offset > e.pos.offset).then(|| insert_at(e.end, &format!(".{COPY}()")))
+    (e.end.offset > e.pos.offset).then(|| insert_at(e.end, &format!(".{CLONE}()")))
 }
 
 fn insert_at(pos: Pos, text: &str) -> DiagnosticFix {
@@ -509,8 +511,8 @@ impl Walker<'_> {
     /// Evaluates a value handed back to the caller.
     fn returned(&mut self, e: &Expr) {
         if !self.captured.is_empty() {
-            // A lambda never lends: an escaping closure owns its captures.
-            self.expr(e, Demand::Consume);
+            // A lambda never returns_borrow: an escaping closure owns its captures.
+            self.expr(e, Demand::Move);
             return;
         }
         let reads = self.returned_promise_reads(e);
@@ -528,41 +530,41 @@ impl Walker<'_> {
         if let ExprKind::Match { scrutinee, arms } = &e.kind
             && arms.iter().all(|a| a.value.is_some())
         {
-            self.match_expr(e, scrutinee, arms, Demand::Consume, true);
+            self.match_expr(e, scrutinee, arms, Demand::Move, true);
             return;
         }
-        // A lent value converted to an interface on the way out (`return cause` as `Error`,
-        // `error(cause)` as `Int!`, a widened lending call), a view lender's result or a local
+        // A borrowed value converted to an interface on the way out (`return cause` as `Error`,
+        // `error(cause)` as `Int!`, a widened borrow-returning call), a view returner's result or a local
         // holding a view: the result is an owned view whose payload stays in the arguments.
         if !self.implements_contract() && self.view_return_source(e) {
             return;
         }
-        // A resource is never lent: returning one hands it to the caller, which closes it.
-        let wrapped = self.wrapped_lend(e).is_some();
+        // A resource is never borrowed: returning one hands it to the caller, which closes it.
+        let wrapped = self.wrapped_borrow(e).is_some();
         if self.class_of(e) == Class::Move
             && (self.returns_as_declared(e) || wrapped)
             && !self.implements_contract()
-            && !self.moves_withdrawn_lend(e)
+            && !self.moves_withdrawn_borrow(e)
         {
-            if let Some(src) = self.lend_source(e) {
+            if let Some(src) = self.borrow_source(e) {
                 // A part of an argument comes back as a reference into it: nothing moves. A
                 // wrapper around it (`x?`, `ok(x)`) adds no storage and stays a reference too.
-                self.lent_return.get_or_insert(e.pos);
+                self.borrowed_return.get_or_insert(e.pos);
                 if wrapped {
                     self.facts.view_wraps.insert(e.id);
                     self.wrap_returns.push(e.id);
                 } else if !self.list_get(e) {
                     // `xs.get(i)` beside a new value is withdrawn like a wrapper, and the
                     // element is copied out; any other reference has no owned form.
-                    self.plain_lent = true;
+                    self.plain_borrowed = true;
                 }
-                self.lend_receiver |= src.receiver;
+                self.borrow_receiver |= src.receiver;
                 for p in src.params {
-                    if !self.lend_params.contains(&p) {
-                        self.lend_params.push(p);
+                    if !self.borrow_params.contains(&p) {
+                        self.borrow_params.push(p);
                     }
                 }
-                self.lend_path = Some(match (self.lend_path.take(), src.path) {
+                self.borrow_path = Some(match (self.borrow_path.take(), src.path) {
                     (None, path) => path,
                     (Some(Some(a)), Some(b)) if a == b => Some(a),
                     _ => None,
@@ -570,33 +572,36 @@ impl Walker<'_> {
                 self.expr(e, Demand::Read);
                 return;
             }
-            // A bare `none` owns nothing, so a lender can hand it back beside its references.
+            // A bare `none` owns nothing, so a borrow-returning function can hand it back beside its references.
             if !matches!(&e.kind, ExprKind::Name(n) if n.as_str() == "none") {
                 self.owned_return.get_or_insert(e.pos);
             }
         }
-        // A reference converted on the way out (a lending call widened to another error type or
+        // A reference converted on the way out (a borrow-returning call widened to another error type or
         // an interface) is read: the conversion builds the new value from it.
         let converted = self.cx.m.info(e).interface_source.is_some()
             && matches!(e.kind, ExprKind::Call { .. })
-            && self.lends(e);
+            && self.returns_borrow(e);
         self.expr(
             e,
             if converted {
                 Demand::Read
             } else {
-                Demand::Consume
+                Demand::Move
             },
         );
     }
 
-    /// Whether a returned part is moved out instead of lent: an earlier round found this
-    /// function returning a new value on another path and withdrew the lend (`mixed_returns`), so
+    /// Whether a returned part is moved out instead of borrowed: an earlier round found this
+    /// function returning a new value on another path and withdrew the borrow (`mixed_returns`), so
     /// the part would be copied out, and a value with one owner and no `clone` cannot be. Moving
-    /// it consumes the argument it came from, which the caller then hands over.
-    fn moves_withdrawn_lend(&self, e: &Expr) -> bool {
+    /// it moving_params the argument it came from, which the caller then hands over.
+    fn moves_withdrawn_borrow(&self, e: &Expr) -> bool {
         let key = (self.cx.c.module.file, self.cx.c.id());
-        self.cx.summaries.get(&key).is_some_and(|s| !s.result.lends)
+        self.cx
+            .summaries
+            .get(&key)
+            .is_some_and(|s| !s.result.returns_borrow)
             && !self.cx.classes.clonable(&self.cx.m.ty(e))
     }
 
@@ -618,31 +623,31 @@ impl Walker<'_> {
     fn view_return_source(&mut self, e: &Expr) -> bool {
         let via = self.view_source(e);
         let src = match via {
-            Some(x) => self.lend_source(x),
-            None => self.lend_source(e).filter(|s| s.view),
+            Some(x) => self.borrow_source(x),
+            None => self.borrow_source(e).filter(|s| s.view),
         };
         let Some(src) = src else {
             return false;
         };
-        self.lent_return.get_or_insert(e.pos);
+        self.borrowed_return.get_or_insert(e.pos);
         self.view_return = true;
-        self.lend_receiver |= src.receiver;
+        self.borrow_receiver |= src.receiver;
         for p in src.params {
-            if !self.lend_params.contains(&p) {
-                self.lend_params.push(p);
+            if !self.borrow_params.contains(&p) {
+                self.borrow_params.push(p);
             }
         }
-        self.lend_path = Some(None);
+        self.borrow_path = Some(None);
         // The payload of `ok(x)` / `error(x)` is read into the view, not consumed.
         if self.result_payload(e).is_some() {
             self.view_calls.insert(e.id);
         }
         // A local holding a view is moved out: the box it owns becomes the result. The same
-        // when a lender hands the local back whole (`return relay(e)`): the box moves into the
+        // when a returner hands the local back whole (`return relay(e)`): the box moves into the
         // call and comes back as the result instead of being copied.
         let moved = via.unwrap_or(e);
         let moved = self.result_payload(moved).unwrap_or(moved);
-        if let Some(operand) = self.whole_lent_operand(moved) {
+        if let Some(operand) = self.whole_borrowed_operand(moved) {
             // The call reads its argument; lowering moves the box in and keeps it as the result.
             self.facts.view_moves.insert(operand.id);
             self.expr(e, Demand::Read);
@@ -654,7 +659,7 @@ impl Walker<'_> {
             self.view_calls.remove(&e.id);
             self.facts.view_moves.insert(moved.id);
             self.view_move = Some(moved.id);
-            self.expr(e, Demand::Consume);
+            self.expr(e, Demand::Move);
             self.view_move = None;
         } else {
             self.expr(e, Demand::Read);
@@ -662,22 +667,22 @@ impl Walker<'_> {
         true
     }
 
-    /// The one operand a plain lending call `e` hands back whole (`relay(x)` for
+    /// The one operand a plain borrow-returning call `e` hands back whole (`relay(x)` for
     /// `relay(e: Error) Error: return e`), when it is a name of an interface view local at its
     /// last use: moving the local into the call lets the caller keep its box as the result.
-    fn whole_lent_operand<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+    fn whole_borrowed_operand<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
         if !matches!(e.kind, ExprKind::Call { .. }) {
             return None;
         }
-        let lend = call_lend(self.cx.m, e, self.cx.summaries);
-        if !lend.lends || lend.view {
+        let ret_borrow = result_borrow(self.cx.m, e, self.cx.summaries);
+        if !ret_borrow.returns_borrow || ret_borrow.view {
             return None;
         }
-        let operands = self.lend_operands(e, &lend)?;
+        let operands = self.borrow_operands(e, &ret_borrow)?;
         let [operand] = operands.as_slice() else {
             return None;
         };
-        let Some((_, fields)) = &lend.path else {
+        let Some((_, fields)) = &ret_borrow.path else {
             return None;
         };
         let Resolution::Local(b) = self.cx.m.resolution(operand) else {
@@ -692,7 +697,7 @@ impl Walker<'_> {
     }
 
     /// The expression a conversion to an interface reads, when `e` converts a `Move`-class
-    /// value: `e` itself (`cause` as `Error`, a widened lending call, `cause` as `Error?`), or
+    /// value: `e` itself (`cause` as `Error`, a widened borrow-returning call, `cause` as `Error?`), or
     /// the payload of `ok(x)` / `error(x)`. `None` when nothing is converted or the source is a
     /// scalar, which the interface copies.
     fn view_source<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
@@ -722,10 +727,10 @@ impl Walker<'_> {
         converted(x).then_some(x)
     }
 
-    /// Whether `e` is an interface view or holds one: a conversion of a lent value, a view
-    /// lender's call, or a local holding a view.
+    /// Whether `e` is an interface view or holds one: a conversion of a borrowed value, a view
+    /// returner's call, or a local holding a view.
     fn is_view(&self, e: &Expr) -> bool {
-        self.view_source(e).is_some() || self.lend_source(e).is_some_and(|s| s.view)
+        self.view_source(e).is_some() || self.borrow_source(e).is_some_and(|s| s.view)
     }
 
     /// Whether this callable implements an interface method. A call through the interface
@@ -776,31 +781,31 @@ impl Walker<'_> {
     /// the caller could not tell whether to hold or drop the result.
     fn mixed_returns(&mut self) {
         if self.view_return {
-            // Every path of a view lender returns an owned value. A plain reference to an
+            // Every path of a view returner returns an owned value. A plain reference to an
             // interface value is handed on as a view that owns nothing; a wrapper of a part
             // becomes a new value of its own, as beside an owned path; any other plain
             // reference has no owned form.
             for n in std::mem::take(&mut self.wrap_returns) {
                 self.facts.view_wraps.remove(&n);
             }
-            if self.plain_lent && !self.result_is_interface() {
-                let lent = self.lent_return.unwrap_or_default();
+            if self.plain_borrowed && !self.result_is_interface() {
+                let borrowed = self.borrowed_return.unwrap_or_default();
                 self.error(
-                    lent,
+                    borrowed,
                     format!(
-                        "this function returns an interface view of its arguments on another path but a reference here; return `.{COPY}()` of the part, or convert it on every path"
+                        "this function returns an interface view of its arguments on another path but a reference here; return `.{CLONE}()` of the part, or convert it on every path"
                     ),
                 );
             }
             return;
         }
-        let (Some(owned), Some(lent)) = (self.owned_return, self.lent_return) else {
+        let (Some(owned), Some(borrowed)) = (self.owned_return, self.borrowed_return) else {
             return;
         };
-        // A wrapper of a part is a reference only when every path lends; beside a new value it
+        // A wrapper of a part is a reference only when every path returns a borrow; beside a new value it
         // is built as a new value of its own (its payload copied), as before.
-        if !self.plain_lent {
-            self.lent_return = None;
+        if !self.plain_borrowed {
+            self.borrowed_return = None;
             for n in std::mem::take(&mut self.wrap_returns) {
                 self.facts.view_wraps.remove(&n);
             }
@@ -810,21 +815,21 @@ impl Walker<'_> {
             owned,
             format!(
                 "this function returns a reference into its arguments at {}:{} but a new value here; return `.clone()` of the part there, or build a new value on every path",
-                lent.line, lent.column
+                borrowed.line, borrowed.column
             ),
         );
     }
 
-    /// The arguments a lending call returns a reference into: the receiver and the parameters
-    /// `lend` names, as written. `None` when one of them is converted on the way in (wrapped
-    /// into an `Optional`, widened to an interface or another error type): the callee then lends
+    /// The arguments a borrow-returning call returns a reference into: the receiver and the parameters
+    /// `ret_borrow` names, as written. `None` when one of them is converted on the way in (wrapped
+    /// into an `Optional`, widened to an interface or another error type): the callee then returns a borrow
     /// a temporary, and the result is a new value of the caller's.
-    fn lend_operands<'e>(&self, e: &'e Expr, lend: &Lend) -> Option<Vec<&'e Expr>> {
+    fn borrow_operands<'e>(&self, e: &'e Expr, ret_borrow: &ResultBorrow) -> Option<Vec<&'e Expr>> {
         let ExprKind::Call { callee, args } = &e.kind else {
             return Some(Vec::new());
         };
         let mut out = Vec::new();
-        if lend.receiver
+        if ret_borrow.receiver
             && let (ExprKind::Member { left, .. }, Resolution::Method(_)) =
                 (&callee.kind, self.cx.m.resolution(e))
         {
@@ -832,34 +837,37 @@ impl Walker<'_> {
         }
         let slots = self.cx.m.info(e).arguments.clone().unwrap_or_default();
         for (i, a) in args.iter().enumerate() {
-            if slots.get(i).is_some_and(|s| lend.params.contains(&s.name)) {
-                // A lent value converted to an interface on the way in is a view of it: what
-                // the callee lends from the view is a reference into the value.
-                if self.converted_argument(e, &a.value) && !self.converted_lend(&a.value) {
+            if slots
+                .get(i)
+                .is_some_and(|s| ret_borrow.params.contains(&s.name))
+            {
+                // A borrowed value converted to an interface on the way in is a view of it: what
+                // the callee returns a borrow of the view is a reference into the value.
+                if self.converted_argument(e, &a.value) && !self.converted_borrow(&a.value) {
                     return None;
                 }
                 out.push(&a.value);
             }
         }
-        // A copied argument is never lent from, whatever an optimistic summary says.
+        // A copied argument is never borrowed from, whatever an optimistic summary says.
         out.retain(|a| self.class_of(a) != Class::Copy);
         Some(out)
     }
 
     /// Whether `arg` is a `Move`-class reference converted to an interface on the way in
     /// (`relay(cause)` for `relay(e: Error)`): the converted temporary is a view of it.
-    fn converted_lend(&self, arg: &Expr) -> bool {
+    fn converted_borrow(&self, arg: &Expr) -> bool {
         self.view_source(arg).is_some_and(|x| std::ptr::eq(x, arg))
-            && self.lend_source(arg).is_some()
+            && self.borrow_source(arg).is_some()
     }
 
-    /// Whether a lent operand of call `e` is a converted view temporary: the caller owns what
-    /// the callee lends from it (the temporary itself when handed back whole, else a copy) and
+    /// Whether a borrowed operand of call `e` is a converted view temporary: the caller owns what
+    /// the callee returns a borrow of it (the temporary itself when handed back whole, else a copy) and
     /// still holds the value it views.
-    fn lends_through_view(&self, e: &Expr, lend: &Lend) -> bool {
-        self.lend_operands(e, lend).is_some_and(|ops| {
+    fn returns_borrow_through_view(&self, e: &Expr, ret_borrow: &ResultBorrow) -> bool {
+        self.borrow_operands(e, ret_borrow).is_some_and(|ops| {
             ops.iter()
-                .any(|o| self.converted_lend(o) || self.is_view(o))
+                .any(|o| self.converted_borrow(o) || self.is_view(o))
         })
     }
 
@@ -904,7 +912,7 @@ impl Walker<'_> {
     /// The value `e` wraps without adding storage on its way to a binding or a return: `e`
     /// itself when it is wrapped into an `Optional` (`x` as `x?`), or the payload of `ok(x)` /
     /// `error(x)`. `None` when the value is converted (an interface, a widened error).
-    fn wrapped_lend<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+    fn wrapped_borrow<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
         let info = self.cx.m.info(e);
         if info.interface_source.is_some() {
             return None;
@@ -921,7 +929,7 @@ impl Walker<'_> {
     }
 
     /// The error path of `try operand` returns the operand's error: a reference when the operand
-    /// lends it from the arguments as it is, otherwise a new value, like any `return`.
+    /// returns a borrow of it from the arguments as it is, otherwise a new value, like any `return`.
     fn try_return(&mut self, e: &Expr, operand: &Expr) {
         if !self.captured.is_empty() || self.implements_contract() {
             return;
@@ -938,9 +946,9 @@ impl Walker<'_> {
             return;
         }
         if self.class_of(operand) == Class::Move
-            && let Some(src) = self.lend_source(operand)
+            && let Some(src) = self.borrow_source(operand)
         {
-            self.lent_return.get_or_insert(e.pos);
+            self.borrowed_return.get_or_insert(e.pos);
             if src.view {
                 // The error leaves as an interface view (converted on the way out, or a view
                 // already): an owned value whose payload stays in the operand's sources.
@@ -949,14 +957,14 @@ impl Walker<'_> {
                 self.facts.view_wraps.insert(e.id);
                 self.wrap_returns.push(e.id);
             }
-            self.lend_receiver |= src.receiver;
+            self.borrow_receiver |= src.receiver;
             for p in src.params {
-                if !self.lend_params.contains(&p) {
-                    self.lend_params.push(p);
+                if !self.borrow_params.contains(&p) {
+                    self.borrow_params.push(p);
                 }
             }
             // The error is one case of the result, never a field chain of a source.
-            self.lend_path = Some(None);
+            self.borrow_path = Some(None);
             return;
         }
         self.owned_return.get_or_insert(e.pos);
@@ -975,18 +983,18 @@ impl Walker<'_> {
     }
 
     /// The parameters and receiver a returned expression is a part of, when it is one: a place
-    /// rooted in a parameter or the receiver, or a lending call whose sources all are. `None`
+    /// rooted in a parameter or the receiver, or a borrow-returning call whose sources all are. `None`
     /// for an owned value, including a part of a local, a temporary or a default argument.
-    fn lend_source(&self, e: &Expr) -> Option<LendSource> {
+    fn borrow_source(&self, e: &Expr) -> Option<BorrowSource> {
         // `ok(x)` and `error(x)` are references when `x` is: the wrapper adds no storage. A
         // payload converted on the way in (`error(cause)` as `Error`) or copied is a new value.
         if self.result_payload(e).is_some() {
-            return self.lend_source(self.wrapped_lend(e)?);
+            return self.borrow_source(self.wrapped_borrow(e)?);
         }
-        // A field or element of what a lending call returns (`self.head().tags[0]`) is a part of
+        // A field or element of what a borrow-returning call returns (`self.head().tags[0]`) is a part of
         // the same sources; a field chain extends the path, an element ends it.
         if let Some((call, fields)) = self.part_of_call(e) {
-            let mut src = self.lend_source(call)?;
+            let mut src = self.borrow_source(call)?;
             // A part of an owned view is a part of a temporary.
             if src.view {
                 return None;
@@ -1016,7 +1024,7 @@ impl Walker<'_> {
             if matches!(m.perm, Perm::Borrowed | Perm::MutBorrowed) {
                 // A reference held by a local: a part of whatever it borrows, if those are all
                 // parameters or the receiver.
-                let mut out = LendSource {
+                let mut out = BorrowSource {
                     receiver: false,
                     params: Vec::new(),
                     path: None,
@@ -1039,7 +1047,7 @@ impl Walker<'_> {
                 return Some(out);
             }
             return match (m.role, m.parameter) {
-                (Role::SelfValue, _) => Some(LendSource {
+                (Role::SelfValue, _) => Some(BorrowSource {
                     receiver: true,
                     params: Vec::new(),
                     path: path.map(|f| (None, f)),
@@ -1047,7 +1055,7 @@ impl Walker<'_> {
                 }),
                 (Role::Parameter, Some(i)) => {
                     let label = self.parameter_label(i)?;
-                    Some(LendSource {
+                    Some(BorrowSource {
                         receiver: false,
                         params: vec![label],
                         path: path.map(|f| (Some(label), f)),
@@ -1058,12 +1066,12 @@ impl Walker<'_> {
             };
         }
         // `xs.get(i)` is the element itself, a part of the receiver's sources whose field
-        // chain ends there. The other native lends (`m.get(k)`, `xs.first()`) wrap the element
+        // chain ends there. The other native borrows (`m.get(k)`, `xs.first()`) wrap the element
         // in an `Optional` the caller owns, so a function returning one owns its result.
-        if let Some(recv) = self.native_lend_receiver(e)
+        if let Some(recv) = self.native_borrow_receiver(e)
             && self.list_get(e)
         {
-            let mut src = self.lend_source(recv)?;
+            let mut src = self.borrow_source(recv)?;
             if src.view {
                 return None;
             }
@@ -1071,23 +1079,23 @@ impl Walker<'_> {
             return Some(src);
         }
         if let ExprKind::Call { .. } = &e.kind {
-            let lend = call_lend(self.cx.m, e, self.cx.summaries);
-            if !lend.lends {
+            let ret_borrow = result_borrow(self.cx.m, e, self.cx.summaries);
+            if !ret_borrow.returns_borrow {
                 return None;
             }
-            let operands = self.lend_operands(e, &lend)?;
+            let operands = self.borrow_operands(e, &ret_borrow)?;
             if operands.is_empty() {
                 return None;
             }
-            let mut out = LendSource {
+            let mut out = BorrowSource {
                 receiver: false,
                 params: Vec::new(),
                 path: None,
-                view: lend.view,
+                view: ret_borrow.view,
             };
             let mut paths: Vec<Option<(Option<Name>, Vec<Name>)>> = Vec::new();
             for (k, operand) in operands.iter().enumerate() {
-                let src = self.lend_source(operand)?;
+                let src = self.borrow_source(operand)?;
                 out.view |= src.view || self.view_source(operand).is_some();
                 out.receiver |= src.receiver;
                 for p in src.params {
@@ -1096,12 +1104,12 @@ impl Walker<'_> {
                     }
                 }
                 // The callee's one field chain, continued from this operand's own chain.
-                let through = match (&lend.path, k, &src.path) {
-                    (Some((None, fields)), 0, Some((root, mine))) if lend.receiver => {
+                let through = match (&ret_borrow.path, k, &src.path) {
+                    (Some((None, fields)), 0, Some((root, mine))) if ret_borrow.receiver => {
                         Some((*root, [mine.clone(), fields.clone()].concat()))
                     }
                     (Some((Some(label), fields)), _, Some((root, mine)))
-                        if self.lend_operand_label(e, operand) == Some(*label) =>
+                        if self.borrow_operand_label(e, operand) == Some(*label) =>
                     {
                         Some((*root, [mine.clone(), fields.clone()].concat()))
                     }
@@ -1119,13 +1127,15 @@ impl Walker<'_> {
         None
     }
 
-    /// The lending call a projection chain starts from, with the fields from it when the chain
+    /// The borrow-returning call a projection chain starts from, with the fields from it when the chain
     /// is fields only (`None` for an element).
     fn part_of_call<'e>(&self, e: &'e Expr) -> Option<(&'e Expr, Option<Vec<Name>>)> {
         match &e.kind {
             ExprKind::Member { left, name } => {
                 if let ExprKind::Call { .. } = &left.kind {
-                    return self.lends(left).then_some((&**left, Some(vec![*name])));
+                    return self
+                        .returns_borrow(left)
+                        .then_some((&**left, Some(vec![*name])));
                 }
                 let (call, fields) = self.part_of_call(left)?;
                 Some((
@@ -1143,7 +1153,7 @@ impl Walker<'_> {
                 ..
             } => {
                 if let ExprKind::Call { .. } = &left.kind {
-                    return self.lends(left).then_some((&**left, None));
+                    return self.returns_borrow(left).then_some((&**left, None));
                 }
                 let (call, _) = self.part_of_call(left)?;
                 Some((call, None))
@@ -1153,14 +1163,14 @@ impl Walker<'_> {
     }
 
     /// Whether a call hands back a reference into its operands.
-    fn lends(&self, call: &Expr) -> bool {
+    fn returns_borrow(&self, call: &Expr) -> bool {
         self.class_of(call) != Class::Copy
-            && (self.native_lend_receiver(call).is_some()
-                || call_lend(self.cx.m, call, self.cx.summaries).lends)
+            && (self.native_borrow_receiver(call).is_some()
+                || result_borrow(self.cx.m, call, self.cx.summaries).returns_borrow)
     }
 
     /// The label of the parameter `operand` is written for in call `e`.
-    fn lend_operand_label(&self, e: &Expr, operand: &Expr) -> Option<Name> {
+    fn borrow_operand_label(&self, e: &Expr, operand: &Expr) -> Option<Name> {
         let ExprKind::Call { args, .. } = &e.kind else {
             return None;
         };
@@ -1179,9 +1189,9 @@ impl Walker<'_> {
         params.get(i).map(|p| p.name)
     }
 
-    /// Whether `e` is a native read that lowering lends in place (`crates/ms-lower/src/lend.rs`):
+    /// Whether `e` is a native read that lowering borrows in place (`crates/ms-lower/src/borrow_shape.rs`):
     /// `m.get(key)` on a `Map`, `xs.first()` or `xs.last()` on a `List`, with the receiver written.
-    fn native_lend_receiver<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+    fn native_borrow_receiver<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
         let ExprKind::Call { callee, args } = &e.kind else {
             return None;
         };
@@ -1195,13 +1205,13 @@ impl Walker<'_> {
             return None;
         }
         let recv = self.cx.m.ty(left);
-        let lends = match (name.as_str(), args.len()) {
+        let returns_borrow = match (name.as_str(), args.len()) {
             ("get", 1) => recv.is(Builtin::Map) || recv.is(Builtin::List),
             ("first" | "last", 0) => recv.is(Builtin::List),
             ("view", 2) => recv.is(Builtin::Bytes),
             _ => false,
         };
-        lends.then_some(&**left)
+        returns_borrow.then_some(&**left)
     }
 
     /// Whether `e` is `xs.get(i)` on a `List`, without a default: the element read in place.
@@ -1465,7 +1475,7 @@ impl Walker<'_> {
             let (holder, why, bpos) = (a.holder_name, a.why.clone(), a.pos);
             let held_ty = self.meta.get(&a.holder).map(|m| m.binding.ty.clone());
             let remedy = if holder.as_str() == "for" {
-                format!("iterate over a copy instead: `for ... in {shown}.{COPY}()`")
+                format!("iterate over a clone instead: `for ... in {shown}.{CLONE}()`")
             } else if why == PROMISE_WHY {
                 String::new()
             } else if held_ty.as_ref().and_then(clone_blocker).is_some() {
@@ -1474,7 +1484,7 @@ impl Walker<'_> {
                 )
             } else {
                 format!(
-                    "or give `{holder}` its own value by ending its initializer with `.{COPY}()`"
+                    "or give `{holder}` its own value by ending its initializer with `.{CLONE}()`"
                 )
             };
             if why == PROMISE_WHY {
@@ -1515,7 +1525,7 @@ impl Walker<'_> {
                 )
             } else {
                 format!(
-                    "cannot use `{shown}` while closure `{holder}` (made at {}:{}) changes it; call or drop the closure first, or copy the value before creating it",
+                    "cannot use `{shown}` while closure `{holder}` (made at {}:{}) changes it; call or drop the closure first, or clone the value before creating it",
                     bpos.line, bpos.column
                 )
             };
@@ -1642,10 +1652,14 @@ impl Walker<'_> {
 
     fn block(&mut self, body: &[Stmt]) {
         let mark = self.declared.len();
+        // Borrows the enclosing statement released at their last use stay held until that
+        // statement ends: a closure body in an argument must not release them early.
+        let outer = std::mem::take(&mut self.pending);
         for s in body {
             self.stmt(s);
             self.release_pending();
         }
+        self.pending.extend(outer);
         let ended: Vec<usize> = self.declared.drain(mark..).collect();
         self.promises_outliving(&ended);
         self.active.retain(|a| !ended.contains(&a.holder));
@@ -1864,7 +1878,7 @@ impl Walker<'_> {
             return;
         };
         let Some(b) = self.cx.m.pattern_binding(pattern) else {
-            self.expr(value, Demand::Consume);
+            self.expr(value, Demand::Move);
             return;
         };
         let role = if mutable { Role::Var } else { Role::Let };
@@ -1904,7 +1918,7 @@ impl Walker<'_> {
                     self.error(
                         pattern.pos,
                         format!(
-                            "`var {}` cannot borrow `{text}` mutably: it is a read-only result; copy it with `{text}.{COPY}()` to own it",
+                            "`var {}` cannot borrow `{text}` mutably: it is a read-only result; clone it with `{text}.{CLONE}()` to own it",
                             b.name
                         ),
                     );
@@ -1912,11 +1926,11 @@ impl Walker<'_> {
                 }
             } else {
                 // A part wrapped on the way in (`let o: String? = r.name`) stays a reference.
-                if self.wrapped_lend(value).is_some() {
+                if self.wrapped_borrow(value).is_some() {
                     self.facts.view_wraps.insert(value.id);
                 }
                 // A part converted to an interface (`let e: Error = r.cause`) or a view
-                // lender's result: the binding owns the view's box and borrows the sources.
+                // returner's result: the binding owns the view's box and borrows the sources.
                 if self.is_view(value) {
                     self.view_locals.insert(b.uid);
                     if self.result_payload(value).is_some() {
@@ -1951,7 +1965,7 @@ impl Walker<'_> {
         // is a reference to it, as a plain name is, unless this is the source's last use.
         if !mutable
             && class != Class::Copy
-            && let Some(inner) = self.wrapped_lend(value)
+            && let Some(inner) = self.wrapped_borrow(value)
             && let ExprKind::Name(_) = &inner.kind
             && let Resolution::Local(src) = self.cx.m.resolution(inner)
             && let Some(src_meta) = self.meta.get(&src.uid)
@@ -2020,7 +2034,7 @@ impl Walker<'_> {
                     self.view_locals.insert(b.uid);
                     self.facts.view_moves.insert(value.id);
                     self.view_move = Some(value.id);
-                    self.expr(value, Demand::Consume);
+                    self.expr(value, Demand::Move);
                     self.view_move = None;
                     self.declare_borrow(&b, role, origins, pattern.pos, "binding of a view of it");
                     return;
@@ -2043,7 +2057,7 @@ impl Walker<'_> {
                 return;
             }
         }
-        self.expr(value, Demand::Consume);
+        self.expr(value, Demand::Move);
         self.declare(
             &b,
             role,
@@ -2086,12 +2100,12 @@ impl Walker<'_> {
     fn bind_getter(&mut self, s: &Stmt, b: &BindingRef, role: Role, value: &Expr) {
         let pos = s.pos;
         let text = self.expr_text(value);
-        let lend = call_lend(self.cx.m, value, self.cx.summaries);
-        let operands = self.lend_operands(value, &lend).unwrap_or_default();
-        let target = match (&lend.path, operands.as_slice()) {
-            (Some((None, fields)), [recv]) if lend.receiver => Some((*recv, fields.clone())),
+        let ret_borrow = result_borrow(self.cx.m, value, self.cx.summaries);
+        let operands = self.borrow_operands(value, &ret_borrow).unwrap_or_default();
+        let target = match (&ret_borrow.path, operands.as_slice()) {
+            (Some((None, fields)), [recv]) if ret_borrow.receiver => Some((*recv, fields.clone())),
             (Some((Some(label), fields)), [arg])
-                if self.lend_operand_label(value, arg) == Some(*label) =>
+                if self.borrow_operand_label(value, arg) == Some(*label) =>
             {
                 Some((*arg, fields.clone()))
             }
@@ -2242,7 +2256,7 @@ impl Walker<'_> {
         if escaping {
             self.error(
                 e.pos,
-                format!("this method value changes `{0}`, so it cannot be returned, stored or passed to a consuming parameter; keep it local, or call the method instead", info.root.name),
+                format!("this method value changes `{0}`, so it cannot be returned, stored or passed to a moving parameter; keep it local, or call the method instead", info.root.name),
             );
             return Vec::new();
         }
@@ -2268,7 +2282,7 @@ impl Walker<'_> {
             return Vec::new();
         }
         if escaping {
-            self.expr(recv, Demand::Consume);
+            self.expr(recv, Demand::Move);
             return Vec::new();
         }
         self.expr(recv, Demand::Read);
@@ -2331,7 +2345,7 @@ impl Walker<'_> {
         };
         let saved = self.self_assign;
         self.self_assign = refilled.map(|b| b.uid);
-        self.expr(value, Demand::Consume);
+        self.expr(value, Demand::Move);
         self.self_assign = saved;
         match target {
             AssignTarget::Name(name) => {
@@ -2362,7 +2376,7 @@ impl Walker<'_> {
         };
         match m.perm {
             // An escaping closure's captures are reported once by `lambda`.
-            Perm::Mutable | Perm::Captured => {}
+            Perm::Mutable | Perm::ClosureOwned => {}
             // A scalar borrow is a name for its place: assigning writes through.
             Perm::MutBorrowed if m.class == Class::Copy => {}
             Perm::Immutable if m.parameter.is_some() => self.error(
@@ -2371,7 +2385,7 @@ impl Walker<'_> {
             ),
             Perm::MutBorrowed => self.error(
                 pos,
-                format!("cannot reassign `{name}`: it is a mutable borrow of another value; assign to its fields, or copy with `{name}.{COPY}()`"),
+                format!("cannot reassign `{name}`: it is a mutable borrow of another value; assign to its fields, or clone with `{name}.{CLONE}()`"),
             ),
             Perm::Immutable | Perm::Borrowed => self.error(
                 pos,
@@ -2428,7 +2442,7 @@ impl Walker<'_> {
             return;
         }
         match perm {
-            Perm::Mutable | Perm::Captured | Perm::MutBorrowed => {}
+            Perm::Mutable | Perm::ClosureOwned | Perm::MutBorrowed => {}
             Perm::Borrowed => {
                 let from = self
                     .meta
@@ -2439,7 +2453,7 @@ impl Walker<'_> {
                 self.error(
                     pos,
                     format!(
-                        "cannot {what} `{text}`: `{}` only borrows from `{from}`; copy it first with `var {} = {}.{COPY}()`",
+                        "cannot {what} `{text}`: `{}` only borrows from `{from}`; clone it first with `var {} = {}.{CLONE}()`",
                         root.name, root.name, root.name
                     ),
                 );
@@ -2530,7 +2544,7 @@ impl Walker<'_> {
                 // A parameter is borrowed unless a part of it is moved out of the match or loop.
                 let param = self.is_consumable_param(&b);
                 if owned_local || param && self.escaped.contains(&e.id) {
-                    self.expr(e, Demand::Consume);
+                    self.expr(e, Demand::Move);
                     return Scrutinee {
                         owned: true,
                         origins: Vec::new(),
@@ -2563,7 +2577,7 @@ impl Walker<'_> {
                 deferred: None,
             };
         }
-        self.expr(e, Demand::Consume);
+        self.expr(e, Demand::Move);
         Scrutinee {
             owned: true,
             origins: Vec::new(),
@@ -2604,7 +2618,7 @@ impl Walker<'_> {
             self.error(
                 p.pos,
                 format!(
-                    "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `{}` is not one; bind a copy with `if let`, then `var x = x.clone()`, or write the changed value back",
+                    "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `{}` is not one; bind a clone with `if let`, then `var x = x.clone()`, or write the changed value back",
                     info.text
                 ),
             );
@@ -2750,8 +2764,8 @@ impl Walker<'_> {
     }
 
     /// The places a call result is a reference into, without evaluating it: the places of the
-    /// arguments a lending callee returns a part of, or the container of a native read that is
-    /// lent in place. `None` when the result owns, including when a source is a temporary.
+    /// arguments a borrow-returning callee returns a part of, or the container of a native read that is
+    /// borrowed in place. `None` when the result owns, including when a source is a temporary.
     fn pure_origins(&self, e: &Expr) -> Option<Vec<Place>> {
         if self.class_of(e) == Class::Copy {
             return None;
@@ -2759,7 +2773,7 @@ impl Walker<'_> {
         if let ExprKind::Match { arms, .. } = &e.kind {
             return self.arm_origins(arms);
         }
-        // `try f(a)` yields the payload of what `f` lends: a reference into the same places.
+        // `try f(a)` yields the payload of what `f` returns_borrow: a reference into the same places.
         if let ExprKind::Unary {
             op: UnaryOp::Try,
             operand,
@@ -2774,14 +2788,14 @@ impl Walker<'_> {
         let ExprKind::Call { .. } = &e.kind else {
             return None;
         };
-        let operands = match self.native_lend_receiver(e) {
+        let operands = match self.native_borrow_receiver(e) {
             Some(recv) => vec![recv],
             None => {
-                let lend = call_lend(self.cx.m, e, self.cx.summaries);
-                if !lend.lends {
+                let ret_borrow = result_borrow(self.cx.m, e, self.cx.summaries);
+                if !ret_borrow.returns_borrow {
                     return None;
                 }
-                self.lend_operands(e, &lend)?
+                self.borrow_operands(e, &ret_borrow)?
             }
         };
         if operands.is_empty() {
@@ -2988,7 +3002,7 @@ impl Walker<'_> {
     }
 
     fn expr(&mut self, e: &Expr, d: Demand) {
-        if d == Demand::Consume
+        if d == Demand::Move
             && let Some(src) = &self.cx.m.info(e).interface_source
             && self.cx.classes.class(src) == Class::Resource
             && !declares_close(&self.cx.m.ty(e))
@@ -3056,14 +3070,14 @@ impl Walker<'_> {
             ExprKind::List(items) => {
                 let parts: Vec<&Expr> = items.iter().collect();
                 self.parts_overlap(e.pos, "this list", &parts);
-                items.iter().for_each(|i| self.expr(i, Demand::Consume))
+                items.iter().for_each(|i| self.expr(i, Demand::Move))
             }
             ExprKind::Map(entries) => {
                 let parts: Vec<&Expr> = entries.iter().flat_map(|en| [&en.key, &en.value]).collect();
                 self.parts_overlap(e.pos, "this map", &parts);
                 for entry in entries {
-                    self.expr(&entry.key, Demand::Consume);
-                    self.expr(&entry.value, Demand::Consume);
+                    self.expr(&entry.key, Demand::Move);
+                    self.expr(&entry.value, Demand::Move);
                 }
             }
             ExprKind::Unary { op, operand } => {
@@ -3085,7 +3099,7 @@ impl Walker<'_> {
                 self.expr(right, Demand::Read);
             }
             ExprKind::Lambda(l) => {
-                let escaping = d == Demand::Consume || self.escaped.contains(&e.id);
+                let escaping = d == Demand::Move || self.escaped.contains(&e.id);
                 self.lambda(e, l, escaping);
             }
             ExprKind::Call { callee, args } => self.call(e, callee, args, d),
@@ -3096,7 +3110,7 @@ impl Walker<'_> {
 
     /// An owned value nobody consumed is dropped at the end of the statement.
     fn temporary(&mut self, e: &Expr, d: Demand) {
-        if d == Demand::Consume || self.is_place(e) || matches!(e.kind, ExprKind::Name(_)) {
+        if d == Demand::Move || self.is_place(e) || matches!(e.kind, ExprKind::Name(_)) {
             return;
         }
         if matches!(
@@ -3119,9 +3133,9 @@ impl Walker<'_> {
         };
         let place = Place::local(b.uid);
         let resolved = self.resolve(&place);
-        if d != Demand::Consume || class == Class::Copy {
+        if d != Demand::Move || class == Class::Copy {
             self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
-            let access = if d == Demand::Consume {
+            let access = if d == Demand::Move {
                 Access::Copy
             } else {
                 Access::Borrow
@@ -3144,7 +3158,7 @@ impl Walker<'_> {
         let var_param =
             parameter.is_some() && perm == Perm::Mutable && self.self_assign != Some(b.uid);
         if role == Role::LambdaParameter && self.cx.classes.class(&b.ty) == Class::Resource {
-            // A function value is called with its arguments lent, so taking one would copy it,
+            // A function value is called with its arguments borrowed, so taking one would copy it,
             // and the caller still closes the original.
             self.error(
                 e.pos,
@@ -3154,7 +3168,7 @@ impl Walker<'_> {
             return;
         }
         if role == Role::LambdaParameter {
-            // The lent argument is copied: in generic code its type must be `Clonable`.
+            // The borrowed argument is copied: in generic code its type must be `Clonable`.
             let t = b.ty.clone();
             self.require_clonable(
                 e,
@@ -3162,11 +3176,11 @@ impl Walker<'_> {
                 &format!("this function value keeps `{name}`, which it only borrows, so it"),
             );
         }
-        if self.captured.iter().any(|c| c.contains(&b.uid)) && perm != Perm::Captured {
+        if self.captured.iter().any(|c| c.contains(&b.uid)) && perm != Perm::ClosureOwned {
             if b.ty.kind == Kind::Function {
                 self.error(
                     e.pos,
-                    format!("this closure would move the function `{name}` out of the variable it captured, but a closure can run more than once; functions cannot be copied, so call `{name}` here or take it as a parameter of the closure"),
+                    format!("this closure would move the function `{name}` out of the variable it captured, but a closure can run more than once; functions cannot be cloned, so call `{name}` here or take it as a parameter of the closure"),
                 );
             } else if self.cx.classes.class(&b.ty) == Class::Resource {
                 self.error(
@@ -3176,15 +3190,17 @@ impl Walker<'_> {
             } else {
                 self.error_fix_opt(
                     e.pos,
-                    format!("this closure would move `{name}` out of the variable it captured, but a closure can run more than once; return `{name}.{COPY}()` instead"),
+                    format!("this closure would move `{name}` out of the variable it captured, but a closure can run more than once; return `{name}.{CLONE}()` instead"),
                     copy_after(e),
                 );
             }
             self.record(e.id, b, Access::Move);
             return;
         }
-        if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured)
-            && self.view_move != Some(e.id)
+        if matches!(
+            perm,
+            Perm::Borrowed | Perm::MutBorrowed | Perm::ClosureOwned
+        ) && self.view_move != Some(e.id)
         {
             // Moving a part out of a parameter's match or loop makes that scrutinee consume it;
             // the next pass of the fixpoint sees the parts as owned.
@@ -3194,18 +3210,18 @@ impl Walker<'_> {
             if self.cx.classes.class(&b.ty) == Class::Resource {
                 self.error(
                     e.pos,
-                    format!("cannot move `{name}` out: it only borrows its value ({}), and its owner closes it; a resource cannot be cloned, so use `{name}` in place", role_text(role, perm)),
+                    format!("cannot move `{name}` out: it is borrowed, not owned ({}), and its owner closes it; a resource cannot be cloned, so use `{name}` in place", role_text(role, perm)),
                 );
             } else if let Some(why) = clone_blocker(&b.ty) {
                 self.error(
                     e.pos,
-                    format!("cannot move `{name}` out: it only borrows its value ({}); {why}, so use `{name}` in place", role_text(role, perm)),
+                    format!("cannot move `{name}` out: it is borrowed, not owned ({}); {why}, so use `{name}` in place", role_text(role, perm)),
                 );
             } else {
                 self.error_fix(
                     e.pos,
-                    format!("cannot move `{name}` out: it only borrows its value ({}); use `{name}.{COPY}()` to get an owned copy", role_text(role, perm)),
-                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{COPY}()")),
+                    format!("cannot move `{name}` out: it is borrowed, not owned ({}); use `{name}.{CLONE}()` to get a clone", role_text(role, perm)),
+                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{CLONE}()")),
                 );
             }
             self.record(e.id, b, Access::Move);
@@ -3220,7 +3236,7 @@ impl Walker<'_> {
         } else if var_param || (receiver && perm == Perm::Mutable) {
             self.error_fix_opt(
                 e.pos,
-                format!("cannot move `{name}` out of the function: the caller keeps ownership of a var parameter; return `{name}.{COPY}()` or change the value in place"),
+                format!("cannot move `{name}` out of the function: the caller keeps ownership of a var parameter; return `{name}.{CLONE}()` or change the value in place"),
                 copy_after(e),
             );
         } else if !self.is_last(e.id, b) {
@@ -3246,8 +3262,8 @@ impl Walker<'_> {
             } else {
                 self.error_fix(
                     e.pos,
-                    format!("`{name}` is moved here but used again{later}; a value has one owner, so pass `{name}.{COPY}()` to keep the original, or move it only at its last use"),
-                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{COPY}()")),
+                    format!("`{name}` is moved here but used again{later}; a value has one owner, so pass `{name}.{CLONE}()` to keep the original, or move it only at its last use"),
+                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{CLONE}()")),
                 );
             }
         }
@@ -3263,7 +3279,7 @@ impl Walker<'_> {
     }
 
     fn projection(&mut self, e: &Expr, d: Demand) {
-        let escaping = d == Demand::Consume || self.escaped.contains(&e.id);
+        let escaping = d == Demand::Move || self.escaped.contains(&e.id);
         if let Some(recv) = self.changing_method_value(e) {
             self.changing_method_use(e, recv, escaping);
             return;
@@ -3274,7 +3290,7 @@ impl Walker<'_> {
         }
         if !self.is_place(e) {
             // A part of a computed value. Copying a `Copy` part leaves the whole where it is.
-            let take = d == Demand::Consume
+            let take = d == Demand::Move
                 && self.class_of(e) != Class::Copy
                 && self.cx.m.ty(e).kind != Kind::Function;
             if take
@@ -3296,11 +3312,11 @@ impl Walker<'_> {
             }
             match &e.kind {
                 ExprKind::Member { left, .. } => {
-                    self.expr(left, if take { Demand::Consume } else { Demand::Read })
+                    self.expr(left, if take { Demand::Move } else { Demand::Read })
                 }
                 ExprKind::Index { left, index } => {
                     self.parts_overlap(e.pos, "this index", &[left, index]);
-                    self.expr(left, if take { Demand::Consume } else { Demand::Read });
+                    self.expr(left, if take { Demand::Move } else { Demand::Read });
                     self.expr(index, Demand::Read);
                 }
                 ExprKind::Apply { left, value, .. } => {
@@ -3320,10 +3336,10 @@ impl Walker<'_> {
             return;
         };
         let class = self.class_of(e);
-        if d == Demand::Consume && class != Class::Copy && self.partial_move(e, &info, class) {
+        if d == Demand::Move && class != Class::Copy && self.partial_move(e, &info, class) {
             return;
         }
-        if d == Demand::Consume && class == Class::Resource {
+        if d == Demand::Move && class == Class::Resource {
             self.error(
                 e.pos,
                 format!(
@@ -3331,15 +3347,15 @@ impl Walker<'_> {
                     info.text, info.root.name
                 ),
             );
-        } else if d == Demand::Consume && class != Class::Copy {
+        } else if d == Demand::Move && class != Class::Copy {
             let message = if info.root.name.starts_with('?') {
                 // The payload of an optional chain `a?.b`, which has no written name.
                 format!(
-                    "an optional chain `?.` cannot move a field out of the optional; take an owned copy by ending the access with `.{COPY}()`"
+                    "an optional chain `?.` cannot move a field out of the optional; take a clone by ending the access with `.{CLONE}()`"
                 )
             } else {
                 format!(
-                    "cannot move `{0}` out of `{1}`: only a whole variable can move; take an owned copy with `{0}.{COPY}()`",
+                    "cannot move `{0}` out of `{1}`: only a whole variable can move; take a clone with `{0}.{CLONE}()`",
                     info.text, info.root.name
                 )
             };
@@ -3348,7 +3364,7 @@ impl Walker<'_> {
                 ExprKind::Member { name, .. } => self.error_fix(
                     e.pos,
                     message,
-                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{COPY}()")),
+                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{CLONE}()")),
                 ),
                 _ => self.error(e.pos, message),
             }
@@ -3419,7 +3435,7 @@ impl Walker<'_> {
                 .unwrap_or_default();
             self.error(
                 e.pos,
-                format!("`{0}` is moved here but used again{later}; a value has one owner, so use `{0}.{COPY}()` to keep the original, or move it only at its last use", info.text),
+                format!("`{0}` is moved here but used again{later}; a value has one owner, so use `{0}.{CLONE}()` to keep the original, or move it only at its last use", info.text),
             );
             return true;
         }
@@ -3463,7 +3479,7 @@ impl Walker<'_> {
         if let Some(v) = unbounded_parameter(t) {
             self.error(
                 e.pos,
-                format!("{what} copies values of `{v}`, which may be a resource; declare `{v}: Clonable`"),
+                format!("{what} clones values of `{v}`, which may be a resource; declare `{v}: Clonable`"),
             );
             return;
         }
@@ -3472,14 +3488,14 @@ impl Walker<'_> {
             self.error(
                 e.pos,
                 format!(
-                    "{what} copies `{t}`, which has one owner and cannot be copied; use it in place"
+                    "{what} clones `{t}`, which has one owner and cannot be cloned; use it in place"
                 ),
             );
         }
     }
 
     /// A conversion of `src` to the interface `e` has: an implementation that keeps a parameter
-    /// the operation only lends is called through the interface with a copy of its argument. A
+    /// the operation only borrows is called through the interface with a copy of its argument. A
     /// resource cannot be copied, so the conversion is rejected; a type parameter passes the
     /// duty on to this callable, as a generic copy does.
     fn adapter_copies(&mut self, e: &Expr, src: &Ty) {
@@ -3501,14 +3517,14 @@ impl Walker<'_> {
                 continue;
             };
             let op = decl.name();
-            let lent: Vec<Name> = ops
+            let borrowed: Vec<Name> = ops
                 .iter()
                 .filter(|o| o.name == op)
                 .filter_map(|o| o.decl.as_ref().and_then(|d| d.func()))
                 .flat_map(|f| f.params.iter().filter(|p| !p.mutable).map(|p| p.name))
                 .collect();
             for (name, mode) in &summary.params {
-                if *mode != ParamMode::Consume || !lent.contains(name) {
+                if *mode != ParamMode::Move || !borrowed.contains(name) {
                     continue;
                 }
                 let Some(p) = m.ty.params.iter().find(|p| p.name == *name) else {
@@ -3519,11 +3535,11 @@ impl Walker<'_> {
                     let text = self.expr_text(e);
                     self.error(
                         e.pos,
-                        format!("`{text}` becomes a `{target}` whose `{op}` keeps its `{name}`, which the interface only lends, so every call through it hands over a copy; the resource `{t}` cannot be copied: pass something that is not a resource, or call `{src}`'s `{op}` directly"),
+                        format!("`{text}` becomes a `{target}` whose `{op}` keeps its `{name}`, which the interface only borrows, so every call through it hands over a clone; the resource `{t}` cannot be cloned: pass something that is not a resource, or call `{src}`'s `{op}` directly"),
                     );
                 } else {
                     let what = format!(
-                        "`{text}` becomes a `{target}` whose `{op}` keeps its `{name}`, which the interface only lends, so it",
+                        "`{text}` becomes a `{target}` whose `{op}` keeps its `{name}`, which the interface only borrows, so it",
                         text = self.expr_text(e)
                     );
                     self.require_clonable(e, &t, &what);
@@ -3532,7 +3548,7 @@ impl Walker<'_> {
         }
     }
 
-    /// A named function used as a value is called with its arguments lent, so a parameter it
+    /// A named function used as a value is called with its arguments borrowed, so a parameter it
     /// keeps is a copy: rejected for a resource, a copy of the type parameter in generic code.
     fn function_value_copies(&mut self, e: &Expr, module: Name, func: &crate::syntax::FuncRef) {
         let Some(summary) = self.cx.summaries.get(&(module, func.id())) else {
@@ -3540,7 +3556,7 @@ impl Walker<'_> {
         };
         let fty = self.cx.m.ty(e);
         for (i, (name, mode)) in summary.params.iter().enumerate() {
-            if *mode != ParamMode::Consume {
+            if *mode != ParamMode::Move {
                 continue;
             }
             let Some(p) = fty.params.get(i) else { continue };
@@ -3548,12 +3564,12 @@ impl Walker<'_> {
                 let text = self.expr_text(e);
                 self.error(
                     e.pos,
-                    format!("`{text}` keeps its parameter `{name}`, but a function value only lends its arguments, so every call would hand it a copy; the resource `{}` cannot be copied: call `{text}` directly, or wrap it in a closure that uses `{name}` in place", p.ty),
+                    format!("`{text}` keeps its parameter `{name}`, but a function value only borrows its arguments, so every call would hand it a clone; the resource `{}` cannot be cloned: call `{text}` directly, or wrap it in a closure that uses `{name}` in place", p.ty),
                 );
             } else {
                 let t = p.ty.clone();
                 let what = format!(
-                    "`{}` keeps its parameter `{name}`, but a function value only lends its arguments, so it",
+                    "`{}` keeps its parameter `{name}`, but a function value only borrows its arguments, so it",
                     self.expr_text(e)
                 );
                 self.require_clonable(e, &t, &what);
@@ -3616,7 +3632,7 @@ impl Walker<'_> {
                     format!("{which} is declared var, so the call must say so; write `var {}`", self.expr_text(&a.value)),
                     insert_at(a.value.pos, "var "),
                 ),
-                (ParamMode::Borrow | ParamMode::Consume, true) if positional => self.error_fix(
+                (ParamMode::Borrow | ParamMode::Move, true) if positional => self.error_fix(
                     a.value.pos,
                     format!("`{name}` does not change {}: its type is `{}`; remove `var` from the argument", which.trim_end_matches(&format!(" of `{name}`")), self.cx.m.ty(callee)),
                     DiagnosticFix {
@@ -3625,7 +3641,7 @@ impl Walker<'_> {
                         replacement: String::new(),
                     },
                 ),
-                (ParamMode::Borrow | ParamMode::Consume, true) => self.error_fix(
+                (ParamMode::Borrow | ParamMode::Move, true) => self.error_fix(
                     a.value.pos,
                     format!("`{name}` does not change its parameter `{param}`; remove `var` from the argument"),
                     DiagnosticFix {
@@ -3646,7 +3662,7 @@ impl Walker<'_> {
                 let text = self.expr_text(r);
                 self.error(
                     e.pos,
-                    format!("`{text}` holds a resource, which has one owner and cannot be cloned: a copy would be closed a second time; move it instead"),
+                    format!("`{text}` holds a resource, which has one owner and cannot be cloned: a clone would be closed a second time; move it instead"),
                 );
             } else if self.cx.m.info(e).native_str() == "clone" && holds_function(&self.cx.m.ty(r))
             {
@@ -3667,11 +3683,11 @@ impl Walker<'_> {
                 && !self.cx.classes.clonable(&result_ty)
                 && unbounded_parameter(&result_ty).is_none()
                 && ty_contains(&self.cx.m.ty(r), &result_ty)
-                && self.native_lend_receiver(e).is_none()
+                && self.native_borrow_receiver(e).is_none()
             {
-                mode = ParamMode::Consume;
+                mode = ParamMode::Move;
                 if !args.is_empty()
-                    && let Some(source) = self.native_lend_receiver(r)
+                    && let Some(source) = self.native_borrow_receiver(r)
                 {
                     // The receiver is itself a native lend (`m.get(k)`, `xs.first()`): the
                     // element stays in its collection, so `get(default)` taking it out would
@@ -3681,7 +3697,7 @@ impl Walker<'_> {
                         clone_blocker(&result_ty).unwrap_or("it has one owner and no `clone`");
                     self.error(
                         e.pos,
-                        format!("`{name}` would take `{result_ty}` out of `{text}`, which only lends an element of `{from}`; {why}, so read it in place (`if let`)"),
+                        format!("`{name}` would take `{result_ty}` out of `{text}`, which only borrows an element of `{from}`; {why}, so read it in place (`if let`)"),
                     );
                 }
             }
@@ -3753,14 +3769,14 @@ impl Walker<'_> {
             }
             self.check_overlap(e.pos, &format!("`{name}`"), &operands);
         }
-        // Results. A lending callee returns a reference into its arguments: holding it is a
+        // Results. A borrow-returning callee returns a reference into its arguments: holding it is a
         // borrow of them, storing or returning it needs a copy, and when a source is a
         // temporary the caller owns the result (lowering copies it out before the temporary
         // is dropped).
-        let lend = call_lend(cx.m, e, cx.summaries);
-        if lend.lends && self.class_of(e) != Class::Copy {
+        let ret_borrow = result_borrow(cx.m, e, cx.summaries);
+        if ret_borrow.returns_borrow && self.class_of(e) != Class::Copy {
             match self.pure_origins(e) {
-                Some(origins) if d == Demand::Consume => {
+                Some(origins) if d == Demand::Move => {
                     let mut roots: Vec<String> = origins
                         .iter()
                         .map(|p| self.name_of(p.root).as_str().to_string())
@@ -3780,25 +3796,25 @@ impl Walker<'_> {
                         self.error_fix_opt(
                             e.pos,
                             format!(
-                                "`{name}` returns a reference into `{}`, which this position would keep; store `.{COPY}()` of it, or use it in place",
+                                "`{name}` returns a reference into `{}`, which this position would keep; store `.{CLONE}()` of it, or use it in place",
                                 roots.join("`, `")
                             ),
                             copy_after(e),
                         );
                     }
                 }
-                Some(_) if self.lends_through_view(e, &lend) => {
-                    // The callee lends from a view temporary of a held value: the caller owns
+                Some(_) if self.returns_borrow_through_view(e, &ret_borrow) => {
+                    // The callee returns a borrow of a view temporary of a held value: the caller owns
                     // the result (the view itself when it comes back whole) and holds the value.
-                    let how = self.owned_lend(e, &lend, true);
-                    self.copied_lend(e, &name, how);
-                    self.facts.owned_lends.insert(e.id, how);
+                    let how = self.owned_borrow(e, &ret_borrow, true);
+                    self.cloned_borrow(e, &name, how);
+                    self.facts.owned_borrows.insert(e.id, how);
                 }
                 Some(_) => {}
                 None => {
-                    let how = self.owned_lend(e, &lend, false);
-                    self.copied_lend(e, &name, how);
-                    self.facts.owned_lends.insert(e.id, how);
+                    let how = self.owned_borrow(e, &ret_borrow, false);
+                    self.cloned_borrow(e, &name, how);
+                    self.facts.owned_borrows.insert(e.id, how);
                 }
             }
         }
@@ -3811,10 +3827,10 @@ impl Walker<'_> {
         }
     }
 
-    /// A lending call over a temporary whose result is a part of it: the caller copies the part
+    /// A borrow-returning call over a temporary whose result is a part of it: the caller copies the part
     /// out before the temporary is dropped, which a value with one owner and no `clone` cannot be.
-    fn copied_lend(&mut self, e: &Expr, name: &str, how: OwnedLend) {
-        if how != OwnedLend::Copy {
+    fn cloned_borrow(&mut self, e: &Expr, name: &str, how: OwnedBorrow) {
+        if how != OwnedBorrow::Clone {
             return;
         }
         let t = self.cx.m.ty(e);
@@ -3823,17 +3839,17 @@ impl Walker<'_> {
         }
         self.error(
             e.pos,
-            format!("`{name}` returns a part of a temporary argument, which would be copied out as the argument is dropped; `{t}` has one owner and no `clone`, so bind the argument first and use the result while that binding lives"),
+            format!("`{name}` returns a part of a temporary argument, which would be cloned out as the argument is dropped; `{t}` has one owner and no `clone`, so bind the argument first and use the result while that binding lives"),
         );
     }
 
-    /// How the caller owns the result of a lending call over a temporary: the whole of one
+    /// How the caller owns the result of a borrow-returning call over a temporary: the whole of one
     /// temporary operand comes back (`id(make())`, `choose(first, second)` over function values
     /// made from named functions, or `relay(cause)` through a view temporary when
     /// `through_view`), so the caller keeps that temporary as the result instead of copying it;
     /// otherwise a copy is taken before the temporary is dropped.
-    fn owned_lend(&self, e: &Expr, lend: &Lend, through_view: bool) -> OwnedLend {
-        let whole = match (&lend.path, self.lend_operands(e, lend)) {
+    fn owned_borrow(&self, e: &Expr, lend: &ResultBorrow, through_view: bool) -> OwnedBorrow {
+        let whole = match (&lend.path, self.borrow_operands(e, lend)) {
             (Some((source, fields)), Some(operands))
                 if fields.is_empty()
                     && operands.len() == 1
@@ -3844,8 +3860,8 @@ impl Walker<'_> {
             _ => None,
         };
         match whole {
-            Some(source) => OwnedLend::Whole(source),
-            None => OwnedLend::Copy,
+            Some(source) => OwnedBorrow::Whole(source),
+            None => OwnedBorrow::Clone,
         }
     }
 
@@ -4066,7 +4082,7 @@ impl Walker<'_> {
         let mut out = Vec::new();
         for (operand, mode) in written {
             if !self.is_place(operand)
-                || (mode == ParamMode::Consume && self.class_of(operand) == Class::Copy)
+                || (mode == ParamMode::Move && self.class_of(operand) == Class::Copy)
             {
                 continue;
             }
@@ -4080,7 +4096,7 @@ impl Walker<'_> {
     }
 
     /// The operands of one operator, index, literal or interpolation are computed in order,
-    /// and one that lends or reads a place is held while the next runs; a change or move of
+    /// and one that borrows or reads a place is held while the next runs; a change or move of
     /// that place by a later operand would leave a dangling reference.
     fn parts_overlap(&mut self, pos: Pos, name: &str, parts: &[&Expr]) {
         if parts.len() < 2 {
@@ -4112,7 +4128,7 @@ impl Walker<'_> {
     fn receiver(&mut self, r: &Expr, mode: ParamMode) {
         match mode {
             ParamMode::Borrow => self.expr(r, Demand::Read),
-            ParamMode::Consume => self.expr(r, Demand::Consume),
+            ParamMode::Move => self.expr(r, Demand::Move),
             ParamMode::Mutate => {
                 if self.is_place(r) {
                     if let Some((info, _)) = self.place(r) {
@@ -4159,7 +4175,7 @@ impl Walker<'_> {
                     }
                 }
             }
-            ParamMode::Consume => self.expr(&a.value, Demand::Consume),
+            ParamMode::Move => self.expr(&a.value, Demand::Move),
             ParamMode::Mutate => {
                 if self.is_place(&a.value) {
                     if let Some((info, _)) = self.place(&a.value) {
@@ -4214,7 +4230,7 @@ impl Walker<'_> {
                     let (label, other) = (self.operand_text(label), self.operand_text(other));
                     self.error(
                         pos,
-                        format!("{label} of {context} is changed in place but overlaps {other}; a changed value cannot also be read or changed through another operand, so pass distinct variables or copy one first"),
+                        format!("{label} of {context} is changed in place but overlaps {other}; a changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first"),
                     );
                     return;
                 }
@@ -4231,13 +4247,13 @@ impl Walker<'_> {
         let source = self.scrutinee(scrutinee);
         self.keep_scrutinee = false;
         self.release_pending();
-        // The value is a reference when every arm yields one and nothing consumes it: lowering
+        // The value is a reference when every arm yields one and nothing moving_params it: lowering
         // joins the arms without copying.
-        let lent = !returning
-            && d != Demand::Consume
+        let borrowed = !returning
+            && d != Demand::Move
             && self.class_of(e) != Class::Copy
             && self.arm_origins(arms).is_some();
-        let lent_before = self.lent_return;
+        let borrowed_before = self.borrowed_return;
         let view_before = self.view_return;
         let entry = self.active.clone();
         let mut joined: Vec<Borrow> = Vec::new();
@@ -4279,13 +4295,13 @@ impl Walker<'_> {
             joined = Self::join_active(joined, end);
         }
         self.active = Self::join_active(entry, joined);
-        // A returned match lends when its arms all did; a mix is reported by `mixed_returns`.
-        let returned_lent = returning
+        // A returned match returns a borrow when its arms all did; a mix is reported by `mixed_returns`.
+        let returned_borrowed = returning
             && self.owned_return.is_none()
-            && self.lent_return != lent_before
+            && self.borrowed_return != borrowed_before
             && self.view_return == view_before;
-        if lent || returned_lent {
-            self.facts.lent_matches.insert(e.id);
+        if borrowed || returned_borrowed {
+            self.facts.borrowed_matches.insert(e.id);
         }
     }
 
@@ -4317,7 +4333,7 @@ impl Walker<'_> {
         if escaping && !concurrent {
             for (uid, _) in &saved_meta {
                 if let Some(m) = self.meta.get_mut(uid) {
-                    m.perm = Perm::Captured;
+                    m.perm = Perm::ClosureOwned;
                 }
             }
         } else if concurrent {
@@ -4330,7 +4346,7 @@ impl Walker<'_> {
                             Perm::Immutable
                         };
                     } else if escaping {
-                        m.perm = Perm::Captured;
+                        m.perm = Perm::ClosureOwned;
                     }
                 }
             }
@@ -4378,7 +4394,7 @@ impl Walker<'_> {
                 if changed {
                     self.error(
                         e.pos,
-                        format!("this closure changes captured `{0}`, so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing `{0}`", b.name),
+                        format!("this closure changes captured `{0}`, so it cannot be returned, stored or passed to a moving parameter; keep the closure local, or have it return a new value instead of changing `{0}`", b.name),
                     );
                 }
                 // Only a plain value is copied in. Anything else moves at its last use; when the
@@ -4399,7 +4415,7 @@ impl Walker<'_> {
                             .unwrap_or_default();
                         self.error(
                             e.pos,
-                            format!("this closure outlives the statement but captures the `var` `{name}`, which is used again{later}; the closure would keep a stale copy, so bind a `let` copy before the closure and capture that"),
+                            format!("this closure outlives the statement but captures the `var` `{name}`, which is used again{later}; the closure would keep a stale value, so bind a `let` clone before the closure and capture that"),
                         );
                     }
                     self.record(e.id, b, Access::Copy);
@@ -4466,16 +4482,19 @@ impl Walker<'_> {
     fn capture_move(&mut self, e: &Expr, b: &BindingRef, resolved: &[Place]) {
         let perm = self.meta[&b.uid].perm;
         let name = b.name;
-        if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
+        if matches!(
+            perm,
+            Perm::Borrowed | Perm::MutBorrowed | Perm::ClosureOwned
+        ) {
             if let Some(why) = clone_blocker(&b.ty) {
                 self.error(
                     e.pos,
-                    format!("this closure outlives the statement but captures `{name}`, which only borrows its value; {why}, so capture an owned value instead"),
+                    format!("this closure outlives the statement but captures `{name}`, which is borrowed, not owned; {why}, so capture an owned value instead"),
                 );
             } else {
                 self.error_fix_opt(
                     e.pos,
-                    format!("this closure outlives the statement but captures `{name}`, which only borrows its value; capture `{name}.{COPY}()` instead"),
+                    format!("this closure outlives the statement but captures `{name}`, which is borrowed, not owned; capture `{name}.{CLONE}()` instead"),
                     copy_after(e),
                 );
             }
@@ -4497,7 +4516,7 @@ impl Walker<'_> {
             } else {
                 self.error_fix_opt(
                     e.pos,
-                    format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; capture `{name}.{COPY}()` to keep the original"),
+                    format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; capture `{name}.{CLONE}()` to keep the original"),
                     copy_after(e),
                 );
             }
@@ -4522,7 +4541,7 @@ fn saved_perm(saved: &[(usize, Perm)], uid: usize) -> Option<Perm> {
 }
 
 /// The expression and the value parts it builds (constructor arguments, list and map elements),
-/// not the arguments of other calls (`wait_all([a, b])` consumes its promises), the bodies of
+/// not the arguments of other calls (`wait_all([a, b])` moving_params its promises), the bodies of
 /// lambdas or the arms of a match.
 fn collect_parts<'e>(e: &'e Expr, builds: &dyn Fn(&Expr) -> bool, out: &mut Vec<&'e Expr>) {
     out.push(e);
@@ -4551,7 +4570,7 @@ struct Scrutinee {
 }
 
 fn role_text(role: Role, perm: Perm) -> &'static str {
-    if perm == Perm::Captured {
+    if perm == Perm::ClosureOwned {
         return "a variable captured by the closure";
     }
     match role {

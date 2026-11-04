@@ -19,6 +19,27 @@ export extern fn msrt_promise_start_here(id: Int, work: fn() Unit) Unit
 
 export extern fn msrt_promise_wait(id: Int, timeout_ns: Int) Int
 
+// Limits the promise: once `timeout_ns` has passed from now without a result it is cancelled and a wait reports a timeout.
+export extern fn msrt_promise_limit(id: Int, timeout_ns: Int) Unit
+
+// Cancels the promise if it has not finished; a wait then reports a cancellation. It does not wait.
+export extern fn msrt_promise_cancel(id: Int) Unit
+
+// Makes the promise listen to the cancel switch: when it fires the promise is cancelled. Call it once the work has started.
+export extern fn msrt_promise_on_cancel(id: Int, cancel: Int) Unit
+
+// A new cancel switch that has not fired, as an id.
+export extern fn msrt_cancel_new() Int
+
+// Fires the switch: every promise listening to it is cancelled. Firing twice does nothing.
+export extern fn msrt_cancel_fire(id: Int) Unit
+
+// Whether the switch has fired; a freed switch reads as not fired.
+export extern fn msrt_cancel_fired(id: Int) Bool
+
+// Frees the switch; the promises that listened keep running.
+export extern fn msrt_cancel_free(id: Int) Unit
+
 // The index of the first of `ids` to finish, waiting up to `timeout_ns` (negative: no limit); -1 on timeout.
 export extern fn msrt_promise_wait_any(ids: List[Int], timeout_ns: Int) Int
 
@@ -90,6 +111,9 @@ export extern fn msrt_cells_drop(id: Int) Unit
 
 // Whether the cell holds a value now.
 export extern fn msrt_cells_full(id: Int) Bool
+
+// Whether the cell is live with its value out, so a holder can put it back; false once it is dropped.
+export extern fn msrt_cells_out(id: Int) Bool
 
 // Moves the value out; Closed when the cell is empty or gone. A plain `try` binds it without a copy.
 export extern fn msrt_cells_take_result[T](id: Int) T!

@@ -57,7 +57,7 @@ b0:
   %z: int = iconst 0
   %l1: list<int> = list.push %l0, %z
   br head(%z, %l1)
-head(%i: int, %l: own list<int>):
+head(%i: int, %l: move list<int>):
   %len: int = list.len %l
   %c: bool = icmp.le %i, %n
   br_if %c, body(), out()
@@ -73,7 +73,7 @@ b():
   %lb: list<int> = list.push %l, %z
   %lc: list<int> = list.push %lb, %i
   br join(%lc)
-join(%lj: own list<int>):
+join(%lj: move list<int>):
   %one: int = iconst 1
   %next: int = iadd %i, %one
   br head(%next, %lj)
@@ -94,7 +94,7 @@ b0:
   %l0: list<int> = list.lit
   %z: int = iconst 0
   br head(%z, %l0)
-head(%i: int, %l: own list<int>):
+head(%i: int, %l: move list<int>):
   %c: bool = icmp.lt %i, %n
   br_if %c, body(), out()
 body():
@@ -104,7 +104,7 @@ body():
 a():
   %la: list<int> = list.push %l, %i
   br join(%la)
-join(%lj: own list<int>):
+join(%lj: move list<int>):
   %one: int = iconst 1
   %next: int = iadd %i, %one
   br head(%next, %lj)
@@ -120,7 +120,7 @@ b0:
   %l0: list<int> = list.lit
   %z: int = iconst 0
   br head(%z, %l0)
-head(%i: int, %l: own list<int>):
+head(%i: int, %l: move list<int>):
   %c: bool = icmp.lt %i, %n
   br_if %c, body(), out()
 body():
@@ -140,7 +140,7 @@ b0:
   %l0: list<int> = list.lit
   %z: int = iconst 0
   br head(%z, %l0)
-head(%i: int, %l: own list<int>):
+head(%i: int, %l: move list<int>):
   %c: bool = icmp.lt %i, %n
   br_if %c, body(), out()
 body():

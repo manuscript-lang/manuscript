@@ -120,13 +120,13 @@ pub struct Program {
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
     /// Lending calls whose result the caller owns, by module file and call node.
-    pub owned_lends: Rc<HashMap<(Name, NodeId), crate::ownership::OwnedLend>>,
+    pub owned_borrows: Rc<HashMap<(Name, NodeId), crate::ownership::OwnedBorrow>>,
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
     /// identity. Filled together with `borrows`.
     pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
-    /// Parameters each callable consumes (moves, stores or returns), by module file and node, for
+    /// Parameters each callable moving_params (moves, stores or returns), by module file and node, for
     /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
-    pub consumes: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
+    pub moving_params: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
     /// Boolean per-node ownership facts in a dense table (`ownership::NodeFacts`).
     pub node_facts: Rc<crate::ownership::NodeFacts>,
     /// Boolean per-binding ownership facts in a dense table (`ownership::BindingFlags`).
@@ -1115,12 +1115,6 @@ impl Checker {
                     );
                 }
                 for method in &i.methods {
-                    for param in method.func.params.iter().filter(|p| p.mutable) {
-                        self.type_error(
-                            param.pos,
-                            "an interface operation cannot take a `var` parameter, only a `var` receiver; return the new value, or pass a type that holds the state",
-                        );
-                    }
                     for param in &method.func.params {
                         let Some(default) = &param.default else {
                             continue;
@@ -1468,8 +1462,8 @@ impl Checker {
             let cases = cases(error);
             let reported = |c: &Case| {
                 c.fields.iter().all(|f| {
-                    (f.name.as_str() == "code" && f.ty.id == "Int")
-                        || (f.name.as_str() == "message" && f.ty.id == "String")
+                    (f.name.as_str() == EXTERN_ERROR_CODE && f.ty.id == "Int")
+                        || (f.name.as_str() == EXTERN_ERROR_MESSAGE && f.ty.id == "String")
                 })
             };
             if ok.id != "Unit" && !crosses_native(ok) {
@@ -1758,6 +1752,33 @@ impl Checker {
             .standard_module_symbol(n("@std/collections/collections.ms"), n("range"))
         {
             self.names.borrow_mut().insert(n(".."), range);
+        }
+        for (path, name) in crate::stdlib::STANDARD_PRELUDE_FUNCTIONS {
+            let nm = n(name);
+            let pn = n(path);
+            let explicit = m
+                .imports
+                .iter()
+                .any(|i| i.name == nm && i.path.starts_with("@std/"));
+            // Standard modules import it explicitly: resolving the twin from inside one would be a dependency cycle.
+            if m.is_standard() || explicit {
+                continue;
+            }
+            // The function has a body, so it lives in the module's source twin.
+            let import = crate::stdlib::prelude_function_import(path, name);
+            let found = self.session.standard_module_symbol(pn, nm).or_else(|| {
+                let twin = self.session.import_source(&import)?;
+                self.session
+                    .ensure_source(&twin)
+                    .ok()?
+                    .exports
+                    .get(&nm)
+                    .filter(|s| s.module == twin.file)
+                    .cloned()
+            });
+            if let Some(symbol) = found {
+                self.names.borrow_mut().insert(nm, symbol);
+            }
         }
         for name in crate::stdlib::STANDARD_PRELUDE_NAMES {
             let nm = n(name);

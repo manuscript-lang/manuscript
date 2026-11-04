@@ -295,25 +295,29 @@ impl CsvRows:
         return ok(unit)
 
 impl Transform[Bytes, List[String]] for CsvRows:
-    var fn feed(value: Bytes) List[List[String]]!:
+    var fn step(value: Bytes, var out: WriteStream[List[String]]) Unit!:
         let data = self.tail.concat(value)
         let cut = self.boundary(data)
         self.scanned = data.length() - cut
         self.tail = try data.slice(cut, data.length())
         try self.check_size(self.tail.length())
-        if cut == 0: return ok(List[List[String]]())
+        if cut == 0: return ok(unit)
 
         let text = data.decode_utf8_range(0, cut).get("")
-        return parse(text, self.options, none, none)
+        return write_rows(try parse(text, self.options, none, none), var out)
 
-    var fn finish() List[List[String]]!:
+    var fn finish(var out: WriteStream[List[String]]) Unit!:
         let data = self.tail.clone()
         self.tail = join([])
         self.scanned = 0
-        if data.is_empty(): return ok(List[List[String]]())
+        if data.is_empty(): return ok(unit)
 
         let text = data.decode_utf8().get("")
-        return parse(text, self.options, none, none)
+        return write_rows(try parse(text, self.options, none, none), var out)
+
+fn write_rows(rows: List[List[String]], var out: WriteStream[List[String]]) Unit!:
+    for row in rows: try out.write(row)
+    return ok(unit)
 
 /*
 Reads CSV rows from a byte stream, one `List[String]` per record, with the cells `parse` returns.

@@ -66,9 +66,16 @@ const HELD_ERROR: u8 = 8;
 const REMOTE_WAKE: u8 = 2;
 /// The promise has no task: its work runs in the first task that waits on it.
 const DEFERRED: u8 = 16;
+/// The promise's limit passed and ended it: a `wait` reports a timeout, not a cancellation.
+const TIMED_OUT: u8 = 32;
+/// `stop` asked the work to cancel; if it returns without a result anyway, the promise reads as cancelled.
+const STOPPED: u8 = 64;
 
 // Each flag is its own bit: two sharing one made a held result look like deferred work.
-const _: () = assert!((WANT_CANCEL | REMOTE_WAKE | HELD | HELD_ERROR | DEFERRED).count_ones() == 5);
+const _: () = assert!(
+    (WANT_CANCEL | REMOTE_WAKE | HELD | HELD_ERROR | DEFERRED | TIMED_OUT | STOPPED).count_ones()
+        == 7
+);
 
 const NO_RESULT: Result = Result {
     ptr: core::ptr::null_mut(),
@@ -92,6 +99,10 @@ struct Table {
     report: Vec<Vec<u8>>,
     /// When a timer promise or a readiness wait times out, or `i64::MAX`.
     deadline: Vec<i64>,
+    /// When the promise's limit (`msrt_promise_limit`) ends it, or `i64::MAX`.
+    limit: Vec<i64>,
+    /// The cancel switch the promise listens to, or 0.
+    cancel: Vec<i64>,
     /// The descriptor a readiness wait watches, or -1.
     fd: Vec<i32>,
     /// What a readiness wait asks for.
@@ -101,6 +112,8 @@ struct Table {
     retry_state: Vec<usize>,
     /// (deadline, id) of the timers armed; an entry whose promise is gone or finished is stale.
     timers: BinaryHeap<Reverse<(i64, i64)>>,
+    /// (limit, id) of the limits armed; an entry whose promise is gone or finished is stale.
+    limits: BinaryHeap<Reverse<(i64, i64)>>,
     free: Vec<usize>,
 }
 
@@ -116,11 +129,14 @@ impl Table {
             flags: Vec::new(),
             report: Vec::new(),
             deadline: Vec::new(),
+            limit: Vec::new(),
+            cancel: Vec::new(),
             fd: Vec::new(),
             events: Vec::new(),
             retry: Vec::new(),
             retry_state: Vec::new(),
             timers: BinaryHeap::new(),
+            limits: BinaryHeap::new(),
             free: Vec::new(),
         }
     }
@@ -135,6 +151,14 @@ crate::isolate_static! {
 /// took is dropped.
 pub(crate) fn teardown() {
     let t = table();
+    for i in 0..t.cancel.len() {
+        if t.cancel[i] != 0 {
+            let id = ((sched::current() as i64) << 56)
+                | (i64::from(t.generation[i]) << 32)
+                | (i as i64 + 1);
+            crate::cancel::unregister(t.cancel[i], id);
+        }
+    }
     for r in core::mem::take(&mut t.result) {
         if !r.ptr.is_null() {
             drop_block(r.ptr as usize, r.desc as usize);
@@ -196,6 +220,8 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
             t.flags.push(0);
             t.report.push(Vec::new());
             t.deadline.push(i64::MAX);
+            t.limit.push(i64::MAX);
+            t.cancel.push(0);
             t.fd.push(-1);
             t.events.push(0);
             t.retry.push(None);
@@ -215,6 +241,8 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
     t.flags[i] = 0;
     t.report[i] = Vec::new();
     t.deadline[i] = i64::MAX;
+    t.limit[i] = i64::MAX;
+    t.cancel[i] = 0;
     t.fd[i] = -1;
     t.events[i] = 0;
     t.retry[i] = None;
@@ -341,6 +369,7 @@ fn apply(event: Event) {
                         t.state[i] = State::Failed;
                     }
                     2 => t.state[i] = State::Cancelled,
+                    _ if t.flags[i] & (TIMED_OUT | STOPPED) != 0 => t.state[i] = State::Cancelled,
                     _ => {
                         t.report[i] = b"promise: the work ended without a result".to_vec();
                         t.state[i] = State::Failed;
@@ -352,6 +381,7 @@ fn apply(event: Event) {
         Event::Cancel { id } => {
             task::cancel_promise_task(id);
         }
+        Event::Stop { id } => stop(id),
     }
 }
 
@@ -682,6 +712,7 @@ pub(crate) fn fd_ready(id: i64, bits: u32) -> bool {
 
 /// Finishes the timers due at `now`: a sleep ends, a readiness wait times out.
 pub(crate) fn expire(now: i64) {
+    expire_limits(now);
     loop {
         let t = table();
         let Some(&Reverse((deadline, id))) = t.timers.peek() else {
@@ -716,24 +747,128 @@ pub(crate) fn expire(now: i64) {
     }
 }
 
-/// The earliest deadline of a live timer, dropping stale entries on the way.
+/// Ends the promises whose limit has passed at `now`.
+fn expire_limits(now: i64) {
+    loop {
+        let t = table();
+        let Some(&Reverse((limit, id))) = t.limits.peek() else {
+            return;
+        };
+        if limit > now {
+            return;
+        }
+        t.limits.pop();
+        let Some(i) = index(t, id) else { continue };
+        if t.state[i] == State::Pending && t.limit[i] == limit {
+            t.flags[i] |= TIMED_OUT;
+            t.limit[i] = i64::MAX;
+            stop(id);
+        }
+    }
+}
+
+/// Ends the unfinished promise `id` as cancelled, whatever it is doing: work that has a task is
+/// told to cancel (the task's end completes it), and a promise with no task is completed here.
+fn stop(id: i64) {
+    let t = table();
+    let Some(i) = index(t, id) else { return };
+    if t.state[i] != State::Pending {
+        return;
+    }
+    if t.closure[i] != 0 {
+        t.flags[i] |= STOPPED;
+        request_cancel(id);
+        return;
+    }
+    if t.flags[i] & DEFERRED != 0 {
+        t.flags[i] &= !DEFERRED;
+        let closure = core::mem::take(&mut t.retry_state[i]);
+        // SAFETY: the closure handed over to `msrt_promise_defer`, never run.
+        unsafe { crate::obj::drop_obj(closure as *mut ms_rt_abi::Obj) };
+    }
+    if t.fd[i] >= 0 {
+        let fd = core::mem::replace(&mut t.fd[i], -1);
+        // SAFETY: single scheduler per isolate.
+        unsafe { task::unwatch_fd_for_promise(fd, id) };
+    }
+    if let Some(retry) = core::mem::take(&mut t.retry[i]) {
+        retry(id, t.retry_state[i], task::WAIT_CANCELLED);
+    }
+    let t = table();
+    if let Some(i) = index(t, id)
+        && t.state[i] == State::Pending
+    {
+        t.state[i] = State::Cancelled;
+        wake(t, i);
+    }
+}
+
+/// Cancels promise `id` if it has not finished: its work stops at its next wait and a `wait` reports
+/// a cancellation. It never waits itself; dropping the promise joins the work.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_promise_cancel(id: i64) {
+    stop(id);
+}
+
+/// Makes promise `id` listen to the cancel switch `cancel` (`cancel.rs`): when it fires the promise is
+/// cancelled, as by `msrt_promise_cancel`. A switch that already fired cancels it now. Call it after the work
+/// has started.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_promise_on_cancel(id: i64, cancel: i64) {
+    let t = table();
+    let Some(i) = index(t, id) else { return };
+    if crate::cancel::register(cancel, id) {
+        stop(id);
+        return;
+    }
+    t.cancel[i] = cancel;
+}
+
+/// Stops promise `id` from the thread that fired its switch: on the promise's own thread.
+pub(crate) fn stop_on_owner(id: i64) {
+    deliver(id, Event::Stop { id });
+}
+
+/// Limits promise `id`: once `timeout_ns` has passed from now (negative: no time at all) and it
+/// has not finished, it is cancelled and a `wait` reports a timeout. A promise with no limit costs
+/// nothing; a second call replaces the first.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_promise_limit(id: i64, timeout_ns: i64) {
+    let t = table();
+    let Some(i) = index(t, id) else { return };
+    let limit = crate::sys::monotonic_ns().saturating_add(timeout_ns.max(0));
+    t.limit[i] = limit;
+    t.limits.push(Reverse((limit, id)));
+}
+
+/// The earliest deadline of a live timer or limit, dropping stale entries on the way.
 pub(crate) fn next_deadline() -> Option<i64> {
     let t = table();
+    while let Some(&Reverse((limit, id))) = t.limits.peek() {
+        if let Some(i) = index(t, id)
+            && t.state[i] == State::Pending
+            && t.limit[i] == limit
+        {
+            break;
+        }
+        t.limits.pop();
+    }
+    let limit = t.limits.peek().map(|&Reverse((l, _))| l);
     while let Some(&Reverse((deadline, id))) = t.timers.peek() {
         if let Some(i) = index(t, id)
             && t.state[i] == State::Pending
             && t.deadline[i] == deadline
         {
-            return Some(deadline);
+            return Some(limit.map_or(deadline, |l| l.min(deadline)));
         }
         t.timers.pop();
     }
-    None
+    limit
 }
 
 /// Whether any timer entry exists (live or stale).
 pub(crate) fn has_timers() -> bool {
-    !table().timers.is_empty()
+    !table().timers.is_empty() || !table().limits.is_empty()
 }
 
 /// Starts `work` as the task of promise `id`, on the thread the runtime picks. The closure
@@ -880,11 +1015,12 @@ pub fn cancel(id: i64) {
     request_cancel(id)
 }
 
-fn outcome(state: State) -> Option<i64> {
-    match state {
+fn outcome(t: &Table, i: usize) -> Option<i64> {
+    match t.state[i] {
         State::Ok => Some(OK),
         State::Error => Some(ERROR),
         State::Failed => Some(FAILED),
+        State::Cancelled if t.flags[i] & TIMED_OUT != 0 => Some(TIMEOUT),
         State::Cancelled => Some(CANCELLED),
         State::Taken => Some(CLOSED),
         State::Pending | State::Free => None,
@@ -927,6 +1063,14 @@ fn park_on(id: i64, timeout_ns: i64) -> u32 {
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
     let own = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
+    // The promise's own limit also bounds the wait, which is how deferred work (it runs on this
+    // stack) notices it.
+    let limit = index(table(), id).map_or(i64::MAX, |i| table().limit[i]);
+    let own = match (own, limit) {
+        (o, i64::MAX) => o,
+        (Some(o), l) => Some(o.min(l)),
+        (None, l) => Some(l),
+    };
     // A wait inside deferred work also stops at the outer waiter's deadline.
     let inherited = task::defer_deadline();
     let deadline = match (own, inherited) {
@@ -938,22 +1082,23 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
     loop {
         let t = table();
         let i = find(id);
-        if let Some(code) = outcome(t.state[i]) {
+        if let Some(code) = outcome(t, i) {
             return code;
         }
         let remaining = deadline.map_or(-1, |d| (d - crate::sys::monotonic_ns()).max(0));
         let woke = park_on(id, remaining);
         if woke == task::WAIT_CANCELLED {
             // The promise may be a temporary that unwinding never drops (`read_file(p).wait()`):
-            // cancel its work now so it releases what it holds.
-            request_cancel(id);
+            // cancel its work and wait for it to end now, so what it holds (a listener, a file) is
+            // released before the unwinding task goes on.
+            msrt_promise_drop(id);
             fault::msrt_cancelled();
         }
         let t = table();
         let Some(i) = index(t, id) else {
             return CLOSED;
         };
-        if let Some(code) = outcome(t.state[i]) {
+        if let Some(code) = outcome(t, i) {
             return code;
         }
         if woke == task::WAIT_TIMEOUT {
@@ -1053,6 +1198,9 @@ pub unsafe extern "C-unwind" fn msrt_promise_fault_report(id: i64, out: *mut ms_
 pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
     let t = table();
     let Some(i) = index(t, id) else { return };
+    if t.cancel[i] != 0 {
+        crate::cancel::unregister(core::mem::take(&mut t.cancel[i]), id);
+    }
     if t.fd[i] >= 0 && t.state[i] == State::Pending {
         // SAFETY: single scheduler per isolate.
         unsafe { task::unwatch_fd_for_promise(t.fd[i], id) };
@@ -1219,6 +1367,38 @@ mod tests {
         msrt_promise_drop(id);
         // SAFETY: as above.
         assert_eq!(unsafe { task::msrt_task_count() }, before);
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_limit_ends_the_work_without_a_waiter() {
+        let _g = lock();
+        // SAFETY: tests hold the runtime lock.
+        let before = unsafe { task::msrt_task_count() };
+        let id = msrt_promise_new();
+        msrt_promise_limit(id, 5_000_000);
+        start(id, hangs);
+        // Nobody waits: other tasks run until the limit passes and the work ends.
+        // SAFETY: tests hold the runtime lock.
+        unsafe { task::msrt_task_sleep(60_000_000) };
+        assert!(msrt_promise_done(id) != 0);
+        assert_eq!(msrt_promise_wait(id, -1), TIMEOUT);
+        msrt_promise_drop(id);
+        // SAFETY: as above.
+        assert_eq!(unsafe { task::msrt_task_count() }, before);
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn cancelling_a_promise_ends_it_as_cancelled() {
+        let _g = lock();
+        let id = msrt_promise_new();
+        start(id, hangs);
+        msrt_promise_cancel(id);
+        assert_eq!(msrt_promise_wait(id, -1), CANCELLED);
+        msrt_promise_drop(id);
         task::teardown();
     }
 

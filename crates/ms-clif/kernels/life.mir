@@ -63,12 +63,12 @@ b0:
   %total: int = imul %w, %h
   %next0: list<int> = list.new %total
   br ly(%zero, %next0)
-ly(%y: int, %next: own list<int>):
+ly(%y: int, %next: move list<int>):
   %cy: bool = icmp.lt %y, %h
   br_if %cy, lyb(), lyd()
 lyb:
   br lx(%zero, %next)
-lx(%x: int, %nx: own list<int>):
+lx(%x: int, %nx: move list<int>):
   poll
   %cx: bool = icmp.lt %x, %w
   br_if %cx, lxb(), lxd()
@@ -101,7 +101,7 @@ b0:
   %seven: int = iconst 7
   %eleven: int = iconst 11
   br init(%zero, %c0)
-init(%i: int, %cells: own list<int>):
+init(%i: int, %cells: move list<int>):
   %ci: bool = icmp.lt %i, %total
   br_if %ci, ib(), id()
 ib:
@@ -117,7 +117,7 @@ ib:
 id:
   %g0: Grid = rec.new Grid %size, %size, %cells
   br gen(%zero, %g0)
-gen(%n: int, %g: own Grid):
+gen(%n: int, %g: move Grid):
   %cn: bool = icmp.lt %n, %gens
   br_if %cn, gb(), gd()
 gb:

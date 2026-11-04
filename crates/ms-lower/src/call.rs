@@ -233,7 +233,7 @@ impl<'a> FnLower<'a> {
         };
         let uid = self.aliases.get(&uid).map_or(uid, |a| a.root.uid);
         self.locals.get(&uid).is_some_and(|l| {
-            l.slot.is_some() || !self.needs_drop(l.ty) || self.b.var_mode(l.var) == Mode::Own
+            l.slot.is_some() || !self.needs_drop(l.ty) || self.b.var_mode(l.var) == Mode::Move
         })
     }
 
@@ -344,7 +344,7 @@ impl<'a> FnLower<'a> {
             if vars.contains(&(j + offset)) {
                 let ty = self.ty_of(v.v);
                 let o = self.owned(v);
-                let var = self.b.declare_var(ty, Mode::Own);
+                let var = self.b.declare_var(ty, Mode::Move);
                 self.b.def_var(var, o);
                 self.locals.insert(
                     binding.uid,
@@ -399,7 +399,7 @@ impl<'a> FnLower<'a> {
         // A changed parameter is moved into a slot the callee takes from and puts back into.
         let mut slots_out: Vec<VarArgument> = Vec::new();
         let mut vals: Vec<Value> = Vec::new();
-        // Which borrowed arguments were owned temporaries, for a lender that hands one back whole.
+        // Which borrowed arguments were owned temporaries, for a returner that hands one back whole.
         let mut owned_args: Vec<bool> = Vec::new();
         // The only changed parameter is a field or list element of an owned variable: the callee
         // takes it out of its place and puts it back, instead of working on a copy.
@@ -470,13 +470,13 @@ impl<'a> FnLower<'a> {
         };
         self.restore_var_arguments(slots_out, |p| args.places.get(p).cloned().flatten())?;
         if self.b.m.funcs[fid.index()].ret_borrowed {
-            // A lending callee: the result points into the arguments. When one of them is a
+            // A borrow-returning callee: the result points into the arguments. When one of them is a
             // temporary, the caller owns the result: the temporary itself when the callee hands
             // it back whole, otherwise a copy taken before the temporary is dropped.
-            let Some(how) = self.cx.owned_lends.get(&(self.hir.data.file, e.id)) else {
+            let Some(how) = self.cx.owned_borrows.get(&(self.hir.data.file, e.id)) else {
                 return Ok(Val { v, own: false });
             };
-            if let ms_check::ownership::OwnedLend::Whole(source) = how {
+            if let ms_check::ownership::OwnedBorrow::Whole(source) = how {
                 let offset = usize::from(c.self_binding.is_some());
                 let slot = match source {
                     None => Some(0),
@@ -497,7 +497,8 @@ impl<'a> FnLower<'a> {
                     return Ok(self.val(arg, true));
                 }
             }
-            let copy = self.owned(Val { v, own: false });
+            // The checker recorded this as a clone of a part of the temporary (`OwnedBorrow::Clone`).
+            let copy = self.clone_value(v);
             return Ok(self.val(copy, true));
         }
         Ok(self.val(v, true))
@@ -543,7 +544,7 @@ impl<'a> FnLower<'a> {
                 let owned = self
                     .locals
                     .get(uid)
-                    .is_some_and(|l| l.slot.is_none() && self.b.var_mode(l.var) == Mode::Own);
+                    .is_some_and(|l| l.slot.is_none() && self.b.var_mode(l.var) == Mode::Move);
                 owned && crate::mutation::uses_of(&self.hir, e, *uid) == 1
             });
         let x = match moved {
@@ -855,9 +856,7 @@ impl<'a> FnLower<'a> {
                         return Err(Error::new("a close returns a Result"));
                     };
                     let ok = self.b.m.alts[alt.index()]
-                        .cases
-                        .iter()
-                        .position(|c| c.name == "ok")
+                        .ok_case()
                         .ok_or_else(|| Error::new("a close returns a Result"))?;
                     let unit = self.b.unit();
                     let v = self.b.alt_new(alt, ok as u32, &[unit]);
@@ -895,8 +894,10 @@ impl<'a> FnLower<'a> {
             .position(|s| s.name == name)
             .ok_or_else(|| Error::new(format!("no interface method {name}")))?;
         let sig = self.b.m.ifaces[iface.index()].methods[k].clone();
+        let op_vars = self.cx.iface_op_vars(iface, &name);
         let params = m.ty.params.clone();
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
+        let mut places: Vec<Option<Expr>> = vec![None; params.len()];
         for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
@@ -922,9 +923,16 @@ impl<'a> FnLower<'a> {
                 .iter()
                 .position(|p| p.name == a.slot.name)
                 .ok_or_else(|| Error::new(format!("no parameter {}", a.slot.name)))?;
+            if op_vars.get(idx).copied().unwrap_or(false) {
+                places[idx] = Some(a.expr.clone());
+            }
             slots[idx] = Some(x);
         }
         let mut args = Vec::new();
+        // A `var` argument moves into a slot the implementation changes, then back.
+        let mut slots_out: Vec<VarArgument> = Vec::new();
+        let lone_var = places.iter().filter(|p| p.is_some()).count() == 1;
+        let mut in_place: Option<(usize, Expr, MTy)> = None;
         for (i, s) in slots.into_iter().enumerate() {
             let x = match s {
                 Some(x) => x,
@@ -938,11 +946,43 @@ impl<'a> FnLower<'a> {
                     }
                 }
             };
+            if op_vars.get(i).copied().unwrap_or(false) {
+                // A lone `var` field argument changes in place, as for a source function.
+                if lone_var
+                    && !x.own
+                    && let Some(place) = places[i].clone()
+                    && (!matches!(place.kind, ExprKind::Name(_)) || self.is_alias_name(&place))
+                    && self.is_place(&place)
+                    && self.place_is_owned(&place)
+                {
+                    args.push(x.v);
+                    in_place = Some((i, place, self.ty_of(x.v)));
+                    continue;
+                }
+                let slot = self.var_argument(e, i, x, places[i].as_ref(), &mut slots_out);
+                args.push(slot);
+                continue;
+            }
             args.push(self.borrow(x));
         }
         let r = self.borrow(recv);
         self.at(e.pos);
-        let v = self.b.call_method(iface, k as u32, r, &args);
+        let v = if let Some((i, place, ty)) = in_place {
+            let mut result = None;
+            self.place_update(&place, &mut |s, old| {
+                let slot =
+                    s.b.emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(ty), Some(MTy::PTR))
+                        .expect("slot");
+                s.move_into(slot, old);
+                args[i] = slot;
+                result = Some(s.b.call_method(iface, k as u32, r, &args));
+                Ok(s.move_out(slot, ty))
+            })?;
+            result.expect("call emitted")
+        } else {
+            self.b.call_method(iface, k as u32, r, &args)
+        };
+        self.restore_var_arguments(slots_out, |p| places.get(p).cloned().flatten())?;
         Ok(self.val(v, true))
     }
 

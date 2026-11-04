@@ -15,16 +15,16 @@ pub enum ParamMode {
     /// Changes it in place (`var`); the caller marks the argument `var`.
     Mutate,
     /// Takes ownership: the argument moves in.
-    Consume,
+    Move,
 }
 
 /// Where a callable's result comes from.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
-pub struct Lend {
+pub struct ResultBorrow {
     /// Every return path yields a part of the receiver or of a parameter, so the result is a
     /// reference into those arguments: the caller holds it as a borrow of them.
-    pub lends: bool,
-    /// The result is an owned interface view of the sources (a lent value converted to an
+    pub returns_borrow: bool,
+    /// The result is an owned interface view of the sources (a borrowed value converted to an
     /// interface on the way out): lowering returns an owned value the caller drops, and the
     /// caller still holds the sources. A path returning a new value is allowed beside it.
     pub view: bool,
@@ -38,12 +38,12 @@ pub struct Lend {
     pub path: Option<(Option<Name>, Vec<Name>)>,
 }
 
-impl Lend {
-    /// The optimistic start of the fixpoint: a body not yet walked may lend from everything.
+impl ResultBorrow {
+    /// The optimistic start of the fixpoint: a body not yet walked may borrow from everything.
     /// Walking withdraws sources that are not returned and the claim when any path owns.
-    fn optimistic(params: &[ms_syntax::ast::Param]) -> Lend {
-        Lend {
-            lends: true,
+    fn optimistic(params: &[ms_syntax::ast::Param]) -> ResultBorrow {
+        ResultBorrow {
+            returns_borrow: true,
             view: false,
             receiver: true,
             params: params.iter().map(|p| p.name).collect(),
@@ -60,7 +60,7 @@ pub struct Summary {
     /// Parameters by label.
     pub params: Vec<(Name, ParamMode)>,
     /// Where the result comes from.
-    pub result: Lend,
+    pub result: ResultBorrow,
 }
 
 impl Summary {
@@ -90,7 +90,7 @@ impl Summary {
                     )
                 })
                 .collect(),
-            result: Lend::optimistic(params),
+            result: ResultBorrow::optimistic(params),
         }
     }
 
@@ -159,7 +159,7 @@ pub fn call_modes(
     };
     match m.resolution(call) {
         Resolution::Constructor { .. } => CallModes {
-            arguments: vec![ParamMode::Consume; args.len()],
+            arguments: vec![ParamMode::Move; args.len()],
             ..borrow_all(None)
         },
         Resolution::Method(_) if value_call => function_value_modes(m, call, args.len(), label),
@@ -193,10 +193,10 @@ pub fn call_modes(
                                         if p.name.as_str() == "value"
                                             && crate::stdlib::owns_value(s.native.as_str()) =>
                                     {
-                                        ParamMode::Consume
+                                        ParamMode::Move
                                     }
                                     Some(p) if p.ty.kind == Kind::Function && !runs_now => {
-                                        ParamMode::Consume
+                                        ParamMode::Move
                                     }
                                     _ => ParamMode::Borrow,
                                 }
@@ -218,7 +218,7 @@ pub fn call_modes(
 }
 
 /// The modes of a call through a function value: its type says which parameters it changes
-/// (`fn(var List[Int]) Unit`); the rest it lends.
+/// (`fn(var List[Int]) Unit`); the rest it borrows.
 fn function_value_modes(
     m: &ModuleHir,
     call: &Expr,
@@ -255,16 +255,16 @@ fn function_value_modes(
     }
 }
 
-/// Where the result of `call` comes from: a source callable's inferred lending, or nothing for
+/// Where the result of `call` comes from: a source callable's inferred borrow result, or nothing for
 /// a native, an interface operation, a constructor or a function value, whose results own.
-pub fn call_lend(m: &ModuleHir, call: &Expr, summaries: &Summaries) -> Lend {
+pub fn result_borrow(m: &ModuleHir, call: &Expr, summaries: &Summaries) -> ResultBorrow {
     match m.resolution(call) {
         Resolution::Function(s) | Resolution::Constant(s) => {
             if !s.native.as_str().is_empty() {
-                return Lend::default();
+                return ResultBorrow::default();
             }
             let Some(d) = s.decl.as_ref() else {
-                return Lend::default();
+                return ResultBorrow::default();
             };
             let func = FuncRef::of_decl(d.clone());
             summaries
@@ -274,17 +274,17 @@ pub fn call_lend(m: &ModuleHir, call: &Expr, summaries: &Summaries) -> Lend {
         }
         Resolution::Method(method) => {
             if !method.native.as_str().is_empty() {
-                return Lend::default();
+                return ResultBorrow::default();
             }
             let Some(func) = &method.decl else {
-                return Lend::default();
+                return ResultBorrow::default();
             };
             summaries
                 .get(&(method.module, func.id()))
                 .map(|k| k.result.clone())
                 .unwrap_or_else(|| Summary::declared(func).result)
         }
-        _ => Lend::default(),
+        _ => ResultBorrow::default(),
     }
 }
 
@@ -396,12 +396,12 @@ fn native_method_modes(
                 || receiver.args.iter().any(|a| same(a, held));
             retained[i] = (mutator && stored) || value;
             // An element the mutator stores is owned by the collection, a function value
-            // included; a callback the native runs and drops is only lent.
+            // included; a callback the native runs and drops is only borrowed.
             if mutator && stored {
-                return ParamMode::Consume;
+                return ParamMode::Move;
             }
             if p.ty.kind == Kind::Function && !callbacks_borrowed {
-                return ParamMode::Consume;
+                return ParamMode::Move;
             }
             ParamMode::Borrow
         })
@@ -412,7 +412,7 @@ fn native_method_modes(
         } else if crate::effects::is_text_builder(receiver)
             && method.name().is_some_and(|n| n.as_str() == "build")
         {
-            ParamMode::Consume
+            ParamMode::Move
         } else {
             ParamMode::Borrow
         }),

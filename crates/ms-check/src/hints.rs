@@ -246,7 +246,14 @@ pub fn signature_text(t: &Ty) -> String {
     let parts: Vec<String> = t
         .params
         .iter()
-        .map(|p| format!("{}: {}", p.name, p.ty))
+        .map(|p| {
+            format!(
+                "{}{}: {}",
+                if p.mutable { "var " } else { "" },
+                p.name,
+                p.ty
+            )
+        })
         .collect();
     let result = t.result_ty();
     // `T!` is the declared spelling of `Result[T, Error]`.
@@ -510,9 +517,9 @@ impl Checker {
                     "{message}; the math functions (floor, sqrt, pow, ...) are in \"@std/math/math.ms\": import floor from \"@std/math/math.ms\""
                 );
             }
-            "console" | "System" | "fmt" | "os" => {
+            "console" | "System" | "fmt" | "os" | "println" | "printf" | "puts" | "echo" => {
                 return format!(
-                    "{message}; there is no built-in print: import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")"
+                    "{message}; there is no {name}: use print(value), which writes any value and a newline; for write errors or bytes import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")"
                 );
             }
             "spawn" | "Promise" | "Future" | "Thread" | "thread" | "setTimeout" | "setInterval" => {
@@ -524,11 +531,6 @@ impl Checker {
             | "wall_clock" | "entropy" | "terminal" | "files" => {
                 return format!(
                     "{message}; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/os/time.ms\""
-                );
-            }
-            "print" | "println" | "printf" | "puts" | "echo" => {
-                return format!(
-                    "{message}; there is no built-in print: import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")"
                 );
             }
             _ => {}

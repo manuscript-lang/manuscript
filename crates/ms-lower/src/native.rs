@@ -601,18 +601,15 @@ impl<'a> FnLower<'a> {
             return Err(Error::new("map_from_entries takes entry records"));
         };
         let lvar = self.fresh_var(lt);
-        let held = self.owned(Val {
-            v: list,
-            own: false,
-        });
+        let held = self.clone_value(list);
         self.b.def_var(lvar, held);
         let acc = self.fresh_var(map);
         let fresh = self.map_new(map)?;
         self.b.def_var(acc, fresh);
         self.each_element(lvar, &mut |s, _, item| {
             let (k, v) = (s.b.rec_get(rid, 0, item), s.b.rec_get(rid, 1, item));
-            let k = s.owned(Val { v: k, own: false });
-            let v = s.owned(Val { v, own: false });
+            let k = s.clone_value(k);
+            let v = s.clone_value(v);
             let old = s.b.use_var(acc);
             let new = s.map_insert(old, k, v)?;
             s.b.def_var(acc, new);
@@ -1092,8 +1089,8 @@ impl<'a> FnLower<'a> {
                     s.b.seal_block(skip);
                     s.b.switch_to(take);
                     let y = s.b.list_get(other, i);
-                    let xo = s.owned(Val { v: x, own: false });
-                    let yo = s.owned(Val { v: y, own: false });
+                    let xo = s.clone_value(x);
+                    let yo = s.clone_value(y);
                     let rec = s.b.rec_new(rid, &[xo, yo]);
                     let cur = s.b.use_var(acc);
                     let next = s.b.list_push(cur, rec);
@@ -1518,9 +1515,15 @@ impl<'a> FnLower<'a> {
             return Ok((self.local(&b)?.var, false));
         }
         let t = self.ty_of(recv.v);
+        if !recv.own {
+            // A borrowed receiver stays borrowed across the loop: the owner cannot change while
+            // the borrow lives, so no hidden copy is needed.
+            let var = self.b.declare_var(t, Mode::Borrow);
+            self.b.def_var(var, recv.v);
+            return Ok((var, false));
+        }
         let var = self.fresh_var(t);
-        let v = self.owned(recv);
-        self.b.def_var(var, v);
+        self.b.def_var(var, recv.v);
         Ok((var, true))
     }
 
@@ -1532,7 +1535,7 @@ impl<'a> FnLower<'a> {
         let hidden = f.own && self.needs_drop(ft);
         let var = self
             .b
-            .declare_var(ft, if hidden { Mode::Own } else { Mode::Borrow });
+            .declare_var(ft, if hidden { Mode::Move } else { Mode::Borrow });
         self.b.def_var(var, f.v);
         (var, hidden)
     }
@@ -1700,7 +1703,7 @@ impl<'a> FnLower<'a> {
             {
                 return Ok(done);
             }
-            if let Some(done) = self.lent_key_add(e, view, m, recv_expr, name)? {
+            if let Some(done) = self.borrowed_key_add(e, view, m, recv_expr, name)? {
                 return Ok(done);
             }
         }
@@ -1822,7 +1825,7 @@ impl<'a> FnLower<'a> {
         let value_ty = self.map_value_type(mv)?;
         let (kd, vd) = self.map_descs(mt)?;
         let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
-        let ks = self.lend_slot(kv);
+        let ks = self.borrow_slot(kv);
         let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
         let missing = self
             .b
@@ -2013,7 +2016,7 @@ impl<'a> FnLower<'a> {
         no: &mut BranchBody<'_, Self>,
     ) -> Result<Val, Error> {
         let mode = if self.needs_drop(ty) {
-            Mode::Own
+            Mode::Move
         } else {
             Mode::Borrow
         };
@@ -2030,7 +2033,7 @@ impl<'a> FnLower<'a> {
         yes: &mut BranchBody<'_, Self>,
         no: &mut BranchBody<'_, Self>,
     ) -> Result<Val, Error> {
-        let owned = mode == Mode::Own;
+        let owned = mode == Mode::Move;
         let out = self.b.declare_var(ty, mode);
         let (a, b, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         self.b.br_if(cond, a, &[], b, &[]);
@@ -2297,9 +2300,13 @@ impl<'a> FnLower<'a> {
             some,
             out,
             &mut |s| {
-                let p = s.b.opt_get(r);
-                let o = s.owned(Val { v: p, own: false });
-                s.finish(recv);
+                // An owned optional hands its payload over; a borrowed `Clonable` one is cloned.
+                let o = if recv.own {
+                    s.b.opt_unbox(r)
+                } else {
+                    let p = s.b.opt_get(r);
+                    s.clone_value(p)
+                };
                 if let Some(c) = cause {
                     s.finish(c.val);
                 }
@@ -2393,8 +2400,9 @@ impl<'a> FnLower<'a> {
                             s.b.alt_release(alt, ok, 1, r);
                             p
                         } else {
+                            // A `Clonable` payload is copied by `get(default)`; the bound is the declaration.
                             let p = s.b.alt_get(alt, ok, 0, r);
-                            s.owned(Val { v: p, own: false })
+                            s.clone_value(p)
                         };
                         if let Some(d) = default {
                             // The default goes unused: an owned resource there closes now.
@@ -2455,8 +2463,8 @@ impl<'a> FnLower<'a> {
                     is_ok,
                     out,
                     &mut |s| {
-                        let o = s.owned(Val { v: r, own: false });
-                        s.finish(recv);
+                        // An owned result passes through whole; a borrowed `Clonable` one is cloned.
+                        let o = if recv.own { r } else { s.clone_value(r) };
                         s.finish(f.val);
                         Ok(Some(o))
                     },
@@ -2475,10 +2483,10 @@ impl<'a> FnLower<'a> {
                     return Err(Error::new("map_error without Result result"));
                 };
                 let (out_ok, out_err) = {
-                    let cs = &self.b.m.alts[oa.index()].cases;
+                    let cs = &self.b.m.alts[oa.index()];
                     (
-                        cs.iter().position(|c| c.name == "ok").unwrap_or(0) as u32,
-                        cs.iter().position(|c| c.name == "error").unwrap_or(1) as u32,
+                        cs.ok_case().unwrap_or(0) as u32,
+                        cs.error_case().unwrap_or(1) as u32,
                     )
                 };
                 self.two_ways(
@@ -2532,10 +2540,10 @@ impl<'a> FnLower<'a> {
                 let o_err = case(self.b.m, "error").unwrap_or(1) as u32;
                 let _ = (o_ok, o_err);
                 let (out_ok, out_err) = {
-                    let cs = &self.b.m.alts[oa.index()].cases;
+                    let cs = &self.b.m.alts[oa.index()];
                     (
-                        cs.iter().position(|c| c.name == "ok").unwrap_or(0) as u32,
-                        cs.iter().position(|c| c.name == "error").unwrap_or(1) as u32,
+                        cs.ok_case().unwrap_or(0) as u32,
+                        cs.error_case().unwrap_or(1) as u32,
                     )
                 };
                 let is_map = name == "map";
@@ -2621,13 +2629,13 @@ impl<'a> FnLower<'a> {
             );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
         // The runtime shifts the tail in place; rebuilding the list from slices copies every element.
-        let in_place = matches!(name, "insert" | "remove");
+        let in_place = matches!(name, "insert" | "remove" | "reverse");
         if !is_list || runtime_only || in_place {
             return self.mutate_rt(name, old, decl, args, copy_result, result_ty);
         }
         let (new, r) = self.mutate_list(name, old, args)?;
         if r.is_none() && copy_result {
-            let v = self.owned(Val { v: new, own: false });
+            let v = self.clone_value(new);
             return Ok((new, Some(Val { v, own: true })));
         }
         Ok((new, r))
@@ -2825,7 +2833,7 @@ impl<'a> FnLower<'a> {
     pub(crate) fn fresh_var(&mut self, t: MTy) -> ms_mir::builder::Var {
         let owned = self.needs_drop(t);
         self.b
-            .declare_var(t, if owned { Mode::Own } else { Mode::Borrow })
+            .declare_var(t, if owned { Mode::Move } else { Mode::Borrow })
     }
 
     /// Runs `body(i)` for `i` in `from..n`; `from` and `n` are `Int` values.
@@ -3000,7 +3008,7 @@ impl<'a> FnLower<'a> {
                     let rv = s.fresh_var(rt);
                     s.b.def_var(rv, r);
                     s.each_element(rv, &mut |s, _, y| {
-                        let yo = s.owned(Val { v: y, own: false });
+                        let yo = s.clone_value(y);
                         let cur = s.b.use_var(acc);
                         let next = s.b.list_push(cur, yo);
                         s.b.def_var(acc, next);
@@ -3030,8 +3038,8 @@ impl<'a> FnLower<'a> {
                     };
                     let (kd, vd) = s.map_descs(out)?;
                     let vd = vd.ok_or_else(|| Error::new("group_by without a value type"))?;
-                    // The lookup only reads the key, so it lends the key itself.
-                    let kslot = s.lend_slot(k);
+                    // The lookup only reads the key, so it borrows the key itself.
+                    let kslot = s.borrow_slot(k);
                     let m = s.b.use_var(acc);
                     let sym = s
                         .word_map_symbol("msrt_map_get_ptr", out)
@@ -3380,14 +3388,14 @@ impl<'a> FnLower<'a> {
         let owned = self.needs_drop(elem);
         let out = self
             .b
-            .declare_var(elem, if owned { Mode::Own } else { Mode::Borrow });
+            .declare_var(elem, if owned { Mode::Move } else { Mode::Borrow });
         let (hit, miss, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         self.b.br_if(ok, hit, &[], miss, &[]);
         self.b.seal_block(hit);
         self.b.seal_block(miss);
         self.b.switch_to(hit);
         let x = self.b.list_get(l, i);
-        let xo = self.owned(Val { v: x, own: false });
+        let xo = self.clone_value(x);
         // The eager default is unused on this path.
         self.finish(default.val);
         self.b.def_var(out, xo);
@@ -3431,7 +3439,7 @@ impl<'a> FnLower<'a> {
         let l = self.b.use_var(lv);
         let n = self.b.list_len(l);
         let out = self.b.list_new(elem, n);
-        let acc = self.b.declare_var(self.ty_of(out), Mode::Own);
+        let acc = self.b.declare_var(self.ty_of(out), Mode::Move);
         self.b.def_var(acc, out);
         let idx = self.b.declare_var(MTy::INT, Mode::Borrow);
         self.b.def_var(idx, n);
@@ -3450,7 +3458,7 @@ impl<'a> FnLower<'a> {
         self.b.def_var(idx, j);
         let l = self.b.use_var(lv);
         let x = self.b.list_get(l, j);
-        let xo = self.owned(Val { v: x, own: false });
+        let xo = self.clone_value(x);
         let cur = self.b.use_var(acc);
         let next = self.b.list_push(cur, xo);
         self.b.def_var(acc, next);

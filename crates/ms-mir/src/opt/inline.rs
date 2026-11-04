@@ -350,7 +350,7 @@ fn inline_at(f: &mut Func, bi: usize, ii: usize, callee: &Func, ret_own: bool) -
     f.blocks[cont.index()] = BlockData {
         params: vec![BlockParam {
             value: res,
-            mode: if ret_own { Mode::Own } else { Mode::Borrow },
+            mode: if ret_own { Mode::Move } else { Mode::Borrow },
         }],
         insts: tail,
         term: old_term,
@@ -497,7 +497,7 @@ fn constant_closure_fields(m: &Module) -> HashMap<(RecId, u32), FuncId> {
                         }
                         let mut v = *a;
                         while let Some(d) = defs.get(&v)
-                            && d.op == Op::Copy
+                            && d.op == Op::Clone
                         {
                             v = d.args[0];
                         }
@@ -656,7 +656,7 @@ fn closure_aliases(f: &Func, roots: &ValueMap<(FuncId, Vec<Value>)>) -> ValueMap
     loop {
         let mut grew = false;
         for inst in f.blocks.iter().flat_map(|b| b.insts.iter()) {
-            if let (Op::Copy, Some(r)) = (inst.op, inst.res)
+            if let (Op::Clone, Some(r)) = (inst.op, inst.res)
                 && !alias.contains_key(&r)
                 && let Some(&root) = alias.get(&inst.args[0])
             {
@@ -714,7 +714,7 @@ fn delete_unused_closures(m: &mut Module, fi: usize) -> bool {
         for i in &b.insts {
             let class_only = match i.op {
                 Op::Drop => true,
-                Op::Copy => i.res.is_some_and(|r| alias.contains_key(&r)),
+                Op::Clone => i.res.is_some_and(|r| alias.contains_key(&r)),
                 _ => false,
             };
             if !class_only {
@@ -753,7 +753,7 @@ fn delete_unused_closures(m: &mut Module, fi: usize) -> bool {
     for b in &mut f.blocks {
         let before = b.insts.len();
         b.insts.retain(|i| match i.op {
-            Op::ClosureNew | Op::Copy => !i.res.is_some_and(|r| dead(&r)),
+            Op::ClosureNew | Op::Clone => !i.res.is_some_and(|r| dead(&r)),
             Op::Drop => !dead(&i.args[0]),
             _ => true,
         });

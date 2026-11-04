@@ -88,9 +88,7 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
             return Err(Error::new("a test must return a Result"));
         };
         let err = b.m.alts[a.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == "error")
+            .error_case()
             .ok_or_else(|| Error::new("a test must return a Result"))?;
         let tag = b.alt_tag(r);
         let k = b.iconst(err as i64);
@@ -106,7 +104,7 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
         };
         let field = b.rec_get(er, 0, payload);
         let message = b
-            .emit(Op::Copy, &[field], Imm::None, Some(MTy::STR))
+            .emit(Op::Clone, &[field], Imm::None, Some(MTy::STR))
             .expect("copy");
         let details = b.rec_get(er, 2, payload);
         let details_ty = b.ty(details);

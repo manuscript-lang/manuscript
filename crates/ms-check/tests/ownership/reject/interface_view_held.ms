@@ -16,7 +16,7 @@ fn keep(var xs: List[Reportable], e: Reportable) Unit:
 
 fn store_local(cause: Cause) List[Reportable]:
     let e: Reportable = cause
-    return [e]  // error: cannot move `e` out: it only borrows its value (a borrow)
+    return [e]  // error: cannot move `e` out: it is borrowed, not owned (a borrow)
 
 fn change_held(var cause: Cause) Reportable:
     let e: Reportable = cause
@@ -39,7 +39,7 @@ fn rebound_still_used(cause: Cause) Reportable:
     let e: Reportable = cause
     let e2 = e
     let message = e.message()
-    return e2  // error: cannot move `e2` out: it only borrows its value (a borrow)
+    return e2  // error: cannot move `e2` out: it is borrowed, not owned (a borrow)
 
 fn rebound_alias_still_used(cause: Cause) Reportable:
     let e: Reportable = cause

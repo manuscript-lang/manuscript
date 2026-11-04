@@ -27,6 +27,7 @@ import (
     msrt_cells_take,
     msrt_cells_put,
     msrt_cells_drop,
+    msrt_cells_out,
     msrt_io_write_stdout,
     msrt_io_write_stderr,
     msrt_io_write_bytes_stdout,
@@ -110,13 +111,19 @@ impl ReadStream[T]:
         return adopt[T?](id)
 
     // The items as an iterator for `for x in s.wait()`: each is `T!`, so a failure arrives in the loop and ends it.
+    // The loop holds the source until it ends, breaks or fails, then hands it back to the stream.
     var fn wait() Waiting[T]:
-        return Waiting[T](self.cell, false)
+        var held: List[Source[T]] = []
+        if let source = msrt_cells_take[Source[T]](self.cell):
+            held.append(source)
+        return Waiting[T](self.cell, held, false)
 
 // The items of a stream, one read at a time; `for item in stream.wait()` waits for each.
-export type Waiting[T]:
-    // The runtime cell that holds the stream's source.
+export opaque type Waiting[T]:
+    // The runtime cell the source goes back to.
     cell: Int
+    // The stream's source while the loop runs; empty when a read was already waiting.
+    held: List[Source[T]]
     // True after the end of the stream or a failure; later steps give none.
     ended: Bool
 
@@ -126,21 +133,16 @@ impl Iterator[T!] for Waiting[T]:
         if self.ended:
             return none
 
-        // The waiter runs the source's step itself: the same work a deferred read would run on this stack, without a
-        // promise, a closure or a result copy per item.
-        var result: T?! = ok(none)
-
-        match msrt_cells_take[Source[T]](self.cell):
-            source:
-                var running = source
-                result = running.next()
-                msrt_cells_put[Source[T]](self.cell, running)
-            none:
-                result = error(
-                    Error(
-                        "stream: a read is already waiting", kind: ErrorCategory.Closed
-                    )
+        if self.held.length() == 0:
+            self.ended = true
+            return error(
+                Error(
+                    "stream: a read is already waiting", kind: ErrorCategory.Closed
                 )
+            )
+
+        // The loop runs the source's step itself, on this stack: no promise, closure or cell round trip per item.
+        let result = self.held[0].next()
 
         if result.is_error():
             self.ended = true
@@ -151,6 +153,35 @@ impl Iterator[T!] for Waiting[T]:
 
         self.ended = true
         return none
+
+impl Closeable for Waiting[T]:
+    // Hands the source back to the stream when the loop ends, so the stream reads on from there or closes it. When
+    // the stream was closed or dropped during the loop, the source closes here, at the end of this scope.
+    var fn close() Unit!:
+        if let source = self.held.pop():
+            if msrt_cells_out(self.cell):
+                msrt_cells_put[Source[T]](self.cell, source)
+        return ok(unit)
+
+// A stream's source, moved out so a stage pulls it with a plain call. When a read already holds the source, the
+// stage reads through the stream instead, as before.
+fn source_of[T](input: ReadStream[T]) Source[T]:
+    var owned = input
+    if let source = msrt_cells_take[Source[T]](owned.cell):
+        return source
+
+    return Reading[T](owned)
+
+// A source that reads through a stream whose source a pending read holds.
+type Reading[T]:
+    input: ReadStream[T]
+
+impl Source[T] for Reading[T]:
+    var fn next() T?!:
+        return self.input.read().wait()
+
+    var fn close() Unit!:
+        return self.input.close()
 
 impl Closeable for ReadStream[T]:
     // Drops the source and everything it owns. A read in flight ends with an error.
@@ -253,10 +284,18 @@ export interface Sink[T]:
 export opaque type WriteStream[T]:
     // The destination the stream's writes go to.
     sink: Sink[T]
+    // What a stream that collects for its owner holds, oldest first; `through` reads its transform's output here.
+    items: List[T]
+    // True for a collecting stream: writes go to `items`, not to the sink.
+    collects: Bool
 
 impl WriteStream[T]:
     // Moves `value` into the stream's buffer. `Closed` once the reader is gone.
     var fn write(value: T) Unit!:
+        if self.collects:
+            self.items.append(value)
+            return ok(unit)
+
         return self.sink.put(value)
 
     // A promise that finishes when the buffer has drained.
@@ -265,6 +304,9 @@ impl WriteStream[T]:
 
     // Items or bytes not yet drained.
     fn buffered() Int:
+        if self.collects:
+            return self.items.length()
+
         return self.sink.buffered()
 
 impl Closeable for WriteStream[T]:
@@ -274,7 +316,24 @@ impl Closeable for WriteStream[T]:
 
 // Wraps `sink` as a WriteStream that owns it.
 export fn writer[T](sink: Sink[T]) WriteStream[T]:
-    return WriteStream[T](sink: sink)
+    return WriteStream[T](sink, [], false)
+
+// The sink of a collecting stream: its writes never reach it.
+type Collected[T]:
+    unused: Bool = false
+
+impl Sink[T] for Collected[T]:
+    var fn put(value: T) Unit!:
+        return error(Error("stream: closed", kind: ErrorCategory.Closed))
+
+    var fn drain() Promise[Unit]:
+        return adopt[Unit](msrt_promise_finished())
+
+    fn buffered() Int:
+        return 0
+
+    var fn close() Unit!:
+        return ok(unit)
 
 // The reading end of a pipe: the one reader, ended by the last writer closing.
 type PipeSource[T]:
@@ -453,39 +512,43 @@ export fn stdout() WriteStream[String]:
 export fn stderr() WriteStream[String]:
     return writer[String](StderrSink(false))
 
-// A changed stream: never waits; appends zero or more items per input, and what it held back at the end.
+// A changed stream: never waits; writes zero or more items per input, and what it held back at the end.
 export interface Transform[A, B]:
-    // Takes one input item and returns the output items it completes, possibly none.
-    var fn feed(value: A) List[B]!
-    // Called once at the end of the input; returns the items held back.
-    var fn finish() List[B]!
+    // Takes one input item and writes the output items it completes, possibly none, to `out`.
+    var fn step(value: A, var out: WriteStream[B]) Unit!
+    // Called once at the end of the input; writes the items held back to `out`.
+    var fn finish(var out: WriteStream[B]) Unit!
 
-// Items a transform produced and the reader has not taken yet, newest first so `pop` moves the next one out.
+// A transform over a source: its output collects in `out`, reversed after each step so `pop` moves the next one out.
 type Through[A, B]:
-    input: ReadStream[A]
+    input: Source[A]
     transform: Transform[A, B]
-    pending: List[B]
+    out: WriteStream[B]
     finished: Bool
 
 impl Source[B] for Through[A, B]:
     var fn next() B?!:
         while true:
-            if let item = self.pending.pop():
+            if let item = self.out.items.pop():
                 return ok(item)
             if self.finished:
                 return ok(none)
 
-            let step = try self.input.read().wait()
-            var produced: List[B] = []
+            let step = try self.input.next()
+            var wrote: Unit! = ok(unit)
 
             if let value = step:
-                produced = try self.transform.feed(value)
+                wrote = self.transform.step(value, var self.out)
             else:
                 self.finished = true
-                produced = try self.transform.finish()
+                wrote = self.transform.finish(var self.out)
 
-            produced.reverse()
-            self.pending = produced
+            // A failed step's partial output is dropped, so the failure is the next item.
+            if wrote.is_error():
+                self.out.items = []
+                return error(wrote.err())
+
+            if self.out.items.length() > 1: self.out.items.reverse()
 
         return ok(none)
 
@@ -494,7 +557,8 @@ impl Source[B] for Through[A, B]:
 
 // A stream of `transform`'s output over `input`; closing it closes `input`.
 export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadStream[B]:
-    return stream[B](Through[A, B](input, transform, [], false))
+    let out = WriteStream[B](Collected[B](), [], true)
+    return stream[B](Through[A, B](source_of[A](input), transform, out, false))
 
 // One of this process's three standard streams.
 export type StdStream:
@@ -631,7 +695,7 @@ impl Closeable for RawTerminal:
         return ok(unit)
 
 impl RawTerminal:
-    // Input events as a stream: keys, text and resizes, one per read. Waits honor cancellation and `wait(timeout:)`.
+    // Input events as a stream: keys, text and resizes, one per read. Waits honor cancellation and promise timeouts.
     // The stream ends with an error once the terminal is closed; closing the stream leaves the terminal open.
     fn events() ReadStream[TerminalEvent]:
         return stream[TerminalEvent](

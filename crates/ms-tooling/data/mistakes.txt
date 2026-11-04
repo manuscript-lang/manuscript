@@ -5,10 +5,9 @@
 # Sources: rejection corpus (bughunt/neg, bughunt/cli-diag), re-probed against the current compiler;
 # agent first-build failure rates (bench/agent-python) motivate the list but record no error text.
 
-wrong: print("hi")
-right: stdout().write("hi\n").get()
-setup: import stdout from "@std/io/io.ms"
-diag: no built-in print
+wrong: println("hi")
+right: print("hi")
+diag: use print(value)
 
 wrong: stdout().write("hi\n")
 right: stdout().write("hi\n").get()

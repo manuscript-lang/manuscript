@@ -298,7 +298,7 @@ impl JsonReading[T]:
         self.in_string = false
         self.escaped = false
 
-    var fn fail(cause: Error) List[T]!:
+    var fn fail(cause: Error) Unit!:
         // Dropping the partial value releases its buffered bytes.
         self.reset()
         self.failure = cause.clone()
@@ -368,7 +368,7 @@ impl JsonReading[T]:
         return ok(false)
 
     // Consumes one byte and returns the value it completes, if any.
-    var fn step(byte: UInt8) T?!:
+    var fn advance(byte: UInt8) T?!:
         let done = try self.scan(byte)
         if not done: return ok(none)
 
@@ -376,28 +376,24 @@ impl JsonReading[T]:
         return ok(value)
 
 impl Transform[Bytes, T] for JsonReading[T]:
-    var fn feed(value: Bytes) List[T]!:
+    var fn step(value: Bytes, var out: WriteStream[T]) Unit!:
         if self.finished: return error(Error("JSON: invalid input", kind: InvalidInput))
         if let failure = self.failure: return error(failure.clone())
 
-        var values: List[T] = []
-
         for byte in value.values():
-            let stepped = self.step(byte)
+            let stepped = self.advance(byte)
             if stepped.is_error(): return self.fail(stepped.err())
 
-            if let found = stepped.get(): values.append(found)
+            if let found = stepped.get(): try out.write(found)
 
-        return ok(values)
+        return ok(unit)
 
-    var fn finish() List[T]!:
+    var fn finish(var out: WriteStream[T]) Unit!:
         if self.finished: return error(Error("JSON: invalid input", kind: InvalidInput))
         if let failure = self.failure: return error(failure.clone())
 
         self.finished = true
-
-        var values: List[T] = []
-        if self.mode == 0: return ok(values)
+        if self.mode == 0: return ok(unit)
         if self.mode != 3: return self.fail(
             Error("JSON: invalid data", kind: InvalidData)
         )
@@ -405,8 +401,8 @@ impl Transform[Bytes, T] for JsonReading[T]:
         let completed = self.complete()
         if completed.is_error(): return self.fail(completed.err())
 
-        values.append(try completed)
-        return ok(values)
+        try out.write(try completed)
+        return ok(unit)
 
 /*
 Reads a sequence of JSON values of type `T` from a byte stream, such as JSON Lines or concatenated JSON.

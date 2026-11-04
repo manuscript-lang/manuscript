@@ -315,6 +315,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 let name = c.ident()?;
                 m.alts.push(AltDef {
                     name,
+                    std: Default::default(),
                     cases: Vec::new(),
                 });
             }
@@ -322,6 +323,8 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 let name = c.ident()?;
                 m.ifaces.push(IfaceDef {
                     name,
+                    std: Default::default(),
+                    close: None,
                     methods: Vec::new(),
                 });
             }
@@ -375,6 +378,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     c.eat_p(',');
                 }
                 m.alts[id.index()].cases = cases;
+                m.alts[id.index()].std = parse_std(&mut c)?;
             }
             "iface" => {
                 let name = c.ident()?;
@@ -407,7 +411,12 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     });
                     c.eat_p(',');
                 }
+                m.ifaces[id].close = methods
+                    .iter()
+                    .position(|s| s.name == "close")
+                    .map(|k| k as u32);
                 m.ifaces[id].methods = methods;
+                m.ifaces[id].std = parse_std(&mut c)?;
             }
             _ => {}
         }
@@ -445,11 +454,11 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 c.expect_p('(')?;
                 let mut params = Vec::new();
                 while !c.eat_p(')') {
-                    let own = c.eat_ident("own");
+                    let own = c.eat_ident("move");
                     let ty = parse_ty(&mut c, &mut m)?;
                     params.push(Param {
                         ty,
-                        mode: if own { Mode::Own } else { Mode::Borrow },
+                        mode: if own { Mode::Move } else { Mode::Borrow },
                     });
                     c.eat_p(',');
                 }
@@ -515,11 +524,11 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
         while !c.eat_p(')') {
             names.push(c.val()?);
             c.expect_p(':')?;
-            let own = c.eat_ident("own");
+            let own = c.eat_ident("move");
             let ty = parse_ty(&mut c, &mut m)?;
             params.push(Param {
                 ty,
-                mode: if own { Mode::Own } else { Mode::Borrow },
+                mode: if own { Mode::Move } else { Mode::Borrow },
             });
             c.eat_p(',');
         }
@@ -819,12 +828,12 @@ fn parse_body(m: &mut Module, id: FuncId, h: &FnHeader) -> Result<(), ParseError
                 while !c.eat_p(')') {
                     let vn = c.val()?;
                     c.expect_p(':')?;
-                    let own = c.eat_ident("own");
+                    let own = c.eat_ident("move");
                     let ty = parse_ty(&mut c, m)?;
                     let v = define(&mut cx, &mut f, &c, &vn, ty)?;
                     f.blocks[b.index()].params.push(BlockParam {
                         value: v,
-                        mode: if own { Mode::Own } else { Mode::Borrow },
+                        mode: if own { Mode::Move } else { Mode::Borrow },
                     });
                     c.eat_p(',');
                 }
@@ -997,7 +1006,7 @@ fn parse_line(
     }
     let imm = match info.imm {
         // `copy 1` marks the copy a written `.clone()` lowers to.
-        ImmKind::None if op == Op::Copy && matches!(c.peek(), Some(Tok::Num(_))) => {
+        ImmKind::None if op == Op::Clone && matches!(c.peek(), Some(Tok::Num(_))) => {
             let s = c.num()?;
             Imm::Int(s.parse().map_err(|_| ParseError {
                 line: c.line,
@@ -1274,4 +1283,16 @@ fn parse_line(
         loc,
     });
     Ok(())
+}
+
+/// The optional built-in tag after a type declaration's closing brace.
+fn parse_std(c: &mut Cur) -> Result<Std, ParseError> {
+    if c.done() {
+        return Ok(Std::None);
+    }
+    let n = c.ident()?;
+    match Std::from_name(&n) {
+        Some(k) => Ok(k),
+        None => c.err(format!("unknown type attribute {n}")),
+    }
 }

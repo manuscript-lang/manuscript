@@ -1,4 +1,5 @@
 import Closeable from "@std/core.ms"
+import PromiseOptions from "@std/concurrency/promise.ms"
 import stdout from "@std/io/io.ms"
 import listen, Listener, Connection from "@std/net/net.ms"
 import watch_signals from "@std/os/process.ms"
@@ -34,7 +35,7 @@ impl Closeable for Server:
 
         var farewell = self.client.output.write("farewell\n".to_bytes())
         if farewell.is_ok():
-            let drained = self.client.output.flush().wait(timeout: 1.seconds())
+            let drained = self.client.output.flush().with(options: PromiseOptions(timeout: 1.seconds())).wait()
             farewell = drained
 
         if farewell.is_error():

@@ -1,12 +1,12 @@
 module "list_saved_length_shrink"
 entry @main
-fn @walk(%start: own list<int>) -> int {
+fn @walk(%start: move list<int>) -> int {
 b0:
   %n: int = list.len %start
   %zero: int = iconst 0
   %one: int = iconst 1
   br loop(%zero, %start)
-loop(%i: int, %list: own list<int>):
+loop(%i: int, %list: move list<int>):
   %inside: bool = icmp.lt %i, %n
   br_if %inside, body(), done()
 body:

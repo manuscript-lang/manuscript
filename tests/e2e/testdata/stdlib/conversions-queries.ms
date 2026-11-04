@@ -208,7 +208,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
     var empty_calls: List[Int] = []
     var values: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
     var seen: List[String] = []
-    let any_of = values.any
+    let any_of = values.clone().any
     try expect_false(
         (
             not (
@@ -231,7 +231,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
     values.add("c", 3)
     seen.splice(0, seen.length(), [])
 
-    let every = values.all
+    let every = values.clone().all
     try expect_false(
         (
             every(
@@ -361,7 +361,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     var empty_calls: List[Int] = []
     var values = Set[Int]([2, 1, 3])
     var seen: List[Int] = []
-    let any_of = values.any
+    let any_of = values.clone().any
     try expect_false(
         (
             not (
@@ -382,7 +382,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     values.add(3)
     seen.splice(0, seen.length(), [])
 
-    let every = values.all
+    let every = values.clone().all
     try expect_false(
         (
             every(

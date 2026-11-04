@@ -3,7 +3,7 @@ record Body { x: float, y: float, z: float, vx: float, vy: float, vz: float, mas
 record Adv { e: float, bodies: list<Body> }
 extern @msrt_print_int(int)
 entry @main
-fn @advance(%bodies: own list<Body>, %steps: int) -> Adv {
+fn @advance(%bodies: move list<Body>, %steps: int) -> Adv {
 b0:
   %zero: int = iconst 0
   %one: int = iconst 1

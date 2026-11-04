@@ -237,20 +237,20 @@ impl<'a> FnLower<'a> {
             return Ok(());
         }
         let mark = self.temps.len();
-        if let Some((b, shape)) = self.lendable(Some(pattern), value)? {
+        if let Some((b, shape)) = self.borrowable(Some(pattern), value)? {
             // A lexical borrow of the container (the checker rejects changing it while the
-            // binding lives): read the entry in place, as a lent `Optional`.
-            let Some((present, entry)) = self.lent_read(shape, value)? else {
+            // binding lives): read the entry in place, as a borrowed `Optional`.
+            let Some((present, entry)) = self.borrowed_read(shape, value)? else {
                 return Ok(());
             };
-            let opt = self.lent_optional(present, &entry)?;
+            let opt = self.borrowed_optional(present, &entry)?;
             if self.dead {
                 return Ok(());
             }
             for t in self.temps.split_off(mark) {
                 self.bind_hidden(Val { v: t, own: true });
             }
-            self.bind_lent(&b, opt.v);
+            self.bind_borrow_of(&b, opt.v);
             return Ok(());
         }
         let x = self.expr(value)?;
@@ -270,7 +270,7 @@ impl<'a> FnLower<'a> {
             for t in self.temps.split_off(mark) {
                 self.bind_hidden(Val { v: t, own: true });
             }
-            self.bind_lent(&b, x.v);
+            self.bind_borrow_of(&b, x.v);
             return Ok(());
         }
         if let PatternKind::Name(_) = pattern.kind
@@ -286,13 +286,13 @@ impl<'a> FnLower<'a> {
         self.bind_pattern(pattern, x)
     }
 
-    /// The binding and read shape when `let name = value` or `if let name = value` can lend
+    /// The binding and read shape when `let name = value` or `if let name = value` can borrow
     /// the container entry `value` reads: an immutable name the closures do not share.
-    fn lendable(
+    fn borrowable(
         &mut self,
         pattern: Option<&Pattern>,
         value: &Expr,
-    ) -> Result<Option<(ms_check::types::BindingRef, crate::lend::Shape)>, Error> {
+    ) -> Result<Option<(ms_check::types::BindingRef, crate::borrow_shape::Shape)>, Error> {
         let Some(pattern) = pattern else {
             return Ok(None);
         };
@@ -305,7 +305,7 @@ impl<'a> FnLower<'a> {
         if b.mutable || self.slotted.contains(&b.uid) || self.cx.exclusive(b.uid) {
             return Ok(None);
         }
-        Ok(self.lent_shape(value)?.map(|shape| (b, shape)))
+        Ok(self.borrowed_shape(value)?.map(|shape| (b, shape)))
     }
 
     /// Binds the names of `pattern` to the parts of `x`: lists by position (the length is
@@ -767,7 +767,7 @@ impl<'a> FnLower<'a> {
         let (then_b, else_b, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         let mut scrutinee: Option<Val> = None;
         let mut accessor_alias = None;
-        let mut lent = None;
+        let mut borrowed = None;
         let c = if binding.is_some() {
             let exclusive = binding
                 .and_then(|p| self.hir.pattern_binding(p))
@@ -776,13 +776,13 @@ impl<'a> FnLower<'a> {
                 let (alias, found) = self.alias_accessor(cond)?;
                 accessor_alias = Some(alias);
                 crate::alias::Found::Present(found)
-            } else if let Some((b, shape)) = self.lendable(binding, cond)? {
+            } else if let Some((b, shape)) = self.borrowable(binding, cond)? {
                 // `if let x = m.get(k)`: the test is the entry's presence and `x` is the entry
-                // itself, lent for the branch; no `Optional` is built.
-                let Some((present, entry)) = self.lent_read(shape, cond)? else {
+                // itself, borrowed for the branch; no `Optional` is built.
+                let Some((present, entry)) = self.borrowed_read(shape, cond)? else {
                     return Ok(());
                 };
-                lent = Some((b, entry));
+                borrowed = Some((b, entry));
                 crate::alias::Found::Present(present)
             } else {
                 crate::alias::Found::Opt(self.expr(cond)?)
@@ -820,9 +820,9 @@ impl<'a> FnLower<'a> {
                 .ok_or_else(|| Error::new("if var without binding"))?;
             self.aliases.insert(bnd.uid, alias.clone());
         }
-        if let Some((bnd, entry)) = lent.as_ref() {
-            let payload = self.lent_payload(entry);
-            self.bind_lent(bnd, payload);
+        if let Some((bnd, entry)) = borrowed.as_ref() {
+            let payload = self.borrowed_payload(entry);
+            self.bind_borrow_of(bnd, payload);
         }
         if let (Some(p), Some(o)) = (binding, scrutinee) {
             let bnd = self
@@ -851,7 +851,7 @@ impl<'a> FnLower<'a> {
                     .binding_facts
                     .has(bnd.uid, ms_check::ownership::BindingFact::ImplicitClose)
                     .then(|| self.hir.stmt(s).cleanup);
-                let lend = closing.is_none()
+                let borrowed = closing.is_none()
                     && !o.own
                     && !bnd.mutable
                     && matches!(p.kind, PatternKind::Name(_))
@@ -862,8 +862,8 @@ impl<'a> FnLower<'a> {
                     v: payload,
                     own: o.own,
                 };
-                if lend {
-                    self.bind_lent(&bnd, payload);
+                if borrowed {
+                    self.bind_borrow_of(&bnd, payload);
                 } else if let Some(cleanup) = closing.as_ref() {
                     self.bind_closing(&bnd, held, cleanup.as_ref())?;
                 } else {
@@ -933,9 +933,7 @@ impl<'a> FnLower<'a> {
 
     fn ok_case(&self, a: ms_mir::types::AltId) -> Result<usize, Error> {
         self.b.m.alts[a.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == "ok")
+            .ok_case()
             .ok_or_else(|| Error::new("if let on an alternative that is not a Result"))
     }
 
@@ -1116,7 +1114,7 @@ impl<'a> FnLower<'a> {
             (Walk::Entries, Some(_)) => load(self, kp, elem),
             _ => return Err(Error::new("values of a set walk its keys")),
         };
-        self.bind_lent(loop_var, e);
+        self.bind_borrow_of(loop_var, e);
         self.stmts(body)?;
         self.pop_scope();
         self.loops.pop();
@@ -1198,7 +1196,7 @@ impl<'a> FnLower<'a> {
             .emit(Op::Load, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
             .expect("load");
         if !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
-            self.bind_lent(loop_var, e);
+            self.bind_borrow_of(loop_var, e);
         } else {
             self.bind_local(loop_var, Val { v: e, own: false });
         }
@@ -1341,7 +1339,7 @@ impl<'a> FnLower<'a> {
         let (start, len) = match self.range_bounds(iter)? {
             Some(bounds) => bounds,
             None => {
-                let lent = !loop_var.mutable && !self.slotted.contains(&loop_var.uid);
+                let borrowed = !loop_var.mutable && !self.slotted.contains(&loop_var.uid);
                 let call_root = match &iter.kind {
                     ExprKind::Call { callee, args } if args.is_empty() => match &callee.kind {
                         ExprKind::Member { left, .. } => Some(&**left),
@@ -1349,7 +1347,7 @@ impl<'a> FnLower<'a> {
                     },
                     _ => None,
                 };
-                if lent && call_root.is_some_and(|r| self.unchanged_by(r, body)) {
+                if borrowed && call_root.is_some_and(|r| self.unchanged_by(r, body)) {
                     self.map_walk_for = Some(iter as *const Expr);
                 }
                 self.split_iter_for = Some(iter as *const Expr);
@@ -1367,7 +1365,7 @@ impl<'a> FnLower<'a> {
                     return Ok(());
                 }
                 let direct = crate::mapset::is_map_or_set(self.b.m, self.ty_of(it.v))
-                    && lent
+                    && borrowed
                     && !it.own
                     && self.unchanged_by(iter, body);
                 let walk = walk.filter(|w| self.walks(*w, self.ty_of(it.v)));
@@ -1419,7 +1417,7 @@ impl<'a> FnLower<'a> {
                 let var = if !it.own && (frozen || self.iterates_untouched_local(iter, body)) {
                     // The checker keeps the list unchanged while the loop variable borrows it
                     // (or the body never names it): walk it in place instead of copying it, so
-                    // a lending function can hand back its elements.
+                    // a borrow-returning function can hand back its elements.
                     let ty = self.ty_of(it.v);
                     let var = self.b.declare_var(ty, ms_mir::ir::Mode::Borrow);
                     self.b.def_var(var, it.v);
@@ -1463,7 +1461,7 @@ impl<'a> FnLower<'a> {
         // releases the elements it never reached with the list.
         let moving = list_var.is_some_and(|var| {
             let ty = self.b.var_ty(var);
-            self.b.var_mode(var) == ms_mir::ir::Mode::Own
+            self.b.var_mode(var) == ms_mir::ir::Mode::Move
                 && self
                     .b
                     .m
@@ -1526,7 +1524,7 @@ impl<'a> FnLower<'a> {
             self.bind_closing_kind(&loop_var, Val { v: e, own: false }, kind)?;
         } else if list_var.is_some() && !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
             // The loop holds the list and the body cannot change it: the element is a borrow.
-            self.bind_lent(&loop_var, e);
+            self.bind_borrow_of(&loop_var, e);
         } else {
             self.bind_local(&loop_var, Val { v: e, own: false });
         }

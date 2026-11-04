@@ -304,7 +304,7 @@ b5():
   %26: bool = bconst true
   store %24, %26
   %27: bytes = load bytes %25
-  %28: bytes = copy %27
+  %28: bytes = clone %27
   %29: ptr = slot bytes
   put %29, %28
   %30: str = call.rt @msrt_strbuilder_freeze (%29)
@@ -342,7 +342,7 @@ fn a_conditional_replacement_does_not_keep_the_saved_length() {
         let src = format!(
             "module \"different_lengths\"
 entry @main
-fn @walk(%start: own list<int>, %choose: bool) -> int {{
+fn @walk(%start: move list<int>, %choose: bool) -> int {{
 b0:
   %n: int = list.len %start
   %one: int = iconst 1
@@ -353,7 +353,7 @@ replace:
   %shorter: list<int> = list.lit %one
   drop %start
   br join(%shorter)
-join(%current: own list<int>):
+join(%current: move list<int>):
   %inside: bool = icmp.lt %one, %n
   br_if %inside, read(), done()
 read:
@@ -482,7 +482,7 @@ b0:
   %l0: list<int> = call.rt @msrt_bytes_values (%data)
   %z: int = iconst 0
   br loop(%z, %z, %l0)
-loop(%i: int, %acc: int, %l: own list<int>):
+loop(%i: int, %acc: int, %l: move list<int>):
   %n: int = list.len %l
   %cond: bool = icmp.lt %i, %n
   br_if %cond, body(), done()
@@ -519,7 +519,7 @@ b0:
   %l0: list<int> = call.rt @msrt_bytes_values (%data)
   %z: int = iconst 0
   br loop(%z, %z, %l0)
-loop(%i: int, %acc: int, %l: own list<int>):
+loop(%i: int, %acc: int, %l: move list<int>):
   %n: int = list.len %l
   %cond: bool = icmp.lt %i, %n
   br_if %cond, body(), done()
@@ -596,15 +596,15 @@ fn loop_chain(n: usize) -> String {
     );
     for k in 0..n {
         s.push_str(&format!(
-            "h{k}(%in{k}: own list<int>):\n  %len{k}: int = list.len %in{k}\n  %out{k}: list<int> = list.new %len{k}\n  br l{k}(%z, %in{k}, %out{k})\n\
-             l{k}(%i{k}: int, %src{k}: own list<int>, %dst{k}: own list<int>):\n  %c{k}: bool = icmp.lt %i{k}, %len{k}\n  br_if %c{k}, body{k}(), done{k}()\n\
+            "h{k}(%in{k}: move list<int>):\n  %len{k}: int = list.len %in{k}\n  %out{k}: list<int> = list.new %len{k}\n  br l{k}(%z, %in{k}, %out{k})\n\
+             l{k}(%i{k}: int, %src{k}: move list<int>, %dst{k}: move list<int>):\n  %c{k}: bool = icmp.lt %i{k}, %len{k}\n  br_if %c{k}, body{k}(), done{k}()\n\
              body{k}:\n  %x{k}: int = list.get %src{k}, %i{k}\n  %y{k}: int = iadd %x{k}, %one\n  %d2{k}: list<int> = list.push %dst{k}, %y{k}\n  %j{k}: int = iadd %i{k}, %one\n  br l{k}(%j{k}, %src{k}, %d2{k})\n\
              done{k}:\n  drop %src{k}\n  br h{}(%dst{k})\n",
             k + 1
         ));
     }
     s.push_str(&format!(
-        "h{n}(%r: own list<int>):\n  %v: int = list.get %r, %z\n  drop %r\n  ret %v\n}}\n"
+        "h{n}(%r: move list<int>):\n  %v: int = list.get %r, %z\n  drop %r\n  ret %v\n}}\n"
     ));
     s
 }

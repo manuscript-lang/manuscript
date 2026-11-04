@@ -23,7 +23,7 @@ pub fn collection_mutation(method: &Method) -> bool {
             .is_some_and(|m| m.mutating)
 }
 
-/// `StringBuilder` and `BytesBuilder`: owned values whose `build` consumes them.
+/// `StringBuilder` and `BytesBuilder`: owned values whose `build` moving_params them.
 pub fn is_text_builder(t: &Ty) -> bool {
     t.is_std("StringBuilder") || t.is(Builtin::BytesBuilder)
 }

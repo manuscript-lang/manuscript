@@ -307,7 +307,7 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                     }
                     continue;
                 }
-                Op::Copy if !list_fields(r).is_empty() => {
+                Op::Clone if !list_fields(r).is_empty() => {
                     flows[r.index()] = true;
                     for k in list_fields(r) {
                         if let (Some(&to), Some(&from)) =
@@ -333,7 +333,7 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
             }
             if matches!(
                 i.op,
-                Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill | Op::MoveOut | Op::Copy
+                Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill | Op::MoveOut | Op::Clone
             ) {
                 edge(&mut users, i.args[0].index(), r.index());
             } else {

@@ -13,15 +13,12 @@ Save this complete program as `hello.ms` and run `ms run hello.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
 ```manuscript
-import stdout from "@std/io/io.ms"
-
 export fn main() Int:
-    if stdout().write("Hello, Manuscript!\n").is_error():
-        return 1
+    print("Hello, Manuscript!")
     return 0
 ```
 
-`main` returns the exit status. `is_error()` tests the write's `Result` (see [expected errors](#expected-errors)).
+`main` returns the exit status. `print` is in the prelude: it writes any value as text followed by a newline and cannot fail. Use `stdout()` from `@std/io/io.ms` when you need to handle write errors or write bytes.
 
 Complete examples below use `test` blocks: save as `example.ms` and run `ms test example.ms`. `try expect_equal(actual, expected)` fails the test on a mismatch ([testing](testing.md)).
 
@@ -233,7 +230,7 @@ test "a callback borrows a prepared value":
     try expect_equal(apply(10, adjust), 12)
 ```
 
-Prepare a value before a borrowing closure uses it. Non-escaping closures borrow their captures; escaping closures own them. Borrowed captures cannot be changed elsewhere while the closure still uses them. See [closure captures](../core-language/functions/function-values-and-closures.md#snapshot-captures).
+Prepare a value before a borrowing closure uses it. Non-escaping closures borrow their captures; escaping closures own them. Borrowed captures cannot be changed elsewhere while the closure still uses them. See [closure captures](../core-language/functions/function-values-and-closures.md#closure-captures).
 
 ## Pipe flows
 

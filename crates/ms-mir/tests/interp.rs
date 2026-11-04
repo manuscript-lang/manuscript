@@ -264,7 +264,7 @@ b0:
   %outer: list<list<int>> = list.new %cap
   %z: int = iconst 0
   br loop(%z, %outer)
-loop(%i: int, %acc: own list<list<int>>):
+loop(%i: int, %acc: move list<list<int>>):
   %c: bool = icmp.lt %i, %n
   br_if %c, body(), done()
 body:

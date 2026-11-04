@@ -37,16 +37,16 @@ pub const CLOSURE_CAPTURES: u32 = 24;
 pub enum Glue {
     /// Drops a value (takes the value's leaves).
     Drop,
-    /// Deep-copies a value (takes and returns the value's leaves).
-    Copy,
+    /// Clones a value (takes and returns the value's leaves).
+    Clone,
     /// Closure object destructor `fn(obj)`; the `Ty` is unused (`Ty::UNIT`) and the key carries the function id.
     ClosureDrop(u32),
-    /// Closure object clone entry `fn(obj) -> obj`, deep-copying the captures; keyed like `ClosureDrop`.
+    /// Closure object clone entry `fn(obj) -> obj`, cloning the captures; keyed like `ClosureDrop`.
     ClosureClone(u32),
     /// Heap block destructor of an interface payload `fn(block)`.
     BlockDrop,
-    /// Deep copy of an interface payload block `fn(block) -> block`.
-    BlockCopy,
+    /// Clone of an interface payload block `fn(block) -> block`.
+    BlockClone,
     /// `fn(arg: *mut u8)` thunk used by cleanup.push; key carries the closer function.
     CleanupThunk(u32),
     /// `fn(slot)` that drops the value stored in memory at `slot` (descriptor `drop`).
@@ -384,8 +384,8 @@ impl<'m> Gen<'m> {
         let leaves = self.lay.leaves(ty);
         let sig = match kind {
             Glue::Drop => self.sig(&leaves, &[]),
-            Glue::Copy => self.sig(&leaves, &leaves),
-            Glue::BlockCopy | Glue::ClosureClone(_) => self.sig(&[Leaf::I64], &[Leaf::I64]),
+            Glue::Clone => self.sig(&leaves, &leaves),
+            Glue::BlockClone | Glue::ClosureClone(_) => self.sig(&[Leaf::I64], &[Leaf::I64]),
             Glue::ClosureDrop(_) | Glue::BlockDrop | Glue::CleanupThunk(_) | Glue::SlotDrop => {
                 self.sig(&[Leaf::I64], &[])
             }
@@ -396,11 +396,11 @@ impl<'m> Gen<'m> {
             self.glue.len(),
             match kind {
                 Glue::Drop => "drop",
-                Glue::Copy => "copy",
+                Glue::Clone => "clone",
                 Glue::ClosureDrop(_) => "closure_drop",
                 Glue::ClosureClone(_) => "closure_clone",
                 Glue::BlockDrop => "block_drop",
-                Glue::BlockCopy => "block_copy",
+                Glue::BlockClone => "block_clone",
                 Glue::CleanupThunk(_) => "cleanup_thunk",
                 Glue::SlotDrop => "slot_drop",
                 Glue::SlotCopy => "slot_copy",
@@ -790,7 +790,7 @@ fn compile_with_isa(
             .map_err(|e| e.to_string())?;
         g.vtables.push(id);
         let drop = g.glue(Glue::BlockDrop, vt.data_ty);
-        let copy = g.glue(Glue::BlockCopy, vt.data_ty);
+        let copy = g.glue(Glue::BlockClone, vt.data_ty);
         let mut d = DataDescription::new();
         d.define(vec![0u8; 8 * (2 + vt.methods.len())].into_boxed_slice());
         d.set_align(8);
@@ -804,6 +804,18 @@ fn compile_with_isa(
             d.write_function_addr(8 * (1 + k as u32), r);
         }
         g.module.define_data(id, &d).map_err(|e| e.to_string())?;
+        // LLVM sees the contents too, so a call through a vtable it can name folds to a direct call.
+        if g.llvm.is_some() {
+            let decls = g.module.declarations();
+            let sym = |f: FuncId| decls.get_function_decl(f).linkage_name(f).into_owned();
+            let mut slots = vec![sym(drop)];
+            slots.extend(vt.methods.iter().map(|mf| sym(g.funcs[mf.index()])));
+            slots.push(sym(copy));
+            let name = decls.get_data_decl(id).linkage_name(id).into_owned();
+            if let Some(llvm) = g.llvm.as_mut() {
+                llvm.set_vtable(name, slots);
+            }
+        }
     }
     let mut ctx = Context::new();
     let mut fctx = FunctionBuilderContext::new();
@@ -837,8 +849,8 @@ fn compile_with_isa(
         let leaves = g.lay.leaves(ty);
         ctx.func.signature = match kind {
             Glue::Drop => g.sig(&leaves, &[]),
-            Glue::Copy => g.sig(&leaves, &leaves),
-            Glue::BlockCopy | Glue::ClosureClone(_) => g.sig(&[Leaf::I64], &[Leaf::I64]),
+            Glue::Clone => g.sig(&leaves, &leaves),
+            Glue::BlockClone | Glue::ClosureClone(_) => g.sig(&[Leaf::I64], &[Leaf::I64]),
             Glue::SlotCopy => g.sig(&[Leaf::I64, Leaf::I64], &[]),
             _ => g.sig(&[Leaf::I64], &[]),
         };

@@ -13,4 +13,4 @@ Evidence: [glue selection and bounded-traversal regressions](../../crates/ms-cli
 Verify: `make conform` fault-location cases; preserve frame order, line numbers, and names.
 Verify: native Windows shallow fault traces and the exact runaway-recursion corpus fixture; host synthetic-chain tests and cross-compilation alone cannot prove native unwind-entry identity.
 Verify: generate and verify ELF, Mach-O and COFF for x86-64 and ARM64; run LLVM/Cranelift fault-frame equality on supported native hosts. Cross-target object generation establishes code generation, not native execution or runtime ABI correctness on another operating system.
-Verify: compare definition/edge permutations and repeated actual LLVM input captures; preserve acyclic selections, recursive owned copy/drop behavior, fault frames and the deep-literal compile guard. Deterministic attributes alone do not establish runtime performance.
+Verify: compare definition/edge permutations and repeated actual LLVM input captures; preserve acyclic selections, recursive clone/drop behavior, fault frames and the deep-literal compile guard. Deterministic attributes alone do not establish runtime performance.

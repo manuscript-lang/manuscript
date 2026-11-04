@@ -286,7 +286,7 @@ fn real_runtime() -> RuntimeArchive {
     // Parallel test processes share the build directory and each cargo run briefly
     // replaces the archive, so link a private copy. Tests in one process share a
     // read-only copy; the last guard to drop removes it.
-    let mut copy = COPY.lock().unwrap();
+    let mut copy = CLONE.lock().unwrap();
     if copy.0 == 0 {
         let path =
             std::env::temp_dir().join(format!("ms-native-{}-libms_native.a", std::process::id()));
@@ -308,7 +308,7 @@ fn real_runtime() -> RuntimeArchive {
 }
 
 /// Live guards on the private archive copy in this process.
-static COPY: std::sync::Mutex<(usize,)> = std::sync::Mutex::new((0,));
+static CLONE: std::sync::Mutex<(usize,)> = std::sync::Mutex::new((0,));
 
 /// A runtime archive path; a private copy is deleted when its last guard drops.
 struct RuntimeArchive(PathBuf, bool);
@@ -324,7 +324,7 @@ impl Drop for RuntimeArchive {
         if !self.1 {
             return;
         }
-        let mut copy = COPY.lock().unwrap();
+        let mut copy = CLONE.lock().unwrap();
         copy.0 -= 1;
         if copy.0 == 0 {
             let _ = std::fs::remove_file(&self.0);
@@ -978,9 +978,9 @@ b0:
         assert_eq!(out.status.code(), Some(67));
         let err = String::from_utf8_lossy(&out.stderr);
         assert!(err.contains("callback.ms:12 in callback"), "{err}");
-        // No Windows check that `main` is absent here: the frame scan past the native shim reads
-        // stack words the runtime build leaves behind, so whether it reaches `main` is not part
-        // of the contract. The run above, on the test runtime, pins the boundary.
+        if cfg!(windows) {
+            assert!(!err.contains("main callback.ms:"), "{err}");
+        }
     }
 }
 

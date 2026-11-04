@@ -421,9 +421,7 @@ fn fit_result(fl: &mut FnLower<'_>, r: Val, ret: MTy) -> Result<Val, Error> {
         return Ok(r);
     };
     let ok = fl.b.m.alts[a.index()]
-        .cases
-        .iter()
-        .position(|c| c.name == "ok")
+        .ok_case()
         .ok_or_else(|| Error::new("result without an ok case"))?;
     let payload = fl.owned(r);
     let v = fl.b.alt_new(a, ok as u32, &[payload]);
@@ -553,7 +551,7 @@ impl FnLower<'_> {
             &mut |s| {
                 let n = s.call_runtime(&format!("{base}_count"), &[], MTy::INT)?;
                 let empty = s.b.list_new(rec_ty, n);
-                let acc = s.b.declare_var(list_ty, Mode::Own);
+                let acc = s.b.declare_var(list_ty, Mode::Move);
                 s.b.def_var(acc, empty);
                 let idx = s.b.declare_var(MTy::INT, Mode::Borrow);
                 let start = s.b.iconst(0);

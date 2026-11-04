@@ -6,8 +6,8 @@
 //! needs a drop:
 //!
 //! * A value is *owned* when it is defined by an instruction that returns an
-//!   owned value (see [`Module::result_mode`]), is a parameter with [`Mode::Own`],
-//!   or is a block parameter with [`Mode::Own`]. Everything else is *borrowed*.
+//!   owned value (see [`Module::result_mode`]), is a parameter with [`Mode::Move`],
+//!   or is a block parameter with [`Mode::Move`]. Everything else is *borrowed*.
 //! * Consuming positions (see [`arg_modes`]) require an owned operand and
 //!   remove it from the live set. Borrowing positions accept either kind but
 //!   an owned value must still be live.
@@ -153,19 +153,19 @@ fn verify_func_in(
     }
 }
 
-/// For each argument of `inst`, whether the position consumes an owned value.
+/// For each argument of `inst`, whether the position moving_params an owned value.
 pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
     let n = inst.args.len();
     let all = |mode: Mode| vec![mode; n];
     let one = |i: usize| {
         let mut v = vec![Mode::Borrow; n];
         if i < n {
-            v[i] = Mode::Own;
+            v[i] = Mode::Move;
         }
         v
     };
     match inst.op {
-        Op::RecNew | Op::AltNew | Op::ListLit | Op::ClosureNew => all(Mode::Own),
+        Op::RecNew | Op::AltNew | Op::ListLit | Op::ClosureNew => all(Mode::Move),
         Op::RecSet
         | Op::RecFill
         | Op::ListPush
@@ -173,7 +173,7 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         | Op::ListSet
         | Op::ListSetNn
         | Op::ListSetU
-        | Op::ListFill => all(Mode::Own),
+        | Op::ListFill => all(Mode::Move),
         Op::OptSome
         | Op::IfaceNew
         | Op::Drop
@@ -246,7 +246,7 @@ impl Verifier<'_> {
             let before = family.len();
             for b in &f.blocks {
                 for inst in &b.insts {
-                    if inst.op == Op::Copy
+                    if inst.op == Op::Clone
                         && let (Some(a), Some(r)) = (inst.args.first(), inst.res)
                         && family.contains(a)
                     {
@@ -287,11 +287,11 @@ impl Verifier<'_> {
                         && matches!(inst.imm, Imm::Func(g) if self.m.funcs[g.index()].keeps_scoped);
                     let keeps = match inst.op {
                         _ if promise_entry => false,
-                        Op::Drop | Op::DropIf | Op::Copy | Op::CallInd => false,
+                        Op::Drop | Op::DropIf | Op::Clone | Op::CallInd => false,
                         // A stack slot of this frame cannot outlive it: a closure that reads
                         // another one through a borrowed capture stores it there.
                         Op::Store => i == 1 && !frame_slots.contains(&inst.args[0]),
-                        _ => modes.get(i) == Some(&Mode::Own),
+                        _ => modes.get(i) == Some(&Mode::Move),
                     };
                     if keeps {
                         self.err(
@@ -347,7 +347,7 @@ impl Verifier<'_> {
                 }
                 if f.params
                     .iter()
-                    .any(|p| p.mode == Mode::Own && self.needs_drop(p.ty))
+                    .any(|p| p.mode == Mode::Move && self.needs_drop(p.ty))
                 {
                     self.err(
                         None,
@@ -850,7 +850,7 @@ impl Verifier<'_> {
                 // A boxed alternative holds its payload in a heap block, which a borrow cannot own.
                 want(
                     inst.op == Op::AltNew || !Boxing::default().alt(m, a),
-                    "alt.view cannot lend a boxed alternative",
+                    "alt.view cannot borrow a boxed alternative",
                 )
             }
             Op::AltTag => {
@@ -1001,7 +1001,7 @@ impl Verifier<'_> {
                 // A boxed optional holds its payload in a heap block, which a borrow cannot own.
                 want(
                     inst.op == Op::OptSome || !m.opt_is_boxed(t(0)),
-                    "opt.view cannot lend a boxed optional",
+                    "opt.view cannot borrow a boxed optional",
                 )
             }
             Op::OptNone => {
@@ -1088,7 +1088,7 @@ impl Verifier<'_> {
                     "closure.cap reads the environment (ptr) and yields the capture type",
                 )
             }
-            Op::IfaceNew | Op::IfaceLend => {
+            Op::IfaceNew | Op::IfaceBorrow => {
                 arity(1)?;
                 let Imm::Vtable(v) = inst.imm else {
                     return Err("missing vtable".into());
@@ -1099,7 +1099,7 @@ impl Verifier<'_> {
                         && res
                             .map(|r| matches!(m.types.kind(r), TyKind::Iface(i) if *i == vt.iface))
                             .unwrap_or(false),
-                    "iface.new and iface.lend wrap the vtable's data type",
+                    "iface.new and iface.borrow wrap the vtable's data type",
                 )
             }
             Op::IfaceView => {
@@ -1223,7 +1223,7 @@ impl Verifier<'_> {
                     "call.method yields the method's result type",
                 )
             }
-            Op::Copy => {
+            Op::Clone => {
                 arity(1)?;
                 want(
                     res == Some(t(0)) && self.needs_drop(t(0)),
@@ -1314,7 +1314,7 @@ impl Verifier<'_> {
                 arity(2)?;
                 want(
                     t(0) == Ty::PTR,
-                    "store writes a value through a ptr; the memory does not own a droppable value, it lends the borrow",
+                    "store writes a value through a ptr; the memory does not own a droppable value, it holds a borrow",
                 )
             }
             Op::FuncAddr => {
@@ -1377,10 +1377,10 @@ impl Verifier<'_> {
         let mut owned_def = vec![false; f.values.len()];
         for b in &f.blocks {
             for p in &b.params {
-                owned_def[p.value.index()] = rc(p.value) && p.mode == Mode::Own;
+                owned_def[p.value.index()] = rc(p.value) && p.mode == Mode::Move;
             }
             for i in &b.insts {
-                if let (Some(r), Some(Mode::Own)) = (i.res, m.result_mode(f, i)) {
+                if let (Some(r), Some(Mode::Move)) = (i.res, m.result_mode(f, i)) {
                     owned_def[r.index()] = true;
                 }
             }
@@ -1417,9 +1417,9 @@ impl Verifier<'_> {
                         );
                         continue;
                     }
-                    if *mode == Mode::Own {
+                    if *mode == Mode::Move {
                         if !owned_def[a.index()] {
-                            self.err(Some(bi), format!("{}: consuming position needs an owned value, %{} is borrowed (retain it first)", inst.op.info().name, a.0));
+                            self.err(Some(bi), format!("{}: moving position needs an owned value, %{} is borrowed (retain it first)", inst.op.info().name, a.0));
                         } else if consumed_here.contains(a) {
                             self.err(
                                 Some(bi),
@@ -1459,7 +1459,7 @@ impl Verifier<'_> {
                             self.err(
                                 Some(bi),
                                 format!(
-                                    "ret: %{} is owned, but this function lends its result; it would leak",
+                                    "ret: %{} is owned, but this function returns a borrow; it would leak",
                                     v.0
                                 ),
                             );
@@ -1501,7 +1501,7 @@ impl Verifier<'_> {
                         );
                         continue;
                     }
-                    if p.mode == Mode::Own {
+                    if p.mode == Mode::Move {
                         if !owned_def[a.index()] {
                             self.err(Some(bi), format!("branch to b{}: parameter %{} takes ownership but %{} is borrowed", t.block.0, p.value.0, a.0));
                         } else if seen.contains(a) {

@@ -996,7 +996,7 @@ impl Closeable for Accepting:
                 let _ = closing.close()
 
         for worker in self.workers:
-            let _ = worker.wait(timeout: 0.seconds())
+            worker.cancel()
         self.workers = []
         return ok(unit)
 

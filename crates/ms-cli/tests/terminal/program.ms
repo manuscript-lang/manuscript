@@ -1,4 +1,5 @@
 import TerminalEvent, EraseRegion, raw_mode from "@std/io/io.ms"
+import PromiseOptions from "@std/concurrency/promise.ms"
 import stdout from "@std/io/io.ms"
 import nanoseconds from "@std/os/time.ms"
 
@@ -23,7 +24,11 @@ export fn main() Int:
         var done = false
 
         while not done:
-            let next = events.read().wait(timeout: nanoseconds(5000000000))
+            let next = events.read().with(
+                options: PromiseOptions(
+                    timeout: nanoseconds(5000000000)
+                )
+            ).wait()
 
             if let maybe = next:
                 if let e = maybe:

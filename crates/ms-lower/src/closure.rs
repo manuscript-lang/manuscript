@@ -28,7 +28,7 @@ enum Receiver {
 pub(crate) enum LambdaCapture {
     Local(ct::BindingRef, usize),
     /// A pointer to the maker's value of a variable the non-escaping closure only reads.
-    Lent(ct::BindingRef, usize),
+    Borrowed(ct::BindingRef, usize),
     Alias {
         binding: ct::BindingRef,
         root: ct::BindingRef,
@@ -88,7 +88,7 @@ impl FnLower<'_> {
                         .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
                         .expect("slot");
                     self.b.emit(Op::Store, &[slot, v], Imm::None, None);
-                    saved.push(LambdaCapture::Lent(b.clone(), cap_vals.len()));
+                    saved.push(LambdaCapture::Borrowed(b.clone(), cap_vals.len()));
                     scoped = true;
                     cap_tys.push(MTy::PTR);
                     cap_vals.push(slot);
@@ -971,7 +971,7 @@ impl FnLower<'_> {
                 let text = match crate::text::scalar_text(&mut b, t, cap, false) {
                     Some((v, true)) => v,
                     Some((v, false)) => b
-                        .emit(Op::Copy, &[v], Imm::None, Some(MTy::STR))
+                        .emit(Op::Clone, &[v], Imm::None, Some(MTy::STR))
                         .expect("copy"),
                     None => {
                         let fmt = self.cx.format_fn(b.m, t, false);
@@ -1027,7 +1027,7 @@ impl FnLower<'_> {
             inner,
             &mut |s| {
                 let u = s.b.opt_get(opt);
-                Ok(Some(s.owned(Val { v: u, own: false })))
+                Ok(Some(s.clone_value(u)))
             },
             &mut |s| {
                 let d = default(s)?;
@@ -1049,7 +1049,7 @@ impl FnLower<'_> {
             return Err(Error::new("parameter is not optional"));
         };
         let has = self.b.opt_is_some(opt);
-        let holder = self.b.declare_var(optty, Mode::Own);
+        let holder = self.b.declare_var(optty, Mode::Move);
         let out = self.two_ways_mode(
             has,
             inner,
@@ -1170,7 +1170,7 @@ fn call_changing_receiver(
 ) -> Value {
     let drops = b.m.needs_drop(recv_ty);
     let own = if drops {
-        b.emit(Op::Copy, &[this], Imm::None, Some(recv_ty))
+        b.emit(Op::Clone, &[this], Imm::None, Some(recv_ty))
             .expect("copy")
     } else {
         this
@@ -1665,7 +1665,7 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
         if restore_alias_capture(fl, capture, &values)? {
             continue;
         }
-        if let LambdaCapture::Lent(b, index) = capture {
+        if let LambdaCapture::Borrowed(b, index) = capture {
             let ty = fl.mty(&b.ty)?;
             let v =
                 fl.b.emit(Op::Load, &[values[*index]], Imm::Ty(ty), Some(ty))
@@ -1692,7 +1692,7 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
                 },
             );
         } else if mutated.contains(&b.uid) {
-            // The closure changes its own snapshot: work on an owned copy.
+            // The closure changes its own snapshot: work on a clone.
             fl.bind_local(b, Val { v, own: false });
         } else {
             fl.bind_borrowed(b, v);
@@ -1980,7 +1980,8 @@ fn lower_fn_adapter(fl: &mut FnLower<'_>, have: MTy, scoped: bool) -> Result<(),
             args.push(v);
             continue;
         }
-        let o = fl.owned(Val { v, own: false });
+        // A function value borrows its arguments; the adapter's copy is checked by `require_clonable`.
+        let o = fl.clone_value(v);
         let some = fl.b.opt_some(o);
         args.push(fl.borrow(Val { v: some, own: true }));
     }

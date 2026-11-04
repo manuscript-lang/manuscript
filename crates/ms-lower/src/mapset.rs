@@ -110,7 +110,7 @@ impl<'a> FnLower<'a> {
         let at = e.pos;
         self.place_update(recv_expr, &mut |s, old| {
             let slot = s.put_slot(old);
-            let ks = s.lend_slot(k);
+            let ks = s.borrow_slot(k);
             let ds = s.put_slot(d.v);
             let p = s.call_runtime("msrt_map_slot_lent", &[slot, kd, vd, ks, ds], MTy::PTR)?;
             let cur =
@@ -134,7 +134,7 @@ impl<'a> FnLower<'a> {
     /// `m.add(key: k.clone(), value: v)` and `m.add_default(..)` on a `String`-keyed map held in a
     /// local, with `k` a part of a variable that cannot change: the runtime copies the key only when
     /// the entry is absent, so updating an existing entry allocates nothing.
-    pub(crate) fn lent_key_add(
+    pub(crate) fn borrowed_key_add(
         &mut self,
         e: &Expr,
         view: &CallView<'_>,
@@ -192,7 +192,7 @@ impl<'a> FnLower<'a> {
         };
         self.place_update(recv_expr, &mut |s, old| {
             let slot = s.put_slot(old);
-            let ks = s.lend_slot(k);
+            let ks = s.borrow_slot(k);
             let vs = s.put_slot(v);
             s.call_runtime(sym, &[slot, kd, vd, ks, vs], MTy::UNIT)?;
             Ok(s.take_slot(slot, mt))
@@ -323,7 +323,7 @@ impl<'a> FnLower<'a> {
         let value_ty = self.map_value_type(mv)?;
         let (kd, vd) = self.map_descs(mt)?;
         let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
-        let ks = self.lend_slot(kv);
+        let ks = self.borrow_slot(kv);
         self.at(e.pos);
         let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
         let missing = self
@@ -404,7 +404,7 @@ impl<'a> FnLower<'a> {
         let value_ty = self.map_value_type(mv)?;
         let (kd, vd) = self.map_descs(mt)?;
         let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
-        let ks = self.lend_slot(kv);
+        let ks = self.borrow_slot(kv);
         self.at(e.pos);
         let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
         let missing = self
@@ -628,9 +628,9 @@ impl<'a> FnLower<'a> {
         slot
     }
 
-    /// A stack slot lending the borrowed `x` to a runtime call that only reads it: nothing is
+    /// A stack slot giving a borrow of `x` to a runtime call that only reads it: nothing is
     /// copied and nothing is taken back or dropped afterwards.
-    pub(crate) fn lend_slot(&mut self, x: Value) -> Value {
+    pub(crate) fn borrow_slot(&mut self, x: Value) -> Value {
         let t = self.ty_of(x);
         let slot = self
             .b
@@ -718,7 +718,7 @@ impl<'a> FnLower<'a> {
         self.rt_method_at(&sym, recv, Some(slot), decl, &args, MTy::UNIT)?;
         let new = self.take_slot(slot, mt);
         let result = copy_result.then(|| {
-            let v = self.owned(Val { v: new, own: false });
+            let v = self.clone_value(new);
             Val { v, own: true }
         });
         Ok((new, result))
@@ -800,7 +800,7 @@ impl<'a> FnLower<'a> {
         Ok((new, result))
     }
 
-    /// `builder.drain()`: the accumulated value, leaving the builder empty. The runtime consumes
+    /// `builder.drain()`: the accumulated value, leaving the builder empty. The runtime moving_params
     /// the buffer it freezes into text.
     fn drain_builder(&mut self, old: Value, result_ty: MTy) -> Result<(Value, Option<Val>), Error> {
         let empty = self.call_runtime("msrt_list_new", &[], MTy::BYTES)?;
@@ -839,7 +839,7 @@ impl<'a> FnLower<'a> {
         let kv = self.borrow(key);
         let (kd, vd) = self.map_descs(mt)?;
         let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
-        let ks = self.lend_slot(kv);
+        let ks = self.borrow_slot(kv);
         let sym = self
             .word_map_symbol("msrt_map_get_ptr", mt)
             .unwrap_or("msrt_map_get_ptr");
@@ -856,7 +856,7 @@ impl<'a> FnLower<'a> {
                 let hit =
                     s.b.emit(Op::Load, &[ptr], Imm::Ty(result), Some(result))
                         .expect("load");
-                let hit = s.owned(Val { v: hit, own: false });
+                let hit = s.clone_value(hit);
                 // The eager fallback is unused on this path.
                 s.finish(fallback);
                 Ok(Some(hit))
@@ -914,11 +914,8 @@ impl<'a> FnLower<'a> {
         let m = self.b.use_var(mv);
         self.each_entry(m, &mut |s, key, value| {
             let value = value.ok_or_else(|| Error::new("entries of a set"))?;
-            let ko = s.owned(Val { v: key, own: false });
-            let vo = s.owned(Val {
-                v: value,
-                own: false,
-            });
+            let ko = s.clone_value(key);
+            let vo = s.clone_value(value);
             let rec = s.b.rec_new(rid, &[ko, vo]);
             let cur = s.b.use_var(acc);
             let next = s.b.list_push(cur, rec);

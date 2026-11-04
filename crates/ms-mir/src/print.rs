@@ -109,8 +109,8 @@ pub fn quote(s: &str) -> String {
 }
 
 fn mode_prefix(m: &Module, ty: Ty, mode: Mode) -> &'static str {
-    if mode == Mode::Own && m.needs_drop(ty) {
-        "own "
+    if mode == Mode::Move && m.needs_drop(ty) {
+        "move "
     } else {
         ""
     }
@@ -148,7 +148,8 @@ pub fn print_module(m: &Module) -> String {
                 }
             })
             .collect();
-        let _ = writeln!(o, "alt {} {{ {} }}", a.name, cases.join(", "));
+        let attr = a.std.name().map(|n| format!(" {n}")).unwrap_or_default();
+        let _ = writeln!(o, "alt {} {{ {} }}{attr}", a.name, cases.join(", "));
     }
     for i in &m.ifaces {
         let ms: Vec<String> = i
@@ -159,7 +160,8 @@ pub fn print_module(m: &Module) -> String {
                 format!("{}({}) -> {}", s.name, ps.join(", "), ty_str(m, s.ret))
             })
             .collect();
-        let _ = writeln!(o, "iface {} {{ {} }}", i.name, ms.join(", "));
+        let attr = i.std.name().map(|n| format!(" {n}")).unwrap_or_default();
+        let _ = writeln!(o, "iface {} {{ {} }}{attr}", i.name, ms.join(", "));
     }
     for e in &m.externs {
         let ps: Vec<String> = e

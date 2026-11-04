@@ -85,7 +85,7 @@ pub(crate) struct FnLower<'a> {
     /// Whether an owned local some path moves out of still holds its value, by binding: the
     /// scope end drops it only where it does.
     pub held: HashMap<usize, ms_mir::builder::Var>,
-    /// Owned locals every path moves out of before leaving their scope: the move consumes
+    /// Owned locals every path moves out of before leaving their scope: the move moving_params
     /// them, and the scope end has nothing to drop.
     pub must_move: HashSet<usize>,
     /// Lists a loop takes the elements out of, by the hidden local holding the list: the loop
@@ -192,7 +192,7 @@ fn instance_key(
 }
 
 impl Cx {
-    /// The parameters a direct call hands over owned: those the body consumes (moves, stores or
+    /// The parameters a direct call hands over owned: those the body moving_params (moves, stores or
     /// returns), for a function or method whose parameters all pass by value; a method's mask
     /// starts with its receiver. Every other callable, and every call through a function value or
     /// interface, uses the borrowed signature.
@@ -205,7 +205,7 @@ impl Cx {
             return None;
         }
         let key = (c.module.file, c.id());
-        let mask = self.consumes.get(&key)?;
+        let mask = self.moving_params.get(&key)?;
         (mask.len() == c.parameters.len() + c.self_binding.iter().count()).then(|| mask.clone())
     }
 
@@ -274,7 +274,7 @@ impl Cx {
             let owned = owned_mask.as_ref().is_some_and(|mask| mask[i]);
             params.push(Param {
                 ty,
-                mode: if owned { Mode::Own } else { Mode::Borrow },
+                mode: if owned { Mode::Move } else { Mode::Borrow },
             });
         }
         let result = ct::sub(&self.callable_result(c)?, subst);
@@ -293,10 +293,18 @@ impl Cx {
         // The checker keeps a `var` argument from overlapping any other argument.
         f.noalias = vars.iter().map(|&i| i as u32).collect();
         // The checker found every result a reference into the arguments.
-        f.ret_borrowed = self.fact(c.module.file, c.id(), ms_check::ownership::Fact::Lender);
+        f.ret_borrowed = self.fact(
+            c.module.file,
+            c.id(),
+            ms_check::ownership::Fact::ReturnsBorrow,
+        );
         // The checker found the result an interface view of the arguments: owned, dropped by
         // the caller, held as a borrow of the arguments while it lives.
-        f.ret_view = self.fact(c.module.file, c.id(), ms_check::ownership::Fact::ViewLender);
+        f.ret_view = self.fact(
+            c.module.file,
+            c.id(),
+            ms_check::ownership::Fact::ReturnsView,
+        );
         // A function that returns a promise from a closure it is given keeps that closure alive.
         f.keeps_scoped =
             result.is_source_type("@std/concurrency/promise.ms", "Promise") && takes_function;
@@ -445,7 +453,7 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     let b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     let mut fl = FnLower::new(cx, b, hir, jsubst, file, proto.ret);
     fl.variant = variant;
-    // A lending function returns references as they are; `emit_return` reads the flag.
+    // A borrow-returning function returns references as they are; `emit_return` reads the flag.
     fl.b.func_mut().ret_borrowed = proto.ret_borrowed;
     fl.b.func_mut().ret_view = proto.ret_view;
     // Closures made here inherit the flag (see `lambda`).
@@ -470,7 +478,7 @@ impl<'a> FnLower<'a> {
         let owned = self.needs_drop(ty);
         let var = self
             .b
-            .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
+            .declare_var(ty, if owned { Mode::Move } else { Mode::Borrow });
         let x = self.move_out(v, ty);
         self.b.def_var(var, x);
         self.locals.insert(
@@ -612,14 +620,17 @@ impl<'a> FnLower<'a> {
             return x.v;
         }
         if self.cx.strict_copies
-            && !matches!(self.b.defining_op(x.v), Some(Op::StrLit | Op::OptNone))
+            && !matches!(
+                self.b.defining_op_anywhere(x.v),
+                Some(Op::StrLit | Op::OptNone)
+            )
         {
             let at = std::panic::Location::caller();
             let site = format!(
                 "{}:{} ({:?})",
                 at.file().rsplit('/').next().unwrap_or("?"),
                 at.line(),
-                self.b.defining_op(x.v)
+                self.b.defining_op_anywhere(x.v)
             );
             self.cx.copy_gaps.push(site);
         }
@@ -627,7 +638,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// The payload `field` of the active `case` of the alternative `obj`, owned by the caller,
-    /// which consumes `obj`: an owned temporary hands the payload over and releases the rest; a
+    /// which moving_params `obj`: an owned temporary hands the payload over and releases the rest; a
     /// borrowed one is a gap in the checker's facts (`owned` records it in strict mode).
     pub fn take_alt_field(
         &mut self,
@@ -656,7 +667,7 @@ impl<'a> FnLower<'a> {
             return v;
         }
         self.b
-            .emit(Op::Copy, &[v], ms_mir::ir::Imm::Int(1), Some(t))
+            .emit(Op::Clone, &[v], ms_mir::ir::Imm::Int(1), Some(t))
             .expect("copy result")
     }
 
@@ -751,7 +762,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Declares `binding` as a borrow of `v`: no copy, and nothing to drop at scope exit.
-    pub fn bind_lent(&mut self, binding: &BindingRef, v: Value) {
+    pub fn bind_borrow_of(&mut self, binding: &BindingRef, v: Value) {
         let ty = self.ty_of(v);
         let var = if binding.mutable || self.redefined.contains(&binding.uid) {
             self.b.declare_var(ty, Mode::Borrow)
@@ -776,7 +787,7 @@ impl<'a> FnLower<'a> {
         // An immutable `let` of a string read from a list element or record field is a lexical
         // borrow (the checker rejects changing the container while it lives): no copy, no drop.
         // Standard-library source is not ownership checked, so it always copies.
-        let lent = ty == MTy::STR
+        let borrowed = ty == MTy::STR
             && self.ownership_checked()
             && !x.own
             && self.cx.shared(binding.uid)
@@ -788,8 +799,8 @@ impl<'a> FnLower<'a> {
                     Some(Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::RecGet)
                 ));
         // A pattern variable the checker proved a read-only borrow of its scrutinee stays where it
-        // is: a lending function can hand it back, and a reader skips the copy.
-        let lent = lent
+        // is: a borrow-returning function can hand it back, and a reader skips the copy.
+        let borrowed = borrowed
             || (self.cx.shared(binding.uid)
                 && self.ownership_checked()
                 && !x.own
@@ -816,8 +827,8 @@ impl<'a> FnLower<'a> {
                     .b
                     .defining_operand(x.v)
                     .is_some_and(|parent| self.b.is_borrowed(parent) && self.holder_borrowed(x.v, parent)));
-        // A `let` of a lending call's result the checker holds as a borrow of the arguments.
-        let lent = lent
+        // A `let` of a borrow-returning call's result the checker holds as a borrow of the arguments.
+        let borrowed = borrowed
             || (self.cx.shared(binding.uid)
                 && self.ownership_checked()
                 && !x.own
@@ -827,12 +838,12 @@ impl<'a> FnLower<'a> {
                 && self.needs_drop(ty)
                 && self.b.defining_op(x.v) == Some(Op::Call)
                 && self.b.is_borrowed(x.v));
-        if lent {
-            self.bind_lent(binding, x.v);
+        if borrowed {
+            self.bind_borrow_of(binding, x.v);
             return;
         }
         let owned = self.needs_drop(ty);
-        let mode = if owned { Mode::Own } else { Mode::Borrow };
+        let mode = if owned { Mode::Move } else { Mode::Borrow };
         let var = if binding.mutable || self.redefined.contains(&binding.uid) {
             self.b.declare_var(ty, mode)
         } else {
@@ -854,7 +865,7 @@ impl<'a> FnLower<'a> {
                 .binding_facts
                 .has(uid, ms_check::ownership::BindingFact::ConditionalMove);
         if moved && !conditional {
-            // Every path moves it: the move consumes the local, and the scope drops nothing.
+            // Every path moves it: the move moving_params the local, and the scope drops nothing.
             self.must_move.insert(uid);
         }
         // A conditional move empties the local on its path only. In a variable, the local holds
@@ -870,7 +881,7 @@ impl<'a> FnLower<'a> {
             let v = self.b.use_var(var);
             let some = self.b.opt_some(v);
             let opt_ty = self.ty_of(some);
-            let held = self.b.declare_var(opt_ty, Mode::Own);
+            let held = self.b.declare_var(opt_ty, Mode::Move);
             self.b.def_var(held, some);
             held
         } else {
@@ -899,7 +910,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Whether the name expression (or lambda) `node` moves the binding `uid` out of its local,
-    /// which must own its value: a lent local (a function value's parameter, a loop variable
+    /// which must own its value: a borrowed local (a function value's parameter, a loop variable
     /// reading a list in place) hands out a copy instead.
     pub fn moves_at(&self, uid: usize, node: ms_syntax::ast::NodeId) -> bool {
         self.cx.moves.get(&uid).is_some_and(|n| n.contains(&node))
@@ -909,7 +920,7 @@ impl<'a> FnLower<'a> {
 
     /// Whether the local owns the value it holds (a slot always does).
     pub fn local_owned(&self, l: &Local) -> bool {
-        l.slot.is_some() || self.b.var_mode(l.var) == Mode::Own
+        l.slot.is_some() || self.b.var_mode(l.var) == Mode::Move
     }
 
     /// Takes the value of the local `l` of binding `uid` out: the local is empty until it is
@@ -1047,7 +1058,7 @@ impl<'a> FnLower<'a> {
         let owned = self.needs_drop(ty);
         let var = self
             .b
-            .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
+            .declare_var(ty, if owned { Mode::Move } else { Mode::Borrow });
         let v = self.owned(x);
         self.b.def_var(var, v);
         self.adopt_hidden(var, ty);
@@ -1121,6 +1132,8 @@ impl<'a> FnLower<'a> {
                 }
                 if let Some((kind, list, idx)) = self.rest_closers.get(uid).cloned() {
                     self.close_rest(&kind, list, idx);
+                    // A later close that fails returns without closing the rest again.
+                    self.scope_done.push(*uid);
                     continue;
                 }
                 if let Some(closer) = self.closers.get(uid).cloned() {
@@ -1186,14 +1199,14 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return;
         }
-        // A lending function returns the reference itself; the caller never releases it.
-        let lends = self.b.func_mut().ret_borrowed;
+        // A borrow-returning function returns the reference itself; the caller never releases it.
+        let borrowed = self.b.func_mut().ret_borrowed;
         let views = self.b.func_mut().ret_view;
         let v = value.map(|x| {
-            if lends {
+            if borrowed {
                 x.v
             } else if views && !x.own && self.is_iface(x.v) {
-                // A view lender hands a plain reference to an interface value on as a value that
+                // A view returner hands a plain reference to an interface value on as a value that
                 // owns nothing (`iface.view`); the caller drops it like the views it builds.
                 self.b.iface_view(x.v)
             } else {
@@ -1276,7 +1289,7 @@ impl<'a> FnLower<'a> {
                     }
                 }
                 let ty = self.ty_of(v);
-                let var = self.b.declare_var(ty, Mode::Own);
+                let var = self.b.declare_var(ty, Mode::Move);
                 self.b.def_var(var, v);
                 self.own_local(b.uid, var, ty);
                 continue;
@@ -1285,7 +1298,7 @@ impl<'a> FnLower<'a> {
             if own_copy {
                 // A parameter the body changes is the callee's own copy.
                 let ty = self.ty_of(v);
-                let var = self.b.declare_var(ty, Mode::Own);
+                let var = self.b.declare_var(ty, Mode::Move);
                 let o = self.owned(Val { v, own: false });
                 self.b.def_var(var, o);
                 self.own_local(b.uid, var, ty);
@@ -1318,9 +1331,7 @@ impl<'a> FnLower<'a> {
                             return Err(Error::new("a test must return a Result"));
                         };
                         let ok = self.b.m.alts[a.index()]
-                            .cases
-                            .iter()
-                            .position(|k| k.name == "ok")
+                            .ok_case()
                             .ok_or_else(|| Error::new("a test must return a Result"))?;
                         let v = self.b.alt_new(a, ok as u32, &[u]);
                         self.emit_return(Some(Val { v, own: true }));

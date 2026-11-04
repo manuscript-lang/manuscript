@@ -8,7 +8,7 @@ b0:
   %one: int = iconst 1
   %e: Chain = alt.new Chain.End
   br loop(%zero, %e)
-loop(%i: int, %c: own Chain):
+loop(%i: int, %c: move Chain):
   %go: bool = icmp.lt %i, %n
   br_if %go, body(), done()
 body:
@@ -22,9 +22,9 @@ fn @len(%c: Chain) -> int inline(never) {
 b0:
   %zero: int = iconst 0
   %one: int = iconst 1
-  %start: Chain = copy %c
+  %start: Chain = clone %c
   br walk(%start, %zero)
-walk(%cur: own Chain, %n: int):
+walk(%cur: move Chain, %n: int):
   %t: int = alt.tag %cur
   switch %t [0: stop(), 1: step()] default bad()
 stop:
@@ -32,7 +32,7 @@ stop:
   ret %n
 step:
   %next: Chain = alt.get Chain.Link.next %cur
-  %own: Chain = copy %next
+  %own: Chain = clone %next
   %m: int = iadd %n, %one
   drop %cur
   br walk(%own, %m)

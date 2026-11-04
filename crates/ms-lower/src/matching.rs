@@ -42,7 +42,7 @@ impl FnLower<'_> {
                 let l = self.local(&b)?;
                 let v = self.take_local(b.uid, &l);
                 self.moved_closer(b.uid, e);
-                let var = self.b.declare_var(l.ty, Mode::Own);
+                let var = self.b.declare_var(l.ty, Mode::Move);
                 self.b.def_var(var, v);
                 return Ok(Some((var, true)));
             }
@@ -65,7 +65,7 @@ impl FnLower<'_> {
         let t = self.ty_of(x.v);
         if !x.own && self.ownership_checked() {
             // A borrowed part: the checker keeps its origin unchanged while payloads borrow it,
-            // so it is read in place and a lending function can hand back those payloads.
+            // so it is read in place and a borrow-returning function can hand back those payloads.
             let var = self.b.declare_var(t, Mode::Borrow);
             self.b.def_var(var, x.v);
             return Ok(Some((var, false)));
@@ -73,7 +73,7 @@ impl FnLower<'_> {
         let owned = self.needs_drop(t);
         let var = self
             .b
-            .declare_var(t, if owned { Mode::Own } else { Mode::Borrow });
+            .declare_var(t, if owned { Mode::Move } else { Mode::Borrow });
         let v = self.owned(x);
         self.b.def_var(var, v);
         Ok(Some((var, true)))
@@ -88,7 +88,7 @@ impl FnLower<'_> {
         };
         let sty = self.b.var_ty(sv);
         let kind = self.b.m.types.kind(sty).clone();
-        // An owned scrutinee (`match make():`, or a local the match consumes) is the match's
+        // An owned scrutinee (`match make():`, or a local the match moving_params) is the match's
         // own: an arm that names its parts takes them out of it, and every other arm drops it
         // (closing what it holds) when the arm ends; `return` and the like close and drop it
         // on the way out. It lives in memory so that each path reads its own value.
@@ -120,15 +120,15 @@ impl FnLower<'_> {
         };
         let rty = self.emty(e)?;
         // A reference on every arm is joined as one: the checker holds its origins.
-        let lent = self.cx.fact(
+        let borrowed = self.cx.fact(
             self.hir.data.file,
             e.id,
-            ms_check::ownership::Fact::LentMatch,
+            ms_check::ownership::Fact::BorrowedMatch,
         );
-        let owned = self.needs_drop(rty) && !lent;
+        let owned = self.needs_drop(rty) && !borrowed;
         let res = self
             .b
-            .declare_var(rty, if owned { Mode::Own } else { Mode::Borrow });
+            .declare_var(rty, if owned { Mode::Move } else { Mode::Borrow });
         let literal = self.b.m.types.is_int(sty) || sty == MTy::STR || sty == MTy::BOOL;
         let tag = match &kind {
             TyKind::Alt(_) => self.b.alt_tag(s),
@@ -296,7 +296,7 @@ impl FnLower<'_> {
                 };
                 if !self.dead {
                     let v = match x {
-                        Some(x) if lent => x.v,
+                        Some(x) if borrowed => x.v,
                         Some(x) => self.owned(x),
                         None => self.b.unit(),
                     };
@@ -499,7 +499,7 @@ impl FnLower<'_> {
                 ms_check::ownership::Fact::ViewWrap,
             )
         {
-            // The operand lends its error from this function's arguments: hand the reference on.
+            // The operand returns a borrow of its error from this function's arguments: hand the reference on.
             let out = self.b.alt_view(ra, ret_err as u32, &[x.v]);
             self.emit_return(Some(Val { v: out, own: false }));
         } else if hidden && !x.own && self.ty_of(payload) == want {

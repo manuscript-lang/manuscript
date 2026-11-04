@@ -397,7 +397,7 @@ impl Read[T] for Box[T]:
         return self.value
 fn read[T](value: Box[T]) T:
     return value.get()
-type	12	21	262	cannot move `self.value` out of `self`: only a whole variable can move; take an owned copy with `self.value.clone()`interface Read[V]:
+type	12	21	262	cannot move `self.value` out of `self`: only a whole variable can move; take a clone with `self.value.clone()`interface Read[V]:
     fn get() V
 type Box[T]:
     value: T
@@ -412,7 +412,7 @@ type Pair[A, B]:
 impl Read[B] for Pair[Int, B]:
     fn get() B:
         return self.right
-type	8	21	143	cannot move `self.right` out of `self`: only a whole variable can move; take an owned copy with `self.right.clone()`interface Read[V]:
+type	8	21	143	cannot move `self.right` out of `self`: only a whole variable can move; take a clone with `self.right.clone()`interface Read[V]:
     fn get() V
 type Box[T]:
     value: T
@@ -624,7 +624,7 @@ impl Diagnostic for LocalError:
         return self.detail
 fn wrong(value: LocalError) Diagnostic:
     return value
-type	7	21	159	cannot move `self.detail` out of `self`: only a whole variable can move; take an owned copy with `self.detail.clone()`type Impostor:
+type	7	21	159	cannot move `self.detail` out of `self`: only a whole variable can move; take a clone with `self.detail.clone()`type Impostor:
     detail: String
 fn wrong(value: Impostor) Error:
     return Error(value: value)
@@ -1373,7 +1373,7 @@ fn f() Int:
     return [1, 2].length
 type	2	19	30	expected Int, found fn() Int (in the return value); this is a function; call it with parentheses to get its Int resultfn f() Unit:
     println("hi")
-resolution	2	5	17	unknown binding println; there is no built-in print: import stdout from "@std/io/io.ms" and call stdout().write("text\\n")fn f() Int:
+resolution	2	5	17	unknown binding println; there is no println: use print(value), which writes any value and a newline; for write errors or bytes import stdout from "@std/io/io.ms" and call stdout().write("text\\n")fn f() Int:
     let s = null
     return 0
 resolution	2	13	24	unknown binding null; Manuscript has no null: absence is an Optional, written none, and a present value is just the value, which converts where an Optional is expectedfn f() Int:
@@ -1512,7 +1512,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T: self.item
 fn read() Read[Int]: Box(1)
-type	6	22	105	cannot move `self.item` out of `self`: only a whole variable can move; take an owned copy with `self.item.clone()`type E:
+type	6	22	105	cannot move `self.item` out of `self`: only a whole variable can move; take a clone with `self.item.clone()`type E:
     text: String
 impl Error for E:
     fn message() String: this.text
@@ -3555,7 +3555,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T:
         return self.value
-type	7	21	135	cannot move `self.value` out of `self`: only a whole variable can move; take an owned copy with `self.value.clone()`type Read:
+type	7	21	135	cannot move `self.value` out of `self`: only a whole variable can move; take a clone with `self.value.clone()`type Read:
     fn get() Int
 parse	2	5	15	a type declares only fields or cases; write its methods in an 'impl Read:' block, or implement an interface with 'impl <Interface> for Read:'interface Read:
     value: Int
@@ -5035,7 +5035,7 @@ fn message(value: Reader) String:
     return value.read()
 fn make() Box:
     return Box(label: "value")
-type	7	21	130	cannot move `self.label` out of `self`: only a whole variable can move; take an owned copy with `self.label.clone()`fn answer() Int:
+type	7	21	130	cannot move `self.label` out of `self`: only a whole variable can move; take a clone with `self.label.clone()`fn answer() Int:
     let number = 42
     return number
 fn later() Int:
@@ -5824,7 +5824,7 @@ import Bytes from "@std/bytes.ms"
 test "bytes":
     let data = "x".to_bytes().with_value(index: 0, value: 255)
     let _out = stdout().write_bytes(data: data)
-resolution	6	25	171	unknown or ambiguous member write_bytes on WriteStream[String]; available: buffered, close, flush, sink, writeimport arguments from "@std/os/process.ms"
+resolution	6	25	171	unknown or ambiguous member write_bytes on WriteStream[String]; available: buffered, close, collects, flush, items, sink, writeimport arguments from "@std/os/process.ms"
 import stdout, stderr from "@std/io/io.ms"
 
 export fn main() Int:
@@ -5841,7 +5841,7 @@ export fn main() Int:
     if args.length() > 0 and args[0] == "fail":
         return 23
     return 0
-resolution	7	29	214	unknown or ambiguous member write_bytes on WriteStream[String]; available: buffered, close, flush, sink, write
+resolution	7	29	214	unknown or ambiguous member write_bytes on WriteStream[String]; available: buffered, close, collects, flush, items, sink, write
 type	9	31	328	unknown argument data; parameters of write: value
 type	9	25	322	missing argument value: String in call to write; add 'value: <String>'
 type	10	31	376	unknown argument data; parameters of write: value
@@ -6756,7 +6756,7 @@ type	12	9	553	this statement discards Result[Unit, Error], so a failure would be
         try expect_equal(1, 1)
 test "later":
     try fail("must not run")
-resolution	2	5	26	unknown binding println; there is no built-in print: import stdout from "@std/io/io.ms" and call stdout().write("text\\n")
+resolution	2	5	26	unknown binding println; there is no println: use print(value), which writes any value and a newline; for write errors or bytes import stdout from "@std/io/io.ms" and call stdout().write("text\\n")
 resolution	4	13	71	unknown binding expect_equal; add: import expect_equal from "@std/test/test.ms"
 resolution	6	9	112	unknown binding fail; add: import fail from "@std/test/test.ms"import TestHooks, expect_equal from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"

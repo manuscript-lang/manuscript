@@ -11,11 +11,13 @@ A `Promise[T]` is work that has started; its result arrives later. Calls such as
 fn summarize(urls: List[String]) Summary!:
     let config = read("config.json")                 // Promise[Bytes], already running
     let pages = urls.map(fn u: fetch(u))             // all in flight together
-    let stats = promise(fn: count_words(urls))       // may run on another core
+    let stats = promise(                             // may run on another core
+        fn: count_words(urls), options: PromiseOptions(timeout: seconds(5))
+    )
 
     let settings = try config.wait()
     let bodies = try wait_all(pages)
-    let words = try stats.wait(timeout: seconds(5))
+    let words = try stats.wait()
     let mirror = try wait_first([fetch(a), fetch(b)])
     return ok(Summary(settings, bodies, words, mirror))
 ```
@@ -29,7 +31,18 @@ fn summarize(urls: List[String]) Summary!:
 | `Failed` | A fault happened inside the promise; the report is in `details`. |
 | `Cancelled` | The promise was cancelled before it finished. |
 | `Closed` | An earlier `wait` already took the result. |
-| `Timeout` | `timeout` passed; the work is cancelled. |
+| `Timeout` | The promise's `timeout` option passed; the work was cancelled. |
+
+`PromiseOptions(timeout: ...)` is given when a promise is made, with `promise(fn: ..., options: ...)`, or to a promise another call returned with `.with(options: ...)`, as in `read(path).with(options: PromiseOptions(timeout: seconds(5)))`. The timeout counts from creation and is enforced whether or not anyone waits; `wait` itself takes no timeout. A negative timeout is no time at all.
+
+`cancel_switch()` makes a `Cancel` that stops many promises at once. Give each promise `PromiseOptions(cancel: stop.signal())`; `stop.cancel()` then cancels all of them, now or later, and `wait` reports `Cancelled`. A signal is a copy you can hand around, and `signal.cancelled()` tells a loop that never waits to stop. Dropping the `Cancel` cancels nothing.
+
+```manuscript
+let stop = cancel_switch()
+let options = PromiseOptions(timeout: seconds(30), cancel: stop.signal())
+let pages = urls.map(fn u: promise(fn: fetch_page(u.clone()), options: options.clone()))
+stop.cancel()
+```
 
 `done()` reports whether the work has finished, however it ended, and never waits.
 
@@ -39,7 +52,7 @@ fn summarize(urls: List[String]) Summary!:
 
 Dropping an unfinished promise cancels it and waits for it to end, so work never outlives the values it uses. At the end of a scope, promises drop before the locals they read. An unused promise is a lint warning, because the work is cancelled the moment the value is dropped.
 
-Cancellation is delivered at the next wait. A loop that never waits is not stopped by a timeout; `wait(timeout: ...)` on a CPU-bound promise takes effect at its next wait. Lint rule **MSL111** flags a `while true` loop that neither waits nor exits. Cleanup runs on cancellation as on any other exit.
+Cancellation is delivered at the next wait. `cancel()` asks the work to stop the same way and returns at once. A loop that never waits is not stopped by a timeout either; it ends at its next wait. Lint rule **MSL111** flags a `while true` loop that neither waits nor exits. Cleanup runs on cancellation as on any other exit.
 
 ## Reading and changing shared values
 

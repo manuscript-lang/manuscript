@@ -1,6 +1,6 @@
 import Closeable, panic from "@std/core.ms"
 import read_file, temporary, write_file from "@std/os/fs.ms"
-import promise from "@std/concurrency/promise.ms"
+import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import (
     expect_equal,
     expect_error,
@@ -55,7 +55,9 @@ fn hold_fault_and_break(dir: String, id: Int) Unit:
 
 fn cancel_a_holder(dir: String, id: Int, pause: Bool) Unit:
     let work = promise(fn: ok(hold_and_wait(dir.clone(), id, pause)))
-    let _ignored = work.wait(timeout: nanoseconds(20000000))
+    let _ignored = work.with(
+        options: PromiseOptions(timeout: nanoseconds(20000000))
+    ).wait()
 
 fn faulting_holder(dir: String, id: Int) Unit!:
     hold_and_fault(dir, id)

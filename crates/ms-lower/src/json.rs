@@ -1467,9 +1467,7 @@ impl FnLower<'_> {
         };
         let ok = self.ok_case_index(ra)?;
         let err = self.b.m.alts[ra.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == "error")
+            .error_case()
             .ok_or_else(|| Error::new("not a Result"))?;
         self.two_ways(
             good,
@@ -1814,9 +1812,7 @@ impl FnLower<'_> {
             return Err(Error::new("stringify returns a Result"));
         };
         let err = self.b.m.alts[ra.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == "error")
+            .error_case()
             .ok_or_else(|| Error::new("not a Result"))?;
         let out = self.two_ways(
             has_form,

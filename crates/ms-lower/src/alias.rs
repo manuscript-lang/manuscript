@@ -289,8 +289,8 @@ impl<'a> FnLower<'a> {
         let (kd, vd) = self.map_descs(mt)?;
         let vd = vd.ok_or_else(|| Error::new("a keyed borrow needs a map"))?;
         let k = self.b.use_var(key);
-        // The lookup only reads the key, so it lends the key itself.
-        let kslot = self.lend_slot(k);
+        // The lookup only reads the key, so it borrows the key itself.
+        let kslot = self.borrow_slot(k);
         let sym = self
             .word_map_symbol("msrt_map_get_ptr", mt)
             .unwrap_or("msrt_map_get_ptr");
