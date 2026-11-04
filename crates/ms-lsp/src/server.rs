@@ -25,6 +25,11 @@ use std::rc::Rc;
 use std::sync::mpsc::TryRecvError;
 use std::time::{Duration, Instant};
 
+/// Identifier text a server may accumulate before it starts over with a fresh name table. The
+/// standard library is about 6 KB; every name typed while editing adds to the table, so this
+/// bounds a long session (about 150,000 distinct names) at the cost of one reload.
+const NAME_BYTES_LIMIT: usize = 1 << 20;
+
 const MAX_BATCH: usize = 32;
 const BATCH_WINDOW: Duration = Duration::from_millis(25);
 
@@ -44,7 +49,21 @@ pub fn serve_with(
     output: impl Write,
     lint: &dyn Lint,
 ) -> Result<(), String> {
+    serve_recycling(syms, input, output, lint, NAME_BYTES_LIMIT)
+}
+
+/// Runs a session that starts over with fresh names when its name table passes `limit` bytes.
+pub fn serve_recycling(
+    syms: ms_syntax::Names,
+    input: impl Read + Send + 'static,
+    output: impl Write,
+    lint: &dyn Lint,
+    limit: usize,
+) -> Result<(), String> {
     let mut server = Server {
+        names: None,
+        entered: None,
+        name_limit: limit,
         session: ms_check::Session::new(),
         transport: Transport::new(input),
         output: Box::new(output),
@@ -228,6 +247,11 @@ impl Params {
 
 /// Two sessions never share this state; one thread mutates it.
 struct Server<'a> {
+    /// The name table this server made when it last started over; absent while it still uses the
+    /// one it was given.
+    names: Option<ms_syntax::Session>,
+    entered: Option<ms_syntax::Entered>,
+    name_limit: usize,
     /// The standard library every analysis of this server reads.
     session: Rc<ms_check::Session>,
     transport: Transport,
@@ -249,9 +273,10 @@ impl Server<'_> {
     /// Only the main loop mutates documents and analyses. Batch consecutive
     /// changes already available from the bounded transport, applying every
     /// range in order. Empty queues and non-change frames are barriers.
-    fn serve_messages(&mut self, syms: ms_syntax::Names) -> Result<(), String> {
+    fn serve_messages(&mut self, mut syms: ms_syntax::Names) -> Result<(), String> {
         let mut next: Option<Incoming> = None;
         loop {
+            self.recycle_names(&mut syms);
             let mut current = match next.take() {
                 Some(queued) => queued,
                 None => match self.transport.messages.recv() {
@@ -295,6 +320,30 @@ impl Server<'_> {
             if let Err(stop) = self.serve(syms, &current.body) {
                 return Self::ended(stop);
             }
+        }
+    }
+
+    /// Starts over with an empty name table once the current one is large: drops every cache and
+    /// the loaded standard library (all of which hold symbols), then frees the old table. Documents
+    /// are text, so they survive; analyses and the library reload on demand.
+    #[allow(unsafe_code)]
+    fn recycle_names(&mut self, syms: &mut ms_syntax::Names) {
+        if syms.text_bytes() <= self.name_limit {
+            return;
+        }
+        self.invalidate();
+        // Restore the previous current table before entering the new one.
+        self.entered = None;
+        let fresh = ms_syntax::Session::new();
+        self.entered = Some(fresh.enter());
+        *syms = fresh.names();
+        // Made after entering: a library session keeps the table that is current when it is made.
+        self.session = ms_check::Session::new();
+        if let Some(old) = self.names.replace(fresh) {
+            // SAFETY: the caches, the library session and the handle held here were the only users
+            // of the old table, and all of them were replaced above. Nothing else of this server
+            // holds a symbol (documents are text), and the server runs on one thread.
+            unsafe { old.release() };
         }
     }
 
