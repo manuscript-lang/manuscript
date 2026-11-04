@@ -438,11 +438,63 @@ pub struct CaseDef {
     pub fields: Vec<(String, Ty)>,
 }
 
+/// Identity of a built-in standard alternative or interface that lowering special-cases.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum Std {
+    /// Any other declaration.
+    #[default]
+    None,
+    /// `Result`: case 0 is `ok`, case 1 is `error`.
+    Result,
+    /// `Comparable`.
+    Comparable,
+    /// `Equal`.
+    Equal,
+}
+
+impl Std {
+    /// Case index of `ok` in a `Result` alternative.
+    pub const OK: usize = 0;
+    /// Case index of `error` in a `Result` alternative.
+    pub const ERROR: usize = 1;
+
+    /// The attribute spelling in textual MIR; `None` for [`Std::None`].
+    pub fn name(self) -> Option<&'static str> {
+        match self {
+            Std::None => None,
+            Std::Result => Some("result"),
+            Std::Comparable => Some("comparable"),
+            Std::Equal => Some("equal"),
+        }
+    }
+
+    /// The tag a textual attribute names.
+    pub fn from_name(s: &str) -> Option<Std> {
+        [Std::Result, Std::Comparable, Std::Equal]
+            .into_iter()
+            .find(|k| k.name() == Some(s))
+    }
+}
+
+impl AltDef {
+    /// Index of the `ok` case when this is a `Result`.
+    pub fn ok_case(&self) -> Option<usize> {
+        (self.std == Std::Result).then_some(Std::OK)
+    }
+
+    /// Index of the `error` case when this is a `Result`.
+    pub fn error_case(&self) -> Option<usize> {
+        (self.std == Std::Result).then_some(Std::ERROR)
+    }
+}
+
 /// An alternative (sum type) declaration. The tag of a value is the index of its case.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AltDef {
     /// Source-level name.
     pub name: String,
+    /// The built-in standard type this is, set when lowering declares it.
+    pub std: Std,
     /// Cases in tag order.
     pub cases: Vec<CaseDef>,
 }
@@ -466,6 +518,10 @@ pub struct MethodSig {
 pub struct IfaceDef {
     /// Source-level name.
     pub name: String,
+    /// The built-in standard type this is, set when lowering declares it.
+    pub std: Std,
+    /// Vtable slot of the `close` method, if the interface declares one.
+    pub close: Option<u32>,
     /// Methods in vtable order.
     pub methods: Vec<MethodSig>,
 }

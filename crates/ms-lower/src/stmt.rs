@@ -933,9 +933,7 @@ impl<'a> FnLower<'a> {
 
     fn ok_case(&self, a: ms_mir::types::AltId) -> Result<usize, Error> {
         self.b.m.alts[a.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == "ok")
+            .ok_case()
             .ok_or_else(|| Error::new("if let on an alternative that is not a Result"))
     }
 

@@ -291,7 +291,10 @@ impl FnLower<'_> {
                 .iter()
                 .any(|c| c.fields.iter().any(|(f, _)| f == name))
         };
-        let (with_code, with_message) = (has("code", self), has("message", self));
+        let (with_code, with_message) = (
+            has(ct::EXTERN_ERROR_CODE, self),
+            has(ct::EXTERN_ERROR_MESSAGE, self),
+        );
         let out = (payload != MTy::UNIT).then(|| {
             let slot = self.empty_slot(payload);
             self.push_output(slot, payload, vals);
@@ -385,7 +388,7 @@ impl FnLower<'_> {
                 let mut fields = Vec::new();
                 let mut kept = false;
                 for (name, _) in &cases[from].fields {
-                    if name == "code" {
+                    if name == ct::EXTERN_ERROR_CODE {
                         let slot = outputs.code.expect("a code field has a code output");
                         fields.push(s.move_out(slot, MTy::INT));
                     } else {

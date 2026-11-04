@@ -1462,8 +1462,8 @@ impl Checker {
             let cases = cases(error);
             let reported = |c: &Case| {
                 c.fields.iter().all(|f| {
-                    (f.name.as_str() == "code" && f.ty.id == "Int")
-                        || (f.name.as_str() == "message" && f.ty.id == "String")
+                    (f.name.as_str() == EXTERN_ERROR_CODE && f.ty.id == "Int")
+                        || (f.name.as_str() == EXTERN_ERROR_MESSAGE && f.ty.id == "String")
                 })
             };
             if ok.id != "Unit" && !crosses_native(ok) {

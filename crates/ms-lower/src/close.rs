@@ -309,11 +309,7 @@ fn close_error_fault(b: &mut FuncBuilder<'_>, r: Value) {
     let TyKind::Alt(a) = b.m.types.kind(rty).clone() else {
         return;
     };
-    let Some(err) = b.m.alts[a.index()]
-        .cases
-        .iter()
-        .position(|c| c.name == "error")
-    else {
+    let Some(err) = b.m.alts[a.index()].error_case() else {
         return;
     };
     let tag = b.alt_tag(r);
@@ -858,11 +854,8 @@ impl FnLower<'_> {
 
     /// The `close` entry of an interface value's vtable, if the interface declares one.
     fn iface_closer(&self, iface: IfaceId) -> Option<CloseKind> {
-        let k = self.b.m.ifaces[iface.index()]
-            .methods
-            .iter()
-            .position(|m| m.name == "close")?;
-        Some(CloseKind::Iface(iface, k as u32))
+        let k = self.b.m.ifaces[iface.index()].close?;
+        Some(CloseKind::Iface(iface, k))
     }
 
     /// The close operation `cleanup` names for the concrete receiver `ty`.

@@ -1278,6 +1278,7 @@ impl Module {
     pub fn add_alt(&mut self, name: &str, cases: Vec<crate::types::CaseDef>) -> (AltId, Ty) {
         self.alts.push(AltDef {
             name: name.to_string(),
+            std: Default::default(),
             cases,
         });
         let id = AltId(self.alts.len() as u32 - 1);
