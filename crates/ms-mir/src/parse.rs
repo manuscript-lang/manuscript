@@ -318,6 +318,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     name,
                     std: Default::default(),
                     cases: Vec::new(),
+                    borrowed: 0,
                 });
             }
             "iface" => {

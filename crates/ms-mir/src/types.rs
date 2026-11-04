@@ -500,6 +500,20 @@ pub struct AltDef {
     pub std: Std,
     /// Cases in tag order.
     pub cases: Vec<CaseDef>,
+    /// Bit `c` set: the payload of case `c` is borrowed from another value and never dropped by
+    /// this alternative (a borrowing variant: same layout and cases as the ordinary alternative, no ownership of
+    /// those cases). Zero for every ordinary alternative.
+    pub borrowed: u64,
+}
+
+impl AltDef {
+    /// Whether case `c` is borrowed (cases past bit 63 never are: only `Result`-shaped alternatives borrow).
+    pub fn borrows(&self, c: usize) -> bool {
+        u32::try_from(c)
+            .ok()
+            .and_then(|c| self.borrowed.checked_shr(c))
+            .is_some_and(|b| b & 1 == 1)
+    }
 }
 
 /// An interface method signature. The receiver is implicit; arguments are borrowed.

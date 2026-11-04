@@ -240,6 +240,28 @@ impl Cx {
         }
     }
 
+    /// The result type of `c`: the borrowing variant of its `Result` when the checker found some
+    /// cases borrowed from the arguments and the others owned (`Fact::BorrowedOk`, `Fact::BorrowedError`).
+    fn borrowing_result_ty(&self, m: &mut Module, c: &Callable, ret: MTy) -> MTy {
+        use ms_check::ownership::Fact;
+        let (file, id) = (c.module.file, c.id());
+        let TyKind::Alt(a) = m.types.kind(ret).clone() else {
+            return ret;
+        };
+        let mut mask = 0u64;
+        for (fact, name) in [(Fact::BorrowedOk, "ok"), (Fact::BorrowedError, "error")] {
+            if self.fact(file, id, fact)
+                && let Some(i) = m.alts[a.index()].cases.iter().position(|k| k.name == name)
+            {
+                mask |= 1 << i;
+            }
+        }
+        if mask == 0 {
+            return ret;
+        }
+        m.borrowing_alt(a, mask).1
+    }
+
     /// Reserves (and queues) the instance of `c` under `subst`.
     pub(crate) fn function_for(
         &mut self,
@@ -281,6 +303,7 @@ impl Cx {
         }
         let result = ct::sub(&self.callable_result(c)?, subst);
         let ret = self.lower_ty(m, &result)?;
+        let ret = self.borrowing_result_ty(m, c, ret);
         let name = if let ms_syntax::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
             format!("{} {}", if t.bench { "bench" } else { "test" }, t.name)
         } else if self.syms.str(c.name).is_empty() {
@@ -622,6 +645,13 @@ impl<'a> FnLower<'a> {
     }
 
     /// The declared result type (without the `var` parameters a function hands back).
+    /// Whether this function returns a borrowing variant: some cases of its `Result` lend from the
+    /// arguments and the others are owned.
+    pub fn ret_borrowing(&self) -> bool {
+        matches!(self.b.m.types.kind(self.ret_ty),
+            TyKind::Alt(a) if self.b.m.alts[a.index()].borrowed != 0)
+    }
+
     pub fn result_ty(&self) -> MTy {
         self.ret_ty
     }
@@ -668,6 +698,14 @@ impl<'a> FnLower<'a> {
         self.clone_value(x.v)
     }
 
+    /// The alternative `v` is a value of: the borrowing variant when it is one, else `plain`.
+    fn alt_of(&self, v: Value, plain: ms_mir::types::AltId) -> ms_mir::types::AltId {
+        match self.b.m.types.kind(self.ty_of(v)) {
+            TyKind::Alt(a) => *a,
+            _ => plain,
+        }
+    }
+
     /// The payload `field` of the active `case` of the alternative `obj`, owned by the caller,
     /// which moving_params `obj`: an owned temporary hands the payload over and releases the rest; a
     /// borrowed one is a gap in the checker's facts (`owned` records it in strict mode).
@@ -678,8 +716,11 @@ impl<'a> FnLower<'a> {
         field: u32,
         obj: Val,
     ) -> Value {
+        let alt = self.alt_of(obj.v, alt);
         let ty = self.b.m.alts[alt.index()].cases[case as usize].fields[field as usize].1;
-        if obj.own && self.needs_drop(ty) {
+        // A borrowed case stays in its owner: its payload is copied out, as from any borrow.
+        let borrowed = self.b.m.alts[alt.index()].borrows(case as usize);
+        if obj.own && self.needs_drop(ty) && !borrowed {
             let p = self.b.alt_take(alt, case, field, obj.v);
             self.b.alt_release(alt, case, 1 << field, obj.v);
             return p;
@@ -694,6 +735,13 @@ impl<'a> FnLower<'a> {
     /// object value a program may write, which the copy sweep leaves out.
     pub fn clone_value(&mut self, v: Value) -> Value {
         let t = self.ty_of(v);
+        // A copy of a borrowing variant owns every case: it is an ordinary alternative.
+        if let TyKind::Alt(a) = self.b.m.types.kind(t).clone()
+            && self.b.m.alts[a.index()].borrowed != 0
+        {
+            let plain = self.plain_of(a).1;
+            return self.b.alt_own(v, plain);
+        }
         if !self.needs_drop(t) {
             return v;
         }

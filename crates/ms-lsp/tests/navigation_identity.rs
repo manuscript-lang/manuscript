@@ -9,6 +9,255 @@ use ms_lsp::text;
 use ms_lsp::workspace::workspace_references;
 use support::{Script, Workspace};
 
+fn directory_link(real: &std::path::Path, link: &std::path::Path) {
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(real, link).unwrap();
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_dir(real, link).unwrap();
+}
+
+fn linked_source(saved: bool, alias: bool) -> (Workspace, Document, Document) {
+    let ws = Workspace::new("new-linked-source");
+    std::fs::create_dir(ws.path("project/real")).unwrap();
+    let real = std::path::PathBuf::from(ws.path("project/real"));
+    let link = std::path::PathBuf::from(ws.path("project/alias"));
+    directory_link(&real, &link);
+    let source = include_str!("navigation_identity/new-source.ms");
+    if saved {
+        std::fs::write(real.join("new.ms"), source).unwrap();
+    }
+    let caller = include_str!("navigation_identity/new-consumer.ms");
+    std::fs::write(ws.path("project/main.ms"), caller).unwrap();
+    let main = Document::new(ws.uri("project/main.ms"), caller);
+    let fresh = Document {
+        version: 17,
+        ..Document::new(
+            ws.uri(if alias {
+                "project/alias/new.ms"
+            } else {
+                "project/real/new.ms"
+            }),
+            source,
+        )
+    };
+    (ws, main, fresh)
+}
+
+#[test]
+fn unsaved_directory_links_preserve_conflict_and_confinement_checks() {
+    let syms = ms_syntax::Names::global();
+    let session = ms_check::Session::new();
+    let (ws, main, fresh) = linked_source(false, true);
+    let conflicting = Document::new(
+        ws.uri("project/real/new.ms"),
+        fresh.text.replace("+ 1", "+ 2"),
+    );
+    let docs = Documents::from([
+        (main.uri.clone(), main.clone()),
+        (fresh.uri.clone(), fresh.clone()),
+        (conflicting.uri.clone(), conflicting),
+    ]);
+    let checked = analyze(syms, &session, &main, &docs);
+    assert!(
+        checked
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("conflicting editor overlays"))
+    );
+    let at = text::position(&main.text, main.text.rfind("fresh").unwrap());
+    assert!(
+        ms_lsp::rename::rename(
+            syms,
+            &checked,
+            checked.occurrence_index(syms),
+            &main,
+            at,
+            "renewed",
+            None,
+            Some(&docs)
+        )
+        .is_err()
+    );
+
+    let outside = std::path::PathBuf::from(ws.path("outside"));
+    std::fs::create_dir(&outside).unwrap();
+    directory_link(
+        &outside,
+        &std::path::PathBuf::from(ws.path("project/escape")),
+    );
+    let main = Document {
+        text: main.text.replace("./real/", "./escape/"),
+        ..main
+    };
+    std::fs::write(main.path(), &main.text).unwrap();
+    let escaped = Document {
+        uri: ws.uri("project/escape/new.ms"),
+        ..fresh
+    };
+    let escape_path = escaped.path();
+    let docs = Documents::from([
+        (main.uri.clone(), main.clone()),
+        (escaped.uri.clone(), escaped),
+    ]);
+    let checked = analyze(syms, &session, &main, &docs);
+    assert!(!checked.resolves());
+    let at = text::position(&main.text, main.text.rfind("fresh").unwrap());
+    assert_eq!(
+        nav::navigation(
+            syms,
+            &checked,
+            &main,
+            at,
+            Navigate::Definition,
+            checked.occurrence_index(syms)
+        ),
+        Json::Null
+    );
+    let overlay = ms_driver::project::Overlay::from([(escape_path.clone(), String::new())]);
+    let error =
+        ms_driver::project::source_path(&ws.path("project"), &escape_path, &overlay).unwrap_err();
+    assert!(error.to_string().contains("escapes project root"));
+}
+
+#[test]
+fn navigation_follows_unsaved_sources_under_directory_links() {
+    let syms = ms_syntax::Names::global();
+    let session = ms_check::Session::new();
+    for saved in [false, true] {
+        for alias in [false, true] {
+            let (ws, main, fresh) = linked_source(saved, alias);
+            let docs = Documents::from([
+                (main.uri.clone(), main.clone()),
+                (fresh.uri.clone(), fresh.clone()),
+            ]);
+            let analysis = analyze(syms, &session, &fresh, &docs);
+            assert!(analysis.success(), "{:?}", analysis.diagnostics);
+            let at = text::position(&fresh.text, fresh.text.find("fresh").unwrap());
+            assert_ne!(
+                nav::navigation(
+                    syms,
+                    &analysis,
+                    &fresh,
+                    at,
+                    Navigate::Hover,
+                    analysis.occurrence_index(syms)
+                ),
+                Json::Null,
+                "saved={saved}, alias={alias}"
+            );
+            let from_caller = analyze(syms, &session, &main, &docs);
+            let at = text::position(&main.text, main.text.rfind("fresh").unwrap());
+            let refs = workspace_references(
+                syms,
+                &from_caller,
+                from_caller.occurrence_index(syms),
+                &main,
+                &docs,
+                at,
+                true,
+                None,
+            );
+            assert_eq!(refs.len(), 3, "saved={saved}, alias={alias}: {refs:?}");
+            for location in &refs {
+                let uri = location.get("uri").and_then(Json::as_str).unwrap();
+                let source = if uri == main.uri {
+                    &main.text
+                } else {
+                    assert_eq!(uri, ws.uri("project/real/new.ms"));
+                    &fresh.text
+                };
+                let range = text::Range::from_json(location.get("range").unwrap()).unwrap();
+                let start = text::offset(source, range.start).unwrap();
+                let end = text::offset(source, range.end).unwrap();
+                assert_eq!(&source[start..end], "fresh");
+            }
+            let mut aliases = docs.clone();
+            let canonical = Document {
+                uri: ws.uri("project/real/new.ms"),
+                ..fresh.clone()
+            };
+            aliases.insert(canonical.uri.clone(), canonical);
+            let discovered =
+                ms_lsp::workspace::workspace_documents(&fresh, &aliases, false, None).unwrap();
+            let copies: Vec<_> = discovered
+                .iter()
+                .filter(|file| file.uri.ends_with("/new.ms"))
+                .collect();
+            assert_eq!(copies.len(), 1);
+            assert_eq!(copies[0].uri, fresh.uri);
+        }
+    }
+}
+
+#[test]
+fn rename_unsaved_sources_under_directory_links_keeps_the_open_version() {
+    let syms = ms_syntax::Names::global();
+    let session = ms_check::Session::new();
+    for saved in [false, true] {
+        for alias in [false, true] {
+            let (_ws, main, fresh) = linked_source(saved, alias);
+            let docs = Documents::from([
+                (main.uri.clone(), main.clone()),
+                (fresh.uri.clone(), fresh.clone()),
+            ]);
+            for selected in [&main, &fresh] {
+                let analysis = analyze(syms, &session, selected, &docs);
+                assert!(analysis.success(), "{:?}", analysis.diagnostics);
+                let at = text::position(&selected.text, selected.text.rfind("fresh").unwrap());
+                let edit = ms_lsp::rename::rename(
+                    syms,
+                    &analysis,
+                    analysis.occurrence_index(syms),
+                    selected,
+                    at,
+                    "renewed",
+                    None,
+                    Some(&docs),
+                )
+                .unwrap_or_else(|error| panic!("saved={saved}, alias={alias}: {error}"));
+                let changes = edit.get("documentChanges").unwrap().as_array().unwrap();
+                assert_eq!(changes.len(), 2);
+                let target = changes
+                    .iter()
+                    .find(|change| {
+                        change
+                            .get("textDocument")
+                            .unwrap()
+                            .get("uri")
+                            .and_then(Json::as_str)
+                            == Some(fresh.uri.as_str())
+                    })
+                    .expect("original opened URI");
+                assert_eq!(
+                    target
+                        .get("textDocument")
+                        .unwrap()
+                        .get("version")
+                        .and_then(Json::as_i64),
+                    Some(17)
+                );
+                assert_eq!(target.get("edits").unwrap().as_array().unwrap().len(), 1);
+                for change in changes {
+                    let uri = change
+                        .get("textDocument")
+                        .unwrap()
+                        .get("uri")
+                        .and_then(Json::as_str)
+                        .unwrap();
+                    let original = docs.get(uri).expect("every edit uses an open URI");
+                    for edit in change.get("edits").unwrap().as_array().unwrap() {
+                        let range = text::Range::from_json(edit.get("range").unwrap()).unwrap();
+                        let start = text::offset(&original.text, range.start).unwrap();
+                        let end = text::offset(&original.text, range.end).unwrap();
+                        assert_eq!(&original.text[start..end], "fresh");
+                        assert_eq!(edit.get("newText").and_then(Json::as_str), Some("renewed"));
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn nested_projects() -> Workspace {
     let ws = Workspace::new("navigation-identity");
     std::fs::create_dir(ws.path("project/nested")).unwrap();
