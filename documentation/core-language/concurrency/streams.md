@@ -11,6 +11,7 @@ Both types are opaque, own what is behind them, and are `Closeable`: scope end c
 
 ## Reading
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import ReadStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
@@ -36,8 +37,11 @@ fn count_errors(input: ReadStream[Bytes]) Int!:
 - `buffered()` reports the items or bytes not yet drained.
 - Buffers left at exit are drained by the runtime before the process ends. A drain error after `close` is lost, so call `flush().wait()` first when delivery matters.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn dump(rows: List[String], out: WriteStream[String]) Unit!:
+import WriteStream from "@std/io/io.ms"
+
+fn dump(rows: List[String], var out: WriteStream[String]) Unit!:
     for row in rows:
         try out.write("{row}\n")
         if out.buffered() > 65536:
