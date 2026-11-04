@@ -922,7 +922,7 @@ impl Server<'_> {
             }
             "textDocument/signatureHelp" => {
                 let Some(d) = open else { return ok(Json::Null) };
-                match signature_help(syms, &d, &self.docs, p.position) {
+                match signature_help(syms, &self.session, &d, &self.docs, p.position) {
                     Ok(help) => ok(help),
                     Err(message) => Outcome::Error(failure(-32602, message)),
                 }

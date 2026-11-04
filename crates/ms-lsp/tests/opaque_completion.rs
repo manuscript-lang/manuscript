@@ -190,6 +190,7 @@ fn opaque_constructor_argument_labels_and_signatures_stay_private() {
                 }
                 let help = signature_help(
                     syms,
+                    &ms_check::Session::new(),
                     &document,
                     &Documents::new(),
                     text::position(&document.text, offset),
@@ -243,6 +244,7 @@ fn opaque_alternative_argument_labels_and_signatures_stay_private() {
             assert_eq!(value.is_some(), file == "vault.ms", "{file}: {labels:?}");
             let help = signature_help(
                 syms,
+                &ms_check::Session::new(),
                 &document,
                 &Documents::new(),
                 text::position(&document.text, offset),
@@ -404,6 +406,7 @@ fn opaque_public_methods_remain_discoverable() {
         let offset = document.text.find("hidden.size(").unwrap() + "hidden.size(".len();
         let help = signature_help(
             syms,
+            &ms_check::Session::new(),
             &document,
             &Documents::new(),
             text::position(&document.text, offset),
@@ -461,6 +464,7 @@ fn opaque_rejected_receiver_chains_offer_no_members_or_calls() {
             let document = Document::new(workspace.uri("outside.ms"), source);
             let help = signature_help(
                 syms,
+                &ms_check::Session::new(),
                 &document,
                 &Documents::new(),
                 text::position(&document.text, offset),
