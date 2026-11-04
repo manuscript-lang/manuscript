@@ -695,7 +695,7 @@ impl Closeable for RawTerminal:
         return ok(unit)
 
 impl RawTerminal:
-    // Input events as a stream: keys, text and resizes, one per read. Waits honor cancellation and `wait(timeout:)`.
+    // Input events as a stream: keys, text and resizes, one per read. Waits honor cancellation and promise timeouts.
     // The stream ends with an error once the terminal is closed; closing the stream leaves the terminal open.
     fn events() ReadStream[TerminalEvent]:
         return stream[TerminalEvent](

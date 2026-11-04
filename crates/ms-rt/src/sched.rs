@@ -107,6 +107,8 @@ pub(crate) enum Event {
         status: u8,
         report: Vec<u8>,
     },
+    /// To the creator: a cancel switch fired; stop the promise if it has not finished.
+    Stop { id: i64 },
     /// To the runner: cancel the promise's task.
     Cancel { id: i64 },
 }

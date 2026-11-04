@@ -3,6 +3,7 @@
 // conform: timeout=30
 // A handler that is still waiting when the server's request timeout passes is cancelled and the
 // request is answered 504, with or without a grace period; the server keeps serving afterwards.
+import PromiseOptions from "@std/concurrency/promise.ms"
 import (
     buffered,
     headers,
@@ -32,7 +33,11 @@ fn fetch(address: String, path: String) String:
         var text = ""
 
         while true:
-            if let chunk = conn.input.read().wait(timeout: nanoseconds(5000000000)):
+            if let chunk = conn.input.read().with(
+                options: PromiseOptions(
+                    timeout: nanoseconds(5000000000)
+                )
+            ).wait():
                 if let data = chunk:
                     text = "{text}{data.decode_utf8().get("?")}"
                     continue

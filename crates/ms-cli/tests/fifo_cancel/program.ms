@@ -1,7 +1,7 @@
 import open, read_file from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
-import promise from "@std/concurrency/promise.ms"
+import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import milliseconds from "@std/os/time.ms"
 
 fn read_whole(path: String) Int:
@@ -28,6 +28,7 @@ fn open_io_then_read(path: String) Int:
         if var input = file.reader():
             let _data = input.read().wait()
             let _closed = input.close()
+
         return 1
 
     return -1
@@ -42,10 +43,10 @@ export fn main() Int:
     let d = promise(fn: ok(open_io_then_read(third.clone())))
     let c = promise(fn: ok(5))
     let limit = milliseconds(300)
-    let c_result = c.wait(timeout: limit)
-    let a_result = a.wait(timeout: limit)
-    let b_result = b.wait(timeout: limit)
-    let d_result = d.wait(timeout: limit)
+    let c_result = c.with(options: PromiseOptions(timeout: limit.clone())).wait()
+    let a_result = a.with(options: PromiseOptions(timeout: limit.clone())).wait()
+    let b_result = b.with(options: PromiseOptions(timeout: limit.clone())).wait()
+    let d_result = d.with(options: PromiseOptions(timeout: limit.clone())).wait()
     (
         stdout()
         .write(
