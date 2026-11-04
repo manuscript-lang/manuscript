@@ -67,7 +67,7 @@ pub fn compile_explained(pattern: &str) -> Result<Regex, String> {
     let pattern = regex::RegexBuilder::new(pattern)
         .size_limit(64 << 20)
         .build()
-        .map_err(|e| explain(&e.to_string()))?;
+        .map_err(|e| explain(&e.to_string(), pattern))?;
     let has_named_groups = pattern.capture_names().any(|name| name.is_some());
     Ok(Regex {
         pattern,
@@ -78,19 +78,28 @@ pub fn compile_explained(pattern: &str) -> Result<Regex, String> {
 }
 
 /// "<reason> at column N" from the pretty-printed error of the regex crate, whose last line is
-/// `error: <reason>` and whose caret line sits under the offending column after a four-space margin.
-fn explain(text: &str) -> String {
+/// `error: <reason>`. Multiline patterns use a line-number margin instead of four spaces.
+fn explain(text: &str, pattern: &str) -> String {
     let reason = text
         .lines()
         .rev()
         .find_map(|l| l.strip_prefix("error: "))
         .or_else(|| text.lines().next())
         .unwrap_or("invalid pattern");
+    let lines = pattern.lines().count() + usize::from(pattern.ends_with('\n'));
+    let margin = if lines > 1 {
+        3 + lines.ilog10() as usize
+    } else {
+        4
+    };
     let column = text
         .lines()
-        .find(|l| l.trim_start().starts_with('^'))
-        .and_then(|l| l.find('^'))
-        .and_then(|at| at.checked_sub(4));
+        .find(|line| {
+            let notes = line.trim();
+            notes.contains('^') && notes.bytes().all(|b| b == b'^' || b == b' ')
+        })
+        .and_then(|line| line.find('^'))
+        .and_then(|at| at.checked_sub(margin));
     match column {
         Some(c) => alloc::format!("{reason} at column {}", c + 1),
         None => String::from(reason),
@@ -459,6 +468,67 @@ fn limit(max: Option<i64>) -> Result<usize, Fail> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn compile_errors_distinguish_anchors_from_annotation_carets() {
+        for (pattern, expected) in [
+            ("(", "unclosed group at column 1"),
+            ("^(", "unclosed group at column 2"),
+            ("  ^(", "unclosed group at column 4"),
+            ("^ (", "unclosed group at column 3"),
+            (
+                "^\\x",
+                "incomplete escape sequence, reached end of pattern prematurely at column 4",
+            ),
+            ("é🙂(", "unclosed group at column 3"),
+        ] {
+            assert_eq!(
+                compile_explained(pattern).err().unwrap(),
+                expected,
+                "{pattern:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn compile_error_columns_account_for_multiline_number_margins() {
+        for (pattern, column) in [
+            ("a\n(", 1),
+            ("(?x)\n^(", 2),
+            ("é\r\n🙂(", 2),
+            ("\n\n  ^(", 4),
+            ("^(\n", 2),
+        ] {
+            assert_eq!(
+                compile_explained(pattern).err().unwrap(),
+                alloc::format!("unclosed group at column {column}"),
+                "{pattern:?}"
+            );
+        }
+        for lines in [9, 10, 99, 100] {
+            let pattern = alloc::format!("{}é🙂(", "\n".repeat(lines - 1));
+            assert_eq!(
+                compile_explained(&pattern).err().unwrap(),
+                "unclosed group at column 3"
+            );
+        }
+        // A trailing newline adds a numbered line even though str::lines omits it.
+        let trailing = alloc::format!("{}é🙂(\n", "\n".repeat(8));
+        assert_eq!(
+            compile_explained(&trailing).err().unwrap(),
+            "unclosed group at column 3"
+        );
+        // Spans crossing lines have no caret row, so keep the reason-only fallback.
+        assert_eq!(
+            compile_explained("a{\n").err().unwrap(),
+            "unclosed counted repetition"
+        );
+        // Size-limit errors have no annotated source position.
+        assert_eq!(
+            explain("Compiled regex exceeds size limit of 1 bytes.", "a"),
+            "Compiled regex exceeds size limit of 1 bytes."
+        );
+    }
 
     #[test]
     fn result_spans_preserve_bytes_presence_and_match_order() {
