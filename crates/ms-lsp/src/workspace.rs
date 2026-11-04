@@ -56,7 +56,7 @@ impl From<Canceled> for ScanError {
 /// A file's identity: its path with symlinks resolved, so an open buffer and
 /// the file it is a link to are one document.
 fn identity(path: &str) -> String {
-    pathops::eval_symlinks(path).unwrap_or_else(|_| path.to_string())
+    crate::analysis::source_identity(path)
 }
 
 /// The open and on-disk `.ms` documents under a document's project (or its
