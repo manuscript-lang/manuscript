@@ -147,7 +147,22 @@ impl<'a> FnLower<'a> {
                 // One lookup finds the entry: the test is its address, and the borrow reads
                 // and writes through it.
                 let k = self.expr(index)?;
-                let key = self.bind_hidden(k);
+                // A key named by an unchanging variable is borrowed for the alias's lifetime.
+                let unchanging = !k.own
+                    && matches!(&index.kind, ExprKind::Name(_))
+                    && matches!(
+                        self.hir.resolution(index),
+                        Resolution::Local(b) if !b.mutable
+                    );
+                let key = if unchanging {
+                    let var = self
+                        .b
+                        .declare_var(self.ty_of(k.v), ms_mir::ir::Mode::Borrow);
+                    self.b.def_var(var, k.v);
+                    var
+                } else {
+                    self.bind_hidden(k)
+                };
                 let ptr = self.map_entry_ptr(whole.v, key)?;
                 let missing = self
                     .b
