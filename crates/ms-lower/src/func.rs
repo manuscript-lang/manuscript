@@ -637,6 +637,18 @@ impl<'a> FnLower<'a> {
         self.clone_value(x.v)
     }
 
+    /// An owned value for the payload of a `Result` or `Optional` built from a borrowed part
+    /// (`ok(p.name)` beside a new value, `try` on a borrowed `Result`). Wrapping a borrowed
+    /// payload copies it by the language's rule for these two types, so the copy is declared
+    /// here and the strict gate does not report it. Interim workaround: delete it once these
+    /// positions lend instead of copying (#2540).
+    pub fn owned_wrap(&mut self, x: Val) -> Value {
+        if x.own {
+            return x.v;
+        }
+        self.clone_value(x.v)
+    }
+
     /// The payload `field` of the active `case` of the alternative `obj`, owned by the caller,
     /// which moving_params `obj`: an owned temporary hands the payload over and releases the rest; a
     /// borrowed one is a gap in the checker's facts (`owned` records it in strict mode).
@@ -654,7 +666,7 @@ impl<'a> FnLower<'a> {
             return p;
         }
         let p = self.b.alt_get(alt, case, field, obj.v);
-        let o = self.owned(Val { v: p, own: false });
+        let o = self.owned_wrap(Val { v: p, own: false });
         self.finish(obj);
         o
     }
