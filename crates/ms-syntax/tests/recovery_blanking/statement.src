@@ -1,0 +1,5 @@
+fn head() Int: 1
+fn target(value: Int) Int:
+    REJECTED
+    return value
+fn tail() Int: 2

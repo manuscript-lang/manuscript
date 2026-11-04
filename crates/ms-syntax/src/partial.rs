@@ -413,15 +413,14 @@ fn leading_space(line: &str) -> usize {
 
 /// Replaces every byte but line breaks with a space, keeping offsets.
 fn blank(line: &str) -> String {
-    line.chars()
-        .flat_map(|c| {
-            if c == '\r' || c == '\n' {
-                vec![c]
-            } else {
-                vec![' '; c.len_utf8()]
-            }
+    let bytes = line
+        .bytes()
+        .map(|byte| match byte {
+            b'\r' | b'\n' => byte,
+            _ => b' ',
         })
-        .collect()
+        .collect();
+    String::from_utf8(bytes).expect("blanked source is ASCII")
 }
 
 /// The name a declaration chunk introduces, for chunks that failed to parse.
@@ -447,6 +446,13 @@ fn declared_name(chunk: &str) -> Option<String> {
 #[cfg(test)]
 mod continuation_tests {
     use super::*;
+
+    #[test]
+    fn blanking_preserves_byte_width_and_physical_line_breaks() {
+        assert_eq!(blank(""), "");
+        assert_eq!(blank("aé中🦀\t\0\r\nlast\r"), "            \r\n    \r");
+        assert_eq!(blank("\n\r\n"), "\n\r\n");
+    }
 
     #[test]
     fn indexed_prefixes_match_lexing_each_candidate_prefix() {
