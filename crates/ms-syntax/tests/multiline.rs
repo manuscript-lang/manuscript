@@ -7,7 +7,7 @@ use std::sync::Arc;
 fn dump(source: &str) -> Result<String, String> {
     let file: Arc<str> = Arc::from("m.ms");
     ms_syntax::parser::parse(&file, source)
-        .map(|m| dump_module(&m))
+        .map(|m| dump_module(ms_syntax::Names::global(), &m))
         .map_err(|e| format!("{}:{}: {}", e.pos.line, e.pos.column, e.message))
 }
 
@@ -134,7 +134,7 @@ fn recovery_keeps_declarations_around_column_zero_text() {
     let source = "let banner = \"\"\"\nfirst\nlast\n\"\"\"\n\nfn good() Int:\n    return 1\n\nfn bad() Int:\n    return (\n";
     let (module, diagnostics) = ms_syntax::parse_partial(&file, source);
     assert!(!diagnostics.is_empty());
-    let names = dump_module(&module);
+    let names = dump_module(ms_syntax::Names::global(), &module);
     assert!(
         names.contains("\"banner\"") && names.contains("\"good\""),
         "{names}"

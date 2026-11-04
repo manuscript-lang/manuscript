@@ -163,7 +163,7 @@ fn recovery_matches_oracle() {
                     quote(&d.message)
                 );
             }
-            got += &dump_module(&module);
+            got += &dump_module(ms_syntax::Names::global(), &module);
             if update_golden() {
                 std::fs::write(path.with_extension("expected"), &got).unwrap();
                 continue;
