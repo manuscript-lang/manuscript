@@ -547,6 +547,16 @@ impl FnLower<'_> {
         self.enter(okb);
         let cur = self.b.use_var(rv);
         let payload = self.b.alt_get(a, ok as u32, 0, cur);
+        if hidden && self.b.m.alts[a.index()].borrowed >> ok & 1 == 1 {
+            // The operand's `ok` payload is a borrow of the arguments it was called with: it
+            // stays where it is, and the operand (which owns nothing else here) is dropped with
+            // the statement.
+            self.temps.push(cur);
+            return Ok(Val {
+                v: payload,
+                own: false,
+            });
+        }
         if !hidden {
             // A part of a place: a consumer that keeps it takes its own copy, a reader reads
             // it in place, so a resource payload is never duplicated.

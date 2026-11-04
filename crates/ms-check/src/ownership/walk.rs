@@ -195,8 +195,8 @@ pub fn analyze(cx: &Context) -> Outcome {
         entry_lambda: None,
     };
     w.run();
-    w.mixed_returns();
     w.unclosed_resources();
+    w.mixed_returns();
     w.consumed_param_resources();
     w.moved_payloads();
     let declared = Summary::declared(&cx.c.func);
@@ -881,6 +881,8 @@ impl Walker<'_> {
             // case: the caller drops only the cases the function owns.
             if self.borrowed_cases & 4 == 0
                 && !self.borrow_not_clonable
+                // A resource closed at scope end can return its close error, an owned error.
+                && self.facts.implicit_closes.is_empty()
                 && self.borrowed_cases != 0
                 && self.borrowed_cases & self.owned_cases == 0
                 && self.result_is_result()
