@@ -3,6 +3,7 @@
 // `// expect-release:` headers (`key=value` pairs from the runtime's "ms-rt counts:" line; absent keys are not checked)
 // and `// expect-stdout:` lines (the program's stdout, in order, on both). Cleanup order is the stdout lines.
 // A fixture must exit successfully before its counts or output can satisfy the gate.
+// The counts start when the program's `main` begins, so the runtime's own start-up records are not in them.
 // A change may not raise a count without a stated reason; update the header in the same change.
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/count-check.ms [-- files]

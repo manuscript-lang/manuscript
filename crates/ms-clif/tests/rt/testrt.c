@@ -15,31 +15,81 @@ typedef struct Obj { struct Obj *(*clone)(struct Obj *); void (*drop)(struct Obj
 /* The isolate header block: word 0 is the stack limit, byte 8 the cancel flag. */
 static struct { uintptr_t limit; uint8_t cancel; } isolate_hdr;
 void *msrt_isolate_hdr(void) { return &isolate_hdr; }
+/* Generated code finds its header block through the last 16 bytes of the 256 MiB-aligned region
+   its stack lies in (`ms_rt_abi::symbols::STACK_REGION`), so `main` has to run on a stack inside
+   such a region, below the cell page that holds the pointer. */
+#define STACK_REGION ((uintptr_t)256 << 20)
+#define STACK_GUARD ((uintptr_t)65536)
+#define CELL_PAGE ((uintptr_t)4096)
+static int64_t (*slot_main)(void);
+static int64_t slot_result;
 #ifndef _WIN32
 #include <pthread.h>
 #include <sys/mman.h>
-/* Generated code finds its header block by masking the stack pointer, so `main` has to run on a
-   stack slot aligned to the runtime's slot size with the block at its base. */
-#define STACK_SLOT ((uintptr_t)256 << 20)
-static int64_t (*slot_main)(void);
-static int64_t slot_result;
 static void *slot_thread(void *arg) { (void)arg; slot_result = slot_main(); return 0; }
 static int64_t run_on_slot(int64_t (*f)(void)) {
-  char *raw = mmap(0, 2 * STACK_SLOT, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+  char *raw = mmap(0, 2 * STACK_REGION, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
   if (raw == MAP_FAILED) abort();
-  uintptr_t base = ((uintptr_t)raw + STACK_SLOT - 1) & ~(STACK_SLOT - 1);
-  memset((void *)base, 0, 64);
+  uintptr_t base = ((uintptr_t)raw + STACK_REGION - 1) & ~(STACK_REGION - 1);
+  *(void **)(base + STACK_REGION - 16) = &isolate_hdr;
   slot_main = f;
   pthread_attr_t attr;
   pthread_attr_init(&attr);
-  pthread_attr_setstack(&attr, (void *)(base + 65536), STACK_SLOT - 65536);
+  pthread_attr_setstack(&attr, (void *)(base + STACK_GUARD), STACK_REGION - STACK_GUARD - CELL_PAGE);
   pthread_t th;
   if (pthread_create(&th, &attr, slot_thread, 0) != 0) abort();
   pthread_join(th, 0);
   return slot_result;
 }
 #else
-static int64_t run_on_slot(int64_t (*f)(void)) { return f(); }
+/* Windows threads cannot be given a stack address, so `main` runs on a reserved region after a
+   stack switch; the top 8 MiB are committed (the stub installs no guard page growth). */
+#define STACK_COMMIT ((uintptr_t)8 << 20)
+/* The bounds of the stack `main` runs on; the thread's own limits do not describe it. */
+static uintptr_t slot_lo, slot_hi;
+static int64_t call_on_stack(void *top, int64_t (*f)(void)) {
+  int64_t r;
+#if defined(__x86_64__)
+  __asm__ volatile(
+      "mov %%rsp, %%rbx\n\t"
+      "mov %[top], %%rsp\n\t"
+      "sub $32, %%rsp\n\t"
+      "call *%[f]\n\t"
+      "mov %%rbx, %%rsp\n\t"
+      : "=a"(r)
+      : [top] "D"(top), [f] "S"(f)
+      : "rbx", "rcx", "rdx", "r8", "r9", "r10", "r11", "xmm0", "xmm1", "xmm2", "xmm3", "xmm4",
+        "xmm5", "memory", "cc");
+#elif defined(__aarch64__)
+  register int64_t x0 __asm__("x0");
+  __asm__ volatile(
+      "mov x19, sp\n\t"
+      "mov sp, %[top]\n\t"
+      "blr %[f]\n\t"
+      "mov sp, x19\n\t"
+      : "=r"(x0)
+      : [top] "r"(top), [f] "r"(f)
+      : "x19", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13",
+        "x14", "x15", "x16", "x17", "x30", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v16",
+        "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29",
+        "v30", "v31", "memory", "cc");
+  r = x0;
+#else
+#error "unsupported Windows architecture"
+#endif
+  return r;
+}
+static int64_t run_on_slot(int64_t (*f)(void)) {
+  char *raw = VirtualAlloc(0, 2 * STACK_REGION, MEM_RESERVE, PAGE_READWRITE);
+  if (!raw) abort();
+  uintptr_t base = ((uintptr_t)raw + STACK_REGION - 1) & ~(STACK_REGION - 1);
+  uintptr_t top = base + STACK_REGION - CELL_PAGE;
+  if (!VirtualAlloc((void *)(top - STACK_COMMIT), STACK_COMMIT + CELL_PAGE, MEM_COMMIT, PAGE_READWRITE)) abort();
+  *(void **)(base + STACK_REGION - 16) = &isolate_hdr;
+  slot_lo = top - STACK_COMMIT;
+  slot_hi = top;
+  return call_on_stack((void *)top, f);
+}
 #endif
 int64_t msrt_live_allocs = 0;
 
@@ -101,8 +151,13 @@ static void trace(void) {
 #ifdef _WIN32
   CONTEXT context;
   RtlCaptureContext(&context);
-  ULONG_PTR lo, hi;
-  GetCurrentThreadStackLimits(&lo, &hi);
+  uintptr_t lo = slot_lo, hi = slot_hi;
+  if (!hi) {
+    ULONG_PTR tlo, thi;
+    GetCurrentThreadStackLimits(&tlo, &thi);
+    lo = tlo;
+    hi = thi;
+  }
 #if defined(_M_ARM64) || defined(__aarch64__)
 #define CTX_PC Pc
 #define CTX_SP Sp

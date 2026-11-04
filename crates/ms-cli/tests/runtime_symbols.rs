@@ -27,10 +27,10 @@ fn runtime_name(name: &str) -> bool {
     name.starts_with("msrt_") || name.starts_with("msstd_")
 }
 
-/// Assembly entry points that exist on one platform family only. Windows has no context-switch
-/// task stacks and uses a setjmp-style trap restore instead of fork.
+/// Assembly entry points that exist on one platform family only. Windows uses a setjmp-style
+/// trap restore instead of fork.
 #[cfg(windows)]
-const UNIX_ONLY: &[&str] = &["msrt_ctx_switch", "msrt_task_tramp"];
+const UNIX_ONLY: &[&str] = &[];
 #[cfg(windows)]
 const WINDOWS_ONLY: &[&str] = &["msrt_trap_restore"];
 #[cfg(not(windows))]

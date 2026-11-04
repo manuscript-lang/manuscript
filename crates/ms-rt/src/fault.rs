@@ -238,20 +238,6 @@ pub(crate) const fn stack_limit(lo: usize, hi: usize) -> usize {
     start + reserve
 }
 
-/// Records the bounds of the running stack and the recursion limit derived from them.
-///
-/// # Safety
-/// Single threaded runtime state.
-#[cfg(windows)]
-pub(crate) unsafe fn set_stack_bounds(lo: usize, hi: usize) {
-    // SAFETY: single threaded access to the runtime globals.
-    unsafe {
-        *STACK_LO.ptr() = lo;
-        *STACK_HI.ptr() = hi;
-        (*cur_hdr()).limit = stack_limit(lo, hi);
-    }
-}
-
 type CleanupFn = unsafe extern "C-unwind" fn(*mut u8);
 crate::isolate_static! {
     static CLEANUPS: Vec<(usize, usize)> = Vec::new();

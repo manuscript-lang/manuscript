@@ -223,7 +223,8 @@ fn is_candidate_line(line: &str) -> bool {
         && !trimmed.starts_with("//")
 }
 
-fn is_declaration_line(line: &str) -> bool {
+/// Whether a column-zero line starts an independent recovery declaration.
+pub fn is_declaration_line(line: &str) -> bool {
     is_candidate_line(line) && partial_root_start(line.trim())
 }
 

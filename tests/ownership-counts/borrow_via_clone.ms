@@ -1,5 +1,5 @@
-// expect-debug: allocs=60 alloc_bytes=7488
-// expect-release: allocs=60 alloc_bytes=7488
+// expect-debug: allocs=58 alloc_bytes=6848
+// expect-release: allocs=58 alloc_bytes=6848
 // Reading a child through a function that returns an owned clone. The `ref` variant in lend_via_ref.ms is the floor that
 // guaranteed copy elision must reach for this program before `ref` can be removed.
 type Node:

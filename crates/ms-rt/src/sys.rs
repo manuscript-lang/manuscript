@@ -298,9 +298,45 @@ pub fn map_anon(len: usize) -> *mut u8 {
     }
 }
 
+/// Reserves `len` bytes of address space aligned to `len` (a power of two), holding stacks: no
+/// huge pages, so a touched stack page costs one page and not two megabytes. Null on failure.
+pub fn map_region(len: usize) -> *mut u8 {
+    let raw = map_anon(2 * len);
+    if raw.is_null() {
+        return raw;
+    }
+    let start = raw as usize;
+    let base = start.next_multiple_of(len);
+    // SAFETY: trims the unaligned head and tail of the fresh reservation.
+    unsafe {
+        if base > start {
+            unmap(start as *mut u8, base - start);
+        }
+        let end = start + 2 * len;
+        if end > base + len {
+            unmap((base + len) as *mut u8, end - base - len);
+        }
+        #[cfg(target_os = "linux")]
+        {
+            unsafe extern "C" {
+                fn madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
+            }
+            const MADV_NOHUGEPAGE: c_int = 15;
+            madvise(base as *mut c_void, len, MADV_NOHUGEPAGE);
+        }
+    }
+    base as *mut u8
+}
+
 /// Makes `len` bytes at `p` (inside a [`map_anon`] mapping) usable. Unix maps everything readable
 /// and writable up front and the kernel commits pages on first touch.
 pub fn commit(_p: *mut u8, _len: usize) -> bool {
+    true
+}
+
+/// A guard page below a stack's committed pages: nothing to do on Unix, where the kernel
+/// commits any page of the mapping on first touch.
+pub fn commit_guard(_p: *mut u8) -> bool {
     true
 }
 
@@ -324,13 +360,26 @@ pub unsafe fn release(p: *mut u8, len: usize) {
     }
 }
 
-/// Makes `len` bytes at `p` inaccessible (a stack guard). False when the kernel refuses, which
-/// happens once the process has used up its memory mappings (`vm.max_map_count`): splitting a
-/// mapping needs a new one, so a stack without its guard must not be used.
+/// Makes `len` bytes at `p` inaccessible (a stack guard). Linux 6.13 and later install a guard
+/// region, which splits no mapping, so guards cost nothing however many stacks there are. Older
+/// kernels and macOS fall back to `mprotect`, which splits the mapping: false when the kernel
+/// refuses, which happens once the process has used up its memory mappings
+/// (`vm.max_map_count`), and a stack without its guard must not be used.
 ///
 /// # Safety
 /// The range lies inside a live mapping that nothing is using.
 pub unsafe fn guard(p: *mut u8, len: usize) -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        unsafe extern "C" {
+            fn madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
+        }
+        const MADV_GUARD_INSTALL: c_int = 102;
+        // SAFETY: forwarded; the caller guarantees the range.
+        if unsafe { madvise(p.cast(), len, MADV_GUARD_INSTALL) } == 0 {
+            return true;
+        }
+    }
     // SAFETY: forwarded; the caller guarantees the range.
     unsafe { mprotect(p.cast(), len, 0) == 0 }
 }

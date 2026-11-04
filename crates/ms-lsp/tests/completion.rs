@@ -31,62 +31,54 @@ fn numeric_imports_preserve_main_fuzzy_completions() {
         .into_iter()
         .map(|item| item.json())
         .collect();
-        for (name, kind, detail, module, arguments) in [
+        for (name, kind, detail, module) in [
             (
                 "NormalizationForm",
                 7,
                 "NormalizationForm — @std/string.ms",
                 "@std/string.ms",
-                None,
             ),
             (
                 "machine",
                 3,
                 "fn() Result[String, Error] — @std/os/process.ms",
                 "@std/os/process.ms",
-                Some(""),
             ),
             (
                 "max_int",
                 21,
                 "Int — @std/math/math.ms",
                 "@std/math/math.ms",
-                None,
             ),
             (
                 "max_safe_integer",
                 21,
                 "Int — @std/math/math.ms",
                 "@std/math/math.ms",
-                None,
             ),
             (
                 "min_safe_integer",
                 21,
                 "Int — @std/math/math.ms",
                 "@std/math/math.ms",
-                None,
             ),
             (
                 "remainder",
                 3,
                 "fn(Float, Float) Float — @std/math/math.ms",
                 "@std/math/math.ms",
-                Some("left: ${1:left}, right: ${2:right}"),
             ),
             (
                 "ieee_remainder",
                 3,
                 "fn(Float, Float) Float — @std/math/math.ms",
                 "@std/math/math.ms",
-                Some("left: ${1:left}, right: ${2:right}"),
             ),
             (
                 "remainder_wide",
                 3,
                 "fn(UInt64, UInt64, UInt64) Result[UInt64, Error] — @std/math/math.ms",
                 "@std/math/math.ms",
-                Some("high: ${1:high}, low: ${2:low}, divisor: ${3:divisor}"),
             ),
         ] {
             let matches: Vec<_> = items
@@ -105,20 +97,11 @@ fn numeric_imports_preserve_main_fuzzy_completions() {
                 Some(detail),
                 "{name}"
             );
-            let insertion = if snippets {
-                arguments
-                    .map(|args| format!("{name}({args})$0"))
-                    .unwrap_or_else(|| name.to_string())
-            } else {
-                name.to_string()
-            };
+            // The existing `main()` parameter list remains after the edit.
+            let insertion = name.to_string();
             assert_eq!(
                 item.get("insertTextFormat").and_then(|j| j.as_i64()),
-                Some(if snippets && arguments.is_some() {
-                    2
-                } else {
-                    1
-                }),
+                Some(1),
                 "{name}"
             );
             let edit = item.get("textEdit").expect("text edit");
@@ -507,6 +490,18 @@ fn callable_snippets_preserve_mutable_arguments() {
                 "adjust(values: ${1:values})$0",
             ),
             (
+                "updater.modify(var values)",
+                "updater.mod",
+                "modify",
+                "modify(var ${1:values})$0",
+            ),
+            (
+                "change(var values)",
+                "cha",
+                "change",
+                "change(var ${1:values})$0",
+            ),
+            (
                 "update_generic[Int](values: var values, value: 2)",
                 "update_ge",
                 "update_generic",
@@ -700,20 +695,32 @@ fn argument_completion_and_signature_help_preserve_mutation() {
             assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         }
         let document = Document::new(workspace.uri("mutable.ms"), fixture.clone());
-        let offset = fixture.find("return update(").unwrap() + "return update(".len();
-        let help = signature_help(
-            syms,
-            &ms_check::Session::new(),
-            &document,
-            &Documents::new(),
-            ms_lsp::text::position(&fixture, offset),
-        )
-        .unwrap();
-        let signature = &help.get("signatures").and_then(|j| j.as_array()).unwrap()[0];
-        assert_eq!(
-            signature.get("label").and_then(|j| j.as_str()),
-            Some("update(var values: List[Int], amount: Int = ...) Int")
-        );
+        for (prefix, expected) in [
+            (
+                "return update(",
+                "update(var values: List[Int], amount: Int = ...) Int",
+            ),
+            (
+                "return updater.modify(",
+                "updater.modify(var values: List[Int]) Int",
+            ),
+            ("return change(", "change(var values: List[Int]) Int"),
+        ] {
+            let offset = fixture.find(prefix).unwrap() + prefix.len();
+            let help = signature_help(
+                syms,
+                &ms_check::Session::new(),
+                &document,
+                &Documents::new(),
+                ms_lsp::text::position(&fixture, offset),
+            )
+            .unwrap();
+            let signature = &help.get("signatures").and_then(|j| j.as_array()).unwrap()[0];
+            assert_eq!(
+                signature.get("label").and_then(|j| j.as_str()),
+                Some(expected)
+            );
+        }
     }
 }
 

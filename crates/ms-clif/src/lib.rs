@@ -19,6 +19,7 @@ mod options;
 pub use options::{BuildOptions, CopyProbe, RtHot};
 mod llvm_tables;
 mod lower;
+mod slotshare;
 mod spill;
 
 use ms_mir::ir::Module;
