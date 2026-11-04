@@ -378,13 +378,18 @@ pub fn teb_stack() -> [usize; 3] {
 pub fn commit_guard(p: *mut u8) -> bool {
     const PAGE_GUARD: DWORD = 0x100;
     // SAFETY: the range lies inside a reservation of this process.
-    !unsafe { VirtualAlloc(p.cast(), 4096, MEM_COMMIT, PAGE_READWRITE | PAGE_GUARD) }.is_null()
+    let ok =
+        !unsafe { VirtualAlloc(p.cast(), 4096, MEM_COMMIT, PAGE_READWRITE | PAGE_GUARD) }.is_null();
+    crate::task::teb_probe("commit_guard");
+    ok
 }
 
 /// Commits `len` bytes at `p` (inside a [`map_anon`] reservation) as zeroed read-write memory.
 pub fn commit(p: *mut u8, len: usize) -> bool {
     // SAFETY: the range lies inside a reservation of this process.
-    !unsafe { VirtualAlloc(p.cast(), len, MEM_COMMIT, PAGE_READWRITE) }.is_null()
+    let ok = !unsafe { VirtualAlloc(p.cast(), len, MEM_COMMIT, PAGE_READWRITE) }.is_null();
+    crate::task::teb_probe("commit");
+    ok
 }
 
 /// Decommits `len` bytes at `p` (inside a [`map_anon`] reservation); [`commit`] makes them usable again.
@@ -394,6 +399,7 @@ pub fn commit(p: *mut u8, len: usize) -> bool {
 pub unsafe fn release(p: *mut u8, len: usize) {
     // SAFETY: forwarded; the caller guarantees the range.
     unsafe { VirtualFree(p.cast(), len, MEM_DECOMMIT) };
+    crate::task::teb_probe("release");
 }
 
 /// Returns a [`map_anon`] reservation to the system.
