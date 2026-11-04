@@ -185,6 +185,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         borrowed_cases: 0,
         owned_cases: 0,
         ret_ctors: Vec::new(),
+        borrow_not_clonable: false,
         borrowed_mask: 0,
         view_return: false,
         view_locals: HashSet::new(),
@@ -311,6 +312,9 @@ struct Walker<'a> {
     borrowed_cases: u8,
     owned_cases: u8,
     ret_ctors: Vec<NodeId>,
+    /// A borrowed part of a type that has one owner and no `clone`: the borrow is withdrawn
+    /// beside an owned path, and the part moves out instead.
+    borrow_not_clonable: bool,
     /// The wrappers stay references beside owned paths: the borrowed cases never overlap the owned ones.
     borrowed_mask: u8,
     /// Some returned value is an interface view of the arguments (a borrowed value converted to an
@@ -567,6 +571,25 @@ impl Walker<'_> {
             && !self.implements_contract()
             && !self.moves_withdrawn_borrow(e)
         {
+            // A function that borrows some cases of its `Result` returned whole (`return
+            // expect_ok(actual)`): this function borrows the same cases from the same sources and
+            // owns the others.
+            if let Some(src) = self.borrow_source(e).filter(|s| s.cases != 0)
+                && self.result_is_result()
+            {
+                self.borrowed_return.get_or_insert(e.pos);
+                self.borrowed_cases |= src.cases;
+                self.owned_cases |= 3 & !src.cases;
+                self.borrow_receiver |= src.receiver;
+                for p in src.params {
+                    if !self.borrow_params.contains(&p) {
+                        self.borrow_params.push(p);
+                    }
+                }
+                self.borrow_path = Some(None);
+                self.expr(e, Demand::Read);
+                return;
+            }
             if let Some(src) = self.borrow_source(e).filter(|s| s.cases == 0) {
                 // A part of an argument comes back as a reference into it: nothing moves. A
                 // wrapper around it (`x?`, `ok(x)`) adds no storage and stays a reference too.
@@ -575,6 +598,13 @@ impl Walker<'_> {
                     self.facts.view_wraps.insert(e.id);
                     self.wrap_returns.push(e.id);
                     self.borrowed_cases |= self.wrap_case(e);
+                    // A part that cannot be copied is moved out once the borrow is withdrawn
+                    // (`moves_withdrawn_borrow`), which a caller's temporary source needs.
+                    if let Some(inner) = self.wrapped_borrow(e)
+                        && !self.cx.classes.clonable(self.syms, &self.cx.m.ty(inner))
+                    {
+                        self.borrow_not_clonable = true;
+                    }
                     if self.result_case(e).is_some() {
                         self.ret_ctors.push(e.id);
                     }
@@ -850,6 +880,7 @@ impl Walker<'_> {
             // The borrowed cases of a `Result` stay references when no owned path builds the same
             // case: the caller drops only the cases the function owns.
             if self.borrowed_cases & 4 == 0
+                && !self.borrow_not_clonable
                 && self.borrowed_cases != 0
                 && self.borrowed_cases & self.owned_cases == 0
                 && self.result_is_result()
@@ -1034,6 +1065,11 @@ impl Walker<'_> {
                 self.facts.view_wraps.insert(e.id);
                 self.wrap_returns.push(e.id);
                 self.borrowed_cases |= BORROWED_ERROR;
+                if let Some(err) = self.cx.m.ty(operand).args.get(1)
+                    && !self.cx.classes.clonable(self.syms, err)
+                {
+                    self.borrow_not_clonable = true;
+                }
             }
             self.borrow_receiver |= src.receiver;
             for p in src.params {

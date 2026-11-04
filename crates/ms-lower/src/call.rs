@@ -514,7 +514,37 @@ impl<'a> FnLower<'a> {
             let copy = self.clone_value(v);
             return Ok(self.val(copy, true));
         }
+        // A function that borrows some cases of its `Result` over a temporary source: the
+        // borrowed cases would end with the temporary, so the caller owns a copy of the whole
+        // result (the part of the temporary is copied out before it is dropped).
+        if self.cx.owned_borrows.contains_key(&(self.hir.data.file, e.id))
+            && let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(v)).clone()
+            && self.b.m.alts[a.index()].borrowed != 0
+        {
+            let (base, plain) = self.plain_of(a);
+            let _ = base;
+            let copy = self
+                .b
+                .emit(Op::Clone, &[v], ms_mir::ir::Imm::Int(1), Some(plain))
+                .expect("copy result");
+            self.drop_value(v);
+            return Ok(self.val(copy, true));
+        }
         Ok(self.val(v, true))
+    }
+
+    /// The ordinary alternative a borrowing variant `a` is a variant of.
+    fn plain_of(&mut self, a: ms_mir::types::AltId) -> (ms_mir::types::AltId, MTy) {
+        let def = self.b.m.alts[a.index()].clone();
+        let id = self
+            .b
+            .m
+            .alts
+            .iter()
+            .position(|x| x.borrowed == 0 && x.name == def.name && x.cases == def.cases)
+            .map(|i| ms_mir::types::AltId(i as u32))
+            .unwrap_or(a);
+        (id, self.b.m.types.alt(id))
     }
 
     /// Moves a changed argument into a slot the callee takes from and puts back into, and

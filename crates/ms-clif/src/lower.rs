@@ -2390,7 +2390,9 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::MoveOut => self.a(inst, 0),
             Op::Clone => {
-                let ty = f.ty(inst.args[0]);
+                // The result type decides the copy: a borrowing variant copies into its
+                // ordinary alternative, every case owned.
+                let ty = res_ty.unwrap_or_else(|| f.ty(inst.args[0]));
                 let v = self.a(inst, 0);
                 self.clone_value(ty, &v)
             }

@@ -1256,8 +1256,16 @@ impl Verifier<'_> {
             }
             Op::Clone => {
                 arity(1)?;
+                // A borrowing variant copies into its ordinary alternative: every case owned.
+                let plain = res.is_some_and(|r| {
+                    matches!((m.types.kind(t(0)), m.types.kind(r)), (TyKind::Alt(h), TyKind::Alt(w))
+                        if m.alts[h.index()].borrowed != 0 && m.alts[w.index()].borrowed == 0
+                            && m.alts[h.index()].name == m.alts[w.index()].name
+                            && m.alts[h.index()].cases == m.alts[w.index()].cases)
+                });
                 want(
-                    res == Some(t(0)) && self.needs_drop(t(0)),
+                    (res == Some(t(0)) && self.needs_drop(t(0)))
+                        || (plain && res.is_some_and(|r| self.needs_drop(r))),
                     "copy duplicates a droppable value",
                 )
             }
