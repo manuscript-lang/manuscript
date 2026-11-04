@@ -2358,17 +2358,35 @@ mod tests {
         PARK_RESULT.store(got, Ordering::Relaxed);
     }
 
+    /// A connected socket pair, the waitable descriptor every platform has.
+    fn socket_pair() -> (std::net::TcpStream, std::net::TcpStream) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let client = std::net::TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        (client, server)
+    }
+
+    fn raw_socket(stream: &std::net::TcpStream) -> i32 {
+        #[cfg(unix)]
+        {
+            std::os::fd::AsRawFd::as_raw_fd(stream)
+        }
+        #[cfg(windows)]
+        {
+            std::os::windows::io::AsRawSocket::as_raw_socket(stream) as i32
+        }
+    }
+
     #[test]
     fn a_hibernating_task_sees_its_cancellation() {
         let _g = lock();
         teardown();
-        let mut fds = [0i32; 2];
-        // SAFETY: a fresh pipe.
-        assert_eq!(unsafe { libc::pipe(fds.as_mut_ptr()) }, 0);
-        // SAFETY: the test owns the pipe and joins the task.
+        let (client, _server) = socket_pair();
+        let fd = raw_socket(&client);
+        // SAFETY: the test keeps the sockets open and joins the task.
         unsafe {
             PARK_RESULT.store(0, Ordering::Relaxed);
-            let h = msrt_task_spawn(park_on_fd, fds[0] as usize as *mut u8, 0, 0);
+            let h = msrt_task_spawn(park_on_fd, fd as usize as *mut u8, 0, 0);
             msrt_task_yield();
             let t = lookup(h);
             assert!((*t).state == State::Waiting);
@@ -2382,8 +2400,6 @@ mod tests {
                 PARK_RESULT.load(Ordering::Relaxed) & WAIT_CANCELLED,
                 WAIT_CANCELLED
             );
-            libc::close(fds[0]);
-            libc::close(fds[1]);
             teardown();
         }
     }
