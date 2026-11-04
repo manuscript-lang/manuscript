@@ -602,6 +602,7 @@ impl Cx {
                 } else {
                     None
                 };
+                m.records[id.index()].indirect = t.is(Builtin::Error);
                 self.set_lowered(key, ty);
                 if t.opaque_module().is_some() {
                     self.opaque_tys.set_if_absent(ty.0 as usize, ());

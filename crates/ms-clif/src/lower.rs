@@ -632,6 +632,36 @@ impl<'a, 'm> Lower<'a, 'm> {
         out
     }
 
+    /// The block leaves of `ty` when it is an indirect record (one pointer in registers).
+    fn rec_block(&self, ty: Ty) -> Option<Vec<Leaf>> {
+        match self.g.m.types.kind(ty) {
+            TyKind::Rec(r) if self.g.m.records[r.index()].indirect => {
+                Some(self.g.lay.rec_block(*r))
+            }
+            _ => None,
+        }
+    }
+
+    /// The field leaves of record `vs`, loaded from its block when it is indirect.
+    fn rec_expand(&mut self, ty: Ty, vs: &[Value]) -> Vs {
+        match self.rec_block(ty) {
+            Some(block) => self.load_leaves(vs[0], 0, &block),
+            None => vs.to_vec(),
+        }
+    }
+
+    /// The register value of a record with field leaves `flat`: a fresh block when indirect.
+    fn rec_pack(&mut self, ty: Ty, flat: Vs) -> Vs {
+        match self.rec_block(ty) {
+            Some(block) => {
+                let p = self.alloc(mem_layout(&block).size as i64);
+                self.store_leaves(p, 0, &block, &flat);
+                vec![p]
+            }
+            None => flat,
+        }
+    }
+
     /// Per-case, per-field `(type, leaf indices into the alt's leaf/block list)`.
     fn alt_fields(&self, a: ms_mir::types::AltId) -> std::rc::Rc<crate::layout::AltFields> {
         self.g.lay.alt_fields(a)
@@ -689,10 +719,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.rt_call("msrt_slot_drop", &[d, slot]);
             }
             TyKind::Rec(_) => {
+                let flat = self.rec_expand(ty, vs);
                 for (fty, at, w) in self.fields_of(ty) {
                     if m.needs_drop(fty) {
-                        self.drop_value(fty, &vs[at..at + w]);
+                        self.drop_value(fty, &flat[at..at + w]);
                     }
+                }
+                if self.rec_block(ty).is_some() {
+                    self.free(vs[0]);
                 }
             }
             TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
@@ -1049,11 +1083,12 @@ impl<'a, 'm> Lower<'a, 'm> {
         match m.types.kind(ty).clone() {
             TyKind::Bytes | TyKind::List(_) => self.list_copy(ty, vs),
             TyKind::Rec(_) => {
+                let flat = self.rec_expand(ty, vs);
                 let mut out = Vec::new();
                 for (fty, at, w) in self.fields_of(ty) {
-                    out.extend(self.clone_value(fty, &vs[at..at + w]));
+                    out.extend(self.clone_value(fty, &flat[at..at + w]));
                 }
-                out
+                self.rec_pack(ty, out)
             }
             TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
                 // Null stays null; otherwise copy the payload into a fresh block.
@@ -2003,14 +2038,26 @@ impl<'a, 'm> Lower<'a, 'm> {
                     .map(|(x, y)| self.b.ins().select(c, *x, *y))
                     .collect()
             }
-            Op::RecNew => (0..inst.args.len()).flat_map(|i| self.a(inst, i)).collect(),
+            Op::RecNew => {
+                let flat: Vs = (0..inst.args.len()).flat_map(|i| self.a(inst, i)).collect();
+                self.rec_pack(res_ty.expect("rec.new result"), flat)
+            }
             Op::RecGet => {
                 let Imm::Field(_, i) = inst.imm else {
                     unreachable!()
                 };
                 let ty = f.ty(inst.args[0]);
                 let (_, at, w) = self.fields_of(ty)[i as usize];
-                self.a(inst, 0)[at..at + w].to_vec()
+                match self.rec_block(ty) {
+                    Some(block) => {
+                        let lay = mem_layout(&block);
+                        let p = self.a(inst, 0)[0];
+                        (at..at + w)
+                            .map(|k| self.load_leaf(block[k], p, lay.offsets[k] as i32))
+                            .collect()
+                    }
+                    None => self.a(inst, 0)[at..at + w].to_vec(),
+                }
             }
             Op::RecSet | Op::RecFill => {
                 let Imm::Field(_, i) = inst.imm else {
@@ -2018,14 +2065,20 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 let ty = f.ty(inst.args[0]);
                 let (fty, at, w) = self.fields_of(ty)[i as usize];
-                let mut obj = self.a(inst, 0);
+                let held = self.a(inst, 0);
+                let mut obj = self.rec_expand(ty, &held);
                 if inst.op == Op::RecSet && m.needs_drop(fty) {
                     let old = obj[at..at + w].to_vec();
                     self.drop_value(fty, &old);
                 }
                 let new = self.a(inst, 1);
                 obj.splice(at..at + w, new);
-                obj
+                // The old value is consumed by the set: an indirect record moves its fields into a
+                // fresh block and frees the old one, so no block is ever written in place.
+                if self.rec_block(ty).is_some() {
+                    self.free(held[0]);
+                }
+                self.rec_pack(ty, obj)
             }
             Op::AltNew | Op::AltView => self.alt_new(inst, res_ty.expect("alt.new result")),
             Op::AltPlain => self.a(inst, 0),
@@ -2074,12 +2127,16 @@ impl<'a, 'm> Lower<'a, 'm> {
                     unreachable!()
                 };
                 let ty = f.ty(inst.args[0]);
-                let v = self.a(inst, 0);
-                // Drop the fields that were not moved out; a record owns no block of its own.
+                let held = self.a(inst, 0);
+                let v = self.rec_expand(ty, &held);
+                // Drop the fields that were not moved out, then free the block of an indirect record.
                 for (k, (fty, at, w)) in self.fields_of(ty).into_iter().enumerate() {
                     if mask >> k & 1 == 0 {
                         self.drop_value(fty, &v[at..at + w]);
                     }
+                }
+                if self.rec_block(ty).is_some() {
+                    self.free(held[0]);
                 }
                 vec![]
             }
@@ -2452,7 +2509,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 let rty = m.types.find(&TyKind::Rec(r)).expect("record type interned");
                 let (_, at, _) = self.fields_of(rty)[i as usize];
-                let lay = self.g.lay.mem(rty);
+                let block = self.rec_block(rty);
+                let lay = mem_layout(&block.clone().unwrap_or_else(|| self.g.lay.leaves(rty)));
                 let off = lay.offsets.get(at).copied().unwrap_or(0) as i64;
                 // The result is read and written with the field's own layout, so each of its
                 // leaves must sit at the same distance from the field's address as in the field.
@@ -2467,7 +2525,11 @@ impl<'a, 'm> Lower<'a, 'm> {
                     },
                     "field {i} of record {r:?} is laid out differently inside the record"
                 );
-                let p = self.a(inst, 0)[0];
+                let mut p = self.a(inst, 0)[0];
+                if block.is_some() {
+                    // The argument addresses the record's pointer.
+                    p = self.b.ins().load(types::I64, flags(), p, 0);
+                }
                 vec![self.add_imm(p, off)]
             }
             Op::Load | Op::Take => {

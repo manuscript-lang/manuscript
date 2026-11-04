@@ -414,6 +414,9 @@ pub struct RecordDef {
     /// Which plain-data native record this is, when the runtime implements its operations.
     /// Set where the record is lowered from its declaration; not part of the text format.
     pub native: Option<NativeRec>,
+    /// Whether a value is one pointer to a heap block of the fields (a layout choice for large,
+    /// rarely built records such as `Error`); set where the record is lowered, not in the text format.
+    pub indirect: bool,
 }
 
 /// A native record type known by identity: the runtime implements its ordering and text.
