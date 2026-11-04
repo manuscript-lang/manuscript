@@ -71,9 +71,7 @@ export fn run_in(
             done.exit_code, done.stdout.decode_utf8().get(""),
             done.stderr.decode_utf8().get(""), elapsed
         )
-    if result.err().kind == "ETIMEDOUT": return Ran(
-        124, "", "timeout", elapsed
-    )
+    if result.err().kind == "ETIMEDOUT": return Ran(124, "", "timeout", elapsed)
 
     return Ran(127, "", "cannot start {program}", elapsed)
 

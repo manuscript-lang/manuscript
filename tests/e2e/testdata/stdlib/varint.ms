@@ -132,40 +132,28 @@ test "each proper prefix of a minimal multibyte varint is incomplete":
         let data = unsigned(value)
         for end in 0..data.length():
             try expect_varint_error(
-                try data.slice(0, end),
-                0,
-                Error(
-                    "binary: incomplete varint", kind: "EBADMSG"
-                )
+                try data.slice(0, end), 0,
+                Error("binary: incomplete varint", kind: "EBADMSG")
             )
 
         let prefixed = Bytes([99]).concat(data)
         for end in 1..prefixed.length():
             try expect_varint_error(
-                try prefixed.slice(0, end),
-                1,
-                Error(
-                    "binary: incomplete varint", kind: "EBADMSG"
-                )
+                try prefixed.slice(0, end), 1,
+                Error("binary: incomplete varint", kind: "EBADMSG")
             )
 
 test "varint offset errors are distinct from missing input":
     let data = Bytes([0, 1])
     for at in [-9223372036854775808, -1, 3, 9223372036854775807]:
         try expect_varint_error(
-            data,
-            at,
-            Error(
-                "binary: invalid varint offset", kind: "ERANGE"
-            )
+            data, at, Error("binary: invalid varint offset", kind: "ERANGE")
         )
     try expect_varint_error(
-        data, data.length(),
-        Error("binary: incomplete varint", kind: "EBADMSG")
+        data, data.length(), Error("binary: incomplete varint", kind: "EBADMSG")
     )
     try expect_varint_error(
-        Bytes([]), 0,
-        Error("binary: incomplete varint", kind: "EBADMSG")
+        Bytes([]), 0, Error("binary: incomplete varint", kind: "EBADMSG")
     )
 
 test "the tenth byte can only be zero or one":
@@ -174,18 +162,11 @@ test "the tenth byte can only be zero or one":
     for byte in 2..256:
         let data = prefix.concat(Bytes([byte.to_uint8().get(0)]))
         try expect_varint_error(
-            data,
-            0,
-            Error(
-                "binary: varint overflows 64 bits", kind: "ERANGE"
-            )
+            data, 0, Error("binary: varint overflows 64 bits", kind: "ERANGE")
         )
         try expect_varint_error(
-            data.concat(Bytes([0])),
-            0,
-            Error(
-                "binary: varint overflows 64 bits", kind: "ERANGE"
-            )
+            data.concat(Bytes([0])), 0,
+            Error("binary: varint overflows 64 bits", kind: "ERANGE")
         )
 
     for byte in 0..2:
@@ -200,29 +181,18 @@ test "continuation-only data stops at the representation bound":
     for length in 0..10:
         let prefix = out.drain()
         try expect_varint_error(
-            prefix,
-            0,
-            Error(
-                "binary: incomplete varint", kind: "EBADMSG"
-            )
+            prefix, 0, Error("binary: incomplete varint", kind: "EBADMSG")
         )
         out.append_bytes(prefix)
         out.append(128)
 
     let ten = out.build()
     try expect_varint_error(
-        ten,
-        0,
-        Error(
-            "binary: varint overflows 64 bits", kind: "ERANGE"
-        )
+        ten, 0, Error("binary: varint overflows 64 bits", kind: "ERANGE")
     )
     try expect_varint_error(
-        ten.concat(Bytes([0])),
-        0,
-        Error(
-            "binary: varint overflows 64 bits", kind: "ERANGE"
-        )
+        ten.concat(Bytes([0])), 0,
+        Error("binary: varint overflows 64 bits", kind: "ERANGE")
     )
 
 test "nonminimal encodings are accepted and preserve the next offset":
@@ -268,9 +238,7 @@ test "unsigned fixed-width codecs cover the entire UInt64 range":
     )
 
 test "unsigned fixed-width reads reject missing bytes and extreme offsets":
-    let expected: UInt64! = error(
-        Error("binary: out of range", kind: "ERANGE")
-    )
+    let expected: UInt64! = error(Error("binary: out of range", kind: "ERANGE"))
     let data = Bytes([0, 0, 0, 0, 0, 0, 0, 0])
 
     for at in [-9223372036854775808, -1, 1, 8, 9223372036854775807]:
@@ -284,20 +252,14 @@ test "unsigned fixed-width reads reject missing bytes and extreme offsets":
 
 test "varint diagnostics describe the error without echoing input":
     try expect_equal(
-        Error(
-            "binary: invalid varint offset", kind: "ERANGE"
-        ).message,
+        Error("binary: invalid varint offset", kind: "ERANGE").message,
         "binary: invalid varint offset"
     )
     try expect_equal(
-        Error(
-            "binary: incomplete varint", kind: "EBADMSG"
-        ).message,
+        Error("binary: incomplete varint", kind: "EBADMSG").message,
         "binary: incomplete varint"
     )
     try expect_equal(
-        Error(
-            "binary: varint overflows 64 bits", kind: "ERANGE"
-        ).message,
+        Error("binary: varint overflows 64 bits", kind: "ERANGE").message,
         "binary: varint overflows 64 bits"
     )

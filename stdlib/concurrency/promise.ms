@@ -105,14 +105,11 @@ fn outcome(id: Int, code: Int) Error:
     if code == 3:
         return Error("promise: cancelled", kind: "EUNKNOWN")
     if code == 4:
-        return Error(
-            "promise: the result was already taken", kind: "EBADF"
-        )
+        return Error("promise: the result was already taken", kind: "EBADF")
 
     let report = msrt_promise_fault_report(id)
     return Error(
-        "promise: fault: " + report, kind: "EIO",
-        details: {"report": report.clone()}
+        "promise: fault: " + report, kind: "EIO", details: {"report": report.clone()}
     )
 
 // Applies `options` to the promise `id`.

@@ -128,9 +128,7 @@ test "filesystem tree copies default to no replacement with distinct budgets":
     ) | try expect_limit
     copy(source, "{temporary.path()}/bytes", CopyOptions(recursive: true, max_bytes: 2)) | try expect_limit
 
-    let invalid: Unit! = error(
-        Error("filesystem: invalid input", kind: "EINVAL")
-    )
+    let invalid: Unit! = error(Error("filesystem: invalid input", kind: "EINVAL"))
     copy(
         source, "{temporary.path()}/negative-byte",
         CopyOptions(recursive: true, max_bytes: -1)

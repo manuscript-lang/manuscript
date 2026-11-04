@@ -85,9 +85,7 @@ fn budget(limit: Int?) Int:
 // Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
 fn check_options(options: CsvOptions) Unit!:
     let scalars = options.delimiter.scalar_values()
-    if scalars.length() != 1: return error(
-        Error("CSV: invalid input", kind: "EINVAL")
-    )
+    if scalars.length() != 1: return error(Error("CSV: invalid input", kind: "EINVAL"))
 
     let delimiter = scalars[0]
     if (

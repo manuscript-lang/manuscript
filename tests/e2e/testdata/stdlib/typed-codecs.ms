@@ -58,24 +58,16 @@ test "typed compression preserves bytes limits errors and optional arguments":
             try expect_equal((try format.decompress(encoded, data.length())), data)
 
             let limited: Bytes! = error(
-                Error(
-                    "compression: limit exceeded", kind: "EOVERFLOW"
-                )
+                Error("compression: limit exceeded", kind: "EOVERFLOW")
             )
             try expect_equal(format.decompress(encoded, data.length() - 1), limited)
 
-        let invalid: Bytes! = error(
-            Error(
-                "compression: invalid input", kind: "EINVAL"
-            )
-        )
+        let invalid: Bytes! = error(Error("compression: invalid input", kind: "EINVAL"))
         try expect_equal(format.compress(data, -1), invalid)
         try expect_equal(format.compress(data, 6, -1), invalid)
 
         let zero: Bytes! = error(
-            Error(
-                "compression: limit exceeded", kind: "EOVERFLOW"
-            )
+            Error("compression: limit exceeded", kind: "EOVERFLOW")
         )
         try expect_equal(format.compress(data, 6, 0), zero)
 
@@ -85,9 +77,7 @@ test "typed compression preserves bytes limits errors and optional arguments":
     try expect_equal((try decoder(encoded)), data)
     try expect_equal((try decompress(encoded, "gzip")), data)
 
-    let malformed: Bytes! = error(
-        Error("compression: invalid data", kind: "EBADMSG")
-    )
+    let malformed: Bytes! = error(Error("compression: invalid data", kind: "EBADMSG"))
     try expect_equal(CompressionFormat.Gzip.decompress(data), malformed)
 
 test "typed archives retain entry limits validation and existing string calls":
@@ -105,17 +95,11 @@ test "typed archives retain entry limits validation and existing string calls":
         try expect_equal((try unpack(encoded, name)), entries)
 
         let limited: List[ArchiveEntry]! = error(
-            Error(
-                "archive: limit exceeded", kind: "EOVERFLOW"
-            )
+            Error("archive: limit exceeded", kind: "EOVERFLOW")
         )
         try expect_equal(format.unpack(encoded, ArchiveLimits(0)), limited)
 
-        let invalid: Bytes! = error(
-            Error(
-                "archive: invalid input", kind: "EINVAL"
-            )
-        )
+        let invalid: Bytes! = error(Error("archive: invalid input", kind: "EINVAL"))
         try expect_equal(
             format.pack([ArchiveEntry("../escape", "".to_bytes(), false)]), invalid
         )

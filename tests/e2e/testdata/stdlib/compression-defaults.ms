@@ -51,16 +51,10 @@ test "compression omission equals explicit level six for every format":
 
 test "compression defaults retain invalid levels formats and output budgets":
     let data = "abc".to_bytes()
-    let invalid: Bytes! = error(
-        Error("compression: invalid input", kind: "EINVAL")
-    )
-    let limited: Bytes! = error(
-        Error("compression: limit exceeded", kind: "EOVERFLOW")
-    )
+    let invalid: Bytes! = error(Error("compression: invalid input", kind: "EINVAL"))
+    let limited: Bytes! = error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
     let unsupported: Bytes! = error(
-        Error(
-            "compression: operation not supported", kind: "ENOTSUP"
-        )
+        Error("compression: operation not supported", kind: "ENOTSUP")
     )
 
     for format in [

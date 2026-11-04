@@ -98,9 +98,7 @@ test "collection constructors validate bounds and exact limits":
     try expect_equal((try range_by(3, -1, -1, 4)), [3, 2, 1, 0])
     try expect_equal((try filled("x", 2)), ["x", "x"])
 
-    let invalid: List[Int]! = error(
-        Error("collection: invalid input", kind: "EINVAL")
-    )
+    let invalid: List[Int]! = error(Error("collection: invalid input", kind: "EINVAL"))
     try expect_equal(range_by(0, 1, 0), invalid)
 
     let limited: List[Int]! = error(

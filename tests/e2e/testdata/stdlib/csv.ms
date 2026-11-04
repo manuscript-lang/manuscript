@@ -116,7 +116,5 @@ test "CSV rejects malformed records invalid options and limits":
     try expect_equal(parse("a,b\n", options, max_cells: 1), limited)
     try expect_equal(parse("a\nb\n", options, 1), limited)
 
-    let invalid: String! = error(
-        Error("CSV: invalid input", kind: "EINVAL")
-    )
+    let invalid: String! = error(Error("CSV: invalid input", kind: "EINVAL"))
     try expect_equal(stringify([["a"]], CsvOptions("::", "\n")), invalid)

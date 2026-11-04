@@ -45,9 +45,7 @@ test "process environment reflects live changes":
     try set_environment(name, before)
 
 test "subprocess validation returns expected domain errors":
-    let invalid: CommandOutput! = error(
-        Error("process: invalid input", kind: "EINVAL")
-    )
+    let invalid: CommandOutput! = error(Error("process: invalid input", kind: "EINVAL"))
     try expect_equal(run("", [], "".to_bytes()).wait(), invalid)
 
     let missing = run("manuscript-nonexistent-command-stdlib", [], "".to_bytes()).wait()

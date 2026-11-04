@@ -18,9 +18,7 @@ test "factorial and binomial are exact":
     )
 
 test "factorial and binomial reject negative inputs":
-    let bad: BigInt! = error(
-        Error("big integer: invalid input", kind: "EINVAL")
-    )
+    let bad: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
     try expect_equal(factorial(-1), bad)
     try expect_equal(binomial(-1, 0), bad)
     try expect_equal(binomial(3, -1), bad)
@@ -66,8 +64,6 @@ test "modular square roots":
     let big_root = (try square.mod_sqrt(big_p)).get(from_int(-1))
     try expect_equal((big_root * big_root % big_p).compare(square), 0)
 
-    let invalid: BigInt?! = error(
-        Error("big integer: invalid input", kind: "EINVAL")
-    )
+    let invalid: BigInt?! = error(Error("big integer: invalid input", kind: "EINVAL"))
     try expect_equal(from_int(2).mod_sqrt(from_int(8)), invalid)
     try expect_equal(from_int(2).mod_sqrt(from_int(2)), invalid)

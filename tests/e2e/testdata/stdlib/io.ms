@@ -16,14 +16,10 @@ test "stream compositions preserve line endings and EOF":
     try expect_equal((try read_file(path).wait()), "é🙂".to_bytes())
 
 test "streams enforce byte limits and preserve original errors":
-    let limited: Bytes! = error(
-        Error("I/O: limit exceeded", kind: "EOVERFLOW")
-    )
+    let limited: Bytes! = error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(read_all(memory("abc"), 2), limited)
 
-    let closed: Bytes! = error(
-        Error("I/O: resource is closed", kind: "EBADF")
-    )
+    let closed: Bytes! = error(Error("I/O: resource is closed", kind: "EBADF"))
     try expect_equal(read_all(closed_reader(), none), closed)
 
 test "a reader keeps the shared file open after the handle closes":

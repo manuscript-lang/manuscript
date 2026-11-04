@@ -429,12 +429,8 @@ test "normalization, empty separators, and precision formatting":
     "".replace_first(old: "", new: "-") | try expect_equal("-")
     "é".concat(other: "🙂") | try expect_equal("é🙂")
 
-    let invalid: String! = error(
-        Error("string: invalid input", kind: "EINVAL")
-    )
-    let limit: String! = error(
-        Error("string: limit exceeded", kind: "EOVERFLOW")
-    )
+    let invalid: String! = error(Error("string: invalid input", kind: "EINVAL"))
+    let limit: String! = error(Error("string: limit exceeded", kind: "EOVERFLOW"))
     "é".normalize(form: "invalid", max_bytes: 8) | try expect_equal(invalid)
     "é".normalize(form: "NFD", max_bytes: 2) | try expect_equal(limit)
 

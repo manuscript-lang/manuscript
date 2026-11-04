@@ -11,22 +11,16 @@ test "compression formats roundtrip and enforce expanded byte budgets":
         try expect_equal((try decompress(packed, format, 17)), input)
 
         let limited: Bytes! = error(
-            Error(
-                "compression: limit exceeded", kind: "EOVERFLOW"
-            )
+            Error("compression: limit exceeded", kind: "EOVERFLOW")
         )
         try expect_equal(decompress(packed, format, 16), limited)
 
     let unsupported: Bytes! = error(
-        Error(
-            "compression: operation not supported", kind: "ENOTSUP"
-        )
+        Error("compression: operation not supported", kind: "ENOTSUP")
     )
     try expect_equal(compress(input, "invalid", 6), unsupported)
 
-    let malformed: Bytes! = error(
-        Error("compression: invalid data", kind: "EBADMSG")
-    )
+    let malformed: Bytes! = error(Error("compression: invalid data", kind: "EBADMSG"))
     try expect_equal(decompress(input, "gzip"), malformed)
 
 test "ZIP and TAR preserve entries and independently enforce archive limits":
@@ -40,9 +34,7 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
         try expect_equal((try unpack(packed, format)), entries)
 
         let limited: List[ArchiveEntry]! = error(
-            Error(
-                "archive: limit exceeded", kind: "EOVERFLOW"
-            )
+            Error("archive: limit exceeded", kind: "EOVERFLOW")
         )
         try expect_equal(unpack(packed, format, ArchiveLimits(1)), limited)
         try expect_equal(
@@ -53,9 +45,7 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
         )
 
 test "archives reject traversal paths":
-    let invalid: Bytes! = error(
-        Error("archive: invalid input", kind: "EINVAL")
-    )
+    let invalid: Bytes! = error(Error("archive: invalid input", kind: "EINVAL"))
 
     for path in ["../escape", "/absolute"]:
         let entries = [ArchiveEntry(path, "".to_bytes(), directory: false)]

@@ -26,9 +26,7 @@ test "ASCII normalization is identical under every form and byte budget":
 
             try expect_equal(
                 text.normalize(form, -1).err(),
-                Error(
-                    "string: invalid input", kind: "EINVAL"
-                )
+                Error("string: invalid input", kind: "EINVAL")
             )
 
 test "normalization falls back for Unicode before and after long ASCII prefixes":

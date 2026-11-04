@@ -100,9 +100,7 @@ export fn verify_token[T: Data = JsonValue](
     )
 
     let parts = token.split(".")
-    if parts.length() != 3: return error(
-        Error("jwt: malformed token", kind: "EBADMSG")
-    )
+    if parts.length() != 3: return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
     let header = try decode_json[JsonValue](parts[0], check.max_bytes)
     let name = header.get("alg").get(JsonValue.Null).as_string().get("")
@@ -121,9 +119,7 @@ export fn verify_token[T: Data = JsonValue](
     let genuine = try verify_bytes(
         check.algorithm, key, signing_input.to_bytes(), signature.get("".to_bytes())
     )
-    if not genuine: return error(
-        Error("jwt: bad signature", kind: "EBADMSG")
-    )
+    if not genuine: return error(Error("jwt: bad signature", kind: "EBADMSG"))
 
     let claims = try decode_json[JsonValue](parts[1], check.max_bytes)
     try check_claims(claims, check)
@@ -140,14 +136,10 @@ fn algorithm_name(algorithm: JwtAlgorithm) String:
 
 fn decode_json[T: Data](part: String, limit: Int) T!:
     let raw = base64_decode_unpadded(part, url_safe: true, max_bytes: limit)
-    if raw.is_error(): return error(
-        Error("jwt: malformed token", kind: "EBADMSG")
-    )
+    if raw.is_error(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
     let text = raw.get("".to_bytes()).decode_utf8()
-    if text.is_none(): return error(
-        Error("jwt: malformed token", kind: "EBADMSG")
-    )
+    if text.is_none(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
     let value = parse[T](text.get(""), limits: none)
     if let decoded = value:
@@ -226,9 +218,7 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
     if let nbf = claims.get("nbf"):
         let start = nbf.as_float().get(0.0)
         if start - check.leeway.to_float() > moment.to_float(): return error(
-            Error(
-                "jwt: token not yet valid", kind: "EBADMSG"
-            )
+            Error("jwt: token not yet valid", kind: "EBADMSG")
         )
 
     if let issuer = check.issuer:

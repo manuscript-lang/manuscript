@@ -76,7 +76,7 @@ test "records alternatives and collections convert":
     (
         try check(
             value: result.to_string(),
-            expected: "Result.error(Error(details: Map(), kind: "EUNKNOWN", message: failed))"
+            expected: "Result.error(Error(details: Map(), kind: EUNKNOWN, message: failed))"
         )
     )
     (try check(value: [1, 2, 3].to_string(), expected: "[1, 2, 3]"))

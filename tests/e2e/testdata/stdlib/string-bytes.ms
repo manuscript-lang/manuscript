@@ -17,9 +17,7 @@ test "strings honor omitted none zero and explicit output limits":
     try expect_equal((try "ab".repeat(2)), "abab")
     try expect_equal((try "ab".repeat(0, 0)), "")
 
-    let limited: String! = error(
-        Error("string: limit exceeded", kind: "EOVERFLOW")
-    )
+    let limited: String! = error(Error("string: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal("é".repeat(2, 3), limited)
     try expect_equal("x".pad_start(3, "ab"), "abx")
     try expect_equal("x".pad_end(3, "ab"), "xab")
@@ -28,14 +26,10 @@ test "strings honor omitted none zero and explicit output limits":
     try expect_equal("a,,b".split(",", 2), ["a", ""])
     try expect_equal(" \té \n".trim(), "é")
 
-    let invalid: String! = error(
-        Error("string: invalid input", kind: "EINVAL")
-    )
+    let invalid: String! = error(Error("string: invalid input", kind: "EINVAL"))
     try expect_equal("a".normalize("invalid"), invalid)
 
-    let scalar_error: String! = error(
-        Error("string: invalid input", kind: "EINVAL")
-    )
+    let scalar_error: String! = error(Error("string: invalid input", kind: "EINVAL"))
     try expect_equal(from_scalars([55296]), scalar_error)
 
 test "bytes copy slice search and UTF8 validation":
@@ -47,9 +41,7 @@ test "bytes copy slice search and UTF8 validation":
     try expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))
     try expect_equal(data.slice(-3, -1).get(), Bytes([1, 255]))
 
-    let byte_range: Bytes! = error(
-        Error("binary: value out of range", kind: "ERANGE")
-    )
+    let byte_range: Bytes! = error(Error("binary: value out of range", kind: "ERANGE"))
     try expect_equal(data.slice(1, 10), byte_range)
     try expect_equal(data.slice(-10, 2), byte_range)
     try expect_equal(data.reversed(), Bytes([1, 255, 1, 0]))
@@ -93,9 +85,7 @@ test "String slice uses Unicode scalars with relative bounds and OutOfRange erro
     try expect_equal(text.slice(3, 1), out_of_range)
     try expect_false(text.index_of("🙂") != 2 or text.last_index_of("") != 4)
 
-    let invalid: String! = error(
-        Error("string: value out of range", kind: "ERANGE")
-    )
+    let invalid: String! = error(Error("string: value out of range", kind: "ERANGE"))
     try expect_equal(text.slice_scalars(-2, 4), invalid)
     try expect_equal(text.slice_scalars(1, 10), invalid)
     try expect_equal(text.slice_scalars(3, 1), invalid)

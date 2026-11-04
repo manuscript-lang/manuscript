@@ -13,11 +13,7 @@ impl LineSplitter:
     fn check(size: Int) Unit!:
         if let limit = self.max_bytes:
             if size > limit:
-                return error(
-                    Error(
-                        "I/O: limit exceeded", kind: "EOVERFLOW"
-                    )
-                )
+                return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
         return ok(unit)
 
     // The held tail followed by `chunk`.
@@ -33,11 +29,7 @@ impl LineSplitter:
         if let text = line.decode_utf8():
             return ok(text)
 
-        return error(
-            Error(
-                "I/O: line is not valid UTF-8", kind: "EBADMSG"
-            )
-        )
+        return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
 
 impl Transform[Bytes, String] for LineSplitter:
     var fn step(value: Bytes, var out: WriteStream[String]) Unit!:
@@ -148,11 +140,7 @@ export fn collect[T](input: ReadStream[T], max_items: Int?) List[T]!:
         items.append(try item)
         if let limit = max_items:
             if items.length() > limit:
-                return error(
-                    Error(
-                        "I/O: limit exceeded", kind: "EOVERFLOW"
-                    )
-                )
+                return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
 
     return ok(items)
 
@@ -168,11 +156,7 @@ export fn read_all(input: ReadStream[Bytes], max_bytes: Int?) Bytes!:
         total += piece.length()
         if let limit = max_bytes:
             if total > limit:
-                return error(
-                    Error(
-                        "I/O: limit exceeded", kind: "EOVERFLOW"
-                    )
-                )
+                return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
 
     return ok(all.build())
 

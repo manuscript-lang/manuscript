@@ -26,8 +26,4 @@ impl Commands for Quiet:
         cwd: String?,
         env: Map[String, String]
     ) Subprocess!:
-        return error(
-            Error(
-                "process: service unavailable", kind: "EAGAIN"
-            )
-        )
+        return error(Error("process: service unavailable", kind: "EAGAIN"))

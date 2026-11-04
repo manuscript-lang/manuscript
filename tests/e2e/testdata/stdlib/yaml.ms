@@ -171,9 +171,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         )
     )
 
-    let limited: YamlValue! = error(
-        Error("YAML limit exceeded", kind: "EOVERFLOW")
-    )
+    let limited: YamlValue! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
     try expect_false(
         (
             parse(
@@ -419,12 +417,8 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
         cause.kind | try expect_equal("ENOTSUP")
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
-    let limited: YamlValue! = error(
-        Error("YAML limit exceeded", kind: "EOVERFLOW")
-    )
-    let invalid: YamlValue! = error(
-        Error("invalid YAML input", kind: "EINVAL")
-    )
+    let limited: YamlValue! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
+    let invalid: YamlValue! = error(Error("invalid YAML input", kind: "EINVAL"))
     try expect_false(
         (
             parse(
@@ -513,9 +507,7 @@ test "YAML merge and block header errors name their own line":
     )
 
 test "YAML limits fields default to none":
-    let limited: YamlValue! = error(
-        Error("YAML limit exceeded", kind: "EOVERFLOW")
-    )
+    let limited: YamlValue! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
     parse(text: "a: 1", limits: YamlLimits(max_bytes: 2)) | try expect_equal(limited)
     parse(text: "a: 1", limits: YamlLimits()) | try expect_equal(parse(text: "a: 1"))
 
@@ -529,12 +521,8 @@ test "YAML stringify round trips scalars sequences and mappings":
     )
 
 test "YAML stringify validates numbers and honors max_bytes":
-    let invalid: String! = error(
-        Error("invalid YAML input", kind: "EINVAL")
-    )
-    let limited: String! = error(
-        Error("YAML limit exceeded", kind: "EOVERFLOW")
-    )
+    let invalid: String! = error(Error("invalid YAML input", kind: "EINVAL"))
+    let limited: String! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
     stringify(value: YamlValue.NumberValue("not a number")) | try expect_equal(invalid)
 
     let root = (parse(text: "a: 1") | try expect_ok)

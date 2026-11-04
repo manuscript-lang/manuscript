@@ -135,11 +135,7 @@ impl Iterator[T!] for Waiting[T]:
 
         if self.held.length() == 0:
             self.ended = true
-            return error(
-                Error(
-                    "stream: a read is already waiting", kind: "EBADF"
-                )
-            )
+            return error(Error("stream: a read is already waiting", kind: "EBADF"))
 
         // The loop runs the source's step itself, on this stack: no promise, closure or cell round trip per item.
         let result = self.held[0].next()

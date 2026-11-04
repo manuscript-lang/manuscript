@@ -96,11 +96,7 @@ export fn parse_rat(text: String) BigRat!:
         if exponent == -1000001:
             return error(Error("bigrat: invalid data", kind: "EBADMSG"))
         if exponent > 100000 or exponent < -100000:
-            return error(
-                Error(
-                    "bigrat: limit exceeded", kind: "EOVERFLOW"
-                )
-            )
+            return error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
 
     let point = exponent_parts[0].split(".")
     if point.length() > 2:
@@ -238,11 +234,7 @@ impl BigRat:
     // A negative digit count returns InvalidInput; a result that rounds to zero has no minus sign.
     fn to_fixed(digits: Int) String!:
         if digits < 0:
-            return error(
-                Error(
-                    "bigrat: invalid input", kind: "EINVAL"
-                )
-            )
+            return error(Error("bigrat: invalid input", kind: "EINVAL"))
 
         let scaled = self.num.abs() * pow10(digits)
         var quotient = scaled / self.den
@@ -335,15 +327,9 @@ export fn parse_big_float(text: String, precision: Int) BigFloat!:
     if let value = parse_rat(text):
         return ok(big_float_of_rat(value, bits))
 
-    let too_large: BigRat! = error(
-        Error("bigrat: limit exceeded", kind: "EOVERFLOW")
-    )
+    let too_large: BigRat! = error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
     if parse_rat(text) == too_large:
-        return error(
-            Error(
-                "bigfloat: limit exceeded", kind: "EOVERFLOW"
-            )
-        )
+        return error(Error("bigfloat: limit exceeded", kind: "EOVERFLOW"))
 
     return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
 
@@ -409,11 +395,7 @@ impl BigFloat:
     // Returns the quotient, rounded once at the larger operand precision; a zero divisor returns InvalidInput.
     fn divide(other: BigFloat) BigFloat!:
         if other.mant.sign() == 0:
-            return error(
-                Error(
-                    "bigfloat: invalid input", kind: "EINVAL"
-                )
-            )
+            return error(Error("bigfloat: invalid input", kind: "EINVAL"))
 
         let bits = larger(self.prec, other.prec)
         var top = self.mant.clone()
@@ -434,11 +416,7 @@ impl BigFloat:
     // Returns the square root rounded once; a negative operand returns InvalidInput.
     fn sqrt() BigFloat!:
         if self.mant.sign() < 0:
-            return error(
-                Error(
-                    "bigfloat: invalid input", kind: "EINVAL"
-                )
-            )
+            return error(Error("bigfloat: invalid input", kind: "EINVAL"))
         if self.mant.sign() == 0:
             return ok(self.clone())
 

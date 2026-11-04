@@ -108,11 +108,7 @@ let OUTPUT_LIMIT = 1073741824
 fn budget(limit: Int?) Int!:
     if let n = limit:
         if n < 0:
-            return error(
-                Error(
-                    "table: invalid input", kind: "EINVAL"
-                )
-            )
+            return error(Error("table: invalid input", kind: "EINVAL"))
 
         return ok(n)
 

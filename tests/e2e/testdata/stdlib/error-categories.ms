@@ -10,12 +10,8 @@ fn is_missing(cause: Error) Bool:
 
 test "failures of different packages share one kind vocabulary":
     is_missing(canonicalize("/no/such/path/for/manuscript").err()) | try expect_true
-    hex_decode(text: "zz", max_bytes: 10).err().kind | try expect_equal(
-        "EBADMSG"
-    )
-    hex_decode(text: "aa", max_bytes: -1).err().kind | try expect_equal(
-        "EINVAL"
-    )
+    hex_decode(text: "zz", max_bytes: 10).err().kind | try expect_equal("EBADMSG")
+    hex_decode(text: "aa", max_bytes: -1).err().kind | try expect_equal("EINVAL")
 
 test "a limit failure keeps its kind through try":
     let allocation = range_by(start: 0, end: 268435457, step: 1)

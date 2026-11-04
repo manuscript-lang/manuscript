@@ -22,9 +22,7 @@ test "timestamps preserve nanoseconds and shift across epoch":
     try expect_equal((try later.shift((-2).seconds())), epoch)
 
 test "time rejects invalid timestamps and out of range nanoseconds":
-    let invalid: Timestamp! = error(
-        Error("time: invalid data", kind: "EBADMSG")
-    )
+    let invalid: Timestamp! = error(Error("time: invalid data", kind: "EBADMSG"))
     try expect_equal(parse_timestamp("2024-02-30T00:00:00Z"), invalid)
 
     let out_of_range: Timestamp! = error(
@@ -76,14 +74,10 @@ test "format renders tokens and from_calendar round trips":
     try expect_equal(back, moment)
 
 test "calendar rejects unknown zones and impossible dates":
-    let bad_zone: Timestamp! = error(
-        Error("time: invalid input", kind: "EINVAL")
-    )
+    let bad_zone: Timestamp! = error(Error("time: invalid input", kind: "EINVAL"))
     try expect_equal(from_calendar(2024, 1, 1, 0, 0, 0, 0, "Nowhere/Land"), bad_zone)
 
-    let bad_date: Timestamp! = error(
-        Error("time: value out of range", kind: "ERANGE")
-    )
+    let bad_date: Timestamp! = error(Error("time: value out of range", kind: "ERANGE"))
     try expect_equal(from_calendar(2023, 2, 29, 0, 0, 0, 0, "UTC"), bad_date)
     try expect_false(local_zone() == "")
 

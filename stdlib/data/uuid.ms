@@ -62,14 +62,10 @@ export fn uuid_version(text: String) Int?:
 
 // Parses the 16 bytes of a UUID text of any version.
 fn uuid_to_bytes(text: String) Bytes!:
-    if text.length() != 36: return error(
-        Error("uuid: invalid data", kind: "EBADMSG")
-    )
+    if text.length() != 36: return error(Error("uuid: invalid data", kind: "EBADMSG"))
 
     let groups = text.split("-")
-    if groups.length() != 5: return error(
-        Error("uuid: invalid data", kind: "EBADMSG")
-    )
+    if groups.length() != 5: return error(Error("uuid: invalid data", kind: "EBADMSG"))
     if groups[0].length() != 8 or groups[1].length() != 4 or groups[2].length() != 4:
         return error(Error("uuid: invalid data", kind: "EBADMSG"))
     if groups[3].length() != 4 or groups[4].length() != 12:

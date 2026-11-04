@@ -158,9 +158,7 @@ impl Reader:
             first = false
             self.at += 1
 
-        if first: return error(
-            Error("XML: invalid data", kind: "EBADMSG")
-        )
+        if first: return error(Error("XML: invalid data", kind: "EBADMSG"))
 
         return ok(out.build())
 
@@ -219,25 +217,19 @@ impl Reader:
 
             let quote = self.peek()
             if quote != "\"" and quote != "'": return error(
-                Error(
-                    "XML: invalid data", kind: "EBADMSG"
-                )
+                Error("XML: invalid data", kind: "EBADMSG")
             )
 
             self.at += 1
 
             let raw = try self.take_until(quote)
             if raw.contains("<"): return error(
-                Error(
-                    "XML: invalid data", kind: "EBADMSG"
-                )
+                Error("XML: invalid data", kind: "EBADMSG")
             )
 
             for existing in attributes:
                 if existing.name == attribute_name: return error(
-                    Error(
-                        "XML: invalid data", kind: "EBADMSG"
-                    )
+                    Error("XML: invalid data", kind: "EBADMSG")
                 )
             attributes.append(
                 XmlAttribute(
@@ -248,20 +240,14 @@ impl Reader:
         var children = List[XmlNode]()
 
         while true:
-            if self.done(): return error(
-                Error(
-                    "XML: invalid data", kind: "EBADMSG"
-                )
-            )
+            if self.done(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
             if self.looking_at("</"):
                 self.at += 2
 
                 let closing = try self.name()
                 if closing != name: return error(
-                    Error(
-                        "XML: invalid data", kind: "EBADMSG"
-                    )
+                    Error("XML: invalid data", kind: "EBADMSG")
                 )
 
                 self.skip_space()
@@ -316,9 +302,7 @@ fn decode(text: String) String!:
         index += 1
 
         let end = tail.index_of(";")
-        if not end.is_some(): return error(
-            Error("XML: invalid data", kind: "EBADMSG")
-        )
+        if not end.is_some(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
         let entity = tail.take(end.get(0))
 
@@ -339,14 +323,10 @@ fn decode(text: String) String!:
     return ok(out.build())
 
 fn scalar(value: Int?) String!:
-    if not value.is_some(): return error(
-        Error("XML: invalid data", kind: "EBADMSG")
-    )
+    if not value.is_some(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
     let text = from_scalars([value.get(0)])
-    if text.is_error(): return error(
-        Error("XML: invalid data", kind: "EBADMSG")
-    )
+    if text.is_error(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
     return ok(text.get())
 
@@ -356,9 +336,7 @@ Parses a document with a single root element and returns that element.
 A document with several roots, text outside the root, or any syntax error is `InvalidData`.
 */
 export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
-    if max_depth <= 0: return error(
-        Error("XML: invalid input", kind: "EINVAL")
-    )
+    if max_depth <= 0: return error(Error("XML: invalid input", kind: "EINVAL"))
 
     var reader = Reader(chars: text.chars(), at: 0, max_depth: max_depth)
     if reader.peek() == "\u{feff}": reader.at += 1
@@ -366,9 +344,7 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 
     let root = try reader.element(1)
     try reader.skip_misc()
-    if not reader.done(): return error(
-        Error("XML: invalid data", kind: "EBADMSG")
-    )
+    if not reader.done(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
     return ok(root)
 

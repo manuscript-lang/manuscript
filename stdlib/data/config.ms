@@ -1,8 +1,7 @@
 // Builds the error for a malformed line: `config: line <n>: <reason>`, with the line in `details`.
 fn config_error(line: Int, reason: String) Error:
     return Error(
-        "config: line {line}: {reason}", kind: "EBADMSG",
-        details: {"line": "{line}"}
+        "config: line {line}: {reason}", kind: "EBADMSG", details: {"line": "{line}"}
     )
 
 /*

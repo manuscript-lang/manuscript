@@ -98,16 +98,12 @@ export fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Int?) B
 
             if offset >= 4 - pad:
                 if byte != 61: return error(
-                    Error(
-                        "encoding: invalid data", kind: "EBADMSG"
-                    )
+                    Error("encoding: invalid data", kind: "EBADMSG")
                 )
             else:
                 digit = base64_digit(byte.to_int(), url_safe)
                 if digit < 0: return error(
-                    Error(
-                        "encoding: invalid data", kind: "EBADMSG"
-                    )
+                    Error("encoding: invalid data", kind: "EBADMSG")
                 )
 
             value = value * 64 + digit

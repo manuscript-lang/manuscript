@@ -7,5 +7,5 @@ type Failure[T]:
 
 fn use[T](value: Result[Int, Failure[T]]) Int:
     match value:
-        error(NotFound): return 1
+        error(_): return 1
         ok(inner): return inner

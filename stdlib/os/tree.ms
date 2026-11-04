@@ -38,9 +38,7 @@ fn clean(path: String) String!:
 
         if part == "..":
             if parts.length() == 0: return error(
-                Error(
-                    "filesystem: invalid input", kind: "EINVAL"
-                )
+                Error("filesystem: invalid input", kind: "EINVAL")
             )
 
             parts.remove(parts.length() - 1)
@@ -144,9 +142,7 @@ impl MemoryTree:
     var fn create_directory(path: String) Unit!:
         let inside = try clean(path)
         if self.files.contains(inside): return error(
-            Error(
-                "filesystem: already exists", kind: "EEXIST"
-            )
+            Error("filesystem: already exists", kind: "EEXIST")
         )
 
         var at = inside.clone()
@@ -163,16 +159,12 @@ impl MemoryTree:
     var fn write_file(path: String, data: Bytes) Unit!:
         let inside = try clean(path)
         if inside == "" or self.directories.contains(inside): return error(
-            Error(
-                "filesystem: invalid input", kind: "EINVAL"
-            )
+            Error("filesystem: invalid input", kind: "EINVAL")
         )
 
         let parent = parent_of(inside)
         if self.files.contains(parent): return error(
-            Error(
-                "filesystem: invalid input", kind: "EINVAL"
-            )
+            Error("filesystem: invalid input", kind: "EINVAL")
         )
 
         try self.create_directory(parent)
@@ -185,9 +177,7 @@ impl MemoryTree:
     var fn remove(path: String, recursive: Bool = false) Unit!:
         let inside = try clean(path)
         if inside == "": return error(
-            Error(
-                "filesystem: invalid input", kind: "EINVAL"
-            )
+            Error("filesystem: invalid input", kind: "EINVAL")
         )
 
         if self.files.contains(inside):
@@ -196,18 +186,14 @@ impl MemoryTree:
             return ok(unit)
 
         if not self.directories.contains(inside): return error(
-            Error(
-                "filesystem: file or directory not found", kind: "ENOENT"
-            )
+            Error("filesystem: file or directory not found", kind: "ENOENT")
         )
 
         let prefix = "{inside}/"
         let below_files = self.files.keys().filter(fn k: k.starts_with(prefix))
         let below_dirs = self.directories.values().filter(fn k: k.starts_with(prefix))
         if not recursive and (below_files.length() + below_dirs.length()) > 0: return error(
-            Error(
-                "filesystem: directory not empty", kind: "EUNKNOWN"
-            )
+            Error("filesystem: directory not empty", kind: "EUNKNOWN")
         )
 
         for key in below_files:
@@ -227,21 +213,15 @@ impl FileTree for MemoryTree:
     fn read(path: String, max_bytes: Int?) Bytes!:
         let inside = try clean(path)
         if self.directories.contains(inside): return error(
-            Error(
-                "filesystem: invalid input", kind: "EINVAL"
-            )
+            Error("filesystem: invalid input", kind: "EINVAL")
         )
 
         let found = self.files.get(inside)
         if found.is_none(): return error(
-            Error(
-                "filesystem: file or directory not found", kind: "ENOENT"
-            )
+            Error("filesystem: file or directory not found", kind: "ENOENT")
         )
         if max_bytes.is_some() and found.get().length() > max_bytes.get(): return error(
-            Error(
-                "filesystem: limit exceeded", kind: "EOVERFLOW"
-            )
+            Error("filesystem: limit exceeded", kind: "EOVERFLOW")
         )
 
         return ok(found.get().clone())
@@ -250,14 +230,10 @@ impl FileTree for MemoryTree:
     fn children(path: String, max_entries: Int?) List[DirectoryEntry]!:
         let inside = try clean(path)
         if self.files.contains(inside): return error(
-            Error(
-                "filesystem: invalid input", kind: "EINVAL"
-            )
+            Error("filesystem: invalid input", kind: "EINVAL")
         )
         if not self.directories.contains(inside): return error(
-            Error(
-                "filesystem: file or directory not found", kind: "ENOENT"
-            )
+            Error("filesystem: file or directory not found", kind: "ENOENT")
         )
 
         var entries = List[DirectoryEntry]()
@@ -311,28 +287,20 @@ impl FileTree for EmbeddedTree:
     fn read(path: String, max_bytes: Int?) Bytes!:
         let inside = try clean(path)
         if self.directories.contains(inside): return error(
-            Error(
-                "filesystem: invalid input", kind: "EINVAL"
-            )
+            Error("filesystem: invalid input", kind: "EINVAL")
         )
 
         let found = self.encoded.get(inside)
         if found.is_none(): return error(
-            Error(
-                "filesystem: file or directory not found", kind: "ENOENT"
-            )
+            Error("filesystem: file or directory not found", kind: "ENOENT")
         )
 
         let decoded = base64_decode(found.get(), false, max_bytes)
         if decoded.is_error() and decoded.err().kind == "EOVERFLOW": return error(
-            Error(
-                "filesystem: limit exceeded", kind: "EOVERFLOW"
-            )
+            Error("filesystem: limit exceeded", kind: "EOVERFLOW")
         )
         if decoded.is_error(): return error(
-            Error(
-                "filesystem: invalid data", kind: "EBADMSG"
-            )
+            Error("filesystem: invalid data", kind: "EBADMSG")
         )
 
         return ok(decoded.get().clone())
@@ -341,14 +309,10 @@ impl FileTree for EmbeddedTree:
     fn children(path: String, max_entries: Int?) List[DirectoryEntry]!:
         let inside = try clean(path)
         if self.encoded.contains(inside): return error(
-            Error(
-                "filesystem: invalid input", kind: "EINVAL"
-            )
+            Error("filesystem: invalid input", kind: "EINVAL")
         )
         if not self.directories.contains(inside): return error(
-            Error(
-                "filesystem: file or directory not found", kind: "ENOENT"
-            )
+            Error("filesystem: file or directory not found", kind: "ENOENT")
         )
 
         var entries = List[DirectoryEntry]()
@@ -389,9 +353,7 @@ export fn walk(
         pending.remove(top)
         found.append(WalkEntry(relative(entry.path, start), entry.directory))
         if max_entries.is_some() and found.length() > max_entries.get(): return error(
-            Error(
-                "filesystem: limit exceeded", kind: "EOVERFLOW"
-            )
+            Error("filesystem: limit exceeded", kind: "EOVERFLOW")
         )
 
         if entry.directory: try push_children(tree, entry.path, var pending)

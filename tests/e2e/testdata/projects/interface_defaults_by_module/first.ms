@@ -37,8 +37,4 @@ impl Commands for Echo:
         cwd: String?,
         env: Map[String, String]
     ) Subprocess!:
-        return error(
-            Error(
-                "process: service unavailable", kind: "EAGAIN"
-            )
-        )
+        return error(Error("process: service unavailable", kind: "EAGAIN"))

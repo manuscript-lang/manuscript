@@ -646,11 +646,7 @@ impl HttpExchange for TestExchange:
         subprotocols: List[String],
         max_message_bytes: Int?
     ) RawWebSocket!:
-        return error(
-            Error(
-                "router: WebSocket upgrades need a server", kind: "ENOTSUP"
-            )
-        )
+        return error(Error("router: WebSocket upgrades need a server", kind: "ENOTSUP"))
 
     var fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())

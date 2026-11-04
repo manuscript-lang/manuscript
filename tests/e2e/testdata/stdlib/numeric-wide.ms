@@ -103,9 +103,7 @@ test "wide division distinguishes invalid divisor and quotient overflow":
     try expect_equal(division.quotient, largest)
     try expect_equal(division.remainder, 2)
 
-    let invalid: WordDivision! = error(
-        Error("number: invalid input", kind: "EINVAL")
-    )
+    let invalid: WordDivision! = error(Error("number: invalid input", kind: "EINVAL"))
     let overflow: WordDivision! = error(
         Error("number: value out of range", kind: "ERANGE")
     )
@@ -214,9 +212,7 @@ test "modular inverse distinguishes absence invalid modulus and the unit modulus
             from_int(1)
         ) | try expect_ok | try expect_some | try expect_equal(from_int(0))
 
-    let invalid: BigInt?! = error(
-        Error("big integer: invalid input", kind: "EINVAL")
-    )
+    let invalid: BigInt?! = error(Error("big integer: invalid input", kind: "EINVAL"))
     try expect_equal(from_int(2).inverse_mod(from_int(0)), invalid)
     try expect_equal(from_int(2).inverse_mod(from_int(-7)), invalid)
 

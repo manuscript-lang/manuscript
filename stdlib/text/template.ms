@@ -132,26 +132,22 @@ let MAX_DEPTH = 64
 // Builds a template error. Each message names the line, path, filter or partial but never echoes values.
 fn syntax_error(line: Int, reason: String) Error:
     return Error(
-        "template: line {line}: {reason}", kind: "EBADMSG",
-        details: {"line": "{line}"}
+        "template: line {line}: {reason}", kind: "EBADMSG", details: {"line": "{line}"}
     )
 
 fn missing_value_error(path: String) Error:
     return Error(
-        "template: no value for {path}", kind: "ENOENT",
-        details: {"path": path}
+        "template: no value for {path}", kind: "ENOENT", details: {"path": path}
     )
 
 fn invalid_filter_error(name: String, reason: String) Error:
     return Error(
-        "template: filter {name}: {reason}", kind: "EINVAL",
-        details: {"filter": name}
+        "template: filter {name}: {reason}", kind: "EINVAL", details: {"filter": name}
     )
 
 fn unknown_partial_error(name: String) Error:
     return Error(
-        "template: unknown partial {name}", kind: "ENOENT",
-        details: {"partial": name}
+        "template: unknown partial {name}", kind: "ENOENT", details: {"partial": name}
     )
 
 // Compiles template source. With `html: true`, printed values are HTML-escaped unless they end in `| raw`.
@@ -705,9 +701,7 @@ impl Run:
     var fn write(text: String) Unit!Error:
         self.written += text.length()
         if self.written > self.limit: return error(
-            Error(
-                "template: output limit exceeded", kind: "EOVERFLOW"
-            )
+            Error("template: output limit exceeded", kind: "EOVERFLOW")
         )
 
         self.out.append(text)

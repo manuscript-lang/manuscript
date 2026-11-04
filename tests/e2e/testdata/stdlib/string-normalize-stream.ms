@@ -37,15 +37,11 @@ test "normalization keeps exact exceeded zero negative and invalid form budgets"
             normalization.text.normalize(
                 normalization.form, size - 1
             ).err(),
-            Error(
-                "string: limit exceeded", kind: "EOVERFLOW"
-            )
+            Error("string: limit exceeded", kind: "EOVERFLOW")
         )
         try expect_equal(
             normalization.text.normalize(normalization.form, 0).err(),
-            Error(
-                "string: limit exceeded", kind: "EOVERFLOW"
-            )
+            Error("string: limit exceeded", kind: "EOVERFLOW")
         )
         try expect_equal(
             normalization.text.normalize(normalization.form, -1).err(),
@@ -54,8 +50,7 @@ test "normalization keeps exact exceeded zero negative and invalid form budgets"
 
     for form in ["", "nfc", "NFC\u{0}", "UNKNOWN"]:
         try expect_equal(
-            "é".normalize(form).err(),
-            Error("string: invalid input", kind: "EINVAL")
+            "é".normalize(form).err(), Error("string: invalid input", kind: "EINVAL")
         )
         try expect_equal(
             "é".normalize(form, -1).err(),

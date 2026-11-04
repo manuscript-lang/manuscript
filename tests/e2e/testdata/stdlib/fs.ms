@@ -42,9 +42,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
     matches.map(fn e: e.path.clone()) | try expect_equal(["a.txt", "b.md", "sub/c.txt"])
     glob(
         path: root, options: GlobOptions(patterns: ["**/*.\{txt,md\}"], max_results: 2)
-    ) | try expect_fs_error(
-        Error("filesystem: limit exceeded", kind: "EOVERFLOW")
-    )
+    ) | try expect_fs_error(Error("filesystem: limit exceeded", kind: "EOVERFLOW"))
     glob(path: root, options: GlobOptions(patterns: ["\{a.txt,[\}"])) | try expect_fs_error(
         Error("filesystem: invalid input", kind: "EINVAL")
     )
@@ -70,7 +68,7 @@ test "ordinary filesystem misuse retains typed cases":
     let _child = write_file(path: "{directory}/child", data: "x", replace: false).wait() | try expect_ok
     let _written = write_file(path: file, data: "abc", replace: false).wait() | try expect_ok
     remove(path: directory, recursive: false) | try expect_fs_error(
-        Error("filesystem: directory not empty", kind: "EUNKNOWN")
+        Error("filesystem: directory not empty", kind: "ENOTEMPTY")
     )
     list(path: file) | try expect_fs_error(
         Error("filesystem: invalid input", kind: "EINVAL")
@@ -83,29 +81,17 @@ test "ordinary filesystem misuse retains typed cases":
     )
 
     var reader = open(path: file, flags: "r", mode: 384) | try expect_ok
-    reader.write(
-        "x"
-    ) | try expect_fs_error(
-        Error("I/O: invalid input", kind: "EINVAL")
-    )
+    reader.write("x") | try expect_fs_error(Error("I/O: invalid input", kind: "EINVAL"))
     reader.seek(
         offset: -1, origin: 0
-    ) | try expect_fs_error(
-        Error("filesystem: invalid input", kind: "EINVAL")
-    )
+    ) | try expect_fs_error(Error("filesystem: invalid input", kind: "EINVAL"))
     reader.seek(
         offset: 0, origin: 3
-    ) | try expect_fs_error(
-        Error("filesystem: invalid input", kind: "EINVAL")
-    )
+    ) | try expect_fs_error(Error("filesystem: invalid input", kind: "EINVAL"))
     try reader.close()
 
     let writer = open(path: file, flags: "a", mode: 384) | try expect_ok
-    writer.read(
-        1
-    ) | try expect_fs_error(
-        Error("I/O: invalid input", kind: "EINVAL")
-    )
+    writer.read(1) | try expect_fs_error(Error("I/O: invalid input", kind: "EINVAL"))
     writer.read_file() | try expect_fs_error(
         Error("filesystem: invalid input", kind: "EINVAL")
     )
@@ -134,9 +120,7 @@ test "filesystem scoped temporary directories and bounded file reads":
     (input.read().wait() | try expect_ok).get() | try expect_equal("hello".to_bytes())
     try temporary.close()
     stat(path: directory, follow_links: true) | try expect_fs_error(
-        Error(
-            "filesystem: file or directory not found", kind: "ENOENT"
-        )
+        Error("filesystem: file or directory not found", kind: "ENOENT")
     )
 
 test "file handles positional I/O stream adapters and closed errors":
@@ -157,17 +141,13 @@ test "file handles positional I/O stream adapters and closed errors":
     contents | try expect_equal("aXYd".to_bytes())
     try handle.close()
 
-    let closed: Bytes! = error(
-        Error("filesystem: resource is closed", kind: "EBADF")
-    )
+    let closed: Bytes! = error(Error("filesystem: resource is closed", kind: "EBADF"))
     handle.read_at(offset: 0, max_bytes: 1) | try expect_equal(closed)
     try handle.close()
 
 test "empty paths are rejected instead of resolving to the working directory":
     let invalid: Unit! = error(
-        cause: Error(
-            "filesystem: invalid input", kind: "EINVAL"
-        )
+        cause: Error("filesystem: invalid input", kind: "EINVAL")
     )
     remove(path: "", recursive: true) | try expect_equal(invalid)
     create_directory(path: "", recursive: true) | try expect_equal(invalid)
@@ -176,12 +156,7 @@ test "empty paths are rejected instead of resolving to the working directory":
     match stat(path: "", follow_links: true):
         ok(_): return fail("stat empty path")
         error(cause):
-            try expect_equal(
-                cause,
-                Error(
-                    "filesystem: invalid input", kind: "EINVAL"
-                )
-            )
+            try expect_equal(cause, Error("filesystem: invalid input", kind: "EINVAL"))
 
 test "rename and copy failures name source and destination":
     let temporary = temporary("manuscript-pair-") | try expect_ok

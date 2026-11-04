@@ -62,9 +62,7 @@ test "capture spans distinguish no match absent groups and empty captures":
     plain.capture_spans(
         "aé", 0
     ) | try expect_error | try expect_equal(
-        Error(
-            "regular expression: limit exceeded", kind: "EOVERFLOW"
-        )
+        Error("regular expression: limit exceeded", kind: "EOVERFLOW")
     )
 
 test "capture rows clear absent groups and retain all group indices":
@@ -94,9 +92,7 @@ test "span budgets cover whole and unmatched capture slots":
     re.find_all_spans(
         "ab", 1
     ) | try expect_error | try expect_equal(
-        Error(
-            "regular expression: limit exceeded", kind: "EOVERFLOW"
-        )
+        Error("regular expression: limit exceeded", kind: "EOVERFLOW")
     )
     re.capture_spans(
         "ab", 3
@@ -106,9 +102,7 @@ test "span budgets cover whole and unmatched capture slots":
     re.capture_spans(
         "ab", 2
     ) | try expect_error | try expect_equal(
-        Error(
-            "regular expression: limit exceeded", kind: "EOVERFLOW"
-        )
+        Error("regular expression: limit exceeded", kind: "EOVERFLOW")
     )
 
     let exact = re.capture_all_spans("ab", 2, 6) | try expect_ok
@@ -116,16 +110,12 @@ test "span budgets cover whole and unmatched capture slots":
     re.capture_all_spans(
         "ab", 2, 5
     ) | try expect_error | try expect_equal(
-        Error(
-            "regular expression: limit exceeded", kind: "EOVERFLOW"
-        )
+        Error("regular expression: limit exceeded", kind: "EOVERFLOW")
     )
     re.capture_all_spans(
         "ab", 1, 6
     ) | try expect_error | try expect_equal(
-        Error(
-            "regular expression: limit exceeded", kind: "EOVERFLOW"
-        )
+        Error("regular expression: limit exceeded", kind: "EOVERFLOW")
     )
     re.capture_all_spans("", 0, 0) | try expect_ok | try expect_equal(
         List[List[RegexSpan?]]()
@@ -135,30 +125,22 @@ test "span budgets cover whole and unmatched capture slots":
         re.find_all_spans(
             "", cap
         ) | try expect_error | try expect_equal(
-            Error(
-                "regular expression: invalid input", kind: "EINVAL"
-            )
+            Error("regular expression: invalid input", kind: "EINVAL")
         )
         re.capture_spans(
             "", cap
         ) | try expect_error | try expect_equal(
-            Error(
-                "regular expression: invalid input", kind: "EINVAL"
-            )
+            Error("regular expression: invalid input", kind: "EINVAL")
         )
         re.capture_all_spans(
             "", cap, none
         ) | try expect_error | try expect_equal(
-            Error(
-                "regular expression: invalid input", kind: "EINVAL"
-            )
+            Error("regular expression: invalid input", kind: "EINVAL")
         )
         re.capture_all_spans(
             "", none, cap
         ) | try expect_error | try expect_equal(
-            Error(
-                "regular expression: invalid input", kind: "EINVAL"
-            )
+            Error("regular expression: invalid input", kind: "EINVAL")
         )
 
 test "span methods support bound calls and preserve anchor context":
@@ -183,16 +165,12 @@ test "span results remain bounded for dense matches":
     re.find_all_spans(
         text, 1
     ) | try expect_error | try expect_equal(
-        Error(
-            "regular expression: limit exceeded", kind: "EOVERFLOW"
-        )
+        Error("regular expression: limit exceeded", kind: "EOVERFLOW")
     )
     re.capture_all_spans(
         text, none, 3
     ) | try expect_error | try expect_equal(
-        Error(
-            "regular expression: limit exceeded", kind: "EOVERFLOW"
-        )
+        Error("regular expression: limit exceeded", kind: "EOVERFLOW")
     )
     re.capture_spans(
         text, 3

@@ -15,16 +15,11 @@ fn consume(result: Result[String, Error], expected: String, status: Int) Int:
     let actual_error = result.err()
     if (
         status == 1
-        and actual_error != Error(
-            "string: limit exceeded", kind: "EOVERFLOW"
-        )
+        and actual_error != Error("string: limit exceeded", kind: "EOVERFLOW")
     ): return (-1)
-    if (
-        status == 2
-        and actual_error != Error(
-            "string: invalid input", kind: "EINVAL"
-        )
-    ): return (-1)
+    if (status == 2 and actual_error != Error("string: invalid input", kind: "EINVAL")): return (
+        -1
+    )
 
     return 17
 

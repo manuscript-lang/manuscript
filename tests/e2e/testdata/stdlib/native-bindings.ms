@@ -61,8 +61,7 @@ test "set_identity and set_groups validate input and apply or refuse":
         Error("process: invalid input", kind: "EINVAL")
     )
     try expect_process_error(
-        set_groups(groups: [-1]),
-        Error("process: invalid input", kind: "EINVAL")
+        set_groups(groups: [-1]), Error("process: invalid input", kind: "EINVAL")
     )
 
     let info = try process_info()
@@ -71,15 +70,11 @@ test "set_identity and set_groups validate input and apply or refuse":
         // Windows has no ids.
         try expect_process_error(
             set_identity(kind: "uid", id: 0),
-            Error(
-                "process: operation not supported", kind: "ENOTSUP"
-            )
+            Error("process: operation not supported", kind: "ENOTSUP")
         )
         try expect_process_error(
             set_groups(groups: [0]),
-            Error(
-                "process: operation not supported", kind: "ENOTSUP"
-            )
+            Error("process: operation not supported", kind: "ENOTSUP")
         )
     else:
         // Setting the identity it already has changes nothing and needs no privilege.
@@ -95,9 +90,7 @@ test "set_identity and set_groups validate input and apply or refuse":
         else:
             try expect_process_error(
                 set_groups(groups: groups),
-                Error(
-                    "process: permission denied", kind: "EACCES"
-                )
+                Error("process: permission denied", kind: "EACCES")
             )
 
 test "replace rejects invalid programs before leaving this process":
@@ -110,27 +103,14 @@ test "replace rejects invalid programs before leaving this process":
     if info.uid < 0:
         // Windows has no exec.
         try expect_process_error(
-            empty,
-            Error(
-                "process: operation not supported", kind: "ENOTSUP"
-            )
+            empty, Error("process: operation not supported", kind: "ENOTSUP")
         )
         try expect_process_error(
-            missing,
-            Error(
-                "process: operation not supported", kind: "ENOTSUP"
-            )
+            missing, Error("process: operation not supported", kind: "ENOTSUP")
         )
     else:
-        try expect_process_error(
-            empty,
-            Error(
-                "process: invalid input", kind: "EINVAL"
-            )
-        )
-        try expect_process_error(
-            missing, Error("process: not found", kind: "ENOENT")
-        )
+        try expect_process_error(empty, Error("process: invalid input", kind: "EINVAL"))
+        try expect_process_error(missing, Error("process: not found", kind: "ENOENT"))
 
 test "stat_filesystem describes the filesystem under a path":
     let info = try stat_filesystem(path: ".")
@@ -138,9 +118,7 @@ test "stat_filesystem describes the filesystem under a path":
     try expect_false(info.blocks_available > info.blocks_free)
     try expect_fs_error(
         stat_filesystem(path: "/definitely/not/a/path"),
-        Error(
-            "filesystem: file or directory not found", kind: "ENOENT"
-        )
+        Error("filesystem: file or directory not found", kind: "ENOENT")
     )
 
 // Reads events until one has `path` and `kind`, or `tries` events passed.

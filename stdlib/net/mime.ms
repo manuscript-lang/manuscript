@@ -116,24 +116,18 @@ export fn parse_media_type(text: String) MediaType!:
 
         let at = piece.index_of("=")
         if not at.is_some(): return error(
-            Error(
-                "MIME: invalid media type", kind: "EBADMSG"
-            )
+            Error("MIME: invalid media type", kind: "EBADMSG")
         )
 
         let name = piece.take(at.get(0)).trim().lower()
         let raw = piece.drop(at.get(0) + 1).trim()
         if name.is_empty(): return error(
-            Error(
-                "MIME: invalid media type", kind: "EBADMSG"
-            )
+            Error("MIME: invalid media type", kind: "EBADMSG")
         )
 
         let value = unquote(raw)
         if not value.is_some(): return error(
-            Error(
-                "MIME: invalid media type", kind: "EBADMSG"
-            )
+            Error("MIME: invalid media type", kind: "EBADMSG")
         )
 
         params.add(name, value.get(""))
@@ -213,9 +207,7 @@ export fn parse_headers(text: String) Headers!:
 
         if line.starts_with(" ") or line.starts_with("\t"):
             if fields.is_empty(): return error(
-                Error(
-                    "MIME: invalid header", kind: "EBADMSG"
-                )
+                Error("MIME: invalid header", kind: "EBADMSG")
             )
 
             let last = fields.length() - 1
@@ -337,12 +329,7 @@ impl Transform[Bytes, Part] for MultipartParts:
             if at.is_none():
                 if let limit = self.max_part_bytes:
                     if self.buffer.length() > limit + self.delimiter.length():
-                        return error(
-                            Error(
-                                "MIME: limit exceeded",
-                                kind: "EOVERFLOW"
-                            )
-                        )
+                        return error(Error("MIME: limit exceeded", kind: "EOVERFLOW"))
                 break
 
             let end = at.get()
@@ -366,11 +353,7 @@ impl Transform[Bytes, Part] for MultipartParts:
     var fn finish(var out: WriteStream[Part]) Unit!:
         if self.done: return ok(unit)
 
-        return error(
-            Error(
-                "MIME: invalid multipart body", kind: "EBADMSG"
-            )
-        )
+        return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
 
 /*
 Reads the parts of a multipart body from a byte stream, one at a time, for uploads too big to hold in memory.

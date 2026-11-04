@@ -25,9 +25,7 @@ test "missing embedded files report NotFound":
     files().read(
         "nope.txt", none
     ) | try expect_error | try expect_equal(
-        Error(
-            "filesystem: file or directory not found", kind: "ENOENT"
-        )
+        Error("filesystem: file or directory not found", kind: "ENOENT")
     )
 
 test "embedded trees respect read limits and directories":

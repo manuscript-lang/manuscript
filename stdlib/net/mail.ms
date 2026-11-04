@@ -47,9 +47,7 @@ impl Address:
 // the name are decoded. Comments are not supported.
 export fn parse_address(text: String) Address!:
     let trimmed = text.trim()
-    if trimmed.is_empty(): return error(
-        Error("mail: invalid address", kind: "EBADMSG")
-    )
+    if trimmed.is_empty(): return error(Error("mail: invalid address", kind: "EBADMSG"))
 
     var name = ""
     var address = trimmed.clone()
@@ -139,9 +137,7 @@ export fn parse_message(raw: String) Message!:
         head = raw.clone()
 
     let headers = parse_headers(head)
-    if headers.is_error(): return error(
-        Error("mail: invalid message", kind: "EBADMSG")
-    )
+    if headers.is_error(): return error(Error("mail: invalid message", kind: "EBADMSG"))
 
     return ok(Message(headers: headers.get(), body: body))
 

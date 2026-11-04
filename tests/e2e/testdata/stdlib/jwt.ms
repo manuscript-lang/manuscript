@@ -223,6 +223,4 @@ test "sign returns InvalidKey for a key that does not fit":
     let result = sign_token(session(1), "short".to_bytes(), JwtAlgorithm.EdDsa)
     if let _ = result: return fail("accepted")
 
-    result | try expect_equal(
-        error(Error("jwt: invalid key", kind: "EINVAL"))
-    )
+    result | try expect_equal(error(Error("jwt: invalid key", kind: "EINVAL")))

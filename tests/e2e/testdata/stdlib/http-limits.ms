@@ -56,6 +56,4 @@ test "serve rejects a zero request timeout":
             options: HttpServerOptions(timeout: 0.seconds())
         )
     )
-    try expect_equal(
-        failure, Error("HTTP: invalid input", kind: "EINVAL")
-    )
+    try expect_equal(failure, Error("HTTP: invalid input", kind: "EINVAL"))

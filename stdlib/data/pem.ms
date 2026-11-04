@@ -58,16 +58,12 @@ export fn parse(text: String) List[PemBlock]!:
         if line.starts_with(END):
             let closing = line.drop(END.length())
             if closing != "{label}{DASHES}": return error(
-                Error(
-                    "PEM: invalid armor", kind: "EBADMSG"
-                )
+                Error("PEM: invalid armor", kind: "EBADMSG")
             )
 
             let data = base64_decode(body)
             if data.is_error(): return error(
-                Error(
-                    "PEM: invalid data", kind: "EBADMSG"
-                )
+                Error("PEM: invalid data", kind: "EBADMSG")
             )
 
             blocks.append(

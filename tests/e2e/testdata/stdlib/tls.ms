@@ -52,9 +52,7 @@ test "TLS certificate parsing verification hostname and expiration":
             server_name: "stdlib.test", now: now
         ) | try expect_ok
     )
-    let failed: Unit! = error(
-        Error("TLS: authentication failed", kind: "EUNKNOWN")
-    )
+    let failed: Unit! = error(Error("TLS: authentication failed", kind: "EAUTH"))
     try expect_false(
         (
             verify_certificates(

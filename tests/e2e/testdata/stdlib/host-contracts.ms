@@ -23,9 +23,7 @@ test "closed codec strings reject spelling changes with their domain errors":
         try expect_equal((try "text".normalize(form)), "text")
 
     let compression_error: Bytes! = error(
-        Error(
-            "compression: operation not supported", kind: "ENOTSUP"
-        )
+        Error("compression: operation not supported", kind: "ENOTSUP")
     )
 
     for format in ["GZIP", "ZLIB", "DEFLATE", ""]:
@@ -43,21 +41,15 @@ test "closed codec strings reject spelling changes with their domain errors":
                 data
             )
 
-    let level_error: Bytes! = error(
-        Error("compression: invalid input", kind: "EINVAL")
-    )
+    let level_error: Bytes! = error(Error("compression: invalid input", kind: "EINVAL"))
     for level in [-1, 10]:
         try expect_equal(compress(data, "gzip", level), level_error)
 
     let pack_error: Bytes! = error(
-        Error(
-            "archive: operation not supported", kind: "ENOTSUP"
-        )
+        Error("archive: operation not supported", kind: "ENOTSUP")
     )
     let unpack_error: List[ArchiveEntry]! = error(
-        Error(
-            "archive: operation not supported", kind: "ENOTSUP"
-        )
+        Error("archive: operation not supported", kind: "ENOTSUP")
     )
 
     for format in ["ZIP", "TAR", ""]:

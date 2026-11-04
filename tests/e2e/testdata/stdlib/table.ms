@@ -34,12 +34,8 @@ test "table supports empty inputs and zero cell rows":
     try expect_equal((try format([[""]], max_bytes: 0)), "")
 
 test "table returns typed errors for malformed cells rows and options":
-    let invalid: String! = error(
-        Error("table: invalid input", kind: "EINVAL")
-    )
-    let malformed: String! = error(
-        Error("table: invalid data", kind: "EBADMSG")
-    )
+    let invalid: String! = error(Error("table: invalid input", kind: "EINVAL"))
+    let malformed: String! = error(Error("table: invalid data", kind: "EBADMSG"))
     let rows = [["a", "b"]]
     try expect_equal(format(rows, padding: -1), invalid)
     try expect_equal(format(rows, max_rows: -1), invalid)
@@ -59,9 +55,7 @@ test "table applies exact optional budgets to UTF8 and generated padding":
     let rows = [["界", "x"], ["a", "yz"]]
     let expected = "界   x\n a  yz"
     let alignments = [Alignment.Right, Alignment.Right]
-    let limited: String! = error(
-        Error("table: limit exceeded", kind: "EOVERFLOW")
-    )
+    let limited: String! = error(Error("table: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(
         (
             try format(
@@ -92,17 +86,13 @@ test "table applies exact optional budgets to UTF8 and generated padding":
 
 test "table errors describe the table domain":
     try expect_equal(
-        Error("table: invalid input", kind: "EINVAL").message,
-        "table: invalid input"
+        Error("table: invalid input", kind: "EINVAL").message, "table: invalid input"
     )
     try expect_equal(
-        Error("table: invalid data", kind: "EBADMSG").message,
-        "table: invalid data"
+        Error("table: invalid data", kind: "EBADMSG").message, "table: invalid data"
     )
     try expect_equal(
-        Error(
-            "table: limit exceeded", kind: "EOVERFLOW"
-        ).message,
+        Error("table: limit exceeded", kind: "EOVERFLOW").message,
         "table: limit exceeded"
     )
 

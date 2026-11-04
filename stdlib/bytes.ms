@@ -284,11 +284,7 @@ impl BytesCodecs for Bytes:
 
             let byte = self.get(at + i).to_int()
             if i == 9 and byte > 1:
-                return error(
-                    Error(
-                        "binary: varint overflows 64 bits", kind: "ERANGE"
-                    )
-                )
+                return error(Error("binary: varint overflows 64 bits", kind: "ERANGE"))
 
             word = msrt_bits_bit_or(
                 word,

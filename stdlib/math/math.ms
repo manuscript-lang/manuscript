@@ -641,11 +641,7 @@ export fn parse(text: String, radix: Int, max_digits: Int?) BigInt!:
 // Returns n! for a non-negative n; a negative n returns InvalidInput. Work and result size grow quickly with n.
 export fn factorial(n: Int) BigInt!:
     if n < 0:
-        return error(
-            Error(
-                "big integer: invalid input", kind: "EINVAL"
-            )
-        )
+        return error(Error("big integer: invalid input", kind: "EINVAL"))
     if n < 2:
         return ok(msstd_bigint_from_int(1))
 
@@ -665,11 +661,7 @@ fn range_product(low: Int, high: Int) BigInt:
 // Returns the binomial coefficient "n choose k", which is 0 when k exceeds n; a negative n or k returns InvalidInput.
 export fn binomial(n: Int, k: Int) BigInt!:
     if n < 0 or k < 0:
-        return error(
-            Error(
-                "big integer: invalid input", kind: "EINVAL"
-            )
-        )
+        return error(Error("big integer: invalid input", kind: "EINVAL"))
     if k > n:
         return ok(msstd_bigint_from_int(0))
 
@@ -778,11 +770,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
     let one = msstd_bigint_from_int(1)
     let two = msstd_bigint_from_int(2)
     if modulus.compare(msstd_bigint_from_int(3)) < 0 or bigint_is_even(modulus):
-        return error(
-            Error(
-                "big integer: invalid input", kind: "EINVAL"
-            )
-        )
+        return error(Error("big integer: invalid input", kind: "EINVAL"))
 
     var target = value % modulus
     if target.sign() < 0:
@@ -822,11 +810,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
             non_residue = non_residue + one
             tries += 1
             if tries > 1000:
-                return error(
-                    Error(
-                        "big integer: invalid input", kind: "EINVAL"
-                    )
-                )
+                return error(Error("big integer: invalid input", kind: "EINVAL"))
 
         var m = twos
         var c = non_residue.pow_mod(odd_part, modulus).get(bigint_zero())
@@ -842,11 +826,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
                 i += 1
 
             if i == 0 or i >= m:
-                return error(
-                    Error(
-                        "big integer: invalid input", kind: "EINVAL"
-                    )
-                )
+                return error(Error("big integer: invalid input", kind: "EINVAL"))
 
             let b = bigint_square_times(c, m - i - 1, modulus)
             m = i
@@ -855,10 +835,6 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
             root = root * b % modulus
 
     if (root * root % modulus).compare(target) != 0:
-        return error(
-            Error(
-                "big integer: invalid input", kind: "EINVAL"
-            )
-        )
+        return error(Error("big integer: invalid input", kind: "EINVAL"))
 
     return ok(root)

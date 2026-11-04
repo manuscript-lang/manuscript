@@ -120,12 +120,7 @@ test "string lookup leaves out values that are not UTF-8":
     match fields.append("bad name", "value"):
         ok(_): return fail("malformed name accepted")
         error(cause):
-            try expect_equal(
-                cause,
-                Error(
-                    "HTTP: invalid input", kind: "EINVAL"
-                )
-            )
+            try expect_equal(cause, Error("HTTP: invalid input", kind: "EINVAL"))
 
 test "empty options and an omitted request body use checked defaults":
     let client_options = HttpClientOptions()

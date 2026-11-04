@@ -830,9 +830,7 @@ export fn move(source: String, destination: String) Unit!:
     if renamed.is_ok(): return renamed
 
     let cause = renamed.err()
-    if cause.kind == "EIO": return move_by_copy(
-        source, destination, cause
-    )
+    if cause.kind == "EIO": return move_by_copy(source, destination, cause)
 
     return error(cause)
 
@@ -870,9 +868,7 @@ export fn watch(
 ) ReadStream[FileEvent]!:
     if let interval = options.interval:
         if options.max_events.is_some() or options.overflow.is_some(): return error(
-            Error(
-                "filesystem: invalid input", kind: "EINVAL"
-            )
+            Error("filesystem: invalid input", kind: "EINVAL")
         )
 
         return ok(

@@ -5,9 +5,7 @@ test "zero shifts have zero result bits at every nonnegative count":
     for count in [0, 16777216, 16777217, 9223372036854775807]:
         try expect_equal((try from_int(0).shift_left(count)).to_int(), 0)
 
-    let invalid: BigInt! = error(
-        Error("big integer: invalid input", kind: "EINVAL")
-    )
+    let invalid: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
     try expect_equal(from_int(0).shift_left(-1), invalid)
 
 test "nonzero shifts still enforce the result bit budget":

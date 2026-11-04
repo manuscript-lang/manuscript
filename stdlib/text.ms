@@ -146,21 +146,13 @@ export fn unquote(text: String) String!:
     while i < end:
         let c = cs[i]
         if c == 34:
-            return error(
-                Error(
-                    "string: invalid input", kind: "EINVAL"
-                )
-            )
+            return error(Error("string: invalid input", kind: "EINVAL"))
 
         if c != 92:
             out.append(c)
             i += 1
         else if i + 1 >= end:
-            return error(
-                Error(
-                    "string: invalid input", kind: "EINVAL"
-                )
-            )
+            return error(Error("string: invalid input", kind: "EINVAL"))
         else:
             let e = cs[i + 1]
             i += 2
@@ -192,22 +184,13 @@ export fn unquote(text: String) String!:
                             )
                         )
                     ):
-                        return error(
-                            Error(
-                                "string: invalid input",
-                                kind: "EINVAL"
-                            )
-                        )
+                        return error(Error("string: invalid input", kind: "EINVAL"))
 
                     hex.append(digit)
                     j += 1
 
                 if j >= end or hex.is_empty():
-                    return error(
-                        Error(
-                            "string: invalid input", kind: "EINVAL"
-                        )
-                    )
+                    return error(Error("string: invalid input", kind: "EINVAL"))
 
                 let digits = try from_scalars(hex)
                 let value = parse_int_radix(digits, 16)
@@ -215,18 +198,10 @@ export fn unquote(text: String) String!:
                 if let v = value:
                     out.append(v)
                 else:
-                    return error(
-                        Error(
-                            "string: invalid input", kind: "EINVAL"
-                        )
-                    )
+                    return error(Error("string: invalid input", kind: "EINVAL"))
 
                 i = j + 1
             else:
-                return error(
-                    Error(
-                        "string: invalid input", kind: "EINVAL"
-                    )
-                )
+                return error(Error("string: invalid input", kind: "EINVAL"))
 
     return from_scalars(out)

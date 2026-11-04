@@ -66,9 +66,7 @@ fn now_ms() Int:
 // Encodes `fields` as JSON text. Anything `stringify` rejects is `InvalidData`.
 fn encode_fields[F: Data](fields: F) String!:
     let text = stringify(fields)
-    if text.is_error(): return error(
-        Error("logging: invalid data", kind: "EBADMSG")
-    )
+    if text.is_error(): return error(Error("logging: invalid data", kind: "EBADMSG"))
 
     return ok(text.get())
 
@@ -93,9 +91,7 @@ fn merge_context(parent: String?, child: String) String!:
         merged.add(entry.key, entry.value.clone())
 
     let text = stringify(JsonValue.ObjectValue(merged))
-    if text.is_error(): return error(
-        Error("logging: invalid data", kind: "EBADMSG")
-    )
+    if text.is_error(): return error(Error("logging: invalid data", kind: "EBADMSG"))
 
     return ok(text.get())
 
@@ -210,9 +206,7 @@ impl Logger:
         line = "{line}\}\n"
         if let max = self.max_bytes:
             if line.byte_length() > max: return error(
-                Error(
-                    "logging: limit exceeded", kind: "EOVERFLOW"
-                )
+                Error("logging: limit exceeded", kind: "EOVERFLOW")
             )
         return self.transport.write(line)
 
@@ -227,9 +221,7 @@ impl Logger:
     */
     fn log[F: Data = Unit](level: LogLevel, message: String, fields: F? = none) Unit!:
         if level == LogLevel.Silent: return error(
-            Error(
-                "logging: invalid input", kind: "EINVAL"
-            )
+            Error("logging: invalid input", kind: "EINVAL")
         )
         if not self.enabled(level): return ok(unit)
 
@@ -305,11 +297,7 @@ export fn create(
     max_bytes: Int?
 ) Logger!:
     if let max = max_bytes:
-        if max < 0: return error(
-            Error(
-                "logging: invalid input", kind: "EINVAL"
-            )
-        )
+        if max < 0: return error(Error("logging: invalid input", kind: "EINVAL"))
 
     var threshold = 30
     if let chosen = level:

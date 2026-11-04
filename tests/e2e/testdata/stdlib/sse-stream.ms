@@ -163,8 +163,7 @@ test "a read failure is the stream's error and events before it arrive":
     var events = sse_events(
         stream[Bytes](
             Chunks(
-                ["data: a\n\n".to_bytes()], 0,
-                Error("I/O: closed", kind: "EBADF")
+                ["data: a\n\n".to_bytes()], 0, Error("I/O: closed", kind: "EBADF")
             )
         )
     )

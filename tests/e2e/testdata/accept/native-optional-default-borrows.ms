@@ -8,11 +8,7 @@ fn heap_text(seed: Int) String:
 fn missing_temporary(seed: Int) Int!:
     let absent: Int? = none
     let convert = absent.ok_or[Error]
-    return convert(
-        Error(
-            "missing value at " + heap_text(seed), kind: "ENOENT"
-        )
-    )
+    return convert(Error("missing value at " + heap_text(seed), kind: "ENOENT"))
 
 fn string_temporary(seed: Int) Int!String:
     let absent: Int? = none
