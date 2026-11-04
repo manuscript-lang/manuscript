@@ -640,7 +640,8 @@ impl<'a> FnLower<'a> {
     /// An owned value for the payload of a `Result` or `Optional` built from a borrowed part
     /// (`ok(p.name)` beside a new value, `try` on a borrowed `Result`). Wrapping a borrowed
     /// payload copies it by the language's rule for these two types, so the copy is declared
-    /// here and the strict gate does not report it.
+    /// here and the strict gate does not report it. Interim workaround: delete it once these
+    /// positions lend instead of copying (#2540).
     pub fn owned_wrap(&mut self, x: Val) -> Value {
         if x.own {
             return x.v;
