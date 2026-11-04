@@ -8,3 +8,7 @@ Rules: `RecSet`/`RecFill` build a fresh block and free the old one, never writin
 
 Apply when: adding a record repr, changing `Error` fields, or tracing frame size (`objdump` the `sub rsp` of the function; the stack-slot temporaries and the inlined `Error` construction are the remaining cost).
 Evidence: [proposal](../../proposals/boxed-error-record.md).
+
+## Temporary slots are shared between blocks
+
+`crates/ms-clif/src/slotshare.rs` gives the k-th block-confined temporary of every block one slot (call out-parameters, string copies, spilled call arguments; `Lower::temp_slot` / `spill_temp`). A slot whose address is stored, returned, branched with or used in a second block keeps its own. Do not use `spill_temp` where the runtime keeps the address: `msrt_cleanup_push` holds its slot until the scope ends, and sharing it crashed the HTTP e2e fixtures with SIGSEGV. After: the error-reachable `walk` is 240 B Cranelift debug and 208 B LLVM release; the remaining release cost is the inlined `Error` construction (a 56 B map copy) plus the saved registers.
