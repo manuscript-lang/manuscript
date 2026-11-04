@@ -33,7 +33,7 @@ Unfamiliar term? Follow its link for exact rules.
 | [Capture](core-language/functions/function-values-and-closures.md) | A binding used from a surrounding function. Non-escaping closures borrow captures; escaping closures take ownership when created, following the move rules. |
 | [Alias](core-language/types/references.md) | Another borrow of the same object. Closing a resource affects every alias. |
 | [Resource lifetime](core-language/cleanup/_index.md) | How long a file, connection, or other external resource remains open and usable. |
-| [Promise](core-language/concurrency/promises.md) | Work already started, with one result taken through `wait()`. Dropping it cancels and waits for completion. |
+| [Promise](core-language/concurrency/promises.md) | An operation with one result taken through `wait()`; stream reads may defer work until the wait. Dropping it cancels and waits for completion. |
 | [Stream](core-language/concurrency/streams.md) | `ReadStream[T]` produces values over time; `WriteStream[T]` accepts them. Reads and writes can wait. |
 | [Pipe](core-language/concurrency/streams.md) | An in-memory reader and writer for transferring values between promises. |
 | Capability / authority | A service object that permits external operations, obtained through a host accessor or passed to a helper. |

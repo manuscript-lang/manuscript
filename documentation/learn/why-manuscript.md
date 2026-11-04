@@ -21,7 +21,7 @@ Diagnostics read `cause; fix`. When an agent writes `len(xs)`, `.unwrap()`, `nam
 
 ## Concurrency without `async`
 
-Any function can wait, so there is no `async`, no `await` and no function coloring. A call returning `Promise[T]` represents work that has already started, `promise(fn: ...)` starts your own work the same way, and `wait()` gives the result. Promises can read borrowed captures; mutable state stays with one owner and updates travel over a `pipe`. A resource moved into a promise belongs to that work. Dropping an unfinished promise cancels it and waits for it to end.
+Any function can wait, so there is no `async`, no `await` and no function coloring. `promise(fn: ...)` starts concurrent work and returns a `Promise[T]`; `wait()` takes its result. Streams are pulled lazily. Promises can read borrowed captures; mutable state stays with one owner and updates travel over a `pipe`. A resource moved into a promise belongs to that work. Dropping an unfinished promise cancels it and waits for it to end.
 
 Cancellation happens only at a `wait`, and a fault ends only the promise it happened in; read [concurrency](../core-language/concurrency/_index.md) before relying on them.
 

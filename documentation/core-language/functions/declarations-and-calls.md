@@ -153,6 +153,6 @@ Unreachable statements are still parsed, resolved, and type-checked. A `Never` f
 
 ## Calls that block
 
-A library call returning `Promise[T]` starts work and returns the promise; call `.wait()` to pause for its `Result`. Synchronous operations return their result directly. There is no `async` or `await`: any function can wait. See [promises](../concurrency/promises.md).
+A library call returning `Promise[T]` returns an operation whose `Result` is taken with `.wait()`. `promise(fn: ...)` starts concurrent work; stream reads may defer work until the wait. Other operations return their result directly. There is no `async` or `await`: any function can wait. See [promises](../concurrency/promises.md).
 
 See [function values and closures](function-values-and-closures.md) for functions as data.

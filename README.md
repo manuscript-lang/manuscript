@@ -21,7 +21,7 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 - **Memory:** one owner per value, moved at its last use, dropped deterministically, with borrows inferred. No collector, no lifetime annotations. Every `var` and `.clone()` is visible in the source. [References](documentation/core-language/types/references.md)
 - **Compile errors:** a dropped `Result`, a `match` missing a case, a borrow that outlives its owner, literal overflow.
 - **Runtime faults:** overflow, bounds, deadlock and skipped cleanup stop with a source trace. [Faults](documentation/core-language/errors/faults.md)
-- **Concurrency:** any function can wait. `Promise` represents running work, streams carry successive values, and a `pipe` transfers them between owners. Dropping a promise cancels it and waits for completion; cancellation is cooperative at waits. [Concurrency](documentation/core-language/concurrency/_index.md)
+- **Concurrency:** any function can wait. `Promise` represents an operation with one result, streams carry successive values, and a `pipe` transfers them between owners. Dropping a promise cancels it and waits for completion; cancellation is cooperative at waits. [Concurrency](documentation/core-language/concurrency/_index.md)
 - **Tests:** property tests draw inputs the agent did not think of and shrink failures; `ms test --fuzz 30s` turns them into a fuzzer. [Testing](documentation/learn/testing.md)
 
 ## Review agent-written changes

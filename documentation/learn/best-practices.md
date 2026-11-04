@@ -50,6 +50,6 @@ See the [testing guide](testing.md) for more.
 
 ## Bound concurrent work when you start it
 
-Use `PromiseOptions` when creating work that needs a deadline or a shared cancellation signal. `wait()` takes the result; it does not start the work or accept a timeout. Dropping a promise cancels it and waits for it to finish. Cancellation is delivered at waits, so a CPU loop must wait or check its cancel signal to respond.
+Use `PromiseOptions` when creating work that needs a deadline or a shared cancellation signal. `wait()` takes the result and accepts no timeout. Streams are pulled lazily. Dropping a promise cancels it and waits for it to finish. Cancellation is delivered at waits, so a CPU loop must wait or check its cancel signal to respond.
 
 Give mutable state one owner and send updates over a `pipe`. See [promises](../core-language/concurrency/promises.md) for deadlines and cancellation, and [streams and pipes](../core-language/concurrency/streams.md) for transferring values.
