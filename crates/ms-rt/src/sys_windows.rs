@@ -740,3 +740,69 @@ pub unsafe fn register_repeating_wait(
     };
     if ok == 0 { core::ptr::null_mut() } else { wait }
 }
+
+// ---- temporary diagnostic: report guard-page violations before the process dies ----
+
+#[repr(C)]
+struct ExceptionRecord {
+    code: u32,
+    flags: u32,
+    record: *mut c_void,
+    address: *mut c_void,
+    nparams: u32,
+    info: [usize; 15],
+}
+
+#[repr(C)]
+struct ExceptionPointers {
+    record: *mut ExceptionRecord,
+    context: *mut u8,
+}
+
+unsafe extern "system" {
+    fn AddVectoredExceptionHandler(
+        first: u32,
+        handler: unsafe extern "system" fn(*mut ExceptionPointers) -> i32,
+    ) -> *mut c_void;
+    fn GetCurrentThreadId() -> u32;
+}
+
+unsafe extern "system" fn guard_diag(p: *mut ExceptionPointers) -> i32 {
+    // SAFETY: the system passes live records.
+    unsafe {
+        let r = &*(*p).record;
+        if r.code != 0x8000_0001 && r.code != 0xC000_00FD && r.code != 0xC000_0005 {
+            return 0;
+        }
+        let ctx = (*p).context;
+        #[cfg(target_arch = "x86_64")]
+        let sp = *(ctx.add(0x98) as *const usize);
+        #[cfg(target_arch = "aarch64")]
+        let sp = *(ctx.add(0x100) as *const usize);
+        let teb = teb_stack();
+        eprintln!(
+            "GUARD DIAG: thread {} code {:#x} pc {:p} addr {:#x} write {} sp {:#x} teb base {:#x} limit {:#x} dealloc {:#x}; {}",
+            GetCurrentThreadId(),
+            r.code,
+            r.address,
+            r.info[1],
+            r.info[0],
+            sp,
+            teb[0],
+            teb[1],
+            teb[2],
+            crate::task::diag_describe(r.info[1], sp)
+        );
+    }
+    0
+}
+
+/// Installs the diagnostic once per process.
+pub fn install_guard_diag() {
+    static ONCE: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+    if ONCE.swap(true, core::sync::atomic::Ordering::Relaxed) {
+        return;
+    }
+    // SAFETY: a plain registration.
+    unsafe { AddVectoredExceptionHandler(1, guard_diag) };
+}
