@@ -287,6 +287,29 @@ impl<'a> FnLower<'a> {
                 self.at(e.pos);
                 self.native_call(native, params, &args, result)
             }
+            "embed/bytes" => {
+                // The argument is the Base64 text of the file, decoded here so the program holds
+                // the raw bytes in read-only data and a read decodes nothing.
+                let text = view
+                    .arguments
+                    .first()
+                    .and_then(|a| match &a.expr.kind {
+                        ExprKind::Text(parts) => match parts.as_slice() {
+                            [] => Some(""),
+                            [ms_syntax::ast::TextPart::Lit(t)] => Some(&**t),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .ok_or_else(|| {
+                        Error::new("the argument of msstd_embed_bytes is a string literal")
+                    })?;
+                let data = decode_base64(text)
+                    .ok_or_else(|| Error::new("the argument of msstd_embed_bytes is not Base64"))?;
+                self.at(e.pos);
+                let v = self.b.bytes_lit(data);
+                Ok(Val { v, own: false })
+            }
             "math/min" => self.math_extreme(view, false),
             "math/max" => self.math_extreme(view, true),
             other if crate::stdnative::handle_of(other).is_some() => {
@@ -3498,4 +3521,37 @@ impl FnLower<'_> {
             _ => None,
         }
     }
+}
+
+/// The bytes of standard Base64 text with `=` padding, or `None` when the text is not Base64.
+fn decode_base64(text: &str) -> Option<Vec<u8>> {
+    let bytes = text.as_bytes();
+    if !bytes.len().is_multiple_of(4) {
+        return None;
+    }
+    let sextet = |c: u8| -> Option<u32> {
+        match c {
+            b'A'..=b'Z' => Some(u32::from(c - b'A')),
+            b'a'..=b'z' => Some(u32::from(c - b'a') + 26),
+            b'0'..=b'9' => Some(u32::from(c - b'0') + 52),
+            b'+' => Some(62),
+            b'/' => Some(63),
+            _ => None,
+        }
+    };
+    let mut out = Vec::with_capacity(bytes.len() / 4 * 3);
+    for (i, chunk) in bytes.chunks(4).enumerate() {
+        let last = (i + 1) * 4 == bytes.len();
+        let pad = chunk.iter().rev().take_while(|c| **c == b'=').count();
+        if pad > 2 || (pad > 0 && !last) {
+            return None;
+        }
+        let mut word = 0u32;
+        for &c in &chunk[..4 - pad] {
+            word = word << 6 | sextet(c)?;
+        }
+        word <<= 6 * pad as u32;
+        out.extend_from_slice(&word.to_be_bytes()[1..4 - pad]);
+    }
+    Some(out)
 }

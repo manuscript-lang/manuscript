@@ -47,10 +47,10 @@ export fn main() Int:
 ```
 
 - `import files from "@assets"` imports a module that `ms` generates from the directory when the project loads. Write the name alone: `"@assets/x.ms"` is an error.
-- `files()` returns an `EmbeddedTree` from `@std/os/tree.ms`, so `read`, `children` and `walk` work as they do on a `host_tree`. Making it costs one map entry per file; `read` decodes only the file it returns.
+- `files()` returns an `EmbeddedTree` from `@std/os/tree.ms`, so `read`, `children` and `walk` work as they do on a `host_tree`. Making it costs one map entry per file; `read` copies only the file it returns.
 - Paths in the tree are relative to the directory and use `/` on every platform. Entries are listed in byte order. Hidden files are included.
 - Symbolic links, names that are not valid UTF-8, and names that differ only by letter case are errors. A file may be at most 16 MiB and a directory 64 MiB in total.
-- The files are stored in the program as base64 text, about a third larger than the files. An edited, added or removed file rebuilds the program.
+- The files are stored in the program as raw bytes in read-only data, so the program is no larger than the files plus the code. An edited, added or removed file rebuilds the program.
 - A name cannot also be an alias.
 
 ## Commands and module discovery

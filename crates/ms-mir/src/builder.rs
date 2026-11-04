@@ -372,6 +372,11 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.list(elem);
         self.val(Op::ListNew, &[cap], Imm::None, t)
     }
+    /// `bytes`: a borrowed `Bytes` over constant data in read-only memory.
+    pub fn bytes_lit(&mut self, data: Vec<u8>) -> Value {
+        let id = self.m.add_blob(data);
+        self.val(Op::BytesLit, &[], Imm::Int(id), Ty::BYTES)
+    }
     /// `list.lit`.
     pub fn list_lit(&mut self, elem: Ty, items: &[Value]) -> Value {
         let t = self.m.types.list(elem);
