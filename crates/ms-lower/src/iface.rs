@@ -271,7 +271,9 @@ impl Cx {
         let method = std::rc::Rc::new(method);
         // A standard module's native half has no queries of its own: its source twin or the
         // module of the use stands in.
-        let twin = ct::Name::from(format!("{}+source", self.syms.str(mref.module)).as_str());
+        let twin = self
+            .syms
+            .intern(&format!("{}+source", self.syms.str(mref.module)));
         let hir = self
             .module(mref.module)
             .or_else(|_| self.module(twin))

@@ -44,7 +44,7 @@ impl Checker {
                 let optional = parameter
                     .ty
                     .as_ref()
-                    .is_some_and(|ty| ty.name() == "Optional");
+                    .is_some_and(|ty| ty.name(self.syms) == "Optional");
                 if parameter.default.is_some() && !optional {
                     self.type_error(
                         parameter.pos,

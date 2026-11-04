@@ -81,10 +81,10 @@ fn exported_methods(syms: ms_syntax::Names, module: &Module) -> Vec<String> {
                 banned(syms, syms.str(i.name), &i.methods, &mut found);
             }
             DeclKind::Impl(i)
-                if exported.contains(i.receiver.name())
-                    && i.contract.as_ref().is_none_or(|c| c.name() != ITERATOR) =>
+                if exported.contains(i.receiver.name(syms))
+                    && i.contract.as_ref().is_none_or(|c| c.name(syms) != ITERATOR) =>
             {
-                banned(syms, i.receiver.name(), &i.methods, &mut found);
+                banned(syms, i.receiver.name(syms), &i.methods, &mut found);
             }
             _ => {}
         }

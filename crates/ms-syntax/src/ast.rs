@@ -209,10 +209,10 @@ pub struct ImplDecl {
 
 impl ImplDecl {
     /// Display name: `"Contract for Type"` or `"Type"`.
-    pub fn display_name(&self, synthetic: bool) -> String {
+    pub fn display_name(&self, syms: crate::Names, synthetic: bool) -> String {
         match (&self.contract, synthetic) {
-            (Some(c), false) => format!("{} for {}", c.name(), self.receiver.name()),
-            _ => self.receiver.name().to_string(),
+            (Some(c), false) => format!("{} for {}", c.name(syms), self.receiver.name(syms)),
+            _ => self.receiver.name(syms).to_string(),
         }
     }
 }
@@ -321,9 +321,9 @@ pub enum TypeKind {
 
 impl TypeRef {
     /// The type name; `"fn"` for function types.
-    pub fn name(&self) -> &str {
+    pub fn name(&self, syms: crate::Names) -> &str {
         match &self.kind {
-            TypeKind::Named { name, .. } => name.as_str(),
+            TypeKind::Named { name, .. } => syms.str(name),
             TypeKind::Fn { .. } => "fn",
         }
     }

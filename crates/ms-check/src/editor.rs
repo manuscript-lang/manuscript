@@ -101,6 +101,8 @@ pub fn members(
             });
         }
     }
+    let mut candidates: Vec<Name> = candidates.into_iter().collect();
+    candidates.sort_by(|a, b| syms.cmp(*a, *b));
     for name in candidates {
         if field_names.contains(&name) {
             continue;
