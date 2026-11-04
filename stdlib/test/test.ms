@@ -137,9 +137,9 @@ export fn expect_ok[T, E](actual: T!E, site: String = caller_site()) T!:
     return error(failure("expected ok, got an error", site))
 
 // Requires error and returns its original cause; fails on success.
-export fn expect_error[T, E](actual: T!E, site: String = caller_site()) E!:
+export fn expect_error[T, E: Clonable](actual: T!E, site: String = caller_site()) E!:
     if actual.is_error():
-        return ok(actual.err())
+        return ok(actual.err().clone())
 
     return error(failure("expected error, got {repr(actual)}", site))
 
@@ -216,7 +216,7 @@ export fn assert_ok[T, E](actual: T!E, site: String = caller_site()) T!:
     return expect_ok(actual, site)
 
 // TDD spelling of `expect_error` with the same comparison and failure behavior.
-export fn assert_error[T, E](actual: T!E, site: String = caller_site()) E!:
+export fn assert_error[T, E: Clonable](actual: T!E, site: String = caller_site()) E!:
     return expect_error(actual, site)
 
 // TDD spelling of `expect_fault`; checks a programming fault and returns its message.

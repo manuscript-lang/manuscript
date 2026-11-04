@@ -578,18 +578,15 @@ impl<'a> FnLower<'a> {
             return Err(Error::new("map_from_entries takes entry records"));
         };
         let lvar = self.fresh_var(lt);
-        let held = self.owned(Val {
-            v: list,
-            own: false,
-        });
+        let held = self.clone_value(list);
         self.b.def_var(lvar, held);
         let acc = self.fresh_var(map);
         let fresh = self.map_new(map)?;
         self.b.def_var(acc, fresh);
         self.each_element(lvar, &mut |s, _, item| {
             let (k, v) = (s.b.rec_get(rid, 0, item), s.b.rec_get(rid, 1, item));
-            let k = s.owned(Val { v: k, own: false });
-            let v = s.owned(Val { v, own: false });
+            let k = s.clone_value(k);
+            let v = s.clone_value(v);
             let old = s.b.use_var(acc);
             let new = s.map_insert(old, k, v)?;
             s.b.def_var(acc, new);
@@ -1069,8 +1066,8 @@ impl<'a> FnLower<'a> {
                     s.b.seal_block(skip);
                     s.b.switch_to(take);
                     let y = s.b.list_get(other, i);
-                    let xo = s.owned(Val { v: x, own: false });
-                    let yo = s.owned(Val { v: y, own: false });
+                    let xo = s.clone_value(x);
+                    let yo = s.clone_value(y);
                     let rec = s.b.rec_new(rid, &[xo, yo]);
                     let cur = s.b.use_var(acc);
                     let next = s.b.list_push(cur, rec);

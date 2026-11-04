@@ -440,7 +440,12 @@ impl Checker {
                 }
             }
             for (i, op) in def.operations.borrow().iter().enumerate() {
-                let pos = d.methods()[i].pos;
+                // An operation the compiler adds to an interface (`clone` on `Clonable`) has no
+                // declaration to point at.
+                let Some(m) = d.methods().get(i) else {
+                    continue;
+                };
+                let pos = m.pos;
                 names.insert((*file, pos), format!("{}.{}", d.name(), op.name));
                 reference(&op.ty, pos);
             }
