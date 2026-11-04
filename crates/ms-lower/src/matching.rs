@@ -230,8 +230,13 @@ impl FnLower<'_> {
             self.push_scope();
             self.closed_on_path = closed_before.clone();
             let facts = self.hir.arm(arm);
+            // A borrowed case of a borrowing variant stays in the scrutinee: its payload is
+            // bound as a borrow, and the scrutinee drops only the cases it owns.
+            let borrowed_case = matches!((&kind, case), (TyKind::Alt(a), Some(k))
+                if self.b.m.alts[a.index()].borrows(*k));
             let takes = owned_uid.is_some()
                 && !by_type
+                && !borrowed_case
                 && case.is_some()
                 && facts.bindings.iter().any(|b| b.is_some());
             if let (Some(uid), true, Some(k)) = (owned_uid, takes, case) {
@@ -252,7 +257,14 @@ impl FnLower<'_> {
                     self.aliases.insert(b.uid, alias);
                     continue;
                 }
-                let cur = self.b.use_var(sv);
+                let cur = match owned_uid {
+                    // An owned scrutinee lives in its slot; a borrowed case is read in place.
+                    Some(uid) => {
+                        let l = self.locals[&uid];
+                        self.local_get(&l)
+                    }
+                    None => self.b.use_var(sv),
+                };
                 let payload = match (&kind, case) {
                     (TyKind::Iface(_), Some(_)) => {
                         let concrete = facts
@@ -482,6 +494,10 @@ impl FnLower<'_> {
         self.b.seal_block(errb);
         self.b.seal_block(okb);
 
+        // The operand lends its error (`try g(v)` of a function with a borrowing result): the
+        // error is not ours to take.
+        let borrowed_err = self.b.m.alts[a.index()].borrows(err);
+        let ra_borrows_err = self.b.m.alts[ra.index()].borrows(ret_err);
         self.enter(errb);
         let cur = self.b.use_var(rv);
         let payload = self.b.alt_get(a, err as u32, 0, cur);
@@ -492,7 +508,7 @@ impl FnLower<'_> {
         };
         if !hidden
             && !x.own
-            && self.b.func_mut().ret_borrowed
+            && (self.b.func_mut().ret_borrowed || self.ret_borrowing())
             && self.cx.fact(
                 self.hir.data.file,
                 e.id,
@@ -501,8 +517,19 @@ impl FnLower<'_> {
         {
             // The operand returns a borrow of its error from this function's arguments: hand the reference on.
             let out = self.b.alt_view(ra, ret_err as u32, &[x.v]);
-            self.emit_return(Some(Val { v: out, own: false }));
-        } else if hidden && !x.own && self.ty_of(payload) == want {
+            // In a borrowing variant the borrowed error is part of an owned result.
+            let own = self.ret_borrowing();
+            self.emit_return(Some(Val { v: out, own }));
+        } else if borrowed_err && ra_borrows_err && self.ty_of(payload) == want {
+            // The operand's error is a borrow of the arguments and this function's result
+            // borrows its error the same way: hand the reference on. The operand owns nothing
+            // else on this path.
+            let out = self.b.alt_view(ra, ret_err as u32, &[x.v]);
+            if hidden {
+                self.drop_value(cur);
+            }
+            self.emit_return(Some(Val { v: out, own: true }));
+        } else if hidden && !x.own && !borrowed_err && self.ty_of(payload) == want {
             // The operand is ours: its error moves into the result and the rest is released.
             let po = self.b.alt_take(a, err as u32, 0, cur);
             self.b.alt_release(a, err as u32, 1, cur);
@@ -520,6 +547,16 @@ impl FnLower<'_> {
         self.enter(okb);
         let cur = self.b.use_var(rv);
         let payload = self.b.alt_get(a, ok as u32, 0, cur);
+        if hidden && self.b.m.alts[a.index()].borrows(ok) {
+            // The operand's `ok` payload is a borrow of the arguments it was called with: it
+            // stays where it is, and the operand (which owns nothing else here) is dropped with
+            // the statement.
+            self.temps.push(cur);
+            return Ok(Val {
+                v: payload,
+                own: false,
+            });
+        }
         if !hidden {
             // A part of a place: a consumer that keeps it takes its own copy, a reader reads
             // it in place, so a resource payload is never duplicated.

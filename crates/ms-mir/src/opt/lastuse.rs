@@ -317,7 +317,7 @@ fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> ValueSet {
                     // A borrow-returning function's result is a borrow of its arguments.
                     let borrowed = (m.result_mode(f, i) == Some(Mode::Borrow)
                         && matches!(i.op, Op::Call | Op::CallMethod))
-                        || m.result_views(i);
+                        || m.result_views(f, i);
                     if (i.op == Op::CallRt && !fresh || borrowed)
                         && let Some(r) = i.res
                         && !is_scalar(m, f.ty(r))

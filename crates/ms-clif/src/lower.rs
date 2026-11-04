@@ -805,7 +805,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         };
         let done = self.b.create_block();
         for (c, case) in fields.iter().enumerate() {
-            if !case.iter().any(|(t, _)| self.g.m.needs_drop(*t)) {
+            if self.g.m.alts[a.index()].borrows(c)
+                || !case.iter().any(|(t, _)| self.g.m.needs_drop(*t))
+            {
                 continue;
             }
             let this = self.b.create_block();
@@ -2026,6 +2028,13 @@ impl<'a, 'm> Lower<'a, 'm> {
                 obj
             }
             Op::AltNew | Op::AltView => self.alt_new(inst, res_ty.expect("alt.new result")),
+            Op::AltPlain => self.a(inst, 0),
+            Op::AltOwn => {
+                // Every case copied: the result is the ordinary alternative.
+                let ty = res_ty.expect("alt.own result");
+                let v = self.a(inst, 0);
+                self.clone_value(ty, &v)
+            }
             Op::AltTag => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);

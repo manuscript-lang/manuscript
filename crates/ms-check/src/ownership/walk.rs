@@ -4,8 +4,8 @@
 use super::classify::{Class, Classifier, declares_close};
 use super::live::Liveness;
 use super::modes::{
-    CallModes, ParamMode, ResultBorrow, Summaries, Summary, call_modes, receiver_mode,
-    result_borrow,
+    BORROWED_ERROR, BORROWED_OK, CallModes, ParamMode, ResultBorrow, Summaries, Summary,
+    call_modes, receiver_mode, result_borrow,
 };
 use super::places::{Place, Step};
 use super::*;
@@ -132,6 +132,9 @@ struct BorrowSource {
     /// The value is an owned interface view of the sources (a view returner's result, or a local
     /// holding one): it is returned as an owned value, never as a plain reference.
     view: bool,
+    /// The `Result` cases (`BORROWED_OK`, `BORROWED_ERROR`) the value borrows from the sources
+    /// while its other cases are owned: a call of a function with a borrowing result.
+    cases: u8,
 }
 
 /// A place expression resolved to its root.
@@ -179,6 +182,11 @@ pub fn analyze(cx: &Context) -> Outcome {
         borrowed_return: None,
         wrap_returns: Vec::new(),
         plain_borrowed: false,
+        borrowed_cases: 0,
+        owned_cases: 0,
+        ret_ctors: Vec::new(),
+        borrow_not_clonable: false,
+        borrowed_mask: 0,
         view_return: false,
         view_locals: HashSet::new(),
         view_calls: HashSet::new(),
@@ -187,8 +195,8 @@ pub fn analyze(cx: &Context) -> Outcome {
         entry_lambda: None,
     };
     w.run();
-    w.mixed_returns();
     w.unclosed_resources();
+    w.mixed_returns();
     w.consumed_param_resources();
     w.moved_payloads();
     let declared = Summary::declared(&cx.c.func);
@@ -216,8 +224,9 @@ pub fn analyze(cx: &Context) -> Outcome {
             // A view returner returns owned values on every path, so a new value beside a view
             // is no mix.
             returns_borrow: w.borrowed_return.is_some()
-                && (w.owned_return.is_none() || w.view_return),
-            view: w.view_return,
+                && (w.owned_return.is_none() || w.view_return || w.borrowed_mask != 0),
+            view: w.view_return || w.borrowed_mask != 0,
+            borrowed_cases: w.borrowed_mask,
             receiver: w.borrow_receiver,
             params: w.borrow_params.clone(),
             path: if w.view_return {
@@ -229,6 +238,10 @@ pub fn analyze(cx: &Context) -> Outcome {
     };
     w.facts.returns_borrow = summary.result.returns_borrow;
     w.facts.view = summary.result.view;
+    w.facts.borrowed_cases = summary.result.borrowed_cases;
+    if summary.result.borrowed_cases != 0 {
+        w.facts.ret_ctors = std::mem::take(&mut w.ret_ctors).into_iter().collect();
+    }
     w.facts.parameters = summary.params.iter().map(|(_, m)| *m).collect();
     w.facts.receiver = cx.c.self_binding.as_ref().map(|_| summary.receiver);
     Outcome {
@@ -294,6 +307,16 @@ struct Walker<'a> {
     wrap_returns: Vec<NodeId>,
     /// Some returned reference is the part itself, not a wrapper of it.
     plain_borrowed: bool,
+    /// `Result` cases (`BORROWED_OK`, `BORROWED_ERROR`, or 4 for another shape) the returned wrappers lend,
+    /// and the cases the owned returns build (7 when unknown).
+    borrowed_cases: u8,
+    owned_cases: u8,
+    ret_ctors: Vec<NodeId>,
+    /// A borrowed part of a type that has one owner and no `clone`: the borrow is withdrawn
+    /// beside an owned path, and the part moves out instead.
+    borrow_not_clonable: bool,
+    /// The wrappers stay references beside owned paths: the borrowed cases never overlap the owned ones.
+    borrowed_mask: u8,
     /// Some returned value is an interface view of the arguments (a borrowed value converted to an
     /// interface, a view returner's result, a local holding one): the function is a view returner.
     view_return: bool,
@@ -548,13 +571,43 @@ impl Walker<'_> {
             && !self.implements_contract()
             && !self.moves_withdrawn_borrow(e)
         {
-            if let Some(src) = self.borrow_source(e) {
+            // A function that borrows some cases of its `Result` returned whole (`return
+            // expect_ok(actual)`): this function borrows the same cases from the same sources and
+            // owns the others.
+            if let Some(src) = self.borrow_source(e).filter(|s| s.cases != 0)
+                && self.result_is_result()
+            {
+                self.borrowed_return.get_or_insert(e.pos);
+                self.borrowed_cases |= src.cases;
+                self.owned_cases |= 3 & !src.cases;
+                self.borrow_receiver |= src.receiver;
+                for p in src.params {
+                    if !self.borrow_params.contains(&p) {
+                        self.borrow_params.push(p);
+                    }
+                }
+                self.borrow_path = Some(None);
+                self.expr(e, Demand::Read);
+                return;
+            }
+            if let Some(src) = self.borrow_source(e).filter(|s| s.cases == 0) {
                 // A part of an argument comes back as a reference into it: nothing moves. A
                 // wrapper around it (`x?`, `ok(x)`) adds no storage and stays a reference too.
                 self.borrowed_return.get_or_insert(e.pos);
                 if wrapped {
                     self.facts.view_wraps.insert(e.id);
                     self.wrap_returns.push(e.id);
+                    self.borrowed_cases |= self.wrap_case(e);
+                    // A part that cannot be copied is moved out once the borrow is withdrawn
+                    // (`moves_withdrawn_borrow`), which a caller's temporary source needs.
+                    if let Some(inner) = self.wrapped_borrow(e)
+                        && !self.cx.classes.clonable(self.syms, &self.cx.m.ty(inner))
+                    {
+                        self.borrow_not_clonable = true;
+                    }
+                    if self.result_case(e).is_some() {
+                        self.ret_ctors.push(e.id);
+                    }
                 } else if !self.list_get(e) {
                     // `xs.get(i)` beside a new value is withdrawn like a wrapper, and the
                     // element is copied out; any other reference has no owned form.
@@ -577,6 +630,10 @@ impl Walker<'_> {
             // A bare `none` owns nothing, so a borrow-returning function can hand it back beside its references.
             if !matches!(&e.kind, ExprKind::Name(n) if self.syms.str(n) == "none") {
                 self.owned_return.get_or_insert(e.pos);
+                self.owned_cases |= self.owned_case(e);
+                if self.result_case(e).is_some() {
+                    self.ret_ctors.push(e.id);
+                }
             }
         }
         // A reference converted on the way out (a borrow-returning call widened to another error type or
@@ -751,6 +808,19 @@ impl Walker<'_> {
     }
 
     /// Whether the declared result type is an interface.
+    fn result_is_result(&self) -> bool {
+        let c = self.cx.c;
+        let result = match (c.func.method(), c.func.func()) {
+            (Some(m), _) => m.func.result.id,
+            (None, Some(f)) => f.result.id,
+            (None, None) => return false,
+        };
+        self.cx
+            .m
+            .type_ref(result)
+            .is_some_and(|t| t.is(Builtin::Result))
+    }
+
     fn result_is_interface(&self) -> bool {
         let c = self.cx.c;
         let result = match (c.func.method(), c.func.func()) {
@@ -807,6 +877,19 @@ impl Walker<'_> {
         // A wrapper of a part is a reference only when every path returns a borrow; beside a new value it
         // is built as a new value of its own (its payload copied), as before.
         if !self.plain_borrowed {
+            // The borrowed cases of a `Result` stay references when no owned path builds the same
+            // case: the caller drops only the cases the function owns.
+            if self.borrowed_cases & 4 == 0
+                && !self.borrow_not_clonable
+                // A resource closed at scope end can return its close error, an owned error.
+                && self.facts.implicit_closes.is_empty()
+                && self.borrowed_cases != 0
+                && self.borrowed_cases & self.owned_cases == 0
+                && self.result_is_result()
+            {
+                self.borrowed_mask = self.borrowed_cases;
+                return;
+            }
             self.borrowed_return = None;
             for n in std::mem::take(&mut self.wrap_returns) {
                 self.facts.view_wraps.remove(&n);
@@ -930,6 +1013,30 @@ impl Walker<'_> {
             .then_some(inner)
     }
 
+    /// The case of a `Result` a returned wrapper lends: `ok(x)` or `error(x)`; 4 for any other
+    /// wrapper (`x?`), which keeps the copy.
+    fn wrap_case(&self, e: &Expr) -> u8 {
+        self.result_case(e).unwrap_or(4)
+    }
+
+    /// The cases of a `Result` an owned returned expression can build.
+    fn owned_case(&self, e: &Expr) -> u8 {
+        self.result_case(e).unwrap_or(7)
+    }
+
+    /// The case an `ok(..)` or `error(..)` constructor call builds.
+    fn result_case(&self, e: &Expr) -> Option<u8> {
+        self.result_payload(e)?;
+        let Resolution::Constructor { case: Some(c), .. } = self.cx.m.resolution(e) else {
+            return None;
+        };
+        match self.syms.str(c) {
+            "ok" => Some(BORROWED_OK),
+            "error" => Some(BORROWED_ERROR),
+            _ => None,
+        }
+    }
+
     /// The error path of `try operand` returns the operand's error: a reference when the operand
     /// returns a borrow of it from the arguments as it is, otherwise a new value, like any `return`.
     fn try_return(&mut self, e: &Expr, operand: &Expr) {
@@ -949,6 +1056,7 @@ impl Walker<'_> {
         }
         if self.class_of(operand) == Class::Move
             && let Some(src) = self.borrow_source(operand)
+            && (src.cases == 0 || src.cases & BORROWED_ERROR != 0)
         {
             self.borrowed_return.get_or_insert(e.pos);
             if src.view {
@@ -958,6 +1066,12 @@ impl Walker<'_> {
             } else {
                 self.facts.view_wraps.insert(e.id);
                 self.wrap_returns.push(e.id);
+                self.borrowed_cases |= BORROWED_ERROR;
+                if let Some(err) = self.cx.m.ty(operand).args.get(1)
+                    && !self.cx.classes.clonable(self.syms, err)
+                {
+                    self.borrow_not_clonable = true;
+                }
             }
             self.borrow_receiver |= src.receiver;
             for p in src.params {
@@ -970,6 +1084,7 @@ impl Walker<'_> {
             return;
         }
         self.owned_return.get_or_insert(e.pos);
+        self.owned_cases |= BORROWED_ERROR;
     }
 
     /// The payload expression of an `ok(x)` or `error(x)` constructor call.
@@ -1031,6 +1146,7 @@ impl Walker<'_> {
                     params: Vec::new(),
                     path: None,
                     view: self.view_locals.contains(&b.uid),
+                    cases: 0,
                 };
                 let places = self.pure_places(e)?;
                 for place in places {
@@ -1054,6 +1170,7 @@ impl Walker<'_> {
                     params: Vec::new(),
                     path: path.map(|f| (None, f)),
                     view: false,
+                    cases: 0,
                 }),
                 (Role::Parameter, Some(i)) => {
                     let label = self.parameter_label(i)?;
@@ -1062,6 +1179,7 @@ impl Walker<'_> {
                         params: vec![label],
                         path: path.map(|f| (Some(label), f)),
                         view: false,
+                        cases: 0,
                     })
                 }
                 _ => None,
@@ -1093,7 +1211,8 @@ impl Walker<'_> {
                 receiver: false,
                 params: Vec::new(),
                 path: None,
-                view: ret_borrow.view,
+                view: ret_borrow.view && ret_borrow.borrowed_cases == 0,
+                cases: ret_borrow.borrowed_cases,
             };
             let mut paths: Vec<Option<(Option<Name>, Vec<Name>)>> = Vec::new();
             for (k, operand) in operands.iter().enumerate() {
@@ -2795,6 +2914,14 @@ impl Walker<'_> {
             operand,
         } = &e.kind
         {
+            // A function that borrows only its error leaves the `ok` payload an owned value.
+            if matches!(operand.kind, ExprKind::Call { .. }) {
+                let cases =
+                    result_borrow(self.syms, self.cx.m, operand, self.cx.summaries).borrowed_cases;
+                if cases != 0 && cases & BORROWED_OK == 0 {
+                    return None;
+                }
+            }
             return if self.is_place(operand) {
                 self.pure_places(operand)
             } else {
@@ -3109,7 +3236,14 @@ impl Walker<'_> {
                 }
                 // `try` hands its payload on with the position's demand; a copied payload only
                 // reads the result it comes out of.
-                let inner = if *op == UnaryOp::Try && self.class_of(e) != Class::Copy {
+                // A function that borrows only its error leaves the payload an owned value the
+                // `try` takes out of the temporary result; the borrowed error is relayed.
+                let owns_ok = matches!(operand.kind, ExprKind::Call { .. }) && {
+                    let cases = result_borrow(self.syms, self.cx.m, operand, self.cx.summaries)
+                        .borrowed_cases;
+                    cases != 0 && cases & BORROWED_OK == 0
+                };
+                let inner = if *op == UnaryOp::Try && self.class_of(e) != Class::Copy && !owns_ok {
                     d
                 } else {
                     Demand::Read
