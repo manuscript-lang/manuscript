@@ -407,6 +407,9 @@ pub fn run_shielded<I: Send + Sync + 'static, O: Send + 'static>(
         len: bytes.len(),
         f,
     };
+    // `bytes` may lie on this task's stack, which must then keep its pages while the job reads it.
+    // SAFETY: called on the runtime thread by the running task; unpinned below on every path.
+    unsafe { crate::task::pin_current(true) };
     let (job, ptr) = submit(lane, lent, call_lent::<I, O>);
     let mut value = 0u64;
     // SAFETY: parks the current task on its own token.
@@ -420,6 +423,8 @@ pub fn run_shielded<I: Send + Sync + 'static, O: Send + 'static>(
     }
     // SAFETY: the job is done: the park ended with its post, or the loop above saw it.
     let output = unsafe { take(job) }.expect("a finished job holds its output");
+    // SAFETY: the lend ended with the job.
+    unsafe { crate::task::pin_current(false) };
     if got & WAIT_CANCELLED != 0 {
         crate::glue::cancelled();
     }

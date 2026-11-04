@@ -35,7 +35,6 @@ const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
 const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
 const CP_UTF8: u32 = 65001;
 const STACK_SIZE_PARAM_IS_A_RESERVATION: DWORD = 0x0001_0000;
-const FIBER_FLAG_FLOAT_SWITCH: DWORD = 1;
 const INFINITE: DWORD = 0xFFFF_FFFF;
 
 #[link(name = "kernel32", kind = "raw-dylib")]
@@ -84,16 +83,6 @@ unsafe extern "system" {
         handler: Option<unsafe extern "system" fn(DWORD) -> BOOL>,
         add: BOOL,
     ) -> BOOL;
-    fn CreateFiberEx(
-        commit: usize,
-        reserve: usize,
-        flags: DWORD,
-        start: unsafe extern "system" fn(*mut c_void),
-        param: *mut c_void,
-    ) -> *mut c_void;
-    fn DeleteFiber(fiber: *mut c_void);
-    fn SwitchToFiber(fiber: *mut c_void);
-    fn ConvertThreadToFiberEx(param: *mut c_void, flags: DWORD) -> *mut c_void;
     fn GetCurrentThreadStackLimits(lo: *mut usize, hi: *mut usize);
     fn GetCurrentProcess() -> HANDLE;
     fn GetCurrentThread() -> HANDLE;
@@ -326,6 +315,72 @@ pub fn map_anon(len: usize) -> *mut u8 {
     unsafe { VirtualAlloc(core::ptr::null_mut(), len, MEM_RESERVE, PAGE_NOACCESS).cast() }
 }
 
+/// Reserves `len` bytes of address space aligned to `len` (a power of two), holding stacks.
+/// Windows cannot trim a reservation, so an aligned one is found by reserving twice the size,
+/// releasing it and reserving the aligned part again. Null on failure.
+pub fn map_region(len: usize) -> *mut u8 {
+    for _ in 0..8 {
+        let raw = map_anon(2 * len);
+        if raw.is_null() {
+            return raw;
+        }
+        let base = (raw as usize).next_multiple_of(len);
+        // SAFETY: the reservation is unused; the aligned part is reserved again right away.
+        unsafe {
+            unmap(raw, 0);
+            let p = VirtualAlloc(base as *mut c_void, len, MEM_RESERVE, PAGE_NOACCESS);
+            if !p.is_null() {
+                return p.cast();
+            }
+        }
+    }
+    core::ptr::null_mut()
+}
+
+/// A stack guard: nothing to do, since the bottom of a reserved stack stays uncommitted and an
+/// access to it faults.
+///
+/// # Safety
+/// The range lies inside a live reservation that nothing is using.
+pub unsafe fn guard(_p: *mut u8, _len: usize) -> bool {
+    true
+}
+
+/// The thread environment block's stack fields: `(StackBase, StackLimit, DeallocationStack)`.
+/// They describe the stack the thread runs on, so a context switch moves them with it (the
+/// switch assembly writes them): the kernel's guard-page growth and the stack walkers read them.
+pub fn teb_stack() -> [usize; 3] {
+    let (base, limit, dealloc): (usize, usize, usize);
+    // SAFETY: reads of the current thread's TEB.
+    unsafe {
+        #[cfg(target_arch = "x86_64")]
+        core::arch::asm!(
+            "mov {0}, gs:[0x08]",
+            "mov {1}, gs:[0x10]",
+            "mov {2}, gs:[0x1478]",
+            out(reg) base, out(reg) limit, out(reg) dealloc,
+            options(nostack, readonly, preserves_flags)
+        );
+        #[cfg(target_arch = "aarch64")]
+        core::arch::asm!(
+            "ldr {0}, [x18, #0x08]",
+            "ldr {1}, [x18, #0x10]",
+            "ldr {2}, [x18, #0x1478]",
+            out(reg) base, out(reg) limit, out(reg) dealloc,
+            options(nostack, readonly, preserves_flags)
+        );
+    }
+    [base, limit, dealloc]
+}
+
+/// Commits `len` bytes at `p` as a guard page (the kernel commits the page below it when the
+/// page is touched and moves the guard down). `p` is page aligned.
+pub fn commit_guard(p: *mut u8) -> bool {
+    const PAGE_GUARD: DWORD = 0x100;
+    // SAFETY: the range lies inside a reservation of this process.
+    !unsafe { VirtualAlloc(p.cast(), 4096, MEM_COMMIT, PAGE_READWRITE | PAGE_GUARD) }.is_null()
+}
+
 /// Commits `len` bytes at `p` (inside a [`map_anon`] reservation) as zeroed read-write memory.
 pub fn commit(p: *mut u8, len: usize) -> bool {
     // SAFETY: the range lies inside a reservation of this process.
@@ -422,49 +477,6 @@ pub fn stack_limits() -> (usize, usize) {
     // SAFETY: valid out pointers.
     unsafe { GetCurrentThreadStackLimits(&mut lo, &mut hi) };
     (lo, hi)
-}
-
-// ---- fibers (the stacks of tasks) ----
-
-/// Creates a fiber with `len` bytes of reserved stack that runs `entry` when first switched to.
-///
-/// # Safety
-/// `entry` never returns.
-pub unsafe fn fiber_create(len: usize, entry: unsafe extern "system" fn(*mut c_void)) -> *mut u8 {
-    // SAFETY: forwarded; the commit size is the platform default.
-    unsafe {
-        CreateFiberEx(
-            0,
-            len,
-            FIBER_FLAG_FLOAT_SWITCH,
-            entry,
-            core::ptr::null_mut(),
-        )
-        .cast()
-    }
-}
-
-/// # Safety
-/// `fiber` is not the running fiber.
-pub unsafe fn fiber_delete(fiber: *mut u8) {
-    // SAFETY: forwarded.
-    unsafe { DeleteFiber(fiber.cast()) };
-}
-
-/// Turns the calling thread into a fiber and returns its handle.
-///
-/// # Safety
-/// Called once per thread, before any switch.
-pub unsafe fn fiber_adopt() -> *mut u8 {
-    // SAFETY: forwarded.
-    unsafe { ConvertThreadToFiberEx(core::ptr::null_mut(), FIBER_FLAG_FLOAT_SWITCH).cast() }
-}
-
-/// # Safety
-/// `fiber` is a live fiber of this thread.
-pub unsafe fn fiber_switch(fiber: *mut u8) {
-    // SAFETY: forwarded.
-    unsafe { SwitchToFiber(fiber.cast()) };
 }
 
 // ---- sampling another thread (the profiler) ----
@@ -727,4 +739,70 @@ pub unsafe fn register_repeating_wait(
         )
     };
     if ok == 0 { core::ptr::null_mut() } else { wait }
+}
+
+// ---- temporary diagnostic: report guard-page violations before the process dies ----
+
+#[repr(C)]
+struct ExceptionRecord {
+    code: u32,
+    flags: u32,
+    record: *mut c_void,
+    address: *mut c_void,
+    nparams: u32,
+    info: [usize; 15],
+}
+
+#[repr(C)]
+struct ExceptionPointers {
+    record: *mut ExceptionRecord,
+    context: *mut u8,
+}
+
+unsafe extern "system" {
+    fn AddVectoredExceptionHandler(
+        first: u32,
+        handler: unsafe extern "system" fn(*mut ExceptionPointers) -> i32,
+    ) -> *mut c_void;
+    fn GetCurrentThreadId() -> u32;
+}
+
+unsafe extern "system" fn guard_diag(p: *mut ExceptionPointers) -> i32 {
+    // SAFETY: the system passes live records.
+    unsafe {
+        let r = &*(*p).record;
+        if r.code != 0x8000_0001 && r.code != 0xC000_00FD && r.code != 0xC000_0005 {
+            return 0;
+        }
+        let ctx = (*p).context;
+        #[cfg(target_arch = "x86_64")]
+        let sp = *(ctx.add(0x98) as *const usize);
+        #[cfg(target_arch = "aarch64")]
+        let sp = *(ctx.add(0x100) as *const usize);
+        let teb = teb_stack();
+        eprintln!(
+            "GUARD DIAG: thread {} code {:#x} pc {:p} addr {:#x} write {} sp {:#x} teb base {:#x} limit {:#x} dealloc {:#x}; {}",
+            GetCurrentThreadId(),
+            r.code,
+            r.address,
+            r.info[1],
+            r.info[0],
+            sp,
+            teb[0],
+            teb[1],
+            teb[2],
+            crate::task::diag_describe(r.info[1], sp)
+        );
+    }
+    0
+}
+
+/// Installs the diagnostic once per process.
+pub fn install_guard_diag() {
+    static ONCE: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+    if ONCE.swap(true, core::sync::atomic::Ordering::Relaxed) {
+        return;
+    }
+    // SAFETY: a plain registration.
+    unsafe { AddVectoredExceptionHandler(1, guard_diag) };
 }

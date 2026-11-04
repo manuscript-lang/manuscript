@@ -74,6 +74,8 @@ unsafe extern "C-unwind" fn main_task(done: *mut u8) {
     // SAFETY: as documented.
     unsafe {
         let f = (*MAIN_FN.ptr()).unwrap_or_else(|| fault::fatal(b"missing main"));
+        #[cfg(feature = "stats")]
+        crate::alloc::reset_requested();
         let value = f();
         if fault::cancel_flag().load(Ordering::Relaxed) != 0 {
             fault::msrt_cancelled();
