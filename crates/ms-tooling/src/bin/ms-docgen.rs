@@ -64,8 +64,8 @@ fn write(path: &Path, data: &[u8]) -> Result<(), String> {
     std::fs::write(path, data).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-fn run(o: &Options) -> Result<(), String> {
-    let report = inventory(standard_library());
+fn run(syms: ms_syntax::Names, o: &Options) -> Result<(), String> {
+    let report = inventory(standard_library(syms));
     eprintln!(
         "API descriptions: {}/{} declarations, {}/{} members (including prelude aliases)",
         report.described_declarations,
@@ -91,7 +91,7 @@ fn run(o: &Options) -> Result<(), String> {
         }
         return Err(String::new());
     }
-    let files = docgen::site_files();
+    let files = docgen::site_files(syms);
     if o.check {
         return Ok(());
     }
@@ -117,8 +117,9 @@ fn run(o: &Options) -> Result<(), String> {
 }
 
 fn main() -> ExitCode {
+    let syms = ms_syntax::Names::global();
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let result = parse(&args).and_then(|o| run(&o));
+    let result = parse(&args).and_then(|o| run(syms, &o));
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => {

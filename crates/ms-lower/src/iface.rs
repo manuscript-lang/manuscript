@@ -21,7 +21,7 @@ impl Cx {
     ) -> VtableId {
         let id = VtableId(m.vtables.len() as u32);
         m.vtables.push(VtableDef {
-            name: key.to_string(),
+            name: key.name(self.syms),
             iface,
             methods,
             data_ty,
@@ -76,10 +76,12 @@ impl Cx {
             let mut found = None;
             for mm in &self.methods {
                 let Some(decl) = &mm.decl else { continue };
-                if mm.id.as_str().is_empty() || !mm.visible_in(scope) {
+                if self.syms.str(mm.id).is_empty() || !mm.visible_in(scope) {
                     continue;
                 }
-                if mm.name().map(|n| n.to_string()).as_deref() != Some(s.name.as_str()) {
+                if mm.name().map(|n| self.syms.str(n).to_string()).as_deref()
+                    != Some(s.name.as_str())
+                {
                     continue;
                 }
                 let mut subst = ct::Subst::new();
@@ -103,15 +105,16 @@ impl Cx {
                     data_ty,
                     scope,
                     own,
-                    &key.to_string(),
+                    &key.name(self.syms),
                 )?);
                 continue;
             }
             let (module, id, subst, native, mref) = found.ok_or_else(|| {
                 Error::new(format!(
-                    "{concrete} has no method {} for {}",
+                    "{concrete_t} has no method {} for {}",
                     s.name,
-                    m.ifaces[iface.index()].name
+                    m.ifaces[iface.index()].name,
+                    concrete_t = concrete.display(self.syms)
                 ))
             })?;
             let mut ps = vec![Param {
@@ -126,7 +129,7 @@ impl Cx {
             let changed: Vec<usize>;
             let op_vars = self.iface_op_vars(iface, &s.name);
             // A hook a `TestHooks` implementation leaves out has no body: it does nothing.
-            let missing = native.as_str().is_empty()
+            let missing = self.syms.str(native).is_empty()
                 && s.ret == MTy::UNIT
                 && !self.callables.contains_key(&(module, id));
             if missing {
@@ -139,7 +142,7 @@ impl Cx {
                 methods.push(m.add_func(f));
                 continue;
             }
-            let callee = if !native.as_str().is_empty() {
+            let callee = if !self.syms.str(native).is_empty() {
                 let f = self.iface_native_thunk(m, &mref, &subst, scope, data_ty, &ps, s.ret)?;
                 methods.push(f);
                 continue;
@@ -238,7 +241,7 @@ impl Cx {
         def.operations
             .borrow()
             .iter()
-            .find(|op| op.name.as_str() == name)
+            .find(|op| self.syms.str(op.name) == name)
             .map(crate::cx::op_var_params)
             .unwrap_or_default()
     }
@@ -255,7 +258,11 @@ impl Cx {
         params: &[Param],
         ret: MTy,
     ) -> Result<ms_mir::ir::FuncId, Error> {
-        let mut f = ms_mir::ir::Func::new(&format!("vt.{}", mref.native), params.to_vec(), ret);
+        let mut f = ms_mir::ir::Func::new(
+            &format!("vt.{}", self.syms.str(mref.native)),
+            params.to_vec(),
+            ret,
+        );
         f.kind = FuncKind::Method;
         f.linkage = Linkage::Internal;
         let id = m.add_func(f);
@@ -264,7 +271,7 @@ impl Cx {
         let method = std::rc::Rc::new(method);
         // A standard module's native half has no queries of its own: its source twin or the
         // module of the use stands in.
-        let twin = ct::Name::from(format!("{}+source", mref.module).as_str());
+        let twin = ct::Name::from(format!("{}+source", self.syms.str(mref.module)).as_str());
         let hir = self
             .module(mref.module)
             .or_else(|_| self.module(twin))
@@ -348,11 +355,13 @@ impl Cx {
         let mut found = None;
         for mm in &self.methods {
             let Some(decl) = &mm.decl else { continue };
-            if mm.id.as_str().is_empty() || !mm.native.as_str().is_empty() || !mm.visible_in(scope)
+            if self.syms.str(mm.id).is_empty()
+                || !self.syms.str(mm.native).is_empty()
+                || !mm.visible_in(scope)
             {
                 continue;
             }
-            if mm.name().map(|n| n.to_string()).as_deref() != Some(name) {
+            if mm.name().map(|n| self.syms.str(n).to_string()).as_deref() != Some(name) {
                 continue;
             }
             let mut subst = ct::Subst::new();

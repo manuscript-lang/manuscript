@@ -62,6 +62,7 @@ fn text_edit(range: Range, text: &str) -> Json {
 
 /// Text inserted for a callable, with snippet placeholders when supported.
 pub fn callable_text(
+    syms: ms_syntax::Names,
     name: &str,
     t: Option<&Ty>,
     variables: &[Ty],
@@ -79,7 +80,7 @@ pub fn callable_text(
             if i > 0 {
                 out.push_str(", ");
             }
-            out.push_str(&format!("${{{at}:{}}}", v.name));
+            out.push_str(&format!("${{{at}:{}}}", syms.str(v.name)));
             at += 1;
         }
         out.push(']');
@@ -94,7 +95,7 @@ pub fn callable_text(
             out.push_str(", ");
         }
         if t.params.len() != 1 {
-            out.push_str(&format!("{}: ", p.name));
+            out.push_str(&format!("{}: ", syms.str(p.name)));
         }
         if parameters
             .iter()
@@ -102,7 +103,7 @@ pub fn callable_text(
         {
             out.push_str("var ");
         }
-        out.push_str(&format!("${{{at}:{}}}", p.name));
+        out.push_str(&format!("${{{at}:{}}}", syms.str(p.name)));
         at += 1;
         written += 1;
     }
@@ -133,8 +134,8 @@ fn sort(items: &mut [Item]) {
 }
 
 /// Bundled module paths that export something outside the prelude.
-fn standard_paths(session: &Rc<Session>) -> Vec<String> {
-    let mut paths: Vec<String> = standard_export_inventory(session)
+fn standard_paths(syms: ms_syntax::Names, session: &Rc<Session>) -> Vec<String> {
+    let mut paths: Vec<String> = standard_export_inventory(syms, session)
         .into_iter()
         .filter(|(_, symbols)| symbols.iter().any(|s| !session.is_prelude_symbol(s)))
         .map(|(path, _)| path)
@@ -167,24 +168,30 @@ impl Completer<'_> {
         }
     }
 
-    fn doc(&self, decl: Option<&DeclRef>, fallback: Name) -> Json {
+    fn doc(&self, syms: ms_syntax::Names, decl: Option<&DeclRef>, fallback: Name) -> Json {
         let Some(decl) = decl else {
             return Json::Null;
         };
         let file = self.files.of_decl(decl).unwrap_or(fallback);
-        nav::description(&self.a.result, file, decl.pos())
+        nav::description(syms, &self.a.result, file, decl.pos())
     }
 
-    fn method_doc(&self, decl: Option<&FuncRef>, fallback: Name) -> Json {
+    fn method_doc(&self, syms: ms_syntax::Names, decl: Option<&FuncRef>, fallback: Name) -> Json {
         let Some(decl) = decl else {
             return Json::Null;
         };
-        nav::description(&self.a.result, self.files.file(decl, fallback), decl.pos())
+        nav::description(
+            syms,
+            &self.a.result,
+            self.files.file(decl, fallback),
+            decl.pos(),
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
     fn add(
         &mut self,
+        syms: ms_syntax::Names,
         name: &str,
         kind: i64,
         t: Option<&Ty>,
@@ -207,7 +214,7 @@ impl Completer<'_> {
         self.items.push(Item {
             label: name.to_string(),
             kind,
-            detail: t.map(|t| t.to_string()).unwrap_or_default(),
+            detail: t.map(|t| t.display(syms).to_string()).unwrap_or_default(),
             documentation,
             sort_text: format!("{priority:02}_{name}"),
             insert_format: format,
@@ -216,12 +223,13 @@ impl Completer<'_> {
         });
     }
 
-    fn add_import(&mut self, s: &SymRef, path: &str) {
+    fn add_import(&mut self, syms: ms_syntax::Names, s: &SymRef, path: &str) {
         let before = self.items.len();
         let mut kind = if s.kind == SymKind::Type { 7 } else { 3 };
         let ty = s.ty_opt();
         let mut insert = callable_text(
-            s.name.as_str(),
+            syms,
+            syms.str(s.name),
             ty.as_ref(),
             &s.variables(),
             s.decl.as_ref().map_or(&[], |d| d.fn_params()),
@@ -229,11 +237,12 @@ impl Completer<'_> {
         );
         if s.is_constant() {
             kind = 21;
-            insert = s.name.as_str().to_string();
+            insert = syms.str(s.name).to_string();
         }
-        let documentation = self.doc(s.decl.as_ref(), s.module);
+        let documentation = self.doc(syms, s.decl.as_ref(), s.module);
         self.add(
-            s.name.as_str(),
+            syms,
+            syms.str(s.name),
             kind,
             s.value_type().as_ref(),
             4,
@@ -247,7 +256,7 @@ impl Completer<'_> {
                 Range::at(Position::default()),
                 &format!(
                     "import {} from {}\n",
-                    s.name,
+                    syms.str(s.name),
                     ms_driver::project::quoting::quote(path)
                 ),
             )];
@@ -255,32 +264,33 @@ impl Completer<'_> {
     }
 
     /// An opaque type's representation is visible only in its declaring file.
-    fn structure_visible(&self, ty: &Ty) -> bool {
+    fn structure_visible(&self, syms: ms_syntax::Names, ty: &Ty) -> bool {
         let Some(owner) = ty.opaque_module() else {
             return true;
         };
-        let file = self.a.result.module(&self.a.document).map(|m| m.file);
+        let file = self.a.result.module(syms, &self.a.document).map(|m| m.file);
         Some(owner) == file
     }
 
-    fn member_items(&mut self) {
+    fn member_items(&mut self, syms: ms_syntax::Names) {
         let Some(expr) = self.a.expression.clone() else {
             return;
         };
         let ms_syntax::ast::ExprKind::Member { left, .. } = &expr.kind else {
             return;
         };
-        if let Some(ty) = type_expression(left, &self.a.scope) {
-            if !self.structure_visible(&ty) {
+        if let Some(ty) = type_expression(syms, left, &self.a.scope) {
+            if !self.structure_visible(syms, &ty) {
                 return;
             }
             for case in cases(&ty) {
-                let signature = ms_check::types::function(case.fields.clone(), ty.clone());
+                let signature = ms_check::types::function(syms, case.fields.clone(), ty.clone());
                 let insert = if case.fields.is_empty() {
-                    case.name.as_str().to_string()
+                    syms.str(case.name).to_string()
                 } else {
                     callable_text(
-                        case.name.as_str(),
+                        syms,
+                        syms.str(case.name),
                         Some(&signature),
                         &[],
                         &[],
@@ -288,7 +298,8 @@ impl Completer<'_> {
                     )
                 };
                 self.add(
-                    case.name.as_str(),
+                    syms,
+                    syms.str(case.name),
                     20,
                     Some(&signature),
                     0,
@@ -313,23 +324,25 @@ impl Completer<'_> {
         let Some(ty) = module.facts().info(left.id).and_then(|i| i.ty.clone()) else {
             return;
         };
-        for member in members(program, &ty, Some(file)) {
+        for member in members(syms, program, &ty, Some(file)) {
             let (kind, insert) = match member.kind {
                 MemberKind::Method => (
                     2,
                     callable_text(
-                        member.name.as_str(),
+                        syms,
+                        syms.str(member.name),
                         Some(&member.ty),
                         &[],
                         &[],
                         self.snippets,
                     ),
                 ),
-                MemberKind::Field => (5, member.name.as_str().to_string()),
+                MemberKind::Field => (5, syms.str(member.name).to_string()),
             };
-            let documentation = self.method_doc(member.declaration.as_ref(), file);
+            let documentation = self.method_doc(syms, member.declaration.as_ref(), file);
             self.add(
-                member.name.as_str(),
+                syms,
+                syms.str(member.name),
                 kind,
                 Some(&member.ty),
                 0,
@@ -339,33 +352,34 @@ impl Completer<'_> {
         }
     }
 
-    fn argument_items(&mut self) {
-        let Some((call, signature)) = query_call(&self.a) else {
+    fn argument_items(&mut self, syms: ms_syntax::Names) {
+        let Some((call, signature)) = query_call(syms, &self.a) else {
             return;
         };
-        let declaration = call_declaration(&self.a, &call);
+        let declaration = call_declaration(syms, &self.a, &call);
         let parameters = declaration
             .as_ref()
             .and_then(FuncRef::func)
             .map_or(&[][..], |f| &f.params);
-        let used: HashSet<String> = call_arguments(&self.a, &call)
+        let used: HashSet<String> = call_arguments(syms, &self.a, &call)
             .into_iter()
             .map(|(name, _)| name)
             .filter(|name| *name != self.a.marker)
             .collect();
         for param in &signature.params {
-            if used.contains(param.name.as_str()) {
+            if used.contains(syms.str(param.name)) {
                 continue;
             }
-            let mut insert = format!("{}: ", param.name);
+            let mut insert = format!("{}: ", syms.str(param.name));
             if parameters.iter().any(|p| p.name == param.name && p.mutable) {
                 insert.push_str("var ");
             }
             if self.snippets {
-                insert.push_str(&format!("${{1:{}}}", param.name));
+                insert.push_str(&format!("${{1:{}}}", syms.str(param.name)));
             }
             self.add(
-                param.name.as_str(),
+                syms,
+                syms.str(param.name),
                 6,
                 Some(&param.ty),
                 0,
@@ -375,13 +389,13 @@ impl Completer<'_> {
         }
     }
 
-    fn visible_symbols(&self) -> HashMap<Name, SymRef> {
+    fn visible_symbols(&self, syms: ms_syntax::Names) -> HashMap<Name, SymRef> {
         if !self.a.scope.symbols.is_empty() {
             return self.a.scope.symbols.clone();
         }
         let (Some(program), Some(module)) = (
             &self.a.result.program,
-            &self.a.result.module(&self.a.document),
+            &self.a.result.module(syms, &self.a.document),
         ) else {
             return HashMap::new();
         };
@@ -392,20 +406,29 @@ impl Completer<'_> {
             .unwrap_or_default()
     }
 
-    fn scope_items(&mut self) {
+    fn scope_items(&mut self, syms: ms_syntax::Names) {
         let c = self.c;
         let scope = self.a.scope.clone();
         if !c.type_context {
             for (name, b) in &scope.bindings {
-                let insert = callable_text(name.as_str(), Some(&b.ty), &[], &[], self.snippets);
-                self.add(name.as_str(), 6, Some(&b.ty), 0, &insert, Json::Null);
+                let insert =
+                    callable_text(syms, syms.str(name), Some(&b.ty), &[], &[], self.snippets);
+                self.add(syms, syms.str(name), 6, Some(&b.ty), 0, &insert, Json::Null);
             }
         }
         for (name, t) in &scope.types {
-            self.add(name.as_str(), 25, Some(t), 1, name.as_str(), Json::Null);
+            self.add(
+                syms,
+                syms.str(name),
+                25,
+                Some(t),
+                1,
+                syms.str(name),
+                Json::Null,
+            );
         }
-        let symbols = self.visible_symbols();
-        let module_file = self.a.result.module(&self.a.document).map(|m| m.file);
+        let symbols = self.visible_symbols(syms);
+        let module_file = self.a.result.module(syms, &self.a.document).map(|m| m.file);
         if c.type_context && self.a.expression.is_none() {
             // Signature markers are type syntax rather than captured expressions.
             // Use the checked variables of the enclosing callable before offering
@@ -445,11 +468,12 @@ impl Completer<'_> {
                 }
                 for variable in symbol.variables() {
                     self.add(
-                        variable.name.as_str(),
+                        syms,
+                        syms.str(variable.name),
                         25,
                         Some(&variable),
                         1,
-                        variable.name.as_str(),
+                        syms.str(variable.name),
                         Json::Null,
                     );
                 }
@@ -462,7 +486,8 @@ impl Completer<'_> {
             let Some(ty) = s.ty_opt() else { continue };
             let mut kind = 3;
             let mut insert = callable_text(
-                name.as_str(),
+                syms,
+                syms.str(name),
                 Some(&ty),
                 &s.variables(),
                 s.decl.as_ref().map_or(&[], |d| d.fn_params()),
@@ -470,7 +495,7 @@ impl Completer<'_> {
             );
             if s.kind == SymKind::Type {
                 kind = 7;
-                insert = name.as_str().to_string();
+                insert = syms.str(name).to_string();
                 let variables = ty
                     .def
                     .as_ref()
@@ -480,14 +505,15 @@ impl Completer<'_> {
                     let parts: Vec<String> = variables
                         .iter()
                         .enumerate()
-                        .map(|(i, v)| format!("${{{}:{}}}", i + 1, v.name))
+                        .map(|(i, v)| format!("${{{}:{}}}", i + 1, syms.str(v.name)))
                         .collect();
-                    insert = format!("{name}[{}]", parts.join(", "));
+                    insert = format!("{name_t}[{}]", parts.join(", "), name_t = syms.str(name));
                 }
-                if !c.type_context && ty.kind == Kind::Record && self.structure_visible(&ty) {
-                    let signature = constructor_signature(&self.a.result.session, &ty);
+                if !c.type_context && ty.kind == Kind::Record && self.structure_visible(syms, &ty) {
+                    let signature = constructor_signature(syms, &self.a.result.session, &ty);
                     insert = callable_text(
-                        name.as_str(),
+                        syms,
+                        syms.str(name),
                         Some(&signature),
                         &s.variables(),
                         &[],
@@ -497,17 +523,19 @@ impl Completer<'_> {
             }
             if s.is_constant() {
                 kind = 21;
-                insert = name.as_str().to_string();
+                insert = syms.str(name).to_string();
             }
-            if s.kind == SymKind::Type && !c.type_context && self.structure_visible(&ty) {
+            if s.kind == SymKind::Type && !c.type_context && self.structure_visible(syms, &ty) {
                 // An alternative's cases are in scope next to the type.
                 for case in cases(&ty) {
-                    let signature = ms_check::types::function(case.fields.clone(), ty.clone());
+                    let signature =
+                        ms_check::types::function(syms, case.fields.clone(), ty.clone());
                     let insert = if case.fields.is_empty() {
-                        case.name.as_str().to_string()
+                        syms.str(case.name).to_string()
                     } else {
                         callable_text(
-                            case.name.as_str(),
+                            syms,
+                            syms.str(case.name),
                             Some(&signature),
                             &[],
                             &[],
@@ -515,7 +543,8 @@ impl Completer<'_> {
                         )
                     };
                     self.add(
-                        case.name.as_str(),
+                        syms,
+                        syms.str(case.name),
                         20,
                         Some(&signature),
                         2,
@@ -524,9 +553,10 @@ impl Completer<'_> {
                     );
                 }
             }
-            let documentation = self.doc(s.decl.as_ref(), s.module);
+            let documentation = self.doc(syms, s.decl.as_ref(), s.module);
             self.add(
-                name.as_str(),
+                syms,
+                syms.str(name),
                 kind,
                 s.value_type().as_ref(),
                 2,
@@ -542,13 +572,13 @@ impl Completer<'_> {
             // The parser reports `type` declarations as records, so Go's kind
             // test for types never matches here: every fallback item is a function.
             for decl in &module.decls {
-                let name = decl_name(decl);
-                self.add(&name, 3, None, 2, &name, Json::Null);
+                let name = decl_name(syms, decl);
+                self.add(syms, &name, 3, None, 2, &name, Json::Null);
             }
         }
     }
 
-    fn keyword_items(&mut self) {
+    fn keyword_items(&mut self, syms: ms_syntax::Names) {
         let c = self.c;
         let text = &self.d.text;
         let line_start = text[..c.start].rfind('\n').map_or(0, |at| at + 1);
@@ -576,10 +606,11 @@ impl Completer<'_> {
                 {
                     insert = template.to_string();
                 }
-                self.add(word, 14, None, 5, &insert, Json::Null);
+                self.add(syms, word, 14, None, 5, &insert, Json::Null);
             }
             if line_start != c.start && self.snippets {
                 self.add(
+                    syms,
                     "if let",
                     14,
                     None,
@@ -591,11 +622,11 @@ impl Completer<'_> {
         }
         if !c.type_context {
             for word in ["true", "false", "unit", "fn", "not", "try"] {
-                self.add(word, 14, None, 5, word, Json::Null);
+                self.add(syms, word, 14, None, 5, word, Json::Null);
             }
         }
         if c.type_context {
-            let symbols = self.visible_symbols();
+            let symbols = self.visible_symbols(syms);
             for name in prelude_type_names() {
                 if self.a.scope.bindings.contains_key(&n(name)) {
                     continue;
@@ -606,29 +637,29 @@ impl Completer<'_> {
                 {
                     continue;
                 }
-                self.add(name, 7, None, 3, name, Json::Null);
+                self.add(syms, name, 7, None, 3, name, Json::Null);
             }
         }
     }
 
-    fn standard_imports(&mut self) {
+    fn standard_imports(&mut self, syms: ms_syntax::Names) {
         let session = self.a.result.session.clone();
-        let inventory = standard_export_inventory(&session);
-        for path in standard_paths(&session) {
+        let inventory = standard_export_inventory(syms, &session);
+        for path in standard_paths(syms, &session) {
             for s in inventory.get(&path).into_iter().flatten() {
                 if session.is_prelude_symbol(s)
-                    || self.seen.contains(s.name.as_str())
-                    || !name_matches(s.name.as_str(), &self.c.prefix)
+                    || self.seen.contains(syms.str(s.name))
+                    || !name_matches(syms.str(s.name), &self.c.prefix)
                     || (self.c.type_context && s.kind != SymKind::Type)
                 {
                     continue;
                 }
-                self.add_import(s, &path);
+                self.add_import(syms, s, &path);
             }
         }
     }
 
-    fn workspace_imports(&mut self) {
+    fn workspace_imports(&mut self, syms: ms_syntax::Names) {
         let Ok(files) = workspace_documents(self.d, self.docs, false, None) else {
             return;
         };
@@ -641,14 +672,15 @@ impl Completer<'_> {
                 continue;
             };
             let matches = parsed.decls.iter().any(|decl| {
-                let name = decl_name(decl);
+                let name = decl_name(syms, decl);
                 decl.export && name_matches(&name, &self.c.prefix) && !self.seen.contains(&name)
             });
             if !matches {
                 continue;
             }
-            let checked = workspace_analysis(&self.a.result.session, &file, self.docs);
-            let (Some(module), Some(program)) = (checked.module(&file), &checked.program) else {
+            let checked = workspace_analysis(syms, &self.a.result.session, &file, self.docs);
+            let (Some(module), Some(program)) = (checked.module(syms, &file), &checked.program)
+            else {
                 continue;
             };
             let Ok(relative) = pathops::rel(&pathops::dir(&self.d.path()), &file.path()) else {
@@ -664,18 +696,18 @@ impl Completer<'_> {
                 .map(|names| names.borrow().values().cloned().collect())
                 .unwrap_or_default();
             let mut symbols: Vec<SymRef> = symbols;
-            symbols.sort_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
+            symbols.sort_by(|a, b| syms.str(a.name).cmp(syms.str(b.name)));
             for s in symbols {
                 if !s.export
                     || s.decl.is_none()
                     || s.module != module.file
-                    || self.seen.contains(s.name.as_str())
-                    || !name_matches(s.name.as_str(), &self.c.prefix)
+                    || self.seen.contains(syms.str(s.name))
+                    || !name_matches(syms.str(s.name), &self.c.prefix)
                     || (self.c.type_context && s.kind != SymKind::Type)
                 {
                     continue;
                 }
-                self.add_import(&s, &path);
+                self.add_import(syms, &s, &path);
             }
         }
     }
@@ -694,13 +726,13 @@ fn keyword_template(word: &str) -> Option<&'static str> {
     })
 }
 
-fn decl_name(decl: &ms_syntax::ast::Decl) -> String {
+fn decl_name(syms: ms_syntax::Names, decl: &ms_syntax::ast::Decl) -> String {
     match &decl.kind {
-        DeclKind::Fn(f) => f.name.as_str().to_string(),
-        DeclKind::Const(c) => c.name.as_str().to_string(),
-        DeclKind::Record(r) => r.name.as_str().to_string(),
-        DeclKind::Alternative(a) => a.name.as_str().to_string(),
-        DeclKind::Interface(i) => i.name.as_str().to_string(),
+        DeclKind::Fn(f) => syms.str(f.name).to_string(),
+        DeclKind::Const(c) => syms.str(c.name).to_string(),
+        DeclKind::Record(r) => syms.str(r.name).to_string(),
+        DeclKind::Alternative(a) => syms.str(a.name).to_string(),
+        DeclKind::Interface(i) => syms.str(i.name).to_string(),
         DeclKind::Test(t) => t.name.to_string(),
         DeclKind::Impl(_) => String::new(),
     }
@@ -708,6 +740,7 @@ fn decl_name(decl: &ms_syntax::ast::Decl) -> String {
 
 /// Completion items at a position.
 pub fn completion_at(
+    syms: ms_syntax::Names,
     session: &Rc<Session>,
     d: &Document,
     docs: &Documents,
@@ -718,14 +751,14 @@ pub fn completion_at(
     if c.comment {
         return Ok(Vec::new());
     }
-    if let Some(items) = import_completion(session, d, docs, &c) {
+    if let Some(items) = import_completion(syms, session, d, docs, &c) {
         return Ok(items);
     }
     if c.literal {
         return Ok(Vec::new());
     }
-    let a = query_editor(d, docs, &c);
-    let files = DeclFiles::new(&a.result.source_modules());
+    let a = query_editor(syms, d, docs, &c);
+    let files = DeclFiles::new(&a.result.source_modules(syms));
     let mut k = Completer {
         d,
         docs,
@@ -737,15 +770,15 @@ pub fn completion_at(
         files,
     };
     if c.member {
-        k.member_items();
+        k.member_items(syms);
     } else if c.argument {
-        k.argument_items();
+        k.argument_items(syms);
     } else {
-        k.scope_items();
-        k.keyword_items();
+        k.scope_items(syms);
+        k.keyword_items(syms);
         if !c.prefix.is_empty() {
-            k.standard_imports();
-            k.workspace_imports();
+            k.standard_imports(syms);
+            k.workspace_imports(syms);
         }
     }
     sort(&mut k.items);
@@ -767,6 +800,7 @@ fn simple_item(name: &str, detail: &str, kind: i64, range: Range, text: &str) ->
 
 /// Completion inside an `import` declaration, or `None` outside one.
 fn import_completion(
+    syms: ms_syntax::Names,
     session: &Rc<Session>,
     d: &Document,
     docs: &Documents,
@@ -826,7 +860,7 @@ fn import_completion(
             start: text::position(&d.text, path_start),
             end: text::position(&d.text, end),
         };
-        for path in standard_paths(session) {
+        for path in standard_paths(syms, session) {
             if path.starts_with(prefix) {
                 items.push(simple_item(&path, &path, 17, range, &path));
             }
@@ -919,7 +953,7 @@ fn import_completion(
         end: text::position(&d.text, c.end),
     };
     if let Some(path) = path {
-        let mut exports: Vec<SymRef> = standard_export_inventory(session)
+        let mut exports: Vec<SymRef> = standard_export_inventory(syms, session)
             .remove(&path)
             .unwrap_or_default();
         if exports.is_empty()
@@ -940,8 +974,8 @@ fn import_completion(
             let source = opened.or_else(|| std::fs::read_to_string(&file).ok());
             if let Some(source) = source.filter(|_| !file.is_empty()) {
                 let target = Document::new(uri::file_uri(&file), source);
-                let checked = workspace_analysis(session, &target, docs);
-                if let (Some(m), Some(program)) = (checked.module(&target), &checked.program)
+                let checked = workspace_analysis(syms, session, &target, docs);
+                if let (Some(m), Some(program)) = (checked.module(syms, &target), &checked.program)
                     && let Some(names) = program.symbols.get(&m.file)
                 {
                     {
@@ -951,7 +985,7 @@ fn import_completion(
                             .filter(|s| s.export && s.decl.is_some() && s.module == m.file)
                             .cloned()
                             .collect();
-                        found.sort_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
+                        found.sort_by(|a, b| syms.str(a.name).cmp(syms.str(b.name)));
                         exports.extend(found);
                     }
                 }
@@ -959,8 +993,8 @@ fn import_completion(
         }
         for s in &exports {
             if !session.is_prelude_symbol(s)
-                && !imported.contains(s.name.as_str())
-                && name_matches(s.name.as_str(), &c.prefix)
+                && !imported.contains(syms.str(s.name))
+                && name_matches(syms.str(s.name), &c.prefix)
             {
                 let kind = if s.kind == SymKind::Type {
                     7
@@ -970,33 +1004,33 @@ fn import_completion(
                     3
                 };
                 items.push(simple_item(
-                    s.name.as_str(),
+                    syms.str(s.name),
                     &path,
                     kind,
                     range,
-                    s.name.as_str(),
+                    syms.str(s.name),
                 ));
             }
         }
         sort(&mut items);
         return Some(items);
     }
-    for (path, exports) in standard_export_inventory(session) {
+    for (path, exports) in standard_export_inventory(syms, session) {
         for s in exports {
             if !session.is_prelude_symbol(&s)
-                && !imported.contains(s.name.as_str())
-                && name_matches(s.name.as_str(), &c.prefix)
+                && !imported.contains(syms.str(s.name))
+                && name_matches(syms.str(s.name), &c.prefix)
             {
                 let text = if grouped {
-                    s.name.as_str().to_string()
+                    syms.str(s.name).to_string()
                 } else {
                     format!(
                         "{} from {}",
-                        s.name,
+                        syms.str(s.name),
                         ms_driver::project::quoting::quote(&path)
                     )
                 };
-                items.push(simple_item(s.name.as_str(), &path, 7, range, &text));
+                items.push(simple_item(syms.str(s.name), &path, 7, range, &text));
             }
         }
     }
@@ -1006,11 +1040,14 @@ fn import_completion(
 
 /// Source declaration of the checked callee. Mutation is a declaration contract,
 /// not part of an ordinary function type.
-fn call_declaration(a: &EditorAnalysis, call: &Expr) -> Option<FuncRef> {
+fn call_declaration(syms: ms_syntax::Names, a: &EditorAnalysis, call: &Expr) -> Option<FuncRef> {
     let ExprKind::Call { callee, .. } = &call.kind else {
         return None;
     };
-    let module = a.module.clone().or_else(|| a.result.module(&a.document))?;
+    let module = a
+        .module
+        .clone()
+        .or_else(|| a.result.module(syms, &a.document))?;
     let facts = module.facts();
     let info = facts.info(callee.id)?;
     info.method
@@ -1024,18 +1061,23 @@ fn call_declaration(a: &EditorAnalysis, call: &Expr) -> Option<FuncRef> {
 }
 
 /// Signature help for the call around the cursor.
-pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Json, &'static str> {
+pub fn signature_help(
+    syms: ms_syntax::Names,
+    d: &Document,
+    docs: &Documents,
+    p: Position,
+) -> Result<Json, &'static str> {
     let mut c = context_at(d, p)?;
     if c.call_open.is_none() || c.literal || c.comment {
         return Ok(Json::Null);
     }
     let arguments = signature_arguments(d, &mut c);
-    let a = query_editor(d, docs, &c);
-    let Some((call, t)) = query_call(&a) else {
+    let a = query_editor(syms, d, docs, &c);
+    let Some((call, t)) = query_call(syms, &a) else {
         return Ok(Json::Null);
     };
     let name = signature_name(&a.document.text, &call);
-    let declaration = call_declaration(&a, &call);
+    let declaration = call_declaration(syms, &a, &call);
     let declared = declaration
         .as_ref()
         .and_then(FuncRef::func)
@@ -1048,7 +1090,11 @@ pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Jso
         } else {
             ""
         };
-        let mut label = format!("{mutable}{}: {}", param.name, param.ty);
+        let mut label = format!(
+            "{mutable}{}: {}",
+            syms.str(param.name),
+            param.ty.display(syms)
+        );
         if t.is_default(param.name) {
             label.push_str(" = ...");
         }
@@ -1059,7 +1105,7 @@ pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Jso
     let mut used = HashSet::new();
     for label in arguments {
         let slot = match label {
-            Some(name) => t.params.iter().position(|p| p.name.as_str() == name),
+            Some(name) => t.params.iter().position(|p| syms.str(p.name) == name),
             None => (0..t.params.len()).find(|index| !used.contains(index)),
         };
         if let Some(index) = slot {
@@ -1067,24 +1113,28 @@ pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Jso
             used.insert(index);
         }
     }
-    let result = t.result.as_ref().map(|r| r.to_string()).unwrap_or_default();
+    let result = t
+        .result
+        .as_ref()
+        .map(|r| r.display(syms).to_string())
+        .unwrap_or_default();
     let label = format!("{name}({}) {result}", labels.join(", "));
     let mut documentation = Json::Null;
     if let (Some(module), ms_syntax::ast::ExprKind::Call { callee, .. }) = (&a.module, &call.kind) {
-        let files = DeclFiles::new(&a.result.source_modules());
+        let files = DeclFiles::new(&a.result.source_modules(syms));
         let info = module.facts().info(callee.id).cloned();
         if let Some(info) = info {
             if let Some(symbol) = &info.symbol
                 && let Some(decl) = &symbol.decl
             {
                 let file = files.of_decl(decl).unwrap_or(symbol.module);
-                documentation = nav::description(&a.result, file, decl.pos());
+                documentation = nav::description(syms, &a.result, file, decl.pos());
             }
             if let Some(method) = &info.method
                 && let Some(decl) = &method.decl
             {
                 let file = files.file(decl, method.module);
-                documentation = nav::description(&a.result, file, decl.pos());
+                documentation = nav::description(syms, &a.result, file, decl.pos());
             }
         }
     }

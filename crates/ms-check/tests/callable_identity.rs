@@ -4,13 +4,15 @@ use ms_check::{CheckOptions, ImportMap};
 use std::sync::Arc;
 
 fn diagnostics(body: &str) -> Vec<String> {
+    let syms = ms_syntax::Names::global();
     let source = format!(
         "fn first(amount: Int) Int: amount + 1\nfn second(value: Int) Int: value + 2\nfn choose[T](left: T, right: T) T: left\ntype Pair[T]:\n    left: T\n    right: T\nfn exercise() Unit:\n{body}\n"
     );
     let file: Arc<str> = Arc::from("identity.ms");
     let module = ms_syntax::parser::parse(&file, &source).expect("parses");
     ms_check::check(
-        vec![ms_check::load_module(&module)],
+        syms,
+        vec![ms_check::load_module(syms, &module)],
         ImportMap::default(),
         CheckOptions::default(),
     )

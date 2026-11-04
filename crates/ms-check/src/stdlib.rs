@@ -96,6 +96,7 @@ pub(crate) struct World {
 /// `Rc` types whose primitives are thread-local (`types.rs`), so a session stays on one thread.
 #[derive(Default)]
 pub struct Session {
+    syms: ms_syntax::Names,
     world: RefCell<World>,
     /// Source of `Binding::uid`, shared by the program and the standard modules it checks.
     bindings: std::cell::Cell<usize>,
@@ -179,17 +180,20 @@ pub fn module_stem(file: &str) -> &str {
 
 /// Declares the symbol of a record or alternative of a bundled source module. The checker of the
 /// module reuses it, so native modules and the source module agree on one type.
-pub(crate) fn source_type_symbol(module: &ModRef, d: &DeclRef) -> SymRef {
+pub(crate) fn source_type_symbol(syms: ms_syntax::Names, module: &ModRef, d: &DeclRef) -> SymRef {
     let name = d.name();
     let kind = match d.decl().kind {
         DeclKind::Alternative(_) => Kind::Alternative,
         DeclKind::Interface(_) => Kind::Contract,
         _ => Kind::Record,
     };
-    let stem = module_stem(module.file.as_str());
+    let stem = module_stem(syms.str(module.file));
     let s = Rc::new(Sym {
         name,
-        id: n(&format!("standard_{stem}_symbol_{name}")),
+        id: n(&format!(
+            "standard_{stem}_symbol_{name_t}",
+            name_t = syms.str(name)
+        )),
         kind: SymKind::Type,
         module: module.file,
         native: n(""),
@@ -200,11 +204,12 @@ pub(crate) fn source_type_symbol(module: &ModRef, d: &DeclRef) -> SymRef {
     });
     let def = Definition::new(&s, kind);
     let mut t = Type::new(
+        syms,
         name,
         n(&format!(
             "module/{}#{}",
-            crate::checker::hex(module.file.as_str()),
-            name
+            crate::checker::hex(syms.str(module.file)),
+            syms.str(name)
         )),
         kind,
     );
@@ -248,7 +253,7 @@ fn decl_type_params(d: &Decl) -> &[TypeParam] {
     }
 }
 
-fn fold_inherent_impls(module: &Module) -> Result<Vec<DeclRef>, String> {
+fn fold_inherent_impls(syms: ms_syntax::Names, module: &Module) -> Result<Vec<DeclRef>, String> {
     let mut kept: Vec<(Decl, Vec<Method>)> = Vec::new();
     let mut types: HashMap<Name, usize> = HashMap::new();
     for d in &module.decls {
@@ -270,7 +275,7 @@ fn fold_inherent_impls(module: &Module) -> Result<Vec<DeclRef>, String> {
         if i.contract.is_some() {
             continue;
         }
-        let at = || position_text(n(&module.file), d.pos);
+        let at = || position_text(syms, n(&module.file), d.pos);
         let idx = match types.get(&n(i.receiver.name())) {
             Some(&idx) if !matches!(kept[idx].0.kind, DeclKind::Interface(_)) => idx,
             _ => {
@@ -293,7 +298,7 @@ fn fold_inherent_impls(module: &Module) -> Result<Vec<DeclRef>, String> {
         if !repeats {
             return Err(format!(
                 "inherent impl must repeat the type parameters of {}: {}",
-                decl_name(&kept[idx].0),
+                syms.str(decl_name(&kept[idx].0)),
                 at()
             ));
         }
@@ -329,21 +334,21 @@ fn fresh(ids: &mut u32) -> NodeId {
     NodeId(*ids - 1)
 }
 
-fn renumber_type(t: &TypeRef, ids: &mut u32) -> Result<TypeRef, String> {
+fn renumber_type(syms: ms_syntax::Names, t: &TypeRef, ids: &mut u32) -> Result<TypeRef, String> {
     let kind = match &t.kind {
         TypeKind::Named { name, args } => TypeKind::Named {
             name: *name,
             args: args
                 .iter()
-                .map(|a| renumber_type(a, ids))
+                .map(|a| renumber_type(syms, a, ids))
                 .collect::<Result<_, _>>()?,
         },
         TypeKind::Fn { params, result } => TypeKind::Fn {
             params: params
                 .iter()
-                .map(|p| renumber_param(p, ids))
+                .map(|p| renumber_param(syms, p, ids))
                 .collect::<Result<_, _>>()?,
-            result: Box::new(renumber_type(result, ids)?),
+            result: Box::new(renumber_type(syms, result, ids)?),
         },
     };
     Ok(TypeRef {
@@ -354,17 +359,18 @@ fn renumber_type(t: &TypeRef, ids: &mut u32) -> Result<TypeRef, String> {
 }
 
 fn renumber_param(
+    syms: ms_syntax::Names,
     p: &ms_syntax::ast::Param,
     ids: &mut u32,
 ) -> Result<ms_syntax::ast::Param, String> {
     if p.default.is_some() {
         return Err(format!(
             "a source method on a native type cannot have a default argument; declare it through an interface: {}",
-            position_text(n(""), p.pos)
+            position_text(syms, n(""), p.pos)
         ));
     }
     let ty = match &p.ty {
-        Some(t) => Some(renumber_type(t, ids)?),
+        Some(t) => Some(renumber_type(syms, t, ids)?),
         None => None,
     };
     Ok(ms_syntax::ast::Param {
@@ -381,13 +387,14 @@ fn renumber_param(
 /// half: `impl Receiver[T]:` cannot declare operations on a type the half does not own, so its
 /// methods are declared by a generated unexported interface that the receiver implements.
 fn interface_for_inherent(
+    syms: ms_syntax::Names,
     parsed: &Module,
     d: &Decl,
     i: &ImplDecl,
     ids: &mut u32,
     used: &mut Vec<String>,
 ) -> Result<(Decl, Decl), String> {
-    let at = || position_text(n(&parsed.file), d.pos);
+    let at = || position_text(syms, n(&parsed.file), d.pos);
     let TypeKind::Named { name, args } = &i.receiver.kind else {
         return Err(format!("an inherent impl must name a type: {}", at()));
     };
@@ -413,7 +420,7 @@ fn interface_for_inherent(
             default: None,
         });
     }
-    let base = format!("{}SourceMethods", name.as_str().replace('.', "_"));
+    let base = format!("{}SourceMethods", syms.str(name).replace('.', "_"));
     let mut interface_name = base.clone();
     while used.contains(&interface_name) {
         interface_name = format!("{base}{}", used.len());
@@ -431,10 +438,10 @@ fn interface_for_inherent(
                 bounds: t
                     .bounds
                     .iter()
-                    .map(|b| renumber_type(b, ids))
+                    .map(|b| renumber_type(syms, b, ids))
                     .collect::<Result<_, _>>()?,
                 default: match &t.default {
-                    Some(t) => Some(renumber_type(t, ids)?),
+                    Some(t) => Some(renumber_type(syms, t, ids)?),
                     None => None,
                 },
             });
@@ -446,9 +453,9 @@ fn interface_for_inherent(
                 .func
                 .params
                 .iter()
-                .map(|p| renumber_param(p, ids))
+                .map(|p| renumber_param(syms, p, ids))
                 .collect::<Result<_, _>>()?,
-            result: renumber_type(&m.func.result, ids)?,
+            result: renumber_type(syms, &m.func.result, ids)?,
             body: Vec::new(),
             external: false,
         };
@@ -466,7 +473,7 @@ fn interface_for_inherent(
             name: interface_name,
             args: args
                 .iter()
-                .map(|a| renumber_type(a, ids))
+                .map(|a| renumber_type(syms, a, ids))
                 .collect::<Result<_, _>>()?,
         },
     };
@@ -500,7 +507,10 @@ fn interface_for_inherent(
 /// the bodied declarations and the interfaces only they implement; the rest stays native. Source
 /// methods on a native type are written through an interface, so a bodied inherent method is an
 /// error. Returns `None` for any other file.
-fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
+fn split_mixed(
+    syms: ms_syntax::Names,
+    parsed: &Module,
+) -> Result<Option<(Module, Module)>, String> {
     if !is_mixed(parsed) {
         return Ok(None);
     }
@@ -513,7 +523,7 @@ fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
         let to_source = match &d.kind {
             DeclKind::Impl(i) if i.contract.is_none() && decl_has_body(d) => {
                 let (interface, implementation) =
-                    interface_for_inherent(parsed, d, i, &mut ids, &mut used)?;
+                    interface_for_inherent(syms, parsed, d, i, &mut ids, &mut used)?;
                 source.push(interface);
                 source.push(implementation);
                 continue;
@@ -547,7 +557,7 @@ fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
             DeclKind::Interface(i) => i.name,
             DeclKind::Impl(_) | DeclKind::Test(_) => continue,
         };
-        if STANDARD_PRELUDE_NAMES.contains(&name.as_str()) {
+        if STANDARD_PRELUDE_NAMES.contains(&syms.str(name)) {
             continue;
         }
         ids += 1;
@@ -593,22 +603,22 @@ fn parse_bundled(file: &str, source: &str) -> Result<Module, String> {
 }
 
 /// Splits a parsed bundled file into its modules: one, or a native half and a `+source` half.
-fn bundled_modules(parsed: &Module) -> Result<Vec<ModRef>, String> {
+fn bundled_modules(syms: ms_syntax::Names, parsed: &Module) -> Result<Vec<ModRef>, String> {
     // A file that declares native operations and also has bodies keeps the native declarations
     // under its own name and checks the bodies as a source module named `<file>+source`.
-    if let Some((native, source)) = split_mixed(parsed)? {
-        let decls = fold_inherent_impls(&native)?;
+    if let Some((native, source)) = split_mixed(syms, parsed)? {
+        let decls = fold_inherent_impls(syms, &native)?;
         return Ok(vec![
             Rc::new(ModuleData::new(&native, decls, native.node_count)),
-            crate::load_module(&source),
+            crate::load_module(syms, &source),
         ]);
     }
     // A module with implementation bodies is checked like user source, so its inherent
     // methods take the same desugaring and become ordinary methods wherever the type is used.
     if has_inherent_body(parsed) {
-        return Ok(vec![crate::load_module(parsed)]);
+        return Ok(vec![crate::load_module(syms, parsed)]);
     }
-    let decls = fold_inherent_impls(parsed)?;
+    let decls = fold_inherent_impls(syms, parsed)?;
     Ok(vec![Rc::new(ModuleData::new(
         parsed,
         decls,
@@ -620,21 +630,26 @@ struct Loader<'a> {
     c: &'a mut Checker,
 }
 
-fn position_text(file: Name, pos: ms_syntax::Pos) -> String {
-    format!("{}:{}:{}", file, pos.line, pos.column)
+fn position_text(syms: ms_syntax::Names, file: Name, pos: ms_syntax::Pos) -> String {
+    format!("{}:{}:{}", syms.str(file), pos.line, pos.column)
 }
 
 impl Loader<'_> {
     /// The canonical symbol of an `extern type` declared in a bundled source module.
-    fn register_extern_type(&mut self, module: &ModRef, d: &DeclRef) -> Result<(), String> {
+    fn register_extern_type(
+        &mut self,
+        syms: ms_syntax::Names,
+        module: &ModRef,
+        d: &DeclRef,
+    ) -> Result<(), String> {
         let name = d.name();
         if !d.type_params().is_empty() {
             return Err(format!(
                 "extern types cannot be generic yet: {}",
-                position_text(module.file, d.pos())
+                position_text(syms, module.file, d.pos())
             ));
         }
-        let id = n(&format!("@std/{name}"));
+        let id = n(&format!("@std/{name_t}", name_t = syms.str(name)));
         let s = Rc::new(Sym {
             name,
             id,
@@ -647,17 +662,20 @@ impl Loader<'_> {
             decl: Some(d.clone()),
         });
         let def = Definition::new(&s, Kind::Native);
-        let mut t = Type::new(name, id, Kind::Native);
+        let mut t = Type::new(syms, name, id, Kind::Native);
         t.def = Some(def);
         *s.ty.borrow_mut() = Some(Rc::new(t));
         if self.c.session.world(|w| w.symbols.contains_key(&name)) {
-            return Err(format!("duplicate standard type {name}"));
+            return Err(format!(
+                "duplicate standard type {name_t}",
+                name_t = syms.str(name)
+            ));
         }
         self.c.session.world(|w| w.symbols.insert(name, s));
         Ok(())
     }
 
-    fn register(&mut self, module: &ModRef) -> Result<(), String> {
+    fn register(&mut self, syms: ms_syntax::Names, module: &ModRef) -> Result<(), String> {
         self.c.session.world(|w| w.sources.push(module.clone()));
         let source_implementation = module.decls.iter().any(has_implementation);
         if source_implementation {
@@ -665,7 +683,7 @@ impl Loader<'_> {
                 if let DeclKind::Record(r) = &d.decl().kind
                     && r.external
                 {
-                    self.register_extern_type(module, d)?;
+                    self.register_extern_type(syms, module, d)?;
                 }
             }
             self.c.session.register_source(module);
@@ -678,7 +696,7 @@ impl Loader<'_> {
                     if !method.func.body.is_empty() {
                         return Err(format!(
                             "native implementations must not have bodies: {}",
-                            position_text(module.file, method.pos)
+                            position_text(syms, module.file, method.pos)
                         ));
                     }
                 }
@@ -687,13 +705,13 @@ impl Loader<'_> {
             if matches!(d.decl().kind, DeclKind::Test(_)) {
                 return Err(format!(
                     "standard declarations cannot contain implementation bodies: {}",
-                    position_text(module.file, d.pos())
+                    position_text(syms, module.file, d.pos())
                 ));
             }
             if has_implementation(d) {
                 return Err(format!(
                     "native declarations must not have bodies: {}",
-                    position_text(module.file, d.pos())
+                    position_text(syms, module.file, d.pos())
                 ));
             }
             let name = d.name();
@@ -704,11 +722,11 @@ impl Loader<'_> {
                 DeclKind::Interface(_) => (Some(Kind::Contract), SymKind::Type),
                 _ => (None, SymKind::Type),
             };
-            let mut id = n(&format!("@std/{name}"));
+            let mut id = n(&format!("@std/{name_t}", name_t = syms.str(name)));
             let mut native = name;
             if sym_kind == SymKind::Fn {
                 // Identities are module/name.
-                let ident = format!("{}/{}", module_stem(module.file.as_str()), name);
+                let ident = format!("{}/{}", module_stem(syms.str(module.file)), syms.str(name));
                 native = n(&ident);
                 id = n(&format!("@std/{ident}"));
             }
@@ -726,23 +744,26 @@ impl Loader<'_> {
             if let Some(mut kind) = kind {
                 // `extern type` declares an opaque runtime value; `List` also carries a constructor field.
                 let external = matches!(&d.decl().kind, DeclKind::Record(r) if r.external);
-                if external || NATIVE_WITH_FIELDS.contains(&name.as_str()) {
+                if external || NATIVE_WITH_FIELDS.contains(&syms.str(name)) {
                     kind = Kind::Native;
                 }
                 let def = Definition::new(&s, kind);
-                let mut t = Type::new(name, id, kind);
+                let mut t = Type::new(syms, name, id, kind);
                 t.def = Some(def);
                 *s.ty.borrow_mut() = Some(Rc::new(t));
                 let duplicate = self.c.session.world(|w| w.symbols.contains_key(&name));
                 if duplicate {
-                    return Err(format!("duplicate standard type {name}"));
+                    return Err(format!(
+                        "duplicate standard type {name_t}",
+                        name_t = syms.str(name)
+                    ));
                 }
                 self.c.session.world(|w| w.symbols.insert(name, s.clone()));
             }
             if symbols.contains_key(&name) {
                 return Err(format!(
                     "duplicate standard declaration {}",
-                    position_text(module.file, d.pos())
+                    position_text(syms, module.file, d.pos())
                 ));
             }
             symbols.insert(name, s);
@@ -776,7 +797,7 @@ impl Loader<'_> {
 
     /// Opens the declaration scope of a native module: primitives, the
     /// prelude, its imports, and its own declarations.
-    fn scope_module(&mut self, module: &ModRef) {
+    fn scope_module(&mut self, syms: ms_syntax::Names, module: &ModRef) {
         let c = &mut *self.c;
         c.module = Some(module.clone());
         c.names = Rc::new(RefCell::new(HashMap::new()));
@@ -802,7 +823,7 @@ impl Loader<'_> {
             let Some(found) = found.filter(|f| f.export) else {
                 c.res_error(
                     item.name_pos,
-                    format!("standard module does not export {}", item.name),
+                    format!("standard module does not export {}", syms.str(item.name)),
                 );
                 continue;
             };
@@ -828,9 +849,9 @@ impl Loader<'_> {
     }
 
     /// Declares every native nominal identity before any is resolved.
-    fn declare_identities(&mut self) {
+    fn declare_identities(&mut self, syms: ms_syntax::Names) {
         for module in self.native_sources() {
-            self.scope_module(&module);
+            self.scope_module(syms, &module);
             for d in &module.decls {
                 if matches!(d.decl().kind, DeclKind::Impl(_)) {
                     continue;
@@ -840,8 +861,9 @@ impl Loader<'_> {
                 let mut vars: Vec<Ty> = Vec::new();
                 for p in d.type_params() {
                     let v: Ty = Rc::new(Type::new(
+                        syms,
                         p.name,
-                        n(&format!("{}/{}", s.id, p.name)),
+                        n(&format!("{}/{}", syms.str(s.id), syms.str(p.name))),
                         Kind::Variable,
                     ));
                     vars.push(v.clone());
@@ -849,7 +871,7 @@ impl Loader<'_> {
                 }
                 *s.variables.borrow_mut() = vars.clone();
                 if s.kind == SymKind::Type {
-                    let t = s.ty();
+                    let t = s.ty(syms);
                     *t.def.as_ref().expect("def").variables.borrow_mut() = vars.clone();
                     *s.ty.borrow_mut() = Some(with_args(&t, vars));
                 }
@@ -858,9 +880,9 @@ impl Loader<'_> {
     }
 
     /// Fills in native type variables, fields, cases, and operation signatures.
-    fn resolve_declarations(&mut self) {
+    fn resolve_declarations(&mut self, syms: ms_syntax::Names) {
         for module in self.native_sources() {
-            self.scope_module(&module);
+            self.scope_module(syms, &module);
             for d in &module.decls {
                 if matches!(d.decl().kind, DeclKind::Impl(_)) {
                     continue;
@@ -881,14 +903,14 @@ impl Loader<'_> {
                     *s.ty.borrow_mut() = Some(t);
                     continue;
                 }
-                let def = s.ty().def.clone().expect("def");
+                let def = s.ty(syms).def.clone().expect("def");
                 let fields = self.c.params(d.record_fields());
                 *def.fields.borrow_mut() = fields;
                 let mut seen: HashSet<Name> = HashSet::new();
                 for cs in d.cases() {
                     if !seen.insert(cs.name) {
                         self.c
-                            .type_error(cs.pos, format!("duplicate case {}", cs.name));
+                            .type_error(cs.pos, format!("duplicate case {}", syms.str(cs.name)));
                     }
                     let fields = self.c.params(&cs.fields);
                     def.push_case(Case {
@@ -901,11 +923,11 @@ impl Loader<'_> {
                     if !seen.insert(method.func.name) {
                         self.c.type_error(
                             method.pos,
-                            format!("duplicate operation {}", method.func.name),
+                            format!("duplicate operation {}", syms.str(method.func.name)),
                         );
                     }
                     self.c.scope = self.c.variable_scope(&vars);
-                    self.c.declare_self(&s.ty());
+                    self.c.declare_self(&s.ty(syms));
                     self.c.operation_variables(s.id, method);
                     let ty = self
                         .c
@@ -925,9 +947,9 @@ impl Loader<'_> {
     }
 
     /// Checks native impl blocks and ties each to its binding.
-    fn bind_implementations(&mut self) -> Result<(), String> {
+    fn bind_implementations(&mut self, syms: ms_syntax::Names) -> Result<(), String> {
         for module in self.native_sources() {
-            self.scope_module(&module);
+            self.scope_module(syms, &module);
             for d in &module.decls {
                 let DeclKind::Impl(imp) = &d.decl().kind else {
                     continue;
@@ -948,7 +970,10 @@ impl Loader<'_> {
                     };
                     let key = format!(
                         "{}/{}/{}/{}",
-                        module.file, receiver_name, contract_name, name
+                        syms.str(module.file),
+                        receiver_name,
+                        contract_name,
+                        syms.str(name)
                     );
                     method.id = n(&key);
                     // A native contract method is the contract module's function of that name (`core/message`).
@@ -958,8 +983,8 @@ impl Loader<'_> {
                         .world(|w| w.symbols.get(&n(&contract_name)).map(|c| c.module));
                     let native = format!(
                         "{}/{}",
-                        module_stem(contract_module.unwrap_or(module.file).as_str()),
-                        name
+                        module_stem(syms.str(contract_module.unwrap_or(module.file))),
+                        syms.str(name)
                     );
                     method.native = n(&native);
                     self.c.p.methods[index] = Rc::new(method);
@@ -983,27 +1008,27 @@ impl Loader<'_> {
             if let Some(typ) = self.c.session.world(|w| w.symbols.get(&n(&name)).cloned()) {
                 self.c
                     .session
-                    .world(|w| w.intrinsic.insert(n(receiver), typ.ty()));
+                    .world(|w| w.intrinsic.insert(n(receiver), typ.ty(syms)));
             }
         }
         Ok(())
     }
 
     /// Records the native operations of standard receivers: every bodiless inherent method.
-    fn bind_receivers(&mut self) -> Result<(), String> {
+    fn bind_receivers(&mut self, syms: ms_syntax::Names) -> Result<(), String> {
         for module in self.native_sources() {
-            self.scope_module(&module);
+            self.scope_module(syms, &module);
             for declaration in &module.decls {
                 if matches!(declaration.decl().kind, DeclKind::Impl(_)) {
                     continue;
                 }
                 let symbol = self.module_symbol(&module, declaration);
-                if symbol.kind != SymKind::Type || symbol.ty().kind == Kind::Contract {
+                if symbol.kind != SymKind::Type || symbol.ty(syms).kind == Kind::Contract {
                     continue;
                 }
                 for method in declaration.methods() {
                     if method.func.body.is_empty() {
-                        let key = format!("{}/{}", symbol.id, method.func.name);
+                        let key = format!("{}/{}", syms.str(symbol.id), syms.str(method.func.name));
                         self.c.session.world(|w| w.receiver_natives.insert(key));
                     }
                 }
@@ -1013,13 +1038,13 @@ impl Loader<'_> {
     }
 
     /// Checks native default expressions and folds their constants.
-    fn check_defaults(&mut self) -> Result<(), String> {
+    fn check_defaults(&mut self, syms: ms_syntax::Names) -> Result<(), String> {
         self.c.check_type_defaults();
         // Check native default expressions with the ordinary expression checker.
         // Lowering prepares concrete slots before native dispatch; the runtime does
         // not own a second default-expression schema.
         for module in self.native_sources() {
-            self.scope_module(&module);
+            self.scope_module(syms, &module);
             for declaration in &module.decls {
                 if matches!(declaration.decl().kind, DeclKind::Impl(_)) {
                     continue;
@@ -1030,12 +1055,12 @@ impl Loader<'_> {
                     self.c.check_native_defaults(
                         &FuncRef::of_decl(declaration.clone()),
                         &f.params,
-                        &symbol.ty(),
+                        &symbol.ty(syms),
                         &symbol.variables(),
                         false,
                     );
                 } else {
-                    let ctor = constructor_signature(&self.c.session, &symbol.ty());
+                    let ctor = constructor_signature(syms, &self.c.session, &symbol.ty(syms));
                     self.c.check_native_defaults(
                         &FuncRef::of_decl(declaration.clone()),
                         declaration.record_fields(),
@@ -1044,7 +1069,7 @@ impl Loader<'_> {
                         false,
                     );
                     let operations: Vec<Operation> = symbol
-                        .ty()
+                        .ty(syms)
                         .def
                         .as_ref()
                         .expect("def")
@@ -1053,23 +1078,23 @@ impl Loader<'_> {
                         .clone();
                     for operation in operations {
                         let Some(method) =
-                            standard_method_declaration(&symbol.ty(), operation.name)
+                            standard_method_declaration(&symbol.ty(syms), operation.name)
                         else {
                             continue;
                         };
                         let mut variables = symbol.variables();
-                        variables.extend(
-                            self.c
-                                .session
-                                .operation_variables(&format!("{}/{}", symbol.id, operation.name)),
-                        );
+                        variables.extend(self.c.session.operation_variables(&format!(
+                            "{}/{}",
+                            syms.str(symbol.id),
+                            syms.str(operation.name)
+                        )));
                         let params = method.func().map(|f| f.params.as_slice()).unwrap_or(&[]);
                         self.c.check_native_defaults(
                             &method,
                             params,
                             &operation.ty,
                             &variables,
-                            symbol.ty().kind == Kind::Contract,
+                            symbol.ty(syms).kind == Kind::Contract,
                         );
                     }
                 }
@@ -1130,7 +1155,7 @@ impl Session {
         {
             return true;
         }
-        if !STANDARD_PRELUDE_NAMES.contains(&symbol.name.as_str()) {
+        if !STANDARD_PRELUDE_NAMES.contains(&self.syms.str(symbol.name)) {
             return false;
         }
         self.world(|w| {
@@ -1245,8 +1270,8 @@ impl Session {
         self.load_deferred_all();
         let mut names: BTreeSet<&'static str> = BTreeSet::new();
         self.world(|w| {
-            names.extend(w.modules.keys().map(|k| k.as_str()));
-            names.extend(w.source_modules.keys().map(|k| k.as_str()));
+            names.extend(w.modules.keys().map(|k| self.syms.str(k)));
+            names.extend(w.source_modules.keys().map(|k| self.syms.str(k)));
         });
         names
             .into_iter()
@@ -1282,8 +1307,10 @@ impl Session {
                 .unwrap_or_default()
         });
         // The bodies of a mixed file export under the file's own name too.
-        if let Some(twin) = self.standard_source_module(n(&format!("{path}+source"))) {
-            for (name, symbol) in self.standard_exports(twin.file.as_str()) {
+        if let Some(twin) = self
+            .standard_source_module(n(&format!("{path_t}+source", path_t = self.syms.str(path))))
+        {
+            for (name, symbol) in self.standard_exports(self.syms.str(twin.file)) {
                 if symbol.module == twin.file {
                     exports.entry(name).or_insert(symbol);
                 }
@@ -1335,7 +1362,7 @@ impl Session {
     /// Whether `module` is an extension module or one an extension module imports.
     fn extension_reach(self: &Rc<Self>, module: &ModRef) -> bool {
         EXTENSION_MODULES.iter().any(|path| {
-            module.file.as_str() == *path
+            self.syms.str(module.file) == *path
                 || self.standard_source_module(n(path)).is_some_and(|ext| {
                     self.source_reach(&ext)
                         .iter()
@@ -1358,7 +1385,7 @@ impl Session {
         if cycle {
             panic!(
                 "cyclic standard source dependency at {} while checking {:?}",
-                module.file,
+                self.syms.str(module.file),
                 self.world(|w| w.checking.clone())
             );
         }
@@ -1403,7 +1430,7 @@ impl Session {
                 ..CheckOptions::default()
             },
         );
-        checker.id_scope = format!("standard_{}_", module_stem(module.file.as_str()));
+        checker.id_scope = format!("standard_{}_", module_stem(self.syms.str(module.file)));
         if group.len() > 1 {
             checker.group = group.to_vec();
         }
@@ -1412,7 +1439,7 @@ impl Session {
             let text: Vec<String> = program.diagnostics.iter().map(|d| d.to_string()).collect();
             return Err(format!(
                 "invalid standard implementation {}: {}",
-                module.file,
+                self.syms.str(module.file),
                 text.join("; ")
             ));
         }
@@ -1473,6 +1500,7 @@ impl Session {
         let mut diagnostics: Vec<Diagnostic> = Vec::new();
         let mut state: HashMap<Name, u8> = HashMap::new();
         fn visit(
+            syms: ms_syntax::Names,
             session: &Rc<Session>,
             module: &ModRef,
             state: &mut HashMap<Name, u8>,
@@ -1485,7 +1513,7 @@ impl Session {
                 Some(1) => {
                     diagnostics.push(Diagnostic {
                         opener_line: 0,
-                        file: Arc::from(module.file.as_str()),
+                        file: Arc::from(syms.str(module.file)),
                         pos: ms_syntax::Pos::new(0, 1, 1),
                         phase: Phase::Resolution,
                         message: "cyclic standard source dependency".to_string(),
@@ -1499,7 +1527,7 @@ impl Session {
             state.insert(module.file, 1);
             for item in &module.imports {
                 if let Some(dep) = session.import_source(item) {
-                    visit(session, &dep, state, ordered, diagnostics);
+                    visit(syms, session, &dep, state, ordered, diagnostics);
                 }
             }
             state.insert(module.file, 2);
@@ -1510,7 +1538,14 @@ impl Session {
         let extending = modules.iter().any(|m| self.extension_reach(m));
         for path in EXTENSION_MODULES.iter().filter(|_| !extending) {
             if let Some(extension) = self.standard_source_module(n(path)) {
-                visit(self, &extension, &mut state, &mut ordered, &mut diagnostics);
+                visit(
+                    self.syms,
+                    self,
+                    &extension,
+                    &mut state,
+                    &mut ordered,
+                    &mut diagnostics,
+                );
             }
         }
         // A `bench` block runs under the driver in `@std/test/bench.ms`, which its module need not import.
@@ -1520,18 +1555,39 @@ impl Session {
                 .any(|d| matches!(&d.decl().kind, DeclKind::Test(t) if t.bench))
         });
         if benching && let Some(driver) = self.standard_source_module(n("@std/test/bench.ms")) {
-            visit(self, &driver, &mut state, &mut ordered, &mut diagnostics);
+            visit(
+                self.syms,
+                self,
+                &driver,
+                &mut state,
+                &mut ordered,
+                &mut diagnostics,
+            );
         }
         // Prelude functions reach user code without an import, so their modules come with any program of its own.
-        if modules.iter().any(|m| !m.is_standard()) {
+        if modules.iter().any(|m| !m.is_standard(self.syms)) {
             for (path, name) in STANDARD_PRELUDE_FUNCTIONS {
                 if let Some(dep) = self.import_source(&prelude_function_import(path, name)) {
-                    visit(self, &dep, &mut state, &mut ordered, &mut diagnostics);
+                    visit(
+                        self.syms,
+                        self,
+                        &dep,
+                        &mut state,
+                        &mut ordered,
+                        &mut diagnostics,
+                    );
                 }
             }
         }
         for m in &modules {
-            visit(self, m, &mut state, &mut ordered, &mut diagnostics);
+            visit(
+                self.syms,
+                self,
+                m,
+                &mut state,
+                &mut ordered,
+                &mut diagnostics,
+            );
         }
         (ordered, diagnostics)
     }
@@ -1541,14 +1597,15 @@ impl Session {
         let Some(source) = self.world(|w| w.deferred.remove(&path)) else {
             return;
         };
-        let modules = parse_bundled(path.as_str(), source)
+        let modules = parse_bundled(self.syms.str(path), source)
             .and_then(|parsed| {
                 if !is_pure_source(&parsed) {
                     return Err(format!(
-                        "{path} is not pure source; build.rs must load it eagerly"
+                        "{path_t} is not pure source; build.rs must load it eagerly",
+                        path_t = self.syms.str(path)
                     ));
                 }
-                bundled_modules(&parsed)
+                bundled_modules(self.syms, &parsed)
             })
             .unwrap_or_else(|e| panic!("standard declarations: {e}"));
         for module in modules {
@@ -1557,7 +1614,7 @@ impl Session {
         }
         self.world(|w| {
             w.sources
-                .sort_by(|a, b| a.file.as_str().cmp(b.file.as_str()))
+                .sort_by(|a, b| self.syms.str(a.file).cmp(self.syms.str(b.file)))
         });
     }
 
@@ -1565,7 +1622,7 @@ impl Session {
     fn load_deferred_all(self: &Rc<Self>) {
         self.ensure_standard();
         let mut paths: Vec<Name> = self.world(|w| w.deferred.keys().copied().collect());
-        paths.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+        paths.sort_by(|a, b| self.syms.str(a).cmp(self.syms.str(b)));
         for path in paths {
             self.load_deferred(path);
         }
@@ -1576,7 +1633,7 @@ impl Session {
         for (name, source, eager) in SOURCES {
             let file = format!("@std/{name}");
             if *eager {
-                modules.extend(bundled_modules(&parse_bundled(&file, source)?)?);
+                modules.extend(bundled_modules(self.syms, &parse_bundled(&file, source)?)?);
             } else {
                 self.world(|w| w.deferred.insert(n(&file), source));
             }
@@ -1585,13 +1642,13 @@ impl Session {
         checker.standard_declarations = true;
         let mut loader = Loader { c: &mut checker };
         for module in &modules {
-            loader.register(module)?;
+            loader.register(self.syms, module)?;
         }
-        loader.declare_identities();
-        loader.resolve_declarations();
-        loader.bind_implementations()?;
-        loader.bind_receivers()?;
-        loader.check_defaults()?;
+        loader.declare_identities(self.syms);
+        loader.resolve_declarations(self.syms);
+        loader.bind_implementations(self.syms)?;
+        loader.bind_receivers(self.syms)?;
+        loader.check_defaults(self.syms)?;
         Ok(())
     }
 
@@ -1604,7 +1661,7 @@ impl Session {
                 DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
                     if d.decl().export =>
                 {
-                    let stub = source_type_symbol(module, d);
+                    let stub = source_type_symbol(self.syms, module, d);
                     self.world(|w| w.source_types.insert((module.file, d.name()), stub));
                 }
                 _ => {}
@@ -1620,7 +1677,7 @@ impl Session {
         let sym = self
             .standard_symbol(name)
             .unwrap_or_else(|| panic!("standard type {name}"));
-        with_args(&sym.ty(), args)
+        with_args(&sym.ty(self.syms), args)
     }
 
     /// `Duration`, `Instant` or `Timestamp`, the records of `@std/os/time.ms`.
@@ -1630,7 +1687,7 @@ impl Session {
         let sym = self
             .source_type(n("@std/os/time.ms"), n(name))
             .unwrap_or_else(|| panic!("standard time type {name}"));
-        sym.ty()
+        sym.ty(self.syms)
     }
 
     /// `TestHooks`, the interface of `@std/test/test.ms`, which a program loads only when it has a fixture.
@@ -1639,7 +1696,7 @@ impl Session {
         let sym = self
             .source_type(n("@std/test/test.ms"), n("TestHooks"))
             .unwrap_or_else(|| panic!("standard type TestHooks"));
-        sym.ty()
+        sym.ty(self.syms)
     }
 
     /// `TestOutcome`: the implicit `Result[Unit, Error]` of a test block.
@@ -1652,9 +1709,12 @@ impl Session {
 mod tests {
     use super::*;
 
-    fn halves(text: &str) -> Result<Option<(Module, Module)>, String> {
+    fn halves(syms: ms_syntax::Names, text: &str) -> Result<Option<(Module, Module)>, String> {
         let file: Arc<str> = Arc::from("@std/t.ms");
-        split_mixed(&ms_syntax::parser::parse(&file, text).expect("parses"))
+        split_mixed(
+            syms,
+            &ms_syntax::parser::parse(&file, text).expect("parses"),
+        )
     }
 
     #[test]
@@ -1679,6 +1739,7 @@ mod tests {
 
     #[test]
     fn pure_source_modules_load_on_first_lookup() {
+        let syms = ms_syntax::Names::global();
         let session = Session::new();
         session.ensure_standard();
         let yaml = n("@std/data/yaml.ms");
@@ -1697,14 +1758,15 @@ mod tests {
         assert!(
             sources
                 .windows(2)
-                .all(|p| p[0].file.as_str() < p[1].file.as_str())
+                .all(|p| syms.str(p[0].file) < syms.str(p[1].file))
         );
     }
 
     #[test]
     fn a_bodied_inherent_impl_becomes_an_interface_and_a_contract_impl() {
+        let syms = ms_syntax::Names::global();
         let text = "export type Box[T]: ...\n\nimpl Box[T]:\n    fn native() Int: ...\n\nimpl Box[T]:\n    fn size() Int:\n        return 1\n";
-        let (native, source) = halves(text).unwrap().expect("mixed");
+        let (native, source) = halves(syms, text).unwrap().expect("mixed");
         assert_eq!(native.file.as_ref(), "@std/t.ms");
         assert_eq!(source.file.as_ref(), "@std/t.ms+source");
         assert_eq!(native.decls.len(), 2);
@@ -1722,14 +1784,16 @@ mod tests {
 
     #[test]
     fn a_default_argument_on_a_source_method_is_rejected() {
+        let syms = ms_syntax::Names::global();
         let text = "export type Box: ...\n\nimpl Box:\n    fn native() Int: ...\n\nimpl Box:\n    fn size(n: Int = 1) Int:\n        return n\n";
-        let error = halves(text).unwrap_err();
+        let error = halves(syms, text).unwrap_err();
         assert!(error.contains("default argument"), "{error}");
     }
 
     #[test]
     fn a_file_without_bodies_is_not_split() {
+        let syms = ms_syntax::Names::global();
         let text = "export type Box: ...\n\nimpl Box:\n    fn native() Int: ...\n";
-        assert!(halves(text).unwrap().is_none());
+        assert!(halves(syms, text).unwrap().is_none());
     }
 }

@@ -46,15 +46,15 @@ impl Outline<'_> {
             .map_or(0, |at| at + 1)
     }
 
-    fn declaration(&self, d: &DeclRef, end: usize) -> Json {
+    fn declaration(&self, syms: ms_syntax::Names, d: &DeclRef, end: usize) -> Json {
         let decl = d.decl();
-        let mut name = d.name().as_str().to_string();
+        let mut name = syms.str(d.name()).to_string();
         let mut kind = FUNCTION;
         let mut detail = String::new();
         if let Some(symbol) = self.symbol(d) {
             detail = symbol
                 .value_type()
-                .map(|t| t.to_string())
+                .map(|t| t.display(syms).to_string())
                 .unwrap_or_default();
             if symbol.is_constant() {
                 kind = CONSTANT;
@@ -77,7 +77,7 @@ impl Outline<'_> {
         }
         let mut children: Vec<Json> = Vec::new();
         for field in d.record_fields() {
-            let r = self.selection(field.pos.offset as usize, field.name.as_str());
+            let r = self.selection(field.pos.offset as usize, syms.str(field.name));
             let start = field.pos.offset as usize;
             let rest = &self.d.text.as_bytes()[start.min(self.d.text.len())..];
             let line_end = rest.iter().position(|&b| b == b'\n').unwrap_or(rest.len());
@@ -86,7 +86,7 @@ impl Outline<'_> {
             let line = String::from_utf8_lossy(line);
             let line = line.trim_end_matches(['\r']);
             children.push(obj([
-                ("name", field.name.as_str().into()),
+                ("name", syms.str(field.name).into()),
                 ("kind", FIELD.into()),
                 (
                     "range",
@@ -100,9 +100,9 @@ impl Outline<'_> {
             ]));
         }
         for case in d.cases() {
-            let r = self.selection(case.pos.offset as usize, case.name.as_str());
+            let r = self.selection(case.pos.offset as usize, syms.str(case.name));
             children.push(obj([
-                ("name", case.name.as_str().into()),
+                ("name", syms.str(case.name).into()),
                 ("kind", ENUM_MEMBER.into()),
                 ("range", r.json()),
                 ("selectionRange", r.json()),
@@ -114,7 +114,7 @@ impl Outline<'_> {
                 Some(next) => self.block_end(next.pos.offset as usize),
                 None => end,
             };
-            children.push(self.method(method, method_end));
+            children.push(self.method(syms, method, method_end));
         }
         let mut value = obj([
             ("name", name.into()),
@@ -136,8 +136,8 @@ impl Outline<'_> {
         value
     }
 
-    fn method(&self, method: &Method, end: usize) -> Json {
-        let name = method.func.name.as_str();
+    fn method(&self, syms: ms_syntax::Names, method: &Method, end: usize) -> Json {
+        let name = syms.str(method.func.name);
         let offset = method.pos.offset as usize;
         obj([
             ("name", name.into()),
@@ -164,8 +164,8 @@ impl Outline<'_> {
 }
 
 /// The hierarchical outline of a document, or `[]` when it is not checked.
-pub fn document_symbols(analysis: &Analysis, d: &Document) -> Json {
-    let Some(module) = analysis.module(d) else {
+pub fn document_symbols(syms: ms_syntax::Names, analysis: &Analysis, d: &Document) -> Json {
+    let Some(module) = analysis.module(syms, d) else {
         return Json::Arr(Vec::new());
     };
     let outline = Outline {
@@ -185,7 +185,7 @@ pub fn document_symbols(analysis: &Analysis, d: &Document) -> Json {
             .get(i + 1)
             .map_or(d.text.len(), |next| next.pos().offset as usize);
         let end = outline.block_end(next).max(decl.pos().offset as usize);
-        out.push(outline.declaration(decl, end));
+        out.push(outline.declaration(syms, decl, end));
     }
     Json::Arr(out)
 }

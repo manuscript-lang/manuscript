@@ -268,24 +268,27 @@ impl Out<'_, '_> {
 }
 
 pub(super) fn test<L: Lower>(
+    syms: ms_syntax::Names,
     backend: &Engine<L>,
     request: &TestRequest,
     io: &mut Io,
 ) -> BackendResult {
-    run(backend, request, io, false)
+    run(syms, backend, request, io, false)
 }
 
 /// `ms bench`: the same run over `bench` blocks; `request.arguments` also carries `--time=`,
 /// `--samples=` and `--iterations=`.
 pub(super) fn bench<L: Lower>(
+    syms: ms_syntax::Names,
     backend: &Engine<L>,
     request: &TestRequest,
     io: &mut Io,
 ) -> BackendResult {
-    run(backend, request, io, true)
+    run(syms, backend, request, io, true)
 }
 
 fn run<L: Lower>(
+    syms: ms_syntax::Names,
     backend: &Engine<L>,
     request: &TestRequest,
     io: &mut Io,
@@ -308,7 +311,7 @@ fn run<L: Lower>(
     } else {
         Target::Tests
     };
-    let mut compiled = match compile_target(backend, &request.filename, target) {
+    let mut compiled = match compile_target(syms, backend, &request.filename, target) {
         Ok(compiled) => compiled,
         Err(failure) => {
             if !structured {

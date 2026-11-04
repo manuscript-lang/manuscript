@@ -4,8 +4,12 @@ use crate::CheckOptions;
 use std::sync::Arc;
 
 fn module(file: &str, source: &str) -> ModRef {
+    let syms = ms_syntax::Names::global();
     let file: Arc<str> = Arc::from(file);
-    crate::load_module(&ms_syntax::parser::parse(&file, source).expect("valid fixture"))
+    crate::load_module(
+        syms,
+        &ms_syntax::parser::parse(&file, source).expect("valid fixture"),
+    )
 }
 
 #[test]
@@ -92,6 +96,7 @@ fn ambiguity_preserves_declaration_order() {
 
 #[test]
 fn local_extensions_stay_local_and_owner_methods_travel() {
+    let syms = ms_syntax::Names::global();
     let modules = vec![
         module(
             "owner.ms",
@@ -122,7 +127,7 @@ fn local_extensions_stay_local_and_owner_methods_travel() {
             .clone()
             .unwrap();
         let read = checker.implemented_methods(&receiver, n("read"));
-        if m.file == "local.ms" || m.file == "other.ms" {
+        if syms.str(m.file) == "local.ms" || syms.str(m.file) == "other.ms" {
             assert_eq!(read.len(), 1);
             assert_eq!(read[0].module, m.file);
         } else {
@@ -158,6 +163,7 @@ fn interface_bounds_still_restrict_generic_candidates() {
 
 #[test]
 fn invalid_receivers_do_not_register_methods() {
+    let syms = ms_syntax::Names::global();
     let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
         vec![module(
             "invalid.ms",
@@ -172,7 +178,7 @@ fn invalid_receivers_do_not_register_methods() {
         "{:?}",
         p.diagnostics
     );
-    assert!(p.methods.iter().all(|m| m.module != "invalid.ms"));
+    assert!(p.methods.iter().all(|m| syms.str(m.module) != "invalid.ms"));
 }
 
 #[test]
@@ -195,6 +201,7 @@ fn merged_inherent_blocks_keep_duplicate_diagnostic() {
 
 #[test]
 fn editor_queries_rebuild_candidate_indexes() {
+    let syms = ms_syntax::Names::global();
     let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
         vec![module(
             "editor.ms",
@@ -209,9 +216,9 @@ fn editor_queries_rebuild_candidate_indexes() {
         .clone()
         .unwrap();
     assert!(
-        crate::editor::members(&p, &receiver, Some(n("editor.ms")))
+        crate::editor::members(syms, &p, &receiver, Some(n("editor.ms")))
             .iter()
-            .any(|m| m.name == "read")
+            .any(|m| syms.str(m.name) == "read")
     );
 }
 

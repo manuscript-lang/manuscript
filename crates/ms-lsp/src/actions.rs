@@ -100,7 +100,11 @@ pub fn format_actions(d: &Document) -> Vec<Json> {
 
 /// `(name, "./relative/path.ms")` for each top-level `export` declaration in
 /// the other `.ms` files of `d`'s project, found without running the checker.
-fn project_exports(d: &Document, docs: &Documents) -> Vec<(String, String)> {
+fn project_exports(
+    syms: ms_syntax::Names,
+    d: &Document,
+    docs: &Documents,
+) -> Vec<(String, String)> {
     let Ok(files) = workspace::workspace_documents(d, docs, true, None) else {
         return Vec::new();
     };
@@ -115,7 +119,7 @@ fn project_exports(d: &Document, docs: &Documents) -> Vec<(String, String)> {
         let Some(import) = ms_driver::imports::import_path(&dir, &path) else {
             continue;
         };
-        for name in ms_driver::imports::exported_names(&file.text) {
+        for name in ms_driver::imports::exported_names(syms, &file.text) {
             found.push((name, import.clone()));
         }
     }
@@ -169,6 +173,7 @@ fn import_insertion(source: &str, statement: &str) -> (Position, String) {
 
 /// Code actions for `requested`, restricted to the kinds in `only` when given.
 pub fn editor_actions(
+    syms: ms_syntax::Names,
     d: &Document,
     checked: &Analysis,
     lint: &dyn Lint,
@@ -179,13 +184,13 @@ pub fn editor_actions(
     let mut result = format_actions(d);
     let eligible =
         |r: Range| r.start.line <= requested.end.line && r.end.line >= requested.start.line;
-    let module = checked.module(d);
+    let module = checked.module(syms, d);
     for issue in &checked.diagnostics {
         let Some(m) = &module else { break };
         let (Some(end), Some(fix)) = (issue.end, &issue.fix) else {
             continue;
         };
-        if issue.file.as_ref() != m.file.as_str() || issue.code() != "MS2003" {
+        if issue.file.as_ref() != syms.str(m.file) || issue.code() != "MS2003" {
             continue;
         }
         let r = Range {
@@ -218,7 +223,7 @@ pub fn editor_actions(
     for issue in &checked.diagnostics {
         let Some(m) = &module else { break };
         let Some(fix) = &issue.fix else { continue };
-        if issue.file.as_ref() != m.file.as_str()
+        if issue.file.as_ref() != syms.str(m.file)
             || issue.code() == "MS2003"
             || fix.replacement.starts_with("import ")
         {
@@ -262,7 +267,7 @@ pub fn editor_actions(
     let mut project: Option<Vec<(String, String)>> = None;
     for issue in &checked.diagnostics {
         let Some(m) = &module else { break };
-        if issue.file.as_ref() != m.file.as_str() {
+        if issue.file.as_ref() != syms.str(m.file) {
             continue;
         }
         let Some(name) = ms_driver::imports::unresolved_name(&issue.message) else {
@@ -277,7 +282,7 @@ pub fn editor_actions(
         if !eligible(r) {
             continue;
         }
-        let exports = project.get_or_insert_with(|| project_exports(d, docs));
+        let exports = project.get_or_insert_with(|| project_exports(syms, d, docs));
         let mut statements: Vec<String> = exports
             .iter()
             .filter(|(exported, _)| exported == name)
@@ -342,10 +347,10 @@ pub fn editor_actions(
     }
     if let (Some(program), Some(m)) = (&checked.program, &module) {
         for issue in lint.program(program) {
-            if issue.file != m.file.as_str() || issue.code != "MSL102" {
+            if issue.file != syms.str(m.file) || issue.code != "MSL102" {
                 continue;
             }
-            let (edits, r) = unused_import_edits(d, m, issue.offset);
+            let (edits, r) = unused_import_edits(syms, d, m, issue.offset);
             if eligible(r) && !edits.is_empty() {
                 let diagnostic = obj([
                     ("range", Range::at(r.start).json()),
@@ -428,9 +433,14 @@ pub fn editor_actions(
 /// A grouped import expands into bindings sharing one declaration position.
 /// Remove the selected name and its following comma without touching comments or
 /// other bindings; the last name of an unparenthesized list also loses the comma before it.
-fn unused_import_edits(d: &Document, module: &ModRef, offset: usize) -> (Vec<Json>, Range) {
+fn unused_import_edits(
+    syms: ms_syntax::Names,
+    d: &Document,
+    module: &ModRef,
+    offset: usize,
+) -> (Vec<Json>, Range) {
     let none = (Vec::new(), Range::default());
-    let file: Arc<str> = module.file.as_str().into();
+    let file: Arc<str> = syms.str(module.file).into();
     let Ok(lexed) = ms_syntax::lexer::lex(&file, &module.source) else {
         return none;
     };
@@ -467,7 +477,7 @@ fn unused_import_edits(d: &Document, module: &ModRef, offset: usize) -> (Vec<Jso
     }
     let r = Range {
         start: text::position(&d.text, offset),
-        end: text::position(&d.text, offset + selected.name.as_str().len()),
+        end: text::position(&d.text, offset + syms.str(selected.name).len()),
     };
     let mut edits = vec![edit(r, "")];
     let Some(at) = tokens.iter().position(|t| t.pos.offset as usize == offset) else {

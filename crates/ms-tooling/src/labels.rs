@@ -21,6 +21,7 @@ pub fn drop_redundant_labels(program: &Program, source: &str) -> (String, usize)
         return (source.to_string(), 0);
     };
     let mut scan = Scan {
+        syms: ms_syntax::Names::global(),
         session: &program.session,
         module,
         source_len: source.len(),
@@ -37,6 +38,7 @@ pub fn drop_redundant_labels(program: &Program, source: &str) -> (String, usize)
 }
 
 struct Scan<'a> {
+    syms: ms_syntax::Names,
     session: &'a std::rc::Rc<ms_check::Session>,
     module: &'a ms_check::ModuleData,
     source_len: usize,
@@ -46,17 +48,18 @@ struct Scan<'a> {
 /// The declared parameters of a function, method, or record constructor call.
 /// Alternative cases and contract views are skipped.
 fn call_parameters(
+    syms: ms_syntax::Names,
     session: &std::rc::Rc<ms_check::Session>,
     module: &ms_check::ModuleData,
     callee: &Expr,
     info: &ms_check::syntax::Info,
 ) -> Option<Vec<Param>> {
-    if info.native_str() == "view" || info.case.is_some_and(|c| !c.as_str().is_empty()) {
+    if info.native_str(syms) == "view" || info.case.is_some_and(|c| !syms.str(c).is_empty()) {
         return None;
     }
     if let Some(constructor) = &info.constructor {
         return Some(
-            types::constructor_signature(session, constructor)
+            types::constructor_signature(syms, session, constructor)
                 .params
                 .clone(),
         );
@@ -66,32 +69,37 @@ fn call_parameters(
     (ty.kind == Kind::Function).then(|| ty.params.clone())
 }
 
-fn first_unsupplied(params: &[Param], seen: &HashSet<&str>) -> Option<&'static str> {
+fn first_unsupplied(
+    syms: ms_syntax::Names,
+    params: &[Param],
+    seen: &HashSet<&str>,
+) -> Option<&'static str> {
     params
         .iter()
-        .map(|p| p.name.as_str())
+        .map(|p| syms.str(p.name))
         .find(|name| !seen.contains(name))
 }
 
 impl Visitor for Scan<'_> {
     fn expr(&mut self, e: &Expr) {
+        let syms = self.syms;
         let ExprKind::Call { callee, args } = &e.kind else {
             return;
         };
         let info = self.module.facts().info(e.id).cloned();
         let Some(params) =
-            info.and_then(|i| call_parameters(self.session, self.module, callee, &i))
+            info.and_then(|i| call_parameters(syms, self.session, self.module, callee, &i))
         else {
             return;
         };
         let mut seen: HashSet<&str> = HashSet::with_capacity(params.len());
         for arg in args {
             let name: &str = match arg.name {
-                None => first_unsupplied(&params, &seen).unwrap_or(""),
+                None => first_unsupplied(syms, &params, &seen).unwrap_or(""),
                 Some(label) => {
-                    let label = label.as_str();
-                    if first_unsupplied(&params, &seen) == Some(label)
-                        && matches!(&arg.value.kind, ExprKind::Name(n) if n.as_str() == label)
+                    let label = syms.str(label);
+                    if first_unsupplied(syms, &params, &seen) == Some(label)
+                        && matches!(&arg.value.kind, ExprKind::Name(n) if syms.str(n) == label)
                         && !arg.mutable
                         && arg.pos.offset < arg.value.pos.offset
                         && arg.value.pos.offset as usize <= self.source_len

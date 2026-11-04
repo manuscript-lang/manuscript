@@ -8,6 +8,7 @@ use ms_rt as _;
 
 #[test]
 fn semantic_positions_preserve_strict_and_forgiving_output() {
+    let syms = ms_syntax::Names::global();
     for (source, expected) in [
         (
             include_str!("semantic_positions/valid.src"),
@@ -21,7 +22,7 @@ fn semantic_positions_preserve_strict_and_forgiving_output() {
         let expected = json::parse(expected).unwrap();
         for source in [source.to_string(), source.replace('\n', "\r\n")] {
             let d = Document::new("file:///tmp/semantic-positions.ms", &source);
-            let actual = semantic_tokens(None, &[], &d);
+            let actual = semantic_tokens(syms, None, &[], &d);
             assert_eq!(actual, expected);
             let data = actual.get("data").unwrap().as_array().unwrap();
             let (tokens, remainder) = data.as_chunks::<5>();

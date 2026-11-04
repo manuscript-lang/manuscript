@@ -9,9 +9,10 @@ use ms_syntax::DiagnosticFix;
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
 
-pub(super) fn lint(module: &ModuleData, findings: &mut Vec<Finding>) {
-    let file = module_file(module);
+pub(super) fn lint(syms: ms_syntax::Names, module: &ModuleData, findings: &mut Vec<Finding>) {
+    let file = module_file(syms, module);
     let mut scan = Scan {
+        syms: ms_syntax::Names::global(),
         module,
         file: &file,
         findings,
@@ -20,6 +21,7 @@ pub(super) fn lint(module: &ModuleData, findings: &mut Vec<Finding>) {
 }
 
 struct Scan<'a> {
+    syms: ms_syntax::Names,
     module: &'a ModuleData,
     file: &'a std::sync::Arc<str>,
     findings: &'a mut Vec<Finding>,
@@ -27,12 +29,12 @@ struct Scan<'a> {
 
 impl Scan<'_> {
     /// Whether `e` has type `Promise[..]` of `@std/concurrency/promise.ms`.
-    fn is_promise(&self, e: &Expr) -> bool {
+    fn is_promise(&self, syms: ms_syntax::Names, e: &Expr) -> bool {
         self.module
             .facts()
             .info(e.id)
             .and_then(|i| i.ty.as_ref())
-            .is_some_and(|t| t.is_source_type("@std/concurrency/promise.ms", "Promise"))
+            .is_some_and(|t| t.is_source_type(syms, "@std/concurrency/promise.ms", "Promise"))
     }
 
     fn report(&mut self, e: &Expr, statement: bool) {
@@ -68,11 +70,12 @@ impl Scan<'_> {
 
 impl Visitor for Scan<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
+        let syms = self.syms;
         match &stmt.kind {
-            StmtKind::Call(e) if self.is_promise(e) => self.report(e, true),
+            StmtKind::Call(e) if self.is_promise(syms, e) => self.report(e, true),
             StmtKind::Bind { pattern, value, .. }
-                if matches!(&pattern.kind, PatternKind::Name(n) if n.as_str() == "_")
-                    && self.is_promise(value) =>
+                if matches!(&pattern.kind, PatternKind::Name(n) if syms.str(n) == "_")
+                    && self.is_promise(syms, value) =>
             {
                 self.report(value, false);
             }

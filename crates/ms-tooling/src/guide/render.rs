@@ -6,20 +6,20 @@ use ms_syntax::token::Tok;
 use ms_syntax::{ExprKind, Param, TypeKind, TypeParam, TypeRef};
 
 /// `[T: Bound = Default, ...]`, or empty when there are no parameters.
-pub fn type_parameters(parameters: &[TypeParam]) -> String {
+pub fn type_parameters(syms: ms_syntax::Names, parameters: &[TypeParam]) -> String {
     if parameters.is_empty() {
         return String::new();
     }
     let values: Vec<String> = parameters
         .iter()
         .map(|p| {
-            let mut value = p.name.as_str().to_string();
+            let mut value = syms.str(p.name).to_string();
             if !p.bounds.is_empty() {
-                let bounds: Vec<String> = p.bounds.iter().map(type_text).collect();
+                let bounds: Vec<String> = p.bounds.iter().map(|a| type_text(syms, a)).collect();
                 value += &format!(": {}", bounds.join(" & "));
             }
             if let Some(default) = &p.default {
-                value += &format!(" = {}", type_text(default));
+                value += &format!(" = {}", type_text(syms, default));
             }
             value
         })
@@ -28,27 +28,27 @@ pub fn type_parameters(parameters: &[TypeParam]) -> String {
 }
 
 /// The type's own parameters as the arguments of its `impl` receiver.
-pub fn type_arguments(parameters: &[TypeParam]) -> String {
+pub fn type_arguments(syms: ms_syntax::Names, parameters: &[TypeParam]) -> String {
     if parameters.is_empty() {
         return String::new();
     }
-    let names: Vec<&str> = parameters.iter().map(|p| p.name.as_str()).collect();
+    let names: Vec<&str> = parameters.iter().map(|p| syms.str(p.name)).collect();
     format!("[{}]", names.join(", "))
 }
 
 /// `(name: Type = default, ...)`.
-pub fn parameters(parameters: &[Param], source: Option<&Source>) -> String {
+pub fn parameters(syms: ms_syntax::Names, parameters: &[Param], source: Option<&Source>) -> String {
     let values: Vec<String> = parameters
         .iter()
         .map(|p| {
             let mut value = format!(
                 "{}{}: {}",
                 if p.mutable { "var " } else { "" },
-                p.name,
-                p.ty.as_ref().map_or(String::new(), type_text)
+                syms.str(p.name),
+                p.ty.as_ref().map_or(String::new(), |a| type_text(syms, a))
             );
             if p.default.is_some() {
-                value += &format!(" = {}", default_text(p, source));
+                value += &format!(" = {}", default_text(syms, p, source));
             }
             value
         })
@@ -57,11 +57,11 @@ pub fn parameters(parameters: &[Param], source: Option<&Source>) -> String {
 }
 
 /// A written type.
-pub fn type_text(t: &TypeRef) -> String {
+pub fn type_text(syms: ms_syntax::Names, t: &TypeRef) -> String {
     match &t.kind {
-        TypeKind::Named { name, args } if name.as_str() == "Optional" && args.len() == 1 => {
+        TypeKind::Named { name, args } if syms.str(name) == "Optional" && args.len() == 1 => {
             let payload = &args[0];
-            let text = type_text(payload);
+            let text = type_text(syms, payload);
             if matches!(payload.kind, TypeKind::Fn { .. }) {
                 format!("({text})?")
             } else {
@@ -71,14 +71,14 @@ pub fn type_text(t: &TypeRef) -> String {
         TypeKind::Fn { params, result } => {
             let types: Vec<String> = params
                 .iter()
-                .map(|p| p.ty.as_ref().map_or(String::new(), type_text))
+                .map(|p| p.ty.as_ref().map_or(String::new(), |a| type_text(syms, a)))
                 .collect();
-            format!("fn({}) {}", types.join(", "), type_text(result))
+            format!("fn({}) {}", types.join(", "), type_text(syms, result))
         }
         TypeKind::Named { name, args } => {
-            let mut value = name.as_str().to_string();
+            let mut value = syms.str(name).to_string();
             if !args.is_empty() {
-                let args: Vec<String> = args.iter().map(type_text).collect();
+                let args: Vec<String> = args.iter().map(|a| type_text(syms, a)).collect();
                 value += &format!("[{}]", args.join(", "));
             }
             value
@@ -89,11 +89,11 @@ pub fn type_text(t: &TypeRef) -> String {
 /// Keeps default expressions in their original source spelling, including
 /// calls, strings and suite closures. Only the containing parameter's
 /// delimiters end it.
-pub fn default_text(parameter: &Param, source: Option<&Source>) -> String {
+pub fn default_text(syms: ms_syntax::Names, parameter: &Param, source: Option<&Source>) -> String {
     if let Some(default) = &parameter.default
         && let ExprKind::Name(text) = &default.kind
     {
-        return text.as_str().to_string();
+        return syms.str(text).to_string();
     }
     let Some(source) = source else {
         return "...".to_string();

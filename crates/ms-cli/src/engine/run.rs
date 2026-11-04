@@ -16,11 +16,12 @@ use crate::util::emit_json;
 use super::testing::pipe_reader;
 
 pub(super) fn run<L: Lower>(
+    syms: ms_syntax::Names,
     backend: &Engine<L>,
     request: &RunRequest,
     io: &mut Io,
 ) -> BackendResult {
-    let mut compiled = match compile(backend, &request.filename, false) {
+    let mut compiled = match compile(syms, backend, &request.filename, false) {
         Ok(compiled) => compiled,
         Err(failure) if request.json => {
             let document = document(&failure.source_root, 1, "", "")

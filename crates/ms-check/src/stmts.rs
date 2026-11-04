@@ -22,9 +22,9 @@ pub(crate) fn path_text(path: &Expr) -> Name {
 }
 
 /// The identity of a literal match arm: its spelling, or `None` for anything else.
-fn literal_key(path: &Expr) -> Option<String> {
+fn literal_key(syms: ms_syntax::Names, path: &Expr) -> Option<String> {
     match &path.kind {
-        ExprKind::Number(n) => Some(ms_syntax::number::canonical(n.as_str()).into_owned()),
+        ExprKind::Number(n) => Some(ms_syntax::number::canonical(syms.str(n)).into_owned()),
         ExprKind::Bool(b) => Some(b.to_string()),
         ExprKind::Text(parts) => match parts.as_slice() {
             [TextPart::Lit(s)] => Some(format!("{s:?}")),
@@ -35,7 +35,7 @@ fn literal_key(path: &Expr) -> Option<String> {
             operand,
         } => match &operand.kind {
             ExprKind::Number(n) => {
-                let value = ms_syntax::number::canonical(n.as_str());
+                let value = ms_syntax::number::canonical(syms.str(n));
                 // Zero has no sign: `-0` and `-0x0` repeat `0`.
                 let zero = value.bytes().all(|b| b == b'0');
                 Some(if zero {
@@ -189,7 +189,10 @@ impl Checker {
             (PatternKind::Name(name), Some(_)) => self.expression_in(
                 value,
                 expected.as_ref(),
-                format!("the initializer of '{name}'"),
+                format!(
+                    "the initializer of '{name_t}'",
+                    name_t = self.syms.str(name)
+                ),
             ),
             _ => self.expression(value, expected.as_ref()),
         };
@@ -260,12 +263,12 @@ impl Checker {
                         self.type_error(
                             s.pos,
                             format!(
-                                "cannot assign to {what} {name}; assignment targets are 'var' bindings and record fields"
-                            ),
+                                "cannot assign to {what} {name_t}; assignment targets are 'var' bindings and record fields"
+                            , name_t = self.syms.str(name)),
                         );
                     } else {
                         let msg = self.unknown_name(name);
-                        self.res_error_name(s.pos, name.len(), msg);
+                        self.res_error_name(s.pos, self.syms.str(name).len(), msg);
                     }
                     self.expression(value, None);
                     return (true, false);
@@ -282,8 +285,8 @@ impl Checker {
                     self.type_error_with_fix(
                         s.pos,
                         format!(
-                            "cannot assign immutable binding {name}; declare it with 'var {name} = ...' instead of 'let'"
-                        ),
+                            "cannot assign immutable binding {name_t}; declare it with 'var {name_t} = ...' instead of 'let'"
+                        , name_t = self.syms.str(name)),
                         fix,
                     );
                 }
@@ -316,12 +319,12 @@ impl Checker {
         match value {
             None => {
                 let result = self.result_ty();
-                if result.id != "Unit" && !in_test {
+                if self.syms.str(result.id) != "Unit" && !in_test {
                     self.type_error(
                         s.pos,
                         format!(
-                            "bare return requires Unit; this function returns {result}, so write 'return <value>'"
-                        ),
+                            "bare return requires Unit; this function returns {result_t}, so write 'return <value>'"
+                        , result_t = result.display(self.syms)),
                     );
                 }
             }
@@ -358,12 +361,12 @@ impl Checker {
             }
         ) {
             let t = i.t();
-            if t.id != "Unit" && !t.is_invalid() {
+            if self.syms.str(t.id) != "Unit" && !t.is_invalid() {
                 self.type_error(
                     value.pos,
                     format!(
-                        "standalone try requires a Unit success value, found {t}; use 'let name = try ...' to keep the value or 'return try ...' to return it"
-                    ),
+                        "standalone try requires a Unit success value, found {t_t}; use 'let name = try ...' to keep the value or 'return try ...' to return it"
+                    , t_t = t.display(self.syms)),
                 );
             }
         }
@@ -380,8 +383,8 @@ impl Checker {
             self.type_error(
                 pos,
                 format!(
-                    "this statement discards {t}, so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose"
-                ),
+                    "this statement discards {t_t}, so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose"
+                , t_t = t.display(self.syms)),
             );
         }
         (!i.no_return, i.breaks)
@@ -419,8 +422,8 @@ impl Checker {
             self.type_error(
                 cond.pos,
                 format!(
-                    "if let requires an Optional or Result, found {t}; use 'if' for a Bool condition or 'match' for other alternatives"
-                ),
+                    "if let requires an Optional or Result, found {t_t}; use 'if' for a Bool condition or 'match' for other alternatives"
+                , t_t = t.display(self.syms)),
             );
         }
         let old = self.scope.clone();
@@ -474,8 +477,8 @@ impl Checker {
             self.type_error(
                 s.pos,
                 format!(
-                    "for requires List, Set, Map, an Iterator, or an Iterable, found {t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var fn next() T?', or Iterable with 'fn length() Int' and 'fn at(index: Int) T?'"
-                ),
+                    "for requires List, Set, Map, an Iterator, or an Iterable, found {t_t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var fn next() T?', or Iterable with 'fn length() Int' and 'fn at(index: Int) T?'"
+                , t_t = t.display(self.syms)),
             );
         }
         let old = self.scope.clone();
@@ -766,7 +769,7 @@ impl Checker {
     pub(crate) fn close_method(&mut self, t: &Ty) -> Vec<MethodRef> {
         let mut candidates: Vec<MethodRef> = Vec::new();
         for method in self.methods(t, n("close")) {
-            if method.ty.params.is_empty() && is_close_result(&method.ty.result_ty()) {
+            if method.ty.params.is_empty() && is_close_result(self.syms, &method.ty.result_ty()) {
                 if method
                     .contract
                     .as_ref()
@@ -801,7 +804,10 @@ impl Checker {
                     if !seen.insert(f.name) {
                         self.type_error(
                             f.pos,
-                            format!("duplicate record field {}; bind each field once", f.name),
+                            format!(
+                                "duplicate record field {}; bind each field once",
+                                self.syms.str(f.name)
+                            ),
                         );
                     }
                     let mut found = false;
@@ -816,8 +822,8 @@ impl Checker {
                             f.pos,
                             format!(
                                 "unknown record field {}; fields: {}",
-                                f.name,
-                                list(&names_of(&fs), 12)
+                                self.syms.str(f.name),
+                                list(&names_of(self.syms, &fs), 12)
                             ),
                         );
                     }
@@ -863,7 +869,7 @@ impl Checker {
         if arms.first().is_some_and(|a| a.chain) && !t.is_invalid() && !t.is(Builtin::Optional) {
             self.type_error(
                 value.pos,
-                format!("`?.` needs an optional receiver, found {t}; write `.` to read a member of a value that is always present"),
+                format!("`?.` needs an optional receiver, found {t_t}; write `.` to read a member of a value that is always present", t_t = t.display(self.syms)),
             );
             return (true, false);
         }
@@ -873,24 +879,25 @@ impl Checker {
         if t.is_invalid() {
             return (false, false);
         }
-        if arms.first().is_some_and(|a| a.from_if) && t.id != "Bool" {
+        if arms.first().is_some_and(|a| a.from_if) && self.syms.str(t.id) != "Bool" {
             self.type_error(
                 pos,
                 format!(
-                    "an if condition must be Bool, found {t}; compare explicitly, e.g. 'x != 0'"
+                    "an if condition must be Bool, found {t_t}; compare explicitly, e.g. 'x != 0'",
+                    t_t = t.display(self.syms)
                 ),
             );
             return (true, false);
         }
-        if matches!(t.id.as_str(), "Int" | "String" | "Bool") {
+        if matches!(self.syms.str(t.id), "Int" | "String" | "Bool") {
             return self.match_literals(pos, &t, arms, &info, body);
         }
         if t.kind != Kind::Alternative {
             self.type_error(
                 pos,
                 format!(
-                    "match requires an alternative, contract view, Int, String or Bool, found {t}; match on a type with cases, or use if/else"
-                ),
+                    "match requires an alternative, contract view, Int, String or Bool, found {t_t}; match on a type with cases, or use if/else"
+                , t_t = t.display(self.syms)),
             );
             return (true, false);
         }
@@ -904,7 +911,7 @@ impl Checker {
             let name = path_text(&arm.path);
             let mut arm_fields: Vec<Param> = Vec::new();
             let mut unknown_arm = false;
-            if name == "_" {
+            if self.syms.str(name) == "_" {
                 if wildcard || index != arms.len() - 1 || seen.len() == all_cases.len() {
                     self.type_error(
                         arm.pos,
@@ -922,7 +929,7 @@ impl Checker {
                             arm.pos,
                             format!(
                                 "pattern belongs to a different alternative; qualify arms with the matched type, {}.<case>",
-                                t.name
+                                self.syms.str(t.name)
                             ),
                         );
                     }
@@ -937,39 +944,41 @@ impl Checker {
                 if !found {
                     unknown_case = true;
                     unknown_arm = true;
-                    let upper = name
-                        .as_str()
+                    let upper = self
+                        .syms
+                        .str(name)
                         .bytes()
                         .next()
                         .is_some_and(|b| b.is_ascii_uppercase());
-                    let names = case_names(&t);
+                    let names = case_names(self.syms, &t);
                     if arm.bare {
                         let binding = arm.bindings[0].name;
                         self.res_error(
                             arm.pos,
                             format!(
-                                "'{binding}' is not a case of {}; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: {}",
-                                t.name,
+                                "'{binding_t}' is not a case of {}; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: {}",
+                                self.syms.str(t.name),
                                 list(&names, 12)
-                            ),
+                            , binding_t = self.syms.str(binding)),
                         );
-                    } else if arm.bindings.is_empty() && !name.is_empty() && !upper {
+                    } else if arm.bindings.is_empty() && !self.syms.str(name).is_empty() && !upper {
                         self.res_error(
                             arm.pos,
                             format!(
-                                "'{name}' is not a case of {}; use '_' for a catch-all arm (it cannot bind a name); cases: {}",
-                                t.name,
+                                "'{name_t}' is not a case of {}; use '_' for a catch-all arm (it cannot bind a name); cases: {}",
+                                self.syms.str(t.name),
                                 list(&names, 12)
-                            ),
+                            , name_t = self.syms.str(name)),
                         );
                     } else {
                         self.res_error(
                             arm.pos,
                             format!(
-                                "unknown case {name} of {}; cases: {}{}",
-                                t.name,
+                                "unknown case {name_t} of {}; cases: {}{}",
+                                self.syms.str(t.name),
                                 list(&names, 12),
-                                did_you_mean(name.as_str(), &names)
+                                did_you_mean(self.syms.str(name), &names),
+                                name_t = self.syms.str(name)
                             ),
                         );
                     }
@@ -978,8 +987,8 @@ impl Checker {
                     self.type_error(
                         arm.pos,
                         format!(
-                            "duplicate or unreachable case {name}; each case may be matched once and before any '_' arm"
-                        ),
+                            "duplicate or unreachable case {name_t}; each case may be matched once and before any '_' arm"
+                        , name_t = self.syms.str(name)),
                     );
                 }
                 seen.insert(name);
@@ -987,10 +996,10 @@ impl Checker {
                     self.type_error(
                         arm.pos,
                         format!(
-                            "case payload arity mismatch; {name} has {} payload fields, found {} bindings (use _ to ignore one)",
+                            "case payload arity mismatch; {name_t} has {} payload fields, found {} bindings (use _ to ignore one)",
                             arm_fields.len(),
                             arm.bindings.len()
-                        ),
+                        , name_t = self.syms.str(name)),
                     );
                 }
             }
@@ -999,9 +1008,9 @@ impl Checker {
             self.scope = Scope::new(Some(old.clone()));
             for (i, binding) in arm.bindings.iter().enumerate() {
                 let mut b: Option<BindingRef> = None;
-                if binding.name != "_" && i < arm_fields.len() {
+                if self.syms.str(binding.name) != "_" && i < arm_fields.len() {
                     b = Some(self.bind(binding.name, &arm_fields[i].ty, false, arm.pos));
-                } else if binding.name != "_" && unknown_arm {
+                } else if self.syms.str(binding.name) != "_" && unknown_arm {
                     // the unknown case was already reported; keep its names bound
                     b = Some(self.bind(binding.name, &invalid(), false, arm.pos));
                 }
@@ -1017,8 +1026,8 @@ impl Checker {
                 pos,
                 format!(
                     "non-exhaustive match; missing cases: {}, or add a final '_:' arm; add the arms {}",
-                    list(&missing_cases(&all_cases, &seen), 12),
-                    missing_arms(&all_cases, &seen)
+                    list(&missing_cases(self.syms, &all_cases, &seen), 12),
+                    missing_arms(self.syms, &all_cases, &seen)
                 ),
             );
         }
@@ -1038,15 +1047,18 @@ impl Checker {
         let (mut fall, mut breaks, mut wildcard) = (false, false, false);
         for (index, arm) in arms.iter().enumerate() {
             self.set_arm_bindings(arm, Vec::new());
-            if path_text(&arm.path) == "_" {
-                if wildcard || index != arms.len() - 1 || (t.id == "Bool" && seen.len() == 2) {
+            if self.syms.str(path_text(&arm.path)) == "_" {
+                if wildcard
+                    || index != arms.len() - 1
+                    || (self.syms.str(t.id) == "Bool" && seen.len() == 2)
+                {
                     self.type_error(
                         arm.pos,
                         "unreachable wildcard or wildcard is not last; keep one '_' arm at the end, and only when values remain",
                     );
                 }
                 wildcard = true;
-            } else if let Some(key) = literal_key(&arm.path) {
+            } else if let Some(key) = literal_key(self.syms, &arm.path) {
                 self.expression(&arm.path, Some(t));
                 if !seen.insert(key.clone()) || wildcard {
                     self.type_error(
@@ -1057,7 +1069,7 @@ impl Checker {
             } else {
                 self.type_error(
                     arm.pos,
-                    format!("a match on {t} takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else"),
+                    format!("a match on {t_t} takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else", t_t = t.display(self.syms)),
                 );
             }
             if !arm.bindings.is_empty() {
@@ -1070,11 +1082,14 @@ impl Checker {
             breaks = breaks || br;
             self.scope = old;
         }
-        let covered = wildcard || (t.id == "Bool" && seen.len() == 2);
+        let covered = wildcard || (self.syms.str(t.id) == "Bool" && seen.len() == 2);
         if !covered {
             self.type_error(
                 pos,
-                format!("non-exhaustive match on {t}; add a final '_:' arm"),
+                format!(
+                    "non-exhaustive match on {t_t}; add a final '_:' arm",
+                    t_t = t.display(self.syms)
+                ),
             );
         }
         (!info.no_return && fall, info.breaks || breaks)
@@ -1093,7 +1108,7 @@ impl Checker {
         for (index, arm) in arms.iter().enumerate() {
             self.set_arm_bindings(arm, Vec::new());
             let mut target: Option<Ty> = None;
-            if path_text(&arm.path) == "_" {
+            if self.syms.str(path_text(&arm.path)) == "_" {
                 if wildcard || index != arms.len() - 1 {
                     self.type_error(
                         arm.pos,
@@ -1115,7 +1130,14 @@ impl Checker {
                         }
                         self.well_formed(&t, arm.pos, &mut HashSet::new());
                         if !self.implements(&t, &contract) {
-                            self.type_error(arm.pos, format!("{t} does not implement {contract}"));
+                            self.type_error(
+                                arm.pos,
+                                format!(
+                                    "{t_t} does not implement {contract_t}",
+                                    t_t = t.display(self.syms),
+                                    contract_t = contract.display(self.syms)
+                                ),
+                            );
                         }
                         let key = self.shape(&t);
                         if seen.contains(&key) || wildcard {
@@ -1165,7 +1187,7 @@ impl Checker {
             self.scope = Scope::new(Some(old.clone()));
             for binding in &arm.bindings {
                 let mut b: Option<BindingRef> = None;
-                if binding.name != "_"
+                if self.syms.str(binding.name) != "_"
                     && let Some(t) = &target
                 {
                     b = Some(self.bind(binding.name, t, false, arm.pos));
@@ -1209,7 +1231,7 @@ impl Checker {
         let mut conflicts: Vec<Option<Info>> = vec![None; arm.bindings.len()];
         for (index, binding) in arm.bindings.iter().enumerate() {
             let name = binding.name;
-            if name == "_"
+            if self.syms.str(name) == "_"
                 || index >= fields.len()
                 || self.scope.binding(name).is_some()
                 || self.scope.typ(name).is_some()
@@ -1381,8 +1403,8 @@ impl Checker {
                     self.res_error(
                             pos,
                             format!(
-                                "ambiguous alternative case {name}; qualify it with its type, e.g. Type.{name}"
-                            ),
+                                "ambiguous alternative case {name_t}; qualify it with its type, e.g. Type.{name_t}"
+                            , name_t = self.syms.str(name)),
                         );
                     return (None, None, true);
                 }
@@ -1432,7 +1454,7 @@ impl Checker {
             }
             ExprKind::Call { callee, .. } => {
                 if let ExprKind::Name(name) = &callee.kind
-                    && (name == "ok" || name == "error")
+                    && (self.syms.str(name) == "ok" || self.syms.str(name) == "error")
                 {
                     return self.sym(*name).is_none() && self.scope.binding(*name).is_none();
                 }
@@ -1482,7 +1504,7 @@ impl Checker {
         } else if bytes {
             info.ty = Some(primitive("UInt8"));
         } else {
-            let hint = if rt.id == "String" {
+            let hint = if self.syms.str(rt.id) == "String" {
                 "indexing a String by scalar position is not supported; use s.get(index) or for c in s.chars()"
             } else {
                 "indexing requires List[T], Map[K, V] or Bytes; use the receiver's lookup method for other types"
@@ -1597,7 +1619,7 @@ impl Checker {
                         let t = info.t();
                         invalid_arm = invalid_arm || t.is_invalid();
                         if result.is_none()
-                            && !t.is_never()
+                            && !t.is_never(self.syms)
                             && crate::inference::inference_type_known(&t, &self.inference_variables)
                         {
                             let t = required_type(&t);
@@ -1656,14 +1678,14 @@ impl Checker {
                 }
             } else if normal
                 && let Some(r) = &result
-                && !compatible(&Some(unit()), r)
+                && !compatible(self.syms, &Some(unit()), r)
             {
                 self.type_error(
                             arm.pos,
                             format!(
-                                "match arm requires a final value of type {r}, because the arm at line {} ends in an expression and makes this match a value; end every arm with a value, or bind the unused result with 'let ignored = ...' so the match stays a statement",
+                                "match arm requires a final value of type {r_t}, because the arm at line {} ends in an expression and makes this match a value; end every arm with a value, or bind the unused result with 'let ignored = ...' so the match stays a statement",
                                 result_at.line
-                            ),
+                            , r_t = r.display(self.syms)),
                         );
             }
             fall = fall || normal;
@@ -1769,9 +1791,9 @@ impl Checker {
             return;
         };
         let text = match &e.kind {
-            ExprKind::Name(t) => t.as_str(),
-            ExprKind::Member { name, .. } => name.as_str(),
-            ExprKind::Number(t) => t.as_str(),
+            ExprKind::Name(t) => self.syms.str(t),
+            ExprKind::Member { name, .. } => self.syms.str(name),
+            ExprKind::Number(t) => self.syms.str(t),
             _ => return,
         };
         if text != marker {
@@ -1803,8 +1825,11 @@ impl Checker {
 }
 
 /// The case names of an alternative type.
-pub(crate) fn case_names(t: &Ty) -> Vec<String> {
-    cases(t).iter().map(|c| c.name.to_string()).collect()
+pub(crate) fn case_names(syms: ms_syntax::Names, t: &Ty) -> Vec<String> {
+    cases(t)
+        .iter()
+        .map(|c| syms.str(c.name).to_string())
+        .collect()
 }
 
 /// A case qualifier naming the matched alternative. A bare generic name

@@ -274,8 +274,8 @@ impl Info {
     }
 
     /// Native identity text.
-    pub fn native_str(&self) -> &str {
-        self.native.map(|n| n.as_str()).unwrap_or("")
+    pub fn native_str(&self, syms: ms_syntax::Names) -> &str {
+        self.native.map(|n| syms.str(n)).unwrap_or("")
     }
 }
 
@@ -435,8 +435,8 @@ impl ModuleData {
     }
 
     /// Whether a name is in an `@std/` module.
-    pub fn is_standard(&self) -> bool {
-        self.file.as_str().starts_with("@std/")
+    pub fn is_standard(&self, syms: ms_syntax::Names) -> bool {
+        syms.str(self.file).starts_with("@std/")
     }
 }
 

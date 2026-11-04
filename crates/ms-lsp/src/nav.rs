@@ -15,16 +15,17 @@ use std::rc::Rc;
 
 /// The occurrence covering a position, if the document is checked.
 pub fn occurrence_at<'a>(
+    syms: ms_syntax::Names,
     analysis: &Analysis,
     d: &Document,
     p: Position,
     index: &'a [Occurrence],
 ) -> Option<&'a Occurrence> {
     let offset = text::offset(&d.text, p).ok()?;
-    let file = analysis.module_file(d);
+    let file = analysis.module_file(syms, d);
     index
         .iter()
-        .find(|e| e.file.as_str() == file && offset >= e.offset && offset < e.end)
+        .find(|e| syms.str(e.file) == file && offset >= e.offset && offset < e.end)
 }
 
 /// A name, member, literal or operator found by position.
@@ -38,6 +39,7 @@ pub struct Hit {
 }
 
 struct Finder<'a> {
+    syms: ms_syntax::Names,
     module: &'a ModRef,
     source: &'a str,
     cursor: Result<usize, Position>,
@@ -46,8 +48,10 @@ struct Finder<'a> {
 }
 
 impl Finder<'_> {
-    fn consider(&mut self, e: &Expr) {
-        let Some(text) = expr_text(e) else { return };
+    fn consider(&mut self, syms: ms_syntax::Names, e: &Expr) {
+        let Some(text) = expr_text(syms, e) else {
+            return;
+        };
         let Some(info) = self.module.facts().info(e.id).cloned() else {
             return;
         };
@@ -81,10 +85,10 @@ impl Finder<'_> {
         }
     }
 
-    fn path(&mut self, path: &Expr) {
-        self.consider(path);
+    fn path(&mut self, syms: ms_syntax::Names, path: &Expr) {
+        self.consider(syms, path);
         match &path.kind {
-            ExprKind::Member { left, .. } | ExprKind::Apply { left, .. } => self.path(left),
+            ExprKind::Member { left, .. } | ExprKind::Apply { left, .. } => self.path(syms, left),
             _ => {}
         }
     }
@@ -92,26 +96,34 @@ impl Finder<'_> {
 
 impl Visitor for Finder<'_> {
     fn expr(&mut self, e: &Expr) {
-        self.consider(e);
+        let syms = self.syms;
+        self.consider(syms, e);
         if let ExprKind::Match { arms, .. } = &e.kind {
             for arm in arms {
-                self.path(&arm.path);
+                self.path(syms, &arm.path);
             }
         }
     }
 }
 
 /// The index entry at a position, else the smallest checked expression there.
-pub fn at(analysis: &Analysis, d: &Document, p: Position, index: &[Occurrence]) -> Option<Hit> {
-    if let Some(entry) = occurrence_at(analysis, d, p, index) {
+pub fn at(
+    syms: ms_syntax::Names,
+    analysis: &Analysis,
+    d: &Document,
+    p: Position,
+    index: &[Occurrence],
+) -> Option<Hit> {
+    if let Some(entry) = occurrence_at(syms, analysis, d, p, index) {
         return Some(Hit {
             offset: entry.offset,
             text: entry.name.clone(),
             info: entry.info.clone()?,
         });
     }
-    let module = analysis.module(d)?;
+    let module = analysis.module(syms, d)?;
     let mut finder = Finder {
+        syms: ms_syntax::Names::global(),
         module: &module,
         source: &d.text,
         cursor: text::offset(&d.text, p).map_err(|_| p),
@@ -134,13 +146,17 @@ pub enum Navigate {
 }
 
 /// The location of an occurrence.
-pub fn occurrence_location(analysis: &Analysis, entry: &Occurrence) -> Option<Json> {
+pub fn occurrence_location(
+    syms: ms_syntax::Names,
+    analysis: &Analysis,
+    entry: &Occurrence,
+) -> Option<Json> {
     let module = analysis
-        .source_modules()
+        .source_modules(syms)
         .into_iter()
         .find(|m| m.file == entry.file)?;
     Some(location(
-        &analysis.source_uri(entry.file.as_str()),
+        &analysis.source_uri(syms.str(entry.file)),
         Range {
             start: text::position(&module.source, entry.offset),
             end: text::position(&module.source, entry.end),
@@ -155,13 +171,14 @@ pub fn location(uri: &str, range: Range) -> Json {
 
 /// Hover or definition at a position.
 pub fn navigation(
+    syms: ms_syntax::Names,
     analysis: &Analysis,
     d: &Document,
     p: Position,
     method: Navigate,
     index: &[Occurrence],
 ) -> Json {
-    let Some(hit) = at(analysis, d, p, index) else {
+    let Some(hit) = at(syms, analysis, d, p, index) else {
         return Json::Null;
     };
     let info = hit.info.clone();
@@ -180,8 +197,8 @@ pub fn navigation(
         if ms_check::types::invalid_ty(&shown) {
             return Json::Null;
         }
-        let mut value = format!("```manuscript\n{}: {}\n```", hit.text, shown);
-        let docs = hover_documentation(analysis, &info);
+        let mut value = format!("```manuscript\n{}: {}\n```", hit.text, shown.display(syms));
+        let docs = hover_documentation(syms, analysis, &info);
         if !docs.is_empty() {
             value.push_str("\n\n");
             value.push_str(&docs);
@@ -201,14 +218,14 @@ pub fn navigation(
             ),
         ]);
     }
-    if let Some(selected) = occurrence_at(analysis, d, p, index) {
+    if let Some(selected) = occurrence_at(syms, analysis, d, p, index) {
         for entry in index {
             if entry.key != selected.key || !entry.declaration {
                 continue;
             }
             // Operation keys group a contract and all implementations for
             // rename. Definition lookup follows the checked concrete method.
-            if let Some(method) = info.method.as_ref().filter(|m| !m.id.as_str().is_empty()) {
+            if let Some(method) = info.method.as_ref().filter(|m| !syms.str(m.id).is_empty()) {
                 let same = entry
                     .info
                     .as_ref()
@@ -218,25 +235,25 @@ pub fn navigation(
                     continue;
                 }
             }
-            return match occurrence_location(analysis, entry) {
+            return match occurrence_location(syms, analysis, entry) {
                 Some(l) => Json::Arr(vec![l]),
                 None => Json::Arr(vec![Json::Null]),
             };
         }
     }
-    let Some((file, pos)) = declaration(analysis, &info) else {
+    let Some((file, pos)) = declaration(syms, analysis, &info) else {
         return Json::Null;
     };
-    declaration_location(analysis, file, pos)
+    declaration_location(syms, analysis, file, pos)
 }
 
 /// `[{uri, range}]` at a declaration position, or `null` for an unknown module.
-fn declaration_location(analysis: &Analysis, file: Name, pos: Pos) -> Json {
-    for m in analysis.source_modules() {
+fn declaration_location(syms: ms_syntax::Names, analysis: &Analysis, file: Name, pos: Pos) -> Json {
+    for m in analysis.source_modules(syms) {
         if m.file == file {
             let at = text::position(&m.source, pos.offset as usize);
             return Json::Arr(vec![location(
-                &analysis.source_uri(file.as_str()),
+                &analysis.source_uri(syms.str(file)),
                 Range::at(at),
             )]);
         }
@@ -245,8 +262,12 @@ fn declaration_location(analysis: &Analysis, file: Name, pos: Pos) -> Json {
 }
 
 /// Where a symbol, method or implicit binding is declared.
-pub fn declaration(analysis: &Analysis, info: &OccInfo) -> Option<(Name, Pos)> {
-    let modules = analysis.source_modules();
+pub fn declaration(
+    syms: ms_syntax::Names,
+    analysis: &Analysis,
+    info: &OccInfo,
+) -> Option<(Name, Pos)> {
+    let modules = analysis.source_modules(syms);
     let files = DeclFiles::new(&modules);
     if let Some(symbol) = &info.symbol
         && let Some(decl) = &symbol.decl
@@ -303,9 +324,14 @@ pub fn declaration(analysis: &Analysis, info: &OccInfo) -> Option<(Name, Pos)> {
 /// The comment block directly above a declaration, or its trailing `//` comment. The source remains the
 /// single documentation authority for project modules and the immutable
 /// standard-library documents alike.
-pub fn declaration_documentation(analysis: &Analysis, file: Name, pos: Pos) -> String {
+pub fn declaration_documentation(
+    syms: ms_syntax::Names,
+    analysis: &Analysis,
+    file: Name,
+    pos: Pos,
+) -> String {
     let Some(module) = analysis
-        .source_modules()
+        .source_modules(syms)
         .into_iter()
         .find(|m| m.file == file)
     else {
@@ -328,8 +354,8 @@ pub fn declaration_documentation(analysis: &Analysis, file: Name, pos: Pos) -> S
     docs.trim().to_string()
 }
 
-fn documentation_of(analysis: &Analysis, info: &OccInfo) -> String {
-    let files = DeclFiles::new(&analysis.source_modules());
+fn documentation_of(syms: ms_syntax::Names, analysis: &Analysis, info: &OccInfo) -> String {
+    let files = DeclFiles::new(&analysis.source_modules(syms));
     let target = if let Some(method) = &info.method
         && let Some(decl) = &method.decl
     {
@@ -340,14 +366,14 @@ fn documentation_of(analysis: &Analysis, info: &OccInfo) -> String {
             .and_then(|s| s.decl.as_ref().map(|d| (s.module, d.pos())))
     };
     match target {
-        Some((file, pos)) => declaration_documentation(analysis, file, pos),
+        Some((file, pos)) => declaration_documentation(syms, analysis, file, pos),
         None => String::new(),
     }
 }
 
 /// Documentation shown on hover: the declaration's own, else its receiver's.
-pub fn hover_documentation(analysis: &Analysis, info: &OccInfo) -> String {
-    let docs = documentation_of(analysis, info);
+pub fn hover_documentation(syms: ms_syntax::Names, analysis: &Analysis, info: &OccInfo) -> String {
+    let docs = documentation_of(syms, analysis, info);
     if !docs.is_empty() {
         return docs;
     }
@@ -361,7 +387,7 @@ pub fn hover_documentation(analysis: &Analysis, info: &OccInfo) -> String {
         if let Some(symbol) = receiver.symbol()
             && let Some(decl) = &symbol.decl
         {
-            let docs = declaration_documentation(analysis, symbol.module, decl.pos());
+            let docs = declaration_documentation(syms, analysis, symbol.module, decl.pos());
             if !docs.is_empty() {
                 return docs;
             }
@@ -371,8 +397,8 @@ pub fn hover_documentation(analysis: &Analysis, info: &OccInfo) -> String {
 }
 
 /// Documentation of a declaration as an LSP markup value, or `null`.
-pub fn description(analysis: &Analysis, file: Name, pos: Pos) -> Json {
-    let notes = declaration_documentation(analysis, file, pos);
+pub fn description(syms: ms_syntax::Names, analysis: &Analysis, file: Name, pos: Pos) -> Json {
+    let notes = declaration_documentation(syms, analysis, file, pos);
     if notes.is_empty() {
         Json::Null
     } else {
@@ -381,31 +407,32 @@ pub fn description(analysis: &Analysis, file: Name, pos: Pos) -> Json {
 }
 
 /// The location of a symbol's declaration, as a one-element list.
-pub fn symbol_location(analysis: &Analysis, symbol: &SymRef) -> Json {
+pub fn symbol_location(syms: ms_syntax::Names, analysis: &Analysis, symbol: &SymRef) -> Json {
     match &symbol.decl {
-        Some(decl) => declaration_location(analysis, symbol.module, decl.pos()),
+        Some(decl) => declaration_location(syms, analysis, symbol.module, decl.pos()),
         None => Json::Null,
     }
 }
 
 /// Where the type of the expression at a position is declared.
 pub fn type_definition(
+    syms: ms_syntax::Names,
     analysis: &Analysis,
     d: &Document,
     p: Position,
     index: &[Occurrence],
 ) -> Json {
-    let Some(hit) = at(analysis, d, p, index) else {
+    let Some(hit) = at(syms, analysis, d, p, index) else {
         return Json::Null;
     };
     match hit.info.ty.as_ref().and_then(|t| t.symbol()) {
         Some(symbol) => {
             // Point at the declared name, as definition does, not at the declaration keyword.
-            let key = crate::index::symbol_key(&analysis.module_path(""), Some(&symbol));
+            let key = crate::index::symbol_key(syms, &analysis.module_path(""), Some(&symbol));
             let name = index.iter().find(|e| e.declaration && e.key == key);
-            match name.and_then(|e| occurrence_location(analysis, e)) {
+            match name.and_then(|e| occurrence_location(syms, analysis, e)) {
                 Some(found) => Json::Arr(vec![found]),
-                None => symbol_location(analysis, &symbol),
+                None => symbol_location(syms, analysis, &symbol),
             }
         }
         None => Json::Null,
@@ -414,13 +441,14 @@ pub fn type_definition(
 
 /// Every occurrence of the identity at a position within this analysis.
 pub fn references_with_index(
+    syms: ms_syntax::Names,
     analysis: &Analysis,
     index: &[Occurrence],
     d: &Document,
     p: Position,
     include: bool,
 ) -> Vec<Json> {
-    let Some(selected) = occurrence_at(analysis, d, p, index) else {
+    let Some(selected) = occurrence_at(syms, analysis, d, p, index) else {
         return Vec::new();
     };
     let entries: Vec<_> = index
@@ -430,7 +458,7 @@ pub fn references_with_index(
     if entries.is_empty() {
         return Vec::new();
     }
-    let modules = analysis.source_modules();
+    let modules = analysis.source_modules(syms);
     let mut locations = Vec::with_capacity(entries.len());
     for entries in entries.chunk_by(|a, b| a.file == b.file) {
         let file = entries[0].file;
@@ -446,7 +474,7 @@ pub fn references_with_index(
             .unwrap_or(0);
         let source = module.source.get(..end).unwrap_or(&module.source);
         let positions = text::SourcePositions::new(source);
-        let source_uri = analysis.source_uri(file.as_str());
+        let source_uri = analysis.source_uri(syms.str(file));
         locations.extend(
             entries
                 .iter()

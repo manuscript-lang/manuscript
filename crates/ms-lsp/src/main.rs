@@ -8,8 +8,9 @@ use ms_rt as _;
 use std::process::Command;
 
 fn main() {
+    let syms = ms_syntax::Names::global();
     let result = if std::env::var_os("MS_LSP_WORKER").is_some() {
-        ms_lsp::serve(std::io::stdin(), std::io::stdout())
+        ms_lsp::serve(syms, std::io::stdin(), std::io::stdout())
     } else {
         ms_lsp::supervise(std::io::stdin(), std::io::stdout(), || {
             let exe = std::env::current_exe().expect("current executable");

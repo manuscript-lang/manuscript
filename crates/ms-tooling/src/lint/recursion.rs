@@ -6,8 +6,13 @@ use ms_check::types::n;
 use ms_check::{ModuleData, Program};
 use ms_syntax::ast::*;
 
-pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Finding>) {
-    let file = module_file(module);
+pub(super) fn lint(
+    syms: ms_syntax::Names,
+    program: &Program,
+    module: &ModuleData,
+    findings: &mut Vec<Finding>,
+) {
+    let file = module_file(syms, module);
     let Some(symbols) = program.symbols.get(&module.file) else {
         return;
     };
@@ -18,18 +23,21 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
         };
         let Some(own) = symbols
             .borrow()
-            .get(&n(func.name.as_str()))
+            .get(&n(syms.str(func.name)))
             .map(|s| s.key())
         else {
             continue;
         };
         let scan = Scan { module, own };
-        if !func.external && !func.body.is_empty() && scan.block(&func.body) == Outcome::Recursed {
+        if !func.external
+            && !func.body.is_empty()
+            && scan.block(syms, &func.body) == Outcome::Recursed
+        {
             findings.push(finding(
                 "MSL112",
                 format!(
                     "{} calls itself on every path, so it never returns; add a base case that returns before the recursive call",
-                    func.name.as_str()
+                    syms.str(func.name)
                 ),
                 &file,
                 decl.pos,
@@ -55,9 +63,9 @@ struct Scan<'a> {
 }
 
 impl Scan<'_> {
-    fn block(&self, stmts: &[Stmt]) -> Outcome {
+    fn block(&self, syms: ms_syntax::Names, stmts: &[Stmt]) -> Outcome {
         for s in stmts {
-            match self.stmt(s) {
+            match self.stmt(syms, s) {
                 Outcome::Continues => {}
                 done => return done,
             }
@@ -65,33 +73,35 @@ impl Scan<'_> {
         Outcome::Continues
     }
 
-    fn stmt(&self, s: &Stmt) -> Outcome {
+    fn stmt(&self, syms: ms_syntax::Names, s: &Stmt) -> Outcome {
         match &s.kind {
             StmtKind::Return(None) => Outcome::Escaped,
-            StmtKind::Return(Some(v)) => self.value(v, true),
+            StmtKind::Return(Some(v)) => self.value(syms, v, true),
             StmtKind::Bind { value, .. } | StmtKind::Assign { value, .. } => {
-                self.value(value, false)
+                self.value(syms, value, false)
             }
-            StmtKind::Call(e) => self.value(e, false),
+            StmtKind::Call(e) => self.value(syms, e, false),
             StmtKind::Break | StmtKind::Continue => Outcome::Continues,
             StmtKind::If {
                 cond,
                 body,
                 else_body,
                 ..
-            } => match self.value(cond, false) {
-                Outcome::Continues => self.branches(&[self.block(body), self.block(else_body)]),
+            } => match self.value(syms, cond, false) {
+                Outcome::Continues => {
+                    self.branches(&[self.block(syms, body), self.block(syms, else_body)])
+                }
                 done => done,
             },
             // A loop may run zero times, so only an exit inside it counts.
-            StmtKind::While { cond, body } => self.looped(cond, body),
-            StmtKind::For { iter, body, .. } => self.looped(iter, body),
+            StmtKind::While { cond, body } => self.looped(syms, cond, body),
+            StmtKind::For { iter, body, .. } => self.looped(syms, iter, body),
         }
     }
 
-    fn looped(&self, head: &Expr, body: &[Stmt]) -> Outcome {
-        match self.value(head, false) {
-            Outcome::Continues if self.block(body) == Outcome::Escaped => Outcome::Escaped,
+    fn looped(&self, syms: ms_syntax::Names, head: &Expr, body: &[Stmt]) -> Outcome {
+        match self.value(syms, head, false) {
+            Outcome::Continues if self.block(syms, body) == Outcome::Escaped => Outcome::Escaped,
             done => done,
         }
     }
@@ -108,15 +118,15 @@ impl Scan<'_> {
     }
 
     /// The outcome of evaluating `e`; `returned` when its value is the function's result.
-    fn value(&self, e: &Expr, returned: bool) -> Outcome {
-        if self.exits(e) {
+    fn value(&self, syms: ms_syntax::Names, e: &Expr, returned: bool) -> Outcome {
+        if self.exits(syms, e) {
             return Outcome::Escaped;
         }
         if let ExprKind::Match { scrutinee, arms } = &e.kind {
             if self.reaches_call(scrutinee) {
                 return Outcome::Recursed;
             }
-            let outcomes: Vec<Outcome> = arms.iter().map(|a| self.arm(a, returned)).collect();
+            let outcomes: Vec<Outcome> = arms.iter().map(|a| self.arm(syms, a, returned)).collect();
             return self.branches(&outcomes);
         }
         match (self.reaches_call(e), returned) {
@@ -126,10 +136,10 @@ impl Scan<'_> {
         }
     }
 
-    fn arm(&self, arm: &Arm, returned: bool) -> Outcome {
-        match self.block(&arm.body) {
+    fn arm(&self, syms: ms_syntax::Names, arm: &Arm, returned: bool) -> Outcome {
+        match self.block(syms, &arm.body) {
             Outcome::Continues => match &arm.value {
-                Some(v) => self.value(v, returned),
+                Some(v) => self.value(syms, v, returned),
                 None if returned => Outcome::Escaped,
                 None => Outcome::Continues,
             },
@@ -139,7 +149,7 @@ impl Scan<'_> {
 
     /// Whether evaluating `e` can leave the function without returning normally: a `try`, or a
     /// call that never completes.
-    fn exits(&self, e: &Expr) -> bool {
+    fn exits(&self, syms: ms_syntax::Names, e: &Expr) -> bool {
         let mut found = false;
         visit(e, &mut |x| {
             if matches!(
@@ -156,7 +166,7 @@ impl Scan<'_> {
                 .facts()
                 .info(x.id)
                 .and_then(|i| i.ty.as_ref())
-                .is_some_and(|t| t.is_never());
+                .is_some_and(|t| t.is_never(syms));
             found |= never && matches!(x.kind, ExprKind::Call { .. });
         });
         found

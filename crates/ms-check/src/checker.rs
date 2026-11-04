@@ -96,6 +96,8 @@ pub struct TestFixture {
 pub struct Program {
     /// The session whose standard library the program was checked against.
     pub session: Rc<Session>,
+    /// Reads and interns identifier text for this program.
+    pub syms: ms_syntax::Names,
     /// Fixtures per module file.
     pub test_fixtures: HashMap<Name, TestFixture>,
     /// Conservative potential effects by callable id.
@@ -209,6 +211,8 @@ pub struct Checker {
     pub(crate) tys: RefCell<TyTable>,
     pub(crate) module: Option<ModRef>,
     pub(crate) names: Names,
+    /// Reads and interns identifier text.
+    pub(crate) syms: ms_syntax::Names,
     pub(crate) scope: Rc<Scope>,
     pub(crate) result: Option<Ty>,
     pub(crate) return_inference: Option<CallbackReturns>,
@@ -256,6 +260,7 @@ impl Checker {
             id_scope: String::new(),
             group: Vec::new(),
             p: Program {
+                syms: ms_syntax::Names::global(),
                 session: session.clone(),
                 ..Program::default()
             },
@@ -267,6 +272,7 @@ impl Checker {
             tys: RefCell::new(TyTable::new()),
             module: None,
             names: Rc::new(RefCell::new(HashMap::new())),
+            syms: ms_syntax::Names::global(),
             scope: Scope::new(None),
             result: None,
             return_inference: None,
@@ -329,7 +335,7 @@ impl Checker {
         self.p
             .diagnostics
             .iter()
-            .any(|d| d.file.as_ref() == file.as_str() && d.message.contains(&hint))
+            .any(|d| d.file.as_ref() == self.syms.str(file) && d.message.contains(&hint))
     }
 
     /// Reports a diagnostic, applying the checker's suppression rules.
@@ -370,7 +376,7 @@ impl Checker {
         }
         self.p.diagnostics.push(Diagnostic {
             opener_line: 0,
-            file: file.as_str().into(),
+            file: self.syms.str(file).into(),
             pos,
             phase,
             message,
@@ -391,7 +397,11 @@ impl Checker {
         };
         self.type_error(
             pos,
-            format!("{t} is opaque outside {module}: {what}; use the functions {module} exports"),
+            format!(
+                "{t_t} is opaque outside {module_t}: {what}; use the functions {module_t} exports",
+                t_t = t.display(self.syms),
+                module_t = self.syms.str(module)
+            ),
         );
         true
     }
@@ -426,8 +436,8 @@ impl Checker {
             self.res_error(
                     pos,
                     format!(
-                        "declaration {name} reuses a prelude name; rename it, because {name} always refers to the standard declaration"
-                    ),
+                        "declaration {name_t} reuses a prelude name; rename it, because {name_t} always refers to the standard declaration"
+                    , name_t = self.syms.str(name)),
                 );
             self.rejected_names.insert(name);
             return;
@@ -440,11 +450,13 @@ impl Checker {
                     .is_some_and(|e| !self.session.is_prelude_symbol(e));
             let message = if imported {
                 format!(
-                    "import {name} collides with another {name} in this module; an import cannot be renamed, so import only one {name} here and wrap the other in a small module that exports it under a new name"
+                    "import {name_t} collides with another {name_t} in this module; an import cannot be renamed, so import only one {name_t} here and wrap the other in a small module that exports it under a new name",
+                    name_t = self.syms.str(name)
                 )
             } else {
                 format!(
-                    "duplicate or intrinsic name {name}; this name is already declared, imported, or built in, so rename one of them"
+                    "duplicate or intrinsic name {name_t}; this name is already declared, imported, or built in, so rename one of them",
+                    name_t = self.syms.str(name)
                 )
             };
             self.res_error(pos, message);
@@ -461,27 +473,26 @@ impl Checker {
             self.scope
                 .types
                 .borrow_mut()
-                .insert(n("Self"), self_variable(owner.id));
+                .insert(n("Self"), self_variable(self.syms, owner.id));
         }
     }
 
     /// `Self` is limited to whole parameter and result types, the positions where a call can
     /// substitute the implementing type.
     pub(crate) fn check_self_use(&mut self, op: &Ty, pos: Pos) {
-        fn mentions(t: &Ty) -> bool {
-            t.id.as_str().ends_with("/Self")
-                || t.args.iter().any(mentions)
-                || t.params.iter().any(|p| mentions(&p.ty))
-                || t.result.as_ref().is_some_and(mentions)
+        fn mentions(syms: ms_syntax::Names, t: &Ty) -> bool {
+            syms.str(t.id).ends_with("/Self")
+                || t.args.iter().any(|a| mentions(syms, a))
+                || t.params.iter().any(|p| mentions(syms, &p.ty))
+                || t.result.as_ref().is_some_and(|r| mentions(syms, r))
         }
-        let misplaced = op
-            .params
-            .iter()
-            .any(|p| !p.ty.id.as_str().ends_with("/Self") && mentions(&p.ty))
-            || op
-                .result
-                .as_ref()
-                .is_some_and(|r| !r.id.as_str().ends_with("/Self") && mentions(r));
+        let misplaced =
+            op.params
+                .iter()
+                .any(|p| !self.syms.str(p.ty.id).ends_with("/Self") && mentions(self.syms, &p.ty))
+                || op.result.as_ref().is_some_and(|r| {
+                    !self.syms.str(r.id).ends_with("/Self") && mentions(self.syms, r)
+                });
         if misplaced {
             self.type_error(
                 pos,
@@ -500,7 +511,7 @@ impl Checker {
                     param.pos,
                     format!(
                         "type parameter {} shadows a type parameter of the receiver; choose a different name",
-                        param.name
+                        self.syms.str(param.name)
                     ),
                 );
             } else if self.intrinsic_type_parameter(param.name) {
@@ -508,13 +519,19 @@ impl Checker {
                     param.pos,
                     format!(
                         "duplicate or intrinsic type parameter {}; choose a different type parameter name",
-                        param.name
+                        self.syms.str(param.name)
                     ),
                 );
             }
             let v: Ty = Rc::new(Type::new(
+                self.syms,
                 param.name,
-                n(&format!("{owner}/{}/{}", method.func.name, param.name)),
+                n(&format!(
+                    "{owner_t}/{}/{}",
+                    self.syms.str(method.func.name),
+                    self.syms.str(param.name),
+                    owner_t = self.syms.str(owner)
+                )),
                 Kind::Variable,
             ));
             variables.push(v.clone());
@@ -522,8 +539,14 @@ impl Checker {
         }
         self.resolve_type_bounds(&method.func.type_params, &variables);
         self.type_defaults(&method.func.type_params, &variables);
-        self.session
-            .set_operation_variables(format!("{owner}/{}", method.func.name), variables);
+        self.session.set_operation_variables(
+            format!(
+                "{owner_t}/{}",
+                self.syms.str(method.func.name),
+                owner_t = self.syms.str(owner)
+            ),
+            variables,
+        );
     }
 
     pub(crate) fn variable_scope(&self, vars: &[Ty]) -> Rc<Scope> {
@@ -770,23 +793,24 @@ impl Checker {
                 self.internal_error(e);
                 continue;
             }
-            let hidden = crate::stdlib::is_internal(path) && !module.file.starts_with("@std/");
+            let hidden = crate::stdlib::is_internal(path)
+                && !self.syms.str(module.file).starts_with("@std/");
             // An internal module declares the natives of its host and names the host's private types.
-            let host = crate::stdlib::is_internal(module.file.as_str());
+            let host = crate::stdlib::is_internal(self.syms.str(module.file));
             let usable = found
                 .as_ref()
                 .filter(|f| (f.export || host) && !hidden)
                 .cloned();
             let Some(found) = usable else {
                 let end = Pos::new(
-                    item.name_pos.offset + item.name.len() as u32,
+                    item.name_pos.offset + self.syms.str(item.name).len() as u32,
                     item.name_pos.line,
-                    item.name_pos.column + item.name.len() as u32,
+                    item.name_pos.column + self.syms.str(item.name).len() as u32,
                 );
                 let message = self.export_message(item);
                 self.p.diagnostics.push(Diagnostic {
                     opener_line: 0,
-                    file: module.file.as_str().into(),
+                    file: self.syms.str(module.file).into(),
                     pos: item.name_pos,
                     phase: Phase::Resolution,
                     message,
@@ -808,10 +832,14 @@ impl Checker {
         if !d.type_params().is_empty() {
             self.type_error(
                 d.pos(),
-                format!("extern type {name} cannot be generic; declare one extern type per native handle"),
+                format!("extern type {name_t} cannot be generic; declare one extern type per native handle", name_t = self.syms.str(name)),
             );
         }
-        let id = n(&format!("extern:{}/{name}", module.file));
+        let id = n(&format!(
+            "extern:{}/{name_t}",
+            self.syms.str(module.file),
+            name_t = self.syms.str(name)
+        ));
         let s = Rc::new(Sym {
             name,
             id,
@@ -824,7 +852,7 @@ impl Checker {
             decl: Some(d.clone()),
         });
         let def = Definition::new(&s, Kind::Native);
-        let mut t = Type::new(name, id, Kind::Native);
+        let mut t = Type::new(self.syms, name, id, Kind::Native);
         t.def = Some(def);
         *s.ty.borrow_mut() = Some(Rc::new(t));
         self.add_symbol(name, s, d.pos());
@@ -841,7 +869,7 @@ impl Checker {
                 let canonical = self
                     .session
                     .is_source_module(module)
-                    .then(|| self.session.standard_symbol(name.as_str()))
+                    .then(|| self.session.standard_symbol(self.syms.str(name)))
                     .flatten()
                     .filter(|s| s.decl.as_ref().is_some_and(|sd| sd.same(d)));
                 match canonical {
@@ -876,7 +904,9 @@ impl Checker {
             };
             // An `extern fn` calls the native symbol named after it.
             let native = match &d.decl().kind {
-                DeclKind::Fn(f) if f.external => n(&format!("extern:{name}")),
+                DeclKind::Fn(f) if f.external => {
+                    n(&format!("extern:{name_t}", name_t = self.syms.str(name)))
+                }
                 _ => n(""),
             };
             let s = Rc::new(Sym {
@@ -897,8 +927,13 @@ impl Checker {
             if let Some(kind) = kind {
                 let def = Definition::new(&s, kind);
                 let mut t = Type::new(
+                    self.syms,
                     name,
-                    n(&format!("module/{}#{}", hex(module.file.as_str()), name)),
+                    n(&format!(
+                        "module/{}#{}",
+                        hex(self.syms.str(module.file)),
+                        self.syms.str(name)
+                    )),
                     kind,
                 );
                 t.def = Some(def);
@@ -929,7 +964,7 @@ impl Checker {
             let vars = self.type_variables(d.type_params());
             *s.variables.borrow_mut() = vars.clone();
             if s.kind == SymKind::Type {
-                let t = s.ty();
+                let t = s.ty(self.syms);
                 *t.def.as_ref().expect("def").variables.borrow_mut() = vars.clone();
                 // The declaration's own type carries its variables as arguments.
                 let with = with_args(&t, vars);
@@ -972,7 +1007,7 @@ impl Checker {
                         p.pos,
                         format!(
                             "type parameter {} needs a default because an earlier parameter has one; give {} a default or move it before the defaulted parameters",
-                            p.name, p.name
+                            self.syms.str(p.name), self.syms.str(p.name)
                         ),
                     );
                 }
@@ -1049,7 +1084,7 @@ impl Checker {
                 let t = self.signature(&f.params, Some(&f.result));
                 *s.ty.borrow_mut() = Some(t);
             } else {
-                let def = s.ty().def.clone().expect("def");
+                let def = s.ty(self.syms).def.clone().expect("def");
                 let fields = self.params(d.record_fields());
                 *def.fields.borrow_mut() = fields;
                 let mut seen: HashSet<Name> = HashSet::new();
@@ -1057,7 +1092,10 @@ impl Checker {
                     if !seen.insert(cs.name) {
                         self.type_error(
                             cs.pos,
-                            format!("duplicate case {}; rename or remove one of them", cs.name),
+                            format!(
+                                "duplicate case {}; rename or remove one of them",
+                                self.syms.str(cs.name)
+                            ),
                         );
                     }
                     let fields = self.params(&cs.fields);
@@ -1073,13 +1111,13 @@ impl Checker {
                             m.pos,
                             format!(
                                 "duplicate operation {}; rename or remove one of them",
-                                m.func.name
+                                self.syms.str(m.func.name)
                             ),
                         );
                     }
                     self.scope = self.variable_scope(&s.variables());
-                    self.declare_self(&s.ty());
-                    self.operation_variables(s.ty().id, m);
+                    self.declare_self(&s.ty(self.syms));
+                    self.operation_variables(s.ty(self.syms).id, m);
                     let ty = self.signature(&m.func.params, Some(&m.func.result));
                     // An inherent `impl` is desugared to a synthesized interface that no
                     // interface value can reach, so `Self` may appear anywhere in its methods.
@@ -1124,18 +1162,17 @@ impl Checker {
                         if let Some(symbol) = self.sym(i.name) {
                             vars.extend(self.session.operation_variables(&format!(
                                 "{}/{}",
-                                symbol.ty().id,
-                                method.func.name
+                                self.syms.str(symbol.ty(self.syms).id),
+                                self.syms.str(method.func.name)
                             )));
                         }
                         self.scope = self.variable_scope(&vars);
                         let typ = self.resolve(param.ty.as_ref());
                         self.expression(default, Some(&typ));
-                        let is_none =
-                            matches!(&default.kind, ExprKind::Name(nm) if nm.as_str() == "none");
+                        let is_none = matches!(&default.kind, ExprKind::Name(nm) if self.syms.str(nm) == "none");
                         // Bundled interfaces are implemented by the runtime, which fills any default.
                         let bundled = self.session.is_source_module(module);
-                        if !bundled && (typ.id != "@std/Optional" || !is_none) {
+                        if !bundled && (self.syms.str(typ.id) != "@std/Optional" || !is_none) {
                             self.type_error(
                                 param.pos,
                                 "interface defaults must be Optional.none; write '= none' or remove the default",
@@ -1153,12 +1190,17 @@ impl Checker {
             match &d.decl().kind {
                 DeclKind::Fn(f) if f.external => {
                     if let Some(s) = self.own_symbol(d) {
-                        self.check_extern_signature(d.name().as_str(), f, &s.ty(), d.pos());
+                        self.check_extern_signature(
+                            self.syms.str(d.name()),
+                            f,
+                            &s.ty(self.syms),
+                            d.pos(),
+                        );
                     }
                 }
                 DeclKind::Fn(_) | DeclKind::Const(_) => {
                     if let Some(s) = self.own_symbol(d) {
-                        let t = s.ty();
+                        let t = s.ty(self.syms);
                         if d.is_constant() && t.result_ty().is_invalid() {
                             continue;
                         }
@@ -1168,7 +1210,7 @@ impl Checker {
                 DeclKind::Test(_) => {
                     self.check_function(
                         &FuncRef::of_decl(d.clone()),
-                        &function(Vec::new(), self.session.test_outcome()),
+                        &function(self.syms, Vec::new(), self.session.test_outcome()),
                         &[],
                         None,
                     );
@@ -1204,20 +1246,20 @@ impl Checker {
     ) -> BindingRef {
         // `_` names a value nothing reads, so several may share a scope.
         if report
-            && name.as_str() != "_"
+            && self.syms.str(name) != "_"
             && (self.scope.bindings.borrow().contains_key(&name)
                 || self.scope.types.borrow().contains_key(&name))
         {
             self.type_error(
                 pos,
                 format!(
-                    "duplicate local binding {name}; this scope already has that name, so choose another name or assign to the existing 'var'"
-                ),
+                    "duplicate local binding {name_t}; this scope already has that name, so choose another name or assign to the existing 'var'"
+                , name_t = self.syms.str(name)),
             );
         }
         if report
-            && !name.as_str().starts_with('_')
-            && name != "self"
+            && !self.syms.str(name).starts_with('_')
+            && self.syms.str(name) != "self"
             && self
                 .scope
                 .parent
@@ -1227,15 +1269,19 @@ impl Checker {
             self.type_error(
                 pos,
                 format!(
-                    "binding {name} shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'"
-                ),
+                    "binding {name_t} shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'"
+                , name_t = self.syms.str(name)),
             );
         }
         let t = if mutable { required_type(t) } else { t.clone() };
         let id = self.unique("local");
         let b = Rc::new(Binding {
             name,
-            id: n(&format!("{id}_{name}")),
+            id: n(&format!(
+                "{id_t}_{name_t}",
+                id_t = self.syms.str(id),
+                name_t = self.syms.str(name)
+            )),
             uid: self.session.next_binding(),
             ty: t,
             mutable,
@@ -1247,9 +1293,10 @@ impl Checker {
     }
 
     pub(crate) fn intrinsic_type_parameter(&self, name: Name) -> bool {
-        self.sym(name).is_some_and(|s| s.module.as_str().is_empty())
+        self.sym(name)
+            .is_some_and(|s| self.syms.str(s.module).is_empty())
             || matches!(
-                name.as_str(),
+                self.syms.str(name),
                 "Equal" | "Comparable" | "Hashable" | "Clonable"
             )
     }
@@ -1264,12 +1311,12 @@ impl Checker {
                     p.pos,
                     format!(
                         "duplicate or intrinsic type parameter {}; choose a different type parameter name",
-                        p.name
+                        self.syms.str(p.name)
                     ),
                 );
             }
             let id = self.unique("typevar");
-            let v: Ty = Rc::new(Type::new(p.name, id, Kind::Variable));
+            let v: Ty = Rc::new(Type::new(self.syms, p.name, id, Kind::Variable));
             vars.push(v.clone());
             self.scope.types.borrow_mut().insert(p.name, v);
         }
@@ -1285,7 +1332,7 @@ impl Checker {
                 if let TypeKind::Named { name, .. } = &b.kind
                     && !self.scope.types.borrow().contains_key(name)
                     && let Some(s) = self.sym(*name).filter(|s| s.kind == SymKind::Type)
-                    && !matches!(s.ty().kind, Kind::Contract | Kind::Variable)
+                    && !matches!(s.ty(self.syms).kind, Kind::Contract | Kind::Variable)
                 {
                     self.type_error(
                         b.pos,
@@ -1333,22 +1380,22 @@ impl Checker {
                     self.res_error(
                         t.pos,
                         format!(
-                            "a value shadows type {name}; rename the local binding so the type name is usable here"
-                        ),
+                            "a value shadows type {name_t}; rename the local binding so the type name is usable here"
+                        , name_t = self.syms.str(name)),
                     );
                     return invalid();
                 }
                 let base: Ty = if let Some(v) = self.scope.typ(name) {
                     v
                 } else if let Some(s) = self.sym(name).filter(|s| s.kind == SymKind::Type) {
-                    s.ty()
+                    s.ty(self.syms)
                 } else {
                     let msg = self.unknown_type_message(name);
-                    self.res_error_name(t.pos, name.len(), msg);
+                    self.res_error_name(t.pos, self.syms.str(name).len(), msg);
                     self.unknown_type = true;
                     return invalid();
                 };
-                if name == "Self" && args.is_empty() && !base.args.is_empty() {
+                if self.syms.str(name) == "Self" && args.is_empty() && !base.args.is_empty() {
                     // `Self` in an implementation already carries the receiver's arguments.
                     self.m().facts_mut().type_refs.insert(t.id, base.clone());
                     return base;
@@ -1372,11 +1419,11 @@ impl Checker {
                             t.pos,
                             format!(
                                 "{} takes {} to {} type arguments, found {}; write {}",
-                                base.name,
+                                self.syms.str(base.name),
                                 required,
                                 arity,
                                 r.args.len(),
-                                crate::hints::type_sketch(base.name.as_str(), arity)
+                                crate::hints::type_sketch(self.syms.str(base.name), arity)
                             ),
                         );
                     } else {
@@ -1385,10 +1432,10 @@ impl Checker {
                             t.pos,
                             format!(
                                 "{} requires {} type arguments, found {}; write {}{}",
-                                base.name,
+                                self.syms.str(base.name),
                                 arity,
                                 r.args.len(),
-                                crate::hints::type_sketch(base.name.as_str(), arity),
+                                crate::hints::type_sketch(self.syms.str(base.name), arity),
                                 hint
                             ),
                         );
@@ -1431,25 +1478,25 @@ impl Checker {
                     p.pos,
                     format!(
                         "extern parameter {} cannot be var; a native borrows its arguments",
-                        p.name
+                        self.syms.str(p.name)
                     ),
                 );
             } else if p.default.is_some() {
                 self.type_error(
                     p.pos,
-                    format!("extern parameter {} cannot have a default; the native symbol takes every argument", p.name),
+                    format!("extern parameter {} cannot have a default; the native symbol takes every argument", self.syms.str(p.name)),
                 );
             } else if ty.ty.kind == Kind::Function {
-                if !crosses_callback(&ty.ty) {
+                if !crosses_callback(self.syms, &ty.ty) {
                     self.type_error(
                         p.pos,
-                        format!("extern parameter {} has type {}, which cannot cross the native boundary; a function an extern takes has at most {MAX_CALLBACK_PARAMS} parameters of sized numbers, Bool, String, Bytes or extern types this program declares, and returns a number, Bool, String, Bytes or Unit", p.name, ty.ty),
+                        format!("extern parameter {} has type {}, which cannot cross the native boundary; a function an extern takes has at most {MAX_CALLBACK_PARAMS} parameters of sized numbers, Bool, String, Bytes or extern types this program declares, and returns a number, Bool, String, Bytes or Unit", self.syms.str(p.name), ty.ty.display(self.syms)),
                     );
                 }
-            } else if !ty.ty.is_invalid() && !crosses_native(&ty.ty) {
+            } else if !ty.ty.is_invalid() && !crosses_native(self.syms, &ty.ty) {
                 self.type_error(
                     p.pos,
-                    format!("extern parameter {} has type {}, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, Lists of them, and functions of them", p.name, ty.ty.name),
+                    format!("extern parameter {} has type {}, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, Lists of them, and functions of them", self.syms.str(p.name), self.syms.str(ty.ty.name)),
                 );
             }
         }
@@ -1462,25 +1509,26 @@ impl Checker {
             let cases = cases(error);
             let reported = |c: &Case| {
                 c.fields.iter().all(|f| {
-                    (f.name.as_str() == EXTERN_ERROR_CODE && f.ty.id == "Int")
-                        || (f.name.as_str() == EXTERN_ERROR_MESSAGE && f.ty.id == "String")
+                    (self.syms.str(f.name) == EXTERN_ERROR_CODE && self.syms.str(f.ty.id) == "Int")
+                        || (self.syms.str(f.name) == EXTERN_ERROR_MESSAGE
+                            && self.syms.str(f.ty.id) == "String")
                 })
             };
-            if ok.id != "Unit" && !crosses_native(ok) {
+            if self.syms.str(ok.id) != "Unit" && !crosses_native(self.syms, ok) {
                 self.type_error(
                     f.result.pos,
-                    format!("extern Result value has type {}, which cannot cross the native boundary; an extern Result holds {CROSSES}, or Unit", ok.name),
+                    format!("extern Result value has type {}, which cannot cross the native boundary; an extern Result holds {CROSSES}, or Unit", self.syms.str(ok.name)),
                 );
             } else if cases.is_empty() || !cases.iter().all(reported) {
                 self.type_error(
                     f.result.pos,
-                    format!("extern error type {} must be an alternative whose cases carry nothing, `code: Int`, `message: String`, or both; the native returns the status 1 + the case index and fills code_out and message_out", error.name),
+                    format!("extern error type {} must be an alternative whose cases carry nothing, `code: Int`, `message: String`, or both; the native returns the status 1 + the case index and fills code_out and message_out", self.syms.str(error.name)),
                 );
             }
-        } else if result.id != "Unit" && !crosses_native(&result) {
+        } else if self.syms.str(result.id) != "Unit" && !crosses_native(self.syms, &result) {
             self.type_error(
                 f.result.pos,
-                format!("extern result has type {}, which cannot cross the native boundary; an extern returns {CROSSES}, Unit, or a Result of one", result.name),
+                format!("extern result has type {}, which cannot cross the native boundary; an extern returns {CROSSES}, Unit, or a Result of one", self.syms.str(result.name)),
             );
         }
     }
@@ -1494,7 +1542,7 @@ impl Checker {
                     p.pos,
                     format!(
                         "duplicate parameter or field {}; each name may appear once, so rename one",
-                        p.name
+                        self.syms.str(p.name)
                     ),
                 );
             }
@@ -1526,7 +1574,7 @@ impl Checker {
         } else {
             Some(Rc::new(ParameterDefaults::new(defaults)))
         };
-        function_with(ps, r, defaults)
+        function_with(self.syms, ps, r, defaults)
     }
 
     // ----------------------------------------------------------- function body
@@ -1597,12 +1645,12 @@ impl Checker {
             };
             fall = self.block(body, false).0;
         }
-        if fall && !is_test && result_ty.id != "Unit" && !result_ty.is_invalid() {
+        if fall && !is_test && self.syms.str(result_ty.id) != "Unit" && !result_ty.is_invalid() {
             self.type_error(
                 d.pos(),
                 format!(
                     "reachable fallthrough in function returning {rt}; end every path with 'return <{rt}>' (or make the last branch return)",
-                    rt = result_ty
+                    rt = result_ty.display(self.syms)
                 ),
             );
         }
@@ -1623,11 +1671,18 @@ impl Checker {
         let old_function = self.function;
         let old_loops = self.loops;
         self.scope = self.variable_scope(&s.variables());
-        self.result = Some(s.ty());
+        self.result = Some(s.ty(self.syms));
         self.serial += 1;
         self.function = self.serial;
         self.loops = 0;
-        let def_fields = s.ty().def.as_ref().expect("def").fields.borrow().clone();
+        let def_fields = s
+            .ty(self.syms)
+            .def
+            .as_ref()
+            .expect("def")
+            .fields
+            .borrow()
+            .clone();
         self.check_parameters(&FuncRef::of_decl(d.clone()), fields, &def_fields);
         self.scope = old_scope;
         self.result = old_result;
@@ -1693,7 +1748,7 @@ impl Checker {
             return;
         }
         let decl = factory.decl.clone().expect("decl");
-        let t = factory.ty();
+        let t = factory.ty(self.syms);
         if factory.kind != SymKind::Fn
             || decl.is_constant()
             || !factory.variables().is_empty()
@@ -1730,18 +1785,18 @@ impl Checker {
 
     pub(crate) fn add_standard_prelude(&mut self) {
         let m = self.m();
-        if !m.is_standard() {
+        if !m.is_standard(self.syms) {
             for d in &m.decls {
                 if matches!(d.decl().kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
                     continue;
                 }
                 let name = d.name();
-                if matches!(name.as_str(), "some" | "none" | "ok" | "error") {
+                if matches!(self.syms.str(name), "some" | "none" | "ok" | "error") {
                     self.res_error(
                         d.pos(),
                         format!(
-                            "declaration {name} reuses a prelude constructor name; rename it, because {name} always refers to the prelude case"
-                        ),
+                            "declaration {name_t} reuses a prelude constructor name; rename it, because {name_t} always refers to the prelude case"
+                        , name_t = self.syms.str(name)),
                     );
                 }
             }
@@ -1761,7 +1816,7 @@ impl Checker {
                 .iter()
                 .any(|i| i.name == nm && i.path.starts_with("@std/"));
             // Standard modules import it explicitly: resolving the twin from inside one would be a dependency cycle.
-            if m.is_standard() || explicit {
+            if m.is_standard(self.syms) || explicit {
                 continue;
             }
             // The function has a body, so it lives in the module's source twin.
@@ -1824,10 +1879,11 @@ pub fn unique_diagnostics(diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
 
 /// The implicit `Self` type of an interface: a variable that implementations and calls replace
 /// with the receiver.
-pub fn self_variable(owner: Name) -> Ty {
+pub fn self_variable(syms: ms_syntax::Names, owner: Name) -> Ty {
     Rc::new(Type::new(
+        syms,
         n("Self"),
-        n(&format!("{owner}/Self")),
+        n(&format!("{owner_t}/Self", owner_t = syms.str(owner))),
         Kind::Variable,
     ))
 }
@@ -1838,19 +1894,19 @@ mod operation_bounds_tests;
 
 /// Whether a value of `t` crosses to a user `extern fn` shim (`ms_abi.h`): sized numbers,
 /// `Bool`, `String`, `Bytes`, an `extern type` the program declares, or a `List` of those.
-pub(crate) fn crosses_native(t: &Ty) -> bool {
+pub(crate) fn crosses_native(syms: ms_syntax::Names, t: &Ty) -> bool {
     if t.is(Builtin::List) && t.args.len() == 1 {
-        return crosses_element(&t.args[0]);
+        return crosses_element(syms, &t.args[0]);
     }
-    crosses_element(t)
+    crosses_element(syms, t)
 }
 
-fn crosses_element(t: &Ty) -> bool {
+fn crosses_element(syms: ms_syntax::Names, t: &Ty) -> bool {
     const SCALARS: [&str; 13] = [
         "Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "Float",
         "Float32", "Bool", "String",
     ];
-    SCALARS.contains(&t.id.as_str()) || t.is(Builtin::Bytes) || is_user_extern_type(t)
+    SCALARS.contains(&syms.str(t.id)) || t.is(Builtin::Bytes) || is_user_extern_type(syms, t)
 }
 
 /// The most parameters a function passed to a user extern may take (`ms_call` packs the
@@ -1858,17 +1914,16 @@ fn crosses_element(t: &Ty) -> bool {
 pub(crate) const MAX_CALLBACK_PARAMS: usize = 6;
 
 /// Whether the function type `t` can be passed to a user extern as an `ms_fn`.
-fn crosses_callback(t: &Ty) -> bool {
-    let result_ok = t
-        .result
-        .as_ref()
-        .is_none_or(|r| r.id == "Unit" || (crosses_element(r) && !is_user_extern_type(r)));
+fn crosses_callback(syms: ms_syntax::Names, t: &Ty) -> bool {
+    let result_ok = t.result.as_ref().is_none_or(|r| {
+        syms.str(r.id) == "Unit" || (crosses_element(syms, r) && !is_user_extern_type(syms, r))
+    });
     t.params.len() <= MAX_CALLBACK_PARAMS
-        && t.params.iter().all(|p| crosses_element(&p.ty))
+        && t.params.iter().all(|p| crosses_element(syms, &p.ty))
         && result_ok
 }
 
 /// Whether `t` is an `extern type` declared outside the standard library.
-pub(crate) fn is_user_extern_type(t: &Ty) -> bool {
-    t.kind == Kind::Native && t.args.is_empty() && t.id.as_str().starts_with("extern:")
+pub(crate) fn is_user_extern_type(syms: ms_syntax::Names, t: &Ty) -> bool {
+    t.kind == Kind::Native && t.args.is_empty() && syms.str(t.id).starts_with("extern:")
 }

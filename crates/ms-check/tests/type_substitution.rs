@@ -5,11 +5,13 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 fn variable() -> Ty {
-    Rc::new(Type::new(n("T"), n("substitution/T"), Kind::Variable))
+    let syms = ms_syntax::Names::global();
+    Rc::new(Type::new(syms, n("T"), n("substitution/T"), Kind::Variable))
 }
 
 fn signature(children: &[Ty], result: Ty) -> Ty {
-    let mut ty = Type::new(n("callback"), n("callback"), Kind::Function);
+    let syms = ms_syntax::Names::global();
+    let mut ty = Type::new(syms, n("callback"), n("callback"), Kind::Function);
     ty.params = children
         .iter()
         .enumerate()
@@ -26,8 +28,9 @@ fn signature(children: &[Ty], result: Ty) -> Ty {
 
 #[test]
 fn concrete_substitution_keeps_nested_types_and_callable_permissions() {
+    let syms = ms_syntax::Names::global();
     let callback = signature(&[int(), string()], int());
-    let mut outer = Type::new(n("Box"), n("substitution/Box"), Kind::Record);
+    let mut outer = Type::new(syms, n("Box"), n("substitution/Box"), Kind::Record);
     outer.args = vec![callback];
     let outer = Rc::new(outer);
     for bindings in [Subst::new(), Subst::from([(n("unused"), string())])] {
@@ -83,8 +86,14 @@ fn unbound_nested_variables_snapshot_bounds_and_defaults_even_without_bindings()
         assert!(snapshot.default_ty().is_none());
     }
     for snapshot in [&after.params[1].ty, &after.result_ty()] {
-        assert_eq!(snapshot.bounds()[0].id, "String");
-        assert_eq!(snapshot.default_ty().unwrap().id, "Int");
+        assert_eq!(
+            ms_syntax::Names::global().str(snapshot.bounds()[0].id),
+            "String"
+        );
+        assert_eq!(
+            ms_syntax::Names::global().str(snapshot.default_ty().unwrap().id),
+            "Int"
+        );
     }
     assert!(Rc::ptr_eq(&ty.params[0].ty, &after.params[0].ty));
     assert!(Rc::ptr_eq(&ty.params[2].ty, &after.params[2].ty));

@@ -8,9 +8,10 @@ use ms_check::types::Builtin;
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
 
-pub(super) fn lint(module: &ModuleData, findings: &mut Vec<Finding>) {
-    let file = module_file(module);
+pub(super) fn lint(syms: ms_syntax::Names, module: &ModuleData, findings: &mut Vec<Finding>) {
+    let file = module_file(syms, module);
     let mut scan = Scan {
+        syms: ms_syntax::Names::global(),
         module,
         file: &file,
         findings,
@@ -19,6 +20,7 @@ pub(super) fn lint(module: &ModuleData, findings: &mut Vec<Finding>) {
 }
 
 struct Scan<'a> {
+    syms: ms_syntax::Names,
     module: &'a ModuleData,
     file: &'a std::sync::Arc<str>,
     findings: &'a mut Vec<Finding>,
@@ -26,13 +28,14 @@ struct Scan<'a> {
 
 impl Visitor for Scan<'_> {
     fn expr(&mut self, e: &Expr) {
+        let syms = self.syms;
         let ExprKind::Call { callee, args } = &e.kind else {
             return;
         };
         let ExprKind::Member { left, name } = &callee.kind else {
             return;
         };
-        if name.as_str() != "get" || !args.is_empty() {
+        if syms.str(name) != "get" || !args.is_empty() {
             return;
         }
         let absent_faults = self

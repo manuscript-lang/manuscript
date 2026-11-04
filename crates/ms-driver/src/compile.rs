@@ -33,18 +33,30 @@ pub struct CheckRequest {
 }
 
 /// Check the graph and, for executables, validate the entry point.
-pub fn check_graph(graph: Graph, request: CheckRequest) -> Checked {
-    check_graph_at(graph, request, None)
+pub fn check_graph(syms: ms_syntax::Names, graph: Graph, request: CheckRequest) -> Checked {
+    check_graph_at(syms, graph, request, None)
 }
 
 /// [`check_graph`] that also captures the lexical scope at every name
 /// expression spelled `scope_marker` (editor completion queries).
-pub fn check_graph_at(graph: Graph, request: CheckRequest, scope_marker: Option<&str>) -> Checked {
-    check_graph_in(&ms_check::Session::new(), graph, request, scope_marker)
+pub fn check_graph_at(
+    syms: ms_syntax::Names,
+    graph: Graph,
+    request: CheckRequest,
+    scope_marker: Option<&str>,
+) -> Checked {
+    check_graph_in(
+        syms,
+        &ms_check::Session::new(),
+        graph,
+        request,
+        scope_marker,
+    )
 }
 
 /// [`check_graph_at`] against a session the caller keeps, so the standard library loads once.
 pub fn check_graph_in(
+    syms: ms_syntax::Names,
     session: &std::rc::Rc<ms_check::Session>,
     graph: Graph,
     request: CheckRequest,
@@ -62,6 +74,7 @@ pub fn check_graph_in(
         return checked;
     }
     let program = ms_check::check_in(
+        syms,
         session,
         graph.modules,
         graph.imports,
@@ -73,10 +86,10 @@ pub fn check_graph_in(
     checked
         .diagnostics
         .extend(program.diagnostics.iter().cloned());
-    crate::imports::suggest_project_imports(&mut checked.diagnostics, &graph.source_root);
+    crate::imports::suggest_project_imports(syms, &mut checked.diagnostics, &graph.source_root);
     if checked.success()
         && request.entry
-        && let Some(issue) = check_entry(&program, &graph.entry)
+        && let Some(issue) = check_entry(syms, &program, &graph.entry)
     {
         checked.diagnostics.push(issue);
     }
@@ -85,7 +98,7 @@ pub fn check_graph_in(
 }
 
 /// Entry validation: an exported, nongeneric, parameterless `main` returning `Int`.
-fn check_entry(program: &Program, entry: &str) -> Option<Diagnostic> {
+fn check_entry(syms: ms_syntax::Names, program: &Program, entry: &str) -> Option<Diagnostic> {
     let file: Arc<str> = Arc::from(entry);
     let main = program
         .symbols
@@ -123,7 +136,8 @@ fn check_entry(program: &Program, entry: &str) -> Option<Diagnostic> {
         } else if parameters > 0 {
             "main takes no parameters, so remove them (read program arguments through the standard cli module)".to_string()
         } else {
-            let shown = result.map_or_else(|| "<invalid>".to_string(), |r| r.to_string());
+            let shown =
+                result.map_or_else(|| "<invalid>".to_string(), |r| r.display(syms).to_string());
             format!(
                 "main returns {shown}, so declare its result type Int and return an exit status, e.g. 'return 0'"
             )

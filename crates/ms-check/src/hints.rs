@@ -98,29 +98,36 @@ pub fn unique_sorted(names: &[String]) -> Vec<String> {
 }
 
 /// Strings of symbol names.
-pub fn names_of(params: &[Param]) -> Vec<String> {
-    params.iter().map(|p| p.name.to_string()).collect()
+pub fn names_of(syms: ms_syntax::Names, params: &[Param]) -> Vec<String> {
+    params
+        .iter()
+        .map(|p| syms.str(p.name).to_string())
+        .collect()
 }
 
 /// The cases a match has not covered.
-pub fn missing_cases(cases: &[Case], seen: &HashSet<Name>) -> Vec<String> {
+pub fn missing_cases(syms: ms_syntax::Names, cases: &[Case], seen: &HashSet<Name>) -> Vec<String> {
     cases
         .iter()
         .filter(|c| !seen.contains(&c.name))
-        .map(|c| c.name.to_string())
+        .map(|c| syms.str(c.name).to_string())
         .collect()
 }
 
 /// The arm heads a match still needs, e.g. `B(x):`, binding payload fields by name.
-pub fn missing_arms(cases: &[Case], seen: &HashSet<Name>) -> String {
+pub fn missing_arms(syms: ms_syntax::Names, cases: &[Case], seen: &HashSet<Name>) -> String {
     let arms: Vec<String> = cases
         .iter()
         .filter(|c| !seen.contains(&c.name))
         .map(|c| {
             if c.fields.is_empty() {
-                format!("'case {}:'", c.name)
+                format!("'case {}:'", syms.str(c.name))
             } else {
-                format!("'case {}({}):'", c.name, names_of(&c.fields).join(", "))
+                format!(
+                    "'case {}({}):'",
+                    syms.str(c.name),
+                    names_of(syms, &c.fields).join(", ")
+                )
             }
         })
         .collect();
@@ -239,7 +246,7 @@ fn synonym_hint(name: &str, available: &[String]) -> String {
 }
 
 /// `(a: Int, b: String) Bool` for a function type.
-pub fn signature_text(t: &Ty) -> String {
+pub fn signature_text(syms: ms_syntax::Names, t: &Ty) -> String {
     if t.kind != Kind::Function {
         return String::new();
     }
@@ -250,16 +257,18 @@ pub fn signature_text(t: &Ty) -> String {
             format!(
                 "{}{}: {}",
                 if p.mutable { "var " } else { "" },
-                p.name,
-                p.ty
+                syms.str(p.name),
+                p.ty.display(syms)
             )
         })
         .collect();
     let result = t.result_ty();
     // `T!` is the declared spelling of `Result[T, Error]`.
     let result = match result.args.as_slice() {
-        [ok, err] if result.is(Builtin::Result) && err.is(Builtin::Error) => format!("{ok}!"),
-        _ => result.to_string(),
+        [ok, err] if result.is(Builtin::Result) && err.is(Builtin::Error) => {
+            format!("{ok_t}!", ok_t = ok.display(syms))
+        }
+        _ => result.display(syms).to_string(),
     };
     format!("({}) {result}", parts.join(", "))
 }
@@ -277,12 +286,13 @@ fn type_alias(name: &str) -> Option<&'static str> {
 }
 
 /// Names the fix when an Optional is used where a plain value is required.
-pub fn optional_use_hint(actual: &Ty, expected: &Ty) -> String {
+pub fn optional_use_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> String {
     if !actual.is(Builtin::Optional) || actual.args.len() != 1 || expected.is(Builtin::Optional) {
         return String::new();
     }
     format!(
-        "{actual} may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match"
+        "{actual_t} may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match",
+        actual_t = actual.display(syms)
     )
 }
 
@@ -295,21 +305,21 @@ pub fn result_use_hint(actual: &Ty, expected: &Ty) -> String {
 }
 
 /// A promise where its result is required: `wait()` gives it.
-pub fn promise_use_hint(actual: &Ty, expected: &Ty) -> String {
-    if !crate::suggestions::promise_wait_fits(actual, expected) {
+pub fn promise_use_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> String {
+    if !crate::suggestions::promise_wait_fits(syms, actual, expected) {
         return String::new();
     }
     "a call that waits returns a Promise; call wait() on it to get the result".to_string()
 }
 
 /// Names the explicit conversion between Int and Float.
-pub fn number_conversion_hint(actual: &Ty, expected: &Ty) -> String {
-    match (actual.id.as_str(), expected.id.as_str()) {
+pub fn number_conversion_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> String {
+    match (syms.str(actual.id), syms.str(expected.id)) {
         ("Int", "Float") => "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value".to_string(),
         ("Float", "Int") => "Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get(0)".to_string(),
         ("Int" | "Float" | "Bool", "String") => format!(
-            "{actual} does not convert to String implicitly; interpolate it into text, e.g. \"{{value}}\""
-        ),
+            "{actual_t} does not convert to String implicitly; interpolate it into text, e.g. \"{{value}}\""
+        , actual_t = actual.display(syms)),
         _ => String::new(),
     }
 }
@@ -324,7 +334,7 @@ pub fn ok_wrap_hint(actual: &Ty, expected: &Ty) -> String {
 }
 
 /// A no-argument operation named without parentheses.
-pub fn uncalled_function_hint(actual: &Ty, expected: &Ty) -> String {
+pub fn uncalled_function_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> String {
     let Some(result) = &actual.result else {
         return String::new();
     };
@@ -335,7 +345,10 @@ pub fn uncalled_function_hint(actual: &Ty, expected: &Ty) -> String {
     {
         return String::new();
     }
-    format!("this is a function; call it with parentheses to get its {expected} result")
+    format!(
+        "this is a function; call it with parentheses to get its {expected_t} result",
+        expected_t = expected.display(syms)
+    )
 }
 
 fn plural(count: usize, word: &str) -> String {
@@ -364,6 +377,7 @@ pub fn arity_mismatch_hint(actual: &Ty, expected: &Ty) -> String {
 
 /// Explains a missing type argument.
 pub fn missing_type_argument_hint(
+    syms: ms_syntax::Names,
     name: &str,
     missing: &[Name],
     variables: &[Ty],
@@ -373,13 +387,13 @@ pub fn missing_type_argument_hint(
         .iter()
         .enumerate()
         .map(|(i, v)| match arguments.get(i) {
-            Some(Some(a)) if !invalid_ty(a) => a.to_string(),
-            _ => v.name.to_string(),
+            Some(Some(a)) if !invalid_ty(a) => a.display(syms).to_string(),
+            _ => syms.str(v.name).to_string(),
         })
         .collect();
     let list = missing
         .iter()
-        .map(|m| m.as_str())
+        .map(|m| syms.str(m))
         .collect::<Vec<_>>()
         .join(", ");
     let (noun, each) = if missing.len() == 1 {
@@ -399,12 +413,17 @@ impl Checker {
         let mut names: Vec<String> = Vec::new();
         let mut s = Some(self.scope.clone());
         while let Some(sc) = s {
-            names.extend(sc.bindings.borrow().keys().map(|k| k.to_string()));
+            names.extend(
+                sc.bindings
+                    .borrow()
+                    .keys()
+                    .map(|k| self.syms.str(k).to_string()),
+            );
             s = sc.parent.clone();
         }
         for (name, symbol) in self.names.borrow().iter() {
             if symbol.kind == SymKind::Fn {
-                names.push(name.to_string());
+                names.push(self.syms.str(name).to_string());
             }
         }
         names
@@ -415,12 +434,17 @@ impl Checker {
         let mut names: Vec<String> = Vec::new();
         let mut s = Some(self.scope.clone());
         while let Some(sc) = s {
-            names.extend(sc.types.borrow().keys().map(|k| k.to_string()));
+            names.extend(
+                sc.types
+                    .borrow()
+                    .keys()
+                    .map(|k| self.syms.str(k).to_string()),
+            );
             s = sc.parent.clone();
         }
         for (name, symbol) in self.names.borrow().iter() {
             if symbol.kind == SymKind::Type {
-                names.push(name.to_string());
+                names.push(self.syms.str(name).to_string());
             }
         }
         names
@@ -429,13 +453,14 @@ impl Checker {
     /// Explains an arity error caused by a declaration that replaced the
     /// prelude type of the same name.
     pub(crate) fn prelude_shadow_hint(&self, name: Name) -> String {
-        let prelude = self.session.standard_symbol(name.as_str());
+        let prelude = self.session.standard_symbol(self.syms.str(name));
         if let (Some(prelude), Some(declared)) = (prelude, self.sym(name))
             && self.session.is_prelude_symbol(&prelude)
             && !std::rc::Rc::ptr_eq(&declared, &prelude)
         {
             return format!(
-                "; this module's own {name} shadows the prelude {name}, so rename the declaration to use the prelude type"
+                "; this module's own {name_t} shadows the prelude {name_t}, so rename the declaration to use the prelude type",
+                name_t = self.syms.str(name)
             );
         }
         String::new()
@@ -444,23 +469,23 @@ impl Checker {
     /// Explains an unresolved value.
     pub(crate) fn unknown_name(&mut self, name: Name) -> String {
         self.unknown_type = true; // later "<invalid>" diagnostics only restate this one
-        let message = format!("unknown binding {name}");
-        if name == "this" && self.scope.binding(n("self")).is_some() {
+        let message = format!("unknown binding {name_t}", name_t = self.syms.str(name));
+        if self.syms.str(name) == "this" && self.scope.binding(n("self")).is_some() {
             return format!(
                 "{message}; the receiver in an impl method is 'self'; write self instead of this"
             );
         }
-        if name == "this" {
+        if self.syms.str(name) == "this" {
             return format!(
                 "{message}; there is no 'this'; inside an impl method the receiver is 'self'"
             );
         }
-        if name == "pass" {
+        if self.syms.str(name) == "pass" {
             return format!(
                 "{message}; 'pass' is not a keyword, so write 'unit' for an empty block or match arm"
             );
         }
-        match name.as_str() {
+        match self.syms.str(name) {
             "range" => {
                 return format!(
                     "{message}; there is no range function: write start..end for the integers from start up to but excluding end, or range_by from \"@std/collections/collections.ms\" for a stepped list"
@@ -489,7 +514,8 @@ impl Checker {
             }
             "len" => {
                 return format!(
-                    "{message}; there is no {name}() function: call the length member, e.g. xs.length() (String also has byte_length and scalar_length)"
+                    "{message}; there is no {name_t}() function: call the length member, e.g. xs.length() (String also has byte_length and scalar_length)",
+                    name_t = self.syms.str(name)
                 );
             }
             "str" | "toString" | "repr" | "sprintf" => {
@@ -519,12 +545,14 @@ impl Checker {
             }
             "console" | "System" | "fmt" | "os" | "println" | "printf" | "puts" | "echo" => {
                 return format!(
-                    "{message}; there is no {name}: use print(value), which writes any value and a newline; for write errors or bytes import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")"
+                    "{message}; there is no {name_t}: use print(value), which writes any value and a newline; for write errors or bytes import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")",
+                    name_t = self.syms.str(name)
                 );
             }
             "spawn" | "Promise" | "Future" | "Thread" | "thread" | "setTimeout" | "setInterval" => {
                 return format!(
-                    "{message}; there is no free {name}: start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\" and wait on it with timeout: seconds(...)"
+                    "{message}; there is no free {name_t}: start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\" and wait on it with timeout: seconds(...)",
+                    name_t = self.syms.str(name)
                 );
             }
             "filesystem" | "network" | "commands" | "control" | "system" | "clock"
@@ -535,16 +563,17 @@ impl Checker {
             }
             _ => {}
         }
-        let hint = did_you_mean(name.as_str(), &self.value_names());
+        let hint = did_you_mean(self.syms.str(name), &self.value_names());
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }
-        let hint = import_hint(&self.session, name.as_str());
+        let hint = import_hint(&self.session, self.syms.str(name));
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }
         format!(
-            "{message}; declare it with 'let {name} = ...' before use, define 'fn {name}(...) T:', or import it from a module"
+            "{message}; declare it with 'let {name_t} = ...' before use, define 'fn {name_t}(...) T:', or import it from a module",
+            name_t = self.syms.str(name)
         )
     }
 
@@ -562,15 +591,29 @@ impl Checker {
         seen.push(ptr);
         let mut names: Vec<String> = Vec::new();
         if receiver.kind == Kind::Record {
-            names.extend(fields(receiver).iter().map(|f| f.name.to_string()));
+            names.extend(
+                fields(receiver)
+                    .iter()
+                    .map(|f| self.syms.str(f.name).to_string()),
+            );
         }
         if let Some(def) = &receiver.def {
-            names.extend(def.operations.borrow().iter().map(|o| o.name.to_string()));
+            names.extend(
+                def.operations
+                    .borrow()
+                    .iter()
+                    .map(|o| self.syms.str(o.name).to_string()),
+            );
         }
         if let Some(intrinsic) = self.session.intrinsic_operations(receiver.id)
             && let Some(def) = &intrinsic.def
         {
-            names.extend(def.operations.borrow().iter().map(|o| o.name.to_string()));
+            names.extend(
+                def.operations
+                    .borrow()
+                    .iter()
+                    .map(|o| self.syms.str(o.name).to_string()),
+            );
         }
         if receiver.kind == Kind::Variable {
             for b in receiver.bounds() {
@@ -586,7 +629,7 @@ impl Checker {
             }
             let mut sub = Subst::new();
             if unify(&m.receiver, receiver, &variable_set(&m.variables), &mut sub) {
-                names.push(name.to_string());
+                names.push(self.syms.str(name).to_string());
             }
         }
         unique_sorted(&names)
@@ -601,17 +644,26 @@ impl Checker {
     ) -> String {
         let contracts: Vec<String> = methods
             .iter()
-            .filter_map(|m| m.contract.as_ref().map(|c| c.to_string()))
+            .filter_map(|m| {
+                m.contract
+                    .as_ref()
+                    .map(|c| c.display(self.syms).to_string())
+            })
             .collect();
         let contracts = unique_sorted(&contracts);
-        let message = format!("ambiguous member {name} on {receiver}");
+        let message = format!(
+            "ambiguous member {name_t} on {receiver_t}",
+            name_t = self.syms.str(name),
+            receiver_t = receiver.display(self.syms)
+        );
         if contracts.len() < 2 {
             return format!("{message}; more than one implementation provides it");
         }
         format!(
-            "{message}; it is provided by {}, so bind it to the interface first, e.g. let view: {} = value; view.{name}()",
+            "{message}; it is provided by {}, so bind it to the interface first, e.g. let view: {} = value; view.{name_t}()",
             contracts.join(", "),
-            contracts[0]
+            contracts[0],
+            name_t = self.syms.str(name)
         )
     }
 
@@ -635,7 +687,11 @@ impl Checker {
                     let bound = sub(&b, &s);
                     if !self.satisfies(actual, &bound) {
                         let fix = if actual.kind == Kind::Variable {
-                            format!("declare {actual}: {bound} on the enclosing function")
+                            format!(
+                                "declare {actual_t}: {bound_t} on the enclosing function",
+                                actual_t = actual.display(self.syms),
+                                bound_t = bound.display(self.syms)
+                            )
                         } else {
                             self.unsatisfied_message(
                                 actual,
@@ -643,7 +699,12 @@ impl Checker {
                                 "use a type that implements it",
                             )
                         };
-                        return Some(format!("{name} requires {actual} to be {bound}; {fix}"));
+                        return Some(format!(
+                            "{name_t} requires {actual_t} to be {bound_t}; {fix}",
+                            name_t = self.syms.str(name),
+                            actual_t = actual.display(self.syms),
+                            bound_t = bound.display(self.syms)
+                        ));
                     }
                 }
             }
@@ -654,7 +715,11 @@ impl Checker {
     /// Explains an unknown member.
     pub(crate) fn unknown_member(&mut self, receiver: &Ty, name: Name) -> String {
         self.unknown_type = true;
-        let message = format!("unknown or ambiguous member {name} on {receiver}");
+        let message = format!(
+            "unknown or ambiguous member {name_t} on {receiver_t}",
+            name_t = self.syms.str(name),
+            receiver_t = receiver.display(self.syms)
+        );
         if let Some(reason) = self.unmet_member_bound(receiver, name) {
             return format!("{message}; {reason}");
         }
@@ -663,14 +728,16 @@ impl Checker {
             for f in fields(receiver) {
                 if f.name == name {
                     return format!(
-                        "member {name} of {receiver} is not readable or assignable; its state is reached only through its operations: {}",
-                        available.join(", ")
+                        "member {name_t} of {receiver_t} is not readable or assignable; its state is reached only through its operations: {}",
+                        available.join(", "),
+                        name_t = self.syms.str(name),
+                        receiver_t = receiver.display(self.syms)
                     );
                 }
             }
         }
         if receiver.is(Builtin::Optional) {
-            let fix = match name.as_str() {
+            let fix = match self.syms.str(name) {
                 "unwrap" | "expect" | "value" | "unwrap_or" | "unwrap_or_else" | "or_default"
                 | "unwrap_or_default" => {
                     "read an Optional with x.get(default), x.get_or_else(create) for a lazy fallback, or `if let value = x:` to test and unwrap; x.get() with no default faults on none"
@@ -685,7 +752,7 @@ impl Checker {
             }
         }
         if receiver.is(Builtin::Result) {
-            let fix = match name.as_str() {
+            let fix = match self.syms.str(name) {
                 "unwrap" | "expect" | "unwrap_or" | "unwrap_or_else" | "unwrap_or_default" => {
                     "read a Result with `try x` inside a fn that returns Result, x.get(default), x.get_or_else(create) for a lazy fallback, or `if let value = x:`"
                 }
@@ -699,26 +766,29 @@ impl Checker {
             }
         }
         if (receiver.is(Builtin::List) || receiver.is(Builtin::Map) || receiver.is(Builtin::Set))
-            && matches!(name.as_str(), "some" | "every")
+            && matches!(self.syms.str(name), "some" | "every")
         {
-            let now = if name.as_str() == "some" {
+            let now = if self.syms.str(name) == "some" {
                 "any"
             } else {
                 "all"
             };
-            return format!("{message}; {name}(predicate) is now {now}(predicate)");
+            return format!(
+                "{message}; {name_t}(predicate) is now {now}(predicate)",
+                name_t = self.syms.str(name)
+            );
         }
-        if receiver.is(Builtin::Map) && name == "set" {
+        if receiver.is(Builtin::Map) && self.syms.str(name) == "set" {
             return format!(
                 "{message}; write m[key] = value or m.add(key, value) to insert or replace a Map entry; available: {}",
                 available.join(", ")
             );
         }
-        let hint = synonym_hint(name.as_str(), &available);
+        let hint = synonym_hint(self.syms.str(name), &available);
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }
-        let hint = did_you_mean(name.as_str(), &available);
+        let hint = did_you_mean(self.syms.str(name), &available);
         if !hint.is_empty() {
             if available.len() <= 40 {
                 return format!("{message}{hint}; available: {}", available.join(", "));
@@ -729,7 +799,7 @@ impl Checker {
             if available.len() <= 40 {
                 return format!("{message}; available: {}", available.join(", "));
             }
-            let first = name.as_str().bytes().next();
+            let first = self.syms.str(name).bytes().next();
             let same_start: Vec<&String> = available
                 .iter()
                 .filter(|c| first.is_some() && c.bytes().next() == first)
@@ -738,7 +808,7 @@ impl Checker {
                 let joined: Vec<&str> = same_start.iter().map(|s| s.as_str()).collect();
                 return format!(
                     "{message}; available starting with '{}': {}; {} members in total",
-                    &name.as_str()[..1],
+                    &self.syms.str(name)[..1],
                     joined.join(", "),
                     available.len()
                 );
@@ -750,32 +820,33 @@ impl Checker {
 
     /// Explains an unknown type.
     pub(crate) fn unknown_type_message(&self, name: Name) -> String {
-        let message = format!("unknown type {name}");
-        let hint = import_hint(&self.session, name.as_str());
+        let message = format!("unknown type {name_t}", name_t = self.syms.str(name));
+        let hint = import_hint(&self.session, self.syms.str(name));
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }
-        if matches!(name.as_str(), "Callable" | "Function" | "Func" | "Fn") {
+        if matches!(self.syms.str(name), "Callable" | "Function" | "Func" | "Fn") {
             return format!(
                 "{message}; function types are written fn(Int) Int: parameter types in parentheses, then the result type"
             );
         }
-        if let Some(builtin) = type_alias(name.as_str()) {
+        if let Some(builtin) = type_alias(self.syms.str(name)) {
             return format!("{message}; did you mean '{builtin}'?");
         }
-        let hint = did_you_mean(name.as_str(), &self.type_names());
+        let hint = did_you_mean(self.syms.str(name), &self.type_names());
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }
         format!(
-            "{message}; declare it with 'type {name}:' / 'interface {name}:', declare it as a type parameter, or import it"
+            "{message}; declare it with 'type {name_t}:' / 'interface {name_t}:', declare it as a type parameter, or import it",
+            name_t = self.syms.str(name)
         )
     }
 
     /// Explains a failed import: the module lacks the name, or the name is
     /// private. It lists what the module does export.
     pub(crate) fn export_message(&self, item: &Import) -> String {
-        let message = format!("module does not export {}", item.name);
+        let message = format!("module does not export {}", self.syms.str(item.name));
         let mut exports: Vec<String> = Vec::new();
         let path = item.path.as_ref();
         if path.starts_with("@std/") {
@@ -805,9 +876,9 @@ impl Checker {
             }
             exports.extend(
                 self.session
-                    .standard_exports(pn.as_str())
+                    .standard_exports(self.syms.str(pn))
                     .keys()
-                    .map(|k| k.to_string()),
+                    .map(|k| self.syms.str(k).to_string()),
             );
         } else {
             let target = self.imports.get(self.current_file(), item.id);
@@ -817,7 +888,7 @@ impl Checker {
                         continue;
                     }
                     if symbol.export {
-                        exports.push(name.to_string());
+                        exports.push(self.syms.str(name).to_string());
                     } else if *name == item.name {
                         return format!(
                             "{message}; it is declared in {path} but not exported, so write 'export' before its declaration"
@@ -826,7 +897,7 @@ impl Checker {
                 }
             }
         }
-        let hint = did_you_mean(item.name.as_str(), &exports);
+        let hint = did_you_mean(self.syms.str(item.name), &exports);
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }
@@ -845,16 +916,17 @@ impl Checker {
     pub(crate) fn assignment_mismatch(&mut self, actual: &Ty, expected: &Ty) -> String {
         if actual.is(Builtin::Optional) && actual.args.len() == 1 && actual.args[0].is_invalid() {
             return format!(
-                "expected {expected}, found none; none is absent, so it fits only an Optional position: declare the target {expected}? or give a value"
+                "expected {expected_t}, found none; none is absent, so it fits only an Optional position: declare the target {expected_t}? or give a value",
+                expected_t = expected.display(self.syms)
             );
         }
-        let message = format_mismatch(actual, expected);
+        let message = format_mismatch(self.syms, actual, expected);
         for hint in [
-            optional_use_hint(actual, expected),
-            number_conversion_hint(actual, expected),
+            optional_use_hint(self.syms, actual, expected),
+            number_conversion_hint(self.syms, actual, expected),
             ok_wrap_hint(actual, expected),
-            promise_use_hint(actual, expected),
-            uncalled_function_hint(actual, expected),
+            promise_use_hint(self.syms, actual, expected),
+            uncalled_function_hint(self.syms, actual, expected),
         ] {
             if !hint.is_empty() {
                 return format!("{message}; {hint}");
@@ -865,43 +937,53 @@ impl Checker {
         }
         if crate::contracts::has_generic_operation(expected) {
             return format!(
-                "{message}; {expected} declares an operation with type parameters of its own, so it bounds a type parameter (`fn f[T: {expected}](x: T)`) but cannot type a value"
+                "{message}; {expected_t} declares an operation with type parameters of its own, so it bounds a type parameter (`fn f[T: {expected_t}](x: T)`) but cannot type a value",
+                expected_t = expected.display(self.syms)
             );
         }
         if self.implements(actual, expected) {
             return format!(
-                "{message}; {actual} implements {expected}, but generic inference does not convert; bind it to an {expected}-typed let first or give the arguments one type"
+                "{message}; {actual_t} implements {expected_t}, but generic inference does not convert; bind it to an {expected_t}-typed let first or give the arguments one type",
+                actual_t = actual.display(self.syms),
+                expected_t = expected.display(self.syms)
             );
         }
         if let Some(sym) = actual.symbol()
-            && sym.native.as_str().is_empty()
+            && self.syms.str(sym.native).is_empty()
             && matches!(actual.kind, Kind::Record | Kind::Alternative)
         {
             return format!(
-                "{message}; no applicable 'impl {expected} for {actual}' is visible; declare an implementation before passing it as {expected}"
+                "{message}; no applicable 'impl {expected_t} for {actual_t}' is visible; declare an implementation before passing it as {expected_t}",
+                expected_t = expected.display(self.syms),
+                actual_t = actual.display(self.syms)
             );
         }
-        format!("{message}; use a concrete value implementing {expected}")
+        format!(
+            "{message}; use a concrete value implementing {expected_t}",
+            expected_t = expected.display(self.syms)
+        )
     }
 
     pub(crate) fn interface_construction_message(&mut self, typ: &Ty) -> String {
         self.unknown_type = true;
         format!(
-            "{typ} is an interface and cannot be constructed; a type with 'impl {typ} for <Type>:' passes wherever {typ} is expected, so pass the value directly"
+            "{typ_t} is an interface and cannot be constructed; a type with 'impl {typ_t} for <Type>:' passes wherever {typ_t} is expected, so pass the value directly",
+            typ_t = typ.display(self.syms)
         )
     }
 
     pub(crate) fn interface_type_member(&mut self, typ: &Ty) -> String {
         self.unknown_type = true;
         format!(
-            "{typ} is an interface, not an alternative; declare a concrete type and 'impl {typ} for <Type>:', then construct that concrete type"
+            "{typ_t} is an interface, not an alternative; declare a concrete type and 'impl {typ_t} for <Type>:', then construct that concrete type",
+            typ_t = typ.display(self.syms)
         )
     }
 }
 
 /// Names the conversion when an arithmetic or comparison mixes Int and Float.
-pub fn int_float_mix_hint(a: &Ty, b: &Ty) -> String {
-    let (i, f) = (a.to_string(), b.to_string());
+pub fn int_float_mix_hint(syms: ms_syntax::Names, a: &Ty, b: &Ty) -> String {
+    let (i, f) = (a.display(syms).to_string(), b.display(syms).to_string());
     let mixed = (i == "Int" && f == "Float") || (i == "Float" && f == "Int");
     if mixed {
         "convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)".to_string()
@@ -911,8 +993,8 @@ pub fn int_float_mix_hint(a: &Ty, b: &Ty) -> String {
 }
 
 /// Names the real conversion for a built-in type called like a constructor.
-pub fn builtin_constructor_hint(typ: &Ty) -> String {
-    match typ.to_string().as_str() {
+pub fn builtin_constructor_hint(syms: ms_syntax::Names, typ: &Ty) -> String {
+    match typ.display(syms).to_string().as_str() {
         "String" => "; make text with interpolation \"{value}\" or value.to_string()".to_string(),
         "Int" => "; parse text with text.parse_int() (Int?); Float has truncate_to_int()".to_string(),
         "Float" => "; convert an Int with value.to_float(); parse text with parse_float (import parse_float from \"@std/math/math.ms\")".to_string(),

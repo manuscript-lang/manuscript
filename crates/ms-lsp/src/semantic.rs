@@ -125,13 +125,14 @@ fn scanned_tokens(d: &Document) -> Vec<Token> {
 }
 
 struct Kinds<'a> {
+    syms: ms_syntax::Names,
     module: &'a ms_check::syntax::ModRef,
     resolved: &'a mut HashMap<usize, i64>,
 }
 
 impl Kinds<'_> {
-    fn consider(&mut self, e: &Expr) {
-        if expr_text(e).is_none() {
+    fn consider(&mut self, syms: ms_syntax::Names, e: &Expr) {
+        if expr_text(syms, e).is_none() {
             return;
         }
         let Some(info) = self.module.facts().info(e.id).cloned() else {
@@ -151,12 +152,13 @@ impl Kinds<'_> {
 
 impl Visitor for Kinds<'_> {
     fn expr(&mut self, e: &Expr) {
-        self.consider(e);
+        let syms = self.syms;
+        self.consider(syms, e);
         if let ExprKind::Match { arms, .. } = &e.kind {
             for arm in arms {
                 let mut path = &arm.path;
                 loop {
-                    self.consider(path);
+                    self.consider(syms, path);
                     match &path.kind {
                         ExprKind::Member { left, .. } | ExprKind::Apply { left, .. } => path = left,
                         _ => break,
@@ -168,13 +170,18 @@ impl Visitor for Kinds<'_> {
 }
 
 /// The encoded tokens of a document, using the checked index when available.
-pub fn semantic_tokens(analysis: Option<&Analysis>, index: &[Occurrence], d: &Document) -> Json {
+pub fn semantic_tokens(
+    syms: ms_syntax::Names,
+    analysis: Option<&Analysis>,
+    index: &[Occurrence],
+    d: &Document,
+) -> Json {
     let tokens = lexer_tokens(d);
     let mut resolved: HashMap<usize, i64> = HashMap::new();
     if let Some(analysis) = analysis {
-        let file = analysis.module_file(d);
+        let file = analysis.module_file(syms, d);
         for entry in index {
-            if entry.file.as_str() != file {
+            if syms.str(entry.file) != file {
                 continue;
             }
             let Some(info) = &entry.info else { continue };
@@ -199,9 +206,10 @@ pub fn semantic_tokens(analysis: Option<&Analysis>, index: &[Occurrence], d: &Do
             resolved.insert(entry.offset, kind);
         }
         if analysis.program.is_some()
-            && let Some(module) = analysis.module(d)
+            && let Some(module) = analysis.module(syms, d)
         {
             let mut kinds = Kinds {
+                syms: ms_syntax::Names::global(),
                 module: &module,
                 resolved: &mut resolved,
             };

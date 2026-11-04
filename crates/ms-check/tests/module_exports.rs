@@ -6,6 +6,7 @@ use ms_syntax::Phase;
 use std::sync::Arc;
 
 fn check(file: &str, source: &str) -> Program {
+    let syms = ms_syntax::Names::global();
     let sources = [
         ("declared.ms", include_str!("module_exports/declared.ms")),
         ("bridge.ms", include_str!("module_exports/bridge.ms")),
@@ -24,10 +25,10 @@ fn check(file: &str, source: &str) -> Program {
                     .expect("local fixture import");
                 imports.insert(n(&file), import.id, n(target));
             }
-            ms_check::load_module(&parsed)
+            ms_check::load_module(syms, &parsed)
         })
         .collect();
-    ms_check::check(modules, imports, CheckOptions::default())
+    ms_check::check(syms, modules, imports, CheckOptions::default())
 }
 
 #[test]

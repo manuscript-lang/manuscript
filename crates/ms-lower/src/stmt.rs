@@ -53,11 +53,12 @@ impl<'a> FnLower<'a> {
         let ExprKind::Member { name, .. } = &callee.kind else {
             return None;
         };
-        if name.as_str() != "split" {
+        if self.syms.str(name) != "split" {
             return None;
         }
         let b = self.hir.pattern_binding(pattern)?;
-        crate::mutation::only_read_in_place(&self.hir, rest, b.uid).then_some(value as *const Expr)
+        crate::mutation::only_read_in_place(self.syms, &self.hir, rest, b.uid)
+            .then_some(value as *const Expr)
     }
 
     /// `let name = <call>.split(..)`, then plain `let`s of literals, then `for x in name:` with
@@ -81,7 +82,7 @@ impl<'a> FnLower<'a> {
         let ExprKind::Member { name, .. } = &callee.kind else {
             return None;
         };
-        if name.as_str() != "split" {
+        if self.syms.str(name) != "split" {
             return None;
         }
         let binding = self.hir.pattern_binding(pattern)?;
@@ -381,7 +382,7 @@ impl<'a> FnLower<'a> {
                 if !x.own {
                     let rec = self.borrow(x);
                     for f in fields {
-                        let idx = index(f.name.as_str())?;
+                        let idx = index(self.syms.str(f.name))?;
                         let fv = self.b.rec_get(rid, idx as u32, rec);
                         self.bind_pattern(&f.pattern, Val { v: fv, own: false })?;
                     }
@@ -396,7 +397,7 @@ impl<'a> FnLower<'a> {
                 self.move_into(slot, x.v);
                 let mut named = vec![false; decl.len()];
                 for f in fields {
-                    let idx = index(f.name.as_str())?;
+                    let idx = index(self.syms.str(f.name))?;
                     named[idx] = true;
                     let fp = self
                         .b
@@ -538,7 +539,7 @@ impl<'a> FnLower<'a> {
             cur = left;
         }
         path.reverse();
-        if let Some((left, index)) = crate::mutation::index_parts(&self.hir, cur) {
+        if let Some((left, index)) = crate::mutation::index_parts(self.syms, &self.hir, cur) {
             // A field of a list element (`xs[i].n = 1`): the list receives the updated element.
             let i = self.expr(index)?;
             if self.dead {
@@ -610,7 +611,7 @@ impl<'a> FnLower<'a> {
             cur = left;
         }
         path.reverse();
-        if let Some((left, index)) = crate::mutation::index_parts(&self.hir, cur) {
+        if let Some((left, index)) = crate::mutation::index_parts(self.syms, &self.hir, cur) {
             // A list element changes in place: the list receives the updated element.
             let i = self.expr(index)?;
             if self.dead {
@@ -699,8 +700,9 @@ impl<'a> FnLower<'a> {
         let idx = self.b.m.records[rid.index()]
             .fields
             .iter()
-            .position(|f| f.0 == name.as_str())
-            .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
+            .position(|f| f.0 == self.syms.str(name))
+            .ok_or_else(|| Error::new(format!("no field {name_t}", name_t = self.syms.str(name))))?
+            as u32;
         let cur = self.b.rec_get(rid, idx, obj);
         let (cur_own, moved) = self.take_projection(cur);
         let inner = self.update_path(cur_own, rest, f)?;
@@ -731,8 +733,9 @@ impl<'a> FnLower<'a> {
         let idx = self.b.m.records[rid.index()]
             .fields
             .iter()
-            .position(|f| f.0 == name.as_str())
-            .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
+            .position(|f| f.0 == self.syms.str(name))
+            .ok_or_else(|| Error::new(format!("no field {name_t}", name_t = self.syms.str(name))))?
+            as u32;
         let base = if obj_own {
             obj
         } else {
@@ -994,7 +997,7 @@ impl<'a> FnLower<'a> {
         let ms_check::hir::Resolution::Function(sym) = &view.target else {
             return Ok(None);
         };
-        if sym.native.as_str() != "collections/range" || view.arguments.len() != 2 {
+        if self.syms.str(sym.native) != "collections/range" || view.arguments.len() != 2 {
             return Ok(None);
         }
         let a = self.expr(view.arguments[0].expr)?;

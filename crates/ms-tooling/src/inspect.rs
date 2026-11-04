@@ -105,10 +105,10 @@ impl LineEnds {
     }
 }
 
-fn source_span(module: &ModuleData, pos: Pos, ends: &LineEnds) -> Span {
+fn source_span(syms: ms_syntax::Names, module: &ModuleData, pos: Pos, ends: &LineEnds) -> Span {
     let start = pos.offset as usize;
     Span {
-        file: module.file.as_str().to_string(),
+        file: syms.str(module.file).to_string(),
         start,
         end: ends.end(start),
         line: pos.line as usize,
@@ -129,17 +129,17 @@ fn entity_kind(decl: &DeclRef) -> &'static str {
     }
 }
 
-fn decl_name(decl: &DeclRef) -> String {
+fn decl_name(syms: ms_syntax::Names, decl: &DeclRef) -> String {
     match &decl.decl().kind {
         DeclKind::Test(t) => t.name.to_string(),
         DeclKind::Impl(i) => i.display_name(decl.decl().synthetic),
-        _ => decl.name().as_str().to_string(),
+        _ => syms.str(decl.name()).to_string(),
     }
 }
 
 /// Inspects a checked program: every module of it, bundled standard source
 /// modules included.
-pub fn inspect(program: &Program) -> Inspection {
+pub fn inspect(syms: ms_syntax::Names, program: &Program) -> Inspection {
     let mut result = Inspection::default();
     let modules: Vec<_> = program
         .modules
@@ -148,7 +148,7 @@ pub fn inspect(program: &Program) -> Inspection {
         .collect();
 
     for (module, ends) in &modules {
-        locals(module, ends, &mut result);
+        locals(syms, module, ends, &mut result);
     }
     result
         .locals
@@ -160,14 +160,14 @@ pub fn inspect(program: &Program) -> Inspection {
             if matches!(decl.decl().kind, DeclKind::Test(_) | DeclKind::Impl(_)) {
                 continue;
             }
-            if let Some(symbol) = symbol_of(program, module, decl.name().as_str()) {
+            if let Some(symbol) = symbol_of(program, module, syms.str(decl.name())) {
                 symbol_ids.insert(
                     symbol.key(),
                     format!(
                         "{}#{}#{}",
-                        module.file.as_str(),
+                        syms.str(module.file),
                         entity_kind(decl),
-                        decl.name().as_str()
+                        syms.str(decl.name())
                     ),
                 );
             }
@@ -180,18 +180,18 @@ pub fn inspect(program: &Program) -> Inspection {
             continue;
         };
         methods.insert(
-            (method.module.as_str().to_string(), decl.id().0),
+            (syms.str(method.module).to_string(), decl.id().0),
             method.clone(),
         );
         method_ids.insert(
-            method.id.as_str(),
-            format!("{}#method#{}", method.module.as_str(), decl.pos().offset),
+            syms.str(method.id),
+            format!("{}#method#{}", syms.str(method.module), decl.pos().offset),
         );
     }
 
     for (module, ends) in &modules {
         result.sources.push(Source {
-            file: module.file.as_str().to_string(),
+            file: syms.str(module.file).to_string(),
             sha256: sha256::hex(module.source.as_bytes()),
         });
         for decl in &module.decls {
@@ -199,15 +199,15 @@ pub fn inspect(program: &Program) -> Inspection {
                 continue;
             }
             let kind = entity_kind(decl);
-            let name = decl_name(decl);
-            let file = module.file.as_str();
+            let name = decl_name(syms, decl);
+            let file = syms.str(module.file);
             let mut entity = Entity {
-                id: format!("{file}#{kind}#{}", decl.name().as_str()),
+                id: format!("{file}#{kind}#{}", syms.str(decl.name())),
                 checker_id: String::new(),
                 kind: kind.to_string(),
                 name: name.clone(),
                 ty: String::new(),
-                span: source_span(module, decl.pos(), ends),
+                span: source_span(syms, module, decl.pos(), ends),
                 exported: decl.decl().export,
                 effects: Vec::new(),
             };
@@ -215,12 +215,12 @@ pub fn inspect(program: &Program) -> Inspection {
                 let kind = if t.bench { "bench" } else { "test" };
                 entity.id = format!("{file}#{kind}#{name}");
             }
-            if let Some(symbol) = symbol_of(program, module, decl.decl_name_for_symbol().as_str())
+            if let Some(symbol) = symbol_of(program, module, syms.str(decl.decl_name_for_symbol()))
                 && symbol.decl.as_ref().is_some_and(|d| d.same(decl))
             {
-                entity.checker_id = symbol.id.as_str().to_string();
-                entity.ty = show(&symbol.value_type());
-                entity.effects = effects_of(program, symbol.id.as_str());
+                entity.checker_id = syms.str(symbol.id).to_string();
+                entity.ty = show(syms, &symbol.value_type());
+                entity.effects = effects_of(program, syms.str(symbol.id));
             }
             if let DeclKind::Impl(_) = decl.decl().kind {
                 entity.id = format!("{file}#impl#{}", decl.pos().offset);
@@ -228,6 +228,7 @@ pub fn inspect(program: &Program) -> Inspection {
             }
             result.entities.push(entity.clone());
             let mut sites = Sites {
+                syms: ms_syntax::Names::global(),
                 module,
                 ends,
                 owner: entity.id.clone(),
@@ -236,7 +237,7 @@ pub fn inspect(program: &Program) -> Inspection {
                 calls: &mut result.calls,
                 statements: &mut result.statements,
             };
-            sites.declaration(decl);
+            sites.declaration(syms, decl);
             for (index, method) in decl.methods().iter().enumerate() {
                 if method.func.body.is_empty() {
                     continue;
@@ -245,21 +246,22 @@ pub fn inspect(program: &Program) -> Inspection {
                     continue;
                 };
                 let owner = method_ids
-                    .get(checked.id.as_str())
+                    .get(syms.str(checked.id))
                     .cloned()
                     .unwrap_or_default();
                 let _ = index;
                 result.entities.push(Entity {
                     id: owner.clone(),
-                    checker_id: checked.id.as_str().to_string(),
+                    checker_id: syms.str(checked.id).to_string(),
                     kind: "method".to_string(),
-                    name: format!("{name}.{}", method.func.name.as_str()),
-                    ty: checked.ty.to_string(),
-                    span: source_span(module, method.pos, ends),
+                    name: format!("{name}.{}", syms.str(method.func.name)),
+                    ty: checked.ty.display(syms).to_string(),
+                    span: source_span(syms, module, method.pos, ends),
                     exported: false,
-                    effects: effects_of(program, checked.id.as_str()),
+                    effects: effects_of(program, syms.str(checked.id)),
                 });
                 let mut sites = Sites {
+                    syms: ms_syntax::Names::global(),
                     module,
                     ends,
                     owner,
@@ -320,6 +322,7 @@ impl DeclSymbolName for DeclRef {
 // ---------------------------------------------------------------- call sites
 
 struct Sites<'a> {
+    syms: ms_syntax::Names,
     module: &'a ModuleData,
     ends: &'a LineEnds,
     owner: String,
@@ -332,39 +335,39 @@ struct Sites<'a> {
 impl Sites<'_> {
     /// Walks what a declaration itself executes: a function or test body, or a
     /// constant's initializer (a synthetic `return`).
-    fn declaration(&mut self, decl: &DeclRef) {
+    fn declaration(&mut self, syms: ms_syntax::Names, decl: &DeclRef) {
         match &decl.decl().kind {
             DeclKind::Fn(f) => walk_callable(self, &f.params, &f.body),
             DeclKind::Test(t) => walk_callable(self, &[], &t.body),
             DeclKind::Const(c) => {
                 self.statements
-                    .push(source_span(self.module, c.init_pos, self.ends));
+                    .push(source_span(syms, self.module, c.init_pos, self.ends));
                 ms_syntax::visit::walk_expr(self, &c.value);
             }
             _ => {}
         }
     }
 
-    fn call_site(&mut self, e: &Expr) {
+    fn call_site(&mut self, syms: ms_syntax::Names, e: &Expr) {
         let const_use = self.module.facts().const_use.contains(&e.id);
         let ExprKind::Call { callee, .. } = &e.kind else {
             if const_use {
-                self.site(e, None);
+                self.site(syms, e, None);
             }
             return;
         };
-        self.site(e, Some(callee));
+        self.site(syms, e, Some(callee));
     }
 
-    fn site(&mut self, e: &Expr, callee: Option<&Expr>) {
-        let file = self.module.file.as_str();
+    fn site(&mut self, syms: ms_syntax::Names, e: &Expr, callee: Option<&Expr>) {
+        let file = syms.str(self.module.file);
         let mut site = CallSite {
             id: format!("{file}#call#{}", e.pos.offset),
             owner: self.owner.clone(),
             target: "indirect".to_string(),
             kind: "function".to_string(),
             spawn: false,
-            span: source_span(self.module, e.pos, self.ends),
+            span: source_span(syms, self.module, e.pos, self.ends),
         };
         if self.module.facts().const_use.contains(&e.id) {
             site.kind = "constant".to_string();
@@ -374,29 +377,30 @@ impl Sites<'_> {
             if let Some(symbol) = &info.symbol {
                 site.target = match self.symbol_ids.get(&symbol.key()) {
                     Some(id) => id.clone(),
-                    None => format!("{}#{}", symbol.module.as_str(), symbol.name.as_str()),
+                    None => format!("{}#{}", syms.str(symbol.module), syms.str(symbol.name)),
                 };
             }
             if let Some(method) = &info.method {
                 site.kind = "operation".to_string();
-                site.spawn = method
-                    .receiver
-                    .is_source_type("@std/concurrency/tasks.ms", "TaskGroup")
-                    && method.name().is_some_and(|n| n.as_str() == "spawn");
-                site.target = match self.method_ids.get(method.id.as_str()) {
+                site.spawn =
+                    method
+                        .receiver
+                        .is_source_type(syms, "@std/concurrency/tasks.ms", "TaskGroup")
+                        && method.name().is_some_and(|n| syms.str(n) == "spawn");
+                site.target = match self.method_ids.get(syms.str(method.id)) {
                     Some(id) => id.clone(),
                     None => format!(
                         "{}.{}",
-                        method.receiver,
-                        callee.map(callee_text).unwrap_or_default()
+                        method.receiver.display(syms),
+                        callee.map(|a| callee_text(syms, a)).unwrap_or_default()
                     ),
                 };
             }
             if let Some(constructor) = &info.constructor {
                 site.kind = "construct".to_string();
-                site.target = constructor.to_string();
+                site.target = constructor.display(syms).to_string();
             }
-            if info.native_str() == "http_serve" {
+            if info.native_str(syms) == "http_serve" {
                 site.kind = "http_serve".to_string();
                 site.target = "http_serve".to_string();
             }
@@ -405,21 +409,23 @@ impl Sites<'_> {
     }
 }
 
-fn callee_text(callee: &Expr) -> String {
+fn callee_text(syms: ms_syntax::Names, callee: &Expr) -> String {
     match &callee.kind {
-        ExprKind::Name(name) | ExprKind::Member { name, .. } => name.as_str().to_string(),
+        ExprKind::Name(name) | ExprKind::Member { name, .. } => syms.str(name).to_string(),
         _ => String::new(),
     }
 }
 
 impl Visitor for Sites<'_> {
     fn expr(&mut self, e: &Expr) {
-        self.call_site(e);
+        let syms = self.syms;
+        self.call_site(syms, e);
     }
 
     fn stmt(&mut self, s: &Stmt) {
+        let syms = self.syms;
         self.statements
-            .push(source_span(self.module, s.pos, self.ends));
+            .push(source_span(syms, self.module, s.pos, self.ends));
         if let StmtKind::Bind { .. } = s.kind
             && let Some(method) = self
                 .module
@@ -428,17 +434,17 @@ impl Visitor for Sites<'_> {
                 .get(&s.id)
                 .and_then(|f| f.cleanup.clone())
         {
-            let target = match self.method_ids.get(method.id.as_str()) {
+            let target = match self.method_ids.get(syms.str(method.id)) {
                 Some(id) => id.clone(),
-                None => format!("{}.close", method.receiver),
+                None => format!("{}.close", method.receiver.display(syms)),
             };
             self.calls.push(CallSite {
-                id: format!("{}#cleanup#{}", self.module.file.as_str(), s.pos.offset),
+                id: format!("{}#cleanup#{}", syms.str(self.module.file), s.pos.offset),
                 owner: self.owner.clone(),
                 target,
                 kind: "cleanup".to_string(),
                 spawn: false,
-                span: source_span(self.module, s.pos, self.ends),
+                span: source_span(syms, self.module, s.pos, self.ends),
             });
         }
     }
@@ -446,13 +452,13 @@ impl Visitor for Sites<'_> {
 
 // -------------------------------------------------------------------- locals
 
-fn locals(module: &ModuleData, ends: &LineEnds, out: &mut Inspection) {
+fn locals(syms: ms_syntax::Names, module: &ModuleData, ends: &LineEnds, out: &mut Inspection) {
     let mut add = |binding: &BindingRef, pos: Pos| {
         out.locals.push(Local {
-            checker_id: binding.id.as_str().to_string(),
-            name: binding.name.as_str().to_string(),
-            ty: binding.ty.to_string(),
-            span: source_span(module, pos, ends),
+            checker_id: syms.str(binding.id).to_string(),
+            name: syms.str(binding.name).to_string(),
+            ty: binding.ty.display(syms).to_string(),
+            span: source_span(syms, module, pos, ends),
         });
     };
     let facts = module.facts();

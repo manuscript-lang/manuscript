@@ -17,8 +17,12 @@ use std::collections::{HashMap, HashSet};
 /// Only an explicit `name: value` selects a named parameter. Every other value,
 /// including a bare identifier, fills the first parameter not supplied by an
 /// earlier argument.
-pub(crate) fn function_arguments<'a>(args: &'a [Argument], params: &[Param]) -> Vec<Arg<'a>> {
-    bind_arguments(args, params, true)
+pub(crate) fn function_arguments<'a>(
+    syms: ms_syntax::Names,
+    args: &'a [Argument],
+    params: &[Param],
+) -> Vec<Arg<'a>> {
+    bind_arguments(syms, args, params, true)
 }
 
 fn parameter_indices(params: &[Param]) -> HashMap<Name, usize> {
@@ -30,14 +34,19 @@ fn parameter_indices(params: &[Param]) -> HashMap<Name, usize> {
     indices
 }
 
-fn bind_arguments<'a>(args: &'a [Argument], params: &[Param], positional: bool) -> Vec<Arg<'a>> {
+fn bind_arguments<'a>(
+    syms: ms_syntax::Names,
+    args: &'a [Argument],
+    params: &[Param],
+    positional: bool,
+) -> Vec<Arg<'a>> {
     let by_name = parameter_indices(params);
     let mut seen = vec![false; params.len()];
     let mut next = 0;
     let mut resolved = Vec::with_capacity(args.len());
     for a in args {
         let mut name = a.name.unwrap_or_else(|| n(""));
-        let parameter = if name.as_str().is_empty() && positional {
+        let parameter = if syms.str(name).is_empty() && positional {
             while next < params.len() && seen[by_name[&params[next].name]] {
                 next += 1;
             }
@@ -63,8 +72,12 @@ fn bind_arguments<'a>(args: &'a [Argument], params: &[Param], positional: bool) 
 }
 
 /// Constructors use the same binding rule as functions.
-fn constructor_arguments<'a>(args: &'a [Argument], params: &[Param]) -> Vec<Arg<'a>> {
-    function_arguments(args, params)
+fn constructor_arguments<'a>(
+    syms: ms_syntax::Names,
+    args: &'a [Argument],
+    params: &[Param],
+) -> Vec<Arg<'a>> {
+    function_arguments(syms, args, params)
 }
 
 fn slots(args: &[Arg]) -> Option<Vec<crate::syntax::ArgSlot>> {
@@ -80,8 +93,13 @@ fn slots(args: &[Arg]) -> Option<Vec<crate::syntax::ArgSlot>> {
     )
 }
 
-fn unknown_argument_hint(name: &str, callee: &str, params: &[Param]) -> String {
-    let hint = did_you_mean(name, &names_of(params));
+fn unknown_argument_hint(
+    syms: ms_syntax::Names,
+    name: &str,
+    callee: &str,
+    params: &[Param],
+) -> String {
+    let hint = did_you_mean(name, &names_of(syms, params));
     if !hint.is_empty() {
         return hint;
     }
@@ -93,10 +111,13 @@ fn unknown_argument_hint(name: &str, callee: &str, params: &[Param]) -> String {
     } else {
         format!(" of {callee}")
     };
-    format!("; parameters{in_callee}: {}", list(&names_of(params), 12))
+    format!(
+        "; parameters{in_callee}: {}",
+        list(&names_of(syms, params), 12)
+    )
 }
 
-fn missing_argument_hint(param: &Param, callee: &str) -> String {
+fn missing_argument_hint(syms: ms_syntax::Names, param: &Param, callee: &str) -> String {
     let in_callee = if callee.is_empty() {
         String::new()
     } else {
@@ -104,7 +125,9 @@ fn missing_argument_hint(param: &Param, callee: &str) -> String {
     };
     format!(
         ": {}{in_callee}; add '{}: <{}>'",
-        param.ty, param.name, param.ty
+        param.ty.display(syms),
+        syms.str(param.name),
+        param.ty.display(syms)
     )
 }
 
@@ -155,7 +178,7 @@ impl Checker {
                 }
                 self.type_error(
                     e.pos,
-                    format!("this type has no source constructor: {typ} is built in; write a literal or call a standard function that returns it{}", builtin_constructor_hint(&typ)),
+                    format!("this type has no source constructor: {typ_t} is built in; write a literal or call a standard function that returns it{}", builtin_constructor_hint(self.syms, &typ), typ_t = typ.display(self.syms)),
                 );
                 return i;
             }
@@ -172,14 +195,16 @@ impl Checker {
                     e.pos,
                     format!(
                         "construct an alternative case rather than its type; call one of {}'s cases: {}",
-                        typ.name,
-                        list(&case_names(&typ), 8)
+                        self.syms.str(typ.name),
+                        list(&case_names(self.syms, &typ), 8)
                     ),
                 );
                 return i;
             }
             self.opaque_denied(e.pos, &typ, "it cannot be constructed here");
-            let mut fields = constructor_signature(&self.session, &typ).params.clone();
+            let mut fields = constructor_signature(self.syms, &self.session, &typ)
+                .params
+                .clone();
             if [
                 "BigInt",
                 "Regex",
@@ -189,20 +214,20 @@ impl Checker {
                 "Cidr",
             ]
             .iter()
-            .any(|name| typ.is_std(name))
+            .any(|name| typ.is_std(self.syms, name))
             {
                 self.type_error(
                     e.pos,
-                    format!("standard type has no source constructor: {typ}; create it with a literal or the standard function documented for it (ms doc)"),
+                    format!("standard type has no source constructor: {typ_t}; create it with a literal or the standard function documented for it (ms doc)", typ_t = typ.display(self.syms)),
                 );
                 return i;
             }
             // `reserve` is named-only: `List[T](n)` stays an error.
             let named_only = typ.is(Builtin::List) && args.iter().any(|a| a.name.is_none());
-            let mut resolved = bind_arguments(args, &fields, !named_only);
+            let mut resolved = bind_arguments(self.syms, args, &fields, !named_only);
             i.arguments = slots(&resolved);
             typ = self.instantiate(&typ, &fields, &resolved, expected, e.pos);
-            let signature = constructor_signature(&self.session, &typ);
+            let signature = constructor_signature(self.syms, &self.session, &typ);
             // Invalid type arity can recover to a different constructor signature.
             // Retain the original labels/positional errors and written slots, but
             // check those names against the recovered signature as before.
@@ -221,7 +246,7 @@ impl Checker {
                 fields.clear();
             }
             i.no_return = self.arguments_for(
-                typ.name.as_str(),
+                self.syms.str(typ.name),
                 e.pos,
                 &resolved,
                 &fields,
@@ -249,13 +274,13 @@ impl Checker {
                     return i;
                 }
                 cs = case_of(alt, *name);
-                if cs.is_none() && case_names(alt).is_empty() {
+                if cs.is_none() && case_names(self.syms, alt).is_empty() {
                     self.res_error(
                         e.pos,
                         format!(
-                            "{} has no cases or static members, so `{}.{name}(...)` does not exist; if {name} is a module function, import it and call {name}(...); if it is a method, call it on a value",
-                            alt.name, alt.name
-                        ),
+                            "{} has no cases or static members, so `{}.{name_t}(...)` does not exist; if {name_t} is a module function, import it and call {name_t}(...); if it is a method, call it on a value",
+                            self.syms.str(alt.name), self.syms.str(alt.name)
+                        , name_t = self.syms.str(name)),
                     );
                     return i;
                 }
@@ -263,9 +288,10 @@ impl Checker {
                     self.res_error(
                         e.pos,
                         format!(
-                            "unknown alternative case {name} of {}; cases: {}",
-                            alt.name,
-                            list(&case_names(alt), 8)
+                            "unknown alternative case {name_t} of {}; cases: {}",
+                            self.syms.str(alt.name),
+                            list(&case_names(self.syms, alt), 8),
+                            name_t = self.syms.str(name)
                         ),
                     );
                     return i;
@@ -284,7 +310,7 @@ impl Checker {
             cs = case;
         }
         if let (Some(alt), Some(cs)) = (alternative, cs) {
-            if alt.is(Builtin::Optional) && cs.name == "some" {
+            if alt.is(Builtin::Optional) && self.syms.str(cs.name) == "some" {
                 self.type_error(
                     e.pos,
                     "there is no some(...); a plain value converts where a T? is expected, so pass it directly, or annotate the binding, e.g. let x: Int? = 5",
@@ -295,25 +321,29 @@ impl Checker {
             self.opaque_denied(
                 e.pos,
                 &alt,
-                &format!("case {} cannot be built here", cs.name),
+                &format!("case {} cannot be built here", self.syms.str(cs.name)),
             );
             if cs.fields.is_empty() {
-                let fix =
-                    suggestions::drop_case_parens(&self.m().source, callee.pos, cs.name.as_str());
+                let fix = suggestions::drop_case_parens(
+                    &self.m().source,
+                    callee.pos,
+                    self.syms.str(cs.name),
+                );
                 self.type_error_with_fix(
                     e.pos,
                     format!(
                         "nullary cases omit call parentheses; write {0} instead of {0}()",
-                        cs.name
+                        self.syms.str(cs.name)
                     ),
                     fix,
                 );
             }
-            let resolved = constructor_arguments(args, &cs.fields);
+            let resolved = constructor_arguments(self.syms, args, &cs.fields);
             i.arguments = slots(&resolved);
             let alt = self.instantiate(&alt, &cs.fields, &resolved, expected, e.pos);
             let cs = case_of(&alt, cs.name).unwrap_or(cs);
-            i.no_return = self.arguments_for(cs.name.as_str(), e.pos, &resolved, &cs.fields, &None);
+            i.no_return =
+                self.arguments_for(self.syms.str(cs.name), e.pos, &resolved, &cs.fields, &None);
             i.ty = Some(alt.clone());
             i.constructor = Some(alt);
             i.case = Some(cs.name);
@@ -342,7 +372,8 @@ impl Checker {
                 e.pos,
                 format!(
                     "{} is a constant, not a function; remove the parentheses and write {}",
-                    s.name, s.name
+                    self.syms.str(s.name),
+                    self.syms.str(s.name)
                 ),
             );
             i.ty = Some(invalid());
@@ -350,8 +381,8 @@ impl Checker {
         }
         if let Some(s) = symbol {
             i.symbol = Some(s.clone());
-            i.native = (!s.native.as_str().is_empty()).then_some(s.native);
-            let mut sig = s.ty();
+            i.native = (!self.syms.str(s.native).is_empty()).then_some(s.native);
+            let mut sig = s.ty(self.syms);
             let vars = s.variables();
             if !vars.is_empty() {
                 let mut context = CallContext {
@@ -363,7 +394,7 @@ impl Checker {
                 if !explicit {
                     let mut subst = Subst::new();
                     let params = sig.params.clone();
-                    let resolved = function_arguments(args, &params);
+                    let resolved = function_arguments(self.syms, args, &params);
                     self.infer_arguments(&resolved, &params, &vars, &mut subst, Some(&mut context));
                     for v in &vars {
                         supplied.push(subst.get(&v.id).cloned());
@@ -372,7 +403,13 @@ impl Checker {
                 if supplied.len() >= required_type_arguments(&vars) {
                     supplied = complete_type_arguments(&vars, &supplied);
                 }
-                sig = self.specialize(&sig, &vars, &supplied, e.pos, &callee_name(callee));
+                sig = self.specialize(
+                    &sig,
+                    &vars,
+                    &supplied,
+                    e.pos,
+                    &callee_name(self.syms, callee),
+                );
                 if context.conflict {
                     sig = with_result(&sig, invalid());
                 }
@@ -382,7 +419,7 @@ impl Checker {
                     e.pos,
                     format!(
                         "nongeneric function cannot take type arguments; remove the [...] after {}",
-                        s.name
+                        self.syms.str(s.name)
                     ),
                 );
             }
@@ -399,7 +436,7 @@ impl Checker {
                 None => {
                     let c = self.expression(callee, None);
                     i.method = c.method.clone();
-                    if c.native_str() != "index" {
+                    if c.native_str(self.syms) != "index" {
                         // An indexed callee (callbacks[0](2)) must not make the call itself lower as an index.
                         i.native = c.native;
                     }
@@ -417,7 +454,7 @@ impl Checker {
             c = self.specialize_native_call(e, callee, args, c, expected);
             i.method = c.method.clone();
             i.type_args = c.type_args.clone();
-            if c.native_str() != "index" {
+            if c.native_str(self.syms) != "index" {
                 i.native = c.native;
             }
             signature = c.ty.clone();
@@ -446,11 +483,11 @@ impl Checker {
             self.not_callable(e, callee, t.as_ref());
             return i;
         };
-        let resolved = function_arguments(args, &sig.params);
+        let resolved = function_arguments(self.syms, args, &sig.params);
         i.arguments = slots(&resolved);
         i.no_return = callable.no_return
             || self.arguments_for(
-                &callee_name(callee),
+                &callee_name(self.syms, callee),
                 e.pos,
                 &resolved,
                 &sig.params,
@@ -462,7 +499,7 @@ impl Checker {
         } else {
             result.clone()
         });
-        if result.is_never() {
+        if result.is_never(self.syms) {
             i.no_return = true;
         }
         i
@@ -496,12 +533,12 @@ impl Checker {
             return;
         }
         self.unknown_type = true;
-        let mut message = match callee_name(callee) {
+        let mut message = match callee_name(self.syms, callee) {
             name if !name.is_empty() => format!("{name} is not a function"),
             _ => "callee is not a function".to_string(),
         };
         if let Some(t) = t {
-            message.push_str(&format!(" (it has type {t})"));
+            message.push_str(&format!(" (it has type {t_t})", t_t = t.display(self.syms)));
         }
         self.type_error(
             e.pos,
@@ -515,7 +552,7 @@ impl Checker {
         let mut seen: HashSet<Name> = HashSet::new();
         let mut no_return = false;
         for arg in args {
-            if arg.name.as_str().is_empty() {
+            if self.syms.str(arg.name).is_empty() {
                 self.type_error(
                     arg.pos,
                     "too many positional arguments; every parameter is already supplied, so remove this argument",
@@ -527,20 +564,27 @@ impl Checker {
             if seen.contains(&arg.name) {
                 self.type_error(
                     arg.pos,
-                    format!("duplicate argument {}; pass each argument once", arg.name),
+                    format!(
+                        "duplicate argument {}; pass each argument once",
+                        self.syms.str(arg.name)
+                    ),
                 );
             }
             let expected = arg.parameter.map(|index| params[index].ty.clone());
             if expected.is_none() {
-                let hint = unknown_argument_hint(arg.name.as_str(), &call_name, params);
+                let hint =
+                    unknown_argument_hint(self.syms, self.syms.str(arg.name), &call_name, params);
                 self.type_error_name(
                     arg.pos,
-                    arg.name.len(),
-                    format!("unknown argument {}{hint}", arg.name),
+                    self.syms.str(arg.name).len(),
+                    format!("unknown argument {}{hint}", self.syms.str(arg.name)),
                 );
             }
             if expected.is_some() && !call_name.is_empty() {
-                self.mismatch_context = Some(format!("argument '{}' of {call_name}", arg.name));
+                self.mismatch_context = Some(format!(
+                    "argument '{}' of {call_name}",
+                    self.syms.str(arg.name)
+                ));
             }
             let checkpoint = self.p.diagnostics.len();
             let v = self.argument_expression(arg.value, expected.as_ref());
@@ -567,9 +611,9 @@ impl Checker {
                 self.type_error(
                     arg.value.pos,
                     format!(
-                        "parameter {} is a var {want}, but this {have} would be converted to a temporary {want} and the callee's changes would be lost; declare the variable as `var x: {want} = ...` or make the parameter take {have}",
-                        arg.name
-                    ),
+                        "parameter {} is a var {want_t}, but this {have_t} would be converted to a temporary {want_t} and the callee's changes would be lost; declare the variable as `var x: {want_t} = ...` or make the parameter take {have_t}",
+                        self.syms.str(arg.name)
+                    , want_t = want.display(self.syms), have_t = have.display(self.syms)),
                 );
             }
             no_return = no_return || v.no_return;
@@ -589,8 +633,8 @@ impl Checker {
                     pos,
                     format!(
                         "missing argument {}{}",
-                        param.name,
-                        missing_argument_hint(param, &call_name)
+                        self.syms.str(param.name),
+                        missing_argument_hint(self.syms, param, &call_name)
                     ),
                 );
             }
@@ -652,7 +696,10 @@ impl Checker {
             subst.insert(v.id, a);
         }
         if !missing.is_empty() && !self.label_mismatch {
-            self.type_error(pos, missing_type_argument_hint(name, &missing, vars, &args));
+            self.type_error(
+                pos,
+                missing_type_argument_hint(self.syms, name, &missing, vars, &args),
+            );
         }
         self.label_mismatch = false;
         for v in vars {
@@ -752,7 +799,7 @@ impl Checker {
                     if !elsewhere && !self.argument_failed_inference(args) {
                         self.type_error(
                             pos,
-                            format!("cannot infer constructor type argument {}; write the type arguments, e.g. Box[Int](...), or annotate the binding", v.name),
+                            format!("cannot infer constructor type argument {}; write the type arguments, e.g. Box[Int](...), or annotate the binding", self.syms.str(v.name)),
                         );
                     }
                     self.unresolved_constructors.insert(pos);
@@ -801,16 +848,16 @@ impl Checker {
         let checkpoint = self.p.diagnostics.len();
         let payload = expected_optional.args[0].clone();
         // A number literal takes a sized payload type; `some(x)` is not needed to pass it.
-        let literal = is_plain_literal(e).then_some(&payload);
+        let literal = is_plain_literal(self.syms, e).then_some(&payload);
         let info = match info {
             Some(i) => i,
             None => self.infer(e, literal.or(expected)),
         };
         let actual = info.ty.clone();
-        if compatible(&actual, expected_optional) {
+        if compatible(self.syms, &actual, expected_optional) {
             return self.check_expression(e, info, expected);
         }
-        let payload_ok = compatible(&actual, &payload)
+        let payload_ok = compatible(self.syms, &actual, &payload)
             || actual
                 .as_ref()
                 .is_some_and(|a| self.interface_assignable(a, &payload));
@@ -846,17 +893,18 @@ mod argument_tests {
     use super::*;
     use std::sync::Arc;
 
-    fn check(source: &str) -> crate::Program {
+    fn check(syms: ms_syntax::Names, source: &str) -> crate::Program {
         let session = crate::Session::new();
         session.ensure_standard();
         let file: Arc<str> = Arc::from("arguments.ms");
         let ast = ms_syntax::parser::parse(&file, source).expect("valid syntax");
         Checker::new(&session, &crate::CheckOptions::default())
-            .check_modules(vec![crate::load_module(&ast)], None)
+            .check_modules(vec![crate::load_module(syms, &ast)], None)
     }
 
     #[test]
     fn resolved_slots_match_left_to_right_binding() {
+        let syms = ms_syntax::Names::global();
         let labels = [
             None,
             Some(n("a")),
@@ -890,11 +938,11 @@ mod argument_tests {
                             }
                         })
                         .collect();
-                    let resolved = bind_arguments(&args, &params, positional);
+                    let resolved = bind_arguments(syms, &args, &params, positional);
                     let mut seen = HashSet::new();
                     for (index, (arg, actual)) in args.iter().zip(&resolved).enumerate() {
                         let mut expected = arg.name.unwrap_or_else(|| n(""));
-                        if expected.as_str().is_empty()
+                        if syms.str(expected).is_empty()
                             && positional
                             && let Some(p) = params.iter().find(|p| !seen.contains(&p.name))
                         {
@@ -921,13 +969,15 @@ mod argument_tests {
 
     #[test]
     fn mixed_calls_keep_inference_defaults_and_callback_context() {
-        let p = check(include_str!("../tests/call_arguments/accepted.ms"));
+        let syms = ms_syntax::Names::global();
+        let p = check(syms, include_str!("../tests/call_arguments/accepted.ms"));
         assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
     }
 
     #[test]
     fn invalid_calls_keep_diagnostic_order() {
-        let p = check(include_str!("../tests/call_arguments/rejected.ms"));
+        let syms = ms_syntax::Names::global();
+        let p = check(syms, include_str!("../tests/call_arguments/rejected.ms"));
         let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
         assert_eq!(messages.len(), 5, "{messages:?}");
         for (message, prefix) in messages.iter().zip([
@@ -939,7 +989,7 @@ mod argument_tests {
         ]) {
             assert!(message.starts_with(prefix), "{messages:?}");
         }
-        let p = check(include_str!("../tests/call_arguments/missing.ms"));
+        let p = check(syms, include_str!("../tests/call_arguments/missing.ms"));
         let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
         assert_eq!(messages.len(), 2, "{messages:?}");
         assert!(messages[0].starts_with("missing argument second"));
@@ -948,8 +998,9 @@ mod argument_tests {
 
     #[test]
     fn generic_source_method_value_needs_type_arguments() {
+        let syms = ms_syntax::Names::global();
         let source = "type Out:\n    n: Int\nimpl Out:\n    fn put[F](value: F) Int:\n        return 1\nfn bare(o: Out) Unit:\n    let g = o.put\nfn fixed(o: Out) Unit:\n    let g = o.put[Int]\n    let n = o.put(1)\n";
-        let p = check(source);
+        let p = check(syms, source);
         let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
         assert_eq!(messages.len(), 1, "{messages:?}");
         assert!(messages[0].starts_with("a generic method value requires"));
@@ -958,7 +1009,8 @@ mod argument_tests {
 
     #[test]
     fn named_only_constructor_keeps_labels_and_rejects_positional_arguments() {
-        let p = check(include_str!("../tests/call_arguments/named_only.ms"));
+        let syms = ms_syntax::Names::global();
+        let p = check(syms, include_str!("../tests/call_arguments/named_only.ms"));
         let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
         assert_eq!(messages.len(), 4, "{messages:?}");
         for (message, prefix) in messages.iter().zip([
@@ -973,9 +1025,11 @@ mod argument_tests {
 
     #[test]
     fn duplicate_parameter_declaration_does_not_change_call_diagnostics() {
-        let p = check(include_str!(
-            "../tests/call_arguments/duplicate_parameters.ms"
-        ));
+        let syms = ms_syntax::Names::global();
+        let p = check(
+            syms,
+            include_str!("../tests/call_arguments/duplicate_parameters.ms"),
+        );
         assert_eq!(p.diagnostics.len(), 1, "{:?}", p.diagnostics);
         assert!(
             p.diagnostics[0]
@@ -986,9 +1040,11 @@ mod argument_tests {
 
     #[test]
     fn recovered_constructor_signature_keeps_original_argument_names() {
-        let p = check(include_str!(
-            "../tests/call_arguments/malformed_constructors.ms"
-        ));
+        let syms = ms_syntax::Names::global();
+        let p = check(
+            syms,
+            include_str!("../tests/call_arguments/malformed_constructors.ms"),
+        );
         let prefixes = [
             "generic type arity mismatch",
             "generic type arity mismatch",
@@ -1011,6 +1067,7 @@ mod argument_tests {
 
     #[test]
     fn wide_calls_infer_each_resolved_slot() {
+        let syms = ms_syntax::Names::global();
         let width = 2048;
         let params = (0..width)
             .map(|i| format!("_a{i}: T"))
@@ -1030,7 +1087,7 @@ mod argument_tests {
             let source = include_str!("../tests/call_arguments/wide.ms")
                 .replace("_parameters: T", &params)
                 .replace("_arguments", &args);
-            let p = check(&source);
+            let p = check(syms, &source);
             assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
         }
     }

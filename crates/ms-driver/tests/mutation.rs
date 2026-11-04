@@ -89,9 +89,10 @@ fn sources() -> Vec<(PathBuf, String)> {
 }
 
 fn diagnostics(path: &Path, source: &str) -> Vec<Diagnostic> {
+    let syms = ms_syntax::Names::global();
     std::fs::write(path, source).unwrap();
-    let graph = load_file(path.to_str().unwrap(), LoadOptions::default());
-    check_graph(graph, CheckRequest::default()).diagnostics
+    let graph = load_file(syms, path.to_str().unwrap(), LoadOptions::default());
+    check_graph(syms, graph, CheckRequest::default()).diagnostics
 }
 
 fn check(path: &Path, source: &str) {

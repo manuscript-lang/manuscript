@@ -8,12 +8,12 @@ use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
 /// The case an arm names: `None` for the wildcard.
-fn arm_case(path: &Expr) -> Option<String> {
+fn arm_case(syms: ms_syntax::Names, path: &Expr) -> Option<String> {
     match &path.kind {
-        ExprKind::Name(n) if n.as_str() == "_" => None,
-        ExprKind::Name(n) => Some(n.to_string()),
-        ExprKind::Member { name, .. } => Some(name.to_string()),
-        ExprKind::Apply { left, .. } => arm_case(left),
+        ExprKind::Name(n) if syms.str(n) == "_" => None,
+        ExprKind::Name(n) => Some(syms.str(n).to_string()),
+        ExprKind::Member { name, .. } => Some(syms.str(name).to_string()),
+        ExprKind::Apply { left, .. } => arm_case(syms, left),
         _ => None,
     }
 }
@@ -164,7 +164,7 @@ impl FnLower<'_> {
                 blocks.push(blk);
                 continue;
             }
-            let case = match arm_case(&arm.path) {
+            let case = match arm_case(self.syms, &arm.path) {
                 _ if by_type => {
                     // A concrete type pattern on a contract value; `_` is the fallback.
                     match self.hir.arm(arm).contract {

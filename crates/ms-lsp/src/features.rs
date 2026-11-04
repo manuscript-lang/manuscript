@@ -42,6 +42,7 @@ pub fn folding_ranges(d: &Document) -> Json {
 }
 
 struct Hints<'a> {
+    syms: ms_syntax::Names,
     module: ms_check::syntax::ModRef,
     positions: SourcePositions<'a>,
     requested: Range,
@@ -50,6 +51,7 @@ struct Hints<'a> {
 
 impl Visitor for Hints<'_> {
     fn stmt(&mut self, s: &Stmt) {
+        let syms = self.syms;
         let StmtKind::Bind {
             pattern, ty: None, ..
         } = &s.kind
@@ -66,14 +68,14 @@ impl Visitor for Hints<'_> {
         }
         let p = self
             .positions
-            .position(pattern.pos.offset as usize + name.as_str().len());
+            .position(pattern.pos.offset as usize + syms.str(name).len());
         let (a, b) = (self.requested.start, self.requested.end);
         if a <= p && p <= b {
             self.hints.push((
                 p,
                 obj([
                     ("position", p.json()),
-                    ("label", format!(": {}", binding.ty).into()),
+                    ("label", format!(": {}", binding.ty.display(syms)).into()),
                     ("kind", 1usize.into()),
                     ("paddingLeft", false.into()),
                     ("paddingRight", false.into()),
@@ -84,11 +86,17 @@ impl Visitor for Hints<'_> {
 }
 
 /// Inferred-type hints for unannotated `let`/`var` names in `requested`.
-pub fn inlay_hints(analysis: &Analysis, d: &Document, requested: Range) -> Json {
-    let Some(module) = analysis.module(d) else {
+pub fn inlay_hints(
+    syms: ms_syntax::Names,
+    analysis: &Analysis,
+    d: &Document,
+    requested: Range,
+) -> Json {
+    let Some(module) = analysis.module(syms, d) else {
         return Json::Arr(Vec::new());
     };
     let mut hints = Hints {
+        syms: ms_syntax::Names::global(),
         module: module.clone(),
         positions: SourcePositions::new(&d.text),
         requested,

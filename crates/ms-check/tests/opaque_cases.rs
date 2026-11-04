@@ -6,6 +6,7 @@ use ms_syntax::{Diagnostic, Phase};
 use std::sync::Arc;
 
 fn diagnostics(file: &str, source: &str) -> Vec<Diagnostic> {
+    let syms = ms_syntax::Names::global();
     let sources = [
         ("gate.ms", include_str!("opaque_cases/gate.ms")),
         (file, source),
@@ -23,10 +24,10 @@ fn diagnostics(file: &str, source: &str) -> Vec<Diagnostic> {
                     .expect("local fixture import");
                 imports.insert(n(&file), import.id, n(target));
             }
-            ms_check::load_module(&module)
+            ms_check::load_module(syms, &module)
         })
         .collect();
-    ms_check::check(modules, imports, CheckOptions::default()).diagnostics
+    ms_check::check(syms, modules, imports, CheckOptions::default()).diagnostics
 }
 
 #[test]

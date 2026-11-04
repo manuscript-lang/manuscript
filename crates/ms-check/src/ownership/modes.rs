@@ -138,6 +138,7 @@ pub struct CallModes {
 
 /// Resolves the modes of a call from its callee.
 pub fn call_modes(
+    syms: ms_syntax::Names,
     m: &ModuleHir,
     call: &Expr,
     args: &[Argument],
@@ -164,9 +165,8 @@ pub fn call_modes(
         },
         Resolution::Method(_) if value_call => function_value_modes(m, call, args.len(), label),
         Resolution::Function(s) | Resolution::Constant(s) => {
-            let source = s
-                .native
-                .as_str()
+            let source = syms
+                .str(s.native)
                 .is_empty()
                 .then_some(())
                 .and(s.decl.as_ref());
@@ -179,19 +179,19 @@ pub fn call_modes(
                     // A native runs the function arguments it is given before it returns,
                     // unless it is one of the externs that keep them. A user extern's shim may
                     // keep its functions with ms_fn_retain.
-                    let user_extern = s.native.as_str().starts_with("extern:")
-                        && !s.module.as_str().starts_with("@std/");
+                    let user_extern = syms.str(s.native).starts_with("extern:")
+                        && !syms.str(s.module).starts_with("@std/");
                     let runs_now =
-                        !user_extern && !crate::stdlib::keeps_callbacks(s.native.as_str());
-                    let params = s.ty().params.clone();
+                        !user_extern && !crate::stdlib::keeps_callbacks(syms.str(s.native));
+                    let params = s.ty(syms).params.clone();
                     CallModes {
                         arguments: (0..args.len())
                             .map(|i| {
                                 let p = label(i).and_then(|l| params.iter().find(|p| p.name == l));
                                 match p {
                                     Some(p)
-                                        if p.name.as_str() == "value"
-                                            && crate::stdlib::owns_value(s.native.as_str()) =>
+                                        if syms.str(p.name) == "value"
+                                            && crate::stdlib::owns_value(syms.str(s.native)) =>
                                     {
                                         ParamMode::Move
                                     }
@@ -209,7 +209,7 @@ pub fn call_modes(
                 }
             }
         }
-        Resolution::Method(method) => method_modes(summaries, &method, args.len(), label),
+        Resolution::Method(method) => method_modes(syms, summaries, &method, args.len(), label),
         Resolution::Local(_) | Resolution::Value => {
             function_value_modes(m, call, args.len(), label)
         }
@@ -257,10 +257,15 @@ fn function_value_modes(
 
 /// Where the result of `call` comes from: a source callable's inferred borrow result, or nothing for
 /// a native, an interface operation, a constructor or a function value, whose results own.
-pub fn result_borrow(m: &ModuleHir, call: &Expr, summaries: &Summaries) -> ResultBorrow {
+pub fn result_borrow(
+    syms: ms_syntax::Names,
+    m: &ModuleHir,
+    call: &Expr,
+    summaries: &Summaries,
+) -> ResultBorrow {
     match m.resolution(call) {
         Resolution::Function(s) | Resolution::Constant(s) => {
-            if !s.native.as_str().is_empty() {
+            if !syms.str(s.native).is_empty() {
                 return ResultBorrow::default();
             }
             let Some(d) = s.decl.as_ref() else {
@@ -273,7 +278,7 @@ pub fn result_borrow(m: &ModuleHir, call: &Expr, summaries: &Summaries) -> Resul
                 .unwrap_or_else(|| Summary::declared(&func).result)
         }
         Resolution::Method(method) => {
-            if !method.native.as_str().is_empty() {
+            if !syms.str(method.native).is_empty() {
                 return ResultBorrow::default();
             }
             let Some(func) = &method.decl else {
@@ -314,18 +319,19 @@ fn from_summary(
 }
 
 fn method_modes(
+    syms: ms_syntax::Names,
     summaries: &Summaries,
     method: &MethodRef,
     count: usize,
     label: impl Fn(usize) -> Option<Name>,
 ) -> CallModes {
-    if method.native.as_str().is_empty() {
+    if syms.str(method.native).is_empty() {
         let Some(func) = &method.decl else {
             return native_unknown(count);
         };
         return from_summary(summaries, method.module, func, count, label, Some(()));
     }
-    if method.native == "contract" {
+    if syms.str(method.native) == "contract" {
         // Dynamic dispatch uses the interface's declared modes.
         return match &method.decl {
             Some(func) => {
@@ -347,12 +353,16 @@ fn method_modes(
             None => native_unknown(count),
         };
     }
-    native_method_modes(method, count, label)
+    native_method_modes(syms, method, count, label)
 }
 
 /// How a method treats its receiver, for a method used as a value.
-pub fn receiver_mode(summaries: &Summaries, method: &MethodRef) -> Option<ParamMode> {
-    method_modes(summaries, method, 0, |_| None).receiver
+pub fn receiver_mode(
+    syms: ms_syntax::Names,
+    summaries: &Summaries,
+    method: &MethodRef,
+) -> Option<ParamMode> {
+    method_modes(syms, summaries, method, 0, |_| None).receiver
 }
 
 fn native_unknown(count: usize) -> CallModes {
@@ -366,12 +376,13 @@ fn native_unknown(count: usize) -> CallModes {
 }
 
 fn native_method_modes(
+    syms: ms_syntax::Names,
     method: &MethodRef,
     count: usize,
     label: impl Fn(usize) -> Option<Name>,
 ) -> CallModes {
     let receiver = &method.receiver;
-    let mutator = collection_mutation(method);
+    let mutator = collection_mutation(syms, method);
     // A native method runs its callbacks before it returns.
     let callbacks_borrowed = true;
     let params = &method.ty.params;
@@ -409,8 +420,8 @@ fn native_method_modes(
     CallModes {
         receiver: Some(if mutator {
             ParamMode::Mutate
-        } else if crate::effects::is_text_builder(receiver)
-            && method.name().is_some_and(|n| n.as_str() == "build")
+        } else if crate::effects::is_text_builder(syms, receiver)
+            && method.name().is_some_and(|n| syms.str(n) == "build")
         {
             ParamMode::Move
         } else {

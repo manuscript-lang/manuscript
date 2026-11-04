@@ -195,7 +195,8 @@ impl FnLower<'_> {
     ) -> Result<Val, Error> {
         let name = method(name);
         let rty = self.ty_of(recv.v);
-        let callback = |want: &str| args.iter().find(|a| a.name.as_str() == want).copied();
+        let syms = self.syms;
+        let callback = |want: &str| args.iter().find(|a| syms.str(a.name) == want).copied();
         let f = match name {
             "fold" | "fold_right" => callback("step"),
             _ => args.iter().find(|a| self.is_fn_value(a.val.v)).copied(),

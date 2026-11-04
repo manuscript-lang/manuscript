@@ -127,9 +127,11 @@ impl FnLower<'_> {
         let key = self.cx.tys.shape(fixture);
         let tys = &mut self.cx.tys;
         let m = self.cx.methods.iter().find(|m| {
-            m.contract.as_ref().is_some_and(|c| c.is_test_hooks())
+            m.contract
+                .as_ref()
+                .is_some_and(|c| c.is_test_hooks(self.syms))
                 && tys.shape(&m.receiver) == key
-                && m.name().is_some_and(|n| n.as_str() == name)
+                && m.name().is_some_and(|n| self.syms.str(n) == name)
         })?;
         let decl = m.decl.as_ref()?;
         self.callable_of_decl(m.module, Some(decl.id())).ok()

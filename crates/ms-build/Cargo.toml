@@ -17,3 +17,4 @@ ms-lower = { path = "../ms-lower" }
 [dev-dependencies]
 ms-rt = { path = "../ms-rt" }
 ms-driver = { path = "../ms-driver" }
+ms-syntax = { path = "../ms-syntax" }

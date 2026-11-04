@@ -10,12 +10,13 @@ const FORMS: [&str; 3] = [
 ];
 
 fn diagnostics(source: &str) -> Vec<String> {
+    let syms = ms_syntax::Names::global();
     let session = crate::Session::new();
     session.ensure_standard();
     let file: Arc<str> = Arc::from("method_parameter_names.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
     Checker::new(&session, &CheckOptions::default())
-        .check_modules(vec![crate::load_module(&module)], None)
+        .check_modules(vec![crate::load_module(syms, &module)], None)
         .diagnostics
         .into_iter()
         .map(|d| d.message)

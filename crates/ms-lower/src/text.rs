@@ -584,7 +584,10 @@ impl<'a> FnLower<'a> {
             .methods
             .iter()
             .find(|m| {
-                m.receiver.is_time(record) && m.decl.as_ref().is_some_and(|d| d.name() == name)
+                m.receiver.is_time(self.syms, record)
+                    && m.decl
+                        .as_ref()
+                        .is_some_and(|d| self.syms.str(d.name()) == name)
             })
             .ok_or_else(|| Error::new(format!("{record}.{name} not found")))?;
         let callable =
@@ -630,7 +633,7 @@ impl<'a> FnLower<'a> {
                         return Ok(x);
                     }
                     let _ = Kind::Record;
-                    if self.ety(e).is_time("Duration") {
+                    if self.ety(e).is_time(self.syms, "Duration") {
                         self.duration_text(x)?
                     } else {
                         self.format_value(x)?

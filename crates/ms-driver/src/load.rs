@@ -102,12 +102,17 @@ fn start() -> Pos {
 }
 
 /// Resolve a module or manifest, then load each reachable local module.
-pub fn load_file(filename: &str, options: LoadOptions) -> Graph {
-    load_editor_file(filename, options, &EditorOptions::default())
+pub fn load_file(syms: ms_syntax::Names, filename: &str, options: LoadOptions) -> Graph {
+    load_editor_file(syms, filename, options, &EditorOptions::default())
 }
 
 /// [`load_file`] over an editor's unsaved sources, with optional recovery.
-pub fn load_editor_file(filename: &str, options: LoadOptions, editor: &EditorOptions) -> Graph {
+pub fn load_editor_file(
+    syms: ms_syntax::Names,
+    filename: &str,
+    options: LoadOptions,
+    editor: &EditorOptions,
+) -> Graph {
     let (mut config, manifest) = match source_project(filename) {
         Ok(found) => found,
         Err((root, error)) => {
@@ -159,8 +164,8 @@ pub fn load_editor_file(filename: &str, options: LoadOptions, editor: &EditorOpt
                 return graph;
             }
         };
-        match loader.visit(&entry) {
-            Ok(key) => loader.graph.entry = key.to_string(),
+        match loader.visit(syms, &entry) {
+            Ok(key) => loader.graph.entry = syms.str(key).to_string(),
             Err(failure) => {
                 // An incomplete strict graph cannot be checked.
                 loader.graph.modules.clear();
@@ -178,7 +183,7 @@ pub fn load_editor_file(filename: &str, options: LoadOptions, editor: &EditorOpt
             library || editor.project_sources,
             &overlay,
         ) {
-            Ok(files) => loader.add_discovered(&files),
+            Ok(files) => loader.add_discovered(syms, &files),
             Err(error) => {
                 loader.graph.diagnostics.push(from_error(&file, &error));
             }
@@ -315,11 +320,11 @@ struct Loader<'a> {
 }
 
 impl Loader<'_> {
-    fn add_discovered(&mut self, files: &[String]) {
+    fn add_discovered(&mut self, syms: ms_syntax::Names, files: &[String]) {
         for file in files {
             let result = crate::project::source_path(&self.config.root, file, self.overlay)
                 .map_err(Failure::Error)
-                .and_then(|canonical| self.visit(&canonical));
+                .and_then(|canonical| self.visit(syms, &canonical));
             if let Err(failure) = result {
                 let logical: Arc<str> = Arc::from(file.as_str());
                 self.graph
@@ -331,7 +336,7 @@ impl Loader<'_> {
 
     /// Accepts an already resolved canonical path. Resolution happens at the
     /// graph's edges, never again during traversal or checking.
-    fn visit(&mut self, canonical: &str) -> Result<Name, Failure> {
+    fn visit(&mut self, syms: ms_syntax::Names, canonical: &str) -> Result<Name, Failure> {
         let logical = pathops::rel(&self.config.root, canonical).map_err(Failure::Error)?;
         let file: Arc<str> = Arc::from(logical.as_str());
         if self.active.contains(canonical) {
@@ -349,7 +354,7 @@ impl Loader<'_> {
             return Err(failure.clone());
         }
         self.active.insert(canonical.to_string());
-        let result = self.load(canonical, &file);
+        let result = self.load(syms, canonical, &file);
         self.active.remove(canonical);
         if let Err(failure @ (Failure::Diagnostic(..) | Failure::Error(_))) = &result {
             self.failed.insert(canonical.to_string(), failure.clone());
@@ -357,7 +362,12 @@ impl Loader<'_> {
         result
     }
 
-    fn load(&mut self, canonical: &str, file: &Arc<str>) -> Result<Name, Failure> {
+    fn load(
+        &mut self,
+        syms: ms_syntax::Names,
+        canonical: &str,
+        file: &Arc<str>,
+    ) -> Result<Name, Failure> {
         let bytes = if let Some(source) = self.overlay.get(canonical) {
             source.clone().into_bytes()
         } else if let Some((name, directory)) =
@@ -407,7 +417,7 @@ impl Loader<'_> {
             if item.path.starts_with("@std/") {
                 continue;
             }
-            match self.import_module(canonical, file, item) {
+            match self.import_module(syms, canonical, file, item) {
                 Ok(target) => resolved.push((item.id, target)),
                 Err(failure) if self.recover => {
                     self.graph
@@ -421,12 +431,15 @@ impl Loader<'_> {
             self.graph.imports.insert(key, id, target);
         }
         self.loaded.insert(canonical.to_string(), key);
-        self.graph.modules.push(ms_check::load_module(&module));
+        self.graph
+            .modules
+            .push(ms_check::load_module(syms, &module));
         Ok(key)
     }
 
     fn import_module(
         &mut self,
+        syms: ms_syntax::Names,
         importer: &str,
         file: &Arc<str>,
         item: &ms_syntax::Import,
@@ -447,7 +460,7 @@ impl Loader<'_> {
             self.resolved.insert(request, target.clone());
             target
         };
-        self.visit(&target).map_err(|failure| match failure {
+        self.visit(syms, &target).map_err(|failure| match failure {
             failure @ Failure::Diagnostic(..) => failure,
             Failure::CycleDiagnostic(d) => Failure::CycleDiagnostic(d),
             Failure::Cycle(message) => {
@@ -494,6 +507,7 @@ mod tests {
 
     #[test]
     fn failed_suffixes_are_reused_without_changing_diagnostics() {
+        let syms = ms_syntax::Names::global();
         with_loader(|loader, root| {
             for i in 0..64 {
                 std::fs::write(
@@ -503,7 +517,7 @@ mod tests {
                 .unwrap();
             }
             let first = loader
-                .visit(&format!("{root}/m0.ms"))
+                .visit(syms, &format!("{root}/m0.ms"))
                 .err()
                 .unwrap()
                 .into_diagnostic(&Arc::from("unused"), start());
@@ -512,7 +526,7 @@ mod tests {
             std::fs::remove_file(format!("{root}/m63.ms")).unwrap();
             for i in 0..64 {
                 let repeated = loader
-                    .visit(&format!("{root}/m{i}.ms"))
+                    .visit(syms, &format!("{root}/m{i}.ms"))
                     .err()
                     .unwrap()
                     .into_diagnostic(&Arc::from("unused"), start());
@@ -524,6 +538,7 @@ mod tests {
 
     #[test]
     fn cached_parse_failures_replay_secondary_diagnostics() {
+        let syms = ms_syntax::Names::global();
         with_loader(|loader, root| {
             let file = format!("{root}/bad.ms");
             std::fs::write(
@@ -531,11 +546,11 @@ mod tests {
                 "fn first() Int:\n    return +\n\nfn second() Int:\n    return +\n",
             )
             .unwrap();
-            let first = loader.visit(&file).err().unwrap();
+            let first = loader.visit(syms, &file).err().unwrap();
             let diagnostics = std::mem::take(&mut loader.graph.diagnostics);
             assert!(!diagnostics.is_empty());
             std::fs::remove_file(&file).unwrap();
-            let repeated = loader.visit(&file).err().unwrap();
+            let repeated = loader.visit(syms, &file).err().unwrap();
             assert_eq!(first.message(), repeated.message());
             assert_eq!(
                 format!("{diagnostics:?}"),
@@ -546,12 +561,13 @@ mod tests {
 
     #[test]
     fn cycle_failures_keep_the_current_closing_edge() {
+        let syms = ms_syntax::Names::global();
         with_loader(|loader, root| {
             std::fs::write(format!("{root}/a.ms"), "import b from \"./b.ms\"\n").unwrap();
             std::fs::write(format!("{root}/b.ms"), "import a from \"./a.ms\"\n").unwrap();
             for (entry, closing) in [("a", "b"), ("b", "a")] {
                 let d = loader
-                    .visit(&format!("{root}/{entry}.ms"))
+                    .visit(syms, &format!("{root}/{entry}.ms"))
                     .err()
                     .unwrap()
                     .into_diagnostic(&Arc::from("unused"), start());
@@ -563,6 +579,7 @@ mod tests {
     }
     #[test]
     fn failed_ancestors_share_secondary_diagnostics() {
+        let syms = ms_syntax::Names::global();
         with_loader(|loader, root| {
             for i in 0..16 {
                 let source = if i == 15 {
@@ -572,7 +589,7 @@ mod tests {
                 };
                 std::fs::write(format!("{root}/m{i}.ms"), source).unwrap();
             }
-            assert!(loader.visit(&format!("{root}/m0.ms")).is_err());
+            assert!(loader.visit(syms, &format!("{root}/m0.ms")).is_err());
             assert_eq!(loader.failed.len(), 16);
             let Failure::Diagnostic(_, shared) =
                 loader.failed.get(&format!("{root}/m0.ms")).unwrap()
@@ -589,15 +606,21 @@ mod tests {
         });
     }
 
-    fn import(loader: &mut Loader<'_>, importer: &str, path: &str) -> Result<Name, Failure> {
+    fn import(
+        syms: ms_syntax::Names,
+        loader: &mut Loader<'_>,
+        importer: &str,
+        path: &str,
+    ) -> Result<Name, Failure> {
         let file: Arc<str> = Arc::from(pathops::rel(&loader.config.root, importer).unwrap());
         let module =
             ms_syntax::parser::parse(&file, &format!("import value from \"{path}\"\n")).unwrap();
-        loader.import_module(importer, &file, &module.imports[0])
+        loader.import_module(syms, importer, &file, &module.imports[0])
     }
 
     #[test]
     fn repeated_edges_reuse_resolution_but_directories_remain_distinct() {
+        let syms = ms_syntax::Names::global();
         with_loader(|loader, root| {
             std::fs::create_dir(format!("{root}/nested")).unwrap();
             for dir in [root.to_string(), format!("{root}/nested")] {
@@ -607,14 +630,14 @@ mod tests {
                 )
                 .unwrap();
             }
-            let first = import(loader, &format!("{root}/a.ms"), "./leaf.ms")
+            let first = import(syms, loader, &format!("{root}/a.ms"), "./leaf.ms")
                 .unwrap_or_else(|e| panic!("{}", e.message()));
             std::fs::remove_file(format!("{root}/leaf.ms")).unwrap();
-            let second = import(loader, &format!("{root}/b.ms"), "./leaf.ms")
+            let second = import(syms, loader, &format!("{root}/b.ms"), "./leaf.ms")
                 .unwrap_or_else(|e| panic!("{}", e.message()));
             assert_eq!(first, second);
             assert_eq!(loader.resolved.len(), 1);
-            let nested = import(loader, &format!("{root}/nested/a.ms"), "./leaf.ms")
+            let nested = import(syms, loader, &format!("{root}/nested/a.ms"), "./leaf.ms")
                 .unwrap_or_else(|e| panic!("{}", e.message()));
             assert_ne!(first, nested);
             assert_eq!(loader.resolved.len(), 2);
@@ -624,9 +647,10 @@ mod tests {
 
     #[test]
     fn resolution_failures_keep_each_import_position_and_are_not_cached() {
+        let syms = ms_syntax::Names::global();
         with_loader(|loader, root| {
             for name in ["a", "b"] {
-                let failure = import(loader, &format!("{root}/{name}.ms"), "./new.ms")
+                let failure = import(syms, loader, &format!("{root}/{name}.ms"), "./new.ms")
                     .err()
                     .unwrap();
                 let d = failure.into_diagnostic(&Arc::from("unused"), start());
@@ -638,7 +662,7 @@ mod tests {
                 "export fn value() Int: return 1\n",
             )
             .unwrap();
-            assert!(import(loader, &format!("{root}/a.ms"), "./new.ms").is_ok());
+            assert!(import(syms, loader, &format!("{root}/a.ms"), "./new.ms").is_ok());
             assert_eq!(loader.resolved.len(), 1);
         });
     }

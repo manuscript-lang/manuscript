@@ -32,7 +32,7 @@ impl Checker {
                     param.pos,
                     format!(
                         "duplicate parameter or field {}; each name may appear once, so rename one",
-                        param.name
+                        self.syms.str(param.name)
                     ),
                 );
             }
@@ -43,7 +43,7 @@ impl Checker {
                     param.pos,
                     format!(
                         "parameter {} has a default, but a function with a var parameter cannot also have defaults; pass the value at every call",
-                        param.name
+                        self.syms.str(param.name)
                     ),
                 );
             }
@@ -59,7 +59,7 @@ impl Checker {
                     param.pos,
                     format!(
                         "cannot infer callback parameter {}; provide a type or a known function context",
-                        param.name
+                        self.syms.str(param.name)
                     ),
                 );
                 invalid()
@@ -133,7 +133,7 @@ impl Checker {
                 }
             }
             Some(r) => {
-                if fall && r.id != "Unit" && !r.is_invalid() {
+                if fall && self.syms.str(r.id) != "Unit" && !r.is_invalid() {
                     self.type_error(
                         e.pos,
                         "reachable fallthrough in anonymous function; end every path with a 'return'",
@@ -158,7 +158,7 @@ impl Checker {
         }
         let defaults =
             (!defaults.is_empty()).then(|| std::rc::Rc::new(ParameterDefaults::new(defaults)));
-        let mut info = Info::of(function_with(params, result, defaults));
+        let mut info = Info::of(function_with(self.syms, params, result, defaults));
         if let Some(frame) = &self.return_inference {
             if frame.unresolved || frame.context_dependent {
                 self.deferred_callbacks.insert(e.id);

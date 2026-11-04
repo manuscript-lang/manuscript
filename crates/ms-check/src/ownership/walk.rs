@@ -148,6 +148,7 @@ struct PlaceInfo {
 
 pub fn analyze(cx: &Context) -> Outcome {
     let mut w = Walker {
+        syms: ms_syntax::Names::global(),
         cx,
         facts: CallableOwnership::default(),
         diags: Vec::new(),
@@ -239,6 +240,7 @@ pub fn analyze(cx: &Context) -> Outcome {
 }
 
 struct Walker<'a> {
+    syms: ms_syntax::Names,
     cx: &'a Context<'a>,
     facts: CallableOwnership,
     diags: Vec<Diagnostic>,
@@ -419,7 +421,7 @@ impl Walker<'_> {
     /// Lowering closes the instance only when its type has a closer, so a plain instance
     /// costs nothing.
     fn may_close(&self, ty: &Ty) -> bool {
-        match self.cx.classes.class(ty) {
+        match self.cx.classes.class(self.syms, ty) {
             Class::Resource => true,
             Class::Move => holds_variable(ty),
             Class::Copy => false,
@@ -464,8 +466,8 @@ impl Walker<'_> {
                 self.error(
                     pos,
                     format!(
-                        "`{name}` is a resource that is never closed: call `{name}.close()`, or return it so the caller owns it"
-                    ),
+                        "`{name_t}` is a resource that is never closed: call `{name_t}.close()`, or return it so the caller owns it"
+                    , name_t = self.syms.str(name)),
                 );
             }
         }
@@ -491,7 +493,7 @@ impl Walker<'_> {
     fn consumed_param_resources(&mut self) {
         for b in self.cx.c.parameters.iter() {
             let tracked = self.consumed.contains(&b.uid)
-                && self.cx.classes.class(&b.ty) == Class::Resource
+                && self.cx.classes.class(self.syms, &b.ty) == Class::Resource
                 && matches!(b.ty.kind, Kind::Record | Kind::Alternative | Kind::Native);
             if !tracked {
                 continue;
@@ -517,7 +519,7 @@ impl Walker<'_> {
         }
         let reads = self.returned_promise_reads(e);
         if !reads.is_empty() {
-            let names: Vec<&str> = reads.iter().map(|n| n.as_str()).collect();
+            let names: Vec<&str> = reads.iter().map(|n| self.syms.str(n)).collect();
             self.error(
                 e.pos,
                 format!(
@@ -573,7 +575,7 @@ impl Walker<'_> {
                 return;
             }
             // A bare `none` owns nothing, so a borrow-returning function can hand it back beside its references.
-            if !matches!(&e.kind, ExprKind::Name(n) if n.as_str() == "none") {
+            if !matches!(&e.kind, ExprKind::Name(n) if self.syms.str(n) == "none") {
                 self.owned_return.get_or_insert(e.pos);
             }
         }
@@ -602,7 +604,7 @@ impl Walker<'_> {
             .summaries
             .get(&key)
             .is_some_and(|s| !s.result.returns_borrow)
-            && !self.cx.classes.clonable(&self.cx.m.ty(e))
+            && !self.cx.classes.clonable(self.syms, &self.cx.m.ty(e))
     }
 
     /// The fields from a variable to a place written as a plain chain of them.
@@ -674,7 +676,7 @@ impl Walker<'_> {
         if !matches!(e.kind, ExprKind::Call { .. }) {
             return None;
         }
-        let ret_borrow = result_borrow(self.cx.m, e, self.cx.summaries);
+        let ret_borrow = result_borrow(self.syms, self.cx.m, e, self.cx.summaries);
         if !ret_borrow.returns_borrow || ret_borrow.view {
             return None;
         }
@@ -718,7 +720,7 @@ impl Walker<'_> {
                 .info(x)
                 .interface_source
                 .as_ref()
-                .is_some_and(|src| self.cx.classes.class(src) == Class::Move)
+                .is_some_and(|src| self.cx.classes.class(self.syms, src) == Class::Move)
         };
         if converted(e) {
             return Some(e);
@@ -942,7 +944,7 @@ impl Walker<'_> {
         let Some(declared) = self.cx.m.type_ref(result) else {
             return;
         };
-        if self.cx.classes.class(&declared) == Class::Copy {
+        if self.cx.classes.class(self.syms, &declared) == Class::Copy {
             return;
         }
         if self.class_of(operand) == Class::Move
@@ -1079,7 +1081,7 @@ impl Walker<'_> {
             return Some(src);
         }
         if let ExprKind::Call { .. } = &e.kind {
-            let ret_borrow = result_borrow(self.cx.m, e, self.cx.summaries);
+            let ret_borrow = result_borrow(self.syms, self.cx.m, e, self.cx.summaries);
             if !ret_borrow.returns_borrow {
                 return None;
             }
@@ -1166,7 +1168,7 @@ impl Walker<'_> {
     fn returns_borrow(&self, call: &Expr) -> bool {
         self.class_of(call) != Class::Copy
             && (self.native_borrow_receiver(call).is_some()
-                || result_borrow(self.cx.m, call, self.cx.summaries).returns_borrow)
+                || result_borrow(self.syms, self.cx.m, call, self.cx.summaries).returns_borrow)
     }
 
     /// The label of the parameter `operand` is written for in call `e`.
@@ -1201,11 +1203,11 @@ impl Walker<'_> {
         let Resolution::Method(method) = self.cx.m.resolution(e) else {
             return None;
         };
-        if method.native.as_str().is_empty() {
+        if self.syms.str(method.native).is_empty() {
             return None;
         }
         let recv = self.cx.m.ty(left);
-        let returns_borrow = match (name.as_str(), args.len()) {
+        let returns_borrow = match (self.syms.str(name), args.len()) {
             ("get", 1) => recv.is(Builtin::Map) || recv.is(Builtin::List),
             ("first" | "last", 0) => recv.is(Builtin::List),
             ("view", 2) => recv.is(Builtin::Bytes),
@@ -1222,7 +1224,7 @@ impl Walker<'_> {
         let ExprKind::Member { left, name } = &callee.kind else {
             return false;
         };
-        name.as_str() == "get" && args.len() == 1 && self.cx.m.ty(left).is(Builtin::List)
+        self.syms.str(name) == "get" && args.len() == 1 && self.cx.m.ty(left).is(Builtin::List)
     }
 
     /// Whether `e` is `map.get(key)` on a `Map`: an entry read in place.
@@ -1233,10 +1235,10 @@ impl Walker<'_> {
         let ExprKind::Member { left, name } = &callee.kind else {
             return false;
         };
-        name.as_str() == "get"
+        self.syms.str(name) == "get"
             && args.len() == 1
             && self.cx.m.ty(left).is(Builtin::Map)
-            && matches!(self.cx.m.resolution(e), Resolution::Method(m) if !m.native.as_str().is_empty())
+            && matches!(self.cx.m.resolution(e), Resolution::Method(m) if !self.syms.str(m.native).is_empty())
     }
 
     fn receiver_consumed(&self) -> bool {
@@ -1255,7 +1257,7 @@ impl Walker<'_> {
         parameter: Option<usize>,
         is_receiver: bool,
     ) {
-        let class = self.cx.classes.class(&b.ty);
+        let class = self.cx.classes.class(self.syms, &b.ty);
         self.meta.insert(
             b.uid,
             Meta {
@@ -1365,7 +1367,7 @@ impl Walker<'_> {
         }
         self.diags.push(Diagnostic {
             opener_line: 0,
-            file: Arc::from(self.cx.m.data.file.as_str()),
+            file: Arc::from(self.syms.str(self.cx.m.data.file)),
             pos,
             phase: Phase::Type,
             message,
@@ -1404,7 +1406,7 @@ impl Walker<'_> {
     // ------------------------------------------------------------ types
 
     fn class_of(&self, e: &Expr) -> Class {
-        self.cx.classes.class(&self.cx.m.ty(e))
+        self.cx.classes.class(self.syms, &self.cx.m.ty(e))
     }
 
     fn name_of(&self, uid: usize) -> Name {
@@ -1474,35 +1476,37 @@ impl Walker<'_> {
         if let Some(a) = found {
             let (holder, why, bpos) = (a.holder_name, a.why.clone(), a.pos);
             let held_ty = self.meta.get(&a.holder).map(|m| m.binding.ty.clone());
-            let remedy = if holder.as_str() == "for" {
+            let remedy = if self.syms.str(holder) == "for" {
                 format!("iterate over a clone instead: `for ... in {shown}.{CLONE}()`")
             } else if why == PROMISE_WHY {
                 String::new()
             } else if held_ty.as_ref().and_then(clone_blocker).is_some() {
                 format!(
-                    "or give `{holder}` its own value by converting a clone of the concrete value"
+                    "or give `{holder_t}` its own value by converting a clone of the concrete value",
+                    holder_t = self.syms.str(holder)
                 )
             } else {
                 format!(
-                    "or give `{holder}` its own value by ending its initializer with `.{CLONE}()`"
+                    "or give `{holder_t}` its own value by ending its initializer with `.{CLONE}()`",
+                    holder_t = self.syms.str(holder)
                 )
             };
             if why == PROMISE_WHY {
                 self.error(
                     pos,
                     format!(
-                        "cannot {what} `{shown}` while promise `{holder}` (started at {}:{}) reads it; a promise reads what it captures until it is dropped, so wait for it and move it into `wait_all` first, or {what} a copy",
+                        "cannot {what} `{shown}` while promise `{holder_t}` (started at {}:{}) reads it; a promise reads what it captures until it is dropped, so wait for it and move it into `wait_all` first, or {what} a copy",
                         bpos.line, bpos.column
-                    ),
+                    , holder_t = self.syms.str(holder)),
                 );
                 return;
             }
             self.error(
                 pos,
                 format!(
-                    "cannot {what} `{shown}` while `{holder}` borrows it ({why}, at {}:{}); finish using `{holder}` before this, {remedy}",
+                    "cannot {what} `{shown}` while `{holder_t}` borrows it ({why}, at {}:{}); finish using `{holder_t}` before this, {remedy}",
                     bpos.line, bpos.column
-                ),
+                , holder_t = self.syms.str(holder)),
             );
         }
     }
@@ -1520,13 +1524,17 @@ impl Walker<'_> {
             let (holder, bpos, why) = (a.holder_name, a.pos, a.why.clone());
             let text = if why == "mutable borrow" {
                 format!(
-                    "cannot use `{shown}` while `{holder}` (a mutable borrow at {}:{}) holds it; finish using `{holder}` first, or use the value through `{holder}`",
-                    bpos.line, bpos.column
+                    "cannot use `{shown}` while `{holder_t}` (a mutable borrow at {}:{}) holds it; finish using `{holder_t}` first, or use the value through `{holder_t}`",
+                    bpos.line,
+                    bpos.column,
+                    holder_t = self.syms.str(holder)
                 )
             } else {
                 format!(
-                    "cannot use `{shown}` while closure `{holder}` (made at {}:{}) changes it; call or drop the closure first, or clone the value before creating it",
-                    bpos.line, bpos.column
+                    "cannot use `{shown}` while closure `{holder_t}` (made at {}:{}) changes it; call or drop the closure first, or clone the value before creating it",
+                    bpos.line,
+                    bpos.column,
+                    holder_t = self.syms.str(holder)
                 )
             };
             self.error(pos, text);
@@ -1563,7 +1571,7 @@ impl Walker<'_> {
                 left,
                 value: Some(_),
                 ..
-            } => self.cx.m.info(e).native_str() == "index" && self.is_place(left),
+            } => self.cx.m.info(e).native_str(self.syms) == "index" && self.is_place(left),
             _ => false,
         }
     }
@@ -1586,10 +1594,14 @@ impl Walker<'_> {
         let ExprKind::Number(t) = &index.kind else {
             return Step::Element;
         };
-        let literal = || ms_syntax::number::canonical(t.as_str()).parse::<u64>().ok();
+        let literal = || {
+            ms_syntax::number::canonical(self.syms.str(t))
+                .parse::<u64>()
+                .ok()
+        };
         if self.cx.m.ty(left).is(Builtin::List)
-            && !t.as_str().contains(['.', 'e', 'E'])
-            && !t.ends_with('d')
+            && !self.syms.str(t).contains(['.', 'e', 'E'])
+            && !self.syms.str(t).ends_with('d')
         {
             return literal().map_or(Step::Element, Step::Index);
         }
@@ -1610,7 +1622,7 @@ impl Walker<'_> {
                     root_node: e.id,
                     projection: false,
                     through_ref: None,
-                    text: b.name.as_str().to_string(),
+                    text: self.syms.str(b.name).to_string(),
                 };
                 Some((info, p))
             }
@@ -1619,7 +1631,7 @@ impl Walker<'_> {
                 let p = p.then(Step::Field(*name));
                 info.resolved = self.resolve(&p);
                 info.projection = true;
-                info.text = format!("{}.{}", info.text, name);
+                info.text = format!("{}.{}", info.text, self.syms.str(name));
                 Some((info, p))
             }
             ExprKind::Index { left, index } => {
@@ -1676,8 +1688,8 @@ impl Walker<'_> {
                 if ended.contains(&place.root) {
                     found.push((
                         a.pos,
-                        a.holder_name.as_str().to_string(),
-                        self.name_of(place.root).as_str().to_string(),
+                        self.syms.str(a.holder_name).to_string(),
+                        self.syms.str(self.name_of(place.root)).to_string(),
                     ));
                 }
             }
@@ -1830,7 +1842,7 @@ impl Walker<'_> {
             });
         }
         if let Some(b) = self.cx.m.stmt(s).loop_binding {
-            let class = self.cx.classes.class(&b.ty);
+            let class = self.cx.classes.class(self.syms, &b.ty);
             if class == Class::Copy || source.owned {
                 self.declare(&b, Role::Loop, Perm::Immutable, None, false);
                 if let Some(f) = self.facts.bindings.get_mut(&b.uid) {
@@ -1885,7 +1897,7 @@ impl Walker<'_> {
         if !mutable {
             self.let_pos.insert(b.uid, s.pos);
         }
-        let class = self.cx.classes.class(&b.ty);
+        let class = self.cx.classes.class(self.syms, &b.ty);
         // A scalar copies, `let` or `var`; any other binding of a place borrows it, shared for
         // `let` and exclusive for `var`.
         if class != Class::Copy
@@ -1919,7 +1931,7 @@ impl Walker<'_> {
                         pattern.pos,
                         format!(
                             "`var {}` cannot borrow `{text}` mutably: it is a read-only result; clone it with `{text}.{CLONE}()` to own it",
-                            b.name
+                            self.syms.str(b.name)
                         ),
                     );
                     self.declare(&b, role, Perm::Mutable, None, false);
@@ -1969,7 +1981,7 @@ impl Walker<'_> {
             && let ExprKind::Name(_) = &inner.kind
             && let Resolution::Local(src) = self.cx.m.resolution(inner)
             && let Some(src_meta) = self.meta.get(&src.uid)
-            && self.cx.classes.class(&src.ty) != Class::Copy
+            && self.cx.classes.class(self.syms, &src.ty) != Class::Copy
             && (!self.is_last(inner.id, &src)
                 || matches!(src_meta.perm, Perm::Borrowed | Perm::MutBorrowed))
         {
@@ -2076,7 +2088,7 @@ impl Walker<'_> {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, pattern.pos, closable));
         }
-        if ty_holds_promise(&b.ty) {
+        if ty_holds_promise(self.syms, &b.ty) {
             self.take_carried(b.uid, b.name);
         }
         if self.entry_call(value) || self.holds_lambda_promises(value) {
@@ -2100,7 +2112,7 @@ impl Walker<'_> {
     fn bind_getter(&mut self, s: &Stmt, b: &BindingRef, role: Role, value: &Expr) {
         let pos = s.pos;
         let text = self.expr_text(value);
-        let ret_borrow = result_borrow(self.cx.m, value, self.cx.summaries);
+        let ret_borrow = result_borrow(self.syms, self.cx.m, value, self.cx.summaries);
         let operands = self.borrow_operands(value, &ret_borrow).unwrap_or_default();
         let target = match (&ret_borrow.path, operands.as_slice()) {
             (Some((None, fields)), [recv]) if ret_borrow.receiver => Some((*recv, fields.clone())),
@@ -2117,7 +2129,7 @@ impl Walker<'_> {
                 pos,
                 format!(
                     "`var {}` cannot borrow `{text}` mutably: the result is a reference into more than one place; bind it with `let` to read it, or borrow the field it returns directly",
-                    b.name
+                    self.syms.str(b.name)
                 ),
             );
             self.declare(b, role, Perm::Mutable, None, false);
@@ -2209,7 +2221,9 @@ impl Walker<'_> {
     /// the method and its receiver expression.
     fn method_value_parts<'e>(&self, e: &'e Expr) -> Option<(MethodRef, &'e Expr)> {
         let member = match &e.kind {
-            ExprKind::Apply { left, .. } if self.cx.m.info(e).native_str() != "index" => left,
+            ExprKind::Apply { left, .. } if self.cx.m.info(e).native_str(self.syms) != "index" => {
+                left
+            }
             _ => e,
         };
         let ExprKind::Member { left, .. } = &member.kind else {
@@ -2234,7 +2248,7 @@ impl Walker<'_> {
     /// The receiver of a method value that changes it (`xs.append`).
     fn changing_method_value<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
         let (m, left) = self.method_value_parts(e)?;
-        (receiver_mode(self.cx.summaries, &m) == Some(ParamMode::Mutate)).then_some(left)
+        (receiver_mode(self.syms, self.cx.summaries, &m) == Some(ParamMode::Mutate)).then_some(left)
     }
 
     /// Takes the receiver of a method value that changes it as a mutable borrow. The value
@@ -2256,7 +2270,7 @@ impl Walker<'_> {
         if escaping {
             self.error(
                 e.pos,
-                format!("this method value changes `{0}`, so it cannot be returned, stored or passed to a moving parameter; keep it local, or call the method instead", info.root.name),
+                format!("this method value changes `{0}`, so it cannot be returned, stored or passed to a moving parameter; keep it local, or call the method instead", self.syms.str(info.root.name)),
             );
             return Vec::new();
         }
@@ -2268,7 +2282,7 @@ impl Walker<'_> {
     /// The receiver of a method value that only reads it (`re.find`).
     fn method_value<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
         let (m, left) = self.method_value_parts(e)?;
-        (receiver_mode(self.cx.summaries, &m) != Some(ParamMode::Mutate)).then_some(left)
+        (receiver_mode(self.syms, self.cx.summaries, &m) != Some(ParamMode::Mutate)).then_some(left)
     }
 
     /// Walks the receiver of a method value that only reads it. The value is a closure over the
@@ -2354,7 +2368,7 @@ impl Walker<'_> {
                 };
                 self.check_store(s.pos, &b, *name);
                 let places = vec![Place::local(b.uid)];
-                self.check_change(s.pos, &places, "reassign", b.name.as_str(), None);
+                self.check_change(s.pos, &places, "reassign", self.syms.str(b.name), None);
                 self.mark_mutated(b.uid);
                 self.record(s.id, &b, Access::Write);
                 self.facts.drops_old.insert(s.id);
@@ -2381,15 +2395,15 @@ impl Walker<'_> {
             Perm::MutBorrowed if m.class == Class::Copy => {}
             Perm::Immutable if m.parameter.is_some() => self.error(
                 pos,
-                format!("cannot assign to parameter `{name}`: it is not declared var; write `var {name}: <Type>` in the signature and `var` at every call"),
+                format!("cannot assign to parameter `{name_t}`: it is not declared var; write `var {name_t}: <Type>` in the signature and `var` at every call", name_t = self.syms.str(name)),
             ),
             Perm::MutBorrowed => self.error(
                 pos,
-                format!("cannot reassign `{name}`: it is a mutable borrow of another value; assign to its fields, or clone with `{name}.{CLONE}()`"),
+                format!("cannot reassign `{name_t}`: it is a mutable borrow of another value; assign to its fields, or clone with `{name_t}.{CLONE}()`", name_t = self.syms.str(name)),
             ),
             Perm::Immutable | Perm::Borrowed => self.error(
                 pos,
-                format!("cannot assign to `{name}`: it is not a var; declare it `var {name} = ...`"),
+                format!("cannot assign to `{name_t}`: it is not a var; declare it `var {name_t} = ...`", name_t = self.syms.str(name)),
             ),
         }
     }
@@ -2413,7 +2427,7 @@ impl Walker<'_> {
         let text = info.text.clone();
         // `?.` desugars to a hidden `?N` binding of the payload. Changing it changes the
         // optional it was read from, so the binding becomes an exclusive borrow of that place.
-        if root.name.as_str().starts_with('?') && perm != Perm::MutBorrowed {
+        if self.syms.str(root.name).starts_with('?') && perm != Perm::MutBorrowed {
             let Some(place) = self.chain_places.get(&root.uid).cloned() else {
                 // Only a variable (or a part of one) can be changed through `?.`; a call result
                 // such as `m.get(k)` is a read-only view.
@@ -2437,7 +2451,7 @@ impl Walker<'_> {
         if let Some(field) = info.through_ref {
             self.error(
                 pos,
-                format!("cannot {what} `{text}`: `{field}` is a `ref` field, a read-only view of another value"),
+                format!("cannot {what} `{text}`: `{field_t}` is a `ref` field, a read-only view of another value", field_t = self.syms.str(field)),
             );
             return;
         }
@@ -2448,13 +2462,13 @@ impl Walker<'_> {
                     .meta
                     .get(&root.uid)
                     .and_then(|m| m.origins.first())
-                    .map(|o| self.name_of(o.root).to_string())
+                    .map(|o| self.syms.str(self.name_of(o.root)).to_string())
                     .unwrap_or_else(|| "another value".to_string());
                 self.error(
                     pos,
                     format!(
                         "cannot {what} `{text}`: `{}` only borrows from `{from}`; clone it first with `var {} = {}.{CLONE}()`",
-                        root.name, root.name, root.name
+                        self.syms.str(root.name), self.syms.str(root.name), self.syms.str(root.name)
                     ),
                 );
             }
@@ -2470,7 +2484,8 @@ impl Walker<'_> {
             Perm::Immutable if parameter.is_some() => {
                 let message = format!(
                     "cannot {what} `{text}`: parameter `{}` is not declared var; write `var {}: <Type>` in the signature and pass `var` at every call",
-                    root.name, root.name
+                    self.syms.str(root.name),
+                    self.syms.str(root.name)
                 );
                 let declared = match (self.cx.c.func.method(), self.cx.c.func.func()) {
                     (Some(m), _) => m.func.params.get(parameter.unwrap_or(0)).map(|p| p.pos),
@@ -2486,7 +2501,8 @@ impl Walker<'_> {
                 let _ = role;
                 let message = format!(
                     "cannot {what} `{text}`: `{}` is declared with let, which is immutable including its contents; declare it `var {}` to change it",
-                    root.name, root.name
+                    self.syms.str(root.name),
+                    self.syms.str(root.name)
                 );
                 match self.let_pos.get(&root.uid).copied() {
                     Some(at) => {
@@ -2708,7 +2724,7 @@ impl Walker<'_> {
     }
 
     fn payload(&mut self, b: &BindingRef, source: &Scrutinee, role: Role, pos: Pos) {
-        let class = self.cx.classes.class(&b.ty);
+        let class = self.cx.classes.class(self.syms, &b.ty);
         if class == Class::Copy || source.owned {
             let perm = if role == Role::Var {
                 Perm::Mutable
@@ -2791,7 +2807,7 @@ impl Walker<'_> {
         let operands = match self.native_borrow_receiver(e) {
             Some(recv) => vec![recv],
             None => {
-                let ret_borrow = result_borrow(self.cx.m, e, self.cx.summaries);
+                let ret_borrow = result_borrow(self.syms, self.cx.m, e, self.cx.summaries);
                 if !ret_borrow.returns_borrow {
                     return None;
                 }
@@ -2831,12 +2847,17 @@ impl Walker<'_> {
         {
             return false;
         }
-        if !self.cx.m.ty(e).is_source_type(PROMISE_MODULE, "Promise") {
+        if !self
+            .cx
+            .m
+            .ty(e)
+            .is_source_type(self.syms, PROMISE_MODULE, "Promise")
+        {
             return false;
         }
         match self.cx.m.resolution(e) {
-            Resolution::Function(s) => s.native.as_str().is_empty(),
-            Resolution::Method(m) => m.native.as_str().is_empty(),
+            Resolution::Function(s) => self.syms.str(s.native).is_empty(),
+            Resolution::Method(m) => self.syms.str(m.native).is_empty(),
             _ => false,
         }
     }
@@ -2847,7 +2868,7 @@ impl Walker<'_> {
         let ExprKind::Call { args, .. } = &e.kind else {
             return Vec::new();
         };
-        if !ty_holds_promise(&self.cx.m.ty(e)) {
+        if !ty_holds_promise(self.syms, &self.cx.m.ty(e)) {
             return Vec::new();
         }
         args.iter()
@@ -2896,7 +2917,7 @@ impl Walker<'_> {
         let mut out = Vec::new();
         for b in self.entry_captures(e) {
             // A resource is moved into the promise, which owns and closes it.
-            if self.cx.classes.class(&b.ty) == Class::Resource {
+            if self.cx.classes.class(self.syms, &b.ty) == Class::Resource {
                 continue;
             }
             for p in self.with_held(self.resolve(&Place::local(b.uid))) {
@@ -2925,7 +2946,7 @@ impl Walker<'_> {
                 out.extend(
                     self.entry_captures(part)
                         .into_iter()
-                        .filter(|b| self.cx.classes.class(&b.ty) == Class::Move)
+                        .filter(|b| self.cx.classes.class(self.syms, &b.ty) == Class::Move)
                         .map(|b| b.name),
                 );
             } else if let Resolution::Local(b) = self.cx.m.resolution(part) {
@@ -2986,8 +3007,10 @@ impl Walker<'_> {
 
     fn expr_text(&self, e: &Expr) -> String {
         match &e.kind {
-            ExprKind::Name(n) => n.as_str().to_string(),
-            ExprKind::Member { left, name } => format!("{}.{}", self.expr_text(left), name),
+            ExprKind::Name(n) => self.syms.str(n).to_string(),
+            ExprKind::Member { left, name } => {
+                format!("{}.{}", self.expr_text(left), self.syms.str(name))
+            }
             ExprKind::Index { left, .. }
             | ExprKind::Apply {
                 left,
@@ -3004,8 +3027,8 @@ impl Walker<'_> {
     fn expr(&mut self, e: &Expr, d: Demand) {
         if d == Demand::Move
             && let Some(src) = &self.cx.m.info(e).interface_source
-            && self.cx.classes.class(src) == Class::Resource
-            && !declares_close(&self.cx.m.ty(e))
+            && self.cx.classes.class(self.syms, src) == Class::Resource
+            && !declares_close(self.syms, &self.cx.m.ty(e))
         {
             // An interface value is never closed for its owner, so owning a resource through one
             // drops its close, unless the interface hands the duty on with a `close` operation.
@@ -3013,7 +3036,7 @@ impl Walker<'_> {
             let target = self.cx.m.ty(e);
             self.error(
                 e.pos,
-                format!("`{text}` is the resource `{src}`, and the `{target}` it would become never closes it; keep it as a `{src}` so its owner closes it, or pass it where `{target}` is only read"),
+                format!("`{text}` is the resource `{src_t}`, and the `{target_t}` it would become never closes it; keep it as a `{src_t}` so its owner closes it, or pass it where `{target_t}` is only read", src_t = src.display(self.syms), target_t = target.display(self.syms)),
             );
         }
         if let Some(src) = self.cx.m.info(e).interface_source.clone() {
@@ -3134,7 +3157,7 @@ impl Walker<'_> {
         let place = Place::local(b.uid);
         let resolved = self.resolve(&place);
         if d != Demand::Move || class == Class::Copy {
-            self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
+            self.check_read(e.pos, &resolved, self.syms.str(b.name), b.uid);
             let access = if d == Demand::Move {
                 Access::Copy
             } else {
@@ -3157,12 +3180,14 @@ impl Walker<'_> {
         // assignment to itself, which refills it (`exchange = wrap(exchange)`).
         let var_param =
             parameter.is_some() && perm == Perm::Mutable && self.self_assign != Some(b.uid);
-        if role == Role::LambdaParameter && self.cx.classes.class(&b.ty) == Class::Resource {
+        if role == Role::LambdaParameter
+            && self.cx.classes.class(self.syms, &b.ty) == Class::Resource
+        {
             // A function value is called with its arguments borrowed, so taking one would copy it,
             // and the caller still closes the original.
             self.error(
                 e.pos,
-                format!("cannot move `{name}` out: a function value only borrows its arguments, and the resource `{}` stays with its caller, which closes it; use `{name}` in place here", b.ty),
+                format!("cannot move `{name_t}` out: a function value only borrows its arguments, and the resource `{}` stays with its caller, which closes it; use `{name_t}` in place here", b.ty.display(self.syms), name_t = self.syms.str(name)),
             );
             self.record(e.id, b, Access::Move);
             return;
@@ -3173,24 +3198,27 @@ impl Walker<'_> {
             self.require_clonable(
                 e,
                 &t,
-                &format!("this function value keeps `{name}`, which it only borrows, so it"),
+                &format!(
+                    "this function value keeps `{name_t}`, which it only borrows, so it",
+                    name_t = self.syms.str(name)
+                ),
             );
         }
         if self.captured.iter().any(|c| c.contains(&b.uid)) && perm != Perm::ClosureOwned {
             if b.ty.kind == Kind::Function {
                 self.error(
                     e.pos,
-                    format!("this closure would move the function `{name}` out of the variable it captured, but a closure can run more than once; functions cannot be cloned, so call `{name}` here or take it as a parameter of the closure"),
+                    format!("this closure would move the function `{name_t}` out of the variable it captured, but a closure can run more than once; functions cannot be cloned, so call `{name_t}` here or take it as a parameter of the closure", name_t = self.syms.str(name)),
                 );
-            } else if self.cx.classes.class(&b.ty) == Class::Resource {
+            } else if self.cx.classes.class(self.syms, &b.ty) == Class::Resource {
                 self.error(
                     e.pos,
-                    format!("this closure would move `{name}` out of the variable it captured, but a closure can run more than once, and a resource cannot be cloned; use `{name}` in place inside the closure"),
+                    format!("this closure would move `{name_t}` out of the variable it captured, but a closure can run more than once, and a resource cannot be cloned; use `{name_t}` in place inside the closure", name_t = self.syms.str(name)),
                 );
             } else {
                 self.error_fix_opt(
                     e.pos,
-                    format!("this closure would move `{name}` out of the variable it captured, but a closure can run more than once; return `{name}.{CLONE}()` instead"),
+                    format!("this closure would move `{name_t}` out of the variable it captured, but a closure can run more than once; return `{name_t}.{CLONE}()` instead", name_t = self.syms.str(name)),
                     copy_after(e),
                 );
             }
@@ -3207,36 +3235,36 @@ impl Walker<'_> {
             if let Some(scrutinee) = self.meta[&b.uid].deferred {
                 self.escaped.insert(scrutinee);
             }
-            if self.cx.classes.class(&b.ty) == Class::Resource {
+            if self.cx.classes.class(self.syms, &b.ty) == Class::Resource {
                 self.error(
                     e.pos,
-                    format!("cannot move `{name}` out: it is borrowed, not owned ({}), and its owner closes it; a resource cannot be cloned, so use `{name}` in place", role_text(role, perm)),
+                    format!("cannot move `{name_t}` out: it is borrowed, not owned ({}), and its owner closes it; a resource cannot be cloned, so use `{name_t}` in place", role_text(role, perm), name_t = self.syms.str(name)),
                 );
             } else if let Some(why) = clone_blocker(&b.ty) {
                 self.error(
                     e.pos,
-                    format!("cannot move `{name}` out: it is borrowed, not owned ({}); {why}, so use `{name}` in place", role_text(role, perm)),
+                    format!("cannot move `{name_t}` out: it is borrowed, not owned ({}); {why}, so use `{name_t}` in place", role_text(role, perm), name_t = self.syms.str(name)),
                 );
             } else {
                 self.error_fix(
                     e.pos,
-                    format!("cannot move `{name}` out: it is borrowed, not owned ({}); use `{name}.{CLONE}()` to get a clone", role_text(role, perm)),
-                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{CLONE}()")),
+                    format!("cannot move `{name_t}` out: it is borrowed, not owned ({}); use `{name_t}.{CLONE}()` to get a clone", role_text(role, perm), name_t = self.syms.str(name)),
+                    insert_at(forward(e.pos, self.syms.str(name).len()), &format!(".{CLONE}()")),
                 );
             }
             self.record(e.id, b, Access::Move);
             return;
         } else if (var_param || (receiver && perm == Perm::Mutable))
-            && self.cx.classes.class(&b.ty) == Class::Resource
+            && self.cx.classes.class(self.syms, &b.ty) == Class::Resource
         {
             self.error(
                 e.pos,
-                format!("cannot move `{name}` out of the function: the caller keeps ownership of a var parameter and closes it; a resource cannot be cloned, so change it in place"),
+                format!("cannot move `{name_t}` out of the function: the caller keeps ownership of a var parameter and closes it; a resource cannot be cloned, so change it in place", name_t = self.syms.str(name)),
             );
         } else if var_param || (receiver && perm == Perm::Mutable) {
             self.error_fix_opt(
                 e.pos,
-                format!("cannot move `{name}` out of the function: the caller keeps ownership of a var parameter; return `{name}.{CLONE}()` or change the value in place"),
+                format!("cannot move `{name_t}` out of the function: the caller keeps ownership of a var parameter; return `{name_t}.{CLONE}()` or change the value in place", name_t = self.syms.str(name)),
                 copy_after(e),
             );
         } else if !self.is_last(e.id, b) {
@@ -3247,27 +3275,27 @@ impl Walker<'_> {
             if b.ty.kind == Kind::Function {
                 self.error(
                     e.pos,
-                    format!("`{name}` is moved here but used again{later}; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed"),
+                    format!("`{name_t}` is moved here but used again{later}; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed", name_t = self.syms.str(name)),
                 );
-            } else if self.cx.classes.class(&b.ty) == Class::Resource {
+            } else if self.cx.classes.class(self.syms, &b.ty) == Class::Resource {
                 self.error(
                     e.pos,
-                    format!("`{name}` is moved here but used again{later}; a resource has one owner and cannot be cloned, so move it only at its last use, or pass it where it is only read"),
+                    format!("`{name_t}` is moved here but used again{later}; a resource has one owner and cannot be cloned, so move it only at its last use, or pass it where it is only read", name_t = self.syms.str(name)),
                 );
             } else if let Some(why) = clone_blocker(&b.ty) {
                 self.error(
                     e.pos,
-                    format!("`{name}` is moved here but used again{later}; {why}, so move it only at its last use"),
+                    format!("`{name_t}` is moved here but used again{later}; {why}, so move it only at its last use", name_t = self.syms.str(name)),
                 );
             } else {
                 self.error_fix(
                     e.pos,
-                    format!("`{name}` is moved here but used again{later}; a value has one owner, so pass `{name}.{CLONE}()` to keep the original, or move it only at its last use"),
-                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{CLONE}()")),
+                    format!("`{name_t}` is moved here but used again{later}; a value has one owner, so pass `{name_t}.{CLONE}()` to keep the original, or move it only at its last use", name_t = self.syms.str(name)),
+                    insert_at(forward(e.pos, self.syms.str(name).len()), &format!(".{CLONE}()")),
                 );
             }
         }
-        self.check_change(e.pos, resolved, "move", name.as_str(), Some(b.uid));
+        self.check_change(e.pos, resolved, "move", self.syms.str(name), Some(b.uid));
         self.mark_mutated(b.uid);
         self.record(e.id, b, Access::Move);
         if parameter.is_some() || receiver {
@@ -3344,11 +3372,11 @@ impl Walker<'_> {
                 e.pos,
                 format!(
                     "cannot move the resource `{0}` out of `{1}`: a resource cannot be cloned, and it leaves `{1}` only when `{1}` is a `let` or a parameter and no type on the path has a `close` of its own; use `{0}` in place, or move the whole `{1}`",
-                    info.text, info.root.name
+                    info.text, self.syms.str(info.root.name)
                 ),
             );
         } else if d == Demand::Move && class != Class::Copy {
-            let message = if info.root.name.starts_with('?') {
+            let message = if self.syms.str(info.root.name).starts_with('?') {
                 // The payload of an optional chain `a?.b`, which has no written name.
                 format!(
                     "an optional chain `?.` cannot move a field out of the optional; take a clone by ending the access with `.{CLONE}()`"
@@ -3356,7 +3384,8 @@ impl Walker<'_> {
             } else {
                 format!(
                     "cannot move `{0}` out of `{1}`: only a whole variable can move; take a clone with `{0}.{CLONE}()`",
-                    info.text, info.root.name
+                    info.text,
+                    self.syms.str(info.root.name)
                 )
             };
             // A member's position is its name, so the copy goes right after it.
@@ -3364,7 +3393,10 @@ impl Walker<'_> {
                 ExprKind::Member { name, .. } => self.error_fix(
                     e.pos,
                     message,
-                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{CLONE}()")),
+                    insert_at(
+                        forward(e.pos, self.syms.str(name).len()),
+                        &format!(".{CLONE}()"),
+                    ),
                 ),
                 _ => self.error(e.pos, message),
             }
@@ -3458,7 +3490,7 @@ impl Walker<'_> {
                     e.pos,
                     format!(
                         "`{0}` and a part of it are both moved out of `{1}`: move the same field everywhere, or move the whole `{1}`",
-                        info.text, root.name
+                        info.text, self.syms.str(root.name)
                     ),
                 );
                 return true;
@@ -3479,17 +3511,17 @@ impl Walker<'_> {
         if let Some(v) = unbounded_parameter(t) {
             self.error(
                 e.pos,
-                format!("{what} clones values of `{v}`, which may be a resource; declare `{v}: Clonable`"),
+                format!("{what} clones values of `{v_t}`, which may be a resource; declare `{v_t}: Clonable`", v_t = v.display(self.syms)),
             );
             return;
         }
-        if !self.cx.classes.clonable(t) {
+        if !self.cx.classes.clonable(self.syms, t) {
             // A concrete type with one owner: an interface value, or a native without a `clone`.
             self.error(
                 e.pos,
                 format!(
-                    "{what} clones `{t}`, which has one owner and cannot be cloned; use it in place"
-                ),
+                    "{what} clones `{t_t}`, which has one owner and cannot be cloned; use it in place"
+                , t_t = t.display(self.syms)),
             );
         }
     }
@@ -3531,16 +3563,19 @@ impl Walker<'_> {
                     continue;
                 };
                 let t = sub(&p.ty, &bound);
-                if self.cx.classes.class(&t) == Class::Resource {
+                if self.cx.classes.class(self.syms, &t) == Class::Resource {
                     let text = self.expr_text(e);
                     self.error(
                         e.pos,
-                        format!("`{text}` becomes a `{target}` whose `{op}` keeps its `{name}`, which the interface only borrows, so every call through it hands over a clone; the resource `{t}` cannot be cloned: pass something that is not a resource, or call `{src}`'s `{op}` directly"),
+                        format!("`{text}` becomes a `{target_t}` whose `{op_t}` keeps its `{name_t}`, which the interface only borrows, so every call through it hands over a clone; the resource `{t_t}` cannot be cloned: pass something that is not a resource, or call `{src_t}`'s `{op_t}` directly", target_t = target.display(self.syms), op_t = self.syms.str(op), t_t = t.display(self.syms), name_t = self.syms.str(name), src_t = src.display(self.syms)),
                     );
                 } else {
                     let what = format!(
-                        "`{text}` becomes a `{target}` whose `{op}` keeps its `{name}`, which the interface only borrows, so it",
-                        text = self.expr_text(e)
+                        "`{text}` becomes a `{target_t}` whose `{op_t}` keeps its `{name_t}`, which the interface only borrows, so it",
+                        text = self.expr_text(e),
+                        target_t = target.display(self.syms),
+                        op_t = self.syms.str(op),
+                        name_t = self.syms.str(name)
                     );
                     self.require_clonable(e, &t, &what);
                 }
@@ -3560,17 +3595,18 @@ impl Walker<'_> {
                 continue;
             }
             let Some(p) = fty.params.get(i) else { continue };
-            if self.cx.classes.class(&p.ty) == Class::Resource {
+            if self.cx.classes.class(self.syms, &p.ty) == Class::Resource {
                 let text = self.expr_text(e);
                 self.error(
                     e.pos,
-                    format!("`{text}` keeps its parameter `{name}`, but a function value only borrows its arguments, so every call would hand it a clone; the resource `{}` cannot be cloned: call `{text}` directly, or wrap it in a closure that uses `{name}` in place", p.ty),
+                    format!("`{text}` keeps its parameter `{name_t}`, but a function value only borrows its arguments, so every call would hand it a clone; the resource `{}` cannot be cloned: call `{text}` directly, or wrap it in a closure that uses `{name_t}` in place", p.ty.display(self.syms), name_t = self.syms.str(name)),
                 );
             } else {
                 let t = p.ty.clone();
                 let what = format!(
-                    "`{}` keeps its parameter `{name}`, but a function value only borrows its arguments, so it",
-                    self.expr_text(e)
+                    "`{}` keeps its parameter `{name_t}`, but a function value only borrows its arguments, so it",
+                    self.expr_text(e),
+                    name_t = self.syms.str(name)
                 );
                 self.require_clonable(e, &t, &what);
             }
@@ -3579,7 +3615,7 @@ impl Walker<'_> {
 
     fn call(&mut self, e: &Expr, callee: &Expr, args: &[Argument], d: Demand) {
         let cx = self.cx;
-        let mut modes = call_modes(cx.m, e, args, cx.summaries);
+        let mut modes = call_modes(self.syms, cx.m, e, args, cx.summaries);
         // `ok(x)` / `error(x)` kept as a reference (`view_wraps`) only reads its payload.
         if self.facts.view_wraps.contains(&e.id) || self.view_calls.contains(&e.id) {
             modes
@@ -3594,7 +3630,7 @@ impl Walker<'_> {
             _ => None,
         };
         if let (ExprKind::Member { name, .. }, Some(r)) = (&callee.kind, receiver_expr)
-            && name.as_str() == "close"
+            && self.syms.str(name) == "close"
             && let Resolution::Local(b) = cx.m.resolution(r)
         {
             self.closed.insert(b.uid);
@@ -3612,19 +3648,22 @@ impl Walker<'_> {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             let param = param_names.get(i).copied().unwrap_or_else(|| n("?"));
             // A function type names its parameters by position (`_0`): say which argument.
-            let positional = param
-                .as_str()
-                .strip_prefix('_')
-                .is_some_and(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()));
+            let positional =
+                self.syms.str(param).strip_prefix('_').is_some_and(|rest| {
+                    !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit())
+                });
             let which = if positional {
                 format!("argument {} of `{name}`", i + 1)
             } else {
-                format!("parameter `{param}` of `{name}`")
+                format!(
+                    "parameter `{param_t}` of `{name}`",
+                    param_t = self.syms.str(param)
+                )
             };
             match (mode, a.mutable) {
                 (ParamMode::Mutate, false) if positional => self.error_fix(
                     a.value.pos,
-                    format!("{which} is var in its type `{}`, so the call must say so; write `var {}`", self.cx.m.ty(callee), self.expr_text(&a.value)),
+                    format!("{which} is var in its type `{}`, so the call must say so; write `var {}`", self.cx.m.ty(callee).display(self.syms), self.expr_text(&a.value)),
                     insert_at(a.value.pos, "var "),
                 ),
                 (ParamMode::Mutate, false) => self.error_fix(
@@ -3634,7 +3673,7 @@ impl Walker<'_> {
                 ),
                 (ParamMode::Borrow | ParamMode::Move, true) if positional => self.error_fix(
                     a.value.pos,
-                    format!("`{name}` does not change {}: its type is `{}`; remove `var` from the argument", which.trim_end_matches(&format!(" of `{name}`")), self.cx.m.ty(callee)),
+                    format!("`{name}` does not change {}: its type is `{}`; remove `var` from the argument", which.trim_end_matches(&format!(" of `{name}`")), self.cx.m.ty(callee).display(self.syms)),
                     DiagnosticFix {
                         pos: back(a.value.pos, 4),
                         end: a.value.pos,
@@ -3643,7 +3682,7 @@ impl Walker<'_> {
                 ),
                 (ParamMode::Borrow | ParamMode::Move, true) => self.error_fix(
                     a.value.pos,
-                    format!("`{name}` does not change its parameter `{param}`; remove `var` from the argument"),
+                    format!("`{name}` does not change its parameter `{param_t}`; remove `var` from the argument", param_t = self.syms.str(param)),
                     DiagnosticFix {
                         pos: back(a.value.pos, 4),
                         end: a.value.pos,
@@ -3658,13 +3697,16 @@ impl Walker<'_> {
         let mut operands: Vec<Logged> = Vec::new();
         let reported = self.diags.len();
         if let Some(r) = receiver_expr {
-            if self.cx.m.info(e).native_str() == "clone" && self.class_of(r) == Class::Resource {
+            if self.cx.m.info(e).native_str(self.syms) == "clone"
+                && self.class_of(r) == Class::Resource
+            {
                 let text = self.expr_text(r);
                 self.error(
                     e.pos,
                     format!("`{text}` holds a resource, which has one owner and cannot be cloned: a clone would be closed a second time; move it instead"),
                 );
-            } else if self.cx.m.info(e).native_str() == "clone" && holds_function(&self.cx.m.ty(r))
+            } else if self.cx.m.info(e).native_str(self.syms) == "clone"
+                && holds_function(&self.cx.m.ty(r))
             {
                 let text = self.expr_text(r);
                 self.error(
@@ -3680,7 +3722,7 @@ impl Walker<'_> {
             let result_ty = self.cx.m.ty(e);
             if mode == ParamMode::Borrow
                 && self.class_of(e) != Class::Copy
-                && !self.cx.classes.clonable(&result_ty)
+                && !self.cx.classes.clonable(self.syms, &result_ty)
                 && unbounded_parameter(&result_ty).is_none()
                 && ty_contains(&self.cx.m.ty(r), &result_ty)
                 && self.native_borrow_receiver(e).is_none()
@@ -3697,7 +3739,7 @@ impl Walker<'_> {
                         clone_blocker(&result_ty).unwrap_or("it has one owner and no `clone`");
                     self.error(
                         e.pos,
-                        format!("`{name}` would take `{result_ty}` out of `{text}`, which only borrows an element of `{from}`; {why}, so read it in place (`if let`)"),
+                        format!("`{name}` would take `{result_ty_t}` out of `{text}`, which only borrows an element of `{from}`; {why}, so read it in place (`if let`)", result_ty_t = result_ty.display(self.syms)),
                     );
                 }
             }
@@ -3773,13 +3815,13 @@ impl Walker<'_> {
         // borrow of them, storing or returning it needs a copy, and when a source is a
         // temporary the caller owns the result (lowering copies it out before the temporary
         // is dropped).
-        let ret_borrow = result_borrow(cx.m, e, cx.summaries);
+        let ret_borrow = result_borrow(self.syms, cx.m, e, cx.summaries);
         if ret_borrow.returns_borrow && self.class_of(e) != Class::Copy {
             match self.pure_origins(e) {
                 Some(origins) if d == Demand::Move => {
                     let mut roots: Vec<String> = origins
                         .iter()
-                        .map(|p| self.name_of(p.root).as_str().to_string())
+                        .map(|p| self.syms.str(self.name_of(p.root)).to_string())
                         .collect();
                     roots.sort();
                     roots.dedup();
@@ -3834,12 +3876,12 @@ impl Walker<'_> {
             return;
         }
         let t = self.cx.m.ty(e);
-        if self.cx.classes.clonable(&t) {
+        if self.cx.classes.clonable(self.syms, &t) {
             return;
         }
         self.error(
             e.pos,
-            format!("`{name}` returns a part of a temporary argument, which would be cloned out as the argument is dropped; `{t}` has one owner and no `clone`, so bind the argument first and use the result while that binding lives"),
+            format!("`{name}` returns a part of a temporary argument, which would be cloned out as the argument is dropped; `{t_t}` has one owner and no `clone`, so bind the argument first and use the result while that binding lives", t_t = t.display(self.syms)),
         );
     }
 
@@ -3867,8 +3909,8 @@ impl Walker<'_> {
 
     fn call_name(&self, callee: &Expr) -> String {
         match &callee.kind {
-            ExprKind::Name(n) => n.as_str().to_string(),
-            ExprKind::Member { name, .. } => name.as_str().to_string(),
+            ExprKind::Name(n) => self.syms.str(n).to_string(),
+            ExprKind::Member { name, .. } => self.syms.str(name).to_string(),
             ExprKind::Apply { left, .. } => self.call_name(left),
             _ => "the callee".to_string(),
         }
@@ -4065,7 +4107,7 @@ impl Walker<'_> {
         let ExprKind::Call { callee, args } = &call.kind else {
             return Vec::new();
         };
-        let modes = call_modes(self.cx.m, call, args, self.cx.summaries);
+        let modes = call_modes(self.syms, self.cx.m, call, args, self.cx.summaries);
         let mut written: Vec<(&Expr, ParamMode)> = Vec::new();
         if let (ExprKind::Member { left, .. }, Resolution::Method(_)) =
             (&callee.kind, self.cx.m.resolution(call))
@@ -4394,7 +4436,7 @@ impl Walker<'_> {
                 if changed {
                     self.error(
                         e.pos,
-                        format!("this closure changes captured `{0}`, so it cannot be returned, stored or passed to a moving parameter; keep the closure local, or have it return a new value instead of changing `{0}`", b.name),
+                        format!("this closure changes captured `{0}`, so it cannot be returned, stored or passed to a moving parameter; keep the closure local, or have it return a new value instead of changing `{0}`", self.syms.str(b.name)),
                     );
                 }
                 // Only a plain value is copied in. Anything else moves at its last use; when the
@@ -4415,7 +4457,7 @@ impl Walker<'_> {
                             .unwrap_or_default();
                         self.error(
                             e.pos,
-                            format!("this closure outlives the statement but captures the `var` `{name}`, which is used again{later}; the closure would keep a stale value, so bind a `let` clone before the closure and capture that"),
+                            format!("this closure outlives the statement but captures the `var` `{name_t}`, which is used again{later}; the closure would keep a stale value, so bind a `let` clone before the closure and capture that", name_t = self.syms.str(name)),
                         );
                     }
                     self.record(e.id, b, Access::Copy);
@@ -4437,10 +4479,10 @@ impl Walker<'_> {
                         e.pos,
                         format!(
                             "concurrent code never changes a shared value, and this promise changes `{0}`; return a new value from the promise instead, or give `{0}` one owner and send it values over a `pipe`",
-                            b.name
+                            self.syms.str(b.name)
                         ),
                     );
-                    self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
+                    self.check_read(e.pos, &resolved, self.syms.str(b.name), b.uid);
                     facts.push((b.uid, CaptureMode::Borrow));
                 } else if changed {
                     let info = PlaceInfo {
@@ -4449,18 +4491,18 @@ impl Walker<'_> {
                         resolved: resolved.clone(),
                         projection: false,
                         through_ref: None,
-                        text: b.name.as_str().to_string(),
+                        text: self.syms.str(b.name).to_string(),
                     };
                     self.mutate(e.pos, &info, "change");
                     facts.push((b.uid, CaptureMode::BorrowMut));
                 } else if class == Class::Copy {
                     // A `Copy` value the closure only reads is borrowed like any other: the
                     // variable stays unchanged while the closure lives, so lowering may copy it.
-                    self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
+                    self.check_read(e.pos, &resolved, self.syms.str(b.name), b.uid);
                     self.record(e.id, b, Access::Copy);
                     facts.push((b.uid, CaptureMode::Copy));
                 } else {
-                    self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
+                    self.check_read(e.pos, &resolved, self.syms.str(b.name), b.uid);
                     self.record(e.id, b, Access::Borrow);
                     facts.push((b.uid, CaptureMode::Borrow));
                 }
@@ -4489,12 +4531,12 @@ impl Walker<'_> {
             if let Some(why) = clone_blocker(&b.ty) {
                 self.error(
                     e.pos,
-                    format!("this closure outlives the statement but captures `{name}`, which is borrowed, not owned; {why}, so capture an owned value instead"),
+                    format!("this closure outlives the statement but captures `{name_t}`, which is borrowed, not owned; {why}, so capture an owned value instead", name_t = self.syms.str(name)),
                 );
             } else {
                 self.error_fix_opt(
                     e.pos,
-                    format!("this closure outlives the statement but captures `{name}`, which is borrowed, not owned; capture `{name}.{CLONE}()` instead"),
+                    format!("this closure outlives the statement but captures `{name_t}`, which is borrowed, not owned; capture `{name_t}.{CLONE}()` instead", name_t = self.syms.str(name)),
                     copy_after(e),
                 );
             }
@@ -4506,22 +4548,22 @@ impl Walker<'_> {
             if b.ty.kind == Kind::Function {
                 self.error(
                     e.pos,
-                    format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; a function value cannot be cloned, so declare a named `fn` instead"),
+                    format!("this closure outlives the statement, so it takes `{name_t}` with it, but `{name_t}` is used again{later}; a function value cannot be cloned, so declare a named `fn` instead", name_t = self.syms.str(name)),
                 );
-            } else if self.cx.classes.class(&b.ty) == Class::Resource {
+            } else if self.cx.classes.class(self.syms, &b.ty) == Class::Resource {
                 self.error(
                     e.pos,
-                    format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; a resource cannot be cloned, so use `{name}` only inside the closure, or capture it at its last use"),
+                    format!("this closure outlives the statement, so it takes `{name_t}` with it, but `{name_t}` is used again{later}; a resource cannot be cloned, so use `{name_t}` only inside the closure, or capture it at its last use", name_t = self.syms.str(name)),
                 );
             } else {
                 self.error_fix_opt(
                     e.pos,
-                    format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; capture `{name}.{CLONE}()` to keep the original"),
+                    format!("this closure outlives the statement, so it takes `{name_t}` with it, but `{name_t}` is used again{later}; capture `{name_t}.{CLONE}()` to keep the original", name_t = self.syms.str(name)),
                     copy_after(e),
                 );
             }
         }
-        self.check_change(e.pos, resolved, "move", name.as_str(), Some(b.uid));
+        self.check_change(e.pos, resolved, "move", self.syms.str(name), Some(b.uid));
         self.record(e.id, b, Access::Move);
         let (parameter, receiver) = {
             let m = &self.meta[&b.uid];
@@ -4582,8 +4624,9 @@ fn role_text(role: Role, perm: Perm) -> &'static str {
 }
 
 /// Whether `t` is, or holds as a type argument, a `Promise`.
-fn ty_holds_promise(t: &Ty) -> bool {
-    t.is_source_type(PROMISE_MODULE, "Promise") || t.args.iter().any(ty_holds_promise)
+fn ty_holds_promise(syms: ms_syntax::Names, t: &Ty) -> bool {
+    t.is_source_type(syms, PROMISE_MODULE, "Promise")
+        || t.args.iter().any(|a| ty_holds_promise(syms, a))
 }
 
 /// Whether `part` is exactly one of the type arguments of `src`, at any depth.

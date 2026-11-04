@@ -24,19 +24,23 @@ struct Described {
     std: bool,
 }
 
-pub fn search_symbol(request: &SearchSymbolRequest, io: &mut Io) -> BackendResult {
+pub fn search_symbol(
+    syms: ms_syntax::Names,
+    request: &SearchSymbolRequest,
+    io: &mut Io,
+) -> BackendResult {
     if request.names.is_empty() {
-        let _ = write!(io.stdout, "{}", ms_tooling::guide::index());
+        let _ = write!(io.stdout, "{}", ms_tooling::guide::index(syms));
         return Ok(0);
     }
     let query = request.names.join(" ");
     let limit = request.limit;
-    let (matches, total) = search_symbols(".", &request.names.concat(), limit)
+    let (matches, total) = search_symbols(syms, ".", &request.names.concat(), limit)
         .map_err(|e| BackendError(format!("ms search_symbol: {e}")))?;
     if request.names.len() == 1
         && !request.json
         && !matches.iter().any(|m| name_rank(&m.name, &query) == 0)
-        && let Ok(page) = ms_tooling::guide::page(&query)
+        && let Ok(page) = ms_tooling::guide::page(syms, &query)
     {
         let _ = write!(io.stdout, "{page}");
         return Ok(0);
@@ -44,6 +48,7 @@ pub fn search_symbol(request: &SearchSymbolRequest, io: &mut Io) -> BackendResul
     let project_count = matches.len();
     let mut described: Vec<Described> = matches.into_iter().map(describe_project).collect();
     described.extend(library_matches(
+        syms,
         &query,
         request.names.len(),
         project_count,
@@ -115,8 +120,14 @@ fn describe_project(m: SymbolMatch) -> Described {
 }
 
 /// Standard-library symbols follow project matches within the same result limit.
-fn library_matches(query: &str, words: usize, project: usize, limit: usize) -> Vec<Described> {
-    let concept = ms_tooling::guide::search(query, 50);
+fn library_matches(
+    syms: ms_syntax::Names,
+    query: &str,
+    words: usize,
+    project: usize,
+    limit: usize,
+) -> Vec<Described> {
+    let concept = ms_tooling::guide::search(syms, query, 50);
     let mut library: Vec<(i32, &Match)> = Vec::new();
     for m in &concept {
         let (path, own) = (name_rank(&m.path, query), name_rank(&m.name, query));

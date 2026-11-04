@@ -13,19 +13,27 @@ mod support;
 use support::Workspace;
 
 fn labels(source: &str, line: usize, character: usize) -> Vec<String> {
+    let syms = ms_syntax::Names::global();
     let ws = Workspace::new("editing-completion");
     let d = Document::new(ws.uri("case.ms"), source);
     let at = Position { line, character };
-    completion_at(&ms_check::Session::new(), &d, &Documents::new(), at, false)
-        .expect("completion")
-        .into_iter()
-        .filter_map(|item| {
-            item.json()
-                .get("label")
-                .and_then(|j| j.as_str())
-                .map(str::to_string)
-        })
-        .collect()
+    completion_at(
+        syms,
+        &ms_check::Session::new(),
+        &d,
+        &Documents::new(),
+        at,
+        false,
+    )
+    .expect("completion")
+    .into_iter()
+    .filter_map(|item| {
+        item.json()
+            .get("label")
+            .and_then(|j| j.as_str())
+            .map(str::to_string)
+    })
+    .collect()
 }
 
 /// The position between `val` and `ue` of the `return value` line.
@@ -118,14 +126,16 @@ fn apply(source: &str, action: &Json) -> String {
 }
 
 fn actions(source: &str, only: &str) -> (Document, Vec<Json>) {
+    let syms = ms_syntax::Names::global();
     let ws = Workspace::new("editing-actions");
     let d = Document::new(ws.uri("main.ms"), source);
-    let checked = analyze(&ms_check::Session::new(), &d, &Documents::new());
+    let checked = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
     let whole = Range {
         start: Position::default(),
         end: text::position(source, source.len()),
     };
     let found = editor_actions(
+        syms,
         &d,
         &checked,
         &Tooling,
@@ -188,19 +198,29 @@ fn organize_imports_moves_whole_multiline_declarations() {
 const IDENTITY: &str = "fn identity(value: Int) Int:\n    return value\n";
 
 fn rename_edit(uri: &str) -> Json {
+    let syms = ms_syntax::Names::global();
     let d = Document {
         version: 42,
         ..Document::new(uri, IDENTITY)
     };
     let mut docs = Documents::new();
     docs.insert(d.uri.clone(), d.clone());
-    let checked = analyze(&ms_check::Session::new(), &d, &docs);
+    let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
     let at = Position {
         line: 0,
         character: 15,
     };
-    ms_lsp::rename::rename(&checked, checked.index(), &d, at, "item", None, Some(&docs))
-        .expect("rename")
+    ms_lsp::rename::rename(
+        syms,
+        &checked,
+        checked.occurrence_index(syms),
+        &d,
+        at,
+        "item",
+        None,
+        Some(&docs),
+    )
+    .expect("rename")
 }
 
 fn assert_versioned(edit: &Json, uri: &str) {
@@ -230,19 +250,21 @@ fn rename_keeps_the_open_percent_encoded_uri_and_version() {
 
 #[test]
 fn rename_preserves_unicode_and_original_ranges_when_name_length_changes() {
+    let syms = ms_syntax::Names::global();
     let ws = Workspace::new("rename-lengths");
     let source = include_str!("editing_regressions/repeated-rename.ms");
     for source in [source.to_string(), source.replace('\n', "\r\n")] {
         for name in ["x", "renamed_value"] {
             let d = Document::new(ws.uri("repeat.ms"), &source);
             let docs = Documents::from([(d.uri.clone(), d.clone())]);
-            let checked = analyze(&ms_check::Session::new(), &d, &docs);
+            let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
             assert!(checked.success(), "{:?}", checked.diagnostics);
             // Select the final use after a supplementary Unicode character.
             let offset = source.rfind("value").unwrap();
             let edit = ms_lsp::rename::rename(
+                syms,
                 &checked,
-                checked.index(),
+                checked.occurrence_index(syms),
                 &d,
                 text::position(&source, offset),
                 name,
@@ -258,11 +280,12 @@ fn rename_preserves_unicode_and_original_ranges_when_name_length_changes() {
 
 #[test]
 fn rename_ignores_an_unrelated_unread_binding() {
+    let syms = ms_syntax::Names::global();
     let ws = Workspace::new("rename-unread");
     let source = "fn identity(value: Int) Int:\n    let spare = 1\n    return value\n";
     let d = Document::new(ws.uri("unread.ms"), source);
     let docs = Documents::from([(d.uri.clone(), d.clone())]);
-    let checked = analyze(&ms_check::Session::new(), &d, &docs);
+    let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
     assert!(
         !checked.success() && checked.resolves(),
         "{:?}",
@@ -270,8 +293,9 @@ fn rename_ignores_an_unrelated_unread_binding() {
     );
     let offset = source.rfind("value").unwrap();
     let edit = ms_lsp::rename::rename(
+        syms,
         &checked,
-        checked.index(),
+        checked.occurrence_index(syms),
         &d,
         text::position(source, offset),
         "item",
@@ -296,11 +320,12 @@ fn rename_through_a_symlink_keeps_the_open_uri_and_version() {
 
 #[test]
 fn prepare_rename_uses_the_checked_declaration_without_scanning_workspace() {
+    let syms = ms_syntax::Names::global();
     let ws = Workspace::new("prepare-local");
     let source = include_str!("editing_regressions/prepare-local.ms");
     let d = Document::new(ws.uri("project/main.ms"), source);
     let docs = Documents::from([(d.uri.clone(), d.clone())]);
-    let checked = analyze(&ms_check::Session::new(), &d, &docs);
+    let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
     assert!(checked.success(), "{:?}", checked.diagnostics);
     let polls = std::cell::Cell::new(0);
     let cancel = || {
@@ -308,8 +333,9 @@ fn prepare_rename_uses_the_checked_declaration_without_scanning_workspace() {
         polls.get() > 1
     };
     let answer = ms_lsp::rename::rename(
+        syms,
         &checked,
-        checked.index(),
+        checked.occurrence_index(syms),
         &d,
         Position {
             line: 0,
@@ -342,13 +368,14 @@ fn prepare_rename_uses_the_checked_declaration_without_scanning_workspace() {
     );
 
     let external: Vec<_> = checked
-        .index()
+        .occurrence_index(syms)
         .iter()
         .filter(|o| !o.declaration)
         .cloned()
         .collect();
     assert!(
         ms_lsp::rename::rename(
+            syms,
             &checked,
             &external,
             &d,
@@ -367,6 +394,7 @@ fn prepare_rename_uses_the_checked_declaration_without_scanning_workspace() {
 
 #[test]
 fn prepare_rename_accepts_imported_declarations_and_bindings_but_not_stdlib() {
+    let syms = ms_syntax::Names::global();
     let ws = Workspace::new("prepare-identities");
     for (relative, name) in [
         ("project/main.ms", "double"),
@@ -375,17 +403,18 @@ fn prepare_rename_accepts_imported_declarations_and_bindings_but_not_stdlib() {
     ] {
         let d = Document::new(ws.uri(relative), ws.read(relative));
         let docs = Documents::from([(d.uri.clone(), d.clone())]);
-        let checked = analyze(&ms_check::Session::new(), &d, &docs);
+        let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
         assert!(checked.success(), "{:?}", checked.diagnostics);
-        let file = checked.module_file(&d);
+        let file = checked.module_file(syms, &d);
         let entry = checked
-            .index()
+            .occurrence_index(syms)
             .iter()
-            .find(|entry| entry.file.as_str() == file && entry.name == name)
+            .find(|entry| syms.str(entry.file) == file && entry.name == name)
             .expect("checked occurrence");
         let answer = ms_lsp::rename::rename(
+            syms,
             &checked,
-            checked.index(),
+            checked.occurrence_index(syms),
             &d,
             text::position(&d.text, entry.offset),
             "",
@@ -426,6 +455,7 @@ fn unresolved_standard_name_offers_an_add_import_fix() {
 
 #[test]
 fn project_exports_are_offered_before_standard_ones() {
+    let syms = ms_syntax::Names::global();
     let ws = Workspace::new("project-import");
     std::fs::create_dir_all(ws.path("lib")).unwrap();
     std::fs::write(
@@ -435,12 +465,12 @@ fn project_exports_are_offered_before_standard_ones() {
     .unwrap();
     let source = "fn size(b: Bytes) Int:\n    return 0\n";
     let d = Document::new(ws.uri("main.ms"), source);
-    let checked = analyze(&ms_check::Session::new(), &d, &Documents::new());
+    let checked = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
     let whole = Range {
         start: Position::default(),
         end: text::position(source, source.len()),
     };
-    let found = editor_actions(&d, &checked, &Tooling, &Documents::new(), whole, &[]);
+    let found = editor_actions(syms, &d, &checked, &Tooling, &Documents::new(), whole, &[]);
     let titles: Vec<&str> = found
         .iter()
         .map(title)

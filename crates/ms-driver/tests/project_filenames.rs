@@ -100,6 +100,7 @@ fn directory_discovery_never_replaces_distinct_byte_names() {
 
 #[test]
 fn manifest_loading_reports_discovery_name_errors() {
+    let syms = ms_syntax::Names::global();
     let dir = TempDir::new();
     let p = project(dir.path());
     write(&p.source, "�.ms", "");
@@ -109,7 +110,7 @@ fn manifest_loading_reports_discovery_name_errors() {
         "ms.toml",
         "[project]\nname = \"names\"\nsource = \"src\"\n",
     );
-    let graph = load_file(&manifest, LoadOptions::default());
+    let graph = load_file(syms, &manifest, LoadOptions::default());
     assert_eq!(graph.diagnostics.len(), 1, "{:?}", graph.diagnostics);
     assert_eq!(graph.diagnostics[0].phase, Phase::Resolution);
     assert!(graph.diagnostics[0].message.contains("UTF-8"));

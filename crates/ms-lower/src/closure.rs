@@ -59,7 +59,7 @@ impl FnLower<'_> {
         let mut cap_vals = Vec::new();
         let mut saved = Vec::new();
         let mut closers = Vec::new();
-        let changed = lambda_changes(self, lam, &captures);
+        let changed = lambda_changes(self.syms, self, lam, &captures);
         // Whether the closure's environment points into this frame.
         let mut scoped = false;
         for b in &captures {
@@ -105,7 +105,7 @@ impl FnLower<'_> {
                     .ok_or_else(|| {
                         Error::new(format!(
                         "a closure here cannot change the captured variable {}: a closure inside a parameter default can only read what it captures",
-                        b.name
+                        self.syms.str(b.name)
                     ))
                     })?;
                 cap_tys.push(MTy::PTR);
@@ -219,7 +219,7 @@ impl FnLower<'_> {
         let mut subst = ct::Subst::new();
         if !vars.is_empty() {
             let want = self.ety(e);
-            if !ct::unify(&sym.ty(), &want, &vars, &mut subst) {
+            if !ct::unify(&sym.ty(self.syms), &want, &vars, &mut subst) {
                 return Err(Error::new(
                     "cannot infer the function value's type arguments",
                 ));
@@ -403,7 +403,9 @@ impl FnLower<'_> {
                 .parameters
                 .iter()
                 .position(|p| p.name == a.slot.name)
-                .ok_or_else(|| Error::new(format!("no parameter {}", a.slot.name)))?;
+                .ok_or_else(|| {
+                    Error::new(format!("no parameter {}", self.syms.str(a.slot.name)))
+                })?;
             let x = self.lift_argument(x, ptys[at]);
             slots[at] = Some(self.borrow(x));
         }
@@ -527,204 +529,212 @@ impl FnLower<'_> {
         };
         let recv_ty = self.ety(left);
         let recv_mty = self.mty(&recv_ty)?;
-        let name = m.name().map(|n| n.to_string()).unwrap_or_default();
+        let name = m
+            .name()
+            .map(|n| self.syms.str(n).to_string())
+            .unwrap_or_default();
         // How the thunk reaches the method, and the receiver it holds.
-        let (key, callee, recv) =
-            if let TyKind::Iface(iface) = self.b.m.types.kind(recv_mty).clone() {
-                let k = self.b.m.ifaces[iface.index()]
-                    .methods
-                    .iter()
-                    .position(|s| s.name == name)
-                    .ok_or_else(|| Error::new(format!("no interface method {name}")))?;
-                let changes = crate::mutation::method_changes_receiver(m, &self.cx.mutated);
-                let recv = self.method_receiver(e, left, changes)?;
-                if let Receiver::Value(v) = recv
-                    && self.dead
-                {
-                    return Ok(v);
+        let (key, callee, recv) = if let TyKind::Iface(iface) =
+            self.b.m.types.kind(recv_mty).clone()
+        {
+            let k = self.b.m.ifaces[iface.index()]
+                .methods
+                .iter()
+                .position(|s| s.name == name)
+                .ok_or_else(|| Error::new(format!("no interface method {name}")))?;
+            let changes = crate::mutation::method_changes_receiver(self.syms, m, &self.cx.mutated);
+            let recv = self.method_receiver(e, left, changes)?;
+            if let Receiver::Value(v) = recv
+                && self.dead
+            {
+                return Ok(v);
+            }
+            // The closure holds the address of the variable it changes or the receiver it only
+            // reads; the thunk loads the current value.
+            let addr = matches!(recv, Receiver::Addr(..));
+            let held_ty = if addr { MTy::PTR } else { recv_mty };
+            // A function type that takes optionals the interface method takes plainly.
+            if self.b.m.ifaces[iface.index()].methods[k].params != params {
+                let key = HelperKey::IfaceThunk {
+                    iface: iface.0,
+                    k,
+                    fty,
+                    addr,
+                };
+                let thunk = match self.cx.helpers.get(&key) {
+                    Some(t) => *t,
+                    None => {
+                        let mut ps = vec![Param {
+                            ty: MTy::PTR,
+                            mode: Mode::Borrow,
+                        }];
+                        ps.extend(params.iter().map(|t| Param {
+                            ty: *t,
+                            mode: Mode::Borrow,
+                        }));
+                        let mut f = ms_mir::ir::Func::new(&format!("<{name}>"), ps, ret);
+                        f.kind = FuncKind::Closure {
+                            captures: vec![held_ty],
+                        };
+                        let id = self.b.m.add_func(f);
+                        self.cx.queue.push(Job {
+                            func: id,
+                            kind: JobKind::IfaceThunk(Rc::new(crate::cx::IfaceThunkJob {
+                                iface,
+                                index: k as u32,
+                                method: m.clone(),
+                                hir: self.hir.clone(),
+                                recv: recv_mty,
+                                shared: addr,
+                            })),
+                        });
+                        self.cx.helpers.insert(key, id);
+                        id
+                    }
+                };
+                let held = self.captured(recv);
+                let v = self
+                    .b
+                    .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(fty))
+                    .expect("closure");
+                return Ok(Val { v, own: true });
+            }
+            if let Receiver::Addr(slot, _) = recv {
+                let key = HelperKey::BoundSharedIface {
+                    iface: iface.0,
+                    k,
+                    fty,
+                };
+                let thunk = match self.cx.helpers.get(&key) {
+                    Some(t) => *t,
+                    None => {
+                        let mut ps = vec![Param {
+                            ty: MTy::PTR,
+                            mode: Mode::Borrow,
+                        }];
+                        ps.extend(params.iter().map(|t| Param {
+                            ty: *t,
+                            mode: Mode::Borrow,
+                        }));
+                        let mut b = FuncBuilder::new(self.b.m, &format!("<{name}>"), ps, ret);
+                        b.func_mut().kind = FuncKind::Closure {
+                            captures: vec![MTy::PTR],
+                        };
+                        let args = b.params();
+                        let ptr = b
+                            .emit(Op::ClosureCap, &[args[0]], Imm::Idx(0), Some(MTy::PTR))
+                            .expect("capture");
+                        let this = b
+                            .emit(Op::Load, &[ptr], Imm::Ty(recv_mty), Some(recv_mty))
+                            .expect("load");
+                        let r = b.call_method(iface, k as u32, this, &args[1..]);
+                        b.ret(Some(r));
+                        let f = b.into_func();
+                        let id = self.b.m.add_func(f);
+                        self.cx.helpers.insert(key, id);
+                        id
+                    }
+                };
+                let v = self
+                    .b
+                    .emit(Op::ClosureNew, &[slot], Imm::Func(thunk), Some(fty))
+                    .expect("closure");
+                return Ok(Val { v, own: true });
+            }
+            (BoundTarget::Iface(iface.0, k), Err((iface, k as u32)), recv)
+        } else {
+            let im = if self.syms.str(m.native) == "contract" {
+                self.contract_impl(m, &recv_ty).ok_or_else(|| {
+                    Error::new(format!(
+                        "{recv_ty_t} has no method {name}",
+                        recv_ty_t = recv_ty.display(self.syms)
+                    ))
+                })?
+            } else {
+                m.clone()
+            };
+            if !self.syms.str(im.native).is_empty() {
+                return Err(Error::new(format!("unsupported member access .{name}")));
+            }
+            let decl = im
+                .decl
+                .as_ref()
+                .ok_or_else(|| Error::new("method without declaration"))?;
+            let c = self.callable_of_decl(im.module, Some(decl.id()))?;
+            let declared = self
+                .cx
+                .methods
+                .iter()
+                .find(|d| {
+                    d.module == im.module && d.decl.as_ref().map(|x| x.id()) == Some(decl.id())
+                })
+                .cloned()
+                .unwrap_or_else(|| im.clone());
+            let mut subst = ct::Subst::new();
+            if !ct::unify(
+                &declared.receiver,
+                &recv_ty,
+                &ct::variable_set(&declared.variables),
+                &mut subst,
+            ) {
+                return Err(Error::new("cannot bind method receiver type"));
+            }
+            // The method's own type parameters come from the value's checked type.
+            let own_vars = ct::variable_set(&declared.variables);
+            if declared
+                .variables
+                .iter()
+                .any(|v| !subst.contains_key(&v.name))
+            {
+                let want = self.ety(e);
+                if !ct::unify(&declared.ty, &want, &own_vars, &mut subst) {
+                    return Err(Error::new("cannot infer the method value's type arguments"));
                 }
-                // The closure holds the address of the variable it changes or the receiver it only
-                // reads; the thunk loads the current value.
-                let addr = matches!(recv, Receiver::Addr(..));
-                let held_ty = if addr { MTy::PTR } else { recv_mty };
-                // A function type that takes optionals the interface method takes plainly.
-                if self.b.m.ifaces[iface.index()].methods[k].params != params {
-                    let key = HelperKey::IfaceThunk {
-                        iface: iface.0,
-                        k,
-                        fty,
-                        addr,
-                    };
-                    let thunk = match self.cx.helpers.get(&key) {
-                        Some(t) => *t,
-                        None => {
-                            let mut ps = vec![Param {
-                                ty: MTy::PTR,
-                                mode: Mode::Borrow,
-                            }];
-                            ps.extend(params.iter().map(|t| Param {
-                                ty: *t,
-                                mode: Mode::Borrow,
-                            }));
-                            let mut f = ms_mir::ir::Func::new(&format!("<{name}>"), ps, ret);
-                            f.kind = FuncKind::Closure {
-                                captures: vec![held_ty],
-                            };
-                            let id = self.b.m.add_func(f);
-                            self.cx.queue.push(Job {
-                                func: id,
-                                kind: JobKind::IfaceThunk(Rc::new(crate::cx::IfaceThunkJob {
-                                    iface,
-                                    index: k as u32,
-                                    method: m.clone(),
-                                    hir: self.hir.clone(),
-                                    recv: recv_mty,
-                                    shared: addr,
-                                })),
-                            });
-                            self.cx.helpers.insert(key, id);
-                            id
-                        }
-                    };
-                    let held = self.captured(recv);
-                    let v = self
-                        .b
-                        .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(fty))
-                        .expect("closure");
-                    return Ok(Val { v, own: true });
-                }
-                if let Receiver::Addr(slot, _) = recv {
-                    let key = HelperKey::BoundSharedIface {
-                        iface: iface.0,
-                        k,
-                        fty,
-                    };
-                    let thunk = match self.cx.helpers.get(&key) {
-                        Some(t) => *t,
-                        None => {
-                            let mut ps = vec![Param {
-                                ty: MTy::PTR,
-                                mode: Mode::Borrow,
-                            }];
-                            ps.extend(params.iter().map(|t| Param {
-                                ty: *t,
-                                mode: Mode::Borrow,
-                            }));
-                            let mut b = FuncBuilder::new(self.b.m, &format!("<{name}>"), ps, ret);
-                            b.func_mut().kind = FuncKind::Closure {
-                                captures: vec![MTy::PTR],
-                            };
-                            let args = b.params();
-                            let ptr = b
-                                .emit(Op::ClosureCap, &[args[0]], Imm::Idx(0), Some(MTy::PTR))
-                                .expect("capture");
-                            let this = b
-                                .emit(Op::Load, &[ptr], Imm::Ty(recv_mty), Some(recv_mty))
-                                .expect("load");
-                            let r = b.call_method(iface, k as u32, this, &args[1..]);
-                            b.ret(Some(r));
-                            let f = b.into_func();
-                            let id = self.b.m.add_func(f);
-                            self.cx.helpers.insert(key, id);
-                            id
-                        }
-                    };
+            }
+            let vars = self.cx.var_positions(&c);
+            if vars.iter().any(|v| *v != 0) {
+                return Err(Error::new("method value with changed parameters"));
+            }
+            let fid = self.instance(&c, &subst)?;
+            let changes = !vars.is_empty();
+            let recv = self.method_receiver(e, left, changes)?;
+            if let Receiver::Value(v) = recv
+                && self.dead
+            {
+                return Ok(v);
+            }
+            if let Receiver::Addr(slot, _) = recv {
+                // The closure holds the variable's address: a thunk with defaults reads the
+                // current value, and one of a changing method changes it in place.
+                let ptr_ty = Some(MTy::PTR);
+                let thunk = self.default_thunk(e, fid, &c, &subst, ptr_ty, Some(recv_mty))?;
+                let thunk = match (thunk, changes) {
+                    (Some(t), _) => Some(t),
+                    (None, true) => {
+                        let key = HelperKey::BoundSharedFunc { fid, fty };
+                        Some(self.shared_method_thunk(key, &name, fid, &params, ret))
+                    }
+                    (None, false) => None,
+                };
+                if let Some(thunk) = thunk {
                     let v = self
                         .b
                         .emit(Op::ClosureNew, &[slot], Imm::Func(thunk), Some(fty))
                         .expect("closure");
                     return Ok(Val { v, own: true });
                 }
-                (BoundTarget::Iface(iface.0, k), Err((iface, k as u32)), recv)
-            } else {
-                let im = if m.native.as_str() == "contract" {
-                    self.contract_impl(m, &recv_ty)
-                        .ok_or_else(|| Error::new(format!("{recv_ty} has no method {name}")))?
-                } else {
-                    m.clone()
-                };
-                if !im.native.is_empty() {
-                    return Err(Error::new(format!("unsupported member access .{name}")));
-                }
-                let decl = im
-                    .decl
-                    .as_ref()
-                    .ok_or_else(|| Error::new("method without declaration"))?;
-                let c = self.callable_of_decl(im.module, Some(decl.id()))?;
-                let declared = self
-                    .cx
-                    .methods
-                    .iter()
-                    .find(|d| {
-                        d.module == im.module && d.decl.as_ref().map(|x| x.id()) == Some(decl.id())
-                    })
-                    .cloned()
-                    .unwrap_or_else(|| im.clone());
-                let mut subst = ct::Subst::new();
-                if !ct::unify(
-                    &declared.receiver,
-                    &recv_ty,
-                    &ct::variable_set(&declared.variables),
-                    &mut subst,
-                ) {
-                    return Err(Error::new("cannot bind method receiver type"));
-                }
-                // The method's own type parameters come from the value's checked type.
-                let own_vars = ct::variable_set(&declared.variables);
-                if declared
-                    .variables
-                    .iter()
-                    .any(|v| !subst.contains_key(&v.name))
-                {
-                    let want = self.ety(e);
-                    if !ct::unify(&declared.ty, &want, &own_vars, &mut subst) {
-                        return Err(Error::new("cannot infer the method value's type arguments"));
-                    }
-                }
-                let vars = self.cx.var_positions(&c);
-                if vars.iter().any(|v| *v != 0) {
-                    return Err(Error::new("method value with changed parameters"));
-                }
-                let fid = self.instance(&c, &subst)?;
-                let changes = !vars.is_empty();
-                let recv = self.method_receiver(e, left, changes)?;
-                if let Receiver::Value(v) = recv
-                    && self.dead
-                {
-                    return Ok(v);
-                }
-                if let Receiver::Addr(slot, _) = recv {
-                    // The closure holds the variable's address: a thunk with defaults reads the
-                    // current value, and one of a changing method changes it in place.
-                    let ptr_ty = Some(MTy::PTR);
-                    let thunk = self.default_thunk(e, fid, &c, &subst, ptr_ty, Some(recv_mty))?;
-                    let thunk = match (thunk, changes) {
-                        (Some(t), _) => Some(t),
-                        (None, true) => {
-                            let key = HelperKey::BoundSharedFunc { fid, fty };
-                            Some(self.shared_method_thunk(key, &name, fid, &params, ret))
-                        }
-                        (None, false) => None,
-                    };
-                    if let Some(thunk) = thunk {
-                        let v = self
-                            .b
-                            .emit(Op::ClosureNew, &[slot], Imm::Func(thunk), Some(fty))
-                            .expect("closure");
-                        return Ok(Val { v, own: true });
-                    }
-                } else if let Some(thunk) =
-                    self.default_thunk(e, fid, &c, &subst, Some(recv_mty), None)?
-                {
-                    let held = self.captured(recv);
-                    let v = self
-                        .b
-                        .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(fty))
-                        .expect("closure");
-                    return Ok(Val { v, own: true });
-                }
-                (BoundTarget::Func(fid), Ok((fid, changes)), recv)
-            };
+            } else if let Some(thunk) =
+                self.default_thunk(e, fid, &c, &subst, Some(recv_mty), None)?
+            {
+                let held = self.captured(recv);
+                let v = self
+                    .b
+                    .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(fty))
+                    .expect("closure");
+                return Ok(Val { v, own: true });
+            }
+            (BoundTarget::Func(fid), Ok((fid, changes)), recv)
+        };
         let addr = matches!(recv, Receiver::Addr(..));
         let held = self.captured(recv);
         let key = HelperKey::Bound {
@@ -785,7 +795,7 @@ impl FnLower<'_> {
     /// A native function used as a value: a closure forwarding to the native.
     pub fn native_function_value(&mut self, e: &Expr, sym: &ct::SymRef) -> Result<Val, Error> {
         let want = self.ety(e);
-        let declared = sym.ty();
+        let declared = sym.ty(self.syms);
         let vars = ct::variable_set(&sym.variables());
         let mut subst = ct::Subst::new();
         if !vars.is_empty() && !ct::unify(&declared, &want, &vars, &mut subst) {
@@ -812,7 +822,7 @@ impl FnLower<'_> {
                     ty: *t,
                     mode: Mode::Borrow,
                 }));
-                let mut f = ms_mir::ir::Func::new(sym.name.as_str(), ps, ret);
+                let mut f = ms_mir::ir::Func::new(self.syms.str(sym.name), ps, ret);
                 f.kind = FuncKind::Closure {
                     captures: Vec::new(),
                 };
@@ -829,7 +839,7 @@ impl FnLower<'_> {
                 self.cx.queue.push(Job {
                     func: id,
                     kind: JobKind::NativeThunk(Rc::new(NativeThunkJob {
-                        native: sym.native.to_string(),
+                        native: self.syms.str(sym.native).to_string(),
                         params,
                         result: ct::sub(&declared.result_ty(), &subst),
                         sym: sym.clone(),
@@ -857,7 +867,7 @@ impl FnLower<'_> {
         if let Some(value) = self.bound_alias_method(e, left, m)? {
             return Ok(value);
         }
-        let changes = ms_check::effects::collection_mutation(m);
+        let changes = ms_check::effects::collection_mutation(self.syms, m);
         let recv = self.method_receiver(e, left, changes)?;
         if let Receiver::Value(v) = recv
             && self.dead
@@ -896,7 +906,7 @@ impl FnLower<'_> {
                     ty: *t,
                     mode: Mode::Borrow,
                 }));
-                let mut f = ms_mir::ir::Func::new(m.native.as_str(), ps, ret);
+                let mut f = ms_mir::ir::Func::new(self.syms.str(m.native), ps, ret);
                 f.kind = FuncKind::Closure {
                     captures: vec![held.capture(rty)],
                 };
@@ -1195,6 +1205,7 @@ fn call_changing_receiver(
 
 /// Lowers a thunk that fills the defaults of the parameters a function value takes as optionals.
 pub(crate) fn build_default_thunk(
+    syms: ms_syntax::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
@@ -1202,7 +1213,7 @@ pub(crate) fn build_default_thunk(
 ) -> Result<(), Error> {
     let proto = m.funcs[func.index()].clone();
     let hir = cx.module(job.callable.module.file)?;
-    let file = m.add_file(job.callable.module.file.as_str());
+    let file = m.add_file(syms.str(job.callable.module.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, hir, job.subst.clone(), file, proto.ret);
@@ -1292,13 +1303,14 @@ fn lower_default_thunk(
 
 /// Lowers the body of a queued interface method value.
 pub(crate) fn build_iface_thunk(
+    syms: ms_syntax::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
     job: &crate::cx::IfaceThunkJob,
 ) -> Result<(), Error> {
     let proto = m.funcs[func.index()].clone();
-    let file = m.add_file(job.hir.data.file.as_str());
+    let file = m.add_file(syms.str(job.hir.data.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
@@ -1338,17 +1350,18 @@ fn lower_iface_thunk(
 
 /// Lowers the body of a queued native function value.
 pub(crate) fn build_native_thunk(
+    syms: ms_syntax::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
     job: &NativeThunkJob,
 ) -> Result<(), Error> {
     let proto = m.funcs[func.index()].clone();
-    let file = m.add_file(job.hir.data.file.as_str());
+    let file = m.add_file(syms.str(job.hir.data.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
-    let result = lower_native_thunk(&mut fl, job);
+    let result = lower_native_thunk(syms, &mut fl, job);
     let mut f = fl.b.into_func();
     result?;
     f.compact_blocks();
@@ -1356,7 +1369,11 @@ pub(crate) fn build_native_thunk(
     Ok(())
 }
 
-fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), Error> {
+fn lower_native_thunk(
+    syms: ms_syntax::Names,
+    fl: &mut FnLower<'_>,
+    job: &NativeThunkJob,
+) -> Result<(), Error> {
     let params = fl.b.params();
     let func = job.sym.decl.as_ref().and_then(|d| d.func());
     let mut args = fl.thunk_native_args(job.sym.module, func, &job.params, &params[1..])?;
@@ -1371,7 +1388,7 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
                 let t = t.ok_or_else(|| Error::new("parse without a result type"))?;
                 fl.json_parse(&t, have, &args)?
             } else {
-                let value = job.params.iter().find(|p| p.name.as_str() == "value");
+                let value = job.params.iter().find(|p| syms.str(p.name) == "value");
                 let t = value.map(|p| p.ty.clone());
                 let t = t.ok_or_else(|| Error::new("stringify without a value"))?;
                 fl.json_stringify(t, have, &args)?
@@ -1421,8 +1438,9 @@ impl FnLower<'_> {
             };
             let lifted = passed != declared;
             let none_default = p.ty.is(Builtin::Optional)
-                && default
-                    .is_none_or(|d| matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none"));
+                && default.is_none_or(
+                    |d| matches!(&d.kind, ExprKind::Name(n) if self.syms.str(n) == "none"),
+                );
             let val = if lifted && none_default {
                 // Native/interface arguments borrow their caller's values. A supplied payload and
                 // the implicit none both live through this call; copying here would make
@@ -1468,6 +1486,7 @@ impl FnLower<'_> {
 
 /// Lowers the body of a queued bound native method.
 pub(crate) fn build_bound_native(
+    syms: ms_syntax::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
@@ -1477,7 +1496,7 @@ pub(crate) fn build_bound_native(
     let FuncKind::Closure { captures } = proto.kind.clone() else {
         return Err(Error::new("bound method without closure kind"));
     };
-    let file = m.add_file(job.hir.data.file.as_str());
+    let file = m.add_file(syms.str(job.hir.data.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
@@ -1496,19 +1515,20 @@ pub(crate) fn build_bound_native(
 
 /// Lowers the body of a native method behind an interface table entry.
 pub(crate) fn build_iface_native(
+    syms: ms_syntax::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
     job: &IfaceNativeJob,
 ) -> Result<(), Error> {
     let proto = m.funcs[func.index()].clone();
-    let file = m.add_file(job.hir.data.file.as_str());
+    let file = m.add_file(syms.str(job.hir.data.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     b.func_mut().linkage = proto.linkage;
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
     fl.scope_override = Some(job.scope);
-    let result = lower_iface_native(&mut fl, job);
+    let result = lower_iface_native(syms, &mut fl, job);
     let mut f = fl.b.into_func();
     result?;
     f.compact_blocks();
@@ -1516,13 +1536,17 @@ pub(crate) fn build_iface_native(
     Ok(())
 }
 
-fn lower_iface_native(fl: &mut FnLower<'_>, job: &IfaceNativeJob) -> Result<(), Error> {
+fn lower_iface_native(
+    syms: ms_syntax::Names,
+    fl: &mut FnLower<'_>,
+    job: &IfaceNativeJob,
+) -> Result<(), Error> {
     let params = fl.b.params();
     let func = job.method.decl.as_ref().and_then(|d| d.func());
     let ret = fl.ret_ty;
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
-    let out = if ms_check::effects::collection_mutation(&job.method) {
+    let out = if ms_check::effects::collection_mutation(syms, &job.method) {
         // The table entry receives the address of the value it changes.
         fl.shared_native_call(&job.method, params[0], job.data, &args, ret)?
     } else {
@@ -1569,6 +1593,7 @@ fn lower_bound_native(
 
 /// Lowers the body of a queued lambda.
 pub(crate) fn build_lambda(
+    syms: ms_syntax::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
@@ -1578,7 +1603,7 @@ pub(crate) fn build_lambda(
     let FuncKind::Closure { captures } = proto.kind.clone() else {
         return Err(Error::new("lambda function without closure kind"));
     };
-    let file = m.add_file(job.hir.data.file.as_str());
+    let file = m.add_file(syms.str(job.hir.data.file));
     let mut b = FuncBuilder::new(m, "<anonymous>", proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     b.func_mut().scoped = proto.scoped;
@@ -1586,7 +1611,7 @@ pub(crate) fn build_lambda(
     b.func_mut().capture_closers = proto.capture_closers.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), job.subst.clone(), file, proto.ret);
     fl.variant = job.variant;
-    let result = lower_lambda_body(&mut fl, job, &captures);
+    let result = lower_lambda_body(syms, &mut fl, job, &captures);
     let mut f = fl.b.into_func();
     result?;
     // Frames of callees inlined into the closure return to this file, not the callee's.
@@ -1645,14 +1670,19 @@ pub(crate) fn restore_alias_capture(
     Ok(true)
 }
 
-fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) -> Result<(), Error> {
+fn lower_lambda_body(
+    syms: ms_syntax::Names,
+    fl: &mut FnLower<'_>,
+    job: &LambdaJob,
+    captures: &[MTy],
+) -> Result<(), Error> {
     let ExprKind::Lambda(lam) = &job.expr.kind else {
         return Err(Error::new("not a lambda"));
     };
     let params = fl.b.params();
     let env = params[0];
-    let mutated = lambda_mutated(fl, lam);
-    fl.slotted = slotted_in(fl, &lam.body);
+    let mutated = lambda_mutated(syms, fl, lam);
+    fl.slotted = slotted_in(syms, fl, &lam.body);
     let values: Vec<_> = captures
         .iter()
         .enumerate()
@@ -1734,9 +1764,14 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
 }
 
 /// The locals a lambda's body changes.
-fn lambda_mutated(fl: &FnLower<'_>, lam: &Lambda) -> std::collections::HashSet<usize> {
-    let scan =
-        |body| crate::mutation::mutated_locals(&fl.hir, body, &fl.cx.callables, &fl.cx.mutated);
+fn lambda_mutated(
+    syms: ms_syntax::Names,
+    fl: &FnLower<'_>,
+    lam: &Lambda,
+) -> std::collections::HashSet<usize> {
+    let scan = |body| {
+        crate::mutation::mutated_locals(syms, &fl.hir, body, &fl.cx.callables, &fl.cx.mutated)
+    };
     let mut changed = scan(ms_check::hir::Body::Block(&lam.body));
     // A default runs in the lambda's frame, so what it changes counts too.
     for d in lam.params.iter().filter_map(|p| p.default.as_ref()) {
@@ -1747,11 +1782,12 @@ fn lambda_mutated(fl: &FnLower<'_>, lam: &Lambda) -> std::collections::HashSet<u
 
 /// The captured locals the lambda `lam` changes: they are shared by reference.
 fn lambda_changes(
+    syms: ms_syntax::Names,
     fl: &FnLower<'_>,
     lam: &Lambda,
     captures: &[ct::BindingRef],
 ) -> std::collections::HashSet<usize> {
-    let mutated = lambda_mutated(fl, lam);
+    let mutated = lambda_mutated(syms, fl, lam);
     captures
         .iter()
         .map(|b| b.uid)
@@ -1760,16 +1796,22 @@ fn lambda_changes(
 }
 
 /// The locals a closure written in `body` changes: they must live in memory.
-pub(crate) fn slotted_in(fl: &FnLower<'_>, body: &[Stmt]) -> std::collections::HashSet<usize> {
+pub(crate) fn slotted_in(
+    syms: ms_syntax::Names,
+    fl: &FnLower<'_>,
+    body: &[Stmt],
+) -> std::collections::HashSet<usize> {
     struct Scan<'a, 'b> {
         fl: &'a FnLower<'b>,
         found: std::collections::HashSet<usize>,
     }
     impl ms_syntax::visit::Visitor for Scan<'_, '_> {
         fn expr(&mut self, e: &Expr) {
+            let syms = self.fl.syms;
             if let ExprKind::Lambda(lam) = &e.kind {
                 let captures = self.fl.hir.captures(e);
-                self.found.extend(lambda_changes(self.fl, lam, &captures));
+                self.found
+                    .extend(lambda_changes(syms, self.fl, lam, &captures));
             }
         }
     }
@@ -1779,6 +1821,7 @@ pub(crate) fn slotted_in(fl: &FnLower<'_>, body: &[Stmt]) -> std::collections::H
     };
     ms_syntax::visit::walk_block(&mut scan, body);
     scan.found.extend(crate::mutation::changing_method_roots(
+        syms,
         &fl.hir,
         ms_check::hir::Body::Block(body),
         &fl.cx.mutated,
@@ -1800,6 +1843,7 @@ fn with_alias_origins(
     }
     impl ms_syntax::visit::Visitor for Origins<'_, '_> {
         fn expr(&mut self, e: &Expr) {
+            let syms = self.fl.syms;
             // `c?.f()` borrows `c` for the payload binding of its chain.
             let ExprKind::Match { scrutinee, arms } = &e.kind else {
                 return;
@@ -1807,7 +1851,7 @@ fn with_alias_origins(
             for arm in arms.iter().filter(|a| a.chain) {
                 for b in self.fl.hir.arm(arm).bindings.iter().flatten() {
                     if self.fl.cx.exclusive(b.uid)
-                        && let Some(root) = alias_origin(self.fl, scrutinee)
+                        && let Some(root) = alias_origin(syms, self.fl, scrutinee)
                     {
                         self.roots.insert(b.uid, root);
                     }
@@ -1816,6 +1860,7 @@ fn with_alias_origins(
         }
 
         fn stmt(&mut self, s: &Stmt) {
+            let syms = self.fl.syms;
             let (pattern, value) = match &s.kind {
                 StmtKind::Bind { pattern, value, .. } => (pattern, value),
                 StmtKind::If {
@@ -1829,7 +1874,7 @@ fn with_alias_origins(
                 return;
             };
             if self.fl.cx.exclusive(binding.uid)
-                && let Some(root) = alias_origin(self.fl, value)
+                && let Some(root) = alias_origin(syms, self.fl, value)
             {
                 self.roots.insert(binding.uid, root);
             }
@@ -1851,7 +1896,7 @@ fn with_alias_origins(
     changed
 }
 
-fn alias_origin(fl: &FnLower<'_>, e: &Expr) -> Option<usize> {
+fn alias_origin(syms: ms_syntax::Names, fl: &FnLower<'_>, e: &Expr) -> Option<usize> {
     match &e.kind {
         ExprKind::Name(_) => {
             let ms_check::hir::Resolution::Local(b) = fl.hir.resolution(e) else {
@@ -1859,16 +1904,17 @@ fn alias_origin(fl: &FnLower<'_>, e: &Expr) -> Option<usize> {
             };
             Some(b.uid)
         }
-        ExprKind::Member { left, .. } => alias_origin(fl, left),
-        ExprKind::Probe(target) => alias_origin(fl, target),
+        ExprKind::Member { left, .. } => alias_origin(syms, fl, left),
+        ExprKind::Probe(target) => alias_origin(syms, fl, target),
         ExprKind::Call { callee, args } => {
             let source = match (&callee.kind, fl.hir.resolution(e)) {
                 (ExprKind::Member { left, .. }, ms_check::hir::Resolution::Method(_)) => &**left,
                 _ => &args.first()?.value,
             };
-            alias_origin(fl, source)
+            alias_origin(syms, fl, source)
         }
-        _ => crate::mutation::index_parts(&fl.hir, e).and_then(|(left, _)| alias_origin(fl, left)),
+        _ => crate::mutation::index_parts(syms, &fl.hir, e)
+            .and_then(|(left, _)| alias_origin(syms, fl, left)),
     }
 }
 
@@ -1941,13 +1987,14 @@ impl FnLower<'_> {
 /// Lowers the body of a function adapter: it calls the held value, wrapping plain arguments in
 /// the optionals the held value takes.
 pub(crate) fn build_fn_adapter(
+    syms: ms_syntax::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
     job: &crate::cx::FnAdaptJob,
 ) -> Result<(), Error> {
     let proto = m.funcs[func.index()].clone();
-    let file = m.add_file(job.hir.data.file.as_str());
+    let file = m.add_file(syms.str(job.hir.data.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
