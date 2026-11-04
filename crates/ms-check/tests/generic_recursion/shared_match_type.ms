@@ -1,7 +1,7 @@
 type Pair[A, B]:
     value: Int
 
-fn double[T](_value: T) Pair[T, T]:
+fn double[T: Clonable](_value: T) Pair[T, T]:
     return Pair[T, T](0)
 
 export fn main() Int:

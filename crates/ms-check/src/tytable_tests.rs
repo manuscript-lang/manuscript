@@ -71,3 +71,127 @@ fn ids_match_rendered_keys_across_many_types() {
         }
     }
 }
+
+fn shared(mut t: Ty, depth: usize) -> Ty {
+    let syms = ms_syntax::Names::global();
+    for _ in 0..depth {
+        t = pair(syms, t.clone(), t);
+    }
+    t
+}
+
+#[test]
+fn shared_fibonacci_and_shallow_fanout_keep_ids_and_representatives() {
+    let syms = ms_syntax::Names::global();
+    let mut table = TyTable::new();
+    let graph = shared(int(), 30);
+    let id = table.intern(&graph);
+    assert_eq!(table.len(), 31);
+    assert!(Rc::ptr_eq(table.ty(id), &graph));
+    assert_eq!(table.shape(&graph), id);
+    assert_eq!(table.intern(&Rc::new((*graph).clone())), id);
+    assert!(Rc::ptr_eq(table.ty(id), &graph));
+
+    let mut left = int();
+    let mut right = string();
+    for _ in 0..30 {
+        let next = pair(syms, left, right.clone());
+        left = right;
+        right = next;
+    }
+    let mut table = TyTable::new();
+    let fibonacci = table.intern(&right);
+    assert_eq!(table.len(), 32);
+    assert_eq!(table.intern(&right), fibonacci);
+    assert!(Rc::ptr_eq(table.ty(fibonacci), &right));
+
+    let mut row = Type::new(syms, n("Row"), n("test/Row"), Kind::Record);
+    row.args = vec![int(); 512];
+    let row = Rc::new(row);
+    let mut fanout = Type::new(syms, n("Fanout"), n("test/Fanout"), Kind::Record);
+    fanout.args = vec![row; 512];
+    let fanout = Rc::new(fanout);
+    let mut table = TyTable::new();
+    let id = table.intern(&fanout);
+    assert_eq!(table.len(), 3);
+    assert_eq!(table.shape(&fanout), id);
+    assert!(Rc::ptr_eq(table.ty(id), &fanout));
+}
+
+#[test]
+fn activated_queries_keep_identity_modes_and_function_metadata() {
+    let syms = ms_syntax::Names::global();
+    let mut permitted = (*function(syms, vec![var_param(int(), false)], int())).clone();
+    permitted.defaults = Some(Rc::new(ParameterDefaults::new(VarSet::from([n("p")]))));
+    let permitted = Rc::new(permitted);
+    let graph = shared(permitted.clone(), 30);
+    let mut table = TyTable::new();
+    let lifted = table.intern(&graph);
+    let shape = table.shape(&graph);
+    assert_ne!(lifted, shape);
+    for _ in 0..3 {
+        assert_eq!(table.intern(&graph), lifted);
+        assert_eq!(table.shape(&graph), shape);
+    }
+    let mut ordinary = (*permitted).clone();
+    ordinary.defaults = None;
+    assert_eq!(table.intern(&shared(Rc::new(ordinary), 30)), shape);
+
+    let mut mutable = (*permitted).clone();
+    mutable.params[0].mutable = true;
+    assert_ne!(table.intern(&shared(Rc::new(mutable), 30)), lifted);
+    let mut incomplete = (*permitted).clone();
+    incomplete.result = None;
+    assert_ne!(table.intern(&shared(Rc::new(incomplete), 30)), lifted);
+    let mut with_args = (*permitted).clone();
+    with_args.args.push(string());
+    assert_ne!(table.intern(&shared(Rc::new(with_args), 30)), lifted);
+    assert_ne!(
+        table.intern(&shared(pair(syms, int(), string()), 30)),
+        table.intern(&shared(pair(syms, string(), int()), 30)),
+    );
+}
+
+#[test]
+fn cache_storage_reuse_keeps_large_tiny_and_fresh_queries_independent() {
+    let syms = ms_syntax::Names::global();
+    let chain = |depth| {
+        let mut t = int();
+        for _ in 0..depth {
+            let mut node = Type::new(syms, n("Node"), n("test/Node"), Kind::Record);
+            node.args.push(t);
+            t = Rc::new(node);
+        }
+        t
+    };
+    let large = chain(1000);
+    let mut table = TyTable::new();
+    let id = table.intern(&large);
+    let rows = table.len();
+    assert_eq!(rows, 1001);
+    assert_eq!(table.shape(&int()), table.intern(&int()));
+    assert_eq!(table.intern(&chain(80)), table.shape(&chain(80)));
+    assert_eq!(table.shape(&large), id);
+    assert_eq!(table.intern(&chain(1000)), id);
+    assert_eq!(table.len(), rows);
+    assert!(Rc::ptr_eq(table.ty(id), &large));
+}
+
+#[test]
+fn identity_still_ignores_nonfunction_callable_edges_and_variable_snapshots() {
+    let syms = ms_syntax::Names::global();
+    let variable = Rc::new(Type::new(syms, n("T"), n("test/T"), Kind::Variable));
+    let graph = shared(variable.clone(), 30);
+    let mut table = TyTable::new();
+    let id = table.intern(&graph);
+    variable.bounds.borrow_mut().push(invalid());
+    *variable.default.borrow_mut() = Some(string());
+    assert_eq!(table.intern(&graph), id);
+    assert_eq!(table.shape(&graph), id);
+
+    let mut record = Type::new(syms, n("Record"), n("test/Record"), Kind::Record);
+    let plain = table.intern(&Rc::new(record.clone()));
+    record.params.push(var_param(graph.clone(), true));
+    record.result = Some(graph);
+    assert_eq!(table.intern(&Rc::new(record)), plain);
+}
