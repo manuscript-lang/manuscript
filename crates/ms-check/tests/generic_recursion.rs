@@ -153,3 +153,14 @@ fn deeply_nested_type_keeps_structural_properties() {
     );
     assert_eq!(diagnostics(&[("deep.ms", &source)]), vec![]);
 }
+
+#[test]
+fn shared_match_types_do_not_expand_every_type_path() {
+    assert!(
+        diagnostics(&[(
+            "shared_match_type.ms",
+            include_str!("generic_recursion/shared_match_type.ms"),
+        )])
+        .is_empty()
+    );
+}

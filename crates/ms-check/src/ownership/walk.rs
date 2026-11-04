@@ -4626,7 +4626,9 @@ fn role_text(role: Role, perm: Perm) -> &'static str {
 /// Whether `t` is, or holds as a type argument, a `Promise`.
 fn ty_holds_promise(syms: ms_syntax::Names, t: &Ty) -> bool {
     t.is_source_type(syms, PROMISE_MODULE, "Promise")
-        || t.args.iter().any(|a| ty_holds_promise(syms, a))
+        || t.args
+            .iter()
+            .any(|a| type_any::<false>(a, |t| t.is_source_type(syms, PROMISE_MODULE, "Promise")))
 }
 
 /// Whether `part` is exactly one of the type arguments of `src`, at any depth.
@@ -4652,4 +4654,67 @@ fn unbounded_parameter(t: &Ty) -> Option<Ty> {
         return (!t.bounds().iter().any(implies_clonable)).then(|| t.clone());
     }
     t.args.iter().find_map(unbounded_parameter)
+}
+
+#[cfg(test)]
+mod type_query_tests {
+    use super::*;
+    use crate::types::Param;
+    use std::{cell::RefCell, rc::Rc};
+
+    fn pair(syms: ms_syntax::Names, left: Ty, right: Ty) -> Ty {
+        let mut t = Type::new(syms, n("Pair"), n("test/Pair"), Kind::Record);
+        t.args = vec![left, right];
+        Rc::new(t)
+    }
+
+    fn shared(syms: ms_syntax::Names, mut t: Ty, depth: usize) -> Ty {
+        for _ in 0..depth {
+            t = pair(syms, t.clone(), t);
+        }
+        t
+    }
+
+    fn promise(syms: ms_syntax::Names, module: &str) -> (Ty, SymRef) {
+        let sym = Rc::new(Sym {
+            name: n("Promise"),
+            id: n(&format!("{module}/Promise")),
+            kind: SymKind::Type,
+            module: n(module),
+            native: n(""),
+            export: true,
+            ty: RefCell::new(None),
+            variables: RefCell::new(vec![]),
+            decl: None,
+        });
+        let mut t = Type::new(syms, sym.name, sym.id, Kind::Record);
+        t.def = Some(Definition::new(&sym, Kind::Record));
+        (Rc::new(t), sym)
+    }
+
+    #[test]
+    fn promise_search_bounds_shared_arguments_and_keeps_source_identity() {
+        let syms = ms_syntax::Names::global();
+        let negative = shared(syms, int(), 30);
+        assert!(!ty_holds_promise(syms, &negative));
+        let (foreign, _foreign_symbol) = promise(syms, "application.ms");
+        assert!(!ty_holds_promise(syms, &foreign));
+        let (promise, _promise_symbol) = promise(syms, PROMISE_MODULE);
+        assert!(ty_holds_promise(syms, &promise));
+        assert!(ty_holds_promise(syms, &pair(syms, negative, promise)));
+    }
+
+    #[test]
+    fn promise_search_keeps_argument_only_edges() {
+        let syms = ms_syntax::Names::global();
+        let (promise, _symbol) = promise(syms, PROMISE_MODULE);
+        let mut function = Type::new(syms, n("fn"), n("fn"), Kind::Function);
+        function
+            .params
+            .push(Param::new(n("value"), promise.clone()));
+        function.result = Some(promise.clone());
+        assert!(!ty_holds_promise(syms, &Rc::new(function.clone())));
+        function.args.push(promise);
+        assert!(ty_holds_promise(syms, &Rc::new(function)));
+    }
 }
