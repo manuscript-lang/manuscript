@@ -13,7 +13,7 @@
     <div class="home-example-intro"><strong>Stream the changes. Build the release notes.</strong><p>Read the template in a promise while a stream pipeline prepares the changelog highlights.</p></div>
     {{ .Page.RenderString (dict "display" "block") .Inner }}
     <p class="home-code-hint">Scroll code horizontally <span aria-hidden="true">↔</span></p>
-    <div class="home-output"><code><span aria-hidden="true">$ </span>ms run release.ms</code><samp>Release notes<br>+ Add CSV export<br>+ Fix date parsing</samp><span class="home-run-status">Inputs are UTF-8 text files.</span></div>
+    <div class="home-output"><code><span aria-hidden="true">$ </span>ms run generate_release_notes.ms</code><samp>Release notes<br>+ Add CSV export<br>+ Fix date parsing</samp><span class="home-run-status">Inputs are UTF-8 text files.</span></div>
     <details class="home-inputs">
       <summary>View the two input files</summary>
       <p><code>changes.txt</code></p><pre>Internal cleanup

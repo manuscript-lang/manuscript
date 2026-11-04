@@ -179,7 +179,7 @@ test('the landing page offers a trial while documentation keeps its reading navi
     .find(tag => (attribute(tag, 'class') || '').split(' ').includes('home-button-primary'));
   assert.ok(primary, 'Offer a primary trial action');
   assert.ok(attribute(primary, 'href').endsWith('/learn/getting-started/'), 'Start the trial with a runnable guide');
-  assert.ok(home.includes('ms run release.ms'), 'Show how to run the displayed program');
+  assert.ok(home.includes('ms run generate_release_notes.ms'), 'Show how to run the displayed program');
   const docs = fs.readFileSync(path.join(book, 'learn/index.html'), 'utf8');
   assert.ok(docs.includes('Documentation navigation'), 'Readers need a documentation sidebar');
 });

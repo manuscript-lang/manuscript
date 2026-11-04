@@ -7,7 +7,7 @@ description = "Help agents build correct, fast programs you can understand. Stat
 
 {{< docs-home >}}
 <!-- manuscript-example: {"mode":"run","files":{"changes.txt":"Internal cleanup\n+ Add CSV export\n+ Fix date parsing\n","template.txt":"Release notes\n$changes"},"stdout":"Release notes\n+ Add CSV export\n+ Fix date parsing\n"} -->
-```manuscript {filename="release.ms"}
+```manuscript {filename="generate_release_notes.ms"}
 import open, read_file from "@std/os/fs.ms"
 import lines, collect from "@std/io/streams.ms"
 
