@@ -1,4 +1,4 @@
-// conform: tags=concurrency,stdlib-testing,testing,tier-core
+// conform: tags=stdlib-promise,stdlib-fs,stdlib-testing,testing,tier-io
 // conform: phase=test
 // conform: timeout=120
 import expect_equal from "@std/test/test.ms"
