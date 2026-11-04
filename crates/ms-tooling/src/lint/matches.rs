@@ -8,9 +8,10 @@ use ms_check::types::Builtin;
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
 
-pub(super) fn lint(module: &ModuleData, findings: &mut Vec<Finding>) {
-    let file = module_file(module);
+pub(super) fn lint(syms: ms_syntax::Names, module: &ModuleData, findings: &mut Vec<Finding>) {
+    let file = module_file(syms, module);
     let mut scan = Scan {
+        syms: ms_syntax::Names::global(),
         module,
         file: &file,
         depth: 0,
@@ -20,14 +21,15 @@ pub(super) fn lint(module: &ModuleData, findings: &mut Vec<Finding>) {
 }
 
 /// The final written segment of an arm path: `some` for `Optional.some`.
-pub(super) fn path_text(path: &Expr) -> String {
+pub(super) fn path_text(syms: ms_syntax::Names, path: &Expr) -> String {
     match &path.kind {
-        ExprKind::Name(name) | ExprKind::Member { name, .. } => name.as_str().to_string(),
+        ExprKind::Name(name) | ExprKind::Member { name, .. } => syms.str(name).to_string(),
         _ => String::new(),
     }
 }
 
 struct Scan<'a> {
+    syms: ms_syntax::Names,
     module: &'a ModuleData,
     file: &'a std::sync::Arc<str>,
     depth: usize,
@@ -35,7 +37,7 @@ struct Scan<'a> {
 }
 
 impl Scan<'_> {
-    fn two_arm(&mut self, e: &Expr, scrutinee: &Expr, arms: &[Arm]) {
+    fn two_arm(&mut self, syms: ms_syntax::Names, e: &Expr, scrutinee: &Expr, arms: &[Arm]) {
         if arms.len() != 2 {
             return;
         }
@@ -65,7 +67,7 @@ impl Scan<'_> {
         } else {
             return;
         };
-        let texts: Vec<String> = arms.iter().map(|a| path_text(&a.path)).collect();
+        let texts: Vec<String> = arms.iter().map(|a| path_text(syms, &a.path)).collect();
         if texts.iter().any(|t| t == first) && texts.iter().any(|t| t == second) {
             self.findings.push(finding(code, message, self.file, e.pos));
         }
@@ -74,6 +76,7 @@ impl Scan<'_> {
 
 impl Visitor for Scan<'_> {
     fn expr(&mut self, e: &Expr) {
+        let syms = self.syms;
         let ExprKind::Match { scrutinee, arms } = &e.kind else {
             return;
         };
@@ -89,7 +92,7 @@ impl Visitor for Scan<'_> {
             ));
         }
         self.depth += 1;
-        self.two_arm(e, scrutinee, arms);
+        self.two_arm(syms, e, scrutinee, arms);
     }
 
     fn leave_expr(&mut self, e: &Expr) {

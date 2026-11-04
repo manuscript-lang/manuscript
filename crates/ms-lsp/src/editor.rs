@@ -344,28 +344,32 @@ pub struct EditorAnalysis {
 
 /// Finds the marker expression and its captured scope in a checked analysis.
 fn find_marker(
+    syms: ms_syntax::Names,
     result: &Analysis,
     document: &Document,
     marker: &str,
 ) -> Option<(Expr, ModRef, ScopeState)> {
     struct Find<'a> {
+        syms: ms_syntax::Names,
         scopes: &'a std::collections::HashMap<NodeId, ScopeState>,
         marker: &'a str,
         found: Option<(Expr, ScopeState)>,
     }
     impl Visitor for Find<'_> {
         fn expr(&mut self, e: &Expr) {
+            let syms = self.syms;
             if self.found.is_none()
-                && expr_text(e) == Some(self.marker)
+                && expr_text(syms, e) == Some(self.marker)
                 && let Some(state) = self.scopes.get(&e.id)
             {
                 self.found = Some((e.clone(), state.clone()));
             }
         }
     }
-    let module = result.module(document)?;
+    let module = result.module(syms, document)?;
     let scopes = module.facts().scopes.clone();
     let mut find = Find {
+        syms: ms_syntax::Names::global(),
         scopes: &scopes,
         marker,
         found: None,
@@ -386,7 +390,12 @@ fn captured(result: &Analysis) -> bool {
 
 /// Analyzes the document with the cursor replaced by a marker, repairing the
 /// private snapshot a bounded number of times until the marker is captured.
-pub fn query_editor(d: &Document, docs: &Documents, c: &CursorContext) -> EditorAnalysis {
+pub fn query_editor(
+    syms: ms_syntax::Names,
+    d: &Document,
+    docs: &Documents,
+    c: &CursorContext,
+) -> EditorAnalysis {
     let mut marker = String::from("__manuscript_completion");
     while d.text.contains(&marker) {
         marker.push('_');
@@ -429,6 +438,7 @@ pub fn query_editor(d: &Document, docs: &Documents, c: &CursorContext) -> Editor
     // of faults.
     for _ in 0..24 {
         result = analysis::analyze_options(
+            syms,
             &modified,
             &open,
             Options {
@@ -514,7 +524,7 @@ pub fn query_editor(d: &Document, docs: &Documents, c: &CursorContext) -> Editor
         }
     }
     let found = if result.program.is_some() {
-        find_marker(&result, &modified, &marker)
+        find_marker(syms, &result, &modified, &marker)
     } else {
         None
     };
@@ -533,21 +543,21 @@ pub fn query_editor(d: &Document, docs: &Documents, c: &CursorContext) -> Editor
 }
 
 /// The type a name or generic application stands for in a captured scope.
-pub fn type_expression(e: &Expr, state: &ScopeState) -> Option<Ty> {
+pub fn type_expression(syms: ms_syntax::Names, e: &Expr, state: &ScopeState) -> Option<Ty> {
     match &e.kind {
         ExprKind::Name(name) => {
-            if let Some(t) = state.types.get(&n(name.as_str())) {
+            if let Some(t) = state.types.get(&n(syms.str(name))) {
                 return Some(t.clone());
             }
-            let symbol = state.symbols.get(&n(name.as_str()))?;
-            (symbol.kind == ms_check::types::SymKind::Type).then(|| symbol.ty())
+            let symbol = state.symbols.get(&n(syms.str(name)))?;
+            (symbol.kind == ms_check::types::SymKind::Type).then(|| symbol.ty(syms))
         }
         ExprKind::Apply { left, types, .. } => {
-            let base = type_expression(left, state)?;
+            let base = type_expression(syms, left, state)?;
             let mut copy = (*base).clone();
             copy.args = Vec::new();
             for arg in types {
-                copy.args.push(resolve_editor_type(arg, state)?);
+                copy.args.push(resolve_editor_type(syms, arg, state)?);
             }
             Some(Rc::new(copy))
         }
@@ -555,11 +565,11 @@ pub fn type_expression(e: &Expr, state: &ScopeState) -> Option<Ty> {
     }
 }
 
-fn resolve_editor_type(t: &TypeRef, state: &ScopeState) -> Option<Ty> {
+fn resolve_editor_type(syms: ms_syntax::Names, t: &TypeRef, state: &ScopeState) -> Option<Ty> {
     let TypeKind::Named { name, args } = &t.kind else {
         return None;
     };
-    let name: Name = n(name.as_str());
+    let name: Name = n(syms.str(name));
     let base = match state.types.get(&name) {
         Some(t) => t.clone(),
         None => {
@@ -567,42 +577,46 @@ fn resolve_editor_type(t: &TypeRef, state: &ScopeState) -> Option<Ty> {
             if symbol.kind != ms_check::types::SymKind::Type {
                 return None;
             }
-            symbol.ty()
+            symbol.ty(syms)
         }
     };
     let mut copy = (*base).clone();
     copy.args = Vec::new();
     for arg in args {
-        copy.args.push(resolve_editor_type(arg, state)?);
+        copy.args.push(resolve_editor_type(syms, arg, state)?);
     }
     Some(Rc::new(copy))
 }
 
 /// Whether the expression is or contains the marker through its operands.
-pub fn contains_marker(e: &Expr, marker: &str) -> bool {
-    if expr_text(e) == Some(marker) {
+pub fn contains_marker(syms: ms_syntax::Names, e: &Expr, marker: &str) -> bool {
+    if expr_text(syms, e) == Some(marker) {
         return true;
     }
     match &e.kind {
         ExprKind::Member { left, .. } | ExprKind::Apply { left, .. } => {
-            contains_marker(left, marker)
+            contains_marker(syms, left, marker)
         }
         ExprKind::Index { left, index } => {
-            contains_marker(left, marker) || contains_marker(index, marker)
+            contains_marker(syms, left, marker) || contains_marker(syms, index, marker)
         }
-        ExprKind::Unary { operand, .. } => contains_marker(operand, marker),
+        ExprKind::Unary { operand, .. } => contains_marker(syms, operand, marker),
         ExprKind::Binary { left, right, .. } => {
-            contains_marker(left, marker) || contains_marker(right, marker)
+            contains_marker(syms, left, marker) || contains_marker(syms, right, marker)
         }
-        ExprKind::Call { callee, .. } => contains_marker(callee, marker),
+        ExprKind::Call { callee, .. } => contains_marker(syms, callee, marker),
         _ => false,
     }
 }
 
 /// The signature of the call that contains the marker, with the call itself.
-pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
-    let module = a.module.clone().or_else(|| a.result.module(&a.document))?;
+pub fn query_call(syms: ms_syntax::Names, a: &EditorAnalysis) -> Option<(Expr, Ty)> {
+    let module = a
+        .module
+        .clone()
+        .or_else(|| a.result.module(syms, &a.document))?;
     struct Calls<'a> {
+        syms: ms_syntax::Names,
         marker: &'a str,
         module: &'a ModRef,
         found: Option<(Expr, Ty)>,
@@ -612,6 +626,7 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
     }
     impl Visitor for Calls<'_> {
         fn expr(&mut self, e: &Expr) {
+            let syms = self.syms;
             if self.found.is_some() {
                 return;
             }
@@ -619,8 +634,8 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
                 return;
             };
             let matched = args.iter().any(|a| {
-                a.name.is_some_and(|n| n.as_str() == self.marker)
-                    || contains_marker(&a.value, self.marker)
+                a.name.is_some_and(|n| syms.str(n) == self.marker)
+                    || contains_marker(syms, &a.value, self.marker)
             });
             if !matched {
                 return;
@@ -652,25 +667,27 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
             {
                 for cs in ms_check::types::cases(constructor) {
                     if cs.name == case {
-                        let sig = ms_check::types::function(cs.fields.clone(), constructor.clone());
+                        let sig =
+                            ms_check::types::function(syms, cs.fields.clone(), constructor.clone());
                         self.found = Some((e.clone(), sig));
                         return;
                     }
                 }
             }
-            if let Some(ty) = type_expression(callee, self.scope) {
+            if let Some(ty) = type_expression(syms, callee, self.scope) {
                 if ty
                     .opaque_module()
                     .is_some_and(|file| file != self.module.file)
                 {
                     return;
                 }
-                let sig = ms_check::types::constructor_signature(self.session, &ty);
+                let sig = ms_check::types::constructor_signature(syms, self.session, &ty);
                 self.found = Some((e.clone(), sig));
             }
         }
     }
     let mut calls = Calls {
+        syms: ms_syntax::Names::global(),
         marker: &a.marker,
         module: &module,
         found: None,
@@ -685,25 +702,32 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
 }
 
 /// The written arguments of a call with labels resolved by the checker.
-pub fn call_arguments(a: &EditorAnalysis, call: &Expr) -> Vec<(String, Expr)> {
+pub fn call_arguments(
+    syms: ms_syntax::Names,
+    a: &EditorAnalysis,
+    call: &Expr,
+) -> Vec<(String, Expr)> {
     let ExprKind::Call { args, .. } = &call.kind else {
         return Vec::new();
     };
-    let module = a.module.clone().or_else(|| a.result.module(&a.document));
+    let module = a
+        .module
+        .clone()
+        .or_else(|| a.result.module(syms, &a.document));
     let slots = module.and_then(|m| m.facts().info(call.id).and_then(|i| i.arguments.clone()));
     match slots {
         Some(slots) => slots
             .iter()
             .filter_map(|slot| {
                 args.get(slot.index)
-                    .map(|a| (slot.name.as_str().to_string(), a.value.clone()))
+                    .map(|a| (syms.str(slot.name).to_string(), a.value.clone()))
             })
             .collect(),
         None => args
             .iter()
             .map(|a| {
                 (
-                    a.name.map(|n| n.as_str().to_string()).unwrap_or_default(),
+                    a.name.map(|n| syms.str(n).to_string()).unwrap_or_default(),
                     a.value.clone(),
                 )
             })

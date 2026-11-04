@@ -143,7 +143,8 @@ impl Loader {
             self.imports.insert(key, id, target);
         }
         self.loaded.insert(canonical.to_path_buf(), key);
-        self.modules.push(ms_check::load_module(&module));
+        self.modules
+            .push(ms_check::load_module(ms_syntax::Names::global(), &module));
         Ok(key)
     }
 
@@ -233,7 +234,12 @@ fn check_file(path: &Path) -> Vec<Diagnostic> {
     if let Err(d) = loader.visit(&canonical) {
         return vec![*d];
     }
-    let program = ms_check::check(loader.modules, loader.imports, CheckOptions::default());
+    let program = ms_check::check(
+        ms_syntax::Names::global(),
+        loader.modules,
+        loader.imports,
+        CheckOptions::default(),
+    );
     let mut diagnostics = loader.diagnostics;
     diagnostics.extend(program.diagnostics);
     diagnostics

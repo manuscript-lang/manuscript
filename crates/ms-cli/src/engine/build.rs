@@ -36,6 +36,7 @@ fn artifacts(output: &str, executable_built: bool) -> Vec<(&'static str, String,
 }
 
 pub(super) fn build<L: Lower>(
+    syms: ms_syntax::Names,
     backend: &Engine<L>,
     request: &BuildRequest,
     io: &mut Io,
@@ -110,7 +111,7 @@ pub(super) fn build<L: Lower>(
         return Ok(0);
     }
 
-    let mut compiled = match compile(backend, &request.filename, false) {
+    let mut compiled = match compile(syms, backend, &request.filename, false) {
         Ok(compiled) => compiled,
         Err(failure) => return Ok(report_failure(&failure, structured, &document, io)),
     };

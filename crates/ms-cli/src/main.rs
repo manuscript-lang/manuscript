@@ -17,18 +17,19 @@ use ms_cli::engine::Engine;
 const COMPILER_STACK: usize = 512 << 20;
 
 fn main() {
+    let syms = ms_syntax::Names::global();
     let worker = std::thread::Builder::new()
         .name("ms".into())
         .stack_size(COMPILER_STACK)
-        .spawn(real_main);
+        .spawn(move || real_main(syms));
     let status = match worker {
         Ok(handle) => handle.join().unwrap_or(70),
-        Err(_) => real_main(),
+        Err(_) => real_main(syms),
     };
     std::process::exit(status);
 }
 
-fn real_main() -> i32 {
+fn real_main(syms: ms_syntax::Names) -> i32 {
     let args: Result<Vec<String>, _> = std::env::args_os()
         .skip(1)
         .map(|a| a.into_string())
@@ -53,7 +54,7 @@ fn real_main() -> i32 {
             stdout: &mut stdout,
             stderr: &mut stderr,
         };
-        ms_cli::run(&args, &Engine::new(Native), &mut io)
+        ms_cli::run(syms, &args, &Engine::new(Native), &mut io)
     };
     let status = stdout.finish(&mut stderr, status);
     drop(stdout);

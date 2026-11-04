@@ -6,12 +6,13 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 fn check(source: &str) -> Program {
+    let syms = ms_syntax::Names::global();
     let session = crate::Session::new();
     session.ensure_standard();
     let file: Arc<str> = Arc::from("record_fields.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
     Checker::new(&session, &CheckOptions::default())
-        .check_modules(vec![crate::load_module(&module)], None)
+        .check_modules(vec![crate::load_module(syms, &module)], None)
 }
 
 fn access() -> Program {
@@ -21,42 +22,52 @@ fn access() -> Program {
 }
 
 fn named(p: &Program, name: &str) -> Ty {
-    p.symbols[&n("record_fields.ms")].borrow()[&n(name)].ty()
+    let syms = ms_syntax::Names::global();
+    p.symbols[&n("record_fields.ms")].borrow()[&n(name)].ty(syms)
 }
 
 #[test]
 fn record_fields_members_keep_generic_types_and_method_fallbacks() {
+    let syms = ms_syntax::Names::global();
     let p = access();
-    assert!(crate::unused::check(&p).is_empty());
+    assert!(crate::unused::check(syms, &p).is_empty());
     let row = with_args(&named(&p, "Row"), vec![int(), string()]);
     let all = fields(&row);
     for field in &all {
         let selected = field_of(&row, field.name).expect("declared field");
         assert_eq!(selected.name, field.name);
-        assert!(same(&selected.ty, &field.ty), "{}", field.name);
+        assert!(same(&selected.ty, &field.ty), "{}", syms.str(field.name));
     }
     assert_eq!(
-        all.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(),
+        all.iter().map(|p| syms.str(p.name)).collect::<Vec<_>>(),
         ["first", "middle", "last", "nested", "to_string"]
     );
-    assert_eq!(field_of(&row, n("to_string")).unwrap().ty.id, "Int");
+    assert_eq!(
+        syms.str(field_of(&row, n("to_string")).unwrap().ty.id),
+        "Int"
+    );
     assert!(field_of(&row, n("count")).is_none());
     assert!(field_of(&row, n("absent")).is_none());
 }
 
 #[test]
 fn record_fields_empty_primitive_and_monomorphic_lookups() {
+    let syms = ms_syntax::Names::global();
     let p = access();
     for ty in [named(&p, "Empty"), int()] {
         assert!(field_of(&ty, n("value")).is_none());
     }
     let plain = named(&p, "Plain");
-    assert_eq!(field_of(&plain, n("first")).unwrap().ty.id, "Int");
-    assert_eq!(field_of(&plain, n("last")).unwrap().ty.id, "String");
+    assert_eq!(syms.str(field_of(&plain, n("first")).unwrap().ty.id), "Int");
+    assert_eq!(
+        syms.str(field_of(&plain, n("last")).unwrap().ty.id),
+        "String"
+    );
 }
 
 #[test]
 fn record_fields_partial_substitution_takes_fresh_variable_snapshots() {
+    let syms = ms_syntax::Names::global();
     let p = access();
     let row = named(&p, "Row");
     let b = row.def.as_ref().unwrap().fields.borrow()[2].ty.result_ty();
@@ -71,8 +82,8 @@ fn record_fields_partial_substitution_takes_fresh_variable_snapshots() {
     let after = field_of(&partial, n("last")).unwrap().ty;
     let new_result = after.result_ty();
     assert!(!Rc::ptr_eq(&new_result, &old_result));
-    assert_eq!(new_result.bounds()[0].id, "String");
-    assert_eq!(new_result.default_ty().unwrap().id, "Int");
+    assert_eq!(syms.str(new_result.bounds()[0].id), "String");
+    assert_eq!(syms.str(new_result.default_ty().unwrap().id), "Int");
     assert!(old_result.bounds().is_empty());
     assert!(old_result.default_ty().is_none());
     assert!(Rc::ptr_eq(&after.params[0].ty, &partial.args[0]));
@@ -81,6 +92,7 @@ fn record_fields_partial_substitution_takes_fresh_variable_snapshots() {
 
 #[test]
 fn record_fields_lookup_does_not_substitute_unselected_fields() {
+    let syms = ms_syntax::Names::global();
     let p = access();
     let row = named(&p, "Row");
     let b = row.def.as_ref().unwrap().fields.borrow()[1].ty.args[0].clone();
@@ -88,39 +100,55 @@ fn record_fields_lookup_does_not_substitute_unselected_fields() {
     // Substituting an unrelated B field would try to snapshot these cells and panic.
     let _bounds = b.bounds.borrow_mut();
     let _default = b.default.borrow_mut();
-    assert_eq!(field_of(&partial, n("first")).unwrap().ty.id, "Int");
+    assert_eq!(
+        syms.str(field_of(&partial, n("first")).unwrap().ty.id),
+        "Int"
+    );
     assert!(field_of(&partial, n("absent")).is_none());
 }
 
 #[test]
 fn record_fields_duplicate_names_keep_the_first_declared_field() {
+    let syms = ms_syntax::Names::global();
     let p = check(include_str!("../tests/record_fields/diagnostics.ms"));
     let duplicate = named(&p, "Duplicate");
-    assert_eq!(field_of(&duplicate, n("value")).unwrap().ty.id, "Int");
+    assert_eq!(
+        syms.str(field_of(&duplicate, n("value")).unwrap().ty.id),
+        "Int"
+    );
     assert_eq!(fields(&duplicate).len(), 2);
 }
 
 #[test]
 fn record_fields_bundled_and_source_standard_records_have_indices() {
+    let syms = ms_syntax::Names::global();
     let p = check(include_str!("../tests/record_fields/standard.ms"));
     assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
     let pair = p.session.standard("Pair", vec![int(), string()]);
-    assert_eq!(field_of(&pair, n("first")).unwrap().ty.id, "Int");
-    assert_eq!(field_of(&pair, n("second")).unwrap().ty.id, "String");
+    assert_eq!(syms.str(field_of(&pair, n("first")).unwrap().ty.id), "Int");
+    assert_eq!(
+        syms.str(field_of(&pair, n("second")).unwrap().ty.id),
+        "String"
+    );
     let deque = p
         .session
         .source_type(n("@std/collections/deque.ms"), n("Deque"))
         .unwrap();
-    let deque = with_args(&deque.ty(), vec![int()]);
-    assert_eq!(field_of(&deque, n("size")).unwrap().ty.id, "Int");
+    let deque = with_args(&deque.ty(syms), vec![int()]);
+    assert_eq!(syms.str(field_of(&deque, n("size")).unwrap().ty.id), "Int");
     assert_eq!(
-        field_of(&deque, n("slots")).unwrap().ty.to_string(),
+        field_of(&deque, n("slots"))
+            .unwrap()
+            .ty
+            .display(syms)
+            .to_string(),
         "List[Int?]"
     );
 }
 
 #[test]
 fn record_fields_recovered_declarations_keep_source_positions() {
+    let syms = ms_syntax::Names::global();
     let session = crate::Session::new();
     session.ensure_standard();
     let file = Arc::from("record_fields.ms");
@@ -130,10 +158,10 @@ fn record_fields_recovered_declarations_keep_source_positions() {
     );
     assert!(!errors.is_empty());
     let p = Checker::new(&session, &CheckOptions::default())
-        .check_modules(vec![crate::load_module(&module)], None);
+        .check_modules(vec![crate::load_module(syms, &module)], None);
     assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
     assert_eq!(
-        field_of(&named(&p, "Plain"), n("last")).unwrap().ty.id,
+        ms_syntax::Names::global().str(field_of(&named(&p, "Plain"), n("last")).unwrap().ty.id),
         "String"
     );
 }

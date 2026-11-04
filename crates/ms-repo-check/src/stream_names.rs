@@ -18,7 +18,7 @@ const BANNED: [&str; 4] = ["next", "receive", "feed", "write_bytes"];
 const STREAM_MODULES: [&str; 2] = ["stdlib/io/io.ms", "stdlib/io/streams.ms"];
 const ALLOWED: &str = include_str!("../stream-names-allowed.txt");
 
-pub fn check(files: &[String]) -> Vec<String> {
+pub fn check(syms: ms_syntax::Names, files: &[String]) -> Vec<String> {
     let allowed: BTreeSet<&str> = ALLOWED
         .lines()
         .map(str::trim)
@@ -40,7 +40,7 @@ pub fn check(files: &[String]) -> Vec<String> {
         let Ok(module) = parse(&file, &source) else {
             continue;
         };
-        for entry in exported_methods(&module) {
+        for entry in exported_methods(syms, &module) {
             let key = format!("{path} {entry}");
             if allowed.contains(key.as_str()) {
                 seen.insert(key);
@@ -62,29 +62,29 @@ pub fn check(files: &[String]) -> Vec<String> {
 }
 
 /// `Type.method` for each banned method of an exported interface or of an impl on an exported type.
-fn exported_methods(module: &Module) -> Vec<String> {
+fn exported_methods(syms: ms_syntax::Names, module: &Module) -> Vec<String> {
     let exported: BTreeSet<&str> = module
         .decls
         .iter()
         .filter(|d| d.export)
         .filter_map(|d| match &d.kind {
-            DeclKind::Record(r) => Some(r.name.as_str()),
-            DeclKind::Alternative(a) => Some(a.name.as_str()),
-            DeclKind::Interface(i) => Some(i.name.as_str()),
+            DeclKind::Record(r) => Some(syms.str(r.name)),
+            DeclKind::Alternative(a) => Some(syms.str(a.name)),
+            DeclKind::Interface(i) => Some(syms.str(i.name)),
             _ => None,
         })
         .collect();
     let mut found = Vec::new();
     for decl in &module.decls {
         match &decl.kind {
-            DeclKind::Interface(i) if decl.export && i.name.as_str() != ITERATOR => {
-                banned(i.name.as_str(), &i.methods, &mut found);
+            DeclKind::Interface(i) if decl.export && syms.str(i.name) != ITERATOR => {
+                banned(syms, syms.str(i.name), &i.methods, &mut found);
             }
             DeclKind::Impl(i)
                 if exported.contains(i.receiver.name())
                     && i.contract.as_ref().is_none_or(|c| c.name() != ITERATOR) =>
             {
-                banned(i.receiver.name(), &i.methods, &mut found);
+                banned(syms, i.receiver.name(), &i.methods, &mut found);
             }
             _ => {}
         }
@@ -92,9 +92,9 @@ fn exported_methods(module: &Module) -> Vec<String> {
     found
 }
 
-fn banned(owner: &str, methods: &[Method], found: &mut Vec<String>) {
+fn banned(syms: ms_syntax::Names, owner: &str, methods: &[Method], found: &mut Vec<String>) {
     for method in methods {
-        let name = method.func.name.as_str();
+        let name = syms.str(method.func.name);
         if BANNED.contains(&name) {
             found.push(format!("{owner}.{name}"));
         }

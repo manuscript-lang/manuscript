@@ -66,13 +66,13 @@ impl Place {
     }
 
     /// Source-like text with the root's name.
-    pub fn show(&self, root: Name) -> String {
-        let mut s = root.as_str().to_string();
+    pub fn show(&self, syms: ms_syntax::Names, root: Name) -> String {
+        let mut s = syms.str(root).to_string();
         for step in &self.path {
             match step {
                 Step::Field(f) => {
                     s.push('.');
-                    s.push_str(f.as_str());
+                    s.push_str(syms.str(f));
                 }
                 Step::Element => s.push_str("[..]"),
                 Step::Index(i) => s.push_str(&format!("[{i}]")),
@@ -94,10 +94,24 @@ impl Step {
     }
 }
 
-impl fmt::Display for Step {
+/// A step paired with the handle that reads its field name.
+pub struct StepDisplay<'a> {
+    step: &'a Step,
+    syms: ms_syntax::Names,
+}
+
+impl Step {
+    /// A value that formats this step with `syms`.
+    pub fn display(&self, syms: ms_syntax::Names) -> StepDisplay<'_> {
+        StepDisplay { step: self, syms }
+    }
+}
+
+impl fmt::Display for StepDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Step::Field(n) => write!(f, ".{n}"),
+        let syms = self.syms;
+        match self.step {
+            Step::Field(n) => write!(f, ".{}", syms.str(n)),
             Step::Element => f.write_str("[..]"),
             Step::Index(i) => write!(f, "[{i}]"),
         }

@@ -12,13 +12,16 @@ use ms_rt as _;
 use std::path::{Path, PathBuf};
 
 fn lower(path: &Path) -> String {
+    let syms = ms_syntax::Names::global();
     let loaded = check_graph(
-        load_file(&path.to_string_lossy(), Default::default()),
+        syms,
+        load_file(syms, &path.to_string_lossy(), Default::default()),
         CheckRequest::default(),
     );
     assert!(loaded.success(), "{:?}", loaded.diagnostics);
     let program = loaded.program.expect("program");
     let module = lower_program(
+        syms,
         &program,
         &Options {
             entry: loaded.entry,
@@ -89,14 +92,17 @@ fn fixtures_lower_and_match_their_expectations() {
 
 #[test]
 fn rsa_source_calls_and_function_values() {
+    let syms = ms_syntax::Names::global();
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../tests/e2e/testdata/stdlib/crypto-rsa.ms");
     let loaded = check_graph(
-        load_file(&path.to_string_lossy(), Default::default()),
+        syms,
+        load_file(syms, &path.to_string_lossy(), Default::default()),
         CheckRequest::default(),
     );
     assert!(loaded.success(), "{:?}", loaded.diagnostics);
     let (module, tests) = ms_lower::lower_tests(
+        syms,
         &loaded.program.expect("program"),
         &Options {
             entry: loaded.entry,

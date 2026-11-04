@@ -214,8 +214,12 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
 const TYPED_NATIVES: &[(&str, &str)] = &[("Regex", "regex")];
 
 /// The runtime symbol of `method` on a native type from [`TYPED_NATIVES`].
-pub(crate) fn typed_method_symbol(recv: &ct::Ty, method: &str) -> Option<String> {
-    let (ty, module) = TYPED_NATIVES.iter().find(|(t, _)| recv.is_std(t))?;
+pub(crate) fn typed_method_symbol(
+    syms: ms_syntax::Names,
+    recv: &ct::Ty,
+    method: &str,
+) -> Option<String> {
+    let (ty, module) = TYPED_NATIVES.iter().find(|(t, _)| recv.is_std(syms, t))?;
     let ty = ty.to_lowercase();
     ["msstd", "msrt"].iter().find_map(|prefix| {
         [
@@ -369,7 +373,7 @@ impl FnLower<'_> {
                     // `value` argument, or of the result (`T?` gives that of `T`).
                     let by_value = decl
                         .iter()
-                        .position(|p| p.name == "value")
+                        .position(|p| self.syms.str(p.name) == "value")
                         .and_then(|k| inputs.get(k))
                         .and_then(|input| input.val)
                         .map(|v| self.ty_of(v.v));

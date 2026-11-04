@@ -53,8 +53,8 @@ use syntax::DeclRef;
 
 /// Wraps a parsed module for checking: desugars inherent `impl Type:` blocks
 /// and allocates the fact tables.
-pub fn load_module(m: &Module) -> ModRef {
-    let (decls, errors, node_count) = passes::desugar_inherent_impls(m);
+pub fn load_module(syms: ms_syntax::Names, m: &Module) -> ModRef {
+    let (decls, errors, node_count) = passes::desugar_inherent_impls(syms, m);
     let decls: Vec<DeclRef> = decls.into_iter().map(DeclRef::new).collect();
     let mut data = ModuleData::new(m, decls, node_count);
     data.inherent = errors
@@ -74,12 +74,18 @@ pub fn load_module(m: &Module) -> ModRef {
 
 /// Checks modules given in dependency order. `imports` resolves each local
 /// import to the module it names.
-pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) -> Program {
-    check_in(&Session::new(), modules, imports, options)
+pub fn check(
+    syms: ms_syntax::Names,
+    modules: Vec<ModRef>,
+    imports: ImportMap,
+    options: CheckOptions,
+) -> Program {
+    check_in(syms, &Session::new(), modules, imports, options)
 }
 
 /// Like [`check`], against a session the caller keeps, so the standard library loads once.
 pub fn check_in(
+    syms: ms_syntax::Names,
     session: &Rc<Session>,
     modules: Vec<ModRef>,
     imports: ImportMap,
@@ -93,7 +99,7 @@ pub fn check_in(
     if program.diagnostics.is_empty() {
         // Value semantics is part of the language: every program that type checks is also
         // checked for ownership and exclusivity.
-        let own = program.hir().ownership();
+        let own = program.hir().ownership(syms);
         program.close_moves = Rc::new(own.close_moves);
         program.resource_moves = Rc::new(own.resource_moves);
         program.moves = Rc::new(own.moves);
@@ -106,7 +112,7 @@ pub fn check_in(
         program.diagnostics.extend(own.diagnostics);
     }
     if program.diagnostics.is_empty() {
-        program.diagnostics.extend(unused::check(&program));
+        program.diagnostics.extend(unused::check(syms, &program));
     }
     program
 }

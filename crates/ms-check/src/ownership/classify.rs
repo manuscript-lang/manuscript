@@ -87,12 +87,12 @@ impl Classifier {
     /// a declared `clone`, or a type parameter without a bound that implies `Clonable`. The same
     /// rule as the contract checker's `Clonable` property, for the ownership pass, which has no
     /// contract checker.
-    pub fn clonable(&self, t: &Ty) -> bool {
-        self.clonable_in(t, &mut Vec::new())
+    pub fn clonable(&self, syms: ms_syntax::Names, t: &Ty) -> bool {
+        self.clonable_in(syms, t, &mut Vec::new())
     }
 
-    fn clonable_in(&self, t: &Ty, seen: &mut Vec<Name>) -> bool {
-        if self.class(t) == Class::Resource {
+    fn clonable_in(&self, syms: ms_syntax::Names, t: &Ty, seen: &mut Vec<Name>) -> bool {
+        if self.class(syms, t) == Class::Resource {
             return false;
         }
         match t.kind {
@@ -100,15 +100,15 @@ impl Classifier {
             // An interface value's payload has a type the interface does not name; one over a
             // native without a `clone` (an `HttpExchange`) faults when copied, a guard the
             // runtime keeps until wrappers can borrow (middleware `Tap`s copy their exchange).
-            Kind::Contract => !t.is_std("Closeable"),
+            Kind::Contract => !t.is_std(syms, "Closeable"),
             // A function value owns its captures and has no `clone`, so a type holding one
             // cannot be duplicated (walk.rs `no_clone`).
             Kind::Function => false,
             Kind::Native => {
                 (self.copyable.contains(&t.id)
                     || self.clonable.contains(&t.id)
-                    || native_declares_clone(t))
-                    && t.args.iter().all(|a| self.clonable_in(a, seen))
+                    || native_declares_clone(syms, t))
+                    && t.args.iter().all(|a| self.clonable_in(syms, a, seen))
             }
             Kind::Record | Kind::Alternative => {
                 if seen.contains(&t.id) {
@@ -117,12 +117,14 @@ impl Classifier {
                 }
                 seen.push(t.id);
                 let s = substitution(t);
-                let fields_ok = fields(t).iter().all(|f| self.clonable_in(&f.ty, seen));
+                let fields_ok = fields(t)
+                    .iter()
+                    .all(|f| self.clonable_in(syms, &f.ty, seen));
                 let cases_ok = t.def.as_ref().is_none_or(|def| {
                     def.cases.borrow().iter().all(|c| {
                         c.fields
                             .iter()
-                            .all(|f| self.clonable_in(&sub(&f.ty, &s), seen))
+                            .all(|f| self.clonable_in(syms, &sub(&f.ty, &s), seen))
                     })
                 });
                 seen.pop();
@@ -138,13 +140,13 @@ impl Classifier {
     }
 
     /// The class of values of `t`.
-    pub fn class(&self, t: &Ty) -> Class {
-        self.class_in(t, None)
+    pub fn class(&self, syms: ms_syntax::Names, t: &Ty) -> Class {
+        self.class_in(syms, t, None)
     }
 
-    fn class_in(&self, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
+    fn class_in(&self, syms: ms_syntax::Names, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
         match t.kind {
-            Kind::Primitive if t.id.as_str() == "String" => Class::Move,
+            Kind::Primitive if syms.str(t.id) == "String" => Class::Move,
             Kind::Primitive | Kind::Invalid | Kind::Inferred => Class::Copy,
             Kind::Variable => {
                 if t.bounds().iter().any(|b| b.is(Builtin::Closeable)) {
@@ -157,12 +159,12 @@ impl Classifier {
             // with a `close` (a channel's transport) are handles their holders close explicitly.
             Kind::Contract if t.is(Builtin::Closeable) => Class::Resource,
             Kind::Function | Kind::Contract => Class::Move,
-            Kind::Native => self.native(t, visiting),
-            Kind::Record | Kind::Alternative => self.nominal(t, visiting),
+            Kind::Native => self.native(syms, t, visiting),
+            Kind::Record | Kind::Alternative => self.nominal(syms, t, visiting),
         }
     }
 
-    fn native(&self, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
+    fn native(&self, syms: ms_syntax::Names, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
         if self.closeable.contains(&t.id) {
             Class::Resource
         } else if self.copyable.contains(&t.id) {
@@ -171,9 +173,9 @@ impl Classifier {
         } else if t.is(Builtin::List) {
             // An owning collection of resources is itself a resource, closed with its elements.
             // A `Set` stays `Move`: a resource is not `Hashable`, so it is never an element.
-            self.holds(t.args.first(), visiting)
+            self.holds(syms, t.args.first(), visiting)
         } else if t.is(Builtin::Map) {
-            self.holds(t.args.get(1), visiting)
+            self.holds(syms, t.args.get(1), visiting)
         } else {
             // A native owns its storage; `.clone()` is its explicit duplicate.
             Class::Move
@@ -182,14 +184,19 @@ impl Classifier {
 
     /// The class of a collection holding `element`: `Resource` when its elements are, else
     /// `Move`, so a collection of plain values stays as cheap as before.
-    fn holds(&self, element: Option<&Ty>, visiting: Option<&Visiting<'_>>) -> Class {
-        match element.map(|e| self.class_in(e, visiting)) {
+    fn holds(
+        &self,
+        syms: ms_syntax::Names,
+        element: Option<&Ty>,
+        visiting: Option<&Visiting<'_>>,
+    ) -> Class {
+        match element.map(|e| self.class_in(syms, e, visiting)) {
             Some(Class::Resource) => Class::Resource,
             _ => Class::Move,
         }
     }
 
-    fn nominal(&self, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
+    fn nominal(&self, syms: ms_syntax::Names, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
         if self.closeable.contains(&t.id) {
             return Class::Resource;
         }
@@ -222,13 +229,13 @@ impl Classifier {
             Class::Copy
         };
         for f in fields(t) {
-            class = class.max(self.class_in(&f.ty, Some(&current)));
+            class = class.max(self.class_in(syms, &f.ty, Some(&current)));
         }
         if let Some(def) = &t.def {
             let s = substitution(t);
             for case in def.cases.borrow().iter() {
                 for f in &case.fields {
-                    class = class.max(self.class_in(&sub(&f.ty, &s), Some(&current)));
+                    class = class.max(self.class_in(syms, &sub(&f.ty, &s), Some(&current)));
                 }
             }
         }
@@ -239,11 +246,11 @@ impl Classifier {
 }
 
 /// Whether the interface `t` declares a `close` operation.
-pub(crate) fn declares_close(t: &Ty) -> bool {
+pub(crate) fn declares_close(syms: ms_syntax::Names, t: &Ty) -> bool {
     t.def.as_ref().is_some_and(|d| {
         d.operations
             .borrow()
             .iter()
-            .any(|o| o.name.as_str() == "close")
+            .any(|o| syms.str(o.name) == "close")
     })
 }

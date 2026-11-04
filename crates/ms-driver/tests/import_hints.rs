@@ -9,6 +9,7 @@ use ms_syntax::{Phase, Pos};
 
 #[test]
 fn project_import_fix_resolves_from_the_diagnostic_module() {
+    let syms = ms_syntax::Names::global();
     let dir = TempDir::new();
     let manifest = write(dir.path(), "ms.toml", MANIFEST);
     let source = include_str!("import_hints/main.ms");
@@ -19,7 +20,8 @@ fn project_import_fix_resolves_from_the_diagnostic_module() {
         include_str!("import_hints/blobs.ms"),
     );
     let checked = check_graph(
-        load_file(&manifest, LoadOptions::default()),
+        syms,
+        load_file(syms, &manifest, LoadOptions::default()),
         CheckRequest::default(),
     );
     assert_eq!(checked.diagnostics.len(), 1, "{:?}", checked.diagnostics);
@@ -40,7 +42,8 @@ fn project_import_fix_resolves_from_the_diagnostic_module() {
         &format!("{}{source}", fix.replacement),
     );
     let repaired = check_graph(
-        load_file(&manifest, LoadOptions::default()),
+        syms,
+        load_file(syms, &manifest, LoadOptions::default()),
         CheckRequest::default(),
     );
     assert!(repaired.success(), "{:?}", repaired.diagnostics);

@@ -8,7 +8,7 @@
 
 ## Status
 
-Stage 1 (this PR): the `Interner` and `Sym` types with tests, unused by the pipeline. Later stages move the parser, checker and consumers over.
+Stage 1 (#2536, merged): the `Interner` and `Sym` types with tests. Stage 2a (#2536): the `Names` handle in the ms-syntax parser and dump. Stage 2b (this PR): every crate reads and interns identifier text through a `Names` handle (`Checker`, `Program`, `Cx` and `FnLower` hold one; free functions take it as a parameter) and checker `Type`, `Step` and `VtableKey` print through `display(syms)` / `name(syms)` instead of `Display`. `Symbol` still has its process-wide table, so behavior is unchanged. Stage 3 flips `Symbol` to an index into the session `Interner`, makes `Names` borrow it, removes `Symbol`'s `Display`, `Deref` and `as_str`, and gives `Ord` an explicit by-text comparator where sorted output depends on it.
 
 ## Problem
 

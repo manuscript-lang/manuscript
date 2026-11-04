@@ -133,7 +133,9 @@ fn walk(
 }
 
 /// References to the identity at a position across the project.
+#[allow(clippy::too_many_arguments)]
 pub fn workspace_references(
+    syms: ms_syntax::Names,
     analysis: &Analysis,
     index: &[Occurrence],
     d: &Document,
@@ -146,13 +148,13 @@ pub fn workspace_references(
     if canceled(cancel).is_err() {
         return Vec::new();
     }
-    let Some(selected) = nav::occurrence_at(analysis, d, p, index) else {
+    let Some(selected) = nav::occurrence_at(syms, analysis, d, p, index) else {
         return Vec::new();
     };
     let is_binding = selected.key.starts_with("binding:")
         && selected.info.as_ref().is_some_and(|i| i.binding.is_some());
     if is_binding {
-        return nav::references_with_index(analysis, index, d, p, include);
+        return nav::references_with_index(syms, analysis, index, d, p, include);
     }
     // A private module function (or constant) cannot be imported elsewhere.
     // Its complete set of uses is already in the selected checked graph.
@@ -162,7 +164,7 @@ pub fn workspace_references(
         .and_then(|info| info.symbol.as_ref())
         .is_some_and(|symbol| symbol.kind == ms_check::types::SymKind::Fn && !symbol.export)
     {
-        let mut locations = nav::references_with_index(analysis, index, d, p, include);
+        let mut locations = nav::references_with_index(syms, analysis, index, d, p, include);
         locations.sort_by_cached_key(location_sort_key);
         return locations;
     }
@@ -170,7 +172,7 @@ pub fn workspace_references(
         Ok(documents) => documents,
         Err(ScanError::Canceled) => return Vec::new(),
         Err(ScanError::Io(_)) => {
-            let mut locations = nav::references_with_index(analysis, index, d, p, include);
+            let mut locations = nav::references_with_index(syms, analysis, index, d, p, include);
             locations.sort_by_cached_key(location_sort_key);
             return locations;
         }
@@ -185,18 +187,18 @@ pub fn workspace_references(
         if file.uri != d.uri && !file.text.contains(selected.name.as_str()) {
             continue;
         }
-        let checked = workspace_analysis(session, file, docs);
+        let checked = workspace_analysis(syms, session, file, docs);
         if canceled(cancel).is_err() {
             return Vec::new();
         }
-        for entry in checked.index() {
+        for entry in checked.occurrence_index(syms) {
             if canceled(cancel).is_err() {
                 return Vec::new();
             }
             if entry.key != selected.key || (!include && entry.declaration) {
                 continue;
             }
-            let Some(location) = nav::occurrence_location(&checked, entry) else {
+            let Some(location) = nav::occurrence_location(syms, &checked, entry) else {
                 continue;
             };
             if seen.insert(location_sort_key(&location)) {
@@ -211,6 +213,7 @@ pub fn workspace_references(
 /// Declarations whose name contains `query` (case-insensitive), across the
 /// open documents and the given workspace roots.
 pub fn workspace_symbols(
+    syms: ms_syntax::Names,
     session: &std::rc::Rc<ms_check::Session>,
     docs: &Documents,
     roots: &[String],
@@ -219,6 +222,7 @@ pub fn workspace_symbols(
 ) -> Option<Vec<Json>> {
     let lowered = query.to_lowercase();
     workspace_symbols_matching(
+        syms,
         session,
         docs,
         roots,
@@ -230,6 +234,7 @@ pub fn workspace_symbols(
 /// Share discovery and checked symbol identities with CLI fuzzy lookup, while
 /// rejecting sources without matching identifiers before running the checker.
 pub(crate) fn workspace_symbols_matching(
+    syms: ms_syntax::Names,
     session: &std::rc::Rc<ms_check::Session>,
     docs: &Documents,
     roots: &[String],
@@ -285,23 +290,23 @@ pub(crate) fn workspace_symbols_matching(
         if !may_contain_symbol(d, matches, &mut names) {
             continue;
         }
-        let checked = workspace_analysis(session, d, docs);
+        let checked = workspace_analysis(syms, session, d, docs);
         if canceled(cancel).is_err() {
             return None;
         }
-        for entry in checked.index() {
+        for entry in checked.occurrence_index(syms) {
             if canceled(cancel).is_err() {
                 return None;
             }
             let Some(info) = &entry.info else { continue };
-            if entry.file.as_str().starts_with("@std/")
+            if syms.str(entry.file).starts_with("@std/")
                 || !entry.declaration
                 || (info.symbol.is_none() && info.method.is_none())
                 || !matches(&entry.name)
             {
                 continue;
             }
-            let Some(location) = nav::occurrence_location(&checked, entry) else {
+            let Some(location) = nav::occurrence_location(syms, &checked, entry) else {
                 continue;
             };
             let id = location_sort_key(&location);

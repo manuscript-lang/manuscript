@@ -125,11 +125,11 @@ pub struct Occurrence {
 /// A module's identity across analyses with different source roots. Bundled
 /// declarations keep their virtual identity; project paths are already canonical
 /// in the loader and must not be compared as graph-relative names.
-fn source_key(root: &str, file: Name) -> String {
-    if file.as_str().starts_with("@std/") {
-        file.as_str().to_string()
+fn source_key(syms: ms_syntax::Names, root: &str, file: Name) -> String {
+    if syms.str(file).starts_with("@std/") {
+        syms.str(file).to_string()
     } else {
-        ms_driver::project::pathops::join(&[root, file.as_str()])
+        ms_driver::project::pathops::join(&[root, syms.str(file)])
     }
 }
 
@@ -144,38 +144,38 @@ fn written_name(source: &str, offset: usize, name: &str) -> bool {
 }
 
 /// The key of a module symbol.
-pub fn symbol_key(root: &str, s: Option<&SymRef>) -> String {
+pub fn symbol_key(syms: ms_syntax::Names, root: &str, s: Option<&SymRef>) -> String {
     match s {
         None => String::new(),
         Some(s) => match &s.decl {
             Some(decl) => format!(
                 "symbol:{}:{}",
-                source_key(root, s.module),
+                source_key(syms, root, s.module),
                 decl.pos().offset
             ),
-            None => format!("native:{}", s.id),
+            None => format!("native:{}", syms.str(s.id)),
         },
     }
 }
 
 /// The identity of a method: contract operations group a contract and all its
 /// implementations; other methods are keyed by declaration.
-pub fn method_key(root: &str, files: &DeclFiles, m: &Method) -> String {
+pub fn method_key(syms: ms_syntax::Names, root: &str, files: &DeclFiles, m: &Method) -> String {
     if let (Some(decl), Some(contract)) = (&m.decl, &m.contract)
         && let Some(symbol) = contract.symbol()
         && let Some(contract_decl) = &symbol.decl
     {
         return format!(
             "operation:{}:{}:{}",
-            source_key(root, symbol.module),
+            source_key(syms, root, symbol.module),
             contract_decl.pos().offset,
-            decl.name()
+            syms.str(decl.name())
         );
     }
     match &m.decl {
         Some(decl) => format!(
             "method:{}:{}",
-            source_key(root, files.file(decl, m.module)),
+            source_key(syms, root, files.file(decl, m.module)),
             decl.pos().offset
         ),
         None => String::new(),
@@ -211,10 +211,10 @@ impl DeclFiles {
 }
 
 /// The text a syntax expression is addressed by (Go `Expression.Text`).
-pub fn expr_text(e: &Expr) -> Option<&'static str> {
+pub fn expr_text(syms: ms_syntax::Names, e: &Expr) -> Option<&'static str> {
     match &e.kind {
-        ExprKind::Name(s) | ExprKind::Number(s) => Some(s.as_str()),
-        ExprKind::Member { name, .. } => Some(name.as_str()),
+        ExprKind::Name(s) | ExprKind::Number(s) => Some(syms.str(s)),
+        ExprKind::Member { name, .. } => Some(syms.str(name)),
         ExprKind::Bool(true) => Some("true"),
         ExprKind::Bool(false) => Some("false"),
         ExprKind::Unit => Some("unit"),
@@ -273,11 +273,11 @@ impl Builder {
         });
     }
 
-    fn local_key(&self, b: &BindingRef) -> String {
+    fn local_key(&self, syms: ms_syntax::Names, b: &BindingRef) -> String {
         self.binding_keys
             .get(&binding_ptr(b))
             .cloned()
-            .unwrap_or_else(|| format!("binding:{}", b.id))
+            .unwrap_or_else(|| format!("binding:{}", syms.str(b.id)))
     }
 
     fn header(&self, file: Name, pos: usize, name: &str) -> usize {
@@ -286,11 +286,11 @@ impl Builder {
 }
 
 /// Builds the sorted occurrence index of all modules the analysis can show.
-pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
+pub fn source_index(syms: ms_syntax::Names, analysis: &Analysis) -> Vec<Occurrence> {
     let Some(program) = &analysis.program else {
         return Vec::new();
     };
-    let modules = analysis.source_modules();
+    let modules = analysis.source_modules(syms);
     let mut b = Builder {
         root: analysis.module_path(""),
         files: DeclFiles::new(&modules),
@@ -314,7 +314,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
                 for (index, binding) in decl_facts.parameters.iter().enumerate() {
                     let mut key = format!(
                         "parameter:{}:{}:{}",
-                        source_key(&b.root, m.file),
+                        source_key(syms, &b.root, m.file),
                         func.pos().offset,
                         index
                     );
@@ -326,8 +326,8 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
                         if let Some(symbol) = symbol {
                             key = format!(
                                 "field:{}:{}",
-                                symbol_key(&b.root, Some(&symbol)),
-                                binding.name
+                                symbol_key(syms, &b.root, Some(&symbol)),
+                                syms.str(binding.name)
                             );
                         }
                     }
@@ -338,7 +338,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
     }
 
     for m in &modules {
-        let symbols = module_symbols(analysis, m);
+        let symbols = module_symbols(syms, analysis, m);
         for d in &m.decls {
             if d.0.decl.synthetic && matches!(d.decl().kind, DeclKind::Interface(_)) {
                 continue;
@@ -346,10 +346,10 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
             if let Some(symbol) = symbols.get(&d.name())
                 && symbol.decl.as_ref().is_some_and(|sd| sd.same(d))
             {
-                let at = b.header(m.file, d.pos().offset as usize, symbol.name.as_str());
+                let at = b.header(m.file, d.pos().offset as usize, syms.str(symbol.name));
                 b.add(
-                    symbol_key(&b.root, Some(symbol)),
-                    symbol.name.as_str(),
+                    symbol_key(syms, &b.root, Some(symbol)),
+                    syms.str(symbol.name),
                     m.file,
                     at,
                     true,
@@ -372,14 +372,14 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
             }
             let Some(ty) = symbol.ty_opt() else { continue };
             let Some(def) = ty.def.clone() else { continue };
-            let skey = symbol_key(&b.root, Some(symbol));
+            let skey = symbol_key(syms, &b.root, Some(symbol));
             let typed_fields = fields(&ty);
             for field in d.record_fields() {
                 for typed in &typed_fields {
                     if typed.name == field.name {
                         b.add(
-                            format!("field:{skey}:{}", field.name),
-                            field.name.as_str(),
+                            format!("field:{skey}:{}", syms.str(field.name)),
+                            syms.str(field.name),
                             m.file,
                             field.pos.offset as usize,
                             true,
@@ -394,8 +394,8 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
             }
             for case in d.cases() {
                 b.add(
-                    format!("case:{skey}:{}", case.name),
-                    case.name.as_str(),
+                    format!("case:{skey}:{}", syms.str(case.name)),
+                    syms.str(case.name),
                     m.file,
                     case.pos.offset as usize,
                     true,
@@ -409,7 +409,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
                 );
             }
             let contract = ty.kind == Kind::Contract;
-            if contract || m.file.as_str().starts_with("@std/") {
+            if contract || syms.str(m.file).starts_with("@std/") {
                 let operations = def.operations.borrow().clone();
                 for (index, method) in d.methods().iter().enumerate() {
                     for op in &operations {
@@ -433,12 +433,12 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
                         let at = b.header(
                             m.file,
                             method.pos.offset as usize,
-                            method.func.name.as_str(),
+                            syms.str(method.func.name),
                         );
-                        let key = method_key(&b.root, &b.files, &checked);
+                        let key = method_key(syms, &b.root, &b.files, &checked);
                         b.add(
                             key,
-                            method.func.name.as_str(),
+                            syms.str(method.func.name),
                             m.file,
                             at,
                             true,
@@ -454,15 +454,15 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
             }
         }
         for imp in &m.imports {
-            let imported = if m.file.as_str().starts_with("@std/") {
+            let imported = if syms.str(m.file).starts_with("@std/") {
                 analysis.session.standard_exports(&imp.path)
             } else {
                 symbols.clone()
             };
-            if let Some(symbol) = imported.get(&n(imp.name.as_str())) {
+            if let Some(symbol) = imported.get(&n(syms.str(imp.name))) {
                 b.add(
-                    symbol_key(&b.root, Some(symbol)),
-                    imp.name.as_str(),
+                    symbol_key(syms, &b.root, Some(symbol)),
+                    syms.str(imp.name),
                     m.file,
                     imp.name_pos.offset as usize,
                     false,
@@ -480,12 +480,13 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
     // Bindings: patterns, parameters, lambda parameters, loops and arms.
     for m in modules.iter().filter(|m| checked.contains(&m.file)) {
         let mut walker = BindingWalker {
+            syms: ms_syntax::Names::global(),
             b: &mut b,
             module: m,
         };
         for d in &m.decls {
             for func in callables(d) {
-                walker.parameters(&func);
+                walker.parameters(syms, &func);
             }
             visit::walk_decl(&mut walker, d.decl());
         }
@@ -496,11 +497,11 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
         let Some(file) = b.files.of_decl(&decl.decl) else {
             continue;
         };
-        let at = b.header(file, decl.pos().offset as usize, decl.name().as_str());
-        let key = method_key(&b.root, &b.files, method);
+        let at = b.header(file, decl.pos().offset as usize, syms.str(decl.name()));
+        let key = method_key(syms, &b.root, &b.files, method);
         b.add(
             key,
-            decl.name().as_str(),
+            syms.str(decl.name()),
             file,
             at,
             true,
@@ -524,8 +525,8 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
                 continue;
             };
             b.add(
-                symbol_key(&b.root, Some(&symbol)),
-                name.as_str(),
+                symbol_key(syms, &b.root, Some(&symbol)),
+                syms.str(name),
                 m.file,
                 site.pos.offset as usize,
                 false,
@@ -541,6 +542,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
 
     for m in modules.iter().filter(|m| checked.contains(&m.file)) {
         let mut walker = UseWalker {
+            syms: ms_syntax::Names::global(),
             b: &mut b,
             module: m,
             hidden: HashMap::new(),
@@ -552,9 +554,8 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
 
     let mut out = b.out;
     out.sort_by(|x, y| {
-        x.file
-            .as_str()
-            .cmp(y.file.as_str())
+        syms.str(x.file)
+            .cmp(syms.str(y.file))
             .then(x.offset.cmp(&y.offset))
             .then_with(|| x.key.cmp(&y.key))
     });
@@ -562,9 +563,13 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
 }
 
 /// The symbols a module declares or sees.
-fn module_symbols(analysis: &Analysis, m: &ModRef) -> HashMap<Name, SymRef> {
-    if m.file.as_str().starts_with("@std/") {
-        return analysis.session.standard_exports(m.file.as_str());
+fn module_symbols(
+    syms: ms_syntax::Names,
+    analysis: &Analysis,
+    m: &ModRef,
+) -> HashMap<Name, SymRef> {
+    if syms.str(m.file).starts_with("@std/") {
+        return analysis.session.standard_exports(syms.str(m.file));
     }
     analysis
         .program
@@ -585,12 +590,13 @@ pub(crate) fn callables(d: &DeclRef) -> impl Iterator<Item = FuncRef> + '_ {
 }
 
 struct BindingWalker<'a> {
+    syms: ms_syntax::Names,
     b: &'a mut Builder,
     module: &'a ModRef,
 }
 
 impl BindingWalker<'_> {
-    fn parameters(&mut self, func: &FuncRef) {
+    fn parameters(&mut self, syms: ms_syntax::Names, func: &FuncRef) {
         let params: &[Param] = match func.func() {
             Some(f) => &f.params,
             None => &[],
@@ -604,10 +610,10 @@ impl BindingWalker<'_> {
             .unwrap_or_default();
         for (i, binding) in bindings.iter().enumerate() {
             if let Some(param) = params.get(i) {
-                let key = self.b.local_key(binding);
+                let key = self.b.local_key(syms, binding);
                 self.b.add(
                     key,
-                    binding.name.as_str(),
+                    syms.str(binding.name),
                     self.module.file,
                     param.pos.offset as usize,
                     true,
@@ -622,11 +628,11 @@ impl BindingWalker<'_> {
         }
     }
 
-    fn declare(&mut self, binding: &BindingRef, offset: usize) {
-        let key = self.b.local_key(binding);
+    fn declare(&mut self, syms: ms_syntax::Names, binding: &BindingRef, offset: usize) {
+        let key = self.b.local_key(syms, binding);
         self.b.add(
             key,
-            binding.name.as_str(),
+            syms.str(binding.name),
             self.module.file,
             offset,
             true,
@@ -639,21 +645,24 @@ impl BindingWalker<'_> {
         );
     }
 
-    fn pattern(&mut self, p: &Pattern) {
+    fn pattern(&mut self, syms: ms_syntax::Names, p: &Pattern) {
         let found = self.module.facts().patterns.get(&p.id).cloned();
         if let Some(binding) = found {
-            self.declare(&binding, p.pos.offset as usize);
+            self.declare(syms, &binding, p.pos.offset as usize);
         }
         match &p.kind {
             PatternKind::Name(_) => {}
-            PatternKind::List(items) => items.iter().for_each(|x| self.pattern(x)),
-            PatternKind::Record(fields) => fields.iter().for_each(|f| self.pattern(&f.pattern)),
+            PatternKind::List(items) => items.iter().for_each(|x| self.pattern(syms, x)),
+            PatternKind::Record(fields) => {
+                fields.iter().for_each(|f| self.pattern(syms, &f.pattern))
+            }
         }
     }
 }
 
 impl Visitor for BindingWalker<'_> {
     fn stmt(&mut self, s: &Stmt) {
+        let syms = self.syms;
         let loop_binding = self
             .module
             .facts()
@@ -661,11 +670,11 @@ impl Visitor for BindingWalker<'_> {
             .get(&s.id)
             .and_then(|f| f.loop_binding.clone());
         match &s.kind {
-            StmtKind::Bind { pattern, .. } => self.pattern(pattern),
+            StmtKind::Bind { pattern, .. } => self.pattern(syms, pattern),
             StmtKind::If {
                 binding: Some(pattern),
                 ..
-            } => self.pattern(pattern),
+            } => self.pattern(syms, pattern),
             StmtKind::For { .. } => {
                 let expanded = self.module.facts().stmts.get(&s.id).and_then(|f| {
                     let StmtKind::While { body, .. } = &f.expansion.as_ref()?.last()?.kind else {
@@ -684,9 +693,9 @@ impl Visitor for BindingWalker<'_> {
                     let at = self.b.header(
                         self.module.file,
                         s.pos.offset as usize,
-                        binding.name.as_str(),
+                        syms.str(binding.name),
                     );
-                    self.declare(&binding, at);
+                    self.declare(syms, &binding, at);
                 }
             }
             _ => {}
@@ -694,6 +703,7 @@ impl Visitor for BindingWalker<'_> {
     }
 
     fn expr(&mut self, e: &Expr) {
+        let syms = self.syms;
         match &e.kind {
             ExprKind::Lambda(l) => {
                 let bindings = self
@@ -705,7 +715,7 @@ impl Visitor for BindingWalker<'_> {
                     .unwrap_or_default();
                 for (i, binding) in bindings.iter().enumerate() {
                     if let Some(param) = l.params.get(i) {
-                        self.declare(binding, param.pos.offset as usize);
+                        self.declare(syms, binding, param.pos.offset as usize);
                     }
                 }
             }
@@ -722,9 +732,9 @@ impl Visitor for BindingWalker<'_> {
                         let at = self.b.header(
                             self.module.file,
                             arm.pos.offset as usize,
-                            binding.name.as_str(),
+                            syms.str(binding.name),
                         );
-                        self.declare(binding, at);
+                        self.declare(syms, binding, at);
                     }
                 }
             }
@@ -735,6 +745,7 @@ impl Visitor for BindingWalker<'_> {
 
 /// Uses: names, members, constructors, labels and assignments.
 struct UseWalker<'a> {
+    syms: ms_syntax::Names,
     b: &'a mut Builder,
     module: &'a ModRef,
     hidden: HashMap<NodeId, bool>,
@@ -760,7 +771,7 @@ impl UseWalker<'_> {
     /// Match paths bypass expression inference. Resolve their case identity
     /// from the checked scrutinee, rather than treating a bare arm as a name
     /// lookup (different alternatives may declare the same case spelling).
-    fn match_case(&mut self, scrutinee: &Expr, path: &Expr) {
+    fn match_case(&mut self, syms: ms_syntax::Names, scrutinee: &Expr, path: &Expr) {
         let Some(ty) = self.info_of(scrutinee).and_then(|info| info.ty) else {
             return;
         };
@@ -787,8 +798,12 @@ impl UseWalker<'_> {
             return;
         }
         self.add(
-            format!("case:{}:{}", symbol_key(&self.b.root, Some(&parent)), name),
-            name.as_str(),
+            format!(
+                "case:{}:{}",
+                symbol_key(syms, &self.b.root, Some(&parent)),
+                syms.str(name)
+            ),
+            syms.str(name),
             path.pos.offset as usize,
             false,
             OccInfo {
@@ -800,7 +815,7 @@ impl UseWalker<'_> {
         );
     }
 
-    fn expression(&mut self, e: &Expr) {
+    fn expression(&mut self, syms: ms_syntax::Names, e: &Expr) {
         let Some(info) = self.info_of(e) else { return };
         if hidden_structure(self.module, e, &info, &mut self.hidden) {
             return;
@@ -809,16 +824,16 @@ impl UseWalker<'_> {
         match &e.kind {
             ExprKind::Name(name) => {
                 let key = if let Some(binding) = &info.binding {
-                    Some(self.b.local_key(binding))
+                    Some(self.b.local_key(syms, binding))
                 } else {
                     info.symbol
                         .as_ref()
-                        .map(|s| symbol_key(&self.b.root, Some(s)))
+                        .map(|s| symbol_key(syms, &self.b.root, Some(s)))
                 };
                 if let Some(key) = key {
                     self.add(
                         key,
-                        name.as_str(),
+                        syms.str(name),
                         e.pos.offset as usize,
                         info.write,
                         occ.clone(),
@@ -836,10 +851,10 @@ impl UseWalker<'_> {
                         self.add(
                             format!(
                                 "field:{}:{}",
-                                symbol_key(&self.b.root, parent.as_ref()),
-                                name
+                                symbol_key(syms, &self.b.root, parent.as_ref()),
+                                syms.str(name)
                             ),
-                            name.as_str(),
+                            syms.str(name),
                             e.pos.offset as usize,
                             info.write,
                             occ.clone(),
@@ -847,10 +862,10 @@ impl UseWalker<'_> {
                     }
                 }
                 if let Some(method) = &info.method {
-                    let key = method_key(&self.b.root, &self.b.files, method);
+                    let key = method_key(syms, &self.b.root, &self.b.files, method);
                     self.add(
                         key,
-                        name.as_str(),
+                        syms.str(name),
                         e.pos.offset as usize,
                         info.write,
                         occ.clone(),
@@ -867,8 +882,12 @@ impl UseWalker<'_> {
                 _ => e,
             };
             self.add(
-                format!("case:{}:{}", symbol_key(&self.b.root, Some(&parent)), case),
-                case.as_str(),
+                format!(
+                    "case:{}:{}",
+                    symbol_key(syms, &self.b.root, Some(&parent)),
+                    syms.str(case)
+                ),
+                syms.str(case),
                 left.pos.offset as usize,
                 false,
                 occ.clone(),
@@ -877,8 +896,8 @@ impl UseWalker<'_> {
                 let root = peel_apply(receiver);
                 if let ExprKind::Name(root_name) = &root.kind {
                     self.add(
-                        symbol_key(&self.b.root, Some(&parent)),
-                        root_name.as_str(),
+                        symbol_key(syms, &self.b.root, Some(&parent)),
+                        syms.str(root_name),
                         root.pos.offset as usize,
                         false,
                         OccInfo {
@@ -904,10 +923,10 @@ impl UseWalker<'_> {
                             self.add(
                                 format!(
                                     "field:{}:{}",
-                                    symbol_key(&self.b.root, parent.as_ref()),
-                                    field.name
+                                    symbol_key(syms, &self.b.root, parent.as_ref()),
+                                    syms.str(field.name)
                                 ),
-                                field.name.as_str(),
+                                syms.str(field.name),
                                 arg.pos.offset as usize,
                                 false,
                                 OccInfo {
@@ -926,8 +945,8 @@ impl UseWalker<'_> {
                 if let ExprKind::Name(left_name) = &left.kind {
                     let symbol = def.symbol();
                     self.add(
-                        symbol_key(&self.b.root, symbol.as_ref()),
-                        left_name.as_str(),
+                        symbol_key(syms, &self.b.root, symbol.as_ref()),
+                        syms.str(left_name),
                         left.pos.offset as usize,
                         false,
                         OccInfo {
@@ -938,12 +957,12 @@ impl UseWalker<'_> {
                     );
                 }
             }
-            self.labels(callee, args);
+            self.labels(syms, callee, args);
         }
     }
 
     /// Argument labels resolve to the callee's parameter bindings.
-    fn labels(&mut self, callee: &Expr, args: &[Argument]) {
+    fn labels(&mut self, syms: ms_syntax::Names, callee: &Expr, args: &[Argument]) {
         let Some(called) = self.info_of(callee) else {
             return;
         };
@@ -974,10 +993,10 @@ impl UseWalker<'_> {
             for (i, param) in func.params.iter().enumerate() {
                 if param.name == label && i < bindings.len() {
                     let binding = bindings[i].clone();
-                    let key = self.b.local_key(&binding);
+                    let key = self.b.local_key(syms, &binding);
                     self.add(
                         key,
-                        binding.name.as_str(),
+                        syms.str(binding.name),
                         arg.pos.offset as usize,
                         false,
                         OccInfo {
@@ -994,6 +1013,7 @@ impl UseWalker<'_> {
 
 impl Visitor for UseWalker<'_> {
     fn stmt(&mut self, s: &Stmt) {
+        let syms = self.syms;
         if let StmtKind::Assign {
             target: AssignTarget::Name(name),
             value,
@@ -1002,10 +1022,10 @@ impl Visitor for UseWalker<'_> {
         {
             let assigned = self.module.facts().assigned.get(&value.id).cloned();
             if let Some(binding) = assigned {
-                let key = self.b.local_key(&binding);
+                let key = self.b.local_key(syms, &binding);
                 self.add(
                     key,
-                    name.as_str(),
+                    syms.str(name),
                     s.pos.offset as usize,
                     true,
                     OccInfo {
@@ -1019,22 +1039,25 @@ impl Visitor for UseWalker<'_> {
     }
 
     fn expr(&mut self, e: &Expr) {
-        self.expression(e);
+        let syms = self.syms;
+        self.expression(syms, e);
         if let ExprKind::Match { scrutinee, arms } = &e.kind {
             for arm in arms {
                 if !arm.bare && !arm.chain && !arm.from_if {
-                    self.match_case(scrutinee, &arm.path);
+                    self.match_case(syms, scrutinee, &arm.path);
                 }
-                visit_arm_path(self, &arm.path);
+                visit_arm_path(syms, self, &arm.path);
             }
         }
     }
 }
 
-fn visit_arm_path(w: &mut UseWalker<'_>, path: &Expr) {
-    w.expression(path);
+fn visit_arm_path(syms: ms_syntax::Names, w: &mut UseWalker<'_>, path: &Expr) {
+    w.expression(syms, path);
     match &path.kind {
-        ExprKind::Member { left, .. } | ExprKind::Apply { left, .. } => visit_arm_path(w, left),
+        ExprKind::Member { left, .. } | ExprKind::Apply { left, .. } => {
+            visit_arm_path(syms, w, left)
+        }
         _ => {}
     }
 }

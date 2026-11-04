@@ -27,6 +27,7 @@ const EXIT_SEVEN: &str =
     "module \"t\"\nentry @main\nfn @main() -> int {\nb0:\n  %c: int = iconst 7\n  ret %c\n}\n";
 
 fn ms<L: Lower>(backend: &Engine<L>, args: &[&str]) -> (i32, String, String) {
+    let syms = ms_syntax::Names::global();
     let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
     let (mut out, mut err) = (Vec::new(), Vec::new());
     let status = {
@@ -36,7 +37,7 @@ fn ms<L: Lower>(backend: &Engine<L>, args: &[&str]) -> (i32, String, String) {
             stdout: &mut out,
             stderr: &mut err,
         };
-        ms_cli::run(&args, backend, &mut io)
+        ms_cli::run(syms, &args, backend, &mut io)
     };
     (
         status,

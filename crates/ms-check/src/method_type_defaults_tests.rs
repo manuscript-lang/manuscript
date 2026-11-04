@@ -4,11 +4,12 @@ use crate::{CheckOptions, checker::Checker};
 use std::sync::Arc;
 
 fn check_defaults_source(source: &str) -> (crate::syntax::ModRef, crate::checker::Program) {
+    let syms = ms_syntax::Names::global();
     let session = crate::Session::new();
     session.ensure_standard();
     let file: Arc<str> = Arc::from("invocation_defaults.ms");
     let parsed = ms_syntax::parser::parse(&file, source).expect("valid fixture");
-    let module = crate::load_module(&parsed);
+    let module = crate::load_module(syms, &parsed);
     let program =
         Checker::new(&session, &CheckOptions::default()).check_modules(vec![module.clone()], None);
     (module, program)
@@ -16,6 +17,7 @@ fn check_defaults_source(source: &str) -> (crate::syntax::ModRef, crate::checker
 
 #[test]
 fn invocation_defaults_retain_native_origin_without_granting_permissions() {
+    let syms = ms_syntax::Names::global();
     use crate::types::{ParameterDefaults, n};
     let (module, program) = check_defaults_source(
         r#"
@@ -61,7 +63,7 @@ fn sample(value: Int?, flag: Bool) Unit:
         facts
             .patterns
             .values()
-            .find(|b| b.name.as_str().trim_start_matches('_') == name)
+            .find(|b| syms.str(b.name).trim_start_matches('_') == name)
             .unwrap()
             .ty
             .clone()
@@ -79,7 +81,7 @@ fn sample(value: Int?, flag: Bool) Unit:
             .iter()
             .flatten()
             .flat_map(|i| &i.captures)
-            .any(|b| { b.name.as_str() == "_alias" && marked(&b.ty) == Some(n("cause")) })
+            .any(|b| { syms.str(b.name) == "_alias" && marked(&b.ty) == Some(n("cause")) })
     );
     for name in ["source_method", "inherited", "source_fn", "source_copy"] {
         let ty = binding(name);
@@ -117,6 +119,7 @@ fn sample(value: Int?, flag: Bool) Unit:
 
 #[test]
 fn invocation_default_metadata_survives_substitution_and_erases_recursively() {
+    let syms = ms_syntax::Names::global();
     use crate::types::*;
     let cause = n("cause");
     let defaults = ParameterDefaults::new([cause].into_iter().collect());
@@ -126,21 +129,26 @@ fn invocation_default_metadata_survives_substitution_and_erases_recursively() {
         mutable: false,
     }];
     let plain = function_with(
+        syms,
         params.clone(),
         primitive("Int"),
         Some(std::rc::Rc::new(defaults.clone())),
     );
     let marked = function_with(
+        syms,
         params.clone(),
         primitive("Int"),
         Some(std::rc::Rc::new(defaults.with_missing_value_at_call(cause))),
     );
     assert!(same(&plain, &marked));
-    assert_eq!(plain.to_string(), marked.to_string());
-    assert_eq!(type_key(&plain), type_key(&marked));
-    assert_eq!(lowering_key(&plain), lowering_key(&marked));
-    let variable = std::rc::Rc::new(Type::new(n("T"), n("generic.T"), Kind::Variable));
-    let generic = function_with(params, variable.clone(), marked.defaults.clone());
+    assert_eq!(
+        plain.display(syms).to_string(),
+        marked.display(syms).to_string()
+    );
+    assert_eq!(type_key(syms, &plain), type_key(syms, &marked));
+    assert_eq!(lowering_key(syms, &plain), lowering_key(syms, &marked));
+    let variable = std::rc::Rc::new(Type::new(syms, n("T"), n("generic.T"), Kind::Variable));
+    let generic = function_with(syms, params, variable.clone(), marked.defaults.clone());
     let bindings = [(variable.id, primitive("Int"))].into_iter().collect();
     let substituted = sub(&generic, &bindings);
     assert!(same(&substituted.result_ty(), &primitive("Int")));
@@ -152,9 +160,10 @@ fn invocation_default_metadata_survives_substitution_and_erases_recursively() {
             .missing_value_at_call(),
         Some(cause)
     );
-    let mut wrapper = Type::new(n("Wrapper"), n("Wrapper"), Kind::Record);
+    let mut wrapper = Type::new(syms, n("Wrapper"), n("Wrapper"), Kind::Record);
     wrapper.args = vec![marked.clone()];
     let nested = function(
+        syms,
         vec![Param {
             name: n("callback"),
             ty: marked.clone(),
@@ -202,12 +211,13 @@ fn sample(flag: Bool) Unit:
 
 #[test]
 fn method_defaults_fill_only_missing_type_arguments() {
+    let syms = ms_syntax::Names::global();
     let session = crate::Session::new();
     session.ensure_standard();
     let file: Arc<str> = Arc::from("method_type_defaults.ms");
     let source = include_str!("../tests/method_type_defaults/accepted.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
-    let module = crate::load_module(&module);
+    let module = crate::load_module(syms, &module);
     let program =
         Checker::new(&session, &CheckOptions::default()).check_modules(vec![module.clone()], None);
     assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
@@ -217,16 +227,16 @@ fn method_defaults_fill_only_missing_type_arguments() {
         let Some(method) = &info.method else { continue };
         let Some(name) = method.name() else { continue };
         if info.arguments.is_none()
-            || !matches!(name.as_str(), "read" | "choose" | "fallback" | "output")
+            || !matches!(syms.str(name), "read" | "choose" | "fallback" | "output")
         {
             continue;
         }
         let args: Vec<_> = info
             .type_args
             .iter()
-            .map(|t| t.as_ref().map(ToString::to_string))
+            .map(|t| t.as_ref().map(|x| x.display(syms).to_string()))
             .collect();
-        calls.push((name.to_string(), args));
+        calls.push((syms.str(name).to_string(), args));
     }
     calls.sort();
     assert_eq!(
@@ -251,12 +261,13 @@ fn method_defaults_fill_only_missing_type_arguments() {
 
 #[test]
 fn bound_method_partial_specialization_records_completed_arguments() {
+    let syms = ms_syntax::Names::global();
     let session = crate::Session::new();
     session.ensure_standard();
     let file: Arc<str> = Arc::from("bound_method_defaults.ms");
     let source = include_str!("../tests/method_type_defaults/bound.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
-    let module = crate::load_module(&module);
+    let module = crate::load_module(syms, &module);
     let program =
         Checker::new(&session, &CheckOptions::default()).check_modules(vec![module.clone()], None);
     assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
@@ -275,7 +286,7 @@ fn bound_method_partial_specialization_records_completed_arguments() {
         let args: Vec<_> = info
             .type_args
             .iter()
-            .map(|t| t.as_ref().map(ToString::to_string))
+            .map(|t| t.as_ref().map(|x| x.display(syms).to_string()))
             .collect();
         assert_eq!(args, vec![Some("Int".to_string()), Some("Int".to_string())]);
     }
@@ -283,6 +294,7 @@ fn bound_method_partial_specialization_records_completed_arguments() {
 
 #[test]
 fn method_type_defaults_reject_unsatisfied_bounds_and_forward_references() {
+    let syms = ms_syntax::Names::global();
     for (source, expected) in [
         (
             include_str!("../tests/method_type_defaults/bad_bound.ms"),
@@ -298,7 +310,7 @@ fn method_type_defaults_reject_unsatisfied_bounds_and_forward_references() {
         let file: Arc<str> = Arc::from("bad_method_defaults.ms");
         let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
         let program = Checker::new(&session, &CheckOptions::default())
-            .check_modules(vec![crate::load_module(&module)], None);
+            .check_modules(vec![crate::load_module(syms, &module)], None);
         assert!(
             program
                 .diagnostics

@@ -14,6 +14,7 @@ fn nominal(
     args: Vec<Ty>,
     fields: Vec<Ty>,
 ) -> Ty {
+    let syms = ms_syntax::Names::global();
     let sym = Rc::new(Sym {
         name: n(name),
         id: n(id),
@@ -44,7 +45,7 @@ fn nominal(
     } else {
         *def.fields.borrow_mut() = params;
     }
-    let mut t = Type::new(sym.name, sym.id, kind);
+    let mut t = Type::new(syms, sym.name, sym.id, kind);
     t.def = Some(def);
     t.args = args;
     let t = Rc::new(t);
@@ -58,6 +59,7 @@ fn classifier() -> Classifier {
 }
 #[test]
 fn same_names_from_different_modules_keep_resource_cleanup() {
+    let syms = ms_syntax::Names::global();
     let sources = [
         (
             "inner.ms",
@@ -89,17 +91,17 @@ fn same_names_from_different_modules_keep_resource_cleanup() {
                     imports.insert(n(&file), import.id, n(target));
                 }
             }
-            ms_check::load_module(&parsed)
+            ms_check::load_module(syms, &parsed)
         })
         .collect();
-    let p = ms_check::check(modules, imports, CheckOptions::default());
+    let p = ms_check::check(syms, modules, imports, CheckOptions::default());
     assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
     let classifier = Classifier::new(&p);
-    let inner = p.symbols[&n("inner.ms")].borrow()[&n("Node")].ty();
-    let outer = p.symbols[&n("outer.ms")].borrow()[&n("Node")].ty();
+    let inner = p.symbols[&n("inner.ms")].borrow()[&n("Node")].ty(syms);
+    let outer = p.symbols[&n("outer.ms")].borrow()[&n("Node")].ty(syms);
     assert_ne!(inner.id, outer.id);
-    assert_eq!(classifier.class(&inner), Class::Resource);
-    assert_eq!(classifier.class(&outer), Class::Resource);
+    assert_eq!(classifier.class(syms, &inner), Class::Resource);
+    assert_eq!(classifier.class(syms, &outer), Class::Resource);
     let module = p.modules.iter().find(|m| m.file == n("outer.ms")).unwrap();
     let facts = module.facts();
     let held = facts
@@ -116,6 +118,7 @@ fn same_names_from_different_modules_keep_resource_cleanup() {
 }
 #[test]
 fn recursive_and_mutually_recursive_alternatives_stay_move() {
+    let syms = ms_syntax::Names::global();
     let mut kept = vec![];
     let a = nominal(
         &mut kept,
@@ -143,7 +146,7 @@ fn recursive_and_mutually_recursive_alternatives_stay_move() {
             mutable: false,
         }],
     });
-    assert_eq!(classifier().class(&a), Class::Move);
+    assert_eq!(classifier().class(syms, &a), Class::Move);
     a.def.as_ref().unwrap().cases.borrow_mut().clear();
     a.def.as_ref().unwrap().cases.borrow_mut().push(Case {
         name: n("Other"),
@@ -153,14 +156,16 @@ fn recursive_and_mutually_recursive_alternatives_stay_move() {
             mutable: false,
         }],
     });
-    assert_eq!(classifier().class(&a), Class::Move);
-    assert_eq!(classifier().class(&b), Class::Move);
+    assert_eq!(classifier().class(syms, &a), Class::Move);
+    assert_eq!(classifier().class(syms, &b), Class::Move);
 }
 #[test]
 fn nested_generic_instances_reach_resource_and_bounds_are_not_cached() {
+    let syms = ms_syntax::Names::global();
     let mut kept = vec![];
-    let v = Rc::new(Type::new(n("T"), n("test/T"), Kind::Variable));
+    let v = Rc::new(Type::new(syms, n("T"), n("test/T"), Kind::Variable));
     let closeable = Rc::new(Type::new(
+        syms,
         n("Closeable"),
         n("@std/Closeable"),
         Kind::Contract,
@@ -175,20 +180,21 @@ fn nested_generic_instances_reach_resource_and_bounds_are_not_cached() {
         vec![v.clone()],
     );
     let outer = with_args(&optional, vec![optional.clone()]);
-    assert_eq!(classifier().class(&outer), Class::Resource);
+    assert_eq!(classifier().class(syms, &outer), Class::Resource);
     let c = classifier();
-    assert_eq!(c.class(&v), Class::Move);
+    assert_eq!(c.class(syms, &v), Class::Move);
     v.bounds.borrow_mut().push(closeable);
-    assert_eq!(c.class(&v), Class::Resource);
+    assert_eq!(c.class(syms, &v), Class::Resource);
     v.bounds.borrow_mut().clear();
-    assert_eq!(c.class(&v), Class::Move);
+    assert_eq!(c.class(syms, &v), Class::Move);
 }
 #[test]
 fn shared_phantom_arguments_do_not_expand_into_display_strings() {
+    let syms = ms_syntax::Names::global();
     let mut kept = vec![];
     let mut arg = int();
     for _ in 0..30 {
-        let mut branch = Type::new(n("Branch"), n("test/Branch"), Kind::Record);
+        let mut branch = Type::new(syms, n("Branch"), n("test/Branch"), Kind::Record);
         branch.args = vec![arg.clone(), arg];
         arg = Rc::new(branch);
     }
@@ -201,12 +207,13 @@ fn shared_phantom_arguments_do_not_expand_into_display_strings() {
         vec![arg.clone(), arg],
         vec![int()],
     );
-    assert_eq!(classifier().class(&t), Class::Move);
+    assert_eq!(classifier().class(syms, &t), Class::Move);
 }
 #[test]
 fn incomplete_definitions_and_function_arguments_remain_bounded() {
+    let syms = ms_syntax::Names::global();
     let mut kept = vec![];
-    let mut function = Type::new(n("fn"), n("fn"), Kind::Function);
+    let mut function = Type::new(syms, n("fn"), n("fn"), Kind::Function);
     function.params.push(Param {
         name: n("value"),
         ty: int(),
@@ -221,7 +228,7 @@ fn incomplete_definitions_and_function_arguments_remain_bounded() {
         vec![Rc::new(function)],
         vec![int()],
     );
-    assert_eq!(classifier().class(&a), Class::Copy);
+    assert_eq!(classifier().class(syms, &a), Class::Copy);
     a.def.as_ref().unwrap().cases.borrow_mut().push(Case {
         name: n("Loop"),
         fields: vec![Param {
@@ -230,19 +237,22 @@ fn incomplete_definitions_and_function_arguments_remain_bounded() {
             mutable: false,
         }],
     });
-    assert_eq!(classifier().class(&a), Class::Move);
+    assert_eq!(classifier().class(syms, &a), Class::Move);
     let incomplete = Rc::new(Type::new(
+        syms,
         n("Missing"),
         n("test/Missing"),
         Kind::Alternative,
     ));
-    assert_eq!(classifier().class(&incomplete), Class::Copy);
+    assert_eq!(classifier().class(syms, &incomplete), Class::Copy);
 }
 
 #[test]
 fn nominal_depth_cutoff_still_allows_sixty_five_active_frames() {
+    let syms = ms_syntax::Names::global();
     let mut kept = vec![];
     let mut t = Rc::new(Type::new(
+        syms,
         n("Closeable"),
         n("@std/Closeable"),
         Kind::Contract,
@@ -258,7 +268,7 @@ fn nominal_depth_cutoff_still_allows_sixty_five_active_frames() {
             vec![t],
         );
         assert_eq!(
-            classifier().class(&t),
+            classifier().class(syms, &t),
             if depth <= 65 {
                 Class::Resource
             } else {

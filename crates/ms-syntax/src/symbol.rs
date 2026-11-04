@@ -19,12 +19,13 @@ impl Names {
     }
 
     /// Interns `text`.
-    pub fn intern(&self, text: &str) -> Symbol {
+    pub fn intern(self, text: &str) -> Symbol {
         Symbol::intern(text)
     }
 
-    /// The text of `sym`, valid while this handle is.
-    pub fn str(&self, sym: impl std::borrow::Borrow<Symbol>) -> &str {
+    /// The text of `sym`. The lifetime is unconstrained while the table is process-wide; it becomes
+    /// the interner's borrow when the table is session-owned.
+    pub fn str<'a>(self, sym: impl std::borrow::Borrow<Symbol>) -> &'a str {
         sym.borrow().as_str()
     }
 }

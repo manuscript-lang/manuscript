@@ -11,6 +11,7 @@ use support::{Script, Workspace};
 const SOURCE: &str = include_str!("signature_help/boundaries.ms");
 
 fn check(expression: &str, expected_name: &str, expected: usize, valid: bool) {
+    let syms = ms_syntax::Names::global();
     let offset = expression.find('|').expect("cursor");
     let expression = expression.replacen('|', "", 1);
     for newline in ["\n", "\r\n"] {
@@ -21,7 +22,7 @@ fn check(expression: &str, expected_name: &str, expected: usize, valid: bool) {
         let source = source.replace('\n', newline);
         let d = Document::new(ws.uri("signature.ms"), source.clone());
         if valid {
-            let checked = analyze(&ms_check::Session::new(), &d, &Documents::new());
+            let checked = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
             assert!(
                 checked.diagnostics.is_empty(),
                 "{expression}: {:?}",
@@ -29,7 +30,7 @@ fn check(expression: &str, expected_name: &str, expected: usize, valid: bool) {
             );
             assert!(checked.program.is_some());
         }
-        let help = signature_help(&d, &Documents::new(), text::position(&source, cursor))
+        let help = signature_help(syms, &d, &Documents::new(), text::position(&source, cursor))
             .expect("signature help");
         assert_eq!(
             help.get("activeParameter").and_then(|j| j.as_i64()),
@@ -236,6 +237,7 @@ fn signature_labels_follow_the_servers_changed_snapshot() {
 
 #[test]
 fn signature_help_stays_suppressed_outside_calls_and_in_literals_or_comments() {
+    let syms = ms_syntax::Names::global();
     for expression in [
         "combine(1, 2)|",
         "collections([], {\"tex|t\": 2})",
@@ -248,7 +250,7 @@ fn signature_help_stays_suppressed_outside_calls_and_in_literals_or_comments() {
         let cursor = source.rfind(&expression).unwrap() + offset;
         let d = Document::new(ws.uri("signature.ms"), source.clone());
         assert!(
-            signature_help(&d, &Documents::new(), text::position(&source, cursor))
+            signature_help(syms, &d, &Documents::new(), text::position(&source, cursor))
                 .unwrap()
                 .is_null()
         );

@@ -106,32 +106,52 @@ impl<L: Lower> Engine<L> {
 }
 
 impl<L: Lower> Engine<L> {
-    pub fn build(&self, request: &BuildRequest, io: &mut Io) -> BackendResult {
-        build::build(self, request, io)
+    pub fn build(
+        &self,
+        syms: ms_syntax::Names,
+        request: &BuildRequest,
+        io: &mut Io,
+    ) -> BackendResult {
+        build::build(syms, self, request, io)
     }
 
-    pub fn run(&self, request: &RunRequest, io: &mut Io) -> BackendResult {
+    pub fn run(&self, syms: ms_syntax::Names, request: &RunRequest, io: &mut Io) -> BackendResult {
         if request.watch {
-            return watch::run(self, request, io);
+            return watch::run(syms, self, request, io);
         }
-        run::run(self, request, io)
+        run::run(syms, self, request, io)
     }
 
-    pub fn test(&self, request: &TestRequest, io: &mut Io) -> BackendResult {
+    pub fn test(
+        &self,
+        syms: ms_syntax::Names,
+        request: &TestRequest,
+        io: &mut Io,
+    ) -> BackendResult {
         if request.watch {
-            return watch::test(self, request, io);
+            return watch::test(syms, self, request, io);
         }
-        testing::test(self, request, io)
+        testing::test(syms, self, request, io)
     }
 
     /// `ms bench`: `request.arguments` are the `ms test` selection options plus `--time=`,
     /// `--samples=` and `--iterations=`.
-    pub fn bench(&self, request: &TestRequest, io: &mut Io) -> BackendResult {
-        testing::bench(self, request, io)
+    pub fn bench(
+        &self,
+        syms: ms_syntax::Names,
+        request: &TestRequest,
+        io: &mut Io,
+    ) -> BackendResult {
+        testing::bench(syms, self, request, io)
     }
 
-    pub fn emit(&self, request: &OutputRequest, io: &mut Io) -> BackendResult {
-        let compiled = match compile(self, &request.filename, false) {
+    pub fn emit(
+        &self,
+        syms: ms_syntax::Names,
+        request: &OutputRequest,
+        io: &mut Io,
+    ) -> BackendResult {
+        let compiled = match compile(syms, self, &request.filename, false) {
             Ok(compiled) => compiled,
             Err(failure) if request.json => {
                 let document =
@@ -157,9 +177,9 @@ impl<L: Lower> Engine<L> {
 /// Serve the language server until the client disconnects. The server reads
 /// the process stdin itself: the supervisor's reader runs on its own thread
 /// and needs a `'static` stream.
-pub fn lsp(io: &mut Io) -> BackendResult {
+pub fn lsp(syms: ms_syntax::Names, io: &mut Io) -> BackendResult {
     let served = if std::env::var_os(LSP_WORKER).is_some() {
-        ms_lsp::serve(std::io::stdin(), &mut *io.stdout)
+        ms_lsp::serve(syms, std::io::stdin(), &mut *io.stdout)
     } else {
         ms_lsp::supervise(std::io::stdin(), &mut *io.stdout, || {
             let exe = std::env::current_exe().unwrap_or_else(|_| "ms".into());
@@ -283,11 +303,13 @@ pub(crate) enum Target {
 /// Load, check and lower `filename` for an executable (`tests == false`) or a
 /// test executable.
 pub(crate) fn compile<L: Lower>(
+    syms: ms_syntax::Names,
     backend: &Engine<L>,
     filename: &str,
     tests: bool,
 ) -> Result<Compiled, Failure> {
     compile_target(
+        syms,
         backend,
         filename,
         if tests {
@@ -300,12 +322,13 @@ pub(crate) fn compile<L: Lower>(
 
 /// Load, check and lower `filename` for `target`.
 pub(crate) fn compile_target<L: Lower>(
+    syms: ms_syntax::Names,
     backend: &Engine<L>,
     filename: &str,
     target: Target,
 ) -> Result<Compiled, Failure> {
     let tests = target != Target::Program;
-    let graph = load_file(filename, LoadOptions { tests });
+    let graph = load_file(syms, filename, LoadOptions { tests });
     let library = graph.library;
     let project = !graph.project_root.is_empty();
     if project && library && !tests {
@@ -314,6 +337,7 @@ pub(crate) fn compile_target<L: Lower>(
     let entry_required = !tests && (!project || !library);
     let entry = graph.entry.clone();
     let checked = check_graph(
+        syms,
         graph,
         CheckRequest {
             entry: entry_required,
@@ -348,7 +372,7 @@ pub(crate) fn compile_target<L: Lower>(
             sources: program
                 .modules
                 .iter()
-                .map(|m| Path::new(&checked.source_root).join(m.file.as_str()))
+                .map(|m| Path::new(&checked.source_root).join(syms.str(m.file)))
                 .filter(|p| p.is_file())
                 .collect(),
         }),

@@ -86,13 +86,13 @@ fn render(module: &ApiModule, for_site: bool) -> String {
 }
 
 /// Every generated site file by repository-relative path.
-pub fn site_files() -> BTreeMap<String, Vec<u8>> {
-    let modules = standard_library();
+pub fn site_files(syms: ms_syntax::Names) -> BTreeMap<String, Vec<u8>> {
+    let modules = standard_library(syms);
     let mut files = BTreeMap::new();
     let mut index = String::from(
         "+++\ntitle = \"API reference\"\nweight = 2\n+++\n\n# Standard library API reference\n\nLook up types, functions, and import paths in the bundled standard library. These declarations are generated from source and omit implementation bodies.\n\n[Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\n",
     );
-    let full = standard_library_markdown();
+    let full = standard_library_markdown(syms);
     for module in modules {
         let name = module.path.strip_prefix("@std/").unwrap_or(&module.path);
         let name = name.strip_suffix(".ms").unwrap_or(name);
@@ -125,11 +125,11 @@ pub fn site_files() -> BTreeMap<String, Vec<u8>> {
 }
 
 /// All modules as one Markdown document.
-pub fn standard_library_markdown() -> String {
+pub fn standard_library_markdown(syms: ms_syntax::Names) -> String {
     let mut b = String::from(
         "# Manuscript implemented standard library\n\nGenerated from the bundled standard-library declarations.\n\n",
     );
-    for module in standard_library() {
+    for module in standard_library(syms) {
         b += &render_module(module);
     }
     b

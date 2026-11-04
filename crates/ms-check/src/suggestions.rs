@@ -14,10 +14,10 @@ pub(crate) const PROMISE_MODULE: &str = "@std/concurrency/promise.ms";
 
 /// Whether a `Promise[T]` used where `expected` is required gets its value from `wait()`:
 /// `expected` is `T!`, which is what `wait` returns.
-pub(crate) fn promise_wait_fits(actual: &Ty, expected: &Ty) -> bool {
-    actual.is_source_type(PROMISE_MODULE, "Promise")
+pub(crate) fn promise_wait_fits(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> bool {
+    actual.is_source_type(syms, PROMISE_MODULE, "Promise")
         && actual.args.len() == 1
-        && expected.is_std("Result")
+        && expected.is_std(syms, "Result")
         && expected.args.len() == 2
         && same(&actual.args[0], &expected.args[0])
 }

@@ -26,9 +26,9 @@ struct Files(BTreeMap<String, Option<FileState>>);
 
 impl Files {
     /// The input, its manifest and every local module it loads, as of now.
-    fn refresh(&mut self, input: &str) {
-        let checked = analyze_with(input, &Overlay::new(), false, false);
-        self.0 = watched_files(input, &checked)
+    fn refresh(&mut self, syms: ms_syntax::Names, input: &str) {
+        let checked = analyze_with(syms, input, &Overlay::new(), false, false);
+        self.0 = watched_files(syms, input, &checked)
             .into_iter()
             .chain(absolute(input))
             .map(|path| (path.clone(), file_state(&path)))
@@ -94,6 +94,7 @@ impl Running {
 }
 
 pub(super) fn run<L: Lower>(
+    syms: ms_syntax::Names,
     backend: &Engine<L>,
     request: &RunRequest,
     io: &mut Io,
@@ -114,10 +115,10 @@ pub(super) fn run<L: Lower>(
     let mut due = Some(Instant::now());
     loop {
         if let Some(since) = due.take() {
-            files.refresh(&request.filename);
+            files.refresh(syms, &request.filename);
             generation += 1;
             let executable = directory.0.join(format!("program-{generation}"));
-            match build(backend, request, &executable, io) {
+            match build(syms, backend, request, &executable, io) {
                 Ok(()) => {
                     if let Some(old) = running.take() {
                         old.stop();
@@ -170,12 +171,13 @@ pub(super) fn run<L: Lower>(
 
 /// Compile and link `request.filename` into `executable`; diagnostics are reported.
 fn build<L: Lower>(
+    syms: ms_syntax::Names,
     backend: &Engine<L>,
     request: &RunRequest,
     executable: &Path,
     io: &mut Io,
 ) -> Result<(), ()> {
-    let mut compiled = match compile(backend, &request.filename, false) {
+    let mut compiled = match compile(syms, backend, &request.filename, false) {
         Ok(compiled) => compiled,
         Err(failure) => {
             failure.report(io);
@@ -191,6 +193,7 @@ fn build<L: Lower>(
 
 /// Run the tests again after each saved change; a failing run keeps watching.
 pub(super) fn test<L: Lower>(
+    syms: ms_syntax::Names,
     backend: &Engine<L>,
     request: &TestRequest,
     io: &mut Io,
@@ -205,8 +208,8 @@ pub(super) fn test<L: Lower>(
     let mut due = true;
     loop {
         if due {
-            files.refresh(&request.filename);
-            let _ = testing::test(backend, &once, io);
+            files.refresh(syms, &request.filename);
+            let _ = testing::test(syms, backend, &once, io);
             let _ = writeln!(io.stderr, "ms: waiting for changes");
             let _ = io.stdout.flush();
         }

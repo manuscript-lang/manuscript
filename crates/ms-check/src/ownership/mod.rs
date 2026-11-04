@@ -253,18 +253,18 @@ impl Ownership {
 const UNVETTED: &[&str] = &[];
 
 /// Whether the ownership checker vets this module.
-pub fn is_vetted(file: Name) -> bool {
-    !UNVETTED.contains(&file.as_str())
+pub fn is_vetted(syms: ms_syntax::Names, file: Name) -> bool {
+    !UNVETTED.contains(&syms.str(file))
 }
 
 impl Hir<'_> {
     /// Checks ownership rules and computes move, borrow and drop facts for
     /// every callable of the user's modules.
-    pub fn ownership(&self) -> Ownership {
+    pub fn ownership(&self, syms: ms_syntax::Names) -> Ownership {
         let classes = Classifier::new(self.program());
         let modules: HashMap<Name, ModuleHir> = self
             .modules()
-            .filter(|m| is_vetted(m.data.file))
+            .filter(|m| is_vetted(syms, m.data.file))
             .map(|m| (m.data.file, m))
             .collect();
         let callables: Vec<Callable> = self

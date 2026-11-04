@@ -10,8 +10,13 @@ use ms_syntax::visit::Visitor;
 use ms_syntax::{DiagnosticFix, Pos};
 use std::collections::HashSet;
 
-pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Finding>) {
-    let file = module_file(module);
+pub(super) fn lint(
+    syms: ms_syntax::Names,
+    program: &Program,
+    module: &ModuleData,
+    findings: &mut Vec<Finding>,
+) {
+    let file = module_file(syms, module);
     let mut scan = Scan {
         module,
         file: &file,
@@ -44,7 +49,7 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
         }
     }
     let unused = |import: &Import| {
-        let key = symbol_of(import.name.as_str());
+        let key = symbol_of(syms.str(import.name));
         !key.is_some_and(|k| used.contains(&k))
     };
     for import in &module.imports {
@@ -53,14 +58,14 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
             let whole = siblings.clone().all(unused);
             let mut found = finding(
                 "MSL102",
-                format!("Import {} is never used", import.name.as_str()),
+                format!("Import {} is never used", syms.str(import.name)),
                 &file,
                 import.name_pos,
             );
             found.fix = if whole {
                 statement_removal(&module.source, import)
             } else {
-                name_removal(&module.source, import)
+                name_removal(syms, &module.source, import)
             };
             findings.push(found);
         }
@@ -101,9 +106,9 @@ fn statement_removal(source: &str, import: &Import) -> Option<DiagnosticFix> {
 }
 
 /// Deletes one name and its separator from an import list that keeps other names.
-fn name_removal(source: &str, import: &Import) -> Option<DiagnosticFix> {
+fn name_removal(syms: ms_syntax::Names, source: &str, import: &Import) -> Option<DiagnosticFix> {
     let start = import.name_pos.offset as usize;
-    let end = start + import.name.as_str().len();
+    let end = start + syms.str(import.name).len();
     let blank = |c: char| c == ' ' || c == '\t';
     let after = source[end..].trim_start_matches(blank);
     let after_at = source.len() - after.len();

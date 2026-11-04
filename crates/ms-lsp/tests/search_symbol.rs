@@ -9,6 +9,7 @@ use support::Workspace;
 
 #[test]
 fn fuzzy_search_keeps_private_function_uses_and_distinct_declarations() {
+    let syms = ms_syntax::Names::global();
     let ws = Workspace::new("search-private");
     let root = ws.root.join("search");
     std::fs::create_dir_all(&root).unwrap();
@@ -25,7 +26,7 @@ fn fuzzy_search_keeps_private_function_uses_and_distinct_declarations() {
     )
     .unwrap();
     for query in ["read file", "readFile", "raed_file", "rdf"] {
-        let (found, total) = search_symbols(root.to_str().unwrap(), query, 1).unwrap();
+        let (found, total) = search_symbols(syms, root.to_str().unwrap(), query, 1).unwrap();
         assert_eq!(total, 2, "{query}");
         assert_eq!(found.len(), 1);
         let symbol = &found[0];
@@ -46,6 +47,7 @@ fn fuzzy_search_keeps_private_function_uses_and_distinct_declarations() {
 
 #[test]
 fn workspace_search_keeps_declarations_from_imported_subdirectories() {
+    let syms = ms_syntax::Names::global();
     let ws = Workspace::new("search-imports");
     let root = ws.root.join("search");
     std::fs::create_dir_all(root.join("sub")).unwrap();
@@ -60,8 +62,15 @@ fn workspace_search_keeps_declarations_from_imported_subdirectories() {
     let d = Document::new(ms_lsp::uri::file_uri(path.to_str().unwrap()), source);
     let docs = Documents::from([(d.uri.clone(), d)]);
     // Without a manifest, open-document discovery scans only its directory.
-    let found =
-        workspace_symbols(&ms_check::Session::new(), &docs, &[], "hidden_reader", None).unwrap();
+    let found = workspace_symbols(
+        syms,
+        &ms_check::Session::new(),
+        &docs,
+        &[],
+        "hidden_reader",
+        None,
+    )
+    .unwrap();
     assert_eq!(found.len(), 1);
     assert_eq!(
         found[0].get("name").and_then(|v| v.as_str()),
@@ -74,7 +83,7 @@ fn workspace_search_keeps_declarations_from_imported_subdirectories() {
         "[project]\nname = \"search\"\nsource = \".\"\nentry = \"main.ms\"\n",
     )
     .unwrap();
-    let (found, total) = search_symbols(root.to_str().unwrap(), "load", 5).unwrap();
+    let (found, total) = search_symbols(syms, root.to_str().unwrap(), "load", 5).unwrap();
     assert_eq!(total, 1);
     let symbol = &found[0];
     assert!(

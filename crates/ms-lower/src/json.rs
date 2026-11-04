@@ -113,13 +113,14 @@ impl Cx {
 
 /// Lowers the body of a queued decoder or encoder.
 pub(crate) fn build_json(
+    syms: ms_syntax::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
     job: &JsonJob,
 ) -> Result<(), Error> {
     let proto = m.funcs[func.index()].clone();
-    let file = m.add_file(job.hir.data.file.as_str());
+    let file = m.add_file(syms.str(job.hir.data.file));
     let b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
     let result = if job.encode {
@@ -266,7 +267,7 @@ impl FnLower<'_> {
     /// Writes a nested value: scalars inline, anything else through its encoder.
     fn jencode_nested(&mut self, t: &ct::Ty, doc: Value, value: Value) -> Result<Value, Error> {
         if matches!(
-            t.id.as_str(),
+            self.syms.str(t.id),
             "Int"
                 | "Float"
                 | "Bool"
@@ -310,12 +311,12 @@ impl FnLower<'_> {
     pub(crate) fn lower_decoder(&mut self, t: &ct::Ty) -> Result<(), Error> {
         let p = self.b.params();
         let (doc, id, strict) = (p[0], p[1], p[2]);
-        self.jnode = Some((doc, id, t.to_string()));
+        self.jnode = Some((doc, id, t.display(self.syms).to_string()));
         let mt = self.jmty(t)?;
-        if t.is_source_type("@std/data/json.ms", "JsonValue") {
+        if t.is_source_type(self.syms, "@std/data/json.ms", "JsonValue") {
             return self.jdecode_tree(t, mt, doc, id, strict);
         }
-        match t.id.as_str() {
+        match self.syms.str(t.id) {
             "Int" => {
                 self.jexpect_kind(doc, id, KIND_NUMBER)?;
                 let text = self.jtext(doc, id)?;
@@ -330,7 +331,7 @@ impl FnLower<'_> {
                 return Ok(());
             }
             "Int8" | "Int16" | "Int32" | "UInt8" | "UInt16" | "UInt32" => {
-                let (lo, hi) = sized_int_range(t.id.as_str());
+                let (lo, hi) = sized_int_range(self.syms.str(t.id));
                 self.jexpect_kind(doc, id, KIND_NUMBER)?;
                 let text = self.jtext(doc, id)?;
                 let slot = self.jslot(MTy::INT);
@@ -422,17 +423,17 @@ impl FnLower<'_> {
             return Ok(());
         }
         // Standard value types read from their JSON text.
-        let parsed = if t.is_time("Duration") {
+        let parsed = if t.is_time(self.syms, "Duration") {
             Some((KIND_NUMBER, "msstd_json_dec_int", false))
-        } else if t.is_time("Timestamp") {
+        } else if t.is_time(self.syms, "Timestamp") {
             Some((KIND_STRING, "msstd_time_parse_timestamp", false))
         } else if t.is(Builtin::Bytes) {
             Some((KIND_STRING, "msstd_encoding_base64_decode", true))
-        } else if t.is_source_type("@std/net/net.ms", "Url") {
+        } else if t.is_source_type(self.syms, "@std/net/net.ms", "Url") {
             Some((KIND_STRING, "msstd_url_parse", false))
-        } else if t.is_source_type("@std/net/net.ms", "IpAddress") {
+        } else if t.is_source_type(self.syms, "@std/net/net.ms", "IpAddress") {
             Some((KIND_STRING, "msstd_json_dec_ip", false))
-        } else if t.is_source_type("@std/net/net.ms", "Cidr") {
+        } else if t.is_source_type(self.syms, "@std/net/net.ms", "Cidr") {
             Some((KIND_STRING, "msstd_json_dec_cidr", false))
         } else if t.is(Builtin::Decimal) {
             Some((KIND_NUMBER, "msstd_decimal_parse", false))
@@ -490,8 +491,8 @@ impl FnLower<'_> {
         }
         if t.is(Builtin::Map) {
             let key = &t.args[0];
-            let readable = matches!(key.id.as_str(), "String" | "Int" | "Bool")
-                || key.is_time("Duration")
+            let readable = matches!(self.syms.str(key.id), "String" | "Int" | "Bool")
+                || key.is_time(self.syms, "Duration")
                 || jkey_alt(key);
             if !readable {
                 // Other key types are never readable.
@@ -505,7 +506,7 @@ impl FnLower<'_> {
         }
         match t.kind {
             ct::Kind::Record => {
-                let fields = jfields(&ct::fields(t));
+                let fields = jfields(self.syms, &ct::fields(t));
                 self.jexpect_kind(doc, id, KIND_OBJECT)?;
                 let vals = self.jdecode_fields(t, None, &fields, doc, id, strict)?;
                 let TyKind::Rec(r) = self.b.m.types.kind(mt).clone() else {
@@ -569,7 +570,7 @@ impl FnLower<'_> {
         self.b.def_var(acc, empty);
         let zero = self.b.iconst(0);
         // The parser rejects repeated names, so only a key read from them can collide.
-        let names_are_keys = key.id.as_str() == "String";
+        let names_are_keys = self.syms.str(key.id) == "String";
         self.counted_loop(zero, n, &mut |s, iv| {
             let name = s.call_runtime("msstd_json_key", &[doc, id, iv], MTy::STR)?;
             let k = s.jdecode_key(key, key_mt, name, acc)?;
@@ -628,10 +629,10 @@ impl FnLower<'_> {
         name: Value,
         acc: Var,
     ) -> Result<Value, Error> {
-        if key.id.as_str() == "String" {
+        if self.syms.str(key.id) == "String" {
             return Ok(name);
         }
-        if key.id.as_str() == "Int" || key.is_time("Duration") {
+        if self.syms.str(key.id) == "Int" || key.is_time(self.syms, "Duration") {
             let slot = self.jslot(MTy::INT);
             let st = self.status_code("msstd_json_dec_int", &[name, slot])?;
             self.drop_value(name);
@@ -639,12 +640,12 @@ impl FnLower<'_> {
             let ok = self.b.icmp(Cc::Eq, st, z);
             self.jrequire(ok, &[], &[acc]);
             let nanos = self.take_slot(slot, MTy::INT);
-            if key.is_time("Duration") {
+            if key.is_time(self.syms, "Duration") {
                 return self.duration_of(nanos);
             }
             return Ok(nanos);
         }
-        if key.id.as_str() == "Bool" {
+        if self.syms.str(key.id) == "Bool" {
             let (t, f) = (self.b.str_lit("true"), self.b.str_lit("false"));
             let is_t = self.call_runtime("msrt_string_eq", &[name, t], MTy::BOOL)?;
             let is_f = self.call_runtime("msrt_string_eq", &[name, f], MTy::BOOL)?;
@@ -665,7 +666,7 @@ impl FnLower<'_> {
             .enumerate()
             .filter(|(_, c)| c.fields.is_empty())
         {
-            let lit = self.b.str_lit(c.name.as_str());
+            let lit = self.b.str_lit(self.syms.str(c.name));
             let hit = self.call_runtime("msrt_string_eq", &[name, lit], MTy::BOOL)?;
             let k = self.b.iconst(i as i64);
             idx = self.b.select(hit, k, idx);
@@ -789,7 +790,7 @@ impl FnLower<'_> {
         mt: MTy,
         earlier: &[(ct::Name, Value)],
     ) -> Result<Option<Value>, Error> {
-        if ty.id.as_str() == "Unit" {
+        if self.syms.str(ty.id) == "Unit" {
             // `Unit` has no JSON form: encoding omits the member and decoding restores it.
             return Ok(Some(self.b.unit()));
         }
@@ -823,7 +824,10 @@ impl FnLower<'_> {
             return Err(Error::new("an alternative lowers to an alternative"));
         };
         let cases = ct::cases(t);
-        let names: Vec<String> = cases.iter().map(|c| c.name.to_string()).collect();
+        let names: Vec<String> = cases
+            .iter()
+            .map(|c| self.syms.str(c.name).to_string())
+            .collect();
         let list = self.jnames(&names);
         let slot = self.jslot(MTy::INT);
         let idx = self.call_runtime("msstd_json_variant", &[doc, id, list, slot], MTy::INT)?;
@@ -862,7 +866,7 @@ impl FnLower<'_> {
             let mask = self.b.iconst(0xffff_ffff);
             let pid = self.b.binop(Op::And, payload, mask);
             self.jexpect_kind(doc, pid, KIND_OBJECT)?;
-            let fields = jfields(&c.fields);
+            let fields = jfields(self.syms, &c.fields);
             let vals = self.jdecode_fields(t, Some(c.name), &fields, doc, pid, strict)?;
             let v = self.b.alt_new(a, i as u32, &vals);
             self.jfinish(v);
@@ -883,7 +887,8 @@ impl FnLower<'_> {
             return Err(Error::new("JsonValue is an alternative"));
         };
         let cases = ct::cases(t);
-        let case_index = |name: &str| cases.iter().position(|c| c.name.as_str() == name);
+        let syms = self.syms;
+        let case_index = |name: &str| cases.iter().position(|c| syms.str(c.name) == name);
         let missing = || Error::new("JsonValue lacks a case");
         let kind = self.jkind(doc, id)?;
         let blocks: Vec<_> = (0..6).map(|_| self.b.new_block()).collect();
@@ -978,10 +983,10 @@ impl FnLower<'_> {
     /// Writes `value` (borrowed) to the writer `w`; 0, or -1 when it has no JSON form and nothing
     /// was written.
     fn jencode(&mut self, t: &ct::Ty, mt: MTy, w: Value, value: Value) -> Result<Value, Error> {
-        if t.is_source_type("@std/data/json.ms", "JsonValue") {
+        if t.is_source_type(self.syms, "@std/data/json.ms", "JsonValue") {
             return self.jencode_tree(t, mt, w, value);
         }
-        match t.id.as_str() {
+        match self.syms.str(t.id) {
             "Int" => {
                 self.jw("msstd_json_w_int", &[w, value])?;
                 return Ok(self.jwritten());
@@ -1045,7 +1050,7 @@ impl FnLower<'_> {
         if t.is(Builtin::Map) {
             return self.jencode_map(&t.args[0], &t.args[1], w, value);
         }
-        if t.is_time("Duration") {
+        if t.is_time(self.syms, "Duration") {
             let nanos = self.duration_nanos(value)?;
             self.jw("msstd_json_w_int", &[w, nanos])?;
             return Ok(self.jwritten());
@@ -1059,7 +1064,7 @@ impl FnLower<'_> {
             self.drop_value(tree);
             return Ok(written);
         }
-        if t.is_time("Timestamp") || t.is(Builtin::Decimal) {
+        if t.is_time(self.syms, "Timestamp") || t.is(Builtin::Decimal) {
             let text = self.format_value(Val {
                 v: value,
                 own: false,
@@ -1094,7 +1099,7 @@ impl FnLower<'_> {
             return Ok(self.jwritten());
         }
         // A URL is its formatted text.
-        if t.is_source_type("@std/net/net.ms", "Url") {
+        if t.is_source_type(self.syms, "@std/net/net.ms", "Url") {
             return self.jencode_url(w, value);
         }
         // An address or network is its text.
@@ -1102,7 +1107,7 @@ impl FnLower<'_> {
             ("IpAddress", "msstd_net_ip_address_text"),
             ("Cidr", "msstd_net_cidr_text"),
         ] {
-            if t.is_source_type("@std/net/net.ms", name) {
+            if t.is_source_type(self.syms, "@std/net/net.ms", name) {
                 let text = self.call_runtime(sym, &[value], MTy::STR)?;
                 self.jw("msstd_json_w_string", &[w, text])?;
                 self.drop_value(text);
@@ -1111,7 +1116,7 @@ impl FnLower<'_> {
         }
         match t.kind {
             ct::Kind::Record => {
-                let fields = jfields(&ct::fields(t));
+                let fields = jfields(self.syms, &ct::fields(t));
                 let TyKind::Rec(r) = self.b.m.types.kind(mt).clone() else {
                     return Err(Error::new("a record type lowers to a record"));
                 };
@@ -1188,7 +1193,7 @@ impl FnLower<'_> {
         let m = self.cx.methods.iter().find(|m| {
             m.contract
                 .as_ref()
-                .is_some_and(|c| c.is_source_type("@std/data/json.ms", "JsonEncode"))
+                .is_some_and(|c| c.is_source_type(self.syms, "@std/data/json.ms", "JsonEncode"))
                 && tys.shape(&m.receiver) == key
         })?;
         let decl = m.decl.as_ref()?;
@@ -1249,12 +1254,12 @@ impl FnLower<'_> {
 
     /// Writes the member name of the map key `k` of type `key`.
     fn jencode_map_key(&mut self, key: &ct::Ty, w: Value, k: Value) -> Result<(), Error> {
-        if key.id.as_str() == "String" {
+        if self.syms.str(key.id) == "String" {
             return self.jw("msstd_json_w_key", &[w, k]);
         }
         if !jplain_alt(key) {
             // A duration key is its count of nanoseconds.
-            let k = if key.is_time("Duration") {
+            let k = if key.is_time(self.syms, "Duration") {
                 self.duration_nanos(k)?
             } else {
                 k
@@ -1288,7 +1293,7 @@ impl FnLower<'_> {
         for (i, c) in cases.iter().enumerate() {
             self.b.seal_block(blocks[i]);
             self.b.switch_to(blocks[i]);
-            let name = self.b.str_lit(&json_quote(c.name.as_str()));
+            let name = self.b.str_lit(&json_quote(self.syms.str(c.name)));
             self.jw("msstd_json_w_key_quoted", &[w, name])?;
             self.b.br(join, &[]);
         }
@@ -1306,9 +1311,9 @@ impl FnLower<'_> {
         w: Value,
         value: Value,
     ) -> Result<Value, Error> {
-        let keyable = matches!(key.id.as_str(), "String" | "Int" | "Bool" | "Float")
-            || key.is_time("Duration")
-            || key.is_time("Timestamp")
+        let keyable = matches!(self.syms.str(key.id), "String" | "Int" | "Bool" | "Float")
+            || key.is_time(self.syms, "Duration")
+            || key.is_time(self.syms, "Timestamp")
             || key.is(Builtin::Decimal)
             || jplain_alt(key);
         if !keyable {
@@ -1366,16 +1371,16 @@ impl FnLower<'_> {
             self.b.seal_block(blocks[i]);
             self.b.switch_to(blocks[i]);
             if c.fields.is_empty() {
-                let name = self.b.str_lit(c.name.as_str());
+                let name = self.b.str_lit(self.syms.str(c.name));
                 self.jw("msstd_json_w_string", &[w, name])?;
             } else {
                 self.jw("msstd_json_w_begin_object", &[w])?;
-                let key = self.b.str_lit(&json_quote(c.name.as_str()));
+                let key = self.b.str_lit(&json_quote(self.syms.str(c.name)));
                 self.jw("msstd_json_w_key_quoted", &[w, key])?;
                 self.jw("msstd_json_w_begin_object", &[w])?;
                 for (j, f) in c.fields.iter().enumerate() {
                     let fv = self.b.alt_get(a, i as u32, j as u32, value);
-                    self.jencode_member(w, f.name.as_str(), &f.ty, fv)?;
+                    self.jencode_member(w, self.syms.str(f.name), &f.ty, fv)?;
                 }
                 self.jw("msstd_json_w_end_object", &[w])?;
                 self.jw("msstd_json_w_end_object", &[w])?;
@@ -1417,7 +1422,7 @@ impl FnLower<'_> {
         let text = self.borrow(text);
         let ignore = args
             .iter()
-            .find(|a| a.name.as_str() == "ignore_unknown_fields");
+            .find(|a| self.syms.str(a.name) == "ignore_unknown_fields");
         let strict = match ignore {
             Some(a) => {
                 let v = self.borrow(a.val);
@@ -1428,11 +1433,11 @@ impl FnLower<'_> {
         };
         let limits = args
             .iter()
-            .find(|a| a.name.as_str() == "limits")
+            .find(|a| self.syms.str(a.name) == "limits")
             .map(|a| a.val);
         let flat = self.jlimits(limits)?;
         // An untyped parse is built by the runtime while scanning, without a document.
-        let tree = t.is_source_type("@std/data/json.ms", "JsonValue");
+        let tree = t.is_source_type(self.syms, "@std/data/json.ms", "JsonValue");
         let doc_ty = self.jdoc_ty();
         let mut vals = vec![text];
         vals.extend(flat);
@@ -1526,7 +1531,7 @@ impl FnLower<'_> {
         let case = |name: &str| {
             cases
                 .iter()
-                .position(|c| c.name.as_str() == name)
+                .position(|c| self.syms.str(c.name) == name)
                 .ok_or_else(|| Error::new("JsonValue lacks a case"))
         };
         let order = [
@@ -1608,7 +1613,7 @@ impl FnLower<'_> {
         // Per case: the native, whether it takes the writer or the walk, and its extern.
         let mut calls = Vec::new();
         for c in &cases {
-            let (sym, on_walk, payload_ty) = match c.name.as_str() {
+            let (sym, on_walk, payload_ty) = match self.syms.str(c.name) {
                 "Null" => ("msstd_json_w_null", false, None),
                 "BoolValue" => ("msstd_json_w_bool", false, Some(MTy::BOOL)),
                 "NumberValue" => ("msstd_json_w_number", false, Some(MTy::STR)),
@@ -1717,7 +1722,7 @@ impl FnLower<'_> {
 
     pub(crate) fn jarg(&self, args: &[NArg], name: &str) -> Result<Val, Error> {
         args.iter()
-            .find(|a| a.name.as_str() == name)
+            .find(|a| self.syms.str(a.name) == name)
             .map(|a| a.val)
             .ok_or_else(|| Error::new(format!("missing argument {name}")))
     }
@@ -1773,8 +1778,9 @@ impl FnLower<'_> {
     ) -> Result<Val, Error> {
         let value = self.jarg(args, "value")?;
         let value = self.borrow(value);
+        let syms = self.syms;
         let flat = |s: &mut Self, name: &str| -> Result<(Value, Value), Error> {
-            let a = args.iter().find(|a| a.name.as_str() == name);
+            let a = args.iter().find(|a| syms.str(a.name) == name);
             s.flatten_optional(
                 Input {
                     val: a.map(|a| a.val),
@@ -1797,7 +1803,7 @@ impl FnLower<'_> {
         let zero = self.b.iconst(0);
         let has_form = self.b.icmp(Cc::Ge, written, zero);
         // `strict` also rejects a value left out below the root.
-        let has_form = match args.iter().find(|a| a.name.as_str() == "strict") {
+        let has_form = match args.iter().find(|a| self.syms.str(a.name) == "strict") {
             Some(a) => {
                 let strict = self.borrow(a.val);
                 let lost = self.call_runtime("msstd_json_w_lost", &[writer], MTy::BOOL)?;
@@ -1855,11 +1861,11 @@ fn null_cmp(fl: &mut FnLower<'_>, kind: Value, null: Value) -> Value {
     fl.b.icmp(Cc::Eq, kind, null)
 }
 
-fn jfields(params: &[ct::Param]) -> Vec<JField> {
+fn jfields(syms: ms_syntax::Names, params: &[ct::Param]) -> Vec<JField> {
     params
         .iter()
         .map(|p| JField {
-            name: p.name.to_string(),
+            name: syms.str(p.name).to_string(),
             ty: p.ty.clone(),
         })
         .collect()

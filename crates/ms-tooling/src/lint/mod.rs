@@ -195,20 +195,20 @@ pub fn lint_source(file: &Arc<str>, source: &str) -> Vec<Finding> {
 
 /// Semantic advisories from a checked program (`LintProgram`). A program with
 /// diagnostics yields nothing. Bundled standard modules are skipped.
-pub fn lint_program(program: &Program) -> Vec<Finding> {
+pub fn lint_program(syms: ms_syntax::Names, program: &Program) -> Vec<Finding> {
     if !program.diagnostics.is_empty() {
         return Vec::new();
     }
     let mut findings = Vec::new();
-    for module in program.modules.iter().filter(|m| !m.is_standard()) {
-        bindings::lint(program, module, &mut findings);
-        faults::lint(module, &mut findings);
-        flush::lint(program, module, &mut findings);
-        recursion::lint(program, module, &mut findings);
-        patterns::lint(module, &mut findings);
-        matches::lint(module, &mut findings);
-        tasks::lint(module, &mut findings);
-        promises::lint(module, &mut findings);
+    for module in program.modules.iter().filter(|m| !m.is_standard(syms)) {
+        bindings::lint(syms, program, module, &mut findings);
+        faults::lint(syms, module, &mut findings);
+        flush::lint(syms, program, module, &mut findings);
+        recursion::lint(syms, program, module, &mut findings);
+        patterns::lint(syms, module, &mut findings);
+        matches::lint(syms, module, &mut findings);
+        tasks::lint(syms, module, &mut findings);
+        promises::lint(syms, module, &mut findings);
     }
     findings.sort_by(|a, b| {
         (a.file.as_ref(), a.pos.offset, a.code).cmp(&(b.file.as_ref(), b.pos.offset, b.code))
@@ -218,14 +218,14 @@ pub fn lint_program(program: &Program) -> Vec<Finding> {
 
 /// Everything `ms lint` reports for a checked program: lexical findings per
 /// module, then semantic ones, outside `@std/`, ordered by file, line, column.
-pub fn lint_modules(program: &Program) -> Vec<Finding> {
+pub fn lint_modules(syms: ms_syntax::Names, program: &Program) -> Vec<Finding> {
     let mut findings = Vec::new();
-    for module in program.modules.iter().filter(|m| !m.is_standard()) {
-        let file: Arc<str> = Arc::from(module.file.as_str());
+    for module in program.modules.iter().filter(|m| !m.is_standard(syms)) {
+        let file: Arc<str> = Arc::from(syms.str(module.file));
         findings.extend(lint_source(&file, &module.source));
     }
     findings.extend(
-        lint_program(program)
+        lint_program(syms, program)
             .into_iter()
             .filter(|f| !f.file.starts_with("@std/")),
     );
@@ -240,6 +240,6 @@ pub fn lint_modules(program: &Program) -> Vec<Finding> {
 }
 
 /// The file a module was checked from.
-pub(crate) fn module_file(module: &ModuleData) -> Arc<str> {
-    Arc::from(module.file.as_str())
+pub(crate) fn module_file(syms: ms_syntax::Names, module: &ModuleData) -> Arc<str> {
+    Arc::from(syms.str(module.file))
 }

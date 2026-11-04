@@ -11,6 +11,7 @@ use support::Workspace;
 
 #[test]
 fn opaque_constructor_snippets_respect_the_declaring_file() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("opaque-constructor");
     let library = include_str!("opaque_completion/vault.ms");
     std::fs::write(workspace.path("vault.ms"), library).unwrap();
@@ -19,6 +20,7 @@ fn opaque_constructor_snippets_respect_the_declaring_file() {
         for (file, fixture) in [("vault.ms", library), ("outside.ms", outside)] {
             let fixture = fixture.replace('\n', newline);
             let checked = analyze(
+                syms,
                 &ms_check::Session::new(),
                 &Document::new(workspace.uri(file), fixture.clone()),
                 &Documents::new(),
@@ -42,6 +44,7 @@ fn opaque_constructor_snippets_respect_the_declaring_file() {
                 let offset = source.find("return Va").unwrap() + "return Va".len();
                 let mut document = Document::new(workspace.uri(file), source);
                 let item = completion_at(
+                    syms,
                     &ms_check::Session::new(),
                     &document,
                     &Documents::new(),
@@ -67,7 +70,12 @@ fn opaque_constructor_snippets_respect_the_declaring_file() {
                             .replace("${2:secret}", "7")
                             .replace("$0", ""),
                     );
-                    let checked = analyze(&ms_check::Session::new(), &document, &Documents::new());
+                    let checked = analyze(
+                        syms,
+                        &ms_check::Session::new(),
+                        &document,
+                        &Documents::new(),
+                    );
                     assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
                 }
             }
@@ -77,6 +85,7 @@ fn opaque_constructor_snippets_respect_the_declaring_file() {
 
 #[test]
 fn ordinary_constructors_and_opaque_type_arguments_keep_their_snippets() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("opaque-constructor-controls");
     std::fs::write(
         workspace.path("vault.ms"),
@@ -94,6 +103,7 @@ fn ordinary_constructors_and_opaque_type_arguments_keep_their_snippets() {
             let offset = source.rfind(prefix).unwrap() + prefix.len();
             let mut document = Document::new(workspace.uri("outside.ms"), source);
             let item = completion_at(
+                syms,
                 &ms_check::Session::new(),
                 &document,
                 &Documents::new(),
@@ -118,11 +128,17 @@ fn ordinary_constructors_and_opaque_type_arguments_keep_their_snippets() {
                     .replace("${2:value}", "7")
                     .replace("$0", ""),
             );
-            let checked = analyze(&ms_check::Session::new(), &document, &Documents::new());
+            let checked = analyze(
+                syms,
+                &ms_check::Session::new(),
+                &document,
+                &Documents::new(),
+            );
             assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         }
         let forbidden = fixture.replace("inspect(hidden)", "Vault[Int](secret: 7)");
         let checked = analyze(
+            syms,
             &ms_check::Session::new(),
             &Document::new(workspace.uri("outside.ms"), forbidden),
             &Documents::new(),
@@ -140,6 +156,7 @@ fn ordinary_constructors_and_opaque_type_arguments_keep_their_snippets() {
 
 #[test]
 fn opaque_constructor_argument_labels_and_signatures_stay_private() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("opaque-constructor-help");
     let library = include_str!("opaque_completion/vault.ms");
     std::fs::write(workspace.path("vault.ms"), library).unwrap();
@@ -157,6 +174,7 @@ fn opaque_constructor_argument_labels_and_signatures_stay_private() {
                 let document = Document::new(workspace.uri(file), source);
                 for snippets in [false, true] {
                     let items = completion_at(
+                        syms,
                         &ms_check::Session::new(),
                         &document,
                         &Documents::new(),
@@ -171,6 +189,7 @@ fn opaque_constructor_argument_labels_and_signatures_stay_private() {
                     assert_eq!(secret.is_some(), file == "vault.ms", "{file}: {labels:?}");
                 }
                 let help = signature_help(
+                    syms,
                     &document,
                     &Documents::new(),
                     text::position(&document.text, offset),
@@ -192,6 +211,7 @@ fn opaque_constructor_argument_labels_and_signatures_stay_private() {
 
 #[test]
 fn opaque_alternative_argument_labels_and_signatures_stay_private() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("opaque-case-help");
     let library = include_str!("opaque_completion/vault.ms");
     std::fs::write(workspace.path("vault.ms"), library).unwrap();
@@ -208,6 +228,7 @@ fn opaque_alternative_argument_labels_and_signatures_stay_private() {
             let offset = source.find(prefix).unwrap() + prefix.len();
             let document = Document::new(workspace.uri(file), source);
             let items = completion_at(
+                syms,
                 &ms_check::Session::new(),
                 &document,
                 &Documents::new(),
@@ -221,6 +242,7 @@ fn opaque_alternative_argument_labels_and_signatures_stay_private() {
                 .find(|item| item.get("label").and_then(|j| j.as_str()) == Some("value"));
             assert_eq!(value.is_some(), file == "vault.ms", "{file}: {labels:?}");
             let help = signature_help(
+                syms,
                 &document,
                 &Documents::new(),
                 text::position(&document.text, offset),
@@ -233,6 +255,7 @@ fn opaque_alternative_argument_labels_and_signatures_stay_private() {
 
 #[test]
 fn opaque_representation_hover_and_navigation_stay_private() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("opaque-hover");
     let library = include_str!("opaque_completion/vault.ms");
     std::fs::write(workspace.path("vault.ms"), library).unwrap();
@@ -251,7 +274,12 @@ fn opaque_representation_hover_and_navigation_stay_private() {
                 .replace('\n', newline);
             let offset = source.find(expression).unwrap() + expression.find(selected).unwrap();
             let document = Document::new(workspace.uri("outside.ms"), source);
-            let checked = analyze(&ms_check::Session::new(), &document, &Documents::new());
+            let checked = analyze(
+                syms,
+                &ms_check::Session::new(),
+                &document,
+                &Documents::new(),
+            );
             assert!(
                 checked
                     .diagnostics
@@ -260,25 +288,33 @@ fn opaque_representation_hover_and_navigation_stay_private() {
                 "{:?}",
                 checked.diagnostics
             );
-            let index = checked.index();
+            let index = checked.occurrence_index(syms);
             let at = text::position(&document.text, offset);
-            assert!(nav::occurrence_at(&checked, &document, at, index).is_none());
+            assert!(nav::occurrence_at(syms, &checked, &document, at, index).is_none());
             for index in [index, &[][..]] {
                 assert!(
-                    nav::navigation(&checked, &document, at, Navigate::Hover, index).is_null(),
+                    nav::navigation(syms, &checked, &document, at, Navigate::Hover, index)
+                        .is_null(),
                     "{expression}"
                 );
                 assert!(
-                    nav::navigation(&checked, &document, at, Navigate::Definition, index).is_null(),
+                    nav::navigation(syms, &checked, &document, at, Navigate::Definition, index)
+                        .is_null(),
                     "{expression}"
                 );
             }
         }
         let document = Document::new(workspace.uri("vault.ms"), library.replace('\n', newline));
-        let checked = analyze(&ms_check::Session::new(), &document, &Documents::new());
-        let index = checked.index();
+        let checked = analyze(
+            syms,
+            &ms_check::Session::new(),
+            &document,
+            &Documents::new(),
+        );
+        let index = checked.occurrence_index(syms);
         let offset = document.text.find("secret").unwrap();
         let hover = nav::navigation(
+            syms,
             &checked,
             &document,
             text::position(&document.text, offset),
@@ -287,7 +323,12 @@ fn opaque_representation_hover_and_navigation_stay_private() {
         );
         assert!(!hover.is_null());
         let document = Document::new(workspace.uri("outside.ms"), fixture.replace('\n', newline));
-        let checked = analyze(&ms_check::Session::new(), &document, &Documents::new());
+        let checked = analyze(
+            syms,
+            &ms_check::Session::new(),
+            &document,
+            &Documents::new(),
+        );
         for token in ["Vault", "public.value", "hidden.size"] {
             let offset = if token == "Vault" {
                 document.text.find("value: Vault").unwrap() + "value: ".len()
@@ -295,11 +336,12 @@ fn opaque_representation_hover_and_navigation_stay_private() {
                 document.text.find(token).unwrap() + token.find('.').unwrap() + 1
             };
             let hover = nav::navigation(
+                syms,
                 &checked,
                 &document,
                 text::position(&document.text, offset),
                 Navigate::Hover,
-                checked.index(),
+                checked.occurrence_index(syms),
             );
             assert!(!hover.is_null(), "{token}");
         }
@@ -308,6 +350,7 @@ fn opaque_representation_hover_and_navigation_stay_private() {
 
 #[test]
 fn opaque_public_methods_remain_discoverable() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("opaque-public-method");
     std::fs::write(
         workspace.path("vault.ms"),
@@ -322,6 +365,7 @@ fn opaque_public_methods_remain_discoverable() {
         let offset = source.find("hidden.si").unwrap() + "hidden.si".len();
         let mut document = Document::new(workspace.uri("outside.ms"), source);
         let items: Vec<_> = completion_at(
+            syms,
             &ms_check::Session::new(),
             &document,
             &Documents::new(),
@@ -350,10 +394,16 @@ fn opaque_public_methods_remain_discoverable() {
         let start = text::offset(&document.text, range.start).unwrap();
         let end = text::offset(&document.text, range.end).unwrap();
         document.text.replace_range(start..end, "size()");
-        let checked = analyze(&ms_check::Session::new(), &document, &Documents::new());
+        let checked = analyze(
+            syms,
+            &ms_check::Session::new(),
+            &document,
+            &Documents::new(),
+        );
         assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         let offset = document.text.find("hidden.size(").unwrap() + "hidden.size(".len();
         let help = signature_help(
+            syms,
             &document,
             &Documents::new(),
             text::position(&document.text, offset),
@@ -365,6 +415,7 @@ fn opaque_public_methods_remain_discoverable() {
 
 #[test]
 fn opaque_rejected_receiver_chains_offer_no_members_or_calls() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("opaque-chains");
     std::fs::write(
         workspace.path("vault.ms"),
@@ -388,6 +439,7 @@ fn opaque_rejected_receiver_chains_offer_no_members_or_calls() {
             let document = Document::new(workspace.uri("outside.ms"), source);
             for snippets in [false, true] {
                 let items = completion_at(
+                    syms,
                     &ms_check::Session::new(),
                     &document,
                     &Documents::new(),
@@ -408,6 +460,7 @@ fn opaque_rejected_receiver_chains_offer_no_members_or_calls() {
             let offset = source.find(&call).unwrap() + call.len() - 1;
             let document = Document::new(workspace.uri("outside.ms"), source);
             let help = signature_help(
+                syms,
                 &document,
                 &Documents::new(),
                 text::position(&document.text, offset),

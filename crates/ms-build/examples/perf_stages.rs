@@ -15,13 +15,14 @@ fn stage<T>(name: &str, f: impl FnOnce() -> T) -> T {
 }
 
 fn main() {
+    let syms = ms_syntax::Names::global();
     let args: Vec<String> = std::env::args().collect();
     assert_eq!(args.len(), 4, "perf_stages source output runtime-archive");
     let graph = stage("load_parse", || {
-        ms_driver::load_file(&args[1], Default::default())
+        ms_driver::load_file(syms, &args[1], Default::default())
     });
     let checked = stage("check", || {
-        ms_driver::check_graph(graph, ms_driver::CheckRequest { entry: true })
+        ms_driver::check_graph(syms, graph, ms_driver::CheckRequest { entry: true })
     });
     assert!(checked.success(), "{:?}", checked.diagnostics);
     let mut module = stage("lower", || {

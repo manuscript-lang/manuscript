@@ -214,11 +214,14 @@ impl Cx {
             .cloned()
             .ok_or_else(|| Error::new("unknown interface"))?;
         // Streams are `@std/io` handles whichever module hands them out.
-        if matches!(ity.name.to_string().as_str(), "ReadStream" | "WriteStream") {
+        if matches!(
+            self.syms.str(ity.name).to_string().as_str(),
+            "ReadStream" | "WriteStream"
+        ) {
             module = "io";
         }
         // A WebSocket is the same handle from a client dial and a server upgrade.
-        if ity.name == "WebSocket" {
+        if self.syms.str(ity.name) == "WebSocket" {
             module = "websocket";
         }
         self.handle_vtable(m, hir, module, &ity, iface)
@@ -240,7 +243,7 @@ impl Cx {
         if let Some(v) = self.vtables.get(&key) {
             return Ok(*v);
         }
-        let iface_name = ity.name.to_string();
+        let iface_name = self.syms.str(ity.name).to_string();
         let data_ty = if UNIT_DATA.contains(&(module, iface_name.as_str())) {
             MTy::UNIT
         } else {
@@ -257,7 +260,7 @@ impl Cx {
         for s in &sigs {
             let decl = ops
                 .iter()
-                .find(|op| op.name.as_str() == s.name)
+                .find(|op| self.syms.str(op.name) == s.name)
                 .map(|op| ct::sub(&op.ty, &subst).params.clone())
                 .unwrap_or_default();
             let row = METHODS

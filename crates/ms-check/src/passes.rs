@@ -40,11 +40,11 @@ fn repeats_type_parameters(receiver: &TypeRef, params: &[TypeParam]) -> bool {
     })
 }
 
-fn parameter_names(params: &[TypeParam]) -> String {
+fn parameter_names(syms: ms_syntax::Names, params: &[TypeParam]) -> String {
     if params.is_empty() {
         return String::new();
     }
-    let names: Vec<&str> = params.iter().map(|p| p.name.as_str()).collect();
+    let names: Vec<&str> = params.iter().map(|p| syms.str(p.name)).collect();
     format!("[{}]", names.join(", "))
 }
 
@@ -63,7 +63,10 @@ fn type_decl_params(d: &Decl) -> Option<(Name, &[TypeParam], bool)> {
 /// visibility wherever the type is used, exact signatures, selection by
 /// receiver, and lowering as plain methods. Blocks for one type merge into the
 /// first.
-pub fn desugar_inherent_impls(module: &Module) -> (Vec<Decl>, Vec<InherentError>, u32) {
+pub fn desugar_inherent_impls(
+    syms: ms_syntax::Names,
+    module: &Module,
+) -> (Vec<Decl>, Vec<InherentError>, u32) {
     let mut errors: Vec<InherentError> = Vec::new();
     let mut next_id = module.node_count;
     let mut types: HashMap<Name, (&[TypeParam], bool)> = HashMap::new();
@@ -87,16 +90,16 @@ pub fn desugar_inherent_impls(module: &Module) -> (Vec<Decl>, Vec<InherentError>
         match types.get(&name) {
             None => errors.push(InherentError {
                 pos: d.pos,
-                message: format!("inherent methods belong in the module that declares {name}; to add operations to another module's type, declare an interface and write 'impl <Interface> for {name}:'"),
+                message: format!("inherent methods belong in the module that declares {name_t}; to add operations to another module's type, declare an interface and write 'impl <Interface> for {name_t}:'", name_t = syms.str(name)),
             }),
             Some((_, true)) => errors.push(InherentError {
                 pos: d.pos,
-                message: format!("{name} is an interface; 'impl {name}:' declares a type's own methods, so write 'impl {name} for <Type>:' to implement the interface"),
+                message: format!("{name_t} is an interface; 'impl {name_t}:' declares a type's own methods, so write 'impl {name_t} for <Type>:' to implement the interface", name_t = syms.str(name)),
             }),
             Some((params, false)) if !repeats_type_parameters(&imp.receiver, params) => {
                 errors.push(InherentError {
                     pos: d.pos,
-                    message: format!("impl must repeat the type parameters of {name} as its receiver arguments, as in 'impl {name}{}:'", parameter_names(params)),
+                    message: format!("impl must repeat the type parameters of {name_t} as its receiver arguments, as in 'impl {name_t}{}:'", parameter_names(syms, params), name_t = syms.str(name)),
                 });
             }
             Some(_) => {
@@ -123,7 +126,10 @@ pub fn desugar_inherent_impls(module: &Module) -> (Vec<Decl>, Vec<InherentError>
         }
         let name = n(imp.receiver.name());
         let (params, _) = types[&name];
-        let contract_name = n(&format!("{name}{INHERENT_SUFFIX}"));
+        let contract_name = n(&format!(
+            "{name_t}{INHERENT_SUFFIX}",
+            name_t = syms.str(name)
+        ));
         let mut methods: Vec<Method> = Vec::with_capacity(imp.methods.len());
         for method in &imp.methods {
             let mut signature = method.clone();

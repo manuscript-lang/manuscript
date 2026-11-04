@@ -107,7 +107,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let native = json_native(native);
         if let Some(symbol) = native.strip_prefix("extern:") {
-            if !sym.module.as_str().starts_with("@std/") {
+            if !self.syms.str(sym.module).starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
             }
             // The runtime keeps the first of equal elements and receives the element descriptor like a method call.
@@ -182,7 +182,9 @@ impl<'a> FnLower<'a> {
             // declaration does not spell selects the host's rules.
             if crate::rtcall::rt_sig(symbol)
                 .is_some_and(|sig| sig.params.first().is_some_and(|p| p.name == "windows"))
-                && params.first().is_none_or(|p| p.name.as_str() != "windows")
+                && params
+                    .first()
+                    .is_none_or(|p| self.syms.str(p.name) != "windows")
             {
                 let name = ct::n("windows");
                 let v = self.b.bconst(cfg!(windows));
@@ -256,7 +258,7 @@ impl<'a> FnLower<'a> {
                 if let (Some(v), Some(a)) = (sym.variables().first(), self.ety(e).args.first()) {
                     subst.insert(v.id, a.clone());
                 }
-                let declared = ct::sub(&sym.ty().result_ty(), &subst);
+                let declared = ct::sub(&sym.ty(self.syms).result_ty(), &subst);
                 let have = self.mty(&declared)?;
                 let r = if native == "json/parse" {
                     let t = self
@@ -270,7 +272,7 @@ impl<'a> FnLower<'a> {
                     let value = view
                         .arguments
                         .iter()
-                        .find(|a| a.slot.name.as_str() == "value")
+                        .find(|a| self.syms.str(a.slot.name) == "value")
                         .ok_or_else(|| Error::new("stringify without a value"))?;
                     let t = self.ety(value.expr);
                     self.json_stringify(t, have, &args)?
@@ -332,7 +334,7 @@ impl<'a> FnLower<'a> {
                 self.fill_native_defaults(sym.module, func, params, &mut args)?;
                 if other.starts_with("crypto/rsa_") {
                     // The C ABI produces CryptoError even when the source expects Error.
-                    let declared = sym.ty().result_ty();
+                    let declared = sym.ty(self.syms).result_ty();
                     let have = self.mty(&declared)?;
                     self.at(e.pos);
                     let r = self.native_call(other, params, &args, have)?;
@@ -634,7 +636,7 @@ impl<'a> FnLower<'a> {
         }
         let names: Vec<String> = ct::cases(&m.receiver)
             .iter()
-            .map(|c| c.name.as_str().to_lowercase())
+            .map(|c| self.syms.str(c.name).to_lowercase())
             .collect();
         self.case_name(&names, tag, 0)
     }
@@ -691,11 +693,12 @@ impl<'a> FnLower<'a> {
         if !self.is_place(recv_expr) {
             return false;
         }
-        let Some(uid) = crate::mutation::place_root(&self.hir, recv_expr) else {
+        let Some(uid) = crate::mutation::place_root(self.syms, &self.hir, recv_expr) else {
             return false;
         };
         view.arguments.iter().any(|a| {
             crate::mutation::mutated_locals(
+                self.syms,
                 &self.hir,
                 ms_check::hir::Body::Expr(a.expr),
                 &self.cx.callables,
@@ -790,7 +793,7 @@ impl<'a> FnLower<'a> {
         recv_expr: &Expr,
         recv: Val,
     ) -> Result<Val, Error> {
-        let native = m.native.as_str();
+        let native = self.syms.str(m.native);
         let at = self.b.current();
         // The receiver is evaluated first: an argument that reassigns its variable must not
         // change what the call reads.
@@ -911,7 +914,8 @@ impl<'a> FnLower<'a> {
         if native == "normalize" && form_recv {
             // The form is a payload-free alternative: its case index selects the algorithm.
             let result = self.emty(e)?;
-            let find = |n: &str| args.iter().find(|a| a.name.as_str() == n).copied();
+            let syms = self.syms;
+            let find = |n: &str| args.iter().find(|a| syms.str(a.name) == n).copied();
             let text = find("text").ok_or_else(|| Error::new("normalize without text"))?;
             let text = self.borrow(text.val);
             let form = self.borrow(recv);
@@ -938,7 +942,7 @@ impl<'a> FnLower<'a> {
         recv: Val,
         mut args: Vec<NArg>,
     ) -> Result<Val, Error> {
-        let native = m.native.as_str();
+        let native = self.syms.str(m.native);
         let recv_ty = self.ty_of(recv.v);
         let numeric_recv = self.b.m.types.is_int(recv_ty) || self.b.m.types.is_float(recv_ty);
         // `Float.to_float32()` is a runtime call: it returns none when the value overflows.
@@ -979,10 +983,9 @@ impl<'a> FnLower<'a> {
         } else {
             recv
         };
-        if let Some(sym) = m
-            .name()
-            .and_then(|n| crate::rtcall::typed_method_symbol(&m.receiver, n.as_str()))
-        {
+        if let Some(sym) = m.name().and_then(|n| {
+            crate::rtcall::typed_method_symbol(self.syms, &m.receiver, self.syms.str(n))
+        }) {
             return self.rt_method(&sym, recv, &m.ty.params, &args, result);
         }
         let name = native.rsplit('/').next().unwrap_or(native);
@@ -1111,7 +1114,7 @@ impl<'a> FnLower<'a> {
                 let mut index = None;
                 let mut default = None;
                 for a in args {
-                    if a.name.as_str() == "default" {
+                    if self.syms.str(a.name) == "default" {
                         default = Some(a);
                     } else {
                         index = Some(a);
@@ -1255,7 +1258,9 @@ impl<'a> FnLower<'a> {
                 let out = self.call_runtime("msrt_int_to_string_radix", &[v, r], MTy::STR)?;
                 Ok(Val { v: out, own: true })
             }
-            (_, "to_string") if m.receiver.is_time("Duration") => self.duration_text(recv),
+            (_, "to_string") if m.receiver.is_time(self.syms, "Duration") => {
+                self.duration_text(recv)
+            }
             (_, "to_string") => self.format_value(recv),
             (_, "clone") => {
                 let v = self.clone_value(recv.v);
@@ -1344,7 +1349,10 @@ impl<'a> FnLower<'a> {
         args: &[NArg],
         result: MTy,
     ) -> Result<Val, Error> {
-        let name = m.name().map(|n| n.to_string()).unwrap_or_default();
+        let name = m
+            .name()
+            .map(|n| self.syms.str(n).to_string())
+            .unwrap_or_default();
         let old = self.move_out(slot, rty);
         let (new, r) = self.mutate_any(&name, old, &m.ty.params, args, true, result)?;
         self.move_into(slot, new);
@@ -1369,14 +1377,17 @@ impl<'a> FnLower<'a> {
         result: MTy,
     ) -> Result<Val, Error> {
         let rty = self.ty_of(recv.v);
-        let name = m.name().map(|n| n.to_string()).unwrap_or_default();
+        let name = m
+            .name()
+            .map(|n| self.syms.str(n).to_string())
+            .unwrap_or_default();
         if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS
             .iter()
-            .find(|(n, ..)| *n == m.native.as_str())
+            .find(|(n, ..)| *n == self.syms.str(m.native))
         {
             return self.format_method(result, m, recv, args.to_vec(), (sym, param, as_text));
         }
-        if ms_check::effects::collection_mutation(m) {
+        if ms_check::effects::collection_mutation(self.syms, m) {
             // The bound receiver is a copy: the mutated collection is the result.
             let b = self.borrow(recv);
             let old = self.owned(Val { v: b, own: false });
@@ -1426,7 +1437,10 @@ impl<'a> FnLower<'a> {
             return self.map_get_or(recv, &m.ty.params, args, result);
         }
         if let (TyKind::List(elem), "get") = (self.b.m.types.kind(rty).clone(), name.as_str()) {
-            let find = |want: bool| args.iter().find(|a| (a.name.as_str() == "default") == want);
+            let find = |want: bool| {
+                args.iter()
+                    .find(|a| (self.syms.str(a.name) == "default") == want)
+            };
             let index = find(false)
                 .copied()
                 .ok_or_else(|| Error::new("get without index"))?;
@@ -1452,10 +1466,10 @@ impl<'a> FnLower<'a> {
             let out = self.call_runtime(sym, &[r, d, n], rty)?;
             return Ok(Val { v: out, own: true });
         }
-        if let Some(sym) = hash_algorithm_symbol(m.native.as_str()) {
+        if let Some(sym) = hash_algorithm_symbol(self.syms.str(m.native)) {
             return self.hash_algorithm_call(sym, recv, args, result);
         }
-        if m.native.as_str() == "hash" && !matches!(self.b.m.types.kind(rty), TyKind::Str) {
+        if self.syms.str(m.native) == "hash" && !matches!(self.b.m.types.kind(rty), TyKind::Str) {
             return self.structural_hash(recv);
         }
         self.native_method_tail(
@@ -2597,7 +2611,7 @@ impl<'a> FnLower<'a> {
 
     /// A variable or a field chain from one.
     pub fn is_place(&self, e: &Expr) -> bool {
-        let cur = crate::mutation::place_base(&self.hir, e);
+        let cur = crate::mutation::place_base(self.syms, &self.hir, e);
         matches!(&cur.kind, ExprKind::Name(_))
             && matches!(self.hir.resolution(cur), Resolution::Local(_))
     }
@@ -3220,7 +3234,7 @@ impl<'a> FnLower<'a> {
             let Some(d) = f.params.get(i).and_then(|q| q.default.as_ref()) else {
                 continue;
             };
-            if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") {
+            if matches!(&d.kind, ExprKind::Name(n) if self.syms.str(n) == "none") {
                 continue;
             }
             // Bundled declarations carry no checked facts: literal defaults are built directly,
@@ -3230,8 +3244,8 @@ impl<'a> FnLower<'a> {
                     v: self.b.bconst(*b),
                     own: false,
                 }),
-                ExprKind::Number(t) if p.ty.id.as_str() == "Int" => {
-                    match ms_syntax::number::canonical(t.as_str()).parse::<i64>() {
+                ExprKind::Number(t) if self.syms.str(p.ty.id) == "Int" => {
+                    match ms_syntax::number::canonical(self.syms.str(t)).parse::<i64>() {
                         Ok(n) => Ok(Val {
                             v: self.b.iconst(n),
                             own: false,
@@ -3263,7 +3277,7 @@ impl<'a> FnLower<'a> {
                     };
                     let saved_hir = std::mem::replace(&mut self.hir, hir);
                     let saved_file = self.file;
-                    self.file = self.b.m.add_file(module.as_str());
+                    self.file = self.b.m.add_file(self.syms.str(module));
                     // A default reports its own position, not the caller statement\'s.
                     let saved_stmt = self.stmt_pos.take();
                     let r = self.expr(d);
@@ -3492,7 +3506,7 @@ impl FnLower<'_> {
         let TyKind::Obj(n, _) = self.b.m.types.kind(self.ty_of(recv)) else {
             return None;
         };
-        match (n, m.name()?.as_str()) {
+        match (n, self.syms.str(m.name()?)) {
             (Native::Map, "entries") => Some(Walk::Entries),
             (Native::Map, "values") => Some(Walk::Values),
             (Native::Map, "keys") | (Native::Set, "values") => Some(Walk::Keys),
@@ -3515,7 +3529,7 @@ impl FnLower<'_> {
             self.b.m.types.kind(self.ty_of(recv)),
             TyKind::Obj(Native::Map, _)
         );
-        match m.name()?.as_str() {
+        match self.syms.str(m.name()?) {
             "keys" if is_map => Some("msrt_map_keys_view"),
             "values" if is_map => Some("msrt_map_values_view"),
             _ => None,

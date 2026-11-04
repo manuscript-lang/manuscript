@@ -30,7 +30,7 @@ impl Checker {
             return Some(Info::of(invalid()));
         }
         if rt.kind == Kind::Record
-            && *name != "to_string"
+            && self.syms.str(name) != "to_string"
             && fields(&rt).iter().any(|f| f.name == *name)
         {
             return None;
@@ -49,20 +49,22 @@ impl Checker {
         // A source or interface operation with type parameters of its own is specialized here too.
         let generic = |m: &crate::types::Method| {
             !m.variables.is_empty()
-                && (m.native.as_str().is_empty() || m.native == "contract" || m.contract.is_some())
+                && (self.syms.str(m.native).is_empty()
+                    || self.syms.str(m.native) == "contract"
+                    || m.contract.is_some())
         };
         if methods.len() != 1
             || (!generic(&methods[0])
                 && (methods[0].contract.is_some()
-                    || methods[0].native.as_str().is_empty()
-                    || methods[0].native == "contract"))
+                    || self.syms.str(methods[0].native).is_empty()
+                    || self.syms.str(methods[0].native) == "contract"))
         {
             return None;
         }
         let m = methods[0].clone();
         let mut signature = m.ty.clone();
         if rt.is(Builtin::Optional)
-            && m.native == "ok_or"
+            && self.syms.str(m.native) == "ok_or"
             && let Some(defaults) = &signature.defaults
             && let Some(cause) = signature.params.first()
         {
@@ -73,7 +75,7 @@ impl Checker {
         }
         let info = Info {
             ty: Some(signature),
-            native: (!m.native.as_str().is_empty()).then_some(m.native),
+            native: (!self.syms.str(m.native).is_empty()).then_some(m.native),
             method: Some(m),
             no_return: receiver.no_return,
             ..Info::default()
@@ -111,7 +113,7 @@ impl Checker {
                 .collect();
         } else if !vars.is_empty() {
             let mut subst = Subst::new();
-            let resolved = function_arguments(args, &signature.params);
+            let resolved = function_arguments(self.syms, args, &signature.params);
             self.infer_arguments(
                 &resolved,
                 &signature.params,
@@ -124,12 +126,17 @@ impl Checker {
         if supplied.len() >= required_type_arguments(&vars) {
             supplied = complete_type_arguments(&vars, &supplied);
         }
-        if method.native.as_str().is_empty() || method.native == "contract" {
+        if self.syms.str(method.native).is_empty() || self.syms.str(method.native) == "contract" {
             info.type_args = supplied.clone();
         }
         if !vars.is_empty() || applied {
-            info.ty =
-                Some(self.specialize(&signature, &vars, &supplied, e.pos, &callee_name(callee)));
+            info.ty = Some(self.specialize(
+                &signature,
+                &vars,
+                &supplied,
+                e.pos,
+                &callee_name(self.syms, callee),
+            ));
         }
         if context.conflict {
             let mut t = (*info.t()).clone();

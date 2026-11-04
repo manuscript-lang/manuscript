@@ -4,12 +4,13 @@ use crate::{CheckOptions, Program, checker::Checker, types::n};
 use std::sync::Arc;
 
 fn check(source: &str) -> Program {
+    let syms = ms_syntax::Names::global();
     let session = crate::Session::new();
     session.ensure_standard();
     let file: Arc<str> = Arc::from("operation_bounds.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
     Checker::new(&session, &CheckOptions::default())
-        .check_modules(vec![crate::load_module(&module)], None)
+        .check_modules(vec![crate::load_module(syms, &module)], None)
 }
 
 fn diagnostics(source: &str) -> Vec<String> {
@@ -39,6 +40,7 @@ fn operations_reject_non_interface_bounds() {
 
 #[test]
 fn operations_reject_type_variable_bounds_without_recording_them() {
+    let syms = ms_syntax::Names::global();
     let program = check(include_str!("../tests/operation_bounds/variable.ms"));
     assert_eq!(program.diagnostics.len(), 1, "{:?}", program.diagnostics);
     assert!(
@@ -46,10 +48,10 @@ fn operations_reject_type_variable_bounds_without_recording_them() {
             .message
             .contains("resolves to a type parameter")
     );
-    let reader = program.symbols[&n("operation_bounds.ms")].borrow()[&n("Reader")].ty();
+    let reader = program.symbols[&n("operation_bounds.ms")].borrow()[&n("Reader")].ty(syms);
     let variables = program
         .session
-        .operation_variables(&format!("{}/read", reader.id));
+        .operation_variables(&format!("{}/read", syms.str(reader.id)));
     assert_eq!(variables.len(), 1);
     assert!(variables[0].bounds().is_empty());
 }

@@ -47,7 +47,7 @@ impl<'a> FnLower<'a> {
             return Err(Error::new("call without resolution"));
         };
         let out = match &view.target {
-            Resolution::Function(sym) if sym.native.as_str().is_empty() => {
+            Resolution::Function(sym) if self.syms.str(sym.native).is_empty() => {
                 let c = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id()))?;
                 let vars = sym.variables();
                 let subst = self.callee_subst(&vars, &view.type_args)?;
@@ -78,7 +78,7 @@ impl<'a> FnLower<'a> {
                     .as_ref()
                     .map(|t| t.params.clone())
                     .unwrap_or_default();
-                self.native_function(e, &view, sym.native.as_str(), &params, sym)?
+                self.native_function(e, &view, self.syms.str(sym.native), &params, sym)?
             }
             // `x.get()(7)`: the callee is itself a call, so this one calls its function value.
             Resolution::Method(_) if self.receiver_expr(e).is_none() => {
@@ -86,7 +86,7 @@ impl<'a> FnLower<'a> {
             }
             Resolution::Method(m) => {
                 let out = self.method_call(e, &view, m)?;
-                if m.name().is_some_and(|n| n.as_str() == "close")
+                if m.name().is_some_and(|n| self.syms.str(n) == "close")
                     && let Some(recv) = self.receiver_expr(e)
                 {
                     self.note_explicit_close(recv);
@@ -97,7 +97,7 @@ impl<'a> FnLower<'a> {
             Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
             _ => return Err(Error::new("unsupported call target")),
         };
-        if !self.dead && self.ety(e).is_never() {
+        if !self.dead && self.ety(e).is_never(self.syms) {
             self.b.unreachable();
             self.terminated();
         }
@@ -126,7 +126,10 @@ impl<'a> FnLower<'a> {
         let mut s = Subst::new();
         for (i, v) in vars.iter().enumerate() {
             let Some(Some(a)) = type_args.get(i) else {
-                return Err(Error::new(format!("cannot infer type argument {}", v.name)));
+                return Err(Error::new(format!(
+                    "cannot infer type argument {}",
+                    self.syms.str(v.name)
+                )));
             };
             s.insert(v.id, ct::sub(a, &self.subst));
         }
@@ -174,7 +177,9 @@ impl<'a> FnLower<'a> {
             let idx = names
                 .iter()
                 .position(|n| *n == a.slot.name)
-                .ok_or_else(|| Error::new(format!("no parameter {}", a.slot.name)))?;
+                .ok_or_else(|| {
+                    Error::new(format!("no parameter {}", self.syms.str(a.slot.name)))
+                })?;
             if vars.contains(&(idx + offset)) {
                 places[idx] = Some(a.expr.clone());
             }
@@ -200,11 +205,15 @@ impl<'a> FnLower<'a> {
                 // instructions live in the caller. Reuse inline-frame metadata so
                 // faults retain both frames without runtime call bookkeeping.
                 let parent = self.source_scope;
-                let file = self.b.m.add_file(callee.module.file.as_str());
+                let file = self.b.m.add_file(self.syms.str(callee.module.file));
                 let name = if let DeclKind::Impl(implementation) = &callee.func.decl.decl().kind {
-                    format!("{}.{}", implementation.receiver.name(), callee.name)
+                    format!(
+                        "{}.{}",
+                        implementation.receiver.name(),
+                        self.syms.str(callee.name)
+                    )
                 } else {
-                    callee.name.to_string()
+                    self.syms.str(callee.name).to_string()
                 };
                 let call_line = self.stmt_pos.unwrap_or(call_pos).line;
                 let scopes = &mut self.b.func_mut().scopes;
@@ -228,7 +237,7 @@ impl<'a> FnLower<'a> {
     /// Whether a place permits writeback: an owned local or shared mutable storage.
     /// A read-only borrow (a parameter of a default frame) takes no update.
     fn place_is_owned(&mut self, place: &Expr) -> bool {
-        let Some(uid) = crate::mutation::place_root(&self.hir, place) else {
+        let Some(uid) = crate::mutation::place_root(self.syms, &self.hir, place) else {
             return false;
         };
         let uid = self.aliases.get(&uid).map_or(uid, |a| a.root.uid);
@@ -296,9 +305,12 @@ impl<'a> FnLower<'a> {
             if let Some((decl, sig)) = self.contract_operation(callee) {
                 return self.contract_default(decl.as_ref(), &sig, i);
             }
-            return Err(Error::new(format!("missing argument {}", binding.name)));
+            return Err(Error::new(format!(
+                "missing argument {}",
+                self.syms.str(binding.name)
+            )));
         };
-        if is_caller_site(d) {
+        if is_caller_site(self.syms, d) {
             // The position of the call that omitted the argument, not of the default.
             let pos = call_pos
                 .ok_or_else(|| Error::new("a function with a caller_site() default can only be called directly, not used as a function value"))?;
@@ -317,7 +329,8 @@ impl<'a> FnLower<'a> {
             return Ok(Val { v, own: false });
         }
         // `none` in a bundled declaration carries no checked expression.
-        if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") && ty.is(Builtin::Optional)
+        if matches!(&d.kind, ExprKind::Name(n) if self.syms.str(n) == "none")
+            && ty.is(Builtin::Optional)
         {
             let v = self.b.opt_none(mty);
             return Ok(Val { v, own: false });
@@ -327,7 +340,7 @@ impl<'a> FnLower<'a> {
         let saved_variant = std::mem::take(&mut self.variant);
         let saved_file = self.file;
         self.hir = self.cx.module(callee.module.file)?;
-        self.file = self.b.m.add_file(callee.module.file.as_str());
+        self.file = self.b.m.add_file(self.syms.str(callee.module.file));
         if let (Some(b), Some(r)) = (&callee.self_binding, recv) {
             self.bind_borrowed(b, r.v);
         }
@@ -625,7 +638,7 @@ impl<'a> FnLower<'a> {
         let recv_expr = self
             .receiver_expr(e)
             .ok_or_else(|| Error::new("method call without receiver"))?;
-        let native = m.native.as_str();
+        let native = self.syms.str(m.native);
         if native.is_empty() {
             return self.source_method_call(e, view, m, recv_expr);
         }
@@ -634,12 +647,12 @@ impl<'a> FnLower<'a> {
         }
         let method = m
             .name()
-            .map(|n| n.to_string())
+            .map(|n| self.syms.str(n).to_string())
             .unwrap_or_else(|| native.rsplit('/').next().unwrap_or(native).to_string());
-        if ms_check::effects::is_text_builder(&m.receiver) && method == "build" {
+        if ms_check::effects::is_text_builder(self.syms, &m.receiver) && method == "build" {
             return self.text_builder_build(e, recv_expr);
         }
-        if ms_check::effects::collection_mutation(m) {
+        if ms_check::effects::collection_mutation(self.syms, m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }
         if let Some(v) = self.map_get_chain(e, view, recv_expr, &method)? {
@@ -767,7 +780,7 @@ impl<'a> FnLower<'a> {
             .iter()
             .find(|mm| {
                 mm.name() == Some(name)
-                    && !mm.id.as_str().is_empty()
+                    && !self.syms.str(mm.id).is_empty()
                     && mm.visible_in(scope)
                     && mm.contract.as_ref().is_some_and(|c| {
                         let vars = ct::variable_set(&mm.variables);
@@ -797,7 +810,7 @@ impl<'a> FnLower<'a> {
             // A concrete receiver (a generic instance): call its implementation directly.
             let Some(im) = self.contract_impl(m, &static_ty) else {
                 // Hashing is derived for every hashable type.
-                if m.name().is_some_and(|n| n.as_str() == "hash") {
+                if m.name().is_some_and(|n| self.syms.str(n) == "hash") {
                     let recv = self.expr(recv_expr)?;
                     if self.dead {
                         return Ok(recv);
@@ -805,7 +818,7 @@ impl<'a> FnLower<'a> {
                     return self.derived_hash(recv);
                 }
                 // Equality is derived for every type that has no implementation of its own.
-                if m.name().is_some_and(|n| n.as_str() == "equals")
+                if m.name().is_some_and(|n| self.syms.str(n) == "equals")
                     && contract.is(Builtin::Equal)
                     && let [other] = view.arguments.as_slice()
                 {
@@ -822,7 +835,7 @@ impl<'a> FnLower<'a> {
                     return Ok(Val { v, own: false });
                 }
                 // Built-in scalars order themselves against another of their own type.
-                if m.name().is_some_and(|n| n.as_str() == "compare")
+                if m.name().is_some_and(|n| self.syms.str(n) == "compare")
                     && contract.is(Builtin::Comparable)
                     && let [other] = view.arguments.as_slice()
                 {
@@ -841,7 +854,7 @@ impl<'a> FnLower<'a> {
                 }
                 // A resource closed through its parts (a record holding one) has no `close` of
                 // its own: closing it closes what it holds.
-                if m.name().is_some_and(|n| n.as_str() == "close")
+                if m.name().is_some_and(|n| self.syms.str(n) == "close")
                     && contract.is(Builtin::Closeable)
                     && let Some(kind) = self.part_closer(&static_ty)?
                 {
@@ -863,8 +876,11 @@ impl<'a> FnLower<'a> {
                     return Ok(Val { v, own: true });
                 }
                 return Err(Error::new(format!(
-                    "{static_ty} has no implementation of {}",
-                    m.name().map(|n| n.to_string()).unwrap_or_default()
+                    "{static_ty_t} has no implementation of {}",
+                    m.name()
+                        .map(|n| self.syms.str(n).to_string())
+                        .unwrap_or_default(),
+                    static_ty_t = static_ty.display(self.syms)
                 )));
             };
             return self.method_call(e, view, &im);
@@ -887,7 +903,10 @@ impl<'a> FnLower<'a> {
         let TyKind::Iface(iface) = self.b.m.types.kind(rty).clone() else {
             return Err(Error::new("contract receiver is not an interface value"));
         };
-        let name = m.name().map(|n| n.to_string()).unwrap_or_default();
+        let name = m
+            .name()
+            .map(|n| self.syms.str(n).to_string())
+            .unwrap_or_default();
         let k = self.b.m.ifaces[iface.index()]
             .methods
             .iter()
@@ -922,7 +941,9 @@ impl<'a> FnLower<'a> {
             let idx = params
                 .iter()
                 .position(|p| p.name == a.slot.name)
-                .ok_or_else(|| Error::new(format!("no parameter {}", a.slot.name)))?;
+                .ok_or_else(|| {
+                    Error::new(format!("no parameter {}", self.syms.str(a.slot.name)))
+                })?;
             if op_vars.get(idx).copied().unwrap_or(false) {
                 places[idx] = Some(a.expr.clone());
             }
@@ -994,7 +1015,7 @@ impl<'a> FnLower<'a> {
     ) -> Option<(Option<ms_check::syntax::FuncRef>, ct::Ty)> {
         // Node ids repeat across modules, so the module must match too.
         let im = self.cx.methods.iter().find(|m| {
-            !m.id.as_str().is_empty()
+            !self.syms.str(m.id).is_empty()
                 && m.module == callee.module.file
                 && m.decl.as_ref().is_some_and(|d| d.id() == callee.func.id())
         })?;
@@ -1045,7 +1066,7 @@ impl<'a> FnLower<'a> {
         if crate::mapset::is_map_or_set(self.b.m, mt)
             || matches!(self.b.m.types.kind(mt), TyKind::List(_))
             || t.is(Builtin::Bytes)
-            || ms_check::effects::is_text_builder(&t)
+            || ms_check::effects::is_text_builder(self.syms, &t)
         {
             return self.construct_collection(view, mt);
         }
@@ -1066,7 +1087,7 @@ impl<'a> FnLower<'a> {
             let idx = self.b.m.alts[a.index()]
                 .cases
                 .iter()
-                .position(|x| x.name == c.as_str())
+                .position(|x| x.name == self.syms.str(c))
                 .ok_or_else(|| Error::new("unknown case"))?;
             if !x.own && arg.wrap_optional.is_none() {
                 let v = self.b.alt_view(a, idx as u32, &[x.v]);
@@ -1117,7 +1138,7 @@ impl<'a> FnLower<'a> {
             let idx = params
                 .iter()
                 .position(|p| p.name == a.slot.name)
-                .ok_or_else(|| Error::new(format!("no field {}", a.slot.name)))?;
+                .ok_or_else(|| Error::new(format!("no field {}", self.syms.str(a.slot.name))))?;
             slots[idx] = Some(x);
         }
         let mut vals = Vec::new();
@@ -1145,11 +1166,16 @@ impl<'a> FnLower<'a> {
                 let idx = self.b.m.alts[a.index()]
                     .cases
                     .iter()
-                    .position(|x| x.name == c.as_str())
+                    .position(|x| x.name == self.syms.str(c))
                     .ok_or_else(|| Error::new("unknown case"))?;
                 self.b.alt_new(a, idx as u32, &vals)
             }
-            _ => return Err(Error::new(format!("cannot construct {t}"))),
+            _ => {
+                return Err(Error::new(format!(
+                    "cannot construct {t_t}",
+                    t_t = t.display(self.syms)
+                )));
+            }
         };
         let _ = e;
         Ok(Val { v, own: true })
@@ -1182,9 +1208,13 @@ impl<'a> FnLower<'a> {
             if ft.is(Builtin::Optional) {
                 return Ok(self.none_owned(fm));
             }
-            return Err(Error::new(format!("missing field {}", field.name)));
+            return Err(Error::new(format!(
+                "missing field {}",
+                self.syms.str(field.name)
+            )));
         };
-        if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") && ft.is(Builtin::Optional)
+        if matches!(&d.kind, ExprKind::Name(n) if self.syms.str(n) == "none")
+            && ft.is(Builtin::Optional)
         {
             return Ok(self.none_owned(fm));
         }
@@ -1194,7 +1224,7 @@ impl<'a> FnLower<'a> {
                 Some(v) => Ok(self.owned(v)),
                 None => Err(Error::new(format!(
                     "unsupported default of field {}",
-                    field.name
+                    self.syms.str(field.name)
                 ))),
             };
         }
@@ -1203,7 +1233,7 @@ impl<'a> FnLower<'a> {
         let saved_variant = std::mem::take(&mut self.variant);
         let saved_file = self.file;
         self.hir = self.cx.module(sym.module)?;
-        self.file = self.b.m.add_file(sym.module.as_str());
+        self.file = self.b.m.add_file(self.syms.str(sym.module));
         self.bind_field_reads(d, earlier);
         // A default reports its own position, not the caller statement\'s.
         let saved_stmt = self.stmt_pos.take();
@@ -1224,11 +1254,11 @@ impl<'a> FnLower<'a> {
         let val = |v| Val { v, own: false };
         Ok(match &d.kind {
             ExprKind::Bool(b) => Some(val(self.b.bconst(*b))),
-            ExprKind::Name(n) if n.as_str() == "none" && t.is(Builtin::Optional) => {
+            ExprKind::Name(n) if self.syms.str(n) == "none" && t.is(Builtin::Optional) => {
                 Some(val(self.b.opt_none(mt)))
             }
-            ExprKind::Number(n) if t.id.as_str() == "Int" => {
-                ms_syntax::number::canonical(n.as_str())
+            ExprKind::Number(n) if self.syms.str(t.id) == "Int" => {
+                ms_syntax::number::canonical(self.syms.str(n))
                     .parse::<i64>()
                     .ok()
                     .map(|n| val(self.b.iconst(n)))
@@ -1254,7 +1284,7 @@ impl<'a> FnLower<'a> {
                 let case = self.b.m.alts[a.index()]
                     .cases
                     .iter()
-                    .position(|c| c.name == name.as_str() && c.fields.is_empty());
+                    .position(|c| c.name == self.syms.str(name) && c.fields.is_empty());
                 case.map(|c| Val {
                     v: self.b.alt_new(a, c as u32, &[]),
                     own: true,
@@ -1289,7 +1319,7 @@ impl<'a> FnLower<'a> {
                         .find(|a| {
                             a.name
                                 .as_ref()
-                                .is_some_and(|n| n.as_str() == field.name.as_str())
+                                .is_some_and(|n| self.syms.str(n) == self.syms.str(field.name))
                         })
                         .map(|a| &a.value)
                         .or(field.default.as_ref());
@@ -1334,9 +1364,9 @@ impl<'a> FnLower<'a> {
 }
 
 /// Whether a default is the call `caller_site()` of `@std/test/test.ms`.
-fn is_caller_site(d: &Expr) -> bool {
+fn is_caller_site(syms: ms_syntax::Names, d: &Expr) -> bool {
     let ExprKind::Call { callee, args } = &d.kind else {
         return false;
     };
-    args.is_empty() && matches!(&callee.kind, ExprKind::Name(n) if n.as_str() == "caller_site")
+    args.is_empty() && matches!(&callee.kind, ExprKind::Name(n) if syms.str(n) == "caller_site")
 }

@@ -10,12 +10,12 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// Whether a standard collection method mutates its receiver: `List`, `Map` and `Set`
 /// methods say so with `var fn` in their `@std` declaration; so do `StringBuilder` and `BytesBuilder`.
-pub fn collection_mutation(method: &Method) -> bool {
+pub fn collection_mutation(syms: ms_syntax::Names, method: &Method) -> bool {
     let receiver = &method.receiver;
     (receiver.is(Builtin::List)
         || receiver.is(Builtin::Map)
         || receiver.is(Builtin::Set)
-        || is_text_builder(receiver))
+        || is_text_builder(syms, receiver))
         && method
             .decl
             .as_ref()
@@ -24,8 +24,8 @@ pub fn collection_mutation(method: &Method) -> bool {
 }
 
 /// `StringBuilder` and `BytesBuilder`: owned values whose `build` moving_params them.
-pub fn is_text_builder(t: &Ty) -> bool {
-    t.is_std("StringBuilder") || t.is(Builtin::BytesBuilder)
+pub fn is_text_builder(syms: ms_syntax::Names, t: &Ty) -> bool {
+    t.is_std(syms, "StringBuilder") || t.is(Builtin::BytesBuilder)
 }
 
 enum Target {
@@ -42,6 +42,7 @@ struct EffectNode {
 }
 
 struct Scan<'a> {
+    syms: ms_syntax::Names,
     module: &'a ModRef,
     ids: &'a HashSet<Name>,
     effects: BTreeSet<&'static str>,
@@ -66,16 +67,16 @@ impl Scan<'_> {
             }
             return;
         }
-        if info.native_str() == "to_string" || info.native_str() == "clone" {
+        if info.native_str(self.syms) == "to_string" || info.native_str(self.syms) == "clone" {
             self.effects.insert("read");
             return;
         }
         if let Some(s) = &info.symbol {
-            if s.native.as_str().is_empty() {
+            if self.syms.str(s.native).is_empty() {
                 self.edges.insert(s.id);
                 return;
             }
-            match s.native.as_str() {
+            match self.syms.str(s.native) {
                 "core/panic" => {}
                 _ => {
                     self.effects.insert("unknown");
@@ -93,13 +94,13 @@ impl Scan<'_> {
     /// Adds the effects of a method call: an edge for source methods, or the
     /// known effects of the native receiver.
     fn scan_method_call(&mut self, method: &Method) {
-        if !method.id.as_str().is_empty() {
+        if !self.syms.str(method.id).is_empty() {
             self.edges.insert(method.id);
             return;
         }
         let mut receiver = method.receiver.clone();
         if let Some(c) = &method.contract
-            && !c.id.as_str().is_empty()
+            && !self.syms.str(c.id).is_empty()
         {
             receiver = c.clone();
         }
@@ -107,13 +108,13 @@ impl Scan<'_> {
             |s: &mut BTreeSet<&'static str>, list: &[&'static str]| s.extend(list.iter().copied());
         if receiver.is(Builtin::List) || receiver.is(Builtin::Map) || receiver.is(Builtin::Set) {
             add(&mut self.effects, &["read"]);
-            if collection_mutation(method) {
+            if collection_mutation(self.syms, method) {
                 add(&mut self.effects, &["write"]);
             }
             if method.ty.params.iter().any(|p| p.ty.kind == Kind::Function) {
                 add(&mut self.effects, &["unknown"]);
             }
-        } else if is_text_builder(&receiver) {
+        } else if is_text_builder(self.syms, &receiver) {
             add(&mut self.effects, &["write"]);
         } else if matches!(receiver.kind, Kind::Contract | Kind::Variable) {
             add(&mut self.effects, &["unknown"]);
@@ -133,7 +134,10 @@ impl Visitor for Scan<'_> {
     }
 
     fn expr(&mut self, e: &Expr) {
-        if self.info(e).is_some_and(|i| i.native_str() == "index") {
+        if self
+            .info(e)
+            .is_some_and(|i| i.native_str(self.syms) == "index")
+        {
             self.effects.insert("read");
         }
         // A constant is a nullary function here: each use is a call to it.
@@ -214,6 +218,7 @@ impl Checker {
                 continue;
             };
             let mut scan = Scan {
+                syms: ms_syntax::Names::global(),
                 module: &module,
                 ids: &ids,
                 effects: BTreeSet::new(),

@@ -56,6 +56,7 @@ pub(crate) struct LoopCtx {
 
 /// Per-function lowering state.
 pub(crate) struct FnLower<'a> {
+    pub syms: ms_syntax::Names,
     pub cx: &'a mut Cx,
     pub b: FuncBuilder<'a>,
     pub hir: Rc<ModuleHir>,
@@ -176,13 +177,14 @@ impl Cx {
 /// variable name, which is unique within a substitution, so the key does not depend on the order
 /// types were first interned.
 fn instance_key(
+    syms: ms_syntax::Names,
     tys: &mut ms_check::tytable::TyTable,
     c: &Callable,
     subst: &Subst,
     variant: Variant,
 ) -> InstKey {
     let mut vars: Vec<(ct::Name, _)> = subst.iter().map(|(k, v)| (*k, tys.intern(v))).collect();
-    vars.sort_by(|a, b| a.0.as_str().cmp(b.0.as_str()));
+    vars.sort_by(|a, b| syms.str(a.0).cmp(syms.str(b.0)));
     InstKey {
         file: c.module.file,
         node: c.id(),
@@ -224,9 +226,9 @@ impl Cx {
     pub(crate) fn callable_result(&self, c: &Callable) -> Result<ct::Ty, Error> {
         let hir = self.module(c.module.file)?;
         if let Some(f) = c.func.func() {
-            return hir
-                .type_ref(f.result.id)
-                .ok_or_else(|| Error::new(format!("no result type for {}", c.name)));
+            return hir.type_ref(f.result.id).ok_or_else(|| {
+                Error::new(format!("no result type for {}", self.syms.str(c.name)))
+            });
         }
         match c.kind {
             CallableKind::Constant => {
@@ -256,7 +258,7 @@ impl Cx {
         subst: &Subst,
         variant: Variant,
     ) -> Result<FuncId, Error> {
-        let key = instance_key(&mut self.tys, c, subst, variant);
+        let key = instance_key(self.syms, &mut self.tys, c, subst, variant);
         if let Some(id) = self.insts.get(&key) {
             return Ok(*id);
         }
@@ -281,13 +283,13 @@ impl Cx {
         let ret = self.lower_ty(m, &result)?;
         let name = if let ms_syntax::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
             format!("{} {}", if t.bench { "bench" } else { "test" }, t.name)
-        } else if c.name.as_str().is_empty() {
+        } else if self.syms.str(c.name).is_empty() {
             "test".to_string()
         } else if let ms_syntax::ast::DeclKind::Impl(i) = &c.func.decl.decl().kind {
             // Fault traces name a method after its receiver type.
-            format!("{}.{}", i.receiver.name(), c.name)
+            format!("{}.{}", i.receiver.name(), self.syms.str(c.name))
         } else {
-            c.name.to_string()
+            self.syms.str(c.name).to_string()
         };
         let mut f = ms_mir::ir::Func::new(&name, params, ret);
         // The checker keeps a `var` argument from overlapping any other argument.
@@ -306,8 +308,8 @@ impl Cx {
             ms_check::ownership::Fact::ReturnsView,
         );
         // A function that returns a promise from a closure it is given keeps that closure alive.
-        f.keeps_scoped =
-            result.is_source_type("@std/concurrency/promise.ms", "Promise") && takes_function;
+        f.keeps_scoped = result.is_source_type(self.syms, "@std/concurrency/promise.ms", "Promise")
+            && takes_function;
         let id = m.add_func(f);
         self.insts.insert(key, id);
         self.queue.push(Job {
@@ -323,8 +325,12 @@ impl Cx {
 }
 
 /// Lowers the program rooted at `options.entry`.
-pub(crate) fn lower_program(program: &Program, options: &Options) -> Result<Module, Error> {
-    let mut cx = Cx::new(program);
+pub(crate) fn lower_program(
+    syms: ms_syntax::Names,
+    program: &Program,
+    options: &Options,
+) -> Result<Module, Error> {
+    let mut cx = Cx::new(syms, program);
     let mut m = Module::new("main");
     let entry_file = ct::n(&options.entry);
     let main = cx
@@ -333,12 +339,12 @@ pub(crate) fn lower_program(program: &Program, options: &Options) -> Result<Modu
         .find(|c| {
             c.module.file == entry_file
                 && c.kind == CallableKind::Function
-                && c.name.as_str() == "main"
+                && syms.str(c.name) == "main"
         })
         .cloned()
         .ok_or_else(|| Error::new("no main function"))?;
     let main_id = cx.function_for(&mut m, &main, &Subst::new())?;
-    drain(&mut cx, &mut m)?;
+    drain(syms, &mut cx, &mut m)?;
     cx.check_strict_copies()?;
     let f = &mut m.funcs[main_id.index()];
     f.linkage = Linkage::Export;
@@ -349,16 +355,17 @@ pub(crate) fn lower_program(program: &Program, options: &Options) -> Result<Modu
 /// Lowers the tests of every project module (not the bundled standard library) with a runner
 /// as the entry; returns each test's `module::name` identity.
 pub(crate) fn lower_tests(
+    syms: ms_syntax::Names,
     program: &Program,
     _options: &Options,
     bench: bool,
 ) -> Result<(Module, Vec<String>), Error> {
-    let mut cx = Cx::new(program);
+    let mut cx = Cx::new(syms, program);
     let mut m = Module::new("main");
     let mut tests: Vec<(ct::Name, Rc<Callable>)> = Vec::new();
     for module in &program.modules {
         let file = module.file;
-        if file.as_str().starts_with("@std/") {
+        if syms.str(file).starts_with("@std/") {
             continue;
         }
         for c in cx.module(file)?.callables() {
@@ -371,7 +378,7 @@ pub(crate) fn lower_tests(
     let mut names = Vec::new();
     for (file, c) in &tests {
         if let ms_syntax::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
-            names.push(format!("{file}::{}", t.name));
+            names.push(format!("{file_t}::{}", t.name, file_t = syms.str(file)));
         }
         ids.push(cx.function_for(&mut m, c, &Subst::new())?);
     }
@@ -381,8 +388,8 @@ pub(crate) fn lower_tests(
             .callables
             .values()
             .find(|c| {
-                c.module.file.as_str() == "@std/test/bench.ms"
-                    && c.name.as_str() == "run_bench_block"
+                syms.str(c.module.file) == "@std/test/bench.ms"
+                    && syms.str(c.name) == "run_bench_block"
             })
             .cloned()
             .ok_or_else(|| Error::new("the bench driver @std/test/bench.ms is not loaded"))?;
@@ -396,7 +403,7 @@ pub(crate) fn lower_tests(
             .collect();
         ids = crate::runner::bench_entries(&mut m, &ids, &per, driver);
     }
-    drain(&mut cx, &mut m)?;
+    drain(syms, &mut cx, &mut m)?;
     cx.check_strict_copies()?;
     m.entry = Some(crate::runner::build_runner(&mut m, &ids)?);
     Ok((m, names))
@@ -409,7 +416,7 @@ fn is_bench(c: &Callable) -> bool {
 
 /// Lowers queued jobs until none remain. The text of an interface value tests every table of
 /// the interface, so it waits until no other job can still add one.
-fn drain(cx: &mut Cx, m: &mut Module) -> Result<(), Error> {
+fn drain(syms: ms_syntax::Names, cx: &mut Cx, m: &mut Module) -> Result<(), Error> {
     let deferred = |m: &Module, j: &Job| matches!(&j.kind, JobKind::Format(t, _) if matches!(m.types.kind(*t), ms_mir::types::TyKind::Iface(_)));
     loop {
         let next = match cx.queue.iter().rposition(|j| !deferred(m, j)) {
@@ -419,11 +426,11 @@ fn drain(cx: &mut Cx, m: &mut Module) -> Result<(), Error> {
                 None => return Ok(()),
             },
         };
-        lower_job(cx, m, next)?;
+        lower_job(syms, cx, m, next)?;
     }
 }
 
-fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
+fn lower_job(syms: ms_syntax::Names, cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     let (c, jsubst, variant) = match &job.kind {
         JobKind::Source {
             callable,
@@ -437,18 +444,30 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
         JobKind::HandleMethod(j) => {
             return crate::natiface::build_method(cx, m, job.func, j);
         }
-        JobKind::Lambda(l) => return crate::closure::build_lambda(cx, m, job.func, l),
-        JobKind::BoundNative(n) => return crate::closure::build_bound_native(cx, m, job.func, n),
-        JobKind::IfaceNative(n) => return crate::closure::build_iface_native(cx, m, job.func, n),
-        JobKind::BoundAlias(n) => return crate::bound_alias::build_bound_alias(cx, m, job.func, n),
-        JobKind::DefaultThunk(n) => return crate::closure::build_default_thunk(cx, m, job.func, n),
-        JobKind::NativeThunk(n) => return crate::closure::build_native_thunk(cx, m, job.func, n),
-        JobKind::Json(j) => return crate::json::build_json(cx, m, job.func, j),
-        JobKind::FnAdapt(j) => return crate::closure::build_fn_adapter(cx, m, job.func, j),
-        JobKind::IfaceThunk(j) => return crate::closure::build_iface_thunk(cx, m, job.func, j),
+        JobKind::Lambda(l) => return crate::closure::build_lambda(syms, cx, m, job.func, l),
+        JobKind::BoundNative(n) => {
+            return crate::closure::build_bound_native(syms, cx, m, job.func, n);
+        }
+        JobKind::IfaceNative(n) => {
+            return crate::closure::build_iface_native(syms, cx, m, job.func, n);
+        }
+        JobKind::BoundAlias(n) => {
+            return crate::bound_alias::build_bound_alias(syms, cx, m, job.func, n);
+        }
+        JobKind::DefaultThunk(n) => {
+            return crate::closure::build_default_thunk(syms, cx, m, job.func, n);
+        }
+        JobKind::NativeThunk(n) => {
+            return crate::closure::build_native_thunk(syms, cx, m, job.func, n);
+        }
+        JobKind::Json(j) => return crate::json::build_json(syms, cx, m, job.func, j),
+        JobKind::FnAdapt(j) => return crate::closure::build_fn_adapter(syms, cx, m, job.func, j),
+        JobKind::IfaceThunk(j) => {
+            return crate::closure::build_iface_thunk(syms, cx, m, job.func, j);
+        }
     };
     let hir = cx.module(c.module.file)?;
-    let file = m.add_file(c.module.file.as_str());
+    let file = m.add_file(syms.str(c.module.file));
     let proto = m.funcs[job.func.index()].clone();
     let b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     let mut fl = FnLower::new(cx, b, hir, jsubst, file, proto.ret);
@@ -504,6 +523,7 @@ impl<'a> FnLower<'a> {
         ret_ty: MTy,
     ) -> FnLower<'a> {
         FnLower {
+            syms: cx.syms,
             cx,
             b,
             hir,
@@ -585,10 +605,9 @@ impl<'a> FnLower<'a> {
     }
 
     pub fn is_resource(&self, t: MTy) -> bool {
-        self.cx
-            .source_tys
-            .get(t.0 as usize)
-            .is_some_and(|ty| self.cx.classes.class(ty) == ms_check::ownership::Class::Resource)
+        self.cx.source_tys.get(t.0 as usize).is_some_and(|ty| {
+            self.cx.classes.class(self.syms, ty) == ms_check::ownership::Class::Resource
+        })
     }
 
     /// Whether an owned value of `t` carries a duty: storage to free or a resource to close.
@@ -770,7 +789,7 @@ impl<'a> FnLower<'a> {
     /// Whether the ownership checker vetted this function, so a lexical borrow cannot outlive a
     /// change to its source. Standard-library modules not yet vetted are exempt.
     pub fn ownership_checked(&self) -> bool {
-        ms_check::ownership::is_vetted(self.hir.data.file)
+        ms_check::ownership::is_vetted(self.syms, self.hir.data.file)
     }
 
     /// Declares `binding` as a borrow of `v`: no copy, and nothing to drop at scope exit.
@@ -1115,7 +1134,7 @@ impl<'a> FnLower<'a> {
         self.locals
             .get(&binding.uid)
             .copied()
-            .ok_or_else(|| Error::new(format!("unbound variable {}", binding.name)))
+            .ok_or_else(|| Error::new(format!("unbound variable {}", self.syms.str(binding.name))))
     }
 
     /// The current value of a local as a borrow.
@@ -1269,11 +1288,12 @@ impl<'a> FnLower<'a> {
         let vars = self.cx.var_positions(c);
         let owned_mask = self.variant.owned.then(|| self.cx.owned_mask(c)).flatten();
         if let ms_check::hir::Body::Block(stmts) = c.body() {
-            self.slotted = crate::closure::slotted_in(self, stmts);
+            self.slotted = crate::closure::slotted_in(self.syms, self, stmts);
         }
         // Parameters the body changes are the callee's own copies.
         let mutated = match c.body() {
             ms_check::hir::Body::Block(stmts) => crate::mutation::mutated_locals(
+                self.syms,
                 &self.hir,
                 ms_check::hir::Body::Block(stmts),
                 &self.cx.callables,
@@ -1352,7 +1372,7 @@ impl<'a> FnLower<'a> {
                     if ret != MTy::UNIT {
                         return Err(Error::new(format!(
                             "function {} can fall off its end",
-                            c.name
+                            self.syms.str(c.name)
                         )));
                     }
                     self.emit_return(Some(Val { v: u, own: false }));

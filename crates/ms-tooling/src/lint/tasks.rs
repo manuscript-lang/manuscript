@@ -9,7 +9,7 @@ use ms_check::types::Kind;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{Visitor, walk_block};
 
-pub(super) fn lint(module: &ModuleData, findings: &mut Vec<Finding>) {
+pub(super) fn lint(syms: ms_syntax::Names, module: &ModuleData, findings: &mut Vec<Finding>) {
     if !module
         .imports
         .iter()
@@ -17,7 +17,7 @@ pub(super) fn lint(module: &ModuleData, findings: &mut Vec<Finding>) {
     {
         return;
     }
-    let file = module_file(module);
+    let file = module_file(syms, module);
     let mut scan = Scan {
         module,
         file: &file,
@@ -41,6 +41,7 @@ impl Visitor for Scan<'_> {
             return;
         }
         let mut body_scan = Body {
+            syms: ms_syntax::Names::global(),
             module: self.module,
             may_wait_or_exit: false,
         };
@@ -58,6 +59,7 @@ impl Visitor for Scan<'_> {
 
 /// Whether a loop body can wait, call something unknown, or leave the loop.
 struct Body<'a> {
+    syms: ms_syntax::Names,
     module: &'a ModuleData,
     may_wait_or_exit: bool,
 }
@@ -65,7 +67,7 @@ struct Body<'a> {
 impl Body<'_> {
     /// A call that runs to completion without waiting: a constructor, or a method of a
     /// primitive or a core collection.
-    fn local_call(&self, call: &Expr, callee: &Expr) -> bool {
+    fn local_call(&self, syms: ms_syntax::Names, call: &Expr, callee: &Expr) -> bool {
         let facts = self.module.facts();
         if facts.info(call.id).is_some_and(|i| i.constructor.is_some()) {
             return true;
@@ -81,7 +83,7 @@ impl Body<'_> {
                 "List", "Map", "Set", "String", "Optional", "Result", "Bytes",
             ]
             .iter()
-            .any(|name| ty.is_std(name))
+            .any(|name| ty.is_std(syms, name))
     }
 }
 
@@ -93,8 +95,9 @@ impl Visitor for Body<'_> {
     }
 
     fn expr(&mut self, e: &Expr) {
+        let syms = self.syms;
         match &e.kind {
-            ExprKind::Call { callee, .. } if !self.local_call(e, callee) => {
+            ExprKind::Call { callee, .. } if !self.local_call(syms, e, callee) => {
                 self.may_wait_or_exit = true;
             }
             ExprKind::Lambda(_) | ExprKind::Match { .. } => self.may_wait_or_exit = true,

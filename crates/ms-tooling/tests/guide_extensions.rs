@@ -4,7 +4,8 @@ use ms_tooling::guide::docgen::{render_module, to_json};
 use ms_tooling::guide::{ApiDeclaration, module_documentation, page, search, standard_library};
 
 fn list() -> &'static ApiDeclaration {
-    standard_library()
+    let syms = ms_syntax::Names::global();
+    standard_library(syms)
         .iter()
         .find(|module| module.path == "prelude")
         .unwrap()
@@ -16,6 +17,7 @@ fn list() -> &'static ApiDeclaration {
 
 #[test]
 fn bounded_source_methods_reach_list_pages_search_and_downloads() {
+    let syms = ms_syntax::Names::global();
     for name in [
         "contains", "distinct", "to_set", "min", "max", "min_by", "max_by",
     ] {
@@ -29,28 +31,28 @@ fn bounded_source_methods_reach_list_pages_search_and_downloads() {
             !members[0].doc.is_empty(),
             "List.{name} lost its source comment"
         );
-        let output = page(&format!("prelude.List.{name}")).unwrap();
+        let output = page(syms, &format!("prelude.List.{name}")).unwrap();
         assert!(output.contains(&members[0].signature), "{output}");
         assert!(
-            search(&format!("List.{name}"), 10)
+            search(syms, &format!("List.{name}"), 10)
                 .iter()
                 .any(|found| found.module == "prelude"
                     && found.name.starts_with(&format!("List.{name}"))),
             "List.{name} is absent from search"
         );
     }
-    let module = standard_library()
+    let module = standard_library(syms)
         .iter()
         .find(|module| module.path == "prelude")
         .unwrap();
     assert!(render_module(module).contains("fn min() T?"));
     assert!(to_json(std::slice::from_ref(module)).contains("fn min() T?"));
-    let minimum = page("prelude.List.min").unwrap();
+    let minimum = page(syms, "prelude.List.min").unwrap();
     assert!(
         minimum.contains("// Receiver: List[T]; T: Comparable & Clonable"),
         "{minimum}"
     );
-    let keyed = page("prelude.List.min_by").unwrap();
+    let keyed = page(syms, "prelude.List.min_by").unwrap();
     assert!(
         keyed.contains("fn min_by[K: Comparable](key: fn(T) K) T?"),
         "{keyed}"
@@ -59,6 +61,7 @@ fn bounded_source_methods_reach_list_pages_search_and_downloads() {
 
 #[test]
 fn sorted_search_exposes_its_actual_result_and_comparable_bound_once() {
+    let syms = ms_syntax::Names::global();
     let members: Vec<_> = list()
         .members
         .iter()
@@ -69,9 +72,9 @@ fn sorted_search_exposes_its_actual_result_and_comparable_bound_once() {
         members[0].signature,
         "// Receiver: List[T]; T: Comparable\nfn binary_search(value: T) SearchResult:"
     );
-    let text = page("prelude.List.binary_search").unwrap();
+    let text = page(syms, "prelude.List.binary_search").unwrap();
     assert!(text.contains(&members[0].signature), "{text}");
-    let matches = search("List.binary_search", 10);
+    let matches = search(syms, "List.binary_search", 10);
     assert_eq!(
         matches
             .iter()
@@ -81,7 +84,7 @@ fn sorted_search_exposes_its_actual_result_and_comparable_bound_once() {
         "{matches:?}"
     );
     assert!(
-        page("collections.SearchResult")
+        page(syms, "collections.SearchResult")
             .unwrap()
             .contains("index: Int")
     );
@@ -89,7 +92,8 @@ fn sorted_search_exposes_its_actual_result_and_comparable_bound_once() {
 
 #[test]
 fn string_affix_cuts_expose_each_actual_receiver_signature_once() {
-    let string = standard_library()
+    let syms = ms_syntax::Names::global();
+    let string = standard_library(syms)
         .iter()
         .find(|module| module.path == "prelude")
         .unwrap()
@@ -110,12 +114,12 @@ fn string_affix_cuts_expose_each_actual_receiver_signature_once() {
         assert_eq!(members.len(), 1, "String.{name}: {members:?}");
         assert_eq!(members[0].signature, signature);
         assert!(
-            page(&format!("prelude.String.{name}"))
+            page(syms, &format!("prelude.String.{name}"))
                 .unwrap()
                 .contains(signature)
         );
         assert_eq!(
-            search(&format!("String.{name}"), 10)
+            search(syms, &format!("String.{name}"), 10)
                 .iter()
                 .filter(|found| found.name == format!("String.{name}"))
                 .count(),
@@ -125,11 +129,12 @@ fn string_affix_cuts_expose_each_actual_receiver_signature_once() {
     for removed in ["cut", "cut_last"] {
         assert!(string.members.iter().all(|member| member.name != removed));
     }
-    assert!(page("string.StringCut").is_err());
+    assert!(page(syms, "string.StringCut").is_err());
 }
 
 #[test]
 fn receiver_constraints_and_nominal_identity_survive_repeated_method_records() {
+    let syms = ms_syntax::Names::global();
     let files = [
         ("box.ms", include_str!("guide_testdata/extensions/box.ms")),
         (
@@ -142,17 +147,18 @@ fn receiver_constraints_and_nominal_identity_survive_repeated_method_records() {
         .map(|(file, text)| {
             let file: std::sync::Arc<str> = std::sync::Arc::from(*file);
             let parsed = ms_syntax::parser::parse(&file, text).unwrap();
-            ms_check::load_module(&parsed)
+            ms_check::load_module(syms, &parsed)
         })
         .collect();
     let mut program = ms_check::check(
+        syms,
         modules,
         ms_check::ImportMap::default(),
         ms_check::CheckOptions::default(),
     );
     assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
     program.methods.extend(program.methods.clone());
-    let documented = module_documentation(&program);
+    let documented = module_documentation(syms, &program);
     let first = &documented
         .iter()
         .find(|module| module.path == "box.ms")
@@ -247,7 +253,8 @@ fn source_and_native_overloads_remain_distinct_without_repeated_implementations(
 
 #[test]
 fn regex_span_source_methods_reach_pages_and_search_once() {
-    let regex = standard_library()
+    let syms = ms_syntax::Names::global();
+    let regex = standard_library(syms)
         .iter()
         .find(|module| module.path == "@std/string.ms")
         .unwrap()
@@ -285,12 +292,12 @@ fn regex_span_source_methods_reach_pages_and_search_once() {
             assert!(signature.contains(budget), "{signature}");
         }
         assert!(
-            page(&format!("string.Regex.{name}"))
+            page(syms, &format!("string.Regex.{name}"))
                 .unwrap()
                 .contains(signature)
         );
         assert_eq!(
-            search(&format!("Regex.{name}"), 10)
+            search(syms, &format!("Regex.{name}"), 10)
                 .iter()
                 .filter(|found| found.name == format!("Regex.{name}"))
                 .count(),
@@ -301,7 +308,8 @@ fn regex_span_source_methods_reach_pages_and_search_once() {
 
 #[test]
 fn utf8_scalar_record_reaches_pages_and_search_once() {
-    let module = standard_library()
+    let syms = ms_syntax::Names::global();
+    let module = standard_library(syms)
         .iter()
         .find(|module| module.path == "@std/data/utf8.ms")
         .unwrap();
@@ -321,11 +329,11 @@ fn utf8_scalar_record_reaches_pages_and_search_once() {
             1
         );
     }
-    let output = page("utf8.Utf8Scalar").unwrap();
+    let output = page(syms, "utf8.Utf8Scalar").unwrap();
     assert!(output.contains("scalar: Int"), "{output}");
     assert!(output.contains("width: Int"), "{output}");
     assert_eq!(
-        search("Utf8Scalar", 10)
+        search(syms, "Utf8Scalar", 10)
             .iter()
             .filter(|found| found.name == "Utf8Scalar")
             .count(),
