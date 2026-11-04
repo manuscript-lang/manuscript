@@ -2460,10 +2460,10 @@ impl<'a> FnLower<'a> {
                     return Err(Error::new("map_error without Result result"));
                 };
                 let (out_ok, out_err) = {
-                    let cs = &self.b.m.alts[oa.index()].cases;
+                    let cs = &self.b.m.alts[oa.index()];
                     (
-                        cs.iter().position(|c| c.name == "ok").unwrap_or(0) as u32,
-                        cs.iter().position(|c| c.name == "error").unwrap_or(1) as u32,
+                        cs.ok_case().unwrap_or(0) as u32,
+                        cs.error_case().unwrap_or(1) as u32,
                     )
                 };
                 self.two_ways(
@@ -2517,10 +2517,10 @@ impl<'a> FnLower<'a> {
                 let o_err = case(self.b.m, "error").unwrap_or(1) as u32;
                 let _ = (o_ok, o_err);
                 let (out_ok, out_err) = {
-                    let cs = &self.b.m.alts[oa.index()].cases;
+                    let cs = &self.b.m.alts[oa.index()];
                     (
-                        cs.iter().position(|c| c.name == "ok").unwrap_or(0) as u32,
-                        cs.iter().position(|c| c.name == "error").unwrap_or(1) as u32,
+                        cs.ok_case().unwrap_or(0) as u32,
+                        cs.error_case().unwrap_or(1) as u32,
                     )
                 };
                 let is_map = name == "map";

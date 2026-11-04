@@ -315,6 +315,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 let name = c.ident()?;
                 m.alts.push(AltDef {
                     name,
+                    std: Default::default(),
                     cases: Vec::new(),
                 });
             }
@@ -322,6 +323,8 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 let name = c.ident()?;
                 m.ifaces.push(IfaceDef {
                     name,
+                    std: Default::default(),
+                    close: None,
                     methods: Vec::new(),
                 });
             }
@@ -375,6 +378,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     c.eat_p(',');
                 }
                 m.alts[id.index()].cases = cases;
+                m.alts[id.index()].std = parse_std(&mut c)?;
             }
             "iface" => {
                 let name = c.ident()?;
@@ -407,7 +411,12 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                     });
                     c.eat_p(',');
                 }
+                m.ifaces[id].close = methods
+                    .iter()
+                    .position(|s| s.name == "close")
+                    .map(|k| k as u32);
                 m.ifaces[id].methods = methods;
+                m.ifaces[id].std = parse_std(&mut c)?;
             }
             _ => {}
         }
@@ -1274,4 +1283,16 @@ fn parse_line(
         loc,
     });
     Ok(())
+}
+
+/// The optional built-in tag after a type declaration's closing brace.
+fn parse_std(c: &mut Cur) -> Result<Std, ParseError> {
+    if c.done() {
+        return Ok(Std::None);
+    }
+    let n = c.ident()?;
+    match Std::from_name(&n) {
+        Some(k) => Ok(k),
+        None => c.err(format!("unknown type attribute {n}")),
+    }
 }

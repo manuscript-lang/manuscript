@@ -7,7 +7,7 @@ use crate::func::{FnLower, Val};
 use ms_check::types as ct;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncKind, Imm, Linkage, Mode, Module, Op, Param, VtableDef, VtableId};
-use ms_mir::types::{IfaceId, Ty as MTy, TyKind};
+use ms_mir::types::{IfaceId, Std, Ty as MTy, TyKind};
 
 impl Cx {
     /// Adds a finished table under `key` and returns its id.
@@ -61,7 +61,7 @@ impl Cx {
             return Ok(*v);
         }
         let sigs = m.ifaces[iface.index()].methods.clone();
-        if m.ifaces[iface.index()].name == "Comparable"
+        if m.ifaces[iface.index()].std == Std::Comparable
             && let Some(sym) = builtin_compare(m, data_ty)
         {
             let f =
@@ -96,7 +96,7 @@ impl Cx {
                 found = Some((mm.module, decl.id(), subst, mm.native, mm.clone()));
                 break;
             }
-            if found.is_none() && s.name == "equals" && m.ifaces[iface.index()].name == "Equal" {
+            if found.is_none() && s.name == "equals" && m.ifaces[iface.index()].std == Std::Equal {
                 methods.push(self.builtin_equals(
                     m,
                     iface,
