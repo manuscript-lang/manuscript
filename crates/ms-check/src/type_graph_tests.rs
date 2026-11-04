@@ -150,3 +150,74 @@ fn required_types_erase_permissions_in_every_original_child_position() {
     assert!(required.result.as_ref().unwrap().defaults.is_none());
     assert!(permitted.defaults.is_some());
 }
+
+#[test]
+fn inference_resolution_bounds_shared_graphs_and_keeps_late_failures() {
+    use crate::inference::inference_type_resolved;
+    let syms = ms_syntax::Names::global();
+    let concrete = shared(int(), 30);
+    let variable = Rc::new(Type::new(syms, n("T"), n("test/T"), Kind::Variable));
+    let mut variables = VarSet::from([variable.id]);
+    for allow_invalid in [false, true] {
+        assert!(inference_type_resolved(
+            &concrete,
+            &variables,
+            allow_invalid
+        ));
+        assert!(!inference_type_resolved(
+            &pair(syms, concrete.clone(), variable.clone()),
+            &variables,
+            allow_invalid,
+        ));
+    }
+    let mut wide = Type::new(syms, n("Wide"), n("test/Wide"), Kind::Record);
+    wide.args = vec![concrete.clone(); 16];
+    assert!(inference_type_resolved(&Rc::new(wide), &variables, false));
+    let t = pair(syms, concrete, variable);
+    variables.clear();
+    assert!(inference_type_resolved(&t, &variables, false));
+    variables.insert(n("test/T"));
+    assert!(!inference_type_resolved(&t, &variables, false));
+}
+
+#[test]
+fn inference_resolution_preserves_all_edges_and_invalid_policy() {
+    use crate::inference::inference_type_resolved;
+    let syms = ms_syntax::Names::global();
+    let variable = Rc::new(Type::new(syms, n("T"), n("test/T"), Kind::Variable));
+    for leaf in [invalid(), variable.clone()] {
+        for edge in 0..3 {
+            let mut t = Type::new(syms, n("Container"), n("test/Container"), Kind::Record);
+            match edge {
+                0 => t.args.push(leaf.clone()),
+                1 => t.params.push(Param::new(n("value"), leaf.clone())),
+                _ => t.result = Some(leaf.clone()),
+            }
+            let t = shared(Rc::new(t), 30);
+            let variables = VarSet::from([variable.id]);
+            assert!(!inference_type_resolved(&t, &variables, false));
+            assert_eq!(
+                inference_type_resolved(&t, &variables, true),
+                leaf.is_invalid()
+            );
+            assert!(inference_type_resolved(&t, &VarSet::new(), true));
+        }
+    }
+    let missing_result = Rc::new(Type::new(syms, n("fn"), n("fn"), Kind::Function));
+    assert!(inference_type_resolved(
+        &missing_result,
+        &VarSet::new(),
+        false
+    ));
+    let inferred = Rc::new(Type::new(syms, n("?"), n("test/inferred"), Kind::Inferred));
+    assert!(inference_type_resolved(&inferred, &VarSet::new(), false));
+    // Bounds and type defaults are not inference-resolution edges.
+    variable.bounds.borrow_mut().push(invalid());
+    *variable.default.borrow_mut() = Some(invalid());
+    assert!(inference_type_resolved(&variable, &VarSet::new(), false));
+    assert!(!inference_type_resolved(
+        &invalid(),
+        &VarSet::from([invalid().id]),
+        true
+    ));
+}
