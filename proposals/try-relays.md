@@ -4,7 +4,7 @@
 
 - Problem: a function that relays the error of a borrowed `Result` but builds its own `ok` payload copies the error. `fn g(value: String!String) String!String: let o = try value; return ok(o + "x")` lowers the error arm to `clone 1` + `alt.new` (verified, `ms emit`, `a494979b`). The error arm is a part of a parameter and the ok arm is a new value, so `mixed_returns` withdraws the borrow (`walk.rs`, `plain_borrowed` false) and the whole result is owned. `ok(o)` alone, or `try` with only borrowed returns, already uses `alt.view` and copies nothing (verified).
 - Change (recommended): ownership of a `Result` result (and later any enum) is per case. `Summary.result` records which cases lend and from which sources; the others are owned. The caller drops only the owned cases with the existing case-masked `alt.release` and holds the sources while the result lives, like a view lender. No tag bit, no runtime flag: which arm owns is a static function of the case.
-- Not changed: lambdas and interface implementations still own results; a plain lent path beside a new value in a non-`Result` function stays an error; storing the whole result in an owned position copies only its lent cases (`alt.own`), the one copy, at the store, for the first-class `Result`/`Optional` helpers only.
+- Not changed: lambdas and interface implementations still own results; a plain lent path beside a new value in a non-`Result` function stays an error; no copy is ever inserted: the lent case stays a borrow, and storing the whole result where it outlives its sources is rejected with a `.clone()` remedy, like any other borrow.
 
 ## Status
 
@@ -23,7 +23,7 @@ Evidence: the repro above; `proposals/views.md` withdrawal rule ("a wrapped lend
 
 ## Open questions
 
-- Storing a masked result whole (`results.append(g(v))`): `alt.own` copies the lent arms. Alternative is the checker error with a `.clone()` remedy. Chinmay's "special handling for result" favors `alt.own`; needs confirmation.
+- Storing a masked result whole (`results.append(g(v))`): decided (Chinmay, 2026-11-04: "i didn't mean for copy, for lending, as long as it doesn't result in leaks"): lend, never copy; an escaping store is a checker error with a `.clone()` remedy. Leak freedom is the acceptance bar (`make leak-check`, valgrind).
 - Inlining a masked callee: `inline.rs` reads `ret_borrowed`; the mask must travel with it (inferred from `inline.rs` reading that flag; not checked).
 - `Optional` is the same shape (`opt.view`); do it in the same change or after? Recommend after, once `Result` ships.
 
