@@ -1,6 +1,6 @@
 //! The diagram views: one question each, built from the fact model.
 
-use crate::facts::{Fact, Facts};
+use crate::facts::{Fact, Facts, Slot};
 use crate::tree::Node;
 use std::collections::HashSet;
 use std::fmt::Write;
@@ -688,8 +688,8 @@ fn class_id(f: &Fact) -> String {
         .replace(|c: char| !c.is_alphanumeric() && c != '_', "_")
 }
 
-fn class_diagram(facts: &Facts, entity: &str, depth: i64) -> Option<String> {
-    let chosen: Vec<&Fact> = if entity.is_empty() {
+fn class_set<'a>(facts: &'a Facts, entity: &str, depth: i64) -> Option<Vec<&'a Fact>> {
+    Some(if entity.is_empty() {
         facts
             .entities
             .values()
@@ -717,7 +717,11 @@ fn class_diagram(facts: &Facts, entity: &str, depth: i64) -> Option<String> {
             frontier = next;
         }
         seen
-    };
+    })
+}
+
+fn class_diagram(facts: &Facts, entity: &str, depth: i64) -> Option<String> {
+    let chosen = class_set(facts, entity, depth)?;
     let mut out = String::from("classDiagram\n");
     for f in chosen.iter().take(NODE_CAP) {
         let _ = writeln!(out, "    class {} {{", class_id(f));
@@ -750,17 +754,7 @@ fn class_diagram(facts: &Facts, entity: &str, depth: i64) -> Option<String> {
 
 /// Types flow into a function as borrows, copies, or `var` borrows; the result flows out owned.
 fn ownership_flow(facts: &Facts, entity: &str, depth: i64) -> String {
-    let roots: Vec<&Fact> = match find_entity(facts, entity) {
-        Ok(f) if !entity.is_empty() => vec![f],
-        _ => facts
-            .entities
-            .values()
-            .filter(|f| {
-                matches!(f.kind.as_str(), "fn" | "method")
-                    && (f.scopes > 0 || f.slots.iter().any(|s| s.var))
-            })
-            .collect(),
-    };
+    let roots = ownership_roots(facts, entity);
     let mut out = String::from("flowchart LR\n");
     let mut styles: Vec<&str> = Vec::new();
     let mut declared: Vec<String> = Vec::new();
@@ -821,4 +815,151 @@ fn flow_type_node(out: &mut String, declared: &mut Vec<String>, ty: &str) -> Str
         declared.push(id.clone());
     }
     id
+}
+
+fn ownership_roots<'a>(facts: &'a Facts, entity: &str) -> Vec<&'a Fact> {
+    match find_entity(facts, entity) {
+        Ok(f) if !entity.is_empty() => vec![f],
+        _ => facts
+            .entities
+            .values()
+            .filter(|f| {
+                matches!(f.kind.as_str(), "fn" | "method")
+                    && (f.scopes > 0 || f.slots.iter().any(|s| s.var))
+            })
+            .collect(),
+    }
+}
+
+fn param_mode(s: &Slot) -> &'static str {
+    if s.var {
+        "var"
+    } else if matches!(s.ty.as_str(), "Int" | "Float" | "Bool" | "Unit" | "Instant") {
+        "copy"
+    } else {
+        "borrow"
+    }
+}
+
+fn pad(text: &str, width: usize) -> String {
+    format!("{text:<width$}")
+}
+
+/// Plain-text counterpart of the Mermaid diagrams: class boxes joined by
+/// composition lines, and per-function IN/OUT lines naming each borrow mode.
+pub fn ascii_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Option<String> {
+    match view {
+        "types" => {
+            let chosen = class_set(facts, entity, if depth <= 0 { 3 } else { depth })?;
+            Some(ascii_classes(facts, &chosen))
+        }
+        "ownership" => Some(ascii_ownership(
+            facts,
+            entity,
+            if depth <= 0 { 1 } else { depth },
+        )),
+        _ => None,
+    }
+}
+
+fn ascii_classes(facts: &Facts, chosen: &[&Fact]) -> String {
+    let mut out = String::new();
+    for f in chosen.iter().take(NODE_CAP) {
+        let tag = if f.kind == "record" {
+            String::new()
+        } else {
+            format!("<<{}>> ", f.kind)
+        };
+        let title = format!("{tag}{}", f.name);
+        let members: Vec<String> = f
+            .slots
+            .iter()
+            .map(|s| {
+                if f.kind == "record" {
+                    format!("{}: {}", s.name, s.ty)
+                } else {
+                    format!("{}{}", s.name, s.ty)
+                }
+            })
+            .collect();
+        let width = members
+            .iter()
+            .map(String::len)
+            .chain([title.len()])
+            .max()
+            .unwrap_or(0);
+        let rule = format!("+-{}-+\n", "-".repeat(width));
+        out.push_str(&rule);
+        let _ = writeln!(out, "| {} |", pad(&title, width));
+        if !members.is_empty() {
+            out.push_str(&rule);
+            for m in &members {
+                let _ = writeln!(out, "| {} |", pad(m, width));
+            }
+        }
+        out.push_str(&rule);
+        for s in &f.slots {
+            for key in &s.refs {
+                if let Some(t) = facts.entities.get(key)
+                    && chosen.iter().take(NODE_CAP).any(|c| c.key == t.key)
+                {
+                    let _ = writeln!(out, "  <>-- {} --> {}", s.name, t.name);
+                }
+            }
+        }
+        out.push('\n');
+    }
+    if chosen.is_empty() {
+        out.push_str("none\n");
+    }
+    out
+}
+
+fn ascii_ownership(facts: &Facts, entity: &str, depth: i64) -> String {
+    let mut out = String::new();
+    let mut frontier: Vec<&Fact> = ownership_roots(facts, entity)
+        .into_iter()
+        .take(NODE_CAP)
+        .collect();
+    let mut done: Vec<&str> = Vec::new();
+    for level in 0..=depth {
+        let mut next: Vec<&Fact> = Vec::new();
+        for f in frontier {
+            if done.contains(&f.key.as_str()) {
+                continue;
+            }
+            done.push(&f.key);
+            let _ = writeln!(out, "{}()  {}:{}", f.name, f.file, f.line);
+            for s in &f.slots {
+                let note = match param_mode(s) {
+                    "var" => "var     the callee may change it",
+                    "copy" => "copy    a plain value",
+                    _ => "borrow  read only",
+                };
+                let _ = writeln!(out, "  IN   {:<24} {note}", format!("{}: {}", s.name, s.ty));
+            }
+            if let Some(r) = &f.result {
+                let _ = writeln!(out, "  OUT  {:<24} owned   the caller owns it", r.ty);
+            }
+            if f.scopes > 0 {
+                let _ = writeln!(out, "  closes {} resource scope(s) on exit", f.scopes);
+            }
+            let callees: Vec<&Fact> = f
+                .calls
+                .iter()
+                .filter_map(|k| facts.entities.get(k))
+                .collect();
+            if level < depth && !callees.is_empty() {
+                let names: Vec<String> = callees.iter().map(|c| format!("{}()", c.name)).collect();
+                let _ = writeln!(out, "  calls {}", names.join(", "));
+                next.extend(callees);
+            }
+            out.push('\n');
+        }
+        frontier = next;
+    }
+    if done.is_empty() {
+        out.push_str("none\n");
+    }
+    out
 }

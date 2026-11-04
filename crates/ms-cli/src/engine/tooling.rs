@@ -15,7 +15,7 @@ use ms_tooling::inspect::inspect;
 use ms_tooling::mark::{explain, explain_json, mark_changes};
 use ms_tooling::report::{ReviewOptions, diff_report, project_report};
 use ms_tooling::review::{DiffInput, compare_facts};
-use ms_tooling::views::{build_view, mermaid_view};
+use ms_tooling::views::{ascii_view, build_view, mermaid_view};
 
 use super::build::protected_output;
 use super::{Failure, command_diagnostic};
@@ -599,7 +599,11 @@ fn view(syms: ms_syntax::Names, request: &DiagramRequest, head: &Checked, io: &m
             .then(|| mermaid_view(&facts, name, &request.entity, request.depth as i64));
         custom.flatten().unwrap_or_else(|| tree.mermaid())
     } else {
-        tree.ascii()
+        let custom = request
+            .diff
+            .is_empty()
+            .then(|| ascii_view(&facts, name, &request.entity, request.depth as i64));
+        custom.flatten().unwrap_or_else(|| tree.ascii())
     };
     write_output(io, &request.output, text.as_bytes())
 }

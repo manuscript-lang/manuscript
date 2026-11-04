@@ -287,7 +287,7 @@ fn types_and_ownership_views_render_in_ascii_and_mermaid() {
     };
     let types = text(&["diagram", "main.ms", "--view", "class"]);
     assert!(
-        types.contains("Order  [record] main.ms:4\n   `- items: List[Item]\n      `- Item"),
+        types.contains("| items: List[Item] |\n+-------------------+\n  <>-- items --> Item\n"),
         "{types}"
     );
     assert!(
@@ -298,7 +298,10 @@ fn types_and_ownership_views_render_in_ascii_and_mermaid() {
     );
     let own = text(&["diagram", "main.ms", "--view", "mutability"]);
     assert!(
-        own.contains("o: Order  var (exclusive borrow)") && own.contains("i: Item  borrow"),
+        own.contains("  IN   o: Order")
+            && own.contains("var     the callee may change it")
+            && own.contains("  IN   i: Item")
+            && own.contains("borrow  read only"),
         "{own}"
     );
     assert!(
