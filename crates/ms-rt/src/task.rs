@@ -939,8 +939,6 @@ unsafe fn free_task(t: *mut Task) {
 
 /// Creates the record of the thread's current flow of control on first use.
 unsafe fn ensure_init() -> *mut Task {
-    #[cfg(windows)]
-    sys::install_guard_diag();
     let mut s = sched();
     if s.cur.is_null() {
         // SAFETY: first use; the live globals belong to this flow, so its saved context starts empty.
@@ -953,62 +951,6 @@ unsafe fn ensure_init() -> *mut Task {
         }
     }
     s.cur
-}
-
-/// Temporary diagnostic: where `addr` and `sp` lie among this thread's task stacks.
-#[cfg(windows)]
-pub(crate) fn diag_describe(addr: usize, sp: usize) -> String {
-    // SAFETY: reads of this thread's scheduler from the faulting thread.
-    unsafe {
-        let s = sched();
-        let cur = s.cur;
-        let mut out = String::new();
-        if cur.is_null() {
-            out.push_str("no current task");
-        } else {
-            out.push_str(&format!(
-                "cur {:#x} state {} stack {:#x}+{:#x} frozen {} pinned {} saved teb {:x?} main? {}",
-                (*cur).handle,
-                (*cur).state as u8,
-                (*cur).stack as usize,
-                (*cur).stack_len,
-                !(*cur).frozen.is_null(),
-                (*cur).pinned,
-                (*cur).teb,
-                cur == s.main
-            ));
-        }
-        for &region in &s.regions {
-            for (which, x) in [("addr", addr), ("sp", sp)] {
-                if x >= region && x < region + REGION {
-                    out.push_str(&format!(
-                        " {which} in region {:#x} slot {} offset-in-slot {:#x}",
-                        region,
-                        (x - region) / SLOT,
-                        (x - region) % SLOT
-                    ));
-                }
-            }
-        }
-        for slot in &s.slots {
-            let t = slot.task;
-            if t.is_null() || (*t).stack.is_null() {
-                continue;
-            }
-            let base = (*t).stack as usize;
-            if addr >= base && addr < base + (*t).stack_len {
-                out.push_str(&format!(
-                    " addr in task {:#x} state {} frozen {} sp {:#x} saved teb {:x?}",
-                    (*t).handle,
-                    (*t).state as u8,
-                    !(*t).frozen.is_null(),
-                    (*t).sp,
-                    (*t).teb
-                ));
-            }
-        }
-        out
-    }
 }
 
 // ---- stacks ----
