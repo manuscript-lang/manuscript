@@ -561,26 +561,7 @@ mod stack {
         unsafe {
             #[cfg(windows)]
             {
-                let live = sys::teb_stack();
-                let rec = (*cur).teb;
-                if live[0] != rec[0] || live[2] != rec[2] || live[1] > live[0] || live[1] < live[2]
-                {
-                    eprintln!(
-                        "TEB MIX at switch: cur {:#x} stack {:#x}+{:#x} sp-now {:#x} live {:x?} record {:x?}; next {:#x} stack {:#x}+{:#x} teb {:x?} frozen {}",
-                        (*cur).handle,
-                        (*cur).stack as usize,
-                        (*cur).stack_len,
-                        core::ptr::addr_of!(live) as usize,
-                        live,
-                        rec,
-                        (*next).handle,
-                        (*next).stack as usize,
-                        (*next).stack_len,
-                        (*next).teb,
-                        !(*next).frozen.is_null()
-                    );
-                }
-                (*cur).teb = live;
+                (*cur).teb = sys::teb_stack();
                 msrt_ctx_switch(&mut (*cur).sp, (*next).sp, (*next).teb.as_ptr())
             }
             #[cfg(not(windows))]
@@ -955,18 +936,6 @@ unsafe fn thaw(t: *mut Task) {
         }
         #[cfg(windows)]
         {
-            let base = (*t).stack as usize;
-            if page < base || page >= base + (*t).stack_len {
-                eprintln!(
-                    "TEB MIX at thaw: task {:#x} stack {:#x}+{:#x} sp {:#x} len {:#x} teb {:x?}",
-                    (*t).handle,
-                    base,
-                    (*t).stack_len,
-                    sp,
-                    len,
-                    (*t).teb
-                );
-            }
             (*t).teb[1] = page;
         }
         core::ptr::copy_nonoverlapping((*t).frozen, sp as *mut u8, len);
@@ -1282,13 +1251,9 @@ unsafe fn reactor_wait() {
                 crate::sched::set_idle(false);
                 continue;
             }
-            teb_probe("before trim");
             trim_idle_stacks();
-            teb_probe("trim_idle_stacks");
             hibernate_idle();
-            teb_probe("hibernate_idle");
             poll_ready(timeout_ns);
-            teb_probe("poll_ready(timeout)");
             crate::sched::set_idle(false);
             if parked && crate::isolate::leave_idle() {
                 abandon_wait();
@@ -1300,37 +1265,14 @@ unsafe fn reactor_wait() {
 
 // ---- switching ----
 
-/// Temporary diagnostic: reports the first moment the live stack limit leaves the live stack.
-#[cfg(windows)]
-static TEB_LAST: crate::global::Process<[usize; 3]> = crate::global::Process::new([0; 3]);
-#[cfg(windows)]
-pub(crate) fn teb_probe(at: &str) {
-    let live = sys::teb_stack();
-    let bad = |t: [usize; 3]| t[1] > t[0] || t[1] < t[2];
-    // SAFETY: single threaded diagnostic state.
-    unsafe {
-        let last = *TEB_LAST.ptr();
-        if last != [0; 3] && bad(live) && !bad(last) {
-            let sp = core::ptr::addr_of!(live) as usize;
-            eprintln!("TEB BAD after {at}: last {last:x?} live {live:x?} sp {sp:#x}");
-        }
-        *TEB_LAST.ptr() = live;
-    }
-}
-#[cfg(not(windows))]
-pub(crate) fn teb_probe(_at: &str) {}
-
 unsafe fn after_switch() {
-    teb_probe("switch-in");
     // SAFETY: running on a live task's stack.
     unsafe { reap() };
-    teb_probe("reap");
 }
 
 /// Runs the next runnable task; returns when the calling task is scheduled again.
 /// The caller has already set its state (Ready and queued, Waiting, or Done).
 unsafe fn switch_away() {
-    teb_probe("switch_away entry");
     let mut s = sched();
     // SAFETY: single threaded scheduler; stacks and records outlive the switch.
     unsafe {
@@ -1348,7 +1290,6 @@ unsafe fn switch_away() {
         }
         if s.fd_waiting != 0 {
             poll_ready(0);
-            teb_probe("poll_ready(0)");
         }
         loop {
             if let Some(h) = s.ready.pop_front() {
@@ -1367,7 +1308,6 @@ unsafe fn switch_away() {
                 }
                 if !(*next).frozen.is_null() {
                     thaw(next);
-                    teb_probe("thaw");
                 }
                 publish_region(next);
                 fault::swap_ctx(&mut (*cur).ctx);
@@ -1381,7 +1321,6 @@ unsafe fn switch_away() {
             // Nothing is ready: start a promise, this thread's own or one taken from a busy thread.
             if let Some(start) = crate::sched::next_pending() {
                 crate::promise::execute(start);
-                teb_probe("promise::execute");
                 continue;
             }
             crate::sched::publish_busy(0);
@@ -1471,7 +1410,6 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
         };
         let base = alloc_stack(len);
         let (lo, hi, sp) = stack::prepare(base, len);
-        teb_probe("spawn prepare");
         let t = new_task(Ctx::new(lo, hi));
         (*t).stack = base;
         (*t).stack_len = len;
