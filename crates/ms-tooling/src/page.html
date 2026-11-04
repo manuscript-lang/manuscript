@@ -40,6 +40,15 @@ svg path.edge{fill:none;stroke:var(--mut);stroke-width:1.4} svg .elabel{fill:var
 .flow code{font:12.5px ui-monospace,monospace}
 .flow button{border:0;background:none;color:var(--acc);cursor:pointer;font-size:12px}
 .hint{color:var(--mut)} label.chk{margin-left:12px;color:var(--mut);font-size:13px}
+
+.crumbs{margin-bottom:8px;color:var(--mut)}.crumbs a{color:var(--acc);cursor:pointer;text-decoration:none}
+.tools{display:flex;gap:6px;margin:6px 0;align-items:center;flex-wrap:wrap}.tools button,.tools select{border:1px solid var(--line);background:var(--pan);color:var(--fg);padding:3px 9px;border-radius:6px;cursor:pointer}
+.stage{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+.stage svg{display:block;width:100%;height:calc(100vh - 330px);min-height:320px;cursor:grab}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}.chip{padding:1px 8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-size:12px}
+.chip:hover{border-color:var(--acc)} h4{margin:12px 0 2px;font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.route{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px}.route .step{padding:6px 12px;border-radius:8px;border:1.5px solid var(--effs);background:var(--eff);cursor:pointer}.route .arrow{color:var(--mut)}
+svg .life{stroke:var(--line);stroke-dasharray:4}svg .note rect{fill:var(--eff);stroke:var(--effs)}svg .msg{stroke:var(--fg);stroke-width:1.3;fill:none}svg .msg.async{stroke-dasharray:5}svg .msg.ret{stroke:var(--mut);stroke-dasharray:2 3}
 </style>
 </head>
 <body>
@@ -54,13 +63,14 @@ svg path.edge{fill:none;stroke:var(--mut);stroke-width:1.4} svg .elabel{fill:var
 const D=JSON.parse(document.getElementById('data').textContent);
 const E=Object.fromEntries(D.entities.map(e=>[e.key,e]));
 const callers={};for(const e of D.entities)for(const c of e.calls)(callers[c]=callers[c]||[]).push(e.key);
-const TABS=['Overview','Calls','Types','Behavior'];
-const S={tab:'Overview',sel:null,mod:null};
+const TABS=['Overview','Calls','Sequence','Types','Behavior','Route'];
+const S={tab:'Overview',sel:null,mod:null,from:null,to:null,dir:'both'};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const isType=e=>['record','alternative','interface'].includes(e.kind);
 const isFn=e=>['fn','method','test','bench'].includes(e.kind);
 const KI={fn:'ƒ',method:'ƒ',record:'T',alternative:'T',interface:'I',constant:'c',test:'t',bench:'t',impl:'i'};
+const base=f=>f.split('/').pop();
 function sigOf(e){
   const ps=e.slots.map(s=>(s.var?'<span class="var">var </span>':'')+esc(s.name)+': <span class="'+(s.var?'var':'brw')+'">'+esc(s.ty)+'</span>').join(', ');
   return '<code>'+esc(e.name)+'('+ps+') '+(e.result?'<span class="own">'+esc(e.result.ty)+'</span>':'')+'</code>';
@@ -70,9 +80,16 @@ function moduleStats(f){
   const to={};es.forEach(e=>e.calls.forEach(c=>{const t=E[c];if(t&&t.file!==f)to[t.file]=(to[t.file]||0)+1}));
   return {es,fx:[...fx].sort(),to,entry:es.some(e=>e.name==='main')};
 }
+const fns=D.entities.filter(e=>e.kind==='fn'||e.kind==='method');
+const LAND={
+  'Entry points':fns.filter(e=>e.name==='main'||e.exported).slice(0,8),
+  'Hubs (most called)':fns.filter(e=>(callers[e.key]||[]).length>1).sort((a,b)=>callers[b.key].length-callers[a.key].length).slice(0,6),
+  'Touch the outside world':fns.filter(e=>e.effects.length&&(e.external.length||!e.calls.length)).slice(0,8)
+};
 function setTabs(){$('tabs').innerHTML=TABS.map(t=>'<button class="'+(t===S.tab?'on':'')+'" data-tab="'+t+'">'+t+'</button>').join('')}
 function setList(){
   const q=$('q').value.toLowerCase();let h='';
+  if(!q)for(const [t,l] of Object.entries(LAND))if(l.length)h+='<h4>'+t+'</h4><div class="chips">'+l.map(e=>'<span class="chip" data-key="'+esc(e.key)+'" title="'+esc(e.file)+'">'+esc(e.name)+'</span>').join('')+'</div>';
   for(const m of D.modules){
     const es=D.entities.filter(e=>e.file===m.file&&(!q||e.name.toLowerCase().includes(q)||m.file.toLowerCase().includes(q)));
     if(!es.length&&q)continue;
@@ -83,19 +100,38 @@ function setList(){
 }
 function setInfo(){
   const e=S.sel&&E[S.sel];
+  let c='<a data-home="1">System</a>';if(S.mod||e)c+=' › <a data-mod="'+esc((e&&e.file)||S.mod)+'">'+esc(base((e&&e.file)||S.mod))+'</a>';if(e)c+=' › <b>'+esc(e.name)+'</b>';
+  let h='<div class="crumbs">'+c+'</div>';
   if(e){
-    let h='<b>'+esc(e.name)+'</b> <span class="hint">'+esc(e.kind)+' · '+esc(e.file)+':'+e.line+'</span><br>';
+    h+='<b>'+esc(e.name)+'</b> <span class="hint">'+esc(e.kind)+' · '+esc(e.file)+':'+e.line+'</span><br>';
     if(isFn(e)||e.slots.length)h+=sigOf(e)+'<br>';
-    h+='<span class="hint">var = callee may change it · plain = borrowed (scalars copy) · result is owned</span><br>';
     h+=e.effects.map(x=>'<span class="badge">'+esc(x)+'</span>').join('')+(e.error?'<span class="badge err">error '+esc(e.error)+'</span>':'')+(e.scopes?'<span class="badge">closes '+e.scopes+'</span>':'');
     const cs=callers[e.key]||[];
     if(cs.length)h+='<br><span class="hint">called by</span> '+cs.map(k=>'<a href="#" data-key="'+esc(k)+'">'+esc(E[k].name)+'</a>').join(', ');
-    $('info').innerHTML=h;
+    if(isFn(e))h+='<br><span class="hint">start here:</span> <a href="#" data-go="Calls">calls</a> · <a href="#" data-go="Sequence">sequence</a> · <a href="#" data-go="Behavior">behavior</a> · <a href="#" data-routefrom="1">route from here</a>';
   }else if(S.mod){
     const st=moduleStats(S.mod);
-    $('info').innerHTML='<b>'+esc(S.mod)+'</b><br><span class="hint">'+st.es.length+' declarations · effects: '+(st.fx.join(', ')||'none')+' · calls '+(Object.keys(st.to).join(', ')||'no other module')+'</span>';
-  }else $('info').innerHTML='<span class="hint">Pick a module or function on the left, or click a box.</span>';
+    h+='<b>'+esc(S.mod)+'</b><br><span class="hint">'+st.es.length+' declarations · effects: '+(st.fx.join(', ')||'none')+' · calls '+(Object.keys(st.to).join(', ')||'no other module')+'</span>';
+  }else h+='<span class="hint">The whole program. Double-click a module to open it; click a function for details.</span>';
+  $('info').innerHTML=h;
 }
+/* pan and zoom through the viewBox */
+function panzoom(box){
+  const svg=box.querySelector('svg');if(!svg)return;
+  const w=+svg.dataset.w,h=+svg.dataset.h;let vb={x:0,y:0,w:Math.max(w,300),h:Math.max(h,200)};
+  const fit=()=>{const r=svg.getBoundingClientRect();const k=Math.max(w/r.width,h/r.height,0.2);vb={x:0,y:0,w:r.width*k,h:r.height*k};apply()};
+  const apply=()=>svg.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h);
+  const zoom=(f,cx,cy)=>{cx=cx??vb.x+vb.w/2;cy=cy??vb.y+vb.h/2;vb={x:cx-(cx-vb.x)*f,y:cy-(cy-vb.y)*f,w:vb.w*f,h:vb.h*f};apply()};
+  svg.addEventListener('wheel',ev=>{ev.preventDefault();const r=svg.getBoundingClientRect();zoom(ev.deltaY>0?1.15:1/1.15,vb.x+(ev.clientX-r.left)/r.width*vb.w,vb.y+(ev.clientY-r.top)/r.height*vb.h)},{passive:false});
+  let drag=null;
+  svg.addEventListener('pointerdown',ev=>{if(ev.target.closest('.node'))return;drag={x:ev.clientX,y:ev.clientY,vx:vb.x,vy:vb.y};svg.style.cursor='grabbing'});
+  addEventListener('pointerup',()=>{drag=null;svg.style.cursor=''});
+  addEventListener('pointermove',ev=>{if(!drag)return;const r=svg.getBoundingClientRect();vb.x=drag.vx-(ev.clientX-drag.x)/r.width*vb.w;vb.y=drag.vy-(ev.clientY-drag.y)/r.height*vb.h;apply()});
+  box.querySelector('[data-zoom="in"]').onclick=()=>zoom(1/1.3);box.querySelector('[data-zoom="out"]').onclick=()=>zoom(1.3);box.querySelector('[data-zoom="fit"]').onclick=fit;
+  const start=()=>{const r=svg.getBoundingClientRect();if(w<=r.width*1.5&&h<=r.height*1.5)return fit();vb={x:0,y:0,w:r.width,h:r.height};apply()};
+  start();
+}
+function stage(svg){return '<div class="tools"><button data-zoom="in">＋</button><button data-zoom="out">－</button><button data-zoom="fit">fit</button><span class="hint">wheel zooms, drag pans</span></div><div class="stage" id="stage">'+svg+'</div>'}
 /* graph layout: layers by longest path ignoring back edges */
 function graph(nodes,edges){
   const ix=Object.fromEntries(nodes.map((n,i)=>[n.id,i]));
@@ -108,7 +144,7 @@ function graph(nodes,edges){
   const W=210,GX=90,GY=24,pos=[];let H=0;
   cols.forEach((c,ci)=>{if(!c)return;let y=10;c.forEach(i=>{const h=Math.max(40,18+14*(nodes[i].lines||[]).length+14);pos[i]={x:10+ci*(W+GX),y,h};y+=h+GY});H=Math.max(H,y)});
   const width=10+cols.length*(W+GX);
-  let svg='<svg width="'+width+'" height="'+H+'" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--mut)"/></marker></defs>';
+  let svg='<svg data-w="'+width+'" data-h="'+H+'" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--mut)"/></marker></defs>';
   for(const e of edges){const a=pos[ix[e.from]],b=pos[ix[e.to]];if(!a||!b||e.from===e.to)continue;
     const x1=a.x+W,y1=a.y+a.h/2,x2=b.x,y2=b.y+b.h/2;let d;
     if(x2>x1)d='M'+x1+' '+y1+'C'+(x1+GX/2)+' '+y1+' '+(x2-GX/2)+' '+y2+' '+x2+' '+y2;
@@ -120,36 +156,68 @@ function graph(nodes,edges){
     (n.lines||[]).forEach((l,j)=>svg+='<text x="'+(p.x+10)+'" y="'+(p.y+36+14*j)+'">'+esc(l)+'</text>');
     if(n.sub)svg+='<text x="'+(p.x+W/2)+'" y="'+(p.y+p.h-8)+'" text-anchor="middle" class="elabel">'+esc(n.sub)+'</text>';
     svg+='</g>'});
-  return svg+'</svg>';
+  return stage(svg+'</svg>');
 }
+const fcls=x=>x.name==='main'?'entry':x.effects.length?'effect':'pure';
 function overview(){
-  const all=$('all').checked;let nodes=[],edges=[];
-  for(const m of D.modules){const st=moduleStats(m.file);const linked=Object.keys(st.to).length>0||D.entities.some(e=>e.calls.some(c=>E[c]&&E[c].file===m.file&&e.file!==m.file));
-    if(!all&&!linked&&!st.entry)continue;
-    nodes.push({id:m.file,title:m.file.split('/').pop(),sub:st.fx.length?st.fx.join(' · '):'pure',cls:st.entry?'entry':st.fx.length?'effect':'pure',kind:'mod'});
-    for(const [t,n] of Object.entries(st.to))edges.push({from:m.file,to:t,label:n+(n>1?' calls':' call')})}
-  if(!nodes.length)return '<p class="hint">No cross-module calls. Tick “show everything”.</p>';
-  return '<p class="hint">Modules, who calls whom, and the effects each reaches. Green is pure, amber touches the outside world, blue holds main.</p>'+graph(nodes,edges);
+  const all=$('all').checked,nodes={},cnt={};
+  const end=e=>e.file===S.mod?e.key:e.file;
+  const mk=k=>{if(nodes[k])return;if(E[k]){const x=E[k];nodes[k]={id:k,title:x.name,sub:x.effects.join(' · ')||'pure',cls:fcls(x),kind:'fn'}}else{const st=moduleStats(k);nodes[k]={id:k,title:base(k),sub:st.fx.length?st.fx.join(' · '):'pure',cls:st.entry?'entry':st.fx.length?'effect':'pure',kind:'mod'}}};
+  for(const e of D.entities)for(const c of e.calls){const t=E[c];if(!t)continue;const a=end(e),b=end(t);if(a===b)continue;const k=a+'\u0000'+b;cnt[k]=(cnt[k]||0)+1;mk(a);mk(b)}
+  if(all)for(const m of D.modules){if(m.file!==S.mod)mk(m.file)}
+  if(S.mod)fns.filter(e=>e.file===S.mod).forEach(e=>{if(all||nodes[e.key]||e.key===S.sel)mk(e.key)});
+  const edges=Object.entries(cnt).map(([k,n])=>{const [a,b]=k.split('\u0000');return {from:a,to:b,label:n>1?n+' calls':''}});
+  if(!Object.keys(nodes).length)for(const m of D.modules.slice(0,40))mk(m.file);
+  return '<p class="hint">'+(S.mod?'Inside '+esc(base(S.mod))+': its functions, and the other modules they reach. ':'Modules and who calls whom. ')+'Double-click a module to open it, a function for its sequence. Green is pure, amber touches effects, blue holds main.</p>'+graph(Object.values(nodes),edges);
 }
 function calls(){
-  const e=S.sel&&E[S.sel];if(!e||!isFn(e))return '<p class="hint">Pick a function to see who calls it and what it calls.</p>';
+  const e=S.sel&&E[S.sel];if(!e||!isFn(e))return '<p class="hint">Pick a function (or a landmark on the left) to map its surroundings.</p>';
   const depth=+$('depth').value,nodes={},edges=[];
-  const add=(k)=>{if(nodes[k])return;const x=E[k];nodes[k]={id:k,title:x.name,sub:x.file.split('/').pop()+':'+x.line,cls:x.name==='main'?'entry':x.effects.length?'effect':'pure',kind:'fn'}};
-  add(e.key);(callers[e.key]||[]).forEach(c=>{add(c);edges.push({from:c,to:e.key})});
-  const seen=new Set();const down=(k,d)=>{if(d>=depth||seen.has(k))return;seen.add(k);for(const c of E[k].calls){add(c);edges.push({from:k,to:c});down(c,d+1)}
-    if($('all').checked&&d<depth)for(const x of E[k].external.slice(0,6)){const id='x:'+x;nodes[id]=nodes[id]||{id,title:x.split('#').pop(),cls:'ext',kind:'ext'};edges.push({from:k,to:id})}};
-  down(e.key,0);
-  return '<p class="hint">Callers on the left, callees on the right (depth '+depth+'). Tick “show everything” to add standard-library and native calls (dashed).</p>'+graph(Object.values(nodes),edges);
+  const add=k=>{if(nodes[k])return;const x=E[k];nodes[k]={id:k,title:x.name,sub:base(x.file)+':'+x.line,cls:fcls(x),kind:'fn'}};
+  add(e.key);
+  const up=(k,d,seen)=>{if(d>=depth||seen.has(k))return;seen.add(k);for(const c of callers[k]||[]){add(c);edges.push({from:c,to:k});up(c,d+1,seen)}};
+  const seen=new Set();
+  const down=(k,d)=>{if(d>=depth||seen.has(k))return;seen.add(k);for(const c of E[k].calls){add(c);edges.push({from:k,to:c});down(c,d+1)}
+    if($('all').checked)for(const x of E[k].external.slice(0,6)){const id='x:'+x;nodes[id]=nodes[id]||{id,title:x.split('#').pop(),cls:'ext',kind:'ext'};edges.push({from:k,to:id})}};
+  if(S.dir!=='down')up(e.key,0,new Set());if(S.dir!=='up')down(e.key,0);
+  return '<div class="tools">Direction <select id="dir"><option value="both">both</option><option value="up">who calls it</option><option value="down">what it calls</option></select></div><p class="hint">Starting at '+esc(e.name)+', '+depth+' step(s) out. Use the depth slider to widen or narrow.</p>'+graph(Object.values(nodes),edges);
 }
 function types(){
-  const nodes={},edges=[];const roots=S.sel&&E[S.sel]?[E[S.sel]]:D.entities.filter(isType);
-  const add=(x)=>{if(nodes[x.key])return;nodes[x.key]={id:x.key,title:(x.kind==='record'?'':'«'+x.kind+'» ')+x.name,cls:'cls',kind:'type',
+  const nodes={},edges=[];const roots=S.sel&&E[S.sel]?[E[S.sel]]:D.entities.filter(e=>isType(e)&&(!S.mod||e.file===S.mod));
+  const add=x=>{if(nodes[x.key])return;nodes[x.key]={id:x.key,title:(x.kind==='record'?'':'«'+x.kind+'» ')+x.name,cls:'cls',kind:'type',
     lines:x.slots.map(s=>x.kind==='record'?s.name+': '+s.ty:s.name+s.ty).slice(0,10)};
     x.slots.forEach(s=>s.refs.forEach(r=>{const t=E[r];if(t){add(t);edges.push({from:x.key,to:r,label:s.name})}}));
     if(x.result)x.result.refs.forEach(r=>{const t=E[r];if(t){add(t);edges.push({from:x.key,to:r,label:'returns'})}})};
   roots.forEach(r=>{if(isFn(r)){nodes[r.key]={id:r.key,title:r.name+'()',cls:'cls',lines:r.slots.map(s=>(s.var?'var ':'')+s.name+': '+s.ty)}}add(r)});
-  const list=Object.values(nodes);if(!list.length)return '<p class="hint">No types.</p>';
+  const list=Object.values(nodes);if(!list.length)return '<p class="hint">No types here.</p>';
   return '<p class="hint">Boxes are types; an arrow means “holds” (owns). Select a type or function to focus.</p>'+graph(list,edges);
+}
+/* sequence: lifelines for functions, messages in execution order */
+function sequence(){
+  const e=S.sel&&E[S.sel];if(!e||!isFn(e))return '<p class="hint">Pick a function to see who it talks to, in order.</p>';
+  const depth=+$('depth').value+1,all=$('all').checked,ev=[],parts=[];let cap=0;
+  const part=k=>{if(!parts.includes(k))parts.push(k)};
+  const walk=(k,nodes,d,path)=>{for(const n of nodes){if(cap>160)return;
+    const ref=n.reference&&E[n.reference];
+    if(n.kind==='call'&&ref){cap++;part(n.reference);ev.push({t:'msg',from:k,to:n.reference,label:n.label.replace(/^call\s+/,'')});
+      if(d>0&&!path.includes(n.reference))walk(n.reference,ref.flow,d-1,path.concat(n.reference));
+      if(ev[ev.length-1].t!=='msg')ev.push({t:'ret',from:n.reference,to:k})}
+    else if(n.kind==='native'&&all){cap++;part('stdlib');ev.push({t:'msg',from:k,to:'stdlib',label:n.label.replace(/^call\s+/,'')})}
+    else if(n.kind==='spawn'){cap++;ev.push({t:'note',at:k,label:'spawn',async:1});walk(k,n.children||[],d,path);continue}
+    else if(['try','branch','match','arm','scope','exit'].includes(n.kind)&&n.kind!=='call'){if(n.kind==='try'||n.kind==='scope'||n.kind==='branch'||n.kind==='match'){cap++;ev.push({t:'note',at:k,label:(n.kind==='try'?'try ⚠ ':'')+n.label.slice(0,30)})}}
+    if(n.children&&n.children.length&&!(n.kind==='call'&&ref))walk(k,n.children,d,path)}};
+  part(e.key);walk(e.key,e.flow,depth-1,[e.key]);
+  const X=170,top=50,row=30,W=140;const px=k=>20+parts.indexOf(k)*X+W/2;const H=top+ev.length*row+40;
+  let svg='<svg data-w="'+(40+parts.length*X)+'" data-h="'+H+'" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--fg)"/></marker></defs>';
+  parts.forEach(k=>{const x=px(k),t=E[k]?E[k].name:'stdlib';
+    svg+='<line class="life" x1="'+x+'" y1="'+(top-6)+'" x2="'+x+'" y2="'+H+'"/><g class="node '+(E[k]?fcls(E[k]):'ext')+'" data-id="'+esc(k)+'" data-kind="'+(E[k]?'fn':'ext')+'"><rect x="'+(x-W/2)+'" y="8" width="'+W+'" height="32" rx="6"/><text x="'+x+'" y="29" text-anchor="middle" font-weight="600">'+esc(t.slice(0,20))+'</text></g>'});
+  ev.forEach((v,i)=>{const y=top+i*row+14;
+    if(v.t==='note'){const x=px(v.at);svg+='<g class="note"><rect x="'+(x+6)+'" y="'+(y-12)+'" width="'+Math.min(190,v.label.length*6.4+14)+'" height="20" rx="4"/><text x="'+(x+12)+'" y="'+(y+2)+'">'+esc(v.label)+'</text></g>';return}
+    const a=px(v.from),b=px(v.to);
+    if(v.from===v.to)return;
+    svg+='<path class="msg '+(v.t==='ret'?'ret':'')+'" d="M'+a+' '+y+'L'+b+' '+y+'" marker-end="url(#a)"/>';
+    if(v.t==='msg')svg+='<text x="'+((a+b)/2)+'" y="'+(y-4)+'" text-anchor="middle">'+esc(v.label.slice(0,32))+'</text>'});
+  return '<p class="hint">Time runs downward. Solid arrows are calls, dotted arrows return after a callee did something of its own, yellow notes are branches, try and spawn. Depth slider sets how deep callees unfold; “show everything” adds standard-library calls.</p>'+stage(svg+'</svg>');
 }
 function flowHTML(nodes,level){
   return '<ul>'+nodes.map(n=>{const ref=n.reference&&E[n.reference]&&E[n.reference].flow;
@@ -157,20 +225,44 @@ function flowHTML(nodes,level){
 }
 function behavior(){
   const e=S.sel&&E[S.sel];if(!e||!isFn(e))return '<p class="hint">Pick a function to read its behavior step by step.</p>';
-  return '<p class="hint">Steps in order: calls, try (early error exit), branches, spawned work, cleanup scopes and exits. Click “expand” to step into a callee.</p><div class="flow">'+(e.flow.length?flowHTML(e.flow,0):'<span class="hint">no steps</span>')+'</div>';
+  return '<p class="hint">Steps in order: calls, try (early error exit), branches, spawned work, cleanup scopes and exits. Click expand to step into a callee.</p><div class="flow">'+(e.flow.length?flowHTML(e.flow,0):'<span class="hint">no steps</span>')+'</div>';
 }
-function render(){setTabs();setList();setInfo();$('view').innerHTML={Overview:overview,Calls:calls,Types:types,Behavior:behavior}[S.tab]()}
+function route(){
+  const opts=sel=>'<option value="">choose…</option>'+fns.map(f=>'<option value="'+esc(f.key)+'"'+(sel===f.key?' selected':'')+'>'+esc(base(f.file)+' · '+f.name)+'</option>').join('');
+  let h='<div class="tools">From <select id="rf">'+opts(S.from)+'</select> To <select id="rt">'+opts(S.to)+'</select></div>';
+  if(S.from&&S.to){
+    const prev={[S.from]:null},q=[S.from];while(q.length){const u=q.shift();if(u===S.to)break;for(const v of E[u].calls)if(!(v in prev)){prev[v]=u;q.push(v)}}
+    if(!(S.to in prev))h+='<p class="hint">No call path from '+esc(E[S.from].name)+' to '+esc(E[S.to].name)+'. Try the other direction.</p>';
+    else{const p=[];for(let k=S.to;k!==null;k=prev[k])p.unshift(k);
+      h+='<p class="hint">Shortest call path: '+(p.length-1)+' call(s). Click a stop to inspect it.</p><div class="route">'+p.map((k,i)=>(i?'<span class="arrow">→</span>':'')+'<span class="step" data-key="'+esc(k)+'">'+esc(E[k].name)+'</span>').join('')+'</div>'}
+  }else h+='<p class="hint">Like directions: pick where you are and where you want to get to, and see how control gets there.</p>';
+  return h;
+}
+const VIEWS={Overview:overview,Calls:calls,Sequence:sequence,Types:types,Behavior:behavior,Route:route};
+function save(){try{history.replaceState(null,'','#'+encodeURIComponent(JSON.stringify({t:S.tab,s:S.sel,m:S.mod,f:S.from,o:S.to})))}catch(_){}}
+function render(){setTabs();setList();setInfo();$('view').innerHTML=VIEWS[S.tab]();
+  const d=$('dir');if(d){d.value=S.dir;d.onchange=()=>{S.dir=d.value;render()}}
+  const rf=$('rf');if(rf){rf.onchange=()=>{S.from=rf.value||null;render()};$('rt').onchange=()=>{S.to=$('rt').value||null;render()}}
+  const box=$('view');if(box.querySelector('svg'))panzoom(box);save()}
+function select(id,kind){if(kind==='mod'){S.mod=id;S.sel=null}else if(E[id]){S.sel=id;S.mod=null}}
+let clickTimer=null;
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-tab],[data-key],[data-mod],[data-id],[data-expand]');if(!t)return;ev.preventDefault();
+  const t=ev.target.closest('[data-tab],[data-key],[data-mod],[data-id],[data-expand],[data-home],[data-go],[data-routefrom]');if(!t)return;ev.preventDefault();
   if(t.dataset.tab)S.tab=t.dataset.tab;
   else if(t.dataset.expand){const li=t.closest('li');const e=E[t.dataset.expand];const slot=li.querySelector('.callee');
     if(slot.innerHTML){slot.innerHTML='';t.textContent='expand ▸'}else{slot.innerHTML=flowHTML(e.flow,1);t.textContent='collapse ▾'}return}
-  else if(t.dataset.key){S.sel=t.dataset.key;S.mod=null;if(S.tab==='Overview')S.tab='Calls'}
+  else if(t.dataset.home){S.mod=null;S.sel=null;S.tab='Overview'}
+  else if(t.dataset.go){S.tab=t.dataset.go}
+  else if(t.dataset.routefrom){S.from=S.sel;S.to=null;S.tab='Route'}
+  else if(t.dataset.key){S.sel=t.dataset.key;S.mod=null;if(S.tab==='Overview'||S.tab==='Route')S.tab=S.tab==='Route'?'Route':'Calls';if(S.tab==='Route'){S.to=S.to||null;if(!S.from)S.from=S.sel;else S.to=S.sel}}
   else if(t.dataset.mod){S.mod=t.dataset.mod;S.sel=null;S.tab='Overview'}
-  else if(t.dataset.id){const id=t.dataset.id,k=t.dataset.kind;if(k==='mod'){S.mod=id;S.sel=null}else if(E[id]){S.sel=id;S.mod=null}else return}
+  else if(t.dataset.id){/* a graph node: select without redrawing so a double-click can follow */
+    select(t.dataset.id,t.dataset.kind);document.querySelectorAll('.node.sel').forEach(n=>n.classList.remove('sel'));t.closest('.node').classList.add('sel');setList();setInfo();save();return}
   render()});
+document.addEventListener('dblclick',ev=>{const n=ev.target.closest('.node');if(!n)return;const id=n.dataset.id,k=n.dataset.kind;
+  if(k==='mod'){S.mod=id;S.sel=null;S.tab='Overview'}else if(E[id]){S.sel=id;S.mod=null;S.tab='Sequence'}else return;render()});
 $('q').addEventListener('input',setList);$('all').addEventListener('change',render);$('depth').addEventListener('input',render);
-const main=D.entities.find(e=>e.name==='main'&&e.kind==='fn');if(main){S.sel=main.key;S.tab='Calls'}
+try{const h=JSON.parse(decodeURIComponent(location.hash.slice(1)));if(h&&TABS.includes(h.t)){S.tab=h.t;S.sel=E[h.s]?h.s:null;S.mod=h.m||null;S.from=E[h.f]?h.f:null;S.to=E[h.o]?h.o:null}else throw 0}catch(_){const main=D.entities.find(e=>e.name==='main'&&e.kind==='fn');if(main){S.sel=main.key;S.tab='Sequence'}}
 render();
 </script>
 </body>

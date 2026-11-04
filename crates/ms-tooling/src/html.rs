@@ -27,6 +27,7 @@ fn entity_json(facts: &Facts, f: &Fact) -> Json {
         ("kind", Json::str(&f.kind)),
         ("name", Json::str(&f.name)),
         ("line", Json::from(f.line)),
+        ("exported", Json::Bool(f.exported)),
         ("effects", Json::strings(&f.effects)),
         ("error", Json::str(&f.error)),
         ("scopes", Json::from(f.scopes)),
