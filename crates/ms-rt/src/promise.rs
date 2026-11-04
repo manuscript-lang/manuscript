@@ -95,6 +95,9 @@ struct Table {
     thread: Vec<u8>,
     /// The handle of the task running the work on that thread, else 0.
     task: Vec<u64>,
+    /// The task that started the work, whose frame the work reads its captures from, lent
+    /// (`task::lend_current`) until the work's task has ended; else 0.
+    creator: Vec<u64>,
     /// `WANT_CANCEL`: cancel the work as soon as it has started.
     flags: Vec<u8>,
     /// The report of the fault that ended the promise.
@@ -129,6 +132,7 @@ impl Table {
             closure: Vec::new(),
             thread: Vec::new(),
             task: Vec::new(),
+            creator: Vec::new(),
             flags: Vec::new(),
             report: Vec::new(),
             deadline: Vec::new(),
@@ -221,6 +225,7 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
             t.closure.push(0);
             t.thread.push(NOT_STARTED);
             t.task.push(0);
+            t.creator.push(0);
             t.flags.push(0);
             t.report.push(Vec::new());
             t.deadline.push(i64::MAX);
@@ -243,6 +248,7 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
     t.closure[i] = 0;
     t.thread[i] = NOT_STARTED;
     t.task[i] = 0;
+    t.creator[i] = 0;
     t.flags[i] = 0;
     t.report[i] = Vec::new();
     t.deadline[i] = i64::MAX;
@@ -359,6 +365,11 @@ fn apply(event: Event) {
             if closure != 0 {
                 // SAFETY: the closure handed over at start; the task is over, so this is its last use.
                 unsafe { crate::obj::drop_obj(closure as *mut ms_rt_abi::Obj) };
+            }
+            let creator = core::mem::take(&mut t.creator[i]);
+            if creator != 0 {
+                // SAFETY: lent at start on this thread; a creator that has ended is skipped.
+                unsafe { task::return_lent(creator) };
             }
             t.thread[i] = NOT_STARTED;
             if t.state[i] == State::Pending && t.flags[i] & HELD != 0 {
@@ -917,8 +928,12 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, here: bool) {
     if t.closure[i] != 0 || t.thread[i] != NOT_STARTED {
         fault::fault(b"promise: already started");
     }
-    // The caller hands the closure over: the promise owns it until the task has ended.
+    // The caller hands the closure over: the promise owns it until the task has ended. The work
+    // reads what it captured from the caller's frame, so the caller's stack stays lent out (no
+    // hibernation) until then.
     t.closure[i] = work as usize;
+    // SAFETY: called on the runtime thread by the running task.
+    t.creator[i] = unsafe { task::lend_current() };
     let start = Start {
         id,
         closure: work as usize,

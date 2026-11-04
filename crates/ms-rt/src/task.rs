@@ -773,9 +773,10 @@ unsafe fn hibernate_idle() {
     s.scan = at;
 }
 
-/// Marks the running task's stack as lent to another thread (`lend` true) or returned
-/// (`lend` false): a pool job that borrows a slice of the caller's frame reads it while the
-/// task is parked, so the task must not hibernate until the job is done.
+/// Marks the running task's stack as lent out (`lend` true) or returned (`lend` false): a pool
+/// job that borrows a slice of the caller's frame, or a promise task that reads what its work
+/// captured, reads the frame while the task is parked, so the task must not hibernate until the
+/// borrower is done.
 pub(crate) unsafe fn pin_current(lend: bool) {
     // SAFETY: called on the runtime thread by the running task.
     unsafe {
@@ -786,6 +787,27 @@ pub(crate) unsafe fn pin_current(lend: bool) {
             (*cur).pinned -= 1;
         }
     }
+}
+
+/// Lends the running task's stack out until [`return_lent`] is called with the handle this
+/// returns: the promise it starts reads the frame its work captured from, for as long as the
+/// promise's task runs.
+pub(crate) unsafe fn lend_current() -> u64 {
+    // SAFETY: called on the runtime thread by the running task.
+    unsafe {
+        pin_current(true);
+        (*ensure_init()).handle
+    }
+}
+
+/// Returns a stack lent with [`lend_current`]; nothing to do when the task has ended since.
+pub(crate) unsafe fn return_lent(handle: u64) {
+    let t = lookup(handle);
+    if t.is_null() {
+        return;
+    }
+    // SAFETY: a live record of this thread's scheduler.
+    unsafe { (*t).pinned -= 1 };
 }
 
 /// Copies the used part of `t`'s stack to the heap and gives all its pages back.
@@ -2290,6 +2312,122 @@ mod tests {
             assert_eq!(msrt_task_join(h, null_mut()), 0);
             assert!(sched().pool.iter().any(|&(base, _)| base == top - SLOT));
             msrt_token_free(token);
+            teardown();
+        }
+    }
+
+    static PARK_RESULT: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+
+    /// Parks on the read end of the pipe in `arg` and records what the wait returned.
+    unsafe extern "C-unwind" fn park_on_fd(arg: *mut u8) {
+        let fd = arg as usize as i32;
+        // SAFETY: called on a live task; the test cancels it.
+        let got = unsafe { msrt_task_wait_fd(fd, WAIT_READ, -1) };
+        PARK_RESULT.store(got, Ordering::Relaxed);
+    }
+
+    #[test]
+    fn a_hibernating_task_sees_its_cancellation() {
+        let _g = lock();
+        teardown();
+        let mut fds = [0i32; 2];
+        // SAFETY: a fresh pipe.
+        assert_eq!(unsafe { libc::pipe(fds.as_mut_ptr()) }, 0);
+        // SAFETY: the test owns the pipe and joins the task.
+        unsafe {
+            PARK_RESULT.store(0, Ordering::Relaxed);
+            let h = msrt_task_spawn(park_on_fd, fds[0] as usize as *mut u8, 0, 0);
+            msrt_task_yield();
+            let t = lookup(h);
+            assert!((*t).state == State::Waiting);
+            hibernate_idle();
+            hibernate_idle();
+            hibernate_idle();
+            assert!(!(*t).frozen.is_null(), "the parked task hibernates");
+            msrt_task_cancel(h);
+            assert_eq!(msrt_task_join(h, null_mut()), 0);
+            assert_eq!(
+                PARK_RESULT.load(Ordering::Relaxed) & WAIT_CANCELLED,
+                WAIT_CANCELLED
+            );
+            libc::close(fds[0]);
+            libc::close(fds[1]);
+            teardown();
+        }
+    }
+
+    static WORK_TOKEN: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
+    static PROMISE_ID: core::sync::atomic::AtomicI64 = core::sync::atomic::AtomicI64::new(0);
+
+    unsafe extern "C" fn drop_closure(obj: *mut ms_rt_abi::Obj) {
+        // SAFETY: the capture-free closure owns this allocation.
+        unsafe { alloc::free(obj.cast()) };
+    }
+
+    /// A promise's work: parks on `WORK_TOKEN` until the test posts it.
+    unsafe extern "C-unwind" fn promise_work(_: *mut ms_rt_abi::Closure) {
+        let mut value = 0;
+        // SAFETY: called from the promise's task.
+        unsafe { msrt_token_park(WORK_TOKEN.load(Ordering::Relaxed), -1, &mut value) };
+    }
+
+    /// Starts a promise (whose work reads this frame) and parks on the token in `arg`.
+    unsafe extern "C-unwind" fn start_promise_then_park(arg: *mut u8) {
+        let token = arg as usize as u64;
+        let mut value = 0;
+        // SAFETY: the closure is handed to the promise; the test ends the work and drops the promise.
+        unsafe {
+            let id = crate::promise::msrt_promise_new();
+            let closure = crate::obj::new_obj(size_of::<ms_rt_abi::Closure>(), None, drop_closure)
+                .cast::<ms_rt_abi::Closure>();
+            (*closure).code = promise_work as *const u8;
+            crate::promise::msrt_promise_start_here(id, closure);
+            PROMISE_ID.store(id, Ordering::Relaxed);
+            msrt_token_park(token, -1, &mut value);
+        }
+    }
+
+    #[test]
+    fn a_task_whose_promise_still_runs_does_not_hibernate() {
+        let _g = lock();
+        teardown();
+        // SAFETY: the test owns the tokens, ends the promise's work and joins the task.
+        unsafe {
+            let token = msrt_token_new(0);
+            let work = msrt_token_new(0);
+            WORK_TOKEN.store(work, Ordering::Relaxed);
+            let h = msrt_task_spawn(start_promise_then_park, token as usize as *mut u8, 0, 0);
+            msrt_task_yield();
+            msrt_task_yield();
+            let t = lookup(h);
+            assert!((*t).state == State::Waiting);
+            hibernate_idle();
+            hibernate_idle();
+            hibernate_idle();
+            assert!(
+                (*t).frozen.is_null(),
+                "a task whose promise may read its frame keeps its pages"
+            );
+            // The work ends: its task reports to the creator, whose stack is its own again.
+            msrt_token_post(work, 1);
+            let id = PROMISE_ID.load(Ordering::Relaxed);
+            // The work put no result, so the promise reports a failure; it is over all the same.
+            assert_eq!(
+                crate::promise::msrt_promise_wait(id, -1),
+                crate::promise::FAILED
+            );
+            crate::promise::msrt_promise_drop(id);
+            hibernate_idle();
+            hibernate_idle();
+            hibernate_idle();
+            assert!(
+                !(*t).frozen.is_null(),
+                "the task hibernates once the promise is over"
+            );
+            msrt_token_post(token, 1);
+            assert_eq!(msrt_task_join(h, null_mut()), 0);
+            msrt_token_free(token);
+            msrt_token_free(work);
             teardown();
         }
     }
