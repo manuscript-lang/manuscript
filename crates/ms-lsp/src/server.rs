@@ -441,21 +441,7 @@ impl Server<'_> {
     /// Keep successful graphs that did not read the changed source. Failed
     /// loads may have missing imports, so their dependency set is incomplete.
     fn invalidate_document(&mut self, syms: ms_syntax::Names, changed: &Document) {
-        let resolve = |path: String| {
-            use ms_driver::project::{Overlay, pathops, source_path};
-            pathops::eval_symlinks(&path)
-                .or_else(|_| {
-                    // A new editor file has no final directory entry yet.
-                    // Reuse the loader's existing-parent identity rules.
-                    let root = pathops::eval_symlinks(&pathops::dir(&path))?;
-                    source_path(
-                        &root,
-                        &path,
-                        &Overlay::from([(path.clone(), String::new())]),
-                    )
-                })
-                .unwrap_or(path)
-        };
+        let resolve = |path: String| analysis::source_identity(&path);
         // Overlay validation observes conflicting aliases even in modules that
         // do not import that file. A new conflict must invalidate those too.
         let mut seen = HashMap::new();
