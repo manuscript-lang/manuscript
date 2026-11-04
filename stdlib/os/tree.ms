@@ -7,7 +7,7 @@ Read-only file trees you can swap: code that takes a `FileTree` reads the host d
 tree (`MemoryTree`) the same way, so tests need no temporary directories. `walk` visits every entry under a root.
 
 Paths in a tree are `/`-separated and relative to the tree's root. `.` and empty parts are ignored and `..` steps
-up; a path that would leave the root is `InvalidInput`.
+up; a path that would leave the root is `EINVAL`.
 
 ```manuscript
 import FileTree, walk from "@std/os/tree.ms"
@@ -20,9 +20,9 @@ fn names(tree: FileTree) List[String]:
 
 // A directory tree whose files can be read and whose directories can be listed.
 export interface FileTree:
-    // Reads a whole file; more than `max_bytes` bytes returns `LimitExceeded`. A missing path is `NotFound`.
+    // Reads a whole file; more than `max_bytes` bytes returns `EOVERFLOW`. A missing path is `ENOENT`.
     fn read(path: String, max_bytes: Int?) Bytes!
-    // Lists a directory's children, sorted by name. A missing path is `NotFound`, a file is `InvalidInput`.
+    // Lists a directory's children, sorted by name. A missing path is `ENOENT`, a file is `EINVAL`.
     fn children(path: String, max_entries: Int?) List[DirectoryEntry]!
 
 // Resolves `path` to its parts under the root. Returns the clean path joined by `/`; the root is the empty string.
@@ -138,7 +138,7 @@ impl MemoryTree:
         let key = inside.get()
         return self.files.contains(key) or self.directories.contains(key)
 
-    // Creates `path` and any missing parent directories. An existing directory is fine; an existing file is `AlreadyExists`.
+    // Creates `path` and any missing parent directories. An existing directory is fine; an existing file is `EEXIST`.
     var fn create_directory(path: String) Unit!:
         let inside = try clean(path)
         if self.files.contains(inside): return error(
@@ -155,7 +155,7 @@ impl MemoryTree:
         return ok(unit)
 
     // Writes a file, replacing any earlier content and creating missing parent directories.
-    // A path that is a directory, or whose parent is a file, is `InvalidInput`; the root cannot be written.
+    // A path that is a directory, or whose parent is a file, is `EINVAL`; the root cannot be written.
     var fn write_file(path: String, data: Bytes) Unit!:
         let inside = try clean(path)
         if inside == "" or self.directories.contains(inside): return error(
@@ -173,7 +173,7 @@ impl MemoryTree:
         return ok(unit)
 
     // Removes a file or an empty directory; `recursive` removes a directory with everything under it.
-    // A missing path is `NotFound`, a non-empty directory without `recursive` is `NotEmpty`, and the root cannot be removed.
+    // A missing path is `ENOENT`, a non-empty directory without `recursive` is `NotEmpty`, and the root cannot be removed.
     var fn remove(path: String, recursive: Bool = false) Unit!:
         let inside = try clean(path)
         if inside == "": return error(
@@ -335,7 +335,7 @@ export type WalkEntry:
 /*
 Lists everything below `root` depth first, a directory before its children and siblings sorted by name.
 Symbolic links on a host tree appear as non-directory entries and are not followed. `max_entries` bounds the
-number of entries found, returning `LimitExceeded` rather than a partial list.
+number of entries found, returning `EOVERFLOW` rather than a partial list.
 */
 export fn walk(
     tree: FileTree,

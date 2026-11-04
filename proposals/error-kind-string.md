@@ -35,7 +35,7 @@ fn open_config(path: String) String!:
 - The stdlib uses POSIX errno names where one fits, so `kind == "ENOENT"` is the same test as on a Unix system on every platform.
 - User kinds use their own prefix, for example `"EQUOTA"`; stdlib never adds a code outside the table.
 - `wrap_error` keeps the kind; `Error` equality compares the string.
-- No allocation: a literal is a static string and any string of at most 15 bytes is stored inline in the two words (`crates/DESIGN.md`), so building, cloning and comparing a code never allocates. A code longer than 15 bytes costs one allocation when cloned; the stdlib codes are all shorter.
+- The kind itself never allocates: a literal is a static string and any string of at most 15 bytes is stored inline in the two words (`crates/DESIGN.md`), so building, cloning and comparing a code allocates nothing (the `details` map default is unchanged). A code longer than 15 bytes costs one allocation when cloned; the stdlib codes are all shorter.
 - Comparing a mistyped code is silent. The stdlib guide lists every code; a checker lint is out of scope.
 
 Mapping from the old cases (`status_table` rows keep their numbers):
@@ -57,6 +57,8 @@ Mapping from the old cases (`status_table` rows keep their numbers):
 | Timeout | `ETIMEDOUT` |
 | Other | `EUNKNOWN` (`EAUTH` for failed authentication) |
 
+- Two limit statuses (3 and 14) share `EOVERFLOW`; the message tells them apart.
+- `EAUTH` and `EUNKNOWN` are not POSIX names; they are Manuscript's own.
 - The native ABI is unchanged: statuses stay `u8`; lowering maps a status to its code string.
 - `std/http` serving still maps a handler error to a status by comparing the kind string.
 
@@ -72,7 +74,7 @@ Mapping from the old cases (`status_table` rows keep their numbers):
 
 ## Alternatives
 
-- Do nothing: user kinds stay impossible.
+- Do nothing: user kinds stay impossible; the owner asked for this change.
 - Keep the enum and add a `Custom(String)` case: two ways to say the same thing; every match needs a fallthrough.
 - Integer codes: not readable in output, and collide across packages.
 

@@ -9,7 +9,7 @@ type LineSplitter:
     max_bytes: Int?
 
 impl LineSplitter:
-    // Fails with `LimitExceeded` when a line of `size` bytes is longer than the limit.
+    // Fails with `EOVERFLOW` when a line of `size` bytes is longer than the limit.
     fn check(size: Int) Unit!:
         if let limit = self.max_bytes:
             if size > limit:
@@ -24,7 +24,7 @@ impl LineSplitter:
         return chunk.clone()
 
 impl LineSplitter:
-    // Decodes one line, or fails with `InvalidData` rather than turning bytes that are not UTF-8 into an empty line.
+    // Decodes one line, or fails with `EBADMSG` rather than turning bytes that are not UTF-8 into an empty line.
     fn decode(line: Bytes) String!:
         if let text = line.decode_utf8():
             return ok(text)

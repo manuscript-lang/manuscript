@@ -42,7 +42,7 @@ impl NormalizationForm:
     // Omission or none adds no output budget; a supplied budget counts UTF-8 bytes.
     fn normalize(text: String, max_bytes: Int?) String!: ...
 
-// Builds text from Unicode scalar values. Invalid scalars return `InvalidInput`.
+// Builds text from Unicode scalar values. Invalid scalars return `EINVAL`.
 export fn from_scalars(values: List[Int]) String!:
     return msrt_string_from_scalars(values)
 

@@ -3,8 +3,8 @@
 export type Error:
     // Human-readable description of the failure.
     message: String
-    // A short code for what went wrong; `"EUNKNOWN"` when none fits. A literal or a string of at most 15 bytes never allocates.
-    // The standard library reports POSIX errno names, so `kind == "ENOENT"` means the same on every platform:
+    // A short code for what went wrong; `"EUNKNOWN"` when none fits. The kind itself never allocates when it is a literal or at most 15 bytes.
+    // The standard library reports POSIX errno names (`EAUTH` and `EUNKNOWN` are Manuscript's own), so `kind == "ENOENT"` means the same on every platform:
     //   EINVAL caller input is invalid, EBADMSG input data is malformed, EOVERFLOW a limit was exceeded,
     //   ERANGE a value or index is out of range, ENOENT not found, EEXIST already exists, ENOTEMPTY directory not empty,
     //   EACCES permission denied, ENOTSUP unsupported, ENOTTY not a terminal, EBADF resource closed,

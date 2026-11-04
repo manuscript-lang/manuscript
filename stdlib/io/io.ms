@@ -235,7 +235,7 @@ impl Source[Bytes] for DescriptorSource:
 export fn descriptor_reader(id: Int) ReadStream[Bytes]:
     return stream[Bytes](DescriptorSource(id))
 
-// Writes to the runtime stream-table descriptor `id`; a negative id fails every write with `Closed`.
+// Writes to the runtime stream-table descriptor `id`; a negative id fails every write with `EBADF`.
 type DescriptorSink:
     id: Int
 
@@ -286,7 +286,7 @@ export opaque type WriteStream[T]:
     collects: Bool
 
 impl WriteStream[T]:
-    // Moves `value` into the stream's buffer. `Closed` once the reader is gone.
+    // Moves `value` into the stream's buffer. `EBADF` once the reader is gone.
     var fn write(value: T) Unit!:
         if self.collects:
             self.items.append(value)
@@ -377,7 +377,7 @@ impl Sink[T] for PipeSink[T]:
 // (the stream interface only lends the argument), so `T` must be `Clonable`; the copy then moves through by pointer.
 // `capacity` is the number of queued values above which a writer's `flush` waits. The pipe itself is not a writer: the
 // reader ends once every writer from `writer()` has closed, so make the writers before reading. Closing the reader
-// makes later writes fail with `Closed`.
+// makes later writes fail with `EBADF`.
 export opaque type Pipe[T: Clonable]:
     // The runtime pipe's id.
     id: Int
@@ -704,7 +704,7 @@ impl RawTerminal:
             )
         )
 
-    // Returns the current terminal size, or `Closed` after close.
+    // Returns the current terminal size, or `EBADF` after close.
     fn size() TerminalSize!:
         try msstd_terminal_raw_terminal_size_status(self.handle.native)
         return ok(
@@ -718,7 +718,7 @@ impl RawTerminal:
             )
         )
 
-    // Moves the cursor to a zero-based row and column; negative or very large values return `InvalidInput`.
+    // Moves the cursor to a zero-based row and column; negative or very large values return `EINVAL`.
     fn move_cursor(row: Int, column: Int) Unit!:
         return msstd_terminal_raw_terminal_move_cursor(self.handle.native, row, column)
 

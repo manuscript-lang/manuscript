@@ -28,12 +28,12 @@ Suffixes apply left to right: `Int?!` is `Result[Int?, Error]` and `Int!?` is `O
 ```manuscript
 export type Error:
     message: String
-    kind: ErrorCategory = "EUNKNOWN"
+    kind: String = "EUNKNOWN"
     details: Map[String, String] = Map[String, String]()
 ```
 
 - `message` is the text to show a person.
-- `kind` is an `ErrorCategory` a caller can branch on: `InvalidInput`, `InvalidData`, `LimitExceeded`, `NotFound`, `AlreadyExists`, `PermissionDenied`, `Unsupported`, `Closed`, `Timeout`, `Unavailable`, `OutOfRange`, `Failed`, or `Other` (the default).
+- `kind` is a short code a caller can branch on. The standard library uses POSIX errno names such as `"ENOENT"` (not found), `"EEXIST"`, `"EACCES"`, `"EINVAL"` (invalid input), `"EBADMSG"` (malformed data), `"EOVERFLOW"` (limit exceeded), `"ERANGE"`, `"ENOTSUP"`, `"EBADF"` (closed), `"EIO"`, `"EAGAIN"`, `"EBUSY"`, `"ETIMEDOUT"`, and `"EUNKNOWN"` (the default); the full list is in the `Error` declaration. Your own code uses any string, preferably with its own prefix such as `"EQUOTA"`. A literal, or any string of at most 15 bytes, never allocates.
 - `details` holds extra named context as text, such as a path or a line number.
 
 Build one with the record call. There is no separate constructor and no namespace.

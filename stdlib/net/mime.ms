@@ -358,8 +358,8 @@ impl Transform[Bytes, Part] for MultipartParts:
 /*
 Reads the parts of a multipart body from a byte stream, one at a time, for uploads too big to hold in memory.
 Parts are built as `parse_multipart` builds them, and only the part being read is buffered. `max_part_bytes`
-bounds one part's headers and body and fails the read with `LimitExceeded`. A body that ends without its closing
-delimiter fails with `InvalidData`. Closing the result closes `body`.
+bounds one part's headers and body and fails the read with `EOVERFLOW`. A body that ends without its closing
+delimiter fails with `EBADMSG`. Closing the result closes `body`.
 */
 export fn multipart_parts(
     body: ReadStream[Bytes],

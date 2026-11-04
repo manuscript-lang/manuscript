@@ -214,7 +214,7 @@ impl Command:
                 return result.get()
 
     // Runs the handler of the command `matches.path` names, as `parse` resolved it, and returns its exit status.
-    // The path starts at this node's name; an unknown path is an `InvalidInput` error.
+    // The path starts at this node's name; an unknown path is an `EINVAL` error.
     fn run(matches: Matches) Int!:
         if let node = node_at(self, matches.path, 1): return node.exec(matches)
 

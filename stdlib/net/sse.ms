@@ -53,9 +53,9 @@ type Decoder:
 Decodes a Server-Sent Events byte stream into events, in order.
 
 Chunks may split any line, line ending or UTF-8 scalar. A stream with no partial line and no unfinished
-event ends cleanly; otherwise the final read fails with `InvalidData` and the unfinished event is never
+event ends cleanly; otherwise the final read fails with `EBADMSG` and the unfinished event is never
 dispatched. A malformed line or an exceeded limit fails the read, and the failure is final. Supplied limits
-must be positive, otherwise the first read fails with `InvalidInput`. Closing the result closes `input`.
+must be positive, otherwise the first read fails with `EINVAL`. Closing the result closes `input`.
 */
 export fn sse_events(
     input: ReadStream[Bytes],

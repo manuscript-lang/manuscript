@@ -332,8 +332,8 @@ fn scalar(value: Int?) String!:
 
 /*
 Parses a document with a single root element and returns that element.
-`max_depth` bounds element nesting (default 1000); deeper input is `LimitExceeded`.
-A document with several roots, text outside the root, or any syntax error is `InvalidData`.
+`max_depth` bounds element nesting (default 1000); deeper input is `EOVERFLOW`.
+A document with several roots, text outside the root, or any syntax error is `EBADMSG`.
 */
 export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
     if max_depth <= 0: return error(Error("XML: invalid input", kind: "EINVAL"))

@@ -62,7 +62,7 @@ impl Transform[String, Bytes] for Base64Decoding:
 
         return out.write(try base64_decode(last, self.url_safe, none))
 
-// Decodes Base64 text chunks into bytes. Malformed text fails the read with `InvalidData`; text that ends
+// Decodes Base64 text chunks into bytes. Malformed text fails the read with `EBADMSG`; text that ends
 // inside a group fails at the end of the stream. Closing the result closes `input`.
 export fn base64_decoded(
     input: ReadStream[String],
@@ -105,6 +105,6 @@ impl Transform[String, Bytes] for HexDecoding:
         return out.write(try hex_decode(last, none))
 
 // Decodes hexadecimal text chunks into bytes. Malformed text, or text that ends inside a pair, fails the
-// read with `InvalidData`. Closing the result closes `input`.
+// read with `EBADMSG`. Closing the result closes `input`.
 export fn hex_decoded(input: ReadStream[String]) ReadStream[Bytes]:
     return through[String, Bytes](input, HexDecoding(tail: ""))

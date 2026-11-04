@@ -159,7 +159,7 @@ interface FileSystem:
         filter: (fn(String, String) Bool)?
     ) Unit!
     // Watches native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows); overflow is exactly `error` or `ignore` (case-sensitive).
-    // Other policies return InvalidInput. `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts and failing with LimitExceeded, the same on every platform; `max_events` bounds queued events.
+    // Other policies return EINVAL. `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts and failing with LimitExceeded, the same on every platform; `max_events` bounds queued events.
     fn watch_native(
         path: String,
         recursive: Bool,
@@ -460,7 +460,7 @@ type WatchSource:
     pending: List[FileEvent]
 
 impl Source[FileEvent] for WatchSource:
-    // Waits for the next change. A closed watcher is `Closed`; a native watcher that overflowed with policy `error` is `LimitExceeded`.
+    // Waits for the next change. A closed watcher is `EBADF`; a native watcher that overflowed with policy `error` is `EOVERFLOW`.
     var fn next() FileEvent?!:
         while true:
             if let event = self.pending.pop():
@@ -550,7 +550,7 @@ export type CopyOptions:
 /*
 How `watch` observes a path: with native OS events by default, or by polling snapshots when `interval` is set.
 Every field has a default, so `WatchOptions()` watches natively with no limits and `WatchOptions(interval: seconds(1))` polls.
-`max_events` and `overflow` apply only to native watching; combining them with `interval` returns `InvalidInput`.
+`max_events` and `overflow` apply only to native watching; combining them with `interval` returns `EINVAL`.
 */
 export type WatchOptions:
     // Polling period, which must be positive. none watches with native OS events.

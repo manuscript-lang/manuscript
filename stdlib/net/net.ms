@@ -220,7 +220,7 @@ type DatagramSource:
     raw: RawDatagramSocket
 
 impl Source[Datagram] for DatagramSource:
-    // Waits for one datagram, at most 65535 bytes; a larger one is an error of kind `LimitExceeded` and is discarded.
+    // Waits for one datagram, at most 65535 bytes; a larger one is an error of kind `EOVERFLOW` and is discarded.
     var fn next() Datagram?!:
         return ok(try msstd_net_datagram_receive(self.raw.native, none, none))
 
@@ -695,7 +695,7 @@ type WebSocketSource:
 
 impl Source[WebSocketMessage] for WebSocketSource:
     // Waits for the next complete message; none once the peer closes normally.
-    // A larger message is `LimitExceeded` and a malformed text message `InvalidData`; after any failure the connection is closed.
+    // A larger message is `EOVERFLOW` and a malformed text message `EBADMSG`; after any failure the connection is closed.
     var fn next() WebSocketMessage?!:
         let raw = try msstd_websocket_receive(self.raw.native)
 

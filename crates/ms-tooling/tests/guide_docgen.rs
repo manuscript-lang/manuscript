@@ -119,7 +119,7 @@ fn mixed_prelude_module_import_guidance() {
     for (path, guidance) in [
         (
             "@std/core.ms",
-            "`Error`, `ErrorCategory`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations",
+            "`Error`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations",
         ),
         (
             "@std/collections/collections.ms",
