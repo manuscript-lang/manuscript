@@ -246,10 +246,8 @@ impl FnLower<'_> {
         match t.types.kind(result) {
             TyKind::List(_) => Some(result),
             TyKind::Alt(a) => t.alts[a.index()]
-                .cases
-                .iter()
-                .find(|c| c.name == "ok")
-                .and_then(|c| c.fields.first())
+                .ok_case()
+                .and_then(|k| t.alts[a.index()].cases[k].fields.first())
                 .map(|f| f.1)
                 .filter(|f| matches!(t.types.kind(*f), TyKind::List(_))),
             _ => None,
@@ -1069,9 +1067,7 @@ impl FnLower<'_> {
 
     pub(crate) fn ok_case_index(&self, a: ms_mir::types::AltId) -> Result<usize, Error> {
         self.b.m.alts[a.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == "ok")
+            .ok_case()
             .ok_or_else(|| Error::new("not a Result"))
     }
 
@@ -1086,9 +1082,7 @@ impl FnLower<'_> {
             return Err(Error::new("a status needs a Result"));
         };
         let err = self.b.m.alts[a.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == "error")
+            .error_case()
             .ok_or_else(|| Error::new("not a Result"))?;
         let et = self.b.m.alts[a.index()].cases[err].fields[0].1;
         if let TyKind::Rec(er) = self.b.m.types.kind(et).clone() {

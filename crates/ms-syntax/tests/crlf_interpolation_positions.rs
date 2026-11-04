@@ -9,7 +9,7 @@ struct Names(Vec<Pos>);
 impl Visitor for Names {
     fn expr(&mut self, expr: &Expr) {
         if let ExprKind::Name(name) = expr.kind
-            && name.as_str() == "value"
+            && ms_syntax::Names::global().str(name) == "value"
         {
             self.0.push(expr.pos);
         }

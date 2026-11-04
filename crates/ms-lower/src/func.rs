@@ -1331,9 +1331,7 @@ impl<'a> FnLower<'a> {
                             return Err(Error::new("a test must return a Result"));
                         };
                         let ok = self.b.m.alts[a.index()]
-                            .cases
-                            .iter()
-                            .position(|k| k.name == "ok")
+                            .ok_case()
                             .ok_or_else(|| Error::new("a test must return a Result"))?;
                         let v = self.b.alt_new(a, ok as u32, &[u]);
                         self.emit_return(Some(Val { v, own: true }));

@@ -533,6 +533,12 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Str(self.strings[s.index()].clone()));
             }
+            Op::BytesLit => {
+                let data = &self.m.blobs[imm_int(inst.imm) as usize];
+                set!(Val::List(Rc::new(
+                    data.iter().map(|&b| Val::Int(i64::from(b))).collect()
+                )));
+            }
             Op::IAdd => set!(Val::Int(int!(0).wrapping_add(int!(1)))),
             Op::ISub => set!(Val::Int(int!(0).wrapping_sub(int!(1)))),
             Op::IMul => set!(Val::Int(int!(0).wrapping_mul(int!(1)))),

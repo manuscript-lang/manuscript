@@ -266,7 +266,7 @@ pub enum FaultKind {
 #[rustfmt::skip]
 pub enum Op {
     // Constants.
-    IConst, FConst, BConst, UnitConst, StrLit,
+    IConst, FConst, BConst, UnitConst, StrLit, BytesLit,
     // Integer arithmetic: wrapping, overflow-checked, and unchecked division.
     IAdd, ISub, IMul, INeg, IAddOverflow, IMulOverflow, IntOverflowIf, IAddChk, ISubChk, IMulChk, UAddChk, USubChk, UMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
     // Sized integers: fault unless the value fits its type. `Float32`: round to binary32.
@@ -394,7 +394,7 @@ impl Op {
     /// Every opcode, for tables and the text parser.
     #[rustfmt::skip]
     pub const ALL: &'static [Op] = &[
-        Op::IConst, Op::FConst, Op::BConst, Op::UnitConst, Op::StrLit,
+        Op::IConst, Op::FConst, Op::BConst, Op::UnitConst, Op::StrLit, Op::BytesLit,
         Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::UAddChk, Op::USubChk, Op::UMulChk, Op::INegChk,
         Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem, Op::NarrowChk, Op::F32Round, Op::Conv, Op::INarrowOpt,
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Ushr, Op::Rotl, Op::Rotr, Op::Clz, Op::Ctz, Op::Popcnt, Op::Not,
@@ -423,6 +423,7 @@ impl Op {
             Op::BConst => ("bconst", K::Bool, true, effects!()),
             Op::UnitConst => ("unit", K::None, true, effects!()),
             Op::StrLit => ("str", K::Str, true, effects!()),
+            Op::BytesLit => ("bytes", K::Int, true, effects!()),
             Op::IAdd => ("iadd", K::None, true, effects!()),
             Op::ISub => ("isub", K::None, true, effects!()),
             Op::IMul => ("imul", K::None, true, effects!()),
@@ -1186,6 +1187,8 @@ pub struct Module {
     /// Element data of constant lists (`list.const`): one entry per list, each element the raw
     /// register value of its type (float bits for floats, 0 or 1 for booleans).
     pub list_consts: Vec<Vec<i64>>,
+    /// Raw bytes of constant `Bytes` (`bytes`), placed in read-only data and borrowed.
+    pub blobs: Vec<Vec<u8>>,
     /// Index of [`Module::strings`] by content; only [`Module::add_string`] writes both.
     string_ids: HashMap<String, StrId>,
     /// Runtime functions called. Grow it only through [`Module::add_extern`] or
@@ -1226,6 +1229,7 @@ impl Module {
             vtables: Vec::new(),
             strings: Vec::new(),
             list_consts: Vec::new(),
+            blobs: Vec::new(),
             string_ids: HashMap::new(),
             externs: Vec::new(),
             extern_ids: HashMap::new(),
@@ -1246,6 +1250,12 @@ impl Module {
         self.strings.push(s.to_string());
         self.string_ids.insert(s.to_string(), id);
         id
+    }
+
+    /// Registers the bytes of a constant `Bytes` and returns its index.
+    pub fn add_blob(&mut self, data: Vec<u8>) -> i64 {
+        self.blobs.push(data);
+        self.blobs.len() as i64 - 1
     }
 
     /// Registers the element data of a constant list and returns its index.
@@ -1278,6 +1288,7 @@ impl Module {
     pub fn add_alt(&mut self, name: &str, cases: Vec<crate::types::CaseDef>) -> (AltId, Ty) {
         self.alts.push(AltDef {
             name: name.to_string(),
+            std: Default::default(),
             cases,
         });
         let id = AltId(self.alts.len() as u32 - 1);
@@ -1463,6 +1474,7 @@ impl Module {
             | Op::GlobalGet
             | Op::Load
             | Op::StrLit
+            | Op::BytesLit
             | Op::StrAscii
             | Op::OptView
             | Op::AltView

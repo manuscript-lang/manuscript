@@ -86,7 +86,7 @@ fn statement_grouping_keeps_complete_inline_conditional_expressions() {
 }
 
 fn syntax_shape(module: &ms_syntax::Module) -> String {
-    ms_syntax::dump::dump_module(module)
+    ms_syntax::dump::dump_module(ms_syntax::Names::global(), module)
         .split(' ')
         .map(|word| {
             if word.split(':').count() == 3 && word.chars().all(|c| c.is_ascii_digit() || c == ':')

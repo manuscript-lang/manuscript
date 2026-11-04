@@ -139,6 +139,12 @@ impl ParameterDefaults {
 /// Parameters flagged as omittable on a known callable; erasure removes all default metadata.
 pub type Defaults = Option<Rc<ParameterDefaults>>;
 
+/// Field of an extern error case that receives the native status detail (`int64_t *code_out`).
+/// The checker and lowering both read the native error shape from these two names.
+pub const EXTERN_ERROR_CODE: &str = "code";
+/// Field of an extern error case that receives the native message (`ms_str *message_out`).
+pub const EXTERN_ERROR_MESSAGE: &str = "message";
+
 /// Identity of a built-in standard type, fixed when the type is built so checks compare a tag
 /// instead of the id text.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

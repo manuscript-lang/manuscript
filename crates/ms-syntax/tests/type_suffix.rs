@@ -5,7 +5,7 @@ fn named(ty: &TypeRef, name: &str, arity: usize) {
     let TypeKind::Named { name: actual, args } = &ty.kind else {
         panic!("expected named type {name}");
     };
-    assert_eq!(actual.as_str(), name);
+    assert_eq!(ms_syntax::Names::global().str(actual), name);
     assert_eq!(args.len(), arity);
 }
 

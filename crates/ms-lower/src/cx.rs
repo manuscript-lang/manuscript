@@ -6,7 +6,7 @@ use ms_check::hir::{Callable, ModuleHir};
 use ms_check::ownership::BorrowKind;
 use ms_check::types::{self as ct, Builtin, Kind, Name, Subst};
 use ms_mir::ir::{FuncId, Module};
-use ms_mir::types::{CaseDef, IfaceDef, MethodSig, Ty as MTy};
+use ms_mir::types::{CaseDef, IfaceDef, MethodSig, Std, Ty as MTy};
 use ms_mir::types::{Native, NativeRec};
 use ms_syntax::NodeId;
 use std::collections::HashMap;
@@ -625,12 +625,23 @@ impl Cx {
                     });
                 }
                 m.alts[id.index()].cases = cases;
+                if t.is(Builtin::Result) {
+                    m.alts[id.index()].std = Std::Result;
+                }
                 Ok(ty)
             }
             Kind::Contract => {
                 let id = ms_mir::types::IfaceId(m.ifaces.len() as u32);
                 m.ifaces.push(IfaceDef {
                     name: t.to_string(),
+                    std: if t.is(Builtin::Comparable) {
+                        Std::Comparable
+                    } else if t.is(Builtin::Equal) {
+                        Std::Equal
+                    } else {
+                        Std::None
+                    },
+                    close: None,
                     methods: Vec::new(),
                 });
                 let ty = m.types.iface(id);
@@ -670,6 +681,9 @@ impl Cx {
                             }
                         }
                         let ret = self.lower_ty(m, &sig.result_ty())?;
+                        if op.name.as_str() == "close" {
+                            m.ifaces[id.index()].close = Some(methods.len() as u32);
+                        }
                         methods.push(MethodSig {
                             name: op.name.to_string(),
                             params,

@@ -856,9 +856,7 @@ impl<'a> FnLower<'a> {
                         return Err(Error::new("a close returns a Result"));
                     };
                     let ok = self.b.m.alts[alt.index()]
-                        .cases
-                        .iter()
-                        .position(|c| c.name == "ok")
+                        .ok_case()
                         .ok_or_else(|| Error::new("a close returns a Result"))?;
                     let unit = self.b.unit();
                     let v = self.b.alt_new(alt, ok as u32, &[unit]);

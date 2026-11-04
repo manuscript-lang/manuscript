@@ -1,8 +1,7 @@
 //! `[embed]`: a directory baked into the program as a generated Manuscript module.
 //!
 //! The module exports `files()`, which builds an `EmbeddedTree` (`@std/os/tree.ms`) holding every
-//! file of the directory as a base64 string literal that is decoded only when the file is read. Nothing about it is special to the
-//! checker, lowering, or the runtime.
+//! file of the directory as Base64 text in a string literal that the compiler decodes into read-only data (`msstd_embed_bytes`).
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -144,12 +143,14 @@ fn literal(text: &str) -> Result<String, ProjectError> {
 
 /// The source of the module that `name` (for example `@assets`) imports.
 pub fn generate(name: &str, root: &str) -> Result<String, ProjectError> {
-    let mut source = String::from(include_str!("embed_module.ms"));
+    let mut loads = String::new();
+    let mut entries = String::new();
     let mut total = 0u64;
+    let mut files = 0usize;
     for entry in found(root)? {
         let path = literal(&entry.path)?;
         if entry.directory {
-            let _ = writeln!(source, "    directories.add({path})");
+            let _ = writeln!(entries, "    directories.add({path})");
             continue;
         }
         let data = std::fs::read(&entry.source)
@@ -170,9 +171,23 @@ pub fn generate(name: &str, root: &str) -> Result<String, ProjectError> {
         }
         let mut text = String::with_capacity(data.len().div_ceil(3) * 4);
         base64(&data, &mut text);
-        let _ = writeln!(source, "    encoded.add({path}, \"{text}\")");
+        let _ = writeln!(
+            loads,
+            "    if index == {files}: return msstd_embed_bytes(\"{text}\")"
+        );
+        let _ = writeln!(entries, "    indexes.add({path}, {files})");
+        files += 1;
     }
-    source.push_str("    return embedded_tree(encoded, directories)\n");
+    let mut source = String::from(include_str!("embed_module.ms"));
+    source.push_str("fn load(index: Int) Bytes:\n");
+    source.push_str(&loads);
+    source.push_str("    return msstd_embed_bytes(\"\")\n\n");
+    source.push_str("export fn files() EmbeddedTree:\n");
+    source.push_str("    var indexes = Map[String, Int]()\n");
+    source.push_str("    var directories = Set[String]()\n");
+    source.push_str("    directories.add(\"\")\n");
+    source.push_str(&entries);
+    source.push_str("    return embedded_tree(indexes, directories, load)\n");
     Ok(source)
 }
 

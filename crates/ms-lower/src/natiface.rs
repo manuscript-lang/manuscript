@@ -421,9 +421,7 @@ fn fit_result(fl: &mut FnLower<'_>, r: Val, ret: MTy) -> Result<Val, Error> {
         return Ok(r);
     };
     let ok = fl.b.m.alts[a.index()]
-        .cases
-        .iter()
-        .position(|c| c.name == "ok")
+        .ok_case()
         .ok_or_else(|| Error::new("result without an ok case"))?;
     let payload = fl.owned(r);
     let v = fl.b.alt_new(a, ok as u32, &[payload]);

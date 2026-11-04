@@ -88,9 +88,7 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
             return Err(Error::new("a test must return a Result"));
         };
         let err = b.m.alts[a.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == "error")
+            .error_case()
             .ok_or_else(|| Error::new("a test must return a Result"))?;
         let tag = b.alt_tag(r);
         let k = b.iconst(err as i64);
