@@ -324,7 +324,7 @@ fn copy_notes() Unit!:
     return ok(unit)
 ```
 
-The file closes at the end of its scope, even on early return. `close()` returns a `Result`: a function that returns `Result[_, Error]` gets a failed close as its error, and any other function faults on one. Closures do not keep it open; see [resource captures](../core-language/functions/function-values-and-closures.md#resource-captures).
+The file closes at the end of its scope, even on early return. `close()` returns a `Result`: a function that returns `Result[_, Error]` gets a failed close as its error, and any other function faults on one. Moving the file into an escaping closure transfers its cleanup duty to that closure; a borrowed capture must stay within the owner’s lifetime. See [resource captures](../core-language/functions/function-values-and-closures.md#resource-captures).
 
 ## A few compiler errors to recognize
 

@@ -9,19 +9,12 @@ Each program is a complete `.ms` file: save it under the shown name and run the 
 
 ## Print a line
 
-Save as `hello.ms`. Check both write and flush.
+Save as `hello.ms`. `print` is available without an import and adds a newline.
 
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
 ```manuscript
-import stdout from "@std/io/io.ms"
-
-fn run() Result[Unit, Error]:
-    try stdout().write("Hello, Manuscript!\n")
-    return stdout().flush().wait()
-
 export fn main() Int:
-    if run().is_error():
-        return 1
+    print("Hello, Manuscript!")
     return 0
 ```
 
@@ -29,7 +22,7 @@ export fn main() Int:
 ms run hello.ms
 ```
 
-There is no built-in `print`. `try` propagates I/O errors; `main` returns 1 on failure. Later recipes print no diagnostics; to add one, use `cause.message` ([the Error record](../core-language/errors/results.md#the-error-record)).
+`print` converts any value to text and returns `Unit`. For recoverable I/O errors, use `stdout().write(...)` and `stdout().flush().wait()` as in the next recipe. `try` propagates those errors; `main` returns 1 on failure. To show an error, use `cause.message` ([the Error record](../core-language/errors/results.md#the-error-record)).
 
 ## Read command-line arguments
 

@@ -145,7 +145,7 @@ Through a `let` or an undeclared-`var` parameter, `counter?.bump()` is rejected 
 - `ok_or[E = Error](cause: E?) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` may be any value type.
 - `ok_or_else[E](create: fn() E) Result[T, E]`: calls `create` once, only on absence.
 
-Omitting the cause yields an `Error` of kind `NotFound` (the [default type argument](generics.md#default-type-arguments)). Its message records the source file and line of the `ok_or()` call, such as `missing value at src/main.ms:12`. Any function whose error type is `Error` can `try` it:
+Omitting the cause yields an `Error` of kind `"ENOENT"` (the [default type argument](generics.md#default-type-arguments)). Its message records the source file and line of the `ok_or()` call, such as `missing value at src/main.ms:12`. Any function whose error type is `Error` can `try` it:
 
 ```manuscript
 fn port_number(text: String) Int!:

@@ -41,7 +41,7 @@ impl Bytes:
 
     /*
     Borrows [start, end) of the receiver without copying; negative bounds are relative to the end.
-    Bounds outside 0 <= start <= end <= length() raise a fault. Like `List.get`, the result lends
+    Bounds outside 0 <= start <= end <= length() raise a fault. Like `List.get`, the result borrows
     the receiver, which cannot change while the view is used; `.clone()` keeps the bytes.
     */
     fn view(start: Int, end: Int) Bytes: ...

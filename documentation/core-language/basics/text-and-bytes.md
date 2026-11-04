@@ -103,12 +103,14 @@ All slice operations include `start` and exclude `end`. Let `n` be the receiver'
 
 | Operation | Bounds and result |
 | --- | --- |
-| `String.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `OutOfRange`. |
-| `String.slice_scalars(start:, end:)` | Require `0 <= start <= end <= n` with no relative negative bounds; invalid bounds return an `Error` of kind `OutOfRange`. |
-| `List.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `OutOfRange`; success is a new owned List with independent storage. |
-| `Bytes.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `OutOfRange`; success is immutable Bytes that may share immutable storage. |
+| `String.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `"ERANGE"`. |
+| `String.slice_scalars(start:, end:)` | Require `0 <= start <= end <= n` with no relative negative bounds; invalid bounds return an `Error` of kind `"ERANGE"`. |
+| `List.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `"ERANGE"`; success is a new owned List with independent storage. |
+| `Bytes.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `"ERANGE"`; success is an owned copy of the selected bytes. |
 
-Equal bounds give an empty range. Bounds are never clamped or swapped; `text.slice(start: 0, end: n + 1)` is an `OutOfRange` error, not a fault. `"aé🙂z".slice(start: -2, end: 4)` is `ok("🙂z")`; `slice(start: 3, end: 1)` and `slice(start: 1, end: 10)` are errors of kind `OutOfRange`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections.md), and [Bytes](../../standard-library/reference/bytes.md) references.
+Equal bounds give an empty range. Bounds are never clamped or swapped; `text.slice(start: 0, end: n + 1)` is an `"ERANGE"` error, not a fault. `"aé🙂z".slice(start: -2, end: 4)` is `ok("🙂z")`; `slice(start: 3, end: 1)` and `slice(start: 1, end: 10)` are errors of kind `"ERANGE"`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections.md), and [Bytes](../../standard-library/reference/bytes.md) references.
+
+`Bytes.view(start, end)` uses the same byte bounds and borrows the range without copying. Invalid bounds raise a fault. The receiver must stay available while the view is used; call `.clone()` on the view to keep an independent value.
 
 ## Replacing text
 
@@ -174,7 +176,7 @@ test "padding and fixed digits":
 
 ## Binary data
 
-`Bytes` reads fixed-width numbers at an absolute offset: `int8`, `uint8`, and for each of `int16`, `int32`, `int64`, `uint16`, `uint32`, `float32`, `float64` a `_le` and `_be` spelling, such as `data.int32_le(at: 2)`. Each returns `Result[T, BinaryError]`; bytes that are not all there give `BinaryError.OutOfRange`. Signed reads return `Int8`, `Int16`, `Int32` and `Int` (64-bit); `uint8`, `uint16` and `uint32` reads return `UInt8`, `UInt16` and `UInt32`; `float32` returns `Float32` and `float64` returns `Float`. `BytesBuilder` writes with matching `append_int32_le(value)` and siblings; `append` adds one byte and `append_bytes` adds many.
+`Bytes` reads fixed-width numbers at an absolute offset: `int8`, `uint8`, and for each of `int16`, `int32`, `int64`, `uint16`, `uint32`, `float32`, `float64` a `_le` and `_be` spelling, such as `data.int32_le(at: 2)`. Each returns `T!` (`Result[T, Error]`); bytes that are not all there give an `Error` of kind `"ERANGE"`. Signed reads return `Int8`, `Int16`, `Int32` and `Int` (64-bit); `uint8`, `uint16` and `uint32` reads return `UInt8`, `UInt16` and `UInt32`; `float32` returns `Float32` and `float64` returns `Float`. `BytesBuilder` writes with matching `append_int32_le(value)` and siblings; `append` adds one byte and `append_bytes` adds many.
 
 ```manuscript
 import BytesBuilder from "@std/bytes.ms"

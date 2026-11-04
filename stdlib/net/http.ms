@@ -36,7 +36,7 @@ Headers are an owned value: assignment moves them, mutation needs `var`, and clo
 export extern type HttpHeaders
 
 impl HttpHeaders:
-    // Appends a String value under a valid HTTP name; invalid names return InvalidInput.
+    // Appends a String value under a valid HTTP name; invalid names return EINVAL.
     // Transport operations additionally validate framing and field values.
     var fn append(name: String, value: String) Unit!:
         return msstd_http_headers_append(self, name, value.to_bytes())
@@ -153,7 +153,7 @@ export type HttpClient:
 
 impl Closeable for HttpClient:
     // Cancels in-flight requests, closes open response bodies, and drops idle pooled connections.
-    // Safe to call repeatedly; later requests return Closed.
+    // Safe to call repeatedly; later requests return EBADF.
     var fn close() Unit!:
         msstd_http_client_close(self.native)
         return ok(unit)
@@ -251,7 +251,7 @@ export type HttpClientOptions:
 // Received headers are an owned copy; repeated values stay separate.
 export interface HttpExchange:
     // Ends the exchange, interrupting reads or writes in progress.
-    // Later operations return Closed.
+    // Later operations return EBADF.
     var fn close() Unit
     // Returns an owned copy of the request headers with every repeated value retained.
     fn headers() HttpHeaders
@@ -265,23 +265,23 @@ export interface HttpExchange:
     // Returns the raw query string without the leading `?`; it is empty when there is none.
     fn query() String
     // Returns the next chunk of the request body, at most `max_bytes` and never more than 65536, or none at the end of the body.
-    // Reading past `max_body_bytes` returns an `Error` of kind `Failed`, and a non-positive `max_bytes` returns InvalidInput.
+    // Reading past `max_body_bytes` returns an `Error` of kind `EIO`, and a non-positive `max_bytes` returns EINVAL.
     var fn read(max_bytes: Int?) Bytes?!
     // Sends a whole response: the status line, `headers`, and `body` with its length known, so the response carries `Content-Length` rather than chunked framing. Requests with HEAD and statuses without a body get the head alone.
     // The rules of `send_headers` apply, `body` is bounded by `max_response_bytes`, and nothing else may be sent afterwards.
     var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!
     // Sends the status line and headers once, before any body is written.
-    // The status must be 200 through 599, header names cannot be `Content-Length`, `Transfer-Encoding`, or `Connection`, and header bytes are bounded by `max_header_bytes`. A second call returns InvalidInput and a closed exchange returns Closed.
+    // The status must be 200 through 599, header names cannot be `Content-Length`, `Transfer-Encoding`, or `Connection`, and header bytes are bounded by `max_header_bytes`. A second call returns EINVAL and a closed exchange returns EBADF.
     var fn send_headers(status: Int, headers: HttpHeaders) Unit!
     // Switches the connection to a WebSocket after checking the `Origin` header. Requests without an Origin are accepted; otherwise it must exactly match an entry of `allowed_origins`, or, when that list is empty, match the request's own scheme and host.
-    // `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be positive when given. An exchange that already sent headers or upgraded returns InvalidInput, and a request that is not a valid WebSocket upgrade returns Failed.
+    // `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be positive when given. An exchange that already sent headers or upgraded returns EINVAL, and a request that is not a valid WebSocket upgrade returns EIO.
     var fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
     ) RawWebSocket!
     // Writes one chunk of the response body and flushes it.
-    // `send_headers` must come first, and writing beyond `max_response_bytes` returns an `Error` of kind `Failed`. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return InvalidInput.
+    // `send_headers` must come first, and writing beyond `max_response_bytes` returns an `Error` of kind `EIO`. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return EINVAL.
     var fn write(data: String) Unit!
     // Writes one chunk of raw bytes with the same rules as write.
     var fn write_bytes(data: Bytes) Unit!
@@ -337,7 +337,7 @@ impl HttpServer:
     fn address() String:
         return self.bound.clone()
 
-    // Waits until the server has stopped. Returns Ok after `close`, or the error that ended accepting (`Failed` with the host's text). `timeout` bounds the wait and cancels the server when it passes.
+    // Waits until the server has stopped. Returns Ok after `close`, or the error that ended accepting (`EIO` with the host's text). `timeout` bounds the wait and cancels the server when it passes.
     fn wait(timeout: Duration? = none) Unit!:
         set_options(self.accepting, PromiseOptions(timeout: timeout.clone()))
 
@@ -377,7 +377,7 @@ export type RawResponse:
 
 impl Closeable for RawResponse:
     // Cancels the rest of the response and releases its connection.
-    // Safe to call repeatedly; reads afterwards return Closed. A fully read body lets the connection be reused.
+    // Safe to call repeatedly; reads afterwards return EBADF. A fully read body lets the connection be reused.
     var fn close() Unit!:
         msstd_http_body_close(self.native)
         return ok(unit)
@@ -397,7 +397,7 @@ impl RawResponse:
 export type StreamingResponse:
     // Status and headers, available whether or not the body is read.
     metadata: HttpResponseMetadata
-    // The body, at most 64 KiB per item. Reading past the request's `max_response_bytes` is an `Error` of kind `Failed`.
+    // The body, at most 64 KiB per item. Reading past the request's `max_response_bytes` is an `Error` of kind `EIO`.
     body: ReadStream[Bytes]
 
 impl Closeable for StreamingResponse:
@@ -422,7 +422,7 @@ fn response(raw: RawResponse) StreamingResponse:
     )
 
 // Reads the rest of the request body into one value.
-// A body over `max_body_bytes` of the server's options returns LimitExceeded; `limit` also bounds it when given.
+// A body over `max_body_bytes` of the server's options returns EOVERFLOW; `limit` also bounds it when given.
 export fn read_body(var exchange: HttpExchange, limit: Int?) Bytes!:
     let first = try exchange.read()
     if let head = first:
@@ -481,7 +481,7 @@ export fn text(status: Int, body: String) HttpResponse:
     return HttpResponse(status: status, headers: headers(), body: body.to_bytes())
 
 // Builds a response whose body is `value` encoded as JSON, with `Content-Type: application/json`.
-// A value `stringify` cannot encode returns Failed with its diagnostic.
+// A value `stringify` cannot encode returns EIO with its diagnostic.
 export fn json[T: Data](status: Int, value: T) HttpResponse!:
     let body = stringify(value)
     if body.is_error(): return error(Error(body.err().message, kind: "EIO"))

@@ -82,7 +82,7 @@ impl Regex:
     fn find_all(text: String, max_matches: Int?) List[String]!: ...
 
     // Replaces every nonoverlapping match with literal replacement text; $ and capture names are not expanded.
-    // max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded.
+    // max_bytes optionally bounds UTF-8 output; negatives return EINVAL, exhaustion EOVERFLOW.
     fn replace_all(text: String, replacement: String, max_bytes: Int?) String!: ...
 
     // Returns the first match as [whole, group1, ...]; groups that did not participate are "". Empty list when nothing matches.
@@ -308,7 +308,7 @@ interface RegexSpanQueries:
 
 impl RegexSpanQueries for Regex:
     // Returns all full-match byte ranges in find_all order, without copying matched text.
-    // max_matches is a strict output budget: negatives return InvalidInput, excess returns LimitExceeded.
+    // max_matches is a strict output budget: negatives return EINVAL, excess returns EOVERFLOW.
     fn find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!:
         let raw = try msstd_regex_find_all_spans(self, text, max_matches)
         var out = List[RegexSpan](reserve: raw.length() / 2)
@@ -319,8 +319,8 @@ impl RegexSpanQueries for Regex:
     /*
     Returns the first match's [whole, group1, ...] byte ranges, or outer none when no match exists.
     An unmatched group is inner none; a participating empty group has start == end.
-    max_captures bounds slots including the whole match and unmatched groups. Negative budgets return InvalidInput;
-    excess returns LimitExceeded. The budget bounds output, not input scanning or engine scratch space.
+    max_captures bounds slots including the whole match and unmatched groups. Negative budgets return EINVAL;
+    excess returns EOVERFLOW. The budget bounds output, not input scanning or engine scratch space.
     */
     fn capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!:
         let raw = try msstd_regex_capture_spans(self, text, max_captures)
@@ -331,7 +331,7 @@ impl RegexSpanQueries for Regex:
     /*
     Like capture_spans for every match in captures_all order; no match gives an empty list.
     max_matches bounds rows; max_captures bounds total slots across rows, including whole and unmatched groups.
-    Negative budgets return InvalidInput, excess returns LimitExceeded; these are output budgets, not search limits.
+    Negative budgets return EINVAL, excess returns EOVERFLOW; these are output budgets, not search limits.
     */
     fn capture_all_spans(
         text: String,

@@ -30,10 +30,10 @@ import (
 // shared state, give it one owner and send it values over a `pipe`).
 //
 // ```manuscript
-// let config = read("config.json")  // Promise[Bytes], already running
+// let config = read_file("config.json")  // Promise[Bytes], already running
 // let words = promise(
-//     fn: count_words(text), options: PromiseOptions(timeout: seconds(5))
-// )  // may run on another thread, ends with Timeout after 5 s
+//     fn: count_words(text), options: PromiseOptions(timeout: 5.seconds())
+// )  // may run on another thread, ends with ETIMEDOUT after 5 s
 // let bytes = try config.wait()
 // let total = try words.wait()
 // ```
@@ -49,12 +49,12 @@ export opaque type Promise[T]:
 export type PromiseOptions:
     // How long the work may run, counted from construction; none means no limit.
     timeout: Duration? = none
-    // When this signal's `Cancel` fires, the work is cancelled and `wait` reports `Cancelled`.
+    // When this signal's `Cancel` fires, the work is cancelled and `wait` reports `ECANCELED`.
     // Applying a signal to an existing promise replaces its previous signal; none leaves it unchanged.
     cancel: Signal? = none
 
 // One switch that cancels every promise made with its `signal()`. `cancel()` never waits; the work stops at its next wait
-// and `wait` reports `Cancelled`. Dropping the switch does not cancel anything: promises made with its signals keep running.
+// and `wait` reports `ECANCELED`. Dropping the switch does not cancel anything: promises made with its signals keep running.
 export opaque type Cancel:
     // The runtime slot of this switch: a generation and an index.
     id: Int
@@ -140,8 +140,8 @@ fn taken_error(id: Int) Error:
     return outcome(id, 4)
 
 impl Promise[T]:
-    // Waits for the result and moves it out. Errors: the operation's own error; `Failed` (a fault inside, with its
-// report in `details`); `Cancelled`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's
+    // Waits for the result and moves it out. Errors: the operation's own error; `EIO` (a fault inside, with its
+    // report in `details["report"]`); `ECANCELED`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's
     // `timeout` option has passed, which also cancelled the work.
     fn wait() T!:
         let code = msrt_promise_wait(self.id, -1)
@@ -152,14 +152,14 @@ impl Promise[T]:
 
         return error(outcome(self.id, code))
 
-    // Applies `options` to a promise made elsewhere (`read`, `fetch`, `sleep`, `exec`) and returns it, so
-    // `read(path).with(options: PromiseOptions(timeout: seconds(5))).wait()` bounds the read. The timeout counts from now.
+    // Applies `options` to a promise made elsewhere (`read_file`, `fetch`, `sleep`, `exec`) and returns it, so
+    // `read_file(path).with(options: PromiseOptions(timeout: 5.seconds())).wait()` bounds the read. The timeout counts from now.
     // A provided cancel signal replaces the previous signal.
     fn with(options: PromiseOptions) Promise[T]:
         limit(self.id, options)
         return self
 
-    // Asks the work to stop at its next wait; `wait` then reports `Cancelled`. It returns at once, and dropping the promise
+    // Asks the work to stop at its next wait; `wait` then reports `ECANCELED`. It returns at once, and dropping the promise
     // joins the work. A finished promise is unchanged.
     fn cancel() Unit:
         msrt_promise_cancel(self.id)
@@ -184,7 +184,7 @@ export fn complete[U](id: Int, result: U!) Unit:
 
 // Runs `entry` on a thread the runtime picks and returns its promise. The promise reads what `entry` captures, so the
 // values it reads must outlive it and cannot change while it lives; nothing the entry captures can be changed from
-// inside it. A fault inside ends only this promise: `wait` reports it as `Failed`.
+// inside it. A fault inside ends only this promise: `wait` reports it as `EIO`.
 export fn promise[U](
     entry: fn() U!,
     options: PromiseOptions = PromiseOptions()

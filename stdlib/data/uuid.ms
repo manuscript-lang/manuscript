@@ -17,7 +17,7 @@ export let namespace_x500 = "6ba7b814-9dad-11d1-80b4-00c04fd430c8"
 /*
 Creates the version-5 (SHA-1, name-based) UUID of `name` within `namespace`.
 The same namespace and name always give the same lowercase UUID, so it makes a stable id for a URL, a path or a key.
-`namespace` is any UUID text, such as `namespace_url` or an application's own UUID; malformed text returns InvalidData.
+`namespace` is any UUID text, such as `namespace_url` or an application's own UUID; malformed text returns EBADMSG.
 Example: `uuid_v5(namespace_dns, "python.org")` is `"886313e1-3b8a-5372-9b90-0c9aee199e5d"`.
 */
 export fn uuid_v5(namespace: String, name: String) String!:

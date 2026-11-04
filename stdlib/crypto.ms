@@ -60,7 +60,7 @@ export fn constant_time_select(choice: Int, left: Int, right: Int) Int:
 export fn constant_time_less_or_equal(left: Int, right: Int) Int:
     return 1 + shift_right(right - left, 63)
 
-// Returns the byte-wise exclusive OR of two equal-length byte strings, or InvalidInput when the lengths differ.
+// Returns the byte-wise exclusive OR of two equal-length byte strings, or EINVAL when the lengths differ.
 export fn xor_bytes(left: Bytes, right: Bytes) Bytes!:
     if left.length() != right.length():
         return error(Error("crypto: invalid input", kind: "EINVAL"))
@@ -164,7 +164,7 @@ export fn aes_cbc_encrypt(key: Bytes, iv: Bytes, plaintext: Bytes) Bytes!:
     return msstd_crypto_aes_cbc_encrypt(key, iv, plaintext)
 
 // Decrypts AES-CBC data and removes PKCS#7 padding.
-// Fails with InvalidInput for a bad key, IV or length, and AuthenticationFailed for invalid padding.
+// Fails with EINVAL for a bad key, IV or length, and EAUTH for invalid padding.
 export fn aes_cbc_decrypt(key: Bytes, iv: Bytes, ciphertext: Bytes) Bytes!:
     return msstd_crypto_aes_cbc_decrypt(key, iv, ciphertext)
 
@@ -229,7 +229,7 @@ export fn rsa_verify_pss(
 export fn rsa_encrypt(public_key: Bytes, hash: HashAlgorithm, message: Bytes) Bytes!:
     return msstd_crypto_rsa_encrypt(public_key, hash, message)
 
-// Decrypts an RSA-OAEP message with a PKCS#8 DER private key. Fails with AuthenticationFailed when decryption is rejected.
+// Decrypts an RSA-OAEP message with a PKCS#8 DER private key. Fails with EAUTH when decryption is rejected.
 export fn rsa_decrypt(private_key: Bytes, hash: HashAlgorithm, ciphertext: Bytes) Bytes!:
     return msstd_crypto_rsa_decrypt(private_key, hash, ciphertext)
 
@@ -256,13 +256,13 @@ impl HashAlgorithm:
         return msstd_crypto_hmac(self, key, data)
 
     // Derives a key with PBKDF2-HMAC using this algorithm, the iteration count and length.
-    // Fails with InvalidInput for non-positive iterations or a length outside 1..1048576.
+    // Fails with EINVAL for non-positive iterations or a length outside 1..1048576.
     fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) Bytes!:
         return msstd_crypto_derive_key(self, password, salt, iterations, length)
 
     /*
     Expands secret into length bytes with HKDF (RFC 5869) using this algorithm.
-    An empty salt uses the algorithm's zero-filled default. Fails with InvalidInput when
+    An empty salt uses the algorithm's zero-filled default. Fails with EINVAL when
     length is not positive or exceeds 255 times the digest size.
     */
     fn hkdf(secret: Bytes, salt: Bytes, info: Bytes, length: Int) Bytes!:

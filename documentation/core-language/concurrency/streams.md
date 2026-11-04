@@ -12,7 +12,8 @@ Both types are opaque, own what is behind them, and are `Closeable`: scope end c
 ## Reading
 
 ```manuscript
-import stdin from "@std/io/io.ms"
+import ReadStream from "@std/io/io.ms"
+import Bytes from "@std/bytes.ms"
 import lines from "@std/io/streams.ms"
 
 fn count_errors(input: ReadStream[Bytes]) Int!:
@@ -25,12 +26,12 @@ fn count_errors(input: ReadStream[Bytes]) Int!:
 
 - `read()` returns a `Promise[T?]` for one step; `none` marks the end.
 - `wait()` returns the items for `for item in s.wait()`. Each item is `T!`, so a failure arrives in the loop and ends it.
-- The loop holds the stream's source until it ends, breaks or fails, then hands it back: after a `break`, `s.read()` or another loop continues from the next item. Inside the loop body, `s.read()` fails with `Closed` ("a read is already waiting"), and `s.close()` closes the source when the loop ends.
+- The loop holds the stream's source until it ends, breaks or fails, then hands it back: after a `break`, `s.read()` or another loop continues from the next item. Inside the loop body, `s.read()` fails with `"EBADF"` ("a read is already waiting"), and `s.close()` closes the source when the loop ends.
 - A stream is not an `Iterator`, so a `for` over a stream without `.wait()` is a checker error that points at `.wait()`. `Iterator` is for sequences that never wait, such as `List` and `Map`.
 
 ## Writing
 
-- `write(value)` moves the value into the stream's buffer and returns at once. It never waits, so `stdout().write("text")` needs no `wait`. It returns `Closed` once the reader is gone.
+- `write(value)` moves the value into the stream's buffer and returns at once. It never waits, so `stdout().write("text")` needs no `wait`. It returns `"EBADF"` once the reader is gone.
 - `flush()` returns a promise that finishes when the buffer has drained. This is the backpressure point: write freely, and flush when `buffered()` says enough has piled up.
 - `buffered()` reports the items or bytes not yet drained.
 - Buffers left at exit are drained by the runtime before the process ends. A drain error after `close` is lost, so call `flush().wait()` first when delivery matters.
@@ -85,7 +86,7 @@ try producer.wait()
 
 - `writer()` returns a new writing end each time, like `dup` on a file descriptor. `reader()` returns the one reading end.
 - `capacity` is the level above which a writer's `flush` waits.
-- The reader ends when every writer is closed, after it has read what was sent. Closing the reader makes writers fail with `Closed`.
+- The reader ends when every writer is closed, after it has read what was sent. Closing the reader makes writers fail with `"EBADF"`.
 - `write` is a `var fn`, so two promises cannot share one writer; each takes its own. Make one `var` writer per producer before starting the promises: the promise takes it over and may pass it on or write to it, so any number of producers can feed one reader.
 
 `json_reader[T]` and `json_writer[T]` give a typed view of a byte stream, for example to send newline-delimited JSON over a socket.
