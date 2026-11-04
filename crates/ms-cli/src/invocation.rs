@@ -501,7 +501,8 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             ),
         ));
     }
-    if !inv.diff.is_empty() && inv.view.is_empty() && inv.entity.is_empty() {
+    if !inv.diff.is_empty() && inv.view.is_empty() && inv.entity.is_empty() && inv.format != "html"
+    {
         return Err(usage_error(
             io,
             "--diff marks a scoped view; add --view or --entity, e.g. ms diagram ms.toml --view flow --entity save --diff change.patch",
@@ -521,11 +522,11 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
     }
     if command == "diagram"
         && inv.format == "html"
-        && (!inv.view.is_empty() || !inv.entity.is_empty() || !inv.diff.is_empty())
+        && (!inv.view.is_empty() || !inv.entity.is_empty())
     {
         return Err(usage_error(
             io,
-            "--format html covers every view in one page; drop --view, --entity, and --diff",
+            "--format html covers every view in one page; drop --view and --entity",
         ));
     }
     if command == "diagram"

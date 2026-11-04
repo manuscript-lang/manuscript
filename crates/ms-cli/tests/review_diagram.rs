@@ -368,10 +368,36 @@ fn html_page_embeds_the_program_and_escapes_script_text() {
     );
     let page = String::from_utf8(out.stdout).unwrap();
     assert!(
-        page.starts_with("<!doctype html>") && page.contains("\"name\":\"double\""),
+        page.starts_with("<!doctype html>") && page.contains("\"fn\",\"double\""),
         "{page}"
     );
     assert!(!page.contains("__DATA__"));
+    std::fs::write(
+        dir.join("change.patch"),
+        include_str!("diagram_overview/change.patch"),
+    )
+    .unwrap();
+    let diff = ms(
+        &dir,
+        &[
+            "diagram",
+            "main.ms",
+            "--format",
+            "html",
+            "--diff",
+            "change.patch",
+        ],
+    );
+    assert!(
+        diff.status.success(),
+        "{}",
+        String::from_utf8_lossy(&diff.stderr)
+    );
+    assert!(
+        String::from_utf8(diff.stdout)
+            .unwrap()
+            .contains("\"x\":[[1,\"double\"")
+    );
     let bad = ms(
         &dir,
         &["diagram", "main.ms", "--format", "html", "--view", "calls"],

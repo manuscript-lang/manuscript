@@ -568,7 +568,17 @@ fn view(syms: ms_syntax::Names, request: &DiagramRequest, head: &Checked, io: &m
     };
     let facts = facts_of(syms, head);
     if request.format == "html" {
-        let page = ms_tooling::html::html_page(&facts);
+        let changes = if request.diff.is_empty() {
+            None
+        } else {
+            let (input, base) =
+                match diff_inputs(syms, &request.filename, &request.diff, head, false, io) {
+                    Ok(inputs) => inputs,
+                    Err(status) => return status,
+                };
+            Some(compare_facts(&base, &facts, &input))
+        };
+        let page = ms_tooling::html::html_page(&facts, changes.as_deref());
         return write_output(io, &request.output, page.as_bytes());
     }
     let mut tree = match build_view(&facts, name, &request.entity, request.depth as i64) {

@@ -279,7 +279,7 @@ Options:
   --view <name>        overview, calls, effects, errors, modules, flow, scope, tasks, types, or ownership (default calls with --entity)
   --entity <name>      Root the view at one declaration or module
   --depth <n>          Expansion depth for a view (default 3)
-  --diff <path|->      Mark what a unified diff changed in the view (tree is the after state)
+  --diff <path|->      Mark what a unified diff changed (in a view, or in the html page; the tree is the after state)
   --format <name>      ascii (default), mermaid, or html (one interactive page for the whole program)
   -o, --output <path>  Write output to a file (default: stdout)
   --json               Emit a versioned diagram tree with source IDs and locations (default: calls view)
