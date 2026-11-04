@@ -193,7 +193,7 @@ impl MemoryTree:
         let below_files = self.files.keys().filter(fn k: k.starts_with(prefix))
         let below_dirs = self.directories.values().filter(fn k: k.starts_with(prefix))
         if not recursive and (below_files.length() + below_dirs.length()) > 0: return error(
-            Error("filesystem: directory not empty", kind: "EUNKNOWN")
+            Error("filesystem: directory not empty", kind: "ENOTEMPTY")
         )
 
         for key in below_files:

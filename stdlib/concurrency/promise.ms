@@ -103,7 +103,7 @@ fn outcome(id: Int, code: Int) Error:
     if code == 2:
         return Error("promise: timed out", kind: "ETIMEDOUT")
     if code == 3:
-        return Error("promise: cancelled", kind: "EUNKNOWN")
+        return Error("promise: cancelled", kind: "ECANCELED")
     if code == 4:
         return Error("promise: the result was already taken", kind: "EBADF")
 
@@ -234,7 +234,7 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 export fn wait_first[T](promises: List[Promise[T]]) T!:
     var pending = promises
     if pending.is_empty():
-        return error(Error("promise: nothing to wait for", kind: "EUNKNOWN"))
+        return error(Error("promise: nothing to wait for"))
 
     var ids: List[Int] = []
     for p in pending:

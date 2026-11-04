@@ -5,4 +5,4 @@ fn first(values: List[Int]) Int!: values.first().ok_or()
 
 fn message(values: List[Int]) String: first(values).err().message
 
-fn kind(values: List[Int]) String: first(values).err().kind
+fn kind(values: List[Int]) String?: first(values).err().kind

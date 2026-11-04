@@ -342,7 +342,7 @@ impl Source[T] for PipeSource[T]:
 
         if code != 0:
             msrt_promise_drop(p)
-            return error(Error("pipe: read cancelled", kind: "EUNKNOWN"))
+            return error(Error("pipe: read cancelled", kind: "ECANCELED"))
 
         let value = msrt_promise_take[T](p)
         msrt_promise_drop(p)

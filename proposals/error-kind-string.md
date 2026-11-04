@@ -8,7 +8,7 @@
 
 ## Status
 
-Approved 2026-11-04. Owner: "make kind a string and rework the internals of standard lib to return standard error code such as enoEnt or ebusy". Checked against `b55e66d6`.
+Approved 2026-11-04; kind made optional the same day. Owner: "make kind a string and rework the internals of standard lib to return standard error code such as enoEnt or ebusy". Checked against `b55e66d6`.
 
 ## Problem
 
@@ -24,7 +24,7 @@ return error(Error("quota exceeded", kind: ErrorCategory.QuotaExceeded))
 ```ms
 export type Error:
     message: String
-    kind: String = "EUNKNOWN"
+    kind: String? = none
     details: Map[String, String] = Map[String, String]()
 
 fn open_config(path: String) String!:
@@ -55,10 +55,10 @@ Mapping from the old cases (`status_table` rows keep their numbers):
 | Failed | `EIO` |
 | Unavailable | `EAGAIN` (`EBUSY` for a busy terminal) |
 | Timeout | `ETIMEDOUT` |
-| Other | `EUNKNOWN` (`EAUTH` for failed authentication) |
+| Other | `none` (`EAUTH` for failed authentication) |
 
 - Two limit statuses (3 and 14) share `EOVERFLOW`; the message tells them apart.
-- `EAUTH` and `EUNKNOWN` are not POSIX names; they are Manuscript's own.
+- `kind` is optional: `none` means no code fits. `EAUTH` is not a POSIX name; it is Manuscript's own. Cancellation uses `ECANCELED`.
 - The native ABI is unchanged: statuses stay `u8`; lowering maps a status to its code string.
 - `std/http` serving still maps a handler error to a status by comparing the kind string.
 

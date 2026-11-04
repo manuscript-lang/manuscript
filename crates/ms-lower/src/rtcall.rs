@@ -1204,10 +1204,11 @@ impl FnLower<'_> {
     ) -> Result<Value, Error> {
         let fields = self.b.m.records[er.index()].fields.clone();
         let code = self.b.str_lit(kind);
-        let kind_value = self.owned(Val {
+        let code = self.owned(Val {
             v: code,
             own: false,
         });
+        let kind_value = self.b.opt_some(code);
         let mut details = self.map_new(fields[2].1)?;
         if let Some(site) = site {
             let key = self.b.str_lit("site");

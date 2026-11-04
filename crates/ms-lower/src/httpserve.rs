@@ -212,7 +212,33 @@ impl FnLower<'_> {
         kinds: &[&str],
     ) -> Result<ms_mir::ir::Value, Error> {
         let kind = self.b.rec_get(er_of(self, e)?, 1, e);
-        self.kind_status(e, kind, err, kinds, 0)
+        let present = self.b.opt_is_some(kind);
+        let r = self.two_ways(
+            present,
+            MTy::INT,
+            &mut |s| {
+                let code = s.b.opt_get(kind);
+                s.kind_status(e, code, err, kinds, 0).map(Some)
+            },
+            &mut |s| s.failed_status(e, err).map(Some),
+        )?;
+        Ok(r.v)
+    }
+
+    /// `STATUS_FAILED`, storing the message of the `Error` `e` through `err`.
+    fn failed_status(
+        &mut self,
+        e: ms_mir::ir::Value,
+        err: ms_mir::ir::Value,
+    ) -> Result<ms_mir::ir::Value, Error> {
+        let er = er_of(self, e)?;
+        let text = self.b.rec_get(er, 0, e);
+        let text = self.owned(Val {
+            v: text,
+            own: false,
+        });
+        self.b.emit(Op::Put, &[err, text], Imm::None, None);
+        Ok(self.b.iconst(i64::from(ms_rt_abi::STATUS_FAILED)))
     }
 
     fn kind_status(
@@ -224,16 +250,7 @@ impl FnLower<'_> {
         at: usize,
     ) -> Result<ms_mir::ir::Value, Error> {
         let Some(code) = kinds.get(at).copied() else {
-            let TyKind::Rec(er) = self.b.m.types.kind(self.ty_of(e)).clone() else {
-                return Err(Error::new("a stream method must fail with an Error"));
-            };
-            let text = self.b.rec_get(er, 0, e);
-            let text = self.owned(Val {
-                v: text,
-                own: false,
-            });
-            self.b.emit(Op::Put, &[err, text], Imm::None, None);
-            return Ok(self.b.iconst(i64::from(ms_rt_abi::STATUS_FAILED)));
+            return self.failed_status(e, err);
         };
         let lit = self.b.str_lit(code);
         let hit = self.call_runtime("msrt_string_eq", &[kind, lit], MTy::BOOL)?;

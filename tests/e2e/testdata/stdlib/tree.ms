@@ -78,7 +78,7 @@ test "memory tree reports precise errors":
     ): return panic("parent is file")
     if (
         tree.remove("docs").err() != Error(
-            "filesystem: directory not empty", kind: "EUNKNOWN"
+            "filesystem: directory not empty", kind: "ENOTEMPTY"
         )
     ): return panic("not empty")
 

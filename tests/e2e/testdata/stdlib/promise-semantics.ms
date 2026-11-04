@@ -81,7 +81,7 @@ test "cancel ends unfinished work and wait reports Cancelled":
     slow.cancel()
 
     let reason = slow.wait() | try expect_error
-    try expect_equal(reason.kind, "EUNKNOWN")
+    try expect_equal(reason.kind, "ECANCELED")
     try expect_equal(reason.message, "promise: cancelled")
 
 test "one Cancel switch cancels every promise made with its signal":

@@ -3,15 +3,15 @@
 export type Error:
     // Human-readable description of the failure.
     message: String
-    // A short code for what went wrong; `"EUNKNOWN"` when none fits. The kind itself never allocates when it is a literal or at most 15 bytes.
-    // The standard library reports POSIX errno names (`EAUTH` and `EUNKNOWN` are Manuscript's own), so `kind == "ENOENT"` means the same on every platform:
+    // A short code for what went wrong, or `none` when no code fits. The kind itself never allocates when it is a literal or at most 15 bytes.
+    // The standard library reports POSIX errno names (`EAUTH` is Manuscript's own), so `error.kind == "ENOENT"` means the same on every platform:
     //   EINVAL caller input is invalid, EBADMSG input data is malformed, EOVERFLOW a limit was exceeded,
     //   ERANGE a value or index is out of range, ENOENT not found, EEXIST already exists, ENOTEMPTY directory not empty,
     //   EACCES permission denied, ENOTSUP unsupported, ENOTTY not a terminal, EBADF resource closed,
     //   EIO a task, process or peer ended abnormally, EAGAIN service unavailable, EBUSY resource busy,
-    //   ETIMEDOUT a deadline expired, EAUTH authentication failed, EUNKNOWN nothing else fits.
+    //   ETIMEDOUT a deadline expired, ECANCELED cancelled, EAUTH authentication failed.
     // Your own code uses its own prefix, such as `"EQUOTA"`.
-    kind: String = "EUNKNOWN"
+    kind: String? = none
     // Extra facts about the failure, such as the path or operation, keyed by name.
     details: Map[String, String] = Map[String, String]()
 
@@ -209,4 +209,4 @@ export fn join_errors(errors: List[Error]) Error?:
             text += "\n"
         text += cause.message
 
-    return Error(text, "EUNKNOWN", {"count": errors.length().to_string()})
+    return Error(text, none, {"count": errors.length().to_string()})
