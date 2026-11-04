@@ -1503,7 +1503,7 @@ impl FnLower<'_> {
                         let why =
                             s.call_runtime("msstd_json_mismatch_text", &[doc, root], MTy::STR)?;
                         s.drop_value(doc);
-                        let e = s.json_error(ra, err, "EBADMSG", Some(why))?;
+                        let e = s.json_error(ra, err, Some(why))?;
                         Ok(Some(e))
                     },
                 )?;
@@ -1689,23 +1689,21 @@ impl FnLower<'_> {
         Ok(id)
     }
 
-    /// `error(Error(..))` with the matching error code.
+    /// `error(Error(..))` of invalid data (`EBADMSG`, worded by the shared status table).
     fn json_error(
         &mut self,
         ra: ms_mir::types::AltId,
         err: usize,
-        case: &str,
         detail: Option<Value>,
     ) -> Result<Value, Error> {
         let et = self.b.m.alts[ra.index()].cases[err].fields[0].1;
         let TyKind::Rec(er) = self.b.m.types.kind(et).clone() else {
             return Err(Error::new("a JSON failure is an Error"));
         };
-        let words = if case == "EBADMSG" {
-            "invalid data"
-        } else {
-            "invalid input"
-        };
+        let (_, case, words) = crate::rtcall::status_table("msstd_json_")
+            .into_iter()
+            .find(|(status, ..)| *status == i64::from(ms_rt_abi::STATUS_INVALID_DATA))
+            .ok_or_else(|| Error::new("no invalid data status"))?;
         let text = match detail {
             Some(text) => text,
             None => {
@@ -1837,7 +1835,7 @@ impl FnLower<'_> {
                     .v,
                 ))
             },
-            &mut |s| Ok(Some(s.json_error(ra, err, "EBADMSG", None)?)),
+            &mut |s| Ok(Some(s.json_error(ra, err, None)?)),
         )?;
         let writer = self.b.use_var(wvar);
         self.drop_value(writer);

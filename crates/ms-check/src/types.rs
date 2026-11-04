@@ -407,6 +407,11 @@ impl Type {
         self.kind == Kind::Primitive && syms.str(self.id) == "Never"
     }
 
+    /// The `String` primitive.
+    pub fn is_string(&self, syms: ms_syntax::Names) -> bool {
+        self.kind == Kind::Primitive && syms.str(self.id) == "String"
+    }
+
     /// Standard type test: id is `@std/<name>`.
     pub fn is_std(&self, syms: ms_syntax::Names, name: &str) -> bool {
         let id = syms.str(self.id);

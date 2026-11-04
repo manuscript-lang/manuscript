@@ -18,11 +18,12 @@ use ms_mir::types::{Ty as MTy, TyKind};
 /// by `build.rs` from the exported items of `ms-rt` and the `ms-std-*` crates.
 static SYMBOLS: &[RtEntry] = include!(concat!(env!("OUT_DIR"), "/rt_symbols.rs"));
 
-/// A runtime function in the generated table: name, parameters as (name, type, is a handle),
+/// A runtime function in the generated table: name, parameters as (name, type, is a handle, is a
+/// kept function value),
 /// return type and flag bits.
 type RtEntry = (
     &'static str,
-    &'static [(&'static str, &'static str, bool)],
+    &'static [(&'static str, &'static str, bool, bool)],
     &'static str,
     u8,
 );
@@ -55,12 +56,7 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
 /// Whether the runtime function `sym` takes ownership of its parameter `i`: a function value an
 /// extern keeps after it returns (the checker moving_params the argument; the runtime drops it once).
 pub(crate) fn hands_over(sym: &str, i: usize) -> bool {
-    ms_check::stdlib::keeps_callbacks(&format!("extern:{sym}"))
-        && rt_sig(sym).is_some_and(|sig| {
-            sig.params
-                .get(i)
-                .is_some_and(|p| p.ty == "*mut Closure" || p.name == "env" || p.name == "closure")
-        })
+    rt_sig(sym).is_some_and(|sig| sig.params.get(i).is_some_and(|p| p.closure))
 }
 
 /// One declared runtime parameter.
@@ -69,6 +65,8 @@ pub(crate) struct RtParam {
     pub ty: String,
     /// Declared as a runtime handle object (`ObjCell<T>`) rather than a value.
     pub handle: bool,
+    /// Declared `// ms: keeps:<param>`: a function value the runtime stores and drops itself.
+    pub closure: bool,
 }
 
 impl RtSig {
@@ -107,10 +105,11 @@ pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
     Some(RtSig {
         params: params
             .iter()
-            .map(|(name, ty, handle)| RtParam {
+            .map(|(name, ty, handle, closure)| RtParam {
                 name: (*name).to_string(),
                 ty: (*ty).to_string(),
                 handle: *handle,
+                closure: *closure,
             })
             .collect(),
         ret: (*ret).to_string(),
@@ -1391,4 +1390,19 @@ fn domain_of(sym: &str) -> String {
                 .unwrap_or("error")
                 .to_string()
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The checker's list of callback-keeping externs and the runtime's `// ms: keeps:` markers agree.
+    #[test]
+    fn kept_callbacks_have_a_closure_parameter() {
+        for (sym, params, ..) in SYMBOLS {
+            let marked = params.iter().any(|p| p.3);
+            let listed = ms_check::stdlib::keeps_callbacks(&format!("extern:{sym}"));
+            assert_eq!(marked, listed, "{sym}");
+        }
+    }
 }
