@@ -20,6 +20,10 @@ Skeptical subagent review: repro and cause verified; the per-case design is larg
 
 **Recommendation: do not build the per-case mask.** Keep the repro as a documented limit (mixed lend plus owned ok copies the error, on the error path only), and do the `try` desugaring cleanup separately if wanted. Reopen if a measurement finds relays that copy.
 
+## Design update: the mask as a type (2026-11-04, not prototyped)
+
+Chinmay (2026-11-04): "yeah we need to drop the copy" (tracked as #2540, the interim `owned_wrap` from #2538). Per-value ownership bits are the hard part of the review. Alternative, inferred: make the mask part of the MIR type. A call to a function with a lent case returns a *lent variant* of the alternative (same layout; `AltDef` marks the lent cases non-owning). Drop and release glue is per type (`glue_drop_alt` in `ms-clif`), so dropping the variant skips the lent case with no per-value state, and the verifier, `lastuse`, `copyelim` and `unwind` need no new mode. Costs: a no-op `alt.lend` cast where the variant is read as the plain type (borrowed passing), a checker rule rejecting a move of the variant into an owned position, and the identity-by-tag lookups for `Result` (#2535) must treat both variants as one. Prototype on the one repro before committing.
+
 ## Options
 
 1. Desugar `try e` to `match e: error(x): return error(x)` before ownership analysis (Chinmay's first idea). Verified by reading the code that it deletes `try_return` and the Try cases in `moved.rs` and `walk.rs`, but it does not fix the problem: `return error(x)` beside `return ok(new)` is the same mixed return. Worth doing anyway as cleanup once option 2 exists; inferred, not prototyped.
