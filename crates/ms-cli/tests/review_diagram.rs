@@ -297,13 +297,7 @@ fn types_and_ownership_views_render_in_ascii_and_mermaid() {
         .starts_with("classDiagram\n")
     );
     let own = text(&["diagram", "main.ms", "--view", "mutability"]);
-    assert!(
-        own.contains("  IN   o: Order")
-            && own.contains("var     the callee may change it")
-            && own.contains("  IN   i: Item")
-            && own.contains("borrow  read only"),
-        "{own}"
-    );
+    assert!(own.contains("add(var o: Order, i: Item) Order\n"), "{own}");
     assert!(
         text(&[
             "diagram",
@@ -314,5 +308,41 @@ fn types_and_ownership_views_render_in_ascii_and_mermaid() {
             "mermaid"
         ])
         .starts_with("flowchart LR\n")
+    );
+}
+
+#[test]
+fn overview_shows_modules_effects_and_cross_module_calls() {
+    let dir = scratch("overview");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("diagram_overview/main.ms"),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("util.ms"),
+        include_str!("diagram_overview/util.ms"),
+    )
+    .unwrap();
+    let text = |args: &[&str]| {
+        let out = ms(&dir, args);
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8(out.stdout).unwrap()
+    };
+    let ascii = text(&["diagram", "main.ms", "--view", "overview"]);
+    assert!(
+        ascii.contains("main.ms  [entry]") && ascii.contains("-> util.ms  (1 calls)"),
+        "{ascii}"
+    );
+    let mermaid = text(&[
+        "diagram", "main.ms", "--view", "overview", "--format", "mermaid",
+    ]);
+    assert!(
+        mermaid.starts_with("flowchart LR\n") && mermaid.contains("|1 calls|"),
+        "{mermaid}"
     );
 }

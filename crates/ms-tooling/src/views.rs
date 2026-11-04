@@ -6,7 +6,8 @@ use std::collections::HashSet;
 use std::fmt::Write;
 
 /// Names the diagram views, in help order.
-pub const VIEWS: [&str; 9] = [
+pub const VIEWS: [&str; 10] = [
+    "overview",
     "calls",
     "effects",
     "errors",
@@ -47,6 +48,9 @@ pub fn build_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Result
     };
     if view == "modules" {
         return modules_view(facts, entity);
+    }
+    if view == "overview" {
+        return Ok(overview_tree(&overview(facts)));
     }
     if view == "types" {
         return types_view(facts, entity, depth);
@@ -664,6 +668,7 @@ fn type_node(
 /// of `types`, use the generic tree rendering (None).
 pub fn mermaid_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Option<String> {
     match view {
+        "overview" => Some(overview_mermaid(&overview(facts))),
         "types" => class_diagram(facts, entity, if depth <= 0 { 3 } else { depth }),
         "ownership" => Some(ownership_flow(
             facts,
@@ -779,12 +784,11 @@ fn ownership_flow(facts: &Facts, entity: &str, depth: i64) -> String {
                 f.name.replace('"', "'")
             );
             for s in &f.slots {
-                let (mode, style) = if s.var {
-                    ("var", "stroke:#d33,stroke-width:3px")
-                } else if matches!(s.ty.as_str(), "Int" | "Float" | "Bool" | "Unit" | "Instant") {
-                    ("copy", "stroke:#999,stroke-dasharray:4")
-                } else {
-                    ("borrow", "stroke:#37b")
+                let mode = param_mode(s);
+                let style = match mode {
+                    "var" => "stroke:#d33,stroke-width:3px",
+                    "copy" => "stroke:#999,stroke-dasharray:4",
+                    _ => "stroke:#37b",
                 };
                 let tid = flow_type_node(&mut out, &mut declared, &s.ty);
                 let _ = writeln!(out, "    {tid} -->|\"{} {mode}\"| {fid}", s.name);
@@ -849,6 +853,7 @@ fn pad(text: &str, width: usize) -> String {
 /// composition lines, and per-function IN/OUT lines naming each borrow mode.
 pub fn ascii_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Option<String> {
     match view {
+        "overview" => Some(overview_ascii(&overview(facts))),
         "types" => {
             let chosen = class_set(facts, entity, if depth <= 0 { 3 } else { depth })?;
             Some(ascii_classes(facts, &chosen))
@@ -915,51 +920,235 @@ fn ascii_classes(facts: &Facts, chosen: &[&Fact]) -> String {
     out
 }
 
+/// One signature line per function: `var` marks an argument the callee may
+/// change, a plain parameter is borrowed (or copied, for scalars), the result is
+/// owned. Callees nest beneath their caller.
 fn ascii_ownership(facts: &Facts, entity: &str, depth: i64) -> String {
     let mut out = String::new();
-    let mut frontier: Vec<&Fact> = ownership_roots(facts, entity)
-        .into_iter()
-        .take(NODE_CAP)
-        .collect();
-    let mut done: Vec<&str> = Vec::new();
-    for level in 0..=depth {
-        let mut next: Vec<&Fact> = Vec::new();
-        for f in frontier {
-            if done.contains(&f.key.as_str()) {
-                continue;
-            }
-            done.push(&f.key);
-            let _ = writeln!(out, "{}()  {}:{}", f.name, f.file, f.line);
-            for s in &f.slots {
-                let note = match param_mode(s) {
-                    "var" => "var     the callee may change it",
-                    "copy" => "copy    a plain value",
-                    _ => "borrow  read only",
-                };
-                let _ = writeln!(out, "  IN   {:<24} {note}", format!("{}: {}", s.name, s.ty));
-            }
-            if let Some(r) = &f.result {
-                let _ = writeln!(out, "  OUT  {:<24} owned   the caller owns it", r.ty);
-            }
-            if f.scopes > 0 {
-                let _ = writeln!(out, "  closes {} resource scope(s) on exit", f.scopes);
-            }
-            let callees: Vec<&Fact> = f
-                .calls
-                .iter()
-                .filter_map(|k| facts.entities.get(k))
-                .collect();
-            if level < depth && !callees.is_empty() {
-                let names: Vec<String> = callees.iter().map(|c| format!("{}()", c.name)).collect();
-                let _ = writeln!(out, "  calls {}", names.join(", "));
-                next.extend(callees);
-            }
-            out.push('\n');
+    let mut lines = 0;
+    for f in ownership_roots(facts, entity) {
+        if lines >= NODE_CAP {
+            let _ = writeln!(out, "+more (output capped at {NODE_CAP} lines)");
+            break;
         }
-        frontier = next;
+        signature_lines(facts, f, 0, depth, &mut Vec::new(), &mut lines, &mut out);
     }
-    if done.is_empty() {
+    if lines == 0 {
         out.push_str("none\n");
     }
     out
+}
+
+fn signature_lines<'a>(
+    facts: &'a Facts,
+    f: &'a Fact,
+    level: i64,
+    depth: i64,
+    path: &mut Vec<&'a str>,
+    lines: &mut usize,
+    out: &mut String,
+) {
+    let params: Vec<String> = f
+        .slots
+        .iter()
+        .map(|s| {
+            let var = if s.var { "var " } else { "" };
+            format!("{var}{}: {}", s.name, s.ty)
+        })
+        .collect();
+    let result = f.result.as_ref().map_or("", |r| r.ty.as_str());
+    let closes = if f.scopes > 0 {
+        format!("  [closes {}]", f.scopes)
+    } else {
+        String::new()
+    };
+    let indent = "  ".repeat(level as usize);
+    let _ = writeln!(
+        out,
+        "{indent}{}({}) {result}{closes}",
+        f.name,
+        params.join(", ")
+    );
+    *lines += 1;
+    if level >= depth {
+        return;
+    }
+    path.push(&f.key);
+    for key in &f.calls {
+        let Some(callee) = facts.entities.get(key) else {
+            continue;
+        };
+        if path.contains(&key.as_str()) || *lines >= NODE_CAP {
+            continue;
+        }
+        signature_lines(facts, callee, level + 1, depth, path, lines, out);
+    }
+    path.pop();
+}
+
+/// One module of the system overview.
+struct Module {
+    file: String,
+    fns: usize,
+    types: usize,
+    tests: usize,
+    entry: bool,
+    effects: Vec<String>,
+    /// Other modules this one calls, with the number of distinct call edges.
+    calls: Vec<(String, usize)>,
+}
+
+/// The system level: each project module, what it holds, the effects it
+/// reaches, and which modules it calls. Module order is by file name.
+fn overview(facts: &Facts) -> Vec<Module> {
+    let mut modules: std::collections::BTreeMap<&str, Module> = std::collections::BTreeMap::new();
+    for file in facts.imports.keys() {
+        modules.insert(
+            file,
+            Module {
+                file: file.clone(),
+                fns: 0,
+                types: 0,
+                tests: 0,
+                entry: false,
+                effects: Vec::new(),
+                calls: Vec::new(),
+            },
+        );
+    }
+    for f in facts.entities.values() {
+        let Some(m) = modules.get_mut(f.file.as_str()) else {
+            continue;
+        };
+        match f.kind.as_str() {
+            "fn" | "method" => {
+                m.fns += 1;
+                m.entry |= f.name == "main";
+            }
+            "record" | "alternative" | "interface" => m.types += 1,
+            "test" | "bench" => m.tests += 1,
+            _ => {}
+        }
+        for e in &f.effects {
+            if !m.effects.contains(e) {
+                m.effects.push(e.clone());
+            }
+        }
+        for key in &f.calls {
+            let Some(target) = facts.entities.get(key) else {
+                continue;
+            };
+            if target.file == f.file {
+                continue;
+            }
+            match m.calls.iter_mut().find(|(file, _)| *file == target.file) {
+                Some((_, n)) => *n += 1,
+                None => m.calls.push((target.file.clone(), 1)),
+            }
+        }
+    }
+    let mut out: Vec<Module> = modules.into_values().collect();
+    for m in &mut out {
+        m.effects.sort();
+        m.calls.sort();
+    }
+    out
+}
+
+fn module_summary(m: &Module) -> String {
+    let mut parts = vec![format!("{} fn", m.fns)];
+    if m.tests > 0 {
+        parts.push(format!(
+            "{} test{}",
+            m.tests,
+            if m.tests == 1 { "" } else { "s" }
+        ));
+    }
+    if m.types > 0 {
+        parts.push(format!(
+            "{} type{}",
+            m.types,
+            if m.types == 1 { "" } else { "s" }
+        ));
+    }
+    parts.join(", ")
+}
+
+fn overview_ascii(modules: &[Module]) -> String {
+    let mut out = String::new();
+    for m in modules.iter().take(NODE_CAP) {
+        let entry = if m.entry { "  [entry]" } else { "" };
+        let _ = writeln!(
+            out,
+            "{}{entry}  {}  effects: {}",
+            m.file,
+            module_summary(m),
+            effect_list(&m.effects)
+        );
+        for (file, n) in &m.calls {
+            let _ = writeln!(out, "  -> {file}  ({n} calls)");
+        }
+    }
+    if modules.is_empty() {
+        out.push_str("none\n");
+    }
+    out
+}
+
+fn overview_mermaid(modules: &[Module]) -> String {
+    let mut out = String::from("flowchart LR\n");
+    let id = |file: &str| format!("m_{}", file.replace(|c: char| !c.is_alphanumeric(), "_"));
+    for m in modules.iter().take(NODE_CAP) {
+        let class = if m.entry {
+            "entry"
+        } else if m.effects.is_empty() {
+            "pure"
+        } else {
+            "effect"
+        };
+        let _ = writeln!(
+            out,
+            "    {}[\"{}<br/>{}<br/>{}\"]:::{class}",
+            id(&m.file),
+            m.file,
+            module_summary(m),
+            effect_list(&m.effects)
+        );
+    }
+    for m in modules.iter().take(NODE_CAP) {
+        for (file, n) in &m.calls {
+            let _ = writeln!(out, "    {} -->|{n} calls| {}", id(&m.file), id(file));
+        }
+    }
+    out.push_str("    classDef entry fill:#d6e9ff,stroke:#37b,stroke-width:3px\n");
+    out.push_str("    classDef pure fill:#dff5e1,stroke:#2a2\n");
+    out.push_str("    classDef effect fill:#fff3cd,stroke:#b8860b\n");
+    out
+}
+
+fn overview_tree(modules: &[Module]) -> Node {
+    let mut root = Node::new("OVERVIEW VIEW");
+    for m in modules.iter().take(NODE_CAP) {
+        let entry = if m.entry { "  [entry]" } else { "" };
+        let mut node = Node {
+            label: format!(
+                "{}{entry}  {}  effects: {}",
+                m.file,
+                module_summary(m),
+                effect_list(&m.effects)
+            ),
+            kind: "module".into(),
+            file: m.file.clone(),
+            ..Node::default()
+        };
+        for (file, n) in &m.calls {
+            node.children
+                .push(Node::new(format!("-> {file}  ({n} calls)")));
+        }
+        root.children.push(node);
+    }
+    if modules.is_empty() {
+        root.children.push(Node::new("none"));
+    }
+    root
 }
