@@ -11,6 +11,7 @@ use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt;
 use std::ptr::NonNull;
+use std::sync::atomic::{AtomicU64, Ordering as Atomic};
 use std::sync::{Mutex, OnceLock};
 
 /// An interned string: an index into one [`Interner`], meaningful only with the [`Names`] that
@@ -78,6 +79,17 @@ impl Names {
         self.0.get(sym.0)
     }
 
+    /// Bytes of text this interner holds.
+    pub fn text_bytes(self) -> usize {
+        self.0.text_bytes()
+    }
+
+    /// Distinguishes this interner from every other made in the process, including freed ones.
+    /// Caches keyed by symbols compare it to notice a session change.
+    pub fn generation(self) -> u64 {
+        self.0.generation
+    }
+
     /// Orders two symbols by text, so sorted output is deterministic and alphabetical.
     pub fn cmp(self, a: Symbol, b: Symbol) -> Ordering {
         self.str(a).cmp(self.str(b))
@@ -86,6 +98,7 @@ impl Names {
 
 /// A string table that owns its names. Id 0 is the empty string.
 pub struct Interner {
+    generation: u64,
     state: Mutex<State>,
 }
 
@@ -94,6 +107,8 @@ struct State {
     texts: Vec<Text>,
     /// Open-addressed ids, 0 for empty; the length is a power of two and at least twice `texts`.
     slots: Vec<u32>,
+    /// Total length of the texts.
+    bytes: usize,
 }
 
 #[derive(Copy, Clone)]
@@ -120,10 +135,13 @@ impl Default for Interner {
 impl Interner {
     /// An interner holding only the empty string.
     pub fn new() -> Interner {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
         Interner {
+            generation: NEXT.fetch_add(1, Atomic::Relaxed),
             state: Mutex::new(State {
                 texts: vec![Text(NonNull::from(""))],
                 slots: vec![0; 4096],
+                bytes: 0,
             }),
         }
     }
@@ -144,13 +162,7 @@ impl Interner {
 
     /// Bytes of text held.
     pub fn text_bytes(&self) -> usize {
-        let state = self.lock();
-        state
-            .texts
-            .iter()
-            // SAFETY: every `Text` points at a live allocation owned by this interner.
-            .map(|t| unsafe { t.0.as_ref() }.len())
-            .sum()
+        self.lock().bytes
     }
 
     fn get<'a>(&self, id: u32) -> Option<&'a str> {
@@ -182,6 +194,7 @@ impl Interner {
         }
         let id = state.texts.len() as u32;
         let leaked: &'static mut str = Box::leak(text.to_owned().into_boxed_str());
+        state.bytes += text.len();
         state.texts.push(Text(NonNull::from(leaked)));
         state.slots[at] = id;
         if state.texts.len() * 2 > state.slots.len() {
@@ -295,6 +308,8 @@ mod interner_tests {
         assert_eq!(names.intern(""), Symbol(0));
         assert_eq!(names.str(Symbol(0)), "");
         assert_eq!(names.cmp(b, a), Ordering::Greater);
+        assert_eq!(names.text_bytes(), "alphabeta".len());
+        assert_ne!(names.generation(), Names::global().generation());
         // SAFETY: nothing borrowed from the session is used afterward.
         unsafe { t.release() };
     }

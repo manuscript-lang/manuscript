@@ -8,7 +8,7 @@
 
 ## Status
 
-Stage 1 (#2536): the `Interner` and `Sym` types. Stage 2a (#2536): the `Names` handle in the ms-syntax parser and dump. Stage 2b (#2541): every crate reads and interns identifier text through a `Names` handle, and checker `Type`, `Step` and `VtableKey` print through `display(syms)` / `name(syms)`. Stage 3 (this PR): `Symbol` is a `u32` index into an `Interner` that owns its names; `Names` is a `Copy` handle to one interner; `Symbol` no longer has `Display`, `Deref`, `as_str` or text `Ord` (`Names::cmp` orders by text where output is sorted). The process-wide `Box::leak` table is gone. Stage 4 will recycle the language server's session when its interner grows past a bound.
+Stage 1 (#2536): the `Interner` and `Sym` types. Stage 2a (#2536): the `Names` handle in the ms-syntax parser and dump. Stage 2b (#2541): every crate reads and interns identifier text through a `Names` handle, and checker `Type`, `Step` and `VtableKey` print through `display(syms)` / `name(syms)`. Stage 3 (this PR): `Symbol` is a `u32` index into an `Interner` that owns its names; `Names` is a `Copy` handle to one interner; `Symbol` no longer has `Display`, `Deref`, `as_str` or text `Ord` (`Names::cmp` orders by text where output is sorted). The process-wide `Box::leak` table is gone. Stage 3 merged as #2544. Stage 4 (this PR): the language server holds an `ms_syntax::Session` and, between messages, starts over with a fresh one when its table passes 1 MiB of text: it drops its analyses and standard-library session, enters the new table, and releases the old one. `tests/name_recycling.rs` drives 300 edits with unique 100-byte names past a small limit and checks that later names leave the process default table and that every response equals a server that never recycles.
 
 ## Problem
 
@@ -28,7 +28,7 @@ Measured by parsing: the stdlib (3,166 lines) interns 740 names (6 KB). 20,000 r
 2. Parser and AST produce `Sym`; syntax-crate consumers read through the interner.
 3. Checker (`Name`), lowering, tooling and LSP move over; delete `Symbol` and the `Box::leak` table.
 
-4. The language server recycles its session (drop caches, release the interner, start a new one) when the interner exceeds a bound.
+4. The language server recycles its name table (drop caches and the library session, release the interner, start a new one) when it exceeds a bound (this PR).
 
 Each stage keeps `ms check`, `ms emit` and the conformance corpus byte-identical.
 
