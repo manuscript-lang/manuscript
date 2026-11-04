@@ -75,12 +75,12 @@ test "authenticated encryption detects wrong associated data":
     )
 
     let failed: Bytes! = error(
-        Error("cryptography: authentication failed", kind: ErrorCategory.Other)
+        Error("cryptography: authentication failed", kind: "EUNKNOWN")
     )
     try expect_equal(open(key, nonce, encrypted, "changed".to_bytes()), failed)
 
     let invalid: Bytes! = error(
-        Error("cryptography: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("cryptography: invalid input", kind: "EINVAL")
     )
     try expect_equal(
         seal("short".to_bytes(), nonce, "".to_bytes(), "".to_bytes()), invalid
@@ -131,7 +131,7 @@ test "key derivation supports PBKDF2 and HKDF across hashes":
     )
 
     let invalid: Bytes! = error(
-        Error("cryptography: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("cryptography: invalid input", kind: "EINVAL")
     )
     try expect_equal(
         HashAlgorithm.Sha256.hkdf(secret, salt, info, 255 * 32 + 1), invalid
@@ -175,7 +175,7 @@ test "AES CTR and CBC round trip":
     try expect_equal(try aes_cbc_decrypt(key, iv, boxed), message)
 
     let bad: Bytes! = error(
-        Error("cryptography: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("cryptography: invalid input", kind: "EINVAL")
     )
     try expect_equal(aes_cbc_decrypt(key, "short".to_bytes(), boxed), bad)
 

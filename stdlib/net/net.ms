@@ -163,7 +163,7 @@ impl ConnectionInfo:
         if let info = self.tls:
             return ok(info.clone())
 
-        return error(Error("network: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("network: invalid input", kind: "EINVAL"))
 
 /*
 A connected stream socket, optionally protected by TLS: `input` reads chunks until the peer's end of stream, and
@@ -946,7 +946,7 @@ export fn serve(
 ) HttpServer!:
     if let cores = options.cores:
         if cores < 1:
-            return error(Error("network: invalid input", kind: InvalidInput))
+            return error(Error("network: invalid input", kind: "EINVAL"))
 
     let serving = try msstd_http_serving_new(address, options, handler)
     let bound = msstd_http_serving_address(serving)
@@ -1021,7 +1021,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
         let accepted = msstd_http_serving_accept(listening.serving)
 
         if accepted.is_error():
-            if accepted.err().kind == ErrorCategory.Closed:
+            if accepted.err().kind == "EBADF":
                 return ok(unit)
 
             sleep(50.milliseconds()).wait().get(unit)

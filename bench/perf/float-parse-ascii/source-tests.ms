@@ -11,7 +11,7 @@ test "float parsing keeps ASCII signs decimals and exponents":
 
 test "float parsing rejects Unicode syntax and malformed or overflowing text":
     let invalid: Float! = error(
-        Error("number: invalid data", kind: ErrorCategory.InvalidData)
+        Error("number: invalid data", kind: "EBADMSG")
     )
 
     for text in ["١", "１", "1.٢", "1e٣", "−1", "1 ", ".5", "1.", "1e+", " 1", "1_0"]:
@@ -21,7 +21,7 @@ test "float parsing rejects Unicode syntax and malformed or overflowing text":
     try expect_equal("1e400".parse_float(), none)
 
     let overflow: Float! = error(
-        Error("number: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("number: value out of range", kind: "ERANGE")
     )
     try expect_equal(parse_float("1e400"), overflow)
 

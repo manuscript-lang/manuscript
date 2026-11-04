@@ -20,6 +20,6 @@ test "redirected streams report no terminal and refuse raw mode":
             try expect_equal(
                 cause,
                 Error(
-                    "terminal: not a terminal", kind: ErrorCategory.Unsupported
+                    "terminal: not a terminal", kind: "ENOTSUP"
                 )
             )

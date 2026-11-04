@@ -32,7 +32,7 @@ impl Commands for Capture:
     ) Subprocess!:
         return error(
             Error(
-                "process: service unavailable", kind: ErrorCategory.Unavailable
+                "process: service unavailable", kind: "EAGAIN"
             )
         )
 
@@ -67,7 +67,7 @@ impl Commands for Override:
     ) Subprocess!:
         return error(
             Error(
-                "process: service unavailable", kind: ErrorCategory.Unavailable
+                "process: service unavailable", kind: "EAGAIN"
             )
         )
 
@@ -109,7 +109,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     try expect_equal((try typed([["a", "b"]], second, none)), "a,b\n")
 
     let limited: List[List[String]]! = error(
-        Error("CSV: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("CSV: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_false(
         (
@@ -119,7 +119,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     )
 
     let invalid: String! = error(
-        Error("CSV: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("CSV: invalid input", kind: "EINVAL")
     )
     try expect_equal(stringify([["a"]], CsvOptions("")), invalid)
 
@@ -150,12 +150,12 @@ test "Base64 defaults support stored functions and explicit alphabets":
     try expect_equal((try decode("/w==", max_bytes: 1)), bytes)
 
     let invalid: Bytes! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(base64_decode("_w=="), invalid)
 
     let limited: Bytes! = error(
-        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(base64_decode("/w==", max_bytes: 0), limited)
 
@@ -185,7 +185,7 @@ test "Commands defaults cross concrete bound view and generic boundaries":
     )
 
     let invalid: CommandOutput! = error(
-        Error("process: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("process: invalid input", kind: "EINVAL")
     )
     let native = run
     try expect_equal(native("", []).wait(), invalid)

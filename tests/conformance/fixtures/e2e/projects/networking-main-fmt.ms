@@ -35,7 +35,7 @@ fn echo(var exchange: HttpExchange) Unit!:
         ok(_):
             return ok(unit)
         error(_):
-            return error(Error("write failed", kind: ErrorCategory.Failed))
+            return error(Error("write failed", kind: "EIO"))
 
 fn exercise() Unit!:
     let tls = TlsOptions(

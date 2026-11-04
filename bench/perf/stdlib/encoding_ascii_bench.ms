@@ -45,7 +45,7 @@ bench "ascii.invalid.first.1":
     try expect_equal(data.length(), 1)
 
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -63,7 +63,7 @@ bench "ascii.invalid.last.1":
     try expect_equal(data.length(), 1)
 
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -81,7 +81,7 @@ bench "ascii.invalid.first.57":
     try expect_equal(data.length(), 57)
 
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -99,7 +99,7 @@ bench "ascii.invalid.last.57":
     try expect_equal(data.length(), 57)
 
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -117,7 +117,7 @@ bench "ascii.invalid.first.4096":
     try expect_equal(data.length(), 4096)
 
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -135,7 +135,7 @@ bench "ascii.invalid.last.4096":
     try expect_equal(data.length(), 4096)
 
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -153,7 +153,7 @@ bench "ascii.invalid.first.1048580":
     try expect_equal(data.length(), 1048580)
 
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -171,7 +171,7 @@ bench "ascii.invalid.last.1048580":
     try expect_equal(data.length(), 1048580)
 
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -185,7 +185,7 @@ bench "ascii.invalid.last.1048580":
 bench "ascii.unicode.accent.1":
     let data = (try "é".repeat(1)).to_bytes()
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -198,7 +198,7 @@ bench "ascii.unicode.accent.1":
 bench "ascii.unicode.emoji.1":
     let data = (try "🙂".repeat(1)).to_bytes()
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -211,7 +211,7 @@ bench "ascii.unicode.emoji.1":
 bench "ascii.unicode.accent.2048":
     let data = (try "é".repeat(2048)).to_bytes()
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -224,7 +224,7 @@ bench "ascii.unicode.accent.2048":
 bench "ascii.unicode.emoji.2048":
     let data = (try "🙂".repeat(2048)).to_bytes()
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -237,7 +237,7 @@ bench "ascii.unicode.emoji.2048":
 bench "ascii.unicode.accent.524288":
     let data = (try "é".repeat(524288)).to_bytes()
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -250,7 +250,7 @@ bench "ascii.unicode.accent.524288":
 bench "ascii.unicode.emoji.524288":
     let data = (try "🙂".repeat(524288)).to_bytes()
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -266,7 +266,7 @@ bench "ascii.unicode.first.8":
     try expect_equal(data.length(), 10)
 
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -282,7 +282,7 @@ bench "ascii.unicode.last.8":
     try expect_equal(data.length(), 10)
 
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -298,7 +298,7 @@ bench "ascii.unicode.first.524288":
     try expect_equal(data.length(), 524290)
 
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 
@@ -314,7 +314,7 @@ bench "ascii.unicode.last.524288":
     try expect_equal(data.length(), 524290)
 
     let expected: String! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(data), expected)
 

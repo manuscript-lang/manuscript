@@ -101,17 +101,17 @@ fn nanos(limit: Duration?) Int:
 // The error a `wait` that did not produce a result reports, from the runtime outcome code of the promise `id`.
 fn outcome(id: Int, code: Int) Error:
     if code == 2:
-        return Error("promise: timed out", kind: ErrorCategory.Timeout)
+        return Error("promise: timed out", kind: "ETIMEDOUT")
     if code == 3:
-        return Error("promise: cancelled", kind: ErrorCategory.Other)
+        return Error("promise: cancelled", kind: "EUNKNOWN")
     if code == 4:
         return Error(
-            "promise: the result was already taken", kind: ErrorCategory.Closed
+            "promise: the result was already taken", kind: "EBADF"
         )
 
     let report = msrt_promise_fault_report(id)
     return Error(
-        "promise: fault: " + report, kind: ErrorCategory.Failed,
+        "promise: fault: " + report, kind: "EIO",
         details: {"report": report.clone()}
     )
 
@@ -237,7 +237,7 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 export fn wait_first[T](promises: List[Promise[T]]) T!:
     var pending = promises
     if pending.is_empty():
-        return error(Error("promise: nothing to wait for", kind: ErrorCategory.Other))
+        return error(Error("promise: nothing to wait for", kind: "EUNKNOWN"))
 
     var ids: List[Int] = []
     for p in pending:

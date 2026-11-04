@@ -3,7 +3,7 @@ import parse, YamlValue from "@std/data/yaml.ms"
 
 fn error_at(text: String, line: Int, column: Int) Unit!Error:
     let cause = parse(text) | try expect_error
-    if cause.kind != ErrorCategory.InvalidData:
+    if cause.kind != "EBADMSG":
         return fail("expected InvalidData, got {cause}")
 
     try expect_equal(cause.details["line"], line.to_string())
@@ -48,7 +48,7 @@ test "YAML compact tab rewrites retain original scalar columns":
 
 fn unsupported_at(text: String, line: Int) Unit!Error:
     let cause = parse(text) | try expect_error
-    if cause.kind != ErrorCategory.Unsupported:
+    if cause.kind != "ENOTSUP":
         return fail("expected UnsupportedFeature, got {cause}")
 
     try expect_equal(cause.details["line"], line.to_string())

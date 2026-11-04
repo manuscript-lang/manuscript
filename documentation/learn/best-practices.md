@@ -38,7 +38,7 @@ test "configuration defaults":
 
 test "configuration rejects a wrong type":
     let cause = try expect_error(parse[Config]("\{\"port\": true\}"))
-    try expect_equal(cause.kind, ErrorCategory.InvalidData)
+    try expect_equal(cause.kind, "EBADMSG")
 ```
 
 See the [testing guide](testing.md) for more.

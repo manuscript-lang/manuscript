@@ -13,7 +13,7 @@ impl Source[Int] for Counter:
     var fn next() Int?!:
         if self.at == self.fail_at:
             self.at += 1
-            return error(Error("boom", kind: ErrorCategory.Failed))
+            return error(Error("boom", kind: "EIO"))
 
         if self.at >= self.stop:
             return ok(none)
@@ -68,7 +68,7 @@ test "stages pull directly and keep their results":
     try expect_equal(doubled, [2, 4, 6])
 
     let limited = collect(from_list([1, 2, 3]), 2)
-    try expect_equal(limited.err().kind, ErrorCategory.LimitExceeded)
+    try expect_equal(limited.err().kind, "EOVERFLOW")
 
 test "a stage over a stream with a pending read reads through it":
     var closes = pipe[Int](capacity: 8)

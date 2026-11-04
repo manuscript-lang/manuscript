@@ -17,12 +17,12 @@ test "stream compositions preserve line endings and EOF":
 
 test "streams enforce byte limits and preserve original errors":
     let limited: Bytes! = error(
-        Error("I/O: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("I/O: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(read_all(memory("abc"), 2), limited)
 
     let closed: Bytes! = error(
-        Error("I/O: resource is closed", kind: ErrorCategory.Closed)
+        Error("I/O: resource is closed", kind: "EBADF")
     )
     try expect_equal(read_all(closed_reader(), none), closed)
 

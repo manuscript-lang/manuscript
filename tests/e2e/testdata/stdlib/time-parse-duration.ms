@@ -74,7 +74,7 @@ test "duration parser round trips formatter branches and signed extrema":
 
 test "duration overflow is an expected range error":
     let invalid: Duration! = error(
-        Error("time: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("time: value out of range", kind: "ERANGE")
     )
     for text in [
         "9223372036854775808ns", "-9223372036854775809ns", "9223372036.854775808s",
@@ -87,7 +87,7 @@ test "duration overflow is an expected range error":
 
 test "duration parser rejects malformed input and gives syntax errors precedence":
     let invalid: Duration! = error(
-        Error("time: invalid data", kind: ErrorCategory.InvalidData)
+        Error("time: invalid data", kind: "EBADMSG")
     )
     for text in [
         "", "+", "-", ".", ".s", "00", "1", "0.0", "1d", "1S", "1e3s", "1_000s", "--1s",
@@ -107,7 +107,7 @@ test "duration parsing stays exact for long leading zeros and fractions":
     try expect_equal(parse_duration("0.{zeros}1h"), ok(nanoseconds(0)))
 
     let invalid: Duration! = error(
-        Error("time: invalid data", kind: ErrorCategory.InvalidData)
+        Error("time: invalid data", kind: "EBADMSG")
     )
     try expect_equal(parse_duration("0.{zeros}1h!"), invalid)
 
@@ -115,6 +115,6 @@ test "duration parsing stays exact for long leading zeros and fractions":
     try expect_equal(parse_duration("{nines}ns!"), invalid)
 
     let overflow: Duration! = error(
-        Error("time: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("time: value out of range", kind: "ERANGE")
     )
     try expect_equal(parse_duration("{nines}ns"), overflow)

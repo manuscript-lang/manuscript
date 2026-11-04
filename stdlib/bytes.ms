@@ -152,7 +152,7 @@ fn unsigned_word(raw: Int) UInt64:
 // Reads two unsigned halves so the top bit never passes through a signed conversion.
 fn read_uint64(data: Bytes, at: Int, little: Bool) UInt64!:
     if at < 0 or at > data.length() - 8:
-        return error(Error("binary: out of range", kind: OutOfRange))
+        return error(Error("binary: out of range", kind: "ERANGE"))
 
     let first = try msrt_bytes_read_word(data, at, 4, little)
     let second = try msrt_bytes_read_word(data, at + 4, 4, little)
@@ -273,20 +273,20 @@ impl BytesCodecs for Bytes:
     */
     fn uvarint(at: Int) VarintRead[UInt64]!:
         if at < 0 or at > self.length():
-            return error(Error("binary: invalid varint offset", kind: OutOfRange))
+            return error(Error("binary: invalid varint offset", kind: "ERANGE"))
 
         let remaining = self.length() - at
         var word = 0
 
         for i in 0..10:
             if i >= remaining:
-                return error(Error("binary: incomplete varint", kind: InvalidData))
+                return error(Error("binary: incomplete varint", kind: "EBADMSG"))
 
             let byte = self.get(at + i).to_int()
             if i == 9 and byte > 1:
                 return error(
                     Error(
-                        "binary: varint overflows 64 bits", kind: OutOfRange
+                        "binary: varint overflows 64 bits", kind: "ERANGE"
                     )
                 )
 
@@ -299,7 +299,7 @@ impl BytesCodecs for Bytes:
             if byte < 128:
                 return ok(VarintRead(unsigned_word(word), at + i + 1))
 
-        return error(Error("binary: varint overflows 64 bits", kind: OutOfRange))
+        return error(Error("binary: varint overflows 64 bits", kind: "ERANGE"))
 
     // Reads a signed 64-bit zigzag integer (0, -1, 1, -2 become 0, 1, 2, 3).
     // Shares uvarint's offsets, ten-byte bound, nonminimal acceptance, and error cases.

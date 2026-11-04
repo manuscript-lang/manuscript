@@ -50,12 +50,12 @@ test "spawn accepts cwd and env and reports the peak resident set after wait":
 
 test "bad cwd and variable names are rejected":
     let invalid: CommandOutput! = error(
-        Error("process: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("process: invalid input", kind: "EINVAL")
     )
     try expect_equal(run(shell(), print_cwd(), env: {"A=B": "x"}).wait(), invalid)
 
     let missing = run(shell(), print_cwd(), cwd: "/definitely/not/here").wait().err()
-    try expect_equal(missing.kind, ErrorCategory.Unavailable)
+    try expect_equal(missing.kind, "EAGAIN")
     try expect_equal(
         missing.message,
         "process: service unavailable: working directory /definitely/not/here"

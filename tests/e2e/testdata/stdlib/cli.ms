@@ -81,7 +81,7 @@ fn run(argv: List[String]) Matches!:
 
 fn failure(argv: List[String]) String!:
     let result = app().parse(argv)
-    if result.is_ok(): return error(Error("accepted", kind: Failed))
+    if result.is_ok(): return error(Error("accepted", kind: "EIO"))
 
     return ok(result.err().message)
 

@@ -22,13 +22,13 @@ test "JSON exact numbers Unicode and nested roundtrip":
 
 fn expect_syntax_error[T](actual: T!) Unit!:
     let cause = try expect_error(actual)
-    try expect_equal(cause.kind, ErrorCategory.InvalidData)
+    try expect_equal(cause.kind, "EBADMSG")
     try expect_contains(cause.message, "JSON: invalid data: line ")
     return ok(unit)
 
 fn expect_invalid_data[T](actual: T!) Unit!:
     let cause = try expect_error(actual)
-    try expect_equal(cause.kind, ErrorCategory.InvalidData)
+    try expect_equal(cause.kind, "EBADMSG")
     try expect_contains(cause.message, "JSON: invalid data")
     return ok(unit)
 
@@ -52,14 +52,14 @@ test "JSON rejects duplicate keys malformed Unicode and trailing values":
 
 test "JSON independently enforces byte depth and value budgets":
     let limited: JsonValue! = error(
-        Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("JSON: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(parse("null", JsonLimits(3)), limited)
     try expect_equal(parse("[[[]]]", JsonLimits(max_depth: 2)), limited)
     try expect_equal(parse("[1,2]", JsonLimits(max_values: 2)), limited)
 
     let invalid: JsonValue! = error(
-        Error("JSON: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("JSON: invalid input", kind: "EINVAL")
     )
     try expect_equal(parse("null", JsonLimits(-1)), invalid)
 
@@ -95,7 +95,7 @@ test "JSON untyped parse keeps document shape and releases partial trees on fail
 
 test "JSON stringify rejects number text with trailing whitespace":
     let padded: String! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
+        Error("JSON: invalid data", kind: "EBADMSG")
     )
     try expect_equal(stringify(JsonValue.NumberValue("1\n")), padded)
     try expect_equal(stringify(JsonValue.NumberValue("1 ")), padded)
@@ -109,7 +109,7 @@ test "JSON parse bounds nesting even without a depth limit":
         closing += "]"
 
     let limited: JsonValue! = error(
-        Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("JSON: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(parse(text + closing), limited)
 
@@ -179,12 +179,12 @@ test "JSON stringify reports non-finite numbers and budgets as errors":
     try expect_equal((try encoded(1e308 * 10.0 - 1e308 * 10.0)), "null")
 
     let limited: String! = error(
-        Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("JSON: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(stringify("abcdef", 4), limited)
 
     let negative: String! = error(
-        Error("JSON: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("JSON: invalid input", kind: "EINVAL")
     )
     try expect_equal(stringify(1, -1), negative)
 
@@ -247,7 +247,7 @@ test "JSON stringify encodes standard-library values":
 
     let ok: Int! = ok(5)
     try expect_equal((try encoded(ok)), "\{\"ok\":\{\"value\":5\}\}")
-    try expect_equal((try encoded(ErrorCategory.InvalidData)), "\"InvalidData\"")
+    try expect_equal((try encoded("EBADMSG")), "\"InvalidData\"")
     try expect_equal(
         (try encoded(Tagged.Named("n", none))), "\{\"Named\":\{\"name\":\"n\"\}\}"
     )
@@ -273,7 +273,7 @@ test "JSON stringify indents like JSON.stringify and clamps at ten":
     try expect_equal(wide, "[\n          1\n]")
 
     let negative: String! = error(
-        Error("JSON: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("JSON: invalid input", kind: "EINVAL")
     )
     try expect_equal(stringify(1, indent: -1), negative)
 
@@ -285,12 +285,12 @@ test "JSON stringify omits a Unit field and rejects a Unit root":
     try expect_equal((try encoded(holder)), "\{\}")
 
     let invalid: String! = error(
-        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
+        Error("JSON: invalid data", kind: "EBADMSG")
     )
     try expect_equal(stringify(unit), invalid)
 
     let failed: Int! = error(
-        Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("JSON: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(
         (try encoded(failed)),
@@ -391,7 +391,7 @@ test "JSON parse rejects shape mismatches as InvalidData":
     try expect_syntax_error(parse[Profile]("\{"))
 
     let limited: Profile! = error(
-        Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("JSON: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(parse[Profile](missing, JsonLimits(2)), limited)
 
@@ -500,11 +500,11 @@ test "JSON parse reads standard alternatives and rejects keys that collide":
     let failed: Int! = try parse[Int!](
         "\{\"error\":\{\"cause\":\{\"message\":\"bad\",\"kind\":\"InvalidData\",\"details\":\{\}\}\}\}"
     )
-    let want_error: Int! = error(Error("bad", kind: ErrorCategory.InvalidData))
+    let want_error: Int! = error(Error("bad", kind: "EBADMSG"))
     try expect_equal(failed, want_error)
 
     let kind: ErrorCategory = try parse[ErrorCategory]("\"LimitExceeded\"")
-    try expect_equal(kind, ErrorCategory.LimitExceeded)
+    try expect_equal(kind, "EOVERFLOW")
 
 type Link:
     next: Link?

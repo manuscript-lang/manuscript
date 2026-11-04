@@ -17,16 +17,16 @@ test "text conversions and quoting":
     quote_ascii("é🙂") | try expect_equal("\"\\u\{e9\}\\u\{1f642\}\"")
     unquote("\"a\\tb\\u\{e9\}\"") | try expect_ok | try expect_equal("a\tbé")
     unquote("abc") | try expect_error | try expect_equal(
-        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("string: invalid input", kind: "EINVAL")
     )
     unquote("\"a\"b\"") | try expect_error | try expect_equal(
-        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("string: invalid input", kind: "EINVAL")
     )
     unquote("\"\\q\"") | try expect_error | try expect_equal(
-        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("string: invalid input", kind: "EINVAL")
     )
     unquote("\"\\u\{d800\}\"") | try expect_error | try expect_equal(
-        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("string: invalid input", kind: "EINVAL")
     )
     unquote(quote("tab\there \"q\" \\ é🙂\u{1}")) | try expect_ok | try expect_equal(
         "tab\there \"q\" \\ é🙂\u{1}"
@@ -54,7 +54,7 @@ test "text Unicode escapes reject signs nonhex digits and excess width":
         "\"\\u\{ffffffffffffffff\}\""
     ]:
         unquote(text) | try expect_error | try expect_equal(
-            Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+            Error("string: invalid input", kind: "EINVAL")
         )
 
 test "text Unicode escapes preserve scalar boundaries and leading zeros":

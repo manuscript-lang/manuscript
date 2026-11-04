@@ -7,10 +7,10 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
     let text = try read_file(path, max_bytes: 1048576).wait() | .decode_utf8().ok_or(
-        Error("filesystem: invalid data", kind: ErrorCategory.InvalidData)
+        Error("filesystem: invalid data", kind: "EBADMSG")
     ) | try
     try stdout().write(text)
     return stdout().flush().wait()

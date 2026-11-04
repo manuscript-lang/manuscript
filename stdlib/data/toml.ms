@@ -161,7 +161,7 @@ fn locate(data: Bytes, pos: Int) List[Int]:
 // A malformed-input error at a one-based source position.
 fn toml_invalid(line: Int, column: Int, reason: String) Error:
     return Error(
-        "TOML {line}:{column}: {reason}", kind: InvalidData,
+        "TOML {line}:{column}: {reason}", kind: "EBADMSG",
         details: {"line": line.to_string(), "column": column.to_string()}
     )
 
@@ -207,14 +207,14 @@ fn within(value: Int, limit: Int?) Bool:
 fn allocate(var reader: Reader) Unit!:
     reader.values += 1
     if not within(reader.values, reader.limits.max_values): return error(
-        Error("TOML limit exceeded", kind: LimitExceeded)
+        Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
 
     return ok(unit)
 
 fn budget(reader: Reader, depth: Int) Unit!:
     if not within(depth, reader.limits.max_depth): return error(
-        Error("TOML limit exceeded", kind: LimitExceeded)
+        Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
 
     return ok(unit)
@@ -866,12 +866,12 @@ fn materialize(
     var budget: Budget
 ) TomlValue!:
     if not within(depth, budget.limits.max_depth): return error(
-        Error("TOML limit exceeded", kind: LimitExceeded)
+        Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
 
     budget.values += 1
     if not within(budget.values, budget.limits.max_values): return error(
-        Error("TOML limit exceeded", kind: LimitExceeded)
+        Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
 
     match node:
@@ -912,9 +912,9 @@ export fn parse(text: String, limits: TomlLimits?) TomlValue!:
         options = value
     for limit in [options.max_bytes, options.max_depth, options.max_values]:
         if let value = limit:
-            if value < 0: return error(Error("invalid TOML input", kind: InvalidInput))
+            if value < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
     if not within(text.byte_length(), options.max_bytes): return error(
-        Error("TOML limit exceeded", kind: LimitExceeded)
+        Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
 
     // TOML permits CR only as part of CRLF. Report the first offending scalar
@@ -1179,14 +1179,14 @@ fn datetimes_valid(value: TomlValue) Bool:
 // Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
 export fn stringify(value: TomlValue, max_bytes: Int?) String!:
     if let limit = max_bytes:
-        if limit < 0: return error(Error("invalid TOML input", kind: InvalidInput))
+        if limit < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
 
     let root = match value:
         TableValue(values): values.clone()
-        _: return error(Error("invalid TOML input", kind: InvalidInput))
+        _: return error(Error("invalid TOML input", kind: "EINVAL"))
 
     if not datetimes_valid(value): return error(
-        Error("invalid TOML input", kind: InvalidInput)
+        Error("invalid TOML input", kind: "EINVAL")
     )
 
     var writer = Writer(StringBuilder(), started: false)
@@ -1195,7 +1195,7 @@ export fn stringify(value: TomlValue, max_bytes: Int?) String!:
     let {out} = writer
     let text = out.build()
     if not within(text.byte_length(), max_bytes): return error(
-        Error("TOML limit exceeded", kind: LimitExceeded)
+        Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
 
     return ok(text)

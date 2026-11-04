@@ -33,7 +33,7 @@ impl Runner for Capture:
     fn spawn(program: String, arguments: List[String]) Result[Subprocess, Error]:
         return error(
             Error(
-                "process: service unavailable", kind: ErrorCategory.Unavailable
+                "process: service unavailable", kind: "EAGAIN"
             )
         )
 

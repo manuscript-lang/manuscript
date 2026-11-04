@@ -16,13 +16,13 @@ fn consume(result: Result[String, Error], expected: String, status: Int) Int:
     if (
         status == 1
         and actual_error != Error(
-            "string: limit exceeded", kind: ErrorCategory.LimitExceeded
+            "string: limit exceeded", kind: "EOVERFLOW"
         )
     ): return (-1)
     if (
         status == 2
         and actual_error != Error(
-            "string: invalid input", kind: ErrorCategory.InvalidInput
+            "string: invalid input", kind: "EINVAL"
         )
     ): return (-1)
 

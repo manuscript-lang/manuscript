@@ -132,25 +132,25 @@ let MAX_DEPTH = 64
 // Builds a template error. Each message names the line, path, filter or partial but never echoes values.
 fn syntax_error(line: Int, reason: String) Error:
     return Error(
-        "template: line {line}: {reason}", kind: ErrorCategory.InvalidData,
+        "template: line {line}: {reason}", kind: "EBADMSG",
         details: {"line": "{line}"}
     )
 
 fn missing_value_error(path: String) Error:
     return Error(
-        "template: no value for {path}", kind: ErrorCategory.NotFound,
+        "template: no value for {path}", kind: "ENOENT",
         details: {"path": path}
     )
 
 fn invalid_filter_error(name: String, reason: String) Error:
     return Error(
-        "template: filter {name}: {reason}", kind: ErrorCategory.InvalidInput,
+        "template: filter {name}: {reason}", kind: "EINVAL",
         details: {"filter": name}
     )
 
 fn unknown_partial_error(name: String) Error:
     return Error(
-        "template: unknown partial {name}", kind: ErrorCategory.NotFound,
+        "template: unknown partial {name}", kind: "ENOENT",
         details: {"partial": name}
     )
 
@@ -174,12 +174,12 @@ export fn render(source: String, data: JsonValue, html: Bool = false) String!Err
 export fn to_data[T: Data](value: T) JsonValue!Error:
     let text = stringify(value: value)
     if text.is_error(): return error(
-        Error("template: data is not JSON", kind: ErrorCategory.InvalidData)
+        Error("template: data is not JSON", kind: "EBADMSG")
     )
 
     let parsed = parse(text.get())
     if parsed.is_error(): return error(
-        Error("template: data is not JSON", kind: ErrorCategory.InvalidData)
+        Error("template: data is not JSON", kind: "EBADMSG")
     )
 
     return ok(parsed.get())
@@ -706,7 +706,7 @@ impl Run:
         self.written += text.length()
         if self.written > self.limit: return error(
             Error(
-                "template: output limit exceeded", kind: ErrorCategory.LimitExceeded
+                "template: output limit exceeded", kind: "EOVERFLOW"
             )
         )
 

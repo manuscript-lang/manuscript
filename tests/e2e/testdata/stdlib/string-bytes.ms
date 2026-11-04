@@ -18,7 +18,7 @@ test "strings honor omitted none zero and explicit output limits":
     try expect_equal((try "ab".repeat(0, 0)), "")
 
     let limited: String! = error(
-        Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("string: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal("é".repeat(2, 3), limited)
     try expect_equal("x".pad_start(3, "ab"), "abx")
@@ -29,12 +29,12 @@ test "strings honor omitted none zero and explicit output limits":
     try expect_equal(" \té \n".trim(), "é")
 
     let invalid: String! = error(
-        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("string: invalid input", kind: "EINVAL")
     )
     try expect_equal("a".normalize("invalid"), invalid)
 
     let scalar_error: String! = error(
-        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("string: invalid input", kind: "EINVAL")
     )
     try expect_equal(from_scalars([55296]), scalar_error)
 
@@ -48,7 +48,7 @@ test "bytes copy slice search and UTF8 validation":
     try expect_equal(data.slice(-3, -1).get(), Bytes([1, 255]))
 
     let byte_range: Bytes! = error(
-        Error("binary: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("binary: value out of range", kind: "ERANGE")
     )
     try expect_equal(data.slice(1, 10), byte_range)
     try expect_equal(data.slice(-10, 2), byte_range)
@@ -83,7 +83,7 @@ test "Bytes values direct bound and free calls return independent lists":
 test "String slice uses Unicode scalars with relative bounds and OutOfRange errors":
     let text = "aé🙂z"
     let out_of_range: String! = error(
-        Error("string: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("string: value out of range", kind: "ERANGE")
     )
     try expect_equal((try text.slice(-2, 4)), "🙂z")
     try expect_equal((try text.slice(0, -1)), "aé🙂")
@@ -94,7 +94,7 @@ test "String slice uses Unicode scalars with relative bounds and OutOfRange erro
     try expect_false(text.index_of("🙂") != 2 or text.last_index_of("") != 4)
 
     let invalid: String! = error(
-        Error("string: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("string: value out of range", kind: "ERANGE")
     )
     try expect_equal(text.slice_scalars(-2, 4), invalid)
     try expect_equal(text.slice_scalars(1, 10), invalid)
@@ -168,7 +168,7 @@ test "indexing and slicing long mixed-width text matches scalar positions":
     try expect_equal((try text.slice_scalars(2399, 2400)), "🙂")
 
     let out_of_range: String! = error(
-        Error("string: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("string: value out of range", kind: "ERANGE")
     )
     try expect_equal(text.slice_scalars(2400, 2401), out_of_range)
 

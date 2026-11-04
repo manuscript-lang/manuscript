@@ -11,7 +11,7 @@ test "component decoding preserves plus Unicode and escaped percent":
 
 test "component decoding rejects malformed escapes and UTF8":
     let invalid: String! = error(
-        Error("URL: invalid data", kind: ErrorCategory.InvalidData)
+        Error("URL: invalid data", kind: "EBADMSG")
     )
     for input in [
         "%", "%A", "%zz", "prefix%zz", "%FF", "%C0%AF", "%ED%A0%80", "%F4%90%80%80",

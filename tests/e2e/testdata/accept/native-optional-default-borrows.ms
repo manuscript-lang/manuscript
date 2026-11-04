@@ -10,7 +10,7 @@ fn missing_temporary(seed: Int) Int!:
     let convert = absent.ok_or[Error]
     return convert(
         Error(
-            "missing value at " + heap_text(seed), kind: ErrorCategory.NotFound
+            "missing value at " + heap_text(seed), kind: "ENOENT"
         )
     )
 
@@ -47,9 +47,9 @@ test "bound ok_or results own heap-backed temporary causes":
 test "bound ok_or leaves caller causes independent of its result":
     let absent: Int? = none
     let convert = absent.ok_or[Error]
-    var cause = Error("missing value at " + heap_text(3), kind: ErrorCategory.NotFound)
+    var cause = Error("missing value at " + heap_text(3), kind: "ENOENT")
     let result = convert(cause)
-    cause = Error("missing value at " + heap_text(4), kind: ErrorCategory.NotFound)
+    cause = Error("missing value at " + heap_text(4), kind: "ENOENT")
     try expect_equal(result.err().message, "missing value at " + heap_text(3))
     try expect_equal(cause.message, "missing value at " + heap_text(4))
 

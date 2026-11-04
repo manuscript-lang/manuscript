@@ -72,12 +72,12 @@ test "parts match parse_multipart under every chunk size":
 test "a body without the closing delimiter is InvalidData":
     let body = "--XyZ\r\nContent-Disposition: form-data; name=a\r\n\r\nvalue".to_bytes()
     let outcome = read_parts(body, 5)
-    try expect_equal(outcome.err().kind, ErrorCategory.InvalidData)
+    try expect_equal(outcome.err().kind, "EBADMSG")
 
 test "the part budget reports LimitExceeded":
     let big = encode_multipart(
         [form_part("f", "x".repeat(500).get("").to_bytes())], "XyZ"
     )
     let outcome = read_parts(big.clone(), 64, 100)
-    try expect_equal(outcome.err().kind, ErrorCategory.LimitExceeded)
+    try expect_equal(outcome.err().kind, "EOVERFLOW")
     try expect_equal((try read_parts(big, 64, 1000)).length(), 1)

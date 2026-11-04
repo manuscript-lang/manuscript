@@ -130,18 +130,18 @@ test "HTML honors optional byte depth and node limits":
     try expect_equal((try parse("é", HtmlLimits())), (try parse("é")))
 
     let limited: HtmlNode! = error(
-        Error("HTML: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("HTML: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(parse("é", HtmlLimits(1)), limited)
     try expect_equal(parse("", HtmlLimits(max_depth: 1)), limited)
     try expect_equal(parse("", HtmlLimits(max_nodes: 3)), limited)
 
     let invalid: HtmlNode! = error(
-        Error("HTML: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("HTML: invalid input", kind: "EINVAL")
     )
     try expect_equal(parse("", HtmlLimits(max_nodes: -1)), invalid)
     try expect_not_equal(
-        Error("HTML: invalid data", kind: ErrorCategory.InvalidData).message, ""
+        Error("HTML: invalid data", kind: "EBADMSG").message, ""
     )
 
 test "HTML depth limit stops deeply nested input without quadratic work":
@@ -149,7 +149,7 @@ test "HTML depth limit stops deeply nested input without quadratic work":
     let nested = "<div>".repeat(60000).get()
     let started = monotonic()
     let limited: HtmlNode! = error(
-        Error("HTML: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("HTML: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(parse(nested, HtmlLimits(max_depth: 100)), limited)
 
@@ -159,7 +159,7 @@ test "HTML depth limit stops deeply nested input without quadratic work":
 test "HTML parse without limits applies defaults and an empty limits record lifts them":
     let nested = "<div>".repeat(20000).get()
     let limited: HtmlNode! = error(
-        Error("HTML: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("HTML: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(parse(nested), limited)
 

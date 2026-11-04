@@ -32,7 +32,7 @@ test "module dirname and basename_without follow the host dialect":
 
 test "glob matching rejects NUL in the path as it does in the pattern":
     let invalid: Bool! = error(
-        Error("path: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("path: invalid input", kind: "EINVAL")
     )
     try expect_equal(posix().matches_glob("a\u{0}b", "*"), invalid)
     try expect_equal(posix().matches_glob("ab", "*\u{0}"), invalid)

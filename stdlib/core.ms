@@ -1,38 +1,19 @@
-// An expected failure as a plain value: a message, a portable kind callers can branch on, and string details.
-// Build one like any record: `Error("no such file", kind: NotFound, details: {"path": path})`. `T!` is `Result[T, Error]`.
+// An expected failure as a plain value: a message, a short code callers can branch on, and string details.
+// Build one like any record: `Error("no such file", kind: "ENOENT", details: {"path": path})`. `T!` is `Result[T, Error]`.
 export type Error:
     // Human-readable description of the failure.
     message: String
-    // What went wrong, in portable terms; `Other` when no category fits.
-    kind: ErrorCategory = ErrorCategory.Other
+    // A short code for what went wrong; `"EUNKNOWN"` when none fits. A literal or a string of at most 15 bytes never allocates.
+    // The standard library reports POSIX errno names, so `kind == "ENOENT"` means the same on every platform:
+    //   EINVAL caller input is invalid, EBADMSG input data is malformed, EOVERFLOW a limit was exceeded,
+    //   ERANGE a value or index is out of range, ENOENT not found, EEXIST already exists, ENOTEMPTY directory not empty,
+    //   EACCES permission denied, ENOTSUP unsupported, ENOTTY not a terminal, EBADF resource closed,
+    //   EIO a task, process or peer ended abnormally, EAGAIN service unavailable, EBUSY resource busy,
+    //   ETIMEDOUT a deadline expired, EAUTH authentication failed, EUNKNOWN nothing else fits.
+    // Your own code uses its own prefix, such as `"EQUOTA"`.
+    kind: String = "EUNKNOWN"
     // Extra facts about the failure, such as the path or operation, keyed by name.
     details: Map[String, String] = Map[String, String]()
-
-// Portable kinds of failure. Callers branch on `error.kind`; the message carries the specifics.
-export type ErrorCategory:
-    // Caller input is invalid.
-    case InvalidInput
-    // Input data is malformed.
-    case InvalidData
-    // An operation budget or implementation limit was exceeded.
-    case LimitExceeded
-    // A requested resource was not found.
-    case NotFound
-    // A requested exclusive resource already exists.
-    case AlreadyExists
-    // Host authority denied the operation.
-    case PermissionDenied
-    // The requested operation is unsupported.
-    case Unsupported
-    // The resource has been closed.
-    case Closed
-    // A local operation or group deadline expired.
-    case Timeout
-    // The service/resource is unavailable; this does not imply NotFound or PermissionDenied.
-    case Unavailable
-    case OutOfRange  // A value or index is outside its range.
-    case Failed  // A task, process or peer ended abnormally.
-    case Other  // No other kind fits.
 
 // Raises a programming fault with the supplied message and stops the current operation.
 export fn panic(message: String) Never: ...
@@ -228,4 +209,4 @@ export fn join_errors(errors: List[Error]) Error?:
             text += "\n"
         text += cause.message
 
-    return Error(text, ErrorCategory.Other, {"count": errors.length().to_string()})
+    return Error(text, "EUNKNOWN", {"count": errors.length().to_string()})

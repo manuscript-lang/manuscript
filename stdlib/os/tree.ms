@@ -28,7 +28,7 @@ export interface FileTree:
 // Resolves `path` to its parts under the root. Returns the clean path joined by `/`; the root is the empty string.
 fn clean(path: String) String!:
     if path.contains("\u{0}"): return error(
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
 
     var parts = List[String]()
@@ -39,7 +39,7 @@ fn clean(path: String) String!:
         if part == "..":
             if parts.length() == 0: return error(
                 Error(
-                    "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+                    "filesystem: invalid input", kind: "EINVAL"
                 )
             )
 
@@ -68,10 +68,10 @@ fn by_name(a: DirectoryEntry, b: DirectoryEntry) Int:
 
 fn limited(entries: List[DirectoryEntry], max_entries: Int?) List[DirectoryEntry]!:
     if max_entries.is_some() and max_entries.get() < 0: return error(
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
     if max_entries.is_some() and entries.length() > max_entries.get(): return error(
-        Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("filesystem: limit exceeded", kind: "EOVERFLOW")
     )
 
     return ok(entries)
@@ -145,7 +145,7 @@ impl MemoryTree:
         let inside = try clean(path)
         if self.files.contains(inside): return error(
             Error(
-                "filesystem: already exists", kind: ErrorCategory.AlreadyExists
+                "filesystem: already exists", kind: "EEXIST"
             )
         )
 
@@ -164,14 +164,14 @@ impl MemoryTree:
         let inside = try clean(path)
         if inside == "" or self.directories.contains(inside): return error(
             Error(
-                "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+                "filesystem: invalid input", kind: "EINVAL"
             )
         )
 
         let parent = parent_of(inside)
         if self.files.contains(parent): return error(
             Error(
-                "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+                "filesystem: invalid input", kind: "EINVAL"
             )
         )
 
@@ -186,7 +186,7 @@ impl MemoryTree:
         let inside = try clean(path)
         if inside == "": return error(
             Error(
-                "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+                "filesystem: invalid input", kind: "EINVAL"
             )
         )
 
@@ -197,7 +197,7 @@ impl MemoryTree:
 
         if not self.directories.contains(inside): return error(
             Error(
-                "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+                "filesystem: file or directory not found", kind: "ENOENT"
             )
         )
 
@@ -206,7 +206,7 @@ impl MemoryTree:
         let below_dirs = self.directories.values().filter(fn k: k.starts_with(prefix))
         if not recursive and (below_files.length() + below_dirs.length()) > 0: return error(
             Error(
-                "filesystem: directory not empty", kind: ErrorCategory.Other
+                "filesystem: directory not empty", kind: "EUNKNOWN"
             )
         )
 
@@ -228,19 +228,19 @@ impl FileTree for MemoryTree:
         let inside = try clean(path)
         if self.directories.contains(inside): return error(
             Error(
-                "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+                "filesystem: invalid input", kind: "EINVAL"
             )
         )
 
         let found = self.files.get(inside)
         if found.is_none(): return error(
             Error(
-                "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+                "filesystem: file or directory not found", kind: "ENOENT"
             )
         )
         if max_bytes.is_some() and found.get().length() > max_bytes.get(): return error(
             Error(
-                "filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded
+                "filesystem: limit exceeded", kind: "EOVERFLOW"
             )
         )
 
@@ -251,12 +251,12 @@ impl FileTree for MemoryTree:
         let inside = try clean(path)
         if self.files.contains(inside): return error(
             Error(
-                "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+                "filesystem: invalid input", kind: "EINVAL"
             )
         )
         if not self.directories.contains(inside): return error(
             Error(
-                "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+                "filesystem: file or directory not found", kind: "ENOENT"
             )
         )
 
@@ -312,26 +312,26 @@ impl FileTree for EmbeddedTree:
         let inside = try clean(path)
         if self.directories.contains(inside): return error(
             Error(
-                "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+                "filesystem: invalid input", kind: "EINVAL"
             )
         )
 
         let found = self.encoded.get(inside)
         if found.is_none(): return error(
             Error(
-                "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+                "filesystem: file or directory not found", kind: "ENOENT"
             )
         )
 
         let decoded = base64_decode(found.get(), false, max_bytes)
-        if decoded.is_error() and decoded.err().kind == ErrorCategory.LimitExceeded: return error(
+        if decoded.is_error() and decoded.err().kind == "EOVERFLOW": return error(
             Error(
-                "filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded
+                "filesystem: limit exceeded", kind: "EOVERFLOW"
             )
         )
         if decoded.is_error(): return error(
             Error(
-                "filesystem: invalid data", kind: ErrorCategory.InvalidData
+                "filesystem: invalid data", kind: "EBADMSG"
             )
         )
 
@@ -342,12 +342,12 @@ impl FileTree for EmbeddedTree:
         let inside = try clean(path)
         if self.encoded.contains(inside): return error(
             Error(
-                "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+                "filesystem: invalid input", kind: "EINVAL"
             )
         )
         if not self.directories.contains(inside): return error(
             Error(
-                "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+                "filesystem: file or directory not found", kind: "ENOENT"
             )
         )
 
@@ -390,7 +390,7 @@ export fn walk(
         found.append(WalkEntry(relative(entry.path, start), entry.directory))
         if max_entries.is_some() and found.length() > max_entries.get(): return error(
             Error(
-                "filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded
+                "filesystem: limit exceeded", kind: "EOVERFLOW"
             )
         )
 

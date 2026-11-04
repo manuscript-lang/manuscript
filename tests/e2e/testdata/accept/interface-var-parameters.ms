@@ -77,7 +77,7 @@ type Checked:
 impl Transform[Int, Int] for Checked:
     var fn step(value: Int, var out: WriteStream[Int]) Unit!:
         try out.write(value)
-        if value < 0: return error(Error("negative", kind: ErrorCategory.InvalidData))
+        if value < 0: return error(Error("negative", kind: "EBADMSG"))
 
         return ok(unit)
 

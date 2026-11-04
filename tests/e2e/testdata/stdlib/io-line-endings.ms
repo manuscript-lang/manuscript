@@ -41,4 +41,4 @@ test "a line that is not valid UTF-8 is an error, not an empty line":
         "\nnext\n".to_bytes()
     )
     let found = collect(lines(from_bytes(bad)), none)
-    try expect_equal(found.err().kind, ErrorCategory.InvalidData)
+    try expect_equal(found.err().kind, "EBADMSG")

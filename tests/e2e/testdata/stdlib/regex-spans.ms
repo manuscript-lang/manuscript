@@ -63,7 +63,7 @@ test "capture spans distinguish no match absent groups and empty captures":
         "aé", 0
     ) | try expect_error | try expect_equal(
         Error(
-            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+            "regular expression: limit exceeded", kind: "EOVERFLOW"
         )
     )
 
@@ -95,7 +95,7 @@ test "span budgets cover whole and unmatched capture slots":
         "ab", 1
     ) | try expect_error | try expect_equal(
         Error(
-            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+            "regular expression: limit exceeded", kind: "EOVERFLOW"
         )
     )
     re.capture_spans(
@@ -107,7 +107,7 @@ test "span budgets cover whole and unmatched capture slots":
         "ab", 2
     ) | try expect_error | try expect_equal(
         Error(
-            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+            "regular expression: limit exceeded", kind: "EOVERFLOW"
         )
     )
 
@@ -117,14 +117,14 @@ test "span budgets cover whole and unmatched capture slots":
         "ab", 2, 5
     ) | try expect_error | try expect_equal(
         Error(
-            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+            "regular expression: limit exceeded", kind: "EOVERFLOW"
         )
     )
     re.capture_all_spans(
         "ab", 1, 6
     ) | try expect_error | try expect_equal(
         Error(
-            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+            "regular expression: limit exceeded", kind: "EOVERFLOW"
         )
     )
     re.capture_all_spans("", 0, 0) | try expect_ok | try expect_equal(
@@ -136,28 +136,28 @@ test "span budgets cover whole and unmatched capture slots":
             "", cap
         ) | try expect_error | try expect_equal(
             Error(
-                "regular expression: invalid input", kind: ErrorCategory.InvalidInput
+                "regular expression: invalid input", kind: "EINVAL"
             )
         )
         re.capture_spans(
             "", cap
         ) | try expect_error | try expect_equal(
             Error(
-                "regular expression: invalid input", kind: ErrorCategory.InvalidInput
+                "regular expression: invalid input", kind: "EINVAL"
             )
         )
         re.capture_all_spans(
             "", cap, none
         ) | try expect_error | try expect_equal(
             Error(
-                "regular expression: invalid input", kind: ErrorCategory.InvalidInput
+                "regular expression: invalid input", kind: "EINVAL"
             )
         )
         re.capture_all_spans(
             "", none, cap
         ) | try expect_error | try expect_equal(
             Error(
-                "regular expression: invalid input", kind: ErrorCategory.InvalidInput
+                "regular expression: invalid input", kind: "EINVAL"
             )
         )
 
@@ -184,14 +184,14 @@ test "span results remain bounded for dense matches":
         text, 1
     ) | try expect_error | try expect_equal(
         Error(
-            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+            "regular expression: limit exceeded", kind: "EOVERFLOW"
         )
     )
     re.capture_all_spans(
         text, none, 3
     ) | try expect_error | try expect_equal(
         Error(
-            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+            "regular expression: limit exceeded", kind: "EOVERFLOW"
         )
     )
     re.capture_spans(

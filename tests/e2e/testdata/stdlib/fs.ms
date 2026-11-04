@@ -43,10 +43,10 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
     glob(
         path: root, options: GlobOptions(patterns: ["**/*.\{txt,md\}"], max_results: 2)
     ) | try expect_fs_error(
-        Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("filesystem: limit exceeded", kind: "EOVERFLOW")
     )
     glob(path: root, options: GlobOptions(patterns: ["\{a.txt,[\}"])) | try expect_fs_error(
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
 
     let options = GlobOptions(patterns: ["*.txt"], exclude: ["sub/**"])
@@ -70,33 +70,33 @@ test "ordinary filesystem misuse retains typed cases":
     let _child = write_file(path: "{directory}/child", data: "x", replace: false).wait() | try expect_ok
     let _written = write_file(path: file, data: "abc", replace: false).wait() | try expect_ok
     remove(path: directory, recursive: false) | try expect_fs_error(
-        Error("filesystem: directory not empty", kind: ErrorCategory.Other)
+        Error("filesystem: directory not empty", kind: "EUNKNOWN")
     )
     list(path: file) | try expect_fs_error(
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
     read_file(path: directory).wait() | try expect_fs_error(
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
     create_directory(path: file, recursive: false) | try expect_fs_error(
-        Error("filesystem: already exists", kind: ErrorCategory.AlreadyExists)
+        Error("filesystem: already exists", kind: "EEXIST")
     )
 
     var reader = open(path: file, flags: "r", mode: 384) | try expect_ok
     reader.write(
         "x"
     ) | try expect_fs_error(
-        Error("I/O: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("I/O: invalid input", kind: "EINVAL")
     )
     reader.seek(
         offset: -1, origin: 0
     ) | try expect_fs_error(
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
     reader.seek(
         offset: 0, origin: 3
     ) | try expect_fs_error(
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
     try reader.close()
 
@@ -104,10 +104,10 @@ test "ordinary filesystem misuse retains typed cases":
     writer.read(
         1
     ) | try expect_fs_error(
-        Error("I/O: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("I/O: invalid input", kind: "EINVAL")
     )
     writer.read_file() | try expect_fs_error(
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
 
 test "filesystem scoped temporary directories and bounded file reads":
@@ -121,10 +121,10 @@ test "filesystem scoped temporary directories and bounded file reads":
         "hello".to_bytes()
     )
     read_file(path: path, max_bytes: 4).wait() | try expect_fs_error(
-        Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("filesystem: limit exceeded", kind: "EOVERFLOW")
     )
     write_file(path: path, data: "changed", replace: false).wait() | try expect_fs_error(
-        Error("filesystem: already exists", kind: ErrorCategory.AlreadyExists)
+        Error("filesystem: already exists", kind: "EEXIST")
     )
     (stat(path: path, follow_links: true) | try expect_ok).size | try expect_equal(5)
     (list(path: directory) | try expect_ok).length() | try expect_equal(1)
@@ -135,7 +135,7 @@ test "filesystem scoped temporary directories and bounded file reads":
     try temporary.close()
     stat(path: directory, follow_links: true) | try expect_fs_error(
         Error(
-            "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+            "filesystem: file or directory not found", kind: "ENOENT"
         )
     )
 
@@ -158,7 +158,7 @@ test "file handles positional I/O stream adapters and closed errors":
     try handle.close()
 
     let closed: Bytes! = error(
-        Error("filesystem: resource is closed", kind: ErrorCategory.Closed)
+        Error("filesystem: resource is closed", kind: "EBADF")
     )
     handle.read_at(offset: 0, max_bytes: 1) | try expect_equal(closed)
     try handle.close()
@@ -166,7 +166,7 @@ test "file handles positional I/O stream adapters and closed errors":
 test "empty paths are rejected instead of resolving to the working directory":
     let invalid: Unit! = error(
         cause: Error(
-            "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+            "filesystem: invalid input", kind: "EINVAL"
         )
     )
     remove(path: "", recursive: true) | try expect_equal(invalid)
@@ -179,7 +179,7 @@ test "empty paths are rejected instead of resolving to the working directory":
             try expect_equal(
                 cause,
                 Error(
-                    "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+                    "filesystem: invalid input", kind: "EINVAL"
                 )
             )
 

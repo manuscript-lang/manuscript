@@ -311,14 +311,14 @@ impl JsonReading[T]:
         if let text = bytes.decode_utf8():
             return parse[T](text, self.limits)
 
-        return error(Error("JSON: invalid data", kind: InvalidData))
+        return error(Error("JSON: invalid data", kind: "EBADMSG"))
 
     // Consumes one byte and reports whether it finished a value.
     var fn scan(byte: UInt8) Bool!:
         if self.mode == 0:
             if is_space(byte): return ok(false)
             if not starts_value(byte): return error(
-                Error("JSON: invalid data", kind: InvalidData)
+                Error("JSON: invalid data", kind: "EBADMSG")
             )
 
             self.mode = 3
@@ -333,7 +333,7 @@ impl JsonReading[T]:
 
         self.size += 1
         if limit >= 0 and self.size > limit: return error(
-            Error("JSON: limit exceeded", kind: LimitExceeded)
+            Error("JSON: limit exceeded", kind: "EOVERFLOW")
         )
 
         self.pending.append(byte)
@@ -356,7 +356,7 @@ impl JsonReading[T]:
         if byte == 123 or byte == 91:
             self.depth += 1
             if self.depth > self.limits.max_depth.get(self.depth): return error(
-                Error("JSON: limit exceeded", kind: LimitExceeded)
+                Error("JSON: limit exceeded", kind: "EOVERFLOW")
             )
 
             return ok(false)
@@ -377,7 +377,7 @@ impl JsonReading[T]:
 
 impl Transform[Bytes, T] for JsonReading[T]:
     var fn step(value: Bytes, var out: WriteStream[T]) Unit!:
-        if self.finished: return error(Error("JSON: invalid input", kind: InvalidInput))
+        if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
         if let failure = self.failure: return error(failure.clone())
 
         for byte in value.values():
@@ -389,13 +389,13 @@ impl Transform[Bytes, T] for JsonReading[T]:
         return ok(unit)
 
     var fn finish(var out: WriteStream[T]) Unit!:
-        if self.finished: return error(Error("JSON: invalid input", kind: InvalidInput))
+        if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
         if let failure = self.failure: return error(failure.clone())
 
         self.finished = true
         if self.mode == 0: return ok(unit)
         if self.mode != 3: return self.fail(
-            Error("JSON: invalid data", kind: InvalidData)
+            Error("JSON: invalid data", kind: "EBADMSG")
         )
 
         let completed = self.complete()

@@ -43,7 +43,7 @@ impl Source[Bytes] for Chunks:
             match self.failure:
                 message: return error(
                     Error(
-                        message.clone(), kind: ErrorCategory.Failed
+                        message.clone(), kind: "EIO"
                     )
                 )
                 none: return ok(none)

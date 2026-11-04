@@ -58,13 +58,13 @@ fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
 
     var expected: Bytes! = ok(data.clone())
     if mode == 1 or mode == 2 or mode == 7: expected = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     if mode == 3: expected = error(
-        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
     if mode == 4: expected = error(
-        Error("encoding: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("encoding: invalid input", kind: "EINVAL")
     )
 
     fn work() Unit!:
@@ -105,10 +105,10 @@ fn decode85(
 
     var expected: Bytes! = ok(data.clone())
     if under: expected = error(
-        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
     if bad != 0: expected = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
 
     fn work() Unit!:
@@ -122,7 +122,7 @@ fn decode85(
 fn zero_budget85() Unit!:
     let text = ascii85_encode(sample(4096))
     let expected: Bytes! = error(
-        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
 
     fn work() Unit!:

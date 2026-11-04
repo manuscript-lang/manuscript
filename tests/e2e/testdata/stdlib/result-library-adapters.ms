@@ -32,7 +32,7 @@ test "library results compose with failure values without a reporting implementa
         (try expect_error(read_number(Bytes([128])))),
         InputFailure.Binary(
             Error(
-                "binary: incomplete varint", kind: ErrorCategory.InvalidData
+                "binary: incomplete varint", kind: "EBADMSG"
             )
         )
     )
@@ -42,7 +42,7 @@ test "library results compose with failure values without a reporting implementa
     try expect_equal(
         (try expect_error(read_duration("invalid"))),
         InputFailure.Time(
-            Error("time: invalid data", kind: ErrorCategory.InvalidData)
+            Error("time: invalid data", kind: "EBADMSG")
         )
     )
 

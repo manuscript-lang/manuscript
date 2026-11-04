@@ -285,13 +285,13 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
             if let most = self.limits.max_entries:
                 if self.count > most: return error(
                     Error(
-                        "archive: limit exceeded", kind: LimitExceeded
+                        "archive: limit exceeded", kind: "EOVERFLOW"
                     )
                 )
             if let most = self.limits.max_total_bytes:
                 if self.total > most: return error(
                     Error(
-                        "archive: limit exceeded", kind: LimitExceeded
+                        "archive: limit exceeded", kind: "EOVERFLOW"
                     )
                 )
 
@@ -300,7 +300,7 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
     var fn finish(var out: WriteStream[ArchiveEntry]) Unit!:
         if self.done or self.buffer.is_empty(): return ok(unit)
 
-        return error(Error("archive: truncated tar", kind: InvalidData))
+        return error(Error("archive: truncated tar", kind: "EBADMSG"))
 
 // Reads the entries of a tar byte stream one at a time, for archives too big to hold in memory. Each entry is
 // validated as `unpack` does; `max_entry_bytes` bounds one entry and `max_entries` and `max_total_bytes` the

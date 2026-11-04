@@ -126,7 +126,7 @@ impl Reader:
     // Consumes `literal` or fails.
     var fn expect(literal: String) Unit!:
         if not self.looking_at(literal): return error(
-            Error("XML: invalid data", kind: ErrorCategory.InvalidData)
+            Error("XML: invalid data", kind: "EBADMSG")
         )
 
         self.at += literal.chars().length()
@@ -144,7 +144,7 @@ impl Reader:
             out.append(self.peek())
             self.at += 1
 
-        return error(Error("XML: invalid data", kind: ErrorCategory.InvalidData))
+        return error(Error("XML: invalid data", kind: "EBADMSG"))
 
     var fn name() String!:
         var out = StringBuilder()
@@ -159,7 +159,7 @@ impl Reader:
             self.at += 1
 
         if first: return error(
-            Error("XML: invalid data", kind: ErrorCategory.InvalidData)
+            Error("XML: invalid data", kind: "EBADMSG")
         )
 
         return ok(out.build())
@@ -193,7 +193,7 @@ impl Reader:
 
     var fn element(depth: Int) XmlNode!:
         if depth > self.max_depth: return error(
-            Error("XML: limit exceeded", kind: ErrorCategory.LimitExceeded)
+            Error("XML: limit exceeded", kind: "EOVERFLOW")
         )
 
         try self.expect("<")
@@ -220,7 +220,7 @@ impl Reader:
             let quote = self.peek()
             if quote != "\"" and quote != "'": return error(
                 Error(
-                    "XML: invalid data", kind: ErrorCategory.InvalidData
+                    "XML: invalid data", kind: "EBADMSG"
                 )
             )
 
@@ -229,14 +229,14 @@ impl Reader:
             let raw = try self.take_until(quote)
             if raw.contains("<"): return error(
                 Error(
-                    "XML: invalid data", kind: ErrorCategory.InvalidData
+                    "XML: invalid data", kind: "EBADMSG"
                 )
             )
 
             for existing in attributes:
                 if existing.name == attribute_name: return error(
                     Error(
-                        "XML: invalid data", kind: ErrorCategory.InvalidData
+                        "XML: invalid data", kind: "EBADMSG"
                     )
                 )
             attributes.append(
@@ -250,7 +250,7 @@ impl Reader:
         while true:
             if self.done(): return error(
                 Error(
-                    "XML: invalid data", kind: ErrorCategory.InvalidData
+                    "XML: invalid data", kind: "EBADMSG"
                 )
             )
 
@@ -260,7 +260,7 @@ impl Reader:
                 let closing = try self.name()
                 if closing != name: return error(
                     Error(
-                        "XML: invalid data", kind: ErrorCategory.InvalidData
+                        "XML: invalid data", kind: "EBADMSG"
                     )
                 )
 
@@ -317,7 +317,7 @@ fn decode(text: String) String!:
 
         let end = tail.index_of(";")
         if not end.is_some(): return error(
-            Error("XML: invalid data", kind: ErrorCategory.InvalidData)
+            Error("XML: invalid data", kind: "EBADMSG")
         )
 
         let entity = tail.take(end.get(0))
@@ -332,7 +332,7 @@ fn decode(text: String) String!:
         else if entity.starts_with("#"):
             out.append(try scalar(parse_int_radix(entity.drop(1), 10)))
         else:
-            return error(Error("XML: invalid data", kind: ErrorCategory.InvalidData))
+            return error(Error("XML: invalid data", kind: "EBADMSG"))
 
         out.append(tail.drop(end.get(0) + 1))
 
@@ -340,12 +340,12 @@ fn decode(text: String) String!:
 
 fn scalar(value: Int?) String!:
     if not value.is_some(): return error(
-        Error("XML: invalid data", kind: ErrorCategory.InvalidData)
+        Error("XML: invalid data", kind: "EBADMSG")
     )
 
     let text = from_scalars([value.get(0)])
     if text.is_error(): return error(
-        Error("XML: invalid data", kind: ErrorCategory.InvalidData)
+        Error("XML: invalid data", kind: "EBADMSG")
     )
 
     return ok(text.get())
@@ -357,7 +357,7 @@ A document with several roots, text outside the root, or any syntax error is `In
 */
 export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
     if max_depth <= 0: return error(
-        Error("XML: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("XML: invalid input", kind: "EINVAL")
     )
 
     var reader = Reader(chars: text.chars(), at: 0, max_depth: max_depth)
@@ -367,7 +367,7 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
     let root = try reader.element(1)
     try reader.skip_misc()
     if not reader.done(): return error(
-        Error("XML: invalid data", kind: ErrorCategory.InvalidData)
+        Error("XML: invalid data", kind: "EBADMSG")
     )
 
     return ok(root)

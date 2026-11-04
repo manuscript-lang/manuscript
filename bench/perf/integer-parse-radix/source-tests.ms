@@ -14,10 +14,10 @@ test "integer radix parsing preserves signed boundaries in every base":
 
 test "integer radix syntax errors take precedence after overflow":
     let overflow: Int! = error(
-        Error("number: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("number: value out of range", kind: "ERANGE")
     )
     let invalid: Int! = error(
-        Error("number: invalid data", kind: ErrorCategory.InvalidData)
+        Error("number: invalid data", kind: "EBADMSG")
     )
 
     for text in [

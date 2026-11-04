@@ -28,7 +28,7 @@ fn reduced(numerator: BigInt, denominator: BigInt) BigRat:
 // Returns `numerator / denominator` in lowest terms; a zero denominator returns InvalidInput.
 export fn rat(numerator: BigInt, denominator: BigInt) BigRat!:
     if denominator.sign() == 0:
-        return error(Error("bigrat: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("bigrat: invalid input", kind: "EINVAL"))
     if numerator.sign() == 0:
         return ok(BigRat(num: big(0), den: big(1)))
 
@@ -65,14 +65,14 @@ fn parse_digits(text: String) BigInt!:
     if let value = parse_big(text):
         return ok(value)
 
-    return error(Error("bigrat: invalid data", kind: ErrorCategory.InvalidData))
+    return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
 // Parses `a/b`, an integer, or a decimal with an optional exponent: `3/4`, `-12`, `1.25`, `6.02e23`, `5e-3`.
 // A zero denominator returns InvalidInput, malformed text InvalidData and an exponent beyond 100000 in magnitude LimitExceeded.
 export fn parse_rat(text: String) BigRat!:
     let slash = text.split("/")
     if slash.length() > 2:
-        return error(Error("bigrat: invalid data", kind: ErrorCategory.InvalidData))
+        return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
     if slash.length() == 2:
         let top = try parse_digits(slash[0])
@@ -81,7 +81,7 @@ export fn parse_rat(text: String) BigRat!:
 
     let exponent_parts = text.lower().split("e")
     if exponent_parts.length() > 2:
-        return error(Error("bigrat: invalid data", kind: ErrorCategory.InvalidData))
+        return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
     var exponent = 0
 
@@ -94,17 +94,17 @@ export fn parse_rat(text: String) BigRat!:
             exponent = parse_exponent(digits)
 
         if exponent == -1000001:
-            return error(Error("bigrat: invalid data", kind: ErrorCategory.InvalidData))
+            return error(Error("bigrat: invalid data", kind: "EBADMSG"))
         if exponent > 100000 or exponent < -100000:
             return error(
                 Error(
-                    "bigrat: limit exceeded", kind: ErrorCategory.LimitExceeded
+                    "bigrat: limit exceeded", kind: "EOVERFLOW"
                 )
             )
 
     let point = exponent_parts[0].split(".")
     if point.length() > 2:
-        return error(Error("bigrat: invalid data", kind: ErrorCategory.InvalidData))
+        return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
     var fraction_digits = 0
     var joined = point[0].clone()
@@ -240,7 +240,7 @@ impl BigRat:
         if digits < 0:
             return error(
                 Error(
-                    "bigrat: invalid input", kind: ErrorCategory.InvalidInput
+                    "bigrat: invalid input", kind: "EINVAL"
                 )
             )
 
@@ -331,21 +331,21 @@ export fn big_float_of_rat(value: BigRat, precision: Int) BigFloat:
 export fn parse_big_float(text: String, precision: Int) BigFloat!:
     let bits = checked(precision)
     if text.contains("/"):
-        return error(Error("bigfloat: invalid data", kind: ErrorCategory.InvalidData))
+        return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
     if let value = parse_rat(text):
         return ok(big_float_of_rat(value, bits))
 
     let too_large: BigRat! = error(
-        Error("bigrat: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("bigrat: limit exceeded", kind: "EOVERFLOW")
     )
     if parse_rat(text) == too_large:
         return error(
             Error(
-                "bigfloat: limit exceeded", kind: ErrorCategory.LimitExceeded
+                "bigfloat: limit exceeded", kind: "EOVERFLOW"
             )
         )
 
-    return error(Error("bigfloat: invalid data", kind: ErrorCategory.InvalidData))
+    return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
 
 impl BigFloat:
     // Returns the precision in bits.
@@ -411,7 +411,7 @@ impl BigFloat:
         if other.mant.sign() == 0:
             return error(
                 Error(
-                    "bigfloat: invalid input", kind: ErrorCategory.InvalidInput
+                    "bigfloat: invalid input", kind: "EINVAL"
                 )
             )
 
@@ -436,7 +436,7 @@ impl BigFloat:
         if self.mant.sign() < 0:
             return error(
                 Error(
-                    "bigfloat: invalid input", kind: ErrorCategory.InvalidInput
+                    "bigfloat: invalid input", kind: "EINVAL"
                 )
             )
         if self.mant.sign() == 0:
@@ -510,7 +510,7 @@ impl BigFloat:
         if let text = self.to_rat().to_fixed(digits):
             return ok(text)
 
-        return error(Error("bigfloat: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("bigfloat: invalid input", kind: "EINVAL"))
 
 fn larger(left: Int, right: Int) Int:
     if left >= right:

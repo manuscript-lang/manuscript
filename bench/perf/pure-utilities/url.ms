@@ -32,7 +32,7 @@ export fn main() Int:
             let result = decode_component(input)
 
             if result.is_error():
-                if result.err().kind != ErrorCategory.InvalidData:
+                if result.err().kind != "EBADMSG":
                     return 1
 
                 status = "InvalidData"
@@ -42,7 +42,7 @@ export fn main() Int:
             let result = parse(input)
 
             if result.is_error():
-                if result.err().kind != ErrorCategory.InvalidData:
+                if result.err().kind != "EBADMSG":
                     return 1
 
                 status = "InvalidData"

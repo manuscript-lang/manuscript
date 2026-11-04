@@ -95,7 +95,7 @@ fn step[T](id: Int, cell: Int) Unit:
                 id,
                 error(
                     Error(
-                        "stream: a read is already waiting", kind: ErrorCategory.Closed
+                        "stream: a read is already waiting", kind: "EBADF"
                     )
                 )
             )
@@ -137,7 +137,7 @@ impl Iterator[T!] for Waiting[T]:
             self.ended = true
             return error(
                 Error(
-                    "stream: a read is already waiting", kind: ErrorCategory.Closed
+                    "stream: a read is already waiting", kind: "EBADF"
                 )
             )
 
@@ -217,7 +217,7 @@ impl Source[Bytes] for DescriptorSource:
 
         if code != 0:
             msrt_promise_drop(p)
-            return error(Error("stream: read timed out", kind: ErrorCategory.Timeout))
+            return error(Error("stream: read timed out", kind: "ETIMEDOUT"))
 
         let chunk = msrt_promise_take[Bytes](p)
         msrt_promise_drop(p)
@@ -226,7 +226,7 @@ impl Source[Bytes] for DescriptorSource:
 
         let message = msrt_streams_error(self.id)
         if message.length() > 0:
-            return error(Error(message, kind: ErrorCategory.Failed))
+            return error(Error(message, kind: "EIO"))
 
         return ok(none)
 
@@ -246,7 +246,7 @@ type DescriptorSink:
 impl Sink[Bytes] for DescriptorSink:
     var fn put(value: Bytes) Unit!:
         if msrt_streams_write(self.id, value) != 0:
-            return error(Error("stream: closed", kind: ErrorCategory.Closed))
+            return error(Error("stream: closed", kind: "EBADF"))
 
         return ok(unit)
 
@@ -324,7 +324,7 @@ type Collected[T]:
 
 impl Sink[T] for Collected[T]:
     var fn put(value: T) Unit!:
-        return error(Error("stream: closed", kind: ErrorCategory.Closed))
+        return error(Error("stream: closed", kind: "EBADF"))
 
     var fn drain() Promise[Unit]:
         return adopt[Unit](msrt_promise_finished())
@@ -346,7 +346,7 @@ impl Source[T] for PipeSource[T]:
 
         if code != 0:
             msrt_promise_drop(p)
-            return error(Error("pipe: read cancelled", kind: ErrorCategory.Other))
+            return error(Error("pipe: read cancelled", kind: "EUNKNOWN"))
 
         let value = msrt_promise_take[T](p)
         msrt_promise_drop(p)
@@ -363,7 +363,7 @@ type PipeSink[T: Clonable]:
 impl Sink[T] for PipeSink[T]:
     var fn put(value: T) Unit!:
         if msrt_pipe_write[T](self.id, value) != 0:
-            return error(Error("pipe: the reader is gone", kind: ErrorCategory.Closed))
+            return error(Error("pipe: the reader is gone", kind: "EBADF"))
 
         return ok(unit)
 

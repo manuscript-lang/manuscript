@@ -509,7 +509,7 @@ impl BigInt:
     // No inverse gives ok(none); modulus 1 gives zero. Variable-time; unsuitable for secret operands.
     fn inverse_mod(modulus: BigInt) BigInt?!:
         if modulus.sign() <= 0: return error(
-            Error("big integer: invalid input", kind: InvalidInput)
+            Error("big integer: invalid input", kind: "EINVAL")
         )
 
         return ok(msstd_bigint_inverse_mod(self, modulus))
@@ -643,7 +643,7 @@ export fn factorial(n: Int) BigInt!:
     if n < 0:
         return error(
             Error(
-                "big integer: invalid input", kind: ErrorCategory.InvalidInput
+                "big integer: invalid input", kind: "EINVAL"
             )
         )
     if n < 2:
@@ -667,7 +667,7 @@ export fn binomial(n: Int, k: Int) BigInt!:
     if n < 0 or k < 0:
         return error(
             Error(
-                "big integer: invalid input", kind: ErrorCategory.InvalidInput
+                "big integer: invalid input", kind: "EINVAL"
             )
         )
     if k > n:
@@ -780,7 +780,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
     if modulus.compare(msstd_bigint_from_int(3)) < 0 or bigint_is_even(modulus):
         return error(
             Error(
-                "big integer: invalid input", kind: ErrorCategory.InvalidInput
+                "big integer: invalid input", kind: "EINVAL"
             )
         )
 
@@ -824,7 +824,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
             if tries > 1000:
                 return error(
                     Error(
-                        "big integer: invalid input", kind: ErrorCategory.InvalidInput
+                        "big integer: invalid input", kind: "EINVAL"
                     )
                 )
 
@@ -844,7 +844,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
             if i == 0 or i >= m:
                 return error(
                     Error(
-                        "big integer: invalid input", kind: ErrorCategory.InvalidInput
+                        "big integer: invalid input", kind: "EINVAL"
                     )
                 )
 
@@ -857,7 +857,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
     if (root * root % modulus).compare(target) != 0:
         return error(
             Error(
-                "big integer: invalid input", kind: ErrorCategory.InvalidInput
+                "big integer: invalid input", kind: "EINVAL"
             )
         )
 

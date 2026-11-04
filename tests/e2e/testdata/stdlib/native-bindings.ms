@@ -58,11 +58,11 @@ test "process usage records report this process":
 test "set_identity and set_groups validate input and apply or refuse":
     try expect_process_error(
         set_identity(kind: "nope", id: 0),
-        Error("process: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("process: invalid input", kind: "EINVAL")
     )
     try expect_process_error(
         set_groups(groups: [-1]),
-        Error("process: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("process: invalid input", kind: "EINVAL")
     )
 
     let info = try process_info()
@@ -72,13 +72,13 @@ test "set_identity and set_groups validate input and apply or refuse":
         try expect_process_error(
             set_identity(kind: "uid", id: 0),
             Error(
-                "process: operation not supported", kind: ErrorCategory.Unsupported
+                "process: operation not supported", kind: "ENOTSUP"
             )
         )
         try expect_process_error(
             set_groups(groups: [0]),
             Error(
-                "process: operation not supported", kind: ErrorCategory.Unsupported
+                "process: operation not supported", kind: "ENOTSUP"
             )
         )
     else:
@@ -96,7 +96,7 @@ test "set_identity and set_groups validate input and apply or refuse":
             try expect_process_error(
                 set_groups(groups: groups),
                 Error(
-                    "process: permission denied", kind: ErrorCategory.PermissionDenied
+                    "process: permission denied", kind: "EACCES"
                 )
             )
 
@@ -112,24 +112,24 @@ test "replace rejects invalid programs before leaving this process":
         try expect_process_error(
             empty,
             Error(
-                "process: operation not supported", kind: ErrorCategory.Unsupported
+                "process: operation not supported", kind: "ENOTSUP"
             )
         )
         try expect_process_error(
             missing,
             Error(
-                "process: operation not supported", kind: ErrorCategory.Unsupported
+                "process: operation not supported", kind: "ENOTSUP"
             )
         )
     else:
         try expect_process_error(
             empty,
             Error(
-                "process: invalid input", kind: ErrorCategory.InvalidInput
+                "process: invalid input", kind: "EINVAL"
             )
         )
         try expect_process_error(
-            missing, Error("process: not found", kind: ErrorCategory.NotFound)
+            missing, Error("process: not found", kind: "ENOENT")
         )
 
 test "stat_filesystem describes the filesystem under a path":
@@ -139,7 +139,7 @@ test "stat_filesystem describes the filesystem under a path":
     try expect_fs_error(
         stat_filesystem(path: "/definitely/not/a/path"),
         Error(
-            "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+            "filesystem: file or directory not found", kind: "ENOENT"
         )
     )
 
@@ -178,7 +178,7 @@ test "native watcher max_entries counts the paths under the root":
         watch(
             path: t.path(), recursive: true, options: WatchOptions(max_entries: 1)
         ),
-        Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("filesystem: limit exceeded", kind: "EOVERFLOW")
     )
 
     var w = try watch(
@@ -194,7 +194,7 @@ test "polling options reject native-only settings":
             path: t.path(),
             options: WatchOptions(interval: milliseconds(20), max_events: 4)
         ),
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
     try expect_fs_error(
         watch(
@@ -203,11 +203,11 @@ test "polling options reject native-only settings":
                 interval: milliseconds(20), overflow: "ignore"
             )
         ),
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
     try expect_fs_error(
         watch(path: t.path(), options: WatchOptions(overflow: "bogus")),
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
 
     var w = try watch(path: t.path(), options: polled)

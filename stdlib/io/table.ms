@@ -36,31 +36,31 @@ export fn format(
     let cell_limit = try budget(max_cells)
     let byte_limit = min(try budget(max_bytes), OUTPUT_LIMIT)
     if padding < 0:
-        return error(Error("table: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("table: invalid input", kind: "EINVAL"))
 
     let count = rows.length()
     if count > row_limit:
-        return error(Error("table: limit exceeded", kind: ErrorCategory.LimitExceeded))
+        return error(Error("table: limit exceeded", kind: "EOVERFLOW"))
 
     var columns = 0
     if count > 0:
         columns = rows[0].length()
     if alignments.length() > 0 and alignments.length() != columns:
-        return error(Error("table: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("table: invalid input", kind: "EINVAL"))
     if columns > 0 and count > cell_limit / columns:
-        return error(Error("table: limit exceeded", kind: ErrorCategory.LimitExceeded))
+        return error(Error("table: limit exceeded", kind: "EOVERFLOW"))
     if columns > 1 and padding > byte_limit / (columns - 1):
-        return error(Error("table: limit exceeded", kind: ErrorCategory.LimitExceeded))
+        return error(Error("table: limit exceeded", kind: "EOVERFLOW"))
 
     let gap = max(columns - 1, 0) * padding
     if count > 0 and gap > byte_limit / count:
-        return error(Error("table: limit exceeded", kind: ErrorCategory.LimitExceeded))
+        return error(Error("table: limit exceeded", kind: "EOVERFLOW"))
 
     var bytes = try add(max(count - 1, 0), gap * count, byte_limit)
 
     for row in rows:
         if row.length() != columns:
-            return error(Error("table: invalid data", kind: ErrorCategory.InvalidData))
+            return error(Error("table: invalid data", kind: "EBADMSG"))
 
         for cell in row:
             bytes = try add(bytes, cell.byte_length(), byte_limit)
@@ -110,7 +110,7 @@ fn budget(limit: Int?) Int!:
         if n < 0:
             return error(
                 Error(
-                    "table: invalid input", kind: ErrorCategory.InvalidInput
+                    "table: invalid input", kind: "EINVAL"
                 )
             )
 
@@ -121,7 +121,7 @@ fn budget(limit: Int?) Int!:
 // Adds `n` bytes to `total`, failing when the sum passes `limit` (`total` never exceeds `limit` on success).
 fn add(total: Int, n: Int, limit: Int) Int!:
     if n > limit or total > limit - n:
-        return error(Error("table: limit exceeded", kind: ErrorCategory.LimitExceeded))
+        return error(Error("table: limit exceeded", kind: "EOVERFLOW"))
 
     return ok(total + n)
 

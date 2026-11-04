@@ -15,7 +15,7 @@ import Bytes from "@std/bytes.ms"
 
 fn expect_limit(outcome: Unit!) Unit!:
     let cause = try expect_error(outcome)
-    try expect_equal(cause.kind, ErrorCategory.LimitExceeded)
+    try expect_equal(cause.kind, "EOVERFLOW")
     if not cause.message.starts_with("filesystem: limit exceeded"):
         return error(Error("wrong limit message: {cause.message}"))
 
@@ -129,7 +129,7 @@ test "filesystem tree copies default to no replacement with distinct budgets":
     copy(source, "{temporary.path()}/bytes", CopyOptions(recursive: true, max_bytes: 2)) | try expect_limit
 
     let invalid: Unit! = error(
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
     copy(
         source, "{temporary.path()}/negative-byte",

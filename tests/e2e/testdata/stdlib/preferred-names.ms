@@ -168,12 +168,12 @@ test "regex replace_all preserves literal text and exact output budgets":
 
     let limited: String! = error(
         Error(
-            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+            "regular expression: limit exceeded", kind: "EOVERFLOW"
         )
     )
     let invalid: String! = error(
         Error(
-            "regular expression: invalid input", kind: ErrorCategory.InvalidInput
+            "regular expression: invalid input", kind: "EINVAL"
         )
     )
     try expect_equal(pattern.replace_all("aa", "é", 3), limited)

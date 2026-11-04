@@ -28,6 +28,6 @@ impl Commands for Quiet:
     ) Subprocess!:
         return error(
             Error(
-                "process: service unavailable", kind: ErrorCategory.Unavailable
+                "process: service unavailable", kind: "EAGAIN"
             )
         )

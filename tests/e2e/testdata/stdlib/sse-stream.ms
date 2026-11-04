@@ -126,11 +126,11 @@ test "invalid UTF-8 is InvalidData":
     for parts in splits(builder.build()):
         let outcome = decode(parts)
         try expect_false(outcome.is_ok())
-        try expect_equal(outcome.err().kind, ErrorCategory.InvalidData)
+        try expect_equal(outcome.err().kind, "EBADMSG")
 
 test "line and event budgets report LimitExceeded":
     let tight = decode(["data: 12\n\n".to_bytes()], SseLimits(7))
-    try expect_equal(tight.err().kind, ErrorCategory.LimitExceeded)
+    try expect_equal(tight.err().kind, "EOVERFLOW")
     try expect_equal(
         (try decode(["data: 12\n\n".to_bytes()], SseLimits(8))).length(), 1
     )
@@ -138,7 +138,7 @@ test "line and event budgets report LimitExceeded":
     let event = decode(
         ["data: 1\n".to_bytes(), "data: 2\n".to_bytes()], SseLimits(max_event_bytes: 10)
     )
-    try expect_equal(event.err().kind, ErrorCategory.LimitExceeded)
+    try expect_equal(event.err().kind, "EOVERFLOW")
 
     let comments = decode(
         [": a long comment is not counted\ndata: 1\n\n".to_bytes()],
@@ -147,12 +147,12 @@ test "line and event budgets report LimitExceeded":
     try expect_equal((try comments).length(), 1)
 
     let zero = decode(["data: a\n\n".to_bytes()], SseLimits(0))
-    try expect_equal(zero.err().kind, ErrorCategory.InvalidInput)
+    try expect_equal(zero.err().kind, "EINVAL")
 
 test "truncated streams fail and clean ends succeed":
     for source in ["data: a\n", "data: a", "data: a\n\ndata", "id: 1\n"]:
         let outcome = decode([source.to_bytes()])
-        if outcome.is_ok() or outcome.err().kind != ErrorCategory.InvalidData: return fail(
+        if outcome.is_ok() or outcome.err().kind != "EBADMSG": return fail(
             "{source} must be truncated"
         )
 
@@ -164,7 +164,7 @@ test "a read failure is the stream's error and events before it arrive":
         stream[Bytes](
             Chunks(
                 ["data: a\n\n".to_bytes()], 0,
-                Error("I/O: closed", kind: ErrorCategory.Closed)
+                Error("I/O: closed", kind: "EBADF")
             )
         )
     )
@@ -172,4 +172,4 @@ test "a read failure is the stream's error and events before it arrive":
     try expect_equal(first.data, "a")
 
     let failed = events.read().wait()
-    try expect_equal(failed.err().kind, ErrorCategory.Closed)
+    try expect_equal(failed.err().kind, "EBADF")

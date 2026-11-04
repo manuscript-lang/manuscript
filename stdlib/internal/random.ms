@@ -15,7 +15,7 @@ import (
 export extern fn msstd_random_os_bytes(count: Int) Bytes!
 
 export fn invalid_input() Error:
-    return Error("random: invalid input", kind: ErrorCategory.InvalidInput)
+    return Error("random: invalid input", kind: "EINVAL")
 
 // Returns an unbiased integer from `min` up to `min + width`, where `width` is the 64-bit pattern of a positive count.
 // Draws big-endian bytes masked to the width's bit length and redraws those at or past the width.

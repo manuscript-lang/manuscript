@@ -53,7 +53,7 @@ test "TLS certificate parsing verification hostname and expiration":
         ) | try expect_ok
     )
     let failed: Unit! = error(
-        Error("TLS: authentication failed", kind: ErrorCategory.Other)
+        Error("TLS: authentication failed", kind: "EUNKNOWN")
     )
     try expect_false(
         (
@@ -76,12 +76,12 @@ test "TLS certificate parsing verification hostname and expiration":
 
 test "TLS rejects malformed PEM and certificate budgets":
     let invalid: List[CertificateInfo]! = error(
-        Error("TLS: invalid data", kind: ErrorCategory.InvalidData)
+        Error("TLS: invalid data", kind: "EBADMSG")
     )
     parse_certificates(pem: "not PEM") | try expect_equal(invalid)
 
     let limited: List[CertificateInfo]! = error(
-        Error("TLS: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("TLS: limit exceeded", kind: "EOVERFLOW")
     )
     parse_certificates(pem: certificate(), max_certificates: 0) | try expect_equal(
         limited

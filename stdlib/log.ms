@@ -67,7 +67,7 @@ fn now_ms() Int:
 fn encode_fields[F: Data](fields: F) String!:
     let text = stringify(fields)
     if text.is_error(): return error(
-        Error("logging: invalid data", kind: ErrorCategory.InvalidData)
+        Error("logging: invalid data", kind: "EBADMSG")
     )
 
     return ok(text.get())
@@ -81,7 +81,7 @@ fn merge_context(parent: String?, child: String) String!:
     let left = parse(base)
     let right = parse(child)
     if left.is_error() or right.is_error(): return error(
-        Error("logging: invalid data", kind: ErrorCategory.InvalidData)
+        Error("logging: invalid data", kind: "EBADMSG")
     )
 
     let members = left.get().as_map()
@@ -94,17 +94,17 @@ fn merge_context(parent: String?, child: String) String!:
 
     let text = stringify(JsonValue.ObjectValue(merged))
     if text.is_error(): return error(
-        Error("logging: invalid data", kind: ErrorCategory.InvalidData)
+        Error("logging: invalid data", kind: "EBADMSG")
     )
 
     return ok(text.get())
 
 fn encode_error(cause: Error) Error:
-    if cause.kind == ErrorCategory.LimitExceeded: return Error(
-        "logging: limit exceeded", kind: ErrorCategory.LimitExceeded
+    if cause.kind == "EOVERFLOW": return Error(
+        "logging: limit exceeded", kind: "EOVERFLOW"
     )
 
-    return Error("logging: invalid data", kind: ErrorCategory.InvalidData)
+    return Error("logging: invalid data", kind: "EBADMSG")
 
 // Appends to an open file. Each logger owns its handle (`duplicate` dups it), so loggers on several threads write without sharing state.
 type FileTransport:
@@ -117,21 +117,21 @@ impl Transport for FileTransport:
 
     fn write_bytes(data: Bytes) Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         return self.file.write_bytes(data)
 
     fn flush() Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         return self.file.sync()
 
     fn duplicate() Transport!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         return ok(FileTransport(file: try self.file.clone(), closed: false))
@@ -149,7 +149,7 @@ type StdoutTransport:
 impl Transport for StdoutTransport:
     fn write(data: String) Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         var out = stdout()
@@ -157,7 +157,7 @@ impl Transport for StdoutTransport:
 
     fn write_bytes(data: Bytes) Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         var out = stdout_bytes()
@@ -165,7 +165,7 @@ impl Transport for StdoutTransport:
 
     fn flush() Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         var out = stdout()
@@ -173,7 +173,7 @@ impl Transport for StdoutTransport:
 
     fn duplicate() Transport!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         return ok(StdoutTransport(closed: false))
@@ -211,7 +211,7 @@ impl Logger:
         if let max = self.max_bytes:
             if line.byte_length() > max: return error(
                 Error(
-                    "logging: limit exceeded", kind: ErrorCategory.LimitExceeded
+                    "logging: limit exceeded", kind: "EOVERFLOW"
                 )
             )
         return self.transport.write(line)
@@ -228,7 +228,7 @@ impl Logger:
     fn log[F: Data = Unit](level: LogLevel, message: String, fields: F? = none) Unit!:
         if level == LogLevel.Silent: return error(
             Error(
-                "logging: invalid input", kind: ErrorCategory.InvalidInput
+                "logging: invalid input", kind: "EINVAL"
             )
         )
         if not self.enabled(level): return ok(unit)
@@ -307,7 +307,7 @@ export fn create(
     if let max = max_bytes:
         if max < 0: return error(
             Error(
-                "logging: invalid input", kind: ErrorCategory.InvalidInput
+                "logging: invalid input", kind: "EINVAL"
             )
         )
 
@@ -357,7 +357,7 @@ impl Transport for RotatingTransport:
 
     fn write_bytes(data: Bytes) Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         var size = 0
@@ -372,14 +372,14 @@ impl Transport for RotatingTransport:
 
     fn flush() Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         return ok(unit)
 
     fn duplicate() Transport!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         return ok(
@@ -399,7 +399,7 @@ Example: `create(rotating_file_transport("app.log", max_bytes: 1048576, keep: 5)
 */
 export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Transport!:
     if max_bytes <= 0 or keep < 0: return error(
-        Error("logging: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("logging: invalid input", kind: "EINVAL")
     )
 
     match open(path, "a", 420):

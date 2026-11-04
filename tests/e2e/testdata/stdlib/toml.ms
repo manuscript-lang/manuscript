@@ -103,17 +103,17 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
             ok(_): return fail("invalid TOML accepted: {text}")
             error(cause): cause
 
-        cause.kind | try expect_equal(ErrorCategory.InvalidData)
+        cause.kind | try expect_equal("EBADMSG")
         cause.details["line"].parse_int().get() < 1 | try expect_false
         cause.details["column"].parse_int().get() < 1 | try expect_false
         ((cause.message.starts_with("TOML ")) | try expect_true)
 
 test "TOML optional limits include implicit tables and zero":
     let limited: TomlValue! = error(
-        Error("TOML limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
     let invalid: TomlValue! = error(
-        Error("invalid TOML input", kind: ErrorCategory.InvalidInput)
+        Error("invalid TOML input", kind: "EINVAL")
     )
     try expect_false(
         (
@@ -208,7 +208,7 @@ test "TOML errors report the offending line and column":
 
 test "TOML limits fields default to none":
     let limited: TomlValue! = error(
-        Error("TOML limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
     parse(text: "a=1", limits: TomlLimits(max_bytes: 2)) | try expect_equal(limited)
     parse(text: "a=1", limits: TomlLimits()) | try expect_equal(parse(text: "a=1"))
@@ -224,10 +224,10 @@ test "TOML stringify round trips scalars tables and arrays of tables":
 
 test "TOML stringify requires a table root and honors max_bytes":
     let wrong: String! = error(
-        Error("invalid TOML input", kind: ErrorCategory.InvalidInput)
+        Error("invalid TOML input", kind: "EINVAL")
     )
     let limited: String! = error(
-        Error("TOML limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
     stringify(value: TomlValue.IntValue(1)) | try expect_equal(wrong)
 
@@ -260,7 +260,7 @@ test "TOML long strings parse and stringify in linear time":
 
 test "TOML stringify rejects invalid date-time text":
     let invalid: String! = error(
-        Error("invalid TOML input", kind: ErrorCategory.InvalidInput)
+        Error("invalid TOML input", kind: "EINVAL")
     )
 
     for text in ["bogus", "", "2024-13-01", "1979-05-27T07:32:00 junk"]:

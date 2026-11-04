@@ -38,14 +38,14 @@ test "an over-budget line fails the read after the lines before it":
 
     try expect_equal(seen, ["ok"])
     try expect_equal(
-        failure, Error("I/O: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        failure, Error("I/O: limit exceeded", kind: "EOVERFLOW")
     )
 
 test "a closed stream fails the first read with its error":
     var input = lines(closed_reader())
     let step = input.read().wait()
     try expect_equal(
-        step, error(Error("I/O: resource is closed", kind: ErrorCategory.Closed))
+        step, error(Error("I/O: resource is closed", kind: "EBADF"))
     )
 
 test "break and continue work in a stream loop":

@@ -71,7 +71,7 @@ export fn run_in(
             done.exit_code, done.stdout.decode_utf8().get(""),
             done.stderr.decode_utf8().get(""), elapsed
         )
-    if result.err().kind == ErrorCategory.Timeout: return Ran(
+    if result.err().kind == "ETIMEDOUT": return Ran(
         124, "", "timeout", elapsed
     )
 

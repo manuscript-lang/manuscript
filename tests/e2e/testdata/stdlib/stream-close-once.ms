@@ -59,7 +59,7 @@ impl Source[Int] for Failing:
         return ok(none)
 
     var fn close() Unit!:
-        return error(Error("close failed", kind: ErrorCategory.Failed))
+        return error(Error("close failed", kind: "EIO"))
 
 test "an explicit close returns the source's close error":
     var input = stream[Int](Failing(0))

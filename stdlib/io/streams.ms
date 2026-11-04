@@ -15,7 +15,7 @@ impl LineSplitter:
             if size > limit:
                 return error(
                     Error(
-                        "I/O: limit exceeded", kind: ErrorCategory.LimitExceeded
+                        "I/O: limit exceeded", kind: "EOVERFLOW"
                     )
                 )
         return ok(unit)
@@ -35,7 +35,7 @@ impl LineSplitter:
 
         return error(
             Error(
-                "I/O: line is not valid UTF-8", kind: ErrorCategory.InvalidData
+                "I/O: line is not valid UTF-8", kind: "EBADMSG"
             )
         )
 
@@ -150,7 +150,7 @@ export fn collect[T](input: ReadStream[T], max_items: Int?) List[T]!:
             if items.length() > limit:
                 return error(
                     Error(
-                        "I/O: limit exceeded", kind: ErrorCategory.LimitExceeded
+                        "I/O: limit exceeded", kind: "EOVERFLOW"
                     )
                 )
 
@@ -170,7 +170,7 @@ export fn read_all(input: ReadStream[Bytes], max_bytes: Int?) Bytes!:
             if total > limit:
                 return error(
                     Error(
-                        "I/O: limit exceeded", kind: ErrorCategory.LimitExceeded
+                        "I/O: limit exceeded", kind: "EOVERFLOW"
                     )
                 )
 

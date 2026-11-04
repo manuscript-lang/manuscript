@@ -135,7 +135,7 @@ test "each proper prefix of a minimal multibyte varint is incomplete":
                 try data.slice(0, end),
                 0,
                 Error(
-                    "binary: incomplete varint", kind: ErrorCategory.InvalidData
+                    "binary: incomplete varint", kind: "EBADMSG"
                 )
             )
 
@@ -145,7 +145,7 @@ test "each proper prefix of a minimal multibyte varint is incomplete":
                 try prefixed.slice(0, end),
                 1,
                 Error(
-                    "binary: incomplete varint", kind: ErrorCategory.InvalidData
+                    "binary: incomplete varint", kind: "EBADMSG"
                 )
             )
 
@@ -156,16 +156,16 @@ test "varint offset errors are distinct from missing input":
             data,
             at,
             Error(
-                "binary: invalid varint offset", kind: ErrorCategory.OutOfRange
+                "binary: invalid varint offset", kind: "ERANGE"
             )
         )
     try expect_varint_error(
         data, data.length(),
-        Error("binary: incomplete varint", kind: ErrorCategory.InvalidData)
+        Error("binary: incomplete varint", kind: "EBADMSG")
     )
     try expect_varint_error(
         Bytes([]), 0,
-        Error("binary: incomplete varint", kind: ErrorCategory.InvalidData)
+        Error("binary: incomplete varint", kind: "EBADMSG")
     )
 
 test "the tenth byte can only be zero or one":
@@ -177,14 +177,14 @@ test "the tenth byte can only be zero or one":
             data,
             0,
             Error(
-                "binary: varint overflows 64 bits", kind: ErrorCategory.OutOfRange
+                "binary: varint overflows 64 bits", kind: "ERANGE"
             )
         )
         try expect_varint_error(
             data.concat(Bytes([0])),
             0,
             Error(
-                "binary: varint overflows 64 bits", kind: ErrorCategory.OutOfRange
+                "binary: varint overflows 64 bits", kind: "ERANGE"
             )
         )
 
@@ -203,7 +203,7 @@ test "continuation-only data stops at the representation bound":
             prefix,
             0,
             Error(
-                "binary: incomplete varint", kind: ErrorCategory.InvalidData
+                "binary: incomplete varint", kind: "EBADMSG"
             )
         )
         out.append_bytes(prefix)
@@ -214,14 +214,14 @@ test "continuation-only data stops at the representation bound":
         ten,
         0,
         Error(
-            "binary: varint overflows 64 bits", kind: ErrorCategory.OutOfRange
+            "binary: varint overflows 64 bits", kind: "ERANGE"
         )
     )
     try expect_varint_error(
         ten.concat(Bytes([0])),
         0,
         Error(
-            "binary: varint overflows 64 bits", kind: ErrorCategory.OutOfRange
+            "binary: varint overflows 64 bits", kind: "ERANGE"
         )
     )
 
@@ -269,7 +269,7 @@ test "unsigned fixed-width codecs cover the entire UInt64 range":
 
 test "unsigned fixed-width reads reject missing bytes and extreme offsets":
     let expected: UInt64! = error(
-        Error("binary: out of range", kind: ErrorCategory.OutOfRange)
+        Error("binary: out of range", kind: "ERANGE")
     )
     let data = Bytes([0, 0, 0, 0, 0, 0, 0, 0])
 
@@ -285,19 +285,19 @@ test "unsigned fixed-width reads reject missing bytes and extreme offsets":
 test "varint diagnostics describe the error without echoing input":
     try expect_equal(
         Error(
-            "binary: invalid varint offset", kind: ErrorCategory.OutOfRange
+            "binary: invalid varint offset", kind: "ERANGE"
         ).message,
         "binary: invalid varint offset"
     )
     try expect_equal(
         Error(
-            "binary: incomplete varint", kind: ErrorCategory.InvalidData
+            "binary: incomplete varint", kind: "EBADMSG"
         ).message,
         "binary: incomplete varint"
     )
     try expect_equal(
         Error(
-            "binary: varint overflows 64 bits", kind: ErrorCategory.OutOfRange
+            "binary: varint overflows 64 bits", kind: "ERANGE"
         ).message,
         "binary: varint overflows 64 bits"
     )

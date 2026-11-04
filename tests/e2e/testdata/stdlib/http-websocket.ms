@@ -82,7 +82,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     try client.close()
 
     let _limited: Unit! = error(
-        Error("HTTP: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("HTTP: limit exceeded", kind: "EOVERFLOW")
     )
 
     match request(
@@ -95,7 +95,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             try expect_equal(
                 cause,
                 Error(
-                    "network: limit exceeded", kind: ErrorCategory.LimitExceeded
+                    "network: limit exceeded", kind: "EOVERFLOW"
                 )
             )
 
@@ -177,6 +177,6 @@ test "HTTP requests reject an empty method":
             try expect_equal(
                 cause,
                 Error(
-                    "network: invalid input", kind: ErrorCategory.InvalidInput
+                    "network: invalid input", kind: "EINVAL"
                 )
             )

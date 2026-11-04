@@ -35,7 +35,7 @@ test "ASCII85 ignores every ASCII control and space including after complete gro
 
 test "ASCII85 rejects invalid characters delimiters and misplaced shorthand":
     let invalid: Bytes! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     for text in [
         "!", "u", "y", "v", "~", "!!z", "!z!!!", "<~z~>", "z~>", "z~", "é", "zé", "z!"
@@ -47,17 +47,17 @@ test "ASCII85 rejects invalid characters delimiters and misplaced shorthand":
 
 test "ASCII85 rejects overflowing complete and padded partial groups":
     let invalid: Bytes! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     for text in ["s8W-\"", "s8W", "s8W-", "uu", "uuu", "uuuu", "uuuuu", "s8W-!uuuuu"]:
         try expect_equal(ascii85_decode(text), invalid)
 
 test "ASCII85 decoded byte limits count expansions and partial groups exactly":
     let limited: Bytes! = error(
-        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
     let invalid: Bytes! = error(
-        Error("encoding: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("encoding: invalid input", kind: "EINVAL")
     )
     try expect_equal(try ascii85_decode("", 0), Bytes([]))
     try expect_equal(ascii85_decode("z", 3), limited)

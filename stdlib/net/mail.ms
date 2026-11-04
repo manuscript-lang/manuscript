@@ -48,7 +48,7 @@ impl Address:
 export fn parse_address(text: String) Address!:
     let trimmed = text.trim()
     if trimmed.is_empty(): return error(
-        Error("mail: invalid address", kind: ErrorCategory.InvalidData)
+        Error("mail: invalid address", kind: "EBADMSG")
     )
 
     var name = ""
@@ -56,17 +56,17 @@ export fn parse_address(text: String) Address!:
 
     if let open = trimmed.last_index_of("<"):
         if not trimmed.ends_with(">"): return error(
-            Error("mail: invalid address", kind: ErrorCategory.InvalidData)
+            Error("mail: invalid address", kind: "EBADMSG")
         )
 
         name = trimmed.take(open).trim()
         address = trimmed.slice(open + 1, trimmed.length() - 1).get("").trim()
     else if trimmed.contains(">"):
-        return error(Error("mail: invalid address", kind: ErrorCategory.InvalidData))
+        return error(Error("mail: invalid address", kind: "EBADMSG"))
 
     if name.starts_with("\""):
         if name.length() < 2 or not name.ends_with("\""): return error(
-            Error("mail: invalid address", kind: ErrorCategory.InvalidData)
+            Error("mail: invalid address", kind: "EBADMSG")
         )
 
         name = name.slice(1, name.length() - 1).get("").replace("\\\"", "\"").replace(
@@ -74,7 +74,7 @@ export fn parse_address(text: String) Address!:
         )
 
     if not valid_address(address): return error(
-        Error("mail: invalid address", kind: ErrorCategory.InvalidData)
+        Error("mail: invalid address", kind: "EBADMSG")
     )
 
     return ok(Address(name: decode_words(name), address: address))
@@ -121,7 +121,7 @@ export fn parse_address_list(text: String) List[Address]!:
 // Both CRLF and LF line endings are accepted; a message without a blank line has an empty body.
 export fn parse_message(raw: String) Message!:
     if raw.trim().is_empty(): return error(
-        Error("mail: invalid message", kind: ErrorCategory.InvalidData)
+        Error("mail: invalid message", kind: "EBADMSG")
     )
 
     var head = ""
@@ -140,7 +140,7 @@ export fn parse_message(raw: String) Message!:
 
     let headers = parse_headers(head)
     if headers.is_error(): return error(
-        Error("mail: invalid message", kind: ErrorCategory.InvalidData)
+        Error("mail: invalid message", kind: "EBADMSG")
     )
 
     return ok(Message(headers: headers.get(), body: body))

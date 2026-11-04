@@ -31,7 +31,7 @@ test "unpadded Base64 covers both alphabets and every tail":
 
 test "unpadded Base64 rejects padding alphabet mixing whitespace and unused bits":
     let invalid: Bytes! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     for text in [
         "A", "AAAAA", "Zg=", "Zg==", "=Zg", "Zh", "Zm9", "Z g", "Zg\n", "Zg\r", "Zg\t",
@@ -67,7 +67,7 @@ test "Base32 matches RFC 4648 padded and unpadded vectors":
 
 test "Base32 enforces exact terminal padding and uppercase alphabets":
     let invalid: Bytes! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     for text in [
         "M", "MY", "MY=", "MY=====", "MY=======", "M======", "MZX=====", "MZXW6Y==",
@@ -84,7 +84,7 @@ test "Base32 enforces exact terminal padding and uppercase alphabets":
 
 test "Base32 rejects nonzero unused bits in each tail shape":
     let invalid: Bytes! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     for text in ["MZ======", "MZX R===", "MZXR====", "MZXW7===", "MZXW6YR="]:
         try expect_equal(base32_decode(text), invalid)
@@ -96,10 +96,10 @@ test "Base32 rejects nonzero unused bits in each tail shape":
 test "encoding variants honor zero exact exceeded absent and negative limits":
     let empty = Bytes([])
     let invalid: Bytes! = error(
-        Error("encoding: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("encoding: invalid input", kind: "EINVAL")
     )
     let limited: Bytes! = error(
-        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(try base32_decode("", max_bytes: 0), empty)
     try expect_equal(try base64_decode_unpadded("", max_bytes: 0), empty)
@@ -158,13 +158,13 @@ test "encoding variant function values retain defaults":
 
 test "Base32 rejects interior padding before output budgets":
     let invalid: Bytes! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     let negative: Bytes! = error(
-        Error("encoding: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("encoding: invalid input", kind: "EINVAL")
     )
     let limited: Bytes! = error(
-        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
 
     for hex in [false, true]:
@@ -183,13 +183,13 @@ test "Base32 rejects interior padding before output budgets":
 
 test "unpadded Base64 preserves byte budget precedence for invalid padding":
     let invalid: Bytes! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+        Error("encoding: invalid data", kind: "EBADMSG")
     )
     let negative: Bytes! = error(
-        Error("encoding: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("encoding: invalid input", kind: "EINVAL")
     )
     let limited: Bytes! = error(
-        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
 
     for url in [false, true]:

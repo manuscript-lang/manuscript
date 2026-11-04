@@ -23,12 +23,12 @@ test "timestamps preserve nanoseconds and shift across epoch":
 
 test "time rejects invalid timestamps and out of range nanoseconds":
     let invalid: Timestamp! = error(
-        Error("time: invalid data", kind: ErrorCategory.InvalidData)
+        Error("time: invalid data", kind: "EBADMSG")
     )
     try expect_equal(parse_timestamp("2024-02-30T00:00:00Z"), invalid)
 
     let out_of_range: Timestamp! = error(
-        Error("time: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("time: value out of range", kind: "ERANGE")
     )
     try expect_equal(timestamp(0, 1000000000), out_of_range)
 
@@ -42,7 +42,7 @@ test "host clocks are usable and zero sleep completes":
 
 test "parse_timestamp reports offsets that leave years 1 through 9999 as out of range":
     let out_of_range: Timestamp! = error(
-        Error("time: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("time: value out of range", kind: "ERANGE")
     )
     for text in ["0001-01-01T00:00:00+00:01", "9999-12-31T23:59:59-00:01"]:
         if parse_timestamp(text) != out_of_range: return fail("range {text}")
@@ -77,12 +77,12 @@ test "format renders tokens and from_calendar round trips":
 
 test "calendar rejects unknown zones and impossible dates":
     let bad_zone: Timestamp! = error(
-        Error("time: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("time: invalid input", kind: "EINVAL")
     )
     try expect_equal(from_calendar(2024, 1, 1, 0, 0, 0, 0, "Nowhere/Land"), bad_zone)
 
     let bad_date: Timestamp! = error(
-        Error("time: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("time: value out of range", kind: "ERANGE")
     )
     try expect_equal(from_calendar(2023, 2, 29, 0, 0, 0, 0, "UTC"), bad_date)
     try expect_false(local_zone() == "")

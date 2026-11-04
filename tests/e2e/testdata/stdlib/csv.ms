@@ -38,14 +38,14 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
         try expect_equal((try stringify(rows, options, bytes)), text)
 
         let limited_text: String! = error(
-            Error("CSV: limit exceeded", kind: ErrorCategory.LimitExceeded)
+            Error("CSV: limit exceeded", kind: "EOVERFLOW")
         )
         try expect_equal(stringify(rows, options, bytes - 1), limited_text)
         try expect_equal(stringify([[""]], options, 0), limited_text)
         try expect_equal((try parse(text, options, 3, 3)), rows)
 
         let limited_rows: List[List[String]]! = error(
-            Error("CSV: limit exceeded", kind: ErrorCategory.LimitExceeded)
+            Error("CSV: limit exceeded", kind: "EOVERFLOW")
         )
         try expect_equal(parse(text, options, 2), limited_rows)
         try expect_equal(parse(text, options, max_cells: 2), limited_rows)
@@ -75,7 +75,7 @@ fn malformed(line: Int, column: Int, reason: String) List[List[String]]!:
     return error(
         Error(
             "CSV {line}:{column}: {reason}",
-            kind: ErrorCategory.InvalidData,
+            kind: "EBADMSG",
             details: {
                 "line": line.to_string(), "column": column.to_string(),
                 "reason": reason.clone()
@@ -111,12 +111,12 @@ test "CSV rejects malformed records invalid options and limits":
         try expect_true(parse(text, options).is_error())
 
     let limited: List[List[String]]! = error(
-        Error("CSV: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("CSV: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(parse("a,b\n", options, max_cells: 1), limited)
     try expect_equal(parse("a\nb\n", options, 1), limited)
 
     let invalid: String! = error(
-        Error("CSV: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("CSV: invalid input", kind: "EINVAL")
     )
     try expect_equal(stringify([["a"]], CsvOptions("::", "\n")), invalid)

@@ -30,12 +30,12 @@ test "URL query retains duplicate keys empty values and spaces":
     try expect_equal(format_query(entries), "a=1&a=2&empty=&space=hello+world")
 
     let limited: List[QueryEntry]! = error(
-        Error("URL: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("URL: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(parse_query("a=1&b=2", 1), limited)
 
     let invalid: String! = error(
-        Error("URL: invalid data", kind: ErrorCategory.InvalidData)
+        Error("URL: invalid data", kind: "EBADMSG")
     )
     try expect_equal(decode_component("%zz"), invalid)
 
@@ -49,7 +49,7 @@ test "URL query skips empty segments":
 test "URL format rejects queries that would not round trip":
     let base = try parse("http://h/p")
     let invalid: String! = error(
-        Error("URL: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("URL: invalid input", kind: "EINVAL")
     )
 
     for query in ["a#b", "a b", "%zz", "a%2"]:
@@ -67,7 +67,7 @@ test "URL format rejects queries that would not round trip":
 
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
     let invalid: Url! = error(
-        Error("URL: invalid data", kind: ErrorCategory.InvalidData)
+        Error("URL: invalid data", kind: "EBADMSG")
     )
     for text in ["http://host:80:80/", "http://h/p?q=a b", "http://h/p?q=%zz"]:
         if parse(text) != invalid: return fail("accepted {text}")
@@ -78,10 +78,10 @@ test "URL parse rejects malformed hosts and queries and keeps an empty authority
 
 test "URL format and resolve reject invalid schemes and hostless relative paths":
     let invalid_text: String! = error(
-        Error("URL: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("URL: invalid input", kind: "EINVAL")
     )
     let invalid_url: Url! = error(
-        Error("URL: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("URL: invalid input", kind: "EINVAL")
     )
 
     for scheme in [

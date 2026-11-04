@@ -28,7 +28,7 @@ Suffixes apply left to right: `Int?!` is `Result[Int?, Error]` and `Int!?` is `O
 ```manuscript
 export type Error:
     message: String
-    kind: ErrorCategory = ErrorCategory.Other
+    kind: ErrorCategory = "EUNKNOWN"
     details: Map[String, String] = Map[String, String]()
 ```
 
@@ -41,13 +41,13 @@ Build one with the record call. There is no separate constructor and no namespac
 ```manuscript
 fn find_user(id: Int) String!:
     if id < 0:
-        return error(Error("negative id", kind: ErrorCategory.InvalidInput))
-    return error(Error("no such user", kind: ErrorCategory.NotFound, details: {"id": id.to_string()}))
+        return error(Error("negative id", kind: "EINVAL"))
+    return error(Error("no such user", kind: "ENOENT", details: {"id": id.to_string()}))
 
 fn describe(id: Int) String:
     let outcome = find_user(id)
     if outcome.is_ok(): return outcome.get()
-    if outcome.err().kind == ErrorCategory.NotFound: return "missing {outcome.err().details["id"]}"
+    if outcome.err().kind == "ENOENT": return "missing {outcome.err().details["id"]}"
     return outcome.err().message.clone()
 ```
 
@@ -139,7 +139,7 @@ The initializer still runs and the outcome is dropped unread. Several `let _` ma
 
 ```manuscript
 fn discount_error(cause: DiscountError) Error:
-    return Error("discount failed", kind: ErrorCategory.InvalidInput)
+    return Error("discount failed", kind: "EINVAL")
 
 fn discount_checked(price: Decimal, percent: Decimal) Decimal!:
     return discount(price, percent).map_error(discount_error)

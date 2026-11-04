@@ -116,7 +116,7 @@ A wrong key or nonce length returns InvalidInput. Never reuse a key and nonce pa
 */
 export fn chacha20(key: Bytes, nonce: Bytes, counter: Int, data: Bytes) Bytes!:
     if not check_key_nonce(key, nonce) or counter < 0 or counter > 4294967295:
-        return error(Error("crypto: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("crypto: invalid input", kind: "EINVAL"))
 
     return ok(xor_stream(key, counter, nonce, data))
 
@@ -127,7 +127,7 @@ fn limbs_load(data: Bytes, at: Int, shift: Int) Int:
 // Authenticate with a key used for one message only; use `chacha20poly1305_seal` unless implementing a protocol.
 export fn poly1305(key: Bytes, data: Bytes) Bytes!:
     if key.length() != 32:
-        return error(Error("crypto: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("crypto: invalid input", kind: "EINVAL"))
 
     let mask = 67108863
     let r0 = bit_and(le32(key, 0), 67108863)
@@ -305,7 +305,7 @@ export fn chacha20poly1305_seal(
     associated_data: Bytes
 ) Bytes!:
     if not check_key_nonce(key, nonce):
-        return error(Error("crypto: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("crypto: invalid input", kind: "EINVAL"))
 
     let ciphertext = xor_stream(key, 1, nonce, plaintext)
     let tag = try tag_for(key, nonce, associated_data, ciphertext)
@@ -323,7 +323,7 @@ export fn chacha20poly1305_open(
     associated_data: Bytes
 ) Bytes!:
     if not check_key_nonce(key, nonce) or sealed.length() < 16:
-        return error(Error("crypto: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("crypto: invalid input", kind: "EINVAL"))
 
     let split = sealed.length() - 16
     let ciphertext = sealed.slice(0, split).get(Bytes([]))
@@ -332,7 +332,7 @@ export fn chacha20poly1305_open(
     if not constant_time_equal(expected, tag):
         return error(
             Error(
-                "crypto: authentication failed", kind: ErrorCategory.PermissionDenied
+                "crypto: authentication failed", kind: "EACCES"
             )
         )
 

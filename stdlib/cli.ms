@@ -34,25 +34,25 @@ import stderr, stdout from "@std/io/io.ms"
 import parse, stringify from "@std/data/json.ms"
 
 fn cli_unknown_flag(name: String) Error:
-    return Error("cli: unknown flag {name}", kind: InvalidInput)
+    return Error("cli: unknown flag {name}", kind: "EINVAL")
 
 fn cli_unknown_command(name: String, path: String) Error:
-    return Error("cli: unknown command {name} for {path}", kind: InvalidInput)
+    return Error("cli: unknown command {name} for {path}", kind: "EINVAL")
 
 fn cli_missing_value(name: String) Error:
-    return Error("cli: flag {name} needs a value", kind: InvalidInput)
+    return Error("cli: flag {name} needs a value", kind: "EINVAL")
 
 fn cli_invalid_value(name: String, value: String, expected: String) Error:
-    return Error("cli: flag {name}: {value} is not {expected}", kind: InvalidInput)
+    return Error("cli: flag {name}: {value} is not {expected}", kind: "EINVAL")
 
 fn cli_missing_required(name: String) Error:
-    return Error("cli: missing required {name}", kind: InvalidInput)
+    return Error("cli: missing required {name}", kind: "EINVAL")
 
 fn cli_too_many_arguments(value: String) Error:
-    return Error("cli: unexpected argument {value}", kind: InvalidInput)
+    return Error("cli: unexpected argument {value}", kind: "EINVAL")
 
 fn cli_invalid_schema(reason: String) Error:
-    return Error("cli: invalid command schema: {reason}", kind: InvalidInput)
+    return Error("cli: invalid command schema: {reason}", kind: "EINVAL")
 
 // What a flag accepts. Each case fills the record field of the same language type.
 export type FlagKind:

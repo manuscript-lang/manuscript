@@ -4,7 +4,7 @@ import from_int, BigInt from "@std/math/math.ms"
 test "big integer powers enforce the exact result bit limit":
     let limit = 16777216
     let limited: BigInt! = error(
-        Error("big integer: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("big integer: limit exceeded", kind: "EOVERFLOW")
     )
     let largest_power = try from_int(2).pow(limit - 1)
     try expect_equal((try largest_power.shift_right(limit - 1)).to_int(), 1)

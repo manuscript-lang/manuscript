@@ -137,7 +137,7 @@ anything else, or text that is not fully quoted, is InvalidInput.
 export fn unquote(text: String) String!:
     let cs = text.scalar_values()
     if cs.length() < 2 or cs[0] != 34 or cs[cs.length() - 1] != 34:
-        return error(Error("string: invalid input", kind: ErrorCategory.InvalidInput))
+        return error(Error("string: invalid input", kind: "EINVAL"))
 
     var out = List[Int]()
     var i = 1
@@ -148,7 +148,7 @@ export fn unquote(text: String) String!:
         if c == 34:
             return error(
                 Error(
-                    "string: invalid input", kind: ErrorCategory.InvalidInput
+                    "string: invalid input", kind: "EINVAL"
                 )
             )
 
@@ -158,7 +158,7 @@ export fn unquote(text: String) String!:
         else if i + 1 >= end:
             return error(
                 Error(
-                    "string: invalid input", kind: ErrorCategory.InvalidInput
+                    "string: invalid input", kind: "EINVAL"
                 )
             )
         else:
@@ -195,7 +195,7 @@ export fn unquote(text: String) String!:
                         return error(
                             Error(
                                 "string: invalid input",
-                                kind: ErrorCategory.InvalidInput
+                                kind: "EINVAL"
                             )
                         )
 
@@ -205,7 +205,7 @@ export fn unquote(text: String) String!:
                 if j >= end or hex.is_empty():
                     return error(
                         Error(
-                            "string: invalid input", kind: ErrorCategory.InvalidInput
+                            "string: invalid input", kind: "EINVAL"
                         )
                     )
 
@@ -217,7 +217,7 @@ export fn unquote(text: String) String!:
                 else:
                     return error(
                         Error(
-                            "string: invalid input", kind: ErrorCategory.InvalidInput
+                            "string: invalid input", kind: "EINVAL"
                         )
                     )
 
@@ -225,7 +225,7 @@ export fn unquote(text: String) String!:
             else:
                 return error(
                     Error(
-                        "string: invalid input", kind: ErrorCategory.InvalidInput
+                        "string: invalid input", kind: "EINVAL"
                     )
                 )
 

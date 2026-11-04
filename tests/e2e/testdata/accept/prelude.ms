@@ -33,9 +33,9 @@ test "try forwards an error of the same type unchanged":
 test "Error is a record with a message, a kind and details":
     let plain = Error("failed")
     try expect_equal(plain.message, "failed")
-    try expect_equal(plain.kind, ErrorCategory.Other)
+    try expect_equal(plain.kind, "EUNKNOWN")
     try expect_equal(plain.details.length(), 0)
 
-    let detailed = Error("no such file", kind: NotFound, details: {"path": "/tmp/x"})
-    try expect_equal(detailed.kind, ErrorCategory.NotFound)
+    let detailed = Error("no such file", kind: "ENOENT", details: {"path": "/tmp/x"})
+    try expect_equal(detailed.kind, "ENOENT")
     try expect_equal(detailed.details["path"], "/tmp/x")

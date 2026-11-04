@@ -42,7 +42,7 @@ export fn main() Int:
     let cause = reread.err()
 
     match cause:
-        Error("I/O: resource is closed", kind: ErrorCategory.Closed):
+        Error("I/O: resource is closed", kind: "EBADF"):
             return 0
         _:
             return 2
