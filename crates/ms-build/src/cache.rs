@@ -82,6 +82,7 @@ pub fn key(parts: &[&str], inputs: &[&Path], build: &BuildOptions) -> Option<Str
 /// A stored build whose sources are unchanged.
 pub struct Entry {
     dir: PathBuf,
+    manifest: String,
     /// The source root recorded with the build (reported in `--json` output).
     pub source_root: String,
 }
@@ -114,6 +115,7 @@ pub fn lookup(dir: &Path, key: &str) -> Option<Entry> {
     Some(Entry {
         dir: entry,
         source_root,
+        manifest,
     })
 }
 
@@ -261,6 +263,15 @@ fn prune_stages(dir: &Path, keep: usize, stale: std::time::Duration) {
 }
 
 impl Entry {
+    /// Inputs validated by this hit, retained for artifact/source collision checks.
+    pub fn inputs(&self) -> impl Iterator<Item = &Path> {
+        self.manifest
+            .lines()
+            .skip(1)
+            .filter_map(|line| line.splitn(3, '\t').nth(2))
+            .map(Path::new)
+    }
+
     /// Copies the executable to `staged`, and the debug companion to `companion`, whose DWARF
     /// resource is renamed after `staged` as the publication step expects. `false` on failure.
     pub fn restore(&self, staged: &Path, companion: Option<&Path>) -> bool {

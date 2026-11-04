@@ -325,6 +325,217 @@ fn build_refuses_to_overwrite_source_and_directories() {
 }
 
 #[test]
+fn build_metadata_must_not_replace_its_entry_source() {
+    for structured in [false, true] {
+        let dir = scratch(&format!("metadata-is-source-{structured}"));
+        let source = write(&dir, "program.ms-build.json", MAIN);
+        let output = dir.join("program");
+        std::fs::write(&output, b"previous executable").unwrap();
+        let backend = Engine::new(Fixed(EXIT_SEVEN));
+        let mut args = vec!["build", source.as_str(), "-o", output.to_str().unwrap()];
+        if structured {
+            args.push("--json");
+        }
+        let (status, stdout, stderr) = ms(&backend, &args);
+        assert_eq!(status, 1, "{stdout}{stderr}");
+        assert!(
+            stderr.contains("build metadata would overwrite"),
+            "{stderr}"
+        );
+        assert_eq!(std::fs::read_to_string(&source).unwrap(), MAIN);
+        assert_eq!(std::fs::read(&output).unwrap(), b"previous executable");
+        if structured {
+            let document = ms_json::parse(&stdout).unwrap();
+            assert_eq!(document.get("completed").unwrap().as_bool(), Some(false));
+            assert_eq!(
+                document.get("reason").unwrap().as_str(),
+                Some("build_error")
+            );
+        }
+    }
+}
+
+#[test]
+fn build_metadata_must_not_replace_an_imports_canonical_source() {
+    let dir = scratch("metadata-is-import");
+    let dependency = include_str!("engine/metadata-dependency.ms");
+    let source = write(&dir, "main.ms", include_str!("engine/metadata-import.ms"));
+    let target = write(&dir, "program.ms-build.json", dependency);
+    common::symlink_file(Path::new(&target), &dir.join("dep.ms")).unwrap();
+    let output = dir.join("program");
+    std::fs::write(&output, b"previous executable").unwrap();
+    let (status, stdout, stderr) = ms(
+        &Engine::new(Fixed(EXIT_SEVEN)),
+        &["build", &source, "-o", output.to_str().unwrap(), "--json"],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert!(
+        stderr.contains("build metadata would overwrite"),
+        "{stderr}"
+    );
+    assert_eq!(std::fs::read_to_string(target).unwrap(), dependency);
+    assert_eq!(std::fs::read(output).unwrap(), b"previous executable");
+}
+
+#[test]
+fn build_metadata_must_not_replace_the_requested_source_symlink() {
+    let dir = scratch("metadata-is-requested-symlink");
+    let source = write(&dir, "main.ms", MAIN);
+    let requested = dir.join("program.ms-build.json");
+    common::symlink_file(Path::new(&source), &requested).unwrap();
+    let output = dir.join("program");
+    let (status, stdout, stderr) = ms(
+        &Engine::new(Fixed(EXIT_SEVEN)),
+        &[
+            "build",
+            requested.to_str().unwrap(),
+            "-o",
+            output.to_str().unwrap(),
+            "--json",
+        ],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert!(
+        std::fs::symlink_metadata(&requested)
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
+    assert_eq!(std::fs::read_to_string(&source).unwrap(), MAIN);
+    assert!(!output.exists());
+}
+
+#[test]
+fn cached_artifact_collision_preserves_inputs_and_output_before_restore() {
+    struct Counted(std::cell::Cell<usize>);
+    impl Lower for Counted {
+        fn lower(&self, program: &ms_check::Program, entry: &str) -> Result<Module, String> {
+            self.0.set(self.0.get() + 1);
+            Fixed(EXIT_SEVEN).lower(program, entry)
+        }
+    }
+    for artifact in ["program", "program.ms-build.json"] {
+        let dir = scratch(&format!("cached-artifact-is-import-{artifact}"));
+        let safe = dir.join("safe");
+        let inputs = dir.join("inputs");
+        std::fs::create_dir(&safe).unwrap();
+        std::fs::create_dir(&inputs).unwrap();
+        let source = write(&dir, "main.ms", include_str!("engine/metadata-import.ms"));
+        let dependency = include_str!("engine/metadata-dependency.ms");
+        let target = write(&inputs, artifact, dependency);
+        common::symlink_file(Path::new(&target), &dir.join("dep.ms")).unwrap();
+        let alias = dir.join("out-alias");
+        common::symlink_dir(&safe, &alias).unwrap();
+        let output = alias.join("program");
+        let backend = Engine::new(Counted(std::cell::Cell::new(0)));
+        let build = || {
+            ms(
+                &backend,
+                &["build", &source, "-o", output.to_str().unwrap(), "--json"],
+            )
+        };
+        for _ in 0..2 {
+            let (status, stdout, stderr) = build();
+            assert_eq!(status, 0, "{stdout}{stderr}");
+        }
+        assert_eq!(backend.lowering.0.get(), 1, "control must hit the cache");
+        #[cfg(unix)]
+        std::fs::remove_file(&alias).unwrap();
+        #[cfg(windows)]
+        std::fs::remove_dir(&alias).unwrap();
+        common::symlink_dir(&inputs, &alias).unwrap();
+        if artifact != "program" {
+            std::fs::write(inputs.join("program"), b"previous executable").unwrap();
+        }
+        let (status, stdout, stderr) = build();
+        assert_eq!(status, 1, "{stdout}{stderr}");
+        assert!(stderr.contains("would overwrite"), "{stderr}");
+        assert_eq!(std::fs::read_to_string(target).unwrap(), dependency);
+        assert_eq!(
+            std::fs::read(inputs.join("program")).unwrap(),
+            if artifact == "program" {
+                dependency.as_bytes()
+            } else {
+                b"previous executable"
+            }
+        );
+        assert_eq!(
+            Command::new(safe.join("program")).status().unwrap().code(),
+            Some(7)
+        );
+    }
+}
+
+#[test]
+fn build_metadata_must_not_replace_embedded_inputs() {
+    let dir = scratch("metadata-is-embedded-input");
+    let assets = dir.join("assets");
+    std::fs::create_dir(&assets).unwrap();
+    let source = write(&dir, "main.ms", include_str!("engine/metadata-embedded.ms"));
+    write(
+        &dir,
+        "ms.toml",
+        "[project]\nname = \"p\"\nsource = \".\"\n[embed]\n\"@assets\" = \"assets\"\n",
+    );
+    let asset = write(&assets, "program.ms-build.json", "embedded contents");
+    let output = assets.join("program");
+    let (status, stdout, stderr) = ms(
+        &Engine::new(Fixed(EXIT_SEVEN)),
+        &["build", &source, "-o", output.to_str().unwrap(), "--json"],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert!(
+        stderr.contains("build metadata would overwrite"),
+        "{stderr}"
+    );
+    assert_eq!(std::fs::read_to_string(asset).unwrap(), "embedded contents");
+    assert!(!output.exists());
+}
+
+#[test]
+fn build_executable_must_not_replace_an_imports_canonical_source() {
+    let dir = scratch("executable-is-import");
+    let dependency = include_str!("engine/metadata-dependency.ms");
+    let source = write(&dir, "main.ms", include_str!("engine/metadata-import.ms"));
+    let target = write(&dir, "program", dependency);
+    common::symlink_file(Path::new(&target), &dir.join("dep.ms")).unwrap();
+    let metadata = write(&dir, "program.ms-build.json", "previous metadata");
+    let (status, stdout, stderr) = ms(
+        &Engine::new(Fixed(EXIT_SEVEN)),
+        &["build", &source, "-o", &target, "--json"],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert!(stderr.contains("executable would overwrite"), "{stderr}");
+    assert_eq!(std::fs::read_to_string(target).unwrap(), dependency);
+    assert_eq!(
+        std::fs::read_to_string(metadata).unwrap(),
+        "previous metadata"
+    );
+}
+
+#[test]
+fn build_metadata_must_not_replace_an_enclosing_manifest_target() {
+    let dir = scratch("metadata-is-manifest");
+    let source = write(&dir, "main.ms", MAIN);
+    let contents = "[project]\nname = \"p\"\nsource = \".\"\n";
+    let target = write(&dir, "program.ms-build.json", contents);
+    common::symlink_file(Path::new(&target), &dir.join("ms.toml")).unwrap();
+    let output = dir.join("program");
+    std::fs::write(&output, b"previous executable").unwrap();
+    let (status, stdout, stderr) = ms(
+        &Engine::new(Fixed(EXIT_SEVEN)),
+        &["build", &source, "-o", output.to_str().unwrap(), "--json"],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert!(
+        stderr.contains("build metadata would overwrite"),
+        "{stderr}"
+    );
+    assert_eq!(std::fs::read_to_string(target).unwrap(), contents);
+    assert_eq!(std::fs::read(output).unwrap(), b"previous executable");
+}
+
+#[test]
 fn library_projects_have_no_executable_entry() {
     let dir = scratch("library");
     std::fs::create_dir_all(dir.join("src")).unwrap();
