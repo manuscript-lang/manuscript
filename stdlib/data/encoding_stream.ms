@@ -1,5 +1,5 @@
 import Bytes, join from "@std/bytes.ms"
-import ReadStream, Transform, through from "@std/io/io.ms"
+import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
 import base64_encode, base64_decode, hex_encode, hex_decode from "@std/data/encoding.ms"
 
 // Stream steps for `@std/data/encoding.ms`, in their own module because the streams depend on `@std/bytes.ms`,
@@ -12,20 +12,20 @@ type Base64Encoding:
     tail: Bytes
 
 impl Transform[Bytes, String] for Base64Encoding:
-    var fn feed(value: Bytes) List[String]!:
+    var fn step(value: Bytes, var out: WriteStream[String]) Unit!:
         let data = self.tail.concat(value)
         let whole = data.length() - data.length() % 3
         self.tail = try data.slice(whole, data.length())
-        if whole == 0: return ok(List[String]())
+        if whole == 0: return ok(unit)
 
-        return ok([base64_encode(try data.slice(0, whole), self.url_safe)])
+        return out.write(base64_encode(try data.slice(0, whole), self.url_safe))
 
-    var fn finish() List[String]!:
-        if self.tail.is_empty(): return ok(List[String]())
+    var fn finish(var out: WriteStream[String]) Unit!:
+        if self.tail.is_empty(): return ok(unit)
 
         let last = self.tail.clone()
         self.tail = join([])
-        return ok([base64_encode(last, self.url_safe)])
+        return out.write(base64_encode(last, self.url_safe))
 
 // Encodes a byte stream as Base64 text chunks that concatenate to the whole encoding, with padding at the end.
 // Set `url_safe: true` for the URL-safe alphabet. Closing the result closes `input`.
@@ -43,26 +43,24 @@ type Base64Decoding:
     tail: String
 
 impl Transform[String, Bytes] for Base64Decoding:
-    var fn feed(value: String) List[Bytes]!:
+    var fn step(value: String, var out: WriteStream[Bytes]) Unit!:
         let text = self.tail.concat(value)
         let whole = text.length() - text.length() % 4
         self.tail = text.slice(whole, text.length()).get("")
-        if whole == 0: return ok(List[Bytes]())
+        if whole == 0: return ok(unit)
 
-        return ok(
-            [
-                try base64_decode(
-                    text.slice(0, whole).get(""), self.url_safe, none
-                )
-            ]
+        return out.write(
+            try base64_decode(
+                text.slice(0, whole).get(""), self.url_safe, none
+            )
         )
 
-    var fn finish() List[Bytes]!:
+    var fn finish(var out: WriteStream[Bytes]) Unit!:
         let last = self.tail.clone()
         self.tail = ""
-        if last == "": return ok(List[Bytes]())
+        if last == "": return ok(unit)
 
-        return ok([try base64_decode(last, self.url_safe, none)])
+        return out.write(try base64_decode(last, self.url_safe, none))
 
 // Decodes Base64 text chunks into bytes. Malformed text fails the read with `InvalidData`; text that ends
 // inside a group fails at the end of the stream. Closing the result closes `input`.
@@ -76,11 +74,11 @@ type HexEncoding:
     unused: Int
 
 impl Transform[Bytes, String] for HexEncoding:
-    var fn feed(value: Bytes) List[String]!:
-        return ok([hex_encode(value)])
+    var fn step(value: Bytes, var out: WriteStream[String]) Unit!:
+        return out.write(hex_encode(value))
 
-    var fn finish() List[String]!:
-        return ok(List[String]())
+    var fn finish(var out: WriteStream[String]) Unit!:
+        return ok(unit)
 
 // Encodes a byte stream as lowercase hexadecimal text chunks. Closing the result closes `input`.
 export fn hex_encoded(input: ReadStream[Bytes]) ReadStream[String]:
@@ -91,20 +89,20 @@ type HexDecoding:
     tail: String
 
 impl Transform[String, Bytes] for HexDecoding:
-    var fn feed(value: String) List[Bytes]!:
+    var fn step(value: String, var out: WriteStream[Bytes]) Unit!:
         let text = self.tail.concat(value)
         let whole = text.length() - text.length() % 2
         self.tail = text.slice(whole, text.length()).get("")
-        if whole == 0: return ok(List[Bytes]())
+        if whole == 0: return ok(unit)
 
-        return ok([try hex_decode(text.slice(0, whole).get(""), none)])
+        return out.write(try hex_decode(text.slice(0, whole).get(""), none))
 
-    var fn finish() List[Bytes]!:
+    var fn finish(var out: WriteStream[Bytes]) Unit!:
         let last = self.tail.clone()
         self.tail = ""
-        if last == "": return ok(List[Bytes]())
+        if last == "": return ok(unit)
 
-        return ok([try hex_decode(last, none)])
+        return out.write(try hex_decode(last, none))
 
 // Decodes hexadecimal text chunks into bytes. Malformed text, or text that ends inside a pair, fails the
 // read with `InvalidData`. Closing the result closes `input`.

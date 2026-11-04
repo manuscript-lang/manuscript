@@ -67,7 +67,7 @@ fn log_entries(input: ReadStream[Bytes]) ReadStream[LogEntry!]:
 
 Pipelines are pulled lazily by the task that waits on them. Each stage pulls the one before it with a plain call, so only a source that touches the system (a file, socket, pipe or standard input) waits, inside its own `next`; no stage makes a promise per item.
 
-To make your own stream, implement `Source[T]` (`next` may wait) and wrap it with `stream`. To change a stream, implement `Transform[A, B]` (`feed` and `finish` never wait) and apply it with `through`; chained transforms run as one fused stage per item.
+To make your own stream, implement `Source[T]` (`next` may wait) and wrap it with `stream`. To change a stream, implement `Transform[A, B]` and apply it with `through`: `step(value, var out)` writes the output items one input completes, possibly none, to `out`, and `finish(var out)` writes what was held back at the end. Neither waits. A step that fails drops what it wrote, and the failure is the stream's next item; chained transforms run as one fused stage per item.
 
 ## Pipes
 

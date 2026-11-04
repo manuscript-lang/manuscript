@@ -2599,7 +2599,7 @@ impl<'a> FnLower<'a> {
             );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
         // The runtime shifts the tail in place; rebuilding the list from slices copies every element.
-        let in_place = matches!(name, "insert" | "remove");
+        let in_place = matches!(name, "insert" | "remove" | "reverse");
         if !is_list || runtime_only || in_place {
             return self.mutate_rt(name, old, decl, args, copy_result, result_ty);
         }

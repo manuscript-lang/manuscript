@@ -123,6 +123,8 @@ impl Cx {
                 mode: Mode::Borrow,
             }));
             let writes_back;
+            let changed: Vec<usize>;
+            let op_vars = self.iface_op_vars(iface, &s.name);
             // A hook a `TestHooks` implementation leaves out has no body: it does nothing.
             let missing = native.as_str().is_empty()
                 && s.ret == MTy::UNIT
@@ -148,12 +150,18 @@ impl Cx {
                     .cloned()
                     .ok_or_else(|| Error::new("method callee not found"))?;
                 let vars = self.var_positions(&c);
-                if vars.iter().any(|v| *v != 0) {
+                // A parameter the method changes must be one the operation declares `var`, so
+                // the caller passes its slot.
+                if vars
+                    .iter()
+                    .any(|v| *v != 0 && !op_vars.get(v - 1).copied().unwrap_or(false))
+                {
                     return Err(Error::new(
-                        "interface methods with var parameters are not supported",
+                        "an implementation changes a parameter its interface operation does not declare var",
                     ));
                 }
-                writes_back = !vars.is_empty();
+                writes_back = vars.contains(&0);
+                changed = vars;
                 self.function_in(m, &c, &subst, scope)?
             };
             let mut b = FuncBuilder::new(m, &format!("vt.{}", s.name), ps, s.ret);
@@ -172,6 +180,16 @@ impl Cx {
             // A `Self` argument is an interface value holding the implementing type: another type
             // is unequal (`False`) and has no order (a fault) and the same type passes its data.
             for (i, arg) in args[1..].iter().enumerate() {
+                // A `var` argument arrives as the caller's slot; a method that only reads it
+                // takes the value.
+                if op_vars.get(i).copied().unwrap_or(false) && !changed.contains(&(i + 1)) {
+                    let ty = b.m.funcs[callee.index()].params[i + 1].ty;
+                    let v = b
+                        .emit(Op::Load, &[*arg], Imm::Ty(ty), Some(ty))
+                        .expect("load");
+                    call_args.push(v);
+                    continue;
+                }
                 if !s.self_params.get(i).copied().unwrap_or(false) {
                     call_args.push(*arg);
                     continue;
@@ -212,6 +230,19 @@ impl Cx {
 }
 
 impl Cx {
+    /// Which parameters of interface `iface`'s operation `name` are declared `var`.
+    pub(crate) fn iface_op_vars(&self, iface: IfaceId, name: &str) -> Vec<bool> {
+        let Some(def) = self.contracts.get(&iface).and_then(|t| t.def.clone()) else {
+            return Vec::new();
+        };
+        def.operations
+            .borrow()
+            .iter()
+            .find(|op| op.name.as_str() == name)
+            .map(crate::cx::op_var_params)
+            .unwrap_or_default()
+    }
+
     /// A table entry for a native method: it lowers like a direct call on the data.
     #[allow(clippy::too_many_arguments)]
     fn iface_native_thunk(

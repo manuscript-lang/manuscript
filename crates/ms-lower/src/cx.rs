@@ -659,9 +659,15 @@ impl Cx {
                             .map(|p| p.ty.id.as_str().ends_with("/Self"))
                             .collect();
                         let sig = ct::sub(&op.ty, &subst);
+                        let vars = op_var_params(&op);
                         let mut params = Vec::new();
-                        for p in &sig.params {
-                            params.push(self.lower_ty(m, &p.ty)?);
+                        for (i, p) in sig.params.iter().enumerate() {
+                            // A `var` parameter travels as the address of the caller's slot.
+                            if vars.get(i).copied().unwrap_or(false) {
+                                params.push(MTy::PTR);
+                            } else {
+                                params.push(self.lower_ty(m, &p.ty)?);
+                            }
                         }
                         let ret = self.lower_ty(m, &sig.result_ty())?;
                         methods.push(MethodSig {
@@ -737,4 +743,17 @@ impl Cx {
     ) -> bool {
         self.node_facts.has(file, id, fact)
     }
+}
+
+/// Which parameters of an interface operation are declared `var`.
+pub(crate) fn op_var_params(op: &ct::Operation) -> Vec<bool> {
+    let Some(f) = op.decl.as_ref() else {
+        return Vec::new();
+    };
+    let params = match (f.method(), f.func()) {
+        (Some(m), _) => &m.func.params,
+        (None, Some(func)) => &func.params,
+        (None, None) => return Vec::new(),
+    };
+    params.iter().map(|p| p.mutable).collect()
 }

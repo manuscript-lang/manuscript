@@ -246,7 +246,14 @@ pub fn signature_text(t: &Ty) -> String {
     let parts: Vec<String> = t
         .params
         .iter()
-        .map(|p| format!("{}: {}", p.name, p.ty))
+        .map(|p| {
+            format!(
+                "{}{}: {}",
+                if p.mutable { "var " } else { "" },
+                p.name,
+                p.ty
+            )
+        })
         .collect();
     let result = t.result_ty();
     // `T!` is the declared spelling of `Result[T, Error]`.

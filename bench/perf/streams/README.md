@@ -29,3 +29,21 @@ Intel Xeon @ 2.10 GHz, 4 vCPUs, release (LLVM). Medians of 7 alternating runs; a
 
 - Direct pull removes the promise per stage per item: `map` 5 times faster, three stages 5.6 times, `collect` 6.6 times.
 - Readable vtables bring a `Source` chain to loop speed (`source-map` 9.9 to 2.7) but not `stream-map`: there the remaining cost is the one-item `List` that `Mapper.feed` returns per item, behind a source LLVM cannot trace through the `for` loop's holder.
+
+## 2026-11-04: Linux x86_64, `Transform` writes to a `WriteStream`
+
+Same machine and method. `c9446bfc` is main; the second column has `Transform.step(value, var out)` in place of `feed(value) List[B]`.
+
+| case | c9446bfc | step |
+| --- | ---: | ---: |
+| `for-list` | 1.5 | 1.5 |
+| `source-list` | 1.7 | 1.7 |
+| `source-map` | 2.5 | 2.3 |
+| `stream-map` | 27.5 | 28.4 |
+| `stream-map3` | 62.7 | 64.4 |
+| `stream-collect` | 27.8 | 27.9 |
+| `hand-lines` | 43.2 | 43.3 |
+| `stream-lines` | 78.6 | 70.5 |
+
+- The per-item allocation is gone (callgrind on `stream-map`: 860 to 300 instructions per item, no `malloc`), but `map` time is unchanged: what remains is two interface calls per item, each returning a `Result` through memory.
+- `lines` is 10% faster: it no longer builds a `List` per chunk, and `List.reverse` now swaps in place instead of copying every element.

@@ -40,8 +40,7 @@ impl LineSplitter:
         )
 
 impl Transform[Bytes, String] for LineSplitter:
-    var fn feed(value: Bytes) List[String]!:
-        var out: List[String] = []
+    var fn step(value: Bytes, var out: WriteStream[String]) Unit!:
         let data = self.joined(value)
         var start = 0
 
@@ -56,7 +55,7 @@ impl Transform[Bytes, String] for LineSplitter:
             try self.check(stop - start)
 
             let line = try data.slice(start, stop)
-            out.append(try self.decode(line))
+            try out.write(try self.decode(line))
             start = end.get() + 1
 
         if start < data.length():
@@ -69,17 +68,15 @@ impl Transform[Bytes, String] for LineSplitter:
         else:
             self.tail = none
 
-        return ok(out)
+        return ok(unit)
 
-    var fn finish() List[String]!:
-        var out: List[String] = []
-
+    var fn finish(var out: WriteStream[String]) Unit!:
         if let held = self.tail:
             try self.check(held.length())
-            out.append(try self.decode(held))
+            try out.write(try self.decode(held))
             self.tail = none
 
-        return ok(out)
+        return ok(unit)
 
 // Reads lines of text from a byte stream such as `stdin()`: splits `input` at `\n`, removing a trailing `\r`; a line longer than `max_bytes` is an error.
 export fn lines(input: ReadStream[Bytes], max_bytes: Int? = none) ReadStream[String]:
@@ -132,11 +129,11 @@ type Mapper[T, U]:
     f: fn(T) U
 
 impl Transform[T, U] for Mapper[T, U]:
-    var fn feed(value: T) List[U]!:
-        return ok([self.f(value)])
+    var fn step(value: T, var out: WriteStream[U]) Unit!:
+        return out.write(self.f(value))
 
-    var fn finish() List[U]!:
-        return ok([])
+    var fn finish(var out: WriteStream[U]) Unit!:
+        return ok(unit)
 
 // A stream of `f` applied to each item of `input`; closing it closes `input`.
 export fn map[T, U](input: ReadStream[T], f: fn(T) U) ReadStream[U]:
