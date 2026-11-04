@@ -5,6 +5,30 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::{Mutex, OnceLock};
 
+/// The handle through which names are interned and read. Today every handle shares the process
+/// table; callers hold one so the table can later belong to a session and be freed with it (see
+/// `proposals/session-owned-interner.md`). Pass it down; do not reach for [`Names::global`] in new
+/// code.
+#[derive(Copy, Clone, Debug, Default)]
+pub struct Names;
+
+impl Names {
+    /// The handle for the process table, for code not yet given one.
+    pub const fn global() -> Names {
+        Names
+    }
+
+    /// Interns `text`.
+    pub fn intern(&self, text: &str) -> Symbol {
+        Symbol::intern(text)
+    }
+
+    /// The text of `sym`, valid while this handle is.
+    pub fn str(&self, sym: impl std::borrow::Borrow<Symbol>) -> &str {
+        sym.borrow().as_str()
+    }
+}
+
 /// An interned string. Equal strings intern to the same `Symbol`, so equality
 /// and hashing are pointer operations and `as_str` is free. Symbols are
 /// process-wide (the table is shared by all threads and never shrinks). Each symbol carries its

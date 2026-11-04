@@ -29,7 +29,7 @@ fn binding_group_comments_do_not_set_code_indentation() {
 }
 
 fn syntax_shape(module: &ms_syntax::Module) -> String {
-    ms_syntax::dump::dump_module(module)
+    ms_syntax::dump::dump_module(ms_syntax::Names::global(), module)
         .split(' ')
         .map(|word| {
             if word.split(':').count() == 3 && word.chars().all(|c| c.is_ascii_digit() || c == ':')

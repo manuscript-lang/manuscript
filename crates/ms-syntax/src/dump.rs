@@ -3,6 +3,7 @@
 
 use crate::ast::*;
 use crate::pos::Pos;
+use crate::symbol::Names;
 use std::fmt::Write;
 
 /// Quotes `s` in the dump's string syntax (printable ASCII, other bytes as `\xNN`).
@@ -29,10 +30,15 @@ fn pos(out: &mut String, p: Pos) {
 }
 
 struct D {
+    names: Names,
     b: String,
 }
 
 impl D {
+    fn qn(&mut self, s: impl std::borrow::Borrow<crate::Symbol>) {
+        let names = self.names;
+        self.q(names.str(s));
+    }
     fn w(&mut self, s: &str) {
         self.b.push_str(s);
     }
@@ -53,7 +59,7 @@ impl D {
         self.w(" ");
         match &t.kind {
             TypeKind::Named { name, args } => {
-                self.q(name.as_str());
+                self.qn(name);
                 self.w(" ");
                 self.types(args);
                 self.w(" ");
@@ -86,7 +92,7 @@ impl D {
             self.w("(param ");
             self.p(pm.pos);
             self.w(" ");
-            self.q(pm.name.as_str());
+            self.qn(pm.name);
             self.w(" ");
             self.typ(pm.ty.as_ref());
             self.w(" ");
@@ -128,7 +134,8 @@ impl D {
             self.w("(arg ");
             self.p(a.pos);
             self.w(" ");
-            self.q(a.name.map(|n| n.as_str()).unwrap_or(""));
+            let names = self.names;
+            self.q(a.name.map(|n| names.str(n)).unwrap_or(""));
             self.w(" ");
             self.expr(Some(&a.value));
             self.w(") ");
@@ -171,7 +178,7 @@ impl D {
             self.w(" [");
             for b in &a.bindings {
                 self.w("(");
-                self.q(b.name.as_str());
+                self.qn(b.name);
                 self.w(" ");
                 self.p(b.pos);
                 self.w(") ");
@@ -186,6 +193,7 @@ impl D {
     }
 
     fn expr(&mut self, e: Option<&Expr>) {
+        let names = self.names;
         let Some(e) = e else {
             self.w("nil");
             return;
@@ -195,7 +203,7 @@ impl D {
             ExprKind::Number(s) => self.expr_fields(
                 e,
                 "number",
-                s.as_str(),
+                names.str(s),
                 None,
                 None,
                 &[],
@@ -255,7 +263,7 @@ impl D {
             ExprKind::Name(s) => self.expr_fields(
                 e,
                 "name",
-                s.as_str(),
+                names.str(s),
                 None,
                 None,
                 &[],
@@ -270,7 +278,7 @@ impl D {
             ExprKind::Member { left, name } => self.expr_fields(
                 e,
                 "member",
-                name.as_str(),
+                names.str(name),
                 Some(left),
                 None,
                 &[],
@@ -452,7 +460,7 @@ impl D {
         match &p.kind {
             PatternKind::Name(n) => {
                 self.w("name ");
-                self.q(n.as_str());
+                self.qn(n);
                 self.w(" [] []");
             }
             PatternKind::List(els) => {
@@ -473,7 +481,7 @@ impl D {
                     self.w("(pf ");
                     self.p(f.pos);
                     self.w(" ");
-                    self.q(f.name.as_str());
+                    self.qn(f.name);
                     self.w(" ");
                     self.pattern(Some(&f.pattern));
                     self.w(") ");
@@ -535,6 +543,7 @@ impl D {
     }
 
     fn stmt(&mut self, s: &Stmt) {
+        let names = self.names;
         let sp = s.pos;
         match &s.kind {
             StmtKind::Bind {
@@ -567,7 +576,7 @@ impl D {
                     AssignTarget::Name(n) => self.stmt_fields(
                         sp,
                         "assign",
-                        n.as_str(),
+                        names.str(n),
                         c,
                         false,
                         None,
@@ -689,7 +698,7 @@ impl D {
             } => self.stmt_fields(
                 sp,
                 "for",
-                name.as_str(),
+                names.str(name),
                 "",
                 false,
                 None,
@@ -709,7 +718,7 @@ impl D {
             self.w("(tp ");
             self.p(tp.pos);
             self.w(" ");
-            self.q(tp.name.as_str());
+            self.qn(tp.name);
             self.w(" ");
             self.types(&tp.bounds);
             self.w(" ");
@@ -756,7 +765,7 @@ impl D {
             self.w("(case ");
             self.p(c.pos);
             self.w(" ");
-            self.q(c.name.as_str());
+            self.qn(c.name);
             self.w(" ");
             self.params(&c.fields);
             self.w(") ");
@@ -780,11 +789,12 @@ impl D {
     }
 
     fn method(&mut self, m: &Method) {
+        let names = self.names;
         let f = &m.func;
         self.decl_fields(
             m.pos,
             "fn",
-            f.name.as_str(),
+            names.str(f.name),
             false,
             false,
             None,
@@ -802,13 +812,14 @@ impl D {
     }
 
     fn decl(&mut self, d: &Decl) {
+        let names = self.names;
         let e = d.export;
         let sy = d.synthetic;
         match &d.kind {
             DeclKind::Fn(f) => self.decl_fields(
                 d.pos,
                 if f.external { "extern fn" } else { "fn" },
-                f.name.as_str(),
+                names.str(f.name),
                 e,
                 false,
                 None,
@@ -828,7 +839,7 @@ impl D {
                     id: NodeId(0),
                     pos: c.value.pos,
                     kind: TypeKind::Named {
-                        name: crate::Symbol::intern(""),
+                        name: Names::global().intern(""),
                         args: Vec::new(),
                     },
                 };
@@ -841,7 +852,7 @@ impl D {
                 self.decl_fields(
                     d.pos,
                     "fn",
-                    c.name.as_str(),
+                    names.str(c.name),
                     e,
                     true,
                     c.group,
@@ -860,7 +871,7 @@ impl D {
             DeclKind::Record(r) => self.decl_fields(
                 d.pos,
                 "record",
-                r.name.as_str(),
+                names.str(r.name),
                 e,
                 false,
                 None,
@@ -878,7 +889,7 @@ impl D {
             DeclKind::Alternative(a) => self.decl_fields(
                 d.pos,
                 "alternative",
-                a.name.as_str(),
+                names.str(a.name),
                 e,
                 false,
                 None,
@@ -896,7 +907,7 @@ impl D {
             DeclKind::Interface(i) => self.decl_fields(
                 d.pos,
                 "interface",
-                i.name.as_str(),
+                names.str(i.name),
                 e,
                 false,
                 None,
@@ -934,7 +945,7 @@ impl D {
                     id: NodeId(0),
                     pos: d.pos,
                     kind: TypeKind::Named {
-                        name: crate::Symbol::intern("Unit"),
+                        name: Names::global().intern("Unit"),
                         args: Vec::new(),
                     },
                 };
@@ -962,15 +973,18 @@ impl D {
 }
 
 /// Dumps a module (imports, declarations, omitted names, recovered spans).
-pub fn dump_module(m: &Module) -> String {
-    let mut d = D { b: String::new() };
+pub fn dump_module(names: Names, m: &Module) -> String {
+    let mut d = D {
+        names,
+        b: String::new(),
+    };
     for i in &m.imports {
         d.w("import ");
         d.p(i.pos);
         d.w(" ");
         d.p(i.name_pos);
         d.w(" ");
-        d.q(i.name.as_str());
+        d.qn(i.name);
         d.w(" ");
         d.q(&i.path);
         d.w("\n");

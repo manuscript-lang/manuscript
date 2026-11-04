@@ -4,7 +4,7 @@ use crate::ast::*;
 use crate::diag::{Diagnostic, DiagnosticFix, Phase};
 use crate::lexer::{PResult, lex};
 use crate::pos::Pos;
-use crate::symbol::Symbol;
+use crate::symbol::{Names, Symbol};
 use crate::token::{Tok, Token};
 use std::sync::Arc;
 
@@ -48,6 +48,7 @@ pub(crate) fn parse_chunk(
 }
 
 struct Parser<'a> {
+    names: Names,
     file: &'a Arc<str>,
     src: &'a str,
     tokens: Vec<Token>,
@@ -329,6 +330,7 @@ impl<'a> Parser<'a> {
         next_id: u32,
     ) -> Parser<'a> {
         Parser {
+            names: Names::global(),
             file,
             src,
             type_brackets: type_brackets(&tokens),
@@ -368,7 +370,7 @@ impl<'a> Parser<'a> {
         &self.src[t.lo as usize..t.hi as usize]
     }
     fn sym(&self, t: Token) -> Symbol {
-        Symbol::intern(self.text(t))
+        self.names.intern(self.text(t))
     }
     fn take(&mut self, k: Tok) -> bool {
         if self.kind() == k {
@@ -784,28 +786,34 @@ impl<'a> Parser<'a> {
         let TypeKind::Named { name, args } = &t.kind else {
             return None;
         };
-        (name.as_str() == "Optional" && args.len() == 1)
-            .then(|| self.mk(t.pos, ExprKind::Name(Symbol::intern("none"))))
+        (self.names.str(*name) == "Optional" && args.len() == 1)
+            .then(|| self.mk(t.pos, ExprKind::Name(self.names.intern("none"))))
     }
 
     fn named_type(&mut self) -> PResult<TypeRef> {
         let name = self.need(Tok::Name)?;
         let mut full = self.sym(name);
         if self.kind() == Tok::Dot {
-            let mut s = String::from(full.as_str());
+            let mut s = String::from(self.names.str(full));
             while self.take(Tok::Dot) {
                 s.push('.');
                 let part = self.need(Tok::Name)?;
                 s.push_str(self.text(part));
             }
-            full = Symbol::intern(&s);
+            full = self.names.intern(&s);
         }
         let mut args = Vec::new();
-        if self.kind() == Tok::LBracket && self.speculative == 0 && full.as_str() == "Callable" {
+        if self.kind() == Tok::LBracket
+            && self.speculative == 0
+            && self.names.str(full) == "Callable"
+        {
             let t = self.peek();
             return self.fail(t, format!("there is no {full}[...] type; a function type is written fn(Int) Int: parameter types in parentheses, then the result type"));
         }
-        if self.kind() == Tok::LBracket && self.speculative == 0 && full.as_str() == "Optional" {
+        if self.kind() == Tok::LBracket
+            && self.speculative == 0
+            && self.names.str(full) == "Optional"
+        {
             let t = self.peek();
             return self.fail(
                 t,
@@ -897,7 +905,7 @@ impl<'a> Parser<'a> {
                         id,
                         pos,
                         kind: TypeKind::Named {
-                            name: Symbol::intern("Error"),
+                            name: self.names.intern("Error"),
                             args: Vec::new(),
                         },
                     }
@@ -911,7 +919,7 @@ impl<'a> Parser<'a> {
                 id,
                 pos,
                 kind: TypeKind::Named {
-                    name: Symbol::intern(name),
+                    name: self.names.intern(name),
                     args,
                 },
             };
@@ -940,7 +948,7 @@ impl<'a> Parser<'a> {
                     params.push(Param {
                         id,
                         pos: ty.pos,
-                        name: Symbol::intern(&format!("_{}", params.len())),
+                        name: self.names.intern(&format!("_{}", params.len())),
                         ty: Some(ty),
                         default: None,
                         mutable,
@@ -1437,7 +1445,7 @@ impl<'a> Parser<'a> {
                 self.need(Tok::Fn)?;
                 if token.kind == Tok::Type {
                     let t = self.previous();
-                    let names = type_param_names(&type_params);
+                    let names = type_param_names(self.names, &type_params);
                     return self.fail(t, format!("a type declares only fields or cases; write its methods in an 'impl {name}{names}:' block, or implement an interface with 'impl <Interface> for {name}{names}:'"));
                 }
                 let mname = self.need(Tok::Name)?;
@@ -1809,7 +1817,7 @@ impl<'a> Parser<'a> {
             );
             if !self.inline_return && !is_call && !try_call && !allow_value {
                 if let ExprKind::Name(n) = &e.kind {
-                    match n.as_str() {
+                    match self.names.str(*n) {
                         "pass" => return self.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm"),
                         "const" | "val" | "final" => {
                             return self.fail(t, format!("'{n}' is not a keyword; write 'let name = ...' for a binding that is not reassigned, or 'var name = ...' when it changes"));
@@ -1862,7 +1870,7 @@ impl<'a> Parser<'a> {
             pos,
             ExprKind::Member {
                 left,
-                name: Symbol::intern(INDEX_SET),
+                name: self.names.intern(INDEX_SET),
             },
         );
         let args = vec![
@@ -1891,7 +1899,7 @@ impl<'a> Parser<'a> {
 
     fn assign_target(&mut self, start: Token, e: Expr) -> PResult<AssignTarget> {
         match e.kind {
-            ExprKind::Name(n) if n.as_str() != "self" && n.as_str() != "fixture" => Ok(AssignTarget::Name(n)),
+            ExprKind::Name(n) if self.names.str(n) != "self" && self.names.str(n) != "fixture" => Ok(AssignTarget::Name(n)),
             ExprKind::Member { .. } => Ok(AssignTarget::Member(e)),
             _ => self.fail(start, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field; to change a collection element, write xs[index] = value on a List or m[key] = value on a Map"),
         }
@@ -2023,7 +2031,7 @@ impl<'a> Parser<'a> {
             return Ok(Pattern {
                 id,
                 pos: t.pos,
-                kind: PatternKind::Name(Symbol::intern("_")),
+                kind: PatternKind::Name(self.names.intern("_")),
             });
         }
         if self.take(Tok::LBracket) {
@@ -2222,7 +2230,7 @@ impl<'a> Parser<'a> {
     /// `start..end` as the call `range(start, end)`; `..` names the standard `range`.
     fn range(&mut self, start: Expr, end: Expr) -> Expr {
         let pos = start.pos;
-        let callee = self.mk(pos, ExprKind::Name(Symbol::from("..")));
+        let callee = self.mk(pos, ExprKind::Name(self.names.intern("..")));
         let args = [start, end]
             .into_iter()
             .map(|value| Argument {
@@ -2544,7 +2552,7 @@ impl<'a> Parser<'a> {
             {
                 self.at += 1;
                 let question = self.previous();
-                let binding = Symbol::intern(&format!("?{}", chains.len()));
+                let binding = self.names.intern(&format!("?{}", chains.len()));
                 let present = self.mk(question.pos, ExprKind::Name(binding));
                 chains.push((std::mem::replace(&mut e, present), binding));
                 // The `.` is read as an ordinary member link on the payload.
@@ -2602,10 +2610,10 @@ impl<'a> Parser<'a> {
             (
                 "none",
                 Vec::new(),
-                self.mk(pos, ExprKind::Name(Symbol::intern("none"))),
+                self.mk(pos, ExprKind::Name(self.names.intern("none"))),
             ),
         ] {
-            let path = self.mk(pos, ExprKind::Name(Symbol::intern(case)));
+            let path = self.mk(pos, ExprKind::Name(self.names.intern(case)));
             let id = self.id();
             arms.push(Arm {
                 id,
@@ -2938,11 +2946,11 @@ impl<'a> Parser<'a> {
             if literal {
                 path = self.expression(0)?;
             } else if self.take(Tok::Underscore) {
-                path = self.mk(start.pos, ExprKind::Name(Symbol::intern("_")));
+                path = self.mk(start.pos, ExprKind::Name(self.names.intern("_")));
             } else {
                 let mut written = self.case_path()?;
                 if let ExprKind::Name(n) = &written.kind
-                    && n.as_str() == "some"
+                    && self.names.str(*n) == "some"
                     && self.kind() == Tok::LParen
                     && self.speculative == 0
                 {
@@ -2951,8 +2959,10 @@ impl<'a> Parser<'a> {
                 }
                 if let ExprKind::Name(n) = &written.kind
                     && self.kind() != Tok::LParen
-                    && n.as_str() != "none"
-                    && n.as_str()
+                    && self.names.str(*n) != "none"
+                    && self
+                        .names
+                        .str(*n)
                         .starts_with(|c: char| c.is_ascii_lowercase() || c == '_')
                 {
                     // A lone lowercase name binds an Optional's payload.
@@ -2960,7 +2970,7 @@ impl<'a> Parser<'a> {
                         name: *n,
                         pos: start.pos,
                     });
-                    written = self.mk(start.pos, ExprKind::Name(Symbol::intern("some")));
+                    written = self.mk(start.pos, ExprKind::Name(self.names.intern("some")));
                     bare = true;
                 }
                 path = written;
@@ -3137,9 +3147,10 @@ impl<'a> Parser<'a> {
         let TypeKind::Named { name, args } = &t.kind else {
             return None;
         };
-        let mut names = name.as_str().split('.');
+        let table = self.names;
+        let mut names = table.str(*name).split('.');
         let first = names.next().unwrap_or("");
-        let mut e = self.mk(t.pos, ExprKind::Name(Symbol::intern(first)));
+        let mut e = self.mk(t.pos, ExprKind::Name(self.names.intern(first)));
         let token = self.tokens.partition_point(|k| k.pos.offset < t.pos.offset);
         for (index, part) in names.enumerate() {
             let pos = self.tokens[token + 2 * (index + 1)].pos;
@@ -3147,7 +3158,7 @@ impl<'a> Parser<'a> {
                 pos,
                 ExprKind::Member {
                     left: Box::new(e),
-                    name: Symbol::intern(part),
+                    name: self.names.intern(part),
                 },
             );
         }
@@ -3314,10 +3325,10 @@ fn plain_index(e: &Expr) -> bool {
 }
 
 /// Spells a type's parameters as the arguments of its impl receiver.
-fn type_param_names(params: &[TypeParam]) -> String {
+fn type_param_names(names: Names, params: &[TypeParam]) -> String {
     if params.is_empty() {
         return String::new();
     }
-    let names: Vec<&str> = params.iter().map(|p| p.name.as_str()).collect();
-    format!("[{}]", names.join(", "))
+    let list: Vec<&str> = params.iter().map(|p| names.str(p.name)).collect();
+    format!("[{}]", list.join(", "))
 }
