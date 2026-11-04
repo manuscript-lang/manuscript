@@ -14,6 +14,12 @@ Draft, 2026-11-04, `a494979b`. Direction (Chinmay, this project): "allow try, we
 
 Evidence: the repro above; `proposals/views.md` withdrawal rule ("a wrapped lend beside an owned path is withdrawn"); `mixed_returns` in `crates/ms-check/src/ownership/walk.rs`; `try_expr` in `crates/ms-lower/src/matching.rs` (error arm: `alt.view` only under `ret_borrowed`, otherwise `owned(x)`). Inferred, not measured: how many stdlib `try` relays copy today. First step of implementation is counting `clone` on error arms in `ms emit` of stdlib.
 
+## Review and measurement (2026-11-04)
+
+Skeptical subagent review: repro and cause verified; the per-case design is larger than "like `result_views`" because `Val.own`, `result_mode`, the verifier, `lastuse`, `copyelim` and `inline` all hold ownership as one bit per value, and a masked result needs a tag dispatch at every drop, move, `try` (`alt.take` would free a lent payload) and function-value use. Inferred counterexamples: `match g(v)` with per-case binders, `try g(v)`, `let r = g(v); xs.append(r)`, passing `g` as a callback. Measured benefit (`ms emit` of `@std/data/toml.ms` with its dependencies, `a494979b`): 86 `alt.new ...error` constructions, 0 preceded by a `clone`. No stdlib relay of this shape was found, so the cost is hypothetical today.
+
+**Recommendation: do not build the per-case mask.** Keep the repro as a documented limit (mixed lend plus owned ok copies the error, on the error path only), and do the `try` desugaring cleanup separately if wanted. Reopen if a measurement finds relays that copy.
+
 ## Options
 
 1. Desugar `try e` to `match e: error(x): return error(x)` before ownership analysis (Chinmay's first idea). Verified by reading the code that it deletes `try_return` and the Try cases in `moved.rs` and `walk.rs`, but it does not fix the problem: `return error(x)` beside `return ok(new)` is the same mixed return. Worth doing anyway as cleanup once option 2 exists; inferred, not prototyped.
