@@ -47,14 +47,13 @@ test('the published browser bundle highlights the landing example and current sy
     assert.equal(output[index].map(node => node.textContent).join(''), source, 'Copy must retain the original source');
   }
   const [rendered, syntax] = output;
-  assert.ok(rendered.some(node => node.className === 's' && node.textContent === '"Hello, '),
-    'The text opener must receive string styling');
-  assert.ok(rendered.some(node => node.className === 'se' && node.textContent === '\\n'),
-    'The shared escape rule must run inside the interpolating text');
-  assert.equal(rendered.filter(node => node.className === 'si').map(node => node.textContent).join(''), '{}',
-    'The shared interpolation rules must delimit the expression');
-  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 2,
-    'Both returns after the text must retain keyword styling');
+  for (const name of ['filter', 'map', 'join', 'print']) {
+    assert.ok(rendered.some(node => node.textContent === name), `Highlight the real homepage call ${name}`);
+  }
+  assert.ok(rendered.some(node => node.className === 's' && node.textContent === '"Ship"'),
+    'The task title must receive string styling');
+  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 1,
+    'The return after the pipeline retains keyword styling');
   for (const kind of ['k', 'kc', 'nc', 'nf', 'mi', 'o', 'p', 's', 'se', 'si', 'c1']) {
     assert.ok(syntax.some(node => node.className === kind), `Missing current-syntax scope ${kind}`);
   }
@@ -180,7 +179,7 @@ test('the landing page offers a trial while documentation keeps its reading navi
     .find(tag => (attribute(tag, 'class') || '').split(' ').includes('home-button-primary'));
   assert.ok(primary, 'Offer a primary trial action');
   assert.ok(attribute(primary, 'href').endsWith('/learn/getting-started/'), 'Start the trial with a runnable guide');
-  assert.ok(home.includes('ms run hello.ms -- Ada'), 'Show how to run the displayed program');
+  assert.ok(home.includes('ms run next.ms'), 'Show how to run the displayed program');
   const docs = fs.readFileSync(path.join(book, 'learn/index.html'), 'utf8');
   assert.ok(docs.includes('Documentation navigation'), 'Readers need a documentation sidebar');
 });

@@ -2,20 +2,26 @@
 title = "Manuscript — The language for the agentic era."
 weight = 1
 bookToC = false
-description = "A statically typed, natively compiled language designed for agents to write and humans to understand: indentation-based syntax, ownership without a garbage collector, concurrency without async, and compiler feedback an agent can act on."
+description = "Help agents build correct, fast programs you can understand. Static checks catch mistakes, compiler feedback guides repairs, and straightforward code compiles to native executables."
 +++
 
 {{< docs-home >}}
-<!-- manuscript-example: {"mode":"run","args":["Ada"],"stdout":"Hello, Ada!\n","cases":[{"stdout":"Hello, world!\n"}]} -->
-```manuscript {filename="hello.ms"}
-import arguments from "@std/os/process.ms"
-import stdout from "@std/io/io.ms"
+<!-- manuscript-example: {"mode":"run","stdout":"Ship\n"} -->
+```manuscript {filename="next.ms"}
+type Task:
+    title: String
+    done: Bool = false
 
 export fn main() Int:
-    let name = arguments().get(0, default: "world")
-    let message = "Hello, {name}!\n"
-    if stdout().write(message).is_error():
-        return 1
+    let tasks = [
+        Task("Write", true),
+        Task("Ship"),
+    ]
+    let next = tasks
+        | .filter(fn task: not task.done)
+        | .map(fn task: task.title)
+        | .join(", ")
+    print(next)
     return 0
 ```
 {{< /docs-home >}}

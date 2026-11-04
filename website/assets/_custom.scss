@@ -182,6 +182,9 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .home-platforms span { margin-inline: .3rem; }
 .home-example { position: relative; width: 100%; border: 1px solid var(--docs-heading); background: var(--docs-code-bg); box-shadow: 12px 12px 0 var(--docs-accent-bg); }
 .home-example::before { content: ""; position: absolute; width: 5rem; height: 5rem; right: -1.5rem; top: -2rem; z-index: -1; background: repeating-linear-gradient(135deg, var(--docs-muted) 0, var(--docs-muted) 1px, transparent 1px, transparent 8px); }
+.home-example-intro { padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200); }
+.home-example-intro strong { font: 500 .8rem var(--docs-mono); color: var(--docs-heading); }
+.markdown .home-example-intro p { margin: .5rem 0 0; font-size: .78rem; line-height: 1.6; color: var(--docs-muted); }
 .home-example .docs-code { margin: 0; border: 0; border-radius: 0; }
 .home-example .docs-code-heading { border-radius: 0; }
 .home-example .docs-code pre { font-size: .75rem; padding: 1.5rem; }
@@ -217,6 +220,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
   .home-example { box-shadow: 6px 6px 0 var(--docs-accent-bg); }
   .home-example::before { right: 0; top: -1.5rem; }
   .home-example .docs-code pre { font-size: .75rem; padding: 1rem; }
+  .home-example-intro { padding: 1rem; }
   .home-output { padding: 1rem; font-size: .72rem; }
   .home-benefits { padding-top: 2.5rem; }
   .markdown .home-benefit-grid { grid-template-columns: 1fr; }
